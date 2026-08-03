@@ -1,0 +1,14 @@
+node_modules/
+.pnpm-store/
+.next/
+services/game-server/dist/
+coverage/
+*.log
+.DS_Store
+*.tsbuildinfo
+.env.local
+.env.*.local
+
+apps/local-engine/data/blobs/*
+!apps/local-engine/data/blobs/.gitkeep
+!apps/local-engine/data/blobs/Qm*

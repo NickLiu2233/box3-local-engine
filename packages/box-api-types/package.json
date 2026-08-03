@@ -1,0 +1,21 @@
+{
+  "name": "@box-local/box-api-types",
+  "version": "1.0.0",
+  "description": "Box API 接口定义和类型，供前后端共享",
+  "license": "UNLICENSED",
+  "author": "",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "build:watch": "pnpm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@nestjs/swagger": "^11.2.0",
+    "class-validator": "~0.14.2"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  }
+}

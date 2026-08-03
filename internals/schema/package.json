@@ -1,0 +1,43 @@
+{
+  "name": "@box-local/schema",
+  "version": "0.4.3",
+  "description": "",
+  "keywords": [],
+  "author": "Code Infinity",
+  "exports": {
+    "./*": "./build/*.js"
+  },
+  "main": "",
+  "types": "",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./*"
+      ]
+    }
+  },
+  "files": [
+    "build/**/*",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "rm -rf build && tsc --project tsconfig.build.json",
+    "build:watch": "pnpm run build"
+  },
+  "dependencies": {
+    "@box-local/analytics": "workspace:*",
+    "@box-local/mesher": "workspace:1.0.0",
+    "@box-local/mudb": "workspace:1.0.4",
+    "@box-local/script-api": "workspace:~0.3.0",
+    "@box-local/utils": "workspace:*",
+    "@types/node": "10.17.60",
+    "debug": "4.3.4",
+    "gl-matrix": "3.4.3",
+    "pino": "8.19.0",
+    "tslib": "2.3.1",
+    "typescript": "5.6.3"
+  },
+  "devDependencies": {
+    "@types/debug": "4.1.7"
+  }
+}

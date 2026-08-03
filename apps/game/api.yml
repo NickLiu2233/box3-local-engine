@@ -1,0 +1,26 @@
+openapi: '3.0.2'
+info:
+  title: API Title
+  version: '1.0'
+servers:
+  - url: https://api.server.test/v1
+paths:
+  /createSession:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - mode
+                - fullName
+              properties:
+                mode:
+                  type: string
+                fullName:
+                  type: string
+      responses:
+        '200':
+          description: OK

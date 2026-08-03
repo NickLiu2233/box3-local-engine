@@ -1,0 +1,2125 @@
+import { vec3 } from 'gl-matrix';
+import type { Logger } from 'pino';
+import { MuRemoteClient, MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import {
+  EditReplicaInitSchema,
+  EditReplicaProtocol,
+  ProjectAction,
+  ProjectActionSchema,
+  ProjectActionSequenceSchema,
+  ProjectStateSchema,
+  ProjectStoreSchema,
+  VoxelWriteSequenceSchema,
+} from '@box-local/schema/replica/replica-schema';
+import { EditServerState } from '../edit-server-schema';
+import {
+  AmbientSoundRDA,
+  AssetType,
+  EnvironmentRDA,
+  GamepadRDA,
+  GroupProjectStoreSchema,
+  PhysicsRDA,
+  PlayerRDA,
+  ProjectRDA,
+  VoxelRDA,
+} from '@box-local/schema/project/project-rda';
+import {
+  combinePermissionSet,
+  OWNER_PERMISSIONS,
+  PermissionAccessLevel,
+  PermissionAction,
+  PermissionActionSequenceSchema,
+  PermissionRDA,
+  Permissions,
+  PermissionSetSchema,
+  PermissionTokenSchema,
+} from '@box-local/schema/permissions/permission-rda';
+import { Semaphore } from '@box-local/utils/semaphore';
+import { RDATransaction } from './transaction/transaction';
+import { VoxelWrite, VoxelWriteSchema } from '@box-local/schema/voxel/voxel-protocol';
+import { checkProjectActionSequence } from './validate/validate-project-action';
+import { checkVoxelWriteSequence } from './validate/validate-voxel-action';
+import { checkPermissionActionSequence } from './validate/validate-permission-action';
+import {
+  InviteLinkSchema,
+  SessionPermissionIndexSchema,
+  SessionPermissionSchema,
+} from './replica-server-schema';
+import { recordVoxelInfo } from '../../voxel/voxel-server';
+import {
+  generatePermissionToken,
+  parsePermissionToken,
+} from '@box-local/build-system/permissions/permission-token';
+import { CodeEditorServerController } from '../code-editor/code-editor-server-controller';
+import {
+  copySoundAssets,
+  updateHotProjectAssets,
+} from '@box-local/build-system/project/bake';
+import { CHUNK_SHIFT } from '@box-local/schema/voxel/voxel-collision-schema';
+import {
+  storeProject,
+  StoreProjectRes,
+} from '@box-local/build-system/project/project-serialize';
+import { storePermissions } from '@box-local/build-system/permissions/permission-serialize';
+import { CloseType } from '@box-local/schema/types/game';
+import {
+  ExtraProjectInfo,
+  ExtraProjectInfoSchema,
+} from '@box-local/schema/project/hot-schema';
+import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { getExtraProject } from '../../project/project-extra';
+import { apis } from '../../apis';
+import { getConfigSync } from '../../../config/server';
+import {
+  BroadcastDataType,
+  BroadcastMsg,
+  OPCode,
+  P2PDataType,
+  ReceivedMsg,
+} from '@box-local/schema/chat/chat-schema';
+import {
+  filterGroupProjectActions,
+  generateBroadcastMsg,
+  generateEngineReadyMsg,
+  generateP2PMsg,
+  getGroupProjectBySocket,
+  serializeGroupProjectStoreByProject,
+  storeGroupProjectMetaData,
+  updateProjectStoreByGroupProject,
+} from '../../group-project';
+import { GroupProjectStore } from '@box-local/schema/group-project/rda';
+import { OssStoreType } from '@box-local/content-server';
+
+const TOKEN_MIN_DURATION = 60 * 1000;
+const TOKEN_MAX_DURATION = 24 * 60 * 60 * 1000;
+const THUMBNAILSIZE = 512;
+
+const DEFAULT_BRANCH = 'master';
+
+type ReplicaRemoteClient = MuRemoteClient<
+  (typeof EditReplicaProtocol)['client']
+>;
+
+export class EditReplicaServer {
+  private _protocol: MuServerProtocol<typeof EditReplicaProtocol>;
+  private _state: EditServerState;
+  private _codeEditorController: CodeEditorServerController;
+  private _logger: Logger;
+  private _featureFlags: string[];
+
+  private _permissionSemaphore = new Semaphore();
+  private _projectSemaphore = new Semaphore();
+
+  private async _savePermissions() {
+    const replicaState = this._state.replica;
+    if (!replicaState.permissionsHashDirty) {
+      this._logger.info(
+        `skip save permissions ${replicaState.permissionHash}`,
+      );
+      return;
+    }
+    if (getConfigSync()?.method === 'local') {
+      replicaState.permissionsHashDirty = false;
+      this._logger.info('skip backend permission update in local mode');
+      return;
+    }
+    this._logger.info(
+      `permissions changed, save permissions ${replicaState.permissionHash}`,
+    );
+    let previewImage = replicaState.project.info.previewImage;
+    if (previewImage === replicaState.lastImageHash) {
+      previewImage = replicaState.lastOptimizedHash;
+    } else {
+      replicaState.lastImageHash = previewImage;
+      try {
+        let ext = '';
+        const matchExt = previewImage.match(/\./);
+        if (matchExt !== null) {
+          ext = previewImage.slice(matchExt.index);
+        }
+        previewImage =
+          (await this._state.buildSystem.build(
+            'genThumbnail',
+            previewImage,
+            THUMBNAILSIZE,
+          )) + ext;
+      } catch (e) {}
+      replicaState.lastOptimizedHash = previewImage;
+    }
+    // save project
+    this._logger.info(
+      `updating map hash  ${this._state.game.state.settings.contentId.toString()} ${
+        replicaState.permissionHash
+      }`,
+    );
+    // TODO: 权限更换为后端控制以后再改 save project
+    await this._state.brpc.content.api.updateGame({
+      content_id: this._state.publish.gameId,
+      name: replicaState.project.info.displayName,
+      describe: replicaState.project.info.description,
+      image: previewImage,
+      hash: replicaState.permissionHash,
+      engine_version: '',
+    });
+    this._logger.info(`update map hash success`);
+    replicaState.permissionsHashDirty = false;
+  }
+
+  private _canUpdateVoxels() {
+    return (
+      0 < this._projectSemaphore.counter &&
+      this._state.game.state.voxelState.ready &&
+      !this._state.game.state.replica.running
+    );
+  }
+
+  private _canUpdateProject() {
+    const game = this._state.game;
+    return (
+      0 < this._projectSemaphore.counter &&
+      !game.syncInProgress() &&
+      !game.state.replica.running
+    );
+  }
+
+  private _setPermissionsDirty() {
+    const replicaState = this._state.replica;
+    replicaState.permissionsHashDirty = replicaState.permissionsDirty = true;
+  }
+
+  private _setProjectDirty() {
+    const replicaState = this._state.replica;
+    replicaState.permissionsDirty =
+      replicaState.hotProjectDirty =
+      replicaState.projectHashDirty =
+      replicaState.projectDirty =
+        true;
+
+    this._setPermissionsDirty();
+  }
+
+  private _updatePermissionsIndex() {
+    const replicaState = this._state.replica;
+    SessionPermissionIndexSchema.assign(
+      replicaState.sessionPermission,
+      SessionPermissionIndexSchema.identity,
+    );
+
+    const permissions = replicaState.permissions;
+    const index = replicaState.sessionPermission;
+    const connections = this._state.game.state.connectionSet;
+
+    const groups = permissions.groups;
+    const groupIds = Object.keys(groups);
+
+    const defaultGroups = replicaState.defaultGroups;
+    defaultGroups.length = 0;
+    for (let i = 0; i < groupIds.length; ++i) {
+      if (groups[groupIds[i]].defaultGroup) {
+        defaultGroups.push(groupIds[i]);
+      }
+    }
+
+    for (let i = 0; i < connections.length; ++i) {
+      // unpack connection info
+      const c = connections[i];
+      const sessionId = c.sessionId;
+      const userId = c.sessionData.user.id;
+
+      // if user is banned then kick them out
+      if (this.isUserBlocked(userId)) {
+        this._logger.info(`kicking blocked user ${userId}`);
+        const reason = this.blockReason(userId);
+        this._state.game.net.kickSession(sessionId, reason);
+        continue;
+      }
+
+      // create new permission record
+      const userPermission = (index[sessionId] = SessionPermissionSchema.clone(
+        SessionPermissionSchema.identity,
+      ));
+      userPermission.userId = userId;
+      if (!userId) {
+        // special case: guests can't be in groups, get no permissions
+        PermissionSetSchema.assign(
+          userPermission.permissions,
+          PermissionSetSchema.identity,
+        );
+        userPermission.guest = true;
+        userPermission.owner = false;
+      } else {
+        const permissionSet = PermissionSetSchema.assign(
+          userPermission.permissions,
+          PermissionSetSchema.identity,
+        );
+        userPermission.guest = false;
+        if (userId === permissions.owner || c.sessionData.isAdmin) {
+          // special case: owner has unlimited, unrestricted permissions
+          PermissionSetSchema.assign(permissionSet, OWNER_PERMISSIONS);
+          userPermission.owner = userId === permissions.owner;
+        } else {
+          userPermission.owner = false;
+        }
+        // compute user permission set by looping over all groups
+        for (let j = 0; j < groupIds.length; ++j) {
+          const groupName = groupIds[j];
+          const group = groups[groupName];
+          if (userId in group.members) {
+            combinePermissionSet(permissionSet, group.permissions);
+          }
+          userPermission.groups.push(groupName);
+        }
+      }
+    }
+  }
+
+  public getSessionPermissions(sessionId: string) {
+    const permissions = this._state.replica.sessionPermission[sessionId];
+    if (permissions) {
+      return permissions.permissions;
+    }
+    return PermissionSetSchema.identity;
+  }
+
+  constructor(spec: {
+    server: MuServer;
+    state: EditServerState;
+    projectHash: string;
+    projectState: typeof ProjectStateSchema.identity;
+    extraProjectInfo: ExtraProjectInfo;
+    permissionHash: string;
+    permissions: Permissions;
+    codeEditorController: CodeEditorServerController;
+    featureFlags: string[];
+    pendingActions: ProjectAction[][];
+    groupStore?: GroupProjectStore;
+    logger: Logger;
+  }) {
+    const protocol = (this._protocol =
+      spec.server.protocol(EditReplicaProtocol));
+    const state = (this._state = spec.state);
+    this._logger = spec.logger.child({ caller: 'replica' });
+    this._featureFlags = spec.featureFlags;
+    this._codeEditorController = spec.codeEditorController;
+
+    const replicaState = state.replica;
+
+    // initialize project
+    replicaState.projectHash = spec.projectHash;
+    const projectStore = (replicaState.projectStore = ProjectRDA.createStore(
+      spec.projectState,
+    ));
+
+    if (spec.groupStore) {
+      updateProjectStoreByGroupProject(projectStore, spec.groupStore);
+    }
+
+    // apply 初始化期间收到的actions
+    for (let i = 0; i < spec.pendingActions.length; ++i) {
+      for (let j = 0; j < spec.pendingActions[i].length; ++j) {
+        projectStore.apply(ProjectRDA, spec.pendingActions[i][j]);
+      }
+    }
+    replicaState.project = projectStore.state(ProjectRDA, replicaState.project);
+    // 订阅actions
+    this._subscribeGroupProjectActions();
+    // 通知socket，已经ready，可以发送当前容器的state了
+    this._sendGroupProjectReady();
+    // 当websocket断线重连后，重新通过websocket或者http获取初始化数据
+    this._handleGroupProjectReconnect();
+    // 订阅SHARED_STATE_REQUEST，然后通过SHARED_STATE_RESPONSE发送state
+    this._state.game.webSocket.onMessage(async (data: string) => {
+      const message: ReceivedMsg = JSON.parse(data);
+      if (message.opcode !== OPCode.Dispatch) {
+        return;
+      }
+      // == 发送当前容器状态 ==
+      if (
+        message.event === 'POINT_TO_POINT' &&
+        message.data.data.type === P2PDataType.GROUP_PROJECT_REQUEST
+      ) {
+        this._logger.info(
+          `SHARE_STATE: send state to ${message.data.targetId}`,
+        );
+
+        const sharedStore = serializeGroupProjectStoreByProject(
+          replicaState.projectStore,
+        );
+        // 1k
+        const ws = new MuWriteStream(1024);
+        GroupProjectStoreSchema.diff(
+          GroupProjectStoreSchema.identity,
+          sharedStore,
+          ws,
+        );
+        const bytes = ws.bytes();
+        ws.destroy();
+        const hash = await this._state.buildSystem.storeContentToS3(bytes, {
+          ossStoreType: OssStoreType.Temp,
+        });
+        this._logger.info(`SHARE_STATE: send hash is ${hash}`);
+        this._state.game.webSocket.send(
+          generateP2PMsg(
+            {
+              type: P2PDataType.GROUP_PROJECT_RESPONSE,
+              payload: hash,
+            },
+            message.data.targetId,
+          ),
+        );
+      }
+    });
+
+    this._setProjectDirty();
+
+    // initialize permissions
+    replicaState.permissionHash = spec.permissionHash;
+    const permissionStore = (replicaState.permissionStore =
+      PermissionRDA.createStore(spec.permissions));
+    replicaState.permissions = permissionStore.state(
+      PermissionRDA,
+      replicaState.permissions,
+    );
+    this._updatePermissionsIndex();
+
+    // initialize extra project info
+    ExtraProjectInfoSchema.assign(
+      replicaState.extraProjectInfo,
+      spec.extraProjectInfo,
+    );
+    replicaState.hotProjectDirty = true;
+
+    protocol.configure({
+      message: {
+        project: (client, actions) => {
+          if (
+            checkProjectActionSequence(
+              this.getSessionPermissions(client.sessionId),
+              actions,
+            )
+          ) {
+            const _actions = ProjectActionSequenceSchema.clone(actions);
+
+            // 共享数据的action需要转发给其他server
+            const groupProjectActions = filterGroupProjectActions(_actions);
+            if (groupProjectActions.length > 0) {
+              this._broadcastActionsToSocket(groupProjectActions);
+            }
+
+            this._applyProjectTransaction(_actions)
+              .finally(() => ProjectActionSequenceSchema.free(_actions))
+              .catch((e) =>
+                this._logger.error(`error applying project tx: ${e}`),
+              );
+          } else {
+            this._logger.info(`bad project action from ${client.sessionId}`);
+            this._rollbackProject(client, actions);
+          }
+        },
+        optimisticProjectAction: (client, actions) => {
+          if (
+            checkProjectActionSequence(
+              this.getSessionPermissions(client.sessionId),
+              actions,
+            ) &&
+            this._canUpdateProject()
+          ) {
+            const store = replicaState.projectStore;
+            for (let i = 0; i < actions.length; ++i) {
+              store.apply(ProjectRDA, actions[i]);
+            }
+            this._setProjectDirty();
+
+            // broadcast to all clients except the client that dispatched the optimistic action
+            const connections = this._state.game.state.connectionSet;
+            for (let i = 0; i < connections.length; ++i) {
+              const sessionId = connections[i].sessionId;
+              if (sessionId !== client.sessionId) {
+                const otherClient = this._protocol.clients[sessionId];
+                if (otherClient) {
+                  otherClient.message.project(actions);
+                }
+              }
+            }
+          }
+        },
+        // because project actions are handled opportunistically, have to handle this situation a bit carefully
+        rollbackProject: (client, inverse) => {
+          if (
+            checkProjectActionSequence(
+              this.getSessionPermissions(client.sessionId),
+              inverse,
+            )
+          ) {
+            const _actions = ProjectActionSequenceSchema.clone(inverse);
+            this._applyProjectTransaction(_actions)
+              .finally(() => ProjectActionSequenceSchema.free(_actions))
+              .catch((e) =>
+                this._logger.error(`error applying project tx: ${e}`),
+              );
+          } else {
+            this._rollbackProject(client, inverse.reverse());
+          }
+        },
+        voxel: (client, writes) => {
+          if (
+            checkVoxelWriteSequence(
+              this.getSessionPermissions(client.sessionId),
+              writes,
+            )
+          ) {
+            if (!this._canUpdateVoxels()) {
+              const bufferedWrites = this._state.replica.bufferedVoxelWrites;
+              for (let i = 0; i < writes.length; ++i) {
+                bufferedWrites.push(VoxelWriteSchema.clone(writes[i]));
+              }
+              this._rollbackVoxel(client, writes);
+            } else {
+              this._applyVoxelTransaction(writes);
+            }
+          } else {
+            this._logger.info(`bad voxel action from ${client.sessionId}`);
+            this._rollbackVoxel(client, writes);
+          }
+        },
+        permission: (client, actions) => {
+          if (
+            checkPermissionActionSequence(
+              this.getSessionPermissions(client.sessionId),
+              actions,
+            )
+          ) {
+            this._logger.info(
+              `permission update from ${
+                client.sessionId
+              }. actions=${JSON.stringify(actions)}`,
+            );
+            const _actions = PermissionActionSequenceSchema.clone(actions);
+            this._applyPermissionTransaction(_actions)
+              .finally(() => PermissionActionSequenceSchema.free(_actions))
+              .catch((e) =>
+                this._logger.error(`error applying permission tx: ${e}`),
+              );
+          } else {
+            this._logger.info(`bad permission action from ${client.sessionId}`);
+            this._rollbackPermissions(client, actions);
+          }
+        },
+        updateExtraProject: this._checkAndSetExtraProject,
+
+        rollbackVoxel: this._rollbackVoxel,
+        rollbackPermission: this._rollbackPermissions,
+
+        startProject: this._handlePlayRPC.bind(this, this.startProject),
+        stopProject: this._handlePlayRPC.bind(this, this.stopProject),
+        saveProject: async (client, data) => {
+          this.saveProject(parseInt(data.userId))
+            .then(() => {
+              client.message.rpcResponse({
+                token: data.token,
+                result: 'save project success',
+                error: '',
+              });
+            })
+            .catch((e) => {
+              client.message.rpcResponse({
+                token: data.token,
+                result: 'save project fail',
+                error: e,
+              });
+            });
+        },
+
+        restart: async (client) => {
+          this._logger.info(`restart from ${client.sessionId}`);
+          process.exit(0);
+        },
+        upgradeDatabase: async (client, { token }) => {
+          try {
+            this._logger.info(`upgrade database from ${client.sessionId}`);
+
+            this._logger.info('try to stop project');
+            await this.stopProject();
+
+            this._logger.info('set storageMode to pg');
+            const store = replicaState.projectStore;
+            const action = ProjectRDA.action(store);
+            store.apply(ProjectRDA, action.storageMode('pg'));
+            this._setProjectDirty();
+
+            this._logger.info('save project');
+            await this.saveProject();
+
+            client.message.rpcResponse({
+              token,
+              result: 'upgrade database success',
+              error: '',
+            });
+          } catch (e) {
+            client.message.rpcResponse({
+              token,
+              result: 'upgrade database fail',
+              error: e,
+            });
+          }
+        },
+
+        checkoutProject: async (client, { token, hash, oldHash }) => {
+          this._logger.info(`checkout called ${client.sessionId} ${hash}`);
+          if (!this.getSessionPermissions(client.sessionId).versionControl) {
+            this._logger.info('invalid checkout call from ' + client.sessionId);
+            return client.message.rpcResponse({
+              token,
+              result: '',
+              error: 'version modification not allowed',
+            });
+          } else {
+            try {
+              return client.message.rpcResponse({
+                token,
+                result: 'success',
+                error: '',
+              });
+            } catch (e) {
+              return client.message.rpcResponse({
+                token,
+                result: '',
+                error: e.stack,
+              });
+            }
+          }
+        },
+
+        createBranch: (client, { token, branch }) => {
+          if (!this.getSessionPermissions(client.sessionId).versionControl) {
+            this._logger.error(
+              'invalid call to create branch from ' + client.sessionId,
+            );
+            return client.message.rpcResponse({
+              token,
+              result: '',
+              error: 'version control not allowed',
+            });
+          } else {
+            this.createBranch(branch)
+              .then((result) => {
+                if (result) {
+                  client.message.rpcResponse({
+                    token,
+                    result,
+                    error: '',
+                  });
+                } else {
+                  client.message.rpcResponse({
+                    token,
+                    result: '',
+                    error: 'error creating branch',
+                  });
+                }
+              })
+              .catch((e) => {
+                this._logger.error(e);
+                client.message.rpcResponse({
+                  token,
+                  result: '',
+                  error: 'error creating branch: ' + e,
+                });
+              });
+          }
+        },
+
+        switchBranch: (client, { token, branch }) => {
+          if (!this.getSessionPermissions(client.sessionId).versionControl) {
+            this._logger.error(
+              'invalid call to switch branch from ' + client.sessionId,
+            );
+            return client.message.rpcResponse({
+              token,
+              result: '',
+              error: 'version control not allowed',
+            });
+          } else {
+            this.switchBranch(branch)
+              .then((result) => {
+                if (result) {
+                  client.message.rpcResponse({
+                    token,
+                    result,
+                    error: '',
+                  });
+                } else {
+                  client.message.rpcResponse({
+                    token,
+                    result: '',
+                    error: 'error switch branch',
+                  });
+                }
+              })
+              .catch((e) => {
+                this._logger.error(e);
+                client.message.rpcResponse({
+                  token,
+                  result: '',
+                  error: 'error switch branch: ' + e,
+                });
+              });
+          }
+        },
+
+        renameBranch: (client, { token, branch, oldBranch }) => {
+          if (!this.getSessionPermissions(client.sessionId).versionControl) {
+            this._logger.error(
+              'invalid call to rename branch from ' + client.sessionId,
+            );
+            return client.message.rpcResponse({
+              token,
+              result: '',
+              error: 'version control not allowed',
+            });
+          } else {
+            this.renameBranch(oldBranch, branch)
+              .then((result) => {
+                if (result) {
+                  client.message.rpcResponse({
+                    token,
+                    result,
+                    error: '',
+                  });
+                } else {
+                  client.message.rpcResponse({
+                    token,
+                    result: '',
+                    error: 'error rename branch',
+                  });
+                }
+              })
+              .catch((e) => {
+                this._logger.error(e);
+                client.message.rpcResponse({
+                  token,
+                  result: '',
+                  error: 'error rename branch: ' + e,
+                });
+              });
+          }
+        },
+
+        requestToken: (client, { token, duration, group }) => {
+          if (this.getSessionPermissions(client.sessionId).editPermissions) {
+            if (!(group in replicaState.permissions.groups)) {
+              return client.message.rpcResponse({
+                token,
+                result: '',
+                error: 'invalid group',
+              });
+            }
+            const durationMs = Math.max(
+              TOKEN_MIN_DURATION,
+              Math.min(TOKEN_MAX_DURATION, +duration || 0),
+            );
+            const permissionToken = PermissionTokenSchema.clone(
+              PermissionTokenSchema.identity,
+            );
+            const expiredAt = new Date(Date.now() + durationMs);
+            permissionToken.expireAt = expiredAt;
+            permissionToken.group = group;
+            const result = generatePermissionToken(
+              state.game.state.settings.permissionTokenSecret,
+              permissionToken,
+            );
+            const inviteLink = InviteLinkSchema.clone(
+              InviteLinkSchema.identity,
+            );
+            inviteLink.tokenString = result;
+            inviteLink.expiredAt = expiredAt;
+            this._state.replica.inviteLink.push(inviteLink);
+            this._logger.info(
+              `generated permission token for group ${group} with duration ${durationMs}.  expires at ${permissionToken.expireAt}. token=${result}`,
+            );
+            PermissionTokenSchema.free(permissionToken);
+            return client.message.rpcResponse({
+              token,
+              result,
+              error: result ? '' : 'invalid token request',
+            });
+          } else {
+            this._logger.info(
+              'invalid request token call from ' + client.sessionId,
+            );
+            return client.message.rpcResponse({
+              token,
+              result: '',
+              error: 'edit permissions not allowed',
+            });
+          }
+        },
+
+        clearNewApplicants: (client) => {
+          const applicants = this._state.replica.newApplicants;
+          for (const id in applicants) {
+            delete applicants[id];
+          }
+          this._protocol.broadcast.updateNewApplicants(applicants);
+        },
+
+        applyForEditing: (client) => {
+          const connection =
+            this._state.game.state.connections[client.sessionId];
+          if (!connection) {
+            this._state.logger.error('invalid edit application request');
+            return;
+          }
+          const userId = connection.sessionData.user.id;
+          if (!userId) {
+            this._state.logger.error('guest applying for edit privileges');
+            return;
+          }
+
+          if (this._state.replica.applications.indexOf(userId) >= 0) {
+            this._state.logger.error('user applied twice');
+            return;
+          }
+
+          this._state.replica.applications.push(userId);
+          this._protocol.broadcast.updateApplications(
+            this._state.replica.applications,
+          );
+
+          this._state.replica.newApplicants[userId] = true;
+          this._protocol.broadcast.updateNewApplicants(
+            this._state.replica.newApplicants,
+          );
+        },
+
+        acceptApplication: async (client, id) => {
+          const permissions = this.getSessionPermissions(client.sessionId);
+          if (!permissions || !permissions.editPermissions) {
+            this._state.logger.error(
+              'invalid attempt to edit permissions from ' + client.sessionId,
+            );
+            return;
+          }
+
+          this._state.logger.info(
+            `accept application from ${id} by ${client.sessionId}`,
+          );
+
+          const idx = this._state.replica.applications.indexOf(id);
+          if (idx < 0) {
+            return;
+          }
+
+          const connections = this._state.game.state.connectionSet;
+          for (let i = 0; i < connections.length; ++i) {
+            if (connections[i].sessionData.user.id === id) {
+              const otherClient =
+                this._protocol.clients[connections[i].sessionId];
+              if (otherClient) {
+                otherClient.message.applicationAccepted();
+              }
+            }
+          }
+          // add to collaborators
+          if (
+            this._state.replica.permissions.collaborators.indexOf(id) === -1
+          ) {
+            await this.permissionTransaction()
+              .push((action) => action.collaborators.push(id))
+              .commit();
+          }
+          this._state.replica.applications.splice(idx, 1);
+          this._protocol.broadcast.updateApplications(
+            this._state.replica.applications,
+          );
+
+          delete this._state.replica.newApplicants[id];
+          this._protocol.broadcast.updateNewApplicants(
+            this._state.replica.newApplicants,
+          );
+        },
+        rejectApplication: (client, id) => {
+          const permissions = this.getSessionPermissions(client.sessionId);
+          if (!permissions || !permissions.editPermissions) {
+            this._state.logger.error(
+              'invalid attempt to edit permissions from ' + client.sessionId,
+            );
+            return;
+          }
+
+          this._state.logger.info(
+            `reject application from ${id} by ${client.sessionId}`,
+          );
+
+          const idx = this._state.replica.applications.indexOf(id);
+
+          if (idx < 0) {
+            return;
+          }
+
+          this._state.replica.applications.splice(idx, 1);
+          this._protocol.broadcast.updateApplications(
+            this._state.replica.applications,
+          );
+
+          delete this._state.replica.newApplicants[id];
+          this._protocol.broadcast.updateNewApplicants(
+            this._state.replica.newApplicants,
+          );
+        },
+        inviteLinkExpired: (client, tokenString) => {
+          const isLinkAccess = this._state.replica.inviteLink.find(
+            (link) => link.tokenString === tokenString,
+          );
+          if (isLinkAccess && isLinkAccess.expiredAt < new Date()) {
+            this._state.replica.inviteLink =
+              this._state.replica.inviteLink.filter(
+                (link) => link.tokenString !== tokenString,
+              );
+            client.message.inviteLinkExpired(true);
+            return;
+          }
+          client.message.inviteLinkExpired(false);
+        },
+        inviteLinkGroup: (client, { token, linkString }) => {
+          let group = '';
+          const res = parsePermissionToken(
+            this._state.game.state.settings.permissionTokenSecret,
+            linkString,
+          );
+          if (res) {
+            group = res.group;
+          }
+          client.message.inviteLinkGroup(group);
+          return client.message.rpcResponse({
+            token,
+            result: group,
+            error: '',
+          });
+        },
+
+        addCollaborator: async (client, params) => {
+          this._logger.info(
+            `add collaborator for client: ${client.sessionId} for user: ${params.id}`,
+          );
+          if (params.id === replicaState.permissions.owner) {
+            this._logger.info(`owner is not collaborator`);
+            return;
+          }
+          const index = replicaState.permissions.collaborators.indexOf(
+            params.id,
+          );
+          if (index >= 0) {
+            this._logger.info(`add collaborator fail: exist id in list`);
+          } else {
+            await this.permissionTransaction()
+              .push((action) => action.collaborators.push(params.id))
+              .commit();
+          }
+          await this.permissionTransaction()
+            .push((action) =>
+              action.groups.update(params.group).members.set(params.id, {
+                addedAt: new Date(),
+              }),
+            )
+            .commit();
+        },
+        cancelCollaborator: async (client, id) => {
+          this._logger.info(
+            `cancel collabortor for client: ${client.sessionId} for user: ${id}`,
+          );
+          const index = replicaState.permissions.collaborators.indexOf(id);
+          if (index === -1) {
+            this._logger.info(`cancel collaborator fail: no found id in list`);
+            return;
+          }
+          const roles: string[] = [];
+          const groupNames = Object.keys(replicaState.permissions.groups);
+          for (let i = 0; i < groupNames.length; i++) {
+            if (replicaState.permissions.groups[groupNames[i]].members[id]) {
+              roles.push(groupNames[i]);
+            }
+          }
+          for (const permission of roles) {
+            await this.permissionTransaction()
+              .push((action) =>
+                action.groups.update(permission).members.remove(id),
+              )
+              .commit();
+          }
+          await this.permissionTransaction()
+            .push((action) => action.collaborators.splice(index, 1))
+            .push((action) =>
+              action.groups.update('guest').members.set(id, {
+                addedAt: new Date(),
+              }),
+            )
+            .commit();
+        },
+      },
+
+      connect: async (client) => {
+        const initPacket = EditReplicaInitSchema.alloc();
+        ExtraProjectInfoSchema.assign(
+          initPacket.extraProjectInfo,
+          replicaState.extraProjectInfo,
+        );
+        this._logger.debug(
+          `wait to lock project state to initialize client ${client.sessionId}...`,
+        );
+        const projectMutex = this._projectSemaphore.p();
+        this._logger.debug(
+          `wait to lock permission state to initialize client ${client.sessionId}...`,
+        );
+        const permissionMutex = this._permissionSemaphore.p();
+        try {
+          await permissionMutex;
+          this._logger.debug(
+            `permission state locked to initialize client ${client.sessionId}...`,
+          );
+          await projectMutex;
+          this._logger.debug(
+            `project state locked to initialize client ${client.sessionId}...`,
+          );
+          replicaState.projectStore.serialize(ProjectRDA, initPacket.project);
+          replicaState.permissionStore.serialize(
+            PermissionRDA,
+            initPacket.permissions,
+          );
+          client.message.init(initPacket);
+        } finally {
+          this._permissionSemaphore.v();
+          this._logger.debug(
+            `permission state unlocked since client ${client.sessionId} initialize ended`,
+          );
+          this._projectSemaphore.v();
+          this._logger.debug(
+            `project state unlocked since client ${client.sessionId} initialize ended`,
+          );
+          EditReplicaInitSchema.free(initPacket);
+        }
+        client.message.updateApplications(this._state.replica.applications);
+        client.message.updateNewApplicants(this._state.replica.newApplicants);
+        // 检测是否需要更新extraProject
+        this._checkAndSetExtraProject();
+      },
+    });
+  }
+
+  private _handleGroupProjectReconnect = () => {
+    // 重连时，重新发起Channel.ENGINE_CUSTOM的订阅，所以会收到ONLINE_CONNECTION的消息
+    this._state.game.webSocket.onMessage(async (data: string) => {
+      const message: ReceivedMsg = JSON.parse(data);
+      if (
+        message.opcode !== OPCode.Dispatch ||
+        message.event !== 'ONLINE_CONNECTION'
+      ) {
+        return;
+      }
+
+      const { project: originProject } = this._state.replica;
+      const project = ProjectRDA.stateSchema.clone(originProject);
+
+      const {
+        pendingActions,
+        store: groupProjectStore,
+        metaData: groupProjectMetaData,
+      } = await getGroupProjectBySocket({
+        backendSocket: this._state.game.webSocket,
+        logger: this._logger,
+        message: data,
+        bs: this._state.buildSystem,
+      });
+
+      try {
+        this._logger.info(`wait to lock project state to update store...`);
+        await this._projectSemaphore.p();
+        this._logger.info(`project state locked to update store...`);
+
+        // 有store直接使用其它容器store
+        if (groupProjectStore) {
+          updateProjectStoreByGroupProject(
+            this._state.replica.projectStore,
+            groupProjectStore,
+          );
+        } else if (groupProjectMetaData) {
+          // 没用state使用数据库保存的数据
+          await Promise.all(
+            Object.keys(groupProjectMetaData.hashes).map(async (item) => {
+              project[item] = await this._state.buildSystem.retrieveJSON(
+                groupProjectMetaData.hashes[item],
+              );
+            }),
+          );
+          this._state.replica.projectStore.free(ProjectRDA);
+          this._state.replica.projectStore = ProjectRDA.createStore(project);
+        }
+
+        // apply 初始化期间收到的actions
+        for (let i = 0; i < pendingActions.length; ++i) {
+          for (let j = 0; j < pendingActions[i].length; ++j) {
+            this._state.replica.projectStore.apply(
+              ProjectRDA,
+              pendingActions[i][j],
+            );
+          }
+        }
+
+        const replicaState = this._state.replica;
+
+        // resetStore to client
+        const storeState = replicaState.projectStore.serialize(
+          ProjectRDA,
+          ProjectStoreSchema.alloc(),
+        );
+        this._protocol.broadcast.reset(storeState);
+        ProjectStoreSchema.free(storeState);
+
+        // reset state
+        replicaState.project = replicaState.projectStore.state(
+          ProjectRDA,
+          replicaState.project,
+        );
+      } finally {
+        this._projectSemaphore.v();
+        this._logger.info(`project state unlocked since update store ended`);
+      }
+
+      this._sendGroupProjectReady();
+      this._setProjectDirty();
+    });
+  };
+
+  private _subscribeGroupProjectActions = () => {
+    this._state.game.webSocket.onMessage(async (data: string) => {
+      const message: ReceivedMsg = JSON.parse(data);
+      if (
+        message.opcode === OPCode.Dispatch &&
+        message.event === 'BROADCAST' &&
+        message.data.type === BroadcastDataType.ACTION
+      ) {
+        this._logger.info(
+          `receive actions from other server, actions length is ${message.data.payload.length} `,
+        );
+        this._applyProjectTransaction(message.data.payload);
+      }
+    });
+  };
+
+  private _sendGroupProjectReady() {
+    this._logger.info(`SHARE_STATE: send ready`);
+    this._state.game.webSocket.send(generateEngineReadyMsg());
+  }
+
+  private _rollbackProject = (
+    client: ReplicaRemoteClient,
+    actions: ProjectAction[],
+  ) => {
+    const store = this._state.replica.projectStore;
+    const inverse = ProjectActionSequenceSchema.alloc();
+    for (let i = actions.length - 1; i >= 0; --i) {
+      inverse.push(store.inverse(ProjectRDA, actions[i]));
+    }
+    client.message.project(inverse);
+    ProjectActionSequenceSchema.free(inverse);
+  };
+
+  private _applyProjectTransaction = async (actions: ProjectAction[]) => {
+    this._logger.debug('Locking project state to apply update...');
+    await this._projectSemaphore.p();
+    this._logger.debug('Project state locked to apply update...');
+    try {
+      const replicaState = this._state.replica;
+      const store = replicaState.projectStore;
+      for (let i = 0; i < actions.length; ++i) {
+        store.apply(ProjectRDA, actions[i]);
+      }
+      this._setProjectDirty();
+      this._protocol.broadcast.project(actions);
+    } catch (e) {
+      this._logger.error(`error updating project: ${e}`);
+    } finally {
+      this._projectSemaphore.v();
+      this._logger.debug('Project state unlocked since update apply ended.');
+    }
+  };
+
+  private _rollbackVoxel = (
+    client: ReplicaRemoteClient,
+    writes: VoxelWrite[],
+  ) => {
+    const voxels = this._state.game.voxel;
+    const inverse = VoxelWriteSequenceSchema.alloc();
+    for (let i = 0; i < writes.length; ++i) {
+      const m = VoxelWriteSchema.clone(writes[i]);
+      m.b = voxels.getVoxel(m.x, m.y, m.z);
+      inverse.push(m);
+    }
+    client.message.voxel(inverse);
+    VoxelWriteSequenceSchema.free(inverse);
+  };
+
+  // updates tthe voxels
+  private _applyVoxelTransaction = (writes: VoxelWrite[]) => {
+    const voxels = this._state.game.voxel;
+    for (let i = 0; i < writes.length; ++i) {
+      const w = writes[i];
+      voxels.setVoxel(w.x, w.y, w.z, w.b);
+    }
+  };
+
+  // rollsback a permission update on a single client
+  private _rollbackPermissions = (
+    client: ReplicaRemoteClient,
+    actions: PermissionAction[],
+  ) => {
+    const store = this._state.replica.permissionStore;
+    const inverse = PermissionActionSequenceSchema.alloc();
+    for (let i = actions.length - 1; i >= 0; --i) {
+      inverse.push(store.inverse(PermissionRDA, actions[i]));
+    }
+    client.message.permissions(inverse);
+    PermissionActionSequenceSchema.free(inverse);
+  };
+
+  // permission transactions have enforced durability guarantees, project transactions are a bit flimsier
+  private _applyPermissionTransaction = async (actions: PermissionAction[]) => {
+    this._logger.debug('Locking permission state to apply update...');
+    await this._permissionSemaphore.p();
+    this._logger.debug('Permission state locked to apply update...');
+    try {
+      const replicaState = this._state.replica;
+      const store = replicaState.permissionStore;
+
+      // broadcast update to clients
+      this._protocol.broadcast.permissions(actions);
+
+      // update store
+      for (let i = 0; i < actions.length; ++i) {
+        store.apply(PermissionRDA, actions[i]);
+      }
+
+      // update state
+      store.state(PermissionRDA, replicaState.permissions);
+      this._updatePermissionsIndex();
+
+      // set container dirty flag
+      this._setPermissionsDirty();
+    } catch (e) {
+      this._logger.error(`error updating permissions: ${JSON.stringify(e)}`);
+    } finally {
+      this._permissionSemaphore.v();
+      this._logger.debug('Permission state unlocked since update ended');
+    }
+  };
+
+  public projectTransaction() {
+    return new RDATransaction(
+      ProjectRDA,
+      this._state.replica.projectStore,
+      this._applyProjectTransaction,
+    );
+  }
+
+  public permissionTransaction() {
+    return new RDATransaction(
+      PermissionRDA,
+      this._state.replica.permissionStore,
+      this._applyPermissionTransaction,
+    );
+  }
+
+  public isUserBlocked(userId: string) {
+    const permissions = this._state.replica.permissions;
+
+    // check if userId is an admin
+    if (this._state.replica.adminUsers[userId]) {
+      return false;
+    }
+
+    // owner is always allowed
+    if (userId === permissions.owner) {
+      return false;
+    }
+    // banned users never allowed
+    if (permissions.banned[userId]) {
+      return true;
+    }
+
+    switch (permissions.accessLevel) {
+      case PermissionAccessLevel.PRIVATE:
+        return true;
+      case PermissionAccessLevel.INVITED_ONLY:
+        const groups = permissions.groups;
+        const groupRoles = Object.keys(groups);
+        for (let i = 0; i < groupRoles.length; ++i) {
+          const g = groups[groupRoles[i]];
+          if (userId in g.members) {
+            return false;
+          }
+        }
+        return true;
+      case PermissionAccessLevel.REGISTERED_ONLY:
+        return !userId;
+      case PermissionAccessLevel.SCRIPT_VIEW_ONLY:
+        return false;
+    }
+
+    return true;
+  }
+
+  public blockReason = (userId: string) => {
+    const permissions = this._state.replica.permissions;
+    if (
+      permissions.banned[userId] ||
+      permissions.accessLevel === PermissionAccessLevel.PRIVATE
+    ) {
+      return CloseType.NoAuth;
+    }
+    if (!userId) {
+      return CloseType.NeedLogin;
+    }
+    return CloseType.Server;
+  };
+
+  public handleUserJoin = async (
+    sessionId: string,
+    userId: string,
+    admin: boolean,
+  ) => {
+    const replicaState = this._state.replica;
+    const permissions = replicaState.permissions;
+
+    if (admin) {
+      replicaState.adminUsers[userId] = admin;
+    }
+
+    if (this.isUserBlocked(userId)) {
+      this._logger.info(
+        `blocked user attempted to join, ${userId}/session id=${sessionId}`,
+      );
+      const reason = this.blockReason(userId);
+      return { canJoin: false, reason };
+    }
+
+    if (!userId) {
+      return { canJoin: true };
+    }
+
+    // update permission from user access
+    const tx = this.permissionTransaction();
+    if (!permissions.users[userId]) {
+      tx.push((action) =>
+        action.users.set(userId, {
+          createdAt: new Date(),
+        }),
+      );
+      const defaultGroups = replicaState.defaultGroups;
+      for (let i = 0; i < defaultGroups.length; ++i) {
+        tx.push((action) =>
+          action.groups.update(defaultGroups[i]).members.set(userId, {
+            addedAt: new Date(),
+          }),
+        );
+      }
+    }
+    await tx.commit();
+
+    return { canJoin: true };
+  };
+
+  private _handlePlayRPC(
+    method: () => Promise<void>,
+    client: ReplicaRemoteClient,
+    token: number,
+  ) {
+    if (!this.getSessionPermissions(client.sessionId).playButton) {
+      this._logger.warn(
+        `invalid play rpc request from client ${client.sessionId}`,
+      );
+      client.message.rpcResponse({
+        token,
+        result: '',
+        error: 'play button not allowed',
+      });
+    } else {
+      this._logger.info(`rpc call ${token} from client ${client.sessionId}`);
+      method
+        .call(this)
+        .then((hash) => {
+          this._logger.info(`success`);
+          client.message.rpcResponse({
+            token,
+            result: 'success',
+            error: '',
+          });
+        })
+        .catch((e) => {
+          this._logger.error('RPC failed: ' + e.stack);
+          client.message.rpcResponse({
+            token,
+            result: '',
+            error: `${e.message}: ${e.stack}`,
+          });
+        });
+    }
+  }
+
+  // because this happens *all the time* we need state updates here to be fast
+  // so we do some dirty hacks to directly update game state in game synchronously
+  // this is only possible when the game is not running and no other synchronization operations
+  // are in progress
+  private _quickSyncProjectHack() {
+    const replicaState = this._state.replica;
+    const store = replicaState.projectStore;
+    const project = store.state(ProjectRDA, replicaState.project);
+
+    // hack: directly update game state
+    const game = this._state.game;
+    const gameState = game.state;
+    EnvironmentRDA.stateSchema.assign(
+      gameState.replica.environment,
+      project.environment,
+    );
+
+    const hotProject = gameState.project;
+    EnvironmentRDA.stateSchema.assign(
+      hotProject.environment,
+      project.environment,
+    );
+    PhysicsRDA.stateSchema.assign(hotProject.physics, project.physics);
+    PlayerRDA.stateSchema.assign(hotProject.player, project.player);
+    updateHotProjectAssets(hotProject, project);
+    AmbientSoundRDA.stateSchema.assign(hotProject.sound, project.ambientSound);
+    GamepadRDA.stateSchema.assign(hotProject.gamepad, project.gamepad);
+    copySoundAssets(hotProject);
+    // set sync flag in game, force it to update game state
+    gameState.replica.sync = true;
+    gameState.sync = true;
+
+    // clear dirty flag
+    replicaState.projectDirty = false;
+  }
+
+  public tick() {
+    // check if we can do an optimisitic state synchronization
+    const replicaState = this._state.replica;
+    const gameState = this._state.game.state;
+    if (
+      replicaState.projectDirty &&
+      0 < this._projectSemaphore.counter &&
+      !this._state.game.syncInProgress() &&
+      !gameState.replica.running
+    ) {
+      this._quickSyncProjectHack();
+    }
+
+    // apply any buffered voxel writes
+    const bufferedWrites = replicaState.bufferedVoxelWrites;
+    if (bufferedWrites.length > 0 && this._canUpdateVoxels()) {
+      const voxels = this._state.game.voxel;
+      for (let i = 0; i < bufferedWrites.length; ++i) {
+        const w = bufferedWrites[i];
+        voxels.setVoxel(w.x, w.y, w.z, w.b);
+        VoxelWriteSchema.free(w);
+      }
+      bufferedWrites.length = 0;
+    }
+
+    // auto back up
+    if (
+      replicaState.lastAutoSave + gameState.settings.autoSaveInterval <
+      gameState.clock.clock
+    ) {
+      this.saveProject().catch((e) =>
+        this._logger.error(`error auto-saving project ${e}`),
+      );
+    }
+
+    // update permissions
+    if (
+      (gameState.events.connect.length > 0 ||
+        gameState.events.disconnect.length > 0) &&
+      this._permissionSemaphore.counter > 0
+    ) {
+      this._updatePermissionsIndex();
+    }
+  }
+
+  // save voxel, script and hash links into project
+  private async _storeProject() {
+    // start saving big content
+    const loadScripts = this._codeEditorController.saveScripts();
+
+    // set up stuff
+    const replicaState = this._state.replica;
+    const store = replicaState.projectStore;
+    const actions: ProjectAction[] = [];
+    const { contentId } = getConfigSync();
+
+    // update voxel hashes only if game isn't running
+    const gameState = this._state.game.state;
+    if (!gameState.replica.running) {
+      const voxels = await recordVoxelInfo(gameState);
+      if (voxels) {
+        if (
+          voxels.chunks.length ===
+            (voxels.shape.x * voxels.shape.y * voxels.shape.z) >>
+              (3 * CHUNK_SHIFT) &&
+          voxels.chunks.indexOf('') < 0 &&
+          !VoxelRDA.stateSchema.equal(voxels, replicaState.project.voxels)
+        ) {
+          actions.push(ProjectRDA.action(store).voxels(voxels));
+        }
+        VoxelRDA.stateSchema.free(voxels);
+      } else {
+        this._logger.error(`error saving voxels`);
+      }
+    }
+
+    // update script hashes
+    const scriptUpdates = await loadScripts;
+    const shareScripts: { hash: string; id: string }[] = [];
+    for (let i = 0; i < scriptUpdates.length; ++i) {
+      const { name, hash, size, isClient, isShare, fileId } = scriptUpdates[i];
+      const prevAsset = replicaState.project.assets[name];
+      const extraScripts = replicaState.extraProjectInfo.scriptAssets;
+      if (isShare) {
+        if (
+          extraScripts[fileId].hash !== hash &&
+          extraScripts[fileId].lockedMapId === contentId
+        ) {
+          //这里放在shareScripts，后面批量同步给后端
+          shareScripts.push({
+            hash,
+            id: fileId,
+          });
+        }
+        continue;
+      }
+      if (
+        prevAsset &&
+        (prevAsset.type === AssetType.JS_SCRIPT ||
+          prevAsset.type === AssetType.CLIENT_JS_SCRIPT)
+      ) {
+        if (prevAsset.hash !== hash) {
+          actions.push(ProjectRDA.action(store).assets.update(name).hash(hash));
+          actions.push(ProjectRDA.action(store).assets.update(name).size(size));
+        }
+      } else {
+        actions.push(
+          ProjectRDA.action(store).assets.set(name, {
+            type: isClient ? AssetType.CLIENT_JS_SCRIPT : AssetType.JS_SCRIPT,
+            hash,
+            previewImage: '',
+            size,
+            contentId: 0,
+            ownerId: 0,
+            bounds: vec3.create(),
+            animated: false,
+          }),
+        );
+      }
+    }
+
+    if (shareScripts.length) {
+      try {
+        const serverConfig = getConfigSync();
+        await apis.createra.batchUpdateHashUsingPost({
+          mapId: serverConfig.contentId,
+          scripts: shareScripts,
+        });
+      } catch (err) {
+        this._logger.error(`share script batch error ${err}`);
+      }
+    }
+
+    if (actions.length > 0) {
+      // add action
+      actions.push(ProjectRDA.action(store).prevHash(replicaState.projectHash));
+      actions.push(ProjectRDA.action(store).timestamp(new Date()));
+
+      // broadcast update to clients
+      this._protocol.broadcast.project(actions);
+
+      // set a bunch of dirty flags
+      replicaState.permissionsDirty =
+        replicaState.permissionsHashDirty =
+        replicaState.hotProjectDirty =
+        replicaState.projectHashDirty =
+          true;
+    }
+
+    // apply to local store and clean up
+    for (let i = 0; i < actions.length; ++i) {
+      store.apply(ProjectRDA, actions[i]);
+      ProjectActionSchema.free(actions[i]);
+    }
+
+    // update project
+    store.state(ProjectRDA, replicaState.project);
+
+    // clear dirty flag for project reference
+    replicaState.projectDirty = false;
+  }
+
+  private async _updateProjectAndGroupProject(storeRes: StoreProjectRes) {
+    const { projectHash, groupProjectMetaData } = storeRes;
+    if (projectHash) {
+      await this._updateProjectHash(projectHash);
+    }
+    if (getConfigSync()?.method === 'local') {
+      return;
+    }
+    await storeGroupProjectMetaData({
+      logger: this._logger,
+      groupProjectMetaData,
+    });
+  }
+
+  private async _updateProjectHash(
+    hash: string,
+    currentBranch: string = DEFAULT_BRANCH,
+  ) {
+    // store project hash
+    const replicaState = this._state.replica;
+    if (
+      replicaState.projectHash === hash &&
+      replicaState.permissions.versionControl.branches[currentBranch]
+        .headHash === hash
+    ) {
+      this._state.logger.info('project hash unchanged, skip');
+      return;
+    }
+    // mark permission state as dirty
+    this._setPermissionsDirty();
+
+    // set project hash pointer
+    replicaState.projectHash = hash;
+    replicaState.projectHashDirty = false;
+
+    // update version constrol structure
+    const permissionActions = PermissionActionSequenceSchema.alloc();
+    const permissionStore = replicaState.permissionStore;
+
+    // update head
+    const setHash = PermissionRDA.action(
+      permissionStore,
+    ).versionControl.branches.set(currentBranch, {
+      ...replicaState.permissions.versionControl.branches[currentBranch],
+      headHash: hash,
+    });
+    permissionStore.apply(PermissionRDA, setHash);
+    permissionActions.push(setHash);
+
+    // update hash link
+    const updatePrevHash = PermissionRDA.action(permissionStore).prevHash(
+      replicaState.permissionHash,
+    );
+    permissionStore.apply(PermissionRDA, updatePrevHash);
+    permissionActions.push(updatePrevHash);
+
+    // update timestamp
+    const updateTimestamp = PermissionRDA.action(permissionStore).timestamp(
+      new Date(),
+    );
+    permissionStore.apply(PermissionRDA, updateTimestamp);
+    permissionActions.push(updateTimestamp);
+
+    // synchronize permission structures
+    this._protocol.broadcast.permissions(permissionActions);
+    PermissionActionSequenceSchema.free(permissionActions);
+
+    // update permission state
+    const permissionState = permissionStore.state(
+      PermissionRDA,
+      replicaState.permissions,
+    );
+    this._updatePermissionsIndex();
+
+    // update permission structure hash
+    const permissionHash = await storePermissions(
+      this._state.buildSystem,
+      permissionState,
+    );
+    if (!permissionHash) {
+      this._logger.warn('error updating permission hash');
+      return;
+    }
+    replicaState.permissionHash = permissionHash;
+    replicaState.permissionsDirty = false;
+
+    // update container state
+    replicaState.lastAutoSave = this._state.game.state.clock.clock;
+    try {
+      await this._savePermissions();
+    } catch (e) {
+      this._logger.error(
+        `error updating backend: ${e.message} ${e.stack} ${JSON.stringify(e)}`,
+      );
+      throw new Error('error updating backend.  changes not saved');
+    }
+
+    // log result
+    this._logger.info(`permission hash updated = ${permissionHash}`);
+  }
+
+  private async _syncPermissions() {
+    // store project hash
+    const replicaState = this._state.replica;
+
+    // update version constrol structure
+    const permissionActions = PermissionActionSequenceSchema.alloc();
+    const permissionStore = replicaState.permissionStore;
+
+    // update hash link
+    const updatePrevHash = PermissionRDA.action(permissionStore).prevHash(
+      replicaState.permissionHash,
+    );
+    permissionStore.apply(PermissionRDA, updatePrevHash);
+    permissionActions.push(updatePrevHash);
+
+    const updateTimestamp = PermissionRDA.action(permissionStore).timestamp(
+      new Date(),
+    );
+    permissionStore.apply(PermissionRDA, updateTimestamp);
+    permissionActions.push(updateTimestamp);
+
+    //synchronize permission structures
+    this._protocol.broadcast.permissions(permissionActions);
+    PermissionActionSequenceSchema.free(permissionActions);
+
+    // update permission state
+    const permissionState = permissionStore.state(
+      PermissionRDA,
+      replicaState.permissions,
+    );
+    this._updatePermissionsIndex();
+
+    // update permission structure hash
+    const permissionHash = await storePermissions(
+      this._state.buildSystem,
+      permissionState,
+    );
+    if (!permissionHash) {
+      this._logger.warn('error updating permission hash');
+      return;
+    }
+    replicaState.permissionHash = permissionHash;
+    replicaState.permissionsDirty = false;
+
+    // update container state
+    replicaState.lastAutoSave = this._state.game.state.clock.clock;
+    try {
+      await this._savePermissions();
+    } catch (e) {
+      this._logger.error(
+        `error updating backend: ${e.message} ${e.stack} ${JSON.stringify(e)}`,
+      );
+      throw new Error('error updating backend.  changes not saved');
+    }
+
+    // log result
+    this._logger.info(`permission hash updated = ${permissionHash}`);
+  }
+
+  private _setBusyState(busy: boolean) {
+    this._protocol.broadcast.updateBusyState(busy);
+  }
+
+  public _checkAndSetExtraProject = async () => {
+    if (getConfigSync()?.method === 'local') {
+      this._logger.info('skip remote extra project refresh in local mode');
+      return;
+    }
+
+    const extra = await getExtraProject(
+      this._state.publish.gameId,
+      'edit',
+      this._logger,
+    );
+
+    const replicaState = this._state.replica;
+    const stream = new MuWriteStream(1);
+    const diff = ExtraProjectInfoSchema.diff(
+      replicaState.extraProjectInfo,
+      extra,
+      stream,
+    );
+    if (diff) {
+      replicaState.hotProjectDirty = true;
+      const bytes = stream.bytes();
+      this._protocol.broadcastRaw(bytes);
+      replicaState.extraProjectInfo = ExtraProjectInfoSchema.patch(
+        replicaState.extraProjectInfo,
+        new MuReadStream(bytes),
+      );
+      this._logger.info('update extra project info');
+
+      await this._updateProjectByExtra();
+    }
+    stream.destroy();
+  };
+
+  /**
+   * 根据最新的extraProjectInfo中的mesh信息，更新project中的entity信息
+   * 并广播给client重置project的信息
+   * @returns
+   */
+  private async _updateProjectByExtra() {
+    this._logger.info(
+      'update cold project and send actions by extra project info',
+    );
+    const replicaState = this._state.replica;
+    const pending: Promise<number>[] = [];
+    const { meshAssets } = replicaState.extraProjectInfo;
+    const { meshIdSetCache } = this._state.bakeCache;
+    Object.keys(meshAssets).forEach((path) => {
+      const asset = meshAssets[path];
+      const cache = meshIdSetCache[asset.modelId];
+      // 如果hash和path都相等，这条缓存不需要拉取新的值修改
+      if (cache && cache.hash === asset.hash && cache.path === path) {
+        return;
+      }
+      pending.push(
+        (async () => {
+          const meshInfo = await this._state.bakeCache.getMeshInfo(
+            asset.hash,
+            AssetType.VOXEL_MODEL,
+          );
+          meshIdSetCache[asset.modelId] = {
+            hash: asset.hash,
+            path,
+            bounds: [
+              meshInfo.bounds[0],
+              meshInfo.bounds[1],
+              meshInfo.bounds[2],
+            ],
+            motionIds: meshInfo.motionList?.map((motion) => motion.id) || [],
+          };
+          return asset.modelId;
+        })(),
+      );
+    });
+
+    // 没有需要更新的东西，那就不更新
+    if (!pending.length) {
+      return;
+    }
+
+    this._logger.info(`update project: hash ${pending.length} new mesh infos`);
+    const updateMeshes = await Promise.all(pending);
+    const store = replicaState.projectStore;
+    const actions: ProjectAction[] = [];
+
+    Object.keys(replicaState.project.entitiesTree).forEach((id) => {
+      const entityNode = replicaState.project.entitiesTree[id];
+
+      // 查看此entity的meshId是否包含在此次刷新的mesh内容中
+      if (
+        !entityNode.value ||
+        !updateMeshes.includes(entityNode.value.meshId)
+      ) {
+        return;
+      }
+      const meshInfo = meshIdSetCache[entityNode.value.meshId];
+      if (!meshInfo) {
+        return;
+      }
+      actions.push(
+        ProjectRDA.action(store).entitiesTree.update(id).mesh(meshInfo.path),
+      );
+      actions.push(
+        ProjectRDA.action(store)
+          .entitiesTree.update(id)
+          .bounds(meshInfo.bounds),
+      );
+      // 默认动作重置规则：
+      // 非静态动作 且 在动作列表中不存在此动作时，重置为动作列表的首个动作
+      if (
+        entityNode.value.defaultMotionId &&
+        !meshInfo.motionIds.includes(entityNode.value.defaultMotionId)
+      ) {
+        actions.push(
+          ProjectRDA.action(store)
+            .entitiesTree.update(id)
+            .defaultMotionId(meshInfo.motionIds[0] || ''),
+        );
+      }
+    });
+
+    this._logger.info(
+      `update project: need to broadcast ${actions.length} actions`,
+    );
+
+    if (actions.length > 0) {
+      // broadcast update to clients
+      this._protocol.broadcast.project(actions);
+      this._setProjectDirty();
+    }
+
+    // apply to local store and clean up
+    for (let i = 0; i < actions.length; ++i) {
+      store.apply(ProjectRDA, actions[i]);
+      ProjectActionSchema.free(actions[i]);
+    }
+
+    // update project
+    store.state(ProjectRDA, replicaState.project);
+
+    // clear dirty flag for project reference
+    replicaState.projectDirty = false;
+  }
+
+  /**
+   * 通过websocket将客户端的actions转发到其他容器
+   * @param _actions
+   * @private
+   */
+  private _broadcastActionsToSocket(_actions: ProjectAction[]) {
+    this._logger.info(
+      `broadcast actions to other server, actions length is ${_actions.length} `,
+    );
+    this._state.game.webSocket.send<BroadcastMsg>(
+      generateBroadcastMsg({
+        payload: _actions,
+        type: BroadcastDataType.ACTION,
+      }),
+    );
+  }
+
+  public async startProject(): Promise<void> {
+    if (this._state.game.state.replica.running) {
+      this._logger.info('project already running');
+      return;
+    }
+
+    this._logger.info(`wait to lock project state to start project...`);
+    const lockProject = this._projectSemaphore.p();
+    this._logger.info(`wait to lock permission state to start project...`);
+    const lockPermissions = this._permissionSemaphore.p();
+    try {
+      // lock project and permission structures
+      await lockProject;
+      this._logger.info(`project state locked to start project...`);
+      await lockPermissions;
+      this._logger.info(`permission state locked to start project...`);
+
+      // need to check running state in case it changed after acquiring locks
+      const replicaState = this._state.replica;
+      if (this._state.game.state.replica.running) {
+        this._logger.info('project already running');
+        return;
+      }
+
+      // enter busy state
+      this._setBusyState(true);
+
+      // save project state
+      await this._storeProject();
+
+      // update extra project
+      await this._checkAndSetExtraProject();
+
+      // synchronize engine state
+      if (replicaState.hotProjectDirty) {
+        await this._state.bakeCache.bake(
+          replicaState.project,
+          replicaState.extraProjectInfo,
+          this._state.replica.hotProject,
+        );
+        replicaState.hotProjectDirty = false;
+      }
+      await this._state.game.synchronizeProject(replicaState.hotProject, {
+        skipVoxels: true,
+        play: true,
+      });
+
+      // update permission structure
+      if (replicaState.projectHashDirty) {
+        const res = await storeProject(
+          this._state.buildSystem,
+          replicaState.project,
+        );
+        await this._updateProjectAndGroupProject(res);
+      }
+    } finally {
+      this._setBusyState(false);
+      this._permissionSemaphore.v();
+      this._logger.info(`permission state unlocked since project start ended`);
+      this._projectSemaphore.v();
+      this._logger.info(`project state unlocked since project start ended`);
+    }
+
+    return;
+  }
+
+  public async stopProject(): Promise<void> {
+    if (!this._state.game.state.replica.running) {
+      this._logger.info('project already stopped');
+      return;
+    }
+
+    try {
+      this._logger.info(`wait to lock project state to stop project...`);
+      await this._projectSemaphore.p();
+      this._logger.info(`project state locked to stop project...`);
+      const replicaState = this._state.replica;
+
+      //  have to check precondition a second time after locking
+      if (!this._state.game.state.replica.running) {
+        return;
+      }
+
+      this._setBusyState(true);
+      await this._state.game.synchronizeProject(replicaState.hotProject, {
+        skipVoxels: false,
+        play: false,
+      });
+    } catch (e) {
+      this._logger.error(`error stopping project ${e}`);
+    } finally {
+      this._setBusyState(false);
+      this._projectSemaphore.v();
+      this._logger.info(`project state unlocked since project stop ended`);
+    }
+  }
+
+  public async saveProject(committerId: number = 0): Promise<string> {
+    this._logger.info(`save project`);
+    const replicaState = this._state.replica;
+
+    replicaState.lastAutoSave = this._state.game.state.clock.clock;
+
+    this._logger.info('wait to lock project state to save project...');
+    const lockProject = this._projectSemaphore.p();
+    this._logger.info('wait to lock permission state to save project...');
+    const lockPermissions = this._permissionSemaphore.p();
+    try {
+      await lockProject;
+      this._logger.info('project state locked to save project...');
+      await lockPermissions;
+      this._logger.info('permission state locked to save project...');
+
+      this._setBusyState(true);
+
+      await this._storeProject();
+
+      if (replicaState.projectHashDirty) {
+        this._logger.info('project hash dirty');
+        replicaState.project.committerId = committerId;
+        const res = await storeProject(
+          this._state.buildSystem,
+          replicaState.project,
+        );
+        await this._updateProjectAndGroupProject(res);
+      }
+      if (replicaState.permissionsDirty) {
+        this._logger.info('permission hash dirty');
+        await this._syncPermissions();
+      } else {
+        this._logger.info('retry container save');
+        await this._savePermissions();
+      }
+    } catch (e) {
+      this._logger.error(
+        `error saving project ${JSON.stringify(e.stack || e)}`,
+      );
+    } finally {
+      this._setBusyState(false);
+      this._permissionSemaphore.v();
+      this._logger.info('permission state unlocked since project save ended');
+      this._projectSemaphore.v();
+      this._logger.info('project state unlocked since project save ended');
+    }
+
+    if (typeof process !== 'undefined' && process.memoryUsage) {
+      this._logger.info(`save ${JSON.stringify(process.memoryUsage())}`);
+    }
+
+    return this._state.replica.permissionHash;
+  }
+
+  public async createBranch(
+    branch: string,
+    headHash?: string,
+  ): Promise<string> {
+    this._logger.info(`creating branch ${branch}`);
+    await this.saveProject();
+    await this.permissionTransaction()
+      .push((action) =>
+        action.versionControl.branches.set(branch, {
+          name: branch,
+          headHash: headHash ? headHash : this._state.replica.projectHash,
+        }),
+      )
+      .commit();
+    return this._state.replica.permissionHash;
+  }
+
+  public async switchBranch(branch: string): Promise<string> {
+    this._logger.info(`switching branch ${branch}`);
+    await this.saveProject();
+    await this.permissionTransaction()
+      .push((action) => action.versionControl.currentBranch(branch))
+      .commit();
+    return this._state.replica.permissionHash;
+  }
+
+  public async renameBranch(
+    oldBranch: string,
+    branch: string,
+  ): Promise<string> {
+    this._logger.info(`renaming branch ${branch}`);
+    await this.saveProject();
+    await this.permissionTransaction()
+      .push((action) =>
+        action.versionControl.branches.set(oldBranch, {
+          ...this._state.replica.permissions.versionControl.branches[oldBranch],
+          name: branch,
+        }),
+      )
+      .commit();
+    return this._state.replica.permissionHash;
+  }
+
+  public async redeemToken(userId: string, tokenString: string) {
+    const token = parsePermissionToken(
+      this._state.game.state.settings.permissionTokenSecret,
+      tokenString,
+    );
+
+    if (!token) {
+      this._logger.info(
+        `reject attempt to redeem invalid permission token ${tokenString} from ${userId}`,
+      );
+      return;
+    }
+    const group = token.group;
+    PermissionTokenSchema.free(token);
+
+    const replicaState = this._state.replica;
+    if (!(group in replicaState.permissions.groups)) {
+      this._logger.info(
+        `invalid group in permission token ${tokenString} from ${userId}`,
+      );
+      return;
+    }
+    if (userId in replicaState.permissions.groups[group].members) {
+      this._logger.info(`user ${userId} already in group ${group}`);
+      return;
+    }
+    if (userId === replicaState.permissions.owner) {
+      this._logger.info(`owner: ${userId} attemp to join groups: ${group}`);
+      return;
+    }
+
+    this._logger.info(`redeeming token for ${userId} for group ${group}`);
+    await this.permissionTransaction()
+      .push((action) =>
+        action.groups.update(group).members.set(userId, {
+          addedAt: new Date(),
+        }),
+      )
+      .commit();
+  }
+}

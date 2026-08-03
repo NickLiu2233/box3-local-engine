@@ -1,0 +1,26 @@
+.wrapper {
+  margin: 12px 0;
+}
+.title {
+  font-family: Montserrat-Bold;
+  color: var(--color-white);
+  font-size: var(--text-h2);
+  line-height: var(--text-h2-lineHeight);
+  margin-bottom: 8px;
+}
+.rangeWrapper {
+  display: flex;
+  align-items: center;
+}
+.mute {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--color-gray-8);
+  border-radius: 100%;
+  margin-left: 24px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}

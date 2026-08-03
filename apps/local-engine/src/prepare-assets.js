@@ -1,0 +1,66 @@
+'use strict'
+
+const path = require('path')
+const fs = require('fs')
+
+const { MockBuildCache } = require('@box-local/build-system/build-cache-mock')
+const { BuildSystem } = require('@box-local/build-system/build-system')
+const { buildResources } = require('@box-local/build-system/utils/resource')
+const {
+  FileSystemContentServer,
+} = require('@box-local/content-server/file-system-store-node')
+
+const packageRoot = path.resolve(__dirname, '..')
+const repoRoot = path.resolve(packageRoot, '../..')
+const dataRoot = path.join(packageRoot, 'data')
+const blobRoot = path.join(dataRoot, 'blobs')
+
+function createLogger(bindings = {}) {
+  return {
+    bindings: () => bindings,
+    child: (extra) => createLogger({ ...bindings, ...extra }),
+    debug: (...args) => console.debug(...args),
+    info: (...args) => console.log(...args),
+    warn: (...args) => console.warn(...args),
+    error: (...args) => console.error(...args),
+  }
+}
+
+async function main() {
+  const logger = createLogger()
+  const contentServer = new FileSystemContentServer(blobRoot)
+  await contentServer.init()
+  fs.mkdirSync(path.join(repoRoot, 'services/game-server/src/assets'), {
+    recursive: true,
+  })
+
+  let nextUid = 1
+  const buildSystem = new BuildSystem(
+    new MockBuildCache(),
+    contentServer,
+    contentServer,
+    async ({ num }) =>
+      Array.from({ length: num }, () => `local-${nextUid++}`),
+    logger.child({ caller: 'local-assets' }),
+    false
+  )
+
+  await buildResources(buildSystem, contentServer, logger, {
+    assetsDir: path.join(repoRoot, 'services/game-server/scripts/assets'),
+    tasksDir: path.join(repoRoot, 'services/game-server/scripts/resources'),
+    targetDir: path.join(repoRoot, 'services/game-server/src/assets'),
+  })
+
+  await buildResources(buildSystem, contentServer, logger, {
+    assetsDir: path.join(repoRoot, 'apps/game/scripts/assets'),
+    tasksDir: path.join(repoRoot, 'apps/game/scripts/resources'),
+    targetDir: path.join(repoRoot, 'apps/game/src/resource'),
+  })
+
+  logger.info({ blobRoot }, 'Local engine assets are ready')
+}
+
+main().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})

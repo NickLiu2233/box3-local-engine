@@ -1,0 +1,32 @@
+{
+  "name": "box-local-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone local-first voxel engine developer preview",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev": "node apps/local-engine/src/launcher.js",
+    "build": "node apps/local-engine/src/build.js",
+    "build:client": "node apps/local-engine/src/build.js --client",
+    "build:server": "node apps/local-engine/src/build.js --server",
+    "start": "node apps/local-engine/src/launcher.js --production",
+    "start:client": "node apps/local-engine/src/launcher.js --production --client-only",
+    "start:server": "node apps/local-engine/src/launcher.js --production --server-only",
+    "prepare:assets": "pnpm --dir apps/local-engine run prepare-assets",
+    "sync:avatar": "pnpm --dir apps/local-engine run sync-default-avatar",
+    "check": "node scripts/check-standalone.js",
+    "check:edit-session": "node scripts/check-edit-session.js"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild",
+      "isolated-vm",
+      "sharp"
+    ]
+  }
+}

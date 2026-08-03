@@ -1,0 +1,98 @@
+import {
+  ContainerType,
+  ServerSettingsSchema,
+} from '../src/settings/server-settings-schema';
+
+import { configBuilder } from './builder';
+
+export type EnvType =
+  | 'development'
+  | 'staging'
+  | 'preprod'
+  | 'production'
+  | 'test';
+export type ModeType = 'edit' | 'play';
+export type MethodType = 'web' | 'local';
+
+const { N, S, B, build, argv } = configBuilder();
+const DEFAULT_SETTINGS = ServerSettingsSchema.identity;
+
+/**
+ * 从环境变量中同步获取的配置，没有包含从Nacos获取到的内容
+ */
+export const config = build({
+  env: S('NODE_ENV', 'development') as EnvType,
+  mode: S('MODE', 'play') as ModeType,
+  method: S('METHOD', 'web') as MethodType,
+  releaseVersion: N('RELEASE_VERSION', 0),
+  // 是否允许传送
+  teleportAccess: B('TELEPORT_ACCESS', false),
+  paidAccess: B('PAID_ACCESS', false),
+  // user login an auth things
+  login: S('LOGIN', ''),
+  // owner id
+  userId: N('USER_ID', 0),
+  // content id
+  contentId: N('CONTENT_ID', 0),
+  groupId: N('GROUP_ID', 0),
+  // 默认值用于测试
+  serverId: S('SERVER_ID', '1'),
+  containerName: S('CONTAINER_NAME', DEFAULT_SETTINGS.containerName),
+  containerType: S('TYPE', DEFAULT_SETTINGS.containerType) as ContainerType,
+  teamId: S('TEAM_ID', DEFAULT_SETTINGS.teamId),
+  // hash of project/permission structure to load
+  hash: S('HASH', ''),
+  isHttps: B('IS_HTTPS', true), // 默认true
+  // http server configuration
+  httpsCert: S('HTTPS_CERT', ''),
+  httpsKey: S('HTTPS_KEY', ''),
+  port: N('PORT', 9966),
+  // host ip
+  hostIP: S('HOST_IP', ''),
+  playerLimit: N('PLAYER_LIMIT', DEFAULT_SETTINGS.playerLimit),
+  maxZeroPlayerTime: N(
+    'MAX_ZERO_PLAYER_TIME',
+    DEFAULT_SETTINGS.zeroPlayerTimeout,
+  ),
+  autoSaveInterval: N('AUTO_SAVE_INTERVAL', DEFAULT_SETTINGS.autoSaveInterval),
+  storagePath: S('STORAGE_PATH', '/tmp'),
+  vm: S('VM', ''),
+  debug: B('DEBUG', false),
+
+  // deploy docker image version
+  containerImageVersion: S('IMAGE_VERSION', ''),
+  // 判断当前容器是否是发布阶段的ci启动
+  isCIDeploy: B('CICD_DEPLOY', false),
+  // permission token secret key
+  permissionTokenSecret: S('PERMISSION_TOKEN_SECRET', ''), // 邀请链接，没用了
+  // banned users get redirected
+  banRedirect: S('BAN_REDIRECT', 'https://www.xuexi.cn/'),
+  // ERROR, WARN, INFO, DEBUG
+  // 0      1     2     3
+  logPrefixRegex: S('LOG_PREFIX_REGEX', ''),
+  // sql/db configuration
+  sqlLiteHeapQuota: N('DB_HEAP_LIMIT', DEFAULT_SETTINGS.sqlLiteHeapQuota),
+  dbSizeLimit: N('DB_SIZE_LIMIT', DEFAULT_SETTINGS.dbSizeLimit),
+  dbChunkSize: N('DB_CHUNK_SIZE', DEFAULT_SETTINGS.dbChunkSize),
+  // script server things
+  script: S('SCRIPT', ''), // debug script for default project in local mode
+  // quotas and limits
+  scriptHeapSizeMB: N('SCRIPT_HEAP_MB', DEFAULT_SETTINGS.scriptHeapSizeMB),
+  scriptTimeout: N('SCRIPT_HEAP_MB', DEFAULT_SETTINGS.scriptTimeout),
+  // script sql storage
+  storageMode: S('STORAGE_MODE', ''),
+  storagePGConfig: {
+    // TODO: pg数据库没用了，可以删了
+    user: S('STORAGE_PG_USER', 'postgres'),
+    host: S('STORAGE_PG_HOST', 'localhost'),
+    database: S('STORAGE_PG_DATABASE', 'postgres'),
+    password: S('STORAGE_PG_PASSWORD', 'devrootpass'),
+    port: N('STORAGE_PG_PORT', 9900),
+  },
+
+  // url to remote game server
+  traceAlloc: B('TRACEALLOC', false),
+  traceDoubleFree: B('TRACEDOUBLEFFREE', false),
+});
+
+export { argv };

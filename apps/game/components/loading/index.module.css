@@ -1,0 +1,82 @@
+.loading {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-img {
+  width: 200px;
+  height: 200px;
+  background: url('../../assets/loading.svg');
+  z-index: 9999;
+}
+
+.loading-arena {
+  width: 132px;
+  height: 132px;
+  background: url('../../assets/arena.svg');
+  z-index: 9999;
+  margin-bottom: 4px;
+}
+
+.loadingWrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 250px;
+  color: white;
+  padding-bottom: 14px;
+}
+
+.progressBar {
+  width: 160px;
+  height: 10px;
+  border: 1px solid var(--theme-primary80);
+  margin: 32px 0 16px;
+  border-radius: 23px;
+  box-sizing: content-box;
+}
+
+.progress {
+  position: relative;
+  height: 10px;
+  border-radius: 10px;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.progressing {
+  position: relative;
+  height: 10px;
+  border-radius: 10px 0 0 10px;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease-in-out;
+  overflow: hidden;
+}
+
+.progress::before,
+.progressing::before {
+  position: absolute;
+  content: '';
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 85px;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.24),
+    rgba(255, 255, 255, 0.24) 10px,
+    transparent 11px,
+    transparent 19px,
+    rgba(255, 255, 255, 0.24) 20px
+  );
+  background-position: 0 0;
+  background-repeat: no-repeat;
+}

@@ -1,0 +1,271 @@
+import { AddCollaborationMemberParam, AddCollaborationRoleParam, CollaborationBanUnbanParam, CollaborationMemberSortParam, TerminateCollaborationParam, UpdateCollaborationMemberParam, UpdateCollaborationRoleParam, UpdateMapPrivacyParam } from './data-contracts';
+import { HttpClient } from '../http-client';
+import { RequestParams } from '../interface';
+export declare class Collaboration<SecurityDataType = unknown> extends HttpClient<SecurityDataType> {
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name ApplyListUsingGet
+     * @summary 查询协作申请列表
+     * @request GET:/collaboration/apply
+     * @secure
+     */
+    applyListUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").CollaborationApplyVO[]>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name ApplyUsingPost
+     * @summary 发起协作申请
+     * @request POST:/collaboration/apply
+     * @secure
+     */
+    applyUsingPost: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name ApplyExistUsingGet
+     * @summary 检查用户是否申请过
+     * @request GET:/collaboration/apply/exist
+     * @secure
+     */
+    applyExistUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name NewApplyUsingGet
+     * @summary 查询是否有新的申请
+     * @request GET:/collaboration/apply/new
+     * @secure
+     */
+    newApplyUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name RejectApplyUsingPost
+     * @summary 拒绝协作申请
+     * @request POST:/collaboration/apply/reject
+     * @secure
+     */
+    rejectApplyUsingPost: (query: {
+        applyId: string;
+        mapId: string;
+    }, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name BanUsingPost
+     * @summary 拉黑协作者
+     * @request POST:/collaboration/ban
+     * @secure
+     */
+    banUsingPost: (param: CollaborationBanUnbanParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name AddMemberUsingPost
+     * @summary 新增协作者
+     * @request POST:/collaboration/member
+     * @secure
+     * @return 如果是图主，接口返回null
+     */
+    addMemberUsingPost: (param: AddCollaborationMemberParam, params?: RequestParams) => Promise<import("./data-contracts").CollaborationRoleVO>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name UpdateMemberUsingPut
+     * @summary 编辑协作者
+     * @request PUT:/collaboration/member
+     * @secure
+     */
+    updateMemberUsingPut: (param: UpdateCollaborationMemberParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name DeleteMemberUsingDelete
+     * @summary 删除协作者
+     * @request DELETE:/collaboration/member
+     * @secure
+     */
+    deleteMemberUsingDelete: (query: {
+        mapId: string;
+        userId: string;
+    }, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name MemberListUsingGet
+     * @summary 查询协作者列表
+     * @request GET:/collaboration/member/list
+     * @secure
+     */
+    memberListUsingGet: (query: {
+        mapId: string;
+        type?: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").CollaborationMemberVO[]>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name MemberPermissionUsingGet
+     * @summary 查询协作者权限
+     * @request GET:/collaboration/member/permission
+     * @secure
+     */
+    memberPermissionUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").MemberPermissionVO>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name MemberSortUsingPost
+     * @summary 协作者排序
+     * @request POST:/collaboration/member/sort
+     * @secure
+     */
+    memberSortUsingPost: (param: CollaborationMemberSortParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name PermissionsUsingGet
+     * @summary 获取权限点列表
+     * @request GET:/collaboration/permission
+     * @secure
+     */
+    permissionsUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").CollaborationPermissionVO[]>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name RoleListUsingGet
+     * @summary 协作角色列表
+     * @request GET:/collaboration/role
+     * @secure
+     */
+    roleListUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").CollaborationRoleVO[]>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name AddRoleUsingPost
+     * @summary 新增协作角色
+     * @request POST:/collaboration/role
+     * @secure
+     */
+    addRoleUsingPost: (param: AddCollaborationRoleParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name UpdateRoleUsingPut
+     * @summary 编辑协作角色
+     * @request PUT:/collaboration/role
+     * @secure
+     */
+    updateRoleUsingPut: (param: UpdateCollaborationRoleParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name DeleteRoleUsingDelete
+     * @summary 删除协作角色
+     * @request DELETE:/collaboration/role
+     * @secure
+     */
+    deleteRoleUsingDelete: (query: {
+        mapId: string;
+        roleId: string;
+    }, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name TerminateUsingPost
+     * @summary 终止协作
+     * @request POST:/collaboration/terminate
+     * @secure
+     */
+    terminateUsingPost: (param: TerminateCollaborationParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name GetTicketUsingGet
+     * @summary 获取分享ticket
+     * @request GET:/collaboration/ticket
+     * @secure
+     */
+    getTicketUsingGet: (query: {
+        mapId: string;
+        roleId?: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").CollaborationTicketVO>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name TicketRefreshUsingGet
+     * @summary 刷新ticket过期时间
+     * @request GET:/collaboration/ticket/refresh
+     * @secure
+     */
+    ticketRefreshUsingGet: (query: {
+        mapId: string;
+        roleId?: string;
+    }, params?: RequestParams) => Promise<import("./data-contracts").CollaborationTicketVO>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name UnbanUsingPost
+     * @summary 取消拉黑协作者
+     * @request POST:/collaboration/unban
+     * @secure
+     */
+    unbanUsingPost: (param: CollaborationBanUnbanParam, params?: RequestParams) => Promise<boolean>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name MapPrivacyUsingGet
+     * @summary 查询地图隐私
+     * @request GET:/map/privacy
+     * @secure
+     */
+    mapPrivacyUsingGet: (query: {
+        mapId: string;
+    }, params?: RequestParams) => Promise<number>;
+    /**
+     * No description
+     *
+     * @tags 协作模块
+     * @name UpdateMapPrivacyUsingPut
+     * @summary 编辑地图隐私
+     * @request PUT:/map/privacy
+     * @secure
+     */
+    updateMapPrivacyUsingPut: (param: UpdateMapPrivacyParam, params?: RequestParams) => Promise<boolean>;
+}
+//# sourceMappingURL=collaboration.d.ts.map

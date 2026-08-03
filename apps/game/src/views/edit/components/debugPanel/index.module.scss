@@ -1,0 +1,143 @@
+@use '../../../colors.module.scss' as colors;
+@import '../editor-common.css';
+@value icon, iconSmall, scrollbarStyle from '../editor-common.css';
+
+.container {
+  height: 100%;
+  border-right: 1px solid colors.$boxOpacityWhite12;
+}
+
+/* 控制台 - 输入栏 - 高度 */
+$scriptEvalHeight: 36px;
+
+.logWrapper {
+  width: 100%;
+  height: calc(100% - 80px);
+  overflow-y: scroll;
+  padding-top: 8px;
+  composes: scrollbarStyle;
+}
+
+.floatContainer .logWrapper {
+  height: calc(100% - $scriptEvalHeight);
+  width: 320px;
+  overflow-wrap: break-word;
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: var(--basePadding) 0;
+
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.consoleTitleContainer {
+  display: flex;
+  padding: 0 var(--basePadding);
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-white-30);
+}
+
+.consoleTitle {
+  padding: 0 16px;
+  font-size: var(--text-h2);
+  border-bottom: 2px solid var(--color-white);
+  height: 100%;
+  line-height: 44px;
+  box-sizing: content-box;
+}
+
+.exceptionLink {
+  text-decoration: underline;
+  color: var(--color-danger);
+}
+
+.exceptionLink:hover {
+  text-decoration: underline;
+  font-family: var(--font-bold);
+}
+
+.closeBtn {
+  composes: icon;
+  background-position: -216px -96px;
+}
+
+.logContainer {
+  padding: 0 var(--basePadding);
+}
+
+.log,
+.logWarning,
+.logError {
+  width: 100%;
+  color: var(--color-white);
+  user-select: text;
+  cursor: auto;
+}
+
+.floatContainer .log,
+.floatContainer .logWarning,
+.floatContainer .logError {
+  text-shadow: 1px 1px 0px rgba(0, 0, 0, 1);
+  user-select: text;
+  cursor: auto;
+}
+
+.floatContainer .log {
+  color: #00fff2;
+}
+
+.logWarning {
+  color: var(--color-primary);
+}
+
+.logError {
+  color: var(--color-danger);
+}
+
+.log:hover {
+  background-color: rgba(64, 128, 64, 0.5);
+}
+
+.logWarning:hover {
+  background-color: rgba(64, 128, 64, 0.5);
+}
+
+.logError:hover {
+  background-color: rgba(64, 128, 64, 0.5);
+}
+
+.scriptEval {
+  height: $scriptEvalHeight;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--color-white-30);
+  padding: 0 var(--basePadding);
+}
+
+.floatContainer .scriptEval {
+  position: absolute;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  background-color: var(--color-grey2);
+}
+
+.scriptEvalIcon {
+  composes: iconSmall;
+  background-position: -128px -64px;
+  margin-right: 8px;
+}
+
+.scriptEvalInput {
+  height: 100%;
+  width: 100%;
+  outline: none;
+  background: transparent;
+  border: none;
+  color: var(--color-white);
+  font-size: var(--text-h2);
+}

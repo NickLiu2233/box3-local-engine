@@ -1,0 +1,386 @@
+import {
+  CommonSQL,
+  CommonDatabase,
+  CommonGameDataServer,
+  ReturnValue,
+} from './types';
+import { GameServerState } from '../game-server-schema';
+import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+import { StorageProtocol } from './storage-protocol';
+import {
+  StorageClientSchema,
+  StorageQuerySchema,
+  StorageQueryState,
+  StorageClientSetSchema,
+} from './storage-schema';
+import { Semaphore } from '@box-local/utils/semaphore';
+import { JavaDataStorage } from './java-storage-api';
+import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/storage';
+import { StorageLimiters } from './limiters';
+import { getConfigSync } from '../../config/server';
+import { FeatureFlag } from '@box-local/env/constants';
+
+type DbFetchResultType = ReturnValue | ListReturnValue | undefined | number;
+export class StorageController {
+  public protocol: MuServerProtocol<typeof StorageProtocol>;
+  public state: GameServerState;
+  public dbServer: CommonGameDataServer;
+  private _limiters: StorageLimiters;
+
+  constructor(spec: {
+    server: MuServer;
+    sql: CommonSQL;
+    state: GameServerState;
+  }) {
+    this.state = spec.state;
+    this.state.storage.sql = spec.sql;
+    this.protocol = spec.server.protocol(StorageProtocol);
+    const config = getConfigSync();
+    this.dbServer = new JavaDataStorage(this.state.logger);
+    this._limiters = new StorageLimiters();
+
+    this.protocol.configure({
+      connect: (client) => {
+        const wrapper = StorageClientSchema.clone(StorageClientSchema.identity);
+        wrapper.sessionId = client.sessionId;
+        this.state.storage.clients[client.sessionId] = wrapper;
+      },
+      disconnect: (client) => {
+        const wrapper = this.state.storage.clients[client.sessionId];
+        if (!wrapper) {
+          return;
+        }
+        delete this.state.storage.clients[client.sessionId];
+        Object.keys(wrapper.queries).forEach((handle) => {
+          const q = wrapper.queries[handle];
+          q.abort && q.abort();
+        });
+        StorageClientSchema.free(wrapper);
+      },
+      message: {
+        query: (client, { handle, sqlExpr, params }) => {
+          const sessionId = client.sessionId;
+          const connection = this.state.storage.clients[sessionId];
+          if (!connection) {
+            return;
+          }
+          if (handle in connection.queries) {
+            return;
+          }
+          const db = this.state.storage.db;
+          if (!db) {
+            return;
+          }
+
+          const query = StorageQuerySchema.clone(StorageQuerySchema.identity);
+          query.sessionId = sessionId;
+          query.handle = handle;
+          query.lastAccess = this.state.clock.clock;
+          connection.queries[query.handle] = query;
+
+          this.state.perf.sqlQueries++;
+
+          db.query({
+            sqlExpr: db.prepareSQL(sqlExpr),
+            params: params.map((x) => (x.type === 'null' ? null : x.data)),
+            onReady: (step, abort) => {
+              const conn = this.state.storage.clients[sessionId];
+              if (!conn || !(handle in conn.queries)) {
+                this.state.perf.sqlErrors++;
+                abort();
+                return;
+              }
+              const q = conn.queries[handle];
+              q.lastAccess = this.state.clock.clock;
+              if (q.state !== StorageQueryState.PENDING) {
+                this.state.perf.sqlErrors++;
+                abort();
+                const c = this.state.storage.clients[sessionId];
+                if (c) {
+                  delete c.queries[handle];
+                  StorageQuerySchema.free(query);
+                }
+                return;
+              } else {
+                q.step = step;
+                q.abort = abort;
+                q.state = StorageQueryState.OPEN;
+                step();
+              }
+            },
+            onRows: (columns, rows) => {
+              this.state.perf.sqlRows += rows.length;
+
+              const cl = this.protocol.clients[sessionId];
+              if (cl) {
+                cl.message.queryRows({
+                  handle,
+                  columns,
+                  rows: rows.map((row) =>
+                    row.map((r) => {
+                      if (r instanceof Uint8Array) {
+                        return {
+                          type: 'bytes',
+                          data: r,
+                        };
+                      } else {
+                        const type = typeof r;
+                        if (type === 'undefined' || r === null) {
+                          return {
+                            type: 'null',
+                            data: void 0,
+                          };
+                        } else if (
+                          type === 'string' ||
+                          type === 'number' ||
+                          type === 'boolean'
+                        ) {
+                          return {
+                            type,
+                            data: r,
+                          };
+                        } else if (<any>r instanceof Date) {
+                          return {
+                            type: 'date',
+                            data: r.valueOf(),
+                          };
+                        } else {
+                          this.state.logger.error('bad sql type: ' + type);
+                          return { type: 'null', data: void 0 };
+                        }
+                      }
+                    }),
+                  ),
+                });
+              }
+            },
+            onDone: () => {
+              const cl = this.protocol.clients[sessionId];
+              const conn = this.state.storage.clients[sessionId];
+              if (!cl || !conn) {
+                return;
+              }
+              const q = conn.queries[handle];
+              if (!q || q.state !== StorageQueryState.OPEN) {
+                return;
+              }
+
+              q.state = StorageQueryState.DONE;
+              q.abort && q.abort();
+              cl.message.queryDone(handle);
+              StorageQuerySchema.free(q);
+              delete conn.queries[handle];
+            },
+            onError: (err) => {
+              this.state.perf.sqlErrors++;
+
+              const cl = this.protocol.clients[sessionId];
+              const conn = this.state.storage.clients[sessionId];
+              if (!cl || !conn) {
+                return;
+              }
+              const q = conn.queries[handle];
+              if (!q) {
+                return;
+              }
+
+              q.state = StorageQueryState.ERROR;
+              q.abort && q.abort();
+              cl.message.queryError({
+                handle,
+                error: 'sql error: ' + err,
+              });
+              StorageQuerySchema.free(q);
+              delete conn.queries[handle];
+            },
+          });
+        },
+        queryAbort: (client, handle) => {
+          const conn = this.state.storage.clients[client.sessionId];
+          if (!conn) {
+            return;
+          }
+          const q = conn.queries[handle];
+          if (q) {
+            if (q.state === StorageQueryState.OPEN) {
+              q.abort && q.abort();
+            } else if (q.state === StorageQueryState.PENDING) {
+              q.state = StorageQueryState.DONE;
+            }
+          }
+        },
+        queryStep: (client, handle) => {
+          const conn = this.state.storage.clients[client.sessionId];
+          if (!conn) {
+            return;
+          }
+          const q = conn.queries[handle];
+          if (q) {
+            if (q.state === StorageQueryState.OPEN) {
+              q.step && q.step();
+              q.lastAccess = this.state.clock.clock;
+            }
+          }
+        },
+        dbFetch: async (client, { handle, dbKey, dbType, type, params }) => {
+          try {
+            const p = JSON.parse(params);
+
+            // 限流判定
+            const checked = this._limiters.check(
+              type,
+              dbKey,
+              p.key,
+              params.length,
+            );
+            if (!checked) {
+              this.state.logger.log(
+                `[storage] ${this.state.settings.contentId} REQUEST THROTTLED: ${type} ${dbKey} ${dbType} key: ${p.key}`,
+              );
+              client.message.dbFetchError({
+                dbKey,
+                dbType,
+                handle,
+                error: this.formatError('REQUEST_THROTTLED'),
+              });
+              return;
+            }
+            let result: DbFetchResultType;
+            switch (type) {
+              case 'set':
+                await this.dbServer.set(
+                  dbType,
+                  dbKey,
+                  p.key,
+                  p.value,
+                  p.ticket,
+                );
+                break;
+              case 'increment':
+                result = await this.dbServer.increment(
+                  dbType,
+                  dbKey,
+                  p.key,
+                  p.value,
+                );
+                break;
+              case 'get':
+                result = await this.dbServer.get(
+                  dbType,
+                  dbKey,
+                  p.key,
+                  p.version,
+                  p.ticket,
+                );
+                break;
+              case 'remove':
+                result = await this.dbServer.remove(
+                  dbType,
+                  dbKey,
+                  p.key,
+                  p.ticket,
+                );
+                break;
+              case 'list':
+                result = await this.dbServer.list(dbType, dbKey, {
+                  pageSize: p.pageSize,
+                  cursor: p.cursor,
+                  max: p.max,
+                  min: p.min,
+                  ascending: p.ascending,
+                  constraintTarget: p.constraintTarget,
+                });
+                break;
+              case 'createTable':
+                await this.dbServer.createTable(dbType, dbKey);
+                break;
+              case 'drop':
+                await this.dbServer.dropTable(dbType, dbKey);
+                break;
+              default:
+                throw new Error(`storage handle type ${type} is invalid!`);
+            }
+            client.message.dbResultDone({
+              dbKey,
+              dbType,
+              handle,
+              result: this.dbFetchResultToString(result),
+            });
+          } catch (error) {
+            const config = getConfigSync();
+            let msg;
+            if (config.FEATURE_FLAGS?.includes(FeatureFlag.StorageJava)) {
+              msg = error.msg;
+            }
+            client.message.dbFetchError({
+              dbKey,
+              dbType,
+              handle,
+              error: this.formatError('SERVER_FETCH_ERROR', msg),
+            });
+          }
+        },
+      },
+    });
+  }
+
+  private dbFetchResultToString(result: DbFetchResultType) {
+    if (!result) {
+      return;
+    }
+    return JSON.stringify(result);
+  }
+
+  private resetMutex = new Semaphore(1);
+  public async reset() {
+    await this.resetMutex.p();
+    this._limiters.reset();
+    try {
+      await new Promise((resolve, reject) => {
+        if (this.state.storage.db) {
+          const oldDb = this.state.storage.db;
+          this.state.storage.db = null;
+          oldDb.close({
+            onSuccess: () => {
+              StorageClientSetSchema.assign(
+                this.state.storage.clients,
+                StorageClientSetSchema.identity,
+              );
+              this.state.storage.sql.open({
+                chunkSize: this.state.settings.dbChunkSize,
+                onReady: (db: CommonDatabase) => {
+                  this.state.storage.db = db;
+                  resolve(void 0);
+                },
+                onError: (err: any) => {
+                  reject(err);
+                },
+              });
+            },
+            onError: reject,
+          });
+        } else {
+          this.state.storage.sql.open({
+            chunkSize: this.state.settings.dbChunkSize,
+            onReady: (db: CommonDatabase) => {
+              this.state.storage.db = db;
+              resolve(void 0);
+            },
+            onError: (err: any) => {
+              reject(err);
+            },
+          });
+        }
+      });
+    } finally {
+      this.resetMutex.v();
+    }
+  }
+
+  private formatError(status: DB_ERROR_STATUS, msg?: string) {
+    return JSON.stringify({
+      status,
+      msg,
+    });
+  }
+}

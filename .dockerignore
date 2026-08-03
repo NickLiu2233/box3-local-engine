@@ -1,0 +1,14 @@
+.git
+.gitignore
+.DS_Store
+**/.DS_Store
+**/node_modules
+**/.next
+**/coverage
+**/.turbo
+**/*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.docker.example
+docker-data

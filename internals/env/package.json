@@ -1,0 +1,58 @@
+{
+  "name": "@box-local/env",
+  "version": "0.3.0",
+  "description": "",
+  "keywords": [],
+  "author": "Code Infinity",
+  "exports": {
+    ".": {
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./constants": {
+      "import": "./dist/constants.es.js",
+      "require": "./dist/constants.js"
+    }
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/index.d.ts"
+      ],
+      "constants": [
+        "dist/constants.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && rollup --config rollup.config.mjs",
+    "build:watch": "pnpm run build"
+  },
+  "dependencies": {
+    "@box-local/utils": "workspace:*",
+    "@types/node": "20.16.15",
+    "@types/ramda": "0.28.15",
+    "ajv": "8.11.0",
+    "axios": "1.7.0",
+    "debug": "4.3.4",
+    "dotenv": "16.0.1",
+    "form-data": "4.0.0",
+    "ramda": "0.28.0",
+    "typescript": "5.6.3",
+    "yaml": "2.1.1"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "28.0.3",
+    "@types/debug": "4.1.7",
+    "rollup": "4.41.1",
+    "rollup-plugin-typescript2": "0.35.0",
+    "tslib": "2.3.1"
+  }
+}

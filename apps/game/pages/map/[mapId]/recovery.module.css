@@ -1,0 +1,256 @@
+.container {
+  min-height: 100vh;
+  padding: var(--mobileContainerPadding);
+  background: linear-gradient(
+    180deg,
+    var(--color-grey1) 0%,
+    var(--color-grey2) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 页面整体不滚动，由卡片内部滚动 */
+  overflow: hidden;
+}
+
+.card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--bigRadius);
+  padding: 32px;
+  box-shadow: 0 12px 24px var(--color-black-10);
+  text-align: center;
+  /* 限制卡片高度，内部滚动 */
+  max-height: calc(100vh - 2 * var(--mobileContainerPadding));
+  display: flex;
+  flex-direction: column;
+}
+
+.iconContainer {
+  margin-bottom: 16px;
+}
+
+.iconWrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-hover);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+  color: var(--color-primary);
+}
+
+.title {
+  font-family: var(--font-bold);
+  font-size: 24px;
+  color: var(--color-font-black-important);
+  margin-bottom: 8px;
+}
+
+.description {
+  font-size: 14px;
+  color: var(--color-font-black-minor);
+  margin-bottom: 16px;
+}
+
+.progressContainer {
+  width: 100%;
+  height: 8px;
+  background: var(--color-grey7);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 16px 0 8px;
+}
+
+.progressBar {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 300ms ease;
+}
+
+.errorText {
+  color: var(--color-danger);
+  background: rgba(244, 67, 54, 0.08);
+  border: 1px solid var(--color-danger-hover);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 8px 0 16px;
+  text-align: left;
+}
+
+.versionSection {
+  text-align: left;
+  background: var(--color-white);
+  border: 1px solid var(--color-divider);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  font-size: var(--text-h2);
+  line-height: var(--text-h2-lineHeight);
+  color: var(--color-font-black-important);
+  padding-bottom: 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.versionList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  /* 让版本列表可滚动（若内容过多）*/
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.versionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 12px;
+  border-radius: 10px;
+  transition:
+    background-color 160ms ease,
+    transform 80ms ease;
+}
+
+.clickable:hover {
+  background: var(--color-grey8, rgba(0, 0, 0, 0.04));
+}
+.clickable:active {
+  transform: translateY(1px);
+}
+
+/* 选中态高亮边框和背景 */
+.selected {
+  background: var(--color-grey8, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--color-divider);
+}
+
+.itemMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: 14px;
+  color: var(--color-font-black-important);
+  /* 过长文本截断（多行省略） */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; /* 显示两行，超出以省略号处理 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.5;
+  max-height: calc(1.5em * 2);
+  word-break: break-word; /* 保障长单词/连续字符不撑破布局 */
+}
+
+.itemSub {
+  font-size: 12px;
+  color: var(--color-font-black-minor);
+}
+
+.placeholder {
+  color: var(--color-font-black-minor);
+  font-style: italic;
+}
+
+/* 统一的胶囊 Chip 尺寸，确保“当前/回滚”一致 */
+.chip {
+  height: 32px;
+  min-width: 72px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.chipSuccess {
+  background: rgba(90, 217, 170, 0.15);
+  color: var(--color-green);
+  border: 1px solid rgba(90, 217, 170, 0.5);
+}
+
+/* 回滚按钮也使用相同尺寸的胶囊外形，以统一视觉重量 */
+.actionBtn {
+  background: var(--color-primary);
+  color: var(--color-white);
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 80ms ease,
+    background 160ms ease;
+}
+.actionBtn:hover {
+  background: var(--color-primary-hover);
+}
+.actionBtn:active {
+  transform: translateY(1px);
+}
+.actionBtn:disabled {
+  opacity: var(--disableOpacity);
+  cursor: not-allowed;
+}
+
+/* 默认隐藏回滚按钮，仅在 hover/selected 时展示 */
+.versionItem .actionBtn {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0);
+}
+.versionItem:hover .actionBtn,
+.selected .actionBtn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.primaryBtn {
+  width: 100%;
+  height: var(--button-height);
+  border-radius: var(--button-radius);
+  background: var(--color-blue);
+  color: var(--color-white);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition:
+    transform 80ms ease,
+    background 160ms ease;
+}
+.primaryBtn:hover {
+  background: #2d5ae6;
+}
+.primaryBtn:active {
+  transform: translateY(1px);
+}
+
+.empty {
+  text-align: center;
+  padding: 16px;
+  color: var(--color-font-black-minor);
+}
+
+@media (min-width: 768px) {
+  .card {
+    padding: 40px;
+  }
+}

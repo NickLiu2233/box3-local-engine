@@ -1,0 +1,30 @@
+{
+  "name": "@box-local/box-api-client",
+  "version": "1.0.0",
+  "description": "Box API 客户端库，基于 fetch 封装，供前端调用",
+  "license": "UNLICENSED",
+  "author": "",
+  "exports": {
+    ".": {
+      "import": "./dist/es/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./dts/*": "./dts/*"
+  },
+  "main": "dist/cjs/index.js",
+  "types": "dist/types/index.d.ts",
+  "scripts": {
+    "build": "rm -rf dist && pnpm run build:es && pnpm run build:cjs",
+    "build:cjs": "tsc --module CommonJS --outDir dist/cjs",
+    "build:es": "tsc --module ESNext --outDir dist/es",
+    "build:watch": "pnpm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@box-local/box-api-types": "workspace:1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  }
+}

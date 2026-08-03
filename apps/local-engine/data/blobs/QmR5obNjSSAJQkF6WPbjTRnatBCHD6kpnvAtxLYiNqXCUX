@@ -1,0 +1,3 @@
+world.onPlayerJoin(({entity})=>{
+    entity.player.link('https://portal-backstage.dao3.fun/content/tab')
+})
