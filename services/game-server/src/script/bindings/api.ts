@@ -8,7 +8,6 @@ import * as GameRTC from '@box-local/schema/api/js/rtc';
 import * as GameGUI from '@box-local/schema/api/js/gui';
 import * as GameStorage from '@box-local/schema/api/js/storage';
 import * as GameRemoteChannel from '@box-local/schema/api/js/remote-channel';
-import type { GameAnalytics } from '@box-local/script-api';
 
 export function createScriptAPI(spec: {
   scheduler: {
@@ -29,7 +28,6 @@ export function createScriptAPI(spec: {
   rtc: GameRTC.GameRTC;
   gui: GameGUI.GameGUI;
   remoteChannel: GameRemoteChannel.ServerRemoteChannel;
-  analytics: GameAnalytics;
 
   require: (id: string) => any;
 
@@ -59,7 +57,6 @@ export function createScriptAPI(spec: {
     rtc: spec.rtc,
     gui: spec.gui,
     remoteChannel: spec.remoteChannel,
-    analytics: spec.analytics,
 
     require: spec.require,
 

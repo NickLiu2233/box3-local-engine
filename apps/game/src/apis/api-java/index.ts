@@ -71,6 +71,21 @@ const javaAxiosInstance = initAxios(
     ? clientConfig.MAAS_BACKEND_SERVER_URL
     : clientConfig.JAVA_BACKEND_SERVER_URL,
 );
+const uploadApi = new Upload(axiosInstance);
+
+if (clientConfig.isLocalGameServer) {
+  uploadApi.fileUploadPost = async ({ file }) => {
+    if (!file) throw new Error('请选择要上传的文件');
+    const response = await fetch('/runtime/edit/block', {
+      method: 'POST',
+      body: file,
+    });
+    if (!response.ok) {
+      throw new Error((await response.text()) || '本地资源保存失败');
+    }
+    return await response.text();
+  };
+}
 
 export const apis = {
   // maas or java backend
@@ -88,7 +103,7 @@ export const apis = {
   // maas or createra backend
   model: new Model(axiosInstance),
   // maas or createra backend
-  upload: new Upload(axiosInstance),
+  upload: uploadApi,
   // maas backend only
   container: new Container(axiosInstance),
   // maas backend only

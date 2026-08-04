@@ -109,7 +109,6 @@ import {
   ScriptTickSchema,
 } from './script-protocol';
 import { ScriptEvents, ScriptStateSnapshotSchema } from './script-state-schema';
-import { AnalyticsScriptShell } from '../analytics/script-shell';
 
 const RESPAWN_TIME = 16;
 const MAX_LOGS_PER_TICK = 32;
@@ -265,7 +264,6 @@ export class ScriptShell {
   public storage: StorageSynchronizer;
   public href: HrefScriptShell;
   public http: HttpScriptShell;
-  public analytics: AnalyticsScriptShell;
   public rtc: RTCScriptShell;
   public gui: GUIScriptShell;
   public navigator: NavigatorScriptShell;
@@ -966,7 +964,6 @@ export class ScriptShell {
     );
     this.fetch = new FetchScriptShell(this.client, this.scheduler.schedule);
     this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
-    this.analytics = new AnalyticsScriptShell(this.client);
 
     this.console = new GameConsole(this.log, this.clearLog);
 
@@ -1048,7 +1045,6 @@ export class ScriptShell {
         this.remoteChannel.sendEventToAllClient,
         this.remoteChannel.onRemoteChannel.channel,
       ),
-      analytics: this.analytics.api,
     });
 
     let evalFuncs;

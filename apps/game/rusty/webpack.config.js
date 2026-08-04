@@ -73,9 +73,6 @@ function getWebpackConfig() {
 
   if (mode !== 'production') {
     devtool = 'inline-source-map';
-  } else {
-    // TODO 独立的js.map在rusty_box中不能生效
-    devtool = 'source-map';
   }
 
   if (process.env.ANALYZE) {

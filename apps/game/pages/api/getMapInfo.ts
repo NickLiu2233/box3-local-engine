@@ -10,6 +10,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).end();
   }
 
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play' && mode !== 'play') {
+    return res.status(404).end();
+  }
+
   // 放行localhost发起的请求
   const { origin } = req.headers;
   if (origin && localhostRegex.test(origin)) {

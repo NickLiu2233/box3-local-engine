@@ -94,6 +94,7 @@ export async function connectGameServer(
         {
           mode: clientConfig.mode,
           contentId: clientConfig.mapInfo.contentId,
+          containerName: clientConfig.name,
           fingerPrint: visitorId,
           serverId,
         },
@@ -106,6 +107,9 @@ export async function connectGameServer(
       );
 
       config = response.data.config;
+      if (config && target.socketServerURL) {
+        config.socketServerUrl = target.socketServerURL;
+      }
       if (config && config.prefetchHashes.length > 0) {
         const { prefetchHashes } = config;
 

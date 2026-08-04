@@ -1,23 +1,42 @@
-# BOX 专用游戏服务器
+# BOX 游戏运行时
 
-`services/game-server` 是 Box Local Engine 的权威游戏服务器。专用服务器模式只允许玩家
-游玩，不启动创作服务，也不提供在线协作编辑。
+`services/game-server` 是 Box Local Engine 内部的权威游戏运行时。它由创作端或游玩端
+启动器管理，不再作为普通用户需要单独部署的产品。
 
-## 构建与运行
+## 本地调试
 
-在仓库根目录执行：
+在本目录可以直接启动一个使用 Local Engine 本地配置的游玩运行时：
 
 ```bash
-pnpm build:server
-pnpm start:server
+pnpm run dev
 ```
 
-默认监听 `0.0.0.0:9966`，可通过以下接口检查状态：
+默认监听 `127.0.0.1:9966`，调试器监听 `127.0.0.1:9223`。切换为编辑运行时：
 
-```text
-GET http://127.0.0.1:9966/api/server-info
-GET http://127.0.0.1:9966/api/health-check
+```bash
+MODE=edit pnpm run dev
 ```
+
+该命令会自动加载 `apps/local-engine/config/local.config.json`，无需手动填写环境、版本或
+区域变量。日常打开完整创作端仍应在仓库根目录执行 `pnpm dev`。
+
+## 在两种模式中的职责
+
+创作端会启动：
+
+- 游玩运行时，用于本地预览。
+- 编辑运行时，用于保存工程变化。
+
+游玩端只启动只读游玩运行时，不启动编辑能力，也不提供在线协作编辑。
+
+普通用户只运行：
+
+```bash
+pnpm creator
+pnpm play
+```
+
+具体作品通过作品管理器导出的部署包启动。底层运行时由产品启动器自动管理。
 
 ## 玩家连接链路
 
@@ -36,36 +55,40 @@ GET /block/:hash 下载世界和人物资源
 - `GET /block/:hash`：允许
 - `POST /block`：返回 `403 Forbidden`
 
+健康检查与服务器信息：
+
+```text
+GET /api/health-check
+GET /api/server-info
+```
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `BOX_SERVER_HOST` | `0.0.0.0` | 监听地址 |
+| `BOX_SERVER_HOST` | `127.0.0.1` | HTTP 和 WebSocket 内部监听地址 |
 | `BOX_SERVER_PORT` | `9966` | HTTP 和 WebSocket 端口 |
-| `BOX_SERVER_PUBLIC_URL` | 根据请求推断 | 返回给玩家的公开地址 |
-| `BOX_SERVER_DATA_PATH` | `apps/local-engine/data` | 世界和资源目录 |
-| `BOX_SERVER_CONTENT_ID` | `0` | 当前世界 ID |
-| `BOX_SERVER_NAME` | `BOX Dedicated Server` | 服务器名称 |
+| `BOX_SERVER_DATA_PATH` | Local Engine 数据目录 | 世界和资源目录 |
+| `BOX_SERVER_CONTENT_ID` | `0` | 世界 ID |
+| `BOX_SERVER_NAME` | `BOX 世界` | 玩家看到的名称 |
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 最大玩家数 |
 
-公网部署时必须设置可公开访问的 HTTPS 地址，并由反向代理转发 WebSocket：
+普通部署不直接公开这些端口。游玩端网页通过同源网关转发 HTTP、资源和 WebSocket。
 
-```bash
-BOX_SERVER_PUBLIC_URL=https://game.example.com pnpm start:server
-```
+## 发布数据约束
 
-## Docker
+游玩端只能加载作品发布后的不可变快照。发行镜像和挂载目录中不应出现：
 
-```bash
-docker compose build server
-docker compose up -d server
-docker compose logs -f server
-```
+- 工程 `source/`
+- 项目管理器的写入接口
+- 未发布素材或本机 blob
+- 可编辑 `.boxproject` 工程包
+- 环境变量文件、证书、私钥和 Source Map
 
-世界数据保存在 Docker 命名卷 `box-local-engine_box-server-data`。不要使用
-`docker compose down -v`，除非确定要删除服务端世界数据。
+玩家浏览器仍需下载场景实际使用的模型、贴图和音频，因此重要逻辑、权限和不可公开数据
+应留在权威运行时中。
 
-完整说明请参阅：
+完整说明：
 
 - [项目 README](../../README.md)
 - [部署与联机指南](../../docs/deployment.md)

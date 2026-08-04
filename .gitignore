@@ -9,6 +9,14 @@ coverage/
 .env.local
 .env.*.local
 
+# 本机创作数据只能通过工程导入/导出流转，不能随代码提交或发行。
+# 已跟踪的默认资源不受此规则影响；新增素材会被忽略。
+apps/local-engine/data/*
+!apps/local-engine/data/blobs/
 apps/local-engine/data/blobs/*
 !apps/local-engine/data/blobs/.gitkeep
-!apps/local-engine/data/blobs/Qm*
+apps/local-engine/projects/
+apps/local-engine/dist/
+apps/local-engine/play-worlds/*
+!apps/local-engine/play-worlds/.gitkeep
+apps/local-engine/.build-lock/

@@ -1,4 +1,3 @@
-import { AnalyticsClient } from '@box-local/analytics/client';
 import { MuRPCClient } from '@box-local/mudb/rpc/client';
 import { MuRPCHttpClientTransport } from '@box-local/mudb/rpc/http/client';
 import {
@@ -20,7 +19,6 @@ export class BackendClientRPCNode implements BackendRPC {
   public user: UserAPI;
   public auth: AuthAPI;
   public content: ContentAPI;
-  public analytics: AnalyticsClient;
 
   public headers = {
     Cookie: '',
@@ -48,9 +46,6 @@ export class BackendClientRPCNode implements BackendRPC {
     this.user = new MuRPCClient(UserRPCSchema, transport);
     this.auth = new MuRPCClient(AuthRPCSchema, transport);
     this.content = new MuRPCClient(ContentRPCSchema, transport);
-    this.analytics = mock
-      ? new NoopAnalyticsClient(logger, transport)
-      : new AnalyticsClient(logger, transport);
   }
 
   public setHeaders(headers: any) {
@@ -65,13 +60,6 @@ export class BackendClientRPCNode implements BackendRPC {
   public setCookie(cookie: string) {
     return this.setHeaders({ cookie });
   }
-}
-
-class NoopAnalyticsClient extends AnalyticsClient {
-  public addEvent() {}
-  public addTop() {}
-  public addEngine() {}
-  public addHttp() {}
 }
 
 class MockHttpClientTransport implements MuRPCClientTransport<any> {

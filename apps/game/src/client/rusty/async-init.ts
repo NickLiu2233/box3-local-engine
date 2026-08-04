@@ -1,13 +1,9 @@
-import { apis } from 'src/apis/api-java';
-import { SensorEvent } from 'src/apis/sensor/defs';
-import { sensor } from 'src/apis/sensor/rusty';
 import type { ClientConfig } from 'src/config/client';
 import type { PlayClient } from '../play/play-client';
 import type { EditClient } from '../edit/edit-client';
 
 export async function initClient(clientConfig: ClientConfig) {
   // Client Config 拿到后才能进行一系列初始化
-  sensor.init();
 
   const [messenger, PlayClient, EditInit] = await Promise.all([
     import('../../messenger').then(({ messenger }) => messenger),
@@ -32,18 +28,6 @@ export async function initClient(clientConfig: ClientConfig) {
     client = new PlayClient();
   } else {
     throw new Error('Missing valid client');
-  }
-
-  if (!clientConfig.isLocalGameServer) {
-    try {
-      // setToken 发生在 PlayClient/EditClient 构造器中，所以得放在后面绑定用户才能拿到 Token
-      const userInfo = await apis.createra.getUserByTokenUsingGet();
-      sensor.login(userInfo.userId);
-
-      console.log('Login User ID: ', userInfo.userId);
-    } catch (err) {
-      console.error('Failed to get User ID: ', err);
-    }
   }
 
   // 页面监听 GameClient 实例发生变更
@@ -88,7 +72,6 @@ export async function initClient(clientConfig: ClientConfig) {
 
   client.start({
     ready: () => {
-      sensor.track(SensorEvent.MAP_ENTER);
       messenger.emitEvent('status', 'started');
     },
     // EditClient不会触发frame回调

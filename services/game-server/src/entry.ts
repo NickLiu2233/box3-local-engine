@@ -1,4 +1,5 @@
 import fs from 'fs';
+import crypto from 'crypto';
 import http from 'http';
 import https from 'https';
 import ip from 'ip';
@@ -61,6 +62,7 @@ import { migrateVoxelModels } from './migrate-voxel-models';
 import { RabbitMQ } from './mq/rabbitMQ';
 import { getExtraProject } from './project/project-extra';
 import { createDefaultProject } from './project/project-init';
+import { persistLocalProjectState } from './project/local-project-state';
 import { BuildSystemRemote } from './service/build-system-remote';
 import {
   applyServerPermissions,
@@ -124,7 +126,10 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const address = ip.address();
   // TODO: 移除直接赋值操作
   if (!spec.permissionTokenSecret) {
-    spec.permissionTokenSecret = `gametoken secret ${spec.containerName} EPSTEIN DIDN'T KILL HIMSELF`;
+    // Local/private deployments must not share a predictable signing secret.
+    // A host can provide PERMISSION_TOKEN_SECRET for a stable value.
+    spec.permissionTokenSecret = crypto.randomBytes(32).toString('hex');
+    logger.warn('PERMISSION_TOKEN_SECRET is unset; generated an ephemeral secret.');
   }
 
   // log container name
@@ -351,6 +356,12 @@ export async function startServer(spec: ServerRuntimeConfig) {
               logger,
             });
           }
+        }
+
+        // Editable projects persist their latest root hash. Published play
+        // worlds are intentionally mounted read-only and must never be mutated.
+        if (isLocal && spec.mode === 'edit') {
+          persistLocalProjectState(hash);
         }
 
         // get the prebake hash for this project

@@ -19,7 +19,11 @@ export async function getArenaServerRenderProps(spec: {
   const sharedLogger = await getSharedLogger();
   try {
     const serverConfig = await getServerConfig();
-    const extractedConfig = extractServerConfigForClient(serverConfig);
+    const extractedConfig = extractServerConfigForClient(
+      serverConfig,
+      mode,
+      containerName,
+    );
 
     const mapInfo = await getMapContentInfo(mode, containerName, cookie);
     const userInfo = serverConfig.isLocalGameServer

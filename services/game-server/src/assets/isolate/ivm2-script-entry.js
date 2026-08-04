@@ -2429,7 +2429,7 @@ class GameInteractEvent {
         this.targetEntity = targetEntity;
     }
 }
-var GameButtonType$1;
+var GameButtonType;
 (function(GameButtonType) {
     GameButtonType["WALK"] = "walk";
     GameButtonType["RUN"] = "run";
@@ -2439,7 +2439,7 @@ var GameButtonType$1;
     GameButtonType["FLY"] = "fly";
     GameButtonType["ACTION0"] = "action0";
     GameButtonType["ACTION1"] = "action1";
-})(GameButtonType$1 || (GameButtonType$1 = {}));
+})(GameButtonType || (GameButtonType = {}));
 class GameInputEvent {
     constructor(tick, entity, position, button, pressed, raycast){
         this.tick = tick;
@@ -2507,7 +2507,7 @@ get GameAnimationPlaybackState () { return GameAnimationPlaybackState; },
 GameAssetListEntry: GameAssetListEntry,
 get GameAssetType () { return GameAssetType; },
 get GameBodyPart () { return GameBodyPart; },
-get GameButtonType () { return GameButtonType$1; },
+get GameButtonType () { return GameButtonType; },
 get GameCameraFreezedAxis () { return GameCameraFreezedAxis; },
 get GameCameraMode () { return GameCameraMode; },
 GameChatEvent: GameChatEvent,
@@ -26844,7 +26844,6 @@ function createScriptAPI(spec) {
         rtc: spec.rtc,
         gui: spec.gui,
         remoteChannel: spec.remoteChannel,
-        analytics: spec.analytics,
         require: spec.require
     }, GameAPI), GameMath), GameDB), GameHttp), GameURL);
 }
@@ -34647,158 +34646,41 @@ const ScriptProtocol = {
     }
 };
 
-var MediaErrorCode;
-(function(MediaErrorCode) {
-    MediaErrorCode[MediaErrorCode["MEDIA_ERR_ABORTED"] = 1] = "MEDIA_ERR_ABORTED";
-    MediaErrorCode[MediaErrorCode["MEDIA_ERR_NETWORK"] = 2] = "MEDIA_ERR_NETWORK";
-    MediaErrorCode[MediaErrorCode["MEDIA_ERR_DECODE"] = 3] = "MEDIA_ERR_DECODE";
-    MediaErrorCode[MediaErrorCode["MEDIA_ERR_SRC_NOT_SUPPORTED"] = 4] = "MEDIA_ERR_SRC_NOT_SUPPORTED";
-})(MediaErrorCode || (MediaErrorCode = {}));
-
-var DeviceType;
-(function(DeviceType) {
-    DeviceType["Desktop"] = "Desktop";
-    DeviceType["Mobile"] = "Mobile";
-})(DeviceType || (DeviceType = {}));
-
-/**
- * 游戏数据分析相关功能模块
- * 提供神策埋点等数据分析能力
- */ var GameAnalytics = /** @class */ function() {
-    /**
-     * @ignore
-     * 构造函数
-     */ function GameAnalytics(/**
-     * 神策埋点实例
-     * @example
-     * const sa = analytics.sensor;
-     * world.onPlayerJoin(({ entity }) => {
-     *    console.log(entity.player.userId)
-     *    // 初始化神策配置
-     *    sa.init('https://shence-data.XXX.cn/sa?project=XXX&token=XXX')
-     *    // 追踪一个测试事件
-     *    sa.track(entity.player.userId, 'test', { n: 3, s: 'string', b: true, d: Date.now() })
-     * })
-     */ sensor) {
-        this.sensor = sensor;
-    }
-    return GameAnalytics;
-}();
-/**
- * 神策数据埋点类
- *
- */ var GameSensorAnalytics = /** @class */ function() {
-    /**
-     * @ignore
-     */ function GameSensorAnalytics(/**
-     * 初始化埋点配置方法
-     * 用于设置数据接收地址和超时时间
-     * 注意: 以最后一次执行的配置为准
-     *
-     * @param url - 数据接收地址，神策服务器的URL
-     * @param timeout - 请求超时时间，默认30秒
-     */ init, /**
-     * 追踪数据事件方法
-     * 用于记录用户行为和自定义事件
-     *
-     * @param distinctId - 用户唯一标识，通常是平台用户ID(GamePlayer.userId)
-     * @param eventName - 事件名称
-     * @param properties - 事件属性(会被JSON.stringify序列化)
-     */ track) {
-        this.init = init;
-        this.track = track;
-    }
-    return GameSensorAnalytics;
-}();
-
-/**
- * @module World
- */ /**
- * Type of a button pressed by a player
- */ var GameButtonType;
-(function(GameButtonType) {
-    GameButtonType["WALK"] = "walk";
-    GameButtonType["RUN"] = "run";
-    GameButtonType["CROUCH"] = "crouch";
-    GameButtonType["JUMP"] = "jump";
-    GameButtonType["DOUBLE_JUMP"] = "jump2";
-    GameButtonType["FLY"] = "fly";
-    GameButtonType["ACTION0"] = "action0";
-    GameButtonType["ACTION1"] = "action1";
-})(GameButtonType || (GameButtonType = {}));
-
-const AnalyticsScriptProtocol = {
-    name: 'analytics',
-    client: {},
-    server: {
-        initSensor: new schemaExports.MuStruct({
-            url: new schemaExports.MuASCII(),
-            timeout: new schemaExports.MuVarint()
-        }),
-        trackSensor: new schemaExports.MuStruct({
-            distinctId: new schemaExports.MuASCII(),
-            eventName: new schemaExports.MuASCII(),
-            properties: new schemaExports.MuUTF8()
-        })
-    }
-};
-
-class AnalyticsScriptShell {
-    constructor(client){
-        const protocol = client.protocol(AnalyticsScriptProtocol);
-        protocol.configure({
-            message: {}
-        });
-        this.api = new GameAnalytics(new GameSensorAnalytics((url, timeout = 30000)=>{
-            protocol.server.message.initSensor({
-                url,
-                timeout
-            });
-        }, (distinctId, eventName, properties)=>{
-            protocol.server.message.trackSensor({
-                distinctId,
-                eventName,
-                properties: JSON.stringify(properties)
-            });
-        }));
-    }
-}
-
 const RESPAWN_TIME = 16;
 const MAX_LOGS_PER_TICK = 32;
 const MAX_CHATS_PER_TICK = 64;
 const BUTTONS = [
     {
         f: NetInputEventBits.ACTION0,
-        t: GameButtonType$1.ACTION0
+        t: GameButtonType.ACTION0
     },
     {
         f: NetInputEventBits.ACTION1,
-        t: GameButtonType$1.ACTION1
+        t: GameButtonType.ACTION1
     },
     {
         f: NetInputEventBits.CROUCH,
-        t: GameButtonType$1.CROUCH
+        t: GameButtonType.CROUCH
     },
     {
         f: NetInputEventBits.WALK,
-        t: GameButtonType$1.WALK
+        t: GameButtonType.WALK
     },
     {
         f: NetInputEventBits.DOUBLE_JUMP,
-        t: GameButtonType$1.DOUBLE_JUMP
+        t: GameButtonType.DOUBLE_JUMP
     },
     {
         f: NetInputEventBits.FLY,
-        t: GameButtonType$1.FLY
+        t: GameButtonType.FLY
     },
     {
         f: NetInputEventBits.JUMP,
-        t: GameButtonType$1.JUMP
+        t: GameButtonType.JUMP
     },
     {
         f: NetInputEventBits.RUN,
-        t: GameButtonType$1.RUN
+        t: GameButtonType.RUN
     }
 ];
 function packDialogParams(params) {
@@ -35049,7 +34931,7 @@ class ScriptShell {
             if (pressed & (NetInputEventBits.ACTION0 | NetInputEventBits.ACTION1)) {
                 const clickTarget = this.world.entity.entityIndex.get(ev.rayHitEntity);
                 if (clickTarget) {
-                    const clickEvent = new GameClickEvent(ev.tick, clickTarget.entity, entity.entity, pressed & NetInputEventBits.ACTION0 ? GameButtonType$1.ACTION0 : GameButtonType$1.ACTION1, dist$2(ev.position, fromValues$4(raycast.hitPosition.x, raycast.hitPosition.y, raycast.hitPosition.z)), new GameVector3(ev.position[0], ev.position[1], ev.position[2]), raycast);
+                    const clickEvent = new GameClickEvent(ev.tick, clickTarget.entity, entity.entity, pressed & NetInputEventBits.ACTION0 ? GameButtonType.ACTION0 : GameButtonType.ACTION1, dist$2(ev.position, fromValues$4(raycast.hitPosition.x, raycast.hitPosition.y, raycast.hitPosition.z)), new GameVector3(ev.position[0], ev.position[1], ev.position[2]), raycast);
                     this._dispatch(this.world.onClick, clickEvent);
                     this._dispatch(clickTarget.onClick, clickEvent);
                 }
@@ -35473,7 +35355,6 @@ class ScriptShell {
         this.teleport = new TeleportScriptShell(this.client, this.scheduler.schedule);
         this.fetch = new FetchScriptShell(this.client, this.scheduler.schedule);
         this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
-        this.analytics = new AnalyticsScriptShell(this.client);
         this.console = new GameConsole(this.log, this.clearLog);
         this.resource = new ScriptResourceSync(this._eval);
         this.voxels = new ScriptVoxelSync(this.blockInfo, this.blockIndex, this.logger);
@@ -35543,8 +35424,7 @@ class ScriptShell {
             http: this.http.httpAPI,
             rtc: this.rtc.rtcAPI,
             gui: this.gui.guiAPI,
-            remoteChannel: new ServerRemoteChannel(this.sendClientEvent, this.remoteChannel.sendEventToAllClient, this.remoteChannel.onRemoteChannel.channel),
-            analytics: this.analytics.api
+            remoteChannel: new ServerRemoteChannel(this.sendClientEvent, this.remoteChannel.sendEventToAllClient, this.remoteChannel.onRemoteChannel.channel)
         });
         let evalFuncs;
         if (unsafeMode) {

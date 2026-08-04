@@ -1,40 +1,59 @@
 name: box-local-engine
 
 services:
-  server:
-    image: box-local-engine-server:0.1.0
+  creator:
+    profiles: [creator]
+    image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}
     build:
       context: .
-      dockerfile: services/game-server/Dockerfile
+      dockerfile: apps/local-engine/Dockerfile
+      target: creator
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-node:22.17.0-bookworm-slim}
     restart: unless-stopped
     environment:
-      BOX_SERVER_HOST: 0.0.0.0
-      BOX_SERVER_PORT: 9966
-      BOX_SERVER_PUBLIC_URL: ${BOX_SERVER_PUBLIC_URL:-}
-      BOX_SERVER_NAME: ${BOX_SERVER_NAME:-BOX Dedicated Server}
-      BOX_SERVER_CONTENT_ID: ${BOX_SERVER_CONTENT_ID:-0}
+      BOX_DEPLOYMENT_MODE: creator
+      BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.0}
+      BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
+      BOX_PLAY_IMAGE_ARCHIVE: /app/apps/local-engine/dist/images/play-image.tar
+      BOX_PLAY_PLATFORM: ${BOX_PLAY_PLATFORM:-linux/amd64}
+      # Docker publishes these ports only on host 127.0.0.1 below. Inside the
+      # container they must listen on all interfaces so Docker port forwarding
+      # can reach them; container loopback is not reachable through -p.
+      BOX_PLAY_RUNTIME_HOST: 0.0.0.0
+      BOX_EDIT_RUNTIME_HOST: 0.0.0.0
       BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
+      PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
     ports:
-      - "${BOX_SERVER_PUBLISHED_PORT:-9966}:9966"
+      - "127.0.0.1:${BOX_PORT:-3000}:3000"
+      - "127.0.0.1:9966:9966"
+      - "127.0.0.1:9967:9967"
     volumes:
-      - box-server-data:/app/apps/local-engine/data
+      - ./apps/local-engine/projects:/app/apps/local-engine/projects
+      - ./apps/local-engine/dist:/app/apps/local-engine/dist
 
-  client:
-    image: box-local-engine-client:0.1.0
+  play:
+    profiles: [play]
+    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
+    image: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
     build:
       context: .
-      dockerfile: apps/game/Dockerfile
+      dockerfile: apps/local-engine/Dockerfile
+      target: play
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-node:22.17.0-bookworm-slim}
     restart: unless-stopped
     environment:
-      BOX_CLIENT_HOST: 0.0.0.0
-      BOX_CLIENT_PORT: 3000
-      BOX_REMOTE_SERVER_URL: ${BOX_REMOTE_SERVER_URL:-}
+      BOX_DEPLOYMENT_MODE: play
+      BOX_PLAY_LIBRARY_PATH: /app/play-worlds
+      BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
+      PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
     ports:
-      - "${BOX_CLIENT_PUBLISHED_PORT:-3000}:3000"
-
-volumes:
-  box-server-data:
+      - "${BOX_PORT:-3000}:3000"
+    volumes:
+      - type: bind
+        source: "${BOX_PLAY_LIBRARY_DIR:-./apps/local-engine/play-worlds}"
+        target: /app/play-worlds
+        read_only: true
+        bind:
+          create_host_path: true

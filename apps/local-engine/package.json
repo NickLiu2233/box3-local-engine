@@ -4,15 +4,13 @@
   "private": true,
   "description": "Offline-first local runner for the Box engine",
   "scripts": {
-    "build": "node src/build.js",
-    "build:client": "node src/build.js --client",
-    "build:server": "node src/build.js --server",
+    "build:creator": "node src/build.js --creator",
+    "build:play": "node src/build.js --play",
     "prepare-assets": "node src/prepare-assets.js",
     "sync-default-avatar": "node src/sync-default-avatar.js",
-    "dev": "node src/launcher.js",
-    "start": "node src/launcher.js --production",
-    "start:client": "node src/launcher.js --production --client-only",
-    "start:server": "node src/launcher.js --production --server-only"
+    "dev": "node src/launcher.js --creator",
+    "start:creator": "node src/launcher.js --production --creator",
+    "start:play": "node src/launcher.js --production --play"
   },
   "dependencies": {
     "@box-local/build-system": "workspace:0.3.1",

@@ -4,8 +4,8 @@ import { EditorPage } from 'src/entry/editor-page';
 import { getArenaServerRenderProps } from '/server/server-render';
 
 export default async function Page({ params, searchParams }) {
-  if (process.env.BOX_PLAYER_CLIENT_ONLY === 'true') {
-    redirect('/connect');
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
+    redirect('/p/local');
   }
 
   const cookie = (await cookies()).toString();

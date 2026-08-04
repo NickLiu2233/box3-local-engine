@@ -13,7 +13,6 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { Logger } from 'pino';
-import { apis } from '../../apis';
 import { CodeEditorServerController } from '../code-editor/code-editor-server-controller';
 import { EditServerState } from '../edit-server-schema';
 import { EditReplicaServer } from '../replica/replica-server';
@@ -192,7 +191,6 @@ When writing scripts, strictly follow these API definitions.
         const toolCalls = await result.toolCalls;
         const toolResults = await result.toolResults;
         const reasoning = await result.reasoning;
-        const usage = await result.usage;
 
         this.logger.info(
           {
@@ -201,45 +199,9 @@ When writing scripts, strictly follow these API definitions.
             toolCalls,
             toolResults,
             reasoning,
-            usage,
           },
           'LLM Full Response',
         );
-
-        // Record credit usage
-        if (usage) {
-          try {
-            const userId =
-              this.state.replica.sessionPermission[sessionId]?.userId;
-            if (userId) {
-              const result = await apis.boxApi.recordUsage({
-                userId: userId.toString(),
-                model: model,
-                inputTokens: usage.inputTokens || 0,
-                outputTokens: usage.outputTokens || 0,
-              });
-              this.logger.info(
-                { sessionId, userId, usage },
-                'Credit usage recorded',
-              );
-
-              // Send updated balance to client
-              client.message.creditUpdate({
-                balance: result.remainingBalance,
-              });
-            } else {
-              this.logger.warn(
-                { sessionId },
-                'User ID not found for credit deduction',
-              );
-            }
-          } catch (err) {
-            this.logger.error(
-              { sessionId, err },
-              'Failed to record credit usage',
-            );
-          }
-        }
 
         // Success, return
         return;
@@ -315,16 +277,6 @@ When writing scripts, strictly follow these API definitions.
       this.apiContext = '// API definitions not available';
     }
 
-    // Initialize Box API Client
-    // const boxApiUrl = process.env.BOX_API_URL || 'http://localhost:3003';
-    // const serviceSecret = process.env.INTERNAL_SERVICE_SECRET || 'dev-secret';
-    // this.boxApiClient = new BoxApiClient({
-    //   baseUrl: boxApiUrl,
-    //   headers: {
-    //     'x-service-secret': serviceSecret,
-    //   },
-    // });
-
     const entityTools = createEntityTools(
       this.replica,
       this.state,
@@ -356,35 +308,6 @@ When writing scripts, strictly follow these API definitions.
           }
 
           const sessionId = client.sessionId;
-
-          // 检查余额
-          try {
-            const userId =
-              this.state.replica.sessionPermission[sessionId]?.userId;
-            if (userId) {
-              const balance = await apis.boxApi.getInternalBalance(
-                userId.toString(),
-              );
-
-              if (balance.creditBalance <= 0) {
-                client.message.error({
-                  requestId,
-                  message: 'Credit balance is insufficient to use AI features.',
-                });
-                return;
-              }
-            }
-          } catch (err) {
-            this.logger.error(
-              { sessionId, err },
-              'Failed to check credit balance',
-            );
-            client.message.error({
-              requestId,
-              message: '无法验证积分余额，请稍后重试',
-            });
-            return;
-          }
 
           this.logger.info(
             { sessionId, model },

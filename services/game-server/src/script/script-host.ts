@@ -107,7 +107,6 @@ import { EntityNameComponentSetSchema } from '@box-local/schema/entity-name/enti
 import { getHashFromContainerName } from '../utils/container-name';
 import { SCRIPT_OSS_CDN_PATH } from '@box-local/content-server/index';
 import { Vec3Schema } from '@box-local/schema/utils/math-schema';
-import { AnalyticsScriptHost } from '../analytics/script-host';
 
 function appendSchema<T, Schema extends MuSchema<T>>(
   schema: Schema,
@@ -142,7 +141,6 @@ export class ScriptHost {
   public remoteChannel: RemoteChannelServer;
   public input: InputServer;
   public player: PlayerServer;
-  public analytics: AnalyticsScriptHost;
 
   // EditorServer should hook these things to get some kind of script log
   public onConsoleLog = new EventBus<{
@@ -837,11 +835,6 @@ export class ScriptHost {
       scriptServer: this.muServer,
       state: spec.state,
     });
-    this.analytics = new AnalyticsScriptHost({
-      server: this.muServer,
-      onDebugConsoleLog: this.onConsoleLog,
-      logger: this.logger.child({ caller: 'script/analytics' }),
-    });
     this.muServer.start();
     this.logger.info('Script server started.');
   }
@@ -1039,7 +1032,6 @@ export class ScriptHost {
 
     // reset market server
     await this.market.reset();
-    this.analytics.reset();
 
     // wait for state to synchronize if we are stuck here
     while (this._state.sync) {

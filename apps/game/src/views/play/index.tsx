@@ -8,7 +8,6 @@ import { resolve_intl } from 'src/utils/i18n';
 import { MainPage } from './container';
 import { store } from 'src/redux/play';
 import { setUserInfo } from 'src/redux/slices/user';
-import { sensor } from 'src/apis/sensor';
 import { PlayClient } from 'src/client/play/play-client';
 import { PlayProvider } from 'src/client/play/play-context';
 import { LoadingStage } from 'src/defs/loading-stage';
@@ -75,9 +74,7 @@ const PlayUi = React.memo((props: PlayUiProps) => {
     const userInfo = props.userInfo;
     if (userInfo) {
       dispatch(setUserInfo(userInfo));
-      sensor.login(userInfo.id);
     }
-    sensor.mapConnect(!!userInfo);
   }, [props.userInfo]);
 
   return player ? (

@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSelector } from 'react-redux';
 
-import { boxApiClient } from 'src/client/api/box-api-client';
 import { RootState } from 'src/redux/edit';
 
 import { CollaboratorInfoPanel } from './collaborator';
@@ -64,35 +63,17 @@ export const CollaborationPanel = (props: {
     return list;
   }, [groups, users, owner]);
 
-  // 根据用户ID获取用户信息
+  // 本地工程不依赖平台用户服务；协作者以工程内保存的 ID 显示。
   const getUsersInfoByIds = useCallback(
     async (userIds: string[]) => {
       if (!userIds.length) {
         return [];
       }
-      // 使用新的 box-api-client 批量获取用户资料
-      try {
-        const response = await boxApiClient.users.batchGetUserProfiles({
-          ids: userIds.map((id) => Number(id)),
-          page: 1,
-          pageSize: userIds.length > 100 ? 500 : 100,
-        });
-        const userInfoList: UserInfoList = userIds.map((userId) => {
-          const userInfo = response.users.find(
-            (item) => item.userId.toString() === userId,
-          );
-          return {
-            userId,
-            name: userInfo?.displayName,
-            avatarHash: userInfo?.avatarUrl,
-            roles: userRolesList[userId],
-          };
-        });
-        return userInfoList;
-      } catch (error) {
-        console.error('Failed to fetch user profiles:', error);
-        return [];
-      }
+      return userIds.map((userId) => ({
+        userId,
+        name: userId,
+        roles: userRolesList[userId],
+      }));
     },
     [userRolesList],
   );

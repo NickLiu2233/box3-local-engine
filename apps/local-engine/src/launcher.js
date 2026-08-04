@@ -2,48 +2,156 @@
 
 const fs = require('fs')
 const http = require('http')
+const os = require('os')
 const path = require('path')
 const { spawn, spawnSync } = require('child_process')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const configPath = path.join(packageRoot, 'config/local.config.json')
-const dataRoot = path.join(packageRoot, 'data')
+const defaultDataRoot = path.join(packageRoot, 'data')
 const generatedAsset = path.join(
   repoRoot,
-  'services/game-server/src/assets/block_info.ts'
+  process.argv.includes('--production')
+    ? 'services/game-server/dist/src/assets/block_info.js'
+    : 'services/game-server/src/assets/block_info.ts'
 )
+const defaultAvatarManifest = path.join(
+  repoRoot,
+  process.argv.includes('--production')
+    ? 'services/game-server/player/default-avatar.json'
+    : 'services/game-server/src/player/default-avatar.json'
+)
+const sourceDefaultAvatarManifest = path.join(
+  repoRoot,
+  'services/game-server/src/player/default-avatar.json'
+)
+const launchArgs = process.argv.slice(2)
+const launchFlags = new Set([
+  '--production',
+  '--creator',
+  '--play',
+  '--runtime-only',
+])
+const launchValueFlags = new Set(['--project', '--release', '--runtime-mode'])
+for (let index = 0; index < launchArgs.length; index += 1) {
+  const arg = launchArgs[index]
+  if (launchFlags.has(arg)) continue
+  if (launchValueFlags.has(arg)) {
+    const value = launchArgs[index + 1]
+    if (!value || value.startsWith('--')) {
+      throw new Error(`${arg} requires a value`)
+    }
+    index += 1
+    continue
+  }
+  throw new Error(`Unknown launch argument: ${arg}`)
+}
+const production = process.argv.includes('--production')
+const creatorRequested = process.argv.includes('--creator')
+const playMode = process.argv.includes('--play')
+const playLibraryPath = process.env.BOX_PLAY_LIBRARY_PATH
+  ? path.resolve(process.env.BOX_PLAY_LIBRARY_PATH)
+  : ''
+const usesPlayLibrary = playMode && Boolean(playLibraryPath)
+const runtimeOnly = process.argv.includes('--runtime-only')
+const projectArgIndex = process.argv.indexOf('--project')
+const releaseArgIndex = process.argv.indexOf('--release')
+const runtimeModeArgIndex = process.argv.indexOf('--runtime-mode')
+const projectId = projectArgIndex >= 0 ? process.argv[projectArgIndex + 1] : ''
+const releaseId = releaseArgIndex >= 0 ? process.argv[releaseArgIndex + 1] : ''
+const runtimeMode =
+  runtimeModeArgIndex >= 0
+    ? process.argv[runtimeModeArgIndex + 1]
+    : 'both'
+const playPort = Number(
+  process.env.BOX_PLAY_RUNTIME_PORT ||
+    process.env.BOX_SERVER_PORT ||
+    9966
+)
+const editPort = Number(
+  process.env.BOX_EDIT_RUNTIME_PORT ||
+    process.env.BOX_EDIT_SERVER_PORT ||
+    9967
+)
+const launchTarget =
+  projectId || releaseId
+    ? require('./project-manager').getLaunchTarget({
+        project: projectId,
+        release: releaseId,
+      })
+    : undefined
+const configuredWorldPath =
+  process.env.BOX_WORLD_PATH || process.env.BOX_SERVER_DATA_PATH
+const configuredDataRoot = configuredWorldPath
+  ? path.resolve(configuredWorldPath)
+  : defaultDataRoot
+const dataRoot = launchTarget ? launchTarget.dataRoot : configuredDataRoot
+const projectStatePath = launchTarget
+  ? launchTarget.statePath
+  : process.env.BOX_WORLD_STATE_PATH ||
+    process.env.BOX_PROJECT_STATE_PATH ||
+    ''
 const requiredClientAsset = path.join(
   dataRoot,
   'blobs/QmUQg6ayL7bLmdso8b4Hc7nfxBUSJawPsQ7vsSUPhXNdv5'
 )
-const defaultAvatarManifest = path.join(
-  repoRoot,
-  'services/game-server/src/player/default-avatar.json'
-)
-const production = process.argv.includes('--production')
-const serverOnly = process.argv.includes('--server-only')
-const clientOnly = process.argv.includes('--client-only')
 const gameRoot = path.join(repoRoot, 'apps/game')
 const gameServerRoot = path.join(repoRoot, 'services/game-server')
 const nextBuildId = path.join(gameRoot, '.next/BUILD_ID')
-const playerBuildMarker = path.join(gameRoot, '.next/BOX_PLAYER_BUILD')
+const playBuildMarker = path.join(gameRoot, '.next/BOX_PLAY_BUILD')
 const standaloneGameRoot = path.join(
   gameRoot,
   '.next/standalone/apps/game'
 )
 const standaloneServer = path.join(standaloneGameRoot, 'server.js')
+const standaloneBuildId = path.join(standaloneGameRoot, '.next/BUILD_ID')
+const standalonePlayBuildMarker = path.join(
+  standaloneGameRoot,
+  '.next/BOX_PLAY_BUILD'
+)
 const compiledGameServer = path.join(gameServerRoot, 'dist/src/launch.js')
 
-if (serverOnly && clientOnly) {
-  throw new Error('Choose either --server-only or --client-only, not both')
+if ([creatorRequested, playMode, runtimeOnly].filter(Boolean).length > 1) {
+  throw new Error(
+    'Choose only one launch mode: --creator, --play, or --runtime-only'
+  )
+}
+if (launchTarget?.kind === 'release' && !playMode) {
+  throw new Error('A release can only run with --play')
+}
+if (playMode && launchTarget?.kind === 'source') {
+  throw new Error('The play runtime accepts a release, not an editable project')
+}
+const creatorMode = !playMode && !runtimeOnly
+if (creatorMode && launchTarget) {
+  throw new Error('The creator manager does not launch a project or release directly')
+}
+if (runtimeOnly && launchTarget?.kind !== 'source') {
+  throw new Error('--runtime-only requires --project <project-id>')
+}
+if (!['both', 'edit', 'play'].includes(runtimeMode)) {
+  throw new Error('--runtime-mode must be one of: both, edit, play')
+}
+if (!runtimeOnly && runtimeModeArgIndex >= 0) {
+  throw new Error('--runtime-mode can only be used with --runtime-only')
 }
 
+const startsWeb = !runtimeOnly
+const startsPlayServer =
+  playMode || (runtimeOnly && runtimeMode !== 'edit')
+const startsEditServer = runtimeOnly && runtimeMode !== 'play'
+const usesPlayerWeb = playMode
+const requiresServerBuild = true
+
 function validateDefaultAvatar() {
-  if (!fs.existsSync(defaultAvatarManifest)) {
+  const manifestPath = fs.existsSync(defaultAvatarManifest)
+    ? defaultAvatarManifest
+    : sourceDefaultAvatarManifest
+  if (!fs.existsSync(manifestPath)) {
     throw new Error('Bundled default avatar manifest is missing')
   }
-  const manifest = JSON.parse(fs.readFileSync(defaultAvatarManifest, 'utf8'))
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
   const hashes = Object.values(manifest.parts || {})
   if (hashes.length !== 18) {
     throw new Error('Bundled default avatar must contain 18 body parts')
@@ -53,6 +161,13 @@ function validateDefaultAvatar() {
       throw new Error(`Bundled default avatar blob is missing: ${hash}`)
     }
   }
+}
+
+function readProjectHash() {
+  if (launchTarget?.permissionHash) return launchTarget.permissionHash
+  if (!projectStatePath || !fs.existsSync(projectStatePath)) return ''
+  const state = JSON.parse(fs.readFileSync(projectStatePath, 'utf8'))
+  return typeof state.permissionHash === 'string' ? state.permissionHash : ''
 }
 
 function run(command, args, options = {}) {
@@ -75,7 +190,7 @@ function waitFor(url, attempts = 120) {
     const check = (remaining) => {
       const req = http.get(url, (res) => {
         res.resume()
-        if (res.statusCode && res.statusCode < 500) {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
           resolve()
         } else if (remaining > 0) {
           setTimeout(() => check(remaining - 1), 500)
@@ -98,6 +213,8 @@ function waitFor(url, attempts = 120) {
 
 const children = []
 let shuttingDown = false
+let disposablePlayDataRoot = ''
+let playLibrary
 
 function shutdown(code = 0) {
   if (shuttingDown) return
@@ -105,16 +222,45 @@ function shutdown(code = 0) {
   for (const child of children) {
     child.kill('SIGTERM')
   }
-  setTimeout(() => process.exit(code), 200)
+  if (playLibrary) playLibrary.stop().catch(() => {})
+  setTimeout(() => {
+    if (disposablePlayDataRoot) {
+      fs.rmSync(disposablePlayDataRoot, { recursive: true, force: true })
+      disposablePlayDataRoot = ''
+    }
+    process.exit(code)
+  }, 200)
 }
 
 async function main() {
-  const clientPort = Number(process.env.BOX_CLIENT_PORT || 3000)
+  const webPort = Number(
+    process.env.BOX_WEB_PORT ||
+      process.env.BOX_CLIENT_PORT ||
+      3000
+  )
+  const webHost =
+    process.env.BOX_WEB_HOST ||
+    process.env.BOX_CLIENT_HOST ||
+    '127.0.0.1'
+  const playRuntimeHost =
+    process.env.BOX_PLAY_RUNTIME_HOST ||
+    process.env.BOX_SERVER_HOST ||
+    '127.0.0.1'
+  const editRuntimeHost =
+    process.env.BOX_EDIT_RUNTIME_HOST ||
+    process.env.BOX_EDIT_SERVER_HOST ||
+    '127.0.0.1'
+  let playServerDataRoot = dataRoot
 
-  if (!clientOnly) {
+  if ((startsPlayServer && !usesPlayLibrary) || startsEditServer) {
     fs.mkdirSync(dataRoot, { recursive: true })
 
     if (!fs.existsSync(generatedAsset) || !fs.existsSync(requiredClientAsset)) {
+      if (production) {
+        throw new Error(
+          `Runtime assets are incomplete. Check the mounted world data: ${dataRoot}`
+        )
+      }
       const prepared = spawnSync(process.execPath, [
         path.join(__dirname, 'prepare-assets.js'),
       ], {
@@ -128,25 +274,41 @@ async function main() {
     validateDefaultAvatar()
   }
 
+  if (startsPlayServer && !usesPlayLibrary) {
+    // Published worlds are immutable inputs. The game runtime can create
+    // derived content while booting or running, so give it a disposable
+    // writable copy instead of ever writing into the mounted release.
+    disposablePlayDataRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'box-local-engine-play-')
+    )
+    fs.cpSync(dataRoot, disposablePlayDataRoot, { recursive: true })
+    playServerDataRoot = disposablePlayDataRoot
+  }
+
   if (production) {
-    if (!serverOnly && !fs.existsSync(nextBuildId)) {
+    const hasWebBuild =
+      fs.existsSync(nextBuildId) || fs.existsSync(standaloneBuildId)
+    const hasPlayBuildMarker =
+      fs.existsSync(playBuildMarker) ||
+      fs.existsSync(standalonePlayBuildMarker)
+    if (startsWeb && !hasWebBuild) {
       throw new Error(
-        'Client build is missing. Run `pnpm build:client` before starting it.'
+        `Web build is missing. Run \`pnpm ${usesPlayerWeb ? 'build:play' : 'build:creator'}\` before starting it.`
       )
     }
-    if (clientOnly && !fs.existsSync(playerBuildMarker)) {
+    if (usesPlayerWeb && !hasPlayBuildMarker) {
       throw new Error(
-        'Player-only build is missing. Run `pnpm build:client` before starting it.'
+        'Play build is missing. Run `pnpm build:play` before starting it.'
       )
     }
-    if (!clientOnly && !serverOnly && fs.existsSync(playerBuildMarker)) {
+    if (startsWeb && !usesPlayerWeb && hasPlayBuildMarker) {
       throw new Error(
-        'The current client build is player-only. Run `pnpm build` before starting the local editor.'
+        'The current web build is play-only. Run `pnpm build:creator` before starting the creator.'
       )
     }
-    if (!clientOnly && !fs.existsSync(compiledGameServer)) {
+    if (requiresServerBuild && !fs.existsSync(compiledGameServer)) {
       throw new Error(
-        'Server build is missing. Run `pnpm build:server` before starting it.'
+        `Game runtime build is missing. Run \`pnpm ${playMode ? 'build:play' : 'build:creator'}\` before starting it.`
       )
     }
   }
@@ -154,21 +316,23 @@ async function main() {
   const sharedEnv = {
     ...process.env,
     BOX_LOCAL_CONFIG_PATH: configPath,
+    BOX_LOCAL_ENGINE_ROOT: packageRoot,
+    BOX_LOCAL_PROJECTS_PATH: path.join(packageRoot, 'projects'),
     NEXT_PUBLIC_APP_ENV: 'development',
     NEXT_PUBLIC_APP_EDITION: 'createra',
     NEXT_PUBLIC_APP_REGION: 'cn',
-    BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
-    INTRANET_BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
+    BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
+    INTRANET_BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
     OSS_CDN_URL:
-      process.env.BOX_LOCAL_OSS_CDN_URL || 'http://127.0.0.1:9966',
+      process.env.BOX_LOCAL_OSS_CDN_URL || `http://127.0.0.1:${playPort}`,
     CREATERA_BACKEND_SERVER_URL:
-      process.env.BOX_LOCAL_AVATAR_API_URL || 'http://127.0.0.1:9966',
+      process.env.BOX_LOCAL_AVATAR_API_URL || `http://127.0.0.1:${playPort}`,
     INTRANET_CREATERA_BACKEND_SERVER_URL:
-      process.env.BOX_LOCAL_AVATAR_API_URL || 'http://127.0.0.1:9966',
-    MAAS_BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
-    INTRANET_MAAS_BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
-    INTRANET_STORAGE_BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
-    INTRANET_BOX_API_URL: 'http://127.0.0.1:9966',
+      process.env.BOX_LOCAL_AVATAR_API_URL || `http://127.0.0.1:${playPort}`,
+    MAAS_BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
+    INTRANET_MAAS_BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
+    INTRANET_STORAGE_BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
+    INTRANET_BOX_API_URL: `http://127.0.0.1:${playPort}`,
     BUILD_SERVER_URL: '',
     RABBITMQ_HOST_URL: '',
     REDIS_HOST: '',
@@ -191,9 +355,23 @@ async function main() {
           IS_HTTPS: 'false',
           PORT: String(port),
           HOST_IP: hostIP,
-          STORAGE_PATH: process.env.BOX_SERVER_DATA_PATH || dataRoot,
+          // The launcher resolves one authoritative data root. Play mode uses
+          // its disposable writable copy; edit mode uses the project source.
+          STORAGE_PATH: mode === 'play' ? playServerDataRoot : dataRoot,
+          BOX_PROJECT_STATE_PATH: projectStatePath,
+          HASH:
+            process.env.BOX_WORLD_HASH ||
+            process.env.BOX_PROJECT_HASH ||
+            readProjectHash(),
           VM: 'local',
-          CONTENT_ID: process.env.BOX_SERVER_CONTENT_ID || '0',
+          CONTENT_ID:
+            process.env.BOX_WORLD_ID ||
+            process.env.BOX_SERVER_CONTENT_ID ||
+            '0',
+          BOX_SERVER_NAME:
+            process.env.BOX_WORLD_NAME ||
+            process.env.BOX_SERVER_NAME ||
+            'BOX 世界',
           CONTAINER_NAME: '',
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
           MAX_ZERO_PLAYER_TIME: '2147483647',
@@ -201,29 +379,121 @@ async function main() {
       }
     )
 
-  const playPort = Number(process.env.BOX_SERVER_PORT || 9966)
+  const startLibraryRuntime = async (world, port) => {
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), `box-local-engine-${world.id}-`)
+    )
+    fs.cpSync(world.dataRoot, temporaryRoot, { recursive: true })
+    const child = spawn(
+      process.execPath,
+      production
+        ? ['dist/src/launch.js', '--useProdBundle']
+        : ['-r', '@swc-node/register', 'src/launch.ts'],
+      {
+        cwd: gameServerRoot,
+        stdio: 'inherit',
+        env: {
+          ...sharedEnv,
+          METHOD: 'local',
+          MODE: 'play',
+          LOGIN: 'guest',
+          IS_HTTPS: 'false',
+          PORT: String(port),
+          HOST_IP: '127.0.0.1',
+          STORAGE_PATH: temporaryRoot,
+          BOX_PROJECT_STATE_PATH: path.join(temporaryRoot, 'project-state.json'),
+          HASH: world.manifest.permissionHash,
+          VM: 'local',
+          CONTENT_ID: world.id,
+          BOX_SERVER_NAME: world.manifest.projectName || world.id,
+          CONTAINER_NAME: world.id,
+          PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
+          MAX_ZERO_PLAYER_TIME: '2147483647',
+        },
+      }
+    )
+    const runtime = {
+      port,
+      exited: false,
+      async stop() {
+        if (!runtime.exited) child.kill('SIGTERM')
+        await new Promise((resolve) => {
+          if (runtime.exited) return resolve()
+          const timer = setTimeout(resolve, 1500)
+          child.once('exit', () => {
+            clearTimeout(timer)
+            resolve()
+          })
+        })
+        fs.rmSync(temporaryRoot, { recursive: true, force: true })
+      },
+    }
+    child.once('exit', () => {
+      runtime.exited = true
+      fs.rmSync(temporaryRoot, { recursive: true, force: true })
+    })
+    return runtime
+  }
 
-  if (!clientOnly) {
+  let editStarted = false
+
+  // A new local project has no root hash yet. Start the editor first so it can
+  // create and persist the project root; the play server then opens that exact
+  // same root instead of generating an unrelated default world.
+  if (
+    launchTarget?.kind === 'source' &&
+    startsEditServer &&
+    !readProjectHash()
+  ) {
+    startGameServer(
+      'edit',
+      editPort,
+      runtimeOnly ? editRuntimeHost : ''
+    )
+    editStarted = true
+    await waitFor(`http://127.0.0.1:${editPort}/api/health-check`)
+  }
+
+  if (usesPlayLibrary) {
+    playLibrary = require('./play-library').startPlayLibrary({
+      libraryRoot: playLibraryPath,
+      host: playRuntimeHost,
+      port: playPort,
+      startRuntime: startLibraryRuntime,
+      waitForRuntime: waitFor,
+    })
+    await playLibrary.ready
+  } else if (startsPlayServer) {
     startGameServer(
       'play',
       playPort,
-      serverOnly ? process.env.BOX_SERVER_HOST || '0.0.0.0' : '',
+      playRuntimeHost
     )
 
     await waitFor(`http://127.0.0.1:${playPort}/api/health-check`)
   }
 
-  if (serverOnly) {
-    console.log('\nBOX Dedicated Server is ready:')
-    console.log(`  HTTP/WebSocket port: ${playPort}`)
-    console.log(`  Server info: http://127.0.0.1:${playPort}/api/server-info\n`)
-    return
+  if (startsEditServer && !editStarted) {
+    startGameServer(
+      'edit',
+      editPort,
+      runtimeOnly ? editRuntimeHost : ''
+    )
+
+    await waitFor(`http://127.0.0.1:${editPort}/api/health-check`)
   }
 
-  if (!clientOnly) {
-    startGameServer('edit', 9967)
-
-    await waitFor('http://127.0.0.1:9967/api/health-check')
+  if (runtimeOnly) {
+    console.log('\nBOX Project Runtime is ready:')
+    console.log(`  Project: ${projectId}`)
+    if (startsPlayServer) {
+      console.log(`  Play runtime: http://127.0.0.1:${playPort}`)
+    }
+    if (startsEditServer) {
+      console.log(`  Edit runtime: http://127.0.0.1:${editPort}`)
+    }
+    console.log('')
+    return
   }
 
   const useStandalone = production && fs.existsSync(standaloneServer)
@@ -234,9 +504,9 @@ async function main() {
           path.join(gameRoot, 'node_modules/next/dist/bin/next'),
           'start',
           '-H',
-          process.env.BOX_CLIENT_HOST || '127.0.0.1',
+          webHost,
           '-p',
-          process.env.BOX_CLIENT_PORT || '3000',
+          String(webPort),
         ]
     : [
         '-r',
@@ -244,7 +514,7 @@ async function main() {
         'server/dev-server/index.ts',
         '--http',
         '--port',
-        String(clientPort),
+        String(webPort),
       ]
 
   run(
@@ -254,30 +524,27 @@ async function main() {
       cwd: useStandalone ? standaloneGameRoot : gameRoot,
       env: {
         ...sharedEnv,
-        HOSTNAME: process.env.BOX_CLIENT_HOST || '127.0.0.1',
-        PORT: process.env.BOX_CLIENT_PORT || '3000',
-        BOX_PLAYER_CLIENT_ONLY: clientOnly ? 'true' : 'false',
+        BOX_DEPLOYMENT_MODE: playMode ? 'play' : 'creator',
+        BOX_WEB_HOST: webHost,
+        BOX_REMOTE_SERVER_URL: playMode ? '/runtime/play' : '',
+        HOSTNAME: webHost,
+        PORT: String(webPort),
         IS_LOCAL_GAME_SERVER: 'true',
         LOCAL_GAME_SERVER_URL: `http://127.0.0.1:${playPort}`,
-        LOCAL_EDIT_SERVER_URL: 'http://127.0.0.1:9967',
-        ARENA_URL: `http://127.0.0.1:${clientPort}`,
+        LOCAL_EDIT_SERVER_URL: `http://127.0.0.1:${editPort}`,
+        ARENA_URL: `http://127.0.0.1:${webPort}`,
         CACHE_IPFS: 'true',
       },
     }
   )
 
-  await waitFor(`http://127.0.0.1:${clientPort}/api/health-check`)
+  await waitFor(`http://127.0.0.1:${webPort}/api/health-check`)
   console.log(
-    `\nBOX ${clientOnly ? 'Player Client' : 'Local Engine'} is ready (${
+    `\nBOX ${creatorMode ? 'Creator' : 'Play'} is ready (${
       production ? 'production' : 'development'
     }):`
   )
-  if (clientOnly) {
-    console.log(`  Connect: http://127.0.0.1:${clientPort}/connect\n`)
-  } else {
-    console.log(`  Play: http://127.0.0.1:${clientPort}/p/local`)
-    console.log(`  Edit: http://127.0.0.1:${clientPort}/e/local\n`)
-  }
+  console.log(`  Open: http://127.0.0.1:${webPort}/\n`)
 }
 
 process.on('SIGINT', () => shutdown(0))

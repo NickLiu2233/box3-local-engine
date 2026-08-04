@@ -6,12 +6,15 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   /**
    * see: https://nextjs.org/docs/pages/building-your-application/routing/api-routes#catch-all-api-routes
    */
-  const { slug } = req.query;
-
+  const slug = Array.isArray(req.query.slug) ? req.query.slug : [];
   const [mode, gameName] = slug;
 
   if (!validateMode(mode) || typeof gameName !== 'string') {
     return res.status(400).end();
+  }
+
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play' && mode !== 'play') {
+    return res.status(404).end();
   }
 
   // 放行localhost发起的请求
@@ -39,6 +42,6 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   return res.status(200).json(config.props);
 };
 
-function validateMode(mode: string): mode is ArenaMode {
-  return ['edit', 'play'].includes(mode);
+function validateMode(mode: unknown): mode is ArenaMode {
+  return typeof mode === 'string' && ['edit', 'play'].includes(mode);
 }

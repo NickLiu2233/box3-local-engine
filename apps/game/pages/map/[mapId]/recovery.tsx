@@ -1,8 +1,16 @@
 import type { QueryVersionResponse, VersionInfo } from '@box-local/recovery-schema';
+import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import styles from './recovery.module.css';
 import { useSiteContext } from '/src/contexts/site-context';
+
+export const getServerSideProps: GetServerSideProps = async () => {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
+    return { notFound: true };
+  }
+  return { props: {} };
+};
 
 const RecoveryPage: React.FC = () => {
   const router = useRouter();

@@ -81,14 +81,6 @@ export const config = build({
   scriptTimeout: N('SCRIPT_HEAP_MB', DEFAULT_SETTINGS.scriptTimeout),
   // script sql storage
   storageMode: S('STORAGE_MODE', ''),
-  storagePGConfig: {
-    // TODO: pg数据库没用了，可以删了
-    user: S('STORAGE_PG_USER', 'postgres'),
-    host: S('STORAGE_PG_HOST', 'localhost'),
-    database: S('STORAGE_PG_DATABASE', 'postgres'),
-    password: S('STORAGE_PG_PASSWORD', 'devrootpass'),
-    port: N('STORAGE_PG_PORT', 9900),
-  },
 
   // url to remote game server
   traceAlloc: B('TRACEALLOC', false),

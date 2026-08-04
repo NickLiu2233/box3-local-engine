@@ -1,0 +1,37 @@
+import fs from 'fs';
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+import { getLocalProjectManager } from '../../../../server/local-project-manager';
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
+    return res.status(404).end();
+  }
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).end();
+  }
+  const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
+  if (!id) return res.status(400).json({ message: 'Project ID is required' });
+  try {
+    const archive = getLocalProjectManager().exportProject(id);
+    const cleanup = () => {
+      fs.rmSync(archive.archivePath, { force: true });
+    };
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="project.boxproject"; filename*=UTF-8''${encodeURIComponent(archive.filename)}`);
+    res.setHeader('Cache-Control', 'no-store');
+    const stream = fs.createReadStream(archive.archivePath);
+    stream.on('error', () => {
+      cleanup();
+      if (!res.headersSent) res.status(500).end();
+      else res.end();
+    });
+    stream.on('close', cleanup);
+    res.on('close', cleanup);
+    stream.pipe(res);
+    return undefined;
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}

@@ -7,7 +7,6 @@ import { useEdit } from 'src/client/edit/edit-context';
 import { handleOrientation } from 'src/utils/mobile';
 import { clientConfig } from 'src/config/client';
 import { messenger } from 'src/messenger';
-import { sensor } from 'src/apis/sensor';
 import { apis } from 'src/apis/api-java';
 import { refreshNameIDMap } from 'src/views/edit/components/collaboration/transform';
 
@@ -48,9 +47,6 @@ export const EditLandingPage = (props: Props) => {
         });
         return;
       }
-      if (!isLocalEngine) {
-        sensor.arenaEnterClick();
-      }
       let interval: number = -1;
       handleOrientation('game', editor.logger);
       if (!isLocalEngine) {
@@ -62,7 +58,6 @@ export const EditLandingPage = (props: Props) => {
             return;
           }
           const mode = clientConfig.mode;
-          sensor.arenaEnter();
           // Edit mode: guest id is unnecessary.
           apis.createra.online({
             contentId,

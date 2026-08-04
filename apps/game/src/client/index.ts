@@ -102,7 +102,11 @@ export const createGameClient = (
   const client = new MuClient(
     socket,
     createMuLogger(logger),
-    process.env.NODE_ENV !== 'development' || !clientConfig.isLocalGameServer,
+    // This must match game-server's local/production rule. A production local
+    // client still validates the MuDB handshake; otherwise its first protocol
+    // packet is mistaken for the server's validation JSON and the connection
+    // is closed immediately.
+    process.env.NODE_ENV !== 'development' && !clientConfig.isLocalGameServer,
   );
   const netLog = new NetLogClient({
     client,

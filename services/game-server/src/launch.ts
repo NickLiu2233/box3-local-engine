@@ -3,7 +3,6 @@ import { rootLogger, setRootLogLevel } from './utils/logger'; // Logger 需要�
 import { argv } from '../config';
 import { getConfig } from '../config/server';
 import { apis, initApis } from './apis';
-import { startDeployServer } from './deploy/entry';
 import { startServer } from './entry';
 
 rootLogger.info('Start Game Server.');
@@ -62,7 +61,19 @@ For more info and examples see README.md
 async function go() {
   // nacos配置
   const serverConfig = await getConfig();
-  rootLogger.info('Game server config from nacos: %o', serverConfig);
+  // Never log the complete runtime config. It can contain API keys, database
+  // credentials, Redis passwords and signing secrets supplied by the host.
+  rootLogger.info('Game server config loaded: %o', {
+    env: serverConfig.env,
+    method: serverConfig.method,
+    mode: serverConfig.mode,
+    port: serverConfig.port,
+    contentId: serverConfig.contentId,
+    containerName: serverConfig.containerName,
+    playerLimit: serverConfig.playerLimit,
+    storageMode: serverConfig.storageMode || 'local',
+    debug: serverConfig.debug,
+  });
   initApis(serverConfig);
   setRootLogLevel(serverConfig.LOG_LEVEL); // 拿到配置后更新 log level
 
@@ -72,6 +83,7 @@ async function go() {
     if (!serverConfig) {
       throw new Error('Server config is not valid');
     }
+    const { startDeployServer } = await import('./deploy/entry');
     startDeployServer(serverConfig);
     return;
   }

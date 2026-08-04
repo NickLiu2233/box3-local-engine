@@ -430,15 +430,6 @@ export class GameServer {
         this.logger.debug(
           `Connection accepted. sessionId=${sessionId} userId=${userId} ip=${ipAddress}.`,
         );
-        // TODO unused analytics service
-        this.brpc.analytics.addEvent({
-          name: 'game-server-login',
-          user_id: parseInt(userId),
-          ip: ipAddress,
-          server_name: spec.settings.containerName,
-          extra: `sessionId:${sessionId}, isAdmin:${admin}`,
-        });
-
         return true;
       },
       disconnect: (sessionId) => {

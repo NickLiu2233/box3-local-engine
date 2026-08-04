@@ -2,6 +2,7 @@ import { getSharedLogger } from './logger';
 import { getServerConfig } from '../configs/server';
 import { getMapInfo } from './data-fatching';
 import type { MapInfoConfig } from '../configs/client';
+import { getPlayWorlds } from './play-worlds';
 
 type CustomizeConfig = {
   key: MapInfoConfig['customizeType'];
@@ -52,21 +53,26 @@ export async function getMapContentInfo(
   sharedLogger.info('Fetching Map Info...');
   const containerName = name;
   if (ServerConfig.isLocalGameServer) {
+    const localWorld = process.env.BOX_PLAY_LIBRARY_PATH
+      ? getPlayWorlds().find((world) => world.id === containerName)
+      : undefined;
+    if (process.env.BOX_PLAY_LIBRARY_PATH && !localWorld) {
+      throw new Error(`Play world does not exist: ${containerName}`);
+    }
     return {
       contentId: 0,
-      name: containerName || 'Local World',
-      description: 'Local offline world',
-      image: '',
+      name: localWorld?.name || containerName || 'Local World',
+      description: localWorld?.description || '',
+      image: localWorld?.cover || '',
       customizeType: getCustomizeType(containerName),
-      backgroundImage: '',
+      backgroundImage: localWorld?.cover || '',
       combType: 0,
     } as const;
   }
   sharedLogger.info(`
     mode: ${mode},
     appEnv: ${ServerConfig.APP_ENV},
-    containerName: ${containerName},
-    ServerConfig: ${JSON.stringify(ServerConfig)}
+    containerName: ${containerName}
   `);
 
   try {

@@ -4,7 +4,6 @@ import { useSelector } from 'react-redux';
 import { clientConfig } from 'src/config/client';
 import { handleOrientation, isMobile } from 'src/utils/mobile';
 import { CloseType } from 'src/engine/game-client-schema';
-import { sensor } from 'src/apis/sensor';
 
 import { apis } from 'src/apis/api-java';
 import { messenger } from 'src/messenger';
@@ -31,7 +30,6 @@ export const StarterPage = React.memo((props: CreateraStartEntryProps) => {
 
       player.start({
         ready: () => {
-          sensor.mapEnter(isLoggedIn);
           ready && ready();
           props.setEngineStatus('started');
         },
@@ -78,7 +76,6 @@ export const StarterPage = React.memo((props: CreateraStartEntryProps) => {
             startEngine(
               async () => {
                 isMobile() && handleOrientation('game', player.logger);
-                sensor.mapEnter(isLoggedIn);
                 const { visitorId } = await getFingerprint();
                 const guestId = isLoggedIn ? undefined : visitorId;
                 const mode = clientConfig.mode;

@@ -33,7 +33,7 @@ export interface GameSession {
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const {
-    body: { mode, contentId, fingerPrint, serverId },
+    body: { mode, contentId, containerName, fingerPrint, serverId },
     headers: { origin },
   } = req;
 
@@ -50,6 +50,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     return;
   }
 
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play' && mode !== 'play') {
+    return res.status(404).end();
+  }
+
   try {
     const data = await getSessionData(
       req,
@@ -57,6 +61,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       contentId,
       fingerPrint,
       serverId,
+      containerName,
     );
 
     if (!data) {
@@ -74,10 +79,15 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     }
   } catch (err) {
     const sharedLogger = await getSharedLogger();
-    if (err && err.code === 21005004) {
+    const sessionError = err as {
+      code?: string | number;
+      message?: string;
+      response?: { status?: number };
+    };
+    if (sessionError?.code === 21005004) {
       sharedLogger.info(
         `Container creation in progress for contentId: ${contentId}. Client to retry. Error code: 21005004. Message: ${
-          err.message || JSON.stringify(err)
+          sessionError.message || 'unknown error'
         }`,
       );
       return res.status(202).json({
@@ -85,7 +95,11 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
         code: 'CONTAINER_CREATING',
       });
     } else {
-      sharedLogger.error(JSON.stringify(err));
+      sharedLogger.error(
+        `createSession failed: code=${sessionError?.code || 'unknown'} status=${
+          sessionError?.response?.status || 'unknown'
+        } message=${sessionError?.message || 'unknown error'}`,
+      );
       return res.status(400).json({ message: 'An error occurred' });
     }
   }
@@ -97,6 +111,7 @@ async function getSessionData(
   contentId,
   fingerPrint: string,
   serverId: string = '',
+  containerName: string = '',
 ) {
   const ServerConfig = await getServerConfig();
   const createraInstance = await getCreateraInstance();
@@ -111,16 +126,16 @@ async function getSessionData(
     teamId = url.searchParams.get('teamId') || '';
     refererServerId = url.searchParams.get('refererServerId') || '';
   } catch (err) {
-    console.warn('Failed to parse url, referer', req.headers.referer);
+    console.warn('Failed to parse request referer');
   }
-  console.log(`create session on `, contentId, mode, serverId, fingerPrint);
 
   let httpServerUrl: string;
   let socketServerUrl: string;
   if (ServerConfig.isLocalGameServer === true) {
-    httpServerUrl =
-      mode === 'edit'
-        ? ServerConfig.localEditServerURL
+    httpServerUrl = mode === 'edit'
+      ? ServerConfig.localEditServerURL
+      : process.env.BOX_PLAY_LIBRARY_PATH
+        ? `${ServerConfig.localGameServerURL}/${encodeURIComponent(containerName)}`
         : ServerConfig.localGameServerURL;
     // 本地就直接把 http server url 处理成 socket server url
     socketServerUrl = httpServerUrl.replace('http', 'ws');
@@ -163,7 +178,33 @@ async function getSessionData(
   );
   const json = data.data;
   if (json.data) {
-    json.data.socketServerUrl = socketServerUrl;
+    const deploymentMode = process.env.BOX_DEPLOYMENT_MODE;
+    if (deploymentMode === 'creator') {
+      const forwardedProto = Array.isArray(req.headers['x-forwarded-proto'])
+        ? req.headers['x-forwarded-proto'][0]
+        : req.headers['x-forwarded-proto'];
+      const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
+      const requestHost = req.headers.host || '127.0.0.1:3000';
+      const hostname = requestHost.startsWith('[')
+        ? requestHost.slice(0, requestHost.indexOf(']') + 1)
+        : requestHost.split(':')[0];
+      const runtimePort = mode === 'edit'
+        ? process.env.BOX_EDIT_RUNTIME_PUBLIC_PORT || '9967'
+        : process.env.BOX_PLAY_RUNTIME_PUBLIC_PORT || '9966';
+      json.data.socketServerUrl = `${protocol}://${hostname}:${runtimePort}`;
+    } else if (deploymentMode === 'play') {
+      const forwardedProto = Array.isArray(req.headers['x-forwarded-proto'])
+        ? req.headers['x-forwarded-proto'][0]
+        : req.headers['x-forwarded-proto'];
+      const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
+      const host = req.headers.host || '127.0.0.1:3000';
+      const runtimePath = process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
+        ? `/runtime/play/${encodeURIComponent(containerName)}`
+        : `/runtime/${mode}`;
+      json.data.socketServerUrl = `${protocol}://${host}${runtimePath}`;
+    } else {
+      json.data.socketServerUrl = socketServerUrl;
+    }
   }
 
   return json.data;

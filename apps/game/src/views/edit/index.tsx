@@ -9,7 +9,6 @@ import { MainPage } from './container';
 import { store } from 'src/redux/edit';
 import { setUserInfo } from 'src/redux/slices/user';
 import { messenger } from 'src/messenger';
-import { sensor } from 'src/apis/sensor';
 import { LangType } from 'src/apis/createra';
 import { UserState } from 'src/utils/user';
 import { EditClient } from 'src/client/edit/edit-client';
@@ -48,9 +47,7 @@ const EditUi = (props: EditUiProps) => {
     const userInfo = props.userInfo;
     if (userInfo) {
       dispatch(setUserInfo(userInfo));
-      sensor.login(userInfo.id);
     }
-    sensor.mapConnect(!!userInfo);
   }, [props.userInfo]);
 
   return editor ? (

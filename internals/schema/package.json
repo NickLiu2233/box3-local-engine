@@ -25,7 +25,6 @@
     "build:watch": "pnpm run build"
   },
   "dependencies": {
-    "@box-local/analytics": "workspace:*",
     "@box-local/mesher": "workspace:1.0.0",
     "@box-local/mudb": "workspace:1.0.4",
     "@box-local/script-api": "workspace:~0.3.0",

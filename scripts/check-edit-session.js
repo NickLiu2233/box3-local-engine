@@ -24,9 +24,11 @@ async function main() {
 
   const body = await response.json()
   const socketServerUrl = body?.config?.socketServerUrl
-  if (socketServerUrl !== 'ws://127.0.0.1:9967') {
+  const targetURL = new URL(target)
+  const expectedSocketURL = `${targetURL.protocol === 'https:' ? 'wss:' : 'ws:'}//${targetURL.hostname}:9967`
+  if (socketServerUrl !== expectedSocketURL) {
     throw new Error(
-      `edit session must use ws://127.0.0.1:9967, received ${socketServerUrl}`,
+      `edit session must use ${expectedSocketURL}, received ${socketServerUrl}`,
     )
   }
   if (body?.config?.admin !== true) {

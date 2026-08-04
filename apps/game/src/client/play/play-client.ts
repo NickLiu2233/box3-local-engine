@@ -267,7 +267,9 @@ export class PlayClient extends EngineClient {
     const client = new MuClient(
       socket,
       createMuLogger(this.logger),
-      process.env.NODE_ENV !== 'development' || !clientConfig.isLocalGameServer,
+      // Keep protocol validation enabled for production local runtimes. This
+      // condition must stay aligned with services/game-server/createServer.
+      process.env.NODE_ENV !== 'development' && !clientConfig.isLocalGameServer,
     );
 
     const netLog = new NetLogClient({

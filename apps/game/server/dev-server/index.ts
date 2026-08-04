@@ -21,6 +21,7 @@ if (argv.help) {
 
 const isHttps = !argv['http'];
 const port = argv['port'] || 3000;
+const host = argv['host'] || process.env.BOX_WEB_HOST || '127.0.0.1';
 
 app.prepare().then(() => {
   const requestListener = (req, res) => {
@@ -32,11 +33,15 @@ app.prepare().then(() => {
   };
 
   let server = http.createServer({}, requestListener);
+  const upgradeHandler = app.getUpgradeHandler();
+  server.on('upgrade', (req, socket, head) => {
+    upgradeHandler(req, socket, head);
+  });
 
-  server.listen(port, (err?: Error) => {
+  server.listen(port, host, (err?: Error) => {
     if (err) {
       throw err;
     }
-    console.log(`> Server started on 127.0.0.1:${port}`);
+    console.log(`> Server started on ${host}:${port}`);
   });
 });

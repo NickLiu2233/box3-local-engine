@@ -89,6 +89,7 @@ import {
 } from '../../group-project';
 import { GroupProjectStore } from '@box-local/schema/group-project/rda';
 import { OssStoreType } from '@box-local/content-server';
+import { persistLocalProjectState } from '../../project/local-project-state';
 
 const TOKEN_MIN_DURATION = 60 * 1000;
 const TOKEN_MAX_DURATION = 24 * 60 * 60 * 1000;
@@ -2036,7 +2037,9 @@ export class EditReplicaServer {
       this._logger.info(`save ${JSON.stringify(process.memoryUsage())}`);
     }
 
-    return this._state.replica.permissionHash;
+    const permissionHash = this._state.replica.permissionHash;
+    persistLocalProjectState(permissionHash);
+    return permissionHash;
   }
 
   public async createBranch(
@@ -2090,7 +2093,7 @@ export class EditReplicaServer {
 
     if (!token) {
       this._logger.info(
-        `reject attempt to redeem invalid permission token ${tokenString} from ${userId}`,
+        `reject attempt to redeem invalid permission token from ${userId}`,
       );
       return;
     }

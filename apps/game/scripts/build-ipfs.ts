@@ -12,7 +12,6 @@ const Paths = {
 (async () => {
   try {
     const config = await getServerConfig();
-    console.log('config', config);
     await start(Paths, {
       contentHostURL: config.CONTENT_SERVER_URL,
       maxIPFSConnections: config.MAX_CONTENT_SERVER_CONNECTIONS,

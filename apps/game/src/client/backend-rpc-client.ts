@@ -7,14 +7,12 @@ import {
 import { MuRPCClient } from '@box-local/mudb/rpc/client';
 import { MuRPCHttpClientTransport } from '@box-local/mudb/rpc/http/client-browser';
 import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
-import { AnalyticsClient } from '@box-local/analytics/client';
 import { Logger } from '@box-local/utils/logger';
 
 export class BackendClientRPC implements BackendRPC {
   public user: UserAPI;
   public auth: AuthAPI;
   public content: ContentAPI;
-  public analytics: AnalyticsClient;
 
   public headers = {};
 
@@ -27,7 +25,6 @@ export class BackendClientRPC implements BackendRPC {
     this.user = new MuRPCClient(UserRPCSchema, transport);
     this.auth = new MuRPCClient(AuthRPCSchema, transport);
     this.content = new MuRPCClient(ContentRPCSchema, transport);
-    this.analytics = new AnalyticsClient(logger, transport);
   }
 
   public setHeaders(headers: any) {

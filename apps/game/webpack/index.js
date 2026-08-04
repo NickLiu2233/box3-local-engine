@@ -6,7 +6,7 @@ const WebpackBar = require('webpackbar');
 function getWebpackConfig(config,
   { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) {
   const isProd = config.mode === 'production';
-  const isPlayerBuild = process.env.BOX_PLAYER_BUILD === 'true';
+  const isPlayBuild = process.env.BOX_PLAY_BUILD === 'true';
 
   const plugins = [
     new WebpackBar({
@@ -15,7 +15,7 @@ function getWebpackConfig(config,
     new webpack.IgnorePlugin({ resourceRegExp: new RegExp(/assets\/server/) }),
   ];
 
-  if (!isPlayerBuild) {
+  if (!isPlayBuild) {
     plugins.push(new CopyWebpackPlugin({
       patterns: [
         {
@@ -93,7 +93,7 @@ function getWebpackConfig(config,
     ...config.resolve,
     alias: {
       ...config.resolve?.alias,
-      ...(isPlayerBuild
+      ...(isPlayBuild
         ? {
             'src/entry/editor-page': join(
               __dirname,

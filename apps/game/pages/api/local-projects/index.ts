@@ -1,0 +1,24 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { getLocalProjectManager } from '../../../server/local-project-manager';
+
+function unavailable(res: NextApiResponse) {
+  res.status(404).end();
+}
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
+    return unavailable(res);
+  }
+  try {
+    const manager = getLocalProjectManager();
+    if (req.method === 'GET') return res.status(200).json({ projects: manager.listProjects() });
+    if (req.method === 'POST') {
+      const project = manager.createProject(req.body || {});
+      return res.status(201).json({ project });
+    }
+    res.setHeader('Allow', 'GET, POST');
+    return res.status(405).end();
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}

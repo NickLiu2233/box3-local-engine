@@ -12,7 +12,6 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
-import { sensor } from '~/apis/sensor';
 import { useEdit } from '~/client/edit/edit-context';
 import { clientConfig } from '~/config/client';
 import { messenger } from '~/messenger';
@@ -99,16 +98,10 @@ export const DropDownMenu = (props: DropDownMenuProps) => {
         // if (touchable) {
         //   _handleToggleChat(false);
         // }
-        if (!isLocalEngine) {
-          sensor.saveProject(true);
-        }
       } catch (e) {
         notice.closeNotice(pending);
         Toast.error({ content: intl.formatMessage({ id: 'submitFail' }) });
         editor.logger.error(e.toString());
-        if (!isLocalEngine) {
-          sensor.saveProject(false, e.toString());
-        }
       }
     });
   }, [

@@ -12,7 +12,6 @@ const Paths = {
 (async () => {
   try {
     const config = await getConfig();
-    console.log('config', config);
     initApis(config);
     await start(Paths, {
       contentHostURL: config.CONTENT_SERVER_URL,

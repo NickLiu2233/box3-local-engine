@@ -19,6 +19,12 @@ import { getMuRef } from './client-schema';
 import { getToken, setToken } from 'src/utils/token';
 import { EventBus } from '@box-local/utils/event';
 
+function localRuntimeURL(mode: 'play' | 'edit') {
+  if (typeof window === 'undefined') return '';
+  if (!clientConfig.isLocalGameServer) return '';
+  return `${window.location.origin}/runtime/${mode}`;
+}
+
 /**
  * engine client的公共类
  * 管理游戏主流程
@@ -76,7 +82,7 @@ export class EngineClient {
     installErrorHandler(this.logger);
     // 创建node-backend实例
     this.brpc = new BackendClientRPC(
-      clientConfig.BACKEND_SERVER_URL,
+      localRuntimeURL(mode) || clientConfig.BACKEND_SERVER_URL,
       this.logger,
     );
     this.brpc.setHeaders({

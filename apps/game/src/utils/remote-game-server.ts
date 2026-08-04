@@ -1,10 +1,9 @@
 import type { ClientConfig } from 'src/config/client';
 
-const STORAGE_KEY = 'box-local-engine.remote-server';
-
 export interface GameServerTarget {
   sessionURL: string;
   assetBaseURL: string;
+  socketServerURL?: string;
   isRemote: boolean;
 }
 
@@ -14,12 +13,16 @@ export function normalizeRemoteServerURL(value: string): string {
     return '';
   }
 
-  const fallbackProtocol =
-    typeof location !== 'undefined' ? location.protocol : 'http:';
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `${fallbackProtocol}//${trimmed}`;
-  const parsed = new URL(withProtocol);
+  const browserOrigin =
+    typeof location !== 'undefined' ? location.origin : 'http://127.0.0.1';
+  const fallbackProtocol = new URL(browserOrigin).protocol;
+  const parsed = trimmed.startsWith('/')
+    ? new URL(trimmed, browserOrigin)
+    : new URL(
+        /^https?:\/\//i.test(trimmed)
+          ? trimmed
+          : `${fallbackProtocol}//${trimmed}`,
+      );
 
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('Server URL must use http or https');
@@ -29,18 +32,6 @@ export function normalizeRemoteServerURL(value: string): string {
   parsed.search = '';
   parsed.hash = '';
   return parsed.toString().replace(/\/$/, '');
-}
-
-export function rememberRemoteServerURL(value: string) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  const normalized = normalizeRemoteServerURL(value);
-  if (normalized) {
-    window.localStorage.setItem(STORAGE_KEY, normalized);
-  } else {
-    window.localStorage.removeItem(STORAGE_KEY);
-  }
 }
 
 export function resolveGameServerTarget(
@@ -66,29 +57,16 @@ export function resolveGameServerTarget(
     return localTarget();
   }
 
-  const queryValue = new URLSearchParams(window.location.search).get('server');
-  if (queryValue === 'local') {
-    window.localStorage.removeItem(STORAGE_KEY);
-    return localTarget();
-  }
-
-  const configuredValue =
-    queryValue ||
-    config.remoteGameServerURL ||
-    window.localStorage.getItem(STORAGE_KEY) ||
-    '';
+  const configuredValue = config.remoteGameServerURL || '';
   if (!configuredValue) {
     return localTarget();
   }
 
   const baseURL = normalizeRemoteServerURL(configuredValue);
-  if (queryValue) {
-    window.localStorage.setItem(STORAGE_KEY, baseURL);
-  }
-
   return {
     sessionURL: `${baseURL}/api/session`,
     assetBaseURL: baseURL,
+    socketServerURL: baseURL.replace(/^http/, 'ws'),
     isRemote: true,
   };
 }
