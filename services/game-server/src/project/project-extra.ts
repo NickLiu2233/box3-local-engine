@@ -1,4 +1,5 @@
 import type { Logger } from 'pino';
+import axios from 'axios';
 
 import {
   ExtraProjectInfo,
@@ -13,6 +14,49 @@ import { getConfigSync } from '../../config/server';
 export type Mode = 'edit' | 'play';
 // 后端限制，一次最多拉取100个数据
 const LIMIT = 100;
+
+function getLocalMeshPath(modelName: string, modelId: number) {
+  return getMeshPath(`${modelName}__local_${modelId}`);
+}
+
+export async function getLocalExtraProject(
+  voxaURL: string,
+  mapId: number,
+  logger: Logger,
+) {
+  const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
+  try {
+    const response = await axios.get(
+      `${voxaURL.replace(/\/$/, '')}/api/local/models`,
+      {
+        params: {
+          modelType: ModelType.Project,
+          mapId,
+        },
+        timeout: 10_000,
+      },
+    );
+    const rows = Array.isArray(response.data?.rows) ? response.data.rows : [];
+    for (const row of rows) {
+      const modelId = Number(row.modelId || 0);
+      const path = getLocalMeshPath(String(row.modelName || ''), modelId);
+      if (!modelId || extra.meshAssets[path]) continue;
+      extra.meshAssets[path] = {
+        modelId,
+        hash: String(row.modelFileHash || ''),
+        modelPreviewHash: String(row.modelPreviewHash || ''),
+        animated: Boolean(row.animated),
+        updatedAt: String(row.updatedAt || ''),
+      };
+    }
+    logger.info(
+      `fetch local VOXA mesh assets: ${Object.keys(extra.meshAssets).length}`,
+    );
+  } catch (error) {
+    logger.error(`get local VOXA mesh assets error: ${String(error)}`);
+  }
+  return extra;
+}
 
 async function fetchAndSetSkinAssets(
   out: ExtraProjectInfo,
@@ -67,11 +111,15 @@ export async function getExtraProject(
   mode: Mode,
   logger: Logger,
 ) {
-  const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
   if (getConfigSync()?.method === 'local') {
-    logger.info('skip remote extra project fetch in local mode');
-    return extra;
+    const voxaURL =
+      process.env.VOXA_INTERNAL_URL ||
+      process.env.VOXA_URL ||
+      'http://127.0.0.1:3001';
+    return getLocalExtraProject(voxaURL, mapId, logger);
   }
+
+  const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
 
   try {
     const res = await apis.model.getEngineDefaultSkinUsingGet({

@@ -14,6 +14,7 @@ services:
     environment:
       BOX_DEPLOYMENT_MODE: creator
       VOXA_URL: http://127.0.0.1:${BOX_VOXA_PORT:-3001}
+      VOXA_INTERNAL_URL: http://voxa:3001
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.0}
       BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
       BOX_PLAY_IMAGE_ARCHIVE: /app/apps/local-engine/dist/images/play-image.tar

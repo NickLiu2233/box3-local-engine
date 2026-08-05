@@ -7,6 +7,7 @@ import { AddressInfo } from 'net';
 import path from 'path';
 import url from 'url';
 
+import axios from 'axios';
 import { MockBuildCache } from '@box-local/build-system/build-cache-mock';
 import { BuildSystem } from '@box-local/build-system/build-system';
 import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
@@ -157,9 +158,31 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const localContentServer = new FileSystemContentServer(
     path.join(spec.storagePath, 'blobs'),
   );
+  const localContentWithVoxa = {
+    init: () => localContentServer.init(),
+    store: (content: Uint8Array) => localContentServer.store(content),
+    retrieve: async (hash: string) => {
+      const local = await localContentServer.retrieve(hash);
+      if (local) return local;
+
+      const voxaURL =
+        process.env.VOXA_INTERNAL_URL || process.env.VOXA_URL;
+      if (!voxaURL) return undefined;
+      try {
+        const response = await axios.get(
+          `${voxaURL.replace(/\/$/, '')}/api/local/blobs/${hash}`,
+          { responseType: 'arraybuffer', timeout: 30_000 },
+        );
+        return new Uint8Array(response.data);
+      } catch (error) {
+        logger.debug(`local VOXA blob not found: ${hash}: ${String(error)}`);
+        return undefined;
+      }
+    },
+  };
   const contentServer = isLocal
     ? new ContentSplitter(
-        new CachingContentServer(logger, localContentServer),
+        new CachingContentServer(logger, localContentWithVoxa),
       )
     : new ContentSplitter(
         new CachingContentServer(
@@ -382,9 +405,11 @@ export async function startServer(spec: ServerRuntimeConfig) {
         }
 
         // get extra project info
-        const extraProject = isLocal
-          ? ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity)
-          : await getExtraProject(contentId, spec.mode, logger);
+        const extraProject = await getExtraProject(
+          contentId,
+          spec.mode,
+          logger,
+        );
         const stream = new MuWriteStream(1);
         ExtraProjectInfoSchema.diff(
           ExtraProjectInfoSchema.identity,

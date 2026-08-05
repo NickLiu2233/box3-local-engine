@@ -1728,11 +1728,6 @@ export class EditReplicaServer {
   }
 
   public _checkAndSetExtraProject = async () => {
-    if (getConfigSync()?.method === 'local') {
-      this._logger.info('skip remote extra project refresh in local mode');
-      return;
-    }
-
     const extra = await getExtraProject(
       this._state.publish.gameId,
       'edit',

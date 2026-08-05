@@ -44,6 +44,10 @@ type PreviewSeed = {
   mesh: MeshRenderable;
 };
 
+function getLocalMeshPath(modelName: string, modelId: number) {
+  return getMeshPath(`${modelName}__local_${modelId}`);
+}
+
 enum CursorState {
   Crosshair,
   Unset,
@@ -239,7 +243,9 @@ export default function Preview() {
 
   const getSeedMeshInfo = useCallback(
     async (model: ModelData) => {
-      const formatName = getMeshPath(model.name);
+      const formatName = clientConfig.isLocalGameServer
+        ? getLocalMeshPath(model.name, model.id)
+        : getMeshPath(model.name);
       const metaData = await getMetaData(model.modelFileHash);
       if (!formatName) {
         return;
@@ -306,7 +312,9 @@ export default function Preview() {
         return;
       }
 
-      const newFormatName = getMeshPath(res.name);
+      const newFormatName = clientConfig.isLocalGameServer
+        ? getLocalMeshPath(res.name, res.id)
+        : getMeshPath(res.name);
 
       return {
         modelId: res.id,
