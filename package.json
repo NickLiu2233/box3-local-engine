@@ -31,6 +31,7 @@
     "project:publish": "node apps/local-engine/src/project-manager.js publish",
     "project:package": "node apps/local-engine/src/project-manager.js package",
     "check": "node scripts/check-standalone.js",
+    "check:voxa-map-link": "pnpm --filter @box-local/game-server exec node -r @swc-node/register ../../scripts/check-local-voxa-map-link.ts",
     "check:edit-session": "node scripts/check-edit-session.js"
   },
   "pnpm": {

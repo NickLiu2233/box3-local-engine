@@ -132,6 +132,18 @@ function publicModel(model: StoredModel) {
   return value;
 }
 
+export function matchesMapFilter(
+  model: Pick<StoredModel, 'mapId' | 'modelType'>,
+  mapId?: number,
+) {
+  if (mapId === undefined) return true;
+  if (model.mapId === mapId) return true;
+  // Project models saved by older local VOXA builds did not persist mapId
+  // when the local engine used its valid sentinel ID (0). Keep those models
+  // visible so creators do not lose access after upgrading.
+  return mapId === 0 && model.mapId === undefined && model.modelType === 2;
+}
+
 export async function storeBlob(data: Buffer, contentType = '') {
   const hash = contentHash(data);
   const target = path.join(blobsRoot, hash);
@@ -247,7 +259,7 @@ export function listModels(filters: { modelType?: number; mapId?: number } = {})
     .models.filter(
       (model) =>
         (filters.modelType === undefined || model.modelType === filters.modelType) &&
-        (filters.mapId === undefined || model.mapId === filters.mapId),
+        matchesMapFilter(model, filters.mapId),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .map(publicModel);

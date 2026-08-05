@@ -9,6 +9,7 @@ import {
   projectV5,
 } from '@box-local/voxa-project';
 import type { ProjectDataTypes } from '@box-local/voxa-project/build/types/project/def';
+import { shouldSaveAsMapModel } from './save-target';
 import {
   BodyPartDataSchema,
   LOAD_TIMEOUT,
@@ -831,8 +832,12 @@ export class ProjectManager {
       // 如果有sourceMapId，说明是从 Arena 打开的内嵌voxa
       // 目前可能从内嵌 voxa 编辑的有：共享皮肤、共享模型、项目模型
       // 等项目模型全部迁移结束，就只有共享皮肤和共享模型可以从内嵌 voxa 编辑
+      const embeddedInEngine =
+        typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('parentType') ===
+          'engine';
       if (
-        sourceMapId &&
+        shouldSaveAsMapModel(sourceMapId, embeddedInEngine) &&
         (modelType === ModelType.ExtensionLib ||
           modelType === ModelType.Project)
       ) {
