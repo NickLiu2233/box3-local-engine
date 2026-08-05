@@ -35,6 +35,10 @@ function configuredPort() {
   return process.env.BOX_PORT || readDotEnvValue('BOX_PORT') || '3000'
 }
 
+function configuredVoxaPort() {
+  return process.env.BOX_VOXA_PORT || readDotEnvValue('BOX_VOXA_PORT') || '3001'
+}
+
 function dockerEnvironment(extra = {}) {
   const config = getPlayImageConfig()
   return {
@@ -217,16 +221,62 @@ function deployPlay() {
   console.log(`可分发镜像：${playImage.archive}\n`)
 }
 
+function startVoxa({ build }) {
+  if (commandArgs.length) {
+    throw new Error(`pnpm ${build ? 'voxa' : 'voxa:up'} 不接受参数`)
+  }
+  const dataRoot = path.join(repoRoot, 'apps/voxa/data')
+  fs.mkdirSync(dataRoot, { recursive: true })
+  if (build) {
+    runDocker(['compose', '--profile', 'voxa', 'build', 'voxa'])
+  }
+  stopProduct('voxa')
+  runDocker([
+    'compose',
+    '--profile',
+    'voxa',
+    'up',
+    '-d',
+    '--no-build',
+    '--force-recreate',
+    'voxa',
+  ])
+  console.log('\nVOXA 已启动：http://127.0.0.1:' + configuredVoxaPort())
+  console.log(
+    '本地模型库：http://127.0.0.1:' + configuredVoxaPort() + '/library',
+  )
+  console.log(`数据目录：${dataRoot}\n`)
+}
+
+function deployVoxa() {
+  startVoxa({ build: true })
+}
+
+function startExistingVoxa() {
+  startVoxa({ build: false })
+}
+
 function stopAll() {
   if (commandArgs.length) throw new Error('pnpm stop 不接受参数')
-  runDocker(['compose', '--profile', 'creator', '--profile', 'play', 'down'])
+  runDocker([
+    'compose',
+    '--profile',
+    'creator',
+    '--profile',
+    'play',
+    '--profile',
+    'voxa',
+    'down',
+  ])
 }
 
 try {
   if (command === 'creator') deployCreator()
   else if (command === 'play') deployPlay()
+  else if (command === 'voxa') deployVoxa()
+  else if (command === 'voxa-up') startExistingVoxa()
   else if (command === 'stop') stopAll()
-  else throw new Error('Usage: deploy.js <creator|play|stop>')
+  else throw new Error('Usage: deploy.js <creator|play|voxa|voxa-up|stop>')
 } catch (error) {
   console.error(`部署失败：${error.message}`)
   process.exitCode = 1

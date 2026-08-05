@@ -15,6 +15,7 @@ import {
 } from './storage-schema';
 import { Semaphore } from '@box-local/utils/semaphore';
 import { JavaDataStorage } from './java-storage-api';
+import { PostgresDataStorage } from './postgres-data-storage';
 import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/storage';
 import { StorageLimiters } from './limiters';
 import { getConfigSync } from '../../config/server';
@@ -26,6 +27,7 @@ export class StorageController {
   public state: GameServerState;
   public dbServer: CommonGameDataServer;
   private _limiters: StorageLimiters;
+  private _dbServerReady: Promise<void>;
 
   constructor(spec: {
     server: MuServer;
@@ -36,7 +38,38 @@ export class StorageController {
     this.state.storage.sql = spec.sql;
     this.protocol = spec.server.protocol(StorageProtocol);
     const config = getConfigSync();
-    this.dbServer = new JavaDataStorage(this.state.logger);
+    const dataStorageDriver = String(config.dataStorageDriver || 'legacy')
+      .trim()
+      .toLowerCase();
+    if (dataStorageDriver === 'postgres' || dataStorageDriver === 'postgresql') {
+      const projectNamespace = String(
+        config.dataStorageNamespace ||
+        config.containerName ||
+        config.contentId ||
+        'default',
+      );
+      this.dbServer = new PostgresDataStorage({
+        connectionString: config.databaseUrl,
+        schema: config.databaseSchema,
+        poolSize: config.databasePoolSize,
+        ssl: config.databaseSsl,
+        sslRejectUnauthorized: config.databaseSslRejectUnauthorized,
+        projectNamespace,
+        groupNamespace: String(
+          config.groupStorageNamespace || config.groupId || projectNamespace,
+        ),
+        mode: config.mode,
+        lockTimeoutMs: config.dataStorageLockTimeoutMs,
+        logger: this.state.logger,
+      });
+    } else if (dataStorageDriver === 'legacy' || dataStorageDriver === 'remote') {
+      this.dbServer = new JavaDataStorage(this.state.logger);
+    } else {
+      throw new Error(
+        `Unsupported BOX_DATA_STORAGE_DRIVER: ${config.dataStorageDriver}`,
+      );
+    }
+    this._dbServerReady = this.dbServer.connect();
     this._limiters = new StorageLimiters();
 
     this.protocol.configure({
@@ -224,6 +257,7 @@ export class StorageController {
         },
         dbFetch: async (client, { handle, dbKey, dbType, type, params }) => {
           try {
+            await this._dbServerReady;
             const p = JSON.parse(params);
 
             // 限流判定
@@ -336,6 +370,7 @@ export class StorageController {
     await this.resetMutex.p();
     this._limiters.reset();
     try {
+      await this._dbServerReady;
       await new Promise((resolve, reject) => {
         if (this.state.storage.db) {
           const oldDb = this.state.storage.db;

@@ -153,7 +153,7 @@ export const LeftMenu = (props: LeftMenuProps) => {
             );
           }
         case LeftNavModeEnum.Model: {
-          return !isLocalEngine && permissions.editModel && !isRunning;
+          return permissions.editModel && !isRunning;
         }
 
         case CenterPanelEnum.PlayerModule:

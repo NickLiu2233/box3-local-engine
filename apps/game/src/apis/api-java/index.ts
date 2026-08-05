@@ -72,6 +72,8 @@ const javaAxiosInstance = initAxios(
     : clientConfig.JAVA_BACKEND_SERVER_URL,
 );
 const uploadApi = new Upload(axiosInstance);
+const modelApi = new Model(axiosInstance);
+const modelsApi = new Models(axiosInstance);
 
 if (clientConfig.isLocalGameServer) {
   uploadApi.fileUploadPost = async ({ file }) => {
@@ -85,6 +87,71 @@ if (clientConfig.isLocalGameServer) {
     }
     return await response.text();
   };
+
+  const voxaRequest = async (path: string, init?: RequestInit) => {
+    if (!clientConfig.VOXA_URL) {
+      throw new Error('本地 VOXA 地址未配置，请先启动 VOXA');
+    }
+    const response = await fetch(
+      `${clientConfig.VOXA_URL.replace(/\/$/, '')}/api/local${path}`,
+      init,
+    );
+    if (!response.ok) {
+      throw new Error((await response.text()) || '本地 VOXA 请求失败');
+    }
+    return await response.json();
+  };
+
+  const absoluteVoxaURL = (value?: string) => {
+    if (!value || /^https?:\/\//.test(value)) return value;
+    return `${clientConfig.VOXA_URL.replace(/\/$/, '')}/${value.replace(/^\//, '')}`;
+  };
+
+  modelApi.getModelDetailUsingGet = async (modelId) =>
+    voxaRequest(`/models/${modelId}`);
+  modelApi.deleteModelUsingDelete = async (modelIds) => {
+    const results = await Promise.all(
+      modelIds.map((modelId) =>
+        voxaRequest(`/models/${modelId}`, { method: 'DELETE' }),
+      ),
+    );
+    return results.every(Boolean);
+  };
+  modelApi.deleteProjectSharedModelUsingDelete = async ({ modelId }) =>
+    voxaRequest(`/models/${modelId}`, { method: 'DELETE' });
+  modelApi.renameProjectSharedModelUsingPut = async ({ modelId, modelName }) =>
+    voxaRequest(`/models/${modelId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modelName }),
+    });
+  modelApi.setDefaultSkinUsingPut = async () => true;
+  modelApi.getDefaultSkinUsingGet = async () => undefined;
+  modelApi.getSkinMapIdList = async () => [];
+  modelApi.batchAddSkinUsingPost = async () => true;
+
+  modelsApi.getModelsUsingGetV2 = async (query) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query || {})) {
+      if (value !== undefined && value !== null) params.set(key, String(value));
+    }
+    const result = await voxaRequest(`/models?${params}`);
+    return {
+      ...result,
+      rows: result.rows.map((model) => ({
+        ...model,
+        modelPreviewUrl: absoluteVoxaURL(model.modelPreviewUrl),
+      })),
+    };
+  };
+  modelsApi.deleteSharedSkinUsingDelete = async ({ skinId }) =>
+    voxaRequest(`/models/${skinId}`, { method: 'DELETE' });
+  modelsApi.renameSharedSkinUsingPut = async ({ skinId, skinName }) =>
+    voxaRequest(`/models/${skinId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modelName: skinName }),
+    });
 }
 
 export const apis = {
@@ -99,9 +166,9 @@ export const apis = {
   // createra creatorStore
   creatorStore: new CreatorStore(axiosInstance),
   // maas or createra backend
-  models: new Models(axiosInstance),
+  models: modelsApi,
   // maas or createra backend
-  model: new Model(axiosInstance),
+  model: modelApi,
   // maas or createra backend
   upload: uploadApi,
   // maas backend only

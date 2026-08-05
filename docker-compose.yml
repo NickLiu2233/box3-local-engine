@@ -13,6 +13,7 @@ services:
     restart: unless-stopped
     environment:
       BOX_DEPLOYMENT_MODE: creator
+      VOXA_URL: http://127.0.0.1:${BOX_VOXA_PORT:-3001}
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.0}
       BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
       BOX_PLAY_IMAGE_ARCHIVE: /app/apps/local-engine/dist/images/play-image.tar
@@ -24,6 +25,15 @@ services:
       BOX_EDIT_RUNTIME_HOST: 0.0.0.0
       BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
+      BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-legacy}
+      BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
+      BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
+      BOX_DATABASE_POOL_SIZE: ${BOX_DATABASE_POOL_SIZE:-10}
+      BOX_DATABASE_SSL: ${BOX_DATABASE_SSL:-false}
+      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: ${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}
+      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: ${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}
+      BOX_DATA_STORAGE_NAMESPACE_PREFIX: ${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}
+      BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}
     ports:
       - "127.0.0.1:${BOX_PORT:-3000}:3000"
       - "127.0.0.1:9966:9966"
@@ -48,6 +58,15 @@ services:
       BOX_PLAY_LIBRARY_PATH: /app/play-worlds
       BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
+      BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-legacy}
+      BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
+      BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
+      BOX_DATABASE_POOL_SIZE: ${BOX_DATABASE_POOL_SIZE:-10}
+      BOX_DATABASE_SSL: ${BOX_DATABASE_SSL:-false}
+      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: ${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}
+      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: ${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}
+      BOX_DATA_STORAGE_NAMESPACE_PREFIX: ${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}
+      BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}
     ports:
       - "${BOX_PORT:-3000}:3000"
     volumes:
@@ -57,3 +76,21 @@ services:
         read_only: true
         bind:
           create_host_path: true
+
+  voxa:
+    profiles: [voxa]
+    image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.1.0}
+    build:
+      context: .
+      dockerfile: apps/local-engine/Dockerfile
+      target: voxa
+      args:
+        NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-node:22.17.0-bookworm-slim}
+    restart: unless-stopped
+    environment:
+      VOXA_DATA_PATH: /app/apps/voxa/data
+      VOXA_MAX_BLOB_BYTES: ${VOXA_MAX_BLOB_BYTES:-268435456}
+    ports:
+      - "127.0.0.1:${BOX_VOXA_PORT:-3001}:3001"
+    volumes:
+      - ./apps/voxa/data:/app/apps/voxa/data

@@ -1,6 +1,6 @@
 ARG NODE_IMAGE=node:22.17.0-bookworm-slim
 
-FROM ${NODE_IMAGE} AS build-base
+FROM ${NODE_IMAGE} AS source-base
 
 ENV CI=true \
     PNPM_HOME=/pnpm \
@@ -16,10 +16,14 @@ RUN apt-get update \
 WORKDIR /app
 COPY . .
 
-RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+FROM source-base AS engine-build-base
 
-FROM build-base AS creator-build
+RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile \
+      --filter @box-local/game... \
+      --filter @box-local/game-server...
+
+FROM engine-build-base AS creator-build
 
 RUN pnpm build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
@@ -32,7 +36,7 @@ RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server
       -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
     \) -delete
 
-FROM build-base AS play-build
+FROM engine-build-base AS play-build
 
 RUN pnpm build:play
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
@@ -54,6 +58,12 @@ RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server
       -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
       -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
     \) -delete
+
+FROM source-base AS voxa-build
+
+RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile --filter @box-local/voxa...
+RUN pnpm --filter @box-local/voxa build
 
 FROM ${NODE_IMAGE} AS runtime-base
 
@@ -130,3 +140,30 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=5 \
   CMD node -e "Promise.all([fetch('http://127.0.0.1:3000/api/health-check'),fetch('http://127.0.0.1:3000/api/play-worlds')]).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"
 
 CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--play"]
+
+FROM runtime-base AS voxa
+
+ENV VOXA_DATA_PATH=/app/apps/voxa/data \
+    HOSTNAME=0.0.0.0 \
+    PORT=3001
+
+COPY --from=voxa-build --chown=node:node /app/apps/voxa/.next/standalone /app/apps/voxa/.next/standalone
+COPY --from=voxa-build --chown=node:node /app/apps/voxa/.next/static /app/apps/voxa/.next/standalone/apps/voxa/.next/static
+COPY --from=voxa-build --chown=node:node /app/apps/voxa/public /app/apps/voxa/.next/standalone/apps/voxa/public
+
+RUN mkdir -p /app/apps/voxa/data \
+    && find /app/apps/voxa/.next/standalone -type f \( \
+      -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
+      -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
+    \) -delete \
+    && chown -R node:node /app/apps/voxa
+
+USER node
+
+EXPOSE 3001
+VOLUME ["/app/apps/voxa/data"]
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:3001/library').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/voxa/.next/standalone/apps/voxa/server.js"]

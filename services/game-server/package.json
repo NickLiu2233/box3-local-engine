@@ -10,6 +10,7 @@
     "build_isolate": "rollup --config scripts/script-server/rollup.config.mjs",
     "dev": "node scripts/dev-launch.js",
     "generate-terrain": "node -r ts-node/register --max-old-space-size=4096 scripts/terrain/generate-terrain.ts",
+    "check:postgres-storage": "node -r @swc-node/register scripts/check-postgres-data-storage.ts",
     "prod": "node dist/src/launch.js --useProdBundle",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -38,6 +39,7 @@
     "limiter": "2.1.0",
     "minimist": "1.2.0",
     "nanoid": "3.2.0",
+    "pg": "8.16.3",
     "pino": "8.19.0",
     "pino-pretty": "11.0.0",
     "simplex-noise": "3.0.1",
@@ -62,7 +64,9 @@
     "@types/ip": "~1.1.0",
     "@types/node": "20.16.15",
     "@types/parse": "3.0.2",
+    "@types/pg": "8.15.5",
     "@types/uuid": "~8.3.4",
+    "pg-mem": "3.0.5",
     "rollup": "4.41.1",
     "ts-node": "10.4.0"
   }

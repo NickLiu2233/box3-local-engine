@@ -77,7 +77,10 @@ const requiredFiles = [
   '.dockerignore',
   '.env.docker.example',
   'docker-compose.yml',
+  'docs/creator-deployment.md',
   'docs/deployment.md',
+  'docs/play-deployment.md',
+  'docs/voxa-deployment.md',
   'apps/local-engine/Dockerfile',
   'apps/local-engine/config/local.config.json',
   'apps/local-engine/src/build.js',
@@ -136,6 +139,10 @@ for (const [name, command] of Object.entries({
   creator: 'node apps/local-engine/src/deploy.js creator',
   'creator:up':
     'docker compose --profile creator up -d --no-build creator',
+  voxa: 'node apps/local-engine/src/deploy.js voxa',
+  'voxa:image': 'docker compose --profile voxa build voxa',
+  'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
+  'voxa:dev': 'pnpm --filter @box-local/voxa dev',
   play: 'node apps/local-engine/src/deploy.js play',
   stop: 'node apps/local-engine/src/deploy.js stop',
   dev: 'node apps/local-engine/src/launcher.js --creator',
@@ -143,6 +150,7 @@ for (const [name, command] of Object.entries({
   'start:creator':
     'node apps/local-engine/src/launcher.js --production --creator',
   'build:play': 'node apps/local-engine/src/build.js --play',
+  'build:voxa': 'pnpm --filter @box-local/voxa build',
   'start:play': 'node apps/local-engine/src/launcher.js --production --play',
 })) {
   requireScript(rootManifest, 'package.json', name, command)
@@ -174,6 +182,8 @@ for (const [label, pattern] of [
   ['play accepts no release argument', /pnpm play 不接受作品参数/],
   ['creator starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'creator'/],
   ['play starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'play'/],
+  ['VOXA builds only its Docker target', /'build', 'voxa'/],
+  ['VOXA starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'voxa'/],
 ]) {
   requirePattern(deploySource, deployFile, label, pattern)
 }
@@ -298,12 +308,16 @@ for (const file of [
 const dockerFile = 'apps/local-engine/Dockerfile'
 const dockerSource = readRequired(dockerFile)
 for (const [label, pattern] of [
-  ['creator build stage', /^FROM build-base AS creator-build$/m],
+  ['creator build stage', /^FROM engine-build-base AS creator-build$/m],
   ['creator build command', /^RUN pnpm build:creator$/m],
-  ['play build stage', /^FROM build-base AS play-build$/m],
+  ['play build stage', /^FROM engine-build-base AS play-build$/m],
   ['play build command', /^RUN pnpm build:play$/m],
   ['creator final target', /^FROM runtime-base AS creator$/m],
   ['play final target', /^FROM runtime-base AS play$/m],
+  ['VOXA build stage', /^FROM source-base AS voxa-build$/m],
+  ['VOXA filtered dependency install', /pnpm install --frozen-lockfile --filter @box-local\/voxa\.\.\./],
+  ['VOXA build command', /^RUN pnpm --filter @box-local\/voxa build$/m],
+  ['VOXA final target', /^FROM runtime-base AS voxa$/m],
   [
     'referenced runtime-blob staging',
     /stage-runtime-data\.js \/opt\/runtime-data/,
@@ -334,6 +348,7 @@ for (const extension of [
 
 const creatorDockerStage = getDockerStage(dockerSource, 'creator')
 const playDockerStage = getDockerStage(dockerSource, 'play')
+const voxaDockerStage = getDockerStage(dockerSource, 'voxa')
 for (const [name, stage, flag] of [
   ['creator', creatorDockerStage, '--creator'],
   ['play', playDockerStage, '--play'],
@@ -387,6 +402,25 @@ forbidPattern(
   'creator project manager in play image',
   /project-manager\.js|\/app\/apps\/local-engine\/projects/,
 )
+requirePattern(
+  voxaDockerStage,
+  dockerFile,
+  'VOXA local data volume',
+  /VOLUME \["\/app\/apps\/voxa\/data"\]/,
+)
+requirePattern(
+  voxaDockerStage,
+  dockerFile,
+  'VOXA standalone server',
+  /CMD \["node", "apps\/voxa\/\.next\/standalone\/apps\/voxa\/server\.js"\]/,
+)
+requirePattern(voxaDockerStage, dockerFile, 'VOXA target runs as node', /^USER node$/m)
+requirePattern(
+  voxaDockerStage,
+  dockerFile,
+  'VOXA source and secret file purge',
+  /find \/app\/apps\/voxa\/\.next\/standalone[\s\S]*?-name '\*\.map'[\s\S]*?-name '\*\.ts'[\s\S]*?-name '\*\.tsx'/,
+)
 
 // Compose exposes exactly the two product roles and builds both from the
 // unified Dockerfile. Creator remains localhost-only; play is externally usable.
@@ -403,14 +437,15 @@ for (const line of composeSource.split('\n')) {
   const match = inServices ? line.match(/^  ([A-Za-z0-9_-]+):\s*$/) : null
   if (match) composeServiceNames.push(match[1])
 }
-if (composeServiceNames.join(',') !== 'creator,play') {
+if (composeServiceNames.join(',') !== 'creator,play,voxa') {
   fail(
-    `${composeFile}: services must be exactly creator and play (found ${composeServiceNames.join(', ') || 'none'})`,
+    `${composeFile}: services must be exactly creator, play and voxa (found ${composeServiceNames.join(', ') || 'none'})`,
   )
 }
 
 const creatorCompose = getComposeService(composeSource, 'creator')
 const playCompose = getComposeService(composeSource, 'play')
+const voxaCompose = getComposeService(composeSource, 'voxa')
 for (const [name, service] of [
   ['creator', creatorCompose],
   ['play', playCompose],
@@ -430,6 +465,32 @@ for (const [name, service] of [
     new RegExp(`BOX_DEPLOYMENT_MODE: ${name}`),
   )
 }
+requirePattern(voxaCompose, composeFile, 'VOXA profile', /profiles: \[voxa\]/)
+requirePattern(
+  voxaCompose,
+  composeFile,
+  'VOXA unified Dockerfile',
+  /dockerfile: apps\/local-engine\/Dockerfile/,
+)
+requirePattern(voxaCompose, composeFile, 'VOXA Docker target', /target: voxa/)
+requirePattern(
+  voxaCompose,
+  composeFile,
+  'localhost-only VOXA port',
+  /127\.0\.0\.1:\$\{BOX_VOXA_PORT:-3001\}:3001/,
+)
+requirePattern(
+  voxaCompose,
+  composeFile,
+  'host-backed VOXA data',
+  /\.\/apps\/voxa\/data:.*\/app\/apps\/voxa\/data/,
+)
+requirePattern(
+  voxaCompose,
+  composeFile,
+  'VOXA upload size limit',
+  /VOXA_MAX_BLOB_BYTES: \$\{VOXA_MAX_BLOB_BYTES:-268435456\}/,
+)
 requirePattern(
   creatorCompose,
   composeFile,
@@ -990,6 +1051,7 @@ for (const entry of [
   'apps/local-engine/projects/',
   'apps/local-engine/dist/',
   'apps/local-engine/.build-lock/',
+  'apps/voxa/data/',
 ]) {
   if (!dockerIgnoreEntries.has(entry)) {
     fail(`${dockerIgnoreFile}: missing ${entry}`)

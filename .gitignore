@@ -20,3 +20,6 @@ apps/local-engine/dist/
 apps/local-engine/play-worlds/*
 !apps/local-engine/play-worlds/.gitkeep
 apps/local-engine/.build-lock/
+
+# VOXA model projects and uploaded blobs belong to the local creator.
+apps/voxa/data/

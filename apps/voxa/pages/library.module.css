@@ -1,0 +1,102 @@
+.page { min-height: 100vh; color: rgba(255,255,255,.92); background: #262626; }
+.page button,.page input { font: inherit; }
+.page button { border: 0; cursor: pointer; }
+.header { display: flex; height: 64px; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid rgba(255,255,255,.1); }
+.brand { color: #fff; font-family: 'Rubik-700','MiSans-Bold',sans-serif; font-size: 20px; text-decoration: none; }
+.brand em { margin-left: 7px; color: rgba(255,255,255,.45); font-size: 10px; font-style: normal; letter-spacing: .12em; }
+.localBadge { display: inline-flex; align-items: center; gap: 8px; color: rgba(255,255,255,.6); font-size: 12px; }
+.localBadge i { width: 7px; height: 7px; border-radius: 50%; background: #78c95d; box-shadow: 0 0 0 3px rgba(120,201,93,.12); }
+.content { width: min(1150px,calc(100% - 32px)); margin: 0 auto; padding: 24px 0 56px; }
+.titleRow { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.titleRow h1 { margin: 0; color: #fff; font-family: 'Rubik-700','MiSans-Bold',sans-serif; font-size: 24px; line-height: 1.3; }
+.titleHeading { display: flex; align-items: center; gap: 14px; }
+.titleActions { display: flex; gap: 10px; }
+.headingImportButton { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid rgba(255,255,255,.18) !important; border-radius: 6px; color: rgba(255,255,255,.76); background: transparent; font-size: 12px; }
+.headingImportButton:hover { color: #fff; background: rgba(255,255,255,.08); }
+.headingImportButton:disabled { cursor: wait; opacity: .55; }
+.headingImportButton svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.hiddenFileInput { display: none; }
+.primaryButton,.secondaryButton { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 7px; padding: 0 14px; border-radius: 8px; font-size: 13px; font-weight: 700; text-decoration: none; transition: background 150ms ease,transform 150ms ease; }
+.primaryButton { color: #262626; background: #ffdb00; }
+.primaryButton:hover { background: #ffe44d; }
+.secondaryButton { border: 1px solid rgba(255,255,255,.18); color: rgba(255,255,255,.8); background: #404040; }
+.secondaryButton:hover { color: #fff; background: #4b4b4b; }
+.primaryButton:active,.secondaryButton:active { transform: scale(.97); }
+.primaryButton svg,.secondaryButton svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.toolbar { display: flex; gap: 16px; margin-top: 20px; }
+.search { display: flex; width: 200px; height: 40px; align-items: center; gap: 8px; padding: 0 10px; border-radius: 4px; color: rgba(255,255,255,.6); background: rgba(255,255,255,.08); }
+.search svg { width: 17px; height: 17px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; }
+.search input { width: 100%; border: 0; outline: 0; color: #fff; background: transparent; font-size: 12px; user-select: text; }
+.search input::placeholder { color: rgba(255,255,255,.45); }
+.filterWrap { position: relative; }
+.filter { display: flex; width: 120px; height: 40px; align-items: center; gap: 8px; padding: 0 10px; border-radius: 4px; color: rgba(255,255,255,.65); background: rgba(255,255,255,.08); font-size: 12px; }
+.filter:hover { background: rgba(255,255,255,.13); }
+.filter strong { flex: 1; color: #fff; font-weight: 400; text-align: left; }
+.filter b { color: rgba(255,255,255,.7); font-size: 15px; font-weight: 400; transform: translateY(-2px); }
+.filterMenu { position: absolute; z-index: 8; top: 46px; left: 0; width: 120px; padding: 4px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: #404040; box-shadow: 0 12px 24px rgba(0,0,0,.32); }
+.filterMenu button { display: block; width: 100%; height: 32px; padding: 0 8px; border-radius: 5px; color: rgba(255,255,255,.72); background: transparent; font-size: 12px; text-align: left; }
+.filterMenu button:hover,.filterMenu .selectedFilter { color: #fff; background: rgba(255,255,255,.1); }
+.notice { margin-top: 14px; padding: 9px 11px; border: 1px solid rgba(255,219,0,.2); border-radius: 6px; color: rgba(255,255,255,.76); background: rgba(255,219,0,.07); font-size: 12px; }
+.grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 20px; }
+.card { position: relative; display: flex; min-width: 0; min-height: 120px; padding: 12px; border-radius: 16px; background: #404040; }
+.cardLink { position: absolute; z-index: 1; inset: 0; border-radius: inherit; }
+.cover { display: grid; width: 96px; height: 96px; flex: 0 0 96px; place-items: center; overflow: hidden; border-radius: 8px; color: rgba(255,255,255,.32); background: #595959; }
+.cover img { width: 100%; height: 100%; object-fit: cover; }
+.cover svg { width: 38px; height: 38px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.25; }
+.cardBody { display: flex; min-width: 0; flex: 1; flex-direction: column; justify-content: space-between; padding-left: 12px; }
+.cardHeading { min-width: 0; padding-right: 28px; }
+.nameRow { display: flex; min-width: 0; align-items: center; gap: 8px; }
+.nameRow h2 { overflow: hidden; margin: 2px 0 0; color: #fff; font-family: 'Rubik-600','MiSans-Bold',sans-serif; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+.nameRow span { flex: 0 0 auto; padding: 2px 6px; border-radius: 4px; color: #262626; background: #ffdb00; font-size: 10px; line-height: 16px; }
+.cardHeading p { margin: 7px 0 0; color: rgba(255,255,255,.5); font-size: 11px; }
+.cardFooter { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: rgba(255,255,255,.5); font-size: 11px; }
+.cardFooter time { display: flex; min-width: 0; align-items: center; gap: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardFooter time svg { width: 14px; height: 14px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.editButton { position: relative; z-index: 2; color: rgba(255,255,255,.72); font-size: 12px; text-decoration: none; }
+.editButton:hover { color: #ffdb00; }
+.menuWrap { position: absolute; z-index: 3; top: 10px; right: 10px; }
+.moreButton { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 6px; color: rgba(255,255,255,.6); background: transparent; }
+.moreButton:hover { color: #ffdb00; background: rgba(255,255,255,.08); }
+.moreButton svg { width: 19px; height: 19px; fill: currentColor; stroke: currentColor; }
+.menu { position: absolute; top: 34px; right: 0; width: 158px; padding: 5px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: #262626; box-shadow: 0 10px 24px rgba(0,0,0,.35); }
+.menu button,.menu a { display: flex; width: 100%; align-items: center; gap: 7px; padding: 8px; border-radius: 6px; color: rgba(255,255,255,.8); background: transparent; font-size: 12px; text-align: left; text-decoration: none; }
+.menu button:hover,.menu a:hover { color: #fff; background: #404040; }
+.menu button:last-child { color: #f65252; }
+.menu svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.emptyState { display: flex; min-height: 158px; align-items: flex-start; justify-content: center; flex-direction: column; margin-top: 20px; padding: 20px 22px; border-radius: 12px; }
+.emptyState > span { display: grid; width: 34px; height: 34px; place-items: center; margin-bottom: 10px; border-radius: 8px; color: #262626; background: #ffdb00; }
+.emptyState svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.emptyState h2 { margin: 0 0 4px; color: #fff; font-size: 15px; }
+.emptyState button { margin-top: 13px; padding: 8px 11px; border: 1px solid rgba(255,255,255,.2); border-radius: 8px; color: #fff; background: #404040; font-size: 12px; }
+.dialogBackdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0,0,0,.65); }
+.dialog { width: min(100%,400px); padding: 25px; border: 1px solid rgba(255,255,255,.15); border-radius: 16px; color: #fff; background: #262626; box-shadow: 0 20px 64px rgba(0,0,0,.48); }
+.dialogIcon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 8px; color: #262626; background: #ffdb00; }
+.dialogIcon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.dialog h2 { margin: 17px 0 7px; font-size: 20px; }
+.dialog p { margin: 0; color: rgba(255,255,255,.6); font-size: 13px; line-height: 1.55; }
+.dialog label { display: block; margin: 17px 0 7px; color: rgba(255,255,255,.8); font-size: 12px; font-weight: 700; }
+.dialog input,.dialog textarea { width: 100%; padding: 0 11px; border: 1px solid rgba(255,255,255,.2); border-radius: 6px; outline: 0; color: #fff; background: #404040; font: inherit; user-select: text; }
+.dialog input { height: 42px; }
+.dialog textarea { min-height: 86px; padding-top: 10px; resize: vertical; }
+.dialog input:focus,.dialog textarea:focus { border-color: #ffdb00; box-shadow: 0 0 0 3px rgba(255,219,0,.14); }
+.dialog .dialogError { margin-top: 12px; color: #f65252; font-size: 12px; }
+.dialogActions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 22px; }
+.dialogActions button { min-height: 36px; padding: 0 12px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 700; }
+.cancelButton { border: 1px solid rgba(255,255,255,.2) !important; background: #404040; }
+.deleteButton { background: #f65252; }
+.saveButton { color: #262626 !important; background: #ffdb00; }
+.dialogActions button:disabled { cursor: not-allowed; opacity: .55; }
+@media (max-width: 1300px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .header { padding: 0 18px; }
+  .localBadge { display: none; }
+  .titleRow { align-items: flex-start; flex-direction: column; }
+  .titleHeading { width: 100%; align-items: flex-start; justify-content: space-between; }
+  .titleActions { width: 100%; }
+  .primaryButton,.secondaryButton { flex: 1; }
+  .toolbar { flex-wrap: wrap; }
+  .search { width: 100%; }
+  .cover { width: 88px; height: 88px; flex-basis: 88px; }
+  .card { min-height: 112px; }
+}
+@media (prefers-reduced-motion: reduce) { .primaryButton,.secondaryButton { transition: none; } }

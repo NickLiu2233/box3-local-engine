@@ -95,11 +95,13 @@ export const EditModelPanelContainer = () => {
   const intl = useIntl();
   const editor = useEdit();
   const [currentTab, setCurrentTab] = useState<ModelType>(ModelType.Project);
-  useEffect(() => editor.replica.updateExtraProject(), [editor]);
+  useEffect(() => {
+    if (!clientConfig.isLocalGameServer) editor.replica.updateExtraProject();
+  }, [editor]);
   const [collapsed, setCollapsed] = useState(false);
 
   const tabs: TabItemType[] = useMemo(() => {
-    return [
+    const items = [
       {
         title: intl.formatMessage({ id: 'project' }),
         key: ModelType.Project,
@@ -116,6 +118,10 @@ export const EditModelPanelContainer = () => {
         content: <PublicModelPanel currentTab={currentTab} />,
       },
     ];
+    // Local creator models are scoped to the current map and stored by the
+    // standalone VOXA service. Cloud-only private/public libraries are not
+    // meaningful here.
+    return clientConfig.isLocalGameServer ? items.slice(0, 1) : items;
   }, [intl, currentTab]);
 
   return (

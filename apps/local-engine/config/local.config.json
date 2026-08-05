@@ -20,7 +20,7 @@
     "WEBSITE_URL": "http://127.0.0.1:3000",
     "HOME_URL": "http://127.0.0.1:3000",
     "ARENA_URL": "http://127.0.0.1:3000",
-    "VOXA_URL": "http://127.0.0.1:3000",
+    "VOXA_URL": "http://127.0.0.1:3001",
     "ENGINE_APIS_URL": "http://127.0.0.1:9966",
     "SENSORS_TRACKER_URL": "",
     "LOG_LEVEL": 2,

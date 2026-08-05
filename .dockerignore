@@ -21,6 +21,10 @@ apps/local-engine/dist/
 apps/local-engine/.build-lock/
 apps/local-engine/play-worlds/
 
+# VOXA models and uploaded blobs are creator-owned runtime data. They are
+# mounted into the VOXA container and must never be copied into an image.
+apps/voxa/data/
+
 # Local blobs created by the current workspace are never part of the engine
 # template. The runtime image is additionally assembled from referenced blobs
 # only, so these files cannot enter a distributed layer.

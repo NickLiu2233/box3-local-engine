@@ -1,6 +1,7 @@
 packages:
   - apps/game
   - apps/local-engine
+  - apps/voxa
   - services/game-server
   - internals/apis
   - internals/build-system
@@ -16,6 +17,7 @@ packages:
   - packages/mesher
   - packages/mudb
   - packages/recovery-schema
+  - packages/regl
   - packages/rewgpu
   - packages/script-api
   - packages/sdk

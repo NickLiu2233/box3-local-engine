@@ -144,6 +144,14 @@ const startsEditServer = runtimeOnly && runtimeMode !== 'play'
 const usesPlayerWeb = playMode
 const requiresServerBuild = true
 
+function dataStorageNamespace(id, allowExplicit = true) {
+  if (allowExplicit && process.env.BOX_DATA_STORAGE_NAMESPACE) {
+    return process.env.BOX_DATA_STORAGE_NAMESPACE
+  }
+  const prefix = process.env.BOX_DATA_STORAGE_NAMESPACE_PREFIX || ''
+  return `${prefix}${id || 'default'}`
+}
+
 function validateDefaultAvatar() {
   const manifestPath = fs.existsSync(defaultAvatarManifest)
     ? defaultAvatarManifest
@@ -368,6 +376,13 @@ async function main() {
             process.env.BOX_WORLD_ID ||
             process.env.BOX_SERVER_CONTENT_ID ||
             '0',
+          BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
+            projectId ||
+            releaseId ||
+            process.env.BOX_WORLD_ID ||
+            process.env.BOX_SERVER_CONTENT_ID ||
+            'default'
+          ),
           BOX_SERVER_NAME:
             process.env.BOX_WORLD_NAME ||
             process.env.BOX_SERVER_NAME ||
@@ -405,6 +420,10 @@ async function main() {
           HASH: world.manifest.permissionHash,
           VM: 'local',
           CONTENT_ID: world.id,
+          // Multi-world play deployments must never collapse all maps into a
+          // single data namespace. Server owners can add a prefix, while the
+          // actual world id always remains part of the namespace.
+          BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(world.id, false),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',

@@ -82,6 +82,21 @@ export const config = build({
   // script sql storage
   storageMode: S('STORAGE_MODE', ''),
 
+  // Persistent high-level game.storage backend. Database credentials are
+  // supplied by the server owner at runtime and never shipped to the client.
+  dataStorageDriver: S('BOX_DATA_STORAGE_DRIVER', 'legacy'),
+  dataStorageNamespace: S('BOX_DATA_STORAGE_NAMESPACE', ''),
+  groupStorageNamespace: S('BOX_GROUP_STORAGE_NAMESPACE', ''),
+  databaseUrl: S('BOX_DATABASE_URL', ''),
+  databaseSchema: S('BOX_DATABASE_SCHEMA', 'box_engine'),
+  databasePoolSize: N('BOX_DATABASE_POOL_SIZE', 10),
+  databaseSsl: B('BOX_DATABASE_SSL', false),
+  databaseSslRejectUnauthorized: B(
+    'BOX_DATABASE_SSL_REJECT_UNAUTHORIZED',
+    true,
+  ),
+  dataStorageLockTimeoutMs: N('BOX_DATA_STORAGE_LOCK_TIMEOUT_MS', 10_000),
+
   // url to remote game server
   traceAlloc: B('TRACEALLOC', false),
   traceDoubleFree: B('TRACEDOUBLEFFREE', false),

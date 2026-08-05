@@ -72,6 +72,7 @@ async function go() {
     containerName: serverConfig.containerName,
     playerLimit: serverConfig.playerLimit,
     storageMode: serverConfig.storageMode || 'local',
+    dataStorageDriver: serverConfig.dataStorageDriver || 'legacy',
     debug: serverConfig.debug,
   });
   initApis(serverConfig);

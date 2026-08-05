@@ -101,7 +101,13 @@ export function extractServerConfigForClient(
     ARENA_URL: '',
     WEBSITE_URL: '',
     HOME_URL: '',
-    VOXA_URL: '',
+    // VOXA is a separate localhost-only product in creator deployments. Its
+    // browser URL must remain available to the editor; play deployments never
+    // expose authoring tools.
+    VOXA_URL:
+      process.env.BOX_DEPLOYMENT_MODE === 'creator'
+        ? clientConfig.VOXA_URL
+        : '',
     PLATFORM_URL: '',
     BACKEND_SERVER_URL: runtimeURL,
     MAAS_BACKEND_SERVER_URL: runtimeURL,

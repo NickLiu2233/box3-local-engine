@@ -78,8 +78,13 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
     [dispatch],
   );
   const handleRenameModel = useCallback(
-    (modelId: number) => {
+    async (modelId: number) => {
       let modelName = '';
+      if (clientConfig.isLocalGameServer) {
+        const model = await apis.model.getModelDetailUsingGet(modelId);
+        setRename({ modelId, oldName: model?.modelName || '' });
+        return;
+      }
       const meshAssets = Object.entries(
         editor.state.replica.extraProjectInfo.meshAssets,
       );
@@ -148,7 +153,11 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
               Toast.success({
                 content: intl.formatMessage({ id: 'deleteSuccess' }),
               });
-              editor.replica.updateExtraProject();
+              if (clientConfig.isLocalGameServer) {
+                window.dispatchEvent(new Event('local-voxa-models-changed'));
+              } else {
+                editor.replica.updateExtraProject();
+              }
               if (selectedModel?.modelData.id === modelId) {
                 dispatch(setSelectedModel(undefined));
               }
@@ -201,7 +210,11 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
   }, []);
 
   const handleRenameSuccess = useCallback(() => {
-    editor.replica.updateExtraProject();
+    if (clientConfig.isLocalGameServer) {
+      window.dispatchEvent(new Event('local-voxa-models-changed'));
+    } else {
+      editor.replica.updateExtraProject();
+    }
     setRename(undefined);
   }, [editor.replica]);
 

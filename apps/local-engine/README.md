@@ -9,6 +9,7 @@
 | --- | --- | --- |
 | 创作端 | `pnpm creator` | 作品管理、编辑、预览和发布 |
 | 游玩端 | `pnpm play` | 玩家网页和多个只读作品 |
+| VOXA | `pnpm voxa` | 本地体素模型编辑和模型库 |
 | 开发模式 | `pnpm dev` | 启用源码编译的创作端 |
 
 创作者和服主只选择一种产品模式。启动器会协调内部进程，并在任一必要进程异常退出时停止
@@ -53,6 +54,12 @@ pnpm creator
 # 已有镜像时直接启动，不重新构建
 pnpm creator:up
 
+# VOXA 本地模型编辑器
+pnpm voxa
+
+# 已有 VOXA 镜像时直接启动
+pnpm voxa:up
+
 # 游玩端
 pnpm play
 
@@ -81,5 +88,8 @@ play-worlds/<manifest 中的作品 ID>/
 完整说明：
 
 - [项目 README](../../README.md)
+- [创作端构建与部署手册](../../docs/creator-deployment.md)
+- [游玩端构建与部署手册](../../docs/play-deployment.md)
 - [部署与联机指南](../../docs/deployment.md)
+- [VOXA 本地模型编辑器手册](../../docs/voxa-deployment.md)
 - [本地工程与发布包](../../docs/projects.md)

@@ -1,7 +1,7 @@
 # Box Local Engine
 
-Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供两种完整运行形态：创作者使用
-的创作端，以及交付给玩家或私服主的游玩端。
+Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创作端和游玩端，并附带可独立
+部署的 VOXA 本地模型编辑器。
 
 仓库可以独立安装、构建和运行，不依赖原始 `boxes` 工程、私有 npm 仓库、云端 CDN、
 在线账号、Redis、RabbitMQ 或 BOX 内部服务。地图、默认人物、动画和基础运行资源均从本地
@@ -13,12 +13,13 @@ Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供两
 | --- | --- | --- | --- |
 | 创作端 | 管理、编辑、预览和发布作品 | `pnpm creator` | `/` |
 | 游玩端 | 从固定目录提供多个只读作品 | `pnpm play` | `/` |
+| VOXA | 制作和管理本地体素模型 | `pnpm voxa` | `http://127.0.0.1:3001/` |
 
 每种形态都是一个完整部署。启动器会自动协调网页和所需运行时，使用者只选择创作端或
 游玩端，不再分别构建、启动其他子项目。
 
-两种部署都只使用一个网页端口。内部编辑、预览和多人运行进程只通过同源路径访问，不需要
-额外开放或配置端口。
+游玩端只使用一个公开网页端口。创作端除网页端口外，还会在宿主机回环地址映射编辑和预览
+运行时端口；这些端口只服务本机编辑器，不应向公网开放。
 
 游玩端使用真正的 play-only 构建。编辑页面、项目管理接口、管理员实现和 Monaco 不会
 进入玩家网页产物，并且游戏运行时只读取发布数据。它不是在完整创作端上隐藏几个按钮。
@@ -51,6 +52,12 @@ Docker 生产部署：
 
 ```bash
 pnpm creator
+```
+
+需要制作体素模型时，再独立启动 VOXA：
+
+```bash
+pnpm voxa
 ```
 
 打开：
@@ -158,6 +165,9 @@ TypeScript 源文件。浏览器仍会取得渲染当前游戏所必需的模型
 完整配置、局域网连接和 HTTPS/WSS 反向代理说明参阅
 [部署与联机指南](docs/deployment.md)。
 
+VOXA 的独立镜像、数据备份和创作端接入参阅
+[VOXA 本地模型编辑器构建与部署手册](docs/voxa-deployment.md)。
+
 ## 常用配置
 
 | 变量 | 默认值 | 作用 |
@@ -166,6 +176,8 @@ TypeScript 源文件。浏览器仍会取得渲染当前游戏所必需的模型
 | `BOX_WORLD_NAME` | `BOX 世界` | 玩家看到的世界名称 |
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 最大玩家数 |
 | `PERMISSION_TOKEN_SECRET` | 空 | 正式部署使用的稳定随机密钥 |
+| `BOX_DATA_STORAGE_DRIVER` | `legacy` | 服主设为 `postgres` 后启用持久化数据空间 |
+| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串，只进入服务端 |
 
 公网部署时只需把域名反向代理到 `BOX_PORT`，并允许 WebSocket Upgrade。HTTPS 页面
 会自动使用同源 WSS，不需要再配置第二个运行时域名。
@@ -217,11 +229,15 @@ BOX 的服务器或 CDN。
 
 ## 更多文档
 
+- [创作端构建与部署手册](docs/creator-deployment.md)
+- [游玩端构建、分发与多地图部署手册](docs/play-deployment.md)
 - [部署与联机指南](docs/deployment.md)
+- [作品创建、编辑与发布](docs/projects.md)
 - [本地工程与发布包](docs/projects.md)
 - [Local Engine 启动器](apps/local-engine/README.md)
 - [浏览器界面内部说明](apps/game/README.md)
 - [游戏运行时内部说明](services/game-server/README.md)
+- [PostgreSQL 数据空间部署手册](docs/postgresql-data-storage.md)
 
 ## 许可证
 

@@ -19,6 +19,8 @@ import { ScrollAction, ScrollManage } from '../../scroll-trigger';
 
 import style from './index.module.scss';
 import { useEdit } from 'src/client/edit/edit-context';
+import { clientConfig } from 'src/config/client';
+import { fetchModelList } from '.';
 
 /**
  * 从 extraProject 中获取所有项目模型（不分页,且按更新时间倒序排序）
@@ -38,7 +40,16 @@ export const ProjectModelPanel = ({
   const projectModelActionsRef = useRef<Actions>(null);
   const projectModelScrollRef = useRef<ScrollManage>(null);
 
-  const getModelList = useCallback(() => {
+  const getModelList = useCallback(async () => {
+    if (clientConfig.isLocalGameServer) {
+      const list =
+        (await fetchModelList({
+          modelType: ModelType.Project,
+          modelName: searchName,
+        })) || [];
+      setModelList(list);
+      return;
+    }
     const { meshAssets } = editor.state.replica.extraProjectInfo;
     let list: ModelData[] = Object.entries(meshAssets).map(
       ([key, meshAsset]) => {
@@ -74,6 +85,12 @@ export const ProjectModelPanel = ({
   // 初始化列表 & 订阅刷新列表
   useEffect(() => {
     getModelList();
+    if (clientConfig.isLocalGameServer) {
+      window.addEventListener('local-voxa-models-changed', getModelList);
+      return () => {
+        window.removeEventListener('local-voxa-models-changed', getModelList);
+      };
+    }
     editor.replica.onExtraProjectChange.sub(getModelList);
     return () => {
       editor.replica.onExtraProjectChange.unsub(getModelList);
@@ -96,7 +113,7 @@ export const ProjectModelPanel = ({
   }, [dispatch]);
 
   const actionsMenu: MenuItemOptions[] = useMemo(() => {
-    return [
+    const actions = [
       {
         id: ModelAction.Edit,
         text: intl.formatMessage({ id: 'edit' }),
@@ -114,6 +131,9 @@ export const ProjectModelPanel = ({
         text: intl.formatMessage({ id: 'remove' }),
       },
     ];
+    return clientConfig.isLocalGameServer
+      ? actions.filter((action) => action.id !== ModelAction.Copy)
+      : actions;
   }, [intl]);
 
   const handleMenuAction = useCallback(
