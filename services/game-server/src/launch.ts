@@ -78,16 +78,6 @@ async function go() {
   initApis(serverConfig);
   setRootLogLevel(serverConfig.LOG_LEVEL); // 拿到配置后更新 log level
 
-  // 只在CI deploy阶段执行通过backend将最新的commit SHA保存到数据库中，用来作为基础镜像地址启动游戏container
-  if (serverConfig.isCIDeploy) {
-    rootLogger.info('ImageHash: ', serverConfig.containerImageVersion);
-    if (!serverConfig) {
-      throw new Error('Server config is not valid');
-    }
-    const { startDeployServer } = await import('./deploy/entry');
-    startDeployServer(serverConfig);
-    return;
-  }
   rootLogger.info('game server.  node' + process.version);
 
   await startServer(serverConfig);

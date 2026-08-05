@@ -6,9 +6,14 @@ import { getServerConfig } from 'configs/server';
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   const { hash, mode } = req.query;
 
-  if (typeof hash !== 'string' || (mode !== 'play' && mode !== 'edit')) {
+  if (
+    typeof hash !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(hash) ||
+    (mode !== 'play' && mode !== 'edit')
+  ) {
     return res.status(400).end();
   }
+  res.setHeader('Cache-Control', 'no-store');
 
   if (process.env.BOX_DEPLOYMENT_MODE === 'play' && mode !== 'play') {
     return res.status(404).end();
@@ -26,6 +31,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET, OPTIONS');
+    return res.status(405).end();
   }
 
   const serverConfig = await getServerConfig();

@@ -41,7 +41,7 @@ pnpm play
 ## 玩家连接链路
 
 ```text
-POST /api/session
+POST /api/createSession
       ↓
 返回 sessionId 和 socketServerUrl
       ↓
@@ -55,12 +55,14 @@ GET /block/:hash 下载世界和人物资源
 - `GET /block/:hash`：允许
 - `POST /block`：返回 `403 Forbidden`
 
-健康检查与服务器信息：
+健康检查：
 
 ```text
 GET /api/health-check
-GET /api/server-info
 ```
+
+`/api/session` 与 `/api/server-info` 属于旧的游戏服务直连兼容入口，本地产品默认不开放。
+只有服主明确设置 `BOX_DIRECT_SESSION_API=true` 并直接暴露游戏服务端口时才会注册。
 
 ## 环境变量
 

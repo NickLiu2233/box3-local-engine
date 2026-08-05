@@ -62,7 +62,9 @@ pnpm voxa
 
 打开：
 
-- 创作端：<http://127.0.0.1:3000/>
+- 创作端：<http://127.0.0.1:3002/>
+- 游玩端：<http://127.0.0.1:3000/>
+- VOXA：<http://127.0.0.1:3001/>
 
 每个作品都有独立工程目录。作品管理器负责创建、导入、编辑、发布和导出，不需要手动操作
 工程中的 `source/`、`releases/` 或 blob 文件。选择作品后，管理器会打开对应的
@@ -97,8 +99,10 @@ pnpm creator
 
 该命令只构建创作端，不会构建游玩端。
 
-创作端网页使用 `127.0.0.1:3000`。编辑和本机预览的 WebSocket 分别使用仅绑定本机的
+创作端网页使用 `127.0.0.1:3002`。编辑和本机预览的 WebSocket 分别使用仅绑定本机的
 `127.0.0.1:9967` 与 `127.0.0.1:9966`，不会暴露到局域网或公网。
+
+游玩端默认使用 `3000`，因此可以和创作端、VOXA 同时运行。
 
 镜像已经构建过，只启动创作端、不重新构建：
 
@@ -148,6 +152,10 @@ play-worlds/
 所有有效地图。私服主只有镜像 tar、没有本仓库时，应使用
 [部署与联机指南](docs/deployment.md#只分发镜像的多地图部署)中的 Compose 配置。
 
+需要在网页中管理地图时，可以配置 `BOX_PLAY_ADMIN_TOKEN` 和
+`BOX_PLAY_LIBRARY_READ_ONLY=false`。服主在首页验证后即可导入、导出 `.boxplay` 游玩包
+或删除地图。默认不配置密钥，管理接口不会开放。
+
 停止当前部署：
 
 ```bash
@@ -172,15 +180,22 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 
 | 变量 | 默认值 | 作用 |
 | --- | --- | --- |
-| `BOX_PORT` | `3000` | 当前产品唯一公开端口 |
+| `BOX_PLAY_PORT` | `3000` | 游玩端公开端口 |
+| `BOX_CREATOR_PORT` | `3002` | 创作端本机端口 |
 | `BOX_WORLD_NAME` | `BOX 世界` | 玩家看到的世界名称 |
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 最大玩家数 |
 | `PERMISSION_TOKEN_SECRET` | 空 | 正式部署使用的稳定随机密钥 |
+| `BOX_SERVER_PUBLIC_URL` | 空 | 公网反向代理后的完整 HTTPS 地址 |
+| `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
+| `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
+| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 每个 IP 每分钟创建 Session 上限 |
 | `BOX_DATA_STORAGE_DRIVER` | `legacy` | 服主设为 `postgres` 后启用持久化数据空间 |
 | `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串，只进入服务端 |
+| `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧数据时填写原作品 ID，沿用旧式双表表名 |
 
-公网部署时只需把域名反向代理到 `BOX_PORT`，并允许 WebSocket Upgrade。HTTPS 页面
-会自动使用同源 WSS，不需要再配置第二个运行时域名。
+公网部署时把域名反向代理到 `BOX_PLAY_PORT`，允许 WebSocket Upgrade，并填写
+`BOX_SERVER_PUBLIC_URL=https://你的域名`。只有反向代理会覆盖并清洗
+`X-Forwarded-For/Host/Proto` 时才设置 `BOX_TRUST_PROXY=true`。
 
 ## 常用命令
 

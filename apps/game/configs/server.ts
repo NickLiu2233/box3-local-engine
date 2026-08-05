@@ -14,6 +14,8 @@ export interface EnvironmentConfig {
   localGameServerURL: string;
   localEditServerURL: string;
   remoteGameServerURL: string;
+  serverPublicUrl: string;
+  trustProxy: boolean;
 
   mockJavaBackend?: boolean;
   mockJavaUrl?: string;
@@ -60,6 +62,8 @@ export function getEnvironmentConfig(): EnvironmentConfig &
         process.env.LOCAL_GAME_SERVER_URL ||
         '',
       remoteGameServerURL: process.env.BOX_REMOTE_SERVER_URL || '',
+      serverPublicUrl: process.env.BOX_SERVER_PUBLIC_URL || '',
+      trustProxy: process.env.BOX_TRUST_PROXY === 'true',
       mockJavaBackend: process.env.MOCK_JAVA_BACKEND === 'true',
       mockJavaUrl: process.env.MOCK_JAVA_URL,
 

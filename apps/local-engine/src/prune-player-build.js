@@ -5,7 +5,6 @@ const path = require('path')
 
 const removedPageRoutes = new Set([
   '/projects',
-  '/map/[mapId]/recovery',
   '/api/local-projects',
   '/api/local-projects/[id]',
   '/api/local-projects/[id]/export',
@@ -57,13 +56,10 @@ function prunePlayerBuild(nextRoot) {
   const removablePaths = [
     path.join(nextRoot, 'server/pages/projects.js'),
     path.join(nextRoot, 'server/pages/projects.js.nft.json'),
-    path.join(nextRoot, 'server/pages/map/[mapId]/recovery.js'),
-    path.join(nextRoot, 'server/pages/map/[mapId]/recovery.js.nft.json'),
     path.join(nextRoot, 'server/pages/api/local-projects'),
     path.join(nextRoot, 'server/pages/api/local-projects.js'),
     path.join(nextRoot, 'server/pages/api/local-projects.js.nft.json'),
     path.join(nextRoot, 'server/app/e'),
-    path.join(nextRoot, 'static/chunks/pages/map'),
     path.join(nextRoot, 'static/chunks/app/e'),
     path.join(nextRoot, 'static/css/app/e'),
   ]

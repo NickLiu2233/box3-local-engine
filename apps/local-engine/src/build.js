@@ -63,7 +63,18 @@ const sharedEnv = {
   IS_LOCAL_GAME_SERVER: 'true',
   LOCAL_GAME_SERVER_URL: 'http://127.0.0.1:9966',
   LOCAL_EDIT_SERVER_URL: 'http://127.0.0.1:9967',
-  ARENA_URL: 'http://127.0.0.1:3000',
+  ARENA_URL: playBuild
+    ? 'http://127.0.0.1:3000'
+    : 'http://127.0.0.1:3002',
+  WEBSITE_URL: playBuild
+    ? 'http://127.0.0.1:3000'
+    : 'http://127.0.0.1:3002',
+  HOME_URL: playBuild
+    ? 'http://127.0.0.1:3000'
+    : 'http://127.0.0.1:3002',
+  PLATFORM_URL: playBuild
+    ? 'http://127.0.0.1:3000'
+    : 'http://127.0.0.1:3002',
   CACHE_IPFS: 'true',
   BOX_PLAY_BUILD: playBuild ? 'true' : 'false',
   BUILD_SERVER_URL: '',

@@ -73,6 +73,26 @@ function getReachableProjectHashes(blobRoot, rootHash) {
   return hashes
 }
 
+// Docker Desktop bind mounts on macOS can turn fs.copyFileSync outputs into
+// mode 0200 files. The container then cannot read its own exported resources.
+// Copy through explicitly-created descriptors so the destination remains 0644.
+function copyReadableFileSync(source, destination) {
+  fs.mkdirSync(path.dirname(destination), { recursive: true })
+  const sourceFd = fs.openSync(source, 'r')
+  const destinationFd = fs.openSync(destination, 'w', 0o644)
+  const buffer = Buffer.allocUnsafe(1024 * 1024)
+  try {
+    let bytesRead
+    do {
+      bytesRead = fs.readSync(sourceFd, buffer, 0, buffer.length, null)
+      if (bytesRead) fs.writeSync(destinationFd, buffer, 0, bytesRead)
+    } while (bytesRead)
+  } finally {
+    fs.closeSync(sourceFd)
+    fs.closeSync(destinationFd)
+  }
+}
+
 function createReleaseData(sourceRoot, releaseDataRoot, permissionHash) {
   const sourceBlobRoot = path.join(sourceRoot, 'blobs')
   const releaseBlobRoot = path.join(releaseDataRoot, 'blobs')
@@ -90,9 +110,9 @@ function createReleaseData(sourceRoot, releaseDataRoot, permissionHash) {
     if (!fs.existsSync(source)) {
       throw new Error(`发布所需的资源不存在：${hash}`)
     }
-    fs.copyFileSync(source, path.join(releaseBlobRoot, hash))
+    copyReadableFileSync(source, path.join(releaseBlobRoot, hash))
   }
-  fs.copyFileSync(
+  copyReadableFileSync(
     path.join(sourceRoot, 'project-state.json'),
     path.join(releaseDataRoot, 'project-state.json'),
   )
@@ -414,8 +434,93 @@ function getLaunchTarget({ project, release }) {
 
 function includePlayImage(destination) {
   const config = ensurePlayImageArchive()
-  fs.copyFileSync(config.archive, destination)
+  copyReadableFileSync(config.archive, destination)
   return config
+}
+
+function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
+  const releaseDataRoot = path.join(releaseRoot, 'data')
+  const destinationDataRoot = path.join(destination, 'data')
+  const runtimeManifest = readJSON(
+    path.join(releaseDataRoot, 'runtime-blobs.json'),
+    null,
+  )
+  if (!Array.isArray(runtimeManifest?.hashes)) {
+    throw new Error('发布版本缺少资源清单，请重新发布该版本')
+  }
+
+  copyReadableFileSync(
+    path.join(releaseRoot, 'manifest.json'),
+    path.join(destination, 'manifest.json'),
+  )
+  copyReadableFileSync(
+    path.join(releaseDataRoot, 'project-state.json'),
+    path.join(destinationDataRoot, 'project-state.json'),
+  )
+  fs.writeFileSync(
+    path.join(destinationDataRoot, 'runtime-blobs.json'),
+    `${JSON.stringify(runtimeManifest, null, 2)}\n`,
+  )
+
+  for (const hash of runtimeManifest.hashes) {
+    if (typeof hash !== 'string' || !/^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash)) {
+      throw new Error('发布版本的资源清单无效')
+    }
+    const releasedBlob = path.join(releaseDataRoot, 'blobs', hash)
+    const sourceBlob = path.join(sourceRoot, 'blobs', hash)
+    const destinationBlob = path.join(destinationDataRoot, 'blobs', hash)
+    try {
+      // Docker Desktop may report R_OK for an old 0200 file and still fail
+      // with ENOENT when it is actually opened, so probe by copying it.
+      copyReadableFileSync(releasedBlob, destinationBlob)
+    } catch (error) {
+      if (!['EACCES', 'ENOENT', 'EPERM'].includes(error?.code)) throw error
+      // Older releases created through Docker Desktop may contain unreadable
+      // 0200 files. The source blob with the same content hash is byte-identical.
+      try {
+        copyReadableFileSync(sourceBlob, destinationBlob)
+      } catch (sourceError) {
+        if (!['EACCES', 'ENOENT', 'EPERM'].includes(sourceError?.code)) {
+          throw sourceError
+        }
+        throw new Error(`发布版本缺少资源：${hash}`)
+      }
+    }
+  }
+}
+
+function safeFilename(value, fallback) {
+  return String(value || '')
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+    .trim()
+    .slice(0, 80) || fallback
+}
+
+function exportPlayBundle(reference) {
+  const target = getLaunchTarget({ release: reference })
+  const root = projectRoot(target.id)
+  const releaseRoot = path.join(root, 'releases', target.version)
+  const manifest = readJSON(path.join(releaseRoot, 'manifest.json'))
+  const exportRoot = path.join(distributionRoot, '.exports')
+  const nonce = `${process.pid}_${Date.now()}`
+  const temporaryRoot = path.join(exportRoot, `${target.id}_${target.version}_${nonce}`)
+  const worldRoot = path.join(temporaryRoot, target.id)
+  const filename = `${safeFilename(manifest.projectName, '作品')}_${target.id}_${safeFilename(target.version, 'latest')}.boxplay`
+  const archivePath = path.join(exportRoot, `${nonce}.boxplay`)
+
+  fs.mkdirSync(exportRoot, { recursive: true })
+  try {
+    copyReleaseWorld(releaseRoot, path.join(root, 'source'), worldRoot)
+    runTar(
+      ['-czf', archivePath, '-C', temporaryRoot, target.id],
+      'Unable to export play bundle',
+    )
+    return { archivePath, temporaryRoot, filename }
+  } catch (error) {
+    fs.rmSync(archivePath, { force: true })
+    fs.rmSync(temporaryRoot, { recursive: true, force: true })
+    throw error
+  }
 }
 
 function packageProject(reference, outputDirectory, options = {}) {
@@ -439,7 +544,11 @@ function packageProject(reference, outputDirectory, options = {}) {
   fs.rmSync(temporaryBundleRoot, { recursive: true, force: true })
   try {
     fs.mkdirSync(temporaryBundleRoot, { recursive: true })
-    fs.cpSync(releaseRoot, path.join(temporaryBundleRoot, 'world'), { recursive: true })
+    copyReleaseWorld(
+      releaseRoot,
+      path.join(projectRoot(target.id), 'source'),
+      path.join(temporaryBundleRoot, 'world'),
+    )
 
     if (options.includeImages) {
       playImageConfig = includePlayImage(
@@ -464,7 +573,7 @@ function packageProject(reference, outputDirectory, options = {}) {
     })
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'compose.yml'),
-      `services:\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:-}\n      BOX_DATA_STORAGE_DRIVER: \${BOX_DATA_STORAGE_DRIVER:-legacy}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:-}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-}\n    ports:\n      - \"\${BOX_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n`,
+      `services:\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:-}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_DATA_STORAGE_DRIVER: \${BOX_DATA_STORAGE_DRIVER:-legacy}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:-}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-}\n    ports:\n      - \"\${BOX_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n`,
     )
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'README.md'),
@@ -489,6 +598,7 @@ module.exports = {
   createProject,
   deleteProject,
   exportProject,
+  exportPlayBundle,
   getLaunchTarget,
   getProject,
   listProjects,

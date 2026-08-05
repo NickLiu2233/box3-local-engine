@@ -74,8 +74,17 @@ const javaAxiosInstance = initAxios(
 const uploadApi = new Upload(axiosInstance);
 const modelApi = new Model(axiosInstance);
 const modelsApi = new Models(axiosInstance);
+const createraApi = new Createra(axiosInstance);
 
 if (clientConfig.isLocalGameServer) {
+  createraApi.nextGameUidListUsingGet = async ({ num }) => {
+    const count = Math.max(0, Math.min(1000, Number(num) || 0));
+    return Array.from(
+      { length: count },
+      () => `local-${globalThis.crypto.randomUUID()}`,
+    );
+  };
+
   uploadApi.fileUploadPost = async ({ file }) => {
     if (!file) throw new Error('请选择要上传的文件');
     const response = await fetch('/runtime/edit/block', {
@@ -160,7 +169,7 @@ export const apis = {
   // java backend only
   user: new JavaUser(javaAxiosInstance),
   // createra backend only
-  createra: new Createra(axiosInstance),
+  createra: createraApi,
   // createra collaboration
   collaboration: new Collaboration(axiosInstance),
   // createra creatorStore

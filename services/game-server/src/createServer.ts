@@ -21,6 +21,7 @@ import { Logger as LegacyLogger } from '@box-local/utils/logger';
 import * as http from 'http';
 import * as https from 'https';
 import type { Logger } from 'pino';
+import { randomUUID } from 'crypto';
 import * as url from 'url';
 import { type BackendSocket } from '../backendSocket';
 import { ServerRuntimeConfig } from '../config/server';
@@ -53,7 +54,7 @@ export type HttpRoutes = {
 
 // This session id is just used for identifying a socket, should not use cookie session id
 function genSessionId() {
-  return Math.random().toString(36).substr(2);
+  return randomUUID();
 }
 function getLoginStr(x: string): 'guest' | 'user' | 'admin' | '' | 'cookie' {
   const result = x.toLowerCase();
@@ -132,6 +133,7 @@ export async function createGameServer(spec: {
   const sessionService = new GameSession(
     spec.legacyLogger.create('session'),
     serverConfig.method === 'local',
+    Math.max(5_000, serverConfig.sessionTtlMs),
   );
 
   // create the game server
@@ -333,6 +335,24 @@ export async function createGameServer(spec: {
   const getHeader = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
 
+  const sessionAttempts = new Map<string, { count: number; resetAt: number }>();
+  const allowSessionAttempt = (ipAddress: string) => {
+    const now = Date.now();
+    const limit = Math.max(1, serverConfig.sessionRateLimitPerMinute);
+    const current = sessionAttempts.get(ipAddress);
+    if (!current || current.resetAt <= now) {
+      sessionAttempts.set(ipAddress, { count: 1, resetAt: now + 60_000 });
+      return true;
+    }
+    current.count += 1;
+    if (sessionAttempts.size > 10_000) {
+      for (const [key, value] of sessionAttempts) {
+        if (value.resetAt <= now) sessionAttempts.delete(key);
+      }
+    }
+    return current.count <= limit;
+  };
+
   const setPublicCors = (
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -347,15 +367,22 @@ export async function createGameServer(spec: {
   };
 
   const getPublicServerURL = (req: http.IncomingMessage) => {
-    const configured = process.env.BOX_SERVER_PUBLIC_URL;
+    const configured = serverConfig.serverPublicUrl;
     if (configured) {
       return configured.replace(/\/$/, '');
     }
-    const host =
-      getHeader(req.headers['x-forwarded-host']) || req.headers.host || '';
+    const host = serverConfig.trustProxy
+      ? getHeader(req.headers['x-forwarded-host']) || req.headers.host || ''
+      : req.headers.host || '';
+    const forwardedProtocol = serverConfig.trustProxy
+      ? getHeader(req.headers['x-forwarded-proto'])
+      : undefined;
     const protocol =
-      getHeader(req.headers['x-forwarded-proto']) ||
-      (serverConfig.isHttps ? 'https' : 'http');
+      forwardedProtocol === 'https' || forwardedProtocol === 'http'
+        ? forwardedProtocol
+        : serverConfig.isHttps
+          ? 'https'
+          : 'http';
     return `${protocol}://${host}`;
   };
 
@@ -378,11 +405,30 @@ export async function createGameServer(spec: {
       return;
     }
 
+    if (
+      !direct &&
+      serverConfig.BACKEND_AUTH_CODE &&
+      req.headers.authorization !== serverConfig.BACKEND_AUTH_CODE
+    ) {
+      res.writeHead(403);
+      res.end('forbidden');
+      return;
+    }
+
     const body = await bodyParse(req);
-    const host =
-      getHeader(req.headers['x-forwarded-host']) || req.headers.host || '';
+    const requestIP = direct
+      ? getRealIP(req, serverConfig.trustProxy) || ''
+      : body.ip || getRealIP(req, false) || '';
+    if (!allowSessionAttempt(requestIP || 'unknown')) {
+      res.writeHead(429, { 'Retry-After': '60' });
+      res.end('too many session requests');
+      return;
+    }
+    const host = serverConfig.trustProxy
+      ? getHeader(req.headers['x-forwarded-host']) || req.headers.host || ''
+      : req.headers.host || '';
     const result = await initUserData(
-      body.ip || getRealIP(req) || '',
+      requestIP,
       body.reqUrl || req.headers.origin || '',
       body.cookie || '',
       body.fingerPrint || '',
@@ -410,7 +456,7 @@ export async function createGameServer(spec: {
   spec.httpRoutes['/createSession'] = (req, res) =>
     createSession(req, res, false);
 
-  if (serverConfig.mode === 'play') {
+  if (serverConfig.mode === 'play' && serverConfig.directSessionApi) {
     spec.httpRoutes['/api/server-info'] = async (req, res) => {
       setPublicCors(req, res);
       if (req.method === 'OPTIONS') {

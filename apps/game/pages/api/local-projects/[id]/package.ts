@@ -1,10 +1,10 @@
+import fs from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../../server/local-project-manager';
+import { allowCreatorApi } from '../../../../server/creator-api-security';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
-    return res.status(404).end();
-  }
+  if (!allowCreatorApi(req, res)) return;
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end();
@@ -16,11 +16,24 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   try {
     const manager = getLocalProjectManager();
-    return res.status(201).json({
-      distribution: manager.packageProject(`${id}@${version}`, undefined, {
-        includeImages: true,
-      }),
+    const bundle = manager.exportPlayBundle(`${id}@${version}`);
+    const cleanup = () => {
+      fs.rmSync(bundle.archivePath, { force: true });
+      fs.rmSync(bundle.temporaryRoot, { recursive: true, force: true });
+    };
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', `attachment; filename="world.boxplay"; filename*=UTF-8''${encodeURIComponent(bundle.filename)}`);
+    res.setHeader('Cache-Control', 'no-store');
+    const stream = fs.createReadStream(bundle.archivePath);
+    stream.on('error', () => {
+      cleanup();
+      if (!res.headersSent) res.status(500).end();
+      else res.end();
     });
+    stream.on('close', cleanup);
+    res.on('close', cleanup);
+    stream.pipe(res);
+    return undefined;
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }

@@ -35,6 +35,17 @@ const config = {
   productionBrowserSourceMaps: false,
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../..'),
+  // Runtime-owned content must never be captured in the standalone server or
+  // Docker image. These directories are mounted by the host after deployment.
+  outputFileTracingExcludes: {
+    '*': [
+      '../local-engine/projects/**/*',
+      '../local-engine/data/**/*',
+      '../local-engine/dist/**/*',
+      '../local-engine/play-worlds/**/*',
+      '../voxa/data/**/*',
+    ],
+  },
   assetPrefix: (!isLocalDev && CDNPath) || '',
   experimental: {
     // Runtime assets can be much larger than ordinary page responses. Keep
@@ -131,7 +142,7 @@ const config = {
           },
           {
             key: 'Access-Control-Allow-Methods',
-            value: 'POST,OPTIONS',
+            value: 'GET,OPTIONS',
           },
           {
             key: 'Access-Control-Allow-Headers',
@@ -148,7 +159,7 @@ const config = {
           },
           {
             key: 'Access-Control-Allow-Methods',
-            value: 'POST,OPTIONS',
+            value: 'GET,OPTIONS',
           },
           {
             key: 'Access-Control-Allow-Headers',
@@ -169,7 +180,7 @@ const config = {
           },
           {
             key: "Access-Control-Allow-Headers",
-            value: "*"
+            value: "Content-Type, Authorization, Auth"
           },
         ],
       }

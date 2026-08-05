@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../server/local-project-manager';
+import { allowCreatorApi } from '../../../server/creator-api-security';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
-    return res.status(404).end();
-  }
+  if (!allowCreatorApi(req, res)) return;
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   if (!id) return res.status(400).json({ message: 'Project ID is required' });
   try {

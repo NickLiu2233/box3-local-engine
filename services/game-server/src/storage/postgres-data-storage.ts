@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient, type PoolConfig, type QueryResultRow } from 'pg';
 
 import type { ListPageOptions } from '@box-local/schema/api/js/storage';
@@ -12,6 +13,12 @@ type TicketConnection = {
   client: PoolClient;
   identity: string;
   timeout: ReturnType<typeof setTimeout>;
+};
+
+type StorageTables = {
+  baseName: string;
+  data: string;
+  keys: string;
 };
 
 export type PostgresDataStorageOptions = {
@@ -30,6 +37,12 @@ export type PostgresDataStorageOptions = {
 };
 
 const schemaPattern = /^[a-z_][a-z0-9_]{0,62}$/;
+const storageNamePattern = /^[a-zA-Z0-9_]+$/;
+const modePattern = /^[a-zA-Z0-9_]+$/;
+
+function quoteIdentifier(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
 
 function requireNamespace(value: string, label: string) {
   const normalized = value.trim();
@@ -39,11 +52,34 @@ function requireNamespace(value: string, label: string) {
   return normalized;
 }
 
+function createObjectId() {
+  return randomUUID().replace(/-/g, '').slice(0, 16);
+}
+
+function createVersion() {
+  return randomUUID().replace(/-/g, '').slice(0, 26).toUpperCase();
+}
+
+function parseStoredValue(value: unknown) {
+  let parsed = value;
+  if (typeof parsed === 'string') {
+    parsed = JSON.parse(parsed);
+  }
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    Object.prototype.hasOwnProperty.call(parsed, 'content')
+  ) {
+    return (parsed as { content: unknown }).content;
+  }
+  return parsed;
+}
+
 function rowToValue(row: QueryResultRow | undefined): ReturnValue | undefined {
   if (!row) return undefined;
   return {
     key: String(row.key),
-    value: row.value,
+    value: parseStoredValue(row.value) as ReturnValue['value'],
     version: String(row.version),
     createTime: new Date(row.created_at).valueOf(),
     updateTime: new Date(row.updated_at).valueOf(),
@@ -53,8 +89,8 @@ function rowToValue(row: QueryResultRow | undefined): ReturnValue | undefined {
 export class PostgresDataStorage implements CommonGameDataServer {
   private readonly pool: Pool;
   private readonly ready: Promise<void>;
-  private readonly tableName: string;
   private readonly tickets = new Map<string, TicketConnection>();
+  private readonly tableReady = new Map<string, Promise<StorageTables>>();
 
   constructor(private readonly options: PostgresDataStorageOptions) {
     if (!options.connectionString.trim()) {
@@ -65,7 +101,9 @@ export class PostgresDataStorage implements CommonGameDataServer {
     }
     requireNamespace(options.projectNamespace, 'project data storage namespace');
     requireNamespace(options.groupNamespace, 'group data storage namespace');
-    this.tableName = `"${options.schema}"."data_entries"`;
+    if (!modePattern.test(options.mode)) {
+      throw new Error('data storage mode must contain only letters, numbers, and underscores');
+    }
     const poolConfig: PoolConfig = {
       connectionString: options.connectionString,
       max: Math.max(1, Math.min(100, options.poolSize || 10)),
@@ -85,42 +123,149 @@ export class PostgresDataStorage implements CommonGameDataServer {
   }
 
   private namespace(tableType: TableType) {
-    const base = tableType === 'group'
+    return tableType === 'group'
       ? this.options.groupNamespace
       : this.options.projectNamespace;
-    return `${tableType}:${base}:${this.options.mode}`;
+  }
+
+  /**
+   * Preserve the original boxes naming convention:
+   *   group_play_100010141_player (+ _keys)
+   *   play_100010141_player       (+ _keys)
+   */
+  private tableBaseName(tableType: TableType, storageName: string) {
+    if (!storageNamePattern.test(storageName) || storageName.length > 50) {
+      throw new Error(
+        'data storage name must contain only letters, numbers, and underscores and be at most 50 characters',
+      );
+    }
+    const groupPrefix = tableType === 'group' ? 'group_' : '';
+    const baseName = `${groupPrefix}${this.options.mode}_${this.namespace(tableType)}_${storageName}`;
+    if (Buffer.byteLength(`${baseName}_keys`, 'utf8') > 63) {
+      throw new Error(
+        `legacy-compatible PostgreSQL table name is too long: ${baseName}_keys`,
+      );
+    }
+    return baseName;
+  }
+
+  private tableBaseCandidates(tableType: TableType, storageName: string) {
+    const canonical = this.tableBaseName(tableType, storageName);
+    if (tableType === 'group') return [canonical];
+    // Some older boxes deployments used an explicit map_ prefix. Prefer the
+    // canonical unprefixed name for new tables, but accept either on restore.
+    return [
+      canonical,
+      `map_${this.options.mode}_${this.namespace(tableType)}_${storageName}`,
+    ];
+  }
+
+  private tablesForBase(baseName: string): StorageTables {
+    const schema = quoteIdentifier(this.options.schema);
+    return {
+      baseName,
+      data: `${schema}.${quoteIdentifier(baseName)}`,
+      keys: `${schema}.${quoteIdentifier(`${baseName}_keys`)}`,
+    };
+  }
+
+  private tables(tableType: TableType, storageName: string): StorageTables {
+    return this.tablesForBase(this.tableBaseName(tableType, storageName));
   }
 
   private identity(tableType: TableType, table: string, key: string) {
-    return `${this.namespace(tableType)}\u0000${table}\u0000${key}`;
+    return `${this.tableBaseName(tableType, table)}\u0000${key}`;
   }
 
   private async initialize() {
-    await this.pool.query(`CREATE SCHEMA IF NOT EXISTS "${this.options.schema}"`);
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS ${this.tableName} (
-        namespace TEXT NOT NULL,
-        storage_name TEXT NOT NULL,
-        key TEXT NOT NULL,
-        value JSONB NOT NULL,
-        version BIGINT NOT NULL DEFAULT 1,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        PRIMARY KEY (namespace, storage_name, key)
-      )
-    `);
-    await this.pool.query(`
-      CREATE INDEX IF NOT EXISTS "data_entries_storage_idx"
-      ON ${this.tableName} (namespace, storage_name, updated_at DESC)
-    `);
+    await this.pool.query(
+      `CREATE SCHEMA IF NOT EXISTS ${quoteIdentifier(this.options.schema)}`,
+    );
     this.options.logger.log(
-      `PostgreSQL data storage ready: ${JSON.stringify({
+      `PostgreSQL legacy-compatible data storage ready: ${JSON.stringify({
         driver: 'postgres',
         schema: this.options.schema,
         projectNamespace: this.options.projectNamespace,
+        groupNamespace: this.options.groupNamespace,
         mode: this.options.mode,
+        layout: 'boxes-dual-table',
       })}`,
     );
+  }
+
+  private async ensureTables(tableType: TableType, storageName: string) {
+    await this.ready;
+    const cacheKey = `${tableType}\u0000${storageName}`;
+    const existing = this.tableReady.get(cacheKey);
+    if (existing) return existing;
+    const creation = this.resolveOrCreateTables(tableType, storageName).catch((error) => {
+      this.tableReady.delete(cacheKey);
+      throw error;
+    });
+    this.tableReady.set(cacheKey, creation);
+    return creation;
+  }
+
+  private async resolveOrCreateTables(
+    tableType: TableType,
+    storageName: string,
+  ) {
+    for (const baseName of this.tableBaseCandidates(tableType, storageName)) {
+      const candidate = this.tablesForBase(baseName);
+      try {
+        await this.pool.query(`SELECT 1 FROM ${candidate.data} LIMIT 0`);
+        await this.pool.query(`SELECT 1 FROM ${candidate.keys} LIMIT 0`);
+        return candidate;
+      } catch (error) {
+        // Missing candidates are normal. The first canonical pair is created
+        // below when no complete restored pair exists.
+        const code = (error as { code?: string }).code;
+        const message = error instanceof Error ? error.message : String(error);
+        if (code !== '42P01' && !/does not exist/i.test(message)) throw error;
+      }
+    }
+    return this.createTables(this.tables(tableType, storageName));
+  }
+
+  private async createTables(tables: StorageTables) {
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS ${tables.data} (
+        "objectId" TEXT PRIMARY KEY,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "_rperm" TEXT,
+        "_wperm" TEXT,
+        "metadata" TEXT NOT NULL DEFAULT '{}',
+        "value" TEXT NOT NULL,
+        "key" TEXT NOT NULL,
+        "version" TEXT NOT NULL
+      )
+    `);
+    await this.pool.query(`
+      CREATE TABLE IF NOT EXISTS ${tables.keys} (
+        "objectId" TEXT PRIMARY KEY,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "_rperm" TEXT,
+        "_wperm" TEXT,
+        "key" TEXT NOT NULL,
+        "isDelete" BOOLEAN NOT NULL DEFAULT FALSE,
+        "record" TEXT
+      )
+    `);
+    const indexStem = createHash('sha256')
+      .update(`${this.options.schema}.${tables.baseName}`)
+      .digest('hex')
+      .slice(0, 16);
+    await this.pool.query(`
+      CREATE INDEX IF NOT EXISTS ${quoteIdentifier(`storage_data_${indexStem}`)}
+      ON ${tables.data} ("key", "updatedAt" DESC)
+    `);
+    await this.pool.query(`
+      CREATE INDEX IF NOT EXISTS ${quoteIdentifier(`storage_keys_${indexStem}`)}
+      ON ${tables.keys} ("key", "isDelete", "updatedAt" DESC)
+    `);
+    return tables;
   }
 
   public async connect() {
@@ -149,13 +294,13 @@ export class PostgresDataStorage implements CommonGameDataServer {
     if (!ticket || this.tickets.has(ticket)) {
       throw new Error('invalid or duplicate PostgreSQL storage ticket');
     }
+    const tables = await this.ensureTables(tableType, table);
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
-      const namespace = this.namespace(tableType);
       await client.query(
         'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))',
-        [`${namespace}\u0000${table}`, key],
+        [tables.baseName, key],
       );
       const timeout = setTimeout(() => {
         const current = this.tickets.get(ticket);
@@ -202,30 +347,102 @@ export class PostgresDataStorage implements CommonGameDataServer {
     }
   }
 
-  public async createTable(_tableType: TableType, table: string) {
-    if (!table.trim()) throw new Error('data storage name is required');
-    await this.ready;
+  private async selectCurrent(
+    client: Pool | PoolClient,
+    tables: StorageTables,
+    key: string,
+  ) {
+    const result = await client.query(
+      `SELECT
+         d."key" AS key,
+         d."value" AS value,
+         d."version" AS version,
+         d."createdAt" AS created_at,
+         d."updatedAt" AS updated_at
+       FROM ${tables.keys} k
+       JOIN ${tables.data} d
+         ON d."objectId"::text = k."record"::text
+       WHERE k."key"::text = $1
+         AND COALESCE(k."isDelete", FALSE) = FALSE
+       ORDER BY k."updatedAt" DESC
+       LIMIT 1`,
+      [key],
+    );
+    return result.rows[0];
+  }
+
+  private async writeValue(
+    client: PoolClient,
+    tables: StorageTables,
+    key: string,
+    value: unknown,
+  ) {
+    const keyResult = await client.query(
+      `SELECT "objectId" AS object_id
+       FROM ${tables.keys}
+       WHERE "key"::text = $1
+       ORDER BY "updatedAt" DESC
+       LIMIT 1`,
+      [key],
+    );
+    const recordId = createObjectId();
+    const version = createVersion();
+    await client.query(
+      `INSERT INTO ${tables.data}
+        ("objectId", "createdAt", "updatedAt", "metadata", "value", "key", "version")
+       VALUES ($1, NOW(), NOW(), '{}', $2, $3, $4)`,
+      [recordId, JSON.stringify({ content: value }), key, version],
+    );
+    if (keyResult.rows[0]) {
+      await client.query(
+        `UPDATE ${tables.keys}
+         SET "updatedAt" = NOW(), "isDelete" = FALSE, "record" = $1
+         WHERE "objectId"::text = $2`,
+        [recordId, String(keyResult.rows[0].object_id)],
+      );
+    } else {
+      await client.query(
+        `INSERT INTO ${tables.keys}
+          ("objectId", "createdAt", "updatedAt", "key", "isDelete", "record")
+         VALUES ($1, NOW(), NOW(), $2, FALSE, $3)`,
+        [createObjectId(), key, recordId],
+      );
+    }
+  }
+
+  public async createTable(tableType: TableType, table: string) {
+    await this.ensureTables(tableType, table);
   }
 
   public async get(
     tableType: TableType,
     table: string,
     key: string,
-    _version?: string,
+    version?: string,
     ticket?: string,
   ) {
-    await this.ready;
+    const tables = await this.ensureTables(tableType, table);
     const client = ticket
       ? await this.beginTicket(ticket, tableType, table, key)
       : this.pool;
     try {
-      const result = await client.query(
-        `SELECT key, value, version, created_at, updated_at
-         FROM ${this.tableName}
-         WHERE namespace = $1 AND storage_name = $2 AND key = $3`,
-        [this.namespace(tableType), table, key],
-      );
-      return rowToValue(result.rows[0]);
+      if (version) {
+        const result = await client.query(
+          `SELECT
+             "key" AS key,
+             "value" AS value,
+             "version" AS version,
+             "createdAt" AS created_at,
+             "updatedAt" AS updated_at
+           FROM ${tables.data}
+           WHERE "key"::text = $1 AND "version"::text = $2
+           ORDER BY "updatedAt" DESC
+           LIMIT 1`,
+          [key, version],
+        );
+        return rowToValue(result.rows[0]);
+      }
+      return rowToValue(await this.selectCurrent(client, tables, key));
     } catch (error) {
       if (ticket) {
         const connection = this.tickets.get(ticket);
@@ -246,26 +463,23 @@ export class PostgresDataStorage implements CommonGameDataServer {
     value: unknown,
     ticket?: string,
   ) {
-    await this.ready;
+    const tables = await this.ensureTables(tableType, table);
     const client = ticket
       ? this.takeTicket(ticket, tableType, table, key)
-      : this.pool;
+      : await this.pool.connect();
     let success = false;
     try {
-      await client.query(
-        `INSERT INTO ${this.tableName}
-          (namespace, storage_name, key, value)
-         VALUES ($1, $2, $3, $4::jsonb)
-         ON CONFLICT (namespace, storage_name, key)
-         DO UPDATE SET
-           value = EXCLUDED.value,
-           version = "data_entries".version + 1,
-           updated_at = NOW()`,
-        [this.namespace(tableType), table, key, JSON.stringify(value)],
-      );
+      if (!ticket) {
+        await client.query('BEGIN');
+        await client.query(
+          'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))',
+          [tables.baseName, key],
+        );
+      }
+      await this.writeValue(client, tables, key, value);
       success = true;
     } finally {
-      if (ticket) await this.finish(client as PoolClient, success);
+      await this.finish(client, success);
     }
   }
 
@@ -275,25 +489,27 @@ export class PostgresDataStorage implements CommonGameDataServer {
     key: string,
     value: number,
   ) {
-    await this.ready;
-    const result = await this.pool.query(
-      `INSERT INTO ${this.tableName}
-        (namespace, storage_name, key, value)
-       VALUES ($1, $2, $3, to_jsonb($4::double precision))
-       ON CONFLICT (namespace, storage_name, key)
-       DO UPDATE SET
-         value = to_jsonb(
-           CASE WHEN jsonb_typeof("data_entries".value) = 'number'
-             THEN ("data_entries".value)::text::double precision
-             ELSE NULL
-           END + $4::double precision
-         ),
-         version = "data_entries".version + 1,
-         updated_at = NOW()
-       RETURNING value`,
-      [this.namespace(tableType), table, key, value],
-    );
-    return Number(result.rows[0]?.value ?? 0);
+    const tables = await this.ensureTables(tableType, table);
+    const client = await this.pool.connect();
+    let success = false;
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))',
+        [tables.baseName, key],
+      );
+      const current = rowToValue(await this.selectCurrent(client, tables, key));
+      const previous = current?.value === undefined ? 0 : current.value;
+      if (typeof previous !== 'number') {
+        throw new Error('The increment value should be a numeric type.');
+      }
+      const next = previous + value;
+      await this.writeValue(client, tables, key, next);
+      success = true;
+      return next;
+    } finally {
+      await this.finish(client, success);
+    }
   }
 
   public async list(
@@ -301,23 +517,24 @@ export class PostgresDataStorage implements CommonGameDataServer {
     table: string,
     options: ListPageOptions,
   ) {
-    await this.ready;
+    const tables = await this.ensureTables(tableType, table);
     const pageSize = Math.max(1, Math.min(1000, options.pageSize || 100));
     const cursor = Math.max(0, options.cursor || 0);
-    const params: unknown[] = [this.namespace(tableType), table];
-    const clauses = ['namespace = $1', 'storage_name = $2'];
+    const params: unknown[] = [];
+    const content = `(d."value"::jsonb -> 'content')`;
     const path = options.constraintTarget
       ? options.constraintTarget.split('.').filter(Boolean)
       : [];
-    let target = 'value';
+    let target = content;
     if (path.length) {
       const pathParams = path.map((segment) => {
         params.push(segment);
         return `$${params.length}::text`;
       });
-      target = `jsonb_extract_path(value, ${pathParams.join(', ')})`;
+      target = `jsonb_extract_path(${content}, ${pathParams.join(', ')})`;
     }
     const numericTarget = `CASE WHEN jsonb_typeof(${target}) = 'number' THEN (${target})::text::double precision END`;
+    const clauses = ['COALESCE(k."isDelete", FALSE) = FALSE'];
     if (typeof options.min === 'number') {
       params.push(options.min);
       clauses.push(`${numericTarget} >= $${params.length}::double precision`);
@@ -331,10 +548,17 @@ export class PostgresDataStorage implements CommonGameDataServer {
     const offsetIndex = params.length;
     const direction = options.ascending === false ? 'DESC' : 'ASC';
     const result = await this.pool.query(
-      `SELECT key, value, version, created_at, updated_at
-       FROM ${this.tableName}
+      `SELECT
+         d."key" AS key,
+         d."value" AS value,
+         d."version" AS version,
+         d."createdAt" AS created_at,
+         d."updatedAt" AS updated_at
+       FROM ${tables.keys} k
+       JOIN ${tables.data} d
+         ON d."objectId"::text = k."record"::text
        WHERE ${clauses.join(' AND ')}
-       ORDER BY ${numericTarget} ${direction} NULLS LAST, key ${direction}
+       ORDER BY ${numericTarget} ${direction} NULLS LAST, k."key" ${direction}
        LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
       params,
     );
@@ -351,33 +575,29 @@ export class PostgresDataStorage implements CommonGameDataServer {
     key: string,
     ticket?: string,
   ) {
-    await this.ready;
-    if (!ticket) {
-      const result = await this.pool.query(
-        `DELETE FROM ${this.tableName}
-         WHERE namespace = $1 AND storage_name = $2 AND key = $3
-         RETURNING key, value, version, created_at, updated_at`,
-        [this.namespace(tableType), table, key],
-      );
-      return rowToValue(result.rows[0]);
-    }
-    const client = await this.pool.connect();
+    const tables = await this.ensureTables(tableType, table);
+    const hasTicket = Boolean(ticket && this.tickets.has(ticket));
+    const client = hasTicket
+      ? this.takeTicket(ticket!, tableType, table, key)
+      : await this.pool.connect();
     let success = false;
     try {
-      await client.query('BEGIN');
-      const namespace = this.namespace(tableType);
+      if (!hasTicket) {
+        await client.query('BEGIN');
+        await client.query(
+          'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))',
+          [tables.baseName, key],
+        );
+      }
+      const previous = rowToValue(await this.selectCurrent(client, tables, key));
       await client.query(
-        'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))',
-        [`${namespace}\u0000${table}`, key],
-      );
-      const result = await client.query(
-        `DELETE FROM ${this.tableName}
-         WHERE namespace = $1 AND storage_name = $2 AND key = $3
-         RETURNING key, value, version, created_at, updated_at`,
-        [namespace, table, key],
+        `UPDATE ${tables.keys}
+         SET "updatedAt" = NOW(), "isDelete" = TRUE
+         WHERE "key"::text = $1 AND COALESCE("isDelete", FALSE) = FALSE`,
+        [key],
       );
       success = true;
-      return rowToValue(result.rows[0]);
+      return previous;
     } finally {
       await this.finish(client, success);
     }
@@ -385,10 +605,9 @@ export class PostgresDataStorage implements CommonGameDataServer {
 
   public async dropTable(tableType: TableType, table: string) {
     await this.ready;
-    await this.pool.query(
-      `DELETE FROM ${this.tableName}
-       WHERE namespace = $1 AND storage_name = $2`,
-      [this.namespace(tableType), table],
-    );
+    const tables = this.tables(tableType, table);
+    await this.pool.query(`DROP TABLE IF EXISTS ${tables.keys}`);
+    await this.pool.query(`DROP TABLE IF EXISTS ${tables.data}`);
+    this.tableReady.delete(`${tableType}\u0000${table}`);
   }
 }

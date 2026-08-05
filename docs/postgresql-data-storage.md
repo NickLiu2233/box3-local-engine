@@ -17,6 +17,8 @@ PostgreSQL adapter 支持：
 - 并发更新时的事务锁；
 - 多作品数据隔离；
 - 容器重建、地图更新和服务器重启后的数据持久化。
+- 与旧 boxes 相同的“主数据表 + `_keys` 索引表”布局；
+- 直接读取旧表中的 `value.content`、`record` 和 `isDelete` 数据。
 
 脚本中的原始 `db.sql` 仍使用引擎自己的 SQL 运行环境，不会获得服主 PostgreSQL 的任意
 SQL 权限。这样可以避免不可信地图脚本读取数据库中的其他业务表。
@@ -58,7 +60,8 @@ BOX_DATABASE_POOL_SIZE=10
 BOX_DATABASE_SSL=true
 BOX_DATABASE_SSL_REJECT_UNAUTHORIZED=true
 BOX_DATA_STORAGE_LOCK_TIMEOUT_MS=10000
-BOX_DATA_STORAGE_NAMESPACE_PREFIX=private-server-a-
+BOX_DATA_STORAGE_NAMESPACE=
+BOX_DATA_STORAGE_NAMESPACE_PREFIX=
 BOX_GROUP_STORAGE_NAMESPACE=
 ```
 
@@ -71,6 +74,7 @@ BOX_GROUP_STORAGE_NAMESPACE=
 | `BOX_DATABASE_SSL` | `false` | 托管数据库通常需要设为 `true` |
 | `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` | `true` | 是否验证数据库服务器证书 |
 | `BOX_DATA_STORAGE_LOCK_TIMEOUT_MS` | `10000` | 脚本 `update` 事务锁的最长保留时间 |
+| `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写原作品 ID，例如 `100010141` |
 | `BOX_DATA_STORAGE_NAMESPACE_PREFIX` | 空 | 多套私服共用数据库时使用的命名空间前缀 |
 | `BOX_GROUP_STORAGE_NAMESPACE` | 空 | 需要跨作品共享 group storage 时使用的稳定标识 |
 
@@ -79,11 +83,23 @@ BOX_GROUP_STORAGE_NAMESPACE=
 
 ## 4. 数据隔离方式
 
-引擎会自动把数据按以下信息隔离：
+表名沿用旧 boxes 格式。以作品 ID `100010141` 和数据空间 `player` 为例：
 
 ```text
-project/group + 命名空间前缀 + 作品ID + edit/play + 数据空间名称 + key
+play_100010141_player
+play_100010141_player_keys
+edit_100010141_player
+edit_100010141_player_keys
+group_play_100010141_player
+group_play_100010141_player_keys
+group_edit_100010141_player
+group_edit_100010141_player_keys
 ```
+
+普通作品空间使用 `play_` / `edit_`，group storage 使用
+`group_play_` / `group_edit_`。主表保存历史数据记录，`_keys` 表通过 `record`
+指向当前记录，并使用 `isDelete` 表示逻辑删除。更新数据时会保留旧版本并切换
+`_keys.record`。
 
 多地图游玩端会始终把实际地图目录 ID 放进命名空间，因此 `island`、`city` 等地图即使使用
 相同的数据空间名称，也不会互相覆盖。
@@ -97,12 +113,13 @@ adapter 会执行：
 
 ```sql
 CREATE SCHEMA IF NOT EXISTS box_engine;
-CREATE TABLE IF NOT EXISTS box_engine.data_entries (...);
+CREATE TABLE IF NOT EXISTS box_engine."play_100010141_player" (...);
+CREATE TABLE IF NOT EXISTS box_engine."play_100010141_player_keys" (...);
 CREATE INDEX IF NOT EXISTS ...;
 ```
 
 因此账号需要在目标数据库中拥有连接权限，并能创建或使用配置的 schema。初始化完成后，
-也可以由数据库管理员收紧为只允许对 `box_engine.data_entries` 执行
+也可以由数据库管理员收紧为只允许对 `box_engine` schema 中的数据空间表执行
 `SELECT/INSERT/UPDATE/DELETE`。
 
 不要让该账号访问支付、用户、运营后台或其他项目的业务表。
@@ -116,7 +133,7 @@ docker compose logs --tail=200 play
 成功后日志包含：
 
 ```text
-PostgreSQL data storage ready
+PostgreSQL legacy-compatible data storage ready
 ```
 
 如果连接失败，检查：
@@ -138,11 +155,19 @@ BOX_DATA_STORAGE_DRIVER=legacy
 BOX_DATABASE_URL=
 ```
 
-切换驱动不会自动迁移旧数据。正式更换数据库前应先备份原 PostgreSQL，并安排数据迁移。
+从旧 boxes 数据库迁移时，先把对应主表与 `_keys` 表恢复到配置的 schema，然后设置：
+
+```env
+BOX_DATA_STORAGE_NAMESPACE=原作品ID
+BOX_GROUP_STORAGE_NAMESPACE=原地图组ID
+```
+
+必须同时迁移主表和 `_keys` 表，不能只复制其中一张。引擎会通过
+`_keys.record` 查找当前记录，并自动忽略 `isDelete=true` 的记录。
 
 ## 8. 备份
 
-数据位于配置 schema 的 `data_entries` 表中，可以使用标准 PostgreSQL 工具备份：
+数据位于配置 schema 的旧式数据空间表中，可以使用标准 PostgreSQL 工具整体备份：
 
 ```bash
 pg_dump --format=custom --schema=box_engine --file=box-data.dump 数据库名

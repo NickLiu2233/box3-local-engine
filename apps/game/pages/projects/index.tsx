@@ -154,9 +154,23 @@ export default function ProjectsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ version: publishedVersion }),
       });
-      const packageData = await packageResponse.json();
-      if (!packageResponse.ok) throw new Error(packageData.message || '导出分发包失败');
-      setNotice(`已发布并导出 ${publishedVersion}`);
+      if (!packageResponse.ok) {
+        const packageData = await packageResponse.json().catch(() => ({}));
+        throw new Error(packageData.message || '导出游玩包失败');
+      }
+      const blob = await packageResponse.blob();
+      const disposition = packageResponse.headers.get('Content-Disposition') || '';
+      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+      const filename = encodedName
+        ? decodeURIComponent(encodedName)
+        : `${selectedProject.name}_${selectedProject.id}_${publishedVersion}.boxplay`;
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setNotice(`已发布并导出游玩包 ${publishedVersion}`);
     } else if (dialog === 'details' && selectedProject) {
       const response = await fetch(`/api/local-projects/${selectedProject.id}`, {
         method: 'PATCH',

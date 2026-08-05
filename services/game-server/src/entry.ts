@@ -243,7 +243,11 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const httpRoutes: HttpRoutes = {
     '/api/health-check': async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
-      res.end(`{status:"good"}`);
+      res.end(JSON.stringify({
+        status: 'ok',
+        runtime: 'ready',
+        storage: spec.dataStorageDriver || 'legacy',
+      }));
     },
   };
   if (isLocal) {

@@ -1,14 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../server/local-project-manager';
-
-function unavailable(res: NextApiResponse) {
-  res.status(404).end();
-}
+import { allowCreatorApi } from '../../../server/creator-api-security';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
-    return unavailable(res);
-  }
+  if (!allowCreatorApi(req, res)) return;
   try {
     const manager = getLocalProjectManager();
     if (req.method === 'GET') return res.status(200).json({ projects: manager.listProjects() });

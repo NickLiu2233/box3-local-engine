@@ -9,9 +9,14 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   const slug = Array.isArray(req.query.slug) ? req.query.slug : [];
   const [mode, gameName] = slug;
 
-  if (!validateMode(mode) || typeof gameName !== 'string') {
+  if (
+    !validateMode(mode) ||
+    typeof gameName !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(gameName)
+  ) {
     return res.status(400).end();
   }
+  res.setHeader('Cache-Control', 'no-store');
 
   if (process.env.BOX_DEPLOYMENT_MODE === 'play' && mode !== 'play') {
     return res.status(404).end();
@@ -29,6 +34,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     res.writeHead(204);
     res.end();
     return;
+  }
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET, OPTIONS');
+    return res.status(405).end();
   }
 
   const config = await getArenaServerRenderProps({

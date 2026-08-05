@@ -31,8 +31,22 @@ function readDotEnvValue(name) {
   return ''
 }
 
-function configuredPort() {
-  return process.env.BOX_PORT || readDotEnvValue('BOX_PORT') || '3000'
+function configuredCreatorPort() {
+  return (
+    process.env.BOX_CREATOR_PORT ||
+    readDotEnvValue('BOX_CREATOR_PORT') ||
+    '3002'
+  )
+}
+
+function configuredPlayPort() {
+  return (
+    process.env.BOX_PLAY_PORT ||
+    readDotEnvValue('BOX_PLAY_PORT') ||
+    process.env.BOX_PORT ||
+    readDotEnvValue('BOX_PORT') ||
+    '3000'
+  )
 }
 
 function configuredVoxaPort() {
@@ -177,7 +191,6 @@ function deployCreator() {
     throw new Error('pnpm creator 不接受作品参数')
   }
   runDocker(['compose', '--profile', 'creator', 'build', 'creator'])
-  stopProduct('play')
   stopProduct('creator')
   migrateLegacyCreatorProjects()
   runDocker([
@@ -189,7 +202,7 @@ function deployCreator() {
     '--no-build',
     'creator',
   ])
-  console.log('\n创作端已启动：http://127.0.0.1:' + configuredPort() + '\n')
+  console.log('\n创作端已启动：http://127.0.0.1:' + configuredCreatorPort() + '\n')
 }
 
 function deployPlay() {
@@ -199,7 +212,6 @@ function deployPlay() {
   )
   fs.mkdirSync(libraryRoot, { recursive: true })
   const playImage = ensurePlayImageArchive()
-  stopProduct('creator')
   runDocker([
     'compose',
     '--profile',
@@ -214,7 +226,7 @@ function deployPlay() {
       BOX_PLAY_LIBRARY_DIR: libraryRoot,
     },
   })
-  console.log('\n游玩端已启动：http://127.0.0.1:' + configuredPort())
+  console.log('\n游玩端已启动：http://127.0.0.1:' + configuredPlayPort())
   console.log(`地图目录：${libraryRoot}`)
   console.log('访问首页查看全部地图；新增地图无需重启。')
   console.log(`镜像架构：${playImage.platform}`)

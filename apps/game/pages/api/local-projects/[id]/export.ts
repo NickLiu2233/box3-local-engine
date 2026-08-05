@@ -2,11 +2,10 @@ import fs from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { getLocalProjectManager } from '../../../../server/local-project-manager';
+import { allowCreatorApi } from '../../../../server/creator-api-security';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
-    return res.status(404).end();
-  }
+  if (!allowCreatorApi(req, res)) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).end();

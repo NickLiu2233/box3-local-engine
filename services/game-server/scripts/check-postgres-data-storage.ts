@@ -64,7 +64,7 @@ async function main() {
     ssl: false,
     sslRejectUnauthorized: true,
     projectNamespace,
-    groupNamespace: 'shared-group',
+    groupNamespace: '100010141',
     mode: 'play',
     lockTimeoutMs: 5_000,
     logger,
@@ -76,6 +76,16 @@ async function main() {
   await Promise.all([first.connect(), second.connect()]);
 
   await first.set('project', 'players', 'alice', { coins: 10, level: 2 });
+  await pool.query(
+    `SELECT 1 FROM "box_engine"."play_world-a_players" LIMIT 1`,
+  );
+  await pool.query(
+    `SELECT 1 FROM "box_engine"."play_world-a_players_keys" LIMIT 1`,
+  );
+  await assert.rejects(
+    pool.query(`SELECT 1 FROM "box_engine"."data_entries" LIMIT 1`),
+    /data_entries/i,
+  );
   assert.deepEqual((await first.get('project', 'players', 'alice'))?.value, {
     coins: 10,
     level: 2,
@@ -109,9 +119,42 @@ async function main() {
   const removedPlayer = removed?.value as { coins: number } | undefined;
   assert.equal(removedPlayer?.coins, 15);
   assert.equal(await first.get('project', 'players', 'alice'), undefined);
+  const playerHistory = await pool.query(
+    `SELECT COUNT(*)::int AS count FROM "box_engine"."play_world-a_players"`,
+  );
+  const playerKeys = await pool.query(
+    `SELECT "isDelete", "record"
+     FROM "box_engine"."play_world-a_players_keys"
+     WHERE "key" = 'alice'`,
+  );
+  assert.equal(Number(playerHistory.rows[0]?.count), 2);
+  assert.equal(playerKeys.rows[0]?.isDelete, true);
+  assert.ok(playerKeys.rows[0]?.record, 'soft-deleted key must retain its record link');
 
   await first.set('group', 'global', 'season', 7);
   assert.equal((await second.get('group', 'global', 'season'))?.value, 7);
+
+  // Simulate tables copied directly from the original boxes database. The
+  // adapter must follow _keys.record and unwrap value.content without a data
+  // conversion step.
+  await first.createTable('group', 'legacy');
+  await pool.query(
+    `INSERT INTO "box_engine"."group_play_100010141_legacy"
+      ("objectId", "createdAt", "updatedAt", "metadata", "value", "key", "version")
+     VALUES
+      ('legacy-record', NOW(), NOW(), '{}', $1, 'old-player', 'legacy-version')`,
+    [JSON.stringify({ content: { career: 'Soldier', level: 12 } })],
+  );
+  await pool.query(
+    `INSERT INTO "box_engine"."group_play_100010141_legacy_keys"
+      ("objectId", "createdAt", "updatedAt", "key", "isDelete", "record")
+     VALUES
+      ('legacy-key', NOW(), NOW(), 'old-player', FALSE, 'legacy-record')`,
+  );
+  assert.deepEqual(
+    (await first.get('group', 'legacy', 'old-player'))?.value,
+    { career: 'Soldier', level: 12 },
+  );
 
   await pool.end();
   process.stdout.write('PostgreSQL data storage checks passed\n');

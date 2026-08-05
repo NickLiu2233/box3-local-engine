@@ -45,6 +45,46 @@ play-worlds/
   city/
 ```
 
+## 服主管理界面
+
+游玩端可以在作品首页直接导入、导出和删除地图，但默认关闭。先生成一段随机管理密钥：
+
+```bash
+openssl rand -hex 32
+```
+
+将结果写入仓库根目录的 `.env`：
+
+```env
+BOX_PLAY_ADMIN_TOKEN=这里填写生成的随机密钥
+BOX_PLAY_LIBRARY_READ_ONLY=false
+```
+
+然后重新创建游玩容器，让环境变量和可写挂载生效：
+
+```bash
+pnpm play
+```
+
+打开作品首页，点击右上角“服主管理”，输入密钥后可以：
+
+- 选择 `.boxplay` 游玩包直接导入；
+- 把现有地图导出为 `.boxplay`；
+- 通过项目内确认弹窗删除地图。
+
+密钥只保存在当前浏览器标签页的会话存储中。关闭标签页或点击“退出管理”后需要重新验证。
+服务端会对每一次管理操作重新验证，连续验证失败还会触发临时限流。
+
+`.boxplay` 只包含发布后的游玩地图，不包含 `.boxproject` 可编辑工程、编辑器或引擎源码。
+同 ID 地图不会自动覆盖；更新地图时应先导出备份，再删除旧地图并导入新版本。
+
+不需要网页管理功能时保持以下默认配置，地图目录会继续以只读方式挂载：
+
+```env
+BOX_PLAY_ADMIN_TOKEN=
+BOX_PLAY_LIBRARY_READ_ONLY=true
+```
+
 玩家分别访问：
 
 ```text
@@ -391,8 +431,13 @@ docker compose up -d
 | `BOX_PLAY_LIBRARY_DIR` | 仓库内 `play-worlds` | 宿主机多地图库目录 |
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 单地图最大连接人数 |
 | `PERMISSION_TOKEN_SECRET` | 空 | 会话签名密钥，正式部署必须固定 |
+| `BOX_SERVER_PUBLIC_URL` | 空 | 公网地址，例如 `https://game.example.com` |
+| `BOX_TRUST_PROXY` | `false` | 是否信任反向代理提供的客户端 IP 和协议头 |
+| `BOX_SESSION_TTL_MS` | `60000` | Session 在连接前的有效时间（毫秒） |
+| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
 | `BOX_DATA_STORAGE_DRIVER` | `legacy` | 设为 `postgres` 后由服主 PostgreSQL 持久化脚本数据空间 |
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串，只注入服务端容器 |
+| `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写旧 boxes 作品 ID |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选构建基础镜像 |
 
 数据库账号权限、SSL、多作品隔离和备份参阅

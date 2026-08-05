@@ -495,7 +495,7 @@ requirePattern(
   creatorCompose,
   composeFile,
   'single localhost-only creator port',
-  /ports:\s*\n\s*- "127\.0\.0\.1:\$\{BOX_PORT:-3000\}:3000"/,
+  /ports:\s*\n\s*- "127\.0\.0\.1:\$\{BOX_CREATOR_PORT:-3002\}:3000"/,
 )
 requirePattern(
   creatorCompose,
@@ -518,8 +518,8 @@ requirePattern(
 requirePattern(
   playCompose,
   composeFile,
-  'single public play port',
-  /ports:\s*\n\s*- "\$\{BOX_PORT:-3000\}:3000"/,
+  'single configurable play port with safe loopback default',
+  /ports:\s*\n\s*- "\$\{BOX_PLAY_HOST_IP:-127\.0\.0\.1\}:\$\{BOX_PLAY_PORT:-3000\}:3000"/,
 )
 requirePattern(
   playCompose,
@@ -531,14 +531,13 @@ requirePattern(
   playCompose,
   composeFile,
   'external read-only play library mount',
-  /BOX_PLAY_LIBRARY_PATH: \/app\/play-worlds[\s\S]*?source: "\$\{BOX_PLAY_LIBRARY_DIR:-[^"]+\}"[\s\S]*?read_only: true/,
+  /BOX_PLAY_LIBRARY_PATH: \/app\/play-worlds[\s\S]*?source: "\$\{BOX_PLAY_LIBRARY_DIR:-[^"]+\}"[\s\S]*?read_only: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
 )
-forbidPattern(playCompose, composeFile, 'localhost-only play port binding', /127\.0\.0\.1:/)
 forbidPattern(
   playCompose,
   composeFile,
   'separate public play runtime',
-  /9966:9966|BOX_PLAY_SERVER|BOX_REMOTE_SERVER_URL|BOX_SERVER_PUBLIC_URL/,
+  /9966:9966|BOX_PLAY_SERVER|BOX_REMOTE_SERVER_URL/,
 )
 forbidPattern(
   composeSource,
@@ -610,7 +609,7 @@ requirePattern(
   launcherSource,
   launcherFile,
   'same-origin play runtime',
-  /BOX_REMOTE_SERVER_URL: playMode \? '\/runtime\/play' : ''/,
+  /BOX_REMOTE_SERVER_URL: ''/,
 )
 forbidPattern(
   launcherSource,
@@ -621,11 +620,11 @@ forbidPattern(
 
 const serverLaunchFile = 'services/game-server/src/launch.ts'
 const serverLaunchSource = readRequired(serverLaunchFile)
-requirePattern(
+forbidPattern(
   serverLaunchSource,
   serverLaunchFile,
-  'lazy CI deploy module loading',
-  /const \{ startDeployServer \} = await import\('\.\/deploy\/entry'\)/,
+  'removed CI image-registration deploy server',
+  /startDeployServer|CICD_DEPLOY|vb-migration/,
 )
 forbidPattern(
   serverLaunchSource,
@@ -655,8 +654,36 @@ if (localProjectApiFiles.length === 0) {
 for (const filePath of localProjectApiFiles) {
   const source = fs.readFileSync(filePath, 'utf8')
   const file = path.relative(root, filePath)
-  requirePattern(source, file, 'play deployment guard', /BOX_DEPLOYMENT_MODE === 'play'/)
-  requirePattern(source, file, '404 response in play mode', /status\(404\)|unavailable\(res\)/)
+  requirePattern(source, file, 'creator API guard', /allowCreatorApi\(req, res\)/)
+}
+
+const playAdminApiRoot = path.join(root, 'apps/game/pages/api/play-admin')
+const playAdminApiFiles = collectFiles(
+  playAdminApiRoot,
+  (file) => file.endsWith('.ts') || file.endsWith('.tsx'),
+)
+if (playAdminApiFiles.length === 0) {
+  fail('missing play host management API sources')
+}
+for (const filePath of playAdminApiFiles) {
+  const source = fs.readFileSync(filePath, 'utf8')
+  const file = path.relative(root, filePath)
+  requirePattern(source, file, 'play admin API guard', /allowPlayAdmin\(req, res\)/)
+}
+
+for (const [file, label, pattern] of [
+  [
+    'apps/game/server/play-admin-security.ts',
+    'play admin disabled without a configured token',
+    /BOX_DEPLOYMENT_MODE === 'play'[\s\S]*?BOX_PLAY_ADMIN_TOKEN/,
+  ],
+  [
+    'docker-compose.yml',
+    'play library write access is opt-in',
+    /BOX_PLAY_LIBRARY_READ_ONLY:-true/,
+  ],
+]) {
+  requirePattern(readRequired(file), file, label, pattern)
 }
 
 for (const [file, label, pattern] of [
@@ -669,11 +696,6 @@ for (const [file, label, pattern] of [
     'apps/game/app/e/[container]/page.tsx',
     'editor route redirected in play deployments',
     /BOX_DEPLOYMENT_MODE === 'play'[\s\S]*?redirect\('\/p\/local'\)/,
-  ],
-  [
-    'apps/game/pages/map/[mapId]/recovery.tsx',
-    'recovery page hidden in play deployments',
-    /BOX_DEPLOYMENT_MODE === 'play'[\s\S]*?notFound: true/,
   ],
   [
     'apps/game/pages/api/createSession.ts',
@@ -799,6 +821,12 @@ requirePattern(
   /NODE_ENV === 'production'[\s\S]*?launcherArgs\.push\('--production'\)/,
 )
 requirePattern(
+  launcherSource,
+  'apps/local-engine/src/launcher.js',
+  'Docker Desktop runtime copy permission normalization',
+  /function makeRuntimeDataReadable[\s\S]*?fs\.chmodSync\(target, 0o755\)[\s\S]*?fs\.chmodSync\(target, 0o644\)[\s\S]*?fs\.cpSync\(world\.dataRoot, temporaryRoot[\s\S]*?makeRuntimeDataReadable\(temporaryRoot\)/,
+)
+requirePattern(
   projectRuntimeApiSource,
   projectRuntimeApiFile,
   'edit and play project runtimes are managed separately',
@@ -871,6 +899,30 @@ requirePattern(
 requirePattern(
   projectManagerSource,
   projectManagerFile,
+  'Docker Desktop safe readable file copies',
+  /function copyReadableFileSync[\s\S]*?fs\.openSync\(destination, 'w', 0o644\)/,
+)
+requirePattern(
+  projectManagerSource,
+  projectManagerFile,
+  'browser-downloadable play bundle export',
+  /function exportPlayBundle[\s\S]*?\.boxplay/,
+)
+forbidPattern(
+  projectManagerSource,
+  projectManagerFile,
+  'Docker Desktop unsafe release tree copy',
+  /fs\.cpSync\(releaseRoot/,
+)
+requirePattern(
+  readRequired('apps/game/server/play-admin.ts'),
+  'apps/game/server/play-admin.ts',
+  'Docker Desktop readable imported play assets',
+  /createWriteStream\(target, \{ flags: 'wx', mode: 0o644 \}\)/,
+)
+requirePattern(
+  projectManagerSource,
+  projectManagerFile,
   'play package records the image platform',
   /platform: playImageConfig\.platform/,
 )
@@ -883,8 +935,8 @@ requirePattern(
 requirePattern(
   readRequired('apps/game/pages/api/local-projects/[id]/package.ts'),
   'apps/game/pages/api/local-projects/[id]/package.ts',
-  'project UI exports a self-contained play package',
-  /includeImages: true/,
+  'project UI downloads an importable play bundle',
+  /manager\.exportPlayBundle/,
 )
 forbidPattern(
   projectManagerSource,
@@ -896,7 +948,7 @@ forbidPattern(
   projectManagerSource,
   projectManagerFile,
   'separate runtime in exported play package',
-  /BOX_PLAY_SERVER_PORT|BOX_PLAY_SERVER_URL|BOX_REMOTE_SERVER_URL|BOX_SERVER_PUBLIC_URL|BOX_SERVER_DATA_PATH|BOX_PROJECT_STATE_PATH|BOX_PROJECT_HASH/,
+  /BOX_PLAY_SERVER_PORT|BOX_PLAY_SERVER_URL|BOX_REMOTE_SERVER_URL|BOX_SERVER_DATA_PATH|BOX_PROJECT_STATE_PATH|BOX_PROJECT_HASH/,
 )
 requirePattern(
   readRequired('apps/game/pages/index.tsx'),
@@ -919,17 +971,14 @@ function checkPlayerPruning() {
   }
   try {
     write('server/pages/projects.js')
-    write('server/pages/map/[mapId]/recovery.js')
     write('server/pages/api/local-projects/index.js')
     write('server/app/e/[container]/page.js')
     write('server/app/p/[container]/page.js')
     write('static/chunks/pages/projects-fixture.js')
-    write('static/chunks/pages/map/recovery-fixture.js')
     write('static/chunks/app/e/editor-fixture.js')
     write('static/css/app/e/editor-fixture.css')
     write('server/pages-manifest.json', {
       '/projects': 'pages/projects.js',
-      '/map/[mapId]/recovery': 'pages/map/[mapId]/recovery.js',
       '/api/local-projects': 'pages/api/local-projects.js',
       '/api/local-projects/[id]': 'pages/api/local-projects/[id].js',
       '/': 'pages/index.js',
@@ -962,11 +1011,9 @@ function checkPlayerPruning() {
 
     for (const file of [
       'server/pages/projects.js',
-      'server/pages/map/[mapId]/recovery.js',
       'server/pages/api/local-projects',
       'server/app/e',
       'static/chunks/pages/projects-fixture.js',
-      'static/chunks/pages/map',
       'static/chunks/app/e',
       'static/css/app/e',
     ]) {

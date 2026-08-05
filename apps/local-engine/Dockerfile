@@ -115,7 +115,7 @@ CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--creator"]
 
 FROM runtime-base AS play
 
-LABEL org.box.local-engine.play-format="2"
+LABEL org.box.local-engine.play-format="3"
 
 ENV BOX_DEPLOYMENT_MODE=play \
     BOX_WEB_HOST=0.0.0.0 \

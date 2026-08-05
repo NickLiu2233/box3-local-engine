@@ -19,12 +19,37 @@ import { createDefaultAvatarSkin } from '../player/default-avatar-skin';
 // * Try to do sensible things on error or timeout
 
 export class GameSession implements GameSessionInterface {
-  private SessionData: { [sessionId: string]: GameSessionData } = {};
+  private readonly sessionData = new Map<
+    string,
+    { data: GameSessionData; expiresAt: number }
+  >();
+  private readonly cleanupTimer: ReturnType<typeof setInterval>;
 
   public constructor(
     private logger: Logger,
     private readonly offline = false,
-  ) {}
+    private readonly sessionTtlMs = 60_000,
+  ) {
+    this.cleanupTimer = setInterval(
+      () => this.removeExpiredSessions(),
+      Math.max(5_000, Math.min(30_000, this.sessionTtlMs)),
+    );
+    this.cleanupTimer.unref();
+  }
+
+  private deleteSession(sessionId: string) {
+    const record = this.sessionData.get(sessionId);
+    if (!record) return;
+    this.sessionData.delete(sessionId);
+    GameSessionDataSchema.free(record.data);
+  }
+
+  private removeExpiredSessions() {
+    const now = Date.now();
+    for (const [sessionId, record] of this.sessionData) {
+      if (record.expiresAt <= now) this.deleteSession(sessionId);
+    }
+  }
 
   /**
    *
@@ -80,15 +105,21 @@ export class GameSession implements GameSessionInterface {
     }
 
     data.ipAddress = ipAddress;
-    this.SessionData[sessionId] = data;
+    this.sessionData.set(sessionId, {
+      data,
+      expiresAt: Date.now() + Math.max(5_000, this.sessionTtlMs),
+    });
     return data;
   }
 
   public getSessionData(sessionId: string): GameSessionData | undefined {
-    const data = this.SessionData[sessionId];
-    if (data) {
-      return GameSessionDataSchema.clone(data);
-    }
-    return undefined;
+    const record = this.sessionData.get(sessionId);
+    if (!record) return undefined;
+    const data = record.expiresAt > Date.now()
+      ? GameSessionDataSchema.clone(record.data)
+      : undefined;
+    // A session authorizes one WebSocket connection and cannot be replayed.
+    this.deleteSession(sessionId);
+    return data;
   }
 }

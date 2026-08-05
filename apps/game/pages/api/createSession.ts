@@ -32,10 +32,8 @@ export interface GameSession {
 }
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
-  const {
-    body: { mode, contentId, containerName, fingerPrint, serverId },
-    headers: { origin },
-  } = req;
+  res.setHeader('Cache-Control', 'no-store');
+  const { origin } = req.headers;
 
   // 放行localhost发起的请求
   if (origin && localhostRegex.test(origin)) {
@@ -49,9 +47,29 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     res.end();
     return;
   }
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST, OPTIONS');
+    return res.status(405).end();
+  }
+
+  const { mode, contentId, containerName, fingerPrint, serverId } = req.body || {};
+  if (mode !== 'play' && mode !== 'edit') {
+    return res.status(400).json({ message: 'Invalid session mode' });
+  }
 
   if (process.env.BOX_DEPLOYMENT_MODE === 'play' && mode !== 'play') {
     return res.status(404).end();
+  }
+  if (
+    typeof containerName !== 'string' ||
+    !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(containerName) ||
+    (typeof fingerPrint !== 'undefined' &&
+      (typeof fingerPrint !== 'string' || fingerPrint.length > 512)) ||
+    (typeof serverId !== 'undefined' &&
+      (typeof serverId !== 'string' || serverId.length > 128)) ||
+    !(['string', 'number'].includes(typeof contentId))
+  ) {
+    return res.status(400).json({ message: 'Invalid session parameters' });
   }
 
   try {
@@ -114,8 +132,6 @@ async function getSessionData(
   containerName: string = '',
 ) {
   const ServerConfig = await getServerConfig();
-  const createraInstance = await getCreateraInstance();
-
   let teamId = '';
   let refererServerId = '';
 
@@ -140,6 +156,7 @@ async function getSessionData(
     // 本地就直接把 http server url 处理成 socket server url
     socketServerUrl = httpServerUrl.replace('http', 'ws');
   } else {
+    const createraInstance = await getCreateraInstance();
     const containerInfo = await createraInstance.containerAllocate(
       {
         mapId: contentId,
@@ -161,7 +178,7 @@ async function getSessionData(
   const data = await axios.post(
     httpServerUrl + '/createSession',
     {
-      ip: getRealIP(req),
+      ip: getRealIP(req, ServerConfig.trustProxy),
       reqUrl: req.headers.referer || '',
       fingerPrint,
       cookie: req.headers ? req.headers.cookie || '' : '',
@@ -180,9 +197,11 @@ async function getSessionData(
   if (json.data) {
     const deploymentMode = process.env.BOX_DEPLOYMENT_MODE;
     if (deploymentMode === 'creator') {
-      const forwardedProto = Array.isArray(req.headers['x-forwarded-proto'])
-        ? req.headers['x-forwarded-proto'][0]
-        : req.headers['x-forwarded-proto'];
+      const forwardedProto = ServerConfig.trustProxy
+        ? Array.isArray(req.headers['x-forwarded-proto'])
+          ? req.headers['x-forwarded-proto'][0]
+          : req.headers['x-forwarded-proto']
+        : undefined;
       const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
       const requestHost = req.headers.host || '127.0.0.1:3000';
       const hostname = requestHost.startsWith('[')
@@ -193,15 +212,22 @@ async function getSessionData(
         : process.env.BOX_PLAY_RUNTIME_PUBLIC_PORT || '9966';
       json.data.socketServerUrl = `${protocol}://${hostname}:${runtimePort}`;
     } else if (deploymentMode === 'play') {
-      const forwardedProto = Array.isArray(req.headers['x-forwarded-proto'])
-        ? req.headers['x-forwarded-proto'][0]
-        : req.headers['x-forwarded-proto'];
-      const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
-      const host = req.headers.host || '127.0.0.1:3000';
       const runtimePath = process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
         ? `/runtime/play/${encodeURIComponent(containerName)}`
         : `/runtime/${mode}`;
-      json.data.socketServerUrl = `${protocol}://${host}${runtimePath}`;
+      if (ServerConfig.serverPublicUrl) {
+        const publicURL = ServerConfig.serverPublicUrl.replace(/\/$/, '');
+        json.data.socketServerUrl = `${publicURL.replace(/^http/, 'ws')}${runtimePath}`;
+      } else {
+        const forwardedProto = ServerConfig.trustProxy
+          ? Array.isArray(req.headers['x-forwarded-proto'])
+            ? req.headers['x-forwarded-proto'][0]
+            : req.headers['x-forwarded-proto']
+          : undefined;
+        const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
+        const host = req.headers.host || '127.0.0.1:3000';
+        json.data.socketServerUrl = `${protocol}://${host}${runtimePath}`;
+      }
     } else {
       json.data.socketServerUrl = socketServerUrl;
     }

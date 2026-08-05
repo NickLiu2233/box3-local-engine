@@ -49,6 +49,11 @@ export const config = build({
   port: N('PORT', 9966),
   // host ip
   hostIP: S('HOST_IP', ''),
+  serverPublicUrl: S('BOX_SERVER_PUBLIC_URL', ''),
+  trustProxy: B('BOX_TRUST_PROXY', false),
+  sessionTtlMs: N('BOX_SESSION_TTL_MS', 60_000),
+  sessionRateLimitPerMinute: N('BOX_SESSION_RATE_LIMIT_PER_MINUTE', 60),
+  directSessionApi: B('BOX_DIRECT_SESSION_API', true),
   playerLimit: N('PLAYER_LIMIT', DEFAULT_SETTINGS.playerLimit),
   maxZeroPlayerTime: N(
     'MAX_ZERO_PLAYER_TIME',
@@ -59,10 +64,6 @@ export const config = build({
   vm: S('VM', ''),
   debug: B('DEBUG', false),
 
-  // deploy docker image version
-  containerImageVersion: S('IMAGE_VERSION', ''),
-  // 判断当前容器是否是发布阶段的ci启动
-  isCIDeploy: B('CICD_DEPLOY', false),
   // permission token secret key
   permissionTokenSecret: S('PERMISSION_TOKEN_SECRET', ''), // 邀请链接，没用了
   // banned users get redirected

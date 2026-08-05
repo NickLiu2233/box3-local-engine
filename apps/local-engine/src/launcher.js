@@ -222,6 +222,24 @@ function waitFor(url, attempts = 120) {
 const children = []
 let shuttingDown = false
 let disposablePlayDataRoot = ''
+
+function makeRuntimeDataReadable(root) {
+  const pending = [root]
+  while (pending.length) {
+    const target = pending.pop()
+    const stat = fs.lstatSync(target)
+    if (stat.isDirectory()) {
+      fs.chmodSync(target, 0o755)
+      for (const entry of fs.readdirSync(target)) {
+        pending.push(path.join(target, entry))
+      }
+    } else if (stat.isFile()) {
+      fs.chmodSync(target, 0o644)
+    } else {
+      throw new Error(`运行时地图包含不支持的文件类型：${target}`)
+    }
+  }
+}
 let playLibrary
 
 function shutdown(code = 0) {
@@ -244,7 +262,7 @@ async function main() {
   const webPort = Number(
     process.env.BOX_WEB_PORT ||
       process.env.BOX_CLIENT_PORT ||
-      3000
+      (playMode ? 3000 : 3002)
   )
   const webHost =
     process.env.BOX_WEB_HOST ||
@@ -290,6 +308,7 @@ async function main() {
       path.join(os.tmpdir(), 'box-local-engine-play-')
     )
     fs.cpSync(dataRoot, disposablePlayDataRoot, { recursive: true })
+    makeRuntimeDataReadable(disposablePlayDataRoot)
     playServerDataRoot = disposablePlayDataRoot
   }
 
@@ -344,6 +363,9 @@ async function main() {
     BUILD_SERVER_URL: '',
     RABBITMQ_HOST_URL: '',
     REDIS_HOST: '',
+    // Local products create sessions through the web API, which authenticates
+    // the internal runtime request and preserves the actual client address.
+    BOX_DIRECT_SESSION_API: 'false',
     NODE_ENV: production ? 'production' : 'development',
   }
 
@@ -399,6 +421,7 @@ async function main() {
       path.join(os.tmpdir(), `box-local-engine-${world.id}-`)
     )
     fs.cpSync(world.dataRoot, temporaryRoot, { recursive: true })
+    makeRuntimeDataReadable(temporaryRoot)
     const child = spawn(
       process.execPath,
       production
@@ -545,13 +568,16 @@ async function main() {
         ...sharedEnv,
         BOX_DEPLOYMENT_MODE: playMode ? 'play' : 'creator',
         BOX_WEB_HOST: webHost,
-        BOX_REMOTE_SERVER_URL: playMode ? '/runtime/play' : '',
+        BOX_REMOTE_SERVER_URL: '',
         HOSTNAME: webHost,
         PORT: String(webPort),
         IS_LOCAL_GAME_SERVER: 'true',
         LOCAL_GAME_SERVER_URL: `http://127.0.0.1:${playPort}`,
         LOCAL_EDIT_SERVER_URL: `http://127.0.0.1:${editPort}`,
         ARENA_URL: `http://127.0.0.1:${webPort}`,
+        WEBSITE_URL: `http://127.0.0.1:${webPort}`,
+        HOME_URL: `http://127.0.0.1:${webPort}`,
+        PLATFORM_URL: `http://127.0.0.1:${webPort}`,
         CACHE_IPFS: 'true',
       },
     }

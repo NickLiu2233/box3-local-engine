@@ -7,7 +7,7 @@ const { spawnSync } = require('child_process')
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const supportedPlatforms = new Set(['linux/amd64', 'linux/arm64'])
-const playFormat = '2'
+const playFormat = '3'
 
 function readDotEnvValue(name) {
   try {

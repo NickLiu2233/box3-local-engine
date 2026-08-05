@@ -16,7 +16,6 @@ packages:
   - packages/iframe-event-bus
   - packages/mesher
   - packages/mudb
-  - packages/recovery-schema
   - packages/regl
   - packages/rewgpu
   - packages/script-api
