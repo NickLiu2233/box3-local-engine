@@ -456,6 +456,38 @@ export async function createGameServer(spec: {
   spec.httpRoutes['/createSession'] = (req, res) =>
     createSession(req, res, false);
 
+  // Publishing from the local Creator must not race the editor's autosave
+  // interval. This route is intentionally loopback-only: the Next.js Creator
+  // process asks the active edit runtime to persist its current replica before
+  // project-manager reads project-state.json and builds an immutable release.
+  if (serverConfig.method === 'local' && serverConfig.mode === 'edit' && editServer) {
+    spec.httpRoutes['/internal/save-local-project'] = async (req, res) => {
+      const remoteAddress = req.socket.remoteAddress || '';
+      const isLoopback =
+        remoteAddress === '127.0.0.1' ||
+        remoteAddress === '::1' ||
+        remoteAddress === '::ffff:127.0.0.1';
+      if (!isLoopback) {
+        res.writeHead(403);
+        res.end('forbidden');
+        return;
+      }
+      if (req.method !== 'POST') {
+        res.writeHead(405, { Allow: 'POST' });
+        res.end('method not allowed');
+        return;
+      }
+      try {
+        const permissionHash = await editServer.replica.saveProject();
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ permissionHash }));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: (error as Error).message }));
+      }
+    };
+  }
+
   if (serverConfig.mode === 'play' && serverConfig.directSessionApi) {
     spec.httpRoutes['/api/server-info'] = async (req, res) => {
       setPublicCors(req, res);

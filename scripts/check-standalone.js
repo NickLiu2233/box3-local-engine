@@ -653,8 +653,22 @@ requirePattern(
   projectManagerModelsSource,
   projectManagerModelsFile,
   'published VOXA model metadata root',
-  /\[state\.permissionHash, state\.extraProjectHash\]/,
+  /state\.extraProjectHash[\s\S]*?getReachableProjectHashes/,
 )
+for (const [label, pattern] of [
+  ['sanitized published permissions', /publishedPermissionHash[\s\S]*?emptyUsersHash/],
+  ['private server script manifest', /private-blobs\.json[\s\S]*?privateHashes/],
+  ['exported private blob manifest', /releaseDataRoot, 'private-blobs\.json'[\s\S]*?destinationDataRoot, 'private-blobs\.json'/],
+  ['sensitive content publication guard', /assertNoSensitiveContent/],
+  ['published project history removal', /committerId: 0[\s\S]*?prevHash: ''/],
+]) {
+  requirePattern(
+    projectManagerModelsSource,
+    projectManagerModelsFile,
+    label,
+    pattern,
+  )
+}
 
 const localProjectStateFile =
   'services/game-server/src/project/local-project-state.ts'
@@ -688,11 +702,38 @@ forbidPattern(
 )
 
 const serverEntryFile = 'services/game-server/src/entry.ts'
+const contentHostFile = 'packages/content-server/src/content-host.ts'
+const contentHostSource = readRequired(contentHostFile)
+for (const [label, pattern] of [
+  ['private blob HTTP denial', /deniedHashes\.has\(arg\)/],
+  ['restricted resource origins', /requestOriginAllowed/],
+  ['read-only play content store', /options\.readOnly/],
+]) {
+  requirePattern(contentHostSource, contentHostFile, label, pattern)
+}
 requirePattern(
   readRequired(serverEntryFile),
   serverEntryFile,
   'edit-only local project state persistence',
   /if \(isLocal && spec\.mode === 'edit'\) \{\s*persistLocalProjectState\(hash\)/,
+)
+requirePattern(
+  readRequired('services/game-server/src/createServer.ts'),
+  'services/game-server/src/createServer.ts',
+  'publish-time editor flush route',
+  /internal\/save-local-project[\s\S]*?editServer\.replica\.saveProject\(\)/,
+)
+requirePattern(
+  readRequired('apps/game/pages/api/local-projects/[id]/publish.ts'),
+  'apps/game/pages/api/local-projects/[id]/publish.ts',
+  'flush editor before local release creation',
+  /await flushActiveEditor\(\)[\s\S]*?manager\.publishProject/,
+)
+requirePattern(
+  readRequired('apps/local-engine/src/play-library.js'),
+  'apps/local-engine/src/play-library.js',
+  'play release version invalidates runtime',
+  /manifest\.version[\s\S]*?manifest\.permissionHash[\s\S]*?state\.extraProjectHash/,
 )
 
 // Every project-management API must independently reject a player deployment,
@@ -849,6 +890,9 @@ for (const [label, pattern] of [
   ['same-origin block proxy', /source: '\/block\/:path\*'/],
   ['same-origin WebSocket proxy', /key: 'upgrade', value: 'websocket'/],
   ['extended runtime proxy timeout', /proxyTimeout: 300_000/],
+  ['disabled framework disclosure', /poweredByHeader: false/],
+  ['content type sniffing protection', /X-Content-Type-Options[\s\S]*?nosniff/],
+  ['referrer privacy policy', /Referrer-Policy[\s\S]*?no-referrer/],
 ]) {
   requirePattern(nextConfigSource, nextConfigFile, label, pattern)
 }

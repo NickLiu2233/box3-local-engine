@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 const { spawnSync } = require('child_process')
 const {
   ensurePlayImageArchive,
@@ -15,6 +16,104 @@ const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const cidPattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
+const base58Alphabet =
+  '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+const sensitiveContentRules = [
+  ['私钥', /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/],
+  ['数据库连接串', /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s"']+:[^\s"'@]+@/i],
+  ['云访问密钥', /\bAKIA[0-9A-Z]{16}\b/],
+  ['GitHub 访问令牌', /\b(?:ghp|github_pat)_[A-Za-z0-9_]{20,}\b/],
+  ['Slack 访问令牌', /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/],
+  ['OpenAI 风格密钥', /\bsk-[A-Za-z0-9_-]{20,}\b/],
+  ['服主管理密钥', /\bBOX_PLAY_ADMIN_TOKEN\b/],
+  [
+    '硬编码密码或令牌',
+    /\b(?:api[_-]?key|secret|password|passwd|access[_-]?token|refresh[_-]?token)\b\s*[:=]\s*["'][^"'\r\n]{12,}["']/i,
+  ],
+]
+
+function stableStringify(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`
+  }
+  const entries = Object.keys(value)
+    .sort()
+    .filter((key) => value[key] !== undefined)
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
+  return `{${entries.join(',')}}`
+}
+
+function encodeBase58(buffer) {
+  const digits = [0]
+  for (const byte of buffer) {
+    let carry = byte
+    for (let index = 0; index < digits.length; index += 1) {
+      carry += digits[index] << 8
+      digits[index] = carry % 58
+      carry = Math.floor(carry / 58)
+    }
+    while (carry > 0) {
+      digits.push(carry % 58)
+      carry = Math.floor(carry / 58)
+    }
+  }
+  let result = ''
+  for (const byte of buffer) {
+    if (byte !== 0) break
+    result += base58Alphabet[0]
+  }
+  for (let index = digits.length - 1; index >= 0; index -= 1) {
+    result += base58Alphabet[digits[index]]
+  }
+  return result
+}
+
+function contentHash(content) {
+  const digest = crypto.createHash('sha256').update(content).digest()
+  return encodeBase58(Buffer.concat([Buffer.from([0x12, 0x20]), digest]))
+}
+
+function storeReleaseBlob(releaseBlobRoot, content) {
+  const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content)
+  const hash = contentHash(buffer)
+  const target = path.join(releaseBlobRoot, hash)
+  fs.mkdirSync(releaseBlobRoot, { recursive: true })
+  if (!fs.existsSync(target)) fs.writeFileSync(target, buffer, { mode: 0o644 })
+  return hash
+}
+
+function storeReleaseJSON(releaseBlobRoot, value) {
+  return storeReleaseBlob(releaseBlobRoot, stableStringify(value))
+}
+
+function readBlobJSON(blobRoot, hash, label) {
+  const target = path.join(blobRoot, hash || '')
+  if (!hash || !fs.existsSync(target)) {
+    throw new Error(`${label}不存在：${hash || 'empty hash'}`)
+  }
+  try {
+    return JSON.parse(fs.readFileSync(target, 'utf8'))
+  } catch {
+    throw new Error(`${label}格式无效：${hash}`)
+  }
+}
+
+function assertNoSensitiveContent(blobRoot, hashes) {
+  for (const hash of hashes) {
+    const target = path.join(blobRoot, hash)
+    const stat = fs.statSync(target)
+    if (!stat.isFile() || stat.size > 2 * 1024 * 1024) continue
+    const content = fs.readFileSync(target)
+    if (content.includes(0)) continue
+    const text = content.toString('utf8')
+    for (const [label, rule] of sensitiveContentRules) {
+      if (rule.test(text)) {
+        throw new Error(`发布已阻止：作品资源 ${hash} 包含疑似${label}，请移除后再发布`)
+      }
+    }
+  }
+}
 
 function collectReferencedHashes(target, hashes) {
   if (!fs.existsSync(target)) return
@@ -96,13 +195,122 @@ function copyReadableFileSync(source, destination) {
 function createReleaseData(sourceRoot, releaseDataRoot, state) {
   const sourceBlobRoot = path.join(sourceRoot, 'blobs')
   const releaseBlobRoot = path.join(releaseDataRoot, 'blobs')
-  const hashes = getRuntimeTemplateHashes()
-  for (const rootHash of [state.permissionHash, state.extraProjectHash]) {
-    if (!rootHash) continue
-    for (const hash of getReachableProjectHashes(sourceBlobRoot, rootHash)) {
-      hashes.add(hash)
+  const permission = readBlobJSON(
+    sourceBlobRoot,
+    state.permissionHash,
+    '工程权限数据',
+  )
+  const versionControl = readBlobJSON(
+    sourceBlobRoot,
+    permission.versionControl,
+    '工程版本数据',
+  )
+  const sourceProjectHash = versionControl?.branches?.master?.headHash
+  const project = readBlobJSON(
+    sourceBlobRoot,
+    sourceProjectHash,
+    '工程地图数据',
+  )
+  const scriptAssets = readBlobJSON(
+    sourceBlobRoot,
+    project.scriptAssets,
+    '工程脚本索引',
+  )
+
+  // A published world only needs the current project head. Remove editor
+  // history, commit identity and asset ownership before creating the release.
+  const publishedScriptAssets = {}
+  const privateHashes = new Set()
+  for (const [name, asset] of Object.entries(scriptAssets || {})) {
+    publishedScriptAssets[name] = {
+      ...asset,
+      contentId: 0,
+      ownerId: 0,
+    }
+    // Server scripts run inside the isolated server VM. Players never need
+    // their source bytes, so keep them in the package but deny HTTP access.
+    if (asset?.type === 1 && typeof asset.hash === 'string') {
+      privateHashes.add(asset.hash)
     }
   }
+  const publishedScriptAssetsHash = storeReleaseJSON(
+    releaseBlobRoot,
+    publishedScriptAssets,
+  )
+  const publishedProject = {
+    ...project,
+    committerId: 0,
+    prevHash: '',
+    scriptAssets: publishedScriptAssetsHash,
+    timestamp: new Date(0).toISOString(),
+  }
+  const publishedProjectHash = storeReleaseJSON(
+    releaseBlobRoot,
+    publishedProject,
+  )
+
+  // Permissions are required by the prebake schema, but user lists, groups,
+  // collaborators and version history are editor-only private information.
+  const publishedVersionControlHash = storeReleaseJSON(releaseBlobRoot, {
+    branches: {
+      master: { headHash: publishedProjectHash, name: 'master' },
+    },
+    currentBranch: 'master',
+  })
+  const emptyGroupsHash = storeReleaseJSON(releaseBlobRoot, {})
+  const emptyUsersHash = storeReleaseJSON(releaseBlobRoot, {})
+  const emptyBannedHash = storeReleaseJSON(releaseBlobRoot, [])
+  const emptyCollaboratorsHash = storeReleaseJSON(releaseBlobRoot, [])
+  const publishedPermissionHash = storeReleaseJSON(releaseBlobRoot, {
+    ...permission,
+    accessLevel: 1,
+    banned: emptyBannedHash,
+    collaborators: emptyCollaboratorsHash,
+    groups: emptyGroupsHash,
+    owner: 0,
+    prevHash: '',
+    timestamp: new Date(0).toISOString(),
+    users: emptyUsersHash,
+    versionControl: publishedVersionControlHash,
+  })
+  for (const hash of [
+    publishedPermissionHash,
+    publishedVersionControlHash,
+    emptyGroupsHash,
+    emptyUsersHash,
+    emptyBannedHash,
+    emptyCollaboratorsHash,
+  ]) {
+    privateHashes.add(hash)
+  }
+
+  const currentProjectHashes = new Set()
+  for (const hash of stableStringify(publishedProject).match(cidPattern) || []) {
+    if (hash === publishedScriptAssetsHash) continue
+    for (const reachable of getReachableProjectHashes(sourceBlobRoot, hash)) {
+      currentProjectHashes.add(reachable)
+    }
+  }
+  for (const asset of Object.values(publishedScriptAssets)) {
+    for (const hash of [asset?.hash, asset?.previewImage]) {
+      if (!hash) continue
+      for (const reachable of getReachableProjectHashes(sourceBlobRoot, hash)) {
+        currentProjectHashes.add(reachable)
+      }
+    }
+  }
+  if (state.extraProjectHash) {
+    for (const hash of getReachableProjectHashes(
+      sourceBlobRoot,
+      state.extraProjectHash,
+    )) {
+      currentProjectHashes.add(hash)
+    }
+  }
+  assertNoSensitiveContent(sourceBlobRoot, currentProjectHashes)
+
+  const hashes = getRuntimeTemplateHashes()
+  for (const hash of currentProjectHashes) hashes.add(hash)
 
   fs.mkdirSync(releaseBlobRoot, { recursive: true })
   for (const hash of hashes) {
@@ -112,14 +320,43 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
     }
     copyReadableFileSync(source, path.join(releaseBlobRoot, hash))
   }
-  copyReadableFileSync(
-    path.join(sourceRoot, 'project-state.json'),
+  const releaseState = {
+    formatVersion: 1,
+    permissionHash: publishedPermissionHash,
+    extraProjectHash: state.extraProjectHash || '',
+    updatedAt: new Date().toISOString(),
+  }
+  fs.writeFileSync(
     path.join(releaseDataRoot, 'project-state.json'),
+    `${JSON.stringify(releaseState, null, 2)}\n`,
+  )
+  fs.writeFileSync(
+    path.join(releaseDataRoot, 'private-blobs.json'),
+    `${JSON.stringify(
+      { formatVersion: 1, hashes: [...privateHashes].sort() },
+      null,
+      2,
+    )}\n`,
   )
   fs.writeFileSync(
     path.join(releaseDataRoot, 'runtime-blobs.json'),
-    `${JSON.stringify({ formatVersion: 1, hashes: [...hashes].sort() }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        formatVersion: 1,
+        hashes: [
+          ...new Set([
+            ...hashes,
+            publishedScriptAssetsHash,
+            publishedProjectHash,
+            ...privateHashes,
+          ]),
+        ].sort(),
+      },
+      null,
+      2,
+    )}\n`,
   )
+  return releaseState
 }
 
 function assertProjectId(id) {
@@ -358,7 +595,7 @@ function publishProject(id, requestedVersion, notes = '') {
     theme: metadata.theme || 'sunset',
     version,
     createdAt: new Date().toISOString(),
-    permissionHash: state.permissionHash,
+    permissionHash: '',
     immutable: true,
     notes: typeof notes === 'string' ? notes.trim().slice(0, 500) : '',
   }
@@ -366,11 +603,12 @@ function publishProject(id, requestedVersion, notes = '') {
   fs.rmSync(temporaryReleaseRoot, { recursive: true, force: true })
   try {
     fs.mkdirSync(temporaryReleaseRoot, { recursive: true })
-    createReleaseData(
+    const releaseState = createReleaseData(
       sourceRoot,
       path.join(temporaryReleaseRoot, 'data'),
       state,
     )
+    release.permissionHash = releaseState.permissionHash
     writeJSON(path.join(temporaryReleaseRoot, 'manifest.json'), release)
     fs.renameSync(temporaryReleaseRoot, releaseRoot)
   } catch (error) {
@@ -456,6 +694,10 @@ function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
   copyReadableFileSync(
     path.join(releaseDataRoot, 'project-state.json'),
     path.join(destinationDataRoot, 'project-state.json'),
+  )
+  copyReadableFileSync(
+    path.join(releaseDataRoot, 'private-blobs.json'),
+    path.join(destinationDataRoot, 'private-blobs.json'),
   )
   fs.writeFileSync(
     path.join(destinationDataRoot, 'runtime-blobs.json'),

@@ -33,6 +33,7 @@ const localEditRuntime =
  */
 const config = {
   productionBrowserSourceMaps: false,
+  poweredByHeader: false,
   output: 'standalone',
   outputFileTracingRoot: path.join(__dirname, '../..'),
   // Runtime-owned content must never be captured in the standalone server or
@@ -121,7 +122,7 @@ const config = {
         headers: [
           {
             key: 'Cross-Origin-Resource-Policy',
-            value: 'cross-origin',
+            value: 'same-origin',
           },
           {
             key: 'Cross-Origin-Opener-Policy',
@@ -130,7 +131,27 @@ const config = {
           {
             key: 'Cross-Origin-Embedder-Policy',
             value: 'credentialless',
-          }
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'no-referrer',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "base-uri 'self'; frame-ancestors 'self'; object-src 'none'",
+          },
         ],
       },
       {

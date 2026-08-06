@@ -40,9 +40,34 @@ function bad_method(
   return true;
 }
 
-export function createContentRouter(contentServer: ContentServer) {
+export interface ContentRouterOptions {
+  deniedHashes?: ReadonlySet<string>;
+  allowedOrigins?: ReadonlySet<string>;
+  readOnly?: boolean;
+}
+
+function requestOriginAllowed(
+  origin: string | undefined,
+  allowedOrigins: ReadonlySet<string>,
+) {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch {
+    return false;
+  }
+}
+
+export function createContentRouter(
+  contentServer: ContentServer,
+  options: ContentRouterOptions = {},
+) {
   const endpointRegex = /^\/block\/?/;
   const argRegex = /^\/\w+\/(\w+)\/?/;
+  const deniedHashes = options.deniedHashes || new Set<string>();
+  const allowedOrigins = options.allowedOrigins || new Set<string>();
   const getArg = (pathname) => {
     const match = argRegex.exec(pathname);
     if (match == null || match == undefined) {
@@ -93,6 +118,11 @@ export function createContentRouter(contentServer: ContentServer) {
         error(res, 400, `bad arg: "${pathname}"`);
         return;
       }
+      if (deniedHashes.has(arg)) {
+        // Do not reveal whether a private server-only blob exists.
+        error(res, 404, 'nothing with that hash found');
+        return;
+      }
       const buffer = await contentServer.retrieve(arg);
       if (buffer == undefined) {
         return error(res, 404, `nothing with that hash found`);
@@ -108,15 +138,24 @@ export function createContentRouter(contentServer: ContentServer) {
   };
 
   return async (req, res) => {
-    // TODO if in production, restrict POST CORS
+    const origin = req.headers?.origin;
+    const originAllowed = requestOriginAllowed(origin, allowedOrigins);
+    if (origin && originAllowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
     res.setHeader(
-      'Access-Control-Allow-Origin',
-      (req.headers && req.headers.origin) || '*',
+      'Access-Control-Allow-Methods',
+      options.readOnly ? 'OPTIONS, GET' : 'OPTIONS, POST, GET',
     );
-    res.setHeader('Access-Control-Request-Method', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'OPTIONS, POST, GET');
-    res.setHeader('Access-Control-Allow-Headers', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Auth');
+    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     if (req.method == 'OPTIONS') {
+      if (!originAllowed) {
+        error(res, 403, 'cross-origin request is not allowed');
+        return;
+      }
       res.writeHead(200);
       res.end();
       return;
@@ -137,6 +176,9 @@ export function createContentRouter(contentServer: ContentServer) {
       if (method === 'GET') {
         action = 'retrieve';
       } else if (method === 'POST') {
+        if (options.readOnly) {
+          return error(res, 403, 'content storage is read-only');
+        }
         action = 'store';
       } else {
         return error(

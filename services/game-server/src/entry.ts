@@ -277,13 +277,37 @@ export async function startServer(spec: ServerRuntimeConfig) {
     },
   };
   if (isLocal) {
-    const contentRouter = createContentRouter(contentServer);
-    httpRoutes['/block'] = async (req, res) => {
-      if (spec.mode === 'play' && req.method === 'POST') {
-        res.writeHead(403);
-        res.end('content storage is read-only in play mode');
-        return;
+    const storagePath = process.env.STORAGE_PATH || '';
+    const privateBlobManifest = path.join(storagePath, 'private-blobs.json');
+    let deniedHashes = new Set<string>();
+    if (spec.mode === 'play' && fs.existsSync(privateBlobManifest)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(privateBlobManifest, 'utf8'));
+        if (Array.isArray(parsed?.hashes)) {
+          deniedHashes = new Set(
+            parsed.hashes.filter(
+              (hash: unknown): hash is string => typeof hash === 'string',
+            ),
+          );
+        }
+      } catch (error) {
+        throw new Error(
+          `invalid private blob manifest: ${(error as Error).message}`,
+        );
       }
+    }
+    const allowedOrigins = new Set(
+      (process.env.BOX_RESOURCE_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    );
+    const contentRouter = createContentRouter(contentServer, {
+      allowedOrigins,
+      deniedHashes,
+      readOnly: spec.mode === 'play',
+    });
+    httpRoutes['/block'] = async (req, res) => {
       await contentRouter(req, res);
     };
   }

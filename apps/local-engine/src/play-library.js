@@ -33,7 +33,13 @@ function readWorld(libraryRoot, id) {
       dataRoot,
       statePath,
       manifest,
-      signature: `${stat.mtimeMs}:${stat.size}:${manifest.permissionHash}`,
+      signature: [
+        stat.mtimeMs,
+        stat.size,
+        manifest.version,
+        manifest.permissionHash,
+        state.extraProjectHash || '',
+      ].join(':'),
     }
   } catch {
     return null
