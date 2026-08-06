@@ -1,0 +1,31 @@
+services:
+  play:
+    image: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
+    restart: unless-stopped
+    environment:
+      BOX_DEPLOYMENT_MODE: play
+      BOX_PLAY_LIBRARY_PATH: /app/play-worlds
+      BOX_PLAY_ADMIN_TOKEN: ${BOX_PLAY_ADMIN_TOKEN:-}
+      BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
+      PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}
+      BOX_SERVER_PUBLIC_URL: ${BOX_SERVER_PUBLIC_URL:-}
+      BOX_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
+      BOX_SESSION_TTL_MS: ${BOX_SESSION_TTL_MS:-60000}
+      BOX_SESSION_RATE_LIMIT_PER_MINUTE: ${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}
+      BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-legacy}
+      BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
+      BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
+      BOX_DATABASE_POOL_SIZE: ${BOX_DATABASE_POOL_SIZE:-10}
+      BOX_DATABASE_SSL: ${BOX_DATABASE_SSL:-false}
+      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: ${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}
+      BOX_DATA_STORAGE_NAMESPACE_PREFIX: ${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}
+      BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}
+    ports:
+      - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
+    volumes:
+      - type: bind
+        source: ./play-worlds
+        target: /app/play-worlds
+        read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
+        bind:
+          create_host_path: true

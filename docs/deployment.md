@@ -120,7 +120,7 @@ services:
       BOX_LOCAL_PLAYER_LIMIT: 8
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
     ports:
-      - "${BOX_PORT:-3000}:3000"
+      - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
     volumes:
       - ./play-worlds:/app/play-worlds:ro
 ```
@@ -170,7 +170,8 @@ docker compose up -d
 游玩端只公开一个端口：
 
 ```env
-BOX_PORT=3000
+BOX_PLAY_HOST_IP=0.0.0.0
+BOX_PLAY_PORT=3000
 BOX_WORLD_NAME=我的 BOX 世界
 BOX_LOCAL_PLAYER_LIMIT=8
 PERMISSION_TOKEN_SECRET=
@@ -244,7 +245,7 @@ pnpm stop
 
 ## 排查问题
 
-页面无法打开时，确认 `BOX_PORT` 没有被占用，并查看容器日志。
+页面无法打开时，确认 `BOX_PLAY_PORT` 没有被占用，并查看容器日志。
 
 页面能打开但无法进入游戏时，检查：
 
@@ -252,7 +253,7 @@ pnpm stop
 - `http://服务器地址:3000/api/play-worlds` 是否能列出已安装地图；
 - 反向代理是否使用 HTTP/1.1 并转发 Upgrade/Connection；
 - HTTPS 页面是否由同一个域名提供；
-- 防火墙是否允许 `BOX_PORT`。
+- 防火墙是否允许 `BOX_PLAY_PORT`。
 
 不需要检查或公开其他端口；内部通信由游玩端自行管理。
 

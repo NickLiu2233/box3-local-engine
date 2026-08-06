@@ -364,23 +364,31 @@ services:
     environment:
       BOX_DEPLOYMENT_MODE: play
       BOX_PLAY_LIBRARY_PATH: /app/play-worlds
+      BOX_PLAY_ADMIN_TOKEN: ${BOX_PLAY_ADMIN_TOKEN:-}
       BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
+      BOX_SERVER_PUBLIC_URL: ${BOX_SERVER_PUBLIC_URL:-}
+      BOX_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
     ports:
-      - "${BOX_PORT:-3000}:3000"
+      - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
     volumes:
       - type: bind
         source: ./play-worlds
         target: /app/play-worlds
-        read_only: true
+        read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
 ```
 
 同目录 `.env`：
 
 ```env
-BOX_PORT=3000
+BOX_PLAY_HOST_IP=0.0.0.0
+BOX_PLAY_PORT=3000
 BOX_LOCAL_PLAYER_LIMIT=8
 PERMISSION_TOKEN_SECRET=请替换为稳定随机值
+BOX_PLAY_ADMIN_TOKEN=
+BOX_PLAY_LIBRARY_READ_ONLY=true
+BOX_SERVER_PUBLIC_URL=
+BOX_TRUST_PROXY=false
 ```
 
 加载镜像并启动：
@@ -426,9 +434,12 @@ docker compose up -d
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `BOX_IMAGE_TAG` | `0.1.0` | 游玩镜像标签 |
-| `BOX_PORT` | `3000` | 唯一公开端口 |
+| `BOX_PLAY_HOST_IP` | `127.0.0.1` | 宿主机监听地址；直接公网访问时设为 `0.0.0.0` |
+| `BOX_PLAY_PORT` | `3000` | 唯一公开端口 |
 | `BOX_PLAY_PLATFORM` | `linux/amd64` | 分发镜像目标架构 |
 | `BOX_PLAY_LIBRARY_DIR` | 仓库内 `play-worlds` | 宿主机多地图库目录 |
+| `BOX_PLAY_LIBRARY_READ_ONLY` | `true` | 地图库是否只读；网页管理导入/删除地图时设为 `false` |
+| `BOX_PLAY_ADMIN_TOKEN` | 空 | 服主管理密钥；留空时管理接口关闭 |
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 单地图最大连接人数 |
 | `PERMISSION_TOKEN_SECRET` | 空 | 会话签名密钥，正式部署必须固定 |
 | `BOX_SERVER_PUBLIC_URL` | 空 | 公网地址，例如 `https://game.example.com` |
@@ -608,7 +619,7 @@ docker image inspect \
 修改 `.env`：
 
 ```env
-BOX_PORT=3100
+BOX_PLAY_PORT=3100
 ```
 
 重新创建容器后访问 `http://服务器地址:3100/`。
