@@ -64,6 +64,7 @@ const runtimeMode =
   runtimeModeArgIndex >= 0
     ? process.argv[runtimeModeArgIndex + 1]
     : 'both'
+const scriptVm = process.env.BOX_SCRIPT_VM || 'ivmp'
 const playPort = Number(
   process.env.BOX_PLAY_RUNTIME_PORT ||
     process.env.BOX_SERVER_PORT ||
@@ -393,7 +394,10 @@ async function main() {
             process.env.BOX_WORLD_HASH ||
             process.env.BOX_PROJECT_HASH ||
             readProjectHash(),
-          VM: 'local',
+          // `local` only supports an in-process function supplied by tests and
+          // silently skips normal map modules. The packaged engine must use
+          // the isolated child-process runtime so server scripts are loaded.
+          VM: scriptVm,
           CONTENT_ID:
             process.env.BOX_WORLD_ID ||
             process.env.BOX_SERVER_CONTENT_ID ||
@@ -441,7 +445,7 @@ async function main() {
           STORAGE_PATH: temporaryRoot,
           BOX_PROJECT_STATE_PATH: path.join(temporaryRoot, 'project-state.json'),
           HASH: world.manifest.permissionHash,
-          VM: 'local',
+          VM: scriptVm,
           CONTENT_ID: world.id,
           // Multi-world play deployments must never collapse all maps into a
           // single data namespace. Server owners can add a prefix, while the

@@ -20,7 +20,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const mapId = req.query.mapId === undefined
       ? undefined
       : Number(Array.isArray(req.query.mapId) ? req.query.mapId[0] : req.query.mapId);
-    const rows = listModels({ modelType, mapId });
+    const creativeMode = req.query.creativeMode === undefined
+      ? undefined
+      : Number(Array.isArray(req.query.creativeMode) ? req.query.creativeMode[0] : req.query.creativeMode);
+    const modelName = req.query.modelName === undefined
+      ? undefined
+      : String(Array.isArray(req.query.modelName) ? req.query.modelName[0] : req.query.modelName);
+    const rows = listModels({ modelType, mapId, creativeMode, modelName });
     return res.status(200).json({ rows, count: rows.length });
   }
   if (req.method === 'POST') {

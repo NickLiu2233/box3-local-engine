@@ -134,8 +134,20 @@ if (clientConfig.isLocalGameServer) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ modelName }),
     });
-  modelApi.setDefaultSkinUsingPut = async () => true;
-  modelApi.getDefaultSkinUsingGet = async () => undefined;
+  modelApi.setDefaultSkinUsingPut = async ({ mapId, skinId }) =>
+    voxaRequest(`/default-skin?mapId=${encodeURIComponent(String(mapId))}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mapId, skinId }),
+    });
+  modelApi.getDefaultSkinUsingGet = async ({ mapId }) => {
+    const skin = await voxaRequest(
+      `/default-skin?mapId=${encodeURIComponent(String(mapId))}`,
+    );
+    return skin
+      ? { ...skin, modelPreviewUrl: absoluteVoxaURL(skin.modelPreviewUrl) }
+      : undefined;
+  };
   modelApi.getSkinMapIdList = async () => [];
   modelApi.batchAddSkinUsingPost = async () => true;
 

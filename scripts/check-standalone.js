@@ -292,6 +292,30 @@ for (const [label, pattern] of [
     pattern,
   )
 }
+
+const gameServerConfigFile = 'services/game-server/config/index.ts'
+const gameServerConfigSource = readRequired(gameServerConfigFile)
+requirePattern(
+  gameServerConfigSource,
+  gameServerConfigFile,
+  'dedicated server script timeout environment variable',
+  /scriptTimeout: N\('SCRIPT_TIMEOUT', DEFAULT_SETTINGS\.scriptTimeout\)/,
+)
+forbidPattern(
+  gameServerConfigSource,
+  gameServerConfigFile,
+  'script timeout wired to heap size',
+  /scriptTimeout: N\('SCRIPT_HEAP_MB'/,
+)
+
+const gameServerEntryFile = 'services/game-server/src/entry.ts'
+const gameServerEntrySource = readRequired(gameServerEntryFile)
+requirePattern(
+  gameServerEntrySource,
+  gameServerEntryFile,
+  'normalized script timeout passed to isolated process',
+  /new IvmpScriptSocketServer\([\s\S]*?spec\.scriptTimeout,[\s\S]*?spec\.SCRIPT_MEMORY_LIMIT/,
+)
 for (const file of [
   'apps/game/rusty/.env.prod',
   'apps/game/rusty/.env.local.example',
@@ -589,6 +613,11 @@ for (const [label, pattern] of [
   ['creator project runtime mode', /--runtime-only requires --project <project-id>/],
   ['play rejects editable source projects', /playMode && launchTarget\?\.kind === 'source'/],
   ['product environment flag', /BOX_DEPLOYMENT_MODE: playMode \? 'play' : 'creator'/],
+  [
+    'isolated server script runtime',
+    /const scriptVm = process\.env\.BOX_SCRIPT_VM \|\| 'ivmp'/,
+  ],
+  ['server script VM propagation', /VM: scriptVm/],
   ['single product address', /Open: http:\/\/127\.0\.0\.1:\$\{webPort\}\//],
   [
     'standalone build-id validation',
@@ -616,6 +645,31 @@ forbidPattern(
   launcherFile,
   'legacy client/server launch modes',
   /--client-only|--server-only|Player Client|Dedicated Server/,
+)
+
+const projectManagerModelsFile = 'apps/local-engine/src/project-manager.js'
+const projectManagerModelsSource = readRequired(projectManagerModelsFile)
+requirePattern(
+  projectManagerModelsSource,
+  projectManagerModelsFile,
+  'published VOXA model metadata root',
+  /\[state\.permissionHash, state\.extraProjectHash\]/,
+)
+
+const localProjectStateFile =
+  'services/game-server/src/project/local-project-state.ts'
+const localProjectStateSource = readRequired(localProjectStateFile)
+requirePattern(
+  localProjectStateSource,
+  localProjectStateFile,
+  'persisted extra project hash',
+  /extraProjectHash/,
+)
+forbidPattern(
+  launcherSource,
+  launcherFile,
+  'disabled in-process server script runtime',
+  /VM: 'local'/,
 )
 
 const serverLaunchFile = 'services/game-server/src/launch.ts'

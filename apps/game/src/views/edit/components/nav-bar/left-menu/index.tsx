@@ -157,7 +157,7 @@ export const LeftMenu = (props: LeftMenuProps) => {
         }
 
         case CenterPanelEnum.PlayerModule:
-          return !isLocalEngine && permissions.editPlayer && !isRunning;
+          return (isLocalEngine || permissions.editPlayer) && !isRunning;
       }
       return false;
     });
@@ -184,9 +184,8 @@ export const LeftMenu = (props: LeftMenuProps) => {
     <div className={styles.leftMenu}>
       <DropDownMenu isGuest={isGuest} />
       <NavMode contentList={filteredNavItems} />
-      {!isLocalEngine &&
-        centerPanel === CenterPanelEnum.PlayerModule &&
-        permissions.editPlayer && <PlayerManager />}
+      {centerPanel === CenterPanelEnum.PlayerModule &&
+        (isLocalEngine || permissions.editPlayer) && <PlayerManager />}
     </div>
   );
 };

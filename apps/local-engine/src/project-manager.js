@@ -93,15 +93,15 @@ function copyReadableFileSync(source, destination) {
   }
 }
 
-function createReleaseData(sourceRoot, releaseDataRoot, permissionHash) {
+function createReleaseData(sourceRoot, releaseDataRoot, state) {
   const sourceBlobRoot = path.join(sourceRoot, 'blobs')
   const releaseBlobRoot = path.join(releaseDataRoot, 'blobs')
   const hashes = getRuntimeTemplateHashes()
-  for (const hash of getReachableProjectHashes(
-    sourceBlobRoot,
-    permissionHash,
-  )) {
-    hashes.add(hash)
+  for (const rootHash of [state.permissionHash, state.extraProjectHash]) {
+    if (!rootHash) continue
+    for (const hash of getReachableProjectHashes(sourceBlobRoot, rootHash)) {
+      hashes.add(hash)
+    }
   }
 
   fs.mkdirSync(releaseBlobRoot, { recursive: true })
@@ -369,7 +369,7 @@ function publishProject(id, requestedVersion, notes = '') {
     createReleaseData(
       sourceRoot,
       path.join(temporaryReleaseRoot, 'data'),
-      state.permissionHash,
+      state,
     )
     writeJSON(path.join(temporaryReleaseRoot, 'manifest.json'), release)
     fs.renameSync(temporaryReleaseRoot, releaseRoot)

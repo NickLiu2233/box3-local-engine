@@ -79,7 +79,7 @@ export const config = build({
   script: S('SCRIPT', ''), // debug script for default project in local mode
   // quotas and limits
   scriptHeapSizeMB: N('SCRIPT_HEAP_MB', DEFAULT_SETTINGS.scriptHeapSizeMB),
-  scriptTimeout: N('SCRIPT_HEAP_MB', DEFAULT_SETTINGS.scriptTimeout),
+  scriptTimeout: N('SCRIPT_TIMEOUT', DEFAULT_SETTINGS.scriptTimeout),
   // script sql storage
   storageMode: S('STORAGE_MODE', ''),
 

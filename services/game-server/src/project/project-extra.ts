@@ -26,17 +26,35 @@ export async function getLocalExtraProject(
 ) {
   const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
   try {
-    const response = await axios.get(
-      `${voxaURL.replace(/\/$/, '')}/api/local/models`,
-      {
-        params: {
-          modelType: ModelType.Project,
-          mapId,
-        },
-        timeout: 10_000,
-      },
-    );
-    const rows = Array.isArray(response.data?.rows) ? response.data.rows : [];
+    const baseURL = voxaURL.replace(/\/$/, '');
+    const [modelResponse, skinResponse, defaultSkinResponse] =
+      await Promise.all([
+        axios.get(`${baseURL}/api/local/models`, {
+          params: {
+            modelType: ModelType.Project,
+            creativeMode: CreativeMode.Model,
+            mapId,
+          },
+          timeout: 10_000,
+        }),
+        axios.get(`${baseURL}/api/local/models`, {
+          params: {
+            modelType: ModelType.ExtensionLib,
+            creativeMode: CreativeMode.Skin,
+            mapId,
+          },
+          timeout: 10_000,
+        }),
+        axios
+          .get(`${baseURL}/api/local/default-skin`, {
+            params: { mapId },
+            timeout: 10_000,
+          })
+          .catch(() => ({ data: null })),
+      ]);
+    const rows = Array.isArray(modelResponse.data?.rows)
+      ? modelResponse.data.rows
+      : [];
     for (const row of rows) {
       const modelId = Number(row.modelId || 0);
       const path = getLocalMeshPath(String(row.modelName || ''), modelId);
@@ -49,8 +67,20 @@ export async function getLocalExtraProject(
         updatedAt: String(row.updatedAt || ''),
       };
     }
+    const skinRows = Array.isArray(skinResponse.data?.rows)
+      ? skinResponse.data.rows
+      : [];
+    for (const row of skinRows) {
+      const modelId = Number(row.modelId || 0);
+      if (!modelId || !row.modelFileHash) continue;
+      const name = `${String(row.modelName || '皮肤')}__local_${modelId}`;
+      extra.skinAssets[name] = { hash: String(row.modelFileHash) };
+      if (Number(defaultSkinResponse.data?.modelId || 0) === modelId) {
+        extra.defaultSkinName = name;
+      }
+    }
     logger.info(
-      `fetch local VOXA mesh assets: ${Object.keys(extra.meshAssets).length}`,
+      `fetch local VOXA assets: ${Object.keys(extra.meshAssets).length} models, ${Object.keys(extra.skinAssets).length} skins`,
     );
   } catch (error) {
     logger.error(`get local VOXA mesh assets error: ${String(error)}`);

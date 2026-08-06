@@ -1752,6 +1752,21 @@ export class EditReplicaServer {
       this._logger.info('update extra project info');
 
       await this._updateProjectByExtra();
+
+      const persistedStream = new MuWriteStream(1);
+      ExtraProjectInfoSchema.diff(
+        ExtraProjectInfoSchema.identity,
+        replicaState.extraProjectInfo,
+        persistedStream,
+      );
+      const extraProjectHash = await this._state.contentServer.store(
+        persistedStream.bytes(),
+      );
+      persistedStream.destroy();
+      persistLocalProjectState(
+        replicaState.permissionHash,
+        extraProjectHash,
+      );
     }
     stream.destroy();
   };

@@ -31,6 +31,7 @@ type StoreIndex = {
   nextSnapshotId: number;
   models: StoredModel[];
   blobTypes: Record<string, string>;
+  defaultSkinByMap?: Record<string, number>;
 };
 
 const dataRoot = path.resolve(
@@ -48,6 +49,7 @@ function emptyIndex(): StoreIndex {
     nextSnapshotId: 1,
     models: [],
     blobTypes: {},
+    defaultSkinByMap: {},
   };
 }
 
@@ -254,11 +256,20 @@ export function getModel(id: number) {
   return model ? publicModel(model) : null;
 }
 
-export function listModels(filters: { modelType?: number; mapId?: number } = {}) {
+export function listModels(filters: {
+  modelType?: number;
+  mapId?: number;
+  creativeMode?: number;
+  modelName?: string;
+} = {}) {
+  const searchName = String(filters.modelName || '').trim().toLocaleLowerCase();
   return readIndex()
     .models.filter(
       (model) =>
         (filters.modelType === undefined || model.modelType === filters.modelType) &&
+        (filters.creativeMode === undefined ||
+          model.creativeMode === filters.creativeMode) &&
+        (!searchName || model.modelName.toLocaleLowerCase().includes(searchName)) &&
         matchesMapFilter(model, filters.mapId),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -277,7 +288,35 @@ export async function deleteModel(id: number) {
   return mutate((index) => {
     const before = index.models.length;
     index.models = index.models.filter((item) => item.modelId !== id);
+    for (const [mapId, skinId] of Object.entries(index.defaultSkinByMap || {})) {
+      if (skinId === id) delete index.defaultSkinByMap?.[mapId];
+    }
     return index.models.length !== before;
+  });
+}
+
+export function getDefaultSkin(mapId: number) {
+  const index = readIndex();
+  const id = index.defaultSkinByMap?.[String(mapId)] || 0;
+  const model = index.models.find(
+    (item) => item.modelId === id && item.creativeMode === 2,
+  );
+  return model ? publicModel(model) : null;
+}
+
+export async function setDefaultSkin(mapId: number, skinId?: number) {
+  return mutate((index) => {
+    index.defaultSkinByMap ||= {};
+    if (!skinId) {
+      delete index.defaultSkinByMap[String(mapId)];
+      return true;
+    }
+    const skin = index.models.find(
+      (item) => item.modelId === skinId && item.creativeMode === 2,
+    );
+    if (!skin) return false;
+    index.defaultSkinByMap[String(mapId)] = skinId;
+    return true;
   });
 }
 

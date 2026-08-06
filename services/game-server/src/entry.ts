@@ -63,7 +63,10 @@ import { migrateVoxelModels } from './migrate-voxel-models';
 import { RabbitMQ } from './mq/rabbitMQ';
 import { getExtraProject } from './project/project-extra';
 import { createDefaultProject } from './project/project-init';
-import { persistLocalProjectState } from './project/local-project-state';
+import {
+  getLocalExtraProjectStateHash,
+  persistLocalProjectState,
+} from './project/local-project-state';
 import { BuildSystemRemote } from './service/build-system-remote';
 import {
   applyServerPermissions,
@@ -405,11 +408,34 @@ export async function startServer(spec: ServerRuntimeConfig) {
         }
 
         // get extra project info
-        const extraProject = await getExtraProject(
-          contentId,
-          spec.mode,
-          logger,
-        );
+        const persistedExtraProjectHash =
+          isLocal && spec.mode === 'play'
+            ? getLocalExtraProjectStateHash()
+            : '';
+        let extraProject;
+        if (persistedExtraProjectHash) {
+          const persistedExtraProject = await contentServer.retrieve(
+            persistedExtraProjectHash,
+          );
+          if (!persistedExtraProject) {
+            throw new Error(
+              `published model metadata is missing: ${persistedExtraProjectHash}`,
+            );
+          }
+          extraProject = ExtraProjectInfoSchema.patch(
+            ExtraProjectInfoSchema.identity,
+            new MuReadStream(persistedExtraProject),
+          );
+          logger.info(
+            `Loading published extraProject hash =${persistedExtraProjectHash}`,
+          );
+        } else {
+          extraProject = await getExtraProject(
+            contentId,
+            spec.mode,
+            logger,
+          );
+        }
         const stream = new MuWriteStream(1);
         ExtraProjectInfoSchema.diff(
           ExtraProjectInfoSchema.identity,
@@ -418,6 +444,10 @@ export async function startServer(spec: ServerRuntimeConfig) {
         );
         const extraProjectHash = await contentServer.store(stream.bytes());
         stream.destroy();
+
+        if (isLocal && spec.mode === 'edit') {
+          persistLocalProjectState(hash, extraProjectHash);
+        }
 
         // get extra project hash
         logger.info('Loading extraProject hash =' + extraProjectHash);
@@ -611,7 +641,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
               }),
               LOGGER_HOST_UUID,
               rootLogger.level,
-              spec.SCRIPT_TIMEOUT,
+              spec.scriptTimeout,
               spec.SCRIPT_MEMORY_LIMIT,
             );
             break;

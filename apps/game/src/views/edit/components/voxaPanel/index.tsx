@@ -207,9 +207,8 @@ export function VoxaPanel() {
       // 模型 - 保存成功后刷新模型列表
       if (clientConfig.isLocalGameServer) {
         window.dispatchEvent(new Event('local-voxa-models-changed'));
-      } else {
-        editor.replica.updateExtraProject();
       }
+      editor.replica.updateExtraProject();
 
       // 如果更改的恰好是preview中的模型，更新preview
       if (!selectedModel || selectedModel.modelData.id !== modelId) {

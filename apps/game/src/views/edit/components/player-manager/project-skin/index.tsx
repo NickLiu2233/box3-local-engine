@@ -43,6 +43,7 @@ import {
 } from 'src/redux/edit/player-skin';
 import { RootState } from 'src/redux/edit';
 import { ScrollManage } from '../../scroll-trigger';
+import { useEdit } from 'src/client/edit/edit-context';
 
 enum SkinAction {
   SetDefault = 'SetDefault',
@@ -63,6 +64,7 @@ export const ProjectSkinView = (
   const { showSkinLib, refreshProjectSkins } = props;
   const dispatch = useDispatch();
   const intl = useIntl();
+  const editor = useEdit();
   const mapId = clientConfig.mapInfo.contentId;
 
   const [rename, setRename] = useState<
@@ -155,12 +157,13 @@ export const ProjectSkinView = (
         content: intl.formatMessage({ id: 'gamePlayerUnsetDefaultSuccess' }),
       });
       dispatch(setDefaultSkinId(0));
+      await editor.replica.updateExtraProject();
     } catch (e) {
       Toast.error({
         content: intl.formatMessage({ id: 'gamePlayerUnsetDefaultError' }),
       });
     }
-  }, [dispatch, intl, mapId]);
+  }, [dispatch, editor.replica, intl, mapId]);
 
   const setDefaultSkin = useCallback(
     async (skinId: number) => {
@@ -180,6 +183,7 @@ export const ProjectSkinView = (
         Toast.success({
           content: intl.formatMessage({ id: 'gamePlayerSetDefaultSuccess' }),
         });
+        await editor.replica.updateExtraProject();
         refreshProjectSkins();
       } catch (e) {
         switch (e.code) {
@@ -196,7 +200,7 @@ export const ProjectSkinView = (
         }
       }
     },
-    [intl, mapId, refreshProjectSkins],
+    [editor.replica, intl, mapId, refreshProjectSkins],
   );
   const handleSetDefault = useCallback(
     (skinId: number) => {
@@ -442,9 +446,11 @@ export const ProjectSkinView = (
           >
             {intl.formatMessage({ id: 'gamePlayerNewSkin' })}
           </Button>
-          <Button type={'secondary'} size={'medium'} onClick={showSkinLib}>
-            {intl.formatMessage({ id: 'gamePlayerImportSkin' })}
-          </Button>
+          {!clientConfig.isLocalGameServer && (
+            <Button type={'secondary'} size={'medium'} onClick={showSkinLib}>
+              {intl.formatMessage({ id: 'gamePlayerImportSkin' })}
+            </Button>
+          )}
         </div>
         <div className={style.right}>
           <div className={style.sort}>
