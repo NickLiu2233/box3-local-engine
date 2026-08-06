@@ -2,6 +2,7 @@ packages:
   - apps/game
   - apps/local-engine
   - apps/voxa
+  - apps/migrator
   - services/game-server
   - internals/apis
   - internals/build-system

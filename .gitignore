@@ -24,3 +24,4 @@ apps/local-engine/.build-lock/
 
 # VOXA model projects and uploaded blobs belong to the local creator.
 apps/voxa/data/
+apps/migrator/cache/

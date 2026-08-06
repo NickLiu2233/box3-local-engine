@@ -14,6 +14,7 @@ Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创
 | 创作端 | 管理、编辑、预览和发布作品 | `pnpm creator` | `/` |
 | 游玩端 | 从固定目录提供多个只读作品 | `pnpm play` | `/` |
 | VOXA | 制作和管理本地体素模型 | `pnpm voxa` | `http://127.0.0.1:3001/` |
+| 云端迁移器 | 将云端工程 hash 导出为可编辑本地工程 | `pnpm migrator` | `http://127.0.0.1:3212/` |
 
 每种形态都是一个完整部署。启动器会自动协调网页和所需运行时，使用者只选择创作端或
 游玩端，不再分别构建、启动其他子项目。
@@ -65,6 +66,23 @@ pnpm voxa
 - 创作端：<http://127.0.0.1:3002/>
 - 游玩端：<http://127.0.0.1:3000/>
 - VOXA：<http://127.0.0.1:3001/>
+- 云端迁移器：<http://127.0.0.1:3212/>
+
+### 迁移云端工程
+
+迁移器是独立镜像，不会读取或写入创作端的项目目录。优先在 `.env` 配置与 `boxes`
+`GoIPFSStore` 一致的内容 API，例如 `BOX_MIGRATOR_CONTENT_API_URL=https://content-api.example.com`
+（自动请求 `/block/get?arg=<hash>`）；也可配置静态地址
+`BOX_MIGRATOR_CONTENT_URL=https://cdn.example.com/block/{hash}`。体素模型会先读取 IPFS，失败后按
+`BOX_MIGRATOR_OSS_URL/engine/m/<hash>` 回退，并继续复制模型元数据引用的 `dataHash`。私有服务可再配置
+`BOX_MIGRATOR_AUTHORIZATION`。然后启动：
+
+```bash
+pnpm migrator
+```
+
+在网页输入地图工程 hash，下载生成的 `.boxproject`，再从创作端“导入工程”导入。迁移的是当前
+工程及其引用的内容资源，不包括账号、协作关系、评论、统计和发布历史。
 
 每个作品都有独立工程目录。作品管理器负责创建、导入、编辑、发布和导出，不需要手动操作
 工程中的 `source/`、`releases/` 或 blob 文件。选择作品后，管理器会打开对应的

@@ -12,7 +12,7 @@
     "generate-terrain": "node -r ts-node/register --max-old-space-size=4096 scripts/terrain/generate-terrain.ts",
     "check:postgres-storage": "node -r @swc-node/register scripts/check-postgres-data-storage.ts",
     "prod": "node dist/src/launch.js --useProdBundle",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node -r @swc-node/register scripts/regression-local-voxa-fallback.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "1.0.28",

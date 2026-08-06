@@ -27,7 +27,8 @@ FROM engine-build-base AS creator-build
 
 RUN pnpm build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
-RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
+RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
+    pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
     && rm -rf /opt/game-server/src /opt/game-server/scripts /opt/game-server/dist/scripts \
@@ -38,7 +39,7 @@ RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server
     && find /opt/game-server -depth -type d \( \
       -name '.github' -o -name '.circleci' -o -name '.vscode' \
       -o -name 'test' -o -name 'tests' -o -name '__tests__' \
-      -o -name 'docs' -o -name 'doc' -o -name 'examples' -o -name 'example' \
+      -o -name 'docs' -o -name 'examples' -o -name 'example' \
       -o -name 'benchmark' -o -name 'benchmarks' -o -name 'coverage' -o -name 'man' \
     \) -exec rm -rf {} + \
     && find /opt/game-server -type f \( \
@@ -56,7 +57,8 @@ FROM engine-build-base AS play-build
 
 RUN pnpm build:play
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
-RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
+RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
+    pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
     && rm -rf /opt/game-server/src /opt/game-server/scripts /opt/game-server/dist/scripts \
@@ -77,7 +79,7 @@ RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server
     && find /opt/game-server -depth -type d \( \
       -name '.github' -o -name '.circleci' -o -name '.vscode' \
       -o -name 'test' -o -name 'tests' -o -name '__tests__' \
-      -o -name 'docs' -o -name 'doc' -o -name 'examples' -o -name 'example' \
+      -o -name 'docs' -o -name 'examples' -o -name 'example' \
       -o -name 'benchmark' -o -name 'benchmarks' -o -name 'coverage' -o -name 'man' \
     \) -exec rm -rf {} + \
     && find /opt/game-server -type f \( \

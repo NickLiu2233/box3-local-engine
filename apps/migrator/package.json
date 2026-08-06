@@ -1,0 +1,23 @@
+{
+  "name": "@box-local/migrator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloud project to Local Engine project migration tool",
+  "scripts": {
+    "dev": "next dev -p 3212",
+    "build": "next build",
+    "test": "node scripts/regression-preview-image.cjs",
+    "start": "next start -p 3212"
+  },
+  "dependencies": {
+    "next": "15.5.7",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.16.15",
+    "@types/react": "19.2.4",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.6.3"
+  }
+}

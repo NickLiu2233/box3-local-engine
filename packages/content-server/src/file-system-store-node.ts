@@ -17,7 +17,9 @@ function contentHash(content: Uint8Array): Hash {
 
 function normalizeHash(hash: Hash): Hash | undefined {
   const value = hash.split('.')[0];
-  if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(value)) {
+  const isBase58ContentHash = /^[1-9A-HJ-NP-Za-km-z]+$/.test(value);
+  const isOssContentHash = /^[A-Za-z0-9_-]{43}$/.test(value);
+  if (!isBase58ContentHash && !isOssContentHash) {
     return undefined;
   }
   return value;

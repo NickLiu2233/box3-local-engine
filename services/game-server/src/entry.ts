@@ -7,7 +7,6 @@ import { AddressInfo } from 'net';
 import path from 'path';
 import url from 'url';
 
-import axios from 'axios';
 import { MockBuildCache } from '@box-local/build-system/build-cache-mock';
 import { BuildSystem } from '@box-local/build-system/build-system';
 import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
@@ -51,6 +50,7 @@ import { apis } from './apis';
 import { BLOCK_INFO_RES } from './assets/block_info';
 import { BackendClientRPCNode } from './backend-rpc-client-node';
 import { createGameServer, HttpRoutes } from './createServer';
+import { createLocalContentWithVoxa } from './content/local-content-with-voxa';
 import { GameServerStateSchema } from './game-server-schema';
 import { checkAndUpdateDefaultScreenId } from './game-ui/util';
 import {
@@ -161,28 +161,10 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const localContentServer = new FileSystemContentServer(
     path.join(spec.storagePath, 'blobs'),
   );
-  const localContentWithVoxa = {
-    init: () => localContentServer.init(),
-    store: (content: Uint8Array) => localContentServer.store(content),
-    retrieve: async (hash: string) => {
-      const local = await localContentServer.retrieve(hash);
-      if (local) return local;
-
-      const voxaURL =
-        process.env.VOXA_INTERNAL_URL || process.env.VOXA_URL;
-      if (!voxaURL) return undefined;
-      try {
-        const response = await axios.get(
-          `${voxaURL.replace(/\/$/, '')}/api/local/blobs/${hash}`,
-          { responseType: 'arraybuffer', timeout: 30_000 },
-        );
-        return new Uint8Array(response.data);
-      } catch (error) {
-        logger.debug(`local VOXA blob not found: ${hash}: ${String(error)}`);
-        return undefined;
-      }
-    },
-  };
+  const localContentWithVoxa = createLocalContentWithVoxa(
+    localContentServer,
+    logger,
+  );
   const contentServer = isLocal
     ? new ContentSplitter(
         new CachingContentServer(logger, localContentWithVoxa),
@@ -201,7 +183,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
   await contentServer.init();
 
   const ossContentServer = isLocal
-    ? localContentServer
+    ? localContentWithVoxa
     : new ObjectStoreService({
         logger,
         uri: spec.INTRANET_CREATERA_BACKEND_SERVER_URL,

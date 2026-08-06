@@ -107,3 +107,36 @@ services:
       - "127.0.0.1:${BOX_VOXA_PORT:-3001}:3001"
     volumes:
       - ./apps/voxa/data:/app/apps/voxa/data
+
+  migrator:
+    profiles: [migrator]
+    image: box-local-engine-migrator:${BOX_IMAGE_TAG:-0.1.0}
+    build:
+      context: .
+      dockerfile: apps/migrator/Dockerfile
+      args:
+        NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-node:22.17.0-bookworm-slim}
+    restart: unless-stopped
+    environment:
+      # Optional IPFS HTTP API base. This matches boxes' GoIPFSStore request
+      # shape and appends /block/get?arg=<hash> automatically.
+      BOX_MIGRATOR_CONTENT_API_URL: ${BOX_MIGRATOR_CONTENT_API_URL:-}
+      # Required. Either a URL template with {hash}, or a base URL to which
+      # /block/<hash> is appended, for example https://cdn.example.com.
+      BOX_MIGRATOR_CONTENT_URL: ${BOX_MIGRATOR_CONTENT_URL:-}
+      # Optional server-side credential for a private cloud content endpoint.
+      BOX_MIGRATOR_AUTHORIZATION: ${BOX_MIGRATOR_AUTHORIZATION:-}
+      # Cloud OSS assets (images/models/scripts) use a different namespace
+      # than IPFS /block objects.
+      BOX_MIGRATOR_OSS_URL: ${BOX_MIGRATOR_OSS_URL:-https://assets.box3.fun}
+      BOX_MIGRATOR_MAX_BLOBS: ${BOX_MIGRATOR_MAX_BLOBS:-20000}
+      BOX_MIGRATOR_MAX_TOTAL_BYTES: ${BOX_MIGRATOR_MAX_TOTAL_BYTES:-1073741824}
+      BOX_MIGRATOR_MAX_BLOB_BYTES: ${BOX_MIGRATOR_MAX_BLOB_BYTES:-67108864}
+      BOX_MIGRATOR_CONCURRENCY: ${BOX_MIGRATOR_CONCURRENCY:-32}
+      BOX_MIGRATOR_SCAN_CONCURRENCY: ${BOX_MIGRATOR_SCAN_CONCURRENCY:-20000}
+      BOX_MIGRATOR_REQUEST_TIMEOUT_MS: ${BOX_MIGRATOR_REQUEST_TIMEOUT_MS:-8000}
+      BOX_MIGRATOR_CACHE_DIR: /app/cache
+    ports:
+      - "127.0.0.1:${BOX_MIGRATOR_PORT:-3212}:3212"
+    volumes:
+      - ./apps/migrator/cache:/app/cache
