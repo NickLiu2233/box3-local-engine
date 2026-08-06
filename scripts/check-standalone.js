@@ -332,6 +332,14 @@ for (const file of [
 const dockerFile = 'apps/local-engine/Dockerfile'
 const dockerSource = readRequired(dockerFile)
 for (const [label, pattern] of [
+  ['runtime documentation cleanup', /-iname 'README\*'[\s\S]*?-iname '\*\.md'/],
+  ['runtime test directory cleanup', /-name 'test'[\s\S]*?-name '__tests__'/],
+  ['runtime TypeScript metadata cleanup', /-name '@types\+\*'/],
+  ['pnpm runtime metadata cleanup', /node_modules\/\.modules\.yaml/],
+]) {
+  requirePattern(dockerSource, dockerFile, label, pattern)
+}
+for (const [label, pattern] of [
   ['creator build stage', /^FROM engine-build-base AS creator-build$/m],
   ['creator build command', /^RUN pnpm build:creator$/m],
   ['play build stage', /^FROM engine-build-base AS play-build$/m],

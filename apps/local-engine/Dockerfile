@@ -34,7 +34,23 @@ RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server
     && find /opt/game-server -type f \( \
       -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
       -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
-    \) -delete
+    \) -delete \
+    && find /opt/game-server -depth -type d \( \
+      -name '.github' -o -name '.circleci' -o -name '.vscode' \
+      -o -name 'test' -o -name 'tests' -o -name '__tests__' \
+      -o -name 'docs' -o -name 'doc' -o -name 'examples' -o -name 'example' \
+      -o -name 'benchmark' -o -name 'benchmarks' -o -name 'coverage' -o -name 'man' \
+    \) -exec rm -rf {} + \
+    && find /opt/game-server -type f \( \
+      -iname 'README*' -o -iname 'CHANGELOG*' -o -iname 'HISTORY*' \
+      -iname 'CONTRIBUTING*' -o -iname 'AUTHORS*' -o -iname '*.md' \
+      -o -iname '*.markdown' -o -name 'yarn.lock' -o -name 'package-lock.json' \
+    \) -delete \
+    && rm -rf /opt/game-server/node_modules/@types \
+      /opt/game-server/node_modules/.pnpm/node_modules/@types \
+    && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
+      -name '@types+*' -exec rm -rf {} + \
+    && rm -f /opt/game-server/node_modules/.modules.yaml
 
 FROM engine-build-base AS play-build
 
@@ -57,7 +73,23 @@ RUN pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server
     && find /opt/game-server -type f \( \
       -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
       -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
-    \) -delete
+    \) -delete \
+    && find /opt/game-server -depth -type d \( \
+      -name '.github' -o -name '.circleci' -o -name '.vscode' \
+      -o -name 'test' -o -name 'tests' -o -name '__tests__' \
+      -o -name 'docs' -o -name 'doc' -o -name 'examples' -o -name 'example' \
+      -o -name 'benchmark' -o -name 'benchmarks' -o -name 'coverage' -o -name 'man' \
+    \) -exec rm -rf {} + \
+    && find /opt/game-server -type f \( \
+      -iname 'README*' -o -iname 'CHANGELOG*' -o -iname 'HISTORY*' \
+      -iname 'CONTRIBUTING*' -o -iname 'AUTHORS*' -o -iname '*.md' \
+      -o -iname '*.markdown' -o -name 'yarn.lock' -o -name 'package-lock.json' \
+    \) -delete \
+    && rm -rf /opt/game-server/node_modules/@types \
+      /opt/game-server/node_modules/.pnpm/node_modules/@types \
+    && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
+      -name '@types+*' -exec rm -rf {} + \
+    && rm -f /opt/game-server/node_modules/.modules.yaml
 
 FROM source-base AS voxa-build
 
