@@ -127,7 +127,7 @@ async function getSessionData(
   req: NextApiRequest,
   mode: 'play' | 'edit',
   contentId,
-  fingerPrint: string,
+  fingerPrint: string = '',
   serverId: string = '',
   containerName: string = '',
 ) {
@@ -148,11 +148,13 @@ async function getSessionData(
   let httpServerUrl: string;
   let socketServerUrl: string;
   if (ServerConfig.isLocalGameServer === true) {
-    httpServerUrl = mode === 'edit'
+    const localRuntimeURL = mode === 'edit'
       ? ServerConfig.localEditServerURL
-      : process.env.BOX_PLAY_LIBRARY_PATH
-        ? `${ServerConfig.localGameServerURL}/${encodeURIComponent(containerName)}`
-        : ServerConfig.localGameServerURL;
+      : ServerConfig.localGameServerURL;
+    httpServerUrl = process.env.BOX_DEPLOYMENT_MODE === 'creator' ||
+      (mode === 'play' && process.env.BOX_PLAY_LIBRARY_PATH)
+      ? `${localRuntimeURL.replace(/\/$/, '')}/${encodeURIComponent(containerName)}`
+      : localRuntimeURL;
     // 本地就直接把 http server url 处理成 socket server url
     socketServerUrl = httpServerUrl.replace('http', 'ws');
   } else {
@@ -204,13 +206,7 @@ async function getSessionData(
         : undefined;
       const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
       const requestHost = req.headers.host || '127.0.0.1:3000';
-      const hostname = requestHost.startsWith('[')
-        ? requestHost.slice(0, requestHost.indexOf(']') + 1)
-        : requestHost.split(':')[0];
-      const runtimePort = mode === 'edit'
-        ? process.env.BOX_EDIT_RUNTIME_PUBLIC_PORT || '9967'
-        : process.env.BOX_PLAY_RUNTIME_PUBLIC_PORT || '9966';
-      json.data.socketServerUrl = `${protocol}://${hostname}:${runtimePort}`;
+      json.data.socketServerUrl = `${protocol}://${requestHost}/runtime/${mode}/${encodeURIComponent(containerName)}`;
     } else if (deploymentMode === 'play') {
       const runtimePath = process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
         ? `/runtime/play/${encodeURIComponent(containerName)}`

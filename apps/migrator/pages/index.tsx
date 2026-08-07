@@ -24,6 +24,7 @@ type Job = {
 const formatBytes = (bytes: number) => bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const stages = [
   ['validating', '验证权限'],
+  ['backend', '读取后端'],
   ['resolving', '定位 master'],
   ['scanning', '解析引用'],
   ['downloading', '下载资源'],
@@ -33,6 +34,8 @@ const stageRank = (stage: string) => Math.max(0, stages.findIndex(([key]) => key
 
 export default function Home() {
   const [hash, setHash] = useState('');
+  const [mapId, setMapId] = useState('');
+  const [mode, setMode] = useState<'edit' | 'play'>('edit');
   const [projectName, setProjectName] = useState('');
   const [job, setJob] = useState<Job>();
   const [busy, setBusy] = useState(false);
@@ -57,7 +60,7 @@ export default function Home() {
     setBusy(true);
     setJob(undefined);
     try {
-      const response = await fetch('/api/migration', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hash, projectName }) });
+      const response = await fetch('/api/migration', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hash, mapId: Number(mapId), mode, projectName }) });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.message || `迁移失败（HTTP ${response.status}）`);
@@ -72,9 +75,11 @@ export default function Home() {
   }
 
   return <><Head><title>BOX 云端工程迁移器</title><meta name="description" content="将云端工程 hash 导出为 Local Engine 创作工程" /></Head><main className={styles.main}>
-    <section className={styles.panel}><p className={styles.eyebrow}>LOCAL ENGINE / MIGRATION</p><h1>把云端地图带回本地。</h1><p className={styles.intro}>输入拥有编辑权限的地图工程 hash，迁移器会下载其可达资源并生成可直接导入创作端的 <code>.boxproject</code>。</p>
+    <section className={styles.panel}><p className={styles.eyebrow}>LOCAL ENGINE / MIGRATION</p><h1>把完整云端地图带回本地。</h1><p className={styles.intro}>输入云端地图 ID，迁移器会通过生产环境引擎后端解析当前工程，并封装工程组、实体、地形、UI、图库、音频、完整脚本、项目模型和皮肤。导入后无需访问云端。</p>
       <form onSubmit={submit} className={styles.form}>
-        <label>地图工程 hash<input value={hash} onChange={(event) => setHash(event.target.value.trim())} placeholder="Qm…" required pattern="Qm[1-9A-HJ-NP-Za-km-z]{44}" /></label>
+        <label>云端地图 ID<input value={mapId} onChange={(event) => setMapId(event.target.value.replace(/\D/g, ''))} placeholder="例如 50259290" required inputMode="numeric" pattern="[1-9][0-9]*" /></label>
+        <label>工程模式<select value={mode} onChange={(event) => setMode(event.target.value === 'play' ? 'play' : 'edit')}><option value="edit">编辑版本（推荐）</option><option value="play">当前发布版本</option></select></label>
+        <label>校验 permission hash <span>可选；填写后会与后端结果核对</span><input value={hash} onChange={(event) => setHash(event.target.value.trim())} placeholder="Qm…" pattern="Qm[1-9A-HJ-NP-Za-km-z]{44}" /></label>
         <label>本地工程名称 <span>可选</span><input value={projectName} onChange={(event) => setProjectName(event.target.value)} maxLength={80} placeholder="云端迁移地图" /></label>
         <button disabled={busy || job?.status === 'running'}>{busy || job?.status === 'running' ? '正在迁移…' : '生成创作工程'}</button>
       </form>
@@ -113,6 +118,6 @@ export default function Home() {
         {job.status === 'completed' && <><span>{job.blobCount} 个资源 · 跳过 {job.skippedCount || 0} 个 · {formatBytes(job.totalBytes)}</span><a className={styles.download} href={`/api/download?id=${encodeURIComponent(job.id)}`}>下载 {job.filename || '.boxproject'}</a></>}
       </div>}
     </section>
-    <aside className={styles.note}><strong>迁移范围</strong><p>迁移当前工程及其引用的内容资源；不迁移账号、协作关系、评论、分析数据和发布历史。</p><p>云端访问地址与鉴权凭据仅配置在服务端环境变量中，不会出现在下载包或浏览器里。</p></aside>
+    <aside className={styles.note}><strong>完整离线快照</strong><p>迁移工程当前版本、工程组数据、实体、地形、UI、图片、音频、脚本、项目模型、共享皮肤和默认皮肤。模型迁移状态和每项下载都会显示在进度中。</p><p>不会导出账号令牌、成员与协作权限、评论、分析数据或历史版本。后端令牌只保存在迁移器服务端环境变量中，不会进入工程包。</p></aside>
   </main></>;
 }

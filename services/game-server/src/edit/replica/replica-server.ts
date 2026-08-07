@@ -89,7 +89,11 @@ import {
 } from '../../group-project';
 import { GroupProjectStore } from '@box-local/schema/group-project/rda';
 import { OssStoreType } from '@box-local/content-server';
-import { persistLocalProjectState } from '../../project/local-project-state';
+import {
+  getLocalExtraProjectMode,
+  persistLocalProjectState,
+} from '../../project/local-project-state';
+import { mergeExtraProjectInfo } from '../../project/project-extra';
 
 const TOKEN_MIN_DURATION = 60 * 1000;
 const TOKEN_MAX_DURATION = 24 * 60 * 60 * 1000;
@@ -1728,13 +1732,22 @@ export class EditReplicaServer {
   }
 
   public _checkAndSetExtraProject = async () => {
-    const extra = await getExtraProject(
+    const refreshedExtra = await getExtraProject(
       this._state.publish.gameId,
       'edit',
       this._logger,
     );
 
     const replicaState = this._state.replica;
+    // boxes refreshes a complete authoritative snapshot. Local VOXA only
+    // supplies the shared local models and skins, so imported projects must
+    // retain their packaged cloud snapshot and merge the live local library
+    // into it instead of replacing one source with the other.
+    const extra =
+      getConfigSync()?.method === 'local' &&
+      getLocalExtraProjectMode() === 'embedded'
+        ? mergeExtraProjectInfo(replicaState.extraProjectInfo, refreshedExtra)
+        : refreshedExtra;
     const stream = new MuWriteStream(1);
     const diff = ExtraProjectInfoSchema.diff(
       replicaState.extraProjectInfo,

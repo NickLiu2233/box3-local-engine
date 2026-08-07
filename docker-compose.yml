@@ -118,6 +118,13 @@ services:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-node:22.17.0-bookworm-slim}
     restart: unless-stopped
     environment:
+      # Production creator backend. Override with the staging host only for tests.
+      BOX_MIGRATOR_ENGINE_API_URL: ${BOX_MIGRATOR_ENGINE_API_URL:-https://code-api-pc.dao3.fun}
+      # Engine backend credential used by boxes as request-header-fixed-key.
+      BOX_MIGRATOR_ENGINE_API_KEY: ${BOX_MIGRATOR_ENGINE_API_KEY:-}
+      # Optional gateway Authorization value when the deployment requires both headers.
+      BOX_MIGRATOR_ENGINE_AUTHORIZATION: ${BOX_MIGRATOR_ENGINE_AUTHORIZATION:-}
+      BOX_MIGRATOR_ENGINE_API_TIMEOUT_MS: ${BOX_MIGRATOR_ENGINE_API_TIMEOUT_MS:-15000}
       # Optional IPFS HTTP API base. This matches boxes' GoIPFSStore request
       # shape and appends /block/get?arg=<hash> automatically.
       BOX_MIGRATOR_CONTENT_API_URL: ${BOX_MIGRATOR_CONTENT_API_URL:-}
@@ -126,8 +133,8 @@ services:
       BOX_MIGRATOR_CONTENT_URL: ${BOX_MIGRATOR_CONTENT_URL:-}
       # Optional server-side credential for a private cloud content endpoint.
       BOX_MIGRATOR_AUTHORIZATION: ${BOX_MIGRATOR_AUTHORIZATION:-}
-      # Cloud OSS assets (images/models/scripts) use a different namespace
-      # than IPFS /block objects.
+      # UI images, models, skins and project scripts may use the cloud OSS
+      # namespace instead of IPFS /block objects.
       BOX_MIGRATOR_OSS_URL: ${BOX_MIGRATOR_OSS_URL:-https://assets.box3.fun}
       BOX_MIGRATOR_MAX_BLOBS: ${BOX_MIGRATOR_MAX_BLOBS:-20000}
       BOX_MIGRATOR_MAX_TOTAL_BYTES: ${BOX_MIGRATOR_MAX_TOTAL_BYTES:-1073741824}
@@ -135,6 +142,7 @@ services:
       BOX_MIGRATOR_CONCURRENCY: ${BOX_MIGRATOR_CONCURRENCY:-32}
       BOX_MIGRATOR_SCAN_CONCURRENCY: ${BOX_MIGRATOR_SCAN_CONCURRENCY:-20000}
       BOX_MIGRATOR_REQUEST_TIMEOUT_MS: ${BOX_MIGRATOR_REQUEST_TIMEOUT_MS:-8000}
+      BOX_MIGRATOR_MODEL_MIGRATION_POLLS: ${BOX_MIGRATOR_MODEL_MIGRATION_POLLS:-60}
       BOX_MIGRATOR_CACHE_DIR: /app/cache
     ports:
       - "127.0.0.1:${BOX_MIGRATOR_PORT:-3212}:3212"

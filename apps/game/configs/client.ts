@@ -89,7 +89,9 @@ export function extractServerConfigForClient(
   // Edit requests must use the writable runtime; play requests use the
   // read-only runtime.
   const runtimeURL =
-    process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
+    process.env.BOX_DEPLOYMENT_MODE === 'creator'
+      ? `/runtime/${mode}/${encodeURIComponent(containerName)}`
+      : process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
       ? `/runtime/play/${encodeURIComponent(containerName)}`
       : `/runtime/${mode}`;
   return {

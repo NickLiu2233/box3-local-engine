@@ -4,6 +4,7 @@
   "private": true,
   "description": "Offline-first local runner for the Box engine",
   "scripts": {
+    "test": "node scripts/regression-edit-library.js",
     "build:creator": "node src/build.js --creator",
     "build:play": "node src/build.js --play",
     "prepare-assets": "node src/prepare-assets.js",

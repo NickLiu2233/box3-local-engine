@@ -73,6 +73,11 @@ const config = {
           destination: localEditRuntime,
         },
         {
+          source: '/runtime/edit/:path*',
+          has: [{ type: 'header', key: 'upgrade', value: 'websocket' }],
+          destination: `${localEditRuntime}/:path*`,
+        },
+        {
           source: '/runtime/play/:path*',
           destination: `${localPlayRuntime}/:path*`,
         },

@@ -31,7 +31,12 @@ function cleanExpiredJobs() {
   }
 }
 
-export function startMigration(input: { hash: string; projectName?: string }) {
+export function startMigration(input: {
+  hash?: string;
+  mapId?: number;
+  mode?: 'edit' | 'play';
+  projectName?: string;
+}) {
   cleanExpiredJobs();
   const id = randomUUID();
   const job: MigrationJob = {

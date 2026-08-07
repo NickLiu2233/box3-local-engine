@@ -61,10 +61,15 @@ import {
 } from './group-project';
 import { migrateVoxelModels } from './migrate-voxel-models';
 import { RabbitMQ } from './mq/rabbitMQ';
-import { getExtraProject } from './project/project-extra';
+import {
+  getExtraProject,
+  mergeExtraProjectInfo,
+} from './project/project-extra';
 import { createDefaultProject } from './project/project-init';
 import {
+  getLocalExtraProjectMode,
   getLocalExtraProjectStateHash,
+  getLocalGroupProjectMetaData,
   persistLocalProjectState,
 } from './project/local-project-state';
 import { BuildSystemRemote } from './service/build-system-remote';
@@ -78,6 +83,61 @@ import { Ivm2ScriptServer } from './utils/script-server/ivm2/ivm2-script-socket-
 import { IvmpScriptSocketServer } from './utils/script-server/ivmp/ivmp-script-socket-server';
 import { LocalScriptSocketServer } from './utils/script-server/local-script-socket';
 import { ScriptServer } from './utils/script-server/type';
+
+function localAssetContentType(fileName: string, content: Uint8Array) {
+  const extension = path.extname(fileName).toLowerCase();
+  if (extension === '.png') return 'image/png';
+  if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg';
+  if (extension === '.gif') return 'image/gif';
+  if (extension === '.webp') return 'image/webp';
+
+  if (
+    content.length >= 8 &&
+    content[0] === 0x89 &&
+    content[1] === 0x50 &&
+    content[2] === 0x4e &&
+    content[3] === 0x47 &&
+    content[4] === 0x0d &&
+    content[5] === 0x0a &&
+    content[6] === 0x1a &&
+    content[7] === 0x0a
+  ) {
+    return 'image/png';
+  }
+  if (
+    content.length >= 3 &&
+    content[0] === 0xff &&
+    content[1] === 0xd8 &&
+    content[2] === 0xff
+  ) {
+    return 'image/jpeg';
+  }
+  if (
+    content.length >= 6 &&
+    content[0] === 0x47 &&
+    content[1] === 0x49 &&
+    content[2] === 0x46 &&
+    content[3] === 0x38 &&
+    (content[4] === 0x37 || content[4] === 0x39) &&
+    content[5] === 0x61
+  ) {
+    return 'image/gif';
+  }
+  if (
+    content.length >= 12 &&
+    content[0] === 0x52 &&
+    content[1] === 0x49 &&
+    content[2] === 0x46 &&
+    content[3] === 0x46 &&
+    content[8] === 0x57 &&
+    content[9] === 0x45 &&
+    content[10] === 0x42 &&
+    content[11] === 0x50
+  ) {
+    return 'image/webp';
+  }
+  return undefined;
+}
 
 export async function startServer(spec: ServerRuntimeConfig) {
   const isLocal = spec.method === 'local';
@@ -414,11 +474,14 @@ export async function startServer(spec: ServerRuntimeConfig) {
         }
 
         // get extra project info
+        const embeddedExtraProject =
+          isLocal && getLocalExtraProjectMode() === 'embedded';
         const persistedExtraProjectHash =
-          isLocal && spec.mode === 'play'
+          isLocal && (spec.mode === 'play' || embeddedExtraProject)
             ? getLocalExtraProjectStateHash()
             : '';
         let extraProject;
+        let extraProjectHash = persistedExtraProjectHash;
         if (persistedExtraProjectHash) {
           const persistedExtraProject = await contentServer.retrieve(
             persistedExtraProjectHash,
@@ -432,6 +495,25 @@ export async function startServer(spec: ServerRuntimeConfig) {
             ExtraProjectInfoSchema.identity,
             new MuReadStream(persistedExtraProject),
           );
+          if (embeddedExtraProject) {
+            const localExtraProject = await getExtraProject(
+              contentId,
+              spec.mode,
+              logger,
+            );
+            extraProject = mergeExtraProjectInfo(
+              extraProject,
+              localExtraProject,
+            );
+            const stream = new MuWriteStream(1);
+            ExtraProjectInfoSchema.diff(
+              ExtraProjectInfoSchema.identity,
+              extraProject,
+              stream,
+            );
+            extraProjectHash = await contentServer.store(stream.bytes());
+            stream.destroy();
+          }
           logger.info(
             `Loading published extraProject hash =${persistedExtraProjectHash}`,
           );
@@ -441,15 +523,15 @@ export async function startServer(spec: ServerRuntimeConfig) {
             spec.mode,
             logger,
           );
+          const stream = new MuWriteStream(1);
+          ExtraProjectInfoSchema.diff(
+            ExtraProjectInfoSchema.identity,
+            extraProject,
+            stream,
+          );
+          extraProjectHash = await contentServer.store(stream.bytes());
+          stream.destroy();
         }
-        const stream = new MuWriteStream(1);
-        ExtraProjectInfoSchema.diff(
-          ExtraProjectInfoSchema.identity,
-          extraProject,
-          stream,
-        );
-        const extraProjectHash = await contentServer.store(stream.bytes());
-        stream.destroy();
 
         if (isLocal && spec.mode === 'edit') {
           persistLocalProjectState(hash, extraProjectHash);
@@ -469,7 +551,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
          *   - 直接请求后端，获取哈希数据（groupProjectMetaData）
          */
         if (isLocal) {
-          groupProjectMetaData = undefined;
+          groupProjectMetaData = getLocalGroupProjectMetaData();
         } else if (spec.mode === 'edit') {
           subscribeGroupProjectSocket(backendSocket, contentId, spec.serverId);
 
@@ -688,13 +770,23 @@ export async function startServer(spec: ServerRuntimeConfig) {
       isLocal &&
       /^\/(engine|avatar|tmp)\//.test(pathname || '')
     ) {
-      const hash = path.basename(pathname!).split('.')[0];
-      const content = await ossContentServer.retrieve(hash);
+      const fileName = path.basename(pathname!);
+      // Cloud preview assets frequently keep `.jpeg`/`.png` in the storage
+      // key. Older local templates used the bare CID, so retain that fallback.
+      const content =
+        (await ossContentServer.retrieve(fileName)) ||
+        (fileName.includes('.')
+          ? await ossContentServer.retrieve(fileName.split('.')[0])
+          : undefined);
       if (!content) {
         res.writeHead(404);
         return res.end('content not found');
       }
       res.setHeader('Access-Control-Allow-Origin', '*');
+      const contentType = localAssetContentType(fileName, content);
+      if (contentType) {
+        res.setHeader('Content-Type', contentType);
+      }
       return res.end(content);
     }
 

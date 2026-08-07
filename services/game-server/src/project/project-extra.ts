@@ -15,6 +15,35 @@ export type Mode = 'edit' | 'play';
 // 后端限制，一次最多拉取100个数据
 const LIMIT = 100;
 
+/**
+ * `boxes` receives one authoritative extra-project snapshot from its backend.
+ * The local product has two authoritative inputs instead: the snapshot packed
+ * with an imported cloud project and the models/skins stored in local VOXA.
+ * Merge them into the same schema that boxes consumes, with the live local
+ * library winning when an entry has the same key.
+ */
+export function mergeExtraProjectInfo(
+  packaged: ExtraProjectInfo,
+  localLibrary: ExtraProjectInfo,
+): ExtraProjectInfo {
+  return {
+    meshAssets: {
+      ...packaged.meshAssets,
+      ...localLibrary.meshAssets,
+    },
+    skinAssets: {
+      ...packaged.skinAssets,
+      ...localLibrary.skinAssets,
+    },
+    defaultSkinName:
+      localLibrary.defaultSkinName || packaged.defaultSkinName,
+    scriptAssets: {
+      ...packaged.scriptAssets,
+      ...localLibrary.scriptAssets,
+    },
+  };
+}
+
 function getLocalMeshPath(modelName: string, modelId: number) {
   return getMeshPath(`${modelName}__local_${modelId}`);
 }
@@ -33,7 +62,6 @@ export async function getLocalExtraProject(
           params: {
             modelType: ModelType.Project,
             creativeMode: CreativeMode.Model,
-            mapId,
           },
           timeout: 10_000,
         }),
@@ -41,7 +69,6 @@ export async function getLocalExtraProject(
           params: {
             modelType: ModelType.ExtensionLib,
             creativeMode: CreativeMode.Skin,
-            mapId,
           },
           timeout: 10_000,
         }),

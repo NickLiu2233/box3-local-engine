@@ -15,7 +15,10 @@ const templateDataRoot = path.join(packageRoot, 'data')
 const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
-const cidPattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
+// Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
+// extraProject metadata is binary, so publishing must discover both forms or
+// models, skins and shared scripts disappear from the play package.
+const cidPattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}|(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g
 const base58Alphabet =
   '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const sensitiveContentRules = [

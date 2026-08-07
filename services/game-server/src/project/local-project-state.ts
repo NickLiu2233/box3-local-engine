@@ -1,10 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
 
 type LocalProjectState = {
   formatVersion?: number;
   permissionHash?: string;
   extraProjectHash?: string;
+  extraProjectMode?: string;
+  cloudMapId?: number;
+  groupProjectMetaData?: RetrievedGroupProjectMetaData;
   updatedAt?: string;
 };
 
@@ -34,6 +38,26 @@ export function getLocalExtraProjectStateHash(
     : '';
 }
 
+export function getLocalExtraProjectMode(
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  const state = readLocalProjectState(statePath);
+  return typeof state.extraProjectMode === 'string'
+    ? state.extraProjectMode
+    : '';
+}
+
+export function getLocalGroupProjectMetaData(
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  const state = readLocalProjectState(statePath);
+  const value = state.groupProjectMetaData;
+  if (!value || typeof value.version !== 'string' || !value.hashes) {
+    return undefined;
+  }
+  return value;
+}
+
 /** Persists the editable project root separately from content-addressed blobs. */
 export function persistLocalProjectState(
   permissionHash: string,
@@ -54,6 +78,11 @@ export function persistLocalProjectState(
           extraProjectHash === undefined
             ? previous.extraProjectHash || ''
             : extraProjectHash,
+        extraProjectMode: previous.extraProjectMode || '',
+        ...(previous.cloudMapId ? { cloudMapId: previous.cloudMapId } : {}),
+        ...(previous.groupProjectMetaData
+          ? { groupProjectMetaData: previous.groupProjectMetaData }
+          : {}),
         updatedAt: new Date().toISOString(),
       },
       null,

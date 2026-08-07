@@ -5,7 +5,9 @@ const path = require('node:path');
 const ts = require('typescript');
 
 const sourcePath = path.resolve(__dirname, '../lib/export-project.ts');
-const compiledPath = path.join(os.tmpdir(), `box-migrator-export-${process.pid}.cjs`);
+const compiledPath = path.resolve(__dirname, `box-migrator-export-${process.pid}.cjs`);
+const engineApiSourcePath = path.resolve(__dirname, '../lib/engine-api.ts');
+const engineApiCompiledPath = path.resolve(__dirname, 'engine-api.js');
 const source = fs.readFileSync(sourcePath, 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: {
@@ -16,15 +18,42 @@ const compiled = ts.transpileModule(source, {
 }).outputText;
 
 fs.writeFileSync(compiledPath, compiled);
+fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
+  fs.readFileSync(engineApiSourcePath, 'utf8'),
+  {
+    compilerOptions: {
+      esModuleInterop: true,
+      module: ts.ModuleKind.CommonJS,
+      target: ts.ScriptTarget.ES2022,
+    },
+  },
+).outputText);
 (async () => {
   const {
+    applyCloudModelIds,
+    availableSoundConfig,
+    cloudExtraProject,
+    cloudRetainedHashes,
     createConcurrencyGate,
+    contentHash,
     drainDynamicQueue,
+    emptyEntitiesTree,
     fetchBlob,
+    lightweightAmbientSound,
+    lightweightAssetIndex,
+    lightweightEnvironment,
+    lightweightPlayer,
+    localAudioAssets,
+    localScriptAssets,
+    mergeCloudPhotos,
     parseJSON,
     referencedHashes,
     referencedResources,
+    restoreRuntimeBundles,
+    safeScriptLauncherSource,
+    stableStringify,
   } = require(compiledPath);
+  const engineApi = require(engineApiCompiledPath);
   const actualHash = 'QmS1jvj2GQDwwJpSbpxAJSLbmWvncTQ3Xc69md4KxXhSUf';
   const previewName = 'QmZc3bR7rJHXuYBtSe2VZoS5EYZ7m5kHzpK2cJ1hPzb3QU.jpeg';
   const extensionlessPreview = 'QmUkQqR3S7vT7yswnuFkQzYEu8c1WVL8HbcCoV2mmYfHXv';
@@ -35,15 +64,172 @@ fs.writeFileSync(compiledPath, compiled);
   const references = [...referencedHashes(document)];
 
   assert.deepEqual(references, [actualHash]);
-  console.log('PASS: JSON arrays keep real hashes and ignore preview-image filenames');
+  console.log('PASS: legacy hash scanner remains limited to content graph hashes');
+
+  assert.deepEqual(lightweightAssetIndex({
+    'server.js': { type: 1, hash: 'script' },
+    'mesh/model.vb': { type: 2, hash: 'model' },
+    'lut/test.lut': { type: 3, hash: 'lut' },
+    'picture/ui.png': { type: 8, hash: 'picture' },
+    'audio/test.mp3': { type: 6, hash: 'audio' },
+    'mesh/test.glb': { type: 9, hash: 'gltf' },
+  }), {
+    'server.js': { type: 1, hash: 'script' },
+    'picture/ui.png': { type: 8, hash: 'picture' },
+  });
+  assert.deepEqual(emptyEntitiesTree(), {
+    ROOT_ID: { childrenIds: [], id: 'ROOT_ID', name: 'Root', parentId: '', type: 0 },
+  });
+  console.log('PASS: legacy mixed assets drop models/audio entries while retaining code and UI assets');
+
+  assert.deepEqual(localScriptAssets({
+    'server.js': { type: 1, hash: 'server-hash', contentId: 123, ownerId: 456 },
+    'client.js': { type: 7, hash: 'client-hash', contentId: 789, ownerId: 456 },
+    'audio.mp3': { type: 6, hash: 'audio-hash' },
+  }), {
+    'server.js': { type: 1, hash: 'server-hash', contentId: 0, ownerId: 0 },
+    'client.js': { type: 7, hash: 'client-hash', contentId: 0, ownerId: 0 },
+  });
+  assert.deepEqual(restoreRuntimeBundles({
+    'index.js': { type: 1, hash: 'index-hash' },
+    'clientIndex.js': { type: 7, hash: 'client-index-hash' },
+  }, [
+    { key: '_server_bundle.js', value: { type: 1, hash: 'old-server-bundle' } },
+    { key: '_server_bundle.js', value: { type: 1, hash: 'current-server-bundle' } },
+    { key: '_client_bundle.js', value: { type: 7, hash: 'client-bundle' } },
+    { key: 'deleted-gameplay.js', value: { type: 1, hash: 'must-not-restore' } },
+  ]), {
+    'index.js': { type: 1, hash: 'index-hash' },
+    'clientIndex.js': { type: 7, hash: 'client-index-hash' },
+    '_server_bundle.js': { type: 1, hash: 'current-server-bundle', contentId: 0, ownerId: 0 },
+    '_client_bundle.js': { type: 7, hash: 'client-bundle', contentId: 0, ownerId: 0 },
+  });
+  assert.match(safeScriptLauncherSource('index.js'), /require\("\.\/index\.js"\)/);
+  assert.match(safeScriptLauncherSource('index.js'), /catch \(error\)/);
+  console.log('PASS: run mode restores only required runtime bundles and uses a guarded non-empty entry script');
+  assert.deepEqual(lightweightAmbientSound({ ambient: { sample: 'audio/music.mp3', gain: 1 } }), {
+    ambient: { sample: '', gain: 1 },
+  });
+  assert.deepEqual(lightweightPlayer({ playerSounds: { jump: { sample: 'audio/jump.mp3' } } }), {
+    playerSounds: { jump: { sample: '' } },
+  });
+  assert.deepEqual(lightweightEnvironment({
+    bakedShadow: { data: 'shadow-data', texture: 'shadow-texture', chunkShift: 6 },
+    snow: { texture: 'snow/snow.part', density: 1 },
+  }), {
+    bakedShadow: { data: '', texture: '', chunkShift: 6 },
+    snow: { texture: '', density: 1 },
+  });
+  assert.deepEqual(lightweightEnvironment({
+    bakedShadow: { data: 'shadow-data', texture: 'shadow-texture', chunkShift: 6 },
+    snow: { texture: 'snow/snow.part', density: 1 },
+  }, true), {
+    bakedShadow: { data: 'shadow-data', texture: 'shadow-texture', chunkShift: 6 },
+    snow: { texture: '', density: 1 },
+  });
+  assert.deepEqual(localAudioAssets({
+    'audio/music.mp3': { type: 6, hash: `${actualHash}.mp3`, contentId: 123, ownerId: 456 },
+    'mesh/model.vb': { type: 2, hash: actualHash },
+  }), {
+    'audio/music.mp3': { type: 6, hash: `${actualHash}.mp3`, contentId: 0, ownerId: 0 },
+  });
+  assert.deepEqual(availableSoundConfig({
+    music: { sample: 'audio/music.mp3' },
+    jump: { sample: 'audio/missing.mp3' },
+  }, new Set(['audio/music.mp3'])), {
+    music: { sample: 'audio/music.mp3' },
+    jump: { sample: '' },
+  });
+  console.log('PASS: removed audio/environment dependencies are cleared without dropping their valid config shapes');
+
+  const cloudPictureHash = 'wEn4lLYcRR1cGTdbmG8MGE8IxO4oi34hpANYryEwhxk';
+  const cloudPicturePreviewHash = 'KcL67ffbRPubZAshh3Ui4aWH7I6icdpb6iXifJQnHM0';
+  const cloudModelHash = 'QmSKfrPgmkCoomW2tbpHkynGL5aCd4qRA2JSBG1QDhRJzJ';
+  const cloudScriptHash = 'zMJxlt1eI742QDprZx4hx7veQmAiEyoILO2ezNpDIsc';
+  assert.deepEqual(mergeCloudPhotos({
+    'picture/existing.png': { id: 'old', hash: actualHash, type: 8 },
+  }, [{
+    id: 'photo-1',
+    name: 'picture/cloud.png',
+    hash: cloudPictureHash,
+    previewImage: cloudPicturePreviewHash,
+    size: 12,
+    updateAt: 34,
+  }]), {
+    'picture/existing.png': { id: 'old', hash: actualHash, type: 8 },
+    'picture/cloud.png': {
+      id: 'photo-1', hash: cloudPictureHash, previewImage: cloudPicturePreviewHash,
+      size: 12, type: 8, updateAt: 34,
+    },
+  });
+  const cloudModels = [{ modelId: 99, modelName: 'Cloud Model', modelFileHash: cloudModelHash }];
+  const cloudScripts = {
+    clientScripts: [{ id: 'client-1', name: 'shared-client.js', hash: cloudScriptHash, share: true }],
+    serverScripts: [{ id: 'server-1', name: 'shared-server.js', hash: actualHash, share: true }],
+  };
+  const extra = cloudExtraProject(cloudModels, [], null, cloudScripts);
+  assert.equal(extra.meshAssets['mesh/Cloud Model.vb'].modelId, 99);
+  assert.equal(extra.scriptAssets['client-1'].isClient, true);
+  assert.equal(extra.scriptAssets['server-1'].isClient, false);
+  assert.equal(applyCloudModelIds({ entity: { value: { mesh: 'mesh/Cloud Model.vb', meshId: 1 } } }, cloudModels).entity.value.meshId, 99);
+  console.log('PASS: backend photos, models and scripts map to boxes project schemas');
+
+  const reusedAudioIndexHash = 'QmNdm8Fr3PCSU7GqmtEyJ2GAmfDBrSu4LufjmW4SjZxbDk';
+  const retainedCloudHashes = cloudRetainedHashes({
+    groupProject: { version: '0.3.31', audioAssets: reusedAudioIndexHash },
+    scripts: cloudScripts,
+    photos: [],
+    models: cloudModels,
+    skins: [],
+    defaultSkin: null,
+  });
+  assert.equal(retainedCloudHashes.has(reusedAudioIndexHash), true);
+  assert.equal(retainedCloudHashes.has(cloudModelHash), true);
+  assert.equal(retainedCloudHashes.has(cloudScriptHash), true);
+  console.log('PASS: source hashes reused by group metadata remain protected from obsolete-graph cleanup');
+
+  const stableA = Buffer.from(stableStringify({ b: 2, a: 1 }));
+  const stableB = Buffer.from(stableStringify({ a: 1, b: 2 }));
+  assert.equal(stableA.toString(), '{"a":1,"b":2}');
+  assert.equal(contentHash(stableA), contentHash(stableB));
+  assert.match(contentHash(stableA), /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/);
+  console.log('PASS: rewritten migration documents receive deterministic CIDv0 content hashes');
 
   const modelHash = 'QmSKfrPgmkCoomW2tbpHkynGL5aCd4qRA2JSBG1QDhRJzJ';
   const modelDataHash = 'QmTCCZ2me7uELkxvCMBkwa6t2o1DRXQ9CcwMAYGZ8wbxF8';
   assert.deepEqual(referencedResources([{
     key: 'mesh/test.vb',
     value: { type: 2, hash: modelHash, previewImage: `${actualHash}.jpeg` },
-  }]), [{ hash: modelHash, sourceKind: 'voxel-model' }]);
-  console.log('PASS: voxel asset hashes retain their boxes asset type');
+  }]), [
+    { hash: modelHash, sourceKind: 'voxel-model' },
+    { hash: `${actualHash}.jpeg`, sourceKind: 's3-model' },
+  ]);
+  console.log('PASS: voxel assets retain model metadata and preview dependencies');
+
+  const pictureMetadataHash = 'wEn4lLYcRR1cGTdbmG8MGE8IxO4oi34hpANYryEwhxk';
+  const pictureDataHash = 'KcL67ffbRPubZAshh3Ui4aWH7I6icdpb6iXifJQnHM0';
+  assert.deepEqual(referencedResources({
+    'picture/test.png': {
+      type: 8,
+      hash: pictureMetadataHash,
+      previewImage: pictureDataHash,
+    },
+  }), [
+    { hash: pictureMetadataHash, sourceKind: 's3-model' },
+    { hash: pictureDataHash, sourceKind: 's3-model' },
+  ]);
+  console.log('PASS: picture metadata and image bytes use boxes engine/m storage');
+
+  const scriptHash = 'zMJxlt1eI742QDprZx4hx7veQmAiEyoILO2ezNpDIsc';
+  assert.deepEqual(referencedResources({
+    'shared.js': { type: 7, hash: scriptHash, previewImage: '' },
+  }), [{ hash: scriptHash, sourceKind: 's3-script' }]);
+  console.log('PASS: server and client scripts use boxes engine/s storage');
+
+  assert.deepEqual(referencedResources({
+    'audio/music.mp3': { type: 6, hash: `${actualHash}.mp3` },
+  }), [{ hash: `${actualHash}.mp3`, sourceKind: 'content' }]);
+  console.log('PASS: audio hashes with filename extensions remain content-store dependencies');
 
   process.env.BOX_MIGRATOR_CONTENT_API_URL = 'https://api.invalid.test';
   process.env.BOX_MIGRATOR_CONTENT_URL = 'https://cdn.invalid.test';
@@ -100,8 +286,39 @@ fs.writeFileSync(compiledPath, compiled);
   })));
   assert.equal(peakRequests, 3, 'the HTTP gate must cap actual active requests');
   console.log('PASS: actual HTTP requests respect the configured concurrency cap');
+
+  process.env.BOX_MIGRATOR_ENGINE_API_URL = 'https://engine.invalid.test';
+  process.env.BOX_MIGRATOR_ENGINE_API_KEY = 'fixed-key';
+  const engineRequests = [];
+  global.fetch = async (url, init) => {
+    const parsed = new URL(String(url));
+    engineRequests.push({ parsed, init });
+    let data;
+    if (parsed.pathname === '/engine/map/hash') data = actualHash;
+    else if (parsed.pathname === '/engine/map-group-project') data = { version: '0.3.31', pictureAssets: actualHash };
+    else if (parsed.pathname === '/engine/script/list') data = cloudScripts;
+    else if (parsed.pathname === '/engine/photo/list') data = [];
+    else if (parsed.pathname === '/engine/model/skin/default') data = null;
+    else if (parsed.pathname === '/engine/models') data = { count: 0, rows: [] };
+    else throw new Error(`unexpected API ${parsed.pathname}`);
+    return new Response(JSON.stringify({ code: 200, data, msg: '' }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  assert.equal(await engineApi.resolveMapHash(123, 'edit'), actualHash);
+  const engineData = await engineApi.getCloudEngineData(123, 'edit');
+  global.fetch = originalFetch;
+  assert.equal(engineData.groupProject.version, '0.3.31');
+  assert.ok(engineRequests.every(({ init }) => init.headers.get('request-header-fixed-key') === 'fixed-key'));
+  assert.ok(engineRequests.some(({ parsed }) => parsed.pathname === '/engine/models'
+    && parsed.searchParams.get('modelType') === '2'));
+  assert.ok(engineRequests.some(({ parsed }) => parsed.pathname === '/engine/models'
+    && parsed.searchParams.get('modelType') === '3'));
+  console.log('PASS: production engine API client sends boxes-compatible paths, parameters and credentials');
 })().finally(() => {
   fs.rmSync(compiledPath, { force: true });
+  fs.rmSync(engineApiCompiledPath, { force: true });
 }).catch((error) => {
   console.error(error);
   process.exitCode = 1;

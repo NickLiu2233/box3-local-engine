@@ -5,6 +5,7 @@ const http = require('http')
 const os = require('os')
 const path = require('path')
 const { spawn, spawnSync } = require('child_process')
+const projectManager = require('./project-manager')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
@@ -77,7 +78,7 @@ const editPort = Number(
 )
 const launchTarget =
   projectId || releaseId
-    ? require('./project-manager').getLaunchTarget({
+    ? projectManager.getLaunchTarget({
         project: projectId,
         release: releaseId,
       })
@@ -179,6 +180,14 @@ function readProjectHash() {
   return typeof state.permissionHash === 'string' ? state.permissionHash : ''
 }
 
+function readCloudMapId() {
+  if (!projectStatePath || !fs.existsSync(projectStatePath)) return ''
+  const state = JSON.parse(fs.readFileSync(projectStatePath, 'utf8'))
+  return Number.isSafeInteger(state.cloudMapId) && state.cloudMapId > 0
+    ? String(state.cloudMapId)
+    : ''
+}
+
 function run(command, args, options = {}) {
   const child = spawn(command, args, {
     stdio: 'inherit',
@@ -242,6 +251,8 @@ function makeRuntimeDataReadable(root) {
   }
 }
 let playLibrary
+let editLibrary
+let creatorPlayLibrary
 
 function shutdown(code = 0) {
   if (shuttingDown) return
@@ -250,6 +261,8 @@ function shutdown(code = 0) {
     child.kill('SIGTERM')
   }
   if (playLibrary) playLibrary.stop().catch(() => {})
+  if (editLibrary) editLibrary.stop().catch(() => {})
+  if (creatorPlayLibrary) creatorPlayLibrary.stop().catch(() => {})
   setTimeout(() => {
     if (disposablePlayDataRoot) {
       fs.rmSync(disposablePlayDataRoot, { recursive: true, force: true })
@@ -380,6 +393,10 @@ async function main() {
         cwd: gameServerRoot,
         env: {
           ...sharedEnv,
+          // Editor-side OSS URLs must point at the runtime that is actually
+          // serving this project. Creator launches often run edit-only, so
+          // the play port is intentionally unavailable in that mode.
+          OSS_CDN_URL: `http://127.0.0.1:${port}`,
           METHOD: 'local',
           MODE: mode,
           LOGIN: mode === 'edit' ? 'admin' : 'guest',
@@ -401,6 +418,7 @@ async function main() {
           CONTENT_ID:
             process.env.BOX_WORLD_ID ||
             process.env.BOX_SERVER_CONTENT_ID ||
+            readCloudMapId() ||
             '0',
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
             projectId ||
@@ -479,6 +497,88 @@ async function main() {
       fs.rmSync(temporaryRoot, { recursive: true, force: true })
     })
     return runtime
+  }
+
+  const startProjectRuntime = async (project, port, mode) => {
+    const child = spawn(
+      process.execPath,
+      [
+        path.join(packageRoot, 'src/launcher.js'),
+        ...(production ? ['--production'] : []),
+        '--runtime-only',
+        '--runtime-mode',
+        mode,
+        '--project',
+        project.id,
+      ],
+      {
+        cwd: repoRoot,
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          ...(mode === 'edit'
+            ? {
+                BOX_EDIT_RUNTIME_PORT: String(port),
+                BOX_EDIT_RUNTIME_HOST: '127.0.0.1',
+              }
+            : {
+                BOX_PLAY_RUNTIME_PORT: String(port),
+                BOX_PLAY_RUNTIME_HOST: '127.0.0.1',
+              }),
+        },
+      }
+    )
+    const runtime = {
+      port,
+      exited: false,
+      async stop() {
+        if (!runtime.exited) child.kill('SIGTERM')
+        await new Promise((resolve) => {
+          if (runtime.exited) return resolve()
+          const timer = setTimeout(resolve, 5000)
+          child.once('exit', () => {
+            clearTimeout(timer)
+            resolve()
+          })
+        })
+      },
+    }
+    child.once('exit', () => {
+      runtime.exited = true
+    })
+    return runtime
+  }
+
+  if (creatorMode) {
+    const resolveProject = (id) => {
+      try {
+        const target = projectManager.getLaunchTarget({ project: id })
+        return target.kind === 'source' ? { id, target } : null
+      } catch {
+        return null
+      }
+    }
+    editLibrary = require('./edit-library').startEditLibrary({
+      host: editRuntimeHost,
+      port: editPort,
+      mode: 'edit',
+      runtimePortStart: 11000,
+      resolveProject,
+      startRuntime: (project, port) =>
+        startProjectRuntime(project, port, 'edit'),
+      waitForRuntime: waitFor,
+    })
+    creatorPlayLibrary = require('./edit-library').startEditLibrary({
+      host: playRuntimeHost,
+      port: playPort,
+      mode: 'play',
+      runtimePortStart: 12000,
+      resolveProject,
+      startRuntime: (project, port) =>
+        startProjectRuntime(project, port, 'play'),
+      waitForRuntime: waitFor,
+    })
+    await Promise.all([editLibrary.ready, creatorPlayLibrary.ready])
   }
 
   let editStarted = false
