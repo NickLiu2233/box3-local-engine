@@ -1,4 +1,5 @@
 import { ProjectBakeCache } from '@box-local/build-system/project/bake';
+import { CreativeMode, ModelType } from '@box-local/apis';
 import { PrebakeCache } from '@box-local/build-system/project/prebake-schema';
 import { BuildSystemAPI } from '@box-local/build-system/type';
 import { ContentServer } from '@box-local/content-server';
@@ -28,6 +29,7 @@ import { ServerRuntimeConfig } from '../config/server';
 import { BLOCK_INFO_RES } from './assets/block_info';
 import { BackendClientRPCNode } from './backend-rpc-client-node';
 import type { EditServer } from './edit/edit-server';
+import type { LocalProjectSkinAction } from './edit/replica/replica-server';
 import { GameServer } from './index';
 import { RabbitMQ } from './mq/rabbitMQ';
 import { NetLogServer } from './net-log/server';
@@ -44,6 +46,10 @@ import { FrameskipsManager } from './utils/frameskips-manager';
 import { rootLogger } from './utils/logger';
 import { ScriptServer } from './utils/script-server/type';
 import { parsePrebakeVoxelData } from './voxel/voxel-server';
+import {
+  getLocalProjectSkinPreviews,
+  getLocalProjectSkinProjects,
+} from './project/local-project-state';
 
 export type HttpRoutes = {
   [route: string]: (
@@ -484,6 +490,130 @@ export async function createGameServer(spec: {
       } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ message: (error as Error).message }));
+      }
+    };
+
+    spec.httpRoutes['/api/project-skins'] = async (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.method === 'GET') {
+        res.end(
+          JSON.stringify({
+            skinPreviews: getLocalProjectSkinPreviews(),
+            skinProjects: getLocalProjectSkinProjects(),
+          }),
+        );
+        return;
+      }
+      if (req.method !== 'POST') {
+        res.writeHead(405, { Allow: 'GET, POST' });
+        res.end(JSON.stringify({ message: 'method not allowed' }));
+        return;
+      }
+      try {
+        const body = await bodyParse(req);
+        const voxaURL = (
+          process.env.VOXA_INTERNAL_URL ||
+          process.env.VOXA_URL ||
+          'http://127.0.0.1:3001'
+        ).replace(/\/$/, '');
+        if (body.action === 'importLocal') {
+          const skinIds = Array.isArray(body.skinIds)
+            ? body.skinIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
+            : [];
+          if (!skinIds.length) throw new Error('请选择要导入的本地皮肤');
+          let result;
+          for (const skinId of skinIds) {
+            const modelResponse = await fetch(`${voxaURL}/api/local/models/${skinId}`);
+            if (!modelResponse.ok) throw new Error(`本地皮肤 ${skinId} 不存在`);
+            const model = await modelResponse.json() as Record<string, unknown>;
+            const hashes = [
+              String(model.modelFileHash || ''),
+              String(model.projectFileHash || ''),
+              String(model.modelPreviewHash || ''),
+            ].filter(Boolean);
+            for (const hash of hashes) {
+              const blobResponse = await fetch(
+                `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+              );
+              if (!blobResponse.ok) {
+                throw new Error(`本地皮肤资源不存在：${hash}`);
+              }
+              const storedHash = await spec.contentServer.store(
+                new Uint8Array(await blobResponse.arrayBuffer()),
+              );
+              if (storedHash !== hash) throw new Error(`皮肤资源校验失败：${hash}`);
+            }
+            let skinName = String(model.modelName || `皮肤 ${skinId}`).trim();
+            const skinAssets = editServer!.state.replica.extraProjectInfo.skinAssets;
+            if (skinAssets[skinName]) {
+              const baseName = skinName;
+              let suffix = 2;
+              while (skinAssets[`${baseName} (${suffix})`]) suffix += 1;
+              skinName = `${baseName} (${suffix})`;
+            }
+            result = await editServer!.replica.updateLocalProjectSkin({
+              action: 'create',
+              newName: skinName,
+              modelFileHash: String(model.modelFileHash || ''),
+              previewHash: String(model.modelPreviewHash || ''),
+              projectFileHash: String(model.projectFileHash || ''),
+            });
+          }
+          res.end(JSON.stringify(result || {}));
+          return;
+        }
+        if (body.action === 'prepareEdit') {
+          const name = String(body.name || '').trim();
+          const asset = editServer!.state.replica.extraProjectInfo.skinAssets[name];
+          const projectFileHash = getLocalProjectSkinProjects()[name];
+          if (!asset?.hash || !projectFileHash) {
+            res.writeHead(409);
+            res.end(
+              JSON.stringify({
+                message: '该皮肤缺少可编辑的 VOXA 工程文件',
+              }),
+            );
+            return;
+          }
+          const response = await fetch(`${voxaURL}/api/local/models`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              modelName: name,
+              modelType: ModelType.ExtensionLib,
+              creativeMode: CreativeMode.Skin,
+              modelFileHash: asset.hash,
+              modelProjectFileHash: projectFileHash,
+              modelPreviewFileHash: getLocalProjectSkinPreviews()[name] || '',
+              mapId: serverConfig.contentId,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error((await response.text()) || 'VOXA skin import failed');
+          }
+          res.end(await response.text());
+          return;
+        }
+        if (body.action === 'setDefault') {
+          await fetch(
+            `${voxaURL}/api/local/default-skin?mapId=${encodeURIComponent(
+              String(serverConfig.contentId),
+            )}`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ mapId: serverConfig.contentId, skinId: 0 }),
+            },
+          );
+        }
+        const result = await editServer!.replica.updateLocalProjectSkin(
+          body as LocalProjectSkinAction,
+        );
+        res.end(JSON.stringify(result));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        res.writeHead(message.includes('already exists') ? 409 : 400);
+        res.end(JSON.stringify({ message }));
       }
     };
   }

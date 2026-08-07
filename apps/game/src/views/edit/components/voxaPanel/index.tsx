@@ -8,7 +8,8 @@ import { ModelMetaData } from '@box-local/voxa-project';
 import { ModelResp, ModelType } from '@box-local/apis';
 import { useEdit } from 'src/client/edit/edit-context';
 
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
+import { apis } from 'src/apis/api-java';
 import { RootState } from 'src/redux/edit';
 import { refreshSkinsList } from '../player-manager';
 import { EditType, setVoxaData } from 'src/redux/edit/creator';
@@ -80,7 +81,13 @@ export function VoxaPanel() {
   const timer = useRef(-1);
   const iframeEl = useRef<HTMLDivElement | null>(null);
   const iframe = useRef<Parent<HandleEvents, EmitEvents>>(undefined);
-  const { modelId, modelType, editType } = useSelector((state: RootState) => {
+  const {
+    modelId,
+    modelType,
+    editType,
+    projectSkinName,
+    saveToProject,
+  } = useSelector((state: RootState) => {
     if (state.creator.voxaData.isShow) {
       return state.creator.voxaData;
     }
@@ -89,6 +96,8 @@ export function VoxaPanel() {
       modelId: 0,
       modelType: ModelType.Project,
       editType: EditType.Normal,
+      projectSkinName: undefined,
+      saveToProject: false,
     };
   });
 
@@ -125,6 +134,8 @@ export function VoxaPanel() {
     undefined,
   );
   const voxaModelId = useRef<number>(0);
+  const currentProjectSkinName = useRef(projectSkinName);
+  const shouldSaveToProject = useRef(Boolean(saveToProject));
 
   const showVoxa = useCallback(() => {
     clearTimeout(timer.current);
@@ -140,6 +151,9 @@ export function VoxaPanel() {
         });
       }
       clearTimeout(timer.current);
+      if (shouldSaveToProject.current && voxaModelId.current) {
+        void apis.model.deleteModelUsingDelete([voxaModelId.current]).catch(() => undefined);
+      }
       dispatch(
         setVoxaData({
           isShow: false,
@@ -196,10 +210,46 @@ export function VoxaPanel() {
       if (!value.isSuccess) {
         return;
       }
-      const { modelId, modelFileHash } = value.modelResp;
+      const {
+        modelId,
+        modelFileHash,
+        modelName,
+        modelPreviewHash,
+        projectFileHash,
+      } = value.modelResp;
       voxaModelId.current = modelId;
       // 皮肤 - 保存成功后刷新皮肤列表
       if (editType === EditType.Skin) {
+        if (shouldSaveToProject.current) {
+          const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+          const response = await fetch(`${runtimeURL}/api/project-skins`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: currentProjectSkinName.current ? 'update' : 'create',
+              ...(currentProjectSkinName.current
+                ? { name: currentProjectSkinName.current }
+                : {}),
+              newName: modelName,
+              modelFileHash,
+              previewHash: modelPreviewHash,
+              projectFileHash,
+            }),
+          });
+          if (!response.ok) {
+            Toast.error({
+              content: (await response.json().catch(() => undefined))?.message ||
+                '项目皮肤保存失败',
+            });
+            return;
+          }
+          currentProjectSkinName.current = modelName;
+          await apis.model
+            .deleteModelUsingDelete([modelId])
+            .catch(() => undefined);
+          window.dispatchEvent(new Event('local-project-skins-changed'));
+          return;
+        }
         // 保存成功后刷新皮肤列表
         await refreshSkinsList();
         return;

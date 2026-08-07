@@ -91,7 +91,10 @@ import { GroupProjectStore } from '@box-local/schema/group-project/rda';
 import { OssStoreType } from '@box-local/content-server';
 import {
   getLocalExtraProjectMode,
+  getLocalProjectSkinPreviews,
+  getLocalProjectSkinProjects,
   persistLocalProjectState,
+  updateLocalProjectSkinMetadata,
 } from '../../project/local-project-state';
 import { mergeExtraProjectInfo } from '../../project/project-extra';
 
@@ -100,6 +103,27 @@ const TOKEN_MAX_DURATION = 24 * 60 * 60 * 1000;
 const THUMBNAILSIZE = 512;
 
 const DEFAULT_BRANCH = 'master';
+
+export type LocalProjectSkinAction =
+  | {
+      action: 'create';
+      newName: string;
+      modelFileHash: string;
+      previewHash?: string;
+      projectFileHash?: string;
+    }
+  | { action: 'setDefault'; name: string }
+  | { action: 'unsetDefault'; name: string }
+  | { action: 'rename'; name: string; newName: string }
+  | { action: 'delete'; name: string }
+  | {
+      action: 'update';
+      name: string;
+      newName: string;
+      modelFileHash: string;
+      previewHash?: string;
+      projectFileHash?: string;
+    };
 
 type ReplicaRemoteClient = MuRemoteClient<
   (typeof EditReplicaProtocol)['client']
@@ -1782,6 +1806,119 @@ export class EditReplicaServer {
       );
     }
     stream.destroy();
+  };
+
+  public updateLocalProjectSkin = async (input: LocalProjectSkinAction) => {
+    if (
+      getConfigSync()?.method !== 'local' ||
+      getLocalExtraProjectMode() !== 'embedded'
+    ) {
+      throw new Error('project skins are only editable in an embedded local project');
+    }
+    const name = 'name' in input ? String(input.name || '').trim() : '';
+    if (input.action !== 'create' && !name) {
+      throw new Error('skin name is required');
+    }
+
+    const replicaState = this._state.replica;
+    const extra = ExtraProjectInfoSchema.clone(replicaState.extraProjectInfo);
+    if (input.action !== 'create' && !extra.skinAssets[name]) {
+      throw new Error('skin not found');
+    }
+
+    let nextName = name;
+    if (input.action === 'create') {
+      nextName = String(input.newName || '').trim().slice(0, 100);
+      if (!nextName) throw new Error('new skin name is required');
+      if (extra.skinAssets[nextName]) throw new Error('skin name already exists');
+      const hash = String(input.modelFileHash || '').trim();
+      if (!hash) throw new Error('skin model hash is required');
+      extra.skinAssets[nextName] = { hash };
+    } else if (input.action === 'setDefault') {
+      extra.defaultSkinName = name;
+    } else if (input.action === 'unsetDefault') {
+      if (extra.defaultSkinName === name) extra.defaultSkinName = '';
+    } else if (input.action === 'rename' || input.action === 'update') {
+      nextName = String(input.newName || '').trim().slice(0, 100);
+      if (!nextName) throw new Error('new skin name is required');
+      if (nextName !== name && extra.skinAssets[nextName]) {
+        throw new Error('skin name already exists');
+      }
+      const asset =
+        input.action === 'update'
+          ? { hash: String(input.modelFileHash || '').trim() }
+          : extra.skinAssets[name];
+      if (!asset.hash) throw new Error('skin model hash is required');
+      if (nextName !== name) delete extra.skinAssets[name];
+      extra.skinAssets[nextName] = asset;
+      if (extra.defaultSkinName === name) extra.defaultSkinName = nextName;
+    } else if (input.action === 'delete') {
+      delete extra.skinAssets[name];
+      if (extra.defaultSkinName === name) extra.defaultSkinName = '';
+    }
+
+    updateLocalProjectSkinMetadata(({ skinPreviews, skinProjects }) => {
+      const previousPreview = skinPreviews[name];
+      const previousProject = skinProjects[name];
+      if (input.action === 'delete') {
+        delete skinPreviews[name];
+        delete skinProjects[name];
+        return;
+      }
+      if (
+        input.action === 'create' ||
+        input.action === 'rename' ||
+        input.action === 'update'
+      ) {
+        if (nextName !== name) {
+          delete skinPreviews[name];
+          delete skinProjects[name];
+        }
+        const previewHash =
+          input.action === 'create' || input.action === 'update'
+            ? input.previewHash
+            : previousPreview;
+        const projectFileHash =
+          input.action === 'create' || input.action === 'update'
+            ? input.projectFileHash
+            : previousProject;
+        if (previewHash) skinPreviews[nextName] = previewHash;
+        if (projectFileHash) skinProjects[nextName] = projectFileHash;
+      }
+    });
+
+    const stream = new MuWriteStream(1);
+    const diff = ExtraProjectInfoSchema.diff(
+      replicaState.extraProjectInfo,
+      extra,
+      stream,
+    );
+    if (diff) {
+      replicaState.hotProjectDirty = true;
+      const bytes = stream.bytes();
+      this._protocol.broadcastRaw(bytes);
+      replicaState.extraProjectInfo = ExtraProjectInfoSchema.patch(
+        replicaState.extraProjectInfo,
+        new MuReadStream(bytes),
+      );
+
+      const persistedStream = new MuWriteStream(1);
+      ExtraProjectInfoSchema.diff(
+        ExtraProjectInfoSchema.identity,
+        replicaState.extraProjectInfo,
+        persistedStream,
+      );
+      const extraProjectHash = await this._state.contentServer.store(
+        persistedStream.bytes(),
+      );
+      persistedStream.destroy();
+      persistLocalProjectState(replicaState.permissionHash, extraProjectHash);
+    }
+    stream.destroy();
+    return {
+      skinPreviews: getLocalProjectSkinPreviews(),
+      skinProjects: getLocalProjectSkinProjects(),
+    };
   };
 
   /**

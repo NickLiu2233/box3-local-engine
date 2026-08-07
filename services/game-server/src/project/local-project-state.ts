@@ -8,6 +8,8 @@ type LocalProjectState = {
   extraProjectHash?: string;
   extraProjectMode?: string;
   cloudMapId?: number;
+  skinPreviews?: Record<string, string>;
+  skinProjects?: Record<string, string>;
   groupProjectMetaData?: RetrievedGroupProjectMetaData;
   updatedAt?: string;
 };
@@ -58,6 +60,55 @@ export function getLocalGroupProjectMetaData(
   return value;
 }
 
+export function getLocalProjectSkinPreviews(
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  const value = readLocalProjectState(statePath).skinPreviews;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([name, hash]) =>
+        Boolean(name) && typeof hash === 'string' && Boolean(hash),
+    ),
+  );
+}
+
+export function getLocalProjectSkinProjects(
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  const value = readLocalProjectState(statePath).skinProjects;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([name, hash]) =>
+        Boolean(name) && typeof hash === 'string' && Boolean(hash),
+    ),
+  );
+}
+
+export function updateLocalProjectSkinMetadata(
+  update: (metadata: {
+    skinPreviews: Record<string, string>;
+    skinProjects: Record<string, string>;
+  }) => void,
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  if (!statePath) return;
+  const state = readLocalProjectState(statePath);
+  const metadata = {
+    skinPreviews: getLocalProjectSkinPreviews(statePath),
+    skinProjects: getLocalProjectSkinProjects(statePath),
+  };
+  update(metadata);
+  state.skinPreviews = metadata.skinPreviews;
+  state.skinProjects = metadata.skinProjects;
+  state.updatedAt = new Date().toISOString();
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  const temporaryPath = `${statePath}.${process.pid}.tmp`;
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(state, null, 2)}\n`);
+  fs.renameSync(temporaryPath, statePath);
+}
+
 /** Persists the editable project root separately from content-addressed blobs. */
 export function persistLocalProjectState(
   permissionHash: string,
@@ -80,6 +131,12 @@ export function persistLocalProjectState(
             : extraProjectHash,
         extraProjectMode: previous.extraProjectMode || '',
         ...(previous.cloudMapId ? { cloudMapId: previous.cloudMapId } : {}),
+        ...(previous.skinPreviews
+          ? { skinPreviews: previous.skinPreviews }
+          : {}),
+        ...(previous.skinProjects
+          ? { skinProjects: previous.skinProjects }
+          : {}),
         ...(previous.groupProjectMetaData
           ? { groupProjectMetaData: previous.groupProjectMetaData }
           : {}),

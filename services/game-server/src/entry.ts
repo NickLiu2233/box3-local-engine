@@ -70,6 +70,7 @@ import {
   getLocalExtraProjectMode,
   getLocalExtraProjectStateHash,
   getLocalGroupProjectMetaData,
+  getLocalProjectSkinPreviews,
   persistLocalProjectState,
 } from './project/local-project-state';
 import { BuildSystemRemote } from './service/build-system-remote';
@@ -351,6 +352,15 @@ export async function startServer(spec: ServerRuntimeConfig) {
     });
     httpRoutes['/block'] = async (req, res) => {
       await contentRouter(req, res);
+    };
+    httpRoutes['/api/project-skin-previews'] = async (req, res) => {
+      if (req.method !== 'GET') {
+        res.writeHead(405, { Allow: 'GET' });
+        res.end('method not allowed');
+        return;
+      }
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(getLocalProjectSkinPreviews()));
     };
   }
 

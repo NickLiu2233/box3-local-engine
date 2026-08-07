@@ -27,7 +27,7 @@ import {
 
 import { Search } from '../../search';
 import { SkinList } from './skin-list';
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
 import { EditType, setVoxaData } from 'src/redux/edit/creator';
 import { fetchSkinData } from '..';
 
@@ -45,7 +45,10 @@ import { RootState } from 'src/redux/edit';
 import { ScrollManage } from '../../scroll-trigger';
 import { useEdit } from 'src/client/edit/edit-context';
 import emptyImage from 'src/assets/img-empty.png';
-import { getProjectSkins } from '../project-skins';
+import {
+  getProjectSkinPreviewUrl,
+  getProjectSkins,
+} from '../project-skins';
 
 type SkinSource = 'local' | 'project';
 
@@ -70,16 +73,22 @@ export const ProjectSkinView = (
   const intl = useIntl();
   const editor = useEdit();
   const mapId = clientConfig.mapInfo.contentId;
-  const [source, setSource] = useState<SkinSource>('local');
   const [projectSkinSnapshot, setProjectSkinSnapshot] = useState(() => ({
     skinAssets: { ...editor.state.replica.extraProjectInfo.skinAssets },
     defaultSkinName: editor.state.replica.extraProjectInfo.defaultSkinName,
   }));
+  const [projectSkinPreviews, setProjectSkinPreviews] = useState<
+    Record<string, string>
+  >({});
+  const [projectSkinProjects, setProjectSkinProjects] = useState<
+    Record<string, string>
+  >({});
 
   const [rename, setRename] = useState<
     | {
         skinId: number;
         oldName: string;
+        source: SkinSource;
       }
     | undefined
   >(undefined);
@@ -108,22 +117,92 @@ export const ProjectSkinView = (
     return () => editor.replica.onExtraProjectChange.unsub(refreshProjectSource);
   }, [editor]);
 
+  useEffect(() => {
+    if (!clientConfig.isLocalGameServer) return;
+    const runtimeConfig = getConfig();
+    const runtimeURL = runtimeConfig.BACKEND_SERVER_URL || '';
+    const controller = new AbortController();
+    void fetch(
+      `${runtimeURL.replace(/\/$/, '')}/api/project-skins`,
+      { signal: controller.signal },
+    )
+      .then((response) => (response.ok ? response.json() : {}))
+      .then((value) => {
+        if (value && typeof value === 'object' && !Array.isArray(value)) {
+          const metadata = value as {
+            skinPreviews?: Record<string, string>;
+            skinProjects?: Record<string, string>;
+          };
+          setProjectSkinPreviews(metadata.skinPreviews || {});
+          setProjectSkinProjects(metadata.skinProjects || {});
+        }
+      })
+      .catch((error) => {
+        if (error?.name !== 'AbortError') setProjectSkinPreviews({});
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => {
+      const runtimeURL = getConfig().BACKEND_SERVER_URL || '';
+      void fetch(`${runtimeURL.replace(/\/$/, '')}/api/project-skins`)
+        .then((response) => (response.ok ? response.json() : {}))
+        .then((value) => {
+          const metadata = value as {
+            skinPreviews?: Record<string, string>;
+            skinProjects?: Record<string, string>;
+          };
+          setProjectSkinPreviews(metadata.skinPreviews || {});
+          setProjectSkinProjects(metadata.skinProjects || {});
+        });
+    };
+    window.addEventListener('local-project-skins-changed', refresh);
+    return () => window.removeEventListener('local-project-skins-changed', refresh);
+  }, []);
+
   const projectSkins = useMemo(() => {
     const { skinAssets, defaultSkinName } = projectSkinSnapshot;
     const normalizedSearch = searchName.trim().toLocaleLowerCase();
-    return getProjectSkins(skinAssets, defaultSkinName)
+    return getProjectSkins(skinAssets, defaultSkinName, projectSkinPreviews)
       .filter((skin) =>
         !normalizedSearch || skin.name.toLocaleLowerCase().includes(normalizedSearch),
       )
       .map((skin) => ({
         id: skin.id,
         name: skin.name,
-        previewUrl: emptyImage.src,
+        previewUrl: getProjectSkinPreviewUrl(
+          skin.previewHash,
+          getConfig().BACKEND_SERVER_URL || '',
+          emptyImage.src,
+        ),
         modelFileHash: skin.modelFileHash,
         isDefault: skin.isDefault,
       }));
-  }, [projectSkinSnapshot, searchName]);
+  }, [editor, projectSkinPreviews, projectSkinSnapshot, searchName]);
   const projectDefaultSkinId = projectSkins.find((skin) => skin.isDefault)?.id;
+  const requestProjectSkin = useCallback(async (body: Record<string, unknown>) => {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL || '';
+    const response = await fetch(
+      `${runtimeURL.replace(/\/$/, '')}/api/project-skins`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    );
+    const value = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(value.message || '项目皮肤操作失败') as Error & {
+        code?: number;
+      };
+      if (response.status === 409) error.code = ModelErrorCode.NameExisted;
+      throw error;
+    }
+    if (value.skinPreviews) setProjectSkinPreviews(value.skinPreviews);
+    if (value.skinProjects) setProjectSkinProjects(value.skinProjects);
+    return value;
+  }, []);
   const sortItems: MenuItemOptions[] = useMemo(() => {
     return [
       {
@@ -177,6 +256,30 @@ export const ProjectSkinView = (
       ];
     },
     [defaultSkinId, intl],
+  );
+  const getProjectActionsMenu = useCallback(
+    (skinId: number): MenuItemOptions[] => [
+      {
+        id: SkinAction.SetDefault,
+        text:
+          projectDefaultSkinId === skinId
+            ? intl.formatMessage({ id: 'gamePlayerUnsetDefaultSkin' })
+            : intl.formatMessage({ id: 'gamePlayerSetDefaultSkin' }),
+      },
+      {
+        id: SkinAction.Edit,
+        text: intl.formatMessage({ id: 'gamePlayerEditSkin' }),
+      },
+      {
+        id: SkinAction.Rename,
+        text: intl.formatMessage({ id: 'rename' }),
+      },
+      {
+        id: SkinAction.Delete,
+        text: intl.formatMessage({ id: 'gamePlayerDeleteSkin' }),
+      },
+    ],
+    [intl, projectDefaultSkinId],
   );
   const unsetDefaultSkin = useCallback(async () => {
     try {
@@ -356,9 +459,113 @@ export const ProjectSkinView = (
   const handleRenameSkin = useCallback(
     async (skinId: number) => {
       const skinName = skinList.find((skin) => skin.id === skinId)?.name || '';
-      setRename({ skinId, oldName: skinName });
+      setRename({ skinId, oldName: skinName, source: 'local' });
     },
     [skinList],
+  );
+
+  const findProjectSkin = useCallback(
+    (skinId: number) => projectSkins.find((skin) => skin.id === skinId),
+    [projectSkins],
+  );
+
+  const handleProjectSetDefault = useCallback(
+    async (skinId: number) => {
+      const skin = findProjectSkin(skinId);
+      if (!skin) return;
+      try {
+        await requestProjectSkin({
+          action:
+            projectDefaultSkinId === skinId ? 'unsetDefault' : 'setDefault',
+          name: skin.name,
+        });
+        Toast.success({
+          content: intl.formatMessage({
+            id:
+              projectDefaultSkinId === skinId
+                ? 'gamePlayerUnsetDefaultSuccess'
+                : 'gamePlayerSetDefaultSuccess',
+          }),
+        });
+      } catch (error) {
+        Toast.error({
+          content:
+            error instanceof Error
+              ? error.message
+              : intl.formatMessage({ id: 'gamePlayerSetDefaultError' }),
+        });
+      }
+    }, [findProjectSkin, intl, projectDefaultSkinId, requestProjectSkin]);
+
+  const handleProjectEdit = useCallback(
+    async (skinId: number) => {
+      const skin = findProjectSkin(skinId);
+      if (!skin) return;
+      if (!projectSkinProjects[skin.name]) {
+        Toast.error({ content: '该皮肤缺少可编辑的 VOXA 工程文件' });
+        return;
+      }
+      try {
+        const model = await requestProjectSkin({
+          action: 'prepareEdit',
+          name: skin.name,
+        });
+        dispatch(
+          setVoxaData({
+            isShow: true,
+            modelId: Number(model.modelId),
+            modelType: ModelType.ExtensionLib,
+            editType: EditType.Skin,
+            projectSkinName: skin.name,
+            saveToProject: true,
+          }),
+        );
+      } catch (error) {
+        Toast.error({
+          content: error instanceof Error ? error.message : '项目皮肤打开失败',
+        });
+      }
+    }, [dispatch, findProjectSkin, projectSkinProjects, requestProjectSkin]);
+
+  const handleProjectRename = useCallback(
+    (skinId: number) => {
+      const skin = findProjectSkin(skinId);
+      if (skin) setRename({ skinId, oldName: skin.name, source: 'project' });
+    },
+    [findProjectSkin],
+  );
+
+  const handleProjectDelete = useCallback(
+    (skinId: number) => {
+      const skin = findProjectSkin(skinId);
+      if (!skin) return;
+      const destroy = Modal.show({
+        type: 'warning',
+        width: 448,
+        title: intl.formatMessage({ id: 'gamePlayerDeleteSkin' }),
+        content: intl.formatMessage(
+          { id: 'gamePlayerDeleteSkinTips' },
+          { skinName: skin.name },
+        ),
+        confirmText: intl.formatMessage({ id: 'remove' }),
+        onConfirm: async () => {
+          try {
+            await requestProjectSkin({ action: 'delete', name: skin.name });
+            Toast.success({
+              content: intl.formatMessage({ id: 'deleteSuccess' }),
+            });
+          } catch (error) {
+            Toast.error({
+              content: error instanceof Error ? error.message : '删除失败',
+            });
+          }
+          destroy();
+        },
+        cancelText: intl.formatMessage({ id: 'cancel' }),
+        onCancel: () => destroy(),
+      });
+    },
+    [findProjectSkin, intl, requestProjectSkin],
   );
 
   const handleMenuAction = useCallback(
@@ -382,6 +589,31 @@ export const ProjectSkinView = (
     [handleSetDefault, handleEditSkin, handleRenameSkin, handleDeleteSkin],
   );
 
+  const handleProjectMenuAction = useCallback(
+    (params: { actionId: ItemId; skinId: number }) => {
+      switch (params.actionId) {
+        case SkinAction.SetDefault:
+          void handleProjectSetDefault(params.skinId);
+          break;
+        case SkinAction.Edit:
+          void handleProjectEdit(params.skinId);
+          break;
+        case SkinAction.Rename:
+          handleProjectRename(params.skinId);
+          break;
+        case SkinAction.Delete:
+          handleProjectDelete(params.skinId);
+          break;
+      }
+    },
+    [
+      handleProjectDelete,
+      handleProjectEdit,
+      handleProjectRename,
+      handleProjectSetDefault,
+    ],
+  );
+
   //  组件卸载前清空搜索框
   useEffect(() => {
     return () => {
@@ -392,9 +624,8 @@ export const ProjectSkinView = (
   const onSearch = useCallback(
     (query: string) => {
       dispatch(setSearchName(query));
-      if (source === 'local') refreshProjectSkins();
     },
-    [dispatch, refreshProjectSkins, source],
+    [dispatch],
   );
 
   const loadNextPage = useCallback(async () => {
@@ -425,24 +656,35 @@ export const ProjectSkinView = (
     setRename(undefined);
   }, []);
 
-  const handleRename = useCallback(async (skinId: number, newName: string) => {
-    const res = await apis.models.renameSharedSkinUsingPut(
-      {
-        mapId: clientConfig.mapInfo.contentId,
-        skinId: skinId,
-        skinName: newName,
-      },
-      {
-        timeout: REQUEST_TIMEOUT,
-      },
-    );
-    return res;
-  }, []);
+  const handleRename = useCallback(
+    async (skinId: number, newName: string) => {
+      if (rename?.source === 'project') {
+        await requestProjectSkin({
+          action: 'rename',
+          name: rename.oldName,
+          newName,
+        });
+        return true;
+      }
+      const res = await apis.models.renameSharedSkinUsingPut(
+        {
+          mapId: clientConfig.mapInfo.contentId,
+          skinId: skinId,
+          skinName: newName,
+        },
+        {
+          timeout: REQUEST_TIMEOUT,
+        },
+      );
+      return res;
+    },
+    [rename, requestProjectSkin],
+  );
 
   const handleRenameSuccess = useCallback(() => {
-    refreshProjectSkins();
+    if (rename?.source === 'local') refreshProjectSkins();
     setRename(undefined);
-  }, [refreshProjectSkins]);
+  }, [refreshProjectSkins, rename]);
 
   const handleRenameError = useCallback(
     (errorCode: number) => {
@@ -466,83 +708,50 @@ export const ProjectSkinView = (
 
   return (
     <div className={style.container}>
-      {clientConfig.isLocalGameServer && (
-        <div className={style.sourceTabs}>
-          {(['local', 'project'] as const).map((item) => (
-            <button
-              key={item}
-              type="button"
-              className={source === item ? style.sourceTabActive : style.sourceTab}
-              onClick={() => setSource(item)}
-            >
-              {intl.formatMessage({ id: item })}
-            </button>
-          ))}
-        </div>
-      )}
       <div className={style.topBar}>
         <div className={style.left}>
-          {source === 'local' && (
-            <Button
-              type={'secondary'}
-              size={'medium'}
-              onClick={() => {
-                dispatch(
-                  setVoxaData({
-                    isShow: true,
-                    modelId: 0,
-                    modelType: ModelType.ExtensionLib,
-                    editType: EditType.Skin,
-                  }),
-                );
-              }}
-            >
-              {intl.formatMessage({ id: 'gamePlayerNewSkin' })}
-            </Button>
-          )}
-          {source === 'local' && !clientConfig.isLocalGameServer && (
-            <Button type={'secondary'} size={'medium'} onClick={showSkinLib}>
-              {intl.formatMessage({ id: 'gamePlayerImportSkin' })}
-            </Button>
-          )}
+          <Button
+            type={'secondary'}
+            size={'medium'}
+            onClick={() => {
+              dispatch(
+                setVoxaData({
+                  isShow: true,
+                  modelId: 0,
+                  modelType: ModelType.ExtensionLib,
+                  editType: EditType.Skin,
+                  saveToProject: true,
+                }),
+              );
+            }}
+          >
+            {intl.formatMessage({ id: 'gamePlayerNewSkin' })}
+          </Button>
+          <Button type={'secondary'} size={'medium'} onClick={showSkinLib}>
+            从本地导入皮肤
+          </Button>
         </div>
         <div className={style.right}>
-          {source === 'local' && (
-            <div className={style.sort}>
-              <IconSort />
-              <Select
-                align={{ offset: [0, 0] }}
-                items={sortItems}
-                selection={sortBy.toString()}
-                onSelect={onSelectSort}
-              />
-            </div>
-          )}
           <Search onSearch={onSearch} clearBtn={true} size="middle" />
         </div>
       </div>
       <div className={style.content}>
         <SkinList
           ref={ref}
-          loading={source === 'local' && loading}
-          skinList={source === 'local' ? skinList : projectSkins}
-          defaultSkinId={
-            source === 'local' ? defaultSkinId : projectDefaultSkinId
-          }
+          loading={false}
+          skinList={projectSkins}
+          defaultSkinId={projectDefaultSkinId}
           copyTitle={true}
-          onScrollToBottom={source === 'local' ? loadNextPage : () => undefined}
+          onScrollToBottom={() => undefined}
           emptyTips={
             searchName
               ? intl.formatMessage({ id: 'gamePlayerSearchEmpty' })
               : intl.formatMessage({
-                  id:
-                    source === 'local'
-                      ? 'gamePlayerLocalSkinEmpty'
-                      : 'gamePlayerProjectSkinEmpty',
+                id: 'gamePlayerProjectSkinEmpty',
                 })
           }
-          getActionsMenu={source === 'local' ? getActionsMenu : undefined}
-          onMenuItemSelected={source === 'local' ? handleMenuAction : undefined}
+          getActionsMenu={getProjectActionsMenu}
+          onMenuItemSelected={handleProjectMenuAction}
         />
       </div>
       {rename && (

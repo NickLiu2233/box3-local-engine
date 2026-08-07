@@ -20,6 +20,8 @@ type VoxaConfigProps = {
   modelId: number;
   modelType: ModelType;
   editType: EditType;
+  projectSkinName?: string;
+  saveToProject?: boolean;
 };
 
 export type VoxaDataType =

@@ -310,6 +310,18 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
       currentProjectHashes.add(hash)
     }
   }
+  for (const hash of Object.values(state.skinPreviews || {})) {
+    if (typeof hash !== 'string' || !hash) continue
+    for (const reachable of getReachableProjectHashes(sourceBlobRoot, hash)) {
+      currentProjectHashes.add(reachable)
+    }
+  }
+  for (const hash of Object.values(state.skinProjects || {})) {
+    if (typeof hash !== 'string' || !hash) continue
+    for (const reachable of getReachableProjectHashes(sourceBlobRoot, hash)) {
+      currentProjectHashes.add(reachable)
+    }
+  }
   assertNoSensitiveContent(sourceBlobRoot, currentProjectHashes)
 
   const hashes = getRuntimeTemplateHashes()
@@ -327,6 +339,8 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
     formatVersion: 1,
     permissionHash: publishedPermissionHash,
     extraProjectHash: state.extraProjectHash || '',
+    ...(state.skinPreviews ? { skinPreviews: state.skinPreviews } : {}),
+    ...(state.skinProjects ? { skinProjects: state.skinProjects } : {}),
     updatedAt: new Date().toISOString(),
   }
   fs.writeFileSync(

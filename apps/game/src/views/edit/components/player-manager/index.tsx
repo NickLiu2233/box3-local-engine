@@ -176,8 +176,8 @@ export const PlayerManager = () => {
         ),
         secondaryContent: (
           <SkinLib
+            onClose={() => setShowSecondary(false)}
             onImportSuccess={() => {
-              setShowSecondary(false);
               refreshProjectSkins();
             }}
           />

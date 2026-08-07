@@ -2,8 +2,20 @@ export type ProjectSkinData = {
   id: number;
   name: string;
   modelFileHash: string;
+  previewHash: string;
   isDefault: boolean;
 };
+
+export function getProjectSkinPreviewUrl(
+  previewHash: string,
+  backendServerUrl: string,
+  fallbackUrl: string,
+) {
+  if (!previewHash) return fallbackUrl;
+  return `${backendServerUrl.replace(/\/$/, '')}/engine/m/${encodeURIComponent(
+    previewHash,
+  )}`;
+}
 
 function stableProjectSkinId(name: string) {
   let hash = 2166136261;
@@ -19,6 +31,7 @@ function stableProjectSkinId(name: string) {
 export function getProjectSkins(
   skinAssets: Record<string, { hash: string }>,
   defaultSkinName: string,
+  skinPreviews: Record<string, string> = {},
 ): ProjectSkinData[] {
   return Object.entries(skinAssets)
     .filter(([name, asset]) =>
@@ -28,6 +41,7 @@ export function getProjectSkins(
       id: stableProjectSkinId(name),
       name,
       modelFileHash: asset.hash,
+      previewHash: skinPreviews[name] || '',
       isDefault: name === defaultSkinName,
     }));
 }

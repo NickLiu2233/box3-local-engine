@@ -33,6 +33,8 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
     applyCloudModelIds,
     availableSoundConfig,
     cloudExtraProject,
+    cloudSkinPreviews,
+    cloudSkinProjects,
     cloudRetainedHashes,
     createConcurrencyGate,
     contentHash,
@@ -163,6 +165,14 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
     },
   });
   const cloudModels = [{ modelId: 99, modelName: 'Cloud Model', modelFileHash: cloudModelHash }];
+  assert.deepEqual(cloudSkinPreviews([
+    { modelName: 'Cloud Skin', modelFileHash: 'skin-hash', modelPreviewHash: 'skin-preview' },
+    { modelName: 'No Preview', modelFileHash: 'skin-hash-2' },
+  ], null), { 'Cloud Skin': 'skin-preview' });
+  assert.deepEqual(cloudSkinProjects([
+    { modelName: 'Cloud Skin', projectFileHash: 'skin-project' },
+    { modelName: 'No Project' },
+  ], null), { 'Cloud Skin': 'skin-project' });
   const cloudScripts = {
     clientScripts: [{ id: 'client-1', name: 'shared-client.js', hash: cloudScriptHash, share: true }],
     serverScripts: [{ id: 'server-1', name: 'shared-server.js', hash: actualHash, share: true }],

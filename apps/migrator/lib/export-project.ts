@@ -555,6 +555,36 @@ export function cloudExtraProject(
   return extra;
 }
 
+export function cloudSkinPreviews(
+  skins: EngineModel[],
+  defaultSkin: EngineModel | null,
+  skippedHashes: ReadonlySet<string> = new Set(),
+) {
+  const previews: Record<string, string> = {};
+  for (const skin of [...skins, ...(defaultSkin ? [defaultSkin] : [])]) {
+    const name = skin?.modelName?.trim();
+    const previewHash = skin?.modelPreviewHash?.trim();
+    if (!name || !previewHash || skippedHashes.has(previewHash)) continue;
+    previews[name] = previewHash;
+  }
+  return previews;
+}
+
+export function cloudSkinProjects(
+  skins: EngineModel[],
+  defaultSkin: EngineModel | null,
+  skippedHashes: ReadonlySet<string> = new Set(),
+) {
+  const projects: Record<string, string> = {};
+  for (const skin of [...skins, ...(defaultSkin ? [defaultSkin] : [])]) {
+    const name = skin?.modelName?.trim();
+    const projectHash = skin?.projectFileHash?.trim();
+    if (!name || !projectHash || skippedHashes.has(projectHash)) continue;
+    projects[name] = projectHash;
+  }
+  return projects;
+}
+
 export function encodeCloudExtraProject(data: CloudEngineData) {
   const extra = cloudExtraProject(
     data.models,
@@ -1318,6 +1348,12 @@ export async function generateProjectArchive(
       permissionHash: migratedPermissionHash,
       extraProjectHash,
       extraProjectMode: extraProjectHash ? 'embedded' : '',
+      ...(cloudData
+        ? {
+            skinPreviews: cloudSkinPreviews(cloudData.skins, cloudData.defaultSkin, skippedHashes),
+            skinProjects: cloudSkinProjects(cloudData.skins, cloudData.defaultSkin, skippedHashes),
+          }
+        : {}),
       ...(mapId ? { cloudMapId: mapId } : {}),
       ...(groupProjectMetaData ? { groupProjectMetaData } : {}),
       updatedAt: now,
