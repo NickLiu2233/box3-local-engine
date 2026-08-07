@@ -1,13 +1,19 @@
 import { clientConfig } from 'src/config/client';
 
-export function hashURL(hash: string) {
-  if (!hash) {
+export function resolveHashURL(cdnPath: string, value: string) {
+  if (!value) {
     return '';
   }
-  if (hash.indexOf('http') >= 0) {
-    return hash;
+  // Callers also use this helper for already-resolved runtime/static URLs.
+  // Only a bare content hash should be routed through /block/.
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|\/)/i.test(value)) {
+    return value;
   }
-  return clientConfig.CDN_PATH + '/block/' + hash;
+  return `${cdnPath.replace(/\/$/, '')}/block/${value}`;
+}
+
+export function hashURL(hash: string) {
+  return resolveHashURL(clientConfig.CDN_PATH || '', hash);
 }
 
 export type ImageFormats =

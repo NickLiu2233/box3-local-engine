@@ -17,9 +17,11 @@ import { Collapse } from 'src/views/components/collapse';
 
 type TabItemType = {
   title: string;
-  key: ModelType;
+  key: ModelPanelTab;
   content: ReactNode;
 };
+
+export type ModelPanelTab = ModelType | 'local';
 
 export type ModelData = {
   id: number;
@@ -30,6 +32,7 @@ export type ModelData = {
   animated: boolean;
   type: ModelType;
   updateAt: string;
+  meshPath?: string;
 };
 
 export enum ModelAction {
@@ -94,14 +97,30 @@ export async function fetchModelList(query: {
 export const EditModelPanelContainer = () => {
   const intl = useIntl();
   const editor = useEdit();
-  const [currentTab, setCurrentTab] = useState<ModelType>(ModelType.Project);
+  const [currentTab, setCurrentTab] = useState<ModelPanelTab>(
+    clientConfig.isLocalGameServer ? 'local' : ModelType.Project,
+  );
   useEffect(() => {
     if (!clientConfig.isLocalGameServer) editor.replica.updateExtraProject();
   }, [editor]);
   const [collapsed, setCollapsed] = useState(false);
 
   const tabs: TabItemType[] = useMemo(() => {
-    const items = [
+    if (clientConfig.isLocalGameServer) {
+      return [
+        {
+          title: intl.formatMessage({ id: 'local' }),
+          key: 'local' as const,
+          content: <ProjectModelPanel currentTab={currentTab} source="local" />,
+        },
+        {
+          title: intl.formatMessage({ id: 'project' }),
+          key: ModelType.Project,
+          content: <ProjectModelPanel currentTab={currentTab} source="project" />,
+        },
+      ];
+    }
+    return [
       {
         title: intl.formatMessage({ id: 'project' }),
         key: ModelType.Project,
@@ -118,10 +137,6 @@ export const EditModelPanelContainer = () => {
         content: <PublicModelPanel currentTab={currentTab} />,
       },
     ];
-    // Local creator models are scoped to the current map and stored by the
-    // standalone VOXA service. Cloud-only private/public libraries are not
-    // meaningful here.
-    return clientConfig.isLocalGameServer ? items.slice(0, 1) : items;
   }, [intl, currentTab]);
 
   return (

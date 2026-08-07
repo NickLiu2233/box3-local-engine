@@ -12,6 +12,7 @@ import {
   fetchModelList,
   ModelAction,
   ModelData,
+  ModelPanelTab,
 } from '../edit-model-panel/index';
 import { isMobile } from 'src/utils/mobile';
 import { clientConfig } from 'src/config/client';
@@ -29,7 +30,7 @@ import {
 } from 'src/views/edit/components/scroll-trigger';
 import { calc_class_name } from 'src/utils/classname';
 
-export const PublicModelPanel = ({ currentTab }: { currentTab: ModelType }) => {
+export const PublicModelPanel = ({ currentTab }: { currentTab: ModelPanelTab }) => {
   const [modelList, setModelList] = useState<ModelData[]>([]);
   const [fetching, setFetching] = useState(false);
   const [keyword, setKeyword] = useState<string>('');

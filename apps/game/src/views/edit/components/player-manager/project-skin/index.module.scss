@@ -9,6 +9,37 @@
     }
   }
 }
+.sourceTabs {
+  display: flex;
+  gap: 24px;
+  height: 32px;
+  margin: 0 24px 16px;
+  border-bottom: 1px solid colors.$boxOpacityWhite12;
+}
+.sourceTab,
+.sourceTabActive {
+  position: relative;
+  padding: 0 4px 10px;
+  border: 0;
+  color: colors.$boxTextWhiteSecondary;
+  background: transparent;
+  cursor: pointer;
+  @include texts.b14;
+}
+.sourceTabActive {
+  color: colors.$boxTextWhitePrimary;
+
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    border-radius: 2px;
+    background: colors.$arenaPrimary80;
+    content: '';
+  }
+}
 .topBar {
   display: flex;
   justify-content: space-between;
@@ -65,7 +96,7 @@
   }
 }
 .content {
-  height: calc(100% - 32px - 24px);
+  height: calc(100% - 32px - 24px - 48px);
   padding-bottom: 4px;
   margin-right: 6px; /* 设置右侧 margin */
 }

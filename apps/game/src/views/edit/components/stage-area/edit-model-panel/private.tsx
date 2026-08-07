@@ -11,6 +11,7 @@ import {
   fetchModelList,
   ModelAction,
   ModelData,
+  ModelPanelTab,
 } from 'src/views/edit/components/stage-area/edit-model-panel/index';
 import { isMobile } from 'src/utils/mobile';
 import { clientConfig } from 'src/config/client';
@@ -29,7 +30,7 @@ import { calc_class_name } from 'src/utils/classname';
 export const PrivateModelPanel = ({
   currentTab,
 }: {
-  currentTab: ModelType;
+  currentTab: ModelPanelTab;
 }) => {
   const [modelList, setModelList] = useState<ModelData[]>([]);
   const [fetching, setFetching] = useState(false);

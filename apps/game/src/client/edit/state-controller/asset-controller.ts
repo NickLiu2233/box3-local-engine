@@ -10,7 +10,7 @@ import {
 } from '@box-local/schema/project/project-rda';
 import { ClientStateType } from '../edit-schema';
 import { CodeEditorClientController } from '../code-editor/code-editor-client-controller';
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
 import { GamepadController } from './gamepad-controller';
 import { apis } from 'src/apis/api-java';
 
@@ -650,7 +650,9 @@ export class AssetController {
   };
 
   public getModelPreviewUrl = (previewFileHash: string) => {
-    return `${clientConfig.OSS_CDN_URL}/engine/m/${previewFileHash}`;
+    const runtimeConfig = getConfig();
+    const ossCDNURL = runtimeConfig.OSS_CDN_URL || clientConfig.OSS_CDN_URL || '';
+    return `${ossCDNURL.replace(/\/$/, '')}/engine/m/${previewFileHash}`;
   };
 
   public getModelNameFromMeshAssetsKey = (key: string) => {

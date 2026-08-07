@@ -106,6 +106,7 @@
   "frequency": "Frequency",
   "tone": "Tone",
   "online": "Online",
+  "local": "Local",
   "project": "Project",
   "public": "Public",
   "private": "Private",
@@ -1273,6 +1274,7 @@
 
   "gamePlayer": "Player",
   "gamePlayerProjectSkinLib": "Project Skin Library",
+  "gamePlayerLocalSkinEmpty": "The local skin library is empty",
   "gamePlayerProjectSkinEmpty": "Come and create map-exclusive skins!",
   "gamePlayerNewSkin": "Create Skin",
   "gamePlayerImportSkin": "Import Skin",

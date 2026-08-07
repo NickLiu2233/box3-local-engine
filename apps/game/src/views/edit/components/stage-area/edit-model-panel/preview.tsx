@@ -243,9 +243,9 @@ export default function Preview() {
 
   const getSeedMeshInfo = useCallback(
     async (model: ModelData) => {
-      const formatName = clientConfig.isLocalGameServer
+      const formatName = model.meshPath || (clientConfig.isLocalGameServer
         ? getLocalMeshPath(model.name, model.id)
-        : getMeshPath(model.name);
+        : getMeshPath(model.name));
       const metaData = await getMetaData(model.modelFileHash);
       if (!formatName) {
         return;

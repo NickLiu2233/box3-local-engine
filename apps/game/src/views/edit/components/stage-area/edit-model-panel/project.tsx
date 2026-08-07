@@ -6,7 +6,7 @@ import { ItemId, MenuItemOptions } from '@box-local/box-design';
 import { ModelType } from '@box-local/apis';
 
 import { RootState } from 'src/redux/edit';
-import { ModelAction, ModelData } from '.';
+import { ModelAction, ModelData, ModelPanelTab } from '.';
 import { ModelList } from './model-list';
 import { Search } from '../../search';
 import { EditType, setVoxaData } from 'src/redux/edit/creator';
@@ -28,8 +28,10 @@ import { fetchModelList } from '.';
 
 export const ProjectModelPanel = ({
   currentTab,
+  source = 'project',
 }: {
-  currentTab: ModelType;
+  currentTab: ModelPanelTab;
+  source?: 'local' | 'project';
 }) => {
   const dispatch = useDispatch();
   const intl = useIntl();
@@ -41,13 +43,16 @@ export const ProjectModelPanel = ({
   const projectModelScrollRef = useRef<ScrollManage>(null);
 
   const getModelList = useCallback(async () => {
-    if (clientConfig.isLocalGameServer) {
+    if (clientConfig.isLocalGameServer && source === 'local') {
       const list =
         (await fetchModelList({
           modelType: ModelType.Project,
           modelName: searchName,
         })) || [];
-      setModelList(list);
+      setModelList(list.map((model) => ({
+        ...model,
+        meshPath: `mesh/${model.name}__local_${model.id}.vb`,
+      })));
       return;
     }
     const { meshAssets } = editor.state.replica.extraProjectInfo;
@@ -66,11 +71,15 @@ export const ProjectModelPanel = ({
           animated: meshAsset.animated,
           type: ModelType.Project,
           updateAt: meshAsset.updatedAt,
+          meshPath: key,
         };
         return model;
       },
     );
     // 按模型更新时间倒序排序
+    if (clientConfig.isLocalGameServer) {
+      list = list.filter((model) => !/__local_\d+\.vb$/.test(model.meshPath || ''));
+    }
     list = list.sort(
       (first, second) =>
         convertTimeStrToTimestamp(second.updateAt) -
@@ -80,12 +89,12 @@ export const ProjectModelPanel = ({
       setModelList(list);
     }
     setModelList(list.filter((model) => model.name.includes(searchName)));
-  }, [editor, searchName]);
+  }, [editor, searchName, source]);
 
   // 初始化列表 & 订阅刷新列表
   useEffect(() => {
     getModelList();
-    if (clientConfig.isLocalGameServer) {
+    if (clientConfig.isLocalGameServer && source === 'local') {
       window.addEventListener('local-voxa-models-changed', getModelList);
       return () => {
         window.removeEventListener('local-voxa-models-changed', getModelList);
@@ -95,7 +104,7 @@ export const ProjectModelPanel = ({
     return () => {
       editor.replica.onExtraProjectChange.unsub(getModelList);
     };
-  }, [editor, getModelList]);
+  }, [editor, getModelList, source]);
 
   useEffect(() => {
     setInputValue('');
@@ -131,10 +140,12 @@ export const ProjectModelPanel = ({
         text: intl.formatMessage({ id: 'remove' }),
       },
     ];
-    return clientConfig.isLocalGameServer
+    return clientConfig.isLocalGameServer && source === 'local'
       ? actions.filter((action) => action.id !== ModelAction.Copy)
-      : actions;
-  }, [intl]);
+      : clientConfig.isLocalGameServer
+        ? []
+        : actions;
+  }, [intl, source]);
 
   const handleMenuAction = useCallback(
     (params: { actionId: ItemId; modelId: number }) => {
@@ -195,16 +206,18 @@ export const ProjectModelPanel = ({
           onSelect={onSelect}
           selectedId={selectedModel?.id ?? 0}
           modelList={modelList}
-          newModel={true}
+          newModel={!clientConfig.isLocalGameServer || source === 'local'}
           onNewModel={onNewModel}
-          actionsMenu={actionsMenu}
+          actionsMenu={actionsMenu.length ? actionsMenu : undefined}
           onMenuItemSelected={handleMenuAction}
         />
       </div>
-      <ProjectModelActions
-        ref={projectModelActionsRef}
-        scrollToTop={scrollToTop}
-      />
+      {(!clientConfig.isLocalGameServer || source === 'local') && (
+        <ProjectModelActions
+          ref={projectModelActionsRef}
+          scrollToTop={scrollToTop}
+        />
+      )}
     </div>
   );
 };

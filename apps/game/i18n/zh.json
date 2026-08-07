@@ -104,6 +104,7 @@
   "frequency": "循环速度",
   "tone": "色调",
   "online": "云端",
+  "local": "本地",
   "project": "项目",
   "public": "公共",
   "private": "个人",
@@ -1272,6 +1273,7 @@
 
   "gamePlayer": "玩家",
   "gamePlayerProjectSkinLib": "项目皮肤库",
+  "gamePlayerLocalSkinEmpty": "本地皮肤库为空",
   "gamePlayerProjectSkinEmpty": "快来创建地图专属皮肤吧！",
   "gamePlayerNewSkin": "创建皮肤",
   "gamePlayerImportSkin": "从素材库导入",

@@ -5,6 +5,7 @@ export type PlayerSkin = {
   id: number;
   name: string;
   previewUrl: string;
+  modelFileHash?: string;
 };
 export type PlayerSkinList = PlayerSkin[];
 

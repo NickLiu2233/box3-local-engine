@@ -110,13 +110,13 @@ export const SkinListView = (props: SkinListProps, ref: Ref<ScrollManage>) => {
   }, [emptyTips, skinList]);
 
   const list = useMemo(() => {
-    const filterRecord: number[] = [];
+    const filterRecord = new Set<number>();
     return skinList.map((skin) => {
       // 过滤由于异步协作产生的一些奇怪的重复数据
-      if (filterRecord[skin.id]) {
+      if (filterRecord.has(skin.id)) {
         return;
       }
-      filterRecord[skin.id] = 1;
+      filterRecord.add(skin.id);
       return (
         <ObjectCard
           key={skin.id}

@@ -44,6 +44,10 @@ import {
 import { RootState } from 'src/redux/edit';
 import { ScrollManage } from '../../scroll-trigger';
 import { useEdit } from 'src/client/edit/edit-context';
+import emptyImage from 'src/assets/img-empty.png';
+import { getProjectSkins } from '../project-skins';
+
+type SkinSource = 'local' | 'project';
 
 enum SkinAction {
   SetDefault = 'SetDefault',
@@ -66,6 +70,11 @@ export const ProjectSkinView = (
   const intl = useIntl();
   const editor = useEdit();
   const mapId = clientConfig.mapInfo.contentId;
+  const [source, setSource] = useState<SkinSource>('local');
+  const [projectSkinSnapshot, setProjectSkinSnapshot] = useState(() => ({
+    skinAssets: { ...editor.state.replica.extraProjectInfo.skinAssets },
+    defaultSkinName: editor.state.replica.extraProjectInfo.defaultSkinName,
+  }));
 
   const [rename, setRename] = useState<
     | {
@@ -86,6 +95,35 @@ export const ProjectSkinView = (
   const searchName = useSelector(
     (state: RootState) => state.playerSkin.searchName,
   );
+  useEffect(() => {
+    const refreshProjectSource = () => {
+      const { skinAssets, defaultSkinName } =
+        editor.state.replica.extraProjectInfo;
+      setProjectSkinSnapshot({
+        skinAssets: { ...skinAssets },
+        defaultSkinName,
+      });
+    };
+    editor.replica.onExtraProjectChange.sub(refreshProjectSource);
+    return () => editor.replica.onExtraProjectChange.unsub(refreshProjectSource);
+  }, [editor]);
+
+  const projectSkins = useMemo(() => {
+    const { skinAssets, defaultSkinName } = projectSkinSnapshot;
+    const normalizedSearch = searchName.trim().toLocaleLowerCase();
+    return getProjectSkins(skinAssets, defaultSkinName)
+      .filter((skin) =>
+        !normalizedSearch || skin.name.toLocaleLowerCase().includes(normalizedSearch),
+      )
+      .map((skin) => ({
+        id: skin.id,
+        name: skin.name,
+        previewUrl: emptyImage.src,
+        modelFileHash: skin.modelFileHash,
+        isDefault: skin.isDefault,
+      }));
+  }, [projectSkinSnapshot, searchName]);
+  const projectDefaultSkinId = projectSkins.find((skin) => skin.isDefault)?.id;
   const sortItems: MenuItemOptions[] = useMemo(() => {
     return [
       {
@@ -354,9 +392,9 @@ export const ProjectSkinView = (
   const onSearch = useCallback(
     (query: string) => {
       dispatch(setSearchName(query));
-      refreshProjectSkins();
+      if (source === 'local') refreshProjectSkins();
     },
-    [dispatch, refreshProjectSkins],
+    [dispatch, refreshProjectSkins, source],
   );
 
   const loadNextPage = useCallback(async () => {
@@ -428,58 +466,83 @@ export const ProjectSkinView = (
 
   return (
     <div className={style.container}>
+      {clientConfig.isLocalGameServer && (
+        <div className={style.sourceTabs}>
+          {(['local', 'project'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              className={source === item ? style.sourceTabActive : style.sourceTab}
+              onClick={() => setSource(item)}
+            >
+              {intl.formatMessage({ id: item })}
+            </button>
+          ))}
+        </div>
+      )}
       <div className={style.topBar}>
         <div className={style.left}>
-          <Button
-            type={'secondary'}
-            size={'medium'}
-            onClick={() => {
-              dispatch(
-                setVoxaData({
-                  isShow: true,
-                  modelId: 0,
-                  modelType: ModelType.ExtensionLib,
-                  editType: EditType.Skin,
-                }),
-              );
-            }}
-          >
-            {intl.formatMessage({ id: 'gamePlayerNewSkin' })}
-          </Button>
-          {!clientConfig.isLocalGameServer && (
+          {source === 'local' && (
+            <Button
+              type={'secondary'}
+              size={'medium'}
+              onClick={() => {
+                dispatch(
+                  setVoxaData({
+                    isShow: true,
+                    modelId: 0,
+                    modelType: ModelType.ExtensionLib,
+                    editType: EditType.Skin,
+                  }),
+                );
+              }}
+            >
+              {intl.formatMessage({ id: 'gamePlayerNewSkin' })}
+            </Button>
+          )}
+          {source === 'local' && !clientConfig.isLocalGameServer && (
             <Button type={'secondary'} size={'medium'} onClick={showSkinLib}>
               {intl.formatMessage({ id: 'gamePlayerImportSkin' })}
             </Button>
           )}
         </div>
         <div className={style.right}>
-          <div className={style.sort}>
-            <IconSort />
-            <Select
-              align={{ offset: [0, 0] }}
-              items={sortItems}
-              selection={sortBy.toString()}
-              onSelect={onSelectSort}
-            />
-          </div>
+          {source === 'local' && (
+            <div className={style.sort}>
+              <IconSort />
+              <Select
+                align={{ offset: [0, 0] }}
+                items={sortItems}
+                selection={sortBy.toString()}
+                onSelect={onSelectSort}
+              />
+            </div>
+          )}
           <Search onSearch={onSearch} clearBtn={true} size="middle" />
         </div>
       </div>
       <div className={style.content}>
         <SkinList
           ref={ref}
-          loading={loading}
-          skinList={skinList}
-          defaultSkinId={defaultSkinId}
+          loading={source === 'local' && loading}
+          skinList={source === 'local' ? skinList : projectSkins}
+          defaultSkinId={
+            source === 'local' ? defaultSkinId : projectDefaultSkinId
+          }
           copyTitle={true}
-          onScrollToBottom={loadNextPage}
+          onScrollToBottom={source === 'local' ? loadNextPage : () => undefined}
           emptyTips={
             searchName
               ? intl.formatMessage({ id: 'gamePlayerSearchEmpty' })
-              : intl.formatMessage({ id: 'gamePlayerProjectSkinEmpty' })
+              : intl.formatMessage({
+                  id:
+                    source === 'local'
+                      ? 'gamePlayerLocalSkinEmpty'
+                      : 'gamePlayerProjectSkinEmpty',
+                })
           }
-          getActionsMenu={getActionsMenu}
-          onMenuItemSelected={handleMenuAction}
+          getActionsMenu={source === 'local' ? getActionsMenu : undefined}
+          onMenuItemSelected={source === 'local' ? handleMenuAction : undefined}
         />
       </div>
       {rename && (
