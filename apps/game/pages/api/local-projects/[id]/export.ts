@@ -19,6 +19,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     };
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('Content-Disposition', `attachment; filename="project.boxproject"; filename*=UTF-8''${encodeURIComponent(archive.filename)}`);
+    res.setHeader('Content-Length', String(fs.statSync(archive.archivePath).size));
     res.setHeader('Cache-Control', 'no-store');
     const stream = fs.createReadStream(archive.archivePath);
     stream.on('error', () => {

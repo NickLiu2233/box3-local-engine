@@ -34,6 +34,36 @@ type LocalProject = {
   isEngineWorld?: boolean;
 };
 
+type ExportProgress = {
+  projectId: string;
+  projectName: string;
+  phase: 'packing' | 'downloading' | 'done' | 'error';
+  percent: number;
+  received: number;
+  total: number;
+  elapsedSeconds: number;
+  filename?: string;
+  message?: string;
+};
+
+type ImportProgress = {
+  filename: string;
+  phase: 'uploading' | 'processing' | 'done' | 'error';
+  percent: number;
+  sent: number;
+  total: number;
+  elapsedSeconds: number;
+  projectName?: string;
+  message?: string;
+};
+
+function formatBytes(value: number) {
+  if (!value) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const unit = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  return `${(value / 1024 ** unit).toFixed(unit ? 1 : 0)} ${units[unit]}`;
+}
+
 export const getServerSideProps: GetServerSideProps = async () => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
     return { notFound: true };
@@ -60,7 +90,9 @@ export default function ProjectsPage() {
   const [selectedProject, setSelectedProject] = useState<LocalProject | null>(
     null,
   );
-  const [, setNotice] = useState('');
+  const [notice, setNotice] = useState('');
+  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
 
   const refreshProjects = useCallback(async () => {
     const response = await fetch('/api/local-projects');
@@ -96,14 +128,83 @@ export default function ProjectsPage() {
   };
 
   const importProjectFile = async (file: File) => {
-    const response = await fetch('/api/local-projects/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: file,
+    if (importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error') return;
+    setNotice('');
+    const startedAt = Date.now();
+    setImportProgress({
+      filename: file.name,
+      phase: 'uploading',
+      percent: 0,
+      sent: 0,
+      total: file.size,
+      elapsedSeconds: 0,
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || '导入工程失败');
-    await refreshProjects();
+    const timer = window.setInterval(() => {
+      setImportProgress((current) => current && (current.phase === 'uploading' || current.phase === 'processing')
+        ? { ...current, elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000) }
+        : current);
+    }, 500);
+    try {
+      const data = await new Promise<{ project?: LocalProject; message?: string }>((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open('POST', '/api/local-projects/import');
+        request.setRequestHeader('Content-Type', 'application/octet-stream');
+        request.upload.onprogress = (event) => {
+          const total = event.lengthComputable ? event.total : file.size;
+          const sent = event.loaded;
+          setImportProgress((current) => current ? {
+            ...current,
+            phase: 'uploading',
+            percent: total ? Math.min(70, (sent / total) * 70) : 0,
+            sent,
+            total,
+            elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+          } : current);
+        };
+        request.upload.onload = () => {
+          setImportProgress((current) => current ? {
+            ...current,
+            phase: 'processing',
+            percent: 75,
+            sent: file.size,
+            total: file.size,
+            elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+          } : current);
+        };
+        request.onerror = () => reject(new Error('无法连接创作端，工程包上传失败'));
+        request.onabort = () => reject(new Error('导入已取消'));
+        request.onload = () => {
+          let result: { project?: LocalProject; message?: string } = {};
+          try { result = JSON.parse(request.responseText || '{}'); } catch { /* handled below */ }
+          if (request.status >= 200 && request.status < 300) resolve(result);
+          else reject(new Error(result.message || `导入工程失败（HTTP ${request.status}）`));
+        };
+        request.send(file);
+      });
+      await refreshProjects();
+      setImportProgress({
+        filename: file.name,
+        phase: 'done',
+        percent: 100,
+        sent: file.size,
+        total: file.size,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        projectName: data.project?.name,
+      });
+      setNotice(`工程已导入：${data.project?.name || file.name}`);
+    } catch (error) {
+      setImportProgress((current) => ({
+        filename: file.name,
+        phase: 'error',
+        percent: current?.percent || 0,
+        sent: current?.sent || 0,
+        total: current?.total || file.size,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        message: error instanceof Error ? error.message : '导入工程失败',
+      }));
+    } finally {
+      window.clearInterval(timer);
+    }
   };
 
   const openDetailsDialog = (project: LocalProject) => {
@@ -231,6 +332,110 @@ export default function ProjectsPage() {
     else window.location.assign(mode === 'edit' ? data.editUrl : data.playUrl);
   };
 
+  const exportProjectFile = async (project: LocalProject) => {
+    if (exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error') return;
+    setMenuProject(null);
+    setNotice('');
+    const startedAt = Date.now();
+    setExportProgress({
+      projectId: project.id,
+      projectName: project.name,
+      phase: 'packing',
+      percent: 8,
+      received: 0,
+      total: 0,
+      elapsedSeconds: 0,
+    });
+    const timer = window.setInterval(() => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      setExportProgress((current) => current?.projectId === project.id && current.phase === 'packing'
+        ? { ...current, elapsedSeconds, percent: Math.min(30, 8 + elapsedSeconds * 0.6) }
+        : current);
+    }, 500);
+    try {
+      const response = await fetch(`/api/local-projects/${project.id}/export`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || '导出工程失败');
+      }
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+      const filename = encodedName
+        ? decodeURIComponent(encodedName)
+        : `${project.name}_${project.id}.boxproject`;
+      const total = Number(response.headers.get('Content-Length') || 0);
+      let received = 0;
+      const chunks: Uint8Array[] = [];
+      setExportProgress((current) => current ? {
+        ...current,
+        phase: 'downloading',
+        percent: 35,
+        total,
+        filename,
+      } : current);
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value) {
+            chunks.push(value);
+            received += value.byteLength;
+            const percent = total
+              ? 35 + Math.min(60, (received / total) * 60)
+              : Math.min(92, 35 + chunks.length);
+            setExportProgress((current) => current ? {
+              ...current,
+              phase: 'downloading',
+              percent,
+              received,
+              total,
+              elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+              filename,
+            } : current);
+          }
+        }
+      } else {
+        const value = new Uint8Array(await response.arrayBuffer());
+        chunks.push(value);
+        received = value.byteLength;
+      }
+      const blob = new Blob(chunks, { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setExportProgress({
+        projectId: project.id,
+        projectName: project.name,
+        phase: 'done',
+        percent: 100,
+        received: received || blob.size,
+        total: total || blob.size,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        filename,
+      });
+      setNotice(`工程包已导出：${filename}`);
+    } catch (error) {
+      setExportProgress((current) => ({
+        projectId: project.id,
+        projectName: project.name,
+        phase: 'error',
+        percent: current?.percent || 0,
+        received: current?.received || 0,
+        total: current?.total || 0,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        message: error instanceof Error ? error.message : '导出工程失败',
+      }));
+    } finally {
+      window.clearInterval(timer);
+    }
+  };
+
   return (
     <main className={styles.page} onClick={() => { setMenuProject(null); setFilterOpen(false); }}>
       <header className={styles.header}>
@@ -258,10 +463,10 @@ export default function ProjectsPage() {
             <h1 id="page-title">作品</h1>
           </div>
           <div className={styles.titleActions}>
-            <button className={styles.importButton} onClick={() => importInputRef.current?.click()}>
+            <button className={styles.importButton} disabled={Boolean(importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error')} onClick={() => importInputRef.current?.click()}>
               <Upload size={16} /> 导入工程
             </button>
-            <input ref={importInputRef} className={styles.hiddenFileInput} type="file" accept=".boxproject,.tar.gz,application/gzip" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) importProjectFile(file).catch((error) => setNotice(error.message)); }} />
+            <input ref={importInputRef} className={styles.hiddenFileInput} type="file" accept=".boxproject,.tar.gz,application/gzip" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void importProjectFile(file); }} />
             <button className={styles.createButton} onClick={openCreateDialog}>
               <Plus size={18} strokeWidth={2.5} />
               新建作品
@@ -302,6 +507,7 @@ export default function ProjectsPage() {
           </div>
           <span className={styles.count}>{visibleProjects.length} 个作品</span>
         </div>
+        {notice && <div className={styles.notice} role="status">{notice}</div>}
         {visibleProjects.length ? (
           <div className={styles.grid}>
             {visibleProjects.map((project) => (
@@ -336,7 +542,11 @@ export default function ProjectsPage() {
                           <button role="menuitem" onClick={() => openPublishDialog(project)}>
                             <Play size={15} /> 发布为游玩包
                           </button>
-                          <button role="menuitem" onClick={() => { window.location.assign(`/api/local-projects/${project.id}/export`); }}>
+                          <button
+                            role="menuitem"
+                            disabled={Boolean(exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error')}
+                            onClick={() => void exportProjectFile(project)}
+                          >
                             <Download size={15} /> 导出可编辑工程
                           </button>
                           <button
@@ -415,6 +625,84 @@ export default function ProjectsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {exportProgress && (
+        <div className={styles.exportBackdrop} role="presentation">
+          <section className={styles.exportDialog} role="dialog" aria-modal="true" aria-labelledby="export-title">
+            <div className={`${styles.exportIcon} ${exportProgress.phase === 'done' ? styles.exportIconDone : exportProgress.phase === 'error' ? styles.exportIconError : ''}`}>
+              <Download size={22} />
+            </div>
+            <h2 id="export-title">
+              {exportProgress.phase === 'packing'
+                ? '正在生成工程包'
+                : exportProgress.phase === 'downloading'
+                  ? '正在下载工程包'
+                  : exportProgress.phase === 'done'
+                    ? '导出完成'
+                    : '导出失败'}
+            </h2>
+            <p className={styles.exportProjectName}>{exportProgress.projectName}</p>
+            <div className={styles.exportProgressTrack} aria-label="导出进度">
+              <span style={{ width: `${exportProgress.percent}%` }} />
+            </div>
+            <div className={styles.exportProgressMeta}>
+              <strong>{Math.round(exportProgress.percent)}%</strong>
+              <span>
+                {exportProgress.phase === 'packing'
+                  ? `正在整理、校验并压缩工程文件 · ${exportProgress.elapsedSeconds}s`
+                  : exportProgress.phase === 'downloading'
+                    ? `${formatBytes(exportProgress.received)} / ${exportProgress.total ? formatBytes(exportProgress.total) : '计算中'} · ${exportProgress.elapsedSeconds}s`
+                    : exportProgress.phase === 'done'
+                      ? `${exportProgress.filename} · ${formatBytes(exportProgress.total)}`
+                      : exportProgress.message}
+              </span>
+            </div>
+            {(exportProgress.phase === 'done' || exportProgress.phase === 'error') && (
+              <button className={styles.exportCloseButton} type="button" onClick={() => setExportProgress(null)}>
+                {exportProgress.phase === 'done' ? '完成' : '关闭'}
+              </button>
+            )}
+          </section>
+        </div>
+      )}
+      {importProgress && (
+        <div className={styles.exportBackdrop} role="presentation">
+          <section className={styles.exportDialog} role="dialog" aria-modal="true" aria-labelledby="import-title">
+            <div className={`${styles.exportIcon} ${importProgress.phase === 'done' ? styles.exportIconDone : importProgress.phase === 'error' ? styles.exportIconError : ''}`}>
+              <Upload size={22} />
+            </div>
+            <h2 id="import-title">
+              {importProgress.phase === 'uploading'
+                ? '正在上传工程包'
+                : importProgress.phase === 'processing'
+                  ? '正在导入工程'
+                  : importProgress.phase === 'done'
+                    ? '导入完成'
+                    : '导入失败'}
+            </h2>
+            <p className={styles.exportProjectName}>{importProgress.projectName || importProgress.filename}</p>
+            <div className={styles.exportProgressTrack} aria-label="导入进度">
+              <span style={{ width: `${importProgress.percent}%` }} />
+            </div>
+            <div className={styles.exportProgressMeta}>
+              <strong>{Math.round(importProgress.percent)}%</strong>
+              <span>
+                {importProgress.phase === 'uploading'
+                  ? `${formatBytes(importProgress.sent)} / ${formatBytes(importProgress.total)} · ${importProgress.elapsedSeconds}s`
+                  : importProgress.phase === 'processing'
+                    ? `正在解压、校验并写入本地工程 · ${importProgress.elapsedSeconds}s`
+                    : importProgress.phase === 'done'
+                      ? `${formatBytes(importProgress.total)} · 用时 ${importProgress.elapsedSeconds}s`
+                      : importProgress.message}
+              </span>
+            </div>
+            {(importProgress.phase === 'done' || importProgress.phase === 'error') && (
+              <button className={styles.exportCloseButton} type="button" onClick={() => setImportProgress(null)}>
+                {importProgress.phase === 'done' ? '完成' : '关闭'}
+              </button>
+            )}
+          </section>
         </div>
       )}
     </main>

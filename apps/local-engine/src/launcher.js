@@ -234,21 +234,7 @@ let shuttingDown = false
 let disposablePlayDataRoot = ''
 
 function makeRuntimeDataReadable(root) {
-  const pending = [root]
-  while (pending.length) {
-    const target = pending.pop()
-    const stat = fs.lstatSync(target)
-    if (stat.isDirectory()) {
-      fs.chmodSync(target, 0o755)
-      for (const entry of fs.readdirSync(target)) {
-        pending.push(path.join(target, entry))
-      }
-    } else if (stat.isFile()) {
-      fs.chmodSync(target, 0o644)
-    } else {
-      throw new Error(`运行时地图包含不支持的文件类型：${target}`)
-    }
-  }
+  projectManager.normalizeImportedProjectPermissions(root)
 }
 let playLibrary
 let editLibrary
@@ -294,6 +280,11 @@ async function main() {
 
   if ((startsPlayServer && !usesPlayLibrary) || startsEditServer) {
     fs.mkdirSync(dataRoot, { recursive: true })
+
+    // Docker Desktop may materialize files created in a macOS bind mount as
+    // write-only. Normalize the editable project before every runtime boot so
+    // blobs written by a previous autosave remain readable after a restart.
+    if (startsEditServer) makeRuntimeDataReadable(dataRoot)
 
     if (!fs.existsSync(generatedAsset) || !fs.existsSync(requiredClientAsset)) {
       if (production) {

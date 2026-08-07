@@ -1,6 +1,7 @@
 'use strict'
 
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
 const { spawnSync } = require('child_process')
@@ -548,13 +549,37 @@ function nextImportedId(id) {
   return candidate
 }
 
+function normalizeImportedProjectPermissions(root) {
+  const pending = [root]
+  while (pending.length) {
+    const target = pending.pop()
+    fs.chmodSync(target, 0o755)
+    for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+      const entryPath = path.join(target, entry.name)
+      if (entry.isDirectory()) {
+        pending.push(entryPath)
+      } else if (entry.isFile()) {
+        // Docker Desktop bind mounts can reject stat/lstat on macOS files
+        // extracted with mode 0200. chmod must happen before any file stat.
+        fs.chmodSync(entryPath, 0o644)
+      } else {
+        throw new Error(`工程包包含不支持的文件类型：${entryPath}`)
+      }
+    }
+  }
+}
+
 function importProject(archivePath) {
   if (!archivePath || !fs.existsSync(archivePath)) throw new Error('未找到工程包')
   archiveEntriesAreSafe(archivePath)
-  const temporaryRoot = path.join(projectsRoot, '.imports', `${process.pid}-${Date.now()}`)
+  // Extract outside the Docker Desktop bind mount first. On macOS, archive
+  // entries with mode 0200 can become impossible for the container user to
+  // stat or chmod once they have been created in the mounted projects path.
+  const temporaryRoot = path.join(os.tmpdir(), `box-project-import-${process.pid}-${Date.now()}`)
   fs.mkdirSync(temporaryRoot, { recursive: true })
   try {
     runTar(['-xzf', archivePath, '-C', temporaryRoot], 'Unable to import project')
+    normalizeImportedProjectPermissions(temporaryRoot)
     const metadata = readJSON(path.join(temporaryRoot, 'project.json'))
     if (!metadata || typeof metadata.id !== 'string' || !metadata.name || !fs.existsSync(path.join(temporaryRoot, 'source'))) {
       throw new Error('工程包内容无效')
@@ -564,6 +589,7 @@ function importProject(archivePath) {
     const now = new Date().toISOString()
     fs.mkdirSync(root, { recursive: true })
     fs.cpSync(path.join(temporaryRoot, 'source'), path.join(root, 'source'), { recursive: true, dereference: true })
+    normalizeImportedProjectPermissions(root)
     const imported = {
       formatVersion: 1,
       id,
@@ -862,6 +888,7 @@ module.exports = {
   getProject,
   listProjects,
   importProject,
+  normalizeImportedProjectPermissions,
   packageProject,
   projectsRoot,
   publishProject,

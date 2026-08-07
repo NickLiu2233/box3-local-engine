@@ -104,6 +104,7 @@
 .importButton { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; padding: 0 14px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; color: rgba(255,255,255,.8); background: #404040; font-size: 13px; font-weight: 700; }
 .importButton:hover { color: #fff; background: #4b4b4b; }
 .importButton:active { transform: scale(.97); }
+.importButton:disabled { cursor: not-allowed; opacity: .55; transform: none; }
 .hiddenFileInput { display: none; }
 .dialog input[type='file'] { height: auto; padding: 8px; color: rgba(255,255,255,.7); }
 .dialog input[type='file']::file-selector-button { margin-right: 9px; padding: 5px 8px; border: 0; border-radius: 4px; color: #262626; background: #ffdb00; font: inherit; font-size: 12px; cursor: pointer; }
@@ -112,6 +113,20 @@
 .dialog textarea:focus { border-color: #ffdb00; box-shadow: 0 0 0 3px rgba(255,219,0,.14); }
 .projectAuthor { display: block; margin-top: 5px; color: rgba(255,255,255,.55); font-size: 11px; }
 .dialogError { margin: 12px 0 0 !important; color: #f65252 !important; font-size: 12px !important; }
+.exportBackdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0,0,0,.66); }
+.exportDialog { width: min(100%, 460px); padding: 28px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; color: #fff; background: #262626; box-shadow: 0 22px 70px rgba(0,0,0,.5); }
+.exportIcon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 9px; color: #262626; background: #ffdb00; }
+.exportIconDone { color: #fff; background: #78c95d; }
+.exportIconError { color: #fff; background: #f65252; }
+.exportDialog h2 { margin: 18px 0 6px; font-size: 20px; }
+.exportProjectName { overflow: hidden; margin: 0; color: rgba(255,255,255,.58); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.exportProgressTrack { overflow: hidden; height: 8px; margin-top: 24px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.exportProgressTrack span { display: block; height: 100%; border-radius: inherit; background: #ffdb00; transition: width 260ms ease; }
+.exportProgressMeta { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-top: 10px; }
+.exportProgressMeta strong { flex: 0 0 auto; color: #ffdb00; font-size: 13px; }
+.exportProgressMeta span { color: rgba(255,255,255,.58); font-size: 12px; line-height: 1.55; text-align: right; word-break: break-all; }
+.exportCloseButton { display: flex; min-width: 88px; height: 36px; align-items: center; justify-content: center; margin: 24px 0 0 auto; border-radius: 7px; color: #262626; background: #ffdb00; font-size: 13px; font-weight: 700; }
+.exportCloseButton:hover { background: #ffe44d; }
 .menu { width: 168px; }
 .menu button { white-space: nowrap; }
 .deleteConfirm { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 12px; border-radius: 8px; color: #fff; background: #f65252; font-size: 13px; font-weight: 700; }
