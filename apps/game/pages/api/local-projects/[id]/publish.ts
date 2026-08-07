@@ -2,14 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../../server/local-project-manager';
 import { allowCreatorApi } from '../../../../server/creator-api-security';
 
-async function flushActiveEditor() {
+async function flushActiveEditor(projectId: string) {
   const port =
     process.env.BOX_EDIT_RUNTIME_PORT ||
     process.env.BOX_EDIT_SERVER_PORT ||
     '9967';
   try {
     const response = await fetch(
-      `http://127.0.0.1:${port}/internal/save-local-project`,
+      `http://127.0.0.1:${port}/${encodeURIComponent(projectId)}/internal/save-local-project`,
       {
         method: 'POST',
         signal: AbortSignal.timeout(120_000),
@@ -17,7 +17,11 @@ async function flushActiveEditor() {
     );
     if (!response.ok) {
       const body = await response.text();
-      throw new Error(body || `编辑器保存失败（HTTP ${response.status}）`);
+      let message = body;
+      try {
+        message = JSON.parse(body)?.message || body;
+      } catch { /* response was not JSON */ }
+      throw new Error(message || `编辑器保存失败（HTTP ${response.status}）`);
     }
   } catch (error) {
     const code = (error as NodeJS.ErrnoException & { cause?: { code?: string } })
@@ -38,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   if (!id) return res.status(400).json({ message: 'Project ID is required' });
   try {
-    await flushActiveEditor();
+    await flushActiveEditor(id);
     const manager = getLocalProjectManager();
     return res.status(201).json({ release: manager.publishProject(id, req.body?.version, req.body?.notes) });
   } catch (error) {

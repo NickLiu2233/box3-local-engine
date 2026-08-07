@@ -33,7 +33,7 @@ async function main() {
     resolveProject: (id) => ({ id }),
     waitForRuntime: async () => undefined,
     startRuntime: async (project, port) => {
-      const server = http.createServer((_req, res) => res.end(project.id))
+      const server = http.createServer((req, res) => res.end(`${project.id}:${req.url}`))
       await listen(server, port)
       const runtime = {
         port,
@@ -52,8 +52,12 @@ async function main() {
     assert(address && typeof address !== 'string')
 
     try {
-      assert.equal(await get(address.port, '/project-one/api/health-check'), 'project-one')
-      assert.equal(await get(address.port, '/project-two/api/health-check'), 'project-two')
+      assert.equal(await get(address.port, '/project-one/api/health-check'), 'project-one:/api/health-check')
+      assert.equal(await get(address.port, '/project-two/api/health-check'), 'project-two:/api/health-check')
+      assert.equal(
+        await get(address.port, '/project-one/internal/save-local-project'),
+        'project-one:/internal/save-local-project',
+      )
       assert.equal(children.size, 2)
       assert.equal(children.get('project-one').exited, false)
       assert.equal(children.get('project-two').exited, false)
