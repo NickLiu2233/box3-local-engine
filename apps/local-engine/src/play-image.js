@@ -7,7 +7,10 @@ const { spawnSync } = require('child_process')
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const supportedPlatforms = new Set(['linux/amd64', 'linux/arm64'])
-const playFormat = '3'
+// Format 4 requires the complete game-server runtime dependency tree. Older
+// format-3 archives may be missing executable files from packages whose
+// runtime directory is named `doc` (notably yaml/dist/doc/directives.js).
+const playFormat = '5'
 
 function readDotEnvValue(name) {
   try {

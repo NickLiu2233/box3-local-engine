@@ -3,6 +3,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../../server/local-project-manager';
 import { allowCreatorApi } from '../../../../server/creator-api-security';
 
+export const config = {
+  api: {
+    // Project packages are intentionally streamed and commonly exceed the
+    // API Routes advisory default of 4 MB.
+    responseLimit: false,
+  },
+};
+
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowCreatorApi(req, res)) return;
   if (req.method !== 'POST') {

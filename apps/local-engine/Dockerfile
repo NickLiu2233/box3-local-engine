@@ -51,7 +51,8 @@ RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-lib
       /opt/game-server/node_modules/.pnpm/node_modules/@types \
     && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
       -name '@types+*' -exec rm -rf {} + \
-    && rm -f /opt/game-server/node_modules/.modules.yaml
+    && rm -f /opt/game-server/node_modules/.modules.yaml \
+    && test -f /opt/game-server/node_modules/.pnpm/yaml@2.1.1/node_modules/yaml/dist/doc/directives.js
 
 FROM engine-build-base AS play-build
 
@@ -91,7 +92,8 @@ RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-lib
       /opt/game-server/node_modules/.pnpm/node_modules/@types \
     && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
       -name '@types+*' -exec rm -rf {} + \
-    && rm -f /opt/game-server/node_modules/.modules.yaml
+    && rm -f /opt/game-server/node_modules/.modules.yaml \
+    && test -f /opt/game-server/node_modules/.pnpm/yaml@2.1.1/node_modules/yaml/dist/doc/directives.js
 
 FROM source-base AS voxa-build
 
@@ -150,7 +152,7 @@ CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--creator"]
 
 FROM runtime-base AS play
 
-LABEL org.box.local-engine.play-format="3"
+LABEL org.box.local-engine.play-format="5"
 
 ENV BOX_DEPLOYMENT_MODE=play \
     BOX_WEB_HOST=0.0.0.0 \
@@ -163,6 +165,8 @@ ENV BOX_DEPLOYMENT_MODE=play \
 COPY --from=play-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=play-build --chown=node:node /opt/game-server /app/services/game-server
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-manager.js /app/apps/local-engine/src/project-manager.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library.js /app/apps/local-engine/src/play-library.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data

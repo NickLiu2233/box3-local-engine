@@ -372,7 +372,10 @@ async function main() {
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
     REDIS_DB: process.env.REDIS_DB || '0',
     STORAGE_CACHE_REDIS_DB: process.env.STORAGE_CACHE_REDIS_DB || '1',
-    STORAGE_CACHE_REDIS_TTL: process.env.STORAGE_CACHE_REDIS_TTL || '300',
+    // The upstream game-server schema defines this value as uint8 (0-255).
+    // Keep the local default within that range so opening a project cannot
+    // fail during config validation before the runtime starts.
+    STORAGE_CACHE_REDIS_TTL: process.env.STORAGE_CACHE_REDIS_TTL || '240',
     // Local products create sessions through the web API, which authenticates
     // the internal runtime request and preserves the actual client address.
     BOX_DIRECT_SESSION_API: 'false',
