@@ -18,6 +18,8 @@
     "migrator": "docker compose --profile migrator up -d --build migrator",
     "migrator:up": "docker compose --profile migrator up -d --no-build migrator",
     "migrator:dev": "pnpm --filter @box-local/migrator dev",
+    "infra": "docker compose --profile infra up -d postgres redis",
+    "infra:stop": "docker compose --profile infra stop postgres redis",
     "play": "node apps/local-engine/src/deploy.js play",
     "play:up": "docker compose --profile play up -d --no-build play",
     "stop": "node apps/local-engine/src/deploy.js stop",

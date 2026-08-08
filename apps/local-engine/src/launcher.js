@@ -366,8 +366,13 @@ async function main() {
     INTRANET_STORAGE_BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
     INTRANET_BOX_API_URL: `http://127.0.0.1:${playPort}`,
     BUILD_SERVER_URL: '',
-    RABBITMQ_HOST_URL: '',
-    REDIS_HOST: '',
+    RABBITMQ_HOST_URL: process.env.RABBITMQ_HOST_URL || '',
+    REDIS_HOST: process.env.REDIS_HOST || '',
+    REDIS_PORT: process.env.REDIS_PORT || '6379',
+    REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
+    REDIS_DB: process.env.REDIS_DB || '0',
+    STORAGE_CACHE_REDIS_DB: process.env.STORAGE_CACHE_REDIS_DB || '1',
+    STORAGE_CACHE_REDIS_TTL: process.env.STORAGE_CACHE_REDIS_TTL || '300',
     // Local products create sessions through the web API, which authenticates
     // the internal runtime request and preserves the actual client address.
     BOX_DIRECT_SESSION_API: 'false',

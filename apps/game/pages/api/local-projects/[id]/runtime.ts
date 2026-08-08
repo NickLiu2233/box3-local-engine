@@ -15,27 +15,25 @@ function runtimePort(mode: RuntimeMode) {
   );
 }
 
-async function activateProject(projectId: string, mode: RuntimeMode) {
-  // boxes allocates one container for each map + mode pair. The local runtime
-  // libraries expose the same behavior behind stable edit/play proxy ports.
-  // Addressing the health route starts the requested child if necessary and
-  // leaves every other project's child running.
+async function runtimeControl(projectId: string, mode: RuntimeMode, action: 'start' | 'status') {
   const response = await fetch(
-    `http://127.0.0.1:${runtimePort(mode)}/${encodeURIComponent(projectId)}/api/health-check`,
-    { signal: AbortSignal.timeout(65_000) },
+    `http://127.0.0.1:${runtimePort(mode)}/${encodeURIComponent(projectId)}/__local_runtime/${action}`,
+    {
+      method: action === 'start' ? 'POST' : 'GET',
+      signal: AbortSignal.timeout(10_000),
+    },
   );
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      body || `${mode === 'edit' ? '编辑' : '游玩'}运行时启动失败（HTTP ${response.status}）`,
-    );
+    throw new Error(data.message || `${mode === 'edit' ? '编辑' : '游玩'}运行时启动失败（HTTP ${response.status}）`);
   }
+  return data;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowCreatorApi(req, res)) return;
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
+  if (req.method !== 'POST' && req.method !== 'GET') {
+    res.setHeader('Allow', 'GET, POST');
     return res.status(405).end();
   }
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
@@ -46,12 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const mode: RuntimeMode = req.body?.mode === 'play' ? 'play' : 'edit';
 
   try {
-    await activateProject(id, mode);
+    const status = await runtimeControl(id, mode, req.method === 'POST' ? 'start' : 'status');
+    return res.status(req.method === 'POST' ? 202 : 200).json({
+      ...status,
+      editUrl: `/e/${id}`,
+      playUrl: `/p/${id}`,
+    });
   } catch (error) {
     return res.status(500).json({
       message: (error as Error).message || '启动作品失败',
     });
   }
 
-  return res.status(202).json({ editUrl: `/e/${id}`, playUrl: `/p/${id}` });
 }

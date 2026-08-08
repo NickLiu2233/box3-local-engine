@@ -13,13 +13,16 @@ const {
 const packageRoot = path.resolve(__dirname, '..')
 const projectsRoot = process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects')
 const templateDataRoot = path.join(packageRoot, 'data')
+const voxaDataRoot =
+  process.env.BOX_LOCAL_VOXA_DATA_PATH || path.join(packageRoot, '../voxa/data')
 const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
 // extraProject metadata is binary, so publishing must discover both forms or
 // models, skins and shared scripts disappear from the play package.
-const cidPattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}|(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g
+const cidV0Pattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
+const urlSafeHashPattern = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g
 const base58Alphabet =
   '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const sensitiveContentRules = [
@@ -35,6 +38,41 @@ const sensitiveContentRules = [
     /\b(?:api[_-]?key|secret|password|passwd|access[_-]?token|refresh[_-]?token)\b\s*[:=]\s*["'][^"'\r\n]{12,}["']/i,
   ],
 ]
+
+function isContentHash(hash) {
+  return (
+    /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash) ||
+    /^[A-Za-z0-9_-]{43}$/.test(hash)
+  )
+}
+
+function normalizedContentHash(value) {
+  if (typeof value !== 'string') return undefined
+  if (/^[A-Za-z0-9_-]{43}$/.test(value)) return value
+  const cid = value.match(
+    /^(Qm[1-9A-HJ-NP-Za-km-z]{44})(?:\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|lut))?$/i,
+  )
+  return cid?.[1]
+}
+
+function collectJSONReferencedHashes(value, hashes) {
+  if (typeof value === 'string') {
+    const hash = normalizedContentHash(value)
+    if (hash) hashes.add(hash)
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const child of value) collectJSONReferencedHashes(child, hashes)
+    return
+  }
+  if (!value || typeof value !== 'object') return
+  for (const [key, child] of Object.entries(value)) {
+    // Match the migrator's content-graph rules. Preview filenames and previous
+    // editor history are metadata, not dependencies of the runnable snapshot.
+    if (key === 'previewImage' || key === 'prevHash') continue
+    collectJSONReferencedHashes(child, hashes)
+  }
+}
 
 function stableStringify(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value)
@@ -119,6 +157,48 @@ function assertNoSensitiveContent(blobRoot, hashes) {
   }
 }
 
+function extractReferencedHashes(content, binaryHashExists = () => true) {
+  const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content)
+  const text = buffer.toString('utf8')
+  const hashes = new Set()
+  const isText = buffer.every(
+    (byte) => byte >= 32 || byte === 9 || byte === 10 || byte === 13,
+  )
+
+  if (isText) {
+    try {
+      collectJSONReferencedHashes(JSON.parse(text), hashes)
+      return hashes
+    } catch {
+      // Scripts and generated source files are plain text but not JSON.
+    }
+    for (const hash of text.match(cidV0Pattern) || []) hashes.add(hash)
+    for (const hash of text.match(urlSafeHashPattern) || []) {
+      if (binaryHashExists(hash)) hashes.add(hash)
+    }
+    return hashes
+  }
+
+  // extraProject and VOXA project blobs are protobuf-like binary documents.
+  // Their URL-safe SHA-256 values are encoded as length-delimited 43-byte
+  // strings (0x2b + hash). Searching every arbitrary 43-character byte run
+  // also matches mesh/texture payload data and invents nonexistent resources.
+  for (const hash of text.match(cidV0Pattern) || []) {
+    if (binaryHashExists(hash)) hashes.add(hash)
+  }
+  for (let index = 0; index + 44 <= buffer.length; index += 1) {
+    if (buffer[index] !== 43) continue
+    const candidate = buffer.subarray(index + 1, index + 44).toString('ascii')
+    if (
+      /^[A-Za-z0-9_-]{43}$/.test(candidate) &&
+      binaryHashExists(candidate)
+    ) {
+      hashes.add(candidate)
+    }
+  }
+  return hashes
+}
+
 function collectReferencedHashes(target, hashes) {
   if (!fs.existsSync(target)) return
   const stat = fs.statSync(target)
@@ -129,8 +209,8 @@ function collectReferencedHashes(target, hashes) {
     return
   }
   if (!stat.isFile() || stat.size > 32 * 1024 * 1024) return
-  const content = fs.readFileSync(target, 'utf8')
-  for (const hash of content.match(cidPattern) || []) hashes.add(hash)
+  const content = fs.readFileSync(target)
+  for (const hash of extractReferencedHashes(content)) hashes.add(hash)
 }
 
 function getRuntimeTemplateHashes() {
@@ -155,21 +235,45 @@ function getRuntimeTemplateHashes() {
   return hashes
 }
 
+function materializeProjectBlob(blobRoot, hash) {
+  const target = path.join(blobRoot, hash)
+  if (fs.existsSync(target)) return target
+
+  // The editor can resolve project models and skins through the local VOXA
+  // fallback without copying their bytes into source/blobs first. A published
+  // world cannot depend on the authoring product, so make those referenced
+  // blobs part of the editable project before walking the dependency graph.
+  const voxaBlob = path.join(voxaDataRoot, 'blobs', hash)
+  if (fs.existsSync(voxaBlob) && fs.statSync(voxaBlob).isFile()) {
+    copyReadableFileSync(voxaBlob, target)
+    return target
+  }
+
+  throw new Error(`工程引用的资源不存在：${hash}`)
+}
+
+function projectBlobExists(blobRoot, hash) {
+  return (
+    fs.existsSync(path.join(blobRoot, hash)) ||
+    fs.existsSync(path.join(voxaDataRoot, 'blobs', hash))
+  )
+}
+
 function getReachableProjectHashes(blobRoot, rootHash) {
   const hashes = new Set()
   const pending = [rootHash]
   while (pending.length) {
     const hash = pending.pop()
     if (!hash || hashes.has(hash)) continue
-    const blobPath = path.join(blobRoot, hash)
-    if (!fs.existsSync(blobPath)) {
-      throw new Error(`工程引用的资源不存在：${hash}`)
-    }
+    const blobPath = materializeProjectBlob(blobRoot, hash)
     hashes.add(hash)
     const stat = fs.statSync(blobPath)
     if (stat.size > 32 * 1024 * 1024) continue
-    const content = fs.readFileSync(blobPath, 'utf8')
-    for (const childHash of content.match(cidPattern) || []) {
+    const content = fs.readFileSync(blobPath)
+    for (const childHash of extractReferencedHashes(
+      content,
+      (candidate) => projectBlobExists(blobRoot, candidate),
+    )) {
       if (!hashes.has(childHash)) pending.push(childHash)
     }
   }
@@ -289,7 +393,7 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
   }
 
   const currentProjectHashes = new Set()
-  for (const hash of stableStringify(publishedProject).match(cidPattern) || []) {
+  for (const hash of extractReferencedHashes(stableStringify(publishedProject))) {
     if (hash === publishedScriptAssetsHash) continue
     for (const reachable of getReachableProjectHashes(sourceBlobRoot, hash)) {
       currentProjectHashes.add(reachable)
@@ -748,7 +852,7 @@ function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
   )
 
   for (const hash of runtimeManifest.hashes) {
-    if (typeof hash !== 'string' || !/^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash)) {
+    if (typeof hash !== 'string' || !isContentHash(hash)) {
       throw new Error('发布版本的资源清单无效')
     }
     const releasedBlob = path.join(releaseDataRoot, 'blobs', hash)

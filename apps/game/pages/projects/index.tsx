@@ -57,6 +57,18 @@ type ImportProgress = {
   message?: string;
 };
 
+type PublishProgress = {
+  projectName: string;
+  version: string;
+  phase: 'saving' | 'publishing' | 'packing' | 'downloading' | 'done' | 'error';
+  percent: number;
+  received: number;
+  total: number;
+  elapsedSeconds: number;
+  filename?: string;
+  message?: string;
+};
+
 function formatBytes(value: number) {
   if (!value) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -93,6 +105,7 @@ export default function ProjectsPage() {
   const [notice, setNotice] = useState('');
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
+  const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null);
 
   const refreshProjects = useCallback(async () => {
     const response = await fetch('/api/local-projects');
@@ -238,40 +251,143 @@ export default function ProjectsPage() {
       return;
     }
     if (dialog === 'publish' && selectedProject) {
+      const project = selectedProject;
       let publishedVersion = releaseVersion.trim();
-      const response = await fetch(`/api/local-projects/${selectedProject.id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: releaseVersion.trim(), notes: releaseNotes }),
+      const startedAt = Date.now();
+      setDialog(null);
+      setNotice('');
+      setPublishProgress({
+        projectName: project.name,
+        version: publishedVersion,
+        phase: 'saving',
+        percent: 5,
+        received: 0,
+        total: 0,
+        elapsedSeconds: 0,
       });
-      const data = await response.json();
-      if (response.ok) {
-        publishedVersion = data.release.version;
-      } else if (!String(data.message || '').includes('Release already exists')) {
-        throw new Error(data.message || '发布失败');
+      const timer = window.setInterval(() => {
+        setPublishProgress((current) => current && !['done', 'error'].includes(current.phase)
+          ? {
+            ...current,
+            elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+            percent: current.phase === 'saving'
+              ? Math.min(18, current.percent + 0.35)
+              : current.phase === 'publishing'
+                ? Math.min(38, current.percent + 0.25)
+                : current.phase === 'packing'
+                  ? Math.min(62, current.percent + 0.18)
+                  : current.percent,
+          }
+          : current);
+      }, 500);
+      const publishPhaseTimer = window.setTimeout(() => {
+        setPublishProgress((current) => current?.phase === 'saving'
+          ? { ...current, phase: 'publishing', percent: Math.max(20, current.percent) }
+          : current);
+      }, 1200);
+      try {
+        const response = await fetch(`/api/local-projects/${project.id}/publish`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version: publishedVersion, notes: releaseNotes }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+          publishedVersion = data.release.version;
+        } else if (!String(data.message || '').includes('Release already exists')) {
+          throw new Error(data.message || '发布失败');
+        }
+        setPublishProgress((current) => current ? {
+          ...current,
+          phase: 'packing',
+          percent: 42,
+          version: publishedVersion,
+        } : current);
+        const packageResponse = await fetch(`/api/local-projects/${project.id}/package`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ version: publishedVersion }),
+        });
+        if (!packageResponse.ok) {
+          const packageData = await packageResponse.json().catch(() => ({}));
+          throw new Error(packageData.message || '导出游玩包失败');
+        }
+        const disposition = packageResponse.headers.get('Content-Disposition') || '';
+        const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
+        const filename = encodedName
+          ? decodeURIComponent(encodedName)
+          : `${project.name}_${project.id}_${publishedVersion}.boxplay`;
+        const total = Number(packageResponse.headers.get('Content-Length') || 0);
+        let received = 0;
+        const chunks: Uint8Array[] = [];
+        setPublishProgress((current) => current ? {
+          ...current,
+          phase: 'downloading',
+          percent: 65,
+          total,
+          filename,
+        } : current);
+        if (packageResponse.body) {
+          const reader = packageResponse.body.getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!value) continue;
+            chunks.push(value);
+            received += value.byteLength;
+            setPublishProgress((current) => current ? {
+              ...current,
+              phase: 'downloading',
+              percent: total ? 65 + Math.min(33, (received / total) * 33) : Math.min(96, 65 + chunks.length),
+              received,
+              total,
+              elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+              filename,
+            } : current);
+          }
+        } else {
+          const value = new Uint8Array(await packageResponse.arrayBuffer());
+          chunks.push(value);
+          received = value.byteLength;
+        }
+        const blob = new Blob(chunks, { type: 'application/gzip' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setPublishProgress({
+          projectName: project.name,
+          version: publishedVersion,
+          phase: 'done',
+          percent: 100,
+          received: received || blob.size,
+          total: total || blob.size,
+          elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+          filename,
+        });
+        setNotice(`已发布并导出游玩包 ${publishedVersion}`);
+        await refreshProjects();
+      } catch (error) {
+        setPublishProgress((current) => ({
+          projectName: project.name,
+          version: publishedVersion,
+          phase: 'error',
+          percent: current?.percent || 0,
+          received: current?.received || 0,
+          total: current?.total || 0,
+          elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+          filename: current?.filename,
+          message: error instanceof Error ? error.message : '导出游玩包失败',
+        }));
+      } finally {
+        window.clearInterval(timer);
+        window.clearTimeout(publishPhaseTimer);
       }
-      const packageResponse = await fetch(`/api/local-projects/${selectedProject.id}/package`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: publishedVersion }),
-      });
-      if (!packageResponse.ok) {
-        const packageData = await packageResponse.json().catch(() => ({}));
-        throw new Error(packageData.message || '导出游玩包失败');
-      }
-      const blob = await packageResponse.blob();
-      const disposition = packageResponse.headers.get('Content-Disposition') || '';
-      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
-      const filename = encodedName
-        ? decodeURIComponent(encodedName)
-        : `${selectedProject.name}_${selectedProject.id}_${publishedVersion}.boxplay`;
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = filename;
-      anchor.click();
-      URL.revokeObjectURL(url);
-      setNotice(`已发布并导出游玩包 ${publishedVersion}`);
+      return;
     } else if (dialog === 'details' && selectedProject) {
       const response = await fetch(`/api/local-projects/${selectedProject.id}`, {
         method: 'PATCH',
@@ -316,20 +432,9 @@ export default function ProjectsPage() {
     setDialog('delete');
   };
 
-  const copyProjectCommand = async (project: LocalProject, mode: 'edit' | 'play') => {
-    const tab = window.open('', '_blank');
-    const response = await fetch(`/api/local-projects/${project.id}/runtime`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      tab?.close();
-      throw new Error(data.message || '启动作品失败');
-    }
-    if (tab) tab.location.assign(mode === 'edit' ? data.editUrl : data.playUrl);
-    else window.location.assign(mode === 'edit' ? data.editUrl : data.playUrl);
+  const copyProjectCommand = (project: LocalProject, mode: 'edit' | 'play') => {
+    const params = new URLSearchParams({ project: project.id, mode, name: project.name });
+    window.open(`/projects/launch?${params.toString()}`, '_blank', 'noopener');
   };
 
   const exportProjectFile = async (project: LocalProject) => {
@@ -700,6 +805,53 @@ export default function ProjectsPage() {
             {(importProgress.phase === 'done' || importProgress.phase === 'error') && (
               <button className={styles.exportCloseButton} type="button" onClick={() => setImportProgress(null)}>
                 {importProgress.phase === 'done' ? '完成' : '关闭'}
+              </button>
+            )}
+          </section>
+        </div>
+      )}
+      {publishProgress && (
+        <div className={styles.exportBackdrop} role="presentation">
+          <section className={styles.exportDialog} role="dialog" aria-modal="true" aria-labelledby="publish-progress-title">
+            <div className={`${styles.exportIcon} ${publishProgress.phase === 'done' ? styles.exportIconDone : publishProgress.phase === 'error' ? styles.exportIconError : ''}`}>
+              <Play size={22} fill={publishProgress.phase === 'done' ? 'currentColor' : 'none'} />
+            </div>
+            <h2 id="publish-progress-title">
+              {publishProgress.phase === 'saving'
+                ? '正在保存工程'
+                : publishProgress.phase === 'publishing'
+                  ? '正在创建只读版本'
+                  : publishProgress.phase === 'packing'
+                    ? '正在生成游玩包'
+                    : publishProgress.phase === 'downloading'
+                      ? '正在下载游玩包'
+                      : publishProgress.phase === 'done'
+                        ? '游玩包导出完成'
+                        : '游玩包导出失败'}
+            </h2>
+            <p className={styles.exportProjectName}>{publishProgress.projectName} · {publishProgress.version}</p>
+            <div className={styles.exportProgressTrack} aria-label="游玩包导出进度">
+              <span style={{ width: `${publishProgress.percent}%` }} />
+            </div>
+            <div className={styles.exportProgressMeta}>
+              <strong>{Math.round(publishProgress.percent)}%</strong>
+              <span>
+                {publishProgress.phase === 'saving'
+                  ? `正在同步编辑器中的最新修改 · ${publishProgress.elapsedSeconds}s`
+                  : publishProgress.phase === 'publishing'
+                    ? `正在生成不可变世界快照 · ${publishProgress.elapsedSeconds}s`
+                    : publishProgress.phase === 'packing'
+                      ? `正在收集运行资源并压缩 · ${publishProgress.elapsedSeconds}s`
+                      : publishProgress.phase === 'downloading'
+                        ? `${formatBytes(publishProgress.received)} / ${publishProgress.total ? formatBytes(publishProgress.total) : '计算中'} · ${publishProgress.elapsedSeconds}s`
+                        : publishProgress.phase === 'done'
+                          ? `${publishProgress.filename} · ${formatBytes(publishProgress.total)}`
+                          : publishProgress.message}
+              </span>
+            </div>
+            {(publishProgress.phase === 'done' || publishProgress.phase === 'error') && (
+              <button className={styles.exportCloseButton} type="button" onClick={() => setPublishProgress(null)}>
+                {publishProgress.phase === 'done' ? '完成' : '关闭'}
               </button>
             )}
           </section>

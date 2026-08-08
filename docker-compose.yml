@@ -1,6 +1,49 @@
 name: box-local-engine
 
 services:
+  postgres:
+    profiles: [infra]
+    image: ${BOX_POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${BOX_POSTGRES_DB:-box}
+      POSTGRES_USER: ${BOX_POSTGRES_USER:-box}
+      POSTGRES_PASSWORD: ${BOX_POSTGRES_PASSWORD:-local-box-change-me}
+    ports:
+      - "127.0.0.1:${BOX_POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - box-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    profiles: [infra]
+    image: ${BOX_REDIS_IMAGE:-redis:7-alpine}
+    restart: unless-stopped
+    environment:
+      BOX_REDIS_PASSWORD: ${BOX_REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -c
+      - >-
+        if [ -n "$$BOX_REDIS_PASSWORD" ]; then
+          exec redis-server --appendonly yes --requirepass "$$BOX_REDIS_PASSWORD";
+        else
+          exec redis-server --appendonly yes;
+        fi
+    ports:
+      - "127.0.0.1:${BOX_REDIS_HOST_PORT:-6379}:6379"
+    volumes:
+      - box-redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "if [ -n \"$$BOX_REDIS_PASSWORD\" ]; then redis-cli -a \"$$BOX_REDIS_PASSWORD\" ping; else redis-cli ping; fi"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   creator:
     profiles: [creator]
     image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}
@@ -41,6 +84,13 @@ services:
       BOX_DATA_STORAGE_NAMESPACE: ${BOX_DATA_STORAGE_NAMESPACE:-}
       BOX_DATA_STORAGE_NAMESPACE_PREFIX: ${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}
       BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}
+      BOX_LOCAL_VOXA_DATA_PATH: /app/apps/voxa/data
+      REDIS_HOST: ${REDIS_HOST:-}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
+      STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-300}
     ports:
       - "127.0.0.1:${BOX_CREATOR_PORT:-3002}:3000"
       - "127.0.0.1:9966:9966"
@@ -48,6 +98,7 @@ services:
     volumes:
       - ./apps/local-engine/projects:/app/apps/local-engine/projects
       - ./apps/local-engine/dist:/app/apps/local-engine/dist
+      - ./apps/voxa/data:/app/apps/voxa/data:ro
 
   play:
     profiles: [play]
@@ -80,6 +131,12 @@ services:
       BOX_DATA_STORAGE_NAMESPACE: ${BOX_DATA_STORAGE_NAMESPACE:-}
       BOX_DATA_STORAGE_NAMESPACE_PREFIX: ${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}
       BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}
+      REDIS_HOST: ${REDIS_HOST:-}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
+      STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-300}
     ports:
       - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
     volumes:
@@ -148,3 +205,7 @@ services:
       - "127.0.0.1:${BOX_MIGRATOR_PORT:-3212}:3212"
     volumes:
       - ./apps/migrator/cache:/app/cache
+
+volumes:
+  box-postgres-data:
+  box-redis-data:

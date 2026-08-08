@@ -79,6 +79,7 @@ const requiredFiles = [
   'docker-compose.yml',
   'docs/creator-deployment.md',
   'docs/deployment.md',
+  'docs/local-infrastructure.md',
   'docs/play-deployment.md',
   'docs/voxa-deployment.md',
   'apps/local-engine/Dockerfile',
@@ -143,6 +144,8 @@ for (const [name, command] of Object.entries({
   'voxa:image': 'docker compose --profile voxa build voxa',
   'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
   'voxa:dev': 'pnpm --filter @box-local/voxa dev',
+  infra: 'docker compose --profile infra up -d postgres redis',
+  'infra:stop': 'docker compose --profile infra stop postgres redis',
   play: 'node apps/local-engine/src/deploy.js play',
   stop: 'node apps/local-engine/src/deploy.js stop',
   dev: 'node apps/local-engine/src/launcher.js --creator',
@@ -454,8 +457,8 @@ requirePattern(
   /find \/app\/apps\/voxa\/\.next\/standalone[\s\S]*?-name '\*\.map'[\s\S]*?-name '\*\.ts'[\s\S]*?-name '\*\.tsx'/,
 )
 
-// Compose exposes exactly the two product roles and builds both from the
-// unified Dockerfile. Creator remains localhost-only; play is externally usable.
+// Compose exposes the product roles plus isolated optional infrastructure.
+// Creator remains localhost-only; play is externally usable.
 const composeFile = 'docker-compose.yml'
 const composeSource = readRequired(composeFile)
 const composeServiceNames = []
@@ -469,9 +472,12 @@ for (const line of composeSource.split('\n')) {
   const match = inServices ? line.match(/^  ([A-Za-z0-9_-]+):\s*$/) : null
   if (match) composeServiceNames.push(match[1])
 }
-if (composeServiceNames.join(',') !== 'creator,play,voxa') {
+if (
+  composeServiceNames.join(',') !==
+  'postgres,redis,creator,play,voxa,migrator'
+) {
   fail(
-    `${composeFile}: services must be exactly creator, play and voxa (found ${composeServiceNames.join(', ') || 'none'})`,
+    `${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`,
   )
 }
 

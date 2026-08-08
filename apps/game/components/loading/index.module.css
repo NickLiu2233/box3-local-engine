@@ -7,6 +7,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
 }
 
 .loading-img {
@@ -29,27 +32,95 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  width: 250px;
+  width: min(250px, calc(100vw - 48px));
   color: white;
   padding-bottom: 14px;
 }
 
 .progressBar {
+  position: relative;
+  overflow: hidden;
   width: 160px;
   height: 10px;
-  border: 1px solid var(--theme-primary80);
-  margin: 32px 0 16px;
+  border: 1px solid #ff7d00;
+  margin: 32px 0 14px;
   border-radius: 23px;
   box-sizing: content-box;
+  background: rgba(255, 125, 0, 0.08);
 }
 
 .progress {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   height: 10px;
   border-radius: 10px;
-  background-color: var(--color-primary);
+  background-color: #ff7d00;
   transition: width 0.3s ease-in-out;
   overflow: hidden;
+}
+
+.progressIndeterminate {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  border-radius: 10px;
+  background-color: #ff7d00;
+  animation: arenaLoading 1.3s ease-in-out infinite;
+}
+
+.loadingMessage {
+  width: min(440px, calc(100vw - 48px));
+  margin: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loadingError .progressBar {
+  border-color: #ff4d4f;
+}
+
+.loadingError .progress,
+.loadingError .progressIndeterminate {
+  background-color: #ff4d4f;
+}
+
+.loadingActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.loadingActions button {
+  min-width: 92px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid #ff7d00;
+  border-radius: 6px;
+  color: #fff;
+  background: transparent;
+  cursor: pointer;
+}
+
+.loadingActions button:first-child {
+  color: #111;
+  background: #ff7d00;
+}
+
+@keyframes arenaLoading {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(350%);
+  }
 }
 
 .progressing {

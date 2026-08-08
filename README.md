@@ -194,6 +194,9 @@ TypeScript 源文件。浏览器仍会取得渲染当前游戏所必需的模型
 VOXA 的独立镜像、数据备份和创作端接入参阅
 [VOXA 本地模型编辑器构建与部署手册](docs/voxa-deployment.md)。
 
+可选 PostgreSQL、Redis 开发环境及从 boxes 迁移能力的边界参阅
+[本地基础设施与可迁移能力](docs/local-infrastructure.md)。默认模式不依赖这些服务。
+
 ## 常用配置
 
 | 变量 | 默认值 | 作用 |
@@ -210,6 +213,7 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_DATA_STORAGE_DRIVER` | `legacy` | 服主设为 `postgres` 后启用持久化数据空间 |
 | `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串，只进入服务端 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧数据时填写原作品 ID，沿用旧式双表表名 |
+| `REDIS_HOST` | 空 | Redis adapter 预留；当前保持为空，不会自动启用缓存 |
 
 公网部署时把域名反向代理到 `BOX_PLAY_PORT`，允许 WebSocket Upgrade，并填写
 `BOX_SERVER_PUBLIC_URL=https://你的域名`。只有反向代理会覆盖并清洗
@@ -223,6 +227,8 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `pnpm creator` | 只构建并部署创作端 |
 | `pnpm creator:up` | 直接启动已有创作端镜像，不重新构建 |
 | `pnpm play` | 只准备并启动游玩端，自动发现地图目录中的作品 |
+| `pnpm infra` | 启动可选的本地 PostgreSQL 和 Redis 容器 |
+| `pnpm infra:stop` | 停止可选基础设施但保留数据 volume |
 | `pnpm stop` | 停止当前 Docker 部署 |
 | `pnpm check` | 检查独立依赖、离线资源和本地运行约束 |
 | `pnpm check:edit-session` | 检查本地创作会话 |
