@@ -12,6 +12,7 @@ import { BuildSystem } from '@box-local/build-system/build-system';
 import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
 import { createDefaultPermissions } from '@box-local/build-system/permissions/permission-init';
 import { PrebakeCacheSchema } from '@box-local/build-system/project/prebake-schema';
+import { LocalBuildCache } from './utils/local-build-cache';
 import { storeProject } from '@box-local/build-system/project/project-serialize';
 import { prebakeMap } from '@box-local/build-system/tasks/prebake';
 import { CachingContentServer } from '@box-local/content-server/caching-content-server';
@@ -294,7 +295,10 @@ export async function startServer(spec: ServerRuntimeConfig) {
       logger.child({ caller: 'build' }),
     );
   } else {
-    const buildCache = new MockBuildCache();
+    const storagePath = process.env.STORAGE_PATH || '';
+    const buildCache = isLocal && storagePath
+      ? new LocalBuildCache(path.join(storagePath, 'build-cache.json'))
+      : new MockBuildCache();
     buildSystem = new BuildSystem(
       buildCache,
       contentServer,

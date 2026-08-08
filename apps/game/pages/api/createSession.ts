@@ -132,6 +132,13 @@ async function getSessionData(
   containerName: string = '',
 ) {
   const ServerConfig = await getServerConfig();
+  const configuredTimeout = Number(process.env.BOX_CREATE_SESSION_TIMEOUT_MS);
+  const createSessionTimeout =
+    Number.isFinite(configuredTimeout) && configuredTimeout > 0
+      ? configuredTimeout
+      : ServerConfig.isLocalGameServer
+      ? 120_000
+      : 20_000;
   let teamId = '';
   let refererServerId = '';
 
@@ -192,7 +199,7 @@ async function getSessionData(
         // 透传用户的 Host 给 GameServer，作为判断 Region 等信息的依据
         'X-Forwarded-Host': req.headers.host,
       },
-      timeout: 20000,
+      timeout: createSessionTimeout,
     },
   );
   const json = data.data;

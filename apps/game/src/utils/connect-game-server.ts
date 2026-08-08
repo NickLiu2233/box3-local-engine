@@ -14,8 +14,12 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * 建立连接的超时时间
  */
-const POLLING_TIMEOUT = 15 * 1000;
+const REMOTE_POLLING_TIMEOUT = 15 * 1000;
+// Imported local projects may need to prebake thousands of assets before the
+// first session can be returned. Do not abort a healthy cold start at 15s.
+const LOCAL_POLLING_TIMEOUT = 120 * 1000;
 const SLEEP_TIME = 3 * 1000;
+const LOCAL_PREFETCH_CONCURRENCY = 48;
 
 /**
  * 拉取资源，和浏览器的 prefetch 不是一回事
@@ -77,7 +81,9 @@ export async function connectGameServer(
   visitorId: string,
   serverId?: string,
 ) {
-  let timeout = POLLING_TIMEOUT;
+  let timeout = clientConfig.isLocalGameServer
+    ? LOCAL_POLLING_TIMEOUT
+    : REMOTE_POLLING_TIMEOUT;
 
   let config: GameSession | undefined;
   let prefetchImageCaches: {
@@ -113,7 +119,13 @@ export async function connectGameServer(
       if (config && config.prefetchHashes.length > 0) {
         const { prefetchHashes } = config;
 
-        const semaphore = new Semaphore(1000);
+        // A four-digit request burst overwhelms the single-origin Next proxy
+        // while a local runtime is still warming its caches, producing a wall
+        // of transient 502 responses. Remote deployments keep the established
+        // high concurrency; local products use a bounded pipeline.
+        const semaphore = new Semaphore(
+          clientConfig.isLocalGameServer ? LOCAL_PREFETCH_CONCURRENCY : 1000,
+        );
 
         const abortPrefetch = new Promise((resolve, reject) => {
           // 没有用signal.reason是因为浏览器兼容性要求较高

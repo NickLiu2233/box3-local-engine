@@ -433,8 +433,20 @@ export default function ProjectsPage() {
   };
 
   const copyProjectCommand = (project: LocalProject, mode: 'edit' | 'play') => {
-    const params = new URLSearchParams({ project: project.id, mode, name: project.name });
-    window.open(`/projects/launch?${params.toString()}`, '_blank', 'noopener');
+    // Match boxes' navigation model: open the engine route immediately and
+    // let its built-in Connecting flow own the whole startup lifecycle. The
+    // local runtime allocation is started in parallel and deduplicated by the
+    // edit library, so there is no separate loading page before the editor.
+    void fetch(`/api/local-projects/${encodeURIComponent(project.id)}/runtime`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    }).catch(() => undefined);
+    window.open(
+      mode === 'edit' ? `/e/${encodeURIComponent(project.id)}` : `/p/${encodeURIComponent(project.id)}`,
+      '_blank',
+      'noopener',
+    );
   };
 
   const exportProjectFile = async (project: LocalProject) => {
