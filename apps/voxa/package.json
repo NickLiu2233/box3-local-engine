@@ -6,6 +6,7 @@
   "author": "Code Infinity",
   "main": "index.js",
   "scripts": {
+    "check:parent-storage-url": "node -r ts-node/register scripts/check-parent-storage-url.ts",
     "build": "pnpm run build-i18n && next build",
     "build-i18n": "formatjs compile-folder --ast lang/src lang/build",
     "dev": "next dev -p 3001",

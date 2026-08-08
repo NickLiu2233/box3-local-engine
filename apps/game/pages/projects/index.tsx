@@ -19,6 +19,10 @@ import {
 import styles from './projects.module.css';
 
 type ProjectStatus = '草稿' | '已发布';
+type CompatibilityReport = {
+  level: 'compatible' | 'warning' | 'error';
+  summary: { warnings: number; errors: number; missingBlobCount: number };
+};
 
 type LocalProject = {
   id: string;
@@ -32,6 +36,7 @@ type LocalProject = {
   latestReleaseNotes?: string;
   theme: 'sunset' | 'ocean' | 'forest' | 'violet';
   isEngineWorld?: boolean;
+  compatibility?: CompatibilityReport;
 };
 
 type ExportProgress = {
@@ -204,7 +209,10 @@ export default function ProjectsPage() {
         elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
         projectName: data.project?.name,
       });
-      setNotice(`工程已导入：${data.project?.name || file.name}`);
+      const report = data.project?.compatibility;
+      setNotice(report && (report.summary.warnings || report.summary.errors)
+        ? `工程已导入：${data.project?.name || file.name}；兼容性检查发现 ${report.summary.errors} 个错误、${report.summary.warnings} 个提醒`
+        : `工程已导入：${data.project?.name || file.name}；兼容性检查通过`);
     } catch (error) {
       setImportProgress((current) => ({
         filename: file.name,
@@ -253,6 +261,7 @@ export default function ProjectsPage() {
     if (dialog === 'publish' && selectedProject) {
       const project = selectedProject;
       let publishedVersion = releaseVersion.trim();
+      let compatibility: CompatibilityReport | undefined;
       const startedAt = Date.now();
       setDialog(null);
       setNotice('');
@@ -294,6 +303,7 @@ export default function ProjectsPage() {
         const data = await response.json();
         if (response.ok) {
           publishedVersion = data.release.version;
+          compatibility = data.release.compatibility;
         } else if (!String(data.message || '').includes('Release already exists')) {
           throw new Error(data.message || '发布失败');
         }
@@ -369,7 +379,9 @@ export default function ProjectsPage() {
           elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
           filename,
         });
-        setNotice(`已发布并导出游玩包 ${publishedVersion}`);
+        setNotice(compatibility && (compatibility.summary.warnings || compatibility.summary.errors)
+          ? `已发布并导出游玩包 ${publishedVersion}；兼容性检查发现 ${compatibility.summary.errors} 个错误、${compatibility.summary.warnings} 个提醒`
+          : `已发布并导出游玩包 ${publishedVersion}；兼容性检查通过`);
         await refreshProjects();
       } catch (error) {
         setPublishProgress((current) => ({

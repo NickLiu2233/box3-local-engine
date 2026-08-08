@@ -61,6 +61,7 @@ export const config = build({
   ),
   autoSaveInterval: N('AUTO_SAVE_INTERVAL', DEFAULT_SETTINGS.autoSaveInterval),
   storagePath: S('STORAGE_PATH', '/tmp'),
+  dataStoragePath: S('BOX_DATA_STORAGE_PATH', ''),
   vm: S('VM', ''),
   debug: B('DEBUG', false),
 
@@ -85,7 +86,7 @@ export const config = build({
 
   // Persistent high-level game.storage backend. Database credentials are
   // supplied by the server owner at runtime and never shipped to the client.
-  dataStorageDriver: S('BOX_DATA_STORAGE_DRIVER', 'legacy'),
+  dataStorageDriver: S('BOX_DATA_STORAGE_DRIVER', 'local'),
   dataStorageNamespace: S('BOX_DATA_STORAGE_NAMESPACE', ''),
   groupStorageNamespace: S('BOX_GROUP_STORAGE_NAMESPACE', ''),
   databaseUrl: S('BOX_DATABASE_URL', ''),

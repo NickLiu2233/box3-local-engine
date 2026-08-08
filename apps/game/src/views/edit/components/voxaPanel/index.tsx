@@ -107,6 +107,10 @@ export function VoxaPanel() {
   const mapId = clientConfig.mapInfo.contentId;
   const voxaURL = useMemo(() => {
     const queries: string[] = ['parentType=engine'];
+    // The VOXA response may intentionally use Referrer-Policy: no-referrer.
+    // Pass the local Creator origin explicitly instead of making persistence
+    // depend on document.referrer being present inside the iframe.
+    queries.push(`storageOrigin=${encodeURIComponent(window.location.origin)}`);
     const token = getToken();
     if (token) {
       queries.push(`token=${token}`);

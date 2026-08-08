@@ -9,6 +9,7 @@ const {
   ensurePlayImageArchive,
   getPlayImageConfig,
 } = require('./play-image')
+const { scanProjectCompatibility } = require('./project-compatibility')
 
 const packageRoot = path.resolve(__dirname, '..')
 const projectsRoot = process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects')
@@ -707,7 +708,9 @@ function importProject(archivePath) {
       releases: [],
     }
     writeJSON(path.join(root, 'project.json'), imported)
-    return toProjectSummary(imported)
+    const compatibility = scanProjectCompatibility(path.join(root, 'source'))
+    writeJSON(path.join(root, 'compatibility.json'), compatibility)
+    return { ...toProjectSummary(imported), compatibility }
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
   }
@@ -724,6 +727,8 @@ function publishProject(id, requestedVersion, notes = '') {
   const root = projectRoot(id)
   const sourceRoot = path.join(root, 'source')
   const state = readJSON(path.join(sourceRoot, 'project-state.json'), {})
+  const compatibility = scanProjectCompatibility(sourceRoot)
+  writeJSON(path.join(root, 'compatibility.json'), compatibility)
   if (!state.permissionHash) {
     throw new Error('请先打开该工程并在编辑器中保存一次，再发布为游玩包')
   }
@@ -765,7 +770,7 @@ function publishProject(id, requestedVersion, notes = '') {
   metadata.releases = [...(metadata.releases || []), release]
   metadata.updatedAt = release.createdAt
   writeJSON(path.join(root, 'project.json'), metadata)
-  return release
+  return { ...release, compatibility }
 }
 
 function getLaunchTarget({ project, release }) {
@@ -964,6 +969,12 @@ function packageProject(reference, outputDirectory, options = {}) {
       path.join(temporaryBundleRoot, 'compose.yml'),
       `services:\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:-}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_DATA_STORAGE_DRIVER: \${BOX_DATA_STORAGE_DRIVER:-legacy}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:-}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-}\n    ports:\n      - \"\${BOX_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n`,
     )
+    const composePath = path.join(temporaryBundleRoot, 'compose.yml')
+    const offlineCompose = fs.readFileSync(composePath, 'utf8')
+      .replace('BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}', 'BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: ${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: ${BOX_LOCAL_PLAYER_ID:-10000001}')
+      .replace('BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-legacy}', 'BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-local}\n      BOX_DATA_STORAGE_PATH: /app/storage')
+      .replace('          create_host_path: false\n', '          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n')
+    fs.writeFileSync(composePath, offlineCompose)
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'README.md'),
       `# ${manifest.projectName} ${target.version}\n\n作者：${manifest.author || '未署名'}\n\n${manifest.description || '暂无作品简介。'}\n\n这是一个只读游玩发布包，不包含作品的 \`source/\` 工程目录、编辑器或创作管理器。镜像架构为 \`${playImageConfig.platform}\`。\n\n## 部署\n\n1. 执行 \`docker load -i play-image.tar\`。\n2. 执行 \`docker compose up -d\`。\n3. 玩家打开 \`http://服务器地址:3000/\`。\n\n如需修改端口，可在同目录创建 \`.env\` 并填写 \`BOX_PORT=新端口\`。网页、地图资源和联机连接均使用这一个地址，不需要再配置或开放其他端口。\n\n需要持久化游戏脚本的数据空间时，由服主在同一个 \`.env\` 中配置 \`BOX_DATA_STORAGE_DRIVER=postgres\` 和 \`BOX_DATABASE_URL\`。数据库凭据只会传入服务端容器，不会发送给玩家浏览器。\n\n\`world/\` 是 ${target.version} 的不可变世界快照，并以只读方式挂载，不能被 Local Engine 直接当作可编辑工程导入。可信服主仍可读取运行所需的世界数据，因此不要把未发布素材或真正的服务器秘密放进作品资源。\n`,

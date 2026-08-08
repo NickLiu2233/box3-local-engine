@@ -26,14 +26,44 @@ function isEmbeddedInEngine() {
   return new URLSearchParams(window.location.search).get('parentType') === 'engine';
 }
 
-function parentEditStorageURL(hash = '') {
-  if (typeof document === 'undefined' || !document.referrer) return '';
+export function resolveParentEditStorageURL(
+  search: string,
+  referrer: string,
+  currentHref: string,
+  hash = '',
+  ancestorOrigin = '',
+) {
   try {
-    const origin = new URL(document.referrer).origin;
+    const currentURL = new URL(currentHref);
+    const explicitOrigin = new URLSearchParams(search).get('storageOrigin');
+    const candidate =
+      explicitOrigin ||
+      (referrer ? new URL(referrer).origin : '') ||
+      ancestorOrigin;
+    if (!candidate) return '';
+    const storageOrigin = new URL(candidate);
+    if (
+      !['http:', 'https:'].includes(storageOrigin.protocol) ||
+      storageOrigin.hostname !== currentURL.hostname
+    ) {
+      return '';
+    }
+    const origin = storageOrigin.origin;
     return `${origin}/runtime/edit/block${hash ? `/${encodeURIComponent(hash)}` : ''}`;
   } catch {
     return '';
   }
+}
+
+function parentEditStorageURL(hash = '') {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return '';
+  return resolveParentEditStorageURL(
+    window.location.search,
+    document.referrer,
+    window.location.href,
+    hash,
+    window.location.ancestorOrigins?.[0] || '',
+  );
 }
 
 async function storeLocalBlob(file: Blob) {

@@ -11,6 +11,7 @@
     "dev": "node scripts/dev-launch.js",
     "generate-terrain": "node -r ts-node/register --max-old-space-size=4096 scripts/terrain/generate-terrain.ts",
     "check:postgres-storage": "node -r @swc-node/register scripts/check-postgres-data-storage.ts",
+    "check:local-storage": "node -r @swc-node/register scripts/check-local-data-storage.ts",
     "prod": "node dist/src/launch.js --useProdBundle",
     "test": "node -r @swc-node/register scripts/regression-local-voxa-fallback.ts"
   },

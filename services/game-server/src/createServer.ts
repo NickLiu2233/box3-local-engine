@@ -279,8 +279,17 @@ export async function createGameServer(spec: {
       spec.logger.info('Creating fake admin account = ' + adminId);
       userData = getFakeUser(adminName, adminId);
       userData.permission |= DB.UserPermission.gameAdmin;
+    } else if (serverConfig.method === 'local') {
+      const localPlayerName =
+        process.env.BOX_LOCAL_PLAYER_NAME?.trim() || '本地玩家';
+      const configuredId = Number(process.env.BOX_LOCAL_PLAYER_ID || '10000001');
+      const localPlayerId =
+        Number.isSafeInteger(configuredId) && configuredId > 0
+          ? configuredId
+          : 10000001;
+      spec.logger.info(`Local player log in: ${localPlayerName} (${localPlayerId})`);
+      userData = getFakeUser(localPlayerName, localPlayerId);
     } else {
-      // guest login
       spec.logger.info(`Guest log in.`);
       userData = getFakeUser('guest');
     }

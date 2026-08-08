@@ -16,6 +16,7 @@ import {
 import { Semaphore } from '@box-local/utils/semaphore';
 import { JavaDataStorage } from './java-storage-api';
 import { PostgresDataStorage } from './postgres-data-storage';
+import { LocalDataStorage } from './local-data-storage';
 import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/storage';
 import { StorageLimiters } from './limiters';
 import { getConfigSync } from '../../config/server';
@@ -38,16 +39,19 @@ export class StorageController {
     this.state.storage.sql = spec.sql;
     this.protocol = spec.server.protocol(StorageProtocol);
     const config = getConfigSync();
-    const dataStorageDriver = String(config.dataStorageDriver || 'legacy')
+    const dataStorageDriver = String(config.dataStorageDriver || 'local')
       .trim()
       .toLowerCase();
-    if (dataStorageDriver === 'postgres' || dataStorageDriver === 'postgresql') {
-      const projectNamespace = String(
+    const projectNamespace = String(
         config.dataStorageNamespace ||
         config.containerName ||
         config.contentId ||
         'default',
       );
+    const groupNamespace = String(
+      config.groupStorageNamespace || config.groupId || projectNamespace,
+    );
+    if (dataStorageDriver === 'postgres' || dataStorageDriver === 'postgresql') {
       this.dbServer = new PostgresDataStorage({
         connectionString: config.databaseUrl,
         schema: config.databaseSchema,
@@ -55,9 +59,16 @@ export class StorageController {
         ssl: config.databaseSsl,
         sslRejectUnauthorized: config.databaseSslRejectUnauthorized,
         projectNamespace,
-        groupNamespace: String(
-          config.groupStorageNamespace || config.groupId || projectNamespace,
-        ),
+        groupNamespace,
+        mode: config.mode,
+        lockTimeoutMs: config.dataStorageLockTimeoutMs,
+        logger: this.state.logger,
+      });
+    } else if (dataStorageDriver === 'local' || dataStorageDriver === 'file') {
+      this.dbServer = new LocalDataStorage({
+        storagePath: config.dataStoragePath || config.storagePath,
+        projectNamespace,
+        groupNamespace,
         mode: config.mode,
         lockTimeoutMs: config.dataStorageLockTimeoutMs,
         logger: this.state.logger,
