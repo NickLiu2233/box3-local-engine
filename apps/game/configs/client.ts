@@ -27,6 +27,16 @@ export type FeatureFlags = {
   gameUI: boolean;
 };
 
+export type LocalRuntimeInfo = {
+  productVersion: string;
+  nodeVersion: string;
+  deploymentMode: string;
+  dataStorageDriver: string;
+  voxaConfigured: boolean;
+  redisConfigured: boolean;
+  messageQueueConfigured: boolean;
+};
+
 const PROPERTIES_FROM_SERVER = [
   'APP_ENV',
   'APP_EDITION',
@@ -61,7 +71,9 @@ const PROPERTIES_FROM_SERVER = [
 export type ServerConfigForClient = Pick<
   ServerConfig,
   (typeof PROPERTIES_FROM_SERVER)[number]
->;
+> & {
+  localRuntimeInfo?: LocalRuntimeInfo;
+};
 
 /**
  * 抽取 ServerConfig 转为 ClientConfig
@@ -73,9 +85,24 @@ export function extractServerConfigForClient(
   mode: 'edit' | 'play' = 'play',
   containerName = '',
 ): ServerConfigForClient {
-  const clientConfig = pickServerConfigForClient(
+  const pickedConfig = pickServerConfigForClient(
     serverConfig,
   ) as ServerConfigForClient;
+  const localRuntimeInfo = serverConfig.isLocalGameServer
+    ? {
+        productVersion: process.env.BOX_IMAGE_TAG || '0.1.0',
+        nodeVersion: process.version,
+        deploymentMode: process.env.BOX_DEPLOYMENT_MODE || 'local',
+        dataStorageDriver: process.env.BOX_DATA_STORAGE_DRIVER || 'local',
+        voxaConfigured: Boolean(process.env.VOXA_URL),
+        redisConfigured: Boolean(process.env.REDIS_HOST),
+        messageQueueConfigured: Boolean(process.env.RABBITMQ_HOST_URL),
+      }
+    : undefined;
+  const clientConfig: ServerConfigForClient = {
+    ...pickedConfig,
+    ...(localRuntimeInfo ? { localRuntimeInfo } : {}),
+  };
 
   if (
     process.env.BOX_DEPLOYMENT_MODE !== 'creator' &&

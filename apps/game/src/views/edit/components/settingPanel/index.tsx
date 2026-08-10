@@ -17,6 +17,7 @@ import style from './index.module.scss';
 import { createExpires } from 'src/utils/date';
 import { useEdit } from 'src/client/edit/edit-context';
 import { ArenaEditorUIContext } from '../../editor-ui-context';
+import { clientConfig } from 'src/config/client';
 
 type Props = {
   closeModal: () => void;
@@ -115,26 +116,105 @@ export const SettingPanel = (props: Props) => {
   }, [changeLanguage, intl.locale]);
 
   const _renderAbout = useCallback(() => {
+    const runtime = clientConfig.localRuntimeInfo;
+    const storageDriver = runtime?.dataStorageDriver.toLowerCase();
+    const dataStorage =
+      storageDriver === 'postgres' || storageDriver === 'postgresql'
+        ? intl.formatMessage({ id: 'aboutPostgresStorage' })
+        : storageDriver === 'legacy' || storageDriver === 'remote'
+          ? intl.formatMessage({ id: 'aboutLegacyStorage' })
+          : intl.formatMessage({ id: 'aboutLocalFileStorage' });
+    const configured = (value?: boolean) =>
+      intl.formatMessage({
+        id: value ? 'aboutConfigured' : 'aboutNotConfigured',
+      });
+    const item = (title: string, content: React.ReactNode) => (
+      <div className={style.item}>
+        <div className={style.title}>{title}</div>
+        <div className={style.content}>{content}</div>
+      </div>
+    );
+    const serviceState = (value?: boolean) => (
+      <span
+        className={`${style.status} ${
+          value ? style.statusEnabled : style.statusDisabled
+        }`}
+      >
+        {configured(value)}
+      </span>
+    );
+
     return (
       <div className={style.aboutContainer}>
-        <div className={style.itemWrapper}>
-          <div className={style.item}>
-            <div className={style.title}>
-              {intl.formatMessage({ id: 'version' })}
-            </div>
-            <div className={style.content}>v.{replica.project.version}</div>
-          </div>
-          <div className={style.item}>
-            <div className={style.title}>
-              {intl.formatMessage({ id: 'databaseEngine' })}
-            </div>
-            <div className={style.content}>
-              {replica.project.storageMode === 'pg'
-                ? 'PostgreSQL 13.2'
-                : 'SQLite 3.32.3'}
+        <div className={style.productHeader}>
+          <div className={style.productMark}>BOX</div>
+          <div>
+            <div className={style.productName}>BOX Local Engine</div>
+            <div className={style.productDescription}>
+              {intl.formatMessage({ id: 'aboutLocalCreatorDescription' })}
             </div>
           </div>
         </div>
+        <div className={style.sectionTitle}>
+          {intl.formatMessage({ id: 'aboutRuntimeSection' })}
+        </div>
+        <div className={style.itemWrapper}>
+          {item(
+            intl.formatMessage({ id: 'aboutLocalEngineVersion' }),
+            `v${runtime?.productVersion || '0.1.0'}`,
+          )}
+          {item(
+            intl.formatMessage({ id: 'aboutProjectFormatVersion' }),
+            `v${replica.project.version}`,
+          )}
+          {item(
+            intl.formatMessage({ id: 'aboutRuntime' }),
+            runtime?.nodeVersion ? `Node.js ${runtime.nodeVersion}` : 'Web',
+          )}
+          {item(
+            intl.formatMessage({ id: 'aboutEdition' }),
+            clientConfig.APP_EDITION || 'createra',
+          )}
+        </div>
+
+        <div className={style.sectionTitle}>
+          {intl.formatMessage({ id: 'aboutProjectSection' })}
+        </div>
+        <div className={style.itemWrapper}>
+          {item(
+            intl.formatMessage({ id: 'aboutProjectName' }),
+            clientConfig.mapInfo?.name || clientConfig.name || '-',
+          )}
+          {item(
+            intl.formatMessage({ id: 'aboutProjectId' }),
+            clientConfig.name || '-',
+          )}
+          {item(
+            intl.formatMessage({ id: 'aboutRunningMode' }),
+            intl.formatMessage({ id: 'aboutLocalEditMode' }),
+          )}
+          {item(
+            intl.formatMessage({ id: 'databaseEngine' }),
+            replica.project.storageMode === 'pg' ? 'PostgreSQL' : 'SQLite',
+          )}
+          {item(intl.formatMessage({ id: 'aboutDataStorage' }), dataStorage)}
+        </div>
+
+        {runtime && (
+          <>
+            <div className={style.sectionTitle}>
+              {intl.formatMessage({ id: 'aboutServicesSection' })}
+            </div>
+            <div className={`${style.itemWrapper} ${style.lastItemWrapper}`}>
+              {item('VOXA', serviceState(runtime.voxaConfigured))}
+              {item('Redis', serviceState(runtime.redisConfigured))}
+              {item(
+                intl.formatMessage({ id: 'aboutMessageQueue' }),
+                serviceState(runtime.messageQueueConfigured),
+              )}
+            </div>
+          </>
+        )}
       </div>
     );
   }, [intl, replica.project.storageMode, replica.project.version]);
