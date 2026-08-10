@@ -10,6 +10,8 @@ type LocalProjectState = {
   cloudMapId?: number;
   skinPreviews?: Record<string, string>;
   skinProjects?: Record<string, string>;
+  modelPreviews?: Record<string, string>;
+  modelProjects?: Record<string, string>;
   groupProjectMetaData?: RetrievedGroupProjectMetaData;
   updatedAt?: string;
 };
@@ -86,6 +88,50 @@ export function getLocalProjectSkinProjects(
   );
 }
 
+function getLocalProjectModelMetadata(
+  key: 'modelPreviews' | 'modelProjects',
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  const value = readLocalProjectState(statePath)[key];
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      ([name, hash]) => Boolean(name) && typeof hash === 'string' && Boolean(hash),
+    ),
+  );
+}
+
+export function getLocalProjectModelPreviews(statePath = process.env.BOX_PROJECT_STATE_PATH) {
+  return getLocalProjectModelMetadata('modelPreviews', statePath);
+}
+
+export function getLocalProjectModelProjects(statePath = process.env.BOX_PROJECT_STATE_PATH) {
+  return getLocalProjectModelMetadata('modelProjects', statePath);
+}
+
+export function updateLocalProjectModelMetadata(
+  update: (metadata: {
+    modelPreviews: Record<string, string>;
+    modelProjects: Record<string, string>;
+  }) => void,
+  statePath = process.env.BOX_PROJECT_STATE_PATH,
+) {
+  if (!statePath) return;
+  const state = readLocalProjectState(statePath);
+  const metadata = {
+    modelPreviews: getLocalProjectModelPreviews(statePath),
+    modelProjects: getLocalProjectModelProjects(statePath),
+  };
+  update(metadata);
+  state.modelPreviews = metadata.modelPreviews;
+  state.modelProjects = metadata.modelProjects;
+  state.updatedAt = new Date().toISOString();
+  fs.mkdirSync(path.dirname(statePath), { recursive: true });
+  const temporaryPath = `${statePath}.${process.pid}.tmp`;
+  fs.writeFileSync(temporaryPath, `${JSON.stringify(state, null, 2)}\n`);
+  fs.renameSync(temporaryPath, statePath);
+}
+
 export function updateLocalProjectSkinMetadata(
   update: (metadata: {
     skinPreviews: Record<string, string>;
@@ -136,6 +182,12 @@ export function persistLocalProjectState(
           : {}),
         ...(previous.skinProjects
           ? { skinProjects: previous.skinProjects }
+          : {}),
+        ...(previous.modelPreviews
+          ? { modelPreviews: previous.modelPreviews }
+          : {}),
+        ...(previous.modelProjects
+          ? { modelProjects: previous.modelProjects }
           : {}),
         ...(previous.groupProjectMetaData
           ? { groupProjectMetaData: previous.groupProjectMetaData }

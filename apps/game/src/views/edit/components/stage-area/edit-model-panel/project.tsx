@@ -14,13 +14,14 @@ import ProjectModelActions, {
   Actions,
 } from 'src/views/edit/components/stage-area/edit-model-panel/project-model-actions';
 import { setSelectedModel } from 'src/redux/edit/ui';
-import { convertTimeStrToTimestamp } from 'src/utils/date';
 import { ScrollAction, ScrollManage } from '../../scroll-trigger';
 
 import style from './index.module.scss';
 import { useEdit } from 'src/client/edit/edit-context';
-import { clientConfig } from 'src/config/client';
-import { fetchModelList } from '.';
+import {
+  projectModelSource,
+} from './project-model-source';
+import type { ProjectModelScope } from './project-model-source';
 
 /**
  * 从 extraProject 中获取所有项目模型（不分页,且按更新时间倒序排序）
@@ -31,7 +32,7 @@ export const ProjectModelPanel = ({
   source = 'project',
 }: {
   currentTab: ModelPanelTab;
-  source?: 'local' | 'project';
+  source?: ProjectModelScope;
 }) => {
   const dispatch = useDispatch();
   const intl = useIntl();
@@ -43,67 +44,13 @@ export const ProjectModelPanel = ({
   const projectModelScrollRef = useRef<ScrollManage>(null);
 
   const getModelList = useCallback(async () => {
-    if (clientConfig.isLocalGameServer && source === 'local') {
-      const list =
-        (await fetchModelList({
-          modelType: ModelType.Project,
-          modelName: searchName,
-        })) || [];
-      setModelList(list.map((model) => ({
-        ...model,
-        meshPath: `mesh/${model.name}__local_${model.id}.vb`,
-      })));
-      return;
-    }
-    const { meshAssets } = editor.state.replica.extraProjectInfo;
-    let list: ModelData[] = Object.entries(meshAssets).map(
-      ([key, meshAsset]) => {
-        const previewImageUrl = editor.assetController.getModelPreviewUrl(
-          meshAsset.modelPreviewHash,
-        );
-        const name = editor.assetController.getModelNameFromMeshAssetsKey(key);
-        const model: ModelData = {
-          id: meshAsset.modelId,
-          name,
-          modelPreviewUrl: previewImageUrl,
-          modelFileHash: meshAsset.hash,
-          bounds: [0, 0, 0],
-          animated: meshAsset.animated,
-          type: ModelType.Project,
-          updateAt: meshAsset.updatedAt,
-          meshPath: key,
-        };
-        return model;
-      },
-    );
-    // 按模型更新时间倒序排序
-    if (clientConfig.isLocalGameServer) {
-      list = list.filter((model) => !/__local_\d+\.vb$/.test(model.meshPath || ''));
-    }
-    list = list.sort(
-      (first, second) =>
-        convertTimeStrToTimestamp(second.updateAt) -
-        convertTimeStrToTimestamp(first.updateAt),
-    );
-    if (!searchName) {
-      setModelList(list);
-    }
-    setModelList(list.filter((model) => model.name.includes(searchName)));
+    setModelList(await projectModelSource.load(editor, source, searchName));
   }, [editor, searchName, source]);
 
   // 初始化列表 & 订阅刷新列表
   useEffect(() => {
-    getModelList();
-    if (clientConfig.isLocalGameServer && source === 'local') {
-      window.addEventListener('local-voxa-models-changed', getModelList);
-      return () => {
-        window.removeEventListener('local-voxa-models-changed', getModelList);
-      };
-    }
-    editor.replica.onExtraProjectChange.sub(getModelList);
-    return () => {
-      editor.replica.onExtraProjectChange.unsub(getModelList);
-    };
+    void getModelList();
+    return projectModelSource.subscribe(editor, source, getModelList);
   }, [editor, getModelList, source]);
 
   useEffect(() => {
@@ -140,22 +87,28 @@ export const ProjectModelPanel = ({
         text: intl.formatMessage({ id: 'remove' }),
       },
     ];
-    return clientConfig.isLocalGameServer && source === 'local'
-      ? actions.filter((action) => action.id !== ModelAction.Copy)
-      : clientConfig.isLocalGameServer
-        ? []
-        : actions;
-  }, [intl, source]);
+    // 本地模型走 VOXA，工程包模型走本地 runtime bridge；两者都支持
+    // 编辑、重命名、移除。Copy 没有本地实现，不能请求云端接口。
+    return actions.filter((action) =>
+      projectModelSource.supportsAction(action.id),
+    );
+  }, [intl]);
 
   const handleMenuAction = useCallback(
-    (params: { actionId: ItemId; modelId: number }) => {
-      const { actionId, modelId } = params;
+    (params: {
+      actionId: ItemId;
+      modelId: number;
+      modelData?: ModelData;
+    }) => {
+      const { actionId, modelId, modelData } = params;
       if (!projectModelActionsRef.current) {
         return;
       }
-      projectModelActionsRef.current[actionId]?.(modelId);
+      const model = modelData || modelList.find((item) => item.id === modelId);
+      if (!model) return;
+      projectModelActionsRef.current[actionId]?.(model);
     },
-    [],
+    [modelList],
   );
 
   const selectedModel = useSelector(
@@ -206,18 +159,16 @@ export const ProjectModelPanel = ({
           onSelect={onSelect}
           selectedId={selectedModel?.id ?? 0}
           modelList={modelList}
-          newModel={!clientConfig.isLocalGameServer || source === 'local'}
+          newModel={projectModelSource.canCreate(source)}
           onNewModel={onNewModel}
           actionsMenu={actionsMenu.length ? actionsMenu : undefined}
           onMenuItemSelected={handleMenuAction}
         />
       </div>
-      {(!clientConfig.isLocalGameServer || source === 'local') && (
-        <ProjectModelActions
-          ref={projectModelActionsRef}
-          scrollToTop={scrollToTop}
-        />
-      )}
+      <ProjectModelActions
+        ref={projectModelActionsRef}
+        scrollToTop={scrollToTop}
+      />
     </div>
   );
 };

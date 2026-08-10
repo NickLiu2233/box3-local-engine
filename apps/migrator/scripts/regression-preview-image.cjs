@@ -33,6 +33,9 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
     applyCloudModelIds,
     availableSoundConfig,
     cloudExtraProject,
+    cloudModelPreviews,
+    cloudModelProjects,
+    localizeCloudModelResources,
     cloudSkinPreviews,
     cloudSkinProjects,
     cloudRetainedHashes,
@@ -164,7 +167,41 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
       size: 12, type: 8, updateAt: 34,
     },
   });
-  const cloudModels = [{ modelId: 99, modelName: 'Cloud Model', modelFileHash: cloudModelHash }];
+  const cloudModels = [{
+    modelId: 99,
+    modelName: 'Cloud Model',
+    modelFileHash: cloudModelHash,
+    modelPreviewHash: 'model-preview',
+    projectFileHash: 'model-project',
+  }];
+  assert.deepEqual(cloudModelPreviews(cloudModels), {
+    'Cloud Model': 'model-preview',
+  });
+  assert.deepEqual(cloudModelProjects(cloudModels), {
+    'Cloud Model': 'model-project',
+  });
+  const cloudResourceId = 'Jh-ROpjh0o99ewON7WoYot4XQmohxR2MvOLrM6UmI6Y';
+  const localProjectHash = contentHash(Buffer.from('editable voxa project'));
+  const localizedCloudModels = localizeCloudModelResources([{
+    modelId: 100,
+    modelName: 'Editable Cloud Model',
+    modelFileHash: cloudResourceId,
+    modelPreviewHash: cloudPicturePreviewHash,
+    projectFileHash: cloudResourceId,
+  }], new Map([
+    [cloudResourceId, localProjectHash],
+    [cloudPicturePreviewHash, actualHash],
+  ]));
+  assert.equal(localizedCloudModels[0].modelFileHash, localProjectHash);
+  assert.equal(localizedCloudModels[0].modelPreviewHash, actualHash);
+  assert.equal(localizedCloudModels[0].projectFileHash, localProjectHash);
+  assert.equal(cloudModelProjects(localizedCloudModels)['Editable Cloud Model'], localProjectHash);
+  assert.equal(
+    cloudExtraProject(localizedCloudModels, [], null, { clientScripts: [], serverScripts: [] })
+      .meshAssets['mesh/Editable Cloud Model.vb'].hash,
+    localProjectHash,
+  );
+  console.log('PASS: cloud UUID model resources are rewritten to local content hashes');
   assert.deepEqual(cloudSkinPreviews([
     { modelName: 'Cloud Skin', modelFileHash: 'skin-hash', modelPreviewHash: 'skin-preview' },
     { modelName: 'No Preview', modelFileHash: 'skin-hash-2' },

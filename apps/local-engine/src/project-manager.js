@@ -589,13 +589,46 @@ function createProjectSnapshot(id, reason = 'automatic') {
   return { created: true, validation, archivePath }
 }
 
-function restoreLatestProjectSnapshot(id) {
+function parseSnapshotInfo(name, root) {
+  const match = name.match(/^(\d{14})-([a-z0-9-]+)-([a-f0-9]{16})\.tar\.gz$/i)
+  if (!match) return undefined
+  const [, compactTimestamp, reason, signature] = match
+  const createdAt = `${compactTimestamp.slice(0, 4)}-${compactTimestamp.slice(4, 6)}-${compactTimestamp.slice(6, 8)}T${compactTimestamp.slice(8, 10)}:${compactTimestamp.slice(10, 12)}:${compactTimestamp.slice(12, 14)}.000Z`
+  const archivePath = path.join(root, name)
+  return {
+    name,
+    reason,
+    signature,
+    createdAt,
+    size: fs.statSync(archivePath).size,
+  }
+}
+
+function listProjectSnapshots(id) {
+  assertProjectId(id)
+  getProject(id)
   const root = snapshotRoot(id)
-  const snapshots = fs.existsSync(root)
-    ? fs.readdirSync(root).filter((name) => name.endsWith('.tar.gz')).sort().reverse()
-    : []
+  if (!fs.existsSync(root)) return []
+  return fs.readdirSync(root)
+    .filter((name) => name.endsWith('.tar.gz'))
+    .sort()
+    .reverse()
+    .map((name) => parseSnapshotInfo(name, root))
+    .filter(Boolean)
+}
+
+function restoreProjectSnapshot(id, requestedSnapshot) {
+  const root = snapshotRoot(id)
+  const available = listProjectSnapshots(id)
+  const snapshots = requestedSnapshot
+    ? available.filter(({ name }) => name === requestedSnapshot).map(({ name }) => name)
+    : available.map(({ name }) => name)
+  if (requestedSnapshot && snapshots.length === 0) {
+    throw new Error('所选工程恢复快照不存在')
+  }
   for (const name of snapshots) {
     const temporaryRoot = path.join(os.tmpdir(), `box-project-restore-${process.pid}-${Date.now()}`)
+    let brokenRoot
     try {
       fs.mkdirSync(temporaryRoot, { recursive: true })
       runTar(['-xzf', path.join(root, name), '-C', temporaryRoot], '无法读取工程恢复快照')
@@ -603,16 +636,36 @@ function restoreLatestProjectSnapshot(id) {
       const validation = validateProjectSource(restoredSource)
       if (!validation.ok) continue
       const sourceRoot = path.join(projectRoot(id), 'source')
-      const brokenRoot = `${sourceRoot}.broken-${Date.now()}`
+      createProjectSnapshot(id, 'before-restore')
+      brokenRoot = `${sourceRoot}.restore-backup-${process.pid}-${Date.now()}`
       if (fs.existsSync(sourceRoot)) fs.renameSync(sourceRoot, brokenRoot)
-      fs.renameSync(restoredSource, sourceRoot)
-      fs.rmSync(brokenRoot, { recursive: true, force: true })
+      try {
+        fs.renameSync(restoredSource, sourceRoot)
+      } catch (error) {
+        if (fs.existsSync(brokenRoot) && !fs.existsSync(sourceRoot)) {
+          fs.renameSync(brokenRoot, sourceRoot)
+        }
+        throw error
+      }
+      if (brokenRoot) fs.rmSync(brokenRoot, { recursive: true, force: true })
+      const metadata = getProject(id)
+      metadata.updatedAt = new Date().toISOString()
+      writeJSON(path.join(projectRoot(id), 'project.json'), metadata)
       return { restored: true, snapshot: name, validation }
     } finally {
+      if (brokenRoot && fs.existsSync(brokenRoot)) {
+        const sourceRoot = path.join(projectRoot(id), 'source')
+        if (!fs.existsSync(sourceRoot)) fs.renameSync(brokenRoot, sourceRoot)
+        else fs.rmSync(brokenRoot, { recursive: true, force: true })
+      }
       fs.rmSync(temporaryRoot, { recursive: true, force: true })
     }
   }
   return { restored: false }
+}
+
+function restoreLatestProjectSnapshot(id) {
+  return restoreProjectSnapshot(id)
 }
 
 function relativeTime(value) {
@@ -1083,6 +1136,7 @@ function packageProject(reference, outputDirectory, options = {}) {
     const offlineCompose = fs.readFileSync(composePath, 'utf8')
       .replace('BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}', 'BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: ${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: ${BOX_LOCAL_PLAYER_ID:-10000001}')
       .replace('BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-legacy}', 'BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-local}\n      BOX_DATA_STORAGE_PATH: /app/storage')
+      .replace('BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}', 'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}\n      PAID_ACCESS: ${BOX_PAID_ACCESS:-false}\n      RABBITMQ_HOST_URL: ${RABBITMQ_HOST_URL:-}')
       .replace('          create_host_path: false\n', '          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n')
     fs.writeFileSync(composePath, offlineCompose)
     fs.writeFileSync(
@@ -1114,6 +1168,8 @@ module.exports = {
   listProjects,
   importProject,
   createProjectSnapshot,
+  listProjectSnapshots,
+  restoreProjectSnapshot,
   restoreLatestProjectSnapshot,
   validateProjectSource,
   normalizeImportedProjectPermissions,

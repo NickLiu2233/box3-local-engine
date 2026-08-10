@@ -255,7 +255,9 @@ export const SkinLib = (props: SkinLibProps) => {
   return (
     <div className={style.wrapper}>
       {clientConfig.isLocalGameServer ? (
-        <div className={style.localHeader}>从本地导入皮肤</div>
+        <div className={style.localHeader}>
+          {intl.formatMessage({ id: 'gamePlayerImportLocalSkin' })}
+        </div>
       ) : (
         <Tabs
           className={style.tabList}

@@ -728,7 +728,7 @@ export const ProjectSkinView = (
             {intl.formatMessage({ id: 'gamePlayerNewSkin' })}
           </Button>
           <Button type={'secondary'} size={'medium'} onClick={showSkinLib}>
-            从本地导入皮肤
+            {intl.formatMessage({ id: 'gamePlayerImportLocalSkin' })}
           </Button>
         </div>
         <div className={style.right}>

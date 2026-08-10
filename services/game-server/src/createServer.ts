@@ -9,6 +9,7 @@ import { MuWebSocketServer } from '@box-local/mudb/socket/web/server';
 import { DB } from '@box-local/schema/backend/database-type';
 import type { GroupProjectStore } from '@box-local/schema/group-project/rda';
 import type { ProjectAction } from '@box-local/schema/replica/replica-schema';
+import { getMeshPath } from '@box-local/schema/project/hot-schema';
 import { GameSessionData } from '@box-local/schema/session/schema';
 import {
   SchemaTraceEntry,
@@ -29,7 +30,10 @@ import { ServerRuntimeConfig } from '../config/server';
 import { BLOCK_INFO_RES } from './assets/block_info';
 import { BackendClientRPCNode } from './backend-rpc-client-node';
 import type { EditServer } from './edit/edit-server';
-import type { LocalProjectSkinAction } from './edit/replica/replica-server';
+import type {
+  LocalProjectModelAction,
+  LocalProjectSkinAction,
+} from './edit/replica/replica-server';
 import { GameServer } from './index';
 import { RabbitMQ } from './mq/rabbitMQ';
 import { NetLogServer } from './net-log/server';
@@ -47,6 +51,8 @@ import { rootLogger } from './utils/logger';
 import { ScriptServer } from './utils/script-server/type';
 import { parsePrebakeVoxelData } from './voxel/voxel-server';
 import {
+  getLocalProjectModelPreviews,
+  getLocalProjectModelProjects,
   getLocalProjectSkinPreviews,
   getLocalProjectSkinProjects,
 } from './project/local-project-state';
@@ -499,6 +505,94 @@ export async function createGameServer(spec: {
       } catch (error) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ message: (error as Error).message }));
+      }
+    };
+
+    spec.httpRoutes['/api/project-models'] = async (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.method === 'GET') {
+        res.end(JSON.stringify({
+          modelPreviews: getLocalProjectModelPreviews(),
+          modelProjects: getLocalProjectModelProjects(),
+        }));
+        return;
+      }
+      if (req.method !== 'POST') {
+        res.writeHead(405, { Allow: 'GET, POST' });
+        res.end(JSON.stringify({ message: 'method not allowed' }));
+        return;
+      }
+      try {
+        const body = await bodyParse(req) as Record<string, unknown>;
+        const name = String(body.name || '').trim();
+        if (!name) throw new Error('model name is required');
+        const action = String(body.action || '');
+        const voxaURL = (
+          process.env.VOXA_INTERNAL_URL ||
+          process.env.VOXA_URL ||
+          'http://127.0.0.1:3001'
+        ).replace(/\/$/, '');
+        if (action === 'rename' || action === 'delete' || action === 'update') {
+          if (action === 'update') {
+            const hashes = [
+              String(body.modelFileHash || ''),
+              String(body.previewHash || ''),
+              String(body.projectFileHash || ''),
+            ].filter(Boolean);
+            if (!hashes[0]) throw new Error('model hash is required');
+            for (const hash of hashes) {
+              const blobResponse = await fetch(
+                `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+              );
+              if (!blobResponse.ok) {
+                throw new Error(`VOXA model resource does not exist: ${hash}`);
+              }
+              const storedHash = await spec.contentServer.store(
+                new Uint8Array(await blobResponse.arrayBuffer()),
+              );
+              if (storedHash !== hash) {
+                throw new Error(`model resource verification failed: ${hash}`);
+              }
+            }
+          }
+          const result = await editServer!.replica.updateLocalProjectModel(
+            body as LocalProjectModelAction,
+          );
+          res.end(JSON.stringify(result));
+          return;
+        }
+        if (action !== 'prepareEdit') throw new Error('unsupported model action');
+        const projectFileHash = getLocalProjectModelProjects()[name];
+        const asset = editServer!.state.replica.extraProjectInfo.meshAssets[getMeshPath(name)];
+        if (!asset?.hash || !projectFileHash) {
+          res.writeHead(409);
+          res.end(
+            JSON.stringify({
+              code: 'PROJECT_MODEL_SOURCE_MISSING',
+              message: 'project model source file is missing',
+            }),
+          );
+          return;
+        }
+        const response = await fetch(`${voxaURL}/api/local/models`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            modelName: name,
+            modelType: ModelType.Project,
+            creativeMode: CreativeMode.Model,
+            modelFileHash: asset.hash,
+            modelProjectFileHash: projectFileHash,
+            modelPreviewFileHash: getLocalProjectModelPreviews()[name] || asset.modelPreviewHash || '',
+            mapId: serverConfig.contentId,
+          }),
+        });
+        if (!response.ok) throw new Error((await response.text()) || 'VOXA model import failed');
+        res.end(await response.text());
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        res.writeHead(message.includes('already exists') ? 409 : 400);
+        res.end(JSON.stringify({ message }));
       }
     };
 

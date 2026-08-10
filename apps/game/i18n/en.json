@@ -1270,6 +1270,10 @@
 
   "privateModelLib": "Private Model Library",
   "projectModelLib": "Project Model Library",
+  "projectModelOperationFailed": "Project model operation failed",
+  "projectModelOpenFailed": "Unable to open the project model",
+  "projectModelSaveFailed": "Unable to save the project model",
+  "projectModelMissingEditableFile": "This model does not include an editable VOXA project file. Re-export it with the latest migrator.",
   "publicModelLib": "Public Model Library",
 
   "gamePlayer": "Player",
@@ -1278,6 +1282,7 @@
   "gamePlayerProjectSkinEmpty": "Come and create map-exclusive skins!",
   "gamePlayerNewSkin": "Create Skin",
   "gamePlayerImportSkin": "Import Skin",
+  "gamePlayerImportLocalSkin": "Import Skin from Local",
   "gamePlayerDefaultSkin": "Default Skin for this Map",
   "voxa.saveSkin": "Save Skin",
   "voxa.unsavedSkin": "Unsaved Skin",

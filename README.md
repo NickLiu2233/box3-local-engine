@@ -214,6 +214,8 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串，只进入服务端 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧数据时填写原作品 ID，沿用旧式双表表名 |
 | `REDIS_HOST` | 空 | Redis adapter 预留；当前保持为空，不会自动启用缓存 |
+| `BOX_PAID_ACCESS` | `false` | 与 boxes 一致，允许启用商城事件等付费能力 |
+| `RABBITMQ_HOST_URL` | 空 | RabbitMQ AMQP 连接串；需与 `BOX_PAID_ACCESS=true` 同时设置 |
 
 公网部署时把域名反向代理到 `BOX_PLAY_PORT`，允许 WebSocket Upgrade，并填写
 `BOX_SERVER_PUBLIC_URL=https://你的域名`。只有反向代理会覆盖并清洗
@@ -229,6 +231,8 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `pnpm play` | 只准备并启动游玩端，自动发现地图目录中的作品 |
 | `pnpm infra` | 启动可选的本地 PostgreSQL 和 Redis 容器 |
 | `pnpm infra:stop` | 停止可选基础设施但保留数据 volume |
+| `pnpm mq` | 启动可选的本地 RabbitMQ 和管理界面 |
+| `pnpm mq:stop` | 停止 RabbitMQ 但保留消息数据 volume |
 | `pnpm stop` | 停止当前 Docker 部署 |
 | `pnpm check` | 检查独立依赖、离线资源和本地运行约束 |
 | `pnpm check:edit-session` | 检查本地创作会话 |
@@ -277,6 +281,7 @@ BOX 的服务器或 CDN。
 - [浏览器界面内部说明](apps/game/README.md)
 - [游戏运行时内部说明](services/game-server/README.md)
 - [PostgreSQL 数据空间部署手册](docs/postgresql-data-storage.md)
+- [与 boxes 的能力边界](docs/boxes-parity.md)
 
 ## 许可证
 

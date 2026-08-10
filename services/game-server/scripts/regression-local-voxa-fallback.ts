@@ -58,6 +58,44 @@ async function main() {
   assert.equal(merged.meshAssets['mesh/local.vb'].hash, 'local-hash');
   assert.equal(merged.scriptAssets.cloud.hash, 'cloud-script');
   console.log('PASS: imported extraProject keeps cloud assets and adds the shared local library');
+
+  packaged.meshAssets['mesh/New-model__local_2.vb'] = {
+    modelId: 2,
+    hash: 'stale-local-hash',
+    modelPreviewHash: '',
+    animated: false,
+    updatedAt: '',
+  };
+  packaged.meshAssets['mesh/cloud-id-collision.vb'] = {
+    modelId: 2,
+    hash: 'cloud-collision-hash',
+    modelPreviewHash: '',
+    animated: false,
+    updatedAt: '',
+  };
+  shared.meshAssets['mesh/Renamed__local_2.vb'] = {
+    modelId: 2,
+    hash: 'renamed-local-hash',
+    modelPreviewHash: '',
+    animated: false,
+    updatedAt: '',
+  };
+  const renamed = mergeExtraProjectInfo(packaged, shared);
+  assert.equal(
+    renamed.meshAssets['mesh/New-model__local_2.vb'],
+    undefined,
+    'stale local aliases must not survive a VOXA rename',
+  );
+  assert.equal(
+    renamed.meshAssets['mesh/Renamed__local_2.vb'].hash,
+    'renamed-local-hash',
+  );
+  assert.equal(
+    renamed.meshAssets['mesh/cloud-id-collision.vb'].hash,
+    'cloud-collision-hash',
+    'ordinary packaged assets must survive a modelId collision',
+  );
+  console.log('PASS: VOXA rename removes only stale local aliases');
 }
 
 main().catch((error) => {

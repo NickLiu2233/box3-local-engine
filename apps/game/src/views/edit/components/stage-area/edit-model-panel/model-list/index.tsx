@@ -29,7 +29,11 @@ type ModelListProps = {
   /**
    * 操作菜单的回调
    */
-  onMenuItemSelected?: (params: { actionId: ItemId; modelId: number }) => void;
+  onMenuItemSelected?: (params: {
+    actionId: ItemId;
+    modelId: number;
+    modelData?: ModelData;
+  }) => void;
   /**
    * 用于标识列表是否正在加载
    */
@@ -105,6 +109,7 @@ export const ModelListView = (
             onMenuItemSelected?.({
               actionId,
               modelId: id,
+              modelData: model,
             })
           }
         />

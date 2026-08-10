@@ -5,8 +5,8 @@ import styles from './style.module.scss.js';
 
 const TOAST_CONTAINER = 'boxToasts';
 const MAX_COUNT = 3;
-let toastContainer;
-let toastRoot;
+let toastContainer = null;
+let toastRoot = null;
 let toastArray = [];
 let seed = 0;
 function toastFactory(type, config) {
@@ -53,11 +53,14 @@ function getContainer() {
   return toastContainer;
 }
 function unmountContainer() {
+  toastArray = [];
+  if (toastRoot !== null) {
+    toastRoot.unmount();
+    toastRoot = null;
+  }
   if (toastContainer !== null) {
-    toastArray = [];
-    if (toastRoot !== null) {
-      toastRoot.unmount();
-    }
+    toastContainer.remove();
+    toastContainer = null;
   }
 }
 function createDefaultToast(config) {

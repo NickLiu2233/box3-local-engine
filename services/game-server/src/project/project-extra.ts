@@ -15,6 +15,8 @@ export type Mode = 'edit' | 'play';
 // 后端限制，一次最多拉取100个数据
 const LIMIT = 100;
 
+const LOCAL_MESH_PATH = /__local_\d+\.vb$/;
+
 /**
  * `boxes` receives one authoritative extra-project snapshot from its backend.
  * The local product has two authoritative inputs instead: the snapshot packed
@@ -26,9 +28,25 @@ export function mergeExtraProjectInfo(
   packaged: ExtraProjectInfo,
   localLibrary: ExtraProjectInfo,
 ): ExtraProjectInfo {
+  const liveLocalModelIds = new Set(
+    Object.values(localLibrary.meshAssets).map((asset) => asset.modelId),
+  );
+  const packagedMeshAssets = Object.fromEntries(
+    Object.entries(packaged.meshAssets).filter(([path, asset]) => {
+      // A VOXA rename changes the resource path while preserving modelId.
+      // Embedded snapshots may therefore contain the old local path forever.
+      // Keep ordinary cloud/project assets (their ids can legitimately collide),
+      // but discard stale __local_<id> aliases when VOXA has the live entry.
+      return !(
+        LOCAL_MESH_PATH.test(path) &&
+        liveLocalModelIds.has(asset.modelId) &&
+        !localLibrary.meshAssets[path]
+      );
+    }),
+  );
   return {
     meshAssets: {
-      ...packaged.meshAssets,
+      ...packagedMeshAssets,
       ...localLibrary.meshAssets,
     },
     skinAssets: {

@@ -65,6 +65,7 @@ import { CloseType } from '@box-local/schema/types/game';
 import {
   ExtraProjectInfo,
   ExtraProjectInfoSchema,
+  getMeshPath,
 } from '@box-local/schema/project/hot-schema';
 import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
 import { getExtraProject } from '../../project/project-extra';
@@ -95,6 +96,7 @@ import {
   getLocalProjectSkinProjects,
   persistLocalProjectState,
   updateLocalProjectSkinMetadata,
+  updateLocalProjectModelMetadata,
 } from '../../project/local-project-state';
 import { mergeExtraProjectInfo } from '../../project/project-extra';
 
@@ -114,6 +116,18 @@ export type LocalProjectSkinAction =
     }
   | { action: 'setDefault'; name: string }
   | { action: 'unsetDefault'; name: string }
+  | { action: 'rename'; name: string; newName: string }
+  | { action: 'delete'; name: string }
+  | {
+      action: 'update';
+      name: string;
+      newName: string;
+      modelFileHash: string;
+      previewHash?: string;
+      projectFileHash?: string;
+    };
+
+export type LocalProjectModelAction =
   | { action: 'rename'; name: string; newName: string }
   | { action: 'delete'; name: string }
   | {
@@ -1788,8 +1802,6 @@ export class EditReplicaServer {
       );
       this._logger.info('update extra project info');
 
-      await this._updateProjectByExtra();
-
       const persistedStream = new MuWriteStream(1);
       ExtraProjectInfoSchema.diff(
         ExtraProjectInfoSchema.identity,
@@ -1804,6 +1816,13 @@ export class EditReplicaServer {
         replicaState.permissionHash,
         extraProjectHash,
       );
+      await this._updateProjectByExtra();
+    } else {
+      // No asset snapshot changed, but an entity can still retain the old path
+      // of a renamed local VOXA model. Repair only that narrow case here;
+      // running a full modelId refresh would also include legacy modelId=0
+      // assets and could remap unrelated imported models.
+      await this._updateProjectByExtra(true);
     }
     stream.destroy();
   };
@@ -1921,12 +1940,98 @@ export class EditReplicaServer {
     };
   };
 
+  public updateLocalProjectModel = async (input: LocalProjectModelAction) => {
+    if (
+      getConfigSync()?.method !== 'local' ||
+      getLocalExtraProjectMode() !== 'embedded'
+    ) {
+      throw new Error('project models are only editable in an embedded local project');
+    }
+    const name = String(input.name || '').trim();
+    const extra = ExtraProjectInfoSchema.clone(this._state.replica.extraProjectInfo);
+    const entry = Object.entries(extra.meshAssets).find(
+      ([path]) => path === getMeshPath(name),
+    );
+    if (!entry) throw new Error('model not found');
+    const [path, asset] = entry;
+    const storedName = path.replace(/^mesh\//, '').replace(/\.vb$/, '');
+    if (input.action === 'rename' || input.action === 'update') {
+      const newName = String(input.newName || '').trim().slice(0, 100);
+      if (!newName) throw new Error('new model name is required');
+      const nextPath = getMeshPath(newName);
+      if (nextPath !== path && extra.meshAssets[nextPath]) {
+        throw new Error('model name already exists');
+      }
+      delete extra.meshAssets[path];
+      extra.meshAssets[nextPath] =
+        input.action === 'update'
+          ? {
+              ...asset,
+              hash: String(input.modelFileHash || '').trim(),
+              modelPreviewHash:
+                String(input.previewHash || '').trim() ||
+                asset.modelPreviewHash,
+              updatedAt: new Date().toISOString(),
+            }
+          : asset;
+      if (!extra.meshAssets[nextPath].hash) {
+        throw new Error('model hash is required');
+      }
+      updateLocalProjectModelMetadata(({ modelPreviews, modelProjects }) => {
+        const previousPreview = modelPreviews[storedName];
+        const previousProject = modelProjects[storedName];
+        if (newName !== storedName) {
+          delete modelPreviews[storedName];
+          delete modelProjects[storedName];
+        }
+        const previewHash =
+          input.action === 'update'
+            ? String(input.previewHash || '').trim() || previousPreview
+            : previousPreview;
+        const projectFileHash =
+          input.action === 'update'
+            ? String(input.projectFileHash || '').trim() || previousProject
+            : previousProject;
+        if (previewHash) modelPreviews[newName] = previewHash;
+        if (projectFileHash) modelProjects[newName] = projectFileHash;
+      });
+    } else if (input.action === 'delete') {
+      delete extra.meshAssets[path];
+      updateLocalProjectModelMetadata(({ modelPreviews, modelProjects }) => {
+        delete modelPreviews[storedName];
+        delete modelProjects[storedName];
+      });
+    }
+    const stream = new MuWriteStream(1);
+    const diff = ExtraProjectInfoSchema.diff(this._state.replica.extraProjectInfo, extra, stream);
+    if (diff) {
+      this._state.replica.hotProjectDirty = true;
+      const bytes = stream.bytes();
+      this._protocol.broadcastRaw(bytes);
+      this._state.replica.extraProjectInfo = ExtraProjectInfoSchema.patch(
+        this._state.replica.extraProjectInfo,
+        new MuReadStream(bytes),
+      );
+      const persistedStream = new MuWriteStream(1);
+      ExtraProjectInfoSchema.diff(ExtraProjectInfoSchema.identity, this._state.replica.extraProjectInfo, persistedStream);
+      const extraProjectHash = await this._state.contentServer.store(persistedStream.bytes());
+      persistedStream.destroy();
+      persistLocalProjectState(this._state.replica.permissionHash, extraProjectHash);
+      await this._updateProjectByExtra();
+    }
+    stream.destroy();
+    return {
+      modelName:
+        input.action === 'delete' ? '' : String(input.newName).trim(),
+    };
+  };
+
   /**
    * 根据最新的extraProjectInfo中的mesh信息，更新project中的entity信息
    * 并广播给client重置project的信息
    * @returns
    */
-  private async _updateProjectByExtra() {
+  private async _updateProjectByExtra(repairStaleLocalPathsOnly = false) {
     this._logger.info(
       'update cold project and send actions by extra project info',
     );
@@ -1934,43 +2039,63 @@ export class EditReplicaServer {
     const pending: Promise<number>[] = [];
     const { meshAssets } = replicaState.extraProjectInfo;
     const { meshIdSetCache } = this._state.bakeCache;
-    Object.keys(meshAssets).forEach((path) => {
-      const asset = meshAssets[path];
-      const cache = meshIdSetCache[asset.modelId];
-      // 如果hash和path都相等，这条缓存不需要拉取新的值修改
-      if (cache && cache.hash === asset.hash && cache.path === path) {
-        return;
-      }
-      pending.push(
-        (async () => {
-          const meshInfo = await this._state.bakeCache.getMeshInfo(
-            asset.hash,
-            AssetType.VOXEL_MODEL,
-          );
-          meshIdSetCache[asset.modelId] = {
-            hash: asset.hash,
-            path,
-            bounds: [
-              meshInfo.bounds[0],
-              meshInfo.bounds[1],
-              meshInfo.bounds[2],
-            ],
-            motionIds: meshInfo.motionList?.map((motion) => motion.id) || [],
-          };
-          return asset.modelId;
-        })(),
-      );
-    });
-
-    // 没有需要更新的东西，那就不更新
-    if (!pending.length) {
-      return;
+    if (!repairStaleLocalPathsOnly) {
+      Object.keys(meshAssets).forEach((path) => {
+        const asset = meshAssets[path];
+        const cache = meshIdSetCache[asset.modelId];
+        // 如果hash和path都相等，这条缓存不需要拉取新的值修改
+        if (cache && cache.hash === asset.hash && cache.path === path) {
+          return;
+        }
+        pending.push(
+          (async () => {
+            const meshInfo = await this._state.bakeCache.getMeshInfo(
+              asset.hash,
+              AssetType.VOXEL_MODEL,
+            );
+            meshIdSetCache[asset.modelId] = {
+              hash: asset.hash,
+              path,
+              bounds: [
+                meshInfo.bounds[0],
+                meshInfo.bounds[1],
+                meshInfo.bounds[2],
+              ],
+              motionIds: meshInfo.motionList?.map((motion) => motion.id) || [],
+            };
+            return asset.modelId;
+          })(),
+        );
+      });
     }
 
-    this._logger.info(`update project: hash ${pending.length} new mesh infos`);
-    const updateMeshes = await Promise.all(pending);
+    if (pending.length) {
+      this._logger.info(`update project: hash ${pending.length} new mesh infos`);
+    }
+    const updateMeshes = new Set(await Promise.all(pending));
     const store = replicaState.projectStore;
     const actions: ProjectAction[] = [];
+
+    // A local model rename keeps modelId but changes mesh path. Repair entities
+    // which still point at an alias that no longer exists in extraProject.
+    Object.values(replicaState.project.entitiesTree).forEach((entityNode) => {
+      const entity = entityNode.value;
+      if (
+        !entity ||
+        !/__local_\d+\.vb$/.test(entity.mesh) ||
+        meshAssets[entity.mesh]
+      ) {
+        return;
+      }
+      const current = meshIdSetCache[entity.meshId];
+      if (current && meshAssets[current.path] && /__local_\d+\.vb$/.test(current.path)) {
+        updateMeshes.add(entity.meshId);
+      }
+    });
+
+    if (!updateMeshes.size) {
+      return;
+    }
 
     Object.keys(replicaState.project.entitiesTree).forEach((id) => {
       const entityNode = replicaState.project.entitiesTree[id];
@@ -1978,7 +2103,7 @@ export class EditReplicaServer {
       // 查看此entity的meshId是否包含在此次刷新的mesh内容中
       if (
         !entityNode.value ||
-        !updateMeshes.includes(entityNode.value.meshId)
+        !updateMeshes.has(entityNode.value.meshId)
       ) {
         return;
       }

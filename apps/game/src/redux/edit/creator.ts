@@ -21,6 +21,7 @@ type VoxaConfigProps = {
   modelType: ModelType;
   editType: EditType;
   projectSkinName?: string;
+  projectModelName?: string;
   saveToProject?: boolean;
 };
 

@@ -170,6 +170,8 @@ PERMISSION_TOKEN_SECRET=
 | `BOX_DATA_STORAGE_DRIVER` | `legacy` | 设为 `postgres` 后使用服主 PostgreSQL 测试数据空间 |
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串，只进入游戏服务端 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧 edit 数据时填写原作品 ID |
+| `BOX_PAID_ACCESS` | `false` | 启用 boxes 兼容的商城事件能力 |
+| `RABBITMQ_HOST_URL` | 空 | RabbitMQ AMQP 连接串；需同时启用 `BOX_PAID_ACCESS` |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选的 Docker 基础镜像 |
 
 完整配置参阅 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。创作端 `edit`

@@ -449,6 +449,8 @@ docker compose up -d
 | `BOX_DATA_STORAGE_DRIVER` | `legacy` | 设为 `postgres` 后由服主 PostgreSQL 持久化脚本数据空间 |
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串，只注入服务端容器 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写旧 boxes 作品 ID |
+| `BOX_PAID_ACCESS` | `false` | 启用 boxes 兼容的跨实例下线和商城事件能力 |
+| `RABBITMQ_HOST_URL` | 空 | RabbitMQ AMQP 连接串；需同时启用 `BOX_PAID_ACCESS` |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选构建基础镜像 |
 
 数据库账号权限、SSL、多作品隔离和备份参阅

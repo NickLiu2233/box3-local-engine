@@ -3,6 +3,7 @@ import {
   Ref,
   useCallback,
   useImperativeHandle,
+  useRef,
   useState,
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,17 +20,31 @@ import {
 
 import { RenameModal } from 'src/views/edit/components/rename-modal';
 import { apis } from 'src/apis/api-java';
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
 import { EditType, setVoxaData } from 'src/redux/edit/creator';
-import { ModelAction } from 'src/views/edit/components/stage-area/edit-model-panel/index';
+import {
+  ModelAction,
+  type ModelData,
+} from 'src/views/edit/components/stage-area/edit-model-panel/index';
 import { useEdit } from 'src/client/edit/edit-context';
 import { setSelectedModel } from 'src/redux/edit/ui';
 
 import style from './index.module.scss';
 import { RootState } from 'src/redux/edit';
+import { projectModelSource } from './project-model-source';
+
+const LOCAL_LIBRARY_MODEL_PATH = /__local_\d+\.vb$/;
+
+function usesEmbeddedProjectAdapter(model: ModelData) {
+  return Boolean(
+    clientConfig.isLocalGameServer &&
+      model.meshPath &&
+      !LOCAL_LIBRARY_MODEL_PATH.test(model.meshPath),
+  );
+}
 
 export type Actions = {
-  [key in ModelAction]?: (modelId: number) => void;
+  [key in ModelAction]?: (model: ModelData) => void;
 };
 
 type Props = {
@@ -49,63 +64,111 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
     useState<boolean>(false);
   const [rename, setRename] = useState<
     | {
-        modelId: number;
+        model: ModelData;
         oldName: string;
+        usesProjectAdapter: boolean;
       }
     | undefined
   >(undefined);
   const [renameErrorTip, setRenameErrorTip] = useState<string | undefined>();
+  const editPendingRef = useRef(new Set<number>());
+
+  const requestProjectModel = useCallback(
+    async (body: Record<string, unknown>) => {
+      const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+      const response = await fetch(`${runtimeURL}/api/project-models`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const result = await response.json().catch(() => undefined);
+        const error = new Error(
+          result?.message ||
+            intl.formatMessage({ id: 'projectModelOperationFailed' }),
+        ) as Error & { code?: string };
+        error.code = result?.code;
+        throw error;
+      }
+      return await response.json();
+    },
+    [intl],
+  );
 
   const handleEditModel = useCallback(
-    async (modelId: number) => {
-      // 打开voxa面板之前检测model是否存在
-      const res = await apis.model.getModelDetailUsingGet(modelId, {
-        timeout: REQUEST_TIMEOUT,
-      });
-      if (!res) {
+    async (model: ModelData) => {
+      if (editPendingRef.current.has(model.id)) return;
+      editPendingRef.current.add(model.id);
+      try {
+        if (usesEmbeddedProjectAdapter(model)) {
+          const prepared = await requestProjectModel({
+            action: 'prepareEdit',
+            name: model.name,
+          });
+          dispatch(
+            setVoxaData({
+              isShow: true,
+              modelId: Number(prepared.modelId),
+              modelType: ModelType.Project,
+              editType: EditType.Normal,
+              projectModelName: model.name,
+              saveToProject: true,
+            }),
+          );
+          return;
+        }
+        // 打开voxa面板之前检测model是否存在
+        const res = await apis.model.getModelDetailUsingGet(model.id, {
+          timeout: REQUEST_TIMEOUT,
+        });
+        if (!res) {
+          setModelAlreadyDeleteModal(true);
+          return;
+        }
+        dispatch(
+          setVoxaData({
+            isShow: true,
+            modelId: model.id,
+            modelType: ModelType.Project,
+            editType: EditType.Normal,
+          }),
+        );
+      } catch (error) {
+        if (usesEmbeddedProjectAdapter(model)) {
+          Toast.error({
+            content:
+              (error as (Error & { code?: string }) | undefined)?.code ===
+              'PROJECT_MODEL_SOURCE_MISSING'
+                ? intl.formatMessage({ id: 'projectModelMissingEditableFile' })
+                : error instanceof Error
+                  ? error.message
+                  : intl.formatMessage({ id: 'projectModelOpenFailed' }),
+          });
+          return;
+        }
         setModelAlreadyDeleteModal(true);
-        return;
+      } finally {
+        editPendingRef.current.delete(model.id);
       }
-      dispatch(
-        setVoxaData({
-          isShow: true,
-          modelId: modelId,
-          modelType: ModelType.Project,
-          editType: EditType.Normal,
-        }),
-      );
     },
-    [dispatch],
+    [dispatch, intl, requestProjectModel],
   );
   const handleRenameModel = useCallback(
-    async (modelId: number) => {
-      let modelName = '';
-      if (clientConfig.isLocalGameServer) {
-        const model = await apis.model.getModelDetailUsingGet(modelId);
-        setRename({ modelId, oldName: model?.modelName || '' });
-        return;
-      }
-      const meshAssets = Object.entries(
-        editor.state.replica.extraProjectInfo.meshAssets,
-      );
-      for (let i = 0; i < meshAssets.length; i++) {
-        const [key, meshAsset] = meshAssets[i];
-        if (meshAsset.modelId === modelId) {
-          modelName = editor.assetController.getModelNameFromMeshAssetsKey(key);
-          break;
-        }
-      }
-
-      setRename({ modelId, oldName: modelName });
+    (model: ModelData) => {
+      setRename({
+        model,
+        oldName: model.name,
+        usesProjectAdapter: usesEmbeddedProjectAdapter(model),
+      });
     },
-    [editor.assetController, editor.state.replica.extraProjectInfo.meshAssets],
+    [],
   );
   const handleCopyModel = useCallback(
-    async (modelId: number) => {
+    async (model: ModelData) => {
       try {
         const res = await apis.model.copyProjectSharedModelUsingPost({
           mapId,
-          originModelId: modelId,
+          originModelId: model.id,
           event: CopyEvent.ActiveCopy,
           sourceType: SourceType.Snapshot,
         });
@@ -131,7 +194,7 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
   );
 
   const handleRemoveModel = useCallback(
-    async (modelId: number) => {
+    async (model: ModelData) => {
       const destroy = Modal.show({
         type: 'warning',
         width: 448,
@@ -140,25 +203,27 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
         confirmText: intl.formatMessage({ id: 'remove' }),
         onConfirm: async () => {
           try {
-            const res = await apis.model.deleteProjectSharedModelUsingDelete(
-              {
-                mapId,
-                modelId,
-              },
-              {
-                timeout: REQUEST_TIMEOUT,
-              },
-            );
+            const usesProjectAdapter = usesEmbeddedProjectAdapter(model);
+            const res = usesProjectAdapter
+              ? await requestProjectModel({
+                  action: 'delete',
+                  name: model.name,
+                })
+              : await apis.model.deleteProjectSharedModelUsingDelete(
+                  {
+                    mapId,
+                    modelId: model.id,
+                  },
+                  {
+                    timeout: REQUEST_TIMEOUT,
+                  },
+                );
             if (res) {
               Toast.success({
                 content: intl.formatMessage({ id: 'deleteSuccess' }),
               });
-              if (clientConfig.isLocalGameServer) {
-                window.dispatchEvent(new Event('local-voxa-models-changed'));
-              } else {
-                editor.replica.updateExtraProject();
-              }
-              if (selectedModel?.modelData.id === modelId) {
+              projectModelSource.notifyChanged(editor);
+              if (selectedModel?.modelData.id === model.id) {
                 dispatch(setSelectedModel(undefined));
               }
             }
@@ -183,40 +248,53 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
         },
       });
     },
-    [intl, mapId, editor.replica, selectedModel, dispatch],
+    [
+      intl,
+      mapId,
+      editor,
+      selectedModel,
+      dispatch,
+      requestProjectModel,
+    ],
   );
 
   const onConfirmModal = useCallback(() => {
-    editor.replica.updateExtraProject();
+    projectModelSource.notifyChanged(editor);
     setModelAlreadyDeleteModal(false);
-  }, [editor.replica]);
+  }, [editor]);
 
   const handleCancelRename = useCallback(() => {
     setRename(undefined);
   }, []);
 
-  const handleRename = useCallback(async (modelId: number, newName: string) => {
-    const res = await apis.model.renameProjectSharedModelUsingPut(
-      {
-        mapId: clientConfig.mapInfo.contentId,
-        modelId: modelId,
-        modelName: newName,
-      },
-      {
-        timeout: REQUEST_TIMEOUT,
-      },
-    );
-    return res;
-  }, []);
+  const handleRename = useCallback(
+    async (_modelId: number, newName: string) => {
+      if (!rename) return false;
+      if (rename.usesProjectAdapter) {
+        return await requestProjectModel({
+          action: 'rename',
+          name: rename.oldName,
+          newName,
+        });
+      }
+      return await apis.model.renameProjectSharedModelUsingPut(
+        {
+          mapId: clientConfig.mapInfo.contentId,
+          modelId: rename.model.id,
+          modelName: newName,
+        },
+        {
+          timeout: REQUEST_TIMEOUT,
+        },
+      );
+    },
+    [rename, requestProjectModel],
+  );
 
   const handleRenameSuccess = useCallback(() => {
-    if (clientConfig.isLocalGameServer) {
-      window.dispatchEvent(new Event('local-voxa-models-changed'));
-    } else {
-      editor.replica.updateExtraProject();
-    }
+    projectModelSource.notifyChanged(editor);
     setRename(undefined);
-  }, [editor.replica]);
+  }, [editor]);
 
   const handleRenameError = useCallback(
     (errorCode: number) => {
@@ -249,7 +327,7 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
     <>
       {rename && (
         <RenameModal
-          id={rename.modelId}
+          id={rename.model.id}
           oldName={rename.oldName}
           onRename={handleRename}
           onSuccess={handleRenameSuccess}

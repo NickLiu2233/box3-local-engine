@@ -585,6 +585,57 @@ export function cloudSkinProjects(
   return projects;
 }
 
+export function cloudModelPreviews(
+  models: EngineModel[],
+  skippedHashes: ReadonlySet<string> = new Set(),
+) {
+  const previews: Record<string, string> = {};
+  for (const model of models) {
+    const name = model?.modelName?.trim();
+    const previewHash = model?.modelPreviewHash?.trim();
+    if (!name || !previewHash || skippedHashes.has(previewHash)) continue;
+    previews[name] = previewHash;
+  }
+  return previews;
+}
+
+export function cloudModelProjects(
+  models: EngineModel[],
+  skippedHashes: ReadonlySet<string> = new Set(),
+) {
+  const projects: Record<string, string> = {};
+  for (const model of models) {
+    const name = model?.modelName?.trim();
+    const projectHash = model?.projectFileHash?.trim();
+    if (!name || !projectHash || skippedHashes.has(projectHash)) continue;
+    projects[name] = projectHash;
+  }
+  return projects;
+}
+
+/**
+ * The engine API exposes OSS resource ids (43-character base64url strings),
+ * while local VOXA validates resources against the CID returned by the local
+ * content server. Keep the boxes model schema intact and only replace fields
+ * whose downloaded bytes have been materialized in the local blob store.
+ */
+export function localizeCloudModelResources(
+  models: EngineModel[],
+  localHashes: ReadonlyMap<string, string>,
+): EngineModel[] {
+  const localize = (value: string | undefined) => {
+    const source = value?.trim();
+    return source ? localHashes.get(source) || source : value;
+  };
+  return models.map((model) => ({
+    ...model,
+    fileHash: localize(model.fileHash),
+    modelFileHash: localize(model.modelFileHash),
+    modelPreviewHash: localize(model.modelPreviewHash),
+    projectFileHash: localize(model.projectFileHash),
+  }));
+}
+
 export function encodeCloudExtraProject(data: CloudEngineData) {
   const extra = cloudExtraProject(
     data.models,
@@ -644,8 +695,10 @@ function cloudRuntimeResources(data: CloudEngineData): ReferencedResource[] {
     add(skin.projectFileHash, 's3-skin');
   }
   if (data.defaultSkin) {
+    add(data.defaultSkin.fileHash, 's3-skin');
     add(data.defaultSkin.modelFileHash, 's3-skin');
     add(data.defaultSkin.modelPreviewHash, 's3-skin');
+    add(data.defaultSkin.projectFileHash, 's3-skin');
   }
   return [...resources].map(([hash, sourceKind]) => ({ hash, sourceKind }));
 }
@@ -800,6 +853,7 @@ export async function generateProjectArchive(
   const downloaded = new Set<string>();
   const discovered = new Set<string>();
   const skippedHashes = new Set<string>();
+  const localContentHashes = new Map<string, string>();
   const skippedBlobs: SkippedBlob[] = [];
   // Match boxes' preload model: create all lightweight retrieval promises,
   // then let the content layer gate only true network misses. This prevents
@@ -883,6 +937,8 @@ export async function generateProjectArchive(
       const task = (async () => {
         const existing = await fs.readFile(target).catch(() => undefined);
         if (existing) {
+          const localHash = await storeBlob(blobsRoot, existing);
+          localContentHashes.set(hash, localHash);
           retrieved.add(hash);
           return new Uint8Array(existing);
         }
@@ -895,6 +951,8 @@ export async function generateProjectArchive(
           totalBytes += cached.byteLength;
           if (totalBytes > limit.maxTotalBytes) throw new Error('工程总大小超过迁移器限制');
           await fs.writeFile(target, cached, { flag: 'wx', mode: 0o644 });
+          const localHash = await storeBlob(blobsRoot, cached);
+          localContentHashes.set(hash, localHash);
           retrieved.add(hash);
           downloaded.add(hash);
           report({
@@ -932,6 +990,8 @@ export async function generateProjectArchive(
         totalBytes += bytes.byteLength;
         if (totalBytes > limit.maxTotalBytes) throw new Error('工程总大小超过迁移器限制');
         await fs.writeFile(target, bytes, { flag: 'wx', mode: 0o644 });
+        const localHash = await storeBlob(blobsRoot, bytes);
+        localContentHashes.set(hash, localHash);
         if (persistentCacheRoot) {
           const cacheTarget = path.join(persistentCacheRoot, storedName);
           const temporaryCacheTarget = `${cacheTarget}.${randomUUID()}.tmp`;
@@ -1114,6 +1174,14 @@ export async function generateProjectArchive(
         ...groupResources,
         ...cloudRuntimeResources(cloudData),
       ]);
+      const availableModels = cloudData.models.filter((model) =>
+        Boolean(model.modelFileHash) && !skippedHashes.has(String(model.modelFileHash)));
+      const availableSkins = cloudData.skins.filter((skin) =>
+        Boolean(skin.modelFileHash) && !skippedHashes.has(String(skin.modelFileHash)));
+      const availableDefaultSkin = cloudData.defaultSkin?.modelFileHash
+        && !skippedHashes.has(cloudData.defaultSkin.modelFileHash)
+        ? cloudData.defaultSkin
+        : null;
       cloudData = {
         ...cloudData,
         groupProject: Object.fromEntries(Object.entries(cloudData.groupProject)
@@ -1125,13 +1193,10 @@ export async function generateProjectArchive(
             .filter((script) => !script.hash || !skippedHashes.has(script.hash)),
         },
         photos: cloudData.photos.filter((photo) => !skippedHashes.has(photo.hash)),
-        models: cloudData.models.filter((model) =>
-          Boolean(model.modelFileHash) && !skippedHashes.has(String(model.modelFileHash))),
-        skins: cloudData.skins.filter((skin) =>
-          Boolean(skin.modelFileHash) && !skippedHashes.has(String(skin.modelFileHash))),
-        defaultSkin: cloudData.defaultSkin?.modelFileHash
-          && !skippedHashes.has(cloudData.defaultSkin.modelFileHash)
-          ? cloudData.defaultSkin
+        models: localizeCloudModelResources(availableModels, localContentHashes),
+        skins: localizeCloudModelResources(availableSkins, localContentHashes),
+        defaultSkin: availableDefaultSkin
+          ? localizeCloudModelResources([availableDefaultSkin], localContentHashes)[0]
           : null,
       };
     }
@@ -1350,6 +1415,8 @@ export async function generateProjectArchive(
       extraProjectMode: extraProjectHash ? 'embedded' : '',
       ...(cloudData
         ? {
+            modelPreviews: cloudModelPreviews(cloudData.models, skippedHashes),
+            modelProjects: cloudModelProjects(cloudData.models, skippedHashes),
             skinPreviews: cloudSkinPreviews(cloudData.skins, cloudData.defaultSkin, skippedHashes),
             skinProjects: cloudSkinProjects(cloudData.skins, cloudData.defaultSkin, skippedHashes),
           }

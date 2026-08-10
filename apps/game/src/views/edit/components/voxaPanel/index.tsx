@@ -86,6 +86,7 @@ export function VoxaPanel() {
     modelType,
     editType,
     projectSkinName,
+    projectModelName,
     saveToProject,
   } = useSelector((state: RootState) => {
     if (state.creator.voxaData.isShow) {
@@ -97,6 +98,7 @@ export function VoxaPanel() {
       modelType: ModelType.Project,
       editType: EditType.Normal,
       projectSkinName: undefined,
+      projectModelName: undefined,
       saveToProject: false,
     };
   });
@@ -145,6 +147,7 @@ export function VoxaPanel() {
   );
   const voxaModelId = useRef<number>(0);
   const currentProjectSkinName = useRef(projectSkinName);
+  const currentProjectModelName = useRef(projectModelName);
   const shouldSaveToProject = useRef(Boolean(saveToProject));
 
   const showVoxa = useCallback(() => {
@@ -265,6 +268,36 @@ export function VoxaPanel() {
         return;
       }
       // 模型 - 保存成功后刷新模型列表
+      if (shouldSaveToProject.current && currentProjectModelName.current) {
+        const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+        const response = await fetch(`${runtimeURL}/api/project-models`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'update',
+            name: currentProjectModelName.current,
+            newName: modelName,
+            modelFileHash,
+            previewHash: modelPreviewHash,
+            projectFileHash,
+          }),
+        });
+        if (!response.ok) {
+          const result = await response.json().catch(() => undefined);
+          Toast.error({
+            content:
+              result?.message ||
+              intl.formatMessage({ id: 'projectModelSaveFailed' }),
+          });
+          return;
+        }
+        currentProjectModelName.current = modelName;
+        await apis.model
+          .deleteModelUsingDelete([modelId])
+          .catch(() => undefined);
+        window.dispatchEvent(new Event('local-project-models-changed'));
+        return;
+      }
       if (clientConfig.isLocalGameServer) {
         window.dispatchEvent(new Event('local-voxa-models-changed'));
       }

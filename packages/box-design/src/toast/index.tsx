@@ -6,8 +6,8 @@ import styles from './style.module.scss';
 const TOAST_CONTAINER = 'boxToasts';
 const MAX_COUNT = 3;
 
-let toastContainer: HTMLDivElement | null;
-let toastRoot: Root | null;
+let toastContainer: HTMLDivElement | null = null;
+let toastRoot: Root | null = null;
 let toastArray: [number, JSX.Element][] = [];
 let seed: number = 0;
 
@@ -66,11 +66,14 @@ function getContainer() {
 }
 
 function unmountContainer() {
+  toastArray = [];
+  if (toastRoot !== null) {
+    toastRoot.unmount();
+    toastRoot = null;
+  }
   if (toastContainer !== null) {
-    toastArray = [];
-    if (toastRoot !== null) {
-      toastRoot.unmount();
-    }
+    toastContainer.remove();
+    toastContainer = null;
   }
 }
 

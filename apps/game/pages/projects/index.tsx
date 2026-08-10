@@ -7,11 +7,13 @@ import {
   Download,
   FolderOpen,
   Grid2X2,
+  History,
   MoreHorizontal,
   Pencil,
   Play,
   Plus,
   Search,
+  RotateCcw,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -74,6 +76,23 @@ type PublishProgress = {
   message?: string;
 };
 
+type ProjectSnapshot = {
+  name: string;
+  reason: string;
+  signature: string;
+  createdAt: string;
+  size: number;
+};
+
+const snapshotReasonLabels: Record<string, string> = {
+  automatic: '自动保存',
+  launch: '打开工程',
+  export: '导出工程',
+  publish: '发布作品',
+  manual: '手动快照',
+  'before-restore': '恢复前备份',
+};
+
 function formatBytes(value: number) {
   if (!value) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -111,6 +130,11 @@ export default function ProjectsPage() {
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null);
+  const [recoveryProject, setRecoveryProject] = useState<LocalProject | null>(null);
+  const [snapshots, setSnapshots] = useState<ProjectSnapshot[]>([]);
+  const [selectedSnapshot, setSelectedSnapshot] = useState('');
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+  const [recoveryError, setRecoveryError] = useState('');
 
   const refreshProjects = useCallback(async () => {
     const response = await fetch('/api/local-projects');
@@ -246,6 +270,49 @@ export default function ProjectsPage() {
     setReleaseNotes('');
     setDialogError('');
     setDialog('publish');
+  };
+
+  const openRecoveryDialog = async (project: LocalProject) => {
+    setMenuProject(null);
+    setRecoveryProject(project);
+    setSnapshots([]);
+    setSelectedSnapshot('');
+    setRecoveryError('');
+    setRecoveryLoading(true);
+    try {
+      const response = await fetch(`/api/local-projects/${encodeURIComponent(project.id)}/snapshots`);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || '无法读取工程恢复记录');
+      const nextSnapshots = Array.isArray(data.snapshots) ? data.snapshots : [];
+      setSnapshots(nextSnapshots);
+      setSelectedSnapshot(nextSnapshots[0]?.name || '');
+    } catch (error) {
+      setRecoveryError(error instanceof Error ? error.message : '无法读取工程恢复记录');
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const restoreSnapshot = async () => {
+    if (!recoveryProject || !selectedSnapshot || recoveryLoading) return;
+    setRecoveryLoading(true);
+    setRecoveryError('');
+    try {
+      const response = await fetch(`/api/local-projects/${encodeURIComponent(recoveryProject.id)}/snapshots`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ snapshot: selectedSnapshot }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || '工程版本恢复失败');
+      setNotice(`已恢复 ${recoveryProject.name} 的历史版本；重新打开编辑器后生效`);
+      setRecoveryProject(null);
+      await refreshProjects();
+    } catch (error) {
+      setRecoveryError(error instanceof Error ? error.message : '工程版本恢复失败');
+    } finally {
+      setRecoveryLoading(false);
+    }
   };
 
   const submitProject = async (event: FormEvent<HTMLFormElement>) => {
@@ -678,6 +745,9 @@ export default function ProjectsPage() {
                           >
                             <Download size={15} /> 导出可编辑工程
                           </button>
+                          <button role="menuitem" onClick={() => void openRecoveryDialog(project)}>
+                            <History size={15} /> 恢复历史版本
+                          </button>
                           <button
                             role="menuitem"
                             className={styles.deleteAction}
@@ -754,6 +824,46 @@ export default function ProjectsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+      {recoveryProject && (
+        <div className={styles.dialogBackdrop} role="presentation" onMouseDown={() => { if (!recoveryLoading) setRecoveryProject(null); }}>
+          <section className={`${styles.dialog} ${styles.recoveryDialog}`} role="dialog" aria-modal="true" aria-labelledby="recovery-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className={styles.dialogIcon}><History size={22} /></div>
+            <h2 id="recovery-title">恢复历史版本</h2>
+            <p>{recoveryProject.name} · 最多保留最近 5 个有效快照。恢复前会保留当前版本。</p>
+            {recoveryLoading && snapshots.length === 0 ? (
+              <div className={styles.recoveryEmpty}>正在读取恢复记录…</div>
+            ) : snapshots.length ? (
+              <div className={styles.snapshotList} role="radiogroup" aria-label="可恢复版本">
+                {snapshots.map((snapshot) => (
+                  <button
+                    key={snapshot.name}
+                    type="button"
+                    role="radio"
+                    aria-checked={selectedSnapshot === snapshot.name}
+                    className={selectedSnapshot === snapshot.name ? styles.snapshotSelected : undefined}
+                    onClick={() => setSelectedSnapshot(snapshot.name)}
+                  >
+                    <span>
+                      <strong>{snapshotReasonLabels[snapshot.reason] || snapshot.reason}</strong>
+                      <small>{new Date(snapshot.createdAt).toLocaleString()} · {formatBytes(snapshot.size)}</small>
+                    </span>
+                    <code>{snapshot.signature.slice(0, 8)}</code>
+                  </button>
+                ))}
+              </div>
+            ) : !recoveryError ? (
+              <div className={styles.recoveryEmpty}>该工程还没有可恢复的历史版本。打开、导出或发布后会自动生成快照。</div>
+            ) : null}
+            {recoveryError && <p className={styles.dialogError} role="alert">{recoveryError}</p>}
+            <div className={styles.dialogActions}>
+              <button type="button" className={styles.cancelButton} disabled={recoveryLoading} onClick={() => setRecoveryProject(null)}>取消</button>
+              <button type="button" className={styles.confirmButton} disabled={!selectedSnapshot || recoveryLoading} onClick={() => void restoreSnapshot()}>
+                <RotateCcw size={15} /> {recoveryLoading ? '正在恢复…' : '恢复所选版本'}
+              </button>
+            </div>
+          </section>
         </div>
       )}
       {exportProgress && (

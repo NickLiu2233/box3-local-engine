@@ -1269,6 +1269,10 @@
 
   "privateModelLib": "个人模型库",
   "projectModelLib": "项目模型库",
+  "projectModelOperationFailed": "项目模型操作失败",
+  "projectModelOpenFailed": "项目模型打开失败",
+  "projectModelSaveFailed": "项目模型保存失败",
+  "projectModelMissingEditableFile": "该模型缺少可编辑的 VOXA 工程文件，请使用最新版迁移器重新导出。",
   "publicModelLib": "公共模型库",
 
   "gamePlayer": "玩家",
@@ -1277,6 +1281,7 @@
   "gamePlayerProjectSkinEmpty": "快来创建地图专属皮肤吧！",
   "gamePlayerNewSkin": "创建皮肤",
   "gamePlayerImportSkin": "从素材库导入",
+  "gamePlayerImportLocalSkin": "从本地导入皮肤",
   "gamePlayerDefaultSkin": "本图默认皮肤",
   "voxa.saveSkin": "保存皮肤",
   "voxa.unsavedSkin": "皮肤未保存",

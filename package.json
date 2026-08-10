@@ -20,6 +20,8 @@
     "migrator:dev": "pnpm --filter @box-local/migrator dev",
     "infra": "docker compose --profile infra up -d postgres redis",
     "infra:stop": "docker compose --profile infra stop postgres redis",
+    "mq": "docker compose --profile mq up -d rabbitmq",
+    "mq:stop": "docker compose --profile mq stop rabbitmq",
     "play": "node apps/local-engine/src/deploy.js play",
     "play:up": "docker compose --profile play up -d --no-build play",
     "stop": "node apps/local-engine/src/deploy.js stop",
