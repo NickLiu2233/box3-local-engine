@@ -110,7 +110,13 @@ export function VoxaPanel() {
     // The VOXA response may intentionally use Referrer-Policy: no-referrer.
     // Pass the local Creator origin explicitly instead of making persistence
     // depend on document.referrer being present inside the iframe.
-    queries.push(`storageOrigin=${encodeURIComponent(window.location.origin)}`);
+    const containerMatch = window.location.pathname.match(/^\/e\/([^/]+)/);
+    const runtimePath = containerMatch
+      ? `/runtime/edit/${containerMatch[1]}`
+      : '/runtime/edit';
+    queries.push(
+      `storageOrigin=${encodeURIComponent(`${window.location.origin}${runtimePath}`)}`,
+    );
     const token = getToken();
     if (token) {
       queries.push(`token=${token}`);

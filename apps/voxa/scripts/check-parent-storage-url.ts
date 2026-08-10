@@ -3,9 +3,17 @@ import { resolveParentEditStorageURL } from '../src/apis';
 
 assert.equal(
   resolveParentEditStorageURL(
-    '?parentType=engine&storageOrigin=http%3A%2F%2Flocalhost%3A3002',
+    '?parentType=engine&storageOrigin=http%3A%2F%2Flocalhost%3A3002%2Fruntime%2Fedit%2Fproject-id',
     '',
     'http://localhost:3001/?parentType=engine',
+  ),
+  'http://localhost:3002/runtime/edit/project-id/block',
+);
+assert.equal(
+  resolveParentEditStorageURL(
+    '?parentType=engine&storageOrigin=http%3A%2F%2Flocalhost%3A3002',
+    '',
+    'http://127.0.0.1:3001/?parentType=engine',
   ),
   'http://localhost:3002/runtime/edit/block',
 );

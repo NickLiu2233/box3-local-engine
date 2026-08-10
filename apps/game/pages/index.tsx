@@ -254,7 +254,7 @@ export default function HomePage({
           <div className="grid">
             {worldList.map((world) => (
               <article className="card" key={world.id}>
-                <Link className="cardLink" href={`/p/${encodeURIComponent(world.id)}`}>
+                <Link className="cardLink" href={`/play-launch?world=${encodeURIComponent(world.id)}&name=${encodeURIComponent(world.name)}`}>
                   <div className="cover">
                     {world.cover ? <img src={world.cover} alt="" /> : <span>{world.name.slice(0, 1)}</span>}
                   </div>

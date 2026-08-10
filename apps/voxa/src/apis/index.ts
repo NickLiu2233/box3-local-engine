@@ -42,14 +42,18 @@ export function resolveParentEditStorageURL(
       ancestorOrigin;
     if (!candidate) return '';
     const storageOrigin = new URL(candidate);
+    const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+    const sameLocalHost =
+      loopbackHosts.has(storageOrigin.hostname.toLowerCase()) &&
+      loopbackHosts.has(currentURL.hostname.toLowerCase());
     if (
       !['http:', 'https:'].includes(storageOrigin.protocol) ||
-      storageOrigin.hostname !== currentURL.hostname
+      (storageOrigin.hostname !== currentURL.hostname && !sameLocalHost)
     ) {
       return '';
     }
-    const origin = storageOrigin.origin;
-    return `${origin}/runtime/edit/block${hash ? `/${encodeURIComponent(hash)}` : ''}`;
+    const basePath = storageOrigin.pathname.replace(/\/$/, '') || '/runtime/edit';
+    return `${storageOrigin.origin}${basePath}/block${hash ? `/${encodeURIComponent(hash)}` : ''}`;
   } catch {
     return '';
   }

@@ -18,6 +18,7 @@ const voxaDataRoot =
   process.env.BOX_LOCAL_VOXA_DATA_PATH || path.join(packageRoot, '../voxa/data')
 const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
+const snapshotLimit = 5
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
 // extraProject metadata is binary, so publishing must discover both forms or
@@ -516,6 +517,104 @@ function writeJSON(filePath, value) {
   fs.renameSync(temporaryPath, filePath)
 }
 
+function validateProjectSource(sourceRoot) {
+  const statePath = path.join(sourceRoot, 'project-state.json')
+  const blobRoot = path.join(sourceRoot, 'blobs')
+  const problems = []
+  let state
+  const initialized = fs.existsSync(statePath)
+  if (!initialized) {
+    return {
+      ok: fs.existsSync(blobRoot) && fs.statSync(blobRoot).isDirectory(),
+      initialized: false,
+      problems: fs.existsSync(blobRoot) ? [] : ['缺少 blobs 目录'],
+      state: undefined,
+    }
+  }
+  try {
+    state = readJSON(statePath)
+  } catch (error) {
+    problems.push(`project-state.json 无法读取：${error.message}`)
+  }
+  if (!fs.existsSync(blobRoot) || !fs.statSync(blobRoot).isDirectory()) {
+    problems.push('缺少 blobs 目录')
+  }
+  if (!state?.permissionHash) {
+    problems.push('缺少 permissionHash')
+  } else if (!fs.existsSync(path.join(blobRoot, state.permissionHash))) {
+    problems.push(`缺少权限根资源 ${state.permissionHash}`)
+  } else {
+    try {
+      const permission = readJSON(path.join(blobRoot, state.permissionHash))
+      if (permission.type !== 'permission' && permission.type !== 'permissions') {
+        problems.push(`权限根资源类型无效：${permission.type || 'unknown'}`)
+      }
+    } catch (error) {
+      problems.push(`权限根资源无法解析：${error.message}`)
+    }
+  }
+  if (state?.extraProjectHash && !fs.existsSync(path.join(blobRoot, state.extraProjectHash))) {
+    problems.push(`缺少项目资源索引 ${state.extraProjectHash}`)
+  }
+  return { ok: problems.length === 0, initialized: true, problems, state }
+}
+
+function snapshotRoot(id) {
+  return path.join(projectRoot(id), '.snapshots')
+}
+
+function createProjectSnapshot(id, reason = 'automatic') {
+  const sourceRoot = path.join(projectRoot(id), 'source')
+  const validation = validateProjectSource(sourceRoot)
+  if (!validation.ok || !validation.initialized) return { created: false, validation }
+  const root = snapshotRoot(id)
+  fs.mkdirSync(root, { recursive: true })
+  const signature = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(validation.state))
+    .digest('hex')
+    .slice(0, 16)
+  const existing = fs.readdirSync(root).find((name) => name.includes(`-${signature}.tar.gz`))
+  if (existing) return { created: false, validation, archivePath: path.join(root, existing) }
+  const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+  const archivePath = path.join(root, `${timestamp}-${reason}-${signature}.tar.gz`)
+  runTar(['-czf', archivePath, '-C', projectRoot(id), 'source'], '无法创建工程恢复快照')
+  const snapshots = fs.readdirSync(root)
+    .filter((name) => name.endsWith('.tar.gz'))
+    .sort()
+    .reverse()
+  for (const stale of snapshots.slice(snapshotLimit)) {
+    fs.rmSync(path.join(root, stale), { force: true })
+  }
+  return { created: true, validation, archivePath }
+}
+
+function restoreLatestProjectSnapshot(id) {
+  const root = snapshotRoot(id)
+  const snapshots = fs.existsSync(root)
+    ? fs.readdirSync(root).filter((name) => name.endsWith('.tar.gz')).sort().reverse()
+    : []
+  for (const name of snapshots) {
+    const temporaryRoot = path.join(os.tmpdir(), `box-project-restore-${process.pid}-${Date.now()}`)
+    try {
+      fs.mkdirSync(temporaryRoot, { recursive: true })
+      runTar(['-xzf', path.join(root, name), '-C', temporaryRoot], '无法读取工程恢复快照')
+      const restoredSource = path.join(temporaryRoot, 'source')
+      const validation = validateProjectSource(restoredSource)
+      if (!validation.ok) continue
+      const sourceRoot = path.join(projectRoot(id), 'source')
+      const brokenRoot = `${sourceRoot}.broken-${Date.now()}`
+      if (fs.existsSync(sourceRoot)) fs.renameSync(sourceRoot, brokenRoot)
+      fs.renameSync(restoredSource, sourceRoot)
+      fs.rmSync(brokenRoot, { recursive: true, force: true })
+      return { restored: true, snapshot: name, validation }
+    } finally {
+      fs.rmSync(temporaryRoot, { recursive: true, force: true })
+    }
+  }
+  return { restored: false }
+}
+
 function relativeTime(value) {
   const age = Math.max(0, Date.now() - new Date(value).getTime())
   const minutes = Math.floor(age / 60000)
@@ -619,6 +718,7 @@ function runTar(args, message) {
 
 function exportProject(id) {
   const metadata = getProject(id)
+  createProjectSnapshot(id, 'export')
   const root = projectRoot(id)
   fs.mkdirSync(projectExportRoot, { recursive: true })
   const safeName = metadata.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '作品'
@@ -732,6 +832,7 @@ function publishProject(id, requestedVersion, notes = '') {
   if (!state.permissionHash) {
     throw new Error('请先打开该工程并在编辑器中保存一次，再发布为游玩包')
   }
+  createProjectSnapshot(id, 'publish')
 
   const version = assertVersion(requestedVersion || `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`)
   const releaseRoot = path.join(root, 'releases', version)
@@ -778,6 +879,15 @@ function getLaunchTarget({ project, release }) {
   if (project) {
     const root = projectRoot(project)
     if (!fs.existsSync(path.join(root, 'project.json'))) throw new Error(`Project does not exist: ${project}`)
+    let validation = validateProjectSource(path.join(root, 'source'))
+    if (!validation.ok) {
+      const recovery = restoreLatestProjectSnapshot(project)
+      if (!recovery.restored) {
+        throw new Error(`工程数据不完整且没有可用快照：${validation.problems.join('；')}`)
+      }
+      validation = validateProjectSource(path.join(root, 'source'))
+    }
+    createProjectSnapshot(project, 'launch')
     return {
       kind: 'source',
       id: project,
@@ -1003,6 +1113,9 @@ module.exports = {
   getProject,
   listProjects,
   importProject,
+  createProjectSnapshot,
+  restoreLatestProjectSnapshot,
+  validateProjectSource,
   normalizeImportedProjectPermissions,
   packageProject,
   projectsRoot,

@@ -90,6 +90,7 @@ function startPlayLibrary({
   fs.mkdirSync(libraryRoot, { recursive: true })
   const runtimes = new Map()
   const starts = new Map()
+  const statuses = new Map()
   let nextPort = runtimePortStart
   let closed = false
 
@@ -104,22 +105,29 @@ function startPlayLibrary({
     const world = readWorld(libraryRoot, id)
     if (!world) throw Object.assign(new Error('地图不存在或数据不完整'), { statusCode: 404 })
     const current = runtimes.get(id)
-    if (current?.signature === world.signature && !current.exited) return current
+    if (current?.signature === world.signature && !current.exited) {
+      statuses.set(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
+      return current
+    }
     if (current) await stopRuntime(id)
     if (starts.has(id)) return starts.get(id)
 
     const promise = (async () => {
+      statuses.set(id, { phase: 'starting', percent: 18, message: '正在创建独立游戏运行时' })
       const runtimePort = nextPort++
       const runtime = await startRuntime(world, runtimePort)
       runtime.signature = world.signature
       runtimes.set(id, runtime)
       try {
+        statuses.set(id, { phase: 'loading', percent: 42, message: '正在加载地图与预烘焙资源' })
         await waitForRuntime(`http://127.0.0.1:${runtimePort}/api/health-check`, 120)
       } catch (error) {
         runtimes.delete(id)
+        statuses.set(id, { phase: 'error', percent: 0, message: error.message || '游戏运行时启动失败' })
         await runtime.stop()
         throw error
       }
+      statuses.set(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
       console.log(`  Map ready: /p/${id}`)
       return runtime
     })().finally(() => starts.delete(id))
@@ -130,12 +138,33 @@ function startPlayLibrary({
   const server = http.createServer(async (req, res) => {
     const id = extractWorldId(req.url)
     try {
+      const forwardedPath = requestPathWithoutWorld(req.url, id)
+      if (forwardedPath === '/__local_runtime/status') {
+        const runtime = runtimes.get(id)
+        if (runtime?.exited && statuses.get(id)?.phase === 'ready') {
+          statuses.set(id, { phase: 'error', percent: 0, message: '游戏运行时异常退出' })
+        }
+        res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify(statuses.get(id) || { phase: 'idle', percent: 0, message: '等待启动' }))
+        return
+      }
+      if (forwardedPath === '/__local_runtime/start' && req.method === 'POST') {
+        if (!readWorld(libraryRoot, id)) {
+          res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ message: '地图不存在或数据不完整' }))
+          return
+        }
+        void ensureRuntime(id).catch(() => undefined)
+        res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
+        res.end(JSON.stringify(statuses.get(id) || { phase: 'starting', percent: 10, message: '正在启动' }))
+        return
+      }
       const runtime = await ensureRuntime(id)
       const proxy = http.request({
         hostname: '127.0.0.1',
         port: runtime.port,
         method: req.method,
-        path: requestPathWithoutWorld(req.url, id),
+        path: forwardedPath,
         headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
       }, (upstream) => {
         res.writeHead(upstream.statusCode || 502, upstream.headers)
