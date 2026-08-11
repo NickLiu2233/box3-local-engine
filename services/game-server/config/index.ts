@@ -86,7 +86,6 @@ export const config = build({
 
   // Persistent high-level game.storage backend. Database credentials are
   // supplied by the server owner at runtime and never shipped to the client.
-  dataStorageDriver: S('BOX_DATA_STORAGE_DRIVER', 'local'),
   dataStorageNamespace: S('BOX_DATA_STORAGE_NAMESPACE', ''),
   groupStorageNamespace: S('BOX_GROUP_STORAGE_NAMESPACE', ''),
   databaseUrl: S('BOX_DATABASE_URL', ''),

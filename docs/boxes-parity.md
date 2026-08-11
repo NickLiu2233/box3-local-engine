@@ -16,6 +16,8 @@ Local Engine 复用 `boxes` 的引擎、编辑器和权威游戏运行时，但�
 | RabbitMQ | 保留 `boxes` 下线和商城消息消费端，默认关闭并由服主配置生产端 |
 | 构建缓存 | 用按工程持久化的本地缓存替代 Redis/build-server |
 | 版本恢复 | 保留最近 5 个有效工程快照，可在作品管理器选择恢复，损坏时自动回退 |
+| 运行状态聚合 | 创作端统一显示可选基础服务、磁盘、备份和每个工程的编辑/游玩运行时状态 |
+| 定时工程备份 | 可选生成经过校验的 `.boxproject`，支持间隔、数量、天数保留和手动下载 |
 
 ## 有价值但尚未启用的本地化能力
 
@@ -23,8 +25,6 @@ Local Engine 复用 `boxes` 的引擎、编辑器和权威游戏运行时，但�
 | --- | --- | --- |
 | Redis Session/限流 adapter | 多副本部署、Session 跨进程共享 | 先定义 Session 与 rate-limit store seam；保留内存 adapter |
 | 对象存储 adapter | 多节点共享大型素材 | 需要兼容当前内容 hash 校验，且本地文件 adapter 仍为默认 |
-| 运行状态聚合 | 运维查看 PostgreSQL、RabbitMQ、作品运行时和磁盘状态 | 只暴露状态与脱敏错误，不返回连接串或密钥 |
-| 定时备份导出 | 长期运行的创作服务器 | 复用 `.boxproject` 导出和快照校验，不直接复制正在写入的目录 |
 
 单机部署不应为了“看起来与线上一致”强制启用 Redis、RabbitMQ、PostgreSQL 或 Kubernetes。
 只有出现第二个实际 adapter（例如内存与 Redis）或多实例需求时，才应增加对应 seam。

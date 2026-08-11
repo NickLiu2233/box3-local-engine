@@ -648,10 +648,7 @@ export class ScriptHost {
             (this._state.settings.groupId &&
               this._state.settings.groupId.toString()) ||
             (config.method === 'local' &&
-              (config.groupStorageNamespace ||
-                config.dataStorageNamespace ||
-                this._state.settings.containerName ||
-                `local-${this._state.settings.contentId}`)) ||
+              (config.groupStorageNamespace || 'global')) ||
             '';
 
           // copy resources

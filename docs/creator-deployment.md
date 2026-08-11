@@ -167,8 +167,7 @@ PERMISSION_TOKEN_SECRET=
 | `BOX_CREATOR_ALLOWED_HOSTS` | 空 | 额外允许访问创作 API 的本地域名，逗号分隔 |
 | `BOX_SESSION_TTL_MS` | `60000` | 编辑/预览 Session 的有效时间 |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
-| `BOX_DATA_STORAGE_DRIVER` | `legacy` | 设为 `postgres` 后使用服主 PostgreSQL 测试数据空间 |
-| `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串，只进入游戏服务端 |
+| `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只进入游戏服务端 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧 edit 数据时填写原作品 ID |
 | `BOX_PAID_ACCESS` | `false` | 启用 boxes 兼容的商城事件能力 |
 | `RABBITMQ_HOST_URL` | 空 | RabbitMQ AMQP 连接串；需同时启用 `BOX_PAID_ACCESS` |

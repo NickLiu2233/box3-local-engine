@@ -154,6 +154,10 @@ function dataStorageNamespace(id, allowExplicit = true) {
   return `${prefix}${id || 'default'}`
 }
 
+function groupStorageNamespace() {
+  return process.env.BOX_GROUP_STORAGE_NAMESPACE || 'global'
+}
+
 function validateDefaultAvatar() {
   const manifestPath = fs.existsSync(defaultAvatarManifest)
     ? defaultAvatarManifest
@@ -239,6 +243,7 @@ function makeRuntimeDataReadable(root) {
 let playLibrary
 let editLibrary
 let creatorPlayLibrary
+let backupTimer
 
 function shutdown(code = 0) {
   if (shuttingDown) return
@@ -249,6 +254,7 @@ function shutdown(code = 0) {
   if (playLibrary) playLibrary.stop().catch(() => {})
   if (editLibrary) editLibrary.stop().catch(() => {})
   if (creatorPlayLibrary) creatorPlayLibrary.stop().catch(() => {})
+  if (backupTimer) clearInterval(backupTimer)
   setTimeout(() => {
     if (disposablePlayDataRoot) {
       fs.rmSync(disposablePlayDataRoot, { recursive: true, force: true })
@@ -426,6 +432,9 @@ async function main() {
             process.env.BOX_SERVER_CONTENT_ID ||
             'default'
           ),
+          // getGroupStorage is shared by every map in this deployment and
+          // must never fall back to the per-map data storage namespace.
+          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(),
           BOX_SERVER_NAME:
             process.env.BOX_WORLD_NAME ||
             process.env.BOX_SERVER_NAME ||
@@ -468,6 +477,7 @@ async function main() {
           // single data namespace. Server owners can add a prefix, while the
           // actual world id always remains part of the namespace.
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(world.id, false),
+          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
@@ -578,6 +588,49 @@ async function main() {
       waitForRuntime: waitFor,
     })
     await Promise.all([editLibrary.ready, creatorPlayLibrary.ready])
+
+    const backupConfiguration = projectManager.getBackupConfiguration()
+    if (backupConfiguration.enabled) {
+      let backupRunning = false
+      const runAutomaticBackup = async () => {
+        if (backupRunning || shuttingDown) return
+        backupRunning = true
+        try {
+          for (const project of projectManager.listProjects()) {
+            await new Promise((resolve) => {
+              const request = http.request({
+                hostname: '127.0.0.1',
+                port: editPort,
+                path: `/${encodeURIComponent(project.id)}/internal/save-local-project`,
+                method: 'POST',
+                timeout: 10_000,
+              }, (response) => {
+                response.resume()
+                response.on('end', resolve)
+              })
+              request.on('timeout', () => request.destroy())
+              request.on('error', resolve)
+              request.end()
+            })
+          }
+          const result = projectManager.runProjectBackups('automatic')
+          if (result.failed?.length) {
+            console.warn(`Automatic project backup completed with ${result.failed.length} failure(s).`)
+          }
+        } catch (error) {
+          console.error(`Automatic project backup failed: ${error.message}`)
+        } finally {
+          backupRunning = false
+        }
+      }
+      const intervalMs = backupConfiguration.intervalMinutes * 60 * 1000
+      backupTimer = setInterval(runAutomaticBackup, intervalMs)
+      backupTimer.unref()
+      setTimeout(runAutomaticBackup, 15_000).unref()
+      console.log(
+        `Automatic project backup enabled: every ${backupConfiguration.intervalMinutes} minute(s), keep ${backupConfiguration.retentionCount} per project.`
+      )
+    }
   }
 
   let editStarted = false

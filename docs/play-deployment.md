@@ -446,8 +446,7 @@ docker compose up -d
 | `BOX_TRUST_PROXY` | `false` | 是否信任反向代理提供的客户端 IP 和协议头 |
 | `BOX_SESSION_TTL_MS` | `60000` | Session 在连接前的有效时间（毫秒） |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
-| `BOX_DATA_STORAGE_DRIVER` | `legacy` | 设为 `postgres` 后由服主 PostgreSQL 持久化脚本数据空间 |
-| `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串，只注入服务端容器 |
+| `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只注入服务端容器 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写旧 boxes 作品 ID |
 | `BOX_PAID_ACCESS` | `false` | 启用 boxes 兼容的跨实例下线和商城事件能力 |
 | `RABBITMQ_HOST_URL` | 空 | RabbitMQ AMQP 连接串；需同时启用 `BOX_PAID_ACCESS` |

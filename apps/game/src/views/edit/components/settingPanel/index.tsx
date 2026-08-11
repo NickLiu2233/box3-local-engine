@@ -117,13 +117,10 @@ export const SettingPanel = (props: Props) => {
 
   const _renderAbout = useCallback(() => {
     const runtime = clientConfig.localRuntimeInfo;
-    const storageDriver = runtime?.dataStorageDriver.toLowerCase();
     const dataStorage =
-      storageDriver === 'postgres' || storageDriver === 'postgresql'
+      runtime?.dataStorageBackend === 'postgres'
         ? intl.formatMessage({ id: 'aboutPostgresStorage' })
-        : storageDriver === 'legacy' || storageDriver === 'remote'
-          ? intl.formatMessage({ id: 'aboutLegacyStorage' })
-          : intl.formatMessage({ id: 'aboutLocalFileStorage' });
+        : intl.formatMessage({ id: 'aboutLocalFileStorage' });
     const configured = (value?: boolean) =>
       intl.formatMessage({
         id: value ? 'aboutConfigured' : 'aboutNotConfigured',

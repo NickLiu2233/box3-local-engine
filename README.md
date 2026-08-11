@@ -210,8 +210,7 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
 | `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 每个 IP 每分钟创建 Session 上限 |
-| `BOX_DATA_STORAGE_DRIVER` | `legacy` | 服主设为 `postgres` 后启用持久化数据空间 |
-| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串，只进入服务端 |
+| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧数据时填写原作品 ID，沿用旧式双表表名 |
 | `REDIS_HOST` | 空 | Redis adapter 预留；当前保持为空，不会自动启用缓存 |
 | `BOX_PAID_ACCESS` | `false` | 与 boxes 一致，允许启用商城事件等付费能力 |

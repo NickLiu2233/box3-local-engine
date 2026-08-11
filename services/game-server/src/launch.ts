@@ -72,7 +72,11 @@ async function go() {
     containerName: serverConfig.containerName,
     playerLimit: serverConfig.playerLimit,
     storageMode: serverConfig.storageMode || 'local',
-    dataStorageDriver: serverConfig.dataStorageDriver || 'legacy',
+    dataStorage: serverConfig.databaseUrl
+      ? 'postgres'
+      : serverConfig.method === 'local'
+        ? 'local'
+        : 'remote',
     debug: serverConfig.debug,
   });
   initApis(serverConfig);

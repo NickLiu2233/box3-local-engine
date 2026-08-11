@@ -18,6 +18,7 @@ const voxaDataRoot =
   process.env.BOX_LOCAL_VOXA_DATA_PATH || path.join(packageRoot, '../voxa/data')
 const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
+const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packageRoot, 'backups')
 const snapshotLimit = 5
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
@@ -781,6 +782,209 @@ function exportProject(id) {
   return { archivePath, filename, name: metadata.name }
 }
 
+function positiveInteger(value, fallback, minimum = 1, maximum = Number.MAX_SAFE_INTEGER) {
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed < minimum) return fallback
+  return Math.min(parsed, maximum)
+}
+
+function getBackupConfiguration() {
+  return {
+    enabled: /^(1|true|yes|on)$/i.test(process.env.BOX_AUTO_BACKUP_ENABLED || ''),
+    intervalMinutes: positiveInteger(process.env.BOX_AUTO_BACKUP_INTERVAL_MINUTES, 60, 1, 10080),
+    retentionCount: positiveInteger(process.env.BOX_AUTO_BACKUP_RETENTION_COUNT, 24, 1, 1000),
+    retentionDays: positiveInteger(process.env.BOX_AUTO_BACKUP_RETENTION_DAYS, 30, 1, 3650),
+    backupRoot: projectBackupRoot,
+  }
+}
+
+function backupStatusPath() {
+  return path.join(projectBackupRoot, '.status.json')
+}
+
+function readBackupStatus() {
+  const fallback = {
+    state: 'idle',
+    lastStartedAt: '',
+    lastCompletedAt: '',
+    completedProjects: 0,
+    totalProjects: 0,
+    created: 0,
+    skipped: 0,
+    failed: [],
+  }
+  try {
+    return readJSON(backupStatusPath(), fallback)
+  } catch (error) {
+    return { ...fallback, state: 'warning', failed: [{ projectId: '', projectName: '备份状态', message: error.message }] }
+  }
+}
+
+function writeBackupStatus(value) {
+  writeJSON(backupStatusPath(), value)
+  return value
+}
+
+function backupDirectory(id) {
+  return path.join(projectBackupRoot, assertProjectId(id))
+}
+
+function pruneProjectBackups(id, configuration = getBackupConfiguration()) {
+  const root = backupDirectory(id)
+  if (!fs.existsSync(root)) return
+  const expiresBefore = Date.now() - configuration.retentionDays * 24 * 60 * 60 * 1000
+  const backups = fs.readdirSync(root)
+    .filter((name) => name.endsWith('.boxproject'))
+    .map((name) => ({ name, path: path.join(root, name), stat: fs.statSync(path.join(root, name)) }))
+    .sort((left, right) => right.stat.mtimeMs - left.stat.mtimeMs)
+  for (const [index, backup] of backups.entries()) {
+    if (index >= configuration.retentionCount || backup.stat.mtimeMs < expiresBefore) {
+      fs.rmSync(backup.path, { force: true })
+    }
+  }
+}
+
+function parseProjectBackup(id, name) {
+  const target = path.join(backupDirectory(id), name)
+  const match = name.match(/^(\d{14})-([a-z0-9-]+)-([a-f0-9]{16})\.boxproject$/i)
+  if (!match || !fs.existsSync(target)) return undefined
+  const [, compactTimestamp, reason, signature] = match
+  return {
+    name,
+    projectId: id,
+    reason,
+    signature,
+    createdAt: `${compactTimestamp.slice(0, 4)}-${compactTimestamp.slice(4, 6)}-${compactTimestamp.slice(6, 8)}T${compactTimestamp.slice(8, 10)}:${compactTimestamp.slice(10, 12)}:${compactTimestamp.slice(12, 14)}.000Z`,
+    size: fs.statSync(target).size,
+  }
+}
+
+function listProjectBackups(id) {
+  getProject(id)
+  const root = backupDirectory(id)
+  if (!fs.existsSync(root)) return []
+  return fs.readdirSync(root)
+    .filter((name) => name.endsWith('.boxproject'))
+    .sort()
+    .reverse()
+    .map((name) => parseProjectBackup(id, name))
+    .filter(Boolean)
+}
+
+function resolveProjectBackup(id, requestedName) {
+  getProject(id)
+  if (typeof requestedName !== 'string' || path.basename(requestedName) !== requestedName) {
+    throw new Error('备份文件名无效')
+  }
+  const backup = parseProjectBackup(id, requestedName)
+  if (!backup) throw new Error('工程备份不存在')
+  return { ...backup, archivePath: path.join(backupDirectory(id), requestedName) }
+}
+
+function createProjectBackup(id, reason = 'automatic') {
+  if (!/^[a-z0-9-]+$/i.test(reason || '')) throw new Error('备份原因无效')
+  const metadata = getProject(id)
+  const sourceRoot = path.join(projectRoot(id), 'source')
+  const validation = validateProjectSource(sourceRoot)
+  if (!validation.ok || !validation.initialized) {
+    return { created: false, projectId: id, reason: 'uninitialized', validation }
+  }
+  const signature = crypto.createHash('sha256')
+    .update(stableStringify({ metadata, state: validation.state }))
+    .digest('hex')
+    .slice(0, 16)
+  const root = backupDirectory(id)
+  fs.mkdirSync(root, { recursive: true })
+  const existing = fs.readdirSync(root).find((name) => name.endsWith(`-${signature}.boxproject`))
+  if (existing) {
+    pruneProjectBackups(id)
+    return { created: false, projectId: id, archivePath: path.join(root, existing), validation }
+  }
+  createProjectSnapshot(id, reason === 'manual' ? 'manual' : 'automatic')
+  const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+  const archivePath = path.join(root, `${timestamp}-${reason}-${signature}.boxproject`)
+  const temporaryPath = `${archivePath}.${process.pid}.tmp`
+  try {
+    runTar(['-czf', temporaryPath, '-C', projectRoot(id), 'project.json', 'source'], '无法创建工程备份')
+    archiveEntriesAreSafe(temporaryPath)
+    fs.renameSync(temporaryPath, archivePath)
+  } finally {
+    fs.rmSync(temporaryPath, { force: true })
+  }
+  pruneProjectBackups(id)
+  return { created: true, projectId: id, archivePath, validation }
+}
+
+function acquireBackupLock() {
+  fs.mkdirSync(projectBackupRoot, { recursive: true })
+  const lockPath = path.join(projectBackupRoot, '.backup.lock')
+  try {
+    fs.mkdirSync(lockPath)
+  } catch (error) {
+    if (error?.code !== 'EEXIST') throw error
+    const age = Date.now() - fs.statSync(lockPath).mtimeMs
+    if (age < 6 * 60 * 60 * 1000) return undefined
+    fs.rmSync(lockPath, { recursive: true, force: true })
+    fs.mkdirSync(lockPath)
+  }
+  return () => fs.rmSync(lockPath, { recursive: true, force: true })
+}
+
+function runProjectBackups(reason = 'automatic') {
+  const releaseLock = acquireBackupLock()
+  if (!releaseLock) return { running: true, status: readBackupStatus() }
+  const projects = listProjects()
+  const startedAt = new Date().toISOString()
+  let created = 0
+  let skipped = 0
+  const failed = []
+  let completedProjects = 0
+  try {
+    writeBackupStatus({
+      state: 'running',
+      lastStartedAt: startedAt,
+      lastCompletedAt: readBackupStatus().lastCompletedAt || '',
+      completedProjects,
+      totalProjects: projects.length,
+      created,
+      skipped,
+      failed,
+    })
+    for (const project of projects) {
+      try {
+        const result = createProjectBackup(project.id, reason)
+        if (result.created) created += 1
+        else skipped += 1
+      } catch (error) {
+        failed.push({ projectId: project.id, projectName: project.name, message: error.message })
+      }
+      completedProjects += 1
+      writeBackupStatus({
+        state: 'running',
+        lastStartedAt: startedAt,
+        lastCompletedAt: readBackupStatus().lastCompletedAt || '',
+        completedProjects,
+        totalProjects: projects.length,
+        created,
+        skipped,
+        failed,
+      })
+    }
+    return writeBackupStatus({
+      state: failed.length ? 'warning' : 'ready',
+      lastStartedAt: startedAt,
+      lastCompletedAt: new Date().toISOString(),
+      completedProjects,
+      totalProjects: projects.length,
+      created,
+      skipped,
+      failed,
+    })
+  } finally {
+    releaseLock()
+  }
+}
+
 function archiveEntriesAreSafe(archivePath) {
   const entries = runTar(['-tzf', archivePath], 'Unable to read project archive').trim().split('\n').filter(Boolean)
   if (!entries.includes('project.json') || !entries.some((entry) => entry === 'source/' || entry.startsWith('source/'))) {
@@ -1130,18 +1334,18 @@ function packageProject(reference, outputDirectory, options = {}) {
     })
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'compose.yml'),
-      `services:\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:-}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_DATA_STORAGE_DRIVER: \${BOX_DATA_STORAGE_DRIVER:-legacy}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:-}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-}\n    ports:\n      - \"\${BOX_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n`,
+      `services:\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:-}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:-}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-global}\n    ports:\n      - \"\${BOX_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n`,
     )
     const composePath = path.join(temporaryBundleRoot, 'compose.yml')
     const offlineCompose = fs.readFileSync(composePath, 'utf8')
       .replace('BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}', 'BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: ${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: ${BOX_LOCAL_PLAYER_ID:-10000001}')
-      .replace('BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-legacy}', 'BOX_DATA_STORAGE_DRIVER: ${BOX_DATA_STORAGE_DRIVER:-local}\n      BOX_DATA_STORAGE_PATH: /app/storage')
-      .replace('BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}', 'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-}\n      PAID_ACCESS: ${BOX_PAID_ACCESS:-false}\n      RABBITMQ_HOST_URL: ${RABBITMQ_HOST_URL:-}')
+      .replace('BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}', 'BOX_DATA_STORAGE_PATH: /app/storage\n      BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}')
+      .replace('BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}', 'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}\n      PAID_ACCESS: ${BOX_PAID_ACCESS:-false}\n      RABBITMQ_HOST_URL: ${RABBITMQ_HOST_URL:-}')
       .replace('          create_host_path: false\n', '          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n')
     fs.writeFileSync(composePath, offlineCompose)
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'README.md'),
-      `# ${manifest.projectName} ${target.version}\n\n作者：${manifest.author || '未署名'}\n\n${manifest.description || '暂无作品简介。'}\n\n这是一个只读游玩发布包，不包含作品的 \`source/\` 工程目录、编辑器或创作管理器。镜像架构为 \`${playImageConfig.platform}\`。\n\n## 部署\n\n1. 执行 \`docker load -i play-image.tar\`。\n2. 执行 \`docker compose up -d\`。\n3. 玩家打开 \`http://服务器地址:3000/\`。\n\n如需修改端口，可在同目录创建 \`.env\` 并填写 \`BOX_PORT=新端口\`。网页、地图资源和联机连接均使用这一个地址，不需要再配置或开放其他端口。\n\n需要持久化游戏脚本的数据空间时，由服主在同一个 \`.env\` 中配置 \`BOX_DATA_STORAGE_DRIVER=postgres\` 和 \`BOX_DATABASE_URL\`。数据库凭据只会传入服务端容器，不会发送给玩家浏览器。\n\n\`world/\` 是 ${target.version} 的不可变世界快照，并以只读方式挂载，不能被 Local Engine 直接当作可编辑工程导入。可信服主仍可读取运行所需的世界数据，因此不要把未发布素材或真正的服务器秘密放进作品资源。\n`,
+      `# ${manifest.projectName} ${target.version}\n\n作者：${manifest.author || '未署名'}\n\n${manifest.description || '暂无作品简介。'}\n\n这是一个只读游玩发布包，不包含作品的 \`source/\` 工程目录、编辑器或创作管理器。镜像架构为 \`${playImageConfig.platform}\`。\n\n## 部署\n\n1. 执行 \`docker load -i play-image.tar\`。\n2. 执行 \`docker compose up -d\`。\n3. 玩家打开 \`http://服务器地址:3000/\`。\n\n如需修改端口，可在同目录创建 \`.env\` 并填写 \`BOX_PORT=新端口\`。网页、地图资源和联机连接均使用这一个地址，不需要再配置或开放其他端口。\n\n默认使用包内的本地文件数据空间。需要由 PostgreSQL 持久化游戏脚本数据时，服主只需在同一个 \`.env\` 中填写 \`BOX_DATABASE_URL\`；数据库凭据只会传入服务端容器，不会发送给玩家浏览器。\n\n\`world/\` 是 ${target.version} 的不可变世界快照，并以只读方式挂载，不能被 Local Engine 直接当作可编辑工程导入。可信服主仍可读取运行所需的世界数据，因此不要把未发布素材或真正的服务器秘密放进作品资源。\n`,
     )
     fs.renameSync(temporaryBundleRoot, bundleRoot)
   } catch (error) {
@@ -1162,6 +1366,13 @@ module.exports = {
   createProject,
   deleteProject,
   exportProject,
+  createProjectBackup,
+  getBackupConfiguration,
+  listProjectBackups,
+  resolveProjectBackup,
+  pruneProjectBackups,
+  readBackupStatus,
+  runProjectBackups,
   exportPlayBundle,
   getLaunchTarget,
   getProject,

@@ -28,9 +28,10 @@ SQL 权限。这样可以避免不可信地图脚本读取数据库中的其他�
 在运行 `docker compose` 的目录创建 `.env`：
 
 ```env
-BOX_DATA_STORAGE_DRIVER=postgres
 BOX_DATABASE_URL=postgresql://box_game:请替换密码@数据库地址:5432/box_game
 ```
+
+填写 `BOX_DATABASE_URL` 后会自动启用 PostgreSQL；留空时自动使用本地文件数据空间。
 
 然后重新创建容器：
 
@@ -53,7 +54,6 @@ docker compose --profile creator up -d --no-build creator
 ## 3. 完整配置
 
 ```env
-BOX_DATA_STORAGE_DRIVER=postgres
 BOX_DATABASE_URL=postgresql://box_game:请替换密码@db.example.com:5432/box_game
 BOX_DATABASE_SCHEMA=box_engine
 BOX_DATABASE_POOL_SIZE=10
@@ -62,13 +62,12 @@ BOX_DATABASE_SSL_REJECT_UNAUTHORIZED=true
 BOX_DATA_STORAGE_LOCK_TIMEOUT_MS=10000
 BOX_DATA_STORAGE_NAMESPACE=
 BOX_DATA_STORAGE_NAMESPACE_PREFIX=
-BOX_GROUP_STORAGE_NAMESPACE=
+BOX_GROUP_STORAGE_NAMESPACE=global
 ```
 
 | 变量 | 默认值 | 说明 |
 |---|---|---|
-| `BOX_DATA_STORAGE_DRIVER` | `legacy` | 设为 `postgres` 才启用 PostgreSQL |
-| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串 |
+| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；非空时自动启用 PostgreSQL |
 | `BOX_DATABASE_SCHEMA` | `box_engine` | 自动建表使用的 schema，必须是小写标识符 |
 | `BOX_DATABASE_POOL_SIZE` | `10` | 每个运行中的地图进程最大连接数 |
 | `BOX_DATABASE_SSL` | `false` | 托管数据库通常需要设为 `true` |
@@ -76,12 +75,17 @@ BOX_GROUP_STORAGE_NAMESPACE=
 | `BOX_DATA_STORAGE_LOCK_TIMEOUT_MS` | `10000` | 脚本 `update` 事务锁的最长保留时间 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写原作品 ID，例如 `100010141` |
 | `BOX_DATA_STORAGE_NAMESPACE_PREFIX` | 空 | 多套私服共用数据库时使用的命名空间前缀 |
-| `BOX_GROUP_STORAGE_NAMESPACE` | 空 | 需要跨作品共享 group storage 时使用的稳定标识 |
+| `BOX_GROUP_STORAGE_NAMESPACE` | `global` | `getGroupStorage` 使用的实例级共享标识；所有地图应保持一致 |
 
 不建议把 `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` 设为 `false`。只有数据库供应商明确使用
 无法由系统信任链验证的证书时才临时关闭验证。
 
 ## 4. 数据隔离方式
+
+- `world.getDataStorage(name)` 使用每张地图自己的 namespace，其他地图无法访问。
+- `world.getGroupStorage(name)` 使用实例级 `BOX_GROUP_STORAGE_NAMESPACE`，默认是
+  `global`，同一部署中的所有地图都能访问。
+- 两类空间即使传入相同的 `name` 也使用不同的表，不会互相覆盖。
 
 表名沿用旧 boxes 格式。以作品 ID `100010141` 和数据空间 `player` 为例：
 
@@ -151,9 +155,10 @@ PostgreSQL legacy-compatible data storage ready
 关闭 PostgreSQL 数据空间：
 
 ```env
-BOX_DATA_STORAGE_DRIVER=legacy
 BOX_DATABASE_URL=
 ```
+
+留空后自动恢复为本地文件数据空间，不需要选择驱动。
 
 从旧 boxes 数据库迁移时，先把对应主表与 `_keys` 表恢复到配置的 schema，然后设置：
 

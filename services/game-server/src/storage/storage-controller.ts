@@ -39,9 +39,7 @@ export class StorageController {
     this.state.storage.sql = spec.sql;
     this.protocol = spec.server.protocol(StorageProtocol);
     const config = getConfigSync();
-    const dataStorageDriver = String(config.dataStorageDriver || 'local')
-      .trim()
-      .toLowerCase();
+    const usePostgres = Boolean(String(config.databaseUrl || '').trim());
     const projectNamespace = String(
         config.dataStorageNamespace ||
         config.containerName ||
@@ -49,9 +47,9 @@ export class StorageController {
         'default',
       );
     const groupNamespace = String(
-      config.groupStorageNamespace || config.groupId || projectNamespace,
+      config.groupStorageNamespace || config.groupId || 'global',
     );
-    if (dataStorageDriver === 'postgres' || dataStorageDriver === 'postgresql') {
+    if (usePostgres) {
       this.dbServer = new PostgresDataStorage({
         connectionString: config.databaseUrl,
         schema: config.databaseSchema,
@@ -64,7 +62,7 @@ export class StorageController {
         lockTimeoutMs: config.dataStorageLockTimeoutMs,
         logger: this.state.logger,
       });
-    } else if (dataStorageDriver === 'local' || dataStorageDriver === 'file') {
+    } else if (config.method === 'local') {
       this.dbServer = new LocalDataStorage({
         storagePath: config.dataStoragePath || config.storagePath,
         projectNamespace,
@@ -73,12 +71,8 @@ export class StorageController {
         lockTimeoutMs: config.dataStorageLockTimeoutMs,
         logger: this.state.logger,
       });
-    } else if (dataStorageDriver === 'legacy' || dataStorageDriver === 'remote') {
-      this.dbServer = new JavaDataStorage(this.state.logger);
     } else {
-      throw new Error(
-        `Unsupported BOX_DATA_STORAGE_DRIVER: ${config.dataStorageDriver}`,
-      );
+      this.dbServer = new JavaDataStorage(this.state.logger);
     }
     this._dbServerReady = this.dbServer.connect();
     this._limiters = new StorageLimiters();

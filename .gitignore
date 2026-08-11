@@ -18,6 +18,7 @@ apps/local-engine/data/blobs/*
 !apps/local-engine/data/blobs/.gitkeep
 apps/local-engine/projects/
 apps/local-engine/dist/
+apps/local-engine/backups/
 apps/local-engine/play-worlds/*
 !apps/local-engine/play-worlds/.gitkeep
 apps/local-engine/.build-lock/

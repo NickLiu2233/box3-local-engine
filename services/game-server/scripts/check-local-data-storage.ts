@@ -8,11 +8,11 @@ import { LocalDataStorage } from '../src/storage/local-data-storage';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-local-storage-test-'));
 const logger = { log() {}, error() {} } as any;
 
-async function create() {
+async function create(projectNamespace = 'project-a') {
   const storage = new LocalDataStorage({
     storagePath: root,
-    projectNamespace: 'project-a',
-    groupNamespace: 'group-a',
+    projectNamespace,
+    groupNamespace: 'global',
     mode: 'play',
     lockTimeoutMs: 2000,
     logger,
@@ -41,6 +41,19 @@ async function main() {
   await storage.set('group', 'shared', 'alice', 'group-value');
   assert.equal(await storage.get('project', 'shared', 'alice'), undefined);
   assert.equal((await storage.get('group', 'shared', 'alice'))?.value, 'group-value');
+
+  const otherProject = await create('project-b');
+  assert.equal(
+    await otherProject.get('project', 'counter', 'visits'),
+    undefined,
+    'getDataStorage must be isolated by project',
+  );
+  assert.equal(
+    (await otherProject.get('group', 'shared', 'alice'))?.value,
+    'group-value',
+    'getGroupStorage must be shared by all projects',
+  );
+  await otherProject.close();
   assert.equal((await storage.remove('project', 'player', 'alice'))?.key, 'alice');
   assert.equal(await storage.get('project', 'player', 'alice'), undefined);
   await storage.close();

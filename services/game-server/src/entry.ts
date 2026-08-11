@@ -319,7 +319,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
       res.end(JSON.stringify({
         status: 'ok',
         runtime: 'ready',
-        storage: spec.dataStorageDriver || 'legacy',
+        storage: spec.databaseUrl ? 'postgres' : isLocal ? 'local' : 'remote',
       }));
     },
   };

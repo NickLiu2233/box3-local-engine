@@ -78,23 +78,17 @@ function validateLocalRuntimeEnvironment(config: EnvConfig): void {
     );
   }
 
-  const storageDriver = String(config.dataStorageDriver || 'local').toLowerCase();
-  if (
-    (storageDriver === 'postgres' || storageDriver === 'postgresql') &&
-    !String(config.databaseUrl || '').trim()
-  ) {
-    throw new Error(
-      '本地配置错误：BOX_DATA_STORAGE_DRIVER=postgres 时必须配置 BOX_DATABASE_URL。',
-    );
-  }
-
-  if (
-    (storageDriver === 'legacy' || storageDriver === 'remote') &&
-    !String(config.INTRANET_STORAGE_BACKEND_SERVER_URL || '').trim()
-  ) {
-    throw new Error(
-      '本地配置错误：legacy/remote Storage 需要 INTRANET_STORAGE_BACKEND_SERVER_URL；纯本地运行请设置 BOX_DATA_STORAGE_DRIVER=local。',
-    );
+  const databaseUrl = String(config.databaseUrl || '').trim();
+  if (databaseUrl) {
+    let protocol = '';
+    try {
+      protocol = new URL(databaseUrl).protocol;
+    } catch {
+      throw new Error('本地配置错误：BOX_DATABASE_URL 不是有效的 PostgreSQL 连接串。');
+    }
+    if (protocol !== 'postgres:' && protocol !== 'postgresql:') {
+      throw new Error('本地配置错误：BOX_DATABASE_URL 只支持 postgres:// 或 postgresql://。');
+    }
   }
 }
 

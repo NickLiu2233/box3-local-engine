@@ -30,7 +30,6 @@ PostgreSQL 已接入地图脚本的 `game.storage` 数据空间，可保存玩�
 
 ```env
 BOX_POSTGRES_PASSWORD=替换为强密码
-BOX_DATA_STORAGE_DRIVER=postgres
 BOX_DATABASE_URL=postgresql://box:替换为强密码@postgres:5432/box
 ```
 
@@ -41,7 +40,8 @@ pnpm infra
 docker compose --profile creator up -d --no-build creator
 ```
 
-也可以不启动仓库内的 PostgreSQL，直接把 `BOX_DATABASE_URL` 指向用户自己的数据库。
+也可以不启动仓库内的 PostgreSQL，直接把 `BOX_DATABASE_URL` 指向用户自己的数据库。连接串
+非空时自动使用 PostgreSQL，留空时自动使用本地文件数据空间，不再需要单独选择驱动。
 完整的 schema、SSL、连接池、旧 boxes 数据表兼容和备份说明见
 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。
 
@@ -116,6 +116,29 @@ pnpm creator:up
 - 每个可选基础设施都必须有本地默认 adapter；
 - 未接入的配置必须明确标注为预留，避免出现“配置了但实际上没生效”；
 - 多作品共享数据库时继续使用作品 namespace 隔离数据。
+
+## 运行状态中心与自动备份
+
+创作端作品页的“运行状态”会真实探测 VOXA、PostgreSQL、Redis、RabbitMQ、磁盘空间以及每个
+工程的编辑/游玩运行时。未配置的可选服务显示为“未启用”，不会被误报成故障；页面不会返回
+数据库连接串、密码或消息队列凭据。
+
+自动备份默认关闭。长期运行的创作服务器可以在 `.env` 中开启：
+
+```env
+BOX_AUTO_BACKUP_ENABLED=true
+BOX_AUTO_BACKUP_INTERVAL_MINUTES=60
+BOX_AUTO_BACKUP_RETENTION_COUNT=24
+BOX_AUTO_BACKUP_RETENTION_DAYS=30
+BOX_PROJECT_BACKUP_PATH=/app/apps/local-engine/backups
+```
+
+每份备份都是经过工程结构检查的 `.boxproject`，可以直接从作品管理器重新导入。备份任务会先
+请求已打开的编辑器保存，然后按工程逐一生成；未初始化或内容未变化的工程会跳过，单个工程
+失败不会中断其他工程。保留数量和保留天数会同时生效，任一条件超出即清理旧备份。
+
+Docker Creator 会把 `apps/local-engine/backups` 挂载为持久目录。也可以在运行状态页点击
+“立即备份全部工程”，并查看任务进度与逐工程失败信息。
 
 ## 数据维护
 

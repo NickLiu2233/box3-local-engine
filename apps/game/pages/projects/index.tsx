@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import {
   ChevronDown,
+  Activity,
   Clock3,
   Download,
   FolderOpen,
@@ -659,6 +660,9 @@ export default function ProjectsPage() {
             <h1 id="page-title">作品</h1>
           </div>
           <div className={styles.titleActions}>
+            <a className={styles.importButton} href="/system">
+              <Activity size={16} /> 运行状态
+            </a>
             <button className={styles.importButton} disabled={Boolean(importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error')} onClick={() => importInputRef.current?.click()}>
               <Upload size={16} /> 导入工程
             </button>
