@@ -126,6 +126,281 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+.runtimeStatusIcon {
+  color: var(--color-white-60);
+}
+
+.runtimeStatusContainer {
+  padding-bottom: 8px;
+  color: var(--color-white);
+}
+
+.runtimeStatusHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-white-15);
+}
+
+.runtimeStatusHeader > div,
+.creatorStatusCard {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.runtimeStatusHeader strong,
+.creatorStatusCard strong {
+  font-size: var(--text-h2);
+}
+
+.runtimeStatusHeader button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--color-white-15);
+  border-radius: 7px;
+  color: var(--color-white-80);
+  background: var(--color-white-10);
+  font-size: var(--text-h4);
+  transition: background-color 160ms cubic-bezier(0.23, 1, 0.32, 1), transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.runtimeStatusHeader button:active {
+  transform: scale(0.97);
+}
+
+.runtimeStatusHeader button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+  transform: none;
+}
+
+.runtimeStatusDot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #78c95d;
+  box-shadow: 0 0 0 3px rgba(120, 201, 93, 0.12);
+}
+
+.runtimeStatusDotWarning {
+  background: #f0b84b;
+  box-shadow: 0 0 0 3px rgba(240, 184, 75, 0.12);
+}
+
+.runtimeStatusDotDisabled {
+  background: var(--color-white-30);
+  box-shadow: none;
+}
+
+.runtimeStatusSectionTitle {
+  padding: 15px 0 7px;
+  color: var(--color-white-30);
+  font-size: var(--text-h4);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.creatorStatusCard {
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--color-white-10);
+}
+
+.creatorStatusCard > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.creatorStatusCard small,
+.runtimeCard small {
+  overflow: hidden;
+  color: var(--color-white-30);
+  font-size: var(--text-h4);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtimeCardGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtimeCard {
+  display: grid;
+  min-width: 0;
+  min-height: 104px;
+  align-content: start;
+  gap: 8px;
+  padding: 11px;
+  border-radius: 8px;
+  background: var(--color-white-10);
+}
+
+.runtimeCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+
+.runtimeCardHeader strong {
+  font-size: var(--text-h3);
+}
+
+.runtimeCard p {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-white-60);
+  font-size: var(--text-h4);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtimeBadge {
+  padding: 3px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.runtimeHealthy { color: #9be7b0; background: rgba(82, 196, 116, 0.14); }
+.runtimeWarning { color: #ffd278; background: rgba(240, 184, 75, 0.14); }
+.runtimeUnhealthy { color: #ff9999; background: rgba(246, 82, 82, 0.13); }
+.runtimeDisabled { color: var(--color-white-60); background: var(--color-white-10); }
+
+.runtimeProgress {
+  overflow: hidden;
+  height: 3px;
+  border-radius: 99px;
+  background: var(--color-white-15);
+}
+
+.runtimeProgress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #ffdb00;
+  transition: width 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.runtimeServiceList {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--color-white-15);
+}
+
+.runtimeServiceList > div {
+  display: grid;
+  min-height: 39px;
+  grid-template-columns: auto 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--color-grey1);
+}
+
+.runtimeServiceList strong {
+  font-size: var(--text-h4);
+}
+
+.runtimeServiceList small {
+  overflow: hidden;
+  color: var(--color-white-30);
+  font-size: var(--text-h4);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtimeStatusDiagnostics,
+.runtimeStatusError {
+  margin-top: 11px;
+  padding: 9px 11px;
+  border: 1px solid rgba(240, 184, 75, 0.2);
+  border-radius: 8px;
+  color: #ffd278;
+  background: rgba(240, 184, 75, 0.07);
+  font-size: var(--text-h4);
+}
+
+.runtimeStatusDiagnostics p {
+  display: grid;
+  gap: 3px;
+  margin: 5px 0;
+  color: var(--color-white-60);
+}
+
+.runtimeStatusDiagnostics strong {
+  color: #ffd278;
+}
+
+.runtimeStatusError {
+  border-color: rgba(246, 82, 82, 0.25);
+  color: #ff9999;
+  background: rgba(246, 82, 82, 0.08);
+}
+
+.runtimeStatusLink {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  margin-top: 13px;
+  color: #ffdb00;
+  font-size: var(--text-h4);
+}
+
+.runtimeStatusChecked {
+  margin-top: 8px;
+  color: var(--color-white-30);
+  font-size: 10px;
+  text-align: right;
+}
+
+.runtimeStatusLoading {
+  grid-template-columns: 1fr !important;
+  color: var(--color-white-30);
+  font-size: var(--text-h4);
+  text-align: center;
+}
+
+.runtimeSpin {
+  animation: runtimeSpin 1s linear infinite;
+}
+
+@keyframes runtimeSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .runtimeStatusHeader button:hover {
+    background: var(--color-white-15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .runtimeStatusHeader button,
+  .runtimeProgress span {
+    transition-duration: 0ms;
+  }
+
+  .runtimeSpin {
+    animation-duration: 1.5s;
+  }
+}
+
 .aboutContainer .link {
   cursor: pointer;
 }

@@ -34,19 +34,5 @@ export interface ClientRuntimeConfig {
    */
   toCheckPermissions: boolean;
 
-  /**
-   * 神策埋点服务地址
-   */
-  sensorsTrackUrl: string;
-  /**
-   * 神策埋点项目id
-   * 仅当appEdition为createra时存在。根据appRegion判断是createra还是box3
-   */
-  sensorsProjectId: SensorsProjectId;
   featureFlags: string[];
 }
-
-/**
- * 神策项目id
- */
-export type SensorsProjectId = 'createra' | 'box3';

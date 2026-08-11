@@ -44,8 +44,6 @@ export const getServerSideProps: GetServerSideProps<{
     appTitle: 'VOXA Local',
     websiteUrl: '/',
     toCheckPermissions: false,
-    sensorsTrackUrl: '',
-    sensorsProjectId: 'box3',
     featureFlags: [],
   };
 

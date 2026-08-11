@@ -44,6 +44,23 @@ function startEditLibrary({
   let nextPort = runtimePortStart
   let closed = false
 
+  const setStatus = (id, status) => {
+    const next = { ...status, updatedAt: new Date().toISOString() }
+    statuses.set(id, next)
+    return next
+  }
+
+  const runtimeStatus = (id, runtime, fallback) => ({
+    ...(statuses.get(id) || fallback),
+    ...(runtime && !runtime.exited
+      ? {
+          port: runtime.port,
+          pid: runtime.pid,
+          startedAt: runtime.startedAt,
+        }
+      : {}),
+  })
+
   async function stopRuntime(id) {
     const runtime = runtimes.get(id)
     if (!runtime) return
@@ -61,29 +78,29 @@ function startEditLibrary({
     }
     const current = runtimes.get(id)
     if (current && !current.exited) {
-      statuses.set(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
+      setStatus(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
       return current
     }
     if (starts.has(id)) return starts.get(id)
 
     const promise = (async () => {
-      statuses.set(id, { phase: 'starting', percent: 18, message: '正在创建独立运行时' })
+      setStatus(id, { phase: 'starting', percent: 18, message: '正在创建独立运行时' })
       const runtimePort = nextPort++
       const runtime = await startRuntime(project, runtimePort)
       runtimes.set(id, runtime)
       try {
-        statuses.set(id, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
+        setStatus(id, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
         await waitForRuntime(
           `http://127.0.0.1:${runtimePort}/api/health-check`,
           120,
         )
       } catch (error) {
         runtimes.delete(id)
-        statuses.set(id, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
+        setStatus(id, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
         await runtime.stop()
         throw error
       }
-      statuses.set(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
+      setStatus(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
       console.log(
         mode === 'play'
           ? `  Play project ready: /p/${id}`
@@ -102,11 +119,15 @@ function startEditLibrary({
       if (forwardedPath === '/__local_runtime/status') {
         const runtime = runtimes.get(id)
         if (runtime?.exited && statuses.get(id)?.phase === 'ready') {
-          statuses.set(id, { phase: 'error', percent: 0, message: '运行时异常退出' })
+          setStatus(id, { phase: 'error', percent: 0, message: '运行时异常退出' })
         }
-        const status = runtime && !runtime.exited
-          ? statuses.get(id) || { phase: 'ready', percent: 100, message: '运行时已就绪' }
-          : statuses.get(id) || { phase: 'idle', percent: 0, message: '等待启动' }
+        const status = runtimeStatus(
+          id,
+          runtime,
+          runtime && !runtime.exited
+            ? { phase: 'ready', percent: 100, message: '运行时已就绪' }
+            : { phase: 'idle', percent: 0, message: '等待启动', updatedAt: '' },
+        )
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify(status))
         return
@@ -119,7 +140,7 @@ function startEditLibrary({
         }
         void ensureRuntime(id).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(statuses.get(id) || { phase: 'starting', percent: 10, message: '正在启动' }))
+        res.end(JSON.stringify(statuses.get(id) || setStatus(id, { phase: 'starting', percent: 10, message: '正在启动' })))
         return
       }
       const existingRuntime = runtimes.get(id)

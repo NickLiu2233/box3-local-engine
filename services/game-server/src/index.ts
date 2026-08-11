@@ -79,7 +79,6 @@ import {
 } from './keyframes/keyframe-server';
 import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
 import { InputServer } from './input/server-input-controller';
-import { RabbitMQ } from './mq/rabbitMQ';
 import { PlayerServer } from './player/player-server';
 import { GameUIServer } from './game-ui/game-ui-server';
 import { BackendSocket } from '../backendSocket';
@@ -326,7 +325,6 @@ export class GameServer {
     settings: ServerSettings;
     sql: CommonSQL;
     brpc: BackendRPC;
-    mqServer: RabbitMQ;
     backendSocket: BackendSocket;
   }) {
     // 新的使用方式不建议走 GameState，建议根据需要区分 caller
@@ -351,11 +349,10 @@ export class GameServer {
     });
     this.net = new NetServer({
       server: this.server,
-      rabbitMQ: spec.mqServer,
       state: this.state,
       hotProject: spec.hotProject,
       connect: async (sessionId) => {
-        const data = this.session.getSessionData(sessionId);
+        const data = await this.session.getSessionData(sessionId);
         if (!data) {
           this.logger.warn(`Bad session data for sessionID=${sessionId}.`);
           this.net.kickSession(sessionId);
@@ -495,7 +492,6 @@ export class GameServer {
       sql: spec.sql,
       input: this.input,
       sound: this.sound,
-      rabbitMQ: spec.mqServer,
       player: this.player,
     });
     this.gameUI = new GameUIServer({

@@ -1,5 +1,3 @@
-import type { SensorsProjectId } from '../configs/runtime-client';
-
 export type UserInfo = {
   /**
    * 用户头像
@@ -15,5 +13,3 @@ export type UserInfo = {
    */
   isAdmin: boolean;
 };
-
-export type SensorsOptions = { projectID: SensorsProjectId };

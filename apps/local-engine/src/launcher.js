@@ -5,10 +5,16 @@ const http = require('http')
 const os = require('os')
 const path = require('path')
 const { spawn, spawnSync } = require('child_process')
-const projectManager = require('./project-manager')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
+const repoEnvPath = path.join(repoRoot, '.env')
+// Docker Compose already injects .env. Source launches should behave the same
+// way so optional PostgreSQL/Redis settings are not silently ignored.
+if (fs.existsSync(repoEnvPath) && typeof process.loadEnvFile === 'function') {
+  process.loadEnvFile(repoEnvPath)
+}
+const projectManager = require('./project-manager')
 const configPath = path.join(packageRoot, 'config/local.config.json')
 const defaultDataRoot = path.join(packageRoot, 'data')
 const generatedAsset = path.join(
@@ -372,7 +378,6 @@ async function main() {
     INTRANET_STORAGE_BACKEND_SERVER_URL: `http://127.0.0.1:${playPort}`,
     INTRANET_BOX_API_URL: `http://127.0.0.1:${playPort}`,
     BUILD_SERVER_URL: '',
-    RABBITMQ_HOST_URL: process.env.RABBITMQ_HOST_URL || '',
     REDIS_HOST: process.env.REDIS_HOST || '',
     REDIS_PORT: process.env.REDIS_PORT || '6379',
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || '',
@@ -487,6 +492,8 @@ async function main() {
     )
     const runtime = {
       port,
+      pid: child.pid,
+      startedAt: new Date().toISOString(),
       exited: false,
       async stop() {
         if (!runtime.exited) child.kill('SIGTERM')
@@ -539,6 +546,8 @@ async function main() {
     )
     const runtime = {
       port,
+      pid: child.pid,
+      startedAt: new Date().toISOString(),
       exited: false,
       async stop() {
         if (!runtime.exited) child.kill('SIGTERM')

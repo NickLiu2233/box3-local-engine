@@ -44,24 +44,6 @@ services:
       timeout: 5s
       retries: 20
 
-  rabbitmq:
-    profiles: [mq]
-    image: ${BOX_RABBITMQ_IMAGE:-rabbitmq:3-management-alpine}
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: ${BOX_RABBITMQ_USER:-box}
-      RABBITMQ_DEFAULT_PASS: ${BOX_RABBITMQ_PASSWORD:-local-box-change-me}
-    ports:
-      - "127.0.0.1:${BOX_RABBITMQ_HOST_PORT:-5672}:5672"
-      - "127.0.0.1:${BOX_RABBITMQ_MANAGEMENT_HOST_PORT:-15672}:15672"
-    volumes:
-      - box-rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
   creator:
     profiles: [creator]
     image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}
@@ -118,7 +100,6 @@ services:
       STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
       STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-240}
       PAID_ACCESS: ${BOX_PAID_ACCESS:-false}
-      RABBITMQ_HOST_URL: ${RABBITMQ_HOST_URL:-}
     ports:
       - "127.0.0.1:${BOX_CREATOR_PORT:-3002}:3000"
       - "127.0.0.1:9966:9966"
@@ -170,7 +151,6 @@ services:
       STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
       STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-240}
       PAID_ACCESS: ${BOX_PAID_ACCESS:-false}
-      RABBITMQ_HOST_URL: ${RABBITMQ_HOST_URL:-}
     ports:
       - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
     volumes:
@@ -244,5 +224,4 @@ services:
 volumes:
   box-postgres-data:
   box-redis-data:
-  box-rabbitmq-data:
   box-play-storage:

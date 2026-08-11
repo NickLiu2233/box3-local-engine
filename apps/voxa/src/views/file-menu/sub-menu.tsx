@@ -22,8 +22,6 @@ import EmptyListSvg from './empty-list.svg';
 import styles from './style.module.scss';
 import { downloadFile } from '../../utils/file';
 import { useAppSelector } from '../../redux/store';
-import { SensorsEventName } from '../../models/sensors/defs';
-import { sensorsTracker } from '../../models/sensors';
 import { LangType, isLangType, localeMap } from '../../utils/i18n';
 import { RootContext } from '../../root-context';
 import { apis } from '../../apis';
@@ -178,14 +176,6 @@ function createUploadInputElement(editor: VoxelEditor) {
       }
 
       const result = await editor.voxTool.loadMultipleParts(file);
-
-      sensorsTracker.track({
-        name: SensorsEventName.Import,
-        payload: {
-          is_success: result.isSuccess,
-          fail_reason: result.isSuccess ? undefined : result.body.msg,
-        },
-      });
 
       if (!result.isSuccess) {
         console.error(
@@ -348,14 +338,6 @@ function SubMenuExport() {
     }
 
     const { isSuccess, body } = await editor.gltfTool.generateGLTF();
-
-    sensorsTracker.track({
-      name: SensorsEventName.Export,
-      payload: {
-        is_success: isSuccess,
-        fail_reason: isSuccess ? undefined : body.msg,
-      },
-    });
 
     if (isSuccess) {
       downloadFile(body, `${projectName}.gltf`);

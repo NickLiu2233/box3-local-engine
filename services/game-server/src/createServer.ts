@@ -35,9 +35,9 @@ import type {
   LocalProjectSkinAction,
 } from './edit/replica/replica-server';
 import { GameServer } from './index';
-import { RabbitMQ } from './mq/rabbitMQ';
 import { NetLogServer } from './net-log/server';
 import { startPlayServer } from './play/play-server';
+import type { RuntimeRedisStore } from './redis/runtime-redis';
 import { getFakeUser } from './session/fake';
 import { GameSession } from './session/server';
 import { ServerSettings } from './settings/server-settings-schema';
@@ -89,7 +89,6 @@ export async function createGameServer(spec: {
   buildSystem: BuildSystemAPI;
   traces: SchemaTraceEntry[];
   brpc: BackendClientRPCNode;
-  mqServer: RabbitMQ;
   scriptServer: ScriptServer;
   prebake: PrebakeCache;
   httpRoutes: HttpRoutes;
@@ -100,6 +99,7 @@ export async function createGameServer(spec: {
   backendSocket: BackendSocket;
   pendingActions: ProjectAction[][];
   groupStore?: GroupProjectStore;
+  businessRedis?: RuntimeRedisStore;
 }) {
   const serverConfig = spec.serverConfig;
   const login = getLoginStr(serverConfig.login);
@@ -146,6 +146,8 @@ export async function createGameServer(spec: {
     spec.legacyLogger.create('session'),
     serverConfig.method === 'local',
     Math.max(5_000, serverConfig.sessionTtlMs),
+    spec.businessRedis,
+    serverConfig.groupStorageNamespace || String(serverConfig.groupId || 'global'),
   );
 
   // create the game server
@@ -216,7 +218,6 @@ export async function createGameServer(spec: {
       sql,
       voxels,
       brpc,
-      mqServer: spec.mqServer,
       contentId: serverConfig.contentId,
       backendSocket: spec.backendSocket,
       pendingActions: spec.pendingActions,
@@ -238,7 +239,6 @@ export async function createGameServer(spec: {
       settings: serverSettings,
       sql,
       brpc,
-      mqServer: spec.mqServer,
       backendSocket: spec.backendSocket,
       featureFlags: serverConfig.FEATURE_FLAGS || [],
     });
@@ -356,24 +356,6 @@ export async function createGameServer(spec: {
   const getHeader = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
 
-  const sessionAttempts = new Map<string, { count: number; resetAt: number }>();
-  const allowSessionAttempt = (ipAddress: string) => {
-    const now = Date.now();
-    const limit = Math.max(1, serverConfig.sessionRateLimitPerMinute);
-    const current = sessionAttempts.get(ipAddress);
-    if (!current || current.resetAt <= now) {
-      sessionAttempts.set(ipAddress, { count: 1, resetAt: now + 60_000 });
-      return true;
-    }
-    current.count += 1;
-    if (sessionAttempts.size > 10_000) {
-      for (const [key, value] of sessionAttempts) {
-        if (value.resetAt <= now) sessionAttempts.delete(key);
-      }
-    }
-    return current.count <= limit;
-  };
-
   const setPublicCors = (
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -440,7 +422,12 @@ export async function createGameServer(spec: {
     const requestIP = direct
       ? getRealIP(req, serverConfig.trustProxy) || ''
       : body.ip || getRealIP(req, false) || '';
-    if (!allowSessionAttempt(requestIP || 'unknown')) {
+    if (
+      !(await sessionService.allowSessionAttempt(
+        requestIP || 'unknown',
+        serverConfig.sessionRateLimitPerMinute,
+      ))
+    ) {
       res.writeHead(429, { 'Retry-After': '60' });
       res.end('too many session requests');
       return;

@@ -1340,7 +1340,7 @@ function packageProject(reference, outputDirectory, options = {}) {
     const offlineCompose = fs.readFileSync(composePath, 'utf8')
       .replace('BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}', 'BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: ${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: ${BOX_LOCAL_PLAYER_ID:-10000001}')
       .replace('BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}', 'BOX_DATA_STORAGE_PATH: /app/storage\n      BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}')
-      .replace('BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}', 'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}\n      PAID_ACCESS: ${BOX_PAID_ACCESS:-false}\n      RABBITMQ_HOST_URL: ${RABBITMQ_HOST_URL:-}')
+      .replace('BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}', 'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}\n      PAID_ACCESS: ${BOX_PAID_ACCESS:-false}')
       .replace('          create_host_path: false\n', '          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n')
     fs.writeFileSync(composePath, offlineCompose)
     fs.writeFileSync(

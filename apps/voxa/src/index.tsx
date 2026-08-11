@@ -6,7 +6,6 @@ import { LaunchState, setLaunchState, setUserInfo } from './redux/app-slice';
 import { OnRetry, Launcher } from './views/launcher';
 import { RootContext } from './root-context';
 import type { UserInfo } from './interface';
-import { sensorsTracker } from './models/sensors';
 import { LangType } from './utils/i18n';
 
 interface Props {
@@ -21,7 +20,6 @@ export default function VoxelBuilder(props: Props) {
   useMemo(() => {
     store.dispatch(setUserInfo(userInfo));
 
-    sensorsTracker.login(userInfo.userId);
   }, [userInfo]);
 
   return (

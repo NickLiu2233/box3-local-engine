@@ -78,7 +78,6 @@ const sharedEnv = {
   CACHE_IPFS: 'true',
   BOX_PLAY_BUILD: playBuild ? 'true' : 'false',
   BUILD_SERVER_URL: '',
-  RABBITMQ_HOST_URL: '',
   REDIS_HOST: '',
   NODE_ENV: 'production',
 }

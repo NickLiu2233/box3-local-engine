@@ -18,7 +18,6 @@ import { GameServer } from '../';
 import type { BackendSocket } from '../../backendSocket';
 import { getConfig } from '../../config/server';
 import { GameAdminServer } from '../admin/admin-server';
-import { RabbitMQ } from '../mq/rabbitMQ';
 import { GameSession } from '../session/server';
 import { ServerSettings } from '../settings/server-settings-schema';
 import { CommonSQL } from '../storage/types';
@@ -54,7 +53,6 @@ export async function startEditServer(spec: {
   permissions: Permissions;
   sql: CommonSQL;
   voxels: ServerVoxelPreloadData;
-  mqServer: RabbitMQ;
   contentId: number;
   backendSocket: BackendSocket;
   pendingActions: ProjectAction[][];
@@ -85,7 +83,6 @@ export async function startEditServer(spec: {
     gameId,
     sql: spec.sql,
     brpc: spec.brpc,
-    mqServer: spec.mqServer,
     featureFlags: serverConfig.FEATURE_FLAGS || [],
     backendSocket: spec.backendSocket,
     pendingActions: spec.pendingActions,
@@ -135,7 +132,6 @@ export class EditServer {
     gameId: number;
     sql: CommonSQL;
     brpc: BackendRPC;
-    mqServer: RabbitMQ;
     featureFlags: string[];
     backendSocket: BackendSocket;
     pendingActions: ProjectAction[][];

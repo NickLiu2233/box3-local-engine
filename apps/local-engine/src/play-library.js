@@ -94,6 +94,23 @@ function startPlayLibrary({
   let nextPort = runtimePortStart
   let closed = false
 
+  const setStatus = (id, status) => {
+    const next = { ...status, updatedAt: new Date().toISOString() }
+    statuses.set(id, next)
+    return next
+  }
+
+  const runtimeStatus = (id, runtime, fallback) => ({
+    ...(statuses.get(id) || fallback),
+    ...(runtime && !runtime.exited
+      ? {
+          port: runtime.port,
+          pid: runtime.pid,
+          startedAt: runtime.startedAt,
+        }
+      : {}),
+  })
+
   async function stopRuntime(id) {
     const runtime = runtimes.get(id)
     if (!runtime) return
@@ -106,28 +123,28 @@ function startPlayLibrary({
     if (!world) throw Object.assign(new Error('地图不存在或数据不完整'), { statusCode: 404 })
     const current = runtimes.get(id)
     if (current?.signature === world.signature && !current.exited) {
-      statuses.set(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
+      setStatus(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
       return current
     }
     if (current) await stopRuntime(id)
     if (starts.has(id)) return starts.get(id)
 
     const promise = (async () => {
-      statuses.set(id, { phase: 'starting', percent: 18, message: '正在创建独立游戏运行时' })
+      setStatus(id, { phase: 'starting', percent: 18, message: '正在创建独立游戏运行时' })
       const runtimePort = nextPort++
       const runtime = await startRuntime(world, runtimePort)
       runtime.signature = world.signature
       runtimes.set(id, runtime)
       try {
-        statuses.set(id, { phase: 'loading', percent: 42, message: '正在加载地图与预烘焙资源' })
+        setStatus(id, { phase: 'loading', percent: 42, message: '正在加载地图与预烘焙资源' })
         await waitForRuntime(`http://127.0.0.1:${runtimePort}/api/health-check`, 120)
       } catch (error) {
         runtimes.delete(id)
-        statuses.set(id, { phase: 'error', percent: 0, message: error.message || '游戏运行时启动失败' })
+        setStatus(id, { phase: 'error', percent: 0, message: error.message || '游戏运行时启动失败' })
         await runtime.stop()
         throw error
       }
-      statuses.set(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
+      setStatus(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
       console.log(`  Map ready: /p/${id}`)
       return runtime
     })().finally(() => starts.delete(id))
@@ -142,10 +159,14 @@ function startPlayLibrary({
       if (forwardedPath === '/__local_runtime/status') {
         const runtime = runtimes.get(id)
         if (runtime?.exited && statuses.get(id)?.phase === 'ready') {
-          statuses.set(id, { phase: 'error', percent: 0, message: '游戏运行时异常退出' })
+          setStatus(id, { phase: 'error', percent: 0, message: '游戏运行时异常退出' })
         }
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(statuses.get(id) || { phase: 'idle', percent: 0, message: '等待启动' }))
+        res.end(JSON.stringify(runtimeStatus(
+          id,
+          runtime,
+          { phase: 'idle', percent: 0, message: '等待启动', updatedAt: '' },
+        )))
         return
       }
       if (forwardedPath === '/__local_runtime/start' && req.method === 'POST') {
@@ -156,7 +177,7 @@ function startPlayLibrary({
         }
         void ensureRuntime(id).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(statuses.get(id) || { phase: 'starting', percent: 10, message: '正在启动' }))
+        res.end(JSON.stringify(statuses.get(id) || setStatus(id, { phase: 'starting', percent: 10, message: '正在启动' })))
         return
       }
       const runtime = await ensureRuntime(id)

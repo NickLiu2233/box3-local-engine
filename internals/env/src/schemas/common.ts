@@ -78,11 +78,6 @@ export interface CommonRuntimeConfig {
   VOXA_URL: string;
   ENGINE_APIS_URL: string;
 
-  /**
-   * 神策上报地址
-   */
-  SENSORS_TRACKER_URL: string;
-
   // ERROR, WARN, INFO, DEBUG
   // 0      1     2     3
   LOG_LEVEL: number;
@@ -166,8 +161,6 @@ export const COMMON_SCHEMA: JTDSchemaType<CommonRuntimeConfig> = {
     WEBSITE_URL: { type: 'string' },
     HOME_URL: { type: 'string' },
     VOXA_URL: { type: 'string' },
-
-    SENSORS_TRACKER_URL: { type: 'string' },
 
     // ERROR, WARN, INFO, DEBUG
     // 0      1     2     3

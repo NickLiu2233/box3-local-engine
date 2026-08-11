@@ -29,7 +29,6 @@ export function getEnvironmentConfig(): EnvConfig {
       ),
       BUILD_SERVER_URL: maybeS(process.env.BUILD_SERVER_URL),
       FEATURE_FLAGS: maybeStringArray(process.env.FEATURE_FLAGS),
-      RABBITMQ_HOST_URL: maybeS(process.env.RABBITMQ_HOST_URL),
       REDIS_HOST: maybeS(process.env.REDIS_HOST),
       REDIS_PORT: maybeN(process.env.REDIS_PORT),
       REDIS_PASSWORD: maybeS(process.env.REDIS_PASSWORD),

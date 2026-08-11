@@ -13,6 +13,7 @@ import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/grou
 import { createDefaultPermissions } from '@box-local/build-system/permissions/permission-init';
 import { PrebakeCacheSchema } from '@box-local/build-system/project/prebake-schema';
 import { LocalBuildCache } from './utils/local-build-cache';
+import { RedisBuildCache } from './utils/redis-build-cache';
 import { storeProject } from '@box-local/build-system/project/project-serialize';
 import { prebakeMap } from '@box-local/build-system/tasks/prebake';
 import { CachingContentServer } from '@box-local/content-server/caching-content-server';
@@ -61,7 +62,7 @@ import {
   subscribeGroupProjectSocket,
 } from './group-project';
 import { migrateVoxelModels } from './migrate-voxel-models';
-import { RabbitMQ } from './mq/rabbitMQ';
+import { createRuntimeRedisStore } from './redis/runtime-redis';
 import {
   getExtraProject,
   mergeExtraProjectInfo,
@@ -262,21 +263,28 @@ export async function startServer(spec: ServerRuntimeConfig) {
     isLocal,
   );
 
-  // set up mq server
-  const mqServer = new RabbitMQ(spec.RABBITMQ_HOST_URL);
-  if (
-    spec.paidAccess &&
-    spec.RABBITMQ_HOST_URL &&
-    process.env.NODE_ENV !== 'development'
-  ) {
-    try {
-      await mqServer.connect();
-    } catch (error) {
-      logger.error(error, 'Failed to connect to RabbitMQ server.');
-    }
-  }
-
   // initialize build system
+  const redisNamespace =
+    spec.groupStorageNamespace || String(spec.groupId || 'global');
+  const [businessRedis, cacheRedis] = await Promise.all([
+    createRuntimeRedisStore({
+      host: spec.REDIS_HOST,
+      port: spec.REDIS_PORT,
+      password: spec.REDIS_PASSWORD,
+      database: spec.REDIS_DB,
+      role: 'business',
+      logger,
+    }),
+    createRuntimeRedisStore({
+      host: spec.REDIS_HOST,
+      port: spec.REDIS_PORT,
+      password: spec.REDIS_PASSWORD,
+      database: spec.STORAGE_CACHE_REDIS_DB,
+      role: 'build-cache',
+      logger,
+    }),
+  ]);
+
   logger.info('Initializing build cache.');
   let buildSystem: BuildSystemRemote;
   const bsURL = spec.BUILD_SERVER_URL;
@@ -296,9 +304,18 @@ export async function startServer(spec: ServerRuntimeConfig) {
     );
   } else {
     const storagePath = process.env.STORAGE_PATH || '';
-    const buildCache = isLocal && storagePath
+    const persistentBuildCache = isLocal && storagePath
       ? new LocalBuildCache(path.join(storagePath, 'build-cache.json'))
       : new MockBuildCache();
+    const buildCache = cacheRedis && spec.STORAGE_CACHE_REDIS_TTL > 0
+      ? new RedisBuildCache(
+          persistentBuildCache,
+          cacheRedis,
+          spec.STORAGE_CACHE_REDIS_TTL,
+          redisNamespace,
+          logger.child({ caller: 'redis-build-cache' }),
+        )
+      : persistentBuildCache;
     buildSystem = new BuildSystem(
       buildCache,
       contentServer,
@@ -320,6 +337,11 @@ export async function startServer(spec: ServerRuntimeConfig) {
         status: 'ok',
         runtime: 'ready',
         storage: spec.databaseUrl ? 'postgres' : isLocal ? 'local' : 'remote',
+        redis: {
+          configured: Boolean(spec.REDIS_HOST),
+          business: businessRedis?.isReady() ? 'ready' : 'fallback',
+          cache: cacheRedis?.isReady() ? 'ready' : 'fallback',
+        },
       }));
     },
   };
@@ -833,7 +855,6 @@ export async function startServer(spec: ServerRuntimeConfig) {
     buildSystem,
     traces,
     brpc,
-    mqServer,
     scriptServer: scriptServer!,
     prebake,
     httpRoutes,
@@ -844,6 +865,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
     backendSocket,
     pendingActions: groupProjectPendingActions,
     groupStore: groupProjectStore,
+    businessRedis,
   });
   logger.info('GameServer created.');
 

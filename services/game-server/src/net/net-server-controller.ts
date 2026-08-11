@@ -46,7 +46,6 @@ import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
 import { CloseType } from '@box-local/schema/types/game';
 import { GamePrivateReplicaSchema } from '@box-local/schema/replica/game-private-replica';
 import { HotProject } from '@box-local/schema/project/hot-schema';
-import { RabbitMQ, Channel } from '../mq/rabbitMQ';
 import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
 
 const MIN_RESYNC_TICK_INTERVAL = 16; // 1 second
@@ -217,8 +216,6 @@ function overrideClientPositionCorrections(
 // -----------------------------------------------------------------------
 export class NetServer {
   public protocol: MuServerProtocol<typeof NetProtocolSchema>;
-  public rabbit: RabbitMQ;
-  public channel: Channel | undefined;
   private _state: GameServerState;
   private _logger: Logger;
   private _hotProject: HotProject;
@@ -244,14 +241,12 @@ export class NetServer {
 
   constructor(spec: {
     server: MuServer;
-    rabbitMQ: RabbitMQ;
     state: GameServerState;
     connect: (id: MuSessionId) => Promise<boolean>;
     disconnect: (id: MuSessionId) => void;
     hotProject: HotProject;
   }) {
     this._socketServer = (<any>spec.server)._socketServer;
-    this.rabbit = spec.rabbitMQ;
     this._state = spec.state;
     this._hotProject = spec.hotProject;
     this._state.net.zoneIndex = new PhysicsZoneIndex();
@@ -442,90 +437,7 @@ export class NetServer {
         spec.disconnect(client.sessionId);
       },
     });
-    this._initUserKickMQ();
-    this.rabbit.addChannelHandler(this._initUserKickMQ);
   }
-
-  // 监听踢人的mq消息
-  private _initUserKickMQ = async (channel?: Channel) => {
-    const { mode, serverId, env, contentId } = this._state.settings;
-    const userMQConfig = {
-      exchange: `user_offline_${mode}_${contentId}`,
-      queue: `user_offline_${serverId}`,
-      queueOptions: {
-        durable: true,
-        exclusive: false,
-        autoDelete: true,
-        maxLength: 100000,
-      },
-      exchangeOptions: { durable: true, autoDelete: false },
-    };
-    if (env !== 'production') {
-      userMQConfig.queue = `${env}_${userMQConfig.queue}`;
-      userMQConfig.exchange = `${env}_${userMQConfig.exchange}`;
-    }
-    this._logger.info(
-      `user offline mq channel: ${JSON.stringify(userMQConfig)}`,
-    );
-
-    this.channel = channel || (await this.rabbit.getChannel());
-    if (this.channel) {
-      const { exchange, queue, queueOptions, exchangeOptions } = userMQConfig;
-      try {
-        await this.channel?.assertExchange(
-          exchange,
-          'headers',
-          exchangeOptions,
-        );
-        await this.channel?.assertQueue(queue, queueOptions);
-        await this.channel?.bindQueue(queue, exchange, '', {
-          'x-match': 'all',
-          'mapId': contentId.toString(),
-        });
-        const { consumerTag } = await this.rabbit.consume(this.channel, {
-          queue,
-          onMessage: (msg) => {
-            this.channel?.ack(msg);
-            if (!msg.content) {
-              return;
-            }
-            try {
-              const msgContent = JSON.parse(msg.content.toString());
-              if (msgContent.userId) {
-                const player = this._state.serverPlayers.find(
-                  (p) => p.userId === msgContent.userId,
-                );
-                if (!player) {
-                  return;
-                }
-                const conn = getById(this._state.connectionSet, player.id);
-                if (conn) {
-                  this.kickSession(conn.sessionId);
-                }
-              }
-            } catch (error) {
-              this._state.logger.error(
-                `user offline MQ error: received msg parse error: ${error}`,
-              );
-            }
-          },
-        });
-        this.channel.on('cancel', ({ consumerTag: closeConsumerTag }) => {
-          if (closeConsumerTag === consumerTag) {
-            this._logger.info(`rabbit queue ${queue} is closed`);
-            this._initUserKickMQ(this.channel);
-          }
-        });
-      } catch (error) {
-        this._state.logger.error(
-          `user offline MQ error: consume error: ${error}`,
-        );
-      }
-      this.channel.on('error', (err) => {
-        this._state.logger.log(`user offline MQ channel error: ${err}`);
-      });
-    }
-  };
 
   private _sendPacketToClients(
     stream: MuWriteStream,

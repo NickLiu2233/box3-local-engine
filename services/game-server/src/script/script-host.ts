@@ -96,7 +96,6 @@ import {
   MotionListSchema,
 } from '@box-local/schema/project/hot-schema';
 import { MarketServer } from '../market/market-server';
-import { RabbitMQ } from '../mq/rabbitMQ';
 import { getConfigSync } from '../../config/server';
 import { TeleportServer } from '../teleport/teleport-server';
 import { ScriptFetchServer } from './script-fetch-server';
@@ -421,7 +420,6 @@ export class ScriptHost {
     dialog: DialogServer;
     sql: CommonSQL;
     sound: SoundServer;
-    rabbitMQ: RabbitMQ;
     player: PlayerServer;
   }) {
     this._state = spec.state;
@@ -821,7 +819,6 @@ export class ScriptHost {
       server: spec.netServer,
       scriptServer: this.muServer,
       state: spec.state,
-      rabbitMQ: spec.rabbitMQ,
     });
     this.teleport = new TeleportServer({
       server: spec.netServer,

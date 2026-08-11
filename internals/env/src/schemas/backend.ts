@@ -41,7 +41,6 @@ export interface BackendRuntimeConfig {
 
   AGORA_APP_ID: string;
   AGORA_CERTIFICATE: string;
-  RABBITMQ_HOST_URL: string;
 
   JWT_SECRET: string;
 }
@@ -84,7 +83,6 @@ export const BACKEND_SCHEMA: JTDSchemaType<BackendRuntimeConfig> = {
     ALI_AK_SECRET: { type: 'string' },
     AGORA_APP_ID: { type: 'string' },
     AGORA_CERTIFICATE: { type: 'string' },
-    RABBITMQ_HOST_URL: { type: 'string' },
 
     JWT_SECRET: { type: 'string' },
   },

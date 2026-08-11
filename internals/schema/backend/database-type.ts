@@ -310,15 +310,6 @@ export namespace DB {
       topic: string;
       answer: string;
     };
-    analytics_event: {
-      id: number;
-      name: string;
-      user_id?: number;
-      time: TimeStamp;
-      ip?: number;
-      server_name?: string;
-      extra?: number;
-    };
     bug_report: {
       id: Identity;
       subject: string;
@@ -332,63 +323,6 @@ export namespace DB {
       reviewer_id: number;
       created_at: TimeStamp; // submit time
       updated_at: TimeStamp; // process time
-    };
-    analytics_top: {
-      id: number;
-      server_name: string;
-      time: number;
-      rss: number;
-      heap_total: number;
-      heap_used: number;
-      external: number;
-      time_user: number;
-      time_system: number;
-      cpu_user: number;
-      cpu_system: number;
-    };
-    analytics_engine: {
-      id: number;
-      server_name: string;
-      time: number;
-      up_bandwidth: number;
-      down_bandwidth: number;
-      clock: number;
-      tick: number;
-      frameskips: number;
-      entities: number;
-      connections: number;
-      chats: number;
-      bodies: number;
-      contacts: number;
-      particles: number;
-      players: number;
-      player_inputs: number;
-      server_players: number;
-      ipfs_up: number;
-      ipfs_down: number;
-      ipfs_error: number;
-      script_log: number;
-      script_error: number;
-      sql_queries: number;
-      sql_rows: number;
-      sql_errors: number;
-      min_ping: number;
-      max_ping: number;
-      avg_ping: number;
-      min_tick: number;
-      max_tick: number;
-      avg_tick: number;
-    };
-    analytics_http: {
-      id: number;
-      server_name: string;
-      time: number;
-      host: string;
-      ip: string;
-      method: string;
-      path: string;
-      referer: string;
-      user_agent: string;
     };
     user_update_history: {
       user_id: number;

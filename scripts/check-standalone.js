@@ -146,8 +146,6 @@ for (const [name, command] of Object.entries({
   'voxa:dev': 'pnpm --filter @box-local/voxa dev',
   infra: 'docker compose --profile infra up -d postgres redis',
   'infra:stop': 'docker compose --profile infra stop postgres redis',
-  mq: 'docker compose --profile mq up -d rabbitmq',
-  'mq:stop': 'docker compose --profile mq stop rabbitmq',
   play: 'node apps/local-engine/src/deploy.js play',
   stop: 'node apps/local-engine/src/deploy.js stop',
   dev: 'node apps/local-engine/src/launcher.js --creator',
@@ -476,7 +474,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,rabbitmq,creator,play,voxa,migrator'
+  'postgres,redis,creator,play,voxa,migrator'
 ) {
   fail(
     `${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`,
@@ -485,7 +483,6 @@ if (
 
 const creatorCompose = getComposeService(composeSource, 'creator')
 const playCompose = getComposeService(composeSource, 'play')
-const rabbitCompose = getComposeService(composeSource, 'rabbitmq')
 const voxaCompose = getComposeService(composeSource, 'voxa')
 for (const [name, service] of [
   ['creator', creatorCompose],
@@ -508,29 +505,10 @@ for (const [name, service] of [
   requirePattern(
     service,
     composeFile,
-    `${name} optional RabbitMQ URL`,
-    /RABBITMQ_HOST_URL: \$\{RABBITMQ_HOST_URL:-\}/,
-  )
-  requirePattern(
-    service,
-    composeFile,
     `${name} paid access gate`,
     /PAID_ACCESS: \$\{BOX_PAID_ACCESS:-false\}/,
   )
 }
-requirePattern(rabbitCompose, composeFile, 'RabbitMQ opt-in profile', /profiles: \[mq\]/)
-requirePattern(
-  rabbitCompose,
-  composeFile,
-  'localhost-only RabbitMQ AMQP port',
-  /127\.0\.0\.1:\$\{BOX_RABBITMQ_HOST_PORT:-5672\}:5672/,
-)
-requirePattern(
-  rabbitCompose,
-  composeFile,
-  'localhost-only RabbitMQ management port',
-  /127\.0\.0\.1:\$\{BOX_RABBITMQ_MANAGEMENT_HOST_PORT:-15672\}:15672/,
-)
 requirePattern(voxaCompose, composeFile, 'VOXA profile', /profiles: \[voxa\]/)
 requirePattern(
   voxaCompose,

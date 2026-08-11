@@ -9,5 +9,5 @@ export interface GameSessionInterface {
     fingerPrint: string,
     region: string,
   ): Promise<GameSessionData>;
-  getSessionData(sessionId: string): GameSessionData | undefined;
+  getSessionData(sessionId: string): Promise<GameSessionData | undefined>;
 }

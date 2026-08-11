@@ -13,8 +13,8 @@ Local Engine 复用 `boxes` 的引擎、编辑器和权威游戏运行时，但�
 | VOXA | 独立镜像；Local 与 Project 素材分流，Project 修改保存回当前工程 |
 | 导入、导出和发布 | 可编辑 `.boxproject` 与只读 `.boxplay` 分离，并提供完整性校验和进度 |
 | 数据空间 | 默认本地文件 adapter，可选 PostgreSQL adapter |
-| RabbitMQ | 保留 `boxes` 下线和商城消息消费端，默认关闭并由服主配置生产端 |
-| 构建缓存 | 用按工程持久化的本地缓存替代 Redis/build-server |
+| Redis | 可选的 Session、跨实例限流、构建热缓存和分布式构建锁；故障时自动回退本地 adapter |
+| 构建缓存 | 按工程持久化的本地缓存为基础；配置 Redis 后增加跨实例热缓存和构建去重 |
 | 版本恢复 | 保留最近 5 个有效工程快照，可在作品管理器选择恢复，损坏时自动回退 |
 | 运行状态聚合 | 创作端统一显示可选基础服务、磁盘、备份和每个工程的编辑/游玩运行时状态 |
 | 定时工程备份 | 可选生成经过校验的 `.boxproject`，支持间隔、数量、天数保留和手动下载 |
@@ -23,10 +23,9 @@ Local Engine 复用 `boxes` 的引擎、编辑器和权威游戏运行时，但�
 
 | 能力 | 适用场景 | 接入条件 |
 | --- | --- | --- |
-| Redis Session/限流 adapter | 多副本部署、Session 跨进程共享 | 先定义 Session 与 rate-limit store seam；保留内存 adapter |
 | 对象存储 adapter | 多节点共享大型素材 | 需要兼容当前内容 hash 校验，且本地文件 adapter 仍为默认 |
 
-单机部署不应为了“看起来与线上一致”强制启用 Redis、RabbitMQ、PostgreSQL 或 Kubernetes。
+单机部署不应为了“看起来与线上一致”强制启用 Redis、PostgreSQL 或 Kubernetes。
 只有出现第二个实际 adapter（例如内存与 Redis）或多实例需求时，才应增加对应 seam。
 
 ## 不应迁入
@@ -42,7 +41,6 @@ Local Engine 复用 `boxes` 的引擎、编辑器和权威游戏运行时，但�
 
 ## 后续优先级
 
-1. 先完成运行状态聚合和备份可观测性；它们不会改变作品语义。
-2. 确有多副本部署需求时，再实现 Redis Session/限流 adapter。
-3. 确有共享素材存储需求时，再实现对象存储 adapter。
-4. 继续通过迁移器兼容报告识别云端作品依赖，不在运行时静默请求未知云端服务。
+1. 确有共享素材存储需求时，再实现对象存储 adapter。
+2. 继续通过迁移器兼容报告识别云端作品依赖，不在运行时静默请求未知云端服务。
+3. 保持运行状态、备份和可选基础设施故障降级的回归检查。

@@ -60,8 +60,6 @@ import {
 } from '../redux/animator-slice';
 import { AIModel } from './ai-model';
 import { ShapELoader } from './shap-e-loader';
-import { sensorsTracker } from './sensors';
-import { SensorsEventName } from './sensors/defs';
 import { ROOT_SKIN_ID } from '../defs';
 import { everyNode } from './animator-app/util';
 import { SkinPart } from './skin-part';
@@ -788,8 +786,6 @@ export class VoxelEditor {
   public manualSave = async (params: ManualSaveParams = {}) => {
     const {
       saveState,
-      projectId: originProjectId,
-      projectName,
       editType,
     } = store.getState().app;
 
@@ -805,8 +801,6 @@ export class VoxelEditor {
     if (saveState === SaveState.Saving) {
       return;
     }
-
-    const isNewProject = originProjectId === 0;
 
     store.dispatch(setSaveState(SaveState.Saving));
 
@@ -826,28 +820,8 @@ export class VoxelEditor {
         ...result,
       });
 
-      sensorsTracker.track({
-        name: SensorsEventName.Save,
-        payload: {
-          voxel_id: result.modelResp.modelId,
-          voxel_name: projectName,
-          is_success: true,
-          is_first_save: isNewProject,
-        },
-      });
       return;
     }
-
-    sensorsTracker.track({
-      name: SensorsEventName.Save,
-      payload: {
-        voxel_name: projectName,
-        is_success: false,
-        is_first_save: isNewProject,
-        fail_reason: result.type,
-        voxel_id: isNewProject ? undefined : originProjectId,
-      },
-    });
 
     if (result.type === SaveErrorType.NameAlreadyExists) {
       this.showSaveSkinFailedToast();
@@ -874,8 +848,6 @@ export class VoxelEditor {
   public async autoSaveBeforePublish(params: AutoSaveBeforePublishParams = {}) {
     const {
       isPublishing,
-      projectId: originProjectId,
-      projectName,
       editType,
     } = store.getState().app;
     const { hierarchyData } = store.getState().animator;
@@ -890,8 +862,6 @@ export class VoxelEditor {
     ) {
       return this.showFreeSkinPartModal();
     }
-
-    const isNewProject = originProjectId === 0;
 
     store.dispatch(setPublishing(true));
 
@@ -908,28 +878,8 @@ export class VoxelEditor {
         ...result,
       });
 
-      sensorsTracker.track({
-        name: SensorsEventName.Save,
-        payload: {
-          voxel_id: result.modelResp.modelId,
-          voxel_name: projectName,
-          is_success: true,
-          is_first_save: isNewProject,
-        },
-      });
       return;
     }
-
-    sensorsTracker.track({
-      name: SensorsEventName.Save,
-      payload: {
-        voxel_name: projectName,
-        is_success: false,
-        is_first_save: isNewProject,
-        fail_reason: result.type,
-        voxel_id: isNewProject ? undefined : originProjectId,
-      },
-    });
 
     return this.showRetrySavingModal({
       onConfirm: () => {

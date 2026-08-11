@@ -14,7 +14,6 @@ import { ScriptServer } from '../utils/script-server/type';
 import { PlayServerSchema } from './play-server-schema';
 import { CommonSQL } from '../storage/types';
 import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
-import { RabbitMQ } from '../mq/rabbitMQ';
 import { BackendSocket } from '../../backendSocket';
 import { CloseType } from '@box-local/schema/types/game';
 import { FeatureFlag } from '@box-local/env/constants';
@@ -35,7 +34,6 @@ export async function startPlayServer(spec: {
   settings: ServerSettings;
   sql: CommonSQL;
   brpc: BackendRPC;
-  mqServer: RabbitMQ;
   backendSocket: BackendSocket;
   featureFlags?: string[];
 }) {
@@ -53,7 +51,6 @@ export async function startPlayServer(spec: {
     settings: spec.settings,
     sql: spec.sql,
     brpc: spec.brpc,
-    mqServer: spec.mqServer,
     backendSocket: spec.backendSocket,
   });
   await server.start();
@@ -82,7 +79,6 @@ export class PlayServer {
     settings: ServerSettings;
     sql: CommonSQL;
     brpc: BackendRPC;
-    mqServer: RabbitMQ;
     backendSocket: BackendSocket;
     featureFlags?: string[];
   }) {

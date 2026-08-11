@@ -12,6 +12,7 @@
     "generate-terrain": "node -r ts-node/register --max-old-space-size=4096 scripts/terrain/generate-terrain.ts",
     "check:postgres-storage": "node -r @swc-node/register scripts/check-postgres-data-storage.ts",
     "check:local-storage": "node -r @swc-node/register scripts/check-local-data-storage.ts",
+    "check:redis-runtime": "node -r @swc-node/register scripts/check-redis-runtime.ts",
     "prod": "node dist/src/launch.js --useProdBundle",
     "test": "node -r @swc-node/register scripts/regression-local-voxa-fallback.ts"
   },
@@ -30,7 +31,6 @@
     "@openrouter/ai-sdk-provider": "~1.2.5",
     "agora-access-token": "2.0.4",
     "ai": "5.0.92",
-    "amqplib": "0.10.3",
     "axios": "1.7.0",
     "debug": "4.3.4",
     "dotenv": "16.0.1",
@@ -60,7 +60,6 @@
     "@swc-node/register": "1.10.10",
     "@swc/core": "1.4.13",
     "@swc/types": "0.1.21",
-    "@types/amqplib": "0.10.1",
     "@types/debug": "4.1.7",
     "@types/ip": "~1.1.0",
     "@types/node": "20.16.15",

@@ -34,7 +34,8 @@ export type LocalRuntimeInfo = {
   dataStorageBackend: 'local' | 'postgres';
   voxaConfigured: boolean;
   redisConfigured: boolean;
-  messageQueueConfigured: boolean;
+  redisBusinessDb: number;
+  redisCacheDb: number;
 };
 
 const PROPERTIES_FROM_SERVER = [
@@ -88,7 +89,7 @@ export function extractServerConfigForClient(
   const pickedConfig = pickServerConfigForClient(
     serverConfig,
   ) as ServerConfigForClient;
-  const localRuntimeInfo = serverConfig.isLocalGameServer
+  const localRuntimeInfo: LocalRuntimeInfo | undefined = serverConfig.isLocalGameServer
     ? {
         productVersion: process.env.BOX_IMAGE_TAG || '0.1.0',
         nodeVersion: process.version,
@@ -96,7 +97,8 @@ export function extractServerConfigForClient(
         dataStorageBackend: process.env.BOX_DATABASE_URL ? 'postgres' : 'local',
         voxaConfigured: Boolean(process.env.VOXA_URL),
         redisConfigured: Boolean(process.env.REDIS_HOST),
-        messageQueueConfigured: Boolean(process.env.RABBITMQ_HOST_URL),
+        redisBusinessDb: Number(process.env.REDIS_DB || 0),
+        redisCacheDb: Number(process.env.STORAGE_CACHE_REDIS_DB || 1),
       }
     : undefined;
   const clientConfig: ServerConfigForClient = {

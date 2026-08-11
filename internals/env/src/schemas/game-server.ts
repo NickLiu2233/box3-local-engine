@@ -7,7 +7,6 @@ export interface GameServerRuntimeConfig {
   APP_ID?: string;
   AGORA_APP_ID: string;
   AGORA_CERTIFICATE: string;
-  RABBITMQ_HOST_URL: string;
 
   /**
    * 每次向脚本服务调用方法的超时时间
@@ -44,7 +43,6 @@ export const GAME_SERVER_SCHEMA: JTDSchemaType<GameServerRuntimeConfig> = {
   properties: {
     AGORA_APP_ID: { type: 'string' },
     AGORA_CERTIFICATE: { type: 'string' },
-    RABBITMQ_HOST_URL: { type: 'string' },
     STORAGE_CACHE_REDIS_DB: { type: 'uint8' },
     STORAGE_CACHE_REDIS_TTL: { type: 'uint8' },
     STORAGE_CACHE_REDIS_SENTINEL_HOST: {

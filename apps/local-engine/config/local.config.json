@@ -22,7 +22,6 @@
     "ARENA_URL": "http://127.0.0.1:3002",
     "VOXA_URL": "http://127.0.0.1:3001",
     "ENGINE_APIS_URL": "http://127.0.0.1:9966",
-    "SENSORS_TRACKER_URL": "",
     "LOG_LEVEL": 2,
     "CONTENT_SERVER_URL": "",
     "MAX_CONTENT_SERVER_CONNECTIONS": 8,
@@ -51,7 +50,6 @@
   "game-server": {
     "AGORA_APP_ID": "",
     "AGORA_CERTIFICATE": "",
-    "RABBITMQ_HOST_URL": "",
     "STORAGE_CACHE_REDIS_DB": 0,
     "STORAGE_CACHE_REDIS_TTL": 0,
     "STORAGE_CACHE_REDIS_SENTINEL_HOST": [],
