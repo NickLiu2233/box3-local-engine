@@ -65,41 +65,6 @@
   padding-bottom: 8px;
 }
 
-.productHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0 18px;
-}
-
-.productMark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 10px;
-  color: var(--color-white);
-  background: linear-gradient(145deg, #6c78ff, #8d5bff);
-  box-shadow: 0 6px 18px rgba(91, 84, 255, 0.28);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-
-.productName {
-  color: var(--color-white);
-  font-size: var(--text-h2);
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.productDescription {
-  color: var(--color-white-60);
-  font-size: var(--text-h4);
-  line-height: 1.5;
-}
-
 .sectionTitle {
   margin-top: 4px;
   padding: 10px 0 6px;

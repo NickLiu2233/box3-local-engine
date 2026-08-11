@@ -254,7 +254,6 @@
   "upgradingDatabase": "The server is about to restart, and the database will be upgraded when it restarts. After restarting, please check the database engine in About to see if the upgrade was successful.",
   "upgradeDatabaseFail": "Upgrade database fail",
   "databaseEngine": "Database engine",
-  "aboutLocalCreatorDescription": "Local creation and runtime environment",
   "aboutRuntimeSection": "Local runtime",
   "aboutProjectSection": "Current project",
   "aboutServicesSection": "Optional services",

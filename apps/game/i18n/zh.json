@@ -250,7 +250,6 @@
   "upgradingDatabase": "服务器即将重启, 数据库将会在重启时升级. 重启后请查看关于中的数据库引擎, 以了解是否升级成功.",
   "upgradeDatabaseFail": "升级数据库失败",
   "databaseEngine": "数据库引擎",
-  "aboutLocalCreatorDescription": "本地创作与运行环境",
   "aboutRuntimeSection": "本地运行时",
   "aboutProjectSection": "当前工程",
   "aboutServicesSection": "可选服务",

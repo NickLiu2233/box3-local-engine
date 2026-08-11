@@ -146,15 +146,6 @@ export const SettingPanel = (props: Props) => {
 
     return (
       <div className={style.aboutContainer}>
-        <div className={style.productHeader}>
-          <div className={style.productMark}>BOX</div>
-          <div>
-            <div className={style.productName}>BOX Local Engine</div>
-            <div className={style.productDescription}>
-              {intl.formatMessage({ id: 'aboutLocalCreatorDescription' })}
-            </div>
-          </div>
-        </div>
         <div className={style.sectionTitle}>
           {intl.formatMessage({ id: 'aboutRuntimeSection' })}
         </div>
