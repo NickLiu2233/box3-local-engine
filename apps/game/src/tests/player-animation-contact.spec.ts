@@ -3,7 +3,7 @@ import { resolvePlayerAnimationContact } from '../engine/player/player-animation
 
 describe('player animation contact snapshots', () => {
   test('player rendering survives a missing first contact snapshot', () => {
-    expect(resolvePlayerAnimationContact([], 4)).toBe(
+    expect(resolvePlayerAnimationContact(undefined, 4)).toBe(
       ContactRecordSchema.identity,
     );
   });
@@ -11,6 +11,6 @@ describe('player animation contact snapshots', () => {
   test('uses the matching contact when it is available', () => {
     const contact = ContactRecordSchema.clone(ContactRecordSchema.identity);
     contact.id = 4;
-    expect(resolvePlayerAnimationContact([contact], 4)).toBe(contact);
+    expect(resolvePlayerAnimationContact(contact, 4)).toBe(contact);
   });
 });

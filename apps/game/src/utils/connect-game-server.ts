@@ -19,7 +19,6 @@ const REMOTE_POLLING_TIMEOUT = 15 * 1000;
 // first session can be returned. Do not abort a healthy cold start at 15s.
 const LOCAL_POLLING_TIMEOUT = 120 * 1000;
 const SLEEP_TIME = 3 * 1000;
-const LOCAL_PREFETCH_CONCURRENCY = 48;
 
 /**
  * 拉取资源，和浏览器的 prefetch 不是一回事
@@ -119,13 +118,10 @@ export async function connectGameServer(
       if (config && config.prefetchHashes.length > 0) {
         const { prefetchHashes } = config;
 
-        // A four-digit request burst overwhelms the single-origin Next proxy
-        // while a local runtime is still warming its caches, producing a wall
-        // of transient 502 responses. Remote deployments keep the established
-        // high concurrency; local products use a bounded pipeline.
-        const semaphore = new Semaphore(
-          clientConfig.isLocalGameServer ? LOCAL_PREFETCH_CONCURRENCY : 1000,
-        );
+        // Keep the engine prefetch scheduler identical to boxes. The local
+        // runtime serves these hashes from disk, so an artificial low cap only
+        // lengthens cold starts for asset-heavy projects.
+        const semaphore = new Semaphore(1000);
 
         const abortPrefetch = new Promise((resolve, reject) => {
           // 没有用signal.reason是因为浏览器兼容性要求较高

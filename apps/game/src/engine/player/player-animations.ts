@@ -506,7 +506,7 @@ export function tickPlayerAnimations(state: GameClientState) {
     const playerContact =
       contactPtr < contact.length && contact[contactPtr].id === id
         ? contact[contactPtr++]
-        : resolvePlayerAnimationContact([], id);
+        : resolvePlayerAnimationContact(contact[contactPtr], id);
 
     // run the animation subroutine
     let p = 1;

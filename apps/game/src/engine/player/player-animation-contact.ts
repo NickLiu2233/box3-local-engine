@@ -2,11 +2,9 @@ import {
   ContactRecord,
   ContactRecordSchema,
 } from '@box-local/schema/physics/physics-schema';
-import { getById } from '@box-local/utils/id';
-
 export function resolvePlayerAnimationContact(
-  contacts: readonly ContactRecord[],
+  contact: ContactRecord | undefined,
   id: number,
 ): ContactRecord {
-  return getById(contacts, id) || ContactRecordSchema.identity;
+  return contact?.id === id ? contact : ContactRecordSchema.identity;
 }
