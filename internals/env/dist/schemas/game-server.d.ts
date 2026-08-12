@@ -6,7 +6,6 @@ export interface GameServerRuntimeConfig {
     APP_ID?: string;
     AGORA_APP_ID: string;
     AGORA_CERTIFICATE: string;
-    RABBITMQ_HOST_URL: string;
     /**
      * 每次向脚本服务调用方法的超时时间
      */

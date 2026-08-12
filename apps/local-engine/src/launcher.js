@@ -4,6 +4,7 @@ const fs = require('fs')
 const http = require('http')
 const os = require('os')
 const path = require('path')
+const crypto = require('crypto')
 const { spawn, spawnSync } = require('child_process')
 
 const packageRoot = path.resolve(__dirname, '..')
@@ -14,7 +15,15 @@ const repoEnvPath = path.join(repoRoot, '.env')
 if (fs.existsSync(repoEnvPath) && typeof process.loadEnvFile === 'function') {
   process.loadEnvFile(repoEnvPath)
 }
-const projectManager = require('./project-manager')
+// Web session creation and every game runtime must share one signing secret.
+// Keep an explicit host value stable across restarts; otherwise generate one
+// per launcher process so local development still works without a weak default.
+if (!process.env.PERMISSION_TOKEN_SECRET) {
+  process.env.PERMISSION_TOKEN_SECRET = crypto.randomBytes(32).toString('hex')
+  console.warn(
+    'PERMISSION_TOKEN_SECRET is unset; generated an ephemeral launcher secret.',
+  )
+}
 const configPath = path.join(packageRoot, 'config/local.config.json')
 const defaultDataRoot = path.join(packageRoot, 'data')
 const generatedAsset = path.join(
@@ -67,6 +76,8 @@ const releaseArgIndex = process.argv.indexOf('--release')
 const runtimeModeArgIndex = process.argv.indexOf('--runtime-mode')
 const projectId = projectArgIndex >= 0 ? process.argv[projectArgIndex + 1] : ''
 const releaseId = releaseArgIndex >= 0 ? process.argv[releaseArgIndex + 1] : ''
+const projectManager =
+  !playMode || projectId || releaseId ? require('./project-manager') : null
 const runtimeMode =
   runtimeModeArgIndex >= 0
     ? process.argv[runtimeModeArgIndex + 1]
@@ -244,7 +255,17 @@ let shuttingDown = false
 let disposablePlayDataRoot = ''
 
 function makeRuntimeDataReadable(root) {
-  projectManager.normalizeImportedProjectPermissions(root)
+  const pending = [root]
+  while (pending.length) {
+    const target = pending.pop()
+    fs.chmodSync(target, 0o755)
+    for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+      const entryPath = path.join(target, entry.name)
+      if (entry.isDirectory()) pending.push(entryPath)
+      else if (entry.isFile()) fs.chmodSync(entryPath, 0o644)
+      else throw new Error(`运行数据包含不支持的文件类型：${entryPath}`)
+    }
+  }
 }
 let playLibrary
 let editLibrary

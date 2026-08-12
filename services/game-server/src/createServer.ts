@@ -10,7 +10,7 @@ import { DB } from '@box-local/schema/backend/database-type';
 import type { GroupProjectStore } from '@box-local/schema/group-project/rda';
 import type { ProjectAction } from '@box-local/schema/replica/replica-schema';
 import { getMeshPath } from '@box-local/schema/project/hot-schema';
-import { GameSessionData } from '@box-local/schema/session/schema';
+import { GameSessionData, UserDetailSchema } from '@box-local/schema/session/schema';
 import {
   SchemaTraceEntry,
   traceProtocols,
@@ -20,6 +20,7 @@ import { bodyParse } from '@box-local/utils/backend';
 import { EventBus } from '@box-local/utils/event';
 import { getRealIP } from '@box-local/utils/ip';
 import { Logger as LegacyLogger } from '@box-local/utils/logger';
+import { verifyRuntimePlayerIdentity } from '@box-local/utils/local-player-identity';
 import * as http from 'http';
 import * as https from 'https';
 import type { Logger } from 'pino';
@@ -39,6 +40,7 @@ import { NetLogServer } from './net-log/server';
 import { startPlayServer } from './play/play-server';
 import type { RuntimeRedisStore } from './redis/runtime-redis';
 import { getFakeUser } from './session/fake';
+import { startPlayerRevocationPoller } from './player/player-revocation-poller';
 import { GameSession } from './session/server';
 import { ServerSettings } from './settings/server-settings-schema';
 import { computeAudioPrefetch } from './sound/server-sound-controller';
@@ -245,6 +247,8 @@ export async function createGameServer(spec: {
     game = playServer.state.game;
   }
 
+  startPlayerRevocationPoller(game, spec.logger);
+
   // install game traces
   if (serverConfig.traceAlloc || serverConfig.traceDoubleFree) {
     spec.logger.debug('Installing game specific traces');
@@ -286,15 +290,43 @@ export async function createGameServer(spec: {
       userData = getFakeUser(adminName, adminId);
       userData.permission |= DB.UserPermission.gameAdmin;
     } else if (serverConfig.method === 'local') {
-      const localPlayerName =
-        process.env.BOX_LOCAL_PLAYER_NAME?.trim() || '本地玩家';
-      const configuredId = Number(process.env.BOX_LOCAL_PLAYER_ID || '10000001');
-      const localPlayerId =
-        Number.isSafeInteger(configuredId) && configuredId > 0
-          ? configuredId
-          : 10000001;
-      spec.logger.info(`Local player log in: ${localPlayerName} (${localPlayerId})`);
-      userData = getFakeUser(localPlayerName, localPlayerId);
+      const usesPlayerService = Boolean(process.env.BOX_PLAYER_SERVICE_INTERNAL_URL);
+      const runtimeIdentity = usesPlayerService
+        ? verifyRuntimePlayerIdentity(
+            token,
+            process.env.PERMISSION_TOKEN_SECRET || '',
+          )
+        : null;
+      if (usesPlayerService && !runtimeIdentity) {
+        throw new Error('Invalid or expired local player identity');
+      }
+      if (runtimeIdentity) {
+        if (runtimeIdentity.status === 'banned') {
+          throw new Error('Local player is banned');
+        }
+        userData = UserDetailSchema.alloc();
+        userData.id = runtimeIdentity.userId;
+        userData.displayname = runtimeIdentity.displayName;
+        userData.username = runtimeIdentity.username;
+        userData.avatar_hash = runtimeIdentity.avatar;
+        if (runtimeIdentity.role === 'admin') {
+          userData.permission |= DB.UserPermission.gameAdmin;
+        }
+        fingerPrint = runtimeIdentity.subjectId;
+        spec.logger.info(
+          `Local ${runtimeIdentity.userId ? 'user' : 'guest'} log in: ${runtimeIdentity.displayName}`,
+        );
+      } else {
+        const localPlayerName =
+          process.env.BOX_LOCAL_PLAYER_NAME?.trim() || '本地玩家';
+        const configuredId = Number(process.env.BOX_LOCAL_PLAYER_ID || '10000001');
+        const localPlayerId =
+          Number.isSafeInteger(configuredId) && configuredId > 0
+            ? configuredId
+            : 10000001;
+        spec.logger.info(`Local player log in: ${localPlayerName} (${localPlayerId})`);
+        userData = getFakeUser(localPlayerName, localPlayerId);
+      }
     } else {
       spec.logger.info(`Guest log in.`);
       userData = getFakeUser('guest');
@@ -686,13 +718,18 @@ export async function createGameServer(spec: {
         }
         if (body.action === 'setDefault') {
           await fetch(
-            `${voxaURL}/api/local/default-skin?mapId=${encodeURIComponent(
-              String(serverConfig.contentId),
+            `${voxaURL}/api/local/default-skin?projectKey=${encodeURIComponent(
+              serverConfig.containerName || String(serverConfig.contentId),
             )}`,
             {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ mapId: serverConfig.contentId, skinId: 0 }),
+              body: JSON.stringify({
+                projectKey:
+                  serverConfig.containerName || String(serverConfig.contentId),
+                mapId: serverConfig.contentId,
+                skinId: 0,
+              }),
             },
           );
         }

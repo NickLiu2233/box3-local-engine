@@ -4,6 +4,9 @@ import { getMapContentInfo } from 'server/map-info';
 import { getServerConfig } from 'configs/server';
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
+    return res.status(404).end();
+  }
   const { hash, mode } = req.query;
 
   if (

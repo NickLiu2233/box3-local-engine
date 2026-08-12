@@ -7,7 +7,7 @@ import { mergeDeepRight, mergeDeepWith, defaultTo } from 'ramda';
 import { parse } from 'yaml';
 import GlobalAxios from 'axios';
 
-/******************************************************************************
+/*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
 
 Permission to use, copy, modify, and/or distribute this software for any
@@ -21,7 +21,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol, Iterator */
+/* global Reflect, Promise */
 
 
 function __awaiter(thisArg, _arguments, P, generator) {
@@ -33,11 +33,6 @@ function __awaiter(thisArg, _arguments, P, generator) {
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 }
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
 
 const axios = GlobalAxios.create();
 
@@ -96,7 +91,6 @@ const BACKEND_SCHEMA = {
         ALI_AK_SECRET: { type: 'string' },
         AGORA_APP_ID: { type: 'string' },
         AGORA_CERTIFICATE: { type: 'string' },
-        RABBITMQ_HOST_URL: { type: 'string' },
         JWT_SECRET: { type: 'string' },
     },
     additionalProperties: true,
@@ -144,7 +138,6 @@ const COMMON_SCHEMA = {
         WEBSITE_URL: { type: 'string' },
         HOME_URL: { type: 'string' },
         VOXA_URL: { type: 'string' },
-        SENSORS_TRACKER_URL: { type: 'string' },
         // ERROR, WARN, INFO, DEBUG
         // 0      1     2     3
         LOG_LEVEL: { type: 'uint8' },
@@ -196,7 +189,6 @@ const GAME_SERVER_SCHEMA = {
     properties: {
         AGORA_APP_ID: { type: 'string' },
         AGORA_CERTIFICATE: { type: 'string' },
-        RABBITMQ_HOST_URL: { type: 'string' },
         STORAGE_CACHE_REDIS_DB: { type: 'uint8' },
         STORAGE_CACHE_REDIS_TTL: { type: 'uint8' },
         STORAGE_CACHE_REDIS_SENTINEL_HOST: {

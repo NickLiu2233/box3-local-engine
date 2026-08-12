@@ -46,6 +46,7 @@ import { ENGINE_RES } from '../../resource/engine';
 import { PLAYER_HEIGHT } from '@box-local/schema/player/player-move';
 import { Frustum } from '@box-local/schema/utils/frustum-schema';
 import { testFrustumBox } from '../utils/frustum';
+import { resolvePlayerAnimationContact } from './player-animation-contact';
 
 // load player animation palette
 export async function initializePlayerAnimations(state: GameClientState) {
@@ -470,19 +471,14 @@ export function tickPlayerAnimations(state: GameClientState) {
     i < playerStates.length &&
     i < playerInputs.length &&
     replicaPtr < playerReplicas.length &&
-    bodyPtr < bodies.length &&
-    contactPtr < contact.length;
+    bodyPtr < bodies.length;
     ++i
   ) {
     const playerState = playerStates[i];
     const playerInput = playerInputs[i];
     const id = playerState.id;
-    if (id !== playerInput.id) {
-      // should never happpen
-      continue;
-    }
+    if (id !== playerInput.id) continue;
 
-    // walk replica ptr
     if (playerReplicas[replicaPtr].id !== id) {
       const index = indexEqRange(
         playerReplicas,
@@ -490,32 +486,27 @@ export function tickPlayerAnimations(state: GameClientState) {
         replicaPtr,
         playerReplicas.length - 1,
       );
-      if (index < 0) {
-        continue;
-      }
+      if (index < 0) continue;
       replicaPtr = index;
     }
     const playerReplica = playerReplicas[replicaPtr++];
 
-    // walk body ptr
     if (bodies[bodyPtr].id !== id) {
       const index = indexEqRange(bodies, id, bodyPtr, bodies.length - 1);
-      if (index < 0) {
-        continue;
-      }
+      if (index < 0) continue;
       bodyPtr = index;
     }
     const playerBody = bodies[bodyPtr++];
 
-    // walk contact ptr
-    if (contact[contactPtr].id !== id) {
-      const index = indexEqRange(contact, id, contactPtr, contact.length - 1);
-      if (index < 0) {
-        continue;
-      }
-      contactPtr = index;
+    // Contact replication is allowed to lag behind the player snapshot. It
+    // affects hit reactions, but must never decide whether the avatar exists.
+    while (contactPtr < contact.length && contact[contactPtr].id < id) {
+      contactPtr++;
     }
-    const playerContact = contact[contactPtr++];
+    const playerContact =
+      contactPtr < contact.length && contact[contactPtr].id === id
+        ? contact[contactPtr++]
+        : resolvePlayerAnimationContact([], id);
 
     // run the animation subroutine
     let p = 1;

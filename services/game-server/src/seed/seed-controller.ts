@@ -13,6 +13,7 @@ import {
 import { DamageSchema } from '@box-local/schema/damage/damage-schema';
 import { copyConfigToDamage } from '../damage/damage-server';
 import { MAX_BODIES } from '@box-local/schema/physics/physics-solve';
+import { resolveActiveSeedMeshId } from './active-seed-mesh';
 
 function clearSeeds(state: GameServerState) {
   // have to do this at start of tick
@@ -47,7 +48,11 @@ function instantiateSeed(state: GameServerState, seedId: string, seed: Seed) {
   }
 
   // create mesh
-  const meshId = state.modelInfo.meshTableFiles.lastIndexOf(seed.mesh);
+  const meshId = resolveActiveSeedMeshId(
+    state.modelInfo.meshTableFiles,
+    state.project.meshAssets,
+    seed.mesh,
+  );
   if (meshId > 0) {
     const mesh = NetModelSchema.alloc();
     mesh.id = id;

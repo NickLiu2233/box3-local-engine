@@ -71,10 +71,6 @@ export interface CommonRuntimeConfig {
     ARENA_URL: string;
     VOXA_URL: string;
     ENGINE_APIS_URL: string;
-    /**
-     * 神策上报地址
-     */
-    SENSORS_TRACKER_URL: string;
     LOG_LEVEL: number;
     /**
      * content server url and max connections

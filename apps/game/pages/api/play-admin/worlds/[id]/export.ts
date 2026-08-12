@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { createPlayBundle } from '../../../../../server/play-admin';
-import { allowPlayAdmin } from '../../../../../server/play-admin-security';
+import { allowPlayLibraryAdmin } from '../../../../../server/play-admin-security';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).end();
   }
-  if (!allowPlayAdmin(req, res)) return;
+  if (!allowPlayLibraryAdmin(req, res)) return;
   try {
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Cache-Control', 'no-store');

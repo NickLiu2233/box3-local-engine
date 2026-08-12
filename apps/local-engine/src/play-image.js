@@ -10,7 +10,7 @@ const supportedPlatforms = new Set(['linux/amd64', 'linux/arm64'])
 // Format 4 requires the complete game-server runtime dependency tree. Older
 // format-3 archives may be missing executable files from packages whose
 // runtime directory is named `doc` (notably yaml/dist/doc/directives.js).
-const playFormat = '5'
+const playFormat = '6'
 
 function readDotEnvValue(name) {
   try {
@@ -48,10 +48,18 @@ function getPlayImageConfig() {
   const archive = path.isAbsolute(configuredArchive)
     ? configuredArchive
     : path.resolve(repoRoot, configuredArchive)
+  const configuredPlayerServiceArchive =
+    process.env.BOX_PLAYER_SERVICE_IMAGE_ARCHIVE ||
+    path.join(packageRoot, 'dist/images/player-service-image.tar')
+  const playerServiceArchive = path.isAbsolute(configuredPlayerServiceArchive)
+    ? configuredPlayerServiceArchive
+    : path.resolve(repoRoot, configuredPlayerServiceArchive)
 
   return {
     archive,
     image: `box-local-engine-play:${tag}`,
+    playerServiceImage: `box-local-engine-player-service:${tag}`,
+    playerServiceArchive,
     platform,
     tag,
   }
@@ -93,14 +101,14 @@ function runDocker(args, { allowFailure = false, capture = false, env } = {}) {
   return result
 }
 
-function inspectLocalImagePlatform(config) {
+function inspectLocalImagePlatform(config, image = config.image) {
   const result = runDocker(
     [
       'image',
       'inspect',
       '--format',
       '{{.Os}}/{{.Architecture}}',
-      config.image,
+      image,
     ],
     {
       allowFailure: true,
@@ -112,14 +120,18 @@ function inspectLocalImagePlatform(config) {
   return String(result.stdout || '').trim()
 }
 
-function inspectLocalImageFormat(config) {
+function inspectLocalImageFormat(
+  config,
+  image = config.image,
+  label = 'org.box.local-engine.play-format',
+) {
   const result = runDocker(
     [
       'image',
       'inspect',
       '--format',
-      '{{index .Config.Labels "org.box.local-engine.play-format"}}',
-      config.image,
+      `{{index .Config.Labels "${label}"}}`,
+      image,
     ],
     {
       allowFailure: true,
@@ -201,7 +213,6 @@ function savePlayImage(config) {
       `本地游玩镜像 ${config.image} 不是 ${config.platform}，需要重新构建`,
     )
   }
-
   fs.mkdirSync(path.dirname(config.archive), { recursive: true })
   const temporaryArchive = `${config.archive}.${process.pid}.tmp`
   fs.rmSync(temporaryArchive, { force: true })
@@ -252,8 +263,78 @@ function ensurePlayImageArchive({ forceBuild = false } = {}) {
   return config
 }
 
+function playerServiceArchiveMatches(
+  config,
+  archive = config.playerServiceArchive,
+) {
+  const inspected = inspectPlayImageArchive(archive, config.playerServiceImage)
+  return (
+    inspected?.platform === config.platform &&
+    inspected?.playFormat === playFormat
+  )
+}
+
+function ensurePlayerServiceImageArchive({ forceBuild = false } = {}) {
+  const config = getPlayImageConfig()
+  const localPlatform = inspectLocalImagePlatform(
+    config,
+    config.playerServiceImage,
+  )
+  const localFormat = inspectLocalImageFormat(
+    config,
+    config.playerServiceImage,
+    'org.box.local-engine.player-service-format',
+  )
+  if (
+    forceBuild ||
+    localPlatform !== config.platform ||
+    localFormat !== playFormat
+  ) {
+    runDocker(
+      ['compose', '--profile', 'player-service', 'build', 'player-service'],
+      { env: dockerEnvironment(config) },
+    )
+  }
+  if (
+    inspectLocalImagePlatform(config, config.playerServiceImage) !==
+      config.platform ||
+    inspectLocalImageFormat(
+      config,
+      config.playerServiceImage,
+      'org.box.local-engine.player-service-format',
+    ) !== playFormat
+  ) {
+    throw new Error('玩家服务镜像标签、架构或格式不正确')
+  }
+
+  fs.mkdirSync(path.dirname(config.playerServiceArchive), { recursive: true })
+  const temporaryArchive = `${config.playerServiceArchive}.${process.pid}.tmp`
+  fs.rmSync(temporaryArchive, { force: true })
+  try {
+    runDocker(
+      [
+        'image',
+        'save',
+        '--output',
+        temporaryArchive,
+        config.playerServiceImage,
+      ],
+      { env: dockerEnvironment(config) },
+    )
+    if (!playerServiceArchiveMatches(config, temporaryArchive)) {
+      throw new Error('导出的玩家服务镜像标签或架构校验失败')
+    }
+    fs.renameSync(temporaryArchive, config.playerServiceArchive)
+  } catch (error) {
+    fs.rmSync(temporaryArchive, { force: true })
+    throw error
+  }
+  return config
+}
+
 module.exports = {
   ensurePlayImageArchive,
+  ensurePlayerServiceImageArchive,
   getPlayImageConfig,
   inspectPlayImageArchive,
 }

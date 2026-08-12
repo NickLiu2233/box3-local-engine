@@ -1,5 +1,5 @@
 import { defineConfig } from 'rollup';
-import typescript from 'rollup-plugin-typescript2';
+import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 
 // node 16.15以下需要这段 workaround，升级镜像后可以换回标准的import

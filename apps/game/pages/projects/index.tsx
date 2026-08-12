@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Trash2,
   Upload,
+  Users,
 } from 'lucide-react';
 
 import styles from './projects.module.css';
@@ -101,14 +102,20 @@ function formatBytes(value: number) {
   return `${(value / 1024 ** unit).toFixed(unit ? 1 : 0)} ${units[unit]}`;
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
-  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
+type ProjectsPageProps = { playerServiceUrl: string };
+
+export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async () => {
+  if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
     return { notFound: true };
   }
-  return { props: {} };
+  return {
+    props: {
+      playerServiceUrl: (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, ''),
+    },
+  };
 };
 
-export default function ProjectsPage() {
+export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const [projects, setProjects] = useState<LocalProject[]>([]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
@@ -660,6 +667,9 @@ export default function ProjectsPage() {
             <h1 id="page-title">作品</h1>
           </div>
           <div className={styles.titleActions}>
+            <a className={styles.importButton} href={`${playerServiceUrl}/players?from=creator`}>
+              <Users size={16} /> 玩家管理
+            </a>
             <a className={styles.importButton} href="/system">
               <Activity size={16} /> 运行状态
             </a>

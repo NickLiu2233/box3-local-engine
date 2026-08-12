@@ -57,6 +57,13 @@ const config = {
   async rewrites() {
     return {
       beforeFiles: [
+        // The play landing page is rendered by Next.js, while lifecycle
+        // control for an installed world belongs to the play-library server.
+        // Keep this narrow so ordinary /p/:world pages still render normally.
+        {
+          source: '/p/:world/__local_runtime/:path*',
+          destination: `${localPlayRuntime}/:world/__local_runtime/:path*`,
+        },
         {
           source: '/runtime/play',
           has: [{ type: 'header', key: 'upgrade', value: 'websocket' }],

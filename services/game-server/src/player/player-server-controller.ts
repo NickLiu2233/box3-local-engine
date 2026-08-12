@@ -45,6 +45,7 @@ import {
   PLAYER_MASS,
 } from '@box-local/schema/player/player-move';
 import { zipId, getById, compareId } from '@box-local/utils/id';
+import { createPlayerUserKey } from '@box-local/utils/local-player-identity';
 import { ChatServer } from '../chat/chat-server';
 import { synchronizeNetClientInput } from '../net/net-server-controller';
 import { copyConfigToDamage } from '../damage/damage-server';
@@ -324,6 +325,15 @@ export function handleServerPlayerConnections(
   for (let i = 0; i < joinEvents.length; ++i) {
     const connection = state.connections[joinEvents[i]];
     if (!connection) {
+      state.logger.warn(
+        `join reached player controller before session data: ${joinEvents[i]}`,
+      );
+      continue;
+    }
+    if (connection.id || connection.state === GameConnectionState.CONNECTED) {
+      state.logger.warn(
+        `ignored duplicate join request from ${connection.sessionId}`,
+      );
       continue;
     }
 
@@ -392,9 +402,12 @@ export function handleServerPlayerConnections(
     serverPlayer.userId = connection.sessionData.user.id || '';
     serverPlayer.boxId = connection.sessionData.user.username;
     serverPlayer.avatar = connection.sessionData.user.avatar_hash;
-    serverPlayer.userKey = connection.sessionData.user.id
+    serverPlayer.userKey = createPlayerUserKey(
+      connection.sessionData.fingerPrint,
+      process.env.PERMISSION_TOKEN_SECRET || '',
+    ) || (connection.sessionData.user.id
       ? genUserKey(connection.sessionData.user.id)
-      : genUserKey(id, 'guestid');
+      : genUserKey(id, 'guestid'));
     serverPlayer.url = connection.sessionData.url;
 
     copyPlayerConfigToServerPlayer(

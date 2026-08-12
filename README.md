@@ -13,6 +13,7 @@ Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创
 | --- | --- | --- | --- |
 | 创作端 | 管理、编辑、预览和发布作品 | `pnpm creator` | `/` |
 | 游玩端 | 从固定目录提供多个只读作品 | `pnpm play` | `/` |
+| 玩家中心 | 创作端与游玩端共用的玩家身份和服主管理 | `pnpm player-service` | `http://127.0.0.1:3213/` |
 | VOXA | 制作和管理本地体素模型 | `pnpm voxa` | `http://127.0.0.1:3001/` |
 | 云端迁移器 | 将云端工程 hash 导出为可编辑本地工程 | `pnpm migrator` | `http://127.0.0.1:3212/` |
 
@@ -52,6 +53,7 @@ pnpm dev
 Docker 生产部署：
 
 ```bash
+pnpm player-service
 pnpm creator
 ```
 
@@ -65,6 +67,7 @@ pnpm voxa
 
 - 创作端：<http://127.0.0.1:3002/>
 - 游玩端：<http://127.0.0.1:3000/>
+- 玩家中心：<http://127.0.0.1:3213/>
 - VOXA：<http://127.0.0.1:3001/>
 - 云端迁移器：<http://127.0.0.1:3212/>
 
@@ -97,8 +100,9 @@ docker load -i play-image.tar
 docker compose up -d
 ```
 
-游玩部署包已经绑定具体作品版本，并且只开放一个玩家网址。网页、地图资源和多人连接都走
-同一个端口。普通玩家不需要安装引擎，也不会获得可重新导入编辑器的工程包。完整流程参阅
+`play-image.tar` 只包含游玩端镜像，玩家服务由 `pnpm player-service` 独立生成
+`player-service-image.tar`。游玩部署包已经绑定具体作品版本；
+普通玩家不需要安装引擎，也不会获得可重新导入编辑器的工程包。完整流程参阅
 [本地工程与发布包](docs/projects.md)。
 
 ## 一键部署
@@ -209,8 +213,11 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_SERVER_PUBLIC_URL` | 空 | 公网反向代理后的完整 HTTPS 地址 |
 | `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
 | `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
+| `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到各地图运行时的间隔（毫秒） |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 每个 IP 每分钟创建 Session 上限 |
 | `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端 |
+| `BOX_IDENTITY_DATABASE_SCHEMA` | `box_identity` | 玩家账号、会话和审计记录使用的独立 schema |
+| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许游客注册本地账号；关闭不影响已有账号登录 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧数据时填写原作品 ID，沿用旧式双表表名 |
 | `REDIS_HOST` | 空 | 可选 Redis；启用跨实例 Session、共享限流和预烘焙构建缓存，并保留本地回退 |
 
@@ -223,9 +230,11 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | 命令 | 作用 |
 | --- | --- |
 | `pnpm dev` | 启动创作端开发环境 |
-| `pnpm creator` | 只构建并部署创作端 |
+| `pnpm player-service` | 独立构建、打包并部署玩家服务镜像 |
+| `pnpm player-service:up` | 直接启动已有玩家服务镜像，不重新构建 |
+| `pnpm creator` | 只构建并部署创作端，不构建玩家服务 |
 | `pnpm creator:up` | 直接启动已有创作端镜像，不重新构建 |
-| `pnpm play` | 只准备并启动游玩端，自动发现地图目录中的作品 |
+| `pnpm play` | 只准备并启动游玩端，不构建玩家服务 |
 | `pnpm infra` | 启动可选的本地 PostgreSQL 和 Redis 容器 |
 | `pnpm infra:stop` | 停止可选基础设施但保留数据 volume |
 | `pnpm stop` | 停止当前 Docker 部署 |
@@ -259,10 +268,12 @@ BOX 的服务器或 CDN。
 - 将工程发布为不可变的只读游玩快照
 - 创作端本机预览
 - 游玩端多人连接
+- 游客和本地玩家账号，游客升级账号后保留存档身份
+- 服主玩家管理，包括昵称、角色、封禁和会话撤销
 - 默认人物和基础资源本地化
 - 创作端和游玩端的生产构建及 Docker 部署
 
-当前不包含云端工程同步、多人协作编辑、玩家账号系统、服务器列表、精细访问控制、跨地图
+当前不包含云端工程同步、多人协作编辑、第三方 OAuth/社交账号、服务器列表、精细访问控制、跨地图
 传送或 Mod 市场。创作端没有公网身份验证，不应直接暴露到不可信网络。
 
 ## 更多文档
@@ -276,6 +287,7 @@ BOX 的服务器或 CDN。
 - [浏览器界面内部说明](apps/game/README.md)
 - [游戏运行时内部说明](services/game-server/README.md)
 - [PostgreSQL 数据空间部署手册](docs/postgresql-data-storage.md)
+- [本地玩家身份与管理](docs/player-identity.md)
 - [与 boxes 的能力边界](docs/boxes-parity.md)
 
 ## 许可证

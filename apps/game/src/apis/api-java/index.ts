@@ -134,15 +134,23 @@ if (clientConfig.isLocalGameServer) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ modelName }),
     });
-  modelApi.setDefaultSkinUsingPut = async ({ mapId, skinId }) =>
-    voxaRequest(`/default-skin?mapId=${encodeURIComponent(String(mapId))}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mapId, skinId }),
-    });
+  const defaultSkinProjectScope = (mapId: number) =>
+    String(clientConfig.name || mapId);
+  modelApi.setDefaultSkinUsingPut = async ({ mapId, skinId }) => {
+    const projectKey = defaultSkinProjectScope(mapId);
+    return voxaRequest(
+      `/default-skin?projectKey=${encodeURIComponent(projectKey)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectKey, mapId, skinId }),
+      },
+    );
+  };
   modelApi.getDefaultSkinUsingGet = async ({ mapId }) => {
+    const projectKey = defaultSkinProjectScope(mapId);
     const skin = await voxaRequest(
-      `/default-skin?mapId=${encodeURIComponent(String(mapId))}`,
+      `/default-skin?projectKey=${encodeURIComponent(projectKey)}`,
     );
     return skin
       ? { ...skin, modelPreviewUrl: absoluteVoxaURL(skin.modelPreviewUrl) }

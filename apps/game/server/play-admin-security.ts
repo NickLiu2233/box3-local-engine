@@ -6,10 +6,10 @@ const MAX_FAILURES = 10;
 const failures = new Map<string, { count: number; resetAt: number }>();
 
 export function isPlayAdminEnabled() {
-  return (
-    process.env.BOX_DEPLOYMENT_MODE === 'play' &&
-    Boolean(process.env.BOX_PLAY_LIBRARY_PATH) &&
-    (process.env.BOX_PLAY_ADMIN_TOKEN || '').length >= 16
+  const mode = process.env.BOX_DEPLOYMENT_MODE;
+  return (process.env.BOX_PLAY_ADMIN_TOKEN || '').length >= 16 && (
+    mode === 'player-service' ||
+    (mode === 'play' && Boolean(process.env.BOX_PLAY_LIBRARY_PATH))
   );
 }
 
@@ -64,4 +64,18 @@ export function allowPlayAdmin(req: NextApiRequest, res: NextApiResponse) {
 
   failures.delete(address);
   return true;
+}
+
+export function allowPlayLibraryAdmin(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (
+    process.env.BOX_DEPLOYMENT_MODE !== 'play' ||
+    !process.env.BOX_PLAY_LIBRARY_PATH
+  ) {
+    res.status(404).json({ message: '游玩地图库管理功能未开启' });
+    return false;
+  }
+  return allowPlayAdmin(req, res);
 }

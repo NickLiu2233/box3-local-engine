@@ -4,6 +4,9 @@ import { EditorPage } from 'src/entry/editor-page';
 import { getArenaServerRenderProps } from '/server/server-render';
 
 export default async function Page({ params, searchParams }) {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
+    redirect('/account');
+  }
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
     redirect('/p/local');
   }

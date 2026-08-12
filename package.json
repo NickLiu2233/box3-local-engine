@@ -11,6 +11,8 @@
   "scripts": {
     "creator": "node apps/local-engine/src/deploy.js creator",
     "creator:up": "docker compose --profile creator up -d --no-build creator",
+    "player-service": "node apps/local-engine/src/deploy.js player-service",
+    "player-service:up": "node apps/local-engine/src/deploy.js player-service-up",
     "voxa": "node apps/local-engine/src/deploy.js voxa",
     "voxa:up": "node apps/local-engine/src/deploy.js voxa-up",
     "voxa:image": "docker compose --profile voxa build voxa",

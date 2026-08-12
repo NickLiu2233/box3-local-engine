@@ -225,16 +225,18 @@ export default function HomePage({
       <main className="page">
         <div className="header">
           <div className="title"><h1>作品</h1><span>{worldList.length} 个</span></div>
-          {adminEnabled ? (
-            verified ? (
-              <div className="headerActions">
+          <div className="headerActions">
+            {adminEnabled ? (
+              verified ? (
+                <>
                 <button className="button primary" disabled={Boolean(busy)} onClick={() => importInput.current?.click()}>
                   {busy === 'import' ? '导入中…' : '导入游玩包'}
                 </button>
                 <button className="button" onClick={exitAdmin}>退出管理</button>
-              </div>
-            ) : <button className="button" onClick={() => setLoginOpen(true)}>服主管理</button>
-          ) : null}
+                </>
+              ) : <button className="button" onClick={() => setLoginOpen(true)}>服主管理</button>
+            ) : null}
+          </div>
           <input
             ref={importInput}
             className="hidden"
@@ -376,6 +378,9 @@ export default function HomePage({
 }
 
 export const getServerSideProps: GetServerSideProps = async () => {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
+    return { redirect: { destination: '/account', permanent: false } };
+  }
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') {
     return { redirect: { destination: '/projects', permanent: false } };
   }
@@ -387,5 +392,10 @@ export const getServerSideProps: GetServerSideProps = async () => {
       },
     };
   }
-  return { props: { worlds: getPlayWorlds(), adminEnabled: isPlayAdminEnabled() } };
+  return {
+    props: {
+      worlds: getPlayWorlds(),
+      adminEnabled: isPlayAdminEnabled(),
+    },
+  };
 };

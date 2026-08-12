@@ -3,6 +3,7 @@ ARG NODE_IMAGE=node:22.17.0-bookworm-slim
 FROM ${NODE_IMAGE} AS source-base
 
 ENV CI=true \
+    NEXT_TELEMETRY_DISABLED=1 \
     PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NODE_OPTIONS=--max-old-space-size=8192
@@ -95,6 +96,13 @@ RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-lib
     && rm -f /opt/game-server/node_modules/.modules.yaml \
     && test -f /opt/game-server/node_modules/.pnpm/yaml@2.1.1/node_modules/yaml/dist/doc/directives.js
 
+FROM engine-build-base AS player-service-build
+
+RUN NEXT_PUBLIC_APP_ENV=development \
+    NEXT_PUBLIC_APP_EDITION=createra \
+    NEXT_PUBLIC_APP_REGION=cn \
+    pnpm --filter @box-local/game build-next
+
 FROM source-base AS voxa-build
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
@@ -103,7 +111,8 @@ RUN pnpm --filter @box-local/voxa build
 
 FROM ${NODE_IMAGE} AS runtime-base
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tini ca-certificates \
@@ -153,7 +162,7 @@ CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--creator"]
 
 FROM runtime-base AS play
 
-LABEL org.box.local-engine.play-format="5"
+LABEL org.box.local-engine.play-format="6"
 
 ENV BOX_DEPLOYMENT_MODE=play \
     BOX_WEB_HOST=0.0.0.0 \
@@ -166,7 +175,6 @@ ENV BOX_DEPLOYMENT_MODE=play \
 COPY --from=play-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=play-build --chown=node:node /opt/game-server /app/services/game-server
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
-COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-manager.js /app/apps/local-engine/src/project-manager.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library.js /app/apps/local-engine/src/play-library.js
@@ -181,6 +189,36 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=5 \
   CMD node -e "Promise.all([fetch('http://127.0.0.1:3000/api/health-check'),fetch('http://127.0.0.1:3000/api/play-worlds')]).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"
 
 CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--play"]
+
+FROM runtime-base AS player-service
+
+LABEL org.box.local-engine.player-service-format="6" \
+      org.box.local-engine.play-format="6"
+
+ENV BOX_DEPLOYMENT_MODE=player-service \
+    NEXT_PUBLIC_APP_ENV=development \
+    NEXT_PUBLIC_APP_EDITION=createra \
+    NEXT_PUBLIC_APP_REGION=cn \
+    HOSTNAME=0.0.0.0 \
+    PORT=3213
+
+COPY --from=player-service-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
+COPY --from=player-service-build --chown=node:node /app/apps/game/.next/static /app/apps/game/.next/standalone/apps/game/.next/static
+COPY --from=player-service-build --chown=node:node /app/apps/game/public /app/apps/game/.next/standalone/apps/game/public
+
+RUN find /app/apps/game/.next/standalone -type f \( \
+      -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
+      -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
+    \) -delete
+
+USER node
+
+EXPOSE 3213
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+  CMD node -e "fetch('http://127.0.0.1:3213/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/game/.next/standalone/apps/game/server.js"]
 
 FROM runtime-base AS voxa
 

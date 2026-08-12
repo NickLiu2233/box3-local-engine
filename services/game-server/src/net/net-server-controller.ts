@@ -47,6 +47,7 @@ import { CloseType } from '@box-local/schema/types/game';
 import { GamePrivateReplicaSchema } from '@box-local/schema/replica/game-private-replica';
 import { HotProject } from '@box-local/schema/project/hot-schema';
 import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
+import { PendingPlayerJoins } from '../player/pending-player-joins';
 
 const MIN_RESYNC_TICK_INTERVAL = 16; // 1 second
 
@@ -223,6 +224,7 @@ export class NetServer {
   private _socketServer: MuSocketServer;
 
   private _clientLastResyncTick: { [sessionId: string]: number } = {};
+  private _pendingPlayerJoins = new PendingPlayerJoins();
 
   public updateBufferedAmount() {
     // TERRIBLE HACK
@@ -378,9 +380,22 @@ export class NetServer {
         },
 
         join: (client) => {
-          // add the client to game
-          this._logger.log('join request from ' + client.sessionId);
-          this._state.events.join.push(client.sessionId);
+          const sessionId = client.sessionId;
+          const connection = this._state.connections[sessionId];
+          this._logger.log('join request from ' + sessionId);
+          if (
+            connection?.id ||
+            this._state.events.join.indexOf(sessionId) >= 0
+          ) {
+            return;
+          }
+          if (this._pendingPlayerJoins.request(sessionId, Boolean(connection))) {
+            this._state.events.join.push(sessionId);
+          } else {
+            this._logger.log(
+              'waiting for session data before joining ' + sessionId,
+            );
+          }
         },
         sendKeyBoardEvent: (client, event) => {
           const conn = this._state.connections[client.sessionId];
@@ -418,6 +433,16 @@ export class NetServer {
               logger.info(`rejecting client ${client.sessionId}`);
               client.close();
             } else {
+              if (
+                this._pendingPlayerJoins.connectionReady(client.sessionId) &&
+                !this._state.connections[client.sessionId]?.id &&
+                this._state.events.join.indexOf(client.sessionId) < 0
+              ) {
+                this._logger.log(
+                  'session data ready, resuming join ' + client.sessionId,
+                );
+                this._state.events.join.push(client.sessionId);
+              }
               // 当客户端连接时传用户代码过去
               client.message.syncClientScriptModules(
                 this.getClientScriptModules(),
@@ -433,6 +458,7 @@ export class NetServer {
           });
       },
       disconnect: (client) => {
+        this._pendingPlayerJoins.disconnect(client.sessionId);
         logger.info(`client disconnected ${client.sessionId}`);
         spec.disconnect(client.sessionId);
       },

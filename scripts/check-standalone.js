@@ -140,6 +140,9 @@ for (const [name, command] of Object.entries({
   creator: 'node apps/local-engine/src/deploy.js creator',
   'creator:up':
     'docker compose --profile creator up -d --no-build creator',
+  'player-service': 'node apps/local-engine/src/deploy.js player-service',
+  'player-service:up':
+    'node apps/local-engine/src/deploy.js player-service-up',
   voxa: 'node apps/local-engine/src/deploy.js voxa',
   'voxa:image': 'docker compose --profile voxa build voxa',
   'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
@@ -474,7 +477,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,creator,play,voxa,migrator'
+  'postgres,redis,player-service,creator,play,voxa,migrator'
 ) {
   fail(
     `${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`,
@@ -483,6 +486,7 @@ if (
 
 const creatorCompose = getComposeService(composeSource, 'creator')
 const playCompose = getComposeService(composeSource, 'play')
+const playerServiceCompose = getComposeService(composeSource, 'player-service')
 const voxaCompose = getComposeService(composeSource, 'voxa')
 for (const [name, service] of [
   ['creator', creatorCompose],
@@ -502,13 +506,25 @@ for (const [name, service] of [
     `${name} deployment mode`,
     new RegExp(`BOX_DEPLOYMENT_MODE: ${name}`),
   )
-  requirePattern(
-    service,
-    composeFile,
-    `${name} paid access gate`,
-    /PAID_ACCESS: \$\{BOX_PAID_ACCESS:-false\}/,
-  )
 }
+requirePattern(
+  playerServiceCompose,
+  composeFile,
+  'independent player-service profile',
+  /profiles: \[player-service\]/,
+)
+forbidPattern(
+  creatorCompose,
+  composeFile,
+  'creator hard dependency on player-service',
+  /depends_on:[\s\S]*?player-service/,
+)
+forbidPattern(
+  playCompose,
+  composeFile,
+  'play hard dependency on player-service',
+  /depends_on:[\s\S]*?player-service/,
+)
 requirePattern(voxaCompose, composeFile, 'VOXA profile', /profiles: \[voxa\]/)
 requirePattern(
   voxaCompose,
@@ -747,7 +763,7 @@ requirePattern(
   readRequired('apps/game/pages/api/local-projects/[id]/publish.ts'),
   'apps/game/pages/api/local-projects/[id]/publish.ts',
   'flush editor before local release creation',
-  /await flushActiveEditor\(\)[\s\S]*?manager\.publishProject/,
+  /await flushActiveEditor\(id\)[\s\S]*?manager\.publishProject/,
 )
 requirePattern(
   readRequired('apps/local-engine/src/play-library.js'),
@@ -888,8 +904,14 @@ requirePattern(
 requirePattern(
   readRequired('apps/game/pages/api/createSession.ts'),
   'apps/game/pages/api/createSession.ts',
-  'same-origin mode-specific WebSocket URL',
-  /BOX_EDIT_RUNTIME_PUBLIC_PORT[\s\S]*?BOX_PLAY_RUNTIME_PUBLIC_PORT[\s\S]*?runtimePath =[\s\S]*?`\/runtime\/play\/\$\{encodeURIComponent\(containerName\)\}`[\s\S]*?socketServerUrl = `\$\{protocol\}:\/\/\$\{host\}\$\{runtimePath\}`/,
+  'same-origin creator WebSocket URL',
+  /deploymentMode === 'creator'[\s\S]*?json\.data\.socketServerUrl = `\$\{protocol\}:\/\/\$\{requestHost\}\/runtime\/\$\{mode\}\/\$\{encodeURIComponent\(containerName\)\}`/,
+)
+requirePattern(
+  readRequired('apps/game/pages/api/createSession.ts'),
+  'apps/game/pages/api/createSession.ts',
+  'same-origin play WebSocket URL',
+  /deploymentMode === 'play'[\s\S]*?runtimePath =[\s\S]*?`\/runtime\/play\/\$\{encodeURIComponent\(containerName\)\}`[\s\S]*?json\.data\.socketServerUrl/,
 )
 requirePattern(
   readRequired('apps/game/src/apis/api-java/index.ts'),
@@ -904,6 +926,7 @@ for (const [label, pattern] of [
   ['internal play runtime target', /BOX_PLAY_RUNTIME_PORT[\s\S]*?'9966'[\s\S]*?BOX_INTERNAL_PLAY_RUNTIME/],
   ['internal edit runtime target', /BOX_EDIT_RUNTIME_PORT[\s\S]*?'9967'[\s\S]*?BOX_INTERNAL_EDIT_RUNTIME/],
   ['prefixed play runtime proxy', /source: '\/runtime\/play\/:path\*'[\s\S]*?localPlayRuntime/],
+  ['play world lifecycle proxy', /source: '\/p\/:world\/__local_runtime\/:path\*'[\s\S]*?localPlayRuntime/],
   ['prefixed edit runtime proxy', /source: '\/runtime\/edit\/:path\*'[\s\S]*?localEditRuntime/],
   ['same-origin session proxy', /source: '\/api\/session'[\s\S]*?\/api\/session/],
   ['same-origin server info proxy', /source: '\/api\/server-info'[\s\S]*?\/api\/server-info/],
@@ -933,22 +956,22 @@ const projectRuntimeApiFile =
   'apps/game/pages/api/local-projects/[id]/runtime.ts'
 const projectRuntimeApiSource = readRequired(projectRuntimeApiFile)
 requirePattern(
-  projectRuntimeApiSource,
-  projectRuntimeApiFile,
+  launcherSource,
+  'apps/local-engine/src/launcher.js',
   'development project runtime avoids production artifacts',
-  /NODE_ENV === 'production'[\s\S]*?launcherArgs\.push\('--production'\)/,
+  /startProjectRuntime[\s\S]*?\.\.\.\(production \? \['--production'\] : \[\]\)[\s\S]*?'--runtime-mode'[\s\S]*?mode/,
 )
 requirePattern(
   launcherSource,
   'apps/local-engine/src/launcher.js',
   'Docker Desktop runtime copy permission normalization',
-  /function makeRuntimeDataReadable[\s\S]*?fs\.chmodSync\(target, 0o755\)[\s\S]*?fs\.chmodSync\(target, 0o644\)[\s\S]*?fs\.cpSync\(world\.dataRoot, temporaryRoot[\s\S]*?makeRuntimeDataReadable\(temporaryRoot\)/,
+  /function makeRuntimeDataReadable[\s\S]*?fs\.chmodSync\(target, 0o755\)[\s\S]*?fs\.chmodSync\(entryPath, 0o644\)[\s\S]*?fs\.cpSync\(world\.dataRoot, temporaryRoot[\s\S]*?makeRuntimeDataReadable\(temporaryRoot\)/,
 )
 requirePattern(
-  projectRuntimeApiSource,
-  projectRuntimeApiFile,
+  launcherSource,
+  'apps/local-engine/src/launcher.js',
   'edit and play project runtimes are managed separately',
-  /children: Partial<Record<RuntimeMode, ChildProcess>>[\s\S]*?--runtime-mode[\s\S]*?mode/,
+  /editLibrary = require\('\.\/edit-library'\)[\s\S]*?mode: 'edit'[\s\S]*?creatorPlayLibrary = require\('\.\/edit-library'\)[\s\S]*?mode: 'play'/,
 )
 
 requirePattern(
@@ -1272,6 +1295,18 @@ for (const key of [
 const fullLocalConfig = JSON.parse(
   readRequired('apps/local-engine/config/local.config.json'),
 )
+if ('SENSORS_TRACKER_URL' in (fullLocalConfig.common || {})) {
+  fail('apps/local-engine/config/local.config.json: remove legacy Sensors config')
+}
+for (const file of [
+  'internals/env/src/schemas/common.ts',
+  'internals/env/dist/index.js',
+  'internals/env/dist/index.es.js',
+]) {
+  if (readRequired(file).includes('SENSORS_TRACKER_URL')) {
+    fail(`${file}: remove legacy Sensors config schema`)
+  }
+}
 function checkEmptySecrets(value, prefix = '') {
   if (!value || typeof value !== 'object') return
   for (const [key, child] of Object.entries(value)) {

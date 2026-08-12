@@ -1,0 +1,101 @@
+import { createHmac, timingSafeEqual } from 'crypto';
+
+export type LocalPlayerRole = 'player' | 'moderator' | 'admin';
+export type LocalPlayerStatus = 'active' | 'banned';
+
+export type RuntimePlayerIdentity = {
+  subjectId: string;
+  userId: string;
+  username: string;
+  displayName: string;
+  avatar: string;
+  role: LocalPlayerRole;
+  status: LocalPlayerStatus;
+  expiresAt: number;
+};
+
+const subjectPattern = /^[0-9a-f]{32}$/;
+const userIdPattern = /^$|^[1-9][0-9]{0,18}$/;
+const usernamePattern = /^$|^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
+
+function encodeBase64URL(value: string | Buffer) {
+  return Buffer.from(value)
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function decodeBase64URL(value: string) {
+  const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = '='.repeat((4 - (normalized.length % 4)) % 4);
+  return Buffer.from(normalized + padding, 'base64').toString('utf8');
+}
+
+function signature(payload: string, secret: string) {
+  return encodeBase64URL(createHmac('sha256', secret).update(payload).digest());
+}
+
+function validIdentity(value: RuntimePlayerIdentity) {
+  return (
+    subjectPattern.test(value.subjectId) &&
+    userIdPattern.test(value.userId) &&
+    usernamePattern.test(value.username) &&
+    typeof value.displayName === 'string' &&
+    value.displayName.length >= 1 &&
+    value.displayName.length <= 32 &&
+    typeof value.avatar === 'string' &&
+    value.avatar.length <= 2048 &&
+    ['player', 'moderator', 'admin'].includes(value.role) &&
+    ['active', 'banned'].includes(value.status) &&
+    Number.isSafeInteger(value.expiresAt)
+  );
+}
+
+export function signRuntimePlayerIdentity(
+  identity: Omit<RuntimePlayerIdentity, 'expiresAt'>,
+  secret: string,
+  ttlMs = 60_000,
+) {
+  if (!secret) throw new Error('player identity secret is not configured');
+  const value: RuntimePlayerIdentity = {
+    ...identity,
+    expiresAt: Date.now() + Math.max(5_000, Math.min(ttlMs, 5 * 60_000)),
+  };
+  if (!validIdentity(value)) throw new Error('invalid runtime player identity');
+  const payload = encodeBase64URL(JSON.stringify(value));
+  return `${payload}.${signature(payload, secret)}`;
+}
+
+export function verifyRuntimePlayerIdentity(
+  token: string,
+  secret: string,
+  now = Date.now(),
+): RuntimePlayerIdentity | null {
+  if (!token || !secret) return null;
+  const [payload, provided, extra] = token.split('.');
+  if (!payload || !provided || extra) return null;
+  const expected = signature(payload, secret);
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  if (
+    providedBuffer.length !== expectedBuffer.length ||
+    !timingSafeEqual(providedBuffer, expectedBuffer)
+  ) {
+    return null;
+  }
+  try {
+    const value = JSON.parse(decodeBase64URL(payload)) as RuntimePlayerIdentity;
+    if (!validIdentity(value) || value.expiresAt <= now) return null;
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+export function createPlayerUserKey(subjectId: string, secret: string) {
+  if (!subjectPattern.test(subjectId) || !secret) return '';
+  return encodeBase64URL(
+    createHmac('sha256', secret).update(`player-subject:${subjectId}`).digest(),
+  ).slice(0, 22);
+}

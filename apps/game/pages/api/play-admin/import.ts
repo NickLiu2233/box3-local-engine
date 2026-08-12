@@ -6,7 +6,7 @@ import { pipeline } from 'stream/promises';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { importPlayBundle } from '../../../server/play-admin';
-import { allowPlayAdmin } from '../../../server/play-admin-security';
+import { allowPlayLibraryAdmin } from '../../../server/play-admin-security';
 
 export const config = { api: { bodyParser: false } };
 const MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024;
@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'POST');
     return res.status(405).end();
   }
-  if (!allowPlayAdmin(req, res)) return;
+  if (!allowPlayLibraryAdmin(req, res)) return;
 
   const temporaryPath = path.join(os.tmpdir(), `box-play-upload-${process.pid}-${Date.now()}.boxplay`);
   let receivedBytes = 0;

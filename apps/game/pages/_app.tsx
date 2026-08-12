@@ -48,6 +48,19 @@ MyApp.getInitialProps = async (
   appContext: AppContext,
 ): Promise<AppOwnProps & AppInitialProps> => {
   const appProps = await App.getInitialProps(appContext);
+  // The independent player service owns only account and administration UI.
+  // It must not initialize the arena/engine configuration stack or contact
+  // Nacos just to render those local pages.
+  if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
+    return {
+      ...appProps,
+      clientConfig: {
+        APP_ENV: process.env.NEXT_PUBLIC_APP_ENV || 'development',
+        APP_EDITION: process.env.NEXT_PUBLIC_APP_EDITION || 'createra',
+        APP_REGION: process.env.NEXT_PUBLIC_APP_REGION || 'cn',
+      } as ServerConfigForClient,
+    };
+  }
   const serverConfig = await import('../configs/server').then(
     ({ getServerConfig }) => getServerConfig(),
   );

@@ -208,6 +208,9 @@ importers:
       next-themes:
         specifier: ~0.4.6
         version: 0.4.6(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      pg:
+        specifier: 8.16.3
+        version: 8.16.3
       pino:
         specifier: 8.19.0
         version: 8.19.0
@@ -356,6 +359,9 @@ importers:
       '@types/node':
         specifier: 20.16.15
         version: 20.16.15
+      '@types/pg':
+        specifier: 8.15.5
+        version: 8.15.5
       '@types/ramda':
         specifier: 0.28.15
         version: 0.28.15
@@ -858,15 +864,15 @@ importers:
       '@rollup/plugin-commonjs':
         specifier: 28.0.3
         version: 28.0.3(rollup@4.41.1)
+      '@rollup/plugin-typescript':
+        specifier: 12.1.4
+        version: 12.1.4(rollup@4.41.1)(tslib@2.3.1)(typescript@5.6.3)
       '@types/debug':
         specifier: 4.1.7
         version: 4.1.7
       rollup:
         specifier: 4.41.1
         version: 4.41.1
-      rollup-plugin-typescript2:
-        specifier: 0.35.0
-        version: 0.35.0(rollup@4.41.1)(typescript@5.6.3)
       tslib:
         specifier: 2.3.1
         version: 2.3.1
@@ -4196,9 +4202,18 @@ packages:
       tslib:
         optional: true
 
-  '@rollup/pluginutils@4.2.1':
-    resolution: {integrity: sha512-iKnFXr7NkdZAIHiIWE+BX5ULi/ucVFYWD6TbAV+rZctiRTY2PL6tsIKhoIOaoskiWAkgu+VsbXgUVDNLHf+InQ==}
-    engines: {node: '>= 8.0.0'}
+  '@rollup/plugin-typescript@12.1.4':
+    resolution: {integrity: sha512-s5Hx+EtN60LMlDBvl5f04bEiFZmAepk27Q+mr85L/00zPDn1jtzlTV6FWn81MaIwqfWzKxmOJrBWHU6vtQyedQ==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^2.14.0||^3.0.0||^4.0.0
+      tslib: '*'
+      typescript: '>=3.7.0'
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+      tslib:
+        optional: true
 
   '@rollup/pluginutils@5.4.0':
     resolution: {integrity: sha512-MfPp06CjRLfXQ3wY0R8vJDYBy/MvVcc9OulEfR0B8Iv9ko+GCNaRZ+EpJYFl27LhKsZK0o420sYCRHCjfCgeUg==}
@@ -11251,12 +11266,6 @@ packages:
     peerDependencies:
       postcss: 8.x
 
-  rollup-plugin-typescript2@0.35.0:
-    resolution: {integrity: sha512-szcIO9hPUx3PhQl91u4pfNAH2EKbtrXaES+m163xQVE5O1CC0ea6YZV/5woiDDW3CR9jF2CszPrKN+AFiND0bg==}
-    peerDependencies:
-      rollup: '>=1.26.3'
-      typescript: '>=2.4.0'
-
   rollup-pluginutils@2.8.2:
     resolution: {integrity: sha512-EEp9NhnUkwY8aif6bxgovPHMoMoNr2FulJziTndpt5H9RdwC47GSGuII9XxpSdzVGM0GWrNPHV6ie1LTNJPaLQ==}
 
@@ -16121,10 +16130,14 @@ snapshots:
       rollup: 4.41.1
       tslib: 2.3.1
 
-  '@rollup/pluginutils@4.2.1':
+  '@rollup/plugin-typescript@12.1.4(rollup@4.41.1)(tslib@2.3.1)(typescript@5.6.3)':
     dependencies:
-      estree-walker: 2.0.2
-      picomatch: 2.3.2
+      '@rollup/pluginutils': 5.4.0(rollup@4.41.1)
+      resolve: 1.22.12
+      typescript: 5.6.3
+    optionalDependencies:
+      rollup: 4.41.1
+      tslib: 2.3.1
 
   '@rollup/pluginutils@5.4.0(rollup@4.41.1)':
     dependencies:
@@ -24826,16 +24839,6 @@ snapshots:
       style-inject: 0.3.0
     transitivePeerDependencies:
       - ts-node
-
-  rollup-plugin-typescript2@0.35.0(rollup@4.41.1)(typescript@5.6.3):
-    dependencies:
-      '@rollup/pluginutils': 4.2.1
-      find-cache-dir: 3.3.2
-      fs-extra: 10.0.1
-      rollup: 4.41.1
-      semver: 7.8.5
-      tslib: 2.8.1
-      typescript: 5.6.3
 
   rollup-pluginutils@2.8.2:
     dependencies:

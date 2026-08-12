@@ -16,6 +16,7 @@ export type Mode = 'edit' | 'play';
 const LIMIT = 100;
 
 const LOCAL_MESH_PATH = /__local_\d+\.vb$/;
+const LOCAL_SKIN_NAME = /__local_\d+$/;
 
 /**
  * `boxes` receives one authoritative extra-project snapshot from its backend.
@@ -54,7 +55,10 @@ export function mergeExtraProjectInfo(
       ...localLibrary.skinAssets,
     },
     defaultSkinName:
-      localLibrary.defaultSkinName || packaged.defaultSkinName,
+      localLibrary.defaultSkinName ||
+      (LOCAL_SKIN_NAME.test(packaged.defaultSkinName)
+        ? ''
+        : packaged.defaultSkinName),
     scriptAssets: {
       ...packaged.scriptAssets,
       ...localLibrary.scriptAssets,
@@ -70,6 +74,7 @@ export async function getLocalExtraProject(
   voxaURL: string,
   mapId: number,
   logger: Logger,
+  projectKey = '',
 ) {
   const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
   try {
@@ -92,7 +97,7 @@ export async function getLocalExtraProject(
         }),
         axios
           .get(`${baseURL}/api/local/default-skin`, {
-            params: { mapId },
+            params: projectKey ? { projectKey, mapId } : { mapId },
             timeout: 10_000,
           })
           .catch(() => ({ data: null })),
@@ -187,11 +192,17 @@ export async function getExtraProject(
   logger: Logger,
 ) {
   if (getConfigSync()?.method === 'local') {
+    const config = getConfigSync();
     const voxaURL =
       process.env.VOXA_INTERNAL_URL ||
       process.env.VOXA_URL ||
       'http://127.0.0.1:3001';
-    return getLocalExtraProject(voxaURL, mapId, logger);
+    return getLocalExtraProject(
+      voxaURL,
+      mapId,
+      logger,
+      config?.containerName || '',
+    );
   }
 
   const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);

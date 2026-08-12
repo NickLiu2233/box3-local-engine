@@ -5,6 +5,7 @@ const path = require('path')
 const { spawnSync } = require('child_process')
 const {
   ensurePlayImageArchive,
+  ensurePlayerServiceImageArchive,
   getPlayImageConfig,
 } = require('./play-image')
 
@@ -46,6 +47,14 @@ function configuredPlayPort() {
     process.env.BOX_PORT ||
     readDotEnvValue('BOX_PORT') ||
     '3000'
+  )
+}
+
+function configuredPlayerServicePort() {
+  return (
+    process.env.BOX_PLAYER_SERVICE_PORT ||
+    readDotEnvValue('BOX_PLAYER_SERVICE_PORT') ||
+    '3213'
   )
 }
 
@@ -203,6 +212,36 @@ function deployCreator() {
     'creator',
   ])
   console.log('\n创作端已启动：http://127.0.0.1:' + configuredCreatorPort() + '\n')
+  console.log(
+    '玩家中心：http://127.0.0.1:' + configuredPlayerServicePort() + '\n',
+  )
+}
+
+function startPlayerService({ build }) {
+  if (commandArgs.length) {
+    throw new Error(
+      `pnpm ${build ? 'player-service' : 'player-service:up'} 不接受参数`,
+    )
+  }
+  const config = build
+    ? ensurePlayerServiceImageArchive({ forceBuild: true })
+    : getPlayImageConfig()
+  stopProduct('player-service')
+  runDocker([
+    'compose',
+    '--profile',
+    'player-service',
+    'up',
+    '-d',
+    '--no-build',
+    '--force-recreate',
+    'player-service',
+  ])
+  console.log(
+    `\n玩家服务已启动：http://127.0.0.1:${configuredPlayerServicePort()}`,
+  )
+  if (build) console.log(`可分发镜像：${config.playerServiceArchive}`)
+  console.log('Creator 和 Play 会共用这个服务；更新它时无需重建另外两个镜像。\n')
 }
 
 function deployPlay() {
@@ -227,6 +266,7 @@ function deployPlay() {
     },
   })
   console.log('\n游玩端已启动：http://127.0.0.1:' + configuredPlayPort())
+  console.log('玩家中心：http://127.0.0.1:' + configuredPlayerServicePort())
   console.log(`地图目录：${libraryRoot}`)
   console.log('访问首页查看全部地图；新增地图无需重启。')
   console.log(`镜像架构：${playImage.platform}`)
@@ -278,6 +318,8 @@ function stopAll() {
     'play',
     '--profile',
     'voxa',
+    '--profile',
+    'player-service',
     'down',
   ])
 }
@@ -285,10 +327,14 @@ function stopAll() {
 try {
   if (command === 'creator') deployCreator()
   else if (command === 'play') deployPlay()
+  else if (command === 'player-service') startPlayerService({ build: true })
+  else if (command === 'player-service-up') startPlayerService({ build: false })
   else if (command === 'voxa') deployVoxa()
   else if (command === 'voxa-up') startExistingVoxa()
   else if (command === 'stop') stopAll()
-  else throw new Error('Usage: deploy.js <creator|play|voxa|voxa-up|stop>')
+  else throw new Error(
+    'Usage: deploy.js <creator|play|player-service|player-service-up|voxa|voxa-up|stop>',
+  )
 } catch (error) {
   console.error(`部署失败：${error.message}`)
   process.exitCode = 1

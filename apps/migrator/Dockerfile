@@ -1,7 +1,7 @@
 ARG NODE_IMAGE=node:22.17.0-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
-ENV CI=true PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+ENV CI=true NEXT_TELEMETRY_DISABLED=1 PNPM_HOME=/pnpm PATH=/pnpm:$PATH
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 COPY . .
@@ -10,7 +10,7 @@ RUN --mount=type=cache,id=box-local-engine-migrator-pnpm,target=/pnpm/store \
 RUN pnpm --filter @box-local/migrator build
 
 FROM ${NODE_IMAGE} AS runtime
-ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3212 \
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3212 \
     BOX_MIGRATOR_RUNTIME_TEMPLATE=/app/runtime-template
 RUN apt-get update && apt-get install -y --no-install-recommends tini tar gzip ca-certificates \
     && rm -rf /var/lib/apt/lists/*

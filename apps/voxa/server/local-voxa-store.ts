@@ -295,27 +295,29 @@ export async function deleteModel(id: number) {
   });
 }
 
-export function getDefaultSkin(mapId: number) {
+export type DefaultSkinScope = string | number;
+
+export function getDefaultSkin(scope: DefaultSkinScope) {
   const index = readIndex();
-  const id = index.defaultSkinByMap?.[String(mapId)] || 0;
+  const id = index.defaultSkinByMap?.[String(scope)] || 0;
   const model = index.models.find(
     (item) => item.modelId === id && item.creativeMode === 2,
   );
   return model ? publicModel(model) : null;
 }
 
-export async function setDefaultSkin(mapId: number, skinId?: number) {
+export async function setDefaultSkin(scope: DefaultSkinScope, skinId?: number) {
   return mutate((index) => {
     index.defaultSkinByMap ||= {};
     if (!skinId) {
-      delete index.defaultSkinByMap[String(mapId)];
+      delete index.defaultSkinByMap[String(scope)];
       return true;
     }
     const skin = index.models.find(
       (item) => item.modelId === skinId && item.creativeMode === 2,
     );
     if (!skin) return false;
-    index.defaultSkinByMap[String(mapId)] = skinId;
+    index.defaultSkinByMap[String(scope)] = skinId;
     return true;
   });
 }

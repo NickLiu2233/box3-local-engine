@@ -22,6 +22,10 @@ box-local-engine-creator:0.1.0
 - 作品创建、导入、导出、发布和删除接口；
 - 运行编辑器所需的本地基础资源。
 
+玩家账号、游客身份、登录记录和封禁由独立的 `box-local-engine-player-service` 镜像负责。
+先用独立命令 `pnpm player-service` 构建并启动它；`pnpm creator` 不会构建或替换玩家服务。
+创作端预览与游玩端因此可以使用同一套长期运行的玩家身份服务。
+
 它不会把宿主机现有的作品工程打进镜像。作品和导出文件通过宿主机目录挂载：
 
 ```text
@@ -104,6 +108,7 @@ pnpm voxa
 | 端口 | 用途 | 默认暴露范围 |
 | --- | --- | --- |
 | `3002` | 作品管理和编辑器网页 | 仅宿主机 `127.0.0.1` |
+| `3213` | 共用玩家账号与服主管理 | 仅宿主机 `127.0.0.1` |
 | `9966` | 创作端本机游玩预览 | 仅宿主机 `127.0.0.1` |
 | `9967` | 创作端编辑会话 | 仅宿主机 `127.0.0.1` |
 
@@ -113,7 +118,8 @@ pnpm voxa
 
 | 命令 | 是否构建 Docker 镜像 | 是否启动容器 | 适用场景 |
 | --- | --- | --- | --- |
-| `pnpm creator` | 是，只构建创作端 | 是 | 正常首次部署、代码更新后部署 |
+| `pnpm player-service` | 是，只构建玩家服务 | 是 | 首次部署或玩家服务代码更新 |
+| `pnpm creator` | 是，只构建创作端 | 是 | 正常首次部署、创作端代码更新 |
 | `pnpm creator:up` | 否 | 是 | 镜像已经存在且内容未变化 |
 | `docker compose --profile creator build creator` | 是，只构建创作端 | 否 | 运维只想准备镜像 |
 | `docker compose --profile creator up -d --no-build creator` | 否 | 是 | 直接运行 Compose 中指定的已有镜像 |
@@ -166,10 +172,10 @@ PERMISSION_TOKEN_SECRET=
 | `PERMISSION_TOKEN_SECRET` | 空 | 会话签名密钥；长期部署建议设置固定随机值 |
 | `BOX_CREATOR_ALLOWED_HOSTS` | 空 | 额外允许访问创作 API 的本地域名，逗号分隔 |
 | `BOX_SESSION_TTL_MS` | `60000` | 编辑/预览 Session 的有效时间 |
+| `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到编辑/预览运行时的间隔（毫秒） |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只进入游戏服务端 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧 edit 数据时填写原作品 ID |
-| `BOX_PAID_ACCESS` | `false` | 启用 boxes 兼容的商城事件能力 |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选的 Docker 基础镜像 |
 
 完整配置参阅 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。创作端 `edit`

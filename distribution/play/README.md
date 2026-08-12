@@ -6,6 +6,7 @@
 
 ```text
 play-image.tar
+player-service-image.tar
 compose.yml
 .env.example
 play-worlds/
@@ -18,10 +19,12 @@ cp .env.example .env
 openssl rand -hex 32
 ```
 
-把生成值填入 `.env` 的 `PERMISSION_TOKEN_SECRET`，然后执行：
+把生成值填入 `.env` 的 `PERMISSION_TOKEN_SECRET`，并配置 PostgreSQL 的
+`BOX_DATABASE_URL`，然后执行：
 
 ```bash
 docker image load --input play-image.tar
+docker image load --input player-service-image.tar
 mkdir -p play-worlds
 docker compose up -d
 docker compose ps
@@ -30,6 +33,12 @@ docker compose ps
 默认只允许本机访问 `http://127.0.0.1:3000/`。直接通过服务器 IP 访问时，将
 `BOX_PLAY_HOST_IP` 改为 `0.0.0.0` 并配置服务器防火墙。正式公网环境推荐使用 HTTPS
 反向代理。
+
+两个镜像归档相互独立，更新玩家服务不需要重新分发游玩镜像。玩家中心默认是
+`http://127.0.0.1:3213/`；需要远程访问时还要配置 `BOX_PLAYER_SERVICE_HOST_IP` 和
+`BOX_PLAYER_SERVICE_PUBLIC_URL`。
+
+登录、注册和玩家管理只在玩家服务中提供；Play 的 `3000` 端口不显示这些入口。
 
 地图可以通过网页服主管理导入。先在 `.env` 设置：
 
@@ -46,6 +55,7 @@ BOX_PLAY_LIBRARY_READ_ONLY=false
 ```bash
 docker compose down
 docker image load --input play-image.tar
+docker image load --input player-service-image.tar
 docker compose up -d
 ```
 

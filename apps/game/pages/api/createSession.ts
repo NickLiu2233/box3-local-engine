@@ -8,6 +8,7 @@ import { getServerConfig } from '../../configs/server';
 import { getSharedLogger } from '../../server/logger';
 import { getCreateraInstance } from '../../server/request';
 import { localhostRegex } from 'src/utils/url-helpers';
+import { resolvePlayerServiceIdentity } from '../../server/player-service-client';
 
 export type CreateSessionResult =
   | RedirectData
@@ -32,6 +33,9 @@ export interface GameSession {
 }
 
 export default async (req: NextApiRequest, res: NextApiResponse) => {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
+    return res.status(404).end();
+  }
   res.setHeader('Cache-Control', 'no-store');
   const { origin } = req.headers;
 
@@ -75,6 +79,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   try {
     const data = await getSessionData(
       req,
+      res,
       mode,
       contentId,
       fingerPrint,
@@ -125,6 +130,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
 async function getSessionData(
   req: NextApiRequest,
+  res: NextApiResponse,
   mode: 'play' | 'edit',
   contentId,
   fingerPrint: string = '',
@@ -141,6 +147,8 @@ async function getSessionData(
       : 20_000;
   let teamId = '';
   let refererServerId = '';
+  let runtimeAuth = req.headers.auth || '';
+  let runtimeFingerPrint = fingerPrint;
 
   try {
     // rust项目发起的请求没有referer
@@ -155,6 +163,20 @@ async function getSessionData(
   let httpServerUrl: string;
   let socketServerUrl: string;
   if (ServerConfig.isLocalGameServer === true) {
+    if (
+      (process.env.BOX_DEPLOYMENT_MODE === 'play' ||
+        process.env.BOX_DEPLOYMENT_MODE === 'creator') &&
+      process.env.BOX_PLAYER_SERVICE_INTERNAL_URL
+    ) {
+      const resolved = await resolvePlayerServiceIdentity(
+        req,
+        res,
+        getRealIP(req, ServerConfig.trustProxy) || '',
+      );
+      const identity = resolved.identity;
+      runtimeAuth = resolved.assertion;
+      runtimeFingerPrint = identity.subjectId;
+    }
     const localRuntimeURL = mode === 'edit'
       ? ServerConfig.localEditServerURL
       : ServerConfig.localGameServerURL;
@@ -189,9 +211,9 @@ async function getSessionData(
     {
       ip: getRealIP(req, ServerConfig.trustProxy),
       reqUrl: req.headers.referer || '',
-      fingerPrint,
+      fingerPrint: runtimeFingerPrint,
       cookie: req.headers ? req.headers.cookie || '' : '',
-      auth: req.headers.auth || '',
+      auth: runtimeAuth,
     },
     {
       headers: {

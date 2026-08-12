@@ -50,6 +50,11 @@ function isWithinPlayTime(): boolean {
 export const getServerSideProps: GetServerSideProps<SSRProps> = async (
   context,
 ) => {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
+    return {
+      redirect: { destination: '/account', permanent: false },
+    };
+  }
   const cookie = context.req.headers.cookie!;
   const { token } = context.query;
   const browserLanguage = context.req.headers['accept-language'];
