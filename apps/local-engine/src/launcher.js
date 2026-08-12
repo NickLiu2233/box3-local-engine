@@ -465,7 +465,15 @@ async function main() {
             process.env.BOX_WORLD_NAME ||
             process.env.BOX_SERVER_NAME ||
             'BOX 世界',
-          CONTAINER_NAME: '',
+          // Local VOXA defaults are scoped by the editable project. Leaving
+          // this empty makes every Creator runtime query the legacy mapId=0
+          // default and leaks another project's skin into startProject().
+          CONTAINER_NAME:
+            projectId ||
+            releaseId ||
+            process.env.BOX_WORLD_ID ||
+            process.env.BOX_SERVER_CONTENT_ID ||
+            '',
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
           MAX_ZERO_PLAYER_TIME: '2147483647',
         },

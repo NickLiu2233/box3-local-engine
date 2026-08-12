@@ -3,6 +3,9 @@
 Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创作端和游玩端，并附带可独立
 部署的 VOXA 本地模型编辑器。
 
+交付给其他人安装或部署时，请从
+[安装、部署与使用手册](docs/installation-and-operations.md) 开始。
+
 仓库可以独立安装、构建和运行，不依赖原始 `boxes` 工程、私有 npm 仓库、云端 CDN、
 在线账号、Redis 或 BOX 内部服务。地图、默认人物、动画和基础运行资源均从本地
 读取。
@@ -217,7 +220,7 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 每个 IP 每分钟创建 Session 上限 |
 | `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端 |
 | `BOX_IDENTITY_DATABASE_SCHEMA` | `box_identity` | 玩家账号、会话和审计记录使用的独立 schema |
-| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许游客注册本地账号；关闭不影响已有账号登录 |
+| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许新玩家注册本地账号；关闭不影响已有账号登录 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧数据时填写原作品 ID，沿用旧式双表表名 |
 | `REDIS_HOST` | 空 | 可选 Redis；启用跨实例 Session、共享限流和预烘焙构建缓存，并保留本地回退 |
 
@@ -268,7 +271,7 @@ BOX 的服务器或 CDN。
 - 将工程发布为不可变的只读游玩快照
 - 创作端本机预览
 - 游玩端多人连接
-- 游客和本地玩家账号，游客升级账号后保留存档身份
+- 强制注册/登录的本地玩家账号，未登录时不能进入 Creator 或 Play
 - 服主玩家管理，包括昵称、角色、封禁和会话撤销
 - 默认人物和基础资源本地化
 - 创作端和游玩端的生产构建及 Docker 部署

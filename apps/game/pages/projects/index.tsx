@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import styles from './projects.module.css';
+import { hasAuthenticatedPlayer, playerAccountURL } from '../../server/player-service-client';
 
 type ProjectStatus = '草稿' | '已发布';
 type CompatibilityReport = {
@@ -104,9 +105,12 @@ function formatBytes(value: number) {
 
 type ProjectsPageProps = { playerServiceUrl: string };
 
-export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async () => {
+export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req }) => {
   if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
     return { notFound: true };
+  }
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+    return { redirect: { destination: playerAccountURL('creator'), permanent: false } };
   }
   return {
     props: {

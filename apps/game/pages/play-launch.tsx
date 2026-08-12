@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
-import { ArenaBg } from '../components/loading/arena';
+import { IntlProvider } from 'react-intl';
+import { PlayLoading } from '../components/play-loading';
+import { LoadingStage } from '../src/defs/loading-stage';
+import { hasAuthenticatedPlayer, playerAccountURL } from '../server/player-service-client';
+import { getPlayWorlds } from '../server/play-worlds';
 
 type RuntimeStatus = {
   phase: 'idle' | 'starting' | 'loading' | 'ready' | 'error';
@@ -9,15 +13,22 @@ type RuntimeStatus = {
   message: string;
 };
 
-export const getServerSideProps: GetServerSideProps = async () => {
+type PlayLaunchProps = { cover: string; worldName: string };
+
+export const getServerSideProps: GetServerSideProps<PlayLaunchProps> = async ({ req, query }) => {
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') return { notFound: true };
-  return { props: {} };
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+    return { redirect: { destination: playerAccountURL('play'), permanent: false } };
+  }
+  const worldId = Array.isArray(query.world) ? query.world[0] : query.world;
+  const world = getPlayWorlds().find((item) => item.id === worldId);
+  return { props: { cover: world?.cover || '', worldName: world?.name || '本地作品' } };
 };
 
-export default function PlayLaunchPage() {
+export default function PlayLaunchPage({ cover, worldName }: PlayLaunchProps) {
   const router = useRouter();
   const world = typeof router.query.world === 'string' ? router.query.world : '';
-  const name = typeof router.query.name === 'string' ? router.query.name : '本地作品';
+  const name = worldName;
   const [elapsed, setElapsed] = useState(0);
   const [status, setStatus] = useState<RuntimeStatus>({ phase: 'idle', percent: 4, message: '正在提交启动请求' });
   const percent = useMemo(() => status.phase === 'ready' ? 100 : status.phase === 'error' ? status.percent : Math.round(Math.min(92, Math.max(status.percent, 4 + elapsed * .8))), [elapsed, status]);
@@ -65,5 +76,20 @@ export default function PlayLaunchPage() {
   }, [router.isReady, world]);
 
   const failed = status.phase === 'error';
-  return <ArenaBg progress={percent} error={failed} message={failed ? `启动失败：${status.message}` : `${name} · ${status.message} · ${elapsed}s`} actions={failed ? <><button onClick={() => window.location.reload()}>重新尝试</button><button onClick={() => router.push('/')}>返回作品列表</button></> : undefined} />;
+  const stage = status.phase === 'ready'
+    ? LoadingStage.done
+    : status.phase === 'loading'
+      ? LoadingStage.game
+      : LoadingStage.file;
+  return <IntlProvider locale="zh-CN" messages={{ playLoadingTip: '搭建世界需要大量的披萨和可乐...' }}>
+    <PlayLoading
+      stage={stage}
+      loadingConfig={false}
+      gameCover={cover}
+      progress={percent}
+      error={failed}
+      message={failed ? `启动失败：${status.message}` : `${name} · ${status.message} · ${elapsed}s · `}
+      actions={failed ? <><button onClick={() => window.location.reload()}>重新尝试</button><button onClick={() => router.push('/')}>返回作品列表</button></> : undefined}
+    />
+  </IntlProvider>;
 }

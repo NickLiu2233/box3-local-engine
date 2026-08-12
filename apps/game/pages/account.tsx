@@ -72,7 +72,7 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
       if (!response.ok) throw new Error(data.message || '操作失败');
       setPlayer(data.player);
       setPassword('');
-      setNotice(mode === 'login' ? '登录成功' : '账号创建成功，游客存档已保留');
+      setNotice(mode === 'login' ? '登录成功' : '账号创建成功并已登录');
     } catch (error) {
       setNotice((error as Error).message);
     } finally {
@@ -85,7 +85,7 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
     await fetch('/api/player-auth/logout', { method: 'POST' });
     await refresh();
     setBusy(false);
-    setNotice('已退出，现在以游客身份游玩');
+    setNotice('已安全退出，请重新登录后继续');
   }
 
   return (
@@ -94,28 +94,28 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
       <main className={styles.page}>
         <header className={styles.header}>
           <div><span className={styles.eyebrow}>PLAYER IDENTITY</span><h1>玩家账号</h1></div>
-          <Link className={styles.secondaryButton} href={returnUrl}>{returnLabel}</Link>
+          {player ? <Link className={styles.secondaryButton} href={returnUrl}>{returnLabel}</Link> : null}
         </header>
 
         {notice ? <div className={styles.notice}>{notice}</div> : null}
         <section className={styles.card}>
-          <div className={styles.identityBadge}>{player?.displayName?.slice(0, 1) || '游'}</div>
+          <div className={styles.identityBadge}>{player?.displayName?.slice(0, 1) || '账'}</div>
           <div className={styles.identityInfo}>
-            <h2>{player?.displayName || '正在读取身份…'}</h2>
-            <p>{player?.guest ? '游客玩家' : `@${player?.username}`}</p>
+            <h2>{player?.displayName || '尚未登录'}</h2>
+            <p>{player ? `@${player.username}` : '登录后才能进入创作端和游玩端'}</p>
             {player ? <code>{player.userKey}</code> : null}
           </div>
-          {!player?.guest ? <button className={styles.secondaryButton} disabled={busy} onClick={logout}>退出登录</button> : null}
+          {player ? <button className={styles.secondaryButton} disabled={busy} onClick={logout}>退出登录</button> : null}
         </section>
 
-        {player?.guest ? (
+        {!player ? (
           <section className={styles.panel}>
             <div className={styles.tabs}>
               <button className={mode === 'login' ? styles.activeTab : ''} onClick={() => setMode('login')}>登录</button>
-              {registrationEnabled ? <button className={mode === 'register' ? styles.activeTab : ''} onClick={() => setMode('register')}>注册并保留游客存档</button> : null}
+              {registrationEnabled ? <button className={mode === 'register' ? styles.activeTab : ''} onClick={() => setMode('register')}>注册账号</button> : null}
             </div>
             {!databaseEnabled ? (
-              <div className={styles.empty}>服主尚未配置 PostgreSQL，当前可以作为稳定游客游玩，但不能注册账号。</div>
+              <div className={styles.empty}>服主尚未配置 PostgreSQL，账号服务不可用，暂时不能进入创作端或游玩端。</div>
             ) : mode === 'register' && !registrationEnabled ? (
               <div className={styles.empty}>服主已关闭玩家注册。</div>
             ) : (

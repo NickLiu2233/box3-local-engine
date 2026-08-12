@@ -1,6 +1,5 @@
 import {
   createHash,
-  createHmac,
   randomBytes,
   randomUUID,
   scrypt,
@@ -338,6 +337,9 @@ function setSessionCookie(req: NextApiRequest, res: NextApiResponse, token: stri
     sameSite: 'lax',
     secure: secureCookie(req),
     path: '/',
+    ...(process.env.BOX_PLAYER_COOKIE_DOMAIN
+      ? { domain: process.env.BOX_PLAYER_COOKIE_DOMAIN.trim() }
+      : {}),
     maxAge: SESSION_DAYS * 24 * 60 * 60,
   }));
 }
@@ -348,28 +350,11 @@ function clearSessionCookie(req: NextApiRequest, res: NextApiResponse) {
     sameSite: 'lax',
     secure: secureCookie(req),
     path: '/',
+    ...(process.env.BOX_PLAYER_COOKIE_DOMAIN
+      ? { domain: process.env.BOX_PLAYER_COOKIE_DOMAIN.trim() }
+      : {}),
     maxAge: 0,
   }));
-}
-
-function guestCookie(subjectId: string) {
-  const payload = `${subjectId}.${Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000}`;
-  const signature = createHmac('sha256', identitySecret())
-    .update(`guest:${payload}`)
-    .digest('base64url');
-  return `guest.${payload}.${signature}`;
-}
-
-function parseGuestCookie(value: string) {
-  const [prefix, subjectId, expiresAt, signature, extra] = value.split('.');
-  if (prefix !== 'guest' || extra || !/^[0-9a-f]{32}$/.test(subjectId)) return '';
-  if (!Number.isSafeInteger(Number(expiresAt)) || Number(expiresAt) <= Date.now()) return '';
-  const expected = createHmac('sha256', identitySecret())
-    .update(`guest:${subjectId}.${expiresAt}`)
-    .digest('base64url');
-  const provided = Buffer.from(signature || '');
-  const wanted = Buffer.from(expected);
-  return provided.length === wanted.length && timingSafeEqual(provided, wanted) ? subjectId : '';
 }
 
 function normalizeSubjectId(value: string) {
@@ -382,7 +367,7 @@ function rowToIdentity(row: IdentityRow): RuntimePlayerIdentity {
     subjectId,
     userId: row.user_id == null ? '' : String(row.user_id),
     username: row.username || '',
-    displayName: row.display_name || `游客${subjectId.slice(-6)}`,
+    displayName: row.display_name || '',
     avatar: row.avatar_hash || '',
     role: row.role || 'player',
     status: row.status || 'active',
@@ -439,34 +424,6 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   return row;
 }
 
-async function createDatabaseGuest(database: Pool, req: NextApiRequest, res: NextApiResponse) {
-  const subjectId = randomUUID();
-  const token = randomBytes(32).toString('base64url');
-  const ip = requestIp(req);
-  const userAgent = requestUserAgent(req);
-  const client = await database.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query(`
-      INSERT INTO ${table('principals')} (id, kind, first_seen_ip, last_seen_ip)
-      VALUES ($1, 'guest', $2, $2)
-    `, [subjectId, ip]);
-    await client.query(`
-      INSERT INTO ${table('sessions')}
-        (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent)
-      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4)
-    `, [tokenHash(token), subjectId, ip, userAgent]);
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-  setSessionCookie(req, res, token);
-  return rowToIdentity({ subject_id: subjectId } as IdentityRow);
-}
-
 export function isPlayerDatabaseEnabled() {
   return Boolean((process.env.BOX_DATABASE_URL || '').trim());
 }
@@ -482,17 +439,11 @@ export async function checkPlayerDatabaseReady() {
 export async function resolvePlayerIdentity(req: NextApiRequest, res: NextApiResponse) {
   identitySecret();
   const database = getPool();
-  if (database) {
-    await initialize();
-    const row = await findSession(database, sessionToken(req), req);
-    return row ? rowToIdentity(row) : createDatabaseGuest(database, req, res);
-  }
-  let subjectId = parseGuestCookie(sessionToken(req));
-  if (!subjectId) {
-    subjectId = randomBytes(16).toString('hex');
-    setSessionCookie(req, res, guestCookie(subjectId));
-  }
-  return rowToIdentity({ subject_id: subjectId } as IdentityRow);
+  if (!database) throw new Error('玩家身份服务需要配置 PostgreSQL');
+  await initialize();
+  const row = await findSession(database, sessionToken(req), req);
+  if (!row?.user_id) throw new Error('AUTH_REQUIRED');
+  return rowToIdentity(row);
 }
 
 export function createRuntimeIdentityAssertion(identity: RuntimePlayerIdentity) {
@@ -532,26 +483,28 @@ export async function registerPlayer(
   const database = getPool();
   if (!database) throw new Error('玩家账号功能需要配置 PostgreSQL');
   await initialize();
-  const identity = await resolvePlayerIdentity(req, res);
-  if (identity.userId) throw new Error('当前已经登录');
+  const existing = await findSession(database, sessionToken(req), req);
+  if (existing?.user_id) throw new Error('当前已经登录');
   const input = validateRegistration(values.username, values.displayName, values.password);
   const salt = randomBytes(16).toString('base64url');
   const hash = (await derivePassword(input.password, salt)).toString('base64url');
-  const subjectUUID = identity.subjectId.replace(
-    /^(........)(....)(....)(....)(............)$/,
-    '$1-$2-$3-$4-$5',
-  );
+  const subjectUUID = randomUUID();
+  const token = randomBytes(32).toString('base64url');
   const ip = requestIp(req);
+  const userAgent = requestUserAgent(req);
+  const client = await database.connect();
   try {
-    const result = await database.query<IdentityRow>(`
-      WITH promoted AS (
-        UPDATE ${table('principals')} SET kind = 'user', last_seen_at = NOW()
-        WHERE id = $1 AND kind = 'guest'
-        RETURNING id, created_at, last_seen_at, first_seen_ip, last_seen_ip
-      ), inserted AS (
+    await client.query('BEGIN');
+    await client.query(`
+      INSERT INTO ${table('principals')} (id, kind, first_seen_ip, last_seen_ip)
+      VALUES ($1, 'user', $2, $2)
+    `, [subjectUUID, ip]);
+    const result = await client.query<IdentityRow>(`
+      WITH inserted AS (
         INSERT INTO ${table('users')}
-          (principal_id, username, display_name, password_salt, password_hash, registration_ip)
-        SELECT id, $2, $3, $4, $5, $6 FROM promoted
+          (principal_id, username, display_name, password_salt, password_hash,
+           registration_ip, last_login_at, last_login_ip, login_count)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), $6, 1)
         RETURNING id, principal_id, username, display_name, avatar_hash, role, status,
           created_at AS registered_at, updated_at, registration_ip,
           last_login_at, last_login_ip, login_count
@@ -560,14 +513,28 @@ export async function registerPlayer(
         u.id AS user_id, u.username, u.display_name, u.avatar_hash, u.role, u.status,
         u.registered_at, u.updated_at, u.registration_ip,
         u.last_login_at, u.last_login_ip, u.login_count
-      FROM promoted p JOIN inserted u ON u.principal_id = p.id
+      FROM ${table('principals')} p JOIN inserted u ON u.principal_id = p.id
     `, [subjectUUID, input.username, input.displayName, salt, hash, ip]);
+    await client.query(`
+      INSERT INTO ${table('sessions')}
+        (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent)
+      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4)
+    `, [tokenHash(token), subjectUUID, ip, userAgent]);
+    await client.query(`
+      INSERT INTO ${table('login_events')} (principal_id, ip_address, user_agent)
+      VALUES ($1, $2, $3)
+    `, [subjectUUID, ip, userAgent]);
     const row = result.rows[0];
-    if (!row) throw new Error('游客身份已经被升级，请重新登录');
+    if (!row) throw new Error('账号创建失败');
+    await client.query('COMMIT');
+    setSessionCookie(req, res, token);
     return toView(rowToIdentity(row), row);
   } catch (error) {
+    await client.query('ROLLBACK');
     if ((error as { code?: string }).code === '23505') throw new Error('用户名已经存在');
     throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -608,7 +575,7 @@ export async function loginPlayer(
   const client = await database.connect();
   try {
     await client.query('BEGIN');
-    if (oldToken && !oldToken.startsWith('guest.')) {
+    if (oldToken) {
       await client.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(oldToken)]);
     }
     await client.query(`
@@ -649,7 +616,7 @@ export async function loginPlayer(
 export async function logoutPlayer(req: NextApiRequest, res: NextApiResponse) {
   const database = getPool();
   const token = sessionToken(req);
-  if (database && token && !token.startsWith('guest.')) {
+  if (database && token) {
     await initialize();
     await database.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(token)]);
   }
@@ -657,9 +624,14 @@ export async function logoutPlayer(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export async function currentPlayer(req: NextApiRequest, res: NextApiResponse) {
-  const identity = await resolvePlayerIdentity(req, res);
+  let identity: RuntimePlayerIdentity | null = null;
+  try {
+    identity = await resolvePlayerIdentity(req, res);
+  } catch (error) {
+    if ((error as Error).message !== 'AUTH_REQUIRED') throw error;
+  }
   return {
-    player: toView(identity),
+    player: identity ? toView(identity) : null,
     databaseEnabled: isPlayerDatabaseEnabled(),
     registrationEnabled: process.env.BOX_PLAYER_REGISTRATION_ENABLED !== 'false',
   };

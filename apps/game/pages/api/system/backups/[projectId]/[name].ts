@@ -1,11 +1,11 @@
 import fs from 'fs';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { allowCreatorApi } from '../../../../../server/creator-api-security';
+import { allowAuthenticatedCreatorApi } from '../../../../../server/creator-api-security';
 import { getLocalProjectManager } from '../../../../../server/local-project-manager';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!allowCreatorApi(req, res)) return;
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!await allowAuthenticatedCreatorApi(req, res)) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).end();

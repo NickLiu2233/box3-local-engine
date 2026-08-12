@@ -6,6 +6,13 @@ type RuntimeIdentityResponse = {
   assertion: string;
 };
 
+export class PlayerAuthenticationRequiredError extends Error {
+  constructor() {
+    super('AUTH_REQUIRED');
+    this.name = 'PlayerAuthenticationRequiredError';
+  }
+}
+
 function internalURL() {
   const value = (process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || '').trim();
   if (!value) throw new Error('BOX_PLAYER_SERVICE_INTERNAL_URL is not configured');
@@ -58,6 +65,9 @@ export async function resolvePlayerServiceIdentity(
     }
     const data = await response.json().catch(() => ({})) as Partial<RuntimeIdentityResponse> & { message?: string };
     if (!response.ok || !data.identity || !data.assertion) {
+      if (response.status === 401 || data.message === 'AUTH_REQUIRED') {
+        throw new PlayerAuthenticationRequiredError();
+      }
       throw new Error(data.message || `玩家身份服务请求失败（HTTP ${response.status}）`);
     }
     return { identity: data.identity, assertion: data.assertion };
@@ -69,4 +79,32 @@ export async function resolvePlayerServiceIdentity(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function hasAuthenticatedPlayer(cookie = '', ip = '', userAgent = '') {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const response = await fetch(`${internalURL()}/api/player-internal/runtime-identity`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${internalSecret()}`,
+        Cookie: cookie,
+        'X-Box-Player-IP': ip,
+        'X-Box-Player-User-Agent': userAgent.slice(0, 512),
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    return response.ok;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function playerAccountURL(from: 'creator' | 'play') {
+  const base = (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, '');
+  return `${base}/account?from=${from}`;
 }

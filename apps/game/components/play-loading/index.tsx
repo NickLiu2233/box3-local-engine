@@ -18,6 +18,10 @@ type PlayLoadingProps = {
   stage: LoadingStage;
   gameCover?: string;
   loadingConfig: boolean;
+  progress?: number;
+  message?: string;
+  error?: boolean;
+  actions?: React.ReactNode;
 };
 
 export const PlayLoading = (props: PlayLoadingProps) => {
@@ -36,6 +40,10 @@ export const PlayLoading = (props: PlayLoadingProps) => {
   }, []);
 
   useEffect(() => {
+    if (typeof props.progress === 'number') {
+      setProgress(Math.min(100, Math.max(0, props.progress)));
+      return;
+    }
     // 阶段0的总时间（s）和最大进度
     const stage0Time = 2;
     const stage0MaxNum = 50;
@@ -79,7 +87,7 @@ export const PlayLoading = (props: PlayLoadingProps) => {
     return () => {
       cancelAnimationFrame(animation);
     };
-  }, [props.stage]);
+  }, [props.progress, props.stage, setProgress]);
 
   return (
     <div
@@ -97,11 +105,12 @@ export const PlayLoading = (props: PlayLoadingProps) => {
       </div>
       <div className={style.progressWrapper}>
         <p className={style.tips} ref={tipsRef}>
-          {!props.loadingConfig && (
+          {!props.loadingConfig && !props.message && (
             <span className={style.tipsCont}>
               {intl.formatMessage({ id: 'playLoadingTip' })}
             </span>
           )}
+          {props.message ? <span className={style.tipsCont}>{props.message}</span> : null}
           <span className={style.progressNum} ref={rateTextRef}></span>
         </p>
         <div className={style.progressBarWrapper}>
@@ -110,6 +119,7 @@ export const PlayLoading = (props: PlayLoadingProps) => {
           </div>
         </div>
       </div>
+      {props.error && props.actions ? <div className={style.errorActions}>{props.actions}</div> : null}
     </div>
   );
 };

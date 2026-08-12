@@ -10,6 +10,7 @@ import { PlayLoading } from '../../../components/play-loading';
 import { getArenaServerRenderProps } from '../../../server/server-render';
 import { FeatureFlag } from '@box-local/env/constants';
 import { hashToUrl } from '../../../server/utils/hash';
+import { hasAuthenticatedPlayer, playerAccountURL } from '../../../server/player-service-client';
 
 // 浏览器执行的代码
 const DynamicPlayUi = dynamic(() => import('../../../src/views/play'), {
@@ -54,6 +55,14 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
     return {
       redirect: { destination: '/account', permanent: false },
     };
+  }
+  const from = process.env.BOX_DEPLOYMENT_MODE === 'creator' ? 'creator' : 'play';
+  if (!await hasAuthenticatedPlayer(
+    context.req.headers.cookie || '',
+    context.req.socket.remoteAddress || '',
+    String(context.req.headers['user-agent'] || ''),
+  )) {
+    return { redirect: { destination: playerAccountURL(from), permanent: false } };
   }
   const cookie = context.req.headers.cookie!;
   const { token } = context.query;

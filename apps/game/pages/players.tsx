@@ -121,7 +121,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
   const [busy, setBusy] = useState('loading');
   const [loginOpen, setLoginOpen] = useState(false);
   const [adminToken, setAdminToken] = useState('');
-  const [identityFilter, setIdentityFilter] = useState<'all' | 'user' | 'guest' | 'banned'>('all');
+  const [identityFilter, setIdentityFilter] = useState<'all' | 'user' | 'banned'>('all');
 
   const load = useCallback(async (value = '') => {
     const saved = sessionStorage.getItem(TOKEN_KEY) || '';
@@ -184,7 +184,6 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
   };
   const visiblePlayers = useMemo(() => players.filter((player) => {
     if (identityFilter === 'user') return !player.guest;
-    if (identityFilter === 'guest') return player.guest;
     if (identityFilter === 'banned') return player.status === 'banned';
     return true;
   }), [players, identityFilter]);
@@ -260,7 +259,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
       setSelected(null);
       setDetails(null);
       await load(search);
-      setNotice('玩家身份已删除；地图脚本存档仍保持匿名留存');
+      setNotice('玩家账号已删除；地图脚本中以 userKey 为键的存档不会被自动删除');
     } catch (error) {
       setNotice((error as Error).message);
     } finally {
@@ -306,7 +305,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
           <div className={styles.brand}><span>BOX</span><div><strong>玩家服务</strong><small>SERVER CONSOLE</small></div></div>
           <nav aria-label="玩家后台分类">
             <button className={section === 'overview' ? styles.navActive : ''} onClick={() => setSection('overview')}><span>◫</span><div>运营概览<small>实时规模与活跃</small></div></button>
-            <button className={section === 'players' ? styles.navActive : ''} onClick={() => { setSection('players'); setIdentityFilter('all'); }}><span>♙</span><div>玩家身份<small>账号、游客与封禁</small></div></button>
+            <button className={section === 'players' ? styles.navActive : ''} onClick={() => { setSection('players'); setIdentityFilter('all'); }}><span>♙</span><div>玩家身份<small>注册账号与封禁</small></div></button>
             <button className={section === 'accounts' ? styles.navActive : ''} onClick={() => { setSection('accounts'); setIdentityFilter('user'); }}><span>◎</span><div>账号与权限<small>角色和登录状态</small></div></button>
             <button className={section === 'security' ? styles.navActive : ''} onClick={() => setSection('security')}><span>◇</span><div>安全审计<small>登录与服主操作</small></div></button>
           </nav>
@@ -317,7 +316,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
           <header className={styles.header}>
             <div>
               <div className={styles.titleRow}><h1>{section === 'overview' ? '运营概览' : section === 'players' ? '玩家身份' : section === 'accounts' ? '账号与权限' : '安全审计'}</h1><span>{stats.identities} 个身份</span></div>
-              <p>{section === 'overview' ? '查看玩家规模、活跃度和服务状态' : section === 'players' ? '查询并管理注册账号、游客和封禁状态' : section === 'accounts' ? '管理账号角色、权限和有效登录会话' : '检查最近登录来源与所有服主敏感操作'}</p>
+              <p>{section === 'overview' ? '查看玩家规模、活跃度和服务状态' : section === 'players' ? '查询并管理注册账号和封禁状态' : section === 'accounts' ? '管理账号角色、权限和有效登录会话' : '检查最近登录来源与所有服主敏感操作'}</p>
             </div>
             <div className={styles.headerButtons}>
               <button className={styles.secondaryButton} disabled={busy === 'loading'} onClick={() => load(search).catch((error) => setNotice(error.message))}>{busy === 'loading' ? '刷新中…' : '刷新数据'}</button>
@@ -330,10 +329,10 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
 
           {section === 'overview' ? <>
             <section className={styles.metricGrid} aria-label="玩家核心指标">
-              <article><span>全部玩家身份</span><strong>{stats.identities}</strong><small>{stats.users} 个账号 · {stats.guests} 个游客</small></article>
+              <article><span>注册玩家</span><strong>{stats.users}</strong><small>必须登录后才能进入游戏或创作</small></article>
               <article><span>24 小时活跃</span><strong>{stats.activeLast24Hours}</strong><small>按最后在线时间统计</small></article>
-              <article><span>当前有效会话</span><strong>{stats.activeSessions}</strong><small>所有已登录设备与游客会话</small></article>
-              <article><span>近 7 天新增</span><strong>{stats.newLast7Days}</strong><small>新账号与新游客身份</small></article>
+              <article><span>当前有效会话</span><strong>{stats.activeSessions}</strong><small>所有已登录设备会话</small></article>
+              <article><span>近 7 天新增</span><strong>{stats.newLast7Days}</strong><small>新注册玩家账号</small></article>
               <article><span>24 小时登录</span><strong>{stats.loginsLast24Hours}</strong><small>账号成功登录次数</small></article>
               <article><span>近 7 天登录 IP</span><strong>{stats.uniqueLoginIpsLast7Days}</strong><small>已去重的有效来源</small></article>
               <article><span>管理角色</span><strong>{stats.admins + stats.moderators}</strong><small>{stats.admins} 服主 · {stats.moderators} 管理员</small></article>
@@ -345,7 +344,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
                 {!overview?.recentLogins.length ? <div className={styles.compactEmpty}>目前没有账号登录记录</div> : null}
               </section>
               <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>身份构成</h2><p>PostgreSQL 当前真实数据</p></div></div>
-                <dl className={styles.breakdown}><div><dt>注册账号</dt><dd>{stats.users}</dd></div><div><dt>游客身份</dt><dd>{stats.guests}</dd></div><div><dt>普通玩家</dt><dd>{Math.max(0, stats.users - stats.admins - stats.moderators)}</dd></div><div><dt>管理角色</dt><dd>{stats.admins + stats.moderators}</dd></div><div><dt>正常身份</dt><dd>{Math.max(0, stats.identities - stats.banned)}</dd></div><div><dt>封禁账号</dt><dd>{stats.banned}</dd></div></dl>
+                <dl className={styles.breakdown}><div><dt>注册账号</dt><dd>{stats.users}</dd></div><div><dt>普通玩家</dt><dd>{Math.max(0, stats.users - stats.admins - stats.moderators)}</dd></div><div><dt>管理角色</dt><dd>{stats.admins + stats.moderators}</dd></div><div><dt>正常账号</dt><dd>{Math.max(0, stats.users - stats.banned)}</dd></div><div><dt>封禁账号</dt><dd>{stats.banned}</dd></div></dl>
               </section>
             </div>
           </> : null}
@@ -354,7 +353,6 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
             <section className={styles.stats} aria-label="玩家统计">
               <button className={identityFilter === 'all' ? styles.statActive : ''} onClick={() => { setSection('players'); setIdentityFilter('all'); }}><span>全部身份</span><strong>{stats.identities}</strong></button>
               <button className={identityFilter === 'user' ? styles.statActive : ''} onClick={() => { setSection('accounts'); setIdentityFilter('user'); }}><span>注册账号</span><strong>{stats.users}</strong></button>
-              <button className={identityFilter === 'guest' ? styles.statActive : ''} onClick={() => { setSection('players'); setIdentityFilter('guest'); }}><span>游客</span><strong>{stats.guests}</strong></button>
               <button className={identityFilter === 'banned' ? styles.statActive : ''} onClick={() => { setSection('players'); setIdentityFilter('banned'); }}><span>已封禁</span><strong className={stats.banned ? styles.dangerText : ''}>{stats.banned}</strong></button>
             </section>
             <div className={styles.toolbar}><div className={styles.searchField}><span aria-hidden="true">⌕</span><input aria-label="搜索玩家" placeholder="搜索用户名、昵称、账号 ID 或身份 ID" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitSearch(); }} /></div><button className={styles.primaryButton} disabled={busy === 'loading'} onClick={submitSearch}>{busy === 'loading' ? '读取中…' : '搜索'}</button>{search ? <button className={styles.textButton} onClick={() => { setSearch(''); load().catch((error) => setNotice(error.message)); }}>清除</button> : null}</div>

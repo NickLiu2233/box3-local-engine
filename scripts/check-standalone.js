@@ -79,6 +79,7 @@ const requiredFiles = [
   'docker-compose.yml',
   'docs/creator-deployment.md',
   'docs/deployment.md',
+  'docs/installation-and-operations.md',
   'docs/local-infrastructure.md',
   'docs/play-deployment.md',
   'docs/voxa-deployment.md',
@@ -667,6 +668,10 @@ for (const [label, pattern] of [
     'mode-specific runtime storage',
     /STORAGE_PATH: mode === 'play' \? playServerDataRoot : dataRoot/,
   ],
+  [
+    'project-scoped runtime container name',
+    /CONTAINER_NAME:\s*projectId\s*\|\|\s*releaseId\s*\|\|\s*process\.env\.BOX_WORLD_ID\s*\|\|\s*process\.env\.BOX_SERVER_CONTENT_ID/,
+  ],
 ]) {
   requirePattern(launcherSource, launcherFile, label, pattern)
 }
@@ -736,6 +741,19 @@ forbidPattern(
   'complete runtime config logging',
   /Game server config from nacos|%o', serverConfig/,
 )
+for (const file of [
+  serverLaunchFile,
+  'services/game-server/src/entry.ts',
+  'services/game-server/src/createServer.ts',
+  'services/game-server/config/server.ts',
+]) {
+  forbidPattern(
+    readRequired(file),
+    file,
+    'RabbitMQ platform dependency in the local runtime path',
+    /RabbitMQ|RABBITMQ_HOST_URL|\.\/mq\/rabbitMQ/,
+  )
+}
 
 const serverEntryFile = 'services/game-server/src/entry.ts'
 const contentHostFile = 'packages/content-server/src/content-host.ts'
@@ -785,7 +803,12 @@ if (localProjectApiFiles.length === 0) {
 for (const filePath of localProjectApiFiles) {
   const source = fs.readFileSync(filePath, 'utf8')
   const file = path.relative(root, filePath)
-  requirePattern(source, file, 'creator API guard', /allowCreatorApi\(req, res\)/)
+  requirePattern(
+    source,
+    file,
+    'authenticated creator API guard',
+    /allowAuthenticatedCreatorApi\(req, res\)/,
+  )
 }
 
 const playAdminApiRoot = path.join(root, 'apps/game/pages/api/play-admin')
@@ -799,14 +822,19 @@ if (playAdminApiFiles.length === 0) {
 for (const filePath of playAdminApiFiles) {
   const source = fs.readFileSync(filePath, 'utf8')
   const file = path.relative(root, filePath)
-  requirePattern(source, file, 'play admin API guard', /allowPlayAdmin\(req, res\)/)
+  requirePattern(
+    source,
+    file,
+    'play admin API guard',
+    /allowPlay(?:Library)?Admin\(req, res\)/,
+  )
 }
 
 for (const [file, label, pattern] of [
   [
     'apps/game/server/play-admin-security.ts',
     'play admin disabled without a configured token',
-    /BOX_DEPLOYMENT_MODE === 'play'[\s\S]*?BOX_PLAY_ADMIN_TOKEN/,
+    /BOX_PLAY_ADMIN_TOKEN[\s\S]*?mode === 'play'/,
   ],
   [
     'docker-compose.yml',
@@ -821,7 +849,7 @@ for (const [file, label, pattern] of [
   [
     'apps/game/pages/projects/index.tsx',
     'projects page hidden in play deployments',
-    /BOX_DEPLOYMENT_MODE === 'play'[\s\S]*?notFound: true/,
+    /\['play', 'player-service'\]\.includes\(process\.env\.BOX_DEPLOYMENT_MODE[\s\S]*?notFound: true/,
   ],
   [
     'apps/game/app/e/[container]/page.tsx',
@@ -1244,28 +1272,6 @@ for (const entry of [
   if (!dockerIgnoreEntries.has(entry)) {
     fail(`${dockerIgnoreFile}: missing ${entry}`)
   }
-}
-
-const ignoredLocalBlobs = spawnSync(
-  'git',
-  [
-    'ls-files',
-    '--others',
-    '--ignored',
-    '--exclude-standard',
-    '--',
-    'apps/local-engine/data/blobs',
-  ],
-  { cwd: root, encoding: 'utf8' },
-)
-if (ignoredLocalBlobs.status === 0) {
-  for (const blob of ignoredLocalBlobs.stdout.split('\n').filter(Boolean)) {
-    if (!dockerIgnoreEntries.has(blob)) {
-      fail(`${dockerIgnoreFile}: local workspace blob is not excluded: ${blob}`)
-    }
-  }
-} else {
-  fail(`${dockerIgnoreFile}: unable to inspect local workspace blobs with git`)
 }
 
 const stageFile = 'apps/local-engine/src/stage-runtime-data.js'

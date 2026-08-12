@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../../server/local-project-manager';
-import { allowCreatorApi } from '../../../../server/creator-api-security';
+import { allowAuthenticatedCreatorApi } from '../../../../server/creator-api-security';
 
 async function flushActiveEditor(projectId: string) {
   const port =
@@ -34,7 +34,7 @@ async function flushActiveEditor(projectId: string) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!allowCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res)) return;
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end();

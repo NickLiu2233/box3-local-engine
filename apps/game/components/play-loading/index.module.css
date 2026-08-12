@@ -92,6 +92,29 @@
   animation: 20s linear infinite normal ProgressBarRoll;
 }
 
+.errorActions {
+  position: absolute;
+  z-index: 3;
+  right: 24px;
+  bottom: 72px;
+  display: flex;
+  gap: 8px;
+}
+
+.errorActions button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 7px;
+  color: #fff;
+  background: rgba(0,0,0,.72);
+  font: 600 13px/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  cursor: pointer;
+}
+
+.errorActions button:hover { background: rgba(0,0,0,.9); }
+.errorActions button:active { transform: scale(.97); }
+
 @keyframes ProgressBarRoll {
   from {
     background-position: -600px;
@@ -116,4 +139,5 @@
   .logo {
     font-size: 30px;
   }
+  .errorActions { right: 12px; bottom: 44px; }
 }

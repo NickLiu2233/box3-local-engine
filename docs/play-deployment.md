@@ -75,7 +75,7 @@ pnpm play
 密钥只保存在当前浏览器标签页的会话存储中。关闭标签页或点击“退出管理”后需要重新验证。
 服务端会对每一次管理操作重新验证，连续验证失败还会触发临时限流。
 玩家登录、注册和玩家管理不放在 Play 页面中。服主请直接打开独立玩家服务
-`http://127.0.0.1:3213/players`，查看游客和已注册账号、修改昵称/角色/状态、
+`http://127.0.0.1:3213/players`，查看已注册账号、修改昵称/角色/状态、
 强制下线或封禁玩家。
 
 `.boxplay` 只包含发布后的游玩地图，不包含 `.boxproject` 可编辑工程、编辑器或引擎源码。
@@ -456,7 +456,7 @@ docker compose up -d
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只注入服务端容器 |
 | `BOX_IDENTITY_DATABASE_SCHEMA` | `box_identity` | 玩家账号、会话和审计记录的独立 schema |
-| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许游客自助注册；已有账号始终可登录 |
+| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许新玩家自助注册；已有账号始终可登录 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写旧 boxes 作品 ID |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选构建基础镜像 |
 
@@ -476,7 +476,7 @@ docker compose up -d --force-recreate
 ```
 
 不要在多台需要共享会话语义的实例上使用不同密钥，也不要把真实密钥发给玩家。
-更换此密钥会使现有游客 Cookie 失效，也会改变脚本看到的 `entity.player.userKey`；
+更换此密钥会使现有运行时身份断言失效，也会改变脚本看到的 `entity.player.userKey`；
 正式服上线后应将它作为需要备份的长期密钥。
 
 ## 13. 公网部署和反向代理

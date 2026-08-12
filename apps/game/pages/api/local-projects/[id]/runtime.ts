@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { allowCreatorApi } from '../../../../server/creator-api-security';
+import { allowAuthenticatedCreatorApi } from '../../../../server/creator-api-security';
 
 type RuntimeMode = 'edit' | 'play';
 
@@ -31,7 +31,7 @@ async function runtimeControl(projectId: string, mode: RuntimeMode, action: 'sta
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!allowCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res)) return;
   if (req.method !== 'POST' && req.method !== 'GET') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).end();

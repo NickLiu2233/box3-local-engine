@@ -256,7 +256,7 @@ export default function HomePage({
           <div className="grid">
             {worldList.map((world) => (
               <article className="card" key={world.id}>
-                <Link className="cardLink" href={`/play-launch?world=${encodeURIComponent(world.id)}&name=${encodeURIComponent(world.name)}`}>
+                <Link className="cardLink" href={`/play-launch?world=${encodeURIComponent(world.id)}`}>
                   <div className="cover">
                     {world.cover ? <img src={world.cover} alt="" /> : <span>{world.name.slice(0, 1)}</span>}
                   </div>
@@ -377,12 +377,16 @@ export default function HomePage({
   );
 }
 
-export const getServerSideProps: GetServerSideProps = async () => {
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
     return { redirect: { destination: '/account', permanent: false } };
   }
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') {
     return { redirect: { destination: '/projects', permanent: false } };
+  }
+  const { hasAuthenticatedPlayer, playerAccountURL } = await import('../server/player-service-client');
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+    return { redirect: { destination: playerAccountURL('play'), permanent: false } };
   }
   if (!process.env.BOX_PLAY_LIBRARY_PATH) {
     return {

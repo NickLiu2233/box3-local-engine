@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { hasAuthenticatedPlayer } from './player-service-client';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
@@ -59,5 +60,22 @@ export function allowCreatorApi(
     }
   }
 
+  return true;
+}
+
+export async function allowAuthenticatedCreatorApi(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (!allowCreatorApi(req, res)) return false;
+  const authenticated = await hasAuthenticatedPlayer(
+    req.headers.cookie || '',
+    req.socket.remoteAddress || '',
+    String(req.headers['user-agent'] || ''),
+  );
+  if (!authenticated) {
+    res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先注册或登录账号' });
+    return false;
+  }
   return true;
 }

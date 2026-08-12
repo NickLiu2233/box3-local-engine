@@ -8,7 +8,11 @@ import { getServerConfig } from '../../configs/server';
 import { getSharedLogger } from '../../server/logger';
 import { getCreateraInstance } from '../../server/request';
 import { localhostRegex } from 'src/utils/url-helpers';
-import { resolvePlayerServiceIdentity } from '../../server/player-service-client';
+import {
+  PlayerAuthenticationRequiredError,
+  playerAccountURL,
+  resolvePlayerServiceIdentity,
+} from '../../server/player-service-client';
 
 export type CreateSessionResult =
   | RedirectData
@@ -101,6 +105,14 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
   } catch (err) {
+    if (err instanceof PlayerAuthenticationRequiredError) {
+      const from = process.env.BOX_DEPLOYMENT_MODE === 'creator' ? 'creator' : 'play';
+      return res.status(401).json({
+        code: 'AUTH_REQUIRED',
+        message: '请先注册或登录账号',
+        loginUrl: playerAccountURL(from),
+      });
+    }
     const sharedLogger = await getSharedLogger();
     const sessionError = err as {
       code?: string | number;

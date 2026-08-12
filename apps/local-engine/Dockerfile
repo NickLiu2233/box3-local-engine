@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=node:22.17.0-bookworm-slim
+ARG NODE_IMAGE=docker.1ms.run/library/node:22.17.0-bookworm-slim
 
 FROM ${NODE_IMAGE} AS source-base
 

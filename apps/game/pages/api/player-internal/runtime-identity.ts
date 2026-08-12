@@ -26,6 +26,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       assertion: createRuntimeIdentityAssertion(identity),
     });
   } catch (error) {
+    if ((error as Error).message === 'AUTH_REQUIRED') {
+      return res.status(401).json({ message: 'AUTH_REQUIRED' });
+    }
     return res.status(503).json({ message: (error as Error).message });
   }
 }

@@ -5,8 +5,8 @@ exports.verifyRuntimePlayerIdentity = verifyRuntimePlayerIdentity;
 exports.createPlayerUserKey = createPlayerUserKey;
 const crypto_1 = require("crypto");
 const subjectPattern = /^[0-9a-f]{32}$/;
-const userIdPattern = /^$|^[1-9][0-9]{0,18}$/;
-const usernamePattern = /^$|^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
+const userIdPattern = /^[1-9][0-9]{0,18}$/;
+const usernamePattern = /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
 function encodeBase64URL(value) {
     return Buffer.from(value)
         .toString('base64')

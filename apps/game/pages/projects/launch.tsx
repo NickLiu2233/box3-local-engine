@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ArenaBg } from '../../components/loading/arena';
+import { hasAuthenticatedPlayer, playerAccountURL } from '../../server/player-service-client';
 
 
 type RuntimeStatus = {
@@ -12,8 +13,11 @@ type RuntimeStatus = {
   playUrl?: string;
 };
 
-export const getServerSideProps: GetServerSideProps = async () => {
+export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') return { notFound: true };
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+    return { redirect: { destination: playerAccountURL('creator'), permanent: false } };
+  }
   return { props: {} };
 };
 

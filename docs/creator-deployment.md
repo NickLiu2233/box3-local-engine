@@ -22,7 +22,8 @@ box-local-engine-creator:0.1.0
 - 作品创建、导入、导出、发布和删除接口；
 - 运行编辑器所需的本地基础资源。
 
-玩家账号、游客身份、登录记录和封禁由独立的 `box-local-engine-player-service` 镜像负责。
+玩家账号、登录记录、会话和封禁由独立的 `box-local-engine-player-service` 镜像负责。Creator
+不允许游客或未登录访问，账号服务不可用时也不会降级为匿名创作。
 先用独立命令 `pnpm player-service` 构建并启动它；`pnpm creator` 不会构建或替换玩家服务。
 创作端预览与游玩端因此可以使用同一套长期运行的玩家身份服务。
 
