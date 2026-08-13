@@ -1437,5 +1437,10 @@
   "hierarchy.staticShadowContent": "设置静态实体",
   "hierarchy.selectAll": "全选",
   "hierarchy.exitStaticShadowModel": "放弃修改",
-  "hierarchy.exitStaticShadowModelContent": "确认取消'静态实体'修改结果？"
+  "hierarchy.exitStaticShadowModelContent": "确认取消'静态实体'修改结果？",
+  "sharedResourcesAutoSynced": "地图组资源已自动同步：{summary}",
+  "sharedResourceScripts": "脚本",
+  "sharedResourceModels": "模型",
+  "sharedResourceSkins": "皮肤",
+  "sharedResourceDefaultSkin": "默认皮肤"
 }

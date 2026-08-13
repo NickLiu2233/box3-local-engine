@@ -457,6 +457,40 @@ export function localScriptAssets(value: unknown) {
   }));
 }
 
+/**
+ * A cloud map stores ordinary scripts in project.scriptAssets and shared
+ * scripts in the map-group backend. Local Engine has no cloud group service,
+ * so both sets must be materialized as ordinary project scripts. Keeping the
+ * original name and client/server type makes every user-authored file visible,
+ * editable and persistable in a standalone local project.
+ */
+export function mergeCloudScriptsIntoProject(
+  scriptAssets: unknown,
+  scripts: EngineScriptList | undefined,
+): Record<string, Record<string, unknown>> {
+  const merged = localScriptAssets(scriptAssets) as Record<string, Record<string, unknown>>;
+  const append = (rows: EngineScriptList['clientScripts'], type: 1 | 7) => {
+    for (const script of rows || []) {
+      const name = script?.name?.trim();
+      const hash = script?.hash?.trim();
+      if (!name || !hash || !EXACT_CONTENT_HASH_PATTERN.test(hash)) continue;
+      merged[name] = {
+        animated: false,
+        bounds: [0, 0, 0],
+        contentId: 0,
+        hash,
+        ownerId: 0,
+        previewImage: '',
+        size: 0,
+        type,
+      };
+    }
+  };
+  append(scripts?.serverScripts || [], 1);
+  append(scripts?.clientScripts || [], 7);
+  return merged;
+}
+
 export function restoreRuntimeBundles(
   scriptAssets: unknown,
   deleteAssets: unknown,
@@ -468,8 +502,14 @@ export function restoreRuntimeBundles(
   const candidates = new Map<string, Record<string, unknown>>();
   for (const item of deleteAssets) {
     if (!isRecord(item) || typeof item.key !== 'string' || !isRecord(item.value)) continue;
-    if (item.key !== '_server_bundle.js' && item.key !== '_client_bundle.js') continue;
-    if ((item.value.type !== 1 && item.value.type !== 7) || typeof item.value.hash !== 'string') continue;
+    // Boxes emits one base runtime bundle plus suffixed bundles for shared
+    // script groups (for example `_server_bundle_hundshen3.js`). They can be
+    // moved to deleteAssets after bundling even though ordinary scripts still
+    // require/import them, so all valid bundle variants must be restored.
+    const bundle = item.key.match(/^_(server|client)_bundle(?:_[^/\\\u0000]+)?\.js$/);
+    if (!bundle || typeof item.value.hash !== 'string') continue;
+    const expectedType = bundle[1] === 'server' ? 1 : 7;
+    if (item.value.type !== expectedType) continue;
     candidates.set(item.key, { ...item.value, contentId: 0, ownerId: 0 });
   }
   for (const [name, asset] of candidates) {
@@ -808,7 +848,7 @@ async function runTar(root: string, archive: string) {
   // BSD tar on macOS otherwise writes AppleDouble `._*` entries for extended
   // attributes. The creator importer's archive allowlist correctly rejects
   // those entries, so disable metadata copying for portable .boxproject files.
-  const child = spawn('tar', ['-czf', archive, '-C', root, 'project.json', 'source'], {
+  const child = spawn('tar', ['-czf', archive, '-C', root, 'group.json', 'projects'], {
     stdio: 'ignore',
     env: { ...process.env, COPYFILE_DISABLE: '1' },
   });
@@ -1202,7 +1242,7 @@ export async function generateProjectArchive(
     }
 
     const candidateScriptAssets = restoreRuntimeBundles(
-      localScriptAssets(scriptAssets),
+      mergeCloudScriptsIntoProject(scriptAssets, cloudData?.scripts),
       deleteAssets,
     );
     const verifiedScriptAssets: Record<string, Record<string, unknown>> = {};
@@ -1349,7 +1389,13 @@ export async function generateProjectArchive(
       versionControl: migratedVersionControlHash,
     });
     const extraProjectHash = cloudData
-      ? await storeBlob(blobsRoot, encodeCloudExtraProject(cloudData))
+      ? await storeBlob(blobsRoot, encodeCloudExtraProject({
+        ...cloudData,
+        // Scripts have been localized into project.scriptAssets above. Do not
+        // retain a second cloud-shared copy: Boxes would give that copy
+        // precedence during bake, making later local edits appear to revert.
+        scripts: { clientScripts: [], serverScripts: [] },
+      }))
       : '';
     const groupProjectVersion = cloudData?.groupProject.version;
     const groupProjectMetaData = cloudData && groupProjectVersion
@@ -1405,10 +1451,14 @@ export async function generateProjectArchive(
 
     const id = `cloud-${createHash('sha256').update(rootHash).digest('hex').slice(0, 16)}`;
     const now = new Date().toISOString();
-    await fs.writeFile(path.join(temporaryRoot, 'project.json'), `${JSON.stringify({
+    const projectRoot = path.join(temporaryRoot, 'projects', id);
+    await fs.mkdir(projectRoot, { recursive: true });
+    await fs.rename(path.join(temporaryRoot, 'source'), path.join(projectRoot, 'source'));
+    await fs.writeFile(path.join(projectRoot, 'project.json'), `${JSON.stringify({
       formatVersion: 1, id, name: projectName, author: '', description: `从云端工程 ${rootHash} 迁移`, theme: 'ocean', createdAt: now, updatedAt: now, releases: [],
+      mapGroupId: id, mapRole: 'main', mainProjectId: id,
     }, null, 2)}\n`);
-    await fs.writeFile(path.join(temporaryRoot, 'source', 'project-state.json'), `${JSON.stringify({
+    await fs.writeFile(path.join(projectRoot, 'source', 'project-state.json'), `${JSON.stringify({
       formatVersion: 1,
       permissionHash: migratedPermissionHash,
       extraProjectHash,
@@ -1424,6 +1474,32 @@ export async function generateProjectArchive(
       ...(mapId ? { cloudMapId: mapId } : {}),
       ...(groupProjectMetaData ? { groupProjectMetaData } : {}),
       updatedAt: now,
+    }, null, 2)}\n`);
+    await fs.writeFile(path.join(projectRoot, 'group-state.json'), `${JSON.stringify({
+      formatVersion: 1,
+      mapGroupId: id,
+      revision: 1,
+      extraProjectHash,
+      extraProjectMode: extraProjectHash ? 'embedded' : '',
+      ...(cloudData
+        ? {
+            modelPreviews: cloudModelPreviews(cloudData.models, skippedHashes),
+            modelProjects: cloudModelProjects(cloudData.models, skippedHashes),
+            skinPreviews: cloudSkinPreviews(cloudData.skins, cloudData.defaultSkin, skippedHashes),
+            skinProjects: cloudSkinProjects(cloudData.skins, cloudData.defaultSkin, skippedHashes),
+          }
+        : {}),
+      ...(groupProjectMetaData ? { groupProjectMetaData } : {}),
+      createdAt: now,
+      updatedAt: now,
+    }, null, 2)}\n`);
+    await fs.writeFile(path.join(temporaryRoot, 'group.json'), `${JSON.stringify({
+      formatVersion: 1,
+      type: 'map-group',
+      mapGroupId: id,
+      mainProjectId: id,
+      exportedAt: now,
+      members: [{ id, mapRole: 'main' }],
     }, null, 2)}\n`);
     report({
       stage: 'packaging',

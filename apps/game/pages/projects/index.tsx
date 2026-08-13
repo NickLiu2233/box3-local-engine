@@ -42,6 +42,9 @@ type LocalProject = {
   theme: 'sunset' | 'ocean' | 'forest' | 'violet';
   isEngineWorld?: boolean;
   compatibility?: CompatibilityReport;
+  mapGroupId: string;
+  mapRole: 'main' | 'submap';
+  mainProjectId: string;
 };
 
 type ExportProgress = {
@@ -125,7 +128,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
   const [filterOpen, setFilterOpen] = useState(false);
   const [menuProject, setMenuProject] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<'create' | 'delete' | 'details' | 'publish' | null>(null);
+  const [dialog, setDialog] = useState<'create' | 'submap' | 'delete' | 'details' | 'publish' | null>(null);
   const [projectName, setProjectName] = useState('');
   const [projectAuthor, setProjectAuthor] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
@@ -161,14 +164,41 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
 
   const visibleProjects = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return projects.filter(
+    const filtered = projects.filter(
       (project) =>
         (status === '全部' || project.status === status) &&
         (!normalized ||
           project.name.toLowerCase().includes(normalized) ||
           project.description.toLowerCase().includes(normalized)),
     );
+    const order = new Map(projects.map((project, index) => [project.id, index]));
+    return filtered.sort((left, right) => {
+      const leftGroup = left.mainProjectId || left.id;
+      const rightGroup = right.mainProjectId || right.id;
+      if (leftGroup !== rightGroup) {
+        return (order.get(leftGroup) ?? order.get(left.id) ?? 0) -
+          (order.get(rightGroup) ?? order.get(right.id) ?? 0);
+      }
+      if (left.mapRole !== right.mapRole) return left.mapRole === 'main' ? -1 : 1;
+      return (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0);
+    });
   }, [projects, query, status]);
+  const visibleProjectGroups = useMemo(() => {
+    const groups = new Map<string, LocalProject[]>();
+    for (const project of visibleProjects) {
+      const groupId = project.mainProjectId || project.id;
+      const members = groups.get(groupId) || [];
+      members.push(project);
+      groups.set(groupId, members);
+    }
+    return Array.from(groups, ([groupId, members]) => ({
+      groupId,
+      members,
+      main:
+        members.find((project) => project.mapRole === 'main') ||
+        projects.find((project) => project.id === groupId),
+    }));
+  }, [projects, visibleProjects]);
   const isFiltering = Boolean(query.trim()) || status !== '全部';
 
   const openCreateDialog = () => {
@@ -179,6 +209,15 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     setProjectCover('');
     setDialogError('');
     setDialog('create');
+  };
+
+  const openSubmapDialog = (project: LocalProject) => {
+    setMenuProject(null);
+    setSelectedProject(project);
+    setProjectName('');
+    setProjectDescription('');
+    setDialogError('');
+    setDialog('submap');
   };
 
   const importProjectFile = async (file: File) => {
@@ -330,7 +369,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const submitProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = projectName.trim();
-    if ((dialog === 'create' || dialog === 'details') && !name) return;
+    if ((dialog === 'create' || dialog === 'submap' || dialog === 'details') && !name) return;
 
     if (dialog === 'delete' && selectedProject) {
       await deleteProject(selectedProject);
@@ -479,6 +518,16 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         window.clearTimeout(publishPhaseTimer);
       }
       return;
+    } else if (dialog === 'submap' && selectedProject) {
+      const id = `${selectedProject.mainProjectId}-map-${Date.now().toString(36)}`.slice(0, 63);
+      const response = await fetch(`/api/local-projects/${encodeURIComponent(selectedProject.mainProjectId)}/maps`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name, description: projectDescription }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || '创建副地图失败');
+      setNotice(`副地图“${name}”已创建`);
     } else if (dialog === 'details' && selectedProject) {
       const response = await fetch(`/api/local-projects/${selectedProject.id}`, {
         method: 'PATCH',
@@ -644,6 +693,76 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     }
   };
 
+  const renderProjectCard = (project: LocalProject) => (
+    <article
+      className={`${styles.card} ${project.mapRole === 'submap' ? styles.submapCard : styles.mainMapCard}`}
+      key={project.id}
+    >
+      <div className={`${styles.cover} ${styles[`cover${project.theme}`]}`}>
+        {project.cover && <img src={project.cover} alt="" />}
+      </div>
+      <div className={styles.cardBody}>
+        <div className={styles.cardHeading}>
+          <div>
+            <div className={styles.projectTitle}>
+              <h2>{project.name}</h2>
+              <span className={`${styles.projectStatus} ${project.status === '已发布' ? styles.published : ''}`}>{project.status}</span>
+            </div>
+            <span className={styles.projectAuthor}>作者：{project.author || '未署名'}</span>
+            <p>{project.description || '未填写简介'}</p>
+          </div>
+          <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
+            <button
+              className={styles.moreButton}
+              onClick={() => setMenuProject(menuProject === project.id ? null : project.id)}
+              aria-label={`${project.name} 的更多操作`}
+              aria-expanded={menuProject === project.id}
+            >
+              <MoreHorizontal size={20} />
+            </button>
+            {menuProject === project.id && (
+              <div className={styles.menu} role="menu">
+                <button role="menuitem" onClick={() => openDetailsDialog(project)}>
+                  <Pencil size={15} /> 编辑信息
+                </button>
+                <button role="menuitem" onClick={() => openPublishDialog(project)}>
+                  <Play size={15} /> 发布为游玩包
+                </button>
+                <button
+                  role="menuitem"
+                  disabled={Boolean(exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error')}
+                  onClick={() => void exportProjectFile(project)}
+                >
+                  <Download size={15} /> 导出可编辑工程
+                </button>
+                <button role="menuitem" onClick={() => void openRecoveryDialog(project)}>
+                  <History size={15} /> 恢复历史版本
+                </button>
+                <button
+                  role="menuitem"
+                  className={styles.deleteAction}
+                  disabled={project.isEngineWorld}
+                  title={project.isEngineWorld ? '默认世界不能删除' : undefined}
+                  onClick={() => openDeleteDialog(project)}
+                >
+                  <Trash2 size={15} /> 删除
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className={styles.cardFooter}>
+          <span><Clock3 size={14} /> {project.latestRelease ? `${project.latestRelease}${project.latestReleaseNotes ? ` · ${project.latestReleaseNotes}` : ''}` : project.updatedAt}</span>
+          <span className={styles.cardActions}>
+            {project.isEngineWorld && <span className={styles.defaultTag}>默认世界</span>}
+            <button onClick={() => copyProjectCommand(project, 'edit')}><Pencil size={14} /> 编辑</button>
+            <button onClick={() => copyProjectCommand(project, 'play')}><Play size={14} fill="currentColor" /> 游玩</button>
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+
   return (
     <main className={styles.page} onClick={() => { setMenuProject(null); setFilterOpen(false); }}>
       <header className={styles.header}>
@@ -724,72 +843,28 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         {notice && <div className={styles.notice} role="status">{notice}</div>}
         {visibleProjects.length ? (
           <div className={styles.grid}>
-            {visibleProjects.map((project) => (
-              <article className={styles.card} key={project.id}>
-                <div className={`${styles.cover} ${styles[`cover${project.theme}`]}`}>
-                  {project.cover && <img src={project.cover} alt="" />}
+            {visibleProjectGroups.map(({ groupId, main, members }) => {
+              const visibleMain = members.find((project) => project.mapRole === 'main');
+              const submaps = members.filter((project) => project.mapRole === 'submap');
+              return <section className={styles.mapGroup} key={groupId} aria-label={`${main?.name || '地图'}地图组`}>
+                <header className={styles.mapGroupHeader}>
+                  <span className={styles.mapGroupSummary}>
+                    <strong>{main?.name || '地图组'}</strong>
+                    <small>{projects.filter((project) => project.mainProjectId === groupId && project.mapRole === 'submap').length} 个副地图</small>
+                  </span>
+                  {main && <button className={styles.addSubmapButton} onClick={() => openSubmapDialog(main)}>
+                    <Plus size={14} /> 新建副地图
+                  </button>}
+                </header>
+                <div className={styles.mapGroupMain}>
+                  {visibleMain ? renderProjectCard(visibleMain) : <p className={styles.filteredMainHint}>主地图“{main?.name}”未匹配当前筛选</p>}
                 </div>
-                <div className={styles.cardBody}>
-                  <div className={styles.cardHeading}>
-                    <div>
-                      <div className={styles.projectTitle}>
-                        <h2>{project.name}</h2>
-                        <span className={`${styles.projectStatus} ${project.status === '已发布' ? styles.published : ''}`}>{project.status}</span>
-                      </div>
-                      <span className={styles.projectAuthor}>作者：{project.author || '未署名'}</span>
-                      <p>{project.description || '未填写简介'}</p>
-                    </div>
-                    <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
-                      <button
-                        className={styles.moreButton}
-                        onClick={() => setMenuProject(menuProject === project.id ? null : project.id)}
-                        aria-label={`${project.name} 的更多操作`}
-                        aria-expanded={menuProject === project.id}
-                      >
-                        <MoreHorizontal size={20} />
-                      </button>
-                      {menuProject === project.id && (
-                        <div className={styles.menu} role="menu">
-                          <button role="menuitem" onClick={() => openDetailsDialog(project)}>
-                            <Pencil size={15} /> 编辑信息
-                          </button>
-                          <button role="menuitem" onClick={() => openPublishDialog(project)}>
-                            <Play size={15} /> 发布为游玩包
-                          </button>
-                          <button
-                            role="menuitem"
-                            disabled={Boolean(exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error')}
-                            onClick={() => void exportProjectFile(project)}
-                          >
-                            <Download size={15} /> 导出可编辑工程
-                          </button>
-                          <button role="menuitem" onClick={() => void openRecoveryDialog(project)}>
-                            <History size={15} /> 恢复历史版本
-                          </button>
-                          <button
-                            role="menuitem"
-                            className={styles.deleteAction}
-                            disabled={project.isEngineWorld}
-                            title={project.isEngineWorld ? '默认世界不能删除' : undefined}
-                            onClick={() => openDeleteDialog(project)}
-                          >
-                            <Trash2 size={15} /> 删除
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className={styles.cardFooter}>
-                    <span><Clock3 size={14} /> {project.latestRelease ? `${project.latestRelease}${project.latestReleaseNotes ? ` · ${project.latestReleaseNotes}` : ''}` : project.updatedAt}</span>
-                    <span className={styles.cardActions}>
-                      {project.isEngineWorld && <span className={styles.defaultTag}>默认世界</span>}
-                      <button onClick={() => copyProjectCommand(project, 'edit')}><Pencil size={14} /> 编辑</button>
-                      <button onClick={() => copyProjectCommand(project, 'play')}><Play size={14} fill="currentColor" /> 游玩</button>
-                    </span>
-                  </div>
-                </div>
-              </article>
-            ))}
+                {submaps.length > 0 && <div className={styles.submapSection}>
+                  <div className={styles.submapSectionLabel}>副地图</div>
+                  <div className={styles.submapList}>{submaps.map(renderProjectCard)}</div>
+                </div>}
+              </section>;
+            })}
           </div>
         ) : (
           <div className={styles.emptyState}>
@@ -816,15 +891,16 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               .finally(() => setSubmitting(false));
           }} onMouseDown={(event) => event.stopPropagation()}>
             <div className={styles.dialogIcon}><Grid2X2 size={22} /></div>
-            <h2>{dialog === 'create' ? '新建作品' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '发布为游玩包'}</h2>
-            {dialog === 'delete' && <p>删除后无法恢复。</p>}
-            {(dialog === 'create' || dialog === 'details') && <>
+            <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '发布为游玩包'}</h2>
+            {dialog === 'delete' && <p>{selectedProject?.mapRole === 'main' ? `将删除整个地图组“${selectedProject?.name}”及其全部副地图，删除后无法恢复。` : `将删除副地图“${selectedProject?.name}”，删除后无法恢复。`}</p>}
+            {(dialog === 'create' || dialog === 'submap' || dialog === 'details') && <>
               <label htmlFor="project-name">作品名称</label>
               <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
-              <label htmlFor="project-author">作者</label>
-              <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} />
+              {dialog !== 'submap' && <><label htmlFor="project-author">作者</label>
+              <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} /></>}
               <label htmlFor="project-description">简介</label>
               <textarea id="project-description" maxLength={300} value={projectDescription} onChange={(event) => setProjectDescription(event.target.value)} />
+              {dialog === 'submap' && <p>副地图拥有独立地形和实体，并归属于“{selectedProject?.name}”地图组。</p>}
               {dialog === 'details' && <><label htmlFor="project-cover">封面</label><input id="project-cover" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 1400000) { setDialogError('封面图片不能超过 1.4MB'); return; } const reader = new FileReader(); reader.onload = () => { setProjectCover(String(reader.result)); setDialogError(''); }; reader.readAsDataURL(file); }} /></>}
             </>}
             {dialog === 'publish' && <>
@@ -837,8 +913,8 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             {dialogError && <p className={styles.dialogError} role="alert">{dialogError}</p>}
             <div className={styles.dialogActions}>
               <button type="button" className={styles.cancelButton} onClick={() => setDialog(null)}>取消</button>
-              <button type="submit" className={dialog === 'delete' ? styles.deleteConfirm : styles.confirmButton} disabled={submitting || ((dialog === 'create' || dialog === 'details') ? !projectName.trim() : dialog === 'publish' ? !releaseVersion.trim() : false)}>
-                {submitting ? '处理中…' : dialog === 'create' ? '创建作品' : dialog === 'details' ? '保存' : dialog === 'delete' ? '删除' : '发布为游玩包'}
+              <button type="submit" className={dialog === 'delete' ? styles.deleteConfirm : styles.confirmButton} disabled={submitting || ((dialog === 'create' || dialog === 'submap' || dialog === 'details') ? !projectName.trim() : dialog === 'publish' ? !releaseVersion.trim() : false)}>
+                {submitting ? '处理中…' : dialog === 'create' ? '创建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '保存' : dialog === 'delete' ? '删除' : '发布为游玩包'}
               </button>
             </div>
           </form>

@@ -11,6 +11,22 @@ export interface MapInfoConfig {
   customizeType: 'DIGITALBLOCKLAND' | 'Fantour' | '';
   backgroundImage: string; // loading页面的背景图
   combType: number; // 地图类型（0-普通地图，1-扩展主图，2-扩展副图）
+  /** Local map-group identity. Cloud maps do not provide these fields. */
+  mapGroupId?: string;
+  mapRole?: 'main' | 'submap';
+  mainProjectId?: string;
+  isLocalMapGroup?: boolean;
+}
+
+export function mapRoleToCombType(role?: MapInfoConfig['mapRole']): 0 | 1 | 2 {
+  if (role === 'main') return 1;
+  if (role === 'submap') return 2;
+  return 0;
+}
+
+/** Cloud combined-map script mutations must never run in Local Engine. */
+export function usesCloudMapGroupAPIs(mapInfo: MapInfoConfig): boolean {
+  return Boolean(mapInfo.combType && !mapInfo.isLocalMapGroup);
 }
 
 export interface ClientModeConfig {

@@ -153,6 +153,7 @@ async function runtimeStatus(projectId: string, mode: 'edit' | 'play') {
 export async function getSystemStatus() {
   const manager = getLocalProjectManager();
   const projects = manager.listProjects();
+  const mainProjects = projects.filter((project) => project.mapRole === 'main');
   const [services, runtimePairs] = await Promise.all([
     serviceHealth(),
     Promise.all(projects.map(async (project) => ({
@@ -170,11 +171,11 @@ export async function getSystemStatus() {
     try { return total + manager.listProjectSnapshots(project.id).length; }
     catch { return total; }
   }, 0);
-  const backups = projects.reduce((total, project) => {
+  const backups = mainProjects.reduce((total, project) => {
     try { return total + manager.listProjectBackups(project.id).length; }
     catch { return total; }
   }, 0);
-  const latestBackups = projects.flatMap((project) => {
+  const latestBackups = mainProjects.flatMap((project) => {
     try {
       return manager.listProjectBackups(project.id).map((backup) => ({ ...backup, projectName: project.name }));
     } catch {

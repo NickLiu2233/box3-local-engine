@@ -10,7 +10,7 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "creator": "node apps/local-engine/src/deploy.js creator",
-    "creator:up": "docker compose --profile creator up -d --no-build creator",
+    "creator:up": "node apps/local-engine/src/deploy.js creator-up",
     "player-service": "node apps/local-engine/src/deploy.js player-service",
     "player-service:up": "node apps/local-engine/src/deploy.js player-service-up",
     "voxa": "node apps/local-engine/src/deploy.js voxa",
@@ -23,7 +23,7 @@
     "infra": "docker compose --profile infra up -d postgres redis",
     "infra:stop": "docker compose --profile infra stop postgres redis",
     "play": "node apps/local-engine/src/deploy.js play",
-    "play:up": "docker compose --profile play up -d --no-build play",
+    "play:up": "node apps/local-engine/src/deploy.js play-up",
     "stop": "node apps/local-engine/src/deploy.js stop",
     "dev": "node apps/local-engine/src/launcher.js --creator",
     "build:creator": "node apps/local-engine/src/build.js --creator",

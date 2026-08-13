@@ -1,0 +1,50 @@
+# BOX Local Engine
+
+BOX Local Engine hosts editable and playable worlds while preserving the core
+Boxes project model without depending on the retired cloud platform.
+
+## Language
+
+**Map Group**:
+A collection containing exactly one main map and zero or more submaps that share one authoritative resource library and group data space.
+_Avoid_: Project folder, extension project, map collection
+
+**Main Map**:
+The required primary member of a map group. Deleting it means deleting the whole map group.
+_Avoid_: Parent project, root world
+
+**Submap**:
+An independently editable and playable map that belongs to a map group and consumes its shared resource library.
+_Avoid_: Child project, copy, extension map
+
+**Map Resource**:
+Terrain, placed entities, environment, spawn settings, and other state owned by one map only.
+_Avoid_: Private resource
+
+**Shared Resource Library**:
+The single authoritative collection of project models, skins and characters, shared scripts, UI, audio, and pictures owned by a map group.
+_Avoid_: Global library, copied resources
+
+**Shared Resource Snapshot**:
+An immutable version of a map group's shared resource library, selected by one authoritative group-level root pointer. Maps consume the latest snapshot when opened; the snapshot is not a second map project.
+_Avoid_: Shared folder, synchronized copy
+
+**Local Model Library**:
+Models owned by the server-wide VOXA workspace and not by any map group until placed or explicitly imported into one.
+_Avoid_: Shared model library
+
+**Project Data Space**:
+The data storage namespace accessible only to one map.
+_Avoid_: Local database
+
+**Group Data Space**:
+The data storage namespace accessible to every map in the same map group and inaccessible to other groups.
+_Avoid_: Global database, common database
+
+## Architecture Decisions
+
+- Map groups preserve Boxes' project and group schemas. Local metadata only owns membership and the authoritative shared root pointer.
+- Exporting any map-group member exports the complete group. Import assigns new local IDs while preserving main/submap roles and one shared root.
+- A published map records the map group ID, main map ID, and shared resource revision used to build its immutable snapshot.
+- Local Engine does not set a non-zero cloud `GROUP_ID`; doing so would activate cloud backend and shared-script routes.
+- Cross-editor live action broadcast is intentionally not claimed. Members synchronize from the shared snapshot when opened.

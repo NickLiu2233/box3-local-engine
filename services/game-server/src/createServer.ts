@@ -55,8 +55,10 @@ import { parsePrebakeVoxelData } from './voxel/voxel-server';
 import {
   getLocalProjectModelPreviews,
   getLocalProjectModelProjects,
+  getLocalProjectModelPaths,
   getLocalProjectSkinPreviews,
   getLocalProjectSkinProjects,
+  syncLocalProjectModelPaths,
 } from './project/local-project-state';
 
 export type HttpRoutes = {
@@ -530,12 +532,26 @@ export async function createGameServer(spec: {
       }
     };
 
+    // Boxes treats extraProject as the map group's shared project library. The
+    // local adapter keeps the same membership semantics by registering each
+    // map's referenced meshes when its runtime becomes ready; the group view
+    // is the union of all member registrations.
+    syncLocalProjectModelPaths(
+      Object.values(editServer.state.replica.project.entitiesTree).flatMap(
+        (node) => {
+          const mesh = node.value?.mesh;
+          return typeof mesh === 'string' && mesh ? [mesh] : [];
+        },
+      ),
+    );
+
     spec.httpRoutes['/api/project-models'] = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       if (req.method === 'GET') {
         res.end(JSON.stringify({
           modelPreviews: getLocalProjectModelPreviews(),
           modelProjects: getLocalProjectModelProjects(),
+          projectModelPaths: getLocalProjectModelPaths(),
         }));
         return;
       }
@@ -546,15 +562,79 @@ export async function createGameServer(spec: {
       }
       try {
         const body = await bodyParse(req) as Record<string, unknown>;
-        const name = String(body.name || '').trim();
-        if (!name) throw new Error('model name is required');
         const action = String(body.action || '');
+        const name = String(body.name || '').trim();
+        const requestedPath = String(body.meshPath || '').trim();
+        if (
+          action !== 'importLocal' &&
+          !name &&
+          !requestedPath
+        ) throw new Error('model name or path is required');
         const voxaURL = (
           process.env.VOXA_INTERNAL_URL ||
           process.env.VOXA_URL ||
           'http://127.0.0.1:3001'
         ).replace(/\/$/, '');
-        if (action === 'rename' || action === 'delete' || action === 'update') {
+        if (action === 'importLocal') {
+          const modelId = Number(body.modelId || 0);
+          if (!Number.isSafeInteger(modelId) || modelId <= 0) {
+            throw new Error('local model id is required');
+          }
+          const modelResponse = await fetch(`${voxaURL}/api/local/models/${modelId}`);
+          if (!modelResponse.ok) throw new Error('local model not found');
+          const model = await modelResponse.json() as Record<string, unknown>;
+          const modelFileHash = String(model.modelFileHash || '');
+          const previewHash = String(model.modelPreviewHash || '');
+          const projectFileHash = String(model.projectFileHash || '');
+          for (const hash of [modelFileHash, previewHash, projectFileHash].filter(Boolean)) {
+            const blobResponse = await fetch(
+              `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+            );
+            if (!blobResponse.ok) throw new Error(`local model resource is missing: ${hash}`);
+            const storedHash = await spec.contentServer.store(
+              new Uint8Array(await blobResponse.arrayBuffer()),
+            );
+            if (storedHash !== hash) throw new Error(`model resource verification failed: ${hash}`);
+          }
+          const meshAssets = editServer!.state.replica.extraProjectInfo.meshAssets;
+          const baseName = String(model.modelName || `模型 ${modelId}`).trim();
+          let modelName = baseName;
+          let suffix = 2;
+          while (meshAssets[getMeshPath(modelName)]) {
+            modelName = `${baseName} (${suffix++})`;
+          }
+          // Project ids are independent from VOXA library ids. A timestamp is
+          // precise within JS safe integers and avoids colliding with imported
+          // cloud ids or the source local id.
+          let projectModelId = Date.now();
+          const usedIds = new Set(Object.values(meshAssets).map((asset) => asset.modelId));
+          while (usedIds.has(projectModelId)) projectModelId += 1;
+          await editServer!.replica.updateLocalProjectModel({
+            action: 'create',
+            newName: modelName,
+            modelId: projectModelId,
+            modelFileHash,
+            animated: Boolean(model.animated),
+            previewHash,
+            projectFileHash,
+          });
+          res.end(JSON.stringify({
+            modelId: projectModelId,
+            modelName,
+            modelFileHash,
+            modelPreviewHash: previewHash,
+            modelPreviewUrl: previewHash ? `/block/${previewHash}` : '',
+            animated: Boolean(model.animated),
+          }));
+          return;
+        }
+        if (
+          action === 'rename' ||
+          action === 'delete' ||
+          action === 'restore' ||
+          action === 'purge' ||
+          action === 'update'
+        ) {
           if (action === 'update') {
             const hashes = [
               String(body.modelFileHash || ''),
@@ -584,8 +664,20 @@ export async function createGameServer(spec: {
           return;
         }
         if (action !== 'prepareEdit') throw new Error('unsupported model action');
-        const projectFileHash = getLocalProjectModelProjects()[name];
-        const asset = editServer!.state.replica.extraProjectInfo.meshAssets[getMeshPath(name)];
+        const assetPath = requestedPath || getMeshPath(name);
+        const asset = editServer!.state.replica.extraProjectInfo.meshAssets[assetPath];
+        let projectFileHash = getLocalProjectModelProjects()[name];
+        let sourceModel: Record<string, unknown> | undefined;
+        const localIdMatch = assetPath.match(/__local_(\d+)\.vb$/);
+        if (!projectFileHash && localIdMatch) {
+          const sourceResponse = await fetch(
+            `${voxaURL}/api/local/models/${encodeURIComponent(localIdMatch[1])}`,
+          );
+          if (sourceResponse.ok) {
+            sourceModel = await sourceResponse.json() as Record<string, unknown>;
+            projectFileHash = String(sourceModel.projectFileHash || '');
+          }
+        }
         if (!asset?.hash || !projectFileHash) {
           res.writeHead(409);
           res.end(
@@ -605,7 +697,11 @@ export async function createGameServer(spec: {
             creativeMode: CreativeMode.Model,
             modelFileHash: asset.hash,
             modelProjectFileHash: projectFileHash,
-            modelPreviewFileHash: getLocalProjectModelPreviews()[name] || asset.modelPreviewHash || '',
+            modelPreviewFileHash:
+              getLocalProjectModelPreviews()[name] ||
+              String(sourceModel?.modelPreviewHash || '') ||
+              asset.modelPreviewHash ||
+              '',
             mapId: serverConfig.contentId,
           }),
         });
@@ -615,6 +711,37 @@ export async function createGameServer(spec: {
         const message = error instanceof Error ? error.message : String(error);
         res.writeHead(message.includes('already exists') ? 409 : 400);
         res.end(JSON.stringify({ message }));
+      }
+    };
+
+    spec.httpRoutes['/api/project-scripts'] = async (req, res) => {
+      res.setHeader('Content-Type', 'application/json');
+      if (req.method !== 'POST') {
+        res.writeHead(405, { Allow: 'POST' });
+        res.end(JSON.stringify({ message: 'method not allowed' }));
+        return;
+      }
+      try {
+        const body = await bodyParse(req) as Record<string, unknown>;
+        const action = String(body.action || '');
+        if (action !== 'share' && action !== 'unshare') {
+          throw new Error('unsupported script action');
+        }
+        const result = await editServer!.replica.updateLocalSharedScript(
+          action === 'share'
+            ? {
+                action,
+                fileId: String(body.fileId || ''),
+                hash: String(body.hash || ''),
+              }
+            : { action, fileId: String(body.fileId || '') },
+        );
+        res.end(JSON.stringify(result));
+      } catch (error) {
+        res.writeHead(400);
+        res.end(JSON.stringify({
+          message: error instanceof Error ? error.message : String(error),
+        }));
       }
     };
 

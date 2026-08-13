@@ -13,9 +13,10 @@ import {
   Collaboration,
   CreatorStore,
 } from '@box-local/apis';
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
 import { isMaas } from 'src/utils/appEdition';
 import { getToken } from 'src/utils/token';
+import { resolveRuntimeURL } from 'src/utils/runtime-url';
 
 export const cancelSource = axios.CancelToken.source();
 
@@ -87,10 +88,13 @@ if (clientConfig.isLocalGameServer) {
 
   uploadApi.fileUploadPost = async ({ file }) => {
     if (!file) throw new Error('请选择要上传的文件');
-    const response = await fetch('/runtime/edit/block', {
-      method: 'POST',
-      body: file,
-    });
+    const response = await fetch(
+      resolveRuntimeURL(getConfig().BACKEND_SERVER_URL || '', 'block'),
+      {
+        method: 'POST',
+        body: file,
+      },
+    );
     if (!response.ok) {
       throw new Error((await response.text()) || '本地资源保存失败');
     }
@@ -118,6 +122,48 @@ if (clientConfig.isLocalGameServer) {
 
   modelApi.getModelDetailUsingGet = async (modelId) =>
     voxaRequest(`/models/${modelId}`);
+  createraApi.shareScriptUsingPost = async ({ id, hash }) => {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+    const response = await fetch(
+      resolveRuntimeURL(runtimeURL, 'api/project-scripts'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'share', fileId: id, hash }),
+      },
+    );
+    if (!response.ok) throw new Error((await response.text()) || '共享脚本失败');
+    return true;
+  };
+  createraApi.unshareScriptUsingPost = async ({ id }) => {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+    const response = await fetch(
+      resolveRuntimeURL(runtimeURL, 'api/project-scripts'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unshare', fileId: id }),
+      },
+    );
+    if (!response.ok) throw new Error((await response.text()) || '关闭共享失败');
+    const result = await response.json();
+    return String(result.hash || '');
+  };
+  modelApi.copyProjectSharedModelUsingPost = async ({ originModelId }) => {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+    const response = await fetch(
+      resolveRuntimeURL(runtimeURL, 'api/project-models'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'importLocal', modelId: originModelId }),
+      },
+    );
+    if (!response.ok) {
+      throw new Error((await response.text()) || '本地模型加入项目失败');
+    }
+    return await response.json();
+  };
   modelApi.deleteModelUsingDelete = async (modelIds) => {
     const results = await Promise.all(
       modelIds.map((modelId) =>

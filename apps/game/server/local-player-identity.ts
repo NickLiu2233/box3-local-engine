@@ -448,7 +448,12 @@ export async function resolvePlayerIdentity(req: NextApiRequest, res: NextApiRes
 
 export function createRuntimeIdentityAssertion(identity: RuntimePlayerIdentity) {
   const { expiresAt: _expiresAt, ...value } = identity;
-  return signRuntimePlayerIdentity(value, identitySecret());
+  const configuredTtl = Number(process.env.BOX_RUNTIME_IDENTITY_TTL_MS);
+  const ttlMs =
+    Number.isFinite(configuredTtl) && configuredTtl >= 5_000
+      ? configuredTtl
+      : 5 * 60_000;
+  return signRuntimePlayerIdentity(value, identitySecret(), ttlMs);
 }
 
 function validateRegistration(username: unknown, displayName: unknown, password: unknown) {

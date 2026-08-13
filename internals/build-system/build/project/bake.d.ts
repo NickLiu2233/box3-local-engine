@@ -5,17 +5,27 @@ import { ContentServer } from '@box-local/content-server';
 import { MuSchema } from '@box-local/mudb/schema';
 import { TreeNodeType } from '@box-local/schema/project/murda-tree';
 export declare function copySoundAssets(hp: Hot.HotProject): void;
+export type RuntimeMeshInfo = {
+    hash: string;
+    path: string;
+    bounds: [number, number, number];
+    motionIds: string[];
+};
+/**
+ * A local project model and its VOXA source can legitimately have the same
+ * numeric model id. The entity path is authoritative in that case. Falling
+ * back to model id preserves Boxes' rename/migration behaviour for legacy
+ * entities whose old path no longer exists.
+ */
+export declare function resolveSeedMeshInfo(meshPath: string, meshId: number, meshAssets: Hot.HotProject['meshAssets'], meshIdSetCache: {
+    [id: number]: RuntimeMeshInfo;
+}): RuntimeMeshInfo | undefined;
 export declare class ProjectBakeCache {
     blockInfoHash: string;
     content: ContentServer;
     build: BuildSystemAPI;
     meshIdSetCache: {
-        [id: number]: {
-            hash: string;
-            path: string;
-            bounds: [number, number, number];
-            motionIds: string[];
-        };
+        [id: number]: RuntimeMeshInfo;
     };
     private _meshInfoCache;
     private _blockInfoCache;

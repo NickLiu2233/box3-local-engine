@@ -111,6 +111,8 @@ const projectStatePath = launchTarget
   : process.env.BOX_WORLD_STATE_PATH ||
     process.env.BOX_PROJECT_STATE_PATH ||
     ''
+const groupStatePath = launchTarget?.groupStatePath || ''
+const groupBlobRoot = launchTarget?.groupBlobRoot || ''
 const requiredClientAsset = path.join(
   dataRoot,
   'blobs/QmUQg6ayL7bLmdso8b4Hc7nfxBUSJawPsQ7vsSUPhXNdv5'
@@ -171,8 +173,18 @@ function dataStorageNamespace(id, allowExplicit = true) {
   return `${prefix}${id || 'default'}`
 }
 
-function groupStorageNamespace() {
-  return process.env.BOX_GROUP_STORAGE_NAMESPACE || 'global'
+function groupStorageNamespace(projectId = '') {
+  if (process.env.BOX_GROUP_STORAGE_NAMESPACE) {
+    return process.env.BOX_GROUP_STORAGE_NAMESPACE
+  }
+  if (projectId) {
+    try {
+      return projectManager.mapGroupIdentity(projectId).mapGroupId
+    } catch {
+      // Standalone runtime fixtures do not necessarily have project metadata.
+    }
+  }
+  return 'global'
 }
 
 function validateDefaultAvatar() {
@@ -408,6 +420,11 @@ async function main() {
     // Keep the local default within that range so opening a project cannot
     // fail during config validation before the runtime starts.
     STORAGE_CACHE_REDIS_TTL: process.env.STORAGE_CACHE_REDIS_TTL || '240',
+    // A 512x256x512 world needs roughly 128 MiB for the script-side voxel
+    // mirror alone. Boxes keeps this mirror in the isolate, so local runtimes
+    // need enough headroom for scripts, entities and protocol snapshots too.
+    SCRIPT_HEAP_MB:
+      process.env.BOX_SCRIPT_HEAP_MB || process.env.SCRIPT_HEAP_MB || '512',
     // Local products create sessions through the web API, which authenticates
     // the internal runtime request and preserves the actual client address.
     BOX_DIRECT_SESSION_API: 'false',
@@ -446,6 +463,8 @@ async function main() {
           // its disposable writable copy; edit mode uses the project source.
           STORAGE_PATH: mode === 'play' ? playServerDataRoot : dataRoot,
           BOX_PROJECT_STATE_PATH: projectStatePath,
+          BOX_GROUP_PROJECT_STATE_PATH: groupStatePath,
+          BOX_GROUP_CONTENT_PATH: groupBlobRoot,
           HASH:
             process.env.BOX_WORLD_HASH ||
             process.env.BOX_PROJECT_HASH ||
@@ -468,7 +487,7 @@ async function main() {
           ),
           // getGroupStorage is shared by every map in this deployment and
           // must never fall back to the per-map data storage namespace.
-          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(),
+          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
           BOX_SERVER_NAME:
             process.env.BOX_WORLD_NAME ||
             process.env.BOX_SERVER_NAME ||
@@ -519,7 +538,7 @@ async function main() {
           // single data namespace. Server owners can add a prefix, while the
           // actual world id always remains part of the namespace.
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(world.id, false),
-          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(),
+          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(world.manifest.mainProjectId || world.id),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
@@ -609,7 +628,8 @@ async function main() {
       try {
         const target = projectManager.getLaunchTarget({ project: id })
         return target.kind === 'source' ? { id, target } : null
-      } catch {
+      } catch (error) {
+        console.error(`Unable to resolve local project ${id}: ${error.message}`)
         return null
       }
     }

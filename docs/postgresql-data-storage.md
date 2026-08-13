@@ -75,7 +75,7 @@ BOX_GROUP_STORAGE_NAMESPACE=global
 | `BOX_DATA_STORAGE_LOCK_TIMEOUT_MS` | `10000` | 脚本 `update` 事务锁的最长保留时间 |
 | `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写原作品 ID，例如 `100010141` |
 | `BOX_DATA_STORAGE_NAMESPACE_PREFIX` | 空 | 多套私服共用数据库时使用的命名空间前缀 |
-| `BOX_GROUP_STORAGE_NAMESPACE` | `global` | `getGroupStorage` 使用的实例级共享标识；所有地图应保持一致 |
+| `BOX_GROUP_STORAGE_NAMESPACE` | 自动使用地图组 ID | `getGroupStorage` 的地图组共享标识；同组地图一致、不同组隔离 |
 
 不建议把 `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` 设为 `false`。只有数据库供应商明确使用
 无法由系统信任链验证的证书时才临时关闭验证。
@@ -83,8 +83,9 @@ BOX_GROUP_STORAGE_NAMESPACE=global
 ## 4. 数据隔离方式
 
 - `world.getDataStorage(name)` 使用每张地图自己的 namespace，其他地图无法访问。
-- `world.getGroupStorage(name)` 使用实例级 `BOX_GROUP_STORAGE_NAMESPACE`，默认是
-  `global`，同一部署中的所有地图都能访问。
+- `world.getGroupStorage(name)` 使用地图组 namespace；Creator 和自动生成的单作品游玩包默认
+  使用发布清单中的地图组 ID，同组地图可访问，不同地图组不可访问。只有迁移旧数据或明确需要
+  自定义命名空间时才手动设置 `BOX_GROUP_STORAGE_NAMESPACE`。
 - 两类空间即使传入相同的 `name` 也使用不同的表，不会互相覆盖。
 
 表名沿用旧 boxes 格式。以作品 ID `100010141` 和数据空间 `player` 为例：

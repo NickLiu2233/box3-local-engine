@@ -17,6 +17,7 @@
     "check:player-revocation": "node -r @swc-node/register scripts/regression-player-revocation-poller.ts",
     "check:pending-player-joins": "node -r @swc-node/register scripts/regression-pending-player-joins.ts",
     "check:deleted-project-model": "node -r @swc-node/register scripts/regression-deleted-project-model.ts",
+    "check:project-model-trash": "node -r @swc-node/register scripts/regression-project-model-trash.ts",
     "prod": "node dist/src/launch.js --useProdBundle",
     "test": "node -r @swc-node/register scripts/regression-local-voxa-fallback.ts"
   },

@@ -1,12 +1,13 @@
 import { ModelType } from '@box-local/apis';
 
 import type { EditClient } from 'src/client/edit/edit-client';
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
 import { convertTimeStrToTimestamp } from 'src/utils/date';
 
 import { fetchModelList, ModelAction, type ModelData } from '.';
 import {
   dedupeProjectModelsByContent,
+  getProjectModelDisplayName,
   isProjectModelReferenced,
 } from './project-model-membership';
 
@@ -33,7 +34,6 @@ type ProjectModelSource = {
 };
 
 const LOCAL_MODELS_CHANGED_EVENT = 'local-voxa-models-changed';
-const LOCAL_MODEL_SUFFIX = /__local_\d+$/;
 const LOCAL_LIBRARY_MODEL_PATH = /__local_\d+\.vb$/;
 
 function sortAndFilter(models: ModelData[], searchName: string) {
@@ -50,7 +50,9 @@ function loadProjectAssets(editor: EditClient) {
   return Object.entries(editor.state.replica.extraProjectInfo.meshAssets).map(
     ([key, meshAsset]): ModelData => ({
       id: meshAsset.modelId,
-      name: editor.assetController.getModelNameFromMeshAssetsKey(key),
+      name: getProjectModelDisplayName(
+        editor.assetController.getModelNameFromMeshAssetsKey(key),
+      ),
       modelPreviewUrl: editor.assetController.getModelPreviewUrl(
         meshAsset.modelPreviewHash,
       ),
@@ -60,6 +62,7 @@ function loadProjectAssets(editor: EditClient) {
       type: ModelType.Project,
       updateAt: meshAsset.updatedAt,
       meshPath: key,
+      libraryScope: 'project',
     }),
   );
 }
@@ -71,6 +74,26 @@ function referencedMeshPaths(editor: EditClient) {
       return typeof mesh === 'string' && mesh ? [mesh] : [];
     }),
   );
+}
+
+async function groupProjectModelPaths() {
+  try {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+    const response = await fetch(`${runtimeURL}/api/project-models`, {
+      cache: 'no-store',
+    });
+    if (!response.ok) return new Set<string>();
+    const body = await response.json();
+    return new Set<string>(
+      Array.isArray(body.projectModelPaths)
+        ? body.projectModelPaths.filter((value): value is string =>
+            typeof value === 'string',
+          )
+        : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
 }
 
 const boxesProjectModelSource: ProjectModelSource = {
@@ -103,12 +126,15 @@ async function loadLocalModels(searchName: string) {
       modelName: searchName,
     })) || [];
 
-  return models.map(
-    (model): ModelData => ({
+  return models.map((model): ModelData => {
+    const name = getProjectModelDisplayName(model.name);
+    return {
       ...model,
-      meshPath: `mesh/${model.name}__local_${model.id}.vb`,
-    }),
-  );
+      name,
+      meshPath: `mesh/${name}__local_${model.id}.vb`,
+      libraryScope: 'local',
+    };
+  });
 }
 
 const localProjectModelSource: ProjectModelSource = {
@@ -120,12 +146,11 @@ const localProjectModelSource: ProjectModelSource = {
 
     // Project 只代表当前地图实际使用的模型。模型存放在本地 VOXA
     // 还是随工程包导入，不影响它是否属于 Project。
-    const references = referencedMeshPaths(editor);
+    const references = new Set([
+      ...referencedMeshPaths(editor),
+      ...(await groupProjectModelPaths()),
+    ]);
     const projectModels = loadProjectAssets(editor)
-      .map((model) => ({
-        ...model,
-        name: model.name.replace(LOCAL_MODEL_SUFFIX, ''),
-      }))
       .filter((model) =>
         isProjectModelReferenced(model.meshPath, references),
       );
@@ -133,7 +158,14 @@ const localProjectModelSource: ProjectModelSource = {
     const mergedModels = projectModels.map((model) => {
       if (!LOCAL_LIBRARY_MODEL_PATH.test(model.meshPath || '')) return model;
       const local = localById.get(model.id);
-      return local ? { ...model, ...local, meshPath: model.meshPath } : model;
+      return local
+        ? {
+            ...model,
+            ...local,
+            meshPath: model.meshPath,
+            libraryScope: 'project' as const,
+          }
+        : model;
     });
     return sortAndFilter(
       dedupeProjectModelsByContent(mergedModels),
@@ -164,7 +196,10 @@ const localProjectModelSource: ProjectModelSource = {
     return models.find((model) => model.id === modelId)?.name;
   },
 
-  notifyChanged() {
+  notifyChanged(editor) {
+    // Project models are authoritative in extraProjectInfo. Refresh that
+    // replica as well as the local VOXA list after create/rename/delete.
+    editor.replica.updateExtraProject();
     window.dispatchEvent(new Event(LOCAL_MODELS_CHANGED_EVENT));
   },
 };

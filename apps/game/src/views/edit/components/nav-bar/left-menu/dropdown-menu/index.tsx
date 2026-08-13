@@ -158,7 +158,8 @@ export const DropDownMenu = (props: DropDownMenuProps) => {
       // 只有普通地图的项目拥有者和拥有发布权限者可以发布
       if (item.id === menuItemsId.publish) {
         return (
-          (localOwner || editPublish) && clientConfig.mapInfo.combType === 0
+          (localOwner || editPublish) &&
+          (isLocalEngine || clientConfig.mapInfo.combType === 0)
         );
       }
       // 只有普通地图/扩展主副地图 的项目拥有者 有地图隐私管理权限

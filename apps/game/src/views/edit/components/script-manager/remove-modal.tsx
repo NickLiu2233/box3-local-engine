@@ -9,6 +9,7 @@ import { AssetType } from '@box-local/schema/project/project-rda';
 import { apis } from 'src/apis/api-java';
 import { useEdit } from 'src/client/edit/edit-context';
 import { clientConfig } from 'src/config/client';
+import { usesCloudMapGroupAPIs } from 'configs/client';
 import { RootState } from 'src/redux/edit';
 import { setRemoveId } from 'src/redux/edit/script-manager';
 import { CodeEditorStateContext } from '../script-container/hooks';
@@ -20,7 +21,8 @@ export const ScriptRemoveModal = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const { codeEditorState } = useContext(CodeEditorStateContext);
-  const { contentId, combType, name: currMapTitle } = clientConfig.mapInfo;
+  const { contentId, name: currMapTitle } = clientConfig.mapInfo;
+  const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
 
   const removeId = useSelector(
     (state: RootState) => state.scriptManager.removeId,
@@ -117,7 +119,7 @@ export const ScriptRemoveModal = () => {
 
   const onRemove = useCallback(
     (originalFile: FileState) => {
-      if (!combType) {
+      if (!usesCloudGroupAPI) {
         // 非扩展地图
         removeNormalScript(originalFile);
       } else {
@@ -125,7 +127,7 @@ export const ScriptRemoveModal = () => {
         removeExtensionScript(originalFile);
       }
     },
-    [combType, removeExtensionScript, removeNormalScript],
+    [removeExtensionScript, removeNormalScript, usesCloudGroupAPI],
   );
 
   const onConfirm = useCallback(() => {

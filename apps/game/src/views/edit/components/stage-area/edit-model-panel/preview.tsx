@@ -15,6 +15,7 @@ import { Toast } from '@box-local/box-design';
 import { EntitySeedRDA } from '@box-local/schema/project/project-rda';
 import { MouseButton, MouseState } from '@box-local/schema/input/input-schema';
 import { getMeshPath } from '@box-local/schema/project/hot-schema';
+import { getProjectModelDisplayName } from './project-model-membership';
 import { CopyEvent, ModelType, SourceType } from '@box-local/apis';
 import { getModelMetaData } from '@box-local/voxa-project';
 
@@ -352,7 +353,9 @@ export default function Preview() {
         return;
       }
 
-      newSeed.name = editor.seedController.genNewName(targetModel.name);
+      newSeed.name = editor.seedController.genNewName(
+        getProjectModelDisplayName(targetModel.name),
+      );
       const newSeedId = editor.seedController.genNodeId();
       newSeed.mesh = newMeshInfo.formatName;
       newSeed.defaultMotionId = newMeshInfo.defaultMotionId;

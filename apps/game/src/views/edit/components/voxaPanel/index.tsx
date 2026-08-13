@@ -87,6 +87,7 @@ export function VoxaPanel() {
     editType,
     projectSkinName,
     projectModelName,
+    projectModelPath,
     saveToProject,
   } = useSelector((state: RootState) => {
     if (state.creator.voxaData.isShow) {
@@ -99,6 +100,7 @@ export function VoxaPanel() {
       editType: EditType.Normal,
       projectSkinName: undefined,
       projectModelName: undefined,
+      projectModelPath: undefined,
       saveToProject: false,
     };
   });
@@ -148,6 +150,7 @@ export function VoxaPanel() {
   const voxaModelId = useRef<number>(0);
   const currentProjectSkinName = useRef(projectSkinName);
   const currentProjectModelName = useRef(projectModelName);
+  const currentProjectModelPath = useRef(projectModelPath);
   const shouldSaveToProject = useRef(Boolean(saveToProject));
 
   const showVoxa = useCallback(() => {
@@ -276,6 +279,7 @@ export function VoxaPanel() {
           body: JSON.stringify({
             action: 'update',
             name: currentProjectModelName.current,
+            meshPath: currentProjectModelPath.current,
             newName: modelName,
             modelFileHash,
             previewHash: modelPreviewHash,
@@ -292,6 +296,7 @@ export function VoxaPanel() {
           return;
         }
         currentProjectModelName.current = modelName;
+        currentProjectModelPath.current = `mesh/${modelName}.vb`;
         await apis.model
           .deleteModelUsingDelete([modelId])
           .catch(() => undefined);

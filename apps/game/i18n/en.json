@@ -1438,5 +1438,10 @@
   "hierarchy.staticShadowContent": "Set Static Entity",
   "hierarchy.selectAll": "Select All",
   "hierarchy.exitStaticShadowModel": "Discard Changes",
-  "hierarchy.exitStaticShadowModelContent": "Are you sure you want to discard the changes to the 'Static Entity'?"
+  "hierarchy.exitStaticShadowModelContent": "Are you sure you want to discard the changes to the 'Static Entity'?",
+  "sharedResourcesAutoSynced": "Map group resources synced automatically: {summary}",
+  "sharedResourceScripts": "Scripts",
+  "sharedResourceModels": "Models",
+  "sharedResourceSkins": "Skins",
+  "sharedResourceDefaultSkin": "Default skin"
 }

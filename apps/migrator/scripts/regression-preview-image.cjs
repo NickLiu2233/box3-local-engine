@@ -50,6 +50,7 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
     lightweightPlayer,
     localAudioAssets,
     localScriptAssets,
+    mergeCloudScriptsIntoProject,
     mergeCloudPhotos,
     parseJSON,
     referencedHashes,
@@ -95,6 +96,34 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
     'server.js': { type: 1, hash: 'server-hash', contentId: 0, ownerId: 0 },
     'client.js': { type: 7, hash: 'client-hash', contentId: 0, ownerId: 0 },
   });
+  const visibleSharedServerHash = 'QmTbxj3AzsiBZJFPPcEAgFkEdfMkdCJer8WYZhMwfiPfs7';
+  const visibleSharedClientHash = 'qF-VAp6cUsBYgpzHVmsfNTd3GHBmMyICVlLDUsocg1c';
+  assert.deepEqual(mergeCloudScriptsIntoProject({
+    'index.js': { type: 1, hash: actualHash },
+  }, {
+    serverScripts: [{
+      id: '18114',
+      name: '_server_bundle_hundshen3.js',
+      hash: visibleSharedServerHash,
+      share: true,
+    }],
+    clientScripts: [{
+      id: '18115',
+      name: '_client_bundle_hundshen3.js',
+      hash: visibleSharedClientHash,
+      share: true,
+    }],
+  }), {
+    'index.js': { type: 1, hash: actualHash, contentId: 0, ownerId: 0 },
+    '_server_bundle_hundshen3.js': {
+      animated: false, bounds: [0, 0, 0], contentId: 0,
+      hash: visibleSharedServerHash, ownerId: 0, previewImage: '', size: 0, type: 1,
+    },
+    '_client_bundle_hundshen3.js': {
+      animated: false, bounds: [0, 0, 0], contentId: 0,
+      hash: visibleSharedClientHash, ownerId: 0, previewImage: '', size: 0, type: 7,
+    },
+  });
   assert.deepEqual(restoreRuntimeBundles({
     'index.js': { type: 1, hash: 'index-hash' },
     'clientIndex.js': { type: 7, hash: 'client-index-hash' },
@@ -102,12 +131,16 @@ fs.writeFileSync(engineApiCompiledPath, ts.transpileModule(
     { key: '_server_bundle.js', value: { type: 1, hash: 'old-server-bundle' } },
     { key: '_server_bundle.js', value: { type: 1, hash: 'current-server-bundle' } },
     { key: '_client_bundle.js', value: { type: 7, hash: 'client-bundle' } },
+    { key: '_server_bundle_hundshen3.js', value: { type: 1, hash: 'shared-server-bundle' } },
+    { key: '_client_bundle_hundshen3.js', value: { type: 7, hash: 'shared-client-bundle' } },
     { key: 'deleted-gameplay.js', value: { type: 1, hash: 'must-not-restore' } },
   ]), {
     'index.js': { type: 1, hash: 'index-hash' },
     'clientIndex.js': { type: 7, hash: 'client-index-hash' },
     '_server_bundle.js': { type: 1, hash: 'current-server-bundle', contentId: 0, ownerId: 0 },
     '_client_bundle.js': { type: 7, hash: 'client-bundle', contentId: 0, ownerId: 0 },
+    '_server_bundle_hundshen3.js': { type: 1, hash: 'shared-server-bundle', contentId: 0, ownerId: 0 },
+    '_client_bundle_hundshen3.js': { type: 7, hash: 'shared-client-bundle', contentId: 0, ownerId: 0 },
   });
   assert.match(safeScriptLauncherSource('index.js'), /require\("\.\/index\.js"\)/);
   assert.match(safeScriptLauncherSource('index.js'), /catch \(error\)/);

@@ -143,6 +143,7 @@ COPY --from=creator-build --chown=node:node /opt/game-server /app/services/game-
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/edit-library.js /app/apps/local-engine/src/edit-library.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/project-manager.js /app/apps/local-engine/src/project-manager.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/map-group-manager.js /app/apps/local-engine/src/map-group-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config

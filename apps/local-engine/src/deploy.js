@@ -32,6 +32,46 @@ function readDotEnvValue(name) {
   return ''
 }
 
+function configuredValue(name) {
+  return process.env[name] || readDotEnvValue(name) || ''
+}
+
+function assertRuntimeConfiguration(product) {
+  const secret = configuredValue('PERMISSION_TOKEN_SECRET')
+  if (secret.length < 32) {
+    throw new Error(
+      'PERMISSION_TOKEN_SECRET 必须设置为至少 32 个字符的固定随机值（可用 openssl rand -hex 32 生成）',
+    )
+  }
+  const databaseUrl = configuredValue('BOX_DATABASE_URL')
+  let parsed
+  try {
+    parsed = new URL(databaseUrl)
+  } catch {
+    throw new Error('BOX_DATABASE_URL 必须设置为有效的 PostgreSQL 连接地址')
+  }
+  if (!['postgres:', 'postgresql:'].includes(parsed.protocol)) {
+    throw new Error('BOX_DATABASE_URL 只支持 PostgreSQL（postgresql://...）')
+  }
+  if (!parsed.hostname || !parsed.pathname.slice(1)) {
+    throw new Error('BOX_DATABASE_URL 必须包含数据库主机和数据库名')
+  }
+  if (product === 'play') {
+    const publicUrl = configuredValue('BOX_SERVER_PUBLIC_URL')
+    const hostIp = configuredValue('BOX_PLAY_HOST_IP') || '127.0.0.1'
+    if (hostIp !== '127.0.0.1' && !publicUrl) {
+      throw new Error('Play 对外监听时必须设置 BOX_SERVER_PUBLIC_URL')
+    }
+    if (
+      publicUrl &&
+      !/^https:\/\//i.test(publicUrl) &&
+      !/^http:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\/?$/i.test(publicUrl)
+    ) {
+      throw new Error('公网 BOX_SERVER_PUBLIC_URL 必须使用 HTTPS')
+    }
+  }
+}
+
 function configuredCreatorPort() {
   return (
     process.env.BOX_CREATOR_PORT ||
@@ -103,105 +143,40 @@ function stopProduct(product) {
   )
 }
 
-function migrateLegacyCreatorProjects() {
-  const legacyVolume = 'box-local-engine_box-creator-projects'
-  const volume = runDocker(['volume', 'inspect', legacyVolume], {
-    allowFailure: true,
-    capture: true,
-  })
-  if (volume.status !== 0) return
-
-  const projectNamePattern = '^[a-z0-9][a-z0-9-]{0,62}$'
-  const listScript = [
-    "const fs=require('fs');",
-    `const valid=new RegExp(${JSON.stringify(projectNamePattern)});`,
-    "const names=fs.readdirSync('/legacy');",
-    'console.log(JSON.stringify(names.filter((name)=>valid.test(name))));',
-  ].join('')
-  const config = getPlayImageConfig()
-  const creatorImage = `box-local-engine-creator:${config.tag}`
-  const listing = runDocker(
+function assertPlayerServiceHealthy() {
+  const container = runDocker(
+    ['compose', '--profile', 'player-service', 'ps', '-q', 'player-service'],
+    { allowFailure: true, capture: true },
+  )
+  const containerId = String(container.stdout || '').trim()
+  if (container.status !== 0 || !containerId) {
+    throw new Error('Player Service 尚未启动。请先执行 pnpm player-service')
+  }
+  const result = runDocker(
     [
-      'run',
-      '--rm',
-      '--entrypoint',
-      'node',
-      '-v',
-      `${legacyVolume}:/legacy:ro`,
-      creatorImage,
-      '-e',
-      listScript,
+      'inspect',
+      '--format',
+      '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}',
+      containerId,
     ],
     { allowFailure: true, capture: true },
   )
-  if (listing.status !== 0) {
+  const status = String(result.stdout || '').trim()
+  if (result.status !== 0 || status !== 'healthy') {
     throw new Error(
-      `无法检查旧工程卷 ${legacyVolume}：${String(listing.stderr || '').trim()}`,
+      `Player Service 尚未健康（当前：${status || '未启动'}）。请先执行 pnpm player-service`,
     )
   }
-  let legacyProjects
-  try {
-    legacyProjects = JSON.parse(String(listing.stdout || '').trim())
-  } catch {
-    throw new Error(`旧工程卷 ${legacyVolume} 返回了无效数据`)
-  }
-  if (!Array.isArray(legacyProjects) || legacyProjects.length === 0) return
-
-  const projectsRoot = path.join(packageRoot, 'projects')
-  fs.mkdirSync(projectsRoot, { recursive: true })
-  const hostProjects = fs
-    .readdirSync(projectsRoot, { withFileTypes: true })
-    .filter(
-      (entry) =>
-        entry.isDirectory() && new RegExp(projectNamePattern).test(entry.name),
-    )
-    .map((entry) => entry.name)
-  if (legacyProjects.every((name) => hostProjects.includes(name))) return
-  if (hostProjects.length > 0) {
-    console.warn(
-      `检测到旧工程卷 ${legacyVolume}，但宿主机已有工程，已保留旧卷且未自动合并。`,
-    )
-    return
-  }
-
-  const copyScript = [
-    "const fs=require('fs');",
-    "const path=require('path');",
-    `const valid=new RegExp(${JSON.stringify(projectNamePattern)});`,
-    "for(const name of fs.readdirSync('/legacy')){",
-    'if(!valid.test(name))continue;',
-    "fs.cpSync(path.join('/legacy',name),path.join('/target',name),",
-    '{recursive:true,errorOnExist:true,force:false});',
-    '}',
-  ].join('')
-  const userArgs =
-    typeof process.getuid === 'function' && typeof process.getgid === 'function'
-      ? ['--user', `${process.getuid()}:${process.getgid()}`]
-      : []
-  runDocker([
-    'run',
-    '--rm',
-    ...userArgs,
-    '--entrypoint',
-    'node',
-    '-v',
-    `${legacyVolume}:/legacy:ro`,
-    '-v',
-    `${projectsRoot}:/target`,
-    creatorImage,
-    '-e',
-    copyScript,
-  ])
-  console.log(`已将旧工程卷安全迁移到：${projectsRoot}`)
 }
 
-function deployCreator() {
+function deployCreator({ build }) {
   if (commandArgs.length) {
-    throw new Error('pnpm creator 不接受作品参数')
+    throw new Error(`pnpm ${build ? 'creator' : 'creator:up'} 不接受作品参数`)
   }
-  runDocker(['compose', '--profile', 'creator', 'build', 'creator'])
+  assertRuntimeConfiguration('creator')
+  assertPlayerServiceHealthy()
+  if (build) runDocker(['compose', '--profile', 'creator', 'build', 'creator'])
   stopProduct('creator')
-  migrateLegacyCreatorProjects()
   runDocker([
     'compose',
     '--profile',
@@ -223,6 +198,7 @@ function startPlayerService({ build }) {
       `pnpm ${build ? 'player-service' : 'player-service:up'} 不接受参数`,
     )
   }
+  assertRuntimeConfiguration('player-service')
   const config = build
     ? ensurePlayerServiceImageArchive({ forceBuild: true })
     : getPlayImageConfig()
@@ -244,13 +220,17 @@ function startPlayerService({ build }) {
   console.log('Creator 和 Play 会共用这个服务；更新它时无需重建另外两个镜像。\n')
 }
 
-function deployPlay() {
-  if (commandArgs.length) throw new Error('pnpm play 不接受作品参数')
+function deployPlay({ build }) {
+  if (commandArgs.length) throw new Error(`pnpm ${build ? 'play' : 'play:up'} 不接受作品参数`)
+  assertRuntimeConfiguration('play')
+  assertPlayerServiceHealthy()
   const libraryRoot = path.resolve(
     process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
   )
   fs.mkdirSync(libraryRoot, { recursive: true })
-  const playImage = ensurePlayImageArchive()
+  const playImage = build
+    ? ensurePlayImageArchive()
+    : getPlayImageConfig()
   runDocker([
     'compose',
     '--profile',
@@ -325,15 +305,17 @@ function stopAll() {
 }
 
 try {
-  if (command === 'creator') deployCreator()
-  else if (command === 'play') deployPlay()
+  if (command === 'creator') deployCreator({ build: true })
+  else if (command === 'creator-up') deployCreator({ build: false })
+  else if (command === 'play') deployPlay({ build: true })
+  else if (command === 'play-up') deployPlay({ build: false })
   else if (command === 'player-service') startPlayerService({ build: true })
   else if (command === 'player-service-up') startPlayerService({ build: false })
   else if (command === 'voxa') deployVoxa()
   else if (command === 'voxa-up') startExistingVoxa()
   else if (command === 'stop') stopAll()
   else throw new Error(
-    'Usage: deploy.js <creator|play|player-service|player-service-up|voxa|voxa-up|stop>',
+    'Usage: deploy.js <creator|creator-up|play|play-up|player-service|player-service-up|voxa|voxa-up|stop>',
   )
 } catch (error) {
   console.error(`部署失败：${error.message}`)

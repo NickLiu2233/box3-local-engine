@@ -33,6 +33,7 @@ export type ModelData = {
   type: ModelType;
   updateAt: string;
   meshPath?: string;
+  libraryScope?: 'local' | 'project';
 };
 
 export enum ModelAction {

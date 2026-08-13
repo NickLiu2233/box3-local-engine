@@ -34,17 +34,41 @@ export function copySoundAssets(hp: Hot.HotProject) {
   });
 }
 
+export type RuntimeMeshInfo = {
+  hash: string;
+  path: string;
+  bounds: [number, number, number];
+  motionIds: string[];
+};
+
+/**
+ * A local project model and its VOXA source can legitimately have the same
+ * numeric model id. The entity path is authoritative in that case. Falling
+ * back to model id preserves Boxes' rename/migration behaviour for legacy
+ * entities whose old path no longer exists.
+ */
+export function resolveSeedMeshInfo(
+  meshPath: string,
+  meshId: number,
+  meshAssets: Hot.HotProject['meshAssets'],
+  meshIdSetCache: { [id: number]: RuntimeMeshInfo },
+): RuntimeMeshInfo | undefined {
+  const mesh = meshAssets[meshPath];
+  if (mesh) {
+    return {
+      hash: mesh.hash,
+      path: meshPath,
+      bounds: [mesh.bounds[0], mesh.bounds[1], mesh.bounds[2]],
+      motionIds: mesh.motionList.map((motion) => motion.id),
+    };
+  }
+  return meshIdSetCache[meshId];
+}
+
 export class ProjectBakeCache {
   public content: ContentServer;
   public build: BuildSystemAPI;
-  public meshIdSetCache: {
-    [id: number]: {
-      hash: string;
-      path: string;
-      bounds: [number, number, number];
-      motionIds: string[];
-    };
-  } = {};
+  public meshIdSetCache: { [id: number]: RuntimeMeshInfo } = {};
 
   private _meshInfoCache: { [hash: string]: Hot.MeshAssetInfo } = {};
   private _blockInfoCache: { [hash: string]: BlockInfo } = {};
@@ -503,7 +527,12 @@ export class ProjectBakeCache {
       }
 
       const seed = Hot.SeedSchema.clone(entityNode.value);
-      const meshInfo = this.meshIdSetCache[seed.meshId];
+      const meshInfo = resolveSeedMeshInfo(
+        seed.mesh,
+        seed.meshId,
+        hp.meshAssets,
+        this.meshIdSetCache,
+      );
       if (meshInfo) {
         seed.mesh = meshInfo.path;
         seed.bounds[0] = meshInfo.bounds[0];

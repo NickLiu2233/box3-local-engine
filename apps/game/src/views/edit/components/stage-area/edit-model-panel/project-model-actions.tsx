@@ -32,6 +32,7 @@ import { setSelectedModel } from 'src/redux/edit/ui';
 import style from './index.module.scss';
 import { RootState } from 'src/redux/edit';
 import { projectModelSource } from './project-model-source';
+import { shouldUseProjectModelAdapter } from './project-model-membership';
 
 const LOCAL_LIBRARY_MODEL_PATH = /__local_\d+\.vb$/;
 
@@ -39,7 +40,8 @@ function usesEmbeddedProjectAdapter(model: ModelData) {
   return Boolean(
     clientConfig.isLocalGameServer &&
       model.meshPath &&
-      !LOCAL_LIBRARY_MODEL_PATH.test(model.meshPath),
+      (shouldUseProjectModelAdapter(model) ||
+        !LOCAL_LIBRARY_MODEL_PATH.test(model.meshPath)),
   );
 }
 
@@ -104,6 +106,7 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
           const prepared = await requestProjectModel({
             action: 'prepareEdit',
             name: model.name,
+            meshPath: model.meshPath,
           });
           dispatch(
             setVoxaData({
@@ -112,6 +115,7 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
               modelType: ModelType.Project,
               editType: EditType.Normal,
               projectModelName: model.name,
+              projectModelPath: model.meshPath,
               saveToProject: true,
             }),
           );
@@ -208,6 +212,7 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
               ? await requestProjectModel({
                   action: 'delete',
                   name: model.name,
+                  meshPath: model.meshPath,
                 })
               : await apis.model.deleteProjectSharedModelUsingDelete(
                   {
@@ -274,6 +279,7 @@ function ProjectModelActions(props: Props, ref: Ref<Actions>) {
         return await requestProjectModel({
           action: 'rename',
           name: rename.oldName,
+          meshPath: rename.model.meshPath,
           newName,
         });
       }

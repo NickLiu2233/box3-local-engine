@@ -74,6 +74,9 @@
 | Redis | 可选 Session/限流/预烘焙热缓存；失败时本地回退 |
 | 导入、导出、发布 | `.boxproject` 与只读游玩产物分离，带完整性校验和进度 |
 | 快照与备份 | 工程快照恢复、定时 `.boxproject` 备份和运行状态聚合 |
+| 地图组 | 一个主地图、多个副地图；地图级状态独立，共享资源使用一个权威根 |
+| 地图组迁移 | `.boxproject` 只存在地图组格式；从任意成员导出完整组，导入后重建成员关系与共享根 |
+| 共享版本发布 | 发布清单记录 `mapGroupId`、`mainProjectId` 和 `sharedRevision` |
 
 ## 明确不迁入
 
@@ -126,9 +129,18 @@ docker compose config
 6. Redis 关闭时单机仍可运行，PostgreSQL 关闭时 Player Service 明确报告不健康；
 7. 强制下线能在配置轮询时间内断开对应玩家。
 
-## 后续优先级
+## 本轮审计后的剩余差异
 
-当前没有需要从 `boxes` 继续迁入的核心模块。后续只接受三类工作：
+地图组的持久化、重新打开同步、整组迁移和发布版本绑定已经本地化。Boxes 在线版还会通过
+`BackendSocket` 在两个同时打开的编辑器之间广播共享资源 action；Local Engine 没有云端
+`ENGINE_CUSTOM` channel，因此当前不会即时热合并另一个编辑器中的 UI、图片、音频或共享
+资源修改。其他成员下次打开时会取得最新共享快照。
+
+不要用文件轮询直接覆盖运行中 RDA store 来伪装实时同步。若以后确有同时编辑同一地图组的
+需求，应在现有地图组 seam 后增加本地事件 adapter，并复用 Boxes 的
+`filterGroupProjectActions` / `updateProjectStoreByGroupProject` 语义，同时补冲突检测。
+
+后续只接受三类工作：
 
 1. 经过复现的引擎兼容缺陷；
 2. 本地 adapter 的正确性、安全性和可观察性；

@@ -23,12 +23,14 @@ const LOCAL_SKIN_NAME = /__local_\d+$/;
 export function mergeExtraProjectInfo(
   packaged: ExtraProjectInfo,
   localLibrary: ExtraProjectInfo,
+  deletedModelPaths: ReadonlySet<string> = new Set(),
 ): ExtraProjectInfo {
   const liveLocalModelIds = new Set(
     Object.values(localLibrary.meshAssets).map((asset) => asset.modelId),
   );
   const packagedMeshAssets = Object.fromEntries(
     Object.entries(packaged.meshAssets).filter(([path, asset]) => {
+      if (deletedModelPaths.has(path)) return false;
       // A VOXA rename changes the resource path while preserving modelId.
       // Embedded snapshots may therefore contain the old local path forever.
       // Keep ordinary cloud/project assets (their ids can legitimately collide),
@@ -43,7 +45,11 @@ export function mergeExtraProjectInfo(
   return {
     meshAssets: {
       ...packagedMeshAssets,
-      ...localLibrary.meshAssets,
+      ...Object.fromEntries(
+        Object.entries(localLibrary.meshAssets).filter(
+          ([path]) => !deletedModelPaths.has(path),
+        ),
+      ),
     },
     skinAssets: {
       ...packaged.skinAssets,
@@ -54,10 +60,10 @@ export function mergeExtraProjectInfo(
       (LOCAL_SKIN_NAME.test(packaged.defaultSkinName)
         ? ''
         : packaged.defaultSkinName),
-    scriptAssets: {
-      ...packaged.scriptAssets,
-      ...localLibrary.scriptAssets,
-    },
+    // Shared scripts are owned exclusively by the authoritative map-group
+    // snapshot. VOXA is only a source for local models and skins; treating its
+    // result as another script source makes deletions impossible to express.
+    scriptAssets: { ...packaged.scriptAssets },
   };
 }
 

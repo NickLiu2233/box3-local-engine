@@ -28,6 +28,7 @@ import { CodeEditorStateContext } from '../script-container/hooks';
 import style from './index.module.scss';
 import { LeftNavModeEnum } from 'src/views/edit/defs';
 import { clientConfig } from 'src/config/client';
+import { usesCloudMapGroupAPIs } from 'configs/client';
 import { apis } from 'src/apis/api-java';
 import { Toast } from '@box-local/box-design';
 import { ScriptType } from '@box-local/apis/src/createra/data-contracts';
@@ -46,7 +47,8 @@ export const ScriptManager = React.memo(() => {
     shareScriptId,
     unshareScriptId,
   } = useSelector((state: RootState) => state.scriptManager);
-  const { contentId: currMapId, combType } = clientConfig.mapInfo;
+  const { contentId: currMapId } = clientConfig.mapInfo;
+  const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
   const navMode = useSelector((state: RootState) => state.creator.navMode);
   const { codeEditorState } = useContext(CodeEditorStateContext);
   const { replica } = useContext(ArenaEditorUIContext);
@@ -87,7 +89,7 @@ export const ScriptManager = React.memo(() => {
   // 新建server/client脚本
   const addFile = useCallback(
     (isClient: boolean) => {
-      if (!combType) {
+      if (!usesCloudGroupAPI) {
         // 非扩展地图
         editor.codeEditorController.addFile(isClient);
       } else {
@@ -113,7 +115,7 @@ export const ScriptManager = React.memo(() => {
           });
       }
     },
-    [combType, currMapId, editor.codeEditorController, intl],
+    [currMapId, editor.codeEditorController, intl, usesCloudGroupAPI],
   );
   const addServerFile = useCallback(() => addFile(false), [addFile]);
   const addClientFile = useCallback(() => addFile(true), [addFile]);

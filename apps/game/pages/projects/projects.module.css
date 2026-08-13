@@ -129,6 +129,8 @@
 .exportCloseButton:hover { background: #ffe44d; }
 .menu { width: 168px; }
 .menu button { white-space: nowrap; }
+.mainMapCard { position: relative; }
+.submapCard { position: relative; }
 .deleteConfirm { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 12px; border-radius: 8px; color: #fff; background: #f65252; font-size: 13px; font-weight: 700; }
 .deleteConfirm:hover { background: #e04444; }
 .deleteConfirm:active { transform: scale(.97); }
@@ -142,3 +144,37 @@
 .snapshotList strong { color: #fff; font-size: 13px; }
 .snapshotList small { overflow: hidden; color: rgba(255,255,255,.52); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .snapshotList code { flex: 0 0 auto; padding: 3px 6px; border-radius: 4px; color: #ffdb00; background: rgba(255,219,0,.08); font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 10px; }
+
+/* A map group is one project. Keep the hierarchy plain and compact. */
+.grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.mapGroup { overflow: visible; padding: 16px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: #333; }
+.mapGroupHeader { display: flex; min-height: 36px; align-items: center; gap: 11px; padding: 0 0 12px; }
+.mapGroupSummary { display: grid; min-width: 0; gap: 3px; }
+.mapGroupSummary strong { overflow: hidden; color: #fff; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.mapGroupSummary small { color: rgba(255,255,255,.45); font-size: 11px; }
+.addSubmapButton { display: inline-flex; height: 32px; align-items: center; gap: 5px; margin-left: auto; padding: 0 10px; border-radius: 6px; color: rgba(255,255,255,.78); background: rgba(255,255,255,.08); font-size: 12px; transition: color 140ms ease, background 140ms ease, transform 140ms cubic-bezier(.23,1,.32,1); }
+.addSubmapButton:hover { color: #262626; background: #ffdb00; }
+.addSubmapButton:active { transform: scale(.97); }
+.mapGroupMain .card { border: 0; background: #404040; }
+.mapGroupMain .card:hover { background: #444; }
+.mainMapStatus { color: #262626; background: #ffdb00; }
+.submapStatus { color: rgba(255,255,255,.82); background: rgba(255,255,255,.12); }
+.submapSection { margin-top: 14px; padding: 0; border-radius: 0; background: transparent; }
+.submapSectionLabel { margin: 0 0 8px; color: rgba(255,255,255,.45); font-size: 11px; font-weight: 400; }
+.submapList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.submapList .card { min-width: 0; background: #3b3b3b; }
+.submapList .card:hover { background: #404040; }
+.filteredMainHint { margin: 0; padding: 12px 14px; border: 1px dashed rgba(255,255,255,.15); border-radius: 9px; color: rgba(255,255,255,.5); font-size: 12px; }
+
+@media (max-width: 900px) {
+  .submapList { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .mapGroup { padding: 10px; border-radius: 13px; }
+  .mapGroupHeader { align-items: flex-start; flex-wrap: wrap; }
+  .mapGroupSummary { flex: 1; }
+  .mapGroupSummary small { white-space: normal; }
+  .addSubmapButton { width: 100%; justify-content: center; margin-left: 0; }
+  .submapSection { padding: 8px; }
+}

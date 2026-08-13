@@ -260,7 +260,8 @@ Player Service 是玩家身份的唯一写入者。Creator 和 Play 只消费它
 地图存储语义：
 
 - `getDataStorage` 按实际地图 ID 隔离；
-- `getGroupStorage` 由 `BOX_GROUP_STORAGE_NAMESPACE` 控制，同一部署的地图共享；
+- `getGroupStorage` 默认按地图组 ID 隔离，同一地图组共享、不同地图组隔离；只有迁移既有
+  namespace 时才显式设置 `BOX_GROUP_STORAGE_NAMESPACE`；
 - Creator 的 `edit` 数据和 Play 的 `play` 数据默认隔离。
 
 不要使用昵称、IP 或 `entity.player.id` 作为永久存档键。

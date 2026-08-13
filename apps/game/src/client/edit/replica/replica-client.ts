@@ -42,6 +42,10 @@ import { VoxelMessageType } from 'src/engine/voxel/voxel-worker-schema';
 import { reduxDispatch } from 'src/redux/edit';
 import { setPermission } from 'src/redux/edit/permission';
 import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+import {
+  ExtraProjectChange,
+  summarizeExtraProjectChange,
+} from './extra-project-change';
 import { setSelectedScreenId } from 'src/redux/edit/game-ui';
 
 function actionPermitted(
@@ -81,7 +85,7 @@ export class EditReplicaClient {
   private _game: GameClient;
 
   public onProjectChange = new EventBus<void>();
-  public onExtraProjectChange = new EventBus<void>();
+  public onExtraProjectChange = new EventBus<ExtraProjectChange>();
 
   public onInviteGroupChange = new EventBus<string>();
 
@@ -212,11 +216,20 @@ export class EditReplicaClient {
           return;
         }
 
+        const previous = ExtraProjectInfoSchema.clone(
+          this._state.replica.extraProjectInfo,
+        );
         this._state.replica.extraProjectInfo = ExtraProjectInfoSchema.patch(
           this._state.replica.extraProjectInfo,
           new MuReadStream(bytes),
         );
-        this.onExtraProjectChange.notify();
+        this.onExtraProjectChange.notify(
+          summarizeExtraProjectChange(
+            previous,
+            this._state.replica.extraProjectInfo,
+          ),
+        );
+        ExtraProjectInfoSchema.free(previous);
       },
     });
     this.undo = this.undo.bind(this);

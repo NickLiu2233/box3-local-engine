@@ -4,7 +4,7 @@
   "private": true,
   "description": "Offline-first local runner for the Box engine",
   "scripts": {
-    "test": "node scripts/regression-edit-library.js && node scripts/regression-import-permissions.js && node scripts/regression-publish-voxa-blobs.js && node scripts/regression-project-snapshots.js",
+    "test": "node scripts/regression-edit-library.js && node scripts/regression-import-permissions.js && node scripts/regression-publish-voxa-blobs.js && node scripts/regression-project-snapshots.js && node scripts/regression-map-groups.js",
     "build:creator": "node src/build.js --creator",
     "build:play": "node src/build.js --play",
     "prepare-assets": "node src/prepare-assets.js",

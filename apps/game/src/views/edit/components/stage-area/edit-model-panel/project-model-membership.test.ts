@@ -2,10 +2,23 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   dedupeProjectModelsByContent,
+  getProjectModelDisplayName,
   isProjectModelReferenced,
+  shouldUseProjectModelAdapter,
 } from './project-model-membership';
 
 describe('project model membership', () => {
+  it('hides the local storage id from the user-facing model name', () => {
+    expect(getProjectModelDisplayName('村上春树出现__local_17')).toBe(
+      '村上春树出现',
+    );
+    expect(getProjectModelDisplayName('ordinary-model')).toBe('ordinary-model');
+  });
+
+  it('keeps project ownership independent from a legacy local storage path', () => {
+    expect(shouldUseProjectModelAdapter({ libraryScope: 'project' })).toBe(true);
+    expect(shouldUseProjectModelAdapter({ libraryScope: 'local' })).toBe(false);
+  });
   it('does not include an unplaced model', () => {
     expect(
       isProjectModelReferenced('mesh/未放置.vb', new Set()),

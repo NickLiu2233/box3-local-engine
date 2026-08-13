@@ -61,6 +61,7 @@ import { createDefaultProject } from './project/project-init';
 import {
   getLocalExtraProjectMode,
   getLocalExtraProjectStateHash,
+  getDeletedLocalProjectModelPaths,
   getLocalGroupProjectMetaData,
   getLocalProjectSkinPreviews,
   persistLocalProjectState,
@@ -214,12 +215,17 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const bundledContentServer = bundledContentPath
     ? new FileSystemContentServer(bundledContentPath)
     : undefined;
+  const groupContentPath = process.env.BOX_GROUP_CONTENT_PATH || '';
+  const groupContentServer = groupContentPath
+    ? new FileSystemContentServer(groupContentPath)
+    : undefined;
   const localContentWithVoxa = createLocalContentWithVoxa(
     localContentServer,
     logger,
     undefined,
     undefined,
     bundledContentServer,
+    groupContentServer,
   );
   const contentServer = isLocal
     ? new ContentSplitter(
@@ -453,7 +459,9 @@ export async function startServer(spec: ServerRuntimeConfig) {
 
         // get extra project info
         const embeddedExtraProject =
-          isLocal && getLocalExtraProjectMode() === 'embedded';
+          isLocal &&
+          (getLocalExtraProjectMode() === 'embedded' ||
+            Boolean(process.env.BOX_GROUP_PROJECT_STATE_PATH));
         const persistedExtraProjectHash =
           isLocal && (spec.mode === 'play' || embeddedExtraProject)
             ? getLocalExtraProjectStateHash()
@@ -482,6 +490,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
             extraProject = mergeExtraProjectInfo(
               extraProject,
               localExtraProject,
+              new Set(getDeletedLocalProjectModelPaths()),
             );
             const stream = new MuWriteStream(1);
             ExtraProjectInfoSchema.diff(

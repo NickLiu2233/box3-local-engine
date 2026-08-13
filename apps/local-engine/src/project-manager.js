@@ -10,6 +10,7 @@ const {
   getPlayImageConfig,
 } = require('./play-image')
 const { scanProjectCompatibility } = require('./project-compatibility')
+const { createMapGroupManager } = require('./map-group-manager')
 
 const packageRoot = path.resolve(__dirname, '..')
 const projectsRoot = process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects')
@@ -21,6 +22,7 @@ const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packageRoot, 'backups')
 const snapshotLimit = 5
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
+const mapGroupManager = createMapGroupManager(projectsRoot)
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
 // extraProject metadata is binary, so publishing must discover both forms or
 // models, skins and shared scripts disappear from the play package.
@@ -696,6 +698,9 @@ function toProjectSummary(metadata) {
     latestRelease: latestRelease ? latestRelease.version : '',
     latestReleaseNotes: latestRelease?.notes || '',
     theme: metadata.theme || 'sunset',
+    mapGroupId: metadata.mapGroupId,
+    mapRole: metadata.mapRole,
+    mainProjectId: metadata.mainProjectId,
   }
 }
 
@@ -704,6 +709,17 @@ function getProject(id) {
   const metadataPath = path.join(root, 'project.json')
   const metadata = readJSON(metadataPath)
   if (!metadata || metadata.id !== id) throw new Error(`Invalid project metadata: ${id}`)
+  const validMapGroupIdentity =
+    metadata.formatVersion === 1 &&
+    typeof metadata.mapGroupId === 'string' &&
+    metadata.mapGroupId.length > 0 &&
+    ['main', 'submap'].includes(metadata.mapRole) &&
+    typeof metadata.mainProjectId === 'string' &&
+    metadata.mainProjectId.length > 0 &&
+    (metadata.mapRole === 'main'
+      ? metadata.mapGroupId === id && metadata.mainProjectId === id
+      : metadata.mapGroupId === metadata.mainProjectId)
+  if (!validMapGroupIdentity) throw new Error(`Invalid map group metadata: ${id}`)
   return metadata
 }
 
@@ -742,8 +758,48 @@ function createProject({ id, name, author = '', description = '' }) {
     createdAt: now,
     updatedAt: now,
     releases: [],
+    mapGroupId: safeId,
+    mapRole: 'main',
+    mainProjectId: safeId,
   }
   writeJSON(path.join(root, 'project.json'), metadata)
+  return toProjectSummary(metadata)
+}
+
+function mapGroupIdentity(id) {
+  return mapGroupManager.identity(id)
+}
+
+function listMapGroup(id) {
+  const identity = mapGroupIdentity(id)
+  return listProjects()
+    .filter((project) => project.mapGroupId === identity.mapGroupId)
+    .sort((left, right) => {
+      if (left.mapRole !== right.mapRole) return left.mapRole === 'main' ? -1 : 1
+      return left.updatedAtISO.localeCompare(right.updatedAtISO)
+    })
+}
+
+function createSubmap(mainId, { id, name, description = '' }) {
+  const main = getProject(mainId)
+  const identity = mapGroupIdentity(mainId)
+  if (identity.mapRole !== 'main' || identity.mainProjectId !== mainId) {
+    throw new Error('只能在主地图下创建副地图')
+  }
+  const created = createProject({
+    id,
+    name,
+    author: main.author || '',
+    description,
+  })
+  const metadata = getProject(created.id)
+  metadata.mapGroupId = identity.mapGroupId
+  metadata.mapRole = 'submap'
+  metadata.mainProjectId = mainId
+  metadata.updatedAt = new Date().toISOString()
+  writeJSON(path.join(projectRoot(created.id), 'project.json'), metadata)
+  mapGroupManager.ensure(mainId)
+  mapGroupManager.materialize(created.id)
   return toProjectSummary(metadata)
 }
 
@@ -770,16 +826,73 @@ function runTar(args, message) {
   return result.stdout
 }
 
+function writeMapGroupArchive(id, archivePath, snapshotReason) {
+  const identity = mapGroupIdentity(id)
+  const members = listMapGroup(id)
+  for (const member of members) {
+    mapGroupManager.materialize(member.id)
+    if (snapshotReason) createProjectSnapshot(member.id, snapshotReason)
+  }
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-map-group-export-'))
+  try {
+    const projectsDirectory = path.join(temporaryRoot, 'projects')
+    fs.mkdirSync(projectsDirectory, { recursive: true })
+    for (const member of members) {
+      const memberRoot = projectRoot(member.id)
+      const destination = path.join(projectsDirectory, member.id)
+      fs.mkdirSync(destination, { recursive: true })
+      copyReadableFileSync(
+        path.join(memberRoot, 'project.json'),
+        path.join(destination, 'project.json'),
+      )
+      fs.cpSync(path.join(memberRoot, 'source'), path.join(destination, 'source'), {
+        recursive: true,
+        dereference: true,
+      })
+      if (member.id === identity.mainProjectId) {
+        copyReadableFileSync(
+          mapGroupManager.paths(member.id).statePath,
+          path.join(destination, 'group-state.json'),
+        )
+      }
+    }
+    writeJSON(path.join(temporaryRoot, 'group.json'), {
+      formatVersion: 1,
+      type: 'map-group',
+      mapGroupId: identity.mapGroupId,
+      mainProjectId: identity.mainProjectId,
+      exportedAt: new Date().toISOString(),
+      members: members.map((member) => ({
+        id: member.id,
+        mapRole: member.mapRole,
+      })),
+    })
+    runTar(
+      ['-czf', archivePath, '-C', temporaryRoot, 'group.json', 'projects'],
+      'Unable to export map group',
+    )
+    archiveEntriesAreSafe(archivePath)
+  } finally {
+    fs.rmSync(temporaryRoot, { recursive: true, force: true })
+  }
+  return { identity, members }
+}
+
 function exportProject(id) {
   const metadata = getProject(id)
-  createProjectSnapshot(id, 'export')
-  const root = projectRoot(id)
+  const identity = mapGroupIdentity(id)
   fs.mkdirSync(projectExportRoot, { recursive: true })
   const safeName = metadata.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '作品'
-  const filename = `${safeName}_${id}.boxproject`
+  const filename = `${safeName}_${identity.mapGroupId}.boxproject`
   const archivePath = path.join(projectExportRoot, filename)
-  runTar(['-czf', archivePath, '-C', root, 'project.json', 'source'], 'Unable to export project')
-  return { archivePath, filename, name: metadata.name }
+  const { members } = writeMapGroupArchive(id, archivePath, 'export')
+  return {
+    archivePath,
+    filename,
+    name: metadata.name,
+    mapCount: members.length,
+    mapGroupId: identity.mapGroupId,
+  }
 }
 
 function positiveInteger(value, fallback, minimum = 1, maximum = Number.MAX_SAFE_INTEGER) {
@@ -826,7 +939,7 @@ function writeBackupStatus(value) {
 }
 
 function backupDirectory(id) {
-  return path.join(projectBackupRoot, assertProjectId(id))
+  return path.join(projectBackupRoot, mapGroupIdentity(id).mainProjectId)
 }
 
 function pruneProjectBackups(id, configuration = getBackupConfiguration()) {
@@ -845,13 +958,14 @@ function pruneProjectBackups(id, configuration = getBackupConfiguration()) {
 }
 
 function parseProjectBackup(id, name) {
-  const target = path.join(backupDirectory(id), name)
+  const mainProjectId = mapGroupIdentity(id).mainProjectId
+  const target = path.join(backupDirectory(mainProjectId), name)
   const match = name.match(/^(\d{14})-([a-z0-9-]+)-([a-f0-9]{16})\.boxproject$/i)
   if (!match || !fs.existsSync(target)) return undefined
   const [, compactTimestamp, reason, signature] = match
   return {
     name,
-    projectId: id,
+    projectId: mainProjectId,
     reason,
     signature,
     createdAt: `${compactTimestamp.slice(0, 4)}-${compactTimestamp.slice(4, 6)}-${compactTimestamp.slice(6, 8)}T${compactTimestamp.slice(8, 10)}:${compactTimestamp.slice(10, 12)}:${compactTimestamp.slice(12, 14)}.000Z`,
@@ -883,36 +997,55 @@ function resolveProjectBackup(id, requestedName) {
 
 function createProjectBackup(id, reason = 'automatic') {
   if (!/^[a-z0-9-]+$/i.test(reason || '')) throw new Error('备份原因无效')
-  const metadata = getProject(id)
-  const sourceRoot = path.join(projectRoot(id), 'source')
-  const validation = validateProjectSource(sourceRoot)
-  if (!validation.ok || !validation.initialized) {
-    return { created: false, projectId: id, reason: 'uninitialized', validation }
+  const mainProjectId = mapGroupIdentity(id).mainProjectId
+  const members = listMapGroup(mainProjectId)
+  for (const member of members) mapGroupManager.materialize(member.id)
+  const validations = members.map((member) => ({
+    projectId: member.id,
+    validation: validateProjectSource(path.join(projectRoot(member.id), 'source')),
+  }))
+  const invalid = validations.find(({ validation }) => !validation.ok || !validation.initialized)
+  if (invalid) {
+    return {
+      created: false,
+      projectId: mainProjectId,
+      reason: 'uninitialized',
+      validation: invalid.validation,
+    }
   }
   const signature = crypto.createHash('sha256')
-    .update(stableStringify({ metadata, state: validation.state }))
+    .update(stableStringify({
+      group: readJSON(mapGroupManager.paths(mainProjectId).statePath, {}),
+      members: validations.map(({ projectId, validation }) => ({
+        projectId,
+        metadata: getProject(projectId),
+        state: validation.state,
+      })),
+    }))
     .digest('hex')
     .slice(0, 16)
-  const root = backupDirectory(id)
+  const root = backupDirectory(mainProjectId)
   fs.mkdirSync(root, { recursive: true })
   const existing = fs.readdirSync(root).find((name) => name.endsWith(`-${signature}.boxproject`))
   if (existing) {
     pruneProjectBackups(id)
-    return { created: false, projectId: id, archivePath: path.join(root, existing), validation }
+    return { created: false, projectId: mainProjectId, archivePath: path.join(root, existing) }
   }
-  createProjectSnapshot(id, reason === 'manual' ? 'manual' : 'automatic')
   const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
   const archivePath = path.join(root, `${timestamp}-${reason}-${signature}.boxproject`)
   const temporaryPath = `${archivePath}.${process.pid}.tmp`
   try {
-    runTar(['-czf', temporaryPath, '-C', projectRoot(id), 'project.json', 'source'], '无法创建工程备份')
-    archiveEntriesAreSafe(temporaryPath)
+    writeMapGroupArchive(
+      mainProjectId,
+      temporaryPath,
+      reason === 'manual' ? 'manual' : 'automatic',
+    )
     fs.renameSync(temporaryPath, archivePath)
   } finally {
     fs.rmSync(temporaryPath, { force: true })
   }
-  pruneProjectBackups(id)
-  return { created: true, projectId: id, archivePath, validation }
+  pruneProjectBackups(mainProjectId)
+  return { created: true, projectId: mainProjectId, archivePath }
 }
 
 function acquireBackupLock() {
@@ -933,7 +1066,7 @@ function acquireBackupLock() {
 function runProjectBackups(reason = 'automatic') {
   const releaseLock = acquireBackupLock()
   if (!releaseLock) return { running: true, status: readBackupStatus() }
-  const projects = listProjects()
+  const projects = listProjects().filter((project) => project.mapRole === 'main')
   const startedAt = new Date().toISOString()
   let created = 0
   let skipped = 0
@@ -987,17 +1120,19 @@ function runProjectBackups(reason = 'automatic') {
 
 function archiveEntriesAreSafe(archivePath) {
   const entries = runTar(['-tzf', archivePath], 'Unable to read project archive').trim().split('\n').filter(Boolean)
-  if (!entries.includes('project.json') || !entries.some((entry) => entry === 'source/' || entry.startsWith('source/'))) {
-    throw new Error('工程包缺少 project.json 或 source/')
-  }
+  const mapGroup = entries.includes('group.json') &&
+    entries.some((entry) => entry === 'projects/' || entry.startsWith('projects/'))
+  if (!mapGroup) throw new Error('工程包必须使用地图组格式')
   for (const entry of entries) {
     if (entry.startsWith('/') || entry.includes('\\') || entry.split('/').includes('..')) {
       throw new Error('工程包包含不安全的文件路径')
     }
-    if (entry !== 'project.json' && entry !== 'source' && !entry.startsWith('source/')) {
+    const supportedGroupEntry = entry === 'group.json' || entry === 'projects' || entry.startsWith('projects/')
+    if (!supportedGroupEntry) {
       throw new Error('工程包包含不支持的内容')
     }
   }
+  return true
 }
 
 function nextImportedId(id) {
@@ -1042,46 +1177,123 @@ function importProject(archivePath) {
   try {
     runTar(['-xzf', archivePath, '-C', temporaryRoot], 'Unable to import project')
     normalizeImportedProjectPermissions(temporaryRoot)
-    const metadata = readJSON(path.join(temporaryRoot, 'project.json'))
-    if (!metadata || typeof metadata.id !== 'string' || !metadata.name || !fs.existsSync(path.join(temporaryRoot, 'source'))) {
-      throw new Error('工程包内容无效')
-    }
-    const id = nextImportedId(metadata.id)
-    const root = projectRoot(id)
-    const now = new Date().toISOString()
-    fs.mkdirSync(root, { recursive: true })
-    fs.cpSync(path.join(temporaryRoot, 'source'), path.join(root, 'source'), { recursive: true, dereference: true })
-    normalizeImportedProjectPermissions(root)
-    const imported = {
-      formatVersion: 1,
-      id,
-      name: metadata.name,
-      description: metadata.description || '',
-      author: metadata.author || '',
-      cover: metadata.cover || '',
-      theme: metadata.theme || 'sunset',
-      createdAt: now,
-      updatedAt: now,
-      releases: [],
-    }
-    writeJSON(path.join(root, 'project.json'), imported)
-    const compatibility = scanProjectCompatibility(path.join(root, 'source'))
-    writeJSON(path.join(root, 'compatibility.json'), compatibility)
-    return { ...toProjectSummary(imported), compatibility }
+    return importMapGroupDirectory(temporaryRoot)
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
+  }
+}
+
+function importMapGroupDirectory(temporaryRoot) {
+  const descriptor = readJSON(path.join(temporaryRoot, 'group.json'))
+  if (
+    descriptor?.type !== 'map-group' ||
+    descriptor.formatVersion !== 1 ||
+    !Array.isArray(descriptor.members) ||
+    descriptor.members.length === 0
+  ) {
+    throw new Error('地图组工程包描述无效')
+  }
+  const memberIds = descriptor.members.map((member) => assertProjectId(member?.id))
+  if (new Set(memberIds).size !== memberIds.length || !memberIds.includes(descriptor.mainProjectId)) {
+    throw new Error('地图组成员关系无效')
+  }
+  const idMap = new Map()
+  for (const oldId of memberIds) idMap.set(oldId, nextImportedId(oldId))
+  const newMainId = idMap.get(descriptor.mainProjectId)
+  const createdRoots = []
+  try {
+    for (const member of descriptor.members) {
+      const sourceRoot = path.join(temporaryRoot, 'projects', member.id)
+      const metadata = readJSON(path.join(sourceRoot, 'project.json'))
+      if (metadata?.id !== member.id || !metadata.name || !fs.existsSync(path.join(sourceRoot, 'source'))) {
+        throw new Error(`地图组成员工程无效：${member.id}`)
+      }
+      const id = idMap.get(member.id)
+      const root = projectRoot(id)
+      const now = new Date().toISOString()
+      fs.mkdirSync(root, { recursive: true })
+      createdRoots.push(root)
+      fs.cpSync(path.join(sourceRoot, 'source'), path.join(root, 'source'), {
+        recursive: true,
+        dereference: true,
+      })
+      normalizeImportedProjectPermissions(root)
+      const imported = {
+        formatVersion: 1,
+        id,
+        name: metadata.name,
+        description: metadata.description || '',
+        author: metadata.author || '',
+        cover: metadata.cover || '',
+        theme: metadata.theme || 'sunset',
+        createdAt: now,
+        updatedAt: now,
+        releases: [],
+        mapGroupId: newMainId,
+        mapRole: member.id === descriptor.mainProjectId ? 'main' : 'submap',
+        mainProjectId: newMainId,
+      }
+      writeJSON(path.join(root, 'project.json'), imported)
+      writeJSON(
+        path.join(root, 'compatibility.json'),
+        scanProjectCompatibility(path.join(root, 'source')),
+      )
+    }
+    // The imported main map owns the one authoritative shared root. Member
+    // project-state files remain snapshots and are refreshed from this root.
+    const importedGroupState = path.join(
+      temporaryRoot,
+      'projects',
+      descriptor.mainProjectId,
+      'group-state.json',
+    )
+    if (fs.existsSync(importedGroupState)) {
+      const state = readJSON(importedGroupState)
+      state.mapGroupId = newMainId
+      if (
+        state.projectModelPathsByMap &&
+        typeof state.projectModelPathsByMap === 'object' &&
+        !Array.isArray(state.projectModelPathsByMap)
+      ) {
+        state.projectModelPathsByMap = Object.fromEntries(
+          Object.entries(state.projectModelPathsByMap)
+            .filter(([oldId]) => idMap.has(oldId))
+            .map(([oldId, paths]) => [idMap.get(oldId), paths]),
+        )
+      }
+      writeJSON(path.join(projectRoot(newMainId), 'group-state.json'), state)
+    } else {
+      mapGroupManager.ensure(newMainId)
+    }
+    for (const id of idMap.values()) mapGroupManager.materialize(id)
+    const main = toProjectSummary(getProject(newMainId))
+    return {
+      ...main,
+      importedMapCount: memberIds.length,
+      compatibility: readJSON(path.join(projectRoot(newMainId), 'compatibility.json'), {}),
+    }
+  } catch (error) {
+    for (const root of createdRoots) fs.rmSync(root, { recursive: true, force: true })
+    throw error
   }
 }
 
 function deleteProject(id) {
   const root = projectRoot(id)
   if (!fs.existsSync(root)) throw new Error(`Project does not exist: ${id}`)
-  fs.rmSync(root, { recursive: true, force: false })
+  const identity = mapGroupIdentity(id)
+  const targets = identity.mapRole === 'main'
+    ? listMapGroup(id).map((project) => projectRoot(project.id))
+    : [root]
+  for (const target of targets) {
+    fs.rmSync(target, { recursive: true, force: false })
+  }
 }
 
 function publishProject(id, requestedVersion, notes = '') {
   const metadata = getProject(id)
   const root = projectRoot(id)
+  const sharedSnapshot = mapGroupManager.materialize(id)
   const sourceRoot = path.join(root, 'source')
   const state = readJSON(path.join(sourceRoot, 'project-state.json'), {})
   const compatibility = scanProjectCompatibility(sourceRoot)
@@ -1107,6 +1319,10 @@ function publishProject(id, requestedVersion, notes = '') {
     createdAt: new Date().toISOString(),
     permissionHash: '',
     immutable: true,
+    mapGroupId: sharedSnapshot.mapGroupId,
+    mapRole: metadata.mapRole,
+    mainProjectId: sharedSnapshot.mainProjectId,
+    sharedRevision: sharedSnapshot.revision,
     notes: typeof notes === 'string' ? notes.trim().slice(0, 500) : '',
   }
   const temporaryReleaseRoot = `${releaseRoot}.${process.pid}.tmp`
@@ -1136,6 +1352,7 @@ function getLaunchTarget({ project, release }) {
   if (project) {
     const root = projectRoot(project)
     if (!fs.existsSync(path.join(root, 'project.json'))) throw new Error(`Project does not exist: ${project}`)
+    mapGroupManager.materialize(project)
     let validation = validateProjectSource(path.join(root, 'source'))
     if (!validation.ok) {
       const recovery = restoreLatestProjectSnapshot(project)
@@ -1150,6 +1367,8 @@ function getLaunchTarget({ project, release }) {
       id: project,
       dataRoot: path.join(root, 'source'),
       statePath: path.join(root, 'source', 'project-state.json'),
+      groupStatePath: mapGroupManager.paths(project).statePath,
+      groupBlobRoot: mapGroupManager.paths(project).blobRoot,
     }
   }
   if (release) {
@@ -1328,6 +1547,10 @@ function packageProject(reference, outputDirectory, options = {}) {
       notes: manifest.notes || '',
       createdAt: new Date().toISOString(),
       permissionHash: manifest.permissionHash,
+      mapGroupId: manifest.mapGroupId || manifest.id,
+      mapRole: manifest.mapRole,
+      mainProjectId: manifest.mainProjectId || manifest.id,
+      sharedRevision: manifest.sharedRevision || 1,
       image: playImageConfig.image,
       playerServiceImage: playImageConfig.playerServiceImage,
       platform: playImageConfig.platform,
@@ -1339,6 +1562,12 @@ function packageProject(reference, outputDirectory, options = {}) {
     )
     const composePath = path.join(temporaryBundleRoot, 'compose.yml')
     const offlineCompose = fs.readFileSync(composePath, 'utf8')
+      .replace(
+        'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}',
+        'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-' +
+          (manifest.mapGroupId || manifest.id) +
+          '}',
+      )
       .replace(
         'BOX_DEPLOYMENT_MODE: player-service',
         'BOX_DEPLOYMENT_MODE: player-service\n      NEXT_PUBLIC_APP_ENV: development\n      NEXT_PUBLIC_APP_EDITION: createra\n      NEXT_PUBLIC_APP_REGION: cn',
@@ -1381,6 +1610,11 @@ module.exports = {
   exportPlayBundle,
   getLaunchTarget,
   getProject,
+  mapGroupIdentity,
+  mapGroupPaths: (id) => mapGroupManager.paths(id),
+  materializeMapGroupState: (id) => mapGroupManager.materialize(id),
+  listMapGroup,
+  createSubmap,
   listProjects,
   importProject,
   createProjectSnapshot,

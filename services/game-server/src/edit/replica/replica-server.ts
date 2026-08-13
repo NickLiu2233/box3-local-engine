@@ -14,6 +14,7 @@ import {
 import { EditServerState } from '../edit-server-schema';
 import {
   AmbientSoundRDA,
+  DeleteAssetsRDA,
   AssetType,
   EnvironmentRDA,
   GamepadRDA,
@@ -90,13 +91,23 @@ import { GroupProjectStore } from '@box-local/schema/group-project/rda';
 import { OssStoreType } from '@box-local/content-server';
 import {
   getLocalExtraProjectMode,
+  getLocalExtraProjectStateHash,
+  getDeletedLocalProjectModelPaths,
   getLocalProjectSkinPreviews,
   getLocalProjectSkinProjects,
+  persistLocalGroupProjectMetaData,
   persistLocalProjectState,
+  syncLocalProjectModelPaths,
+  setDeletedLocalProjectModelPath,
   updateLocalProjectSkinMetadata,
   updateLocalProjectModelMetadata,
 } from '../../project/local-project-state';
 import { mergeExtraProjectInfo } from '../../project/project-extra';
+import {
+  moveProjectModelToTrash,
+  purgeProjectModelFromTrash,
+  restoreProjectModelFromTrash,
+} from '../../project/project-model-trash';
 
 const TOKEN_MIN_DURATION = 60 * 1000;
 const TOKEN_MAX_DURATION = 24 * 60 * 60 * 1000;
@@ -126,16 +137,32 @@ export type LocalProjectSkinAction =
     };
 
 export type LocalProjectModelAction =
-  | { action: 'rename'; name: string; newName: string }
-  | { action: 'delete'; name: string }
+  | {
+      action: 'create';
+      newName: string;
+      modelId: number;
+      modelFileHash: string;
+      animated?: boolean;
+      previewHash?: string;
+      projectFileHash?: string;
+    }
+  | { action: 'rename'; name: string; meshPath?: string; newName: string }
+  | { action: 'delete'; name: string; meshPath?: string }
+  | { action: 'restore'; name: string; meshPath?: string }
+  | { action: 'purge'; name: string; meshPath?: string }
   | {
       action: 'update';
       name: string;
+      meshPath?: string;
       newName: string;
       modelFileHash: string;
       previewHash?: string;
       projectFileHash?: string;
     };
+
+export type LocalSharedScriptAction =
+  | { action: 'share'; fileId: string; hash: string }
+  | { action: 'unshare'; fileId: string };
 
 type ReplicaRemoteClient = MuRemoteClient<
   (typeof EditReplicaProtocol)['client']
@@ -150,6 +177,9 @@ export class EditReplicaServer {
 
   private _permissionSemaphore = new Semaphore();
   private _projectSemaphore = new Semaphore();
+  private _observedLocalExtraProjectHash = getLocalExtraProjectStateHash();
+  private _nextLocalExtraProjectCheck = 0;
+  private _localExtraProjectRefreshPending = false;
 
   private async _savePermissions() {
     const replicaState = this._state.replica;
@@ -1445,6 +1475,31 @@ export class EditReplicaServer {
     // check if we can do an optimisitic state synchronization
     const replicaState = this._state.replica;
     const gameState = this._state.game.state;
+    const now = Date.now();
+    if (
+      getConfigSync()?.method === 'local' &&
+      process.env.BOX_GROUP_PROJECT_STATE_PATH &&
+      now >= this._nextLocalExtraProjectCheck
+    ) {
+      this._nextLocalExtraProjectCheck = now + 1_000;
+      const groupExtraProjectHash = getLocalExtraProjectStateHash();
+      if (
+        groupExtraProjectHash &&
+        groupExtraProjectHash !== this._observedLocalExtraProjectHash &&
+        !this._localExtraProjectRefreshPending
+      ) {
+        this._localExtraProjectRefreshPending = true;
+        this._checkAndSetExtraProject()
+          .catch((error) =>
+            this._logger.error(
+              `error refreshing map group resources: ${String(error)}`,
+            ),
+          )
+          .finally(() => {
+            this._localExtraProjectRefreshPending = false;
+          });
+      }
+    }
     if (
       replicaState.projectDirty &&
       0 < this._projectSemaphore.counter &&
@@ -1495,6 +1550,7 @@ export class EditReplicaServer {
     const replicaState = this._state.replica;
     const store = replicaState.projectStore;
     const actions: ProjectAction[] = [];
+    let sharedScriptsDirty = false;
     const { contentId } = getConfigSync();
 
     // update voxel hashes only if game isn't running
@@ -1523,6 +1579,16 @@ export class EditReplicaServer {
       const { name, hash, size, isClient, isShare, fileId } = scriptUpdates[i];
       const prevAsset = replicaState.project.assets[name];
       if (isShare) {
+        const shared = replicaState.extraProjectInfo.scriptAssets[fileId];
+        if (shared && (shared.hash !== hash || shared.name !== name)) {
+          shared.hash = hash;
+          shared.name = name;
+          shared.isClient = isClient;
+          shared.isShare = true;
+          shared.lockedMapId = 0;
+          shared.lockedMapTitle = '';
+          sharedScriptsDirty = true;
+        }
         continue;
       }
       if (
@@ -1548,6 +1614,21 @@ export class EditReplicaServer {
           }),
         );
       }
+    }
+
+    if (sharedScriptsDirty && getConfigSync()?.method === 'local') {
+      const stream = new MuWriteStream(1);
+      ExtraProjectInfoSchema.diff(
+        ExtraProjectInfoSchema.identity,
+        replicaState.extraProjectInfo,
+        stream,
+      );
+      const extraProjectHash = await this._state.contentServer.store(
+        stream.bytes(),
+      );
+      stream.destroy();
+      persistLocalProjectState(replicaState.permissionHash, extraProjectHash);
+      replicaState.hotProjectDirty = true;
     }
 
     if (actions.length > 0) {
@@ -1580,9 +1661,12 @@ export class EditReplicaServer {
   }
 
   private async _updateProjectAndGroupProject(storeRes: StoreProjectRes) {
-    const { projectHash } = storeRes;
+    const { projectHash, groupProjectMetaData } = storeRes;
     if (projectHash) {
       await this._updateProjectHash(projectHash);
+    }
+    if (getConfigSync()?.method === 'local' && groupProjectMetaData) {
+      persistLocalGroupProjectMetaData(groupProjectMetaData);
     }
   }
 
@@ -1737,7 +1821,7 @@ export class EditReplicaServer {
   }
 
   public _checkAndSetExtraProject = async () => {
-    const refreshedExtra = await getExtraProject(
+    const localLibrary = await getExtraProject(
       this._state.publish.gameId,
       'edit',
       this._logger,
@@ -1748,11 +1832,41 @@ export class EditReplicaServer {
     // supplies the shared local models and skins, so imported projects must
     // retain their packaged cloud snapshot and merge the live local library
     // into it instead of replacing one source with the other.
-    const extra =
+    const embeddedLocalProject =
       getConfigSync()?.method === 'local' &&
-      getLocalExtraProjectMode() === 'embedded'
-        ? mergeExtraProjectInfo(replicaState.extraProjectInfo, refreshedExtra)
-        : refreshedExtra;
+      (getLocalExtraProjectMode() === 'embedded' ||
+        Boolean(process.env.BOX_GROUP_PROJECT_STATE_PATH));
+    let extra = localLibrary;
+    if (embeddedLocalProject) {
+      // The group root is authoritative for shared resources, including
+      // deletions. Do not merge VOXA into this container's previous replica:
+      // an already-open submap would otherwise resurrect a script that the
+      // main map removed from the group snapshot.
+      const authoritativeHash = getLocalExtraProjectStateHash();
+      let authoritative = replicaState.extraProjectInfo;
+      if (authoritativeHash) {
+        const bytes = await this._state.contentServer.retrieve(
+          authoritativeHash,
+        );
+        if (!bytes) {
+          throw new Error(
+            `map group resource snapshot is missing: ${authoritativeHash}`,
+          );
+        }
+        authoritative = ExtraProjectInfoSchema.patch(
+          ExtraProjectInfoSchema.identity,
+          new MuReadStream(bytes),
+        );
+      }
+      extra = mergeExtraProjectInfo(
+        authoritative,
+        localLibrary,
+        new Set(getDeletedLocalProjectModelPaths()),
+      );
+    }
+    const previousExtra = ExtraProjectInfoSchema.clone(
+      replicaState.extraProjectInfo,
+    );
     const stream = new MuWriteStream(1);
     const diff = ExtraProjectInfoSchema.diff(
       replicaState.extraProjectInfo,
@@ -1766,6 +1880,10 @@ export class EditReplicaServer {
       replicaState.extraProjectInfo = ExtraProjectInfoSchema.patch(
         replicaState.extraProjectInfo,
         new MuReadStream(bytes),
+      );
+      await this._codeEditorController.resyncFiles(
+        replicaState.extraProjectInfo.scriptAssets,
+        previousExtra.scriptAssets,
       );
       this._logger.info('update extra project info');
 
@@ -1791,13 +1909,16 @@ export class EditReplicaServer {
       // assets and could remap unrelated imported models.
       await this._updateProjectByExtra(true);
     }
+    ExtraProjectInfoSchema.free(previousExtra);
+    this._observedLocalExtraProjectHash = getLocalExtraProjectStateHash();
     stream.destroy();
   };
 
   public updateLocalProjectSkin = async (input: LocalProjectSkinAction) => {
     if (
       getConfigSync()?.method !== 'local' ||
-      getLocalExtraProjectMode() !== 'embedded'
+      (getLocalExtraProjectMode() !== 'embedded' &&
+        !process.env.BOX_GROUP_PROJECT_STATE_PATH)
     ) {
       throw new Error('project skins are only editable in an embedded local project');
     }
@@ -1910,19 +2031,53 @@ export class EditReplicaServer {
   public updateLocalProjectModel = async (input: LocalProjectModelAction) => {
     if (
       getConfigSync()?.method !== 'local' ||
-      getLocalExtraProjectMode() !== 'embedded'
+      (getLocalExtraProjectMode() !== 'embedded' &&
+        !process.env.BOX_GROUP_PROJECT_STATE_PATH)
     ) {
       throw new Error('project models are only editable in an embedded local project');
     }
-    const name = String(input.name || '').trim();
+    const name = 'name' in input ? String(input.name || '').trim() : '';
     const extra = ExtraProjectInfoSchema.clone(this._state.replica.extraProjectInfo);
-    const entry = Object.entries(extra.meshAssets).find(
-      ([path]) => path === getMeshPath(name),
-    );
-    if (!entry) throw new Error('model not found');
-    const [path, asset] = entry;
+    const requestedPath = 'meshPath' in input
+      ? String(input.meshPath || '').trim()
+      : '';
+    const entry = input.action === 'create' || input.action === 'restore' || input.action === 'purge'
+      ? undefined
+      : Object.entries(extra.meshAssets).find(
+          ([path]) => path === (requestedPath || getMeshPath(name)),
+        );
+    if (
+      input.action !== 'create' &&
+      input.action !== 'restore' &&
+      input.action !== 'purge' &&
+      !entry
+    ) throw new Error('model not found');
+    const [path, asset] = entry || ['', undefined];
     const storedName = path.replace(/^mesh\//, '').replace(/\.vb$/, '');
-    if (input.action === 'rename' || input.action === 'update') {
+    const deleteAssets = DeleteAssetsRDA.stateSchema.clone(
+      this._state.replica.project.deleteAssets,
+    );
+    let updateTrash = false;
+    if (input.action === 'create') {
+      const newName = String(input.newName || '').trim().slice(0, 100);
+      const nextPath = getMeshPath(newName);
+      if (!newName) throw new Error('new model name is required');
+      if (extra.meshAssets[nextPath]) throw new Error('model name already exists');
+      const hash = String(input.modelFileHash || '').trim();
+      if (!hash) throw new Error('model hash is required');
+      extra.meshAssets[nextPath] = {
+        modelId: Number(input.modelId),
+        hash,
+        modelPreviewHash: String(input.previewHash || '').trim(),
+        animated: Boolean(input.animated),
+        updatedAt: new Date().toISOString(),
+      };
+      setDeletedLocalProjectModelPath(nextPath, false);
+      updateLocalProjectModelMetadata(({ modelPreviews, modelProjects }) => {
+        if (input.previewHash) modelPreviews[newName] = input.previewHash;
+        if (input.projectFileHash) modelProjects[newName] = input.projectFileHash;
+      });
+    } else if (input.action === 'rename' || input.action === 'update') {
       const newName = String(input.newName || '').trim().slice(0, 100);
       if (!newName) throw new Error('new model name is required');
       const nextPath = getMeshPath(newName);
@@ -1933,14 +2088,14 @@ export class EditReplicaServer {
       extra.meshAssets[nextPath] =
         input.action === 'update'
           ? {
-              ...asset,
+              ...asset!,
               hash: String(input.modelFileHash || '').trim(),
               modelPreviewHash:
                 String(input.previewHash || '').trim() ||
-                asset.modelPreviewHash,
+                asset!.modelPreviewHash,
               updatedAt: new Date().toISOString(),
             }
-          : asset;
+          : asset!;
       if (!extra.meshAssets[nextPath].hash) {
         throw new Error('model hash is required');
       }
@@ -1963,11 +2118,31 @@ export class EditReplicaServer {
         if (projectFileHash) modelProjects[newName] = projectFileHash;
       });
     } else if (input.action === 'delete') {
-      delete extra.meshAssets[path];
+      const cached = this._state.bakeCache.meshIdSetCache[asset!.modelId];
+      moveProjectModelToTrash(
+        extra,
+        deleteAssets,
+        path,
+        cached?.bounds || [0, 0, 0],
+      );
+      setDeletedLocalProjectModelPath(path, true);
+      // Keep the preview and editable VOXA project hashes while the model is
+      // recoverable. They are removed only when the trash item is purged.
+      updateTrash = true;
+    } else if (input.action === 'restore') {
+      const trashPath = requestedPath || getMeshPath(name);
+      restoreProjectModelFromTrash(extra, deleteAssets, trashPath);
+      setDeletedLocalProjectModelPath(trashPath, false);
+      updateTrash = true;
+    } else if (input.action === 'purge') {
+      const trashPath = requestedPath || getMeshPath(name);
+      purgeProjectModelFromTrash(deleteAssets, trashPath);
+      const trashName = trashPath.replace(/^mesh\//, '').replace(/\.vb$/, '');
       updateLocalProjectModelMetadata(({ modelPreviews, modelProjects }) => {
-        delete modelPreviews[storedName];
-        delete modelProjects[storedName];
+        delete modelPreviews[trashName];
+        delete modelProjects[trashName];
       });
+      updateTrash = true;
     }
     const stream = new MuWriteStream(1);
     const diff = ExtraProjectInfoSchema.diff(this._state.replica.extraProjectInfo, extra, stream);
@@ -1987,10 +2162,89 @@ export class EditReplicaServer {
       await this._updateProjectByExtra();
     }
     stream.destroy();
+    if (updateTrash) {
+      const store = this._state.replica.projectStore;
+      await this._applyProjectTransaction([
+        ProjectRDA.action(store).deleteAssets.reset(deleteAssets),
+      ]);
+    }
     return {
       modelName:
-        input.action === 'delete' ? '' : String(input.newName).trim(),
+        input.action === 'create' || input.action === 'rename' || input.action === 'update'
+          ? String(input.newName).trim()
+          : '',
     };
+  };
+
+  public updateLocalSharedScript = async (input: LocalSharedScriptAction) => {
+    if (getConfigSync()?.method !== 'local') {
+      throw new Error('local shared scripts are only available in local mode');
+    }
+    const fileId = String(input.fileId || '').trim();
+    const file = this._state.codeEditor.fileDict[fileId];
+    if (!file) throw new Error('script not found');
+    if (file.name === 'index.js' || file.name === 'clientIndex.js') {
+      throw new Error('entry scripts cannot be shared');
+    }
+
+    const replicaState = this._state.replica;
+    const extra = ExtraProjectInfoSchema.clone(replicaState.extraProjectInfo);
+    let hash = '';
+    if (input.action === 'share') {
+      hash = String(input.hash || '').trim();
+      if (!hash) throw new Error('script hash is required');
+      const duplicate = Object.values(extra.scriptAssets).find(
+        (script) => script.name === file.name && script.id !== fileId,
+      );
+      if (duplicate) throw new Error('script name already exists');
+      extra.scriptAssets[fileId] = {
+        hash,
+        name: file.name,
+        isClient: file.isClient,
+        isShare: true,
+        order: file.order,
+        lockedMapTitle: '',
+        lockedMapId: 0,
+        id: fileId,
+      };
+    } else {
+      const shared = extra.scriptAssets[fileId];
+      if (!shared?.isShare) throw new Error('script is not shared');
+      hash = shared.hash;
+      delete extra.scriptAssets[fileId];
+    }
+
+    const stream = new MuWriteStream(1);
+    const diff = ExtraProjectInfoSchema.diff(replicaState.extraProjectInfo, extra, stream);
+    if (diff) {
+      const bytes = stream.bytes();
+      this._protocol.broadcastRaw(bytes);
+      replicaState.extraProjectInfo = ExtraProjectInfoSchema.patch(
+        replicaState.extraProjectInfo,
+        new MuReadStream(bytes),
+      );
+      const persistedStream = new MuWriteStream(1);
+      ExtraProjectInfoSchema.diff(
+        ExtraProjectInfoSchema.identity,
+        replicaState.extraProjectInfo,
+        persistedStream,
+      );
+      const extraProjectHash = await this._state.contentServer.store(
+        persistedStream.bytes(),
+      );
+      persistedStream.destroy();
+      persistLocalProjectState(replicaState.permissionHash, extraProjectHash);
+      this._observedLocalExtraProjectHash = extraProjectHash;
+      replicaState.hotProjectDirty = true;
+    }
+    stream.destroy();
+    this._codeEditorController.fileDictReplica.dispatch(
+      this._codeEditorController.fileDictReplica
+        .action()
+        .update(fileId)
+        .isShare(input.action === 'share'),
+    );
+    return { hash };
   };
 
   /**
@@ -2003,9 +2257,13 @@ export class EditReplicaServer {
       'update cold project and send actions by extra project info',
     );
     const replicaState = this._state.replica;
-    const pending: Promise<number>[] = [];
+    const pending: Promise<string>[] = [];
     const { meshAssets } = replicaState.extraProjectInfo;
     const { meshIdSetCache } = this._state.bakeCache;
+    const meshInfoByPath: Record<
+      string,
+      (typeof meshIdSetCache)[number]
+    > = {};
     if (!repairStaleLocalPathsOnly) {
       Object.keys(meshAssets).forEach((path) => {
         const asset = meshAssets[path];
@@ -2020,17 +2278,22 @@ export class EditReplicaServer {
               asset.hash,
               AssetType.VOXEL_MODEL,
             );
-            meshIdSetCache[asset.modelId] = {
+            const runtimeMeshInfo = {
               hash: asset.hash,
               path,
               bounds: [
                 meshInfo.bounds[0],
                 meshInfo.bounds[1],
                 meshInfo.bounds[2],
-              ],
+              ] as [number, number, number],
               motionIds: meshInfo.motionList?.map((motion) => motion.id) || [],
             };
-            return asset.modelId;
+            // Keep the Boxes id cache for legacy rename/migration fallback,
+            // but also retain every path. Local/project libraries can contain
+            // different models with the same numeric id.
+            meshIdSetCache[asset.modelId] = runtimeMeshInfo;
+            meshInfoByPath[path] = runtimeMeshInfo;
+            return path;
           })(),
         );
       });
@@ -2039,7 +2302,7 @@ export class EditReplicaServer {
     if (pending.length) {
       this._logger.info(`update project: hash ${pending.length} new mesh infos`);
     }
-    const updateMeshes = new Set(await Promise.all(pending));
+    const updateMeshPaths = new Set(await Promise.all(pending));
     const store = replicaState.projectStore;
     const actions: ProjectAction[] = [];
 
@@ -2056,25 +2319,30 @@ export class EditReplicaServer {
       }
       const current = meshIdSetCache[entity.meshId];
       if (current && meshAssets[current.path] && /__local_\d+\.vb$/.test(current.path)) {
-        updateMeshes.add(entity.meshId);
+        updateMeshPaths.add(entity.mesh);
       }
     });
 
-    if (!updateMeshes.size) {
+    if (!updateMeshPaths.size) {
       return;
     }
 
     Object.keys(replicaState.project.entitiesTree).forEach((id) => {
       const entityNode = replicaState.project.entitiesTree[id];
 
-      // 查看此entity的meshId是否包含在此次刷新的mesh内容中
-      if (
-        !entityNode.value ||
-        !updateMeshes.has(entityNode.value.meshId)
-      ) {
+      if (!entityNode.value) {
         return;
       }
-      const meshInfo = meshIdSetCache[entityNode.value.meshId];
+      const entity = entityNode.value;
+      const hasCurrentPath = Boolean(meshAssets[entity.mesh]);
+      const isStaleLocalPath =
+        !hasCurrentPath && /__local_\d+\.vb$/.test(entity.mesh);
+      if (!updateMeshPaths.has(entity.mesh) && !isStaleLocalPath) {
+        return;
+      }
+      const meshInfo = hasCurrentPath
+        ? meshInfoByPath[entity.mesh]
+        : meshIdSetCache[entity.meshId];
       if (!meshInfo) {
         return;
       }
@@ -2291,6 +2559,12 @@ export class EditReplicaServer {
 
     const permissionHash = this._state.replica.permissionHash;
     persistLocalProjectState(permissionHash);
+    syncLocalProjectModelPaths(
+      Object.values(this._state.replica.project.entitiesTree).flatMap((node) => {
+        const mesh = node.value?.mesh;
+        return typeof mesh === 'string' && mesh ? [mesh] : [];
+      }),
+    );
     return permissionHash;
   }
 

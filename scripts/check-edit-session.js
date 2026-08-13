@@ -1,6 +1,6 @@
 'use strict'
 
-const target = process.env.BOX_LOCAL_WEB_URL || 'http://127.0.0.1:3000'
+const target = process.env.BOX_LOCAL_WEB_URL || 'http://127.0.0.1:3002'
 
 async function main() {
   const response = await fetch(`${target}/api/createSession`, {
@@ -13,29 +13,19 @@ async function main() {
     body: JSON.stringify({
       mode: 'edit',
       contentId: 0,
+      containerName: 'authentication-check',
       fingerPrint: 'local-edit-session-check',
       serverId: '',
     }),
   })
 
-  if (!response.ok) {
-    throw new Error(`createSession failed with HTTP ${response.status}`)
-  }
-
   const body = await response.json()
-  const socketServerUrl = body?.config?.socketServerUrl
-  const targetURL = new URL(target)
-  const expectedSocketURL = `${targetURL.protocol === 'https:' ? 'wss:' : 'ws:'}//${targetURL.hostname}:9967`
-  if (socketServerUrl !== expectedSocketURL) {
+  if (response.status !== 401 || body?.code !== 'AUTH_REQUIRED') {
     throw new Error(
-      `edit session must use ${expectedSocketURL}, received ${socketServerUrl}`,
+      `unauthenticated edit session must return 401 AUTH_REQUIRED, received ${response.status} ${body?.code || ''}`,
     )
   }
-  if (body?.config?.admin !== true) {
-    throw new Error('edit session must use a local administrator identity')
-  }
-
-  console.log('Edit session routing check passed')
+  console.log('Edit session authentication guard check passed')
 }
 
 main().catch((error) => {

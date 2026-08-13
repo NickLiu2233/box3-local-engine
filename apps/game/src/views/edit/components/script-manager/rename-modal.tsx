@@ -17,6 +17,7 @@ import { transformName, isInvalidFileName } from './utils';
 import { useEdit } from 'src/client/edit/edit-context';
 import { CodeEditorStateContext } from '../script-container/hooks';
 import { clientConfig } from 'src/config/client';
+import { usesCloudMapGroupAPIs } from 'configs/client';
 import { apis } from 'src/apis/api-java';
 
 import style from './index.module.scss';
@@ -29,7 +30,8 @@ export const ScriptRenameModal = () => {
   const [isFocused, setIsFocused] = useState<boolean>(false);
 
   const { codeEditorState } = useContext(CodeEditorStateContext);
-  const { contentId, combType } = clientConfig.mapInfo;
+  const { contentId } = clientConfig.mapInfo;
+  const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
 
   const renameOptions = useSelector(
     (state: RootState) => state.scriptManager.renameOptions,
@@ -241,7 +243,7 @@ export const ScriptRenameModal = () => {
       closeRenameModal();
       return;
     }
-    if (!combType) {
+    if (!usesCloudGroupAPI) {
       onRenameInNormalMap();
     } else {
       onRenameInExtraMap();
@@ -249,10 +251,10 @@ export const ScriptRenameModal = () => {
   }, [
     newName,
     rawOldName,
-    combType,
     closeRenameModal,
     onRenameInNormalMap,
     onRenameInExtraMap,
+    usesCloudGroupAPI,
   ]);
 
   /**
@@ -419,12 +421,12 @@ export const ScriptRenameModal = () => {
    * 恢复文件重命名（回收站）
    */
   const onConfirmRecover = useCallback(() => {
-    if (!combType) {
+    if (!usesCloudGroupAPI) {
       onRecoverInNormalMap();
     } else {
       onRecoverInExtraMap();
     }
-  }, [combType, onRecoverInExtraMap, onRecoverInNormalMap]);
+  }, [onRecoverInExtraMap, onRecoverInNormalMap, usesCloudGroupAPI]);
 
   const onConfirmShare = useCallback(async () => {
     if (!renameFile) {

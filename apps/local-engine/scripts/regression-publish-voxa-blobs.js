@@ -46,6 +46,9 @@ try {
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
     releases: [],
+    mapGroupId: 'voxa-publish',
+    mapRole: 'main',
+    mainProjectId: 'voxa-publish',
   }))
   fs.writeFileSync(path.join(sourceBlobRoot, permissionHash), JSON.stringify({
     accessLevel: 1,

@@ -7,11 +7,13 @@ import { AssetType } from '@box-local/schema/project/project-rda';
 import { editor } from 'src/client/edit/edit-client';
 import { ensureFileInFileList, transformName } from './utils';
 import { clientConfig } from 'src/config/client';
+import { usesCloudMapGroupAPIs } from 'configs/client';
 import { apis } from 'src/apis/api-java';
 
 export function useCopyScript(options: { file?: FileState; intl: IntlShape }) {
   const { file, intl } = options;
-  const { combType, contentId } = clientConfig.mapInfo;
+  const { contentId } = clientConfig.mapInfo;
+  const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
 
   const uploadScriptToOSS = async (file: FileState) => {
     const fileDictReplica = editor.codeEditorController.fileDictReplica;
@@ -159,7 +161,7 @@ export function useCopyScript(options: { file?: FileState; intl: IntlShape }) {
       return;
     }
     // 本地文件
-    if (!combType) {
+    if (!usesCloudGroupAPI) {
       await copyNormalScript(file);
     } else {
       await copyExternalScript(file);

@@ -17,6 +17,7 @@ import { checkIndexFile } from './utils';
 import { CodeEditorStateContext } from '../script-container/hooks';
 import { useCopyScript } from './hooks';
 import { clientConfig } from 'src/config/client';
+import { usesCloudMapGroupAPIs } from 'configs/client';
 
 enum ContextMenuId {
   Copy,
@@ -33,7 +34,9 @@ export const ScriptMenu = React.memo(() => {
   const { scriptMenuInfo } = useSelector(
     (state: RootState) => state.scriptManager,
   );
-  const { contentId, combType, name: currMapTitle } = clientConfig.mapInfo;
+  const { contentId, name: currMapTitle, isLocalMapGroup } = clientConfig.mapInfo;
+  const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
+  const supportsScriptSharing = usesCloudGroupAPI || Boolean(isLocalMapGroup);
   const { codeEditorState } = useContext(CodeEditorStateContext);
 
   const file = useMemo(() => {
@@ -73,7 +76,7 @@ export const ScriptMenu = React.memo(() => {
       // 开启共享
       !isIndex &&
         !isShare &&
-        !!combType && {
+        supportsScriptSharing && {
           id: ContextMenuId.Share,
           text: intl.formatMessage({ id: 'shareScript' }),
           disabled: isUploading,
@@ -81,7 +84,7 @@ export const ScriptMenu = React.memo(() => {
       // 取消共享
       !isIndex &&
         isShare &&
-        !!combType && {
+        supportsScriptSharing && {
           id: ContextMenuId.Unshare,
           text: intl.formatMessage({ id: 'unshareScript' }),
           disabled: isLockedByOther,
@@ -93,7 +96,7 @@ export const ScriptMenu = React.memo(() => {
         disabled: isLockedByOther || isUploading,
       },
     ];
-  }, [combType, currMapTitle, file, intl]);
+  }, [currMapTitle, file, intl, supportsScriptSharing]);
   const data: ContextmenuData[] = list.filter(
     (item): item is ContextmenuData => !!item,
   );

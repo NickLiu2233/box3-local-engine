@@ -1,8 +1,9 @@
 import { getSharedLogger } from './logger';
 import { getServerConfig } from '../configs/server';
 import { getMapInfo } from './data-fatching';
-import type { MapInfoConfig } from '../configs/client';
+import { mapRoleToCombType, type MapInfoConfig } from '../configs/client';
 import { getPlayWorlds } from './play-worlds';
+import { getLocalProjectManager } from './local-project-manager';
 
 type CustomizeConfig = {
   key: MapInfoConfig['customizeType'];
@@ -59,14 +60,22 @@ export async function getMapContentInfo(
     if (process.env.BOX_PLAY_LIBRARY_PATH && !localWorld) {
       throw new Error(`Play world does not exist: ${containerName}`);
     }
+    const localProject = process.env.BOX_DEPLOYMENT_MODE === 'creator'
+      ? getLocalProjectManager().getProject(containerName)
+      : undefined;
+    const identity = localProject || localWorld;
     return {
       contentId: 0,
-      name: localWorld?.name || containerName || 'Local World',
-      description: localWorld?.description || '',
-      image: localWorld?.cover || '',
+      name: identity?.name || containerName || 'Local World',
+      description: identity?.description || '',
+      image: identity?.cover || '',
       customizeType: getCustomizeType(containerName),
-      backgroundImage: localWorld?.cover || '',
-      combType: 0,
+      backgroundImage: identity?.cover || '',
+      combType: mapRoleToCombType(identity?.mapRole),
+      mapGroupId: identity?.mapGroupId,
+      mapRole: identity?.mapRole,
+      mainProjectId: identity?.mainProjectId,
+      isLocalMapGroup: Boolean(identity?.mapGroupId),
     } as const;
   }
   sharedLogger.info(`

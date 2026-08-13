@@ -59,8 +59,11 @@ import ProjectModelActions, {
   Actions,
 } from 'src/views/edit/components/stage-area/edit-model-panel/project-model-actions';
 import { ModelAction } from 'src/views/edit/components/stage-area/edit-model-panel';
+import type { ModelData } from 'src/views/edit/components/stage-area/edit-model-panel';
+import { getProjectModelDisplayName } from 'src/views/edit/components/stage-area/edit-model-panel/project-model-membership';
+import { ModelType } from '@box-local/apis';
 import { convertTimeStrToTimestamp } from 'src/utils/date';
-import { clientConfig } from 'src/config/client';
+import { clientConfig, getConfig } from 'src/config/client';
 import { setRemoveId, setRenameOptions } from 'src/redux/edit/script-manager';
 import { CodeEditorStateContext } from '../script-container/hooks';
 import { useCopyScript } from '../script-manager/hooks';
@@ -169,6 +172,25 @@ interface Pair {
   type: DetailInfo;
 }
 
+export function fileSystemProjectModel(
+  key: string,
+  value: AssetEntry,
+): ModelData {
+  const storedName = key.replace(/^mesh\//, '').replace(/\.vb$/, '');
+  return {
+    id: Number(value.contentId || 0),
+    name: getProjectModelDisplayName(storedName),
+    modelPreviewUrl: value.previewImage,
+    modelFileHash: value.hash,
+    bounds: [value.bounds[0], value.bounds[1], value.bounds[2]],
+    animated: value.animated,
+    type: ModelType.Project,
+    updateAt: '',
+    meshPath: key,
+    libraryScope: 'project',
+  };
+}
+
 class FileSystemContainer extends React.Component<Props, State> {
   static contextType = CodeEditorStateContext;
   declare context: React.ContextType<typeof CodeEditorStateContext>;
@@ -238,6 +260,29 @@ class FileSystemContainer extends React.Component<Props, State> {
   public uploadingAssets: string[] = []; // 正在上传的资源的名称
 
   private projectModelActionsRef = createRef<Actions>();
+
+  private requestProjectModel = async (body: Record<string, unknown>) => {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+    const response = await fetch(`${runtimeURL}/api/project-models`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      const result = await response.json().catch(() => undefined);
+      throw new Error(result?.message || '项目模型操作失败');
+    }
+    return await response.json();
+  };
+
+  private restoreProjectModel = async (key: string) => {
+    await this.requestProjectModel({ action: 'restore', meshPath: key });
+    editor.replica.updateExtraProject();
+  };
+
+  private purgeProjectModel = async (key: string) => {
+    await this.requestProjectModel({ action: 'purge', meshPath: key });
+  };
 
   /**
    * 当前所有用户文件占用的存储空间（模型、音频、图片）
@@ -422,7 +467,13 @@ class FileSystemContainer extends React.Component<Props, State> {
         }
 
         const path = key.split('/');
-        const name = path[path.length - 1];
+        const storedFileName = path[path.length - 1];
+        const name =
+          type === AssetType.VOXEL_MODEL
+            ? `${getProjectModelDisplayName(
+                storedFileName.replace(/\.vb$/, ''),
+              )}.vb`
+            : storedFileName;
         return (
           <div
             key={TableHead.Name + key}
@@ -660,7 +711,7 @@ class FileSystemContainer extends React.Component<Props, State> {
       return;
     }
     // 1.非扩展地图
-    if (!clientConfig.mapInfo.combType) {
+    if (!clientConfig.mapInfo.combType || clientConfig.mapInfo.isLocalMapGroup) {
       // 2. 重名检测：范围是本图所有脚本
       if (!editor.codeEditorController.getFileByName(filename)) {
         // 3. 将资源从 deleteAssets 转移到 projectAssets
@@ -780,9 +831,27 @@ class FileSystemContainer extends React.Component<Props, State> {
         <div className={styles.popupContainer}>
           <div
             className={styles.popupSelection}
-            onClick={() => {
+            onClick={async () => {
               const filename = this.transformName(key, true);
-              if (
+              if (type === AssetType.VOXEL_MODEL) {
+                try {
+                  await this.restoreProjectModel(key);
+                  this._waitReplicaUpdate = true;
+                  Toast.success({
+                    content: this.props.intl.formatMessage(
+                      { id: 'assets$$HasRecovered' },
+                      { filename },
+                    ),
+                  });
+                } catch (error) {
+                  Toast.error({
+                    content:
+                      error instanceof Error
+                        ? error.message
+                        : this.props.intl.formatMessage({ id: 'scriptRecoverFail' }),
+                  });
+                }
+              } else if (
                 type === AssetType.JS_SCRIPT ||
                 type === AssetType.CLIENT_JS_SCRIPT
               ) {
@@ -796,6 +865,12 @@ class FileSystemContainer extends React.Component<Props, State> {
                     { id: 'assets$$HasRecovered' },
                     { filename },
                   ),
+                });
+              } else {
+                Toast.error({
+                  content: this.props.intl.formatMessage({
+                    id: 'scriptRecoverFail',
+                  }),
                 });
               }
               this.setState({
@@ -900,13 +975,14 @@ class FileSystemContainer extends React.Component<Props, State> {
         if (!editor.state.replica.localPermissions.editModel) {
           return null;
         }
+        const projectModel = fileSystemProjectModel(item.key, item.value);
         popup = (
           <div className={styles.popupContainer}>
             <div
               className={styles.popupSelection}
               onClick={() => {
                 this.projectModelActionsRef.current?.[ModelAction.Edit]?.(
-                  item.value.contentId,
+                  projectModel,
                 );
               }}
             >
@@ -916,7 +992,7 @@ class FileSystemContainer extends React.Component<Props, State> {
               className={styles.popupSelection}
               onClick={async () => {
                 this.projectModelActionsRef.current?.[ModelAction.Copy]?.(
-                  item.value.contentId,
+                  projectModel,
                 );
               }}
             >
@@ -926,7 +1002,7 @@ class FileSystemContainer extends React.Component<Props, State> {
               className={styles.popupSelection}
               onClick={() => {
                 this.projectModelActionsRef.current?.[ModelAction.Rename]?.(
-                  item.value.contentId,
+                  projectModel,
                 );
               }}
             >
@@ -936,7 +1012,7 @@ class FileSystemContainer extends React.Component<Props, State> {
               className={styles.popupSelection}
               onClick={() => {
                 this.projectModelActionsRef.current?.[ModelAction.Remove]?.(
-                  item.value.contentId,
+                  projectModel,
                 );
               }}
             >
@@ -1093,31 +1169,18 @@ class FileSystemContainer extends React.Component<Props, State> {
       return;
     }
 
-    const deleteModelIds: number[] = [];
-    const deleteModelAssets: typeof DeleteAssetsRDA.stateSchema.identity = [];
-
     let newDeleteAssets: typeof DeleteAssetsRDA.stateSchema.identity = [];
 
-    deleteAssets.forEach((item) => {
+    for (const item of deleteAssets) {
       if (item.value.type === AssetType.VOXEL_MODEL) {
-        deleteModelIds.push(item.value.contentId);
-
-        deleteModelAssets.push(item);
+        try {
+          await this.purgeProjectModel(item.key);
+        } catch (error) {
+          console.error(error);
+          newDeleteAssets.push(item);
+        }
       } else if (item.value.type === AssetType.PICTURE) {
         editor.game.resourceController?.removeImageResource(item.value.hash);
-      }
-    });
-
-    // 模型如果要删除，要先通过后端接口删除
-    if (deleteModelIds.length > 0) {
-      try {
-        if (!(await apis.model.deleteModelUsingDelete(deleteModelIds))) {
-          newDeleteAssets = deleteModelAssets;
-        }
-      } catch (err) {
-        console.error(err);
-
-        newDeleteAssets = deleteModelAssets;
       }
     }
 
@@ -2125,6 +2188,9 @@ class FileSystemContainer extends React.Component<Props, State> {
         previewImage: metadata.hash,
         size,
       });
+      if (success && clientConfig.mapInfo.isLocalMapGroup) {
+        await editor.replica.saveProject();
+      }
 
       // 更新标记，这样在监听到project变化时，才会触发刷新
       this._waitReplicaUpdate = true;
@@ -2719,13 +2785,24 @@ class FileSystemContainer extends React.Component<Props, State> {
 
               if (value.type === AssetType.VOXEL_MODEL) {
                 try {
-                  toErase = await apis.model.deleteModelUsingDelete([
-                    value.contentId,
-                  ]);
+                  await this.purgeProjectModel(key);
+                  toErase = false;
+                  this._waitReplicaUpdate = true;
+                  Toast.success({
+                    content: this.props.intl.formatMessage(
+                      { id: 'assets$$HasErased' },
+                      { filename: this.transformName(key, true) },
+                    ),
+                  });
                 } catch (err) {
                   console.error(err);
-
                   toErase = false;
+                  Toast.error({
+                    content:
+                      err instanceof Error
+                        ? err.message
+                        : this.props.intl.formatMessage({ id: 'deleteFailed' }),
+                  });
                 }
               }
 
@@ -2876,11 +2953,14 @@ class FileSystemContainer extends React.Component<Props, State> {
                               _i;
                             _i++;
                           }
-                          await editor.assetController.addAudioToProject({
+                          const added = await editor.assetController.addAudioToProject({
                             name: newAssetName,
                             hash: hash,
                             size: data.length,
                           });
+                          if (added && clientConfig.mapInfo.isLocalMapGroup) {
+                            await editor.replica.saveProject();
+                          }
                           this._waitReplicaUpdate = true;
                           for (
                             let i = 0;

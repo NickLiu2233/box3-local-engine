@@ -13,6 +13,7 @@ import { CodeEditorClientController } from '../code-editor/code-editor-client-co
 import { clientConfig, getConfig } from 'src/config/client';
 import { GamepadController } from './gamepad-controller';
 import { apis } from 'src/apis/api-java';
+import { appendProjectAssetRecovery } from './project-asset-trash';
 
 export enum assetConflict {
   none,
@@ -225,7 +226,22 @@ export class AssetController {
     if (item) {
       this._tx
         .push((action) => action.audioAssets.remove(audioName))
-        .commit(EditActionLabel.PROJECT);
+        .push((action) =>
+          action.deleteAssets.push({
+            key: audioName,
+            value: {
+              ownerId: 0,
+              contentId: Number(item.id),
+              hash: item.hash,
+              previewImage: item.previewImage,
+              type: AssetType.AUDIO,
+              size: item.size,
+              bounds: vec3.create(),
+              animated: false,
+            },
+          }),
+        )
+        .commit(EditActionLabel.PROJECT, false);
       return true;
     }
     return false;
@@ -482,7 +498,22 @@ export class AssetController {
     if (item) {
       this._tx
         .push((action) => action.pictureAssets.remove(formatName))
-        .commit(EditActionLabel.PROJECT);
+        .push((action) =>
+          action.deleteAssets.push({
+            key: formatName,
+            value: {
+              ownerId: 0,
+              contentId: Number(item.id),
+              hash: item.hash,
+              previewImage: item.previewImage,
+              type: AssetType.PICTURE,
+              size: item.size,
+              bounds: vec3.create(),
+              animated: false,
+            },
+          }),
+        )
+        .commit(EditActionLabel.PROJECT, false);
       return true;
     }
     return false;
@@ -544,32 +575,17 @@ export class AssetController {
     meshAsset: AssetEntry,
     newName?: string,
   ) => {
-    // 残存回收站音频和图片资源不恢复
-    if (
-      meshAsset.type === AssetType.AUDIO ||
-      meshAsset.type === AssetType.PICTURE
-    ) {
-      return false;
-    }
-
     const index = this.getAssetIndexInTrashBin(meshName, meshAsset);
 
     if (index > -1) {
-      this._tx
-        .push((action) => action.deleteAssets.splice(index, 1))
-        .push((action) =>
-          action.assets.set(newName ? newName : meshName, {
-            ownerId: meshAsset.ownerId,
-            contentId: meshAsset.contentId,
-            hash: meshAsset.hash,
-            previewImage: meshAsset.previewImage,
-            type: meshAsset.type,
-            size: meshAsset.size,
-            bounds: meshAsset.bounds,
-            animated: meshAsset.animated,
-          }),
-        )
-        .commit(EditActionLabel.PROJECT, false);
+      const restoredName = newName ? newName : meshName;
+      const transaction = appendProjectAssetRecovery(
+        this._tx,
+        index,
+        restoredName,
+        meshAsset,
+      );
+      transaction.commit(EditActionLabel.PROJECT, false);
       return true;
     }
     return false;

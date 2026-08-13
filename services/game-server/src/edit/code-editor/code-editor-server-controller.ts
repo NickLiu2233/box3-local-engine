@@ -369,7 +369,7 @@ export class CodeEditorServerController {
       name: name,
       order: order !== undefined ? order : highest_order + 1,
       isClient,
-      isShare: false,
+      isShare,
       lockedMapTitle,
       isUploading: false,
       size: size || 0,
@@ -619,12 +619,18 @@ export class CodeEditorServerController {
       );
     } else {
       this._state.logger.log(`init scripts in normal map`);
+      const sharedNames = new Set(
+        Object.values(extraAssets)
+          .filter((file) => file.isShare)
+          .map((file) => file.name),
+      );
       await Promise.all(
         pairs(assets).map(async ([name, info]) => {
           if (
             info.type === AssetType.JS_SCRIPT ||
             info.type === AssetType.CLIENT_JS_SCRIPT
           ) {
+            if (sharedNames.has(name)) return;
             const buffer = await this._retrieve(info.hash);
             if (buffer) {
               this._addFile(
@@ -640,6 +646,24 @@ export class CodeEditorServerController {
             }
           }
         }),
+      );
+      await Promise.all(
+        pairs(extraAssets)
+          .filter(([, file]) => file.isShare)
+          .map(async ([id, file]) => {
+            const buffer = await this._retrieve(file.hash);
+            if (!buffer) return;
+            this._addFile(
+              file.name,
+              id,
+              Buffer.from(buffer).toString(),
+              file.isClient,
+              true,
+              '',
+              file.order,
+              buffer.length,
+            );
+          }),
       );
     }
   }

@@ -139,8 +139,7 @@ for (const { directory, manifest } of packages.values()) {
 const rootManifest = JSON.parse(readRequired('package.json'))
 for (const [name, command] of Object.entries({
   creator: 'node apps/local-engine/src/deploy.js creator',
-  'creator:up':
-    'docker compose --profile creator up -d --no-build creator',
+  'creator:up': 'node apps/local-engine/src/deploy.js creator-up',
   'player-service': 'node apps/local-engine/src/deploy.js player-service',
   'player-service:up':
     'node apps/local-engine/src/deploy.js player-service-up',
@@ -151,6 +150,7 @@ for (const [name, command] of Object.entries({
   infra: 'docker compose --profile infra up -d postgres redis',
   'infra:stop': 'docker compose --profile infra stop postgres redis',
   play: 'node apps/local-engine/src/deploy.js play',
+  'play:up': 'node apps/local-engine/src/deploy.js play-up',
   stop: 'node apps/local-engine/src/deploy.js stop',
   dev: 'node apps/local-engine/src/launcher.js --creator',
   'build:creator': 'node apps/local-engine/src/build.js --creator',
@@ -186,7 +186,7 @@ for (const [label, pattern] of [
   ['creator image build', /'build', 'creator'/],
   ['creator builds only the creator image', /'build', 'creator'/],
   ['play uses the external world library', /BOX_PLAY_LIBRARY_DIR/],
-  ['play accepts no release argument', /pnpm play 不接受作品参数/],
+  ['play accepts no release argument', /pnpm \$\{build \? 'play' : 'play:up'\} 不接受作品参数/],
   ['creator starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'creator'/],
   ['play starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'play'/],
   ['VOXA builds only its Docker target', /'build', 'voxa'/],
@@ -198,7 +198,7 @@ forbidPattern(
   deploySource,
   deployFile,
   'creator building the play image',
-  /deployCreator\(\)[\s\S]*?ensurePlayImageArchive[\s\S]*?function deployPlay/,
+  /deployCreator\([^)]*\)[\s\S]*?ensurePlayImageArchive[\s\S]*?function deployPlay/,
 )
 
 const playImageFile = 'apps/local-engine/src/play-image.js'

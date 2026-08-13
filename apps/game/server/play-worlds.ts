@@ -8,6 +8,9 @@ export type PlayWorld = {
   description: string;
   cover: string;
   version: string;
+  mapGroupId: string;
+  mapRole: 'main' | 'submap';
+  mainProjectId: string;
 };
 
 const idPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -45,6 +48,9 @@ export function getPlayWorlds(): PlayWorld[] {
             description: manifest.description || '',
             cover: manifest.cover || '',
             version: manifest.version || '',
+            mapGroupId: manifest.mapGroupId,
+            mapRole: manifest.mapRole,
+            mainProjectId: manifest.mainProjectId,
           }];
         } catch {
           return [];

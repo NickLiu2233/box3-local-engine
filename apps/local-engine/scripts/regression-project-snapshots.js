@@ -51,6 +51,19 @@ try {
   assert.equal(manager.listProjectBackups(project.id).length, 1)
   const imported = manager.importProject(backup.archivePath)
   assert.equal(imported.name, project.name)
+  assert.equal(imported.importedMapCount, 1)
+  const legacyArchiveRoot = path.join(temporaryRoot, 'legacy-archive')
+  fs.mkdirSync(legacyArchiveRoot)
+  fs.writeFileSync(path.join(legacyArchiveRoot, 'project.json'), '{}')
+  fs.mkdirSync(path.join(legacyArchiveRoot, 'source'))
+  const legacyArchive = path.join(temporaryRoot, 'legacy.boxproject')
+  require('child_process').execFileSync('tar', [
+    '-czf', legacyArchive, '-C', legacyArchiveRoot, 'project.json', 'source',
+  ])
+  assert.throws(
+    () => manager.importProject(legacyArchive),
+    /必须使用地图组格式/,
+  )
   const duplicate = manager.createProjectBackup(project.id, 'manual')
   assert.equal(duplicate.created, false)
   const backupRun = manager.runProjectBackups('automatic')
