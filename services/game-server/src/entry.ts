@@ -14,7 +14,6 @@ import { createDefaultPermissions } from '@box-local/build-system/permissions/pe
 import { PrebakeCacheSchema } from '@box-local/build-system/project/prebake-schema';
 import { LocalBuildCache } from './utils/local-build-cache';
 import { RedisBuildCache } from './utils/redis-build-cache';
-import { storeProject } from '@box-local/build-system/project/project-serialize';
 import { prebakeMap } from '@box-local/build-system/tasks/prebake';
 import { CachingContentServer } from '@box-local/content-server/caching-content-server';
 import { ContentSplitter } from '@box-local/content-server/content-split';
@@ -48,20 +47,11 @@ import { clearMemoryPool } from '@box-local/utils/pool';
 import { prettySink } from '@box-local/utils/pretty-log-sink';
 import { BackendSocket } from '../backendSocket';
 import { ServerRuntimeConfig } from '../config/server';
-import { apis } from './apis';
 import { BLOCK_INFO_RES } from './assets/block_info';
 import { BackendClientRPCNode } from './backend-rpc-client-node';
 import { createGameServer, HttpRoutes } from './createServer';
 import { createLocalContentWithVoxa } from './content/local-content-with-voxa';
 import { GameServerStateSchema } from './game-server-schema';
-import { checkAndUpdateDefaultScreenId } from './game-ui/util';
-import {
-  getGroupProjectBySocket,
-  getGroupProjectMetaData,
-  getPlayDataFromBackend,
-  subscribeGroupProjectSocket,
-} from './group-project';
-import { migrateVoxelModels } from './migrate-voxel-models';
 import { createRuntimeRedisStore } from './redis/runtime-redis';
 import {
   getExtraProject,
@@ -76,10 +66,6 @@ import {
   persistLocalProjectState,
 } from './project/local-project-state';
 import { BuildSystemRemote } from './service/build-system-remote';
-import {
-  applyServerPermissions,
-  getServerPermissionsFromPrebake,
-} from './utils/convert-createra-permission';
 import { FrameskipsManager } from './utils/frameskips-manager';
 import { LOGGER_HOST_UUID, rootLogger } from './utils/logger';
 import { Ivm2ScriptServer } from './utils/script-server/ivm2/ivm2-script-socket-server';
@@ -224,9 +210,16 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const localContentServer = new FileSystemContentServer(
     path.join(spec.storagePath, 'blobs'),
   );
+  const bundledContentPath = process.env.BOX_BUNDLED_CONTENT_PATH || '';
+  const bundledContentServer = bundledContentPath
+    ? new FileSystemContentServer(bundledContentPath)
+    : undefined;
   const localContentWithVoxa = createLocalContentWithVoxa(
     localContentServer,
     logger,
+    undefined,
+    undefined,
+    bundledContentServer,
   );
   const contentServer = isLocal
     ? new ContentSplitter(
@@ -289,10 +282,8 @@ export async function startServer(spec: ServerRuntimeConfig) {
   let buildSystem: BuildSystemRemote;
   const bsURL = spec.BUILD_SERVER_URL;
   let nextLocalUid = 1;
-  const nextUidListUsingGet = isLocal
-    ? async ({ num }: { num: number }) =>
-        Array.from({ length: num }, () => `local-${nextLocalUid++}`)
-    : apis.groupProject.nextUidListUsingGet;
+  const nextUidListUsingGet = async ({ num }: { num: number }) =>
+    Array.from({ length: num }, () => `local-${nextLocalUid++}`);
 
   if (bsURL) {
     buildSystem = new BuildSystemRemote(
@@ -418,45 +409,6 @@ export async function startServer(spec: ServerRuntimeConfig) {
         let userId = spec.userId || 0;
         let authorId = 0;
 
-        // migrate group project
-        if (!isLocal && spec.mode === 'edit') {
-          let retryCount = 0;
-          const maxRetries = 10;
-          const retryDelay = 5000; // 5 seconds in milliseconds
-
-          while (retryCount < maxRetries) {
-            try {
-              await apis.groupProject.migrationUsingGet({
-                mapId: mapIdString,
-              });
-              logger.info('Migration group success!!!!');
-              break; // Exit loop on success
-            } catch (err) {
-              retryCount++;
-              if (retryCount >= maxRetries) {
-                logger.error(
-                  err,
-                  `Migration group failed after ${maxRetries} retries. Giving up.`,
-                );
-                throw err; // Re-throw the error after max retries
-              }
-              logger.error(
-                err,
-                `Migration group failed. Retrying attempt ${retryCount}/${maxRetries}...`,
-              );
-              await new Promise((resolve) => setTimeout(resolve, retryDelay));
-            }
-          }
-        }
-
-        if (!isLocal && spec.contentId) {
-          const containerHash = await apis.createra.getMapHash({
-            mapId: contentId.toString(),
-            mode: spec.mode,
-          });
-          hash = containerHash || hash;
-        }
-
         if (!hash) {
           logger.info('Creating default permissions.');
           // if no hash is specified then we create a default debug project
@@ -498,16 +450,6 @@ export async function startServer(spec: ServerRuntimeConfig) {
 
         // get the prebake hash for this project
         logger.info('Permission hash =' + hash);
-
-        // 扩展地图migration脚本
-        if (spec.groupId && spec.mode === 'edit') {
-          try {
-            await apis.createra.migrationUsingGet({ mapId: contentId });
-            logger.info('Migration script success.');
-          } catch (err) {
-            logger.error(err, 'Migration script failed.');
-          }
-        }
 
         // get extra project info
         const embeddedExtraProject =
@@ -586,39 +528,14 @@ export async function startServer(spec: ServerRuntimeConfig) {
          * - play
          *   - 直接请求后端，获取哈希数据（groupProjectMetaData）
          */
-        if (isLocal) {
-          groupProjectMetaData = getLocalGroupProjectMetaData();
-        } else if (spec.mode === 'edit') {
-          subscribeGroupProjectSocket(backendSocket, contentId, spec.serverId);
-
-          const res = await getGroupProjectBySocket({
-            backendSocket,
-            logger,
-            bs: buildSystem,
-          });
-
-          groupProjectMetaData = res.metaData;
-          groupProjectStore = res.store;
-          groupProjectPendingActions = res.pendingActions;
-        } else {
-          groupProjectMetaData = await getGroupProjectMetaData({
-            mapId: mapIdString,
-            mode: spec.mode,
-          });
-        }
+        groupProjectMetaData = getLocalGroupProjectMetaData();
         if (groupProjectMetaData) {
           logger.info(
             `Has groupProject metaData ${JSON.stringify(groupProjectMetaData)}`,
           );
         }
 
-        const dataFromBackend = isLocal
-          ? undefined
-          : await getPlayDataFromBackend({
-              mapId: mapIdString,
-              mode: spec.mode,
-              groupProjectMetaData,
-            });
+        const dataFromBackend = undefined;
 
         try {
           const prebakeHash = await buildSystem.build(
@@ -665,74 +582,6 @@ export async function startServer(spec: ServerRuntimeConfig) {
             new MuReadStream(engineBytes),
           );
         }
-        if (!isLocal) {
-          await checkAndUpdateDefaultScreenId(prebake, {
-            logger,
-            mapId: mapIdString,
-            mode: spec.mode,
-          });
-        }
-
-        if (!isLocal && spec.mode === 'edit') {
-          // migration
-          // 将权限数据转换成java接口入参
-          try {
-            const params = getServerPermissionsFromPrebake(
-              prebake,
-              contentId.toString(),
-            );
-            logger.info('Migration params: %o', params);
-            const result =
-              await apis.createra.collaborationMigrationUsingPost(params);
-            logger.info('Migration result: %o', result);
-          } catch (err) {
-            logger.error(err, 'Migration failed.');
-          }
-
-          // pull
-          try {
-            const remoteData = await apis.createra.getCollaborationUsingGet({
-              mapId: contentId.toString(),
-            });
-            if (remoteData) {
-              applyServerPermissions(remoteData, prebake);
-            }
-            logger.info('Pull result: %o', remoteData);
-          } catch (err) {
-            logger.error(err, 'Pull remote failed.');
-          }
-
-          // migrate models
-          // 这里会重新生成extraProjectInfo
-          await migrateVoxelModels(
-            prebake,
-            buildSystem,
-            contentId,
-            spec.mode,
-            logger,
-          );
-
-          // 旧地图迁移/复制地图可能会导致同样的模型名字生成了新的模型ID
-          // 在编辑模式下重新根据extraProject中的模型名字重置entityTree中的模型ID
-          Object.keys(prebake.coldProject.entitiesTree).forEach((id) => {
-            const node = prebake.coldProject.entitiesTree[id];
-            if (!node.value) {
-              return;
-            }
-            const meshInfo =
-              prebake.extraProjectInfo.meshAssets[node.value.mesh];
-            if (!meshInfo) {
-              return;
-            }
-            node.value.meshId = meshInfo.modelId;
-          });
-
-          // 重新生成projectHash
-          prebake.projectHash = (
-            await storeProject(buildSystem, prebake.coldProject)
-          ).projectHash;
-        }
-
         // 使用数据库的作者ID覆盖作品文件里面的owner
         prebake.permissions.owner = (authorId || userId).toString();
 
@@ -899,32 +748,6 @@ export async function startServer(spec: ServerRuntimeConfig) {
       2,
     )} seconds`,
   );
-
-  if (gameServer && !isLocal) {
-    const updateMetadata = () => {
-      apis.createra
-        .containerUpdateMetaData({
-          name: spec.containerName,
-          ip: spec.hostIP,
-          port: realPort,
-          players: Object.keys(gameServer!.net.protocol.clients).length,
-          id: spec.serverId,
-        })
-        .then((res) => {
-          logger.debug('Update metadata success: %s', res);
-        })
-        .catch((err) => {
-          if (process.env.NODE_ENV !== 'development') {
-            logger.error(
-              new Error(JSON.stringify(err)),
-              'Update metadata error.',
-            );
-          }
-        });
-    };
-    updateMetadata();
-    setInterval(updateMetadata, 10 * 1000);
-  }
 
   // clear memory pool after 1s
   setTimeout(() => {

@@ -69,7 +69,6 @@ import {
 } from '@box-local/schema/project/hot-schema';
 import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
 import { getExtraProject } from '../../project/project-extra';
-import { apis } from '../../apis';
 import { getConfigSync } from '../../../config/server';
 import {
   BroadcastDataType,
@@ -85,7 +84,6 @@ import {
   generateP2PMsg,
   getGroupProjectBySocket,
   serializeGroupProjectStoreByProject,
-  storeGroupProjectMetaData,
   updateProjectStoreByGroupProject,
 } from '../../group-project';
 import { GroupProjectStore } from '@box-local/schema/group-project/rda';
@@ -1521,22 +1519,10 @@ export class EditReplicaServer {
 
     // update script hashes
     const scriptUpdates = await loadScripts;
-    const shareScripts: { hash: string; id: string }[] = [];
     for (let i = 0; i < scriptUpdates.length; ++i) {
       const { name, hash, size, isClient, isShare, fileId } = scriptUpdates[i];
       const prevAsset = replicaState.project.assets[name];
-      const extraScripts = replicaState.extraProjectInfo.scriptAssets;
       if (isShare) {
-        if (
-          extraScripts[fileId].hash !== hash &&
-          extraScripts[fileId].lockedMapId === contentId
-        ) {
-          //这里放在shareScripts，后面批量同步给后端
-          shareScripts.push({
-            hash,
-            id: fileId,
-          });
-        }
         continue;
       }
       if (
@@ -1561,18 +1547,6 @@ export class EditReplicaServer {
             animated: false,
           }),
         );
-      }
-    }
-
-    if (shareScripts.length) {
-      try {
-        const serverConfig = getConfigSync();
-        await apis.createra.batchUpdateHashUsingPost({
-          mapId: serverConfig.contentId,
-          scripts: shareScripts,
-        });
-      } catch (err) {
-        this._logger.error(`share script batch error ${err}`);
       }
     }
 
@@ -1606,17 +1580,10 @@ export class EditReplicaServer {
   }
 
   private async _updateProjectAndGroupProject(storeRes: StoreProjectRes) {
-    const { projectHash, groupProjectMetaData } = storeRes;
+    const { projectHash } = storeRes;
     if (projectHash) {
       await this._updateProjectHash(projectHash);
     }
-    if (getConfigSync()?.method === 'local') {
-      return;
-    }
-    await storeGroupProjectMetaData({
-      logger: this._logger,
-      groupProjectMetaData,
-    });
   }
 
   private async _updateProjectHash(

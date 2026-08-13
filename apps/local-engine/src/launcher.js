@@ -411,6 +411,11 @@ async function main() {
     // Local products create sessions through the web API, which authenticates
     // the internal runtime request and preserves the actual client address.
     BOX_DIRECT_SESSION_API: 'false',
+    // Editable projects contain only project-owned blobs. Engine assets such
+    // as block_info remain in the immutable bundled data directory and are a
+    // read-only fallback, matching the shared content layer used by Boxes.
+    BOX_BUNDLED_CONTENT_PATH:
+      process.env.BOX_BUNDLED_CONTENT_PATH || path.join(defaultDataRoot, 'blobs'),
     NODE_ENV: production ? 'production' : 'development',
   }
 
@@ -430,7 +435,10 @@ async function main() {
           OSS_CDN_URL: `http://127.0.0.1:${port}`,
           METHOD: 'local',
           MODE: mode,
-          LOGIN: mode === 'edit' ? 'admin' : 'guest',
+          // Creator and Play sessions are authenticated by Player Service.
+          // Do not use the upstream fake admin/guest login shortcuts: they
+          // replace the registered account with adminXXXXX or a guest user.
+          LOGIN: '',
           IS_HTTPS: 'false',
           PORT: String(port),
           HOST_IP: hostIP,
@@ -498,7 +506,7 @@ async function main() {
           ...sharedEnv,
           METHOD: 'local',
           MODE: 'play',
-          LOGIN: 'guest',
+          LOGIN: '',
           IS_HTTPS: 'false',
           PORT: String(port),
           HOST_IP: '127.0.0.1',

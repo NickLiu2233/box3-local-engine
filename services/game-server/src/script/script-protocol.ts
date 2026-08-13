@@ -271,9 +271,5 @@ export const ScriptProtocol = {
       playerId: new MuVarint(),
       value: new MuUint8(),
     }),
-    openUserProfileDialog: new MuStruct({
-      playerId: new MuVarint(),
-      userId: new MuUTF8(),
-    }),
   },
 };

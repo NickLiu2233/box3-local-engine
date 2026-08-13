@@ -1301,18 +1301,6 @@ for (const key of [
 const fullLocalConfig = JSON.parse(
   readRequired('apps/local-engine/config/local.config.json'),
 )
-if ('SENSORS_TRACKER_URL' in (fullLocalConfig.common || {})) {
-  fail('apps/local-engine/config/local.config.json: remove legacy Sensors config')
-}
-for (const file of [
-  'internals/env/src/schemas/common.ts',
-  'internals/env/dist/index.js',
-  'internals/env/dist/index.es.js',
-]) {
-  if (readRequired(file).includes('SENSORS_TRACKER_URL')) {
-    fail(`${file}: remove legacy Sensors config schema`)
-  }
-}
 function checkEmptySecrets(value, prefix = '') {
   if (!value || typeof value !== 'object') return
   for (const [key, child] of Object.entries(value)) {

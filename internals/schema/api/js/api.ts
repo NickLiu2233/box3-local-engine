@@ -936,40 +936,6 @@ export class GameWorld {
     ) => Sound,
 
     /**
-     * 地图组内传送能力，能够令 Player 被传送到其他地图中
-     */
-    public teleport: TeleportType,
-    /**
-     * 创建临时聊天频道
-     */
-    public createTempChat: (userIds?: string[]) => Promise<string>,
-    /**
-     * 销毁临时聊天频道
-     */
-    public destroyTempChat: (chatIds: string[]) => Promise<string[]>,
-    /**
-     * 往特定频道增加用户
-     */
-    public addTempChatPlayer: (
-      chatId: string,
-      userIds: string[],
-    ) => Promise<string[]>,
-    /**
-     * 往特定频道删减用户
-     */
-    public removeTempChatPlayer: (
-      chatId: string,
-      userIds: string[],
-    ) => Promise<string[]>,
-    /**
-     * 读取当前地图存在的临时聊天频道
-     */
-    public getTempChats: () => Promise<string[]>,
-    /**
-     * 查询特定频道内用户
-     */
-    public getTempChatUsers: (chatId: string) => Promise<string[]>,
-    /**
      * 当前服务器id
      */
     public serverId: string,
@@ -2852,21 +2818,6 @@ export class GamePlayer {
       type: NavigatorEventType,
       listener: (event: { data: object }) => void,
     ) => void,
-    /**
-     * open product purchase dialog
-     * @category web
-     */
-    public openMarketplace: (productIds: number[]) => void,
-
-    public getMiaoShells: () => Promise<number>,
-    /**
-     * open share modal
-     * @category web
-     */
-    public share: (content: string) => void,
-    public openUserProfileDialog: (userId: number) => void,
-    public querySocial: (socialType: SocialType) => Promise<number[]>,
-    public querySocialStatistic: () => Promise<SocialStatisticType>,
     /**
      * Called whenever player press down or up
      * @category input

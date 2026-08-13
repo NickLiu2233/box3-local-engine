@@ -591,34 +591,6 @@ declare class GameWorld {
         pitch?: number;
     } | string) => Sound;
     /**
-     * 地图组内传送能力，能够令 Player 被传送到其他地图中
-     */
-    teleport: TeleportType;
-    /**
-     * 创建临时聊天频道
-     */
-    createTempChat: (userIds?: string[]) => Promise<string>;
-    /**
-     * 销毁临时聊天频道
-     */
-    destroyTempChat: (chatIds: string[]) => Promise<string[]>;
-    /**
-     * 往特定频道增加用户
-     */
-    addTempChatPlayer: (chatId: string, userIds: string[]) => Promise<string[]>;
-    /**
-     * 往特定频道删减用户
-     */
-    removeTempChatPlayer: (chatId: string, userIds: string[]) => Promise<string[]>;
-    /**
-     * 读取当前地图存在的临时聊天频道
-     */
-    getTempChats: () => Promise<string[]>;
-    /**
-     * 查询特定频道内用户
-     */
-    getTempChatUsers: (chatId: string) => Promise<string[]>;
-    /**
      * 当前服务器id
      */
     serverId: string;
@@ -1027,34 +999,6 @@ declare class GameWorld {
         gain?: number;
         pitch?: number;
     } | string) => Sound, 
-    /**
-     * 地图组内传送能力，能够令 Player 被传送到其他地图中
-     */
-    teleport: TeleportType, 
-    /**
-     * 创建临时聊天频道
-     */
-    createTempChat: (userIds?: string[]) => Promise<string>, 
-    /**
-     * 销毁临时聊天频道
-     */
-    destroyTempChat: (chatIds: string[]) => Promise<string[]>, 
-    /**
-     * 往特定频道增加用户
-     */
-    addTempChatPlayer: (chatId: string, userIds: string[]) => Promise<string[]>, 
-    /**
-     * 往特定频道删减用户
-     */
-    removeTempChatPlayer: (chatId: string, userIds: string[]) => Promise<string[]>, 
-    /**
-     * 读取当前地图存在的临时聊天频道
-     */
-    getTempChats: () => Promise<string[]>, 
-    /**
-     * 查询特定频道内用户
-     */
-    getTempChatUsers: (chatId: string) => Promise<string[]>, 
     /**
      * 当前服务器id
      */
@@ -2467,20 +2411,6 @@ declare class GamePlayer {
      */
     setCameraYaw: (value: number) => void;
     /**
-     * open product purchase dialog
-     * @category web
-     */
-    openMarketplace: (productIds: number[]) => void;
-    getMiaoShells: () => Promise<number>;
-    /**
-     * open share modal
-     * @category web
-     */
-    share: (content: string) => void;
-    openUserProfileDialog: (userId: number) => void;
-    querySocial: (socialType: SocialType) => Promise<number[]>;
-    querySocialStatistic: () => Promise<SocialStatisticType>;
-    /**
      * Called whenever player press down or up
      * @category input
      */
@@ -2977,16 +2907,6 @@ declare class GamePlayer {
     addEventListener: (type: NavigatorEventType, listener: (event: {
         data: object;
     }) => void) => void, 
-    /**
-     * open product purchase dialog
-     * @category web
-     */
-    openMarketplace: (productIds: number[]) => void, getMiaoShells: () => Promise<number>, 
-    /**
-     * open share modal
-     * @category web
-     */
-    share: (content: string) => void, openUserProfileDialog: (userId: number) => void, querySocial: (socialType: SocialType) => Promise<number[]>, querySocialStatistic: () => Promise<SocialStatisticType>, 
     /**
      * Called whenever player press down or up
      * @category input

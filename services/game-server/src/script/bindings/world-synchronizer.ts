@@ -51,10 +51,6 @@ import {
   NavigatorEventType,
   Sound,
   GamePurchaseSuccessEvent,
-  TeleportType,
-  SocialType,
-  TeleportResult,
-  SocialStatisticType,
 } from '@box-local/schema/api/js/api';
 import {
   WorldPhysicsBinding,
@@ -163,11 +159,6 @@ export class ScriptWorldSync {
     message: string,
     options?: { duration?: number; hideFloat?: boolean },
   ) => void;
-  private _teleport: (
-    mapId: string,
-    playerIds: number[],
-    serverId?: string,
-  ) => Promise<TeleportResult>;
   private _playSound: (
     sample: string,
     position: PlaySoundPosition,
@@ -180,18 +171,6 @@ export class ScriptWorldSync {
   private _blockInfo: BlockInfo;
   private _blockIndex: BlockIndex;
 
-  private _createTempChat: (userIds?: string[]) => Promise<string>;
-  private _destroyTempChat: (chatIds: string[]) => Promise<string[]>;
-  private _addTempChatPlayer: (
-    chatId: string,
-    userIds: string[],
-  ) => Promise<string[]>;
-  private _removeTempChatPlayer: (
-    chatId: string,
-    userIds: string[],
-  ) => Promise<string[]>;
-  private _getTempChats: () => Promise<string[]>;
-  private _getTempChatUsers: (chatId: string) => Promise<string[]>;
 
   private _shell: ScriptShell;
   private _schedule: <EventType extends { tick: number }>(
@@ -435,33 +414,6 @@ export class ScriptWorldSync {
     kick: (playerId: number) => void;
     setCameraPitch: (playerId: number, value: number) => void;
     setCameraYaw: (playerId: number, value: number) => void;
-    openMarketplace: (entity: ScriptEntityWrapper, value: number[]) => void;
-    teleport: (
-      mapId: string,
-      playerIds: number[],
-      serverId?: string,
-    ) => Promise<TeleportResult>;
-    getMiaoShells: (playerId: number) => Promise<number>;
-    openShare: (
-      entity: ScriptEntityWrapper,
-      content: PostMessageScriptType,
-    ) => void;
-    openUserProfileDialog: (
-      entity: ScriptEntityWrapper,
-      userId: number,
-    ) => void;
-    querySocial: (socialType: SocialType, userId: string) => Promise<number[]>;
-    querySocialStatistic: (userId: string) => Promise<SocialStatisticType>;
-    // 临时聊天
-    createTempChat: (userIds?: string[]) => Promise<string>;
-    destroyTempChat: (chatIds: string[]) => Promise<string[]>;
-    addTempChatPlayer: (chatId: string, userIds: string[]) => Promise<string[]>;
-    removeTempChatPlayer: (
-      chatId: string,
-      userIds: string[],
-    ) => Promise<string[]>;
-    getTempChats: () => Promise<string[]>;
-    getTempChatUsers: (chatId: string) => Promise<string[]>;
   }) {
     this.logger = spec.logger.create('world');
     this.config = spec.config;
@@ -470,17 +422,10 @@ export class ScriptWorldSync {
     this._shell = spec.shell;
     this._schedule = spec.schedule;
     this._say = spec.say;
-    this._teleport = spec.teleport;
     this._playSound = spec.playSound;
     this._blockInfo = spec.blockInfo;
     this._blockIndex = spec.blockIndex;
 
-    this._createTempChat = spec.createTempChat;
-    this._destroyTempChat = spec.destroyTempChat;
-    this._addTempChatPlayer = spec.addTempChatPlayer;
-    this._removeTempChatPlayer = spec.removeTempChatPlayer;
-    this._getTempChats = spec.getTempChats;
-    this._getTempChatUsers = spec.getTempChatUsers;
 
     this.animationManager = new ScriptAnimationManager(
       WORLD_ANIM_BINDING,
@@ -514,12 +459,6 @@ export class ScriptWorldSync {
       spec.setCameraYaw,
       this.physicsSelectors,
       spec.keyframeParser,
-      spec.openMarketplace,
-      spec.getMiaoShells,
-      spec.openShare,
-      spec.openUserProfileDialog,
-      spec.querySocial,
-      spec.querySocialStatistic,
     );
     this.zones = new ScriptZoneSystem(
       this.resource,
@@ -591,42 +530,11 @@ export class ScriptWorldSync {
       this.onPlayerPurchaseSuccess.channel,
       this.onPlayerPurchaseSuccess.future,
       this.playWorldSound,
-      this.teleport,
-      this._createTempChat,
-      this.destroyTempChat,
-      this.addTempChatPlayer,
-      this.removeTempChatPlayer,
-      this._getTempChats,
-      this.getTempChatUsers,
       spec.config.serverId,
     );
     this.animations.target = this.world;
   }
 
-  public addTempChatPlayer = (chatId: string, userIds: string[]) => {
-    if (!chatId || !userIds) {
-      throw new Error('invalid arguments world.addTempChatPlayer() ');
-    }
-    return this._addTempChatPlayer(chatId, userIds);
-  };
-  public removeTempChatPlayer = (chatId: string, userIds: string[]) => {
-    if (!chatId || !userIds) {
-      throw new Error('invalid arguments world.removeTempChatPlayer() ');
-    }
-    return this._removeTempChatPlayer(chatId, userIds);
-  };
-  public getTempChatUsers = (chatId: string) => {
-    if (!chatId) {
-      throw new Error('invalid arguments world.getTempChatUsers() ');
-    }
-    return this._getTempChatUsers(chatId);
-  };
-  public destroyTempChat = (chatIds: string[]) => {
-    if (!chatIds) {
-      throw new Error('invalid arguments world.destroyTempChat() ');
-    }
-    return this._destroyTempChat(chatIds);
-  };
 
   public say = (message: string) => {
     this._say(0, 0, message);
@@ -746,26 +654,4 @@ export class ScriptWorldSync {
     throw new Error('invalid arguments world.sound()');
   };
 
-  public teleport: TeleportType = (mapId, players, serverId) => {
-    if (
-      !mapId ||
-      typeof mapId !== 'string' ||
-      players.length <= 0 ||
-      players.length > 50 ||
-      (typeof serverId !== 'undefined' && typeof serverId !== 'string')
-    ) {
-      throw new Error('invalid arguments world.teleport()');
-    }
-    const playerIds: number[] = [];
-    for (let i = 0; i < players.length; i++) {
-      const playerEntity = players[i];
-      const entityWrapper = this.entity.getEntityWrapper(playerEntity);
-      if (!entityWrapper || !entityWrapper.isPlayer) {
-        throw new Error('invalid arguments world.teleport()');
-      } else {
-        playerIds.push(entityWrapper.id);
-      }
-    }
-    return this._teleport(mapId, playerIds, serverId);
-  };
 }

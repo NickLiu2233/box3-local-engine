@@ -1763,7 +1763,7 @@ class Sound {
     }
 }
 class GameWorld {
-    constructor(url, entityQuota, onRespawn, nextRespawn, createEntity, querySelector, querySelectorAll, testSelector, addCollisionFilter, removeCollisionFilter, clearCollisionFilters, collisionFilters, raycast, searchBox, animate, getAnimations, getEntityAnimations, getPlayerAnimations, onTick, nextTick, onTakeDamage, nextTakeDamage, onDie, nextDie, onPlayerJoin, nextPlayerJoin, onPlayerLeave, nextPlayerLeave, onEntityCreate, nextEntityCreate, onEntityDestroy, nextEntityDestroy, say, onChat, nextChat, onClick, nextClick, onPress, nextPress, onRelease, nextRelease, onEntityContact, nextEntityContact, onEntitySeparate, nextEntitySeparate, onVoxelContact, nextVoxelContact, onVoxelSeparate, nextVoxelSeparate, onFluidEnter, nextFluidEnter, onFluidLeave, nextFluidLeave, zones, addZone, removeZone, onInteract, nextInteract, onPlayerPurchaseSuccess, nextPlayerPurchaseSuccess, sound, teleport, createTempChat, destroyTempChat, addTempChatPlayer, removeTempChatPlayer, getTempChats, getTempChatUsers, serverId){
+    constructor(url, entityQuota, onRespawn, nextRespawn, createEntity, querySelector, querySelectorAll, testSelector, addCollisionFilter, removeCollisionFilter, clearCollisionFilters, collisionFilters, raycast, searchBox, animate, getAnimations, getEntityAnimations, getPlayerAnimations, onTick, nextTick, onTakeDamage, nextTakeDamage, onDie, nextDie, onPlayerJoin, nextPlayerJoin, onPlayerLeave, nextPlayerLeave, onEntityCreate, nextEntityCreate, onEntityDestroy, nextEntityDestroy, say, onChat, nextChat, onClick, nextClick, onPress, nextPress, onRelease, nextRelease, onEntityContact, nextEntityContact, onEntitySeparate, nextEntitySeparate, onVoxelContact, nextVoxelContact, onVoxelSeparate, nextVoxelSeparate, onFluidEnter, nextFluidEnter, onFluidLeave, nextFluidLeave, zones, addZone, removeZone, onInteract, nextInteract, onPlayerPurchaseSuccess, nextPlayerPurchaseSuccess, sound, serverId){
         this.url = url;
         this.entityQuota = entityQuota;
         this.onRespawn = onRespawn;
@@ -1825,13 +1825,6 @@ class GameWorld {
         this.onPlayerPurchaseSuccess = onPlayerPurchaseSuccess;
         this.nextPlayerPurchaseSuccess = nextPlayerPurchaseSuccess;
         this.sound = sound;
-        this.teleport = teleport;
-        this.createTempChat = createTempChat;
-        this.destroyTempChat = destroyTempChat;
-        this.addTempChatPlayer = addTempChatPlayer;
-        this.removeTempChatPlayer = removeTempChatPlayer;
-        this.getTempChats = getTempChats;
-        this.getTempChatUsers = getTempChatUsers;
         this.serverId = serverId;
         this.projectName = 'Project';
         this.currentTick = 0;
@@ -2136,7 +2129,7 @@ var GameInputDirection;
     GameInputDirection["BOTH"] = "both";
 })(GameInputDirection || (GameInputDirection = {}));
 class GamePlayer {
-    constructor(directMessage, onChat, nextChat, onPress, nextPress, onRelease, nextRelease, onRespawn, nextRespawn, forceRespawn, dialog, cancelDialogs, link, wearables, addWearable, removeWearable, setSkinByName, resetToDefaultSkin, clearSkin, sound, animate, getAnimations, kick, setCameraPitch, setCameraYaw, postMessage, addEventListener, openMarketplace, getMiaoShells, share, openUserProfileDialog, querySocial, querySocialStatistic, onKeyDown, onKeyUp){
+    constructor(directMessage, onChat, nextChat, onPress, nextPress, onRelease, nextRelease, onRespawn, nextRespawn, forceRespawn, dialog, cancelDialogs, link, wearables, addWearable, removeWearable, setSkinByName, resetToDefaultSkin, clearSkin, sound, animate, getAnimations, kick, setCameraPitch, setCameraYaw, postMessage, addEventListener, onKeyDown, onKeyUp){
         this.directMessage = directMessage;
         this.onChat = onChat;
         this.nextChat = nextChat;
@@ -2162,12 +2155,6 @@ class GamePlayer {
         this.kick = kick;
         this.setCameraPitch = setCameraPitch;
         this.setCameraYaw = setCameraYaw;
-        this.openMarketplace = openMarketplace;
-        this.getMiaoShells = getMiaoShells;
-        this.share = share;
-        this.openUserProfileDialog = openUserProfileDialog;
-        this.querySocial = querySocial;
-        this.querySocialStatistic = querySocialStatistic;
         this.onKeyDown = onKeyDown;
         this.onKeyUp = onKeyUp;
         this.gamepad = {
@@ -24060,37 +24047,6 @@ class HttpScriptShell {
     }
 }
 
-const MarketScriptProtocol = {
-    name: 'market-script',
-    client: {},
-    server: {
-        openMarketplace: new schemaExports.MuStruct({
-            clientId: new schemaExports.MuVarint(),
-            productIds: new schemaExports.MuArray(new schemaExports.MuUTF8(), Infinity)
-        }),
-        ackPurchaseSuccessMsg: new schemaExports.MuStruct({
-            msgId: new schemaExports.MuUTF8()
-        })
-    }
-};
-
-class MarketScriptShell {
-    openMarketplace(clientId, productIds) {
-        this.protocol.server.message.openMarketplace({
-            clientId,
-            productIds
-        });
-    }
-    ackPurchaseSuccess(msgId) {
-        this.protocol.server.message.ackPurchaseSuccessMsg({
-            msgId
-        });
-    }
-    constructor(client){
-        this.protocol = client.protocol(MarketScriptProtocol);
-    }
-}
-
 new schemaExports.MuStruct({
     type: new schemaExports.MuUTF8(''),
     value: new schemaExports.MuStruct({}),
@@ -24609,7 +24565,7 @@ let nanoid = (size = 21)=>{
 
 const MAX_KEY_BYTES = 1024;
 const MAX_VALUE_BYTES = 4 * 1024 * 1024;
-const errorMsgList$2 = {
+const errorMsgList = {
     DB_NAME_INVALID: {
         status: 'DB_NAME_INVALID',
         code: 400,
@@ -24657,7 +24613,7 @@ const errorMsgList$2 = {
     }
 };
 function getErrorMsg(key, errorMsg) {
-    let msgObject = errorMsgList$2[key] || errorMsgList$2['UNKNOWN'];
+    let msgObject = errorMsgList[key] || errorMsgList['UNKNOWN'];
     if (errorMsg) {
         msgObject.msg = errorMsg;
     }
@@ -25302,96 +25258,6 @@ class StorageSynchronizer {
                         (_a = this.groupDbs[dbKey]) === null || _a === void 0 ? void 0 : _a.fetchError(handle, error);
                     } else {
                         (_b = this.storageDbs[dbKey]) === null || _b === void 0 ? void 0 : _b.fetchError(handle, error);
-                    }
-                }
-            }
-        });
-    }
-}
-
-const TeleportScriptProtocol = {
-    name: 'teleport-api',
-    client: {
-        teleportDone: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            serverId: new schemaExports.MuUTF8()
-        }),
-        teleportError: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            error: new schemaExports.MuStruct({
-                key: new schemaExports.MuASCII(),
-                msg: new schemaExports.MuOption(new schemaExports.MuUTF8())
-            })
-        })
-    },
-    server: {
-        teleport: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            mapId: new schemaExports.MuUTF8(),
-            playerIds: new schemaExports.MuArray(new schemaExports.MuVarint(), Infinity),
-            serverId: new schemaExports.MuUTF8()
-        })
-    }
-};
-
-const errorMsgList$1 = {
-    PLAYER_OFFLINE: {
-        status: 'PLAYER_OFFLINE',
-        code: 400,
-        msg: 'Teleport cannot be completed, some of the specified players are currently offline.'
-    },
-    ACCESS_DENIED: {
-        status: 'ACCESS_DENIED',
-        code: 401,
-        msg: 'The map does not have the necessary permissions to utilize the teleport API.'
-    },
-    UNKNOWN: {
-        status: 'UNKNOWN',
-        code: 500,
-        msg: 'Internal Server Error.'
-    }
-};
-class TeleportScriptShell {
-    _getErrorMsg(err) {
-        const { key, msg } = err;
-        let error = errorMsgList$1[key] || errorMsgList$1['UNKNOWN'];
-        if (msg) {
-            error.msg = msg;
-        }
-        return JSON.stringify(error);
-    }
-    constructor(client, schedule){
-        this.schedule = schedule;
-        this.wrappers = {};
-        this.handleCounter = 0;
-        this.teleport = (mapId, playerIds, serverId = '')=>{
-            const wrapper = new PromiseWrapper(this.schedule);
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.teleport({
-                handle,
-                mapId,
-                playerIds,
-                serverId
-            });
-            return wrapper.query;
-        };
-        this.protocol = client.protocol(TeleportScriptProtocol);
-        this.protocol.configure({
-            message: {
-                teleportDone: ({ handle, serverId })=>{
-                    if (this.wrappers[handle]) {
-                        const result = {
-                            serverId
-                        };
-                        this.wrappers[handle].notifyDone(result);
-                        delete this.wrappers[handle];
-                    }
-                },
-                teleportError: ({ handle, error })=>{
-                    if (this.wrappers[handle]) {
-                        this.wrappers[handle].notifyError(new Error(this._getErrorMsg(error)));
-                        delete this.wrappers[handle];
                     }
                 }
             }
@@ -32003,7 +31869,7 @@ class ScriptEntitySync {
         const index = this.entityIndex;
         for(let i = 0; i < players.length; ++i){
             const player = players[i];
-            const userId = player.userId;
+            player.userId;
             const wrapper = index.get(player.id);
             if (!wrapper || wrapper.destroyed) {
                 continue;
@@ -32014,25 +31880,7 @@ class ScriptEntitySync {
                     this.forceRespawn(wrapper);
                 }, (params)=>this.handleDialog(wrapper, params), ()=>this.cancelDialogs(wrapper), (href, options)=>{
                     this.openLink(wrapper, '' + href, options);
-                }, wrapper.listWearables, wrapper.addWearable, wrapper.removeWearable, (skinName)=>wrapper.setSkinByName(skinName, this.resources), ()=>wrapper.resetToDefaultSkin(this.resources), wrapper.clearSkin, (spec)=>this.playSoundPlayer(wrapper.id, spec), wrapper.playerAnimations.animate, wrapper.playerAnimations.getAnimations, ()=>this.kick(wrapper.id), (value)=>this.setCameraPitch(wrapper.id, value), (value)=>this.setCameraYaw(wrapper.id, value), (content)=>this.postMessage(wrapper, content), (type, listener)=>this.addEventListener(wrapper, type, listener), (value)=>this.openMarketplace(wrapper, value), ()=>this.getMiaoShells(wrapper.id), (content)=>this.openShare(wrapper, {
-                        type: 'share',
-                        value: {
-                            text: content
-                        },
-                        isOld: true
-                    }), (userId)=>{
-                    this.openUserProfileDialog(wrapper, userId);
-                }, (socialType)=>{
-                    if (![
-                        SocialType.FOLLOWERS,
-                        SocialType.FOLLOWING,
-                        SocialType.FRIENDS
-                    ].includes(socialType)) {
-                        console.warn('invalid arguments player.querySocial()');
-                        return Promise.resolve([]);
-                    }
-                    return this.querySocial(socialType, userId);
-                }, ()=>this.querySocialStatistic(userId), wrapper.onKeyDown.channel, wrapper.onKeyUp.channel);
+                }, wrapper.listWearables, wrapper.addWearable, wrapper.removeWearable, (skinName)=>wrapper.setSkinByName(skinName, this.resources), ()=>wrapper.resetToDefaultSkin(this.resources), wrapper.clearSkin, (spec)=>this.playSoundPlayer(wrapper.id, spec), wrapper.playerAnimations.animate, wrapper.playerAnimations.getAnimations, ()=>this.kick(wrapper.id), (value)=>this.setCameraPitch(wrapper.id, value), (value)=>this.setCameraYaw(wrapper.id, value), (content)=>this.postMessage(wrapper, content), (type, listener)=>this.addEventListener(wrapper, type, listener), wrapper.onKeyDown.channel, wrapper.onKeyUp.channel);
                 WRAPPER_PLAYER_INDEX.set(entity.player, wrapper);
             }
             wrapper.isPlayer = true;
@@ -32242,7 +32090,7 @@ class ScriptEntitySync {
         this.animations.postTick(packet.animations.entity);
         this.playerAnimations.postTick(packet.animations.player);
     }
-    constructor(config, resources, logger, perf, scheduler, notifyEntityCreate, notifyEntityDestroy, schedule, sendChat, kick, hurtEntity, forceRespawn, handleDialog, cancelDialogs, openLink, postMessage, addEventListener, playSound, setCameraPitch, setCameraYaw, physicsSelectors, keyframeParser, openMarketplace, getMiaoShells, openShare, openUserProfileDialog, querySocial, querySocialStatistic){
+    constructor(config, resources, logger, perf, scheduler, notifyEntityCreate, notifyEntityDestroy, schedule, sendChat, kick, hurtEntity, forceRespawn, handleDialog, cancelDialogs, openLink, postMessage, addEventListener, playSound, setCameraPitch, setCameraYaw, physicsSelectors, keyframeParser){
         this.config = config;
         this.resources = resources;
         this.logger = logger;
@@ -32265,12 +32113,6 @@ class ScriptEntitySync {
         this.setCameraYaw = setCameraYaw;
         this.physicsSelectors = physicsSelectors;
         this.keyframeParser = keyframeParser;
-        this.openMarketplace = openMarketplace;
-        this.getMiaoShells = getMiaoShells;
-        this.openShare = openShare;
-        this.openUserProfileDialog = openUserProfileDialog;
-        this.querySocial = querySocial;
-        this.querySocialStatistic = querySocialStatistic;
         this.entityCounter = 0;
         this.entities = [];
         this.entityIndex = ENTITY_INDEX;
@@ -33558,30 +33400,6 @@ class ScriptWorldSync {
         this.collisionFilters = ()=>{
             return this.physicsSelectors.list();
         };
-        this.addTempChatPlayer = (chatId, userIds)=>{
-            if (!chatId || !userIds) {
-                throw new Error('invalid arguments world.addTempChatPlayer() ');
-            }
-            return this._addTempChatPlayer(chatId, userIds);
-        };
-        this.removeTempChatPlayer = (chatId, userIds)=>{
-            if (!chatId || !userIds) {
-                throw new Error('invalid arguments world.removeTempChatPlayer() ');
-            }
-            return this._removeTempChatPlayer(chatId, userIds);
-        };
-        this.getTempChatUsers = (chatId)=>{
-            if (!chatId) {
-                throw new Error('invalid arguments world.getTempChatUsers() ');
-            }
-            return this._getTempChatUsers(chatId);
-        };
-        this.destroyTempChat = (chatIds)=>{
-            if (!chatIds) {
-                throw new Error('invalid arguments world.destroyTempChat() ');
-            }
-            return this._destroyTempChat(chatIds);
-        };
         this.say = (message)=>{
             this._say(0, 0, message);
         };
@@ -33611,22 +33429,6 @@ class ScriptWorldSync {
             }
             throw new Error('invalid arguments world.sound()');
         };
-        this.teleport = (mapId, players, serverId)=>{
-            if (!mapId || typeof mapId !== 'string' || players.length <= 0 || players.length > 50 || typeof serverId !== 'undefined' && typeof serverId !== 'string') {
-                throw new Error('invalid arguments world.teleport()');
-            }
-            const playerIds = [];
-            for(let i = 0; i < players.length; i++){
-                const playerEntity = players[i];
-                const entityWrapper = this.entity.getEntityWrapper(playerEntity);
-                if (!entityWrapper || !entityWrapper.isPlayer) {
-                    throw new Error('invalid arguments world.teleport()');
-                } else {
-                    playerIds.push(entityWrapper.id);
-                }
-            }
-            return this._teleport(mapId, playerIds, serverId);
-        };
         this.logger = spec.logger.create('world');
         this.config = spec.config;
         this.resource = spec.resource;
@@ -33634,22 +33436,15 @@ class ScriptWorldSync {
         this._shell = spec.shell;
         this._schedule = spec.schedule;
         this._say = spec.say;
-        this._teleport = spec.teleport;
         this._playSound = spec.playSound;
         this._blockInfo = spec.blockInfo;
         this._blockIndex = spec.blockIndex;
-        this._createTempChat = spec.createTempChat;
-        this._destroyTempChat = spec.destroyTempChat;
-        this._addTempChatPlayer = spec.addTempChatPlayer;
-        this._removeTempChatPlayer = spec.removeTempChatPlayer;
-        this._getTempChats = spec.getTempChats;
-        this._getTempChatUsers = spec.getTempChatUsers;
         this.animationManager = new ScriptAnimationManager(WORLD_ANIM_BINDING, this._schedule, spec.scheduler, this.perf, spec.keyframeParser, spec.config);
         this.animations = this.animationManager.createAnimationGroup(0, null);
-        this.entity = new ScriptEntitySync(this.config, this.resource, spec.logger.create('entity'), this.perf, spec.scheduler, this._onEntityCreate, this._onEntityDestroy, spec.schedule, this._say, spec.kick, spec.hurtEntity, spec.forceRespawn, spec.openDialog, spec.cancelDialogs, spec.openLink, spec.postMessage, spec.addEventListener, spec.playSound, spec.setCameraPitch, spec.setCameraYaw, this.physicsSelectors, spec.keyframeParser, spec.openMarketplace, spec.getMiaoShells, spec.openShare, spec.openUserProfileDialog, spec.querySocial, spec.querySocialStatistic);
+        this.entity = new ScriptEntitySync(this.config, this.resource, spec.logger.create('entity'), this.perf, spec.scheduler, this._onEntityCreate, this._onEntityDestroy, spec.schedule, this._say, spec.kick, spec.hurtEntity, spec.forceRespawn, spec.openDialog, spec.cancelDialogs, spec.openLink, spec.postMessage, spec.addEventListener, spec.playSound, spec.setCameraPitch, spec.setCameraYaw, this.physicsSelectors, spec.keyframeParser);
         this.zones = new ScriptZoneSystem(this.resource, spec.schedule, spec.scheduler, this.physicsSelectors, this.perf);
         this._voxel = spec.voxel;
-        this.world = new GameWorld(new URL(spec.config.url || 'https://localhost'), this.entity.quota, this.onRespawn.channel, this.onRespawn.future, this.entity.createEntity, this.entity.querySelector, this.entity.querySelectorAll, this.entity.testSelector, this.addCollisionFilter, this.removeCollisionFilter, this.clearCollisionFilters, this.collisionFilters, this.raycast, this.searchBox, this.animations.animate, this.animations.getAnimations, this.entity.animations.getAnimations, this.entity.playerAnimations.getAnimations, this.onTick.channel, this.onTick.future, this.onDamage.channel, this.onDamage.future, this.onDie.channel, this.onDie.future, this.onPlayerJoin.channel, this.onPlayerJoin.future, this.onPlayerLeave.channel, this.onPlayerLeave.future, this.onEntityCreate.channel, this.onEntityCreate.future, this.onEntityDestroy.channel, this.onEntityDestroy.future, this.say, this.onChat.channel, this.onChat.future, this.onClick.channel, this.onClick.future, this.onPress.channel, this.onPress.future, this.onRelease.channel, this.onRelease.future, this.onEntityContact.channel, this.onEntityContact.future, this.onEntitySeparate.channel, this.onEntitySeparate.future, this.onVoxelContact.channel, this.onVoxelContact.future, this.onVoxelSeparate.channel, this.onVoxelSeparate.future, this.onFluidEnter.channel, this.onFluidEnter.future, this.onFluidLeave.channel, this.onFluidLeave.future, this.zones.listZones, this.zones.addZone, this.zones.removeZone, this.onInteract.channel, this.onInteract.future, this.onPlayerPurchaseSuccess.channel, this.onPlayerPurchaseSuccess.future, this.playWorldSound, this.teleport, this._createTempChat, this.destroyTempChat, this.addTempChatPlayer, this.removeTempChatPlayer, this._getTempChats, this.getTempChatUsers, spec.config.serverId);
+        this.world = new GameWorld(new URL(spec.config.url || 'https://localhost'), this.entity.quota, this.onRespawn.channel, this.onRespawn.future, this.entity.createEntity, this.entity.querySelector, this.entity.querySelectorAll, this.entity.testSelector, this.addCollisionFilter, this.removeCollisionFilter, this.clearCollisionFilters, this.collisionFilters, this.raycast, this.searchBox, this.animations.animate, this.animations.getAnimations, this.entity.animations.getAnimations, this.entity.playerAnimations.getAnimations, this.onTick.channel, this.onTick.future, this.onDamage.channel, this.onDamage.future, this.onDie.channel, this.onDie.future, this.onPlayerJoin.channel, this.onPlayerJoin.future, this.onPlayerLeave.channel, this.onPlayerLeave.future, this.onEntityCreate.channel, this.onEntityCreate.future, this.onEntityDestroy.channel, this.onEntityDestroy.future, this.say, this.onChat.channel, this.onChat.future, this.onClick.channel, this.onClick.future, this.onPress.channel, this.onPress.future, this.onRelease.channel, this.onRelease.future, this.onEntityContact.channel, this.onEntityContact.future, this.onEntitySeparate.channel, this.onEntitySeparate.future, this.onVoxelContact.channel, this.onVoxelContact.future, this.onVoxelSeparate.channel, this.onVoxelSeparate.future, this.onFluidEnter.channel, this.onFluidEnter.future, this.onFluidLeave.channel, this.onFluidLeave.future, this.zones.listZones, this.zones.addZone, this.zones.removeZone, this.onInteract.channel, this.onInteract.future, this.onPlayerPurchaseSuccess.channel, this.onPlayerPurchaseSuccess.future, this.playWorldSound, spec.config.serverId);
         this.animations.target = this.world;
     }
 }
@@ -33909,282 +33704,6 @@ function createSafeEval(environment) {
     }
     Promise.race = racePolyfill;
     return createUnsafeEval(environment);
-}
-
-const FetchScriptProtocol = {
-    name: 'fetch-api',
-    client: {
-        fetchDone: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            data: new schemaExports.MuOption(new schemaExports.MuUTF8())
-        }),
-        fetchError: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            error: new schemaExports.MuStruct({
-                key: new schemaExports.MuASCII(),
-                msg: new schemaExports.MuOption(new schemaExports.MuUTF8())
-            })
-        })
-    },
-    server: {
-        getMiaoShells: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            playerId: new schemaExports.MuVarint()
-        }),
-        querySocial: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            userId: new schemaExports.MuUTF8(),
-            socialType: new schemaExports.MuVarint()
-        }),
-        querySocialStatistic: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            userId: new schemaExports.MuUTF8()
-        }),
-        createTempChat: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            userIds: new schemaExports.MuArray(new schemaExports.MuUTF8(), Infinity)
-        }),
-        destroyTempChat: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            chatIds: new schemaExports.MuArray(new schemaExports.MuUTF8(), Infinity)
-        }),
-        addTempChatPlayer: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            userIds: new schemaExports.MuArray(new schemaExports.MuUTF8(), Infinity),
-            chatId: new schemaExports.MuUTF8()
-        }),
-        removeTempChatPlayer: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            userIds: new schemaExports.MuArray(new schemaExports.MuUTF8(), Infinity),
-            chatId: new schemaExports.MuUTF8()
-        }),
-        getTempChats: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint()
-        }),
-        getTempChatUsers: new schemaExports.MuStruct({
-            handle: new schemaExports.MuVarint(),
-            chatId: new schemaExports.MuUTF8()
-        })
-    }
-};
-
-const errorMsgList = {
-    UNKNOWN: {
-        status: 'UNKNOWN',
-        code: 500,
-        msg: 'Internal Server Error.'
-    }
-};
-class FetchScriptShell {
-    _getErrorMsg(err) {
-        const { key, msg } = err;
-        let error = errorMsgList[key] || errorMsgList['UNKNOWN'];
-        if (msg) {
-            error.msg = msg;
-        }
-        return JSON.stringify(error);
-    }
-    constructor(client, schedule){
-        this.schedule = schedule;
-        this.wrappers = {};
-        this.handleCounter = 0;
-        this.getMiaoShells = (playerId)=>{
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data.miaoShells || 0;
-                } catch (error) {
-                    return 0;
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.getMiaoShells({
-                handle,
-                playerId
-            });
-            return wrapper.query;
-        };
-        this.createTempChat = (userIds)=>{
-            if (userIds !== undefined && !Array.isArray(userIds)) {
-                throw new Error('userIds must be an array');
-            }
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data.chatId || '';
-                } catch (error) {
-                    return '';
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.createTempChat({
-                handle,
-                userIds: userIds || []
-            });
-            return wrapper.query;
-        };
-        this.destroyTempChat = (chatIds)=>{
-            if (!Array.isArray(chatIds)) {
-                throw new Error('chatIds must be an array');
-            }
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data.chatIds || [];
-                } catch (error) {
-                    return '';
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.destroyTempChat({
-                handle,
-                chatIds
-            });
-            return wrapper.query;
-        };
-        this.addTempChatPlayer = (chatId, userIds)=>{
-            if (typeof chatId !== 'string') {
-                throw new Error('chatId must be a string');
-            }
-            if (!Array.isArray(userIds)) {
-                throw new Error('userIds must be an array');
-            }
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data.userIds || [];
-                } catch (error) {
-                    return [];
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.addTempChatPlayer({
-                handle,
-                userIds,
-                chatId
-            });
-            return wrapper.query;
-        };
-        this.removeTempChatPlayer = (chatId, userIds)=>{
-            if (typeof chatId !== 'string') {
-                throw new Error('chatId must be a string');
-            }
-            if (!Array.isArray(userIds)) {
-                throw new Error('userIds must be an array');
-            }
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data.userIds || [];
-                } catch (error) {
-                    return [];
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.removeTempChatPlayer({
-                handle,
-                userIds,
-                chatId
-            });
-            return wrapper.query;
-        };
-        this.getTempChats = ()=>{
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data;
-                } catch (error) {
-                    return [];
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.getTempChats({
-                handle
-            });
-            return wrapper.query;
-        };
-        this.getTempChatUsers = (chatId)=>{
-            if (typeof chatId !== 'string') {
-                throw new Error('chatId must be a string');
-            }
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data;
-                } catch (error) {
-                    return [];
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.getTempChatUsers({
-                handle,
-                chatId
-            });
-            return wrapper.query;
-        };
-        this.querySocial = (socialType, userId)=>{
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    const data = JSON.parse(res);
-                    return data.socialList || [];
-                } catch (error) {
-                    return [];
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.querySocial({
-                handle,
-                userId,
-                socialType
-            });
-            return wrapper.query;
-        };
-        this.querySocialStatistic = (userId)=>{
-            const wrapper = new PromiseWrapper(this.schedule, (res)=>{
-                try {
-                    return JSON.parse(res);
-                } catch (error) {
-                    return {
-                        followingNum: 0,
-                        followerNum: 0,
-                        friendsNum: 0
-                    };
-                }
-            });
-            const handle = wrapper.handle = this.handleCounter++;
-            this.wrappers[handle] = wrapper;
-            this.protocol.server.message.querySocialStatistic({
-                handle,
-                userId
-            });
-            return wrapper.query;
-        };
-        this.protocol = client.protocol(FetchScriptProtocol);
-        this.protocol.configure({
-            message: {
-                fetchDone: ({ handle, data })=>{
-                    if (this.wrappers[handle]) {
-                        this.wrappers[handle].notifyDone(data);
-                        delete this.wrappers[handle];
-                    }
-                },
-                fetchError: ({ handle, error })=>{
-                    if (this.wrappers[handle]) {
-                        this.wrappers[handle].notifyError(new Error(this._getErrorMsg(error)));
-                        delete this.wrappers[handle];
-                    }
-                }
-            }
-        });
-    }
 }
 
 const RemoteChannelScriptProtocol = {
@@ -34638,10 +34157,6 @@ const ScriptProtocol = {
         setCameraYaw: new schemaExports.MuStruct({
             playerId: new schemaExports.MuVarint(),
             value: new schemaExports.MuUint8()
-        }),
-        openUserProfileDialog: new schemaExports.MuStruct({
-            playerId: new schemaExports.MuVarint(),
-            userId: new schemaExports.MuUTF8()
         })
     }
 };
@@ -34992,7 +34507,6 @@ class ScriptShell {
         event.purchaseSuccessEvents.forEach((ev)=>{
             const wrapEvent = new GamePurchaseSuccessEvent(this.prevTickEvent.state.tick, ev.userId, parseInt(ev.productId), parseInt(ev.orderId));
             this._dispatch(this.world.onPlayerPurchaseSuccess, wrapEvent);
-            this.market.ackPurchaseSuccess(ev.messageId);
         });
         event.remoteChannelEvents.forEach((ev)=>{
             const entity = this.world.entity.entityIndex.get(ev.id);
@@ -35308,10 +34822,6 @@ class ScriptShell {
                 value: Math.round(256 * value / (2 * Math.PI)) % 256
             });
         };
-        this.openMarketplace = (wrapper, productIds)=>{
-            const transProductIds = productIds.map((item)=>item.toString());
-            this.market.openMarketplace(wrapper.id, transProductIds);
-        };
         this.sendClientEvent = (entities, clientEvent)=>{
             const ids = [];
             const entityArr = Array.isArray(entities) ? entities : [
@@ -35351,9 +34861,6 @@ class ScriptShell {
         this.http = new HttpScriptShell(this.client, this.scheduler.schedule, this.config);
         this.rtc = new RTCScriptShell(this);
         this.gui = new GUIScriptShell(this);
-        this.market = new MarketScriptShell(this.client);
-        this.teleport = new TeleportScriptShell(this.client, this.scheduler.schedule);
-        this.fetch = new FetchScriptShell(this.client, this.scheduler.schedule);
         this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
         this.console = new GameConsole(this.log, this.clearLog);
         this.resource = new ScriptResourceSync(this._eval);
@@ -35382,29 +34889,7 @@ class ScriptShell {
             keyframeParser: this.keyframeParser,
             kick: this.kick,
             setCameraPitch: this.setCameraPitch,
-            setCameraYaw: this.setCameraYaw,
-            openMarketplace: this.openMarketplace,
-            teleport: this.teleport.teleport,
-            getMiaoShells: this.fetch.getMiaoShells,
-            openShare: this.navigator.postMessage,
-            openUserProfileDialog: (wrapper, userId)=>{
-                this.protocol.server.message.openUserProfileDialog({
-                    playerId: wrapper.id,
-                    userId: userId + ''
-                });
-            },
-            querySocial: (socialType, userId)=>{
-                return this.fetch.querySocial(socialType, userId);
-            },
-            querySocialStatistic: (userId)=>{
-                return this.fetch.querySocialStatistic(userId);
-            },
-            createTempChat: this.fetch.createTempChat,
-            destroyTempChat: this.fetch.destroyTempChat,
-            addTempChatPlayer: this.fetch.addTempChatPlayer,
-            removeTempChatPlayer: this.fetch.removeTempChatPlayer,
-            getTempChats: this.fetch.getTempChats,
-            getTempChatUsers: this.fetch.getTempChatUsers
+            setCameraYaw: this.setCameraYaw
         });
         this.api = createScriptAPI({
             scheduler: this.scheduler.scheduler,

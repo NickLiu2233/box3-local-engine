@@ -19,19 +19,10 @@ import { EditServer } from '../edit-server';
 import { clearTimeout } from 'timers';
 import { getConfigSync } from '../../../config/server';
 import {
-  Channel,
-  OPCode,
-  ReceivedMsg,
-  ReceivedScriptShareDataMsg,
-} from '@box-local/schema/chat/chat-schema';
-import {
   ExtraProjectInfo,
   ExtraProjectInfoSchema,
-  ScriptAssetSetsSchema,
 } from '@box-local/schema/project/hot-schema';
 import { AssetType } from '@box-local/schema/project/project-rda';
-import { apis } from '../../apis';
-import { mapRemoteScriptToLocal } from '../../utils/map-scripts';
 
 const HEART_BEAT_DURATION = 30 * 1000;
 const AUTO_SAVE_DURATION = 120 * 1000;
@@ -105,14 +96,16 @@ export class CodeEditorServerController {
           ) {
             return;
           }
-          const { contentId, groupId } = getConfigSync();
-          if (groupId) {
-            apis.createra
-              .createUsingPost({ id: fileId, mapId: contentId })
-              .catch((err) => {
-                this._state.logger.log(`copy file error ${err}`);
-              });
+          const source = this._getFileByFileId(fileId);
+          if (!source) return;
+          let suffix = 1;
+          let name = source.name.replace(/\.js$/, '') + `_copy_${suffix}.js`;
+          const names = new Set(this._fileList().map((file) => file.name));
+          while (names.has(name)) {
+            name = source.name.replace(/\.js$/, '') + `_copy_${++suffix}.js`;
           }
+          const copy = this._addFile(name, '', source.text, source.isClient);
+          if (copy) client.message.addFileSuccess(copy.fileId);
         },
         // game没用到
         renameFile: (client, { name, fileId }) => {
@@ -122,31 +115,16 @@ export class CodeEditorServerController {
           ) {
             return;
           }
-          const { contentId, groupId } = getConfigSync();
-          if (groupId) {
-            apis.createra
-              .renameUsingPost({
-                id: fileId,
-                mapId: contentId,
-                newName: name,
-              })
-              .catch((err) => {
-                this._state.logger.error(
-                  `rename file err ${JSON.stringify(err)}`,
-                );
-              });
-          } else {
-            const fileList = this._fileList();
-            for (let i = 0; i < fileList.length; i++) {
-              const file = fileList[i];
-              if (file.name === name) {
-                return;
-              }
+          const fileList = this._fileList();
+          for (let i = 0; i < fileList.length; i++) {
+            const file = fileList[i];
+            if (file.name === name) {
+              return;
             }
-            this.fileDictReplica.dispatch(
-              this.fileDictReplica.action().update(fileId).name(name),
-            );
           }
+          this.fileDictReplica.dispatch(
+            this.fileDictReplica.action().update(fileId).name(name),
+          );
         },
         // TODO: 本次版本默认没有客户端代码添加删除恢复的功能
         recoverFile: (client, info) => {
@@ -242,21 +220,7 @@ export class CodeEditorServerController {
           ) {
             return;
           }
-          const { groupId, contentId } = getConfigSync();
-
-          // 扩展地图需要走后端
-          if (groupId) {
-            apis.createra
-              .deleteUsingDelete({
-                mapId: contentId,
-                id: fileId,
-              })
-              .catch((err) => {
-                this._state.logger.error(`remove file err ${err}`);
-              });
-          } else {
-            this._removeFile(fileId);
-          }
+          this._removeFile(fileId);
         },
         syncCursorName: (client, name) => {
           if (
@@ -285,47 +249,7 @@ export class CodeEditorServerController {
     });
   }
 
-  public initSocketMsg = () => {
-    if (!getConfigSync().groupId) {
-      return;
-    }
-
-    // 订阅socket
-    const serverConfig = getConfigSync();
-    this._state.game.webSocket.subscribe(
-      JSON.stringify({
-        opcode: OPCode.Subscribe,
-        channel: Channel.SCRIPT_SHARE,
-        data: {
-          targetId: serverConfig.contentId, // 地图ID
-        },
-      }),
-    );
-
-    // 接收代码共享message
-    this._state.game.webSocket.onMessage((data) => {
-      const message: ReceivedScriptShareDataMsg = JSON.parse(data);
-      // 接收的消息非server需要订阅的类型直接返回
-      if (
-        message.opcode !== OPCode.Dispatch ||
-        message.event !== 'SCRIPT_LIST'
-      ) {
-        return;
-      }
-      const scriptAssets = ScriptAssetSetsSchema.clone(
-        ScriptAssetSetsSchema.identity,
-      );
-      const preExtraScriptAssets =
-        this._state.replica.extraProjectInfo.scriptAssets;
-      this._state.logger.log(
-        `webscoket: Received ${message.data.clientScripts.length} clientScripts and ${message.data.serverScripts.length} serverScripts`,
-      );
-      mapRemoteScriptToLocal(scriptAssets, message.data);
-      this._expireTimer();
-      this.resyncFiles(scriptAssets, preExtraScriptAssets);
-      this._editServer.replica._checkAndSetExtraProject();
-    });
-  };
+  public initSocketMsg = () => {};
 
   private _updateFileTextAndSize(fileId: string, hash) {
     this._retrieve(hash)
@@ -359,33 +283,7 @@ export class CodeEditorServerController {
 
   // 保存共享文件
   private async _saveFile(fileId: string) {
-    const serverConfig = getConfigSync();
-    const { isShare, text, name } = this._getFileByFileId(fileId);
-    if (!isShare) {
-      return;
-    }
-    const data = Buffer.from(text);
-    const hash = await this._contentServer.store(data);
-    if (!hash) {
-      throw new Error('error savign script');
-    }
-    try {
-      await apis.createra.batchUpdateHashUsingPost({
-        mapId: serverConfig.contentId,
-        scripts: [
-          {
-            hash,
-            id: fileId,
-          },
-        ],
-      });
-      this._state.logger.log(`script: save file success, name is ${name}`);
-    } catch (err) {
-      this._state.logger.error(
-        `save share file err ${err}, filename is ${name}, hash is ${hash}`,
-      );
-    }
-    this._unLockFile(fileId);
+    if (!this._getFileByFileId(fileId)?.isShare) return;
     this._clearAutoSaveTimer(fileId);
   }
 
@@ -471,7 +369,7 @@ export class CodeEditorServerController {
       name: name,
       order: order !== undefined ? order : highest_order + 1,
       isClient,
-      isShare,
+      isShare: false,
       lockedMapTitle,
       isUploading: false,
       size: size || 0,
@@ -505,44 +403,7 @@ export class CodeEditorServerController {
     return cursor;
   }
 
-  private async _lockFile(fileId: string) {
-    const serverConfig = getConfigSync();
-    const fileName = this._editorState.fileDict[fileId].name;
-    if (fileName) {
-      try {
-        // 调接口锁
-        await apis.createra.lockUsingPost({
-          mapId: serverConfig.contentId,
-          id: fileId,
-        });
-      } catch (err) {
-        this._state.logger.error(`lock file error: ${err}`);
-        return;
-      }
-
-      const _heartbeat = async () => {
-        clearTimeout(this._heartBeatTimer[fileId]);
-        try {
-          await apis.createra.heartbeatUsingPost({
-            mapId: serverConfig.contentId,
-            id: fileId,
-          });
-        } catch (err) {
-          this._state.logger.error(`heartbeat error: ${err}`);
-          return;
-        }
-
-        this._heartBeatTimer[fileId] = setTimeout(
-          _heartbeat,
-          HEART_BEAT_DURATION,
-        );
-      };
-      this._heartBeatTimer[fileId] = setTimeout(
-        _heartbeat,
-        HEART_BEAT_DURATION,
-      );
-    }
-  }
+  private async _lockFile(_fileId: string) {}
 
   private _clearHeartBeatTimer(fileId: string) {
     const timer = this._heartBeatTimer[fileId];
@@ -577,21 +438,6 @@ export class CodeEditorServerController {
   }
 
   private async _unLockFile(fileId: string) {
-    const serverConfig = getConfigSync();
-    const fileName = this._editorState.fileDict[fileId].name;
-    if (fileName) {
-      try {
-        await apis.createra.unlockUsingPost({
-          mapId: serverConfig.contentId,
-          id: fileId,
-        });
-      } catch (err) {
-        this._state.logger.error(
-          `unlock file err ${err}, filename is ${fileName}`,
-        );
-        return;
-      }
-    }
     this._clearHeartBeatTimer(fileId);
   }
 

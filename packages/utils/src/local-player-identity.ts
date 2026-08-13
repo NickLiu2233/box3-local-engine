@@ -97,5 +97,5 @@ export function createPlayerUserKey(subjectId: string, secret: string) {
   if (!subjectPattern.test(subjectId) || !secret) return '';
   return encodeBase64URL(
     createHmac('sha256', secret).update(`player-subject:${subjectId}`).digest(),
-  ).slice(0, 22);
+  ).slice(0, 16);
 }

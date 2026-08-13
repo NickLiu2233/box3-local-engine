@@ -16,7 +16,6 @@ import { getConfigSync } from '../config/server';
 import { clearTimeout } from 'timers';
 import { ProjectAction } from '@box-local/schema/replica/replica-schema';
 import {
-  GroupProjectMetaData,
   GroupProjectStateSchema,
   GroupProjectStore,
   GroupProjectStoreSchema,
@@ -25,8 +24,6 @@ import { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-pro
 import { GroupAssetsRDA, ProjectRDA } from '@box-local/schema/project/project-rda';
 import type { MuRDATypes } from '@box-local/mudb/rda';
 import { UITreeRDA } from '@box-local/schema/project/ui-rda/defs';
-import { apis } from './apis';
-import type { ModeType } from '../config';
 import { BuildSystemAPI } from '@box-local/build-system/type';
 import { TEMP_OSS_CDN_PATH } from '@box-local/content-server';
 import { MuReadStream } from '@box-local/mudb/stream';
@@ -107,17 +104,7 @@ export async function getGroupProjectBySocket(spec: {
             ),
           );
         } else {
-          // 通过接口请求容器state
-          logger.info(`STATE_SHARE: init state use http`);
-
-          const data = await getGroupProjectMetaData({
-            mapId: serverConfig.contentId + '',
-            mode: serverConfig.mode,
-          });
-          resolve({
-            pendingActions,
-            metaData: data,
-          });
+          resolve({ pendingActions });
           backendSocket.removeHandler(handler);
         }
         return;
@@ -221,47 +208,6 @@ export function generateEngineReadyMsg() {
 /**
  * 通过后端接口获取metaData，会把version以外的字段合并存储到hashes字典中
  */
-export const getGroupProjectMetaData = async (param: {
-  mapId: string;
-  mode: string;
-}): Promise<RetrievedGroupProjectMetaData> => {
-  const data = await apis.groupProject.getProjectUsingGet({
-    mapId: param.mapId,
-    mode: param.mode,
-  });
-
-  const { version, ...hashes } = data;
-
-  return {
-    version,
-    hashes,
-  };
-};
-
-type StoreSpec = {
-  logger: Logger;
-  groupProjectMetaData: GroupProjectMetaData;
-};
-
-export async function storeGroupProjectMetaData({
-  logger,
-  groupProjectMetaData,
-}: StoreSpec) {
-  const mapId = getConfigSync().contentId.toString();
-
-  try {
-    await apis.groupProject.saveProjectUsingPost({
-      mapId,
-      project: {
-        version: groupProjectMetaData.version,
-        ...groupProjectMetaData.hashes,
-      },
-    });
-    logger.info(`store group project success`);
-  } catch (err) {
-    logger.error(`store group project error ${err}`);
-  }
-}
 
 /**
  * 过滤出GroupProject相关的action
@@ -318,43 +264,8 @@ export function serializeGroupProjectStoreByProject(
 }
 
 /**
- * 后端migrate拼接的pictureAssets版本
- * 这个版本号不出意外不会变
- */
-const PICTURE_ASSETS_VERSION = '0.3.27';
-
-/**
  * 获取play模式存储在后端的数据，构造成groupProject数据格式返回
  * 用于play模式的数据兼容
  * @param param
  * @returns
  */
-export async function getPlayDataFromBackend(param: {
-  mapId: string;
-  mode: ModeType;
-  groupProjectMetaData?: RetrievedGroupProjectMetaData;
-}): Promise<RetrievedGroupProjectMetaData[] | undefined> {
-  if (param.mode === 'edit' || !param.groupProjectMetaData) {
-    return;
-  }
-
-  // 当前group数据没有pictureAssets字段，请求获取后端数据
-  if (!param.groupProjectMetaData.hashes.pictureAssets) {
-    const pictureAssetsHash =
-      await apis.groupProject.playPictureMigrationUsingGet({
-        mapId: param.mapId,
-      });
-    if (pictureAssetsHash) {
-      return [
-        {
-          version: PICTURE_ASSETS_VERSION,
-          hashes: {
-            pictureAssets: pictureAssetsHash,
-          },
-        },
-      ];
-    }
-  }
-
-  return;
-}

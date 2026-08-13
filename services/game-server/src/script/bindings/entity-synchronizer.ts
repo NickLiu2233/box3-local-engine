@@ -24,9 +24,7 @@ import {
   GamePlayerKeyframe,
   NavigatorEventType,
   Sound,
-  SocialType,
   GameKeyBoardEvent,
-  SocialStatisticType,
 } from '@box-local/schema/api/js/api';
 import {
   coerceObject,
@@ -894,26 +892,6 @@ export class ScriptEntitySync {
     public setCameraYaw: (playerId: number, value: number) => void,
     public physicsSelectors: ScriptPhysicsSelectorManager,
     public keyframeParser: ScriptParserAPI,
-    public openMarketplace: (
-      entity: ScriptEntityWrapper,
-      productIds: number[],
-    ) => void,
-    public getMiaoShells: (playerId: number) => Promise<number>,
-    public openShare: (
-      entity: ScriptEntityWrapper,
-      content: PostMessageScriptType,
-    ) => void,
-    public openUserProfileDialog: (
-      entity: ScriptEntityWrapper,
-      userId: number,
-    ) => void,
-    public querySocial: (
-      socialType: SocialType,
-      userId: string,
-    ) => Promise<number[]>,
-    public querySocialStatistic: (
-      userId: string,
-    ) => Promise<SocialStatisticType>,
   ) {
     this.animations = new ScriptAnimationManager(
       ENTITY_ANIM_BINDING,
@@ -1302,31 +1280,6 @@ export class ScriptEntitySync {
           (content: PostMessageScriptType) =>
             this.postMessage(wrapper, content),
           (type, listener) => this.addEventListener(wrapper, type, listener),
-          (value) => this.openMarketplace(wrapper, value),
-          () => this.getMiaoShells(wrapper.id),
-          (content) =>
-            this.openShare(wrapper, {
-              type: 'share',
-              value: { text: content },
-              isOld: true,
-            }),
-          (userId) => {
-            this.openUserProfileDialog(wrapper, userId);
-          },
-          (socialType: SocialType) => {
-            if (
-              ![
-                SocialType.FOLLOWERS,
-                SocialType.FOLLOWING,
-                SocialType.FRIENDS,
-              ].includes(socialType)
-            ) {
-              console.warn('invalid arguments player.querySocial()');
-              return Promise.resolve([]);
-            }
-            return this.querySocial(socialType, userId);
-          },
-          () => this.querySocialStatistic(userId),
           wrapper.onKeyDown.channel,
           wrapper.onKeyUp.channel,
         );

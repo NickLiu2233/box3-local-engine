@@ -20,13 +20,19 @@ export function createLocalContentWithVoxa(
     );
     return new Uint8Array(response.data);
   },
+  bundledContentServer?: ContentServer,
 ): ContentServer {
   return {
-    init: () => localContentServer.init(),
+    init: async () => {
+      await localContentServer.init();
+      await bundledContentServer?.init();
+    },
     store: (content, options) => localContentServer.store(content, options),
     retrieve: async (hash, options) => {
       const local = await localContentServer.retrieve(hash, options);
-      if (local || !voxaURL) return local;
+      if (local) return local;
+      const bundled = await bundledContentServer?.retrieve(hash, options);
+      if (bundled || !voxaURL) return bundled;
       try {
         return await retrieveVoxaBlob(hash);
       } catch (error) {

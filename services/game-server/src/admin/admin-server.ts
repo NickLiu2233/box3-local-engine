@@ -17,7 +17,6 @@ import {
 } from '@box-local/schema/player/player-schema';
 import util from 'util';
 import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
-import { apis } from '../apis';
 import type { EditServerState } from '../edit/edit-server-schema';
 
 export class GameAdminServer {
@@ -279,42 +278,12 @@ export class GameAdminServer {
             process.exit(0);
             break;
           case 'restartContainer':
-            this.logger.log(
-              'restart container called from ' + client.sessionId,
-            );
-            apis.createra
-              .containerRestart({ containerName: this.containerName })
-              .catch((e) => {
-                this._sendEvent(client.sessionId, {
-                  type: 'log',
-                  data: 'ERROR: ' + e.toString(),
-                });
-                this.logger.error('restart container error');
-                this.logger.error(e.toString());
-              });
+            this.logger.log('restart requested from ' + client.sessionId);
+            process.exit(0);
             break;
           case 'updateHash':
-            if (this.containerName.startsWith('edit-')) {
-              apis.createra
-                .updateMapHash({
-                  mapId: this.contentId.toString(),
-                  hash: message.data as string,
-                })
-                .then(() => {
-                  this.logger.log(
-                    'exit process to restart to enforce the new hash',
-                  );
-                  process.exit(0);
-                })
-                .catch((e) => {
-                  this._sendEvent(client.sessionId, {
-                    type: 'log',
-                    data: 'ERROR: ' + e,
-                  });
-                  this.logger.error('reload project error');
-                  this.logger.error(e);
-                });
-            }
+            this.logger.warn('updateHash is not supported by the local engine');
+            break;
         }
       },
     });

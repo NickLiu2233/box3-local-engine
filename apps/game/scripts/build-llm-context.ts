@@ -5,7 +5,10 @@ import * as path from 'path';
 // import { rimrafSync } from 'rimraf';
 
 const TEMP_DIR = path.join(__dirname, 'assets/llm_temp');
-const OUTPUT_FILE = path.join(__dirname, '../llm-context.d.ts');
+const OUTPUT_FILE = path.join(
+  __dirname,
+  '../../../services/game-server/src/edit/ai/llm-context.d.ts',
+);
 
 // Ensure temp dir is clean
 // if (fs.existsSync(TEMP_DIR)) {
@@ -99,4 +102,4 @@ function concatFiles(outputFile: string) {
 concatFiles(OUTPUT_FILE);
 
 // 3. Cleanup
-// rimrafSync(TEMP_DIR);
+fs.rmSync(TEMP_DIR, { recursive: true, force: true });

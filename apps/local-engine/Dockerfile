@@ -22,7 +22,8 @@ FROM source-base AS engine-build-base
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile \
       --filter @box-local/game... \
-      --filter @box-local/game-server...
+      --filter @box-local/game-server... \
+      --filter @box-local/local-engine...
 
 FROM engine-build-base AS creator-build
 

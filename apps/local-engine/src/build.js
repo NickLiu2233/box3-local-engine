@@ -197,15 +197,6 @@ function cleanStandaloneArtifacts() {
 }
 
 function main() {
-  if (
-    !fs.existsSync(generatedServerAsset) ||
-    !fs.existsSync(generatedClientAsset)
-  ) {
-    run('Prepare local assets', packageRoot, [
-      path.join(__dirname, 'prepare-assets.js'),
-    ])
-  }
-
   // Always build the browser app from a clean directory. Otherwise switching
   // from a creator build to a player build can leave Monaco/editor assets as
   // unreferenced files in the distributable `.next/static` directory.
@@ -235,6 +226,13 @@ function main() {
   run('Normalize browser client API declarations', gameRoot, [
     'scripts/fix-declaration.js',
     './scripts/assets/client_api/**/*.d.ts',
+  ])
+
+  // API declarations are content-addressed runtime assets. Rebuild them after
+  // declaration generation on every product build; otherwise API_RES can keep
+  // pointing at an obsolete blob even though the source .d.ts files changed.
+  run('Prepare local assets', packageRoot, [
+    path.join(__dirname, 'prepare-assets.js'),
   ])
 
   run('Build optimized browser application', gameRoot, [

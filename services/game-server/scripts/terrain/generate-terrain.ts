@@ -13,7 +13,6 @@ import { storeProjectJSON } from '@box-local/build-system/project/project-serial
 import { saveVoxelData } from '../../src/voxel/voxel-server';
 import { BuildSystem } from '@box-local/build-system/build-system';
 import { MockBuildCache } from '@box-local/build-system/build-cache-mock';
-import { apis, initApis } from '../../src/apis';
 import { rootLogger } from '../../src/utils/logger';
 
 function mapVoxels(outVoxels: VoxelView, table: number[]) {
@@ -81,7 +80,7 @@ async function generateTerrain(size?: [x: number, y: number, z: number]) {
   console.log('creating content server...');
   const logger = rootLogger.child({ caller: 'generate-terrain' });
   const config = await getConfig();
-  initApis(config);
+  let nextUid = 1;
   const contentServer = new ContentSplitter(
     new CachingContentServer(
       logger,
@@ -107,7 +106,8 @@ async function generateTerrain(size?: [x: number, y: number, z: number]) {
     buildCache,
     contentServer,
     ossContentServer,
-    apis.groupProject.nextUidListUsingGet,
+    async ({ num }) =>
+      Array.from({ length: num }, () => `local-${nextUid++}`),
     logger,
     false,
   );

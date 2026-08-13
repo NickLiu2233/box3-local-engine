@@ -14,7 +14,6 @@ import {
   StorageClientSetSchema,
 } from './storage-schema';
 import { Semaphore } from '@box-local/utils/semaphore';
-import { JavaDataStorage } from './java-storage-api';
 import { PostgresDataStorage } from './postgres-data-storage';
 import { LocalDataStorage } from './local-data-storage';
 import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/storage';
@@ -62,7 +61,7 @@ export class StorageController {
         lockTimeoutMs: config.dataStorageLockTimeoutMs,
         logger: this.state.logger,
       });
-    } else if (config.method === 'local') {
+    } else {
       this.dbServer = new LocalDataStorage({
         storagePath: config.dataStoragePath || config.storagePath,
         projectNamespace,
@@ -71,8 +70,6 @@ export class StorageController {
         lockTimeoutMs: config.dataStorageLockTimeoutMs,
         logger: this.state.logger,
       });
-    } else {
-      this.dbServer = new JavaDataStorage(this.state.logger);
     }
     this._dbServerReady = this.dbServer.connect();
     this._limiters = new StorageLimiters();

@@ -61,7 +61,6 @@ import {
 } from '../sound/server-sound-state';
 import crypto from 'crypto';
 import { ModelServer } from '../mesh/server-model-controller';
-import { apis } from '../apis';
 import { getConfigSync } from '../../config/server';
 import { PlayerServer } from './player-server';
 import { PlayerEventSchema } from '@box-local/schema/events/player-event-schema';
@@ -472,31 +471,6 @@ export function handleServerPlayerConnections(
     state.logger.info(
       `created player info for connection ${connection.sessionId}.  entity id = ${id}. player name = ${playerDisplay.name}`,
     );
-    if (getConfigSync().method !== 'local') {
-      // 通知后端用户上线
-      const userId = serverPlayer.userId || connection.sessionData.fingerPrint;
-      state.logger.info(
-        `report user online, userId:${userId} fingerPrint: ${connection.sessionData.fingerPrint}`,
-      );
-      apis.createra
-        .reportUserOnline({
-          ip: connection.sessionData.ipAddress,
-          guest: !serverPlayer.userId,
-          userId,
-          mapId: state.settings.contentId.toString(),
-          mode: state.settings.mode,
-          serverId: state.settings.serverId,
-          serverName: state.settings.containerName,
-        })
-        .then(() => {
-          state.logger.info(`report user online success: ${userId}`);
-        })
-        .catch((e) => {
-          state.logger.info(
-            `report user online error: ${userId} ${JSON.stringify(e)}`,
-          );
-        });
-    }
     const ev = PlayerEventSchema.alloc();
     ev.id = id;
     ev.position = body.getPosition();
@@ -540,32 +514,6 @@ export function handleServerPlayerDisconnections(
       }
       // destroy entity
       destroyEntityId(state, connection.id);
-      // 通知后端用户离线
-      if (player && getConfigSync().method !== 'local') {
-        state.logger.info(
-          `report user offline: ${
-            player.userId || connection.sessionData.fingerPrint
-          }`,
-        );
-        apis.createra
-          .reportUserOffline({
-            guest: !player.userId,
-            ip: connection.sessionData.ipAddress,
-            userId: player.userId || connection.sessionData.fingerPrint,
-            mapId: state.settings.contentId.toString(),
-            mode: state.settings.mode,
-            serverId: state.settings.serverId,
-            serverName: state.settings.containerName,
-          })
-          .catch((e) => {
-            state.logger.info(
-              `report user offline error: ${player.userId} ${JSON.stringify(
-                e,
-              )}`,
-            );
-          });
-      }
-
       state.logger.info(
         `client ${connection.sessionId} disconnected.  destroyed entity ${connection.id}`,
       );

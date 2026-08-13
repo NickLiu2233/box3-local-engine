@@ -12,8 +12,6 @@ import {
 import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
 import { Vec3Schema } from '@box-local/schema/utils/math-schema';
 import { GameClientState } from '../game-client-schema';
-import { apis } from 'src/apis/api-java';
-import { clientConfig } from 'src/config/client';
 import type { ParsedGIF } from '../gl/gif-parser';
 
 export const TextOverlaySchema = new MuStruct({
@@ -140,25 +138,5 @@ export const OverlayStateSchema = new MuStruct({
 });
 
 export async function loadStickerPackList(state: GameClientState) {
-  if (clientConfig.isLocalGameServer) {
-    return;
-  }
-
-  const res = await apis.createra.getAllStickers({
-    mapId: clientConfig.mapInfo.contentId,
-  });
-  if (!res) {
-    return;
-  }
-
-  res.forEach((pack) => {
-    state.overlays.stickerPackList[pack.themeId] =
-      pack.stickers.reduce<StickerPack>((prev, next) => {
-        prev[next.stickerId] = {
-          id: next.stickerId,
-          url: next.stickerUrl,
-        };
-        return prev;
-      }, {});
-  });
+  state.overlays.stickerPackList = {};
 }

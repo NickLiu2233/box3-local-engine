@@ -89,16 +89,15 @@ import {
 import { RTCServer } from '../rtc/rtc-server';
 import { NavigatorServer } from '../navigator/navigator-server';
 import { GUIServer } from '../gui/gui-server';
+import { MarketProtocol } from '@box-local/schema/market/market-protocol';
+import { TeleportProtocol } from '@box-local/schema/teleport/teleport-protocol';
 import { InputServer } from '../input/server-input-controller';
 import {
   HashType,
   HotProject,
   MotionListSchema,
 } from '@box-local/schema/project/hot-schema';
-import { MarketServer } from '../market/market-server';
 import { getConfigSync } from '../../config/server';
-import { TeleportServer } from '../teleport/teleport-server';
-import { ScriptFetchServer } from './script-fetch-server';
 import { RemoteChannelServer } from '../remote-channel/channel-server';
 import { PlayerServer } from '../player/player-server';
 import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
@@ -134,9 +133,8 @@ export class ScriptHost {
   public rtc: RTCServer;
   public navigator: NavigatorServer;
   public gui: GUIServer;
-  public market: MarketServer;
-  public teleport: TeleportServer;
-  public fetch: ScriptFetchServer;
+  private marketProtocol: MuServerProtocol<typeof MarketProtocol>;
+  private teleportProtocol: MuServerProtocol<typeof TeleportProtocol>;
   public remoteChannel: RemoteChannelServer;
   public input: InputServer;
   public player: PlayerServer;
@@ -615,13 +613,6 @@ export class ScriptHost {
           this.input.setCameraYaw(playerId, value);
         },
 
-        openUserProfileDialog: (client, { playerId, userId }) => {
-          const conn = getById(this._state.connectionSet, playerId);
-          if (conn) {
-            const client = this.player.protocol.clients[conn.sessionId];
-            client.message.openUserProfileDialog({ userId });
-          }
-        },
       },
       connect: (client) => {
         this._state.perf.scriptConnects += 1;
@@ -815,20 +806,13 @@ export class ScriptHost {
       server: spec.netServer,
       scriptServer: this.muServer,
     });
-    this.market = new MarketServer({
-      server: spec.netServer,
-      scriptServer: this.muServer,
-      state: spec.state,
-    });
-    this.teleport = new TeleportServer({
-      server: spec.netServer,
-      scriptServer: this.muServer,
-      state: spec.state,
-    });
-    this.fetch = new ScriptFetchServer({
-      scriptServer: this.muServer,
-      state: spec.state,
-    });
+    // Keep the engine wire protocol order aligned with GameClient. These are
+    // transport-only slots: the local engine exposes no marketplace or
+    // cross-map teleport script API and performs no platform request.
+    this.marketProtocol = spec.netServer.protocol(MarketProtocol);
+    this.marketProtocol.configure({ message: {} });
+    this.teleportProtocol = spec.netServer.protocol(TeleportProtocol);
+    this.teleportProtocol.configure({ message: {} });
     this.remoteChannel = new RemoteChannelServer({
       server: spec.netServer,
       scriptServer: this.muServer,
@@ -1028,9 +1012,6 @@ export class ScriptHost {
 
     // reset gui
     await this.gui.reset();
-
-    // reset market server
-    await this.market.reset();
 
     // wait for state to synchronize if we are stuck here
     while (this._state.sync) {

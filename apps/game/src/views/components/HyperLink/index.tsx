@@ -4,7 +4,6 @@ import { Toast } from '@box-local/box-design';
 import { URL } from '@box-local/schema/api/js/url';
 import { InputPauseFlags } from '@box-local/schema/input/input-schema';
 
-import { apis } from 'src/apis/api-java';
 import { HrefClient } from 'src/engine/href/href-client';
 import { HyperLink as HyperLinkType } from 'src/engine/href/href-client-state';
 import { messenger } from 'src/messenger';
@@ -52,24 +51,12 @@ export const HyperLink = React.memo((props: Props) => {
         const match = getMatchRoute(props.hyperLink.href);
         if (isInternalURL(props.hyperLink.href) && match) {
           const pathname = new URL(props.hyperLink.href).pathname;
-          const id = pathname.split('/')[2];
           replaceDomain(window.location.href, props.hyperLink.href);
           switch (match) {
             case '/p': {
-              const fetchData = async () => {
-                try {
-                  const result = await apis.createra.getGameInfo({
-                    containerName: id,
-                    mode: 'play',
-                  });
-                  setTips(intlMessage('teleportTo', { mapName: result.title }));
-                  setLoading(false);
-                } catch (error) {
-                  catchEvent();
-                }
-              };
               setConfirmText(ConfirmType.teleportToMap);
-              fetchData();
+              setTips(intlMessage('normalRequest'));
+              setLoading(false);
               break;
             }
             default: {

@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig, AxiosRequestHeaders } from 'axios';
 import { HttpClient } from '../http-client';
 import { RequestParams } from '../interface';
-import { AddTempChatUserParam, BatchUpdateScriptHashParam, CollaborationMigrationParam, CreateScriptParam, CreateTempChatParam, DeleteTempChatParam, LockHeartbeatParam, LockScriptParam, RemoveTempChatUserParam, ScriptRenameParam, ShareScriptParam, UnlockScriptParam, UnshareScriptParam } from './data-contracts';
+import { BatchUpdateScriptHashParam, CollaborationMigrationParam, CreateScriptParam, LockHeartbeatParam, LockScriptParam, ScriptRenameParam, ShareScriptParam, UnlockScriptParam, UnshareScriptParam } from './data-contracts';
 export type LocaleFullType = 'en_US' | 'zh_CN';
 export interface FrontEndDataFormatUserInfoVO {
     /**
@@ -479,70 +479,6 @@ export declare class Createra<SecurityDataType = unknown> extends HttpClient<Sec
     /**
      * No description
      *
-     * @tags 传送
-     * @name containerTeleport
-     * @summary 传送
-     * @request POST:/container/teleport
-     * @secure
-     */
-    containerTeleport: (params: {
-        mapId: string;
-        targetMapId: string;
-        teamId: string;
-        /**
-         * 指定服务器id
-         * - 服务器id需要是有效的id（需要是后端提供的id，比如曾经创建过的服务器id）
-         */
-        serverId?: string;
-        /**
-         * 控制传送目标服务器的准入用户
-         * teleport api支持入参serverId后，引擎不会再传该参数了
-         */
-        userIds?: string[];
-    }, headers?: AxiosRequestHeaders) => Promise<{
-        serverId: string;
-        playHash: string;
-    }>;
-    /**
-     * No description
-     *
-     * @tags 获取喵贝壳
-     * @name getMiaoShells
-     * @summary 获取喵贝壳
-     * @request POST:/reward/map/user
-     * @secure
-     */
-    getMiaoShells: (query: {
-        mapId: string;
-        userId: string;
-    }, headers?: AxiosRequestHeaders) => Promise<string>;
-    /**
-     * @description type: 0关注 1粉丝 2好友。返回用户id列表
-     *
-     * @tags 引擎后端相关
-     * @name GetSocialRelationUsingGet
-     * @summary 用户社交关系查询
-     * @request GET:/engine/social/relation
-     * @secure
-     */
-    getSocialRelationUsingGet: (query: {
-        type: number;
-        userId: number;
-    }, params?: RequestParams) => Promise<number[]>;
-    /**
-     *
-     * @tags 引擎后端相关
-     * @name GetSocialRelationInfoUsingGet
-     * @summary 获取用户好友信息
-     * @request GET:/engine/follow/relation-info
-     * @secure
-     */
-    getSocialRelationInfoUsingGet: (query: {
-        userId: number;
-    }, params?: RequestParams) => Promise<import("./data-contracts").RelationInfoVo>;
-    /**
-     * No description
-     *
      * @tags 地图用户下线通知
      * @name reportUserOffline
      * @summary 地图用户下线通知
@@ -611,71 +547,6 @@ export declare class Createra<SecurityDataType = unknown> extends HttpClient<Sec
      * @secure
      */
     collaborationMigrationUsingPost: (param: CollaborationMigrationParam, params?: RequestParams) => Promise<boolean>;
-    /**
-     * No description
-     *
-     * @tags 引擎后端相关
-     * @name CreateTempChatUsingPost
-     * @summary 创建临时聊天
-     * @request POST:/engine/chat/temp
-     * @secure
-     */
-    createTempChatUsingPost: (param: CreateTempChatParam, params?: RequestParams) => Promise<string>;
-    /**
-     * No description
-     *
-     * @tags 引擎后端相关
-     * @name DeleteTempChatUsingDelete
-     * @summary 删除临时聊天
-     * @request DELETE:/engine/chat/temp
-     * @secure
-     */
-    deleteTempChatUsingDelete: (param: DeleteTempChatParam, params?: RequestParams) => Promise<boolean>;
-    /**
-     * No description
-     *
-     * @tags 引擎后端相关
-     * @name AddTempChatUserUsingPost
-     * @summary 新增临时聊天用户
-     * @request POST:/engine/chat/temp/add-user
-     * @secure
-     */
-    addTempChatUserUsingPost: (param: AddTempChatUserParam, params?: RequestParams) => Promise<string[]>;
-    /**
-     * No description
-     *
-     * @tags 引擎后端相关
-     * @name TempChatIdsUsingGet
-     * @summary 查询地图下所有临时聊天ID列表
-     * @request GET:/engine/chat/temp/ids
-     * @secure
-     */
-    tempChatIdsUsingGet: (query: {
-        mapId: number;
-        mode: string;
-    }, params?: RequestParams) => Promise<string[]>;
-    /**
-     * No description
-     *
-     * @tags 引擎后端相关
-     * @name RemoveTempChatUserUsingPost
-     * @summary 移除临时聊天用户
-     * @request POST:/engine/chat/temp/remove-user
-     * @secure
-     */
-    removeTempChatUserUsingPost: (param: RemoveTempChatUserParam, params?: RequestParams) => Promise<string[]>;
-    /**
-     * No description
-     *
-     * @tags 引擎后端相关
-     * @name GetTempChatUsersUsingGet
-     * @summary 根据ID查询聊天用户列表
-     * @request GET:/engine/chat/temp/users
-     * @secure
-     */
-    getTempChatUsersUsingGet: (query: {
-        tempChatId: string;
-    }, params?: RequestParams) => Promise<string[]>;
     /**
      * No description
      *

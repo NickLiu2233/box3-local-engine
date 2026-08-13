@@ -2,7 +2,6 @@ import { rootLogger, setRootLogLevel } from './utils/logger'; // Logger 需要�
 
 import { argv } from '../config';
 import { getConfig } from '../config/server';
-import { apis, initApis } from './apis';
 import { startServer } from './entry';
 
 rootLogger.info('Start Game Server.');
@@ -79,7 +78,6 @@ async function go() {
         : 'remote',
     debug: serverConfig.debug,
   });
-  initApis(serverConfig);
   setRootLogLevel(serverConfig.LOG_LEVEL); // 拿到配置后更新 log level
 
   rootLogger.info('game server.  node' + process.version);
@@ -90,21 +88,5 @@ async function go() {
 go().catch(async (e) => {
   rootLogger.error('Error in launcher.');
   rootLogger.error(e);
-  const serverConfig = await getConfig();
-  if (serverConfig.method === 'local') {
-    process.exitCode = 1;
-    return;
-  }
-  initApis(serverConfig);
-  apis.createra
-    .containerDeleteByName({ containerName: serverConfig.containerName })
-    .then((res) => {
-      rootLogger.error(
-        `Delete container ${serverConfig.containerName} result: ${res}`,
-      );
-    })
-    .catch((e) => {
-      rootLogger.error(e, 'Delete container failed.');
-      process.exit(1);
-    });
+  process.exitCode = 1;
 });

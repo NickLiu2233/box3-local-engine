@@ -6,10 +6,17 @@ import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
 
 async function main() {
   const expected = Buffer.from('voxa-model-bytes');
+  const bundledRuntime = Buffer.from('bundled-block-info');
   const local = {
     init: async () => undefined,
     store: async () => 'QmStored',
     retrieve: async () => undefined,
+  };
+  const bundled = {
+    init: async () => undefined,
+    store: async () => 'QmSharedStored',
+    retrieve: async (hash: string) =>
+      hash === 'QmBundledRuntime' ? bundledRuntime : undefined,
   };
   const logger = { debug: () => undefined };
   let requestedHash = '';
@@ -21,7 +28,19 @@ async function main() {
       requestedHash = hash;
       return expected;
     },
+    bundled,
   );
+
+  assert.deepEqual(
+    Buffer.from(await content.retrieve('QmBundledRuntime') || []),
+    bundledRuntime,
+  );
+  assert.equal(
+    requestedHash,
+    '',
+    'bundled runtime content must be read before the remote VOXA fallback',
+  );
+  console.log('PASS: project content reads fall back to bundled runtime blobs');
 
   assert.deepEqual(Buffer.from(await content.retrieve('QmMissingLocally') || []), expected);
   assert.equal(requestedHash, 'QmMissingLocally');

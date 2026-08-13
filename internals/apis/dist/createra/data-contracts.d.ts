@@ -8746,54 +8746,6 @@ export interface PageResponseResultValue {
     /** 数据 */
     rows: ResultValue[];
 }
-export interface CreateTempChatParam {
-    /**
-     * 地图ID
-     * @format int64
-     */
-    mapId: number;
-    /** 模式 */
-    mode: string;
-    /** 用户ID集合 */
-    userIds: string[];
-}
-export interface DeleteTempChatParam {
-    /**
-     * 地图ID
-     * @format int64
-     */
-    mapId: number;
-    /** 模式 */
-    mode: string;
-    /** 临时聊天ID */
-    tempChatIds: string[];
-}
-export interface AddTempChatUserParam {
-    /**
-     * 地图ID
-     * @format int64
-     */
-    mapId: number;
-    /** 模式 */
-    mode: string;
-    /** 临时聊天ID */
-    tempChatId: string;
-    /** 用户ID集合 */
-    userIds: string[];
-}
-export interface RemoveTempChatUserParam {
-    /**
-     * 地图ID
-     * @format int64
-     */
-    mapId: number;
-    /** 模式 */
-    mode: string;
-    /** 临时聊天ID */
-    tempChatId: string;
-    /** 用户ID集合 */
-    userIds: string[];
-}
 export interface AddPhotoParam {
     /** 地图ID */
     mapId: string;

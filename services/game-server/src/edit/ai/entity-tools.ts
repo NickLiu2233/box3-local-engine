@@ -12,8 +12,6 @@ import { tool } from 'ai';
 import { vec3 } from 'gl-matrix';
 import { Logger } from 'pino';
 import { z } from 'zod';
-import { getConfigSync } from '../../../config/server';
-import { apis } from '../../apis';
 import { CodeEditorServerController } from '../code-editor/code-editor-server-controller';
 import { EditServerState } from '../edit-server-schema';
 import { EditReplicaServer } from '../replica/replica-server';
@@ -190,47 +188,8 @@ export const createScriptTools = (
           }
         }
 
-        const { contentId, groupId } = getConfigSync();
-        let fileId: string;
-        let finalName = name;
-
-        if (groupId) {
-          try {
-            // ScriptType: Server = 0, Client = 1
-            const res = await apis.createra.createScriptUsingPost({
-              mapId: contentId,
-              type: isClient ? 1 : 0,
-            });
-            fileId = res.id;
-
-            if (res.name !== name) {
-              try {
-                await apis.createra.renameUsingPost({
-                  id: fileId,
-                  mapId: contentId,
-                  newName: name,
-                });
-                finalName = name;
-              } catch (e) {
-                logger.warn(
-                  { error: e },
-                  'Failed to rename script after creation',
-                );
-                finalName = res.name;
-              }
-            } else {
-              finalName = res.name;
-            }
-          } catch (e: unknown) {
-            return {
-              success: false,
-              error: `Failed to create script on backend: ${getErrorMessage(e)}`,
-            };
-          }
-        } else {
-          // Generate a random ID (similar to entity ID generation)
-          fileId = ((Math.random() * (1 << 30)) >>> 0).toString();
-        }
+        const fileId = ((Math.random() * (1 << 30)) >>> 0).toString();
+        const finalName = name;
 
         const fileList = Object.values(dict);
         const highestOrder = fileList.reduce((a, e) => Math.max(a, e.order), 0);
@@ -704,38 +663,12 @@ export const createEntityTools = (
           { query, limit, offset },
           '[AI Tool] Executing searchPublicModels',
         );
-        try {
-          // ModelType.Public is 1
-          const res = await apis.models.getEngineModelsUsingGet({
-            modelName: query,
-            modelType: 1, // ModelType.Public
-            limit,
-            offset,
-          });
-
-          console.log('searchPublicModels result:', res);
-
-          if (res && res.rows) {
-            const models = res.rows.map((m) => ({
-              id: m.modelId,
-              name: m.modelName,
-              description: m.modelDescription,
-            }));
-            return {
-              success: true,
-              models,
-              total: res.count,
-            };
-          }
-
-          return {
-            success: true,
-            models: [],
-            total: 0,
-          };
-        } catch (error: unknown) {
-          return { success: false, error: getErrorMessage(error) };
-        }
+        return {
+          success: true,
+          models: [],
+          total: 0,
+          message: 'Public model search is unavailable in the local engine.',
+        };
       },
     }),
 
@@ -790,12 +723,6 @@ export const createEntityTools = (
               modelFileHash: m.hash,
               modelName: key.replace(/^mesh\//, '').replace(/\.vb$/, ''),
             };
-          } else {
-            // Fallback to API
-            const res = await apis.model.getModelDetailUsingGet(modelId);
-            if (res) {
-              modelData = res;
-            }
           }
 
           if (!modelData) {

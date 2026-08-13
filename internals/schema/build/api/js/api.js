@@ -454,34 +454,6 @@ class GameWorld {
      */
     sound, 
     /**
-     * 地图组内传送能力，能够令 Player 被传送到其他地图中
-     */
-    teleport, 
-    /**
-     * 创建临时聊天频道
-     */
-    createTempChat, 
-    /**
-     * 销毁临时聊天频道
-     */
-    destroyTempChat, 
-    /**
-     * 往特定频道增加用户
-     */
-    addTempChatPlayer, 
-    /**
-     * 往特定频道删减用户
-     */
-    removeTempChatPlayer, 
-    /**
-     * 读取当前地图存在的临时聊天频道
-     */
-    getTempChats, 
-    /**
-     * 查询特定频道内用户
-     */
-    getTempChatUsers, 
-    /**
      * 当前服务器id
      */
     serverId) {
@@ -546,13 +518,6 @@ class GameWorld {
         this.onPlayerPurchaseSuccess = onPlayerPurchaseSuccess;
         this.nextPlayerPurchaseSuccess = nextPlayerPurchaseSuccess;
         this.sound = sound;
-        this.teleport = teleport;
-        this.createTempChat = createTempChat;
-        this.destroyTempChat = destroyTempChat;
-        this.addTempChatPlayer = addTempChatPlayer;
-        this.removeTempChatPlayer = removeTempChatPlayer;
-        this.getTempChats = getTempChats;
-        this.getTempChatUsers = getTempChatUsers;
         this.serverId = serverId;
         /**
          * The name of the project (read only)
@@ -1618,16 +1583,6 @@ class GamePlayer {
      */
     addEventListener, 
     /**
-     * open product purchase dialog
-     * @category web
-     */
-    openMarketplace, getMiaoShells, 
-    /**
-     * open share modal
-     * @category web
-     */
-    share, openUserProfileDialog, querySocial, querySocialStatistic, 
-    /**
      * Called whenever player press down or up
      * @category input
      */
@@ -1657,12 +1612,6 @@ class GamePlayer {
         this.kick = kick;
         this.setCameraPitch = setCameraPitch;
         this.setCameraYaw = setCameraYaw;
-        this.openMarketplace = openMarketplace;
-        this.getMiaoShells = getMiaoShells;
-        this.share = share;
-        this.openUserProfileDialog = openUserProfileDialog;
-        this.querySocial = querySocial;
-        this.querySocialStatistic = querySocialStatistic;
         this.onKeyDown = onKeyDown;
         this.onKeyUp = onKeyUp;
         this.gamepad = {

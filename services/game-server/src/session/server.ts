@@ -1,4 +1,3 @@
-import { SuitList } from '@box-local/apis';
 import { DB } from '@box-local/schema/backend/database-type';
 import { PlayerSkinHashSchema } from '@box-local/schema/player/player-schema';
 import {
@@ -11,8 +10,6 @@ import { GameSessionInterface } from '@box-local/schema/session/type';
 import { Logger } from '@box-local/utils/logger';
 import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
 import { createHash } from 'crypto';
-import { apis } from '../apis';
-import { AvatarBodyPartMap } from '../player/player-schema';
 import { createDefaultAvatarSkin } from '../player/default-avatar-skin';
 import type { RuntimeRedisStore } from '../redis/runtime-redis';
 
@@ -124,33 +121,7 @@ export class GameSession implements GameSessionInterface {
     data.fingerPrint = fingerPrint;
     data.region = region;
 
-    data.avatarSkin = this.offline
-      ? createDefaultAvatarSkin()
-      : PlayerSkinHashSchema.clone(PlayerSkinHashSchema.identity);
-    if (!this.offline) {
-      try {
-        const userSuits = await apis.createra.getUserSuitUsingGET(data.user.id);
-
-        // 当返回数据有套装的时候以套装为准
-        // 否则查找每个分部位的部件hash
-        const suit = userSuits.find((suit) => suit.type === SuitList.Suit);
-        if (suit) {
-          suit.componentList.forEach((c) => {
-            data.avatarSkin[AvatarBodyPartMap[c.component]] = c.hash;
-          });
-        } else {
-          userSuits.forEach((suit) => {
-            suit.componentList.forEach((c) => {
-              data.avatarSkin[AvatarBodyPartMap[c.component]] = c.hash;
-            });
-          });
-        }
-      } catch (error) {
-        this.logger.error(
-          `error when get avatar suit from userId ${data.user.id}, ${error}`,
-        );
-      }
-    }
+    data.avatarSkin = createDefaultAvatarSkin();
 
     data.ipAddress = ipAddress;
     this.sessionData.set(sessionId, {

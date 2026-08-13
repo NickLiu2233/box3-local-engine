@@ -70,5 +70,5 @@ function verifyRuntimePlayerIdentity(token, secret, now = Date.now()) {
 function createPlayerUserKey(subjectId, secret) {
     if (!subjectPattern.test(subjectId) || !secret)
         return '';
-    return encodeBase64URL((0, crypto_1.createHmac)('sha256', secret).update(`player-subject:${subjectId}`).digest()).slice(0, 22);
+    return encodeBase64URL((0, crypto_1.createHmac)('sha256', secret).update(`player-subject:${subjectId}`).digest()).slice(0, 16);
 }

@@ -309,7 +309,10 @@ export async function createGameServer(spec: {
         userData.displayname = runtimeIdentity.displayName;
         userData.username = runtimeIdentity.username;
         userData.avatar_hash = runtimeIdentity.avatar;
-        if (runtimeIdentity.role === 'admin') {
+        // A registered account editing a local project needs the same engine
+        // privileges the old fake-admin shortcut supplied, while retaining
+        // its real player id, name and stable user key.
+        if (runtimeIdentity.role === 'admin' || editServer) {
           userData.permission |= DB.UserPermission.gameAdmin;
         }
         fingerPrint = runtimeIdentity.subjectId;

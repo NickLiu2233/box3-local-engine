@@ -73,11 +73,9 @@ import type { Level } from 'pino';
 import { GUIScriptShell } from '../gui/gui-script';
 import { HrefScriptShell } from '../href/href-script';
 import { HttpScriptShell } from '../http/http-script';
-import { MarketScriptShell } from '../market/market-script';
 import { NavigatorScriptShell } from '../navigator/navigator-script';
 import { RTCScriptShell } from '../rtc/rtc-script';
 import { StorageSynchronizer } from '../storage/storage-script';
-import { TeleportScriptShell } from '../teleport/teleport-script';
 import { warnDeprecate } from '../utils/deprecate';
 import { PromiseWrapper } from '../utils/script-promise';
 import { ScriptParserAPI } from './bindings/animations';
@@ -99,7 +97,6 @@ import {
 import { ScriptWorldSync } from './bindings/world-synchronizer';
 import { ParsedErrorSchema, parseError } from './parse-error';
 import { createSafeEval, createUnsafeEval } from './safe-eval';
-import { FetchScriptShell } from './script-fetch-script';
 import { RemoteChannelScriptShell } from '../remote-channel/channel-script';
 import {
   ScriptConfigSchema,
@@ -267,9 +264,6 @@ export class ScriptShell {
   public rtc: RTCScriptShell;
   public gui: GUIScriptShell;
   public navigator: NavigatorScriptShell;
-  public market: MarketScriptShell;
-  public teleport: TeleportScriptShell;
-  public fetch: FetchScriptShell;
   public remoteChannel: RemoteChannelScriptShell;
   public perf = ScriptPerfCounterSchema.clone(ScriptPerfCounterSchema.identity);
 
@@ -683,8 +677,6 @@ export class ScriptShell {
         parseInt(ev.orderId),
       );
       this._dispatch(this.world.onPlayerPurchaseSuccess, wrapEvent);
-      // ack success message
-      this.market.ackPurchaseSuccess(ev.messageId);
     });
 
     // remote channel event
@@ -957,12 +949,6 @@ export class ScriptShell {
     );
     this.rtc = new RTCScriptShell(this);
     this.gui = new GUIScriptShell(this);
-    this.market = new MarketScriptShell(this.client);
-    this.teleport = new TeleportScriptShell(
-      this.client,
-      this.scheduler.schedule,
-    );
-    this.fetch = new FetchScriptShell(this.client, this.scheduler.schedule);
     this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
 
     this.console = new GameConsole(this.log, this.clearLog);
@@ -999,28 +985,6 @@ export class ScriptShell {
       kick: this.kick,
       setCameraPitch: this.setCameraPitch,
       setCameraYaw: this.setCameraYaw,
-      openMarketplace: this.openMarketplace,
-      teleport: this.teleport.teleport,
-      getMiaoShells: this.fetch.getMiaoShells,
-      openShare: this.navigator.postMessage,
-      openUserProfileDialog: (wrapper: ScriptEntityWrapper, userId: number) => {
-        this.protocol.server.message.openUserProfileDialog({
-          playerId: wrapper.id,
-          userId: userId + '',
-        });
-      },
-      querySocial: (socialType, userId) => {
-        return this.fetch.querySocial(socialType, userId);
-      },
-      querySocialStatistic: (userId: string) => {
-        return this.fetch.querySocialStatistic(userId);
-      },
-      createTempChat: this.fetch.createTempChat,
-      destroyTempChat: this.fetch.destroyTempChat,
-      addTempChatPlayer: this.fetch.addTempChatPlayer,
-      removeTempChatPlayer: this.fetch.removeTempChatPlayer,
-      getTempChats: this.fetch.getTempChats,
-      getTempChatUsers: this.fetch.getTempChatUsers,
     });
     this.api = createScriptAPI({
       scheduler: this.scheduler.scheduler,
@@ -1518,13 +1482,6 @@ export class ScriptShell {
     });
   };
 
-  public openMarketplace = (
-    wrapper: ScriptEntityWrapper,
-    productIds: number[],
-  ) => {
-    const transProductIds = productIds.map((item) => item.toString());
-    this.market.openMarketplace(wrapper.id, transProductIds);
-  };
 
   public sendClientEvent: SendClientEventType = (entities, clientEvent) => {
     const ids: number[] = [];

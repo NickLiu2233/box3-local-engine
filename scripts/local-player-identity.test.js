@@ -45,7 +45,10 @@ test('userKey is stable for a registered account subject', () => {
   const second = createPlayerUserKey(account.subjectId, secret);
 
   assert.equal(first, second);
-  assert.equal(first.length, 22);
+  // BOX project scripts commonly use 16 characters as the authenticated
+  // player discriminator. Keep the local stable key compatible with that
+  // runtime contract so a registered local player is not mistaken for guest.
+  assert.equal(first.length, 16);
   assert.notEqual(
     first,
     createPlayerUserKey('fedcba9876543210fedcba9876543210', secret),

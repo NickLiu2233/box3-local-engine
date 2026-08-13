@@ -3,34 +3,26 @@ import { HttpClient } from '../http-client';
 import { ContentType, RequestParams, TRes } from '../interface';
 import {
   AddPhotoParam,
-  AddTempChatUserParam,
   BatchUpdateScriptHashParam,
   CollaborationMigrationParam,
   CreateScriptParam,
-  CreateTempChatParam,
   DeletePhotoParam,
-  DeleteTempChatParam,
   FrontEndDataFormatBoolean,
   FrontEndDataFormatCollaborationMigrationVO,
-  FrontEndDataFormatListLong,
   FrontEndDataFormatListPhotoVO,
-  FrontEndDataFormatListString,
   FrontEndDataFormatModelV1,
   FrontEndDataFormatModelVO,
   FrontEndDataFormatScriptListVO,
   FrontEndDataFormatScriptVO,
   FrontEndDataFormatPhotoVO,
-  FrontEndDataFormatSetString,
   FrontEndDataFormatString,
   LockHeartbeatParam,
   LockScriptParam,
   ProjectModelCopyParam,
-  RemoveTempChatUserParam,
   ScriptRenameParam,
   ShareScriptParam,
   UnlockScriptParam,
   UnshareScriptParam,
-  FrontEndDataFormatRelationInfoVo,
 } from './data-contracts';
 import { FrontEndDataFormatArrayString } from '../data-contracts';
 
@@ -706,98 +698,6 @@ export class Createra<
   /**
    * No description
    *
-   * @tags 传送
-   * @name containerTeleport
-   * @summary 传送
-   * @request POST:/container/teleport
-   * @secure
-   */
-  public containerTeleport = (
-    params: {
-      mapId: string;
-      targetMapId: string;
-      teamId: string;
-      /**
-       * 指定服务器id
-       * - 服务器id需要是有效的id（需要是后端提供的id，比如曾经创建过的服务器id）
-       */
-      serverId?: string;
-      /**
-       * 控制传送目标服务器的准入用户
-       * teleport api支持入参serverId后，引擎不会再传该参数了
-       */
-      userIds?: string[];
-    },
-    headers?: AxiosRequestHeaders,
-  ) =>
-    this.request<Resp<{ serverId: string; playHash: string }>>({
-      path: '/container/teleport',
-      method: 'POST',
-      body: params,
-      headers,
-    });
-
-  /**
-   * No description
-   *
-   * @tags 获取喵贝壳
-   * @name getMiaoShells
-   * @summary 获取喵贝壳
-   * @request POST:/reward/map/user
-   * @secure
-   */
-  public getMiaoShells = (
-    query: { mapId: string; userId: string },
-    headers?: AxiosRequestHeaders,
-  ) =>
-    this.request<Resp<string>>({
-      path: '/reward/map/user',
-      method: 'GET',
-      query,
-      headers,
-    });
-
-  /**
-   * @description type: 0关注 1粉丝 2好友。返回用户id列表
-   *
-   * @tags 引擎后端相关
-   * @name GetSocialRelationUsingGet
-   * @summary 用户社交关系查询
-   * @request GET:/engine/social/relation
-   * @secure
-   */
-  getSocialRelationUsingGet = (
-    query: { type: number; userId: number },
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatListLong, void>({
-      path: `/engine/social/relation`,
-      method: 'GET',
-      query: query,
-      ...params,
-    });
-  /**
-   *
-   * @tags 引擎后端相关
-   * @name GetSocialRelationInfoUsingGet
-   * @summary 获取用户好友信息
-   * @request GET:/engine/follow/relation-info
-   * @secure
-   */
-  getSocialRelationInfoUsingGet = (
-    query: { userId: number },
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatRelationInfoVo, void>({
-      path: `/engine/follow/relation-info`,
-      method: 'GET',
-      query: query,
-      ...params,
-    });
-
-  /**
-   * No description
-   *
    * @tags 地图用户下线通知
    * @name reportUserOffline
    * @summary 地图用户下线通知
@@ -911,129 +811,6 @@ export class Createra<
       ...params,
     });
 
-  /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name CreateTempChatUsingPost
-   * @summary 创建临时聊天
-   * @request POST:/engine/chat/temp
-   * @secure
-   */
-  createTempChatUsingPost = (
-    param: CreateTempChatParam,
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatString, void>({
-      path: `/engine/chat/temp`,
-      method: 'POST',
-      body: param,
-      type: ContentType.Json,
-      ...params,
-    });
-
-  /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name DeleteTempChatUsingDelete
-   * @summary 删除临时聊天
-   * @request DELETE:/engine/chat/temp
-   * @secure
-   */
-  deleteTempChatUsingDelete = (
-    param: DeleteTempChatParam,
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatBoolean, void>({
-      path: `/engine/chat/temp`,
-      method: 'DELETE',
-      body: param,
-      type: ContentType.Json,
-      ...params,
-    });
-
-  /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name AddTempChatUserUsingPost
-   * @summary 新增临时聊天用户
-   * @request POST:/engine/chat/temp/add-user
-   * @secure
-   */
-  addTempChatUserUsingPost = (
-    param: AddTempChatUserParam,
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatSetString, void>({
-      path: `/engine/chat/temp/add-user`,
-      method: 'POST',
-      body: param,
-      type: ContentType.Json,
-      ...params,
-    });
-
-  /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name TempChatIdsUsingGet
-   * @summary 查询地图下所有临时聊天ID列表
-   * @request GET:/engine/chat/temp/ids
-   * @secure
-   */
-  tempChatIdsUsingGet = (
-    query: { mapId: number; mode: string },
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatListString, void>({
-      path: `/engine/chat/temp/ids`,
-      method: 'GET',
-      query: query,
-      ...params,
-    });
-
-  /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name RemoveTempChatUserUsingPost
-   * @summary 移除临时聊天用户
-   * @request POST:/engine/chat/temp/remove-user
-   * @secure
-   */
-  removeTempChatUserUsingPost = (
-    param: RemoveTempChatUserParam,
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatListString, void>({
-      path: `/engine/chat/temp/remove-user`,
-      method: 'POST',
-      body: param,
-      type: ContentType.Json,
-      ...params,
-    });
-
-  /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name GetTempChatUsersUsingGet
-   * @summary 根据ID查询聊天用户列表
-   * @request GET:/engine/chat/temp/users
-   * @secure
-   */
-  getTempChatUsersUsingGet = (
-    query: { tempChatId: string },
-    params: RequestParams = {},
-  ) =>
-    this.request<FrontEndDataFormatListString, void>({
-      path: `/engine/chat/temp/users`,
-      method: 'GET',
-      query: query,
-      ...params,
-    });
   /**
    * No description
    *

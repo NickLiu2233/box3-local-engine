@@ -1,5 +1,4 @@
 import { LocaleFullType } from '@box-local/apis';
-import { apis } from 'src/apis/api-java';
 
 /**
  * 只读，定义了项目本身提供的、允许的语言。
@@ -74,14 +73,8 @@ export const monacoLocaleMap: monacoLocaleMapType = {
   'zh-cn': 'zh',
 };
 
-/**
- * 发送网络请求修改用户语言
- */
 export async function setUserLanguage(language: LangType): Promise<void> {
-  const createraInstance = apis.createra;
-  try {
-    await createraInstance.setUserLanguage(localeMap[language]);
-  } catch (error) {
-    console.error(error);
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem('box-local-language', language);
   }
 }
