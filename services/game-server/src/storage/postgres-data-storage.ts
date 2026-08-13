@@ -88,7 +88,7 @@ function rowToValue(row: QueryResultRow | undefined): ReturnValue | undefined {
 
 export class PostgresDataStorage implements CommonGameDataServer {
   private readonly pool: Pool;
-  private readonly ready: Promise<void>;
+  private ready?: Promise<void>;
   private readonly tickets = new Map<string, TicketConnection>();
   private readonly tableReady = new Map<string, Promise<StorageTables>>();
 
@@ -119,7 +119,17 @@ export class PostgresDataStorage implements CommonGameDataServer {
     this.pool.on('error', (error) => {
       this.options.logger.error(error);
     });
-    this.ready = this.initialize();
+  }
+
+  private ensureReady() {
+    if (!this.ready) {
+      const pending = this.initialize().catch((error) => {
+        if (this.ready === pending) this.ready = undefined;
+        throw error;
+      });
+      this.ready = pending;
+    }
+    return this.ready;
   }
 
   private namespace(tableType: TableType) {
@@ -194,7 +204,7 @@ export class PostgresDataStorage implements CommonGameDataServer {
   }
 
   private async ensureTables(tableType: TableType, storageName: string) {
-    await this.ready;
+    await this.ensureReady();
     const cacheKey = `${tableType}\u0000${storageName}`;
     const existing = this.tableReady.get(cacheKey);
     if (existing) return existing;
@@ -269,7 +279,7 @@ export class PostgresDataStorage implements CommonGameDataServer {
   }
 
   public async connect() {
-    await this.ready;
+    await this.ensureReady();
   }
 
   public async close() {
@@ -604,7 +614,7 @@ export class PostgresDataStorage implements CommonGameDataServer {
   }
 
   public async dropTable(tableType: TableType, table: string) {
-    await this.ready;
+    await this.ensureReady();
     const tables = this.tables(tableType, table);
     await this.pool.query(`DROP TABLE IF EXISTS ${tables.keys}`);
     await this.pool.query(`DROP TABLE IF EXISTS ${tables.data}`);

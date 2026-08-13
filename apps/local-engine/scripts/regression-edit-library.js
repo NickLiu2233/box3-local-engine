@@ -45,13 +45,19 @@ async function post(port, path) {
 async function main() {
   async function verifyMode(mode, proxyPortStart, runtimePortStart) {
     const children = new Map()
+    let releaseProjectStatus
+    const projectStatusReady = new Promise((resolve) => {
+      releaseProjectStatus = resolve
+    })
     const library = startEditLibrary({
     mode,
     host: '127.0.0.1',
     port: proxyPortStart,
     runtimePortStart,
     resolveProject: (id) => ({ id }),
-    waitForRuntime: async () => undefined,
+    waitForRuntime: async (_url) => {
+      if (_url.includes(String(runtimePortStart))) await projectStatusReady
+    },
     startRuntime: async (project, port) => {
       const server = http.createServer((req, res) => res.end(`${project.id}:${req.url}`))
       await listen(server, port)
@@ -81,7 +87,24 @@ async function main() {
       await new Promise((resolve) => setImmediate(resolve))
       assert.equal(
         JSON.parse(await get(address.port, '/project-status/__local_runtime/status')).phase,
-        'ready',
+        'loading',
+      )
+      let earlyProxyResolved = false
+      const earlyProxy = get(address.port, '/project-status/block/runtime-asset')
+        .then((value) => {
+          earlyProxyResolved = true
+          return value
+        })
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      assert.equal(
+        earlyProxyResolved,
+        false,
+        'resource requests must wait until the child runtime health check passes',
+      )
+      releaseProjectStatus()
+      assert.equal(
+        await earlyProxy,
+        'project-status:/block/runtime-asset',
       )
       assert.equal(
         await get(address.port, '/project-idle/internal/save-local-project'),

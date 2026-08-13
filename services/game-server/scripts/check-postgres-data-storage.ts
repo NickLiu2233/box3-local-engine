@@ -56,6 +56,12 @@ async function main() {
   }
   const adapter = memory.adapters.createPg();
   const pool = new adapter.Pool() as any;
+  const originalQuery = pool.query.bind(pool);
+  let queryCount = 0;
+  pool.query = (...args: any[]) => {
+    queryCount += 1;
+    return originalQuery(...args);
+  };
   const logger = new Logger(() => undefined, ['postgres-test'], 'test');
   const createStorage = (projectNamespace: string) => new PostgresDataStorage({
     connectionString: 'postgresql://unused/box_test',
@@ -73,7 +79,13 @@ async function main() {
 
   const first = createStorage('world-a');
   const second = createStorage('world-b');
+  assert.equal(
+    queryCount,
+    0,
+    'constructing a runtime storage adapter must not connect to PostgreSQL',
+  );
   await Promise.all([first.connect(), second.connect()]);
+  assert.ok(queryCount > 0, 'the first storage connection should initialize PostgreSQL');
 
   await first.set('project', 'players', 'alice', { coins: 10, level: 2 });
   await pool.query(

@@ -76,12 +76,15 @@ function startEditLibrary({
     if (!project) {
       throw Object.assign(new Error('工程不存在'), { statusCode: 404 })
     }
+    // A child is inserted into `runtimes` before its health check completes.
+    // Concurrent block/createSession requests must join that same startup
+    // promise instead of proxying early to a port that is not ready yet.
+    if (starts.has(id)) return starts.get(id)
     const current = runtimes.get(id)
     if (current && !current.exited) {
       setStatus(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
       return current
     }
-    if (starts.has(id)) return starts.get(id)
 
     const promise = (async () => {
       setStatus(id, { phase: 'starting', percent: 18, message: '正在创建独立运行时' })
@@ -152,9 +155,11 @@ function startEditLibrary({
         res.end()
         return
       }
-      const runtime = existingRuntime && !existingRuntime.exited
-        ? existingRuntime
-        : await ensureRuntime(id)
+      const runtime = starts.has(id)
+        ? await ensureRuntime(id)
+        : existingRuntime && !existingRuntime.exited
+          ? existingRuntime
+          : await ensureRuntime(id)
       const proxy = http.request({
         hostname: '127.0.0.1',
         port: runtime.port,

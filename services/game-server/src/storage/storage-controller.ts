@@ -27,7 +27,7 @@ export class StorageController {
   public state: GameServerState;
   public dbServer: CommonGameDataServer;
   private _limiters: StorageLimiters;
-  private _dbServerReady: Promise<void>;
+  private _dbServerReady?: Promise<void>;
 
   constructor(spec: {
     server: MuServer;
@@ -71,7 +71,6 @@ export class StorageController {
         logger: this.state.logger,
       });
     }
-    this._dbServerReady = this.dbServer.connect();
     this._limiters = new StorageLimiters();
 
     this.protocol.configure({
@@ -259,7 +258,7 @@ export class StorageController {
         },
         dbFetch: async (client, { handle, dbKey, dbType, type, params }) => {
           try {
-            await this._dbServerReady;
+            await this.ensureDbServerReady();
             const p = JSON.parse(params);
 
             // 限流判定
@@ -372,7 +371,6 @@ export class StorageController {
     await this.resetMutex.p();
     this._limiters.reset();
     try {
-      await this._dbServerReady;
       await new Promise((resolve, reject) => {
         if (this.state.storage.db) {
           const oldDb = this.state.storage.db;
@@ -412,6 +410,26 @@ export class StorageController {
     } finally {
       this.resetMutex.v();
     }
+  }
+
+  /**
+   * Boxes does not connect its business storage while resetting scripts.
+   * Keep that startup ordering locally as well: an unavailable external
+   * PostgreSQL server may fail a data-space call, but must never delay the
+   * editor/game runtime from becoming ready. A failed attempt is discarded so
+   * the next getDataStorage/getGroupStorage request can reconnect.
+   */
+  private ensureDbServerReady() {
+    if (!this._dbServerReady) {
+      const pending = this.dbServer.connect().catch((error) => {
+        if (this._dbServerReady === pending) {
+          this._dbServerReady = undefined;
+        }
+        throw error;
+      });
+      this._dbServerReady = pending;
+    }
+    return this._dbServerReady;
   }
 
   private formatError(status: DB_ERROR_STATUS, msg?: string) {
