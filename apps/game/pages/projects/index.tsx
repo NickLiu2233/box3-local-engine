@@ -31,6 +31,7 @@ type CompatibilityReport = {
 
 type LocalProject = {
   id: string;
+  publicId: string;
   name: string;
   author: string;
   description: string;
@@ -71,6 +72,7 @@ type ImportProgress = {
 };
 
 type ImportMode = 'independent' | 'submap';
+type ProjectExportScope = 'map' | 'group';
 
 type PublishProgress = {
   projectName: string;
@@ -132,6 +134,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const [menuProject, setMenuProject] = useState<string | null>(null);
   const [dialog, setDialog] = useState<'create' | 'submap' | 'delete' | 'details' | 'publish' | null>(null);
   const [projectName, setProjectName] = useState('');
+  const [projectPublicId, setProjectPublicId] = useState('');
   const [projectAuthor, setProjectAuthor] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCover, setProjectCover] = useState('');
@@ -148,6 +151,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   );
   const [notice, setNotice] = useState('');
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+  const [exportChoiceProject, setExportChoiceProject] = useState<LocalProject | null>(null);
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
   const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null);
   const [recoveryProject, setRecoveryProject] = useState<LocalProject | null>(null);
@@ -213,6 +217,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const openCreateDialog = () => {
     setSelectedProject(null);
     setProjectName('');
+    setProjectPublicId('');
     setProjectAuthor('');
     setProjectDescription('');
     setProjectCover('');
@@ -224,6 +229,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     setMenuProject(null);
     setSelectedProject(project);
     setProjectName('');
+    setProjectPublicId('');
     setProjectDescription('');
     setDialogError('');
     setDialog('submap');
@@ -344,6 +350,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     setMenuProject(null);
     setSelectedProject(project);
     setProjectName(project.name);
+    setProjectPublicId(project.publicId || project.id);
     setProjectAuthor(project.author || '');
     setProjectDescription(project.description || '');
     setProjectCover(project.cover || '');
@@ -360,6 +367,11 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     setReleaseNotes('');
     setDialogError('');
     setDialog('publish');
+  };
+
+  const openExportDialog = (project: LocalProject) => {
+    setMenuProject(null);
+    setExportChoiceProject(project);
   };
 
   const openRecoveryDialog = async (project: LocalProject) => {
@@ -474,7 +486,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             }), { warnings: 0, errors: 0, missingBlobCount: 0 }),
           } : undefined;
         } else if (!String(data.message || '').includes('Release already exists')) {
-          throw new Error(data.message || '发布失败');
+          throw new Error(data.message || '生成游戏包版本失败');
         }
         setPublishProgress((current) => current ? {
           ...current,
@@ -550,8 +562,8 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
           filename,
         });
         setNotice(compatibility && (compatibility.summary.warnings || compatibility.summary.errors)
-          ? `已发布并导出地图组游玩包 ${publishedVersion}，包含 ${mapCount} 张地图；兼容性检查发现 ${compatibility.summary.errors} 个错误、${compatibility.summary.warnings} 个提醒`
-          : `已发布并导出地图组游玩包 ${publishedVersion}，包含 ${mapCount} 张地图；兼容性检查通过`);
+          ? `游戏包 ${publishedVersion} 已导出，包含 ${mapCount} 张地图；兼容性检查发现 ${compatibility.summary.errors} 个错误、${compatibility.summary.warnings} 个提醒`
+          : `游戏包 ${publishedVersion} 已导出，包含 ${mapCount} 张地图；兼容性检查通过`);
         await refreshProjects();
       } catch (error) {
         setPublishProgress((current) => ({
@@ -584,11 +596,11 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
       const response = await fetch(`/api/local-projects/${selectedProject.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, author: projectAuthor, description: projectDescription, cover: projectCover }),
+        body: JSON.stringify({ publicId: projectPublicId, name, author: projectAuthor, description: projectDescription, cover: projectCover }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || '重命名失败');
-      setNotice('作品名称已保存');
+      setNotice(`地图信息已保存，玩家链接为 /p/${data.project.publicId}`);
     } else {
       const id = `project-${Date.now().toString(36)}`;
       const response = await fetch('/api/local-projects', {
@@ -641,9 +653,10 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     );
   };
 
-  const exportProjectFile = async (project: LocalProject) => {
+  const exportProjectFile = async (project: LocalProject, scope: ProjectExportScope) => {
     if (exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error') return;
     setMenuProject(null);
+    setExportChoiceProject(null);
     setNotice('');
     const startedAt = Date.now();
     setExportProgress({
@@ -662,7 +675,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         : current);
     }, 500);
     try {
-      const response = await fetch(`/api/local-projects/${project.id}/export`);
+      const response = await fetch(`/api/local-projects/${encodeURIComponent(project.id)}/export?scope=${scope}`);
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.message || '导出工程失败');
@@ -728,7 +741,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
         filename,
       });
-      setNotice(`工程包已导出：${filename}`);
+      setNotice(`${scope === 'map' ? '本地图工程' : '地图组工程'}已导出：${filename}`);
     } catch (error) {
       setExportProgress((current) => ({
         projectId: project.id,
@@ -779,15 +792,12 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
                 <button role="menuitem" onClick={() => openDetailsDialog(project)}>
                   <Pencil size={15} /> 编辑信息
                 </button>
-                <button role="menuitem" onClick={() => openPublishDialog(project)}>
-                  <Play size={15} /> 发布地图组游玩包
-                </button>
                 <button
                   role="menuitem"
                   disabled={Boolean(exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error')}
-                  onClick={() => void exportProjectFile(project)}
+                  onClick={() => openExportDialog(project)}
                 >
-                  <Download size={15} /> 导出完整地图组
+                  <Download size={15} /> 导出
                 </button>
                 <button role="menuitem" onClick={() => void openRecoveryDialog(project)}>
                   <History size={15} /> 恢复历史版本
@@ -986,6 +996,44 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         </div>
       )}
 
+      {exportChoiceProject && (
+        <div className={styles.dialogBackdrop} role="presentation" onMouseDown={() => setExportChoiceProject(null)}>
+          <section className={`${styles.dialog} ${styles.importChoiceDialog}`} role="dialog" aria-modal="true" aria-labelledby="export-choice-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className={styles.dialogIcon}><Download size={22} /></div>
+            <h2 id="export-choice-title">导出</h2>
+            <p className={styles.importFilename}>{exportChoiceProject.name}</p>
+            <div className={`${styles.importModeList} ${styles.exportChoiceList}`}>
+              <button type="button" onClick={() => void exportProjectFile(exportChoiceProject, 'map')}>
+                <Download size={18} aria-hidden="true" />
+                <span>
+                  <strong>导出本地图工程</strong>
+                  <small>只包含当前地图，导出为可重新导入创作端的 .boxproject 文件。</small>
+                </span>
+              </button>
+              {exportChoiceProject.mapRole === 'main' && <>
+                <button type="button" onClick={() => void exportProjectFile(exportChoiceProject, 'group')}>
+                  <Grid2X2 size={18} aria-hidden="true" />
+                  <span>
+                    <strong>导出地图组工程</strong>
+                    <small>包含主地图、全部副地图及地图组共享资源，导出为一个 .boxproject 文件。</small>
+                  </span>
+                </button>
+                <button type="button" onClick={() => { const project = exportChoiceProject; setExportChoiceProject(null); openPublishDialog(project); }}>
+                  <Play size={18} aria-hidden="true" />
+                  <span>
+                    <strong>导出游戏包</strong>
+                    <small>生成供游玩端导入的 .boxplay 文件，包含主地图和全部副地图。</small>
+                  </span>
+                </button>
+              </>}
+            </div>
+            <div className={styles.dialogActions}>
+              <button type="button" className={styles.cancelButton} onClick={() => setExportChoiceProject(null)}>取消</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {dialog && (
         <div className={styles.dialogBackdrop} role="presentation" onMouseDown={() => { if (!submitting) setDialog(null); }}>
           <form className={`${styles.dialog} ${dialog === 'publish' ? styles.releaseDialog : ''}`} onSubmit={(event) => {
@@ -999,11 +1047,23 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               .finally(() => setSubmitting(false));
           }} onMouseDown={(event) => event.stopPropagation()}>
             <div className={styles.dialogIcon}><Grid2X2 size={22} /></div>
-            <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '发布地图组游玩包'}</h2>
+            <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '导出游戏包'}</h2>
             {dialog === 'delete' && <p>{selectedProject?.mapRole === 'main' ? `将删除整个地图组“${selectedProject?.name}”及其全部副地图，删除后无法恢复。` : `将删除副地图“${selectedProject?.name}”，删除后无法恢复。`}</p>}
             {(dialog === 'create' || dialog === 'submap' || dialog === 'details') && <>
               <label htmlFor="project-name">作品名称</label>
               <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
+              {dialog === 'details' && <>
+                <label htmlFor="project-public-id">地图 ID</label>
+                <input
+                  id="project-public-id"
+                  maxLength={63}
+                  spellCheck={false}
+                  value={projectPublicId}
+                  onChange={(event) => setProjectPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  placeholder="例如：my-adventure"
+                />
+                <small className={styles.fieldHint}>玩家链接：/p/{projectPublicId || '地图-id'} · 全部项目中必须唯一</small>
+              </>}
               {dialog !== 'submap' && <><label htmlFor="project-author">作者</label>
               <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} /></>}
               <label htmlFor="project-description">简介</label>
@@ -1012,7 +1072,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               {dialog === 'details' && <><label htmlFor="project-cover">封面</label><input id="project-cover" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 1400000) { setDialogError('封面图片不能超过 1.4MB'); return; } const reader = new FileReader(); reader.onload = () => { setProjectCover(String(reader.result)); setDialogError(''); }; reader.readAsDataURL(file); }} /></>}
             </>}
             {dialog === 'publish' && <>
-              <p>主地图和全部副地图将使用同一版本号发布，并合并为一个可一次导入的游玩包。</p>
+              <p>主地图和全部副地图将使用同一版本号，合并为一个可一次导入游玩端的游戏包。</p>
               <label htmlFor="release-version">版本号</label>
               <input id="release-version" autoFocus value={releaseVersion} onChange={(event) => setReleaseVersion(event.target.value)} placeholder="v1.0.0" />
               <label htmlFor="release-notes">更新说明</label>
@@ -1022,8 +1082,8 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             {dialogError && <p className={styles.dialogError} role="alert">{dialogError}</p>}
             <div className={styles.dialogActions}>
               <button type="button" className={styles.cancelButton} onClick={() => setDialog(null)}>取消</button>
-              <button type="submit" className={dialog === 'delete' ? styles.deleteConfirm : styles.confirmButton} disabled={submitting || ((dialog === 'create' || dialog === 'submap' || dialog === 'details') ? !projectName.trim() : dialog === 'publish' ? !releaseVersion.trim() : false)}>
-                {submitting ? '处理中…' : dialog === 'create' ? '创建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '保存' : dialog === 'delete' ? '删除' : '发布地图组游玩包'}
+              <button type="submit" className={dialog === 'delete' ? styles.deleteConfirm : styles.confirmButton} disabled={submitting || ((dialog === 'create' || dialog === 'submap' || dialog === 'details') ? !projectName.trim() || (dialog === 'details' && !projectPublicId.trim()) : dialog === 'publish' ? !releaseVersion.trim() : false)}>
+                {submitting ? '处理中…' : dialog === 'create' ? '创建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '保存' : dialog === 'delete' ? '删除' : '开始导出'}
               </button>
             </div>
           </form>
@@ -1199,7 +1259,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
 }
 
 function ReleaseFlow({ project, version }: { project: LocalProject | null; version: string }) {
-  return <div className={styles.releaseFlow} aria-label="发布产物流程">
+  return <div className={styles.releaseFlow} aria-label="游戏包导出流程">
     <div className={styles.flowSource}><small>地图组</small><strong>{project?.name || '作品'}</strong></div>
     <div className={styles.flowArrow}>→</div>
     <div className={styles.flowRelease}><small>整组游玩包</small><strong>{version}</strong></div>

@@ -46,6 +46,7 @@ import { ServerSettings } from './settings/server-settings-schema';
 import { computeAudioPrefetch } from './sound/server-sound-controller';
 import { MockSQL } from './storage/mock-storage';
 import { SQLJS } from './storage/sqljs';
+import { resolveGroupStorageNamespace } from './storage/storage-namespace';
 import { CommonSQL } from './storage/types';
 import { getHashFromContainerName } from './utils/container-name';
 import { FrameskipsManager } from './utils/frameskips-manager';
@@ -151,7 +152,7 @@ export async function createGameServer(spec: {
     serverConfig.method === 'local',
     Math.max(5_000, serverConfig.sessionTtlMs),
     spec.businessRedis,
-    serverConfig.groupStorageNamespace || String(serverConfig.groupId || 'global'),
+    resolveGroupStorageNamespace(serverConfig),
   );
 
   // create the game server

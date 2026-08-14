@@ -58,7 +58,11 @@
 }
 
 .header p { margin: 8px 0 0; color: #73767d; font-size: 14px; }
-.headerButtons { display: flex; gap: 8px; }
+.headerButtons { display: flex; align-items: center; gap: 8px; }
+.operatorChip { display: flex; min-height: 38px; align-items: center; gap: 8px; padding: 5px 10px; border: 1px solid #dfe1e4; border-radius: 8px; color: #656970; background: #fff; }
+.operatorChip > span { display: grid; gap: 1px; }
+.operatorChip strong { color: #303238; font-size: 11px; font-weight: 650; }
+.operatorChip small { color: #92959b; font-size: 9px; }
 .titleRow { display: flex; align-items: baseline; gap: 12px; }
 .titleRow h1 { margin: 0; font-size: 26px; letter-spacing: -.025em; }
 .titleRow span { color: #85888f; font-size: 13px; }
@@ -183,6 +187,19 @@
 .searchField input { width: 100%; border: 0; outline: 0; color: #303238; background: transparent; font: inherit; }
 .searchField input::placeholder { color: #a1a4aa; }
 
+.filterSelect {
+  height: 38px;
+  padding: 0 30px 0 10px;
+  border: 1px solid #d9dadd;
+  border-radius: 7px;
+  outline: none;
+  color: #454950;
+  background: #fff;
+  font: inherit;
+  font-size: 12px;
+}
+.filterSelect:focus { border-color: #7a7f87; box-shadow: 0 0 0 3px rgba(40, 44, 50, .08); }
+
 .primaryButton, .secondaryButton, .dangerButton, .textButton {
   display: inline-flex;
   min-height: 36px;
@@ -198,6 +215,7 @@
   cursor: pointer;
   transition: transform 140ms cubic-bezier(.23, 1, .32, 1), background 140ms ease, border-color 140ms ease;
 }
+.primaryButton, .secondaryButton, .dangerButton { gap: 7px; }
 
 .primaryButton { border-color: #1f2329; color: #fff; background: #1f2329; }
 .primaryButton:hover { background: #34383f; }
@@ -226,6 +244,32 @@
 .tableCard td strong, .tableCard td small { display: block; }
 .tableCard td strong { color: #303238; font-size: 12px; font-weight: 600; }
 .tableCard td small { max-width: 190px; overflow: hidden; margin-top: 4px; color: #8b8e94; text-overflow: ellipsis; }
+.tableCard .checkCell { width: 42px; padding-right: 4px; text-align: center; }
+.checkCell input { width: 15px; height: 15px; margin: 0; accent-color: #24282e; cursor: pointer; }
+
+.batchToolbar { display: flex; align-items: center; gap: 7px; margin: -4px 0 12px; padding: 9px 10px; border: 1px solid #dfe1e4; border-radius: 8px; background: #fff; box-shadow: 0 4px 16px rgba(28, 31, 35, .05); }
+.batchToolbar strong { margin-right: 4px; color: #34373c; font-size: 12px; }
+.batchToolbar button { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #dedfe2; border-radius: 6px; color: #555960; background: #fafafa; font: inherit; font-size: 11px; cursor: pointer; }
+.batchToolbar button:hover { background: #f0f1f2; }
+.batchToolbar .batchClear { margin-left: auto; border-color: transparent; background: transparent; }
+
+.activityToolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.activityToolbar .searchField { min-width: 340px; }
+.segmented { display: inline-flex; flex: 0 0 auto; padding: 3px; border: 1px solid #dedfe2; border-radius: 8px; background: #fff; }
+.segmented button { min-height: 30px; padding: 0 11px; border: 0; border-radius: 5px; color: #74777d; background: transparent; font: inherit; font-size: 11px; cursor: pointer; }
+.segmented .segmentActive { color: #fff; background: #24282e; }
+.auditTable { display: grid; }
+.auditTable article { display: grid; grid-template-columns: 34px minmax(180px, 1fr) minmax(120px, .45fr) minmax(210px, .8fr) 150px; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid #ececef; }
+.auditTable article:last-child { border-bottom: 0; }
+.auditTable article > div { min-width: 0; }
+.auditTable strong, .auditTable small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auditTable strong { color: #383b40; font-size: 11px; }
+.auditTable small { margin-top: 4px; color: #95989e; font-size: 9px; }
+.auditTable time { color: #777b82; font-size: 10px; text-align: right; }
+.auditIcon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 7px; color: #666a71; background: #f0f1f2; }
+
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 2px 0; color: #777b82; font-size: 12px; }
+.pagination > div { display: flex; gap: 7px; }
 
 .playerCell { display: flex; min-width: 0; align-items: center; gap: 11px; }
 .playerCell > span:last-child { min-width: 0; }
@@ -298,8 +342,20 @@
 
 .formGrid, .detailGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .formGrid label { display: grid; gap: 7px; color: #656970; font-size: 12px; font-weight: 600; }
-.formGrid input, .formGrid select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #d7d9dc; border-radius: 7px; outline: none; color: #303238; background: #fff; font: inherit; }
-.formGrid input:focus, .formGrid select:focus { border-color: #7a7f87; box-shadow: 0 0 0 3px rgba(40, 44, 50, .08); }
+.formGrid input, .formGrid select, .formGrid textarea { width: 100%; padding: 0 10px; border: 1px solid #d7d9dc; border-radius: 7px; outline: none; color: #303238; background: #fff; font: inherit; }
+.formGrid input, .formGrid select { height: 38px; }
+.formGrid textarea { min-height: 76px; padding-top: 9px; padding-bottom: 9px; resize: vertical; line-height: 1.5; }
+.formGrid input:focus, .formGrid select:focus, .formGrid textarea:focus { border-color: #7a7f87; box-shadow: 0 0 0 3px rgba(40, 44, 50, .08); }
+.fullField { grid-column: 1 / -1; }
+.fieldHelp { align-self: end; padding: 10px 12px; border-radius: 7px; color: #777b82; background: #f5f6f7; font-size: 11px; line-height: 1.5; }
+.passwordReset { display: grid; gap: 14px; }
+.passwordReset > div { display: flex; align-items: center; gap: 10px; }
+.passwordReset > div:first-child { color: #676b72; }
+.passwordReset > div:first-child span { display: grid; gap: 4px; }
+.passwordReset strong { color: #373a40; font-size: 12px; }
+.passwordReset small { color: #8c8f95; font-size: 10px; line-height: 1.5; }
+.passwordReset input { min-width: 0; height: 38px; flex: 1; padding: 0 10px; border: 1px solid #d7d9dc; border-radius: 7px; outline: none; font: inherit; }
+.passwordReset input:focus { border-color: #7a7f87; box-shadow: 0 0 0 3px rgba(40, 44, 50, .08); }
 
 .detailGrid { margin: 0; }
 .detailGrid div { min-width: 0; padding: 11px 12px; border-radius: 7px; background: #f6f7f8; }
@@ -314,6 +370,8 @@
 .recordList strong { color: #3a3d43; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; }
 .recordList span, .recordList small { color: #8a8d93; font-size: 11px; }
 .recordList p { overflow: hidden; margin: 7px 0 5px; color: #656970; font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.sessionFooter { margin-top: 4px; }
+.sessionFooter .textButton { min-height: 28px; padding: 0 4px; color: #b93232; font-size: 11px; }
 
 .drawerActions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid #e2e3e5; background: #fff; }
 .drawerActions span { flex: 1; }
@@ -347,6 +405,14 @@
   .dashboardColumns, .securityGrid { grid-template-columns: 1fr; }
   .tableCard { overflow-x: auto; }
   .tableCard table { min-width: 980px; }
+  .toolbar { flex-wrap: wrap; }
+  .searchField { flex-basis: 100%; }
+  .activityToolbar { align-items: stretch; flex-direction: column; }
+  .activityToolbar .searchField { min-width: 0; }
+  .auditTable article { grid-template-columns: 34px minmax(0, 1fr) 130px; }
+  .auditTable article > div:nth-of-type(2), .auditTable article > div:nth-of-type(3) { display: none; }
+  .batchToolbar { overflow-x: auto; }
+  .batchToolbar button, .batchToolbar strong { flex: 0 0 auto; }
 }
 
 @media (max-width: 640px) {
@@ -366,4 +432,9 @@
   .drawerBody { padding-right: 14px; padding-left: 14px; }
   .formGrid, .detailGrid { grid-template-columns: 1fr; }
   .drawerActions .dangerButton { padding-right: 10px; padding-left: 10px; }
+  .operatorChip { display: none; }
+  .segmented { width: 100%; }
+  .segmented button { flex: 1; }
+  .auditTable article { grid-template-columns: 30px minmax(0, 1fr); }
+  .auditTable time { grid-column: 2; text-align: left; }
 }

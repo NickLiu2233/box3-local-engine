@@ -19,7 +19,7 @@
     "check:deleted-project-model": "node -r @swc-node/register scripts/regression-deleted-project-model.ts",
     "check:project-model-trash": "node -r @swc-node/register scripts/regression-project-model-trash.ts",
     "prod": "node dist/src/launch.js --useProdBundle",
-    "test": "node -r @swc-node/register scripts/regression-local-voxa-fallback.ts"
+    "test": "node -r @swc-node/register scripts/regression-storage-namespace.ts && node -r @swc-node/register scripts/regression-local-voxa-fallback.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "1.0.28",

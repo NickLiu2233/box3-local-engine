@@ -4,6 +4,7 @@ const fs = require('fs')
 const http = require('http')
 const net = require('net')
 const path = require('path')
+const { createRuntimeLifecycle } = require('./runtime-lifecycle')
 
 const worldIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 
@@ -60,6 +61,17 @@ function listWorlds(libraryRoot) {
   }
 }
 
+function resolveWorld(libraryRoot, reference) {
+  const direct = readWorld(libraryRoot, reference)
+  if (direct) return direct
+  return listWorlds(libraryRoot).find((world) => {
+    const publicId = worldIdPattern.test(String(world.manifest.publicId || ''))
+      ? String(world.manifest.publicId)
+      : world.id
+    return publicId === reference
+  }) || null
+}
+
 function requestPathWithoutWorld(requestUrl, id) {
   const parsed = new URL(requestUrl || '/', 'http://127.0.0.1')
   const prefix = `/${encodeURIComponent(id)}`
@@ -86,6 +98,8 @@ function startPlayLibrary({
   runtimePortStart = 10000,
   startRuntime,
   waitForRuntime,
+  maxRuntimes = 4,
+  idleTimeoutMs = 15 * 60_000,
 }) {
   fs.mkdirSync(libraryRoot, { recursive: true })
   const runtimes = new Map()
@@ -118,21 +132,33 @@ function startPlayLibrary({
     await runtime.stop()
   }
 
-  async function ensureRuntime(id) {
-    const world = readWorld(libraryRoot, id)
+  const lifecycle = createRuntimeLifecycle({
+    runtimes,
+    starts,
+    stopRuntime,
+    setStatus,
+    maxRuntimes,
+    idleTimeoutMs,
+  })
+
+  async function ensureRuntime(reference) {
+    const world = resolveWorld(libraryRoot, reference)
     if (!world) throw Object.assign(new Error('地图不存在或数据不完整'), { statusCode: 404 })
+    const id = world.id
     const current = runtimes.get(id)
     if (current?.signature === world.signature && !current.exited) {
+      lifecycle.touch(current)
       setStatus(id, { phase: 'ready', percent: 100, message: '游戏运行时已就绪' })
       return current
     }
     if (current) await stopRuntime(id)
     if (starts.has(id)) return starts.get(id)
-
     const promise = (async () => {
+      await lifecycle.ensureCapacity(id)
       setStatus(id, { phase: 'starting', percent: 18, message: '正在创建独立游戏运行时' })
       const runtimePort = nextPort++
       const runtime = await startRuntime(world, runtimePort)
+      lifecycle.touch(runtime)
       runtime.signature = world.signature
       runtimes.set(id, runtime)
       try {
@@ -153,9 +179,11 @@ function startPlayLibrary({
   }
 
   const server = http.createServer(async (req, res) => {
-    const id = extractWorldId(req.url)
+    const reference = extractWorldId(req.url)
+    const resolvedWorld = resolveWorld(libraryRoot, reference)
+    const id = resolvedWorld?.id || reference
     try {
-      const forwardedPath = requestPathWithoutWorld(req.url, id)
+      const forwardedPath = requestPathWithoutWorld(req.url, reference)
       if (forwardedPath === '/__local_runtime/status') {
         const runtime = runtimes.get(id)
         if (runtime?.exited && statuses.get(id)?.phase === 'ready') {
@@ -170,17 +198,19 @@ function startPlayLibrary({
         return
       }
       if (forwardedPath === '/__local_runtime/start' && req.method === 'POST') {
-        if (!readWorld(libraryRoot, id)) {
+        if (!resolvedWorld) {
           res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
           res.end(JSON.stringify({ message: '地图不存在或数据不完整' }))
           return
         }
-        void ensureRuntime(id).catch(() => undefined)
+        void ensureRuntime(reference).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify(statuses.get(id) || setStatus(id, { phase: 'starting', percent: 10, message: '正在启动' })))
         return
       }
-      const runtime = await ensureRuntime(id)
+      const runtime = await ensureRuntime(reference)
+      const releaseConnection = lifecycle.acquire(runtime)
+      res.once('close', releaseConnection)
       const proxy = http.request({
         hostname: '127.0.0.1',
         port: runtime.port,
@@ -203,14 +233,16 @@ function startPlayLibrary({
   })
 
   server.on('upgrade', async (req, socket, head) => {
-    const id = extractWorldId(req.url)
+    const reference = extractWorldId(req.url)
     try {
-      const runtime = await ensureRuntime(id)
+      const runtime = await ensureRuntime(reference)
+      const releaseConnection = lifecycle.acquire(runtime)
+      socket.once('close', releaseConnection)
       const upstream = net.connect(runtime.port, '127.0.0.1')
       upstream.on('connect', () => {
         const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
         const lines = [
-          `${req.method} ${requestPathWithoutWorld(req.url, id)} HTTP/${req.httpVersion}`,
+          `${req.method} ${requestPathWithoutWorld(req.url, reference)} HTTP/${req.httpVersion}`,
           ...Object.entries(headers).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`),
           '',
           '',
@@ -234,6 +266,8 @@ function startPlayLibrary({
         stopRuntime(id).catch((error) => console.error(`Unable to stop map ${id}:`, error))
       }
     }
+    lifecycle.collectIdle().catch((error) =>
+      console.error('Unable to recycle idle map runtimes:', error))
   }, 3000)
   scanTimer.unref()
 
@@ -253,4 +287,4 @@ function startPlayLibrary({
   }
 }
 
-module.exports = { listWorlds, readWorld, startPlayLibrary }
+module.exports = { listWorlds, readWorld, resolveWorld, startPlayLibrary }

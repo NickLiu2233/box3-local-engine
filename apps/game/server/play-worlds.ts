@@ -3,6 +3,7 @@ import path from 'path';
 
 export type PlayWorld = {
   id: string;
+  publicId: string;
   name: string;
   author: string;
   description: string;
@@ -43,6 +44,9 @@ export function getPlayWorlds(): PlayWorld[] {
           }
           return [{
             id: entry.name,
+            publicId: idPattern.test(String(manifest.publicId || ''))
+              ? String(manifest.publicId)
+              : entry.name,
             name: manifest.projectName || entry.name,
             author: manifest.author || '',
             description: manifest.description || '',
@@ -60,4 +64,10 @@ export function getPlayWorlds(): PlayWorld[] {
   } catch {
     return [];
   }
+}
+
+export function findPlayWorld(reference: string) {
+  return getPlayWorlds().find(
+    (world) => world.id === reference || world.publicId === reference,
+  );
 }

@@ -12,8 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   if (!id) return res.status(400).json({ message: 'Project ID is required' });
+  const scope = Array.isArray(req.query.scope) ? req.query.scope[0] : req.query.scope;
+  if (scope !== 'map' && scope !== 'group') {
+    return res.status(400).json({ message: '导出范围必须是 map 或 group' });
+  }
   try {
-    const archive = getLocalProjectManager().exportProject(id);
+    const archive = getLocalProjectManager().exportProject(id, { scope });
     const cleanup = () => {
       fs.rmSync(archive.archivePath, { force: true });
     };

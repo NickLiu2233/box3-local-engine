@@ -10,7 +10,7 @@ const supportedPlatforms = new Set(['linux/amd64', 'linux/arm64'])
 // Format 4 requires the complete game-server runtime dependency tree. Older
 // format-3 archives may be missing executable files from packages whose
 // runtime directory is named `doc` (notably yaml/dist/doc/directives.js).
-const playFormat = '6'
+const playFormat = '7'
 
 function readDotEnvValue(name) {
   try {

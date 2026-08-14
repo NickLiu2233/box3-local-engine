@@ -2,7 +2,7 @@ import { getSharedLogger } from './logger';
 import { getServerConfig } from '../configs/server';
 import { getMapInfo } from './data-fatching';
 import { mapRoleToCombType, type MapInfoConfig } from '../configs/client';
-import { getPlayWorlds } from './play-worlds';
+import { findPlayWorld } from './play-worlds';
 import { getLocalProjectManager } from './local-project-manager';
 
 type CustomizeConfig = {
@@ -55,7 +55,7 @@ export async function getMapContentInfo(
   const containerName = name;
   if (ServerConfig.isLocalGameServer) {
     const localWorld = process.env.BOX_PLAY_LIBRARY_PATH
-      ? getPlayWorlds().find((world) => world.id === containerName)
+      ? findPlayWorld(containerName)
       : undefined;
     if (process.env.BOX_PLAY_LIBRARY_PATH && !localWorld) {
       throw new Error(`Play world does not exist: ${containerName}`);

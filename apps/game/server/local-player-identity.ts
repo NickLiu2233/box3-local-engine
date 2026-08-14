@@ -16,6 +16,7 @@ import {
   type LocalPlayerStatus,
   type RuntimePlayerIdentity,
 } from '@box-local/utils/local-player-identity';
+import { requestClientAddress } from './client-address';
 
 const COOKIE_NAME = 'box_local_player_session';
 const SESSION_DAYS = 30;
@@ -42,6 +43,11 @@ type IdentityRow = QueryResultRow & {
   last_login_ip?: string | null;
   login_count?: string | number | null;
   active_session_count?: string | number | null;
+  admin_note?: string | null;
+  tags?: string[] | null;
+  ban_reason?: string | null;
+  banned_at?: string | Date | null;
+  banned_until?: string | Date | null;
 };
 
 export type PlayerAccountView = {
@@ -65,11 +71,65 @@ export type PlayerAccountView = {
   lastLoginIp: string;
   loginCount: number;
   activeSessionCount: number;
+  adminNote: string;
+  tags: string[];
+  banReason: string;
+  bannedAt?: string;
+  bannedUntil?: string;
+};
+
+export type ManagedPlayerListOptions = {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  identity?: 'all' | 'user' | 'banned';
+  role?: 'all' | LocalPlayerRole;
+  online?: 'all' | 'online' | 'offline';
+  sort?: 'lastSeen' | 'registered' | 'displayName' | 'loginCount';
+};
+
+export type ManagedPlayerList = {
+  players: PlayerAccountView[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type AdminActionContext = {
+  ip: string;
+  userAgent: string;
+  subjectId?: string;
+  actor?: string;
+  actorDisplayName?: string;
+  actorRole?: LocalPlayerRole | 'owner';
+};
+
+export type PlayerAdminActivity = {
+  events: Array<{
+    id: string;
+    kind: 'login' | 'admin';
+    action: string;
+    actor: string;
+    actorDisplayName: string;
+    subjectId: string;
+    displayName: string;
+    username: string;
+    ip: string;
+    userAgent: string;
+    details: Record<string, unknown>;
+    createdAt: string;
+  }>;
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 export type ManagedPlayerDetails = {
   player: PlayerAccountView;
   sessions: Array<{
+    sessionId: string;
     createdAt: string;
     lastSeenAt: string;
     expiresAt: string;
@@ -94,6 +154,7 @@ export type PlayerAdminOverview = {
     activeLast24Hours: number;
     newLast7Days: number;
     loginsLast24Hours: number;
+    failedLoginsLast24Hours: number;
     uniqueLoginIpsLast7Days: number;
     moderators: number;
     admins: number;
@@ -203,6 +264,11 @@ async function initialize() {
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS last_login_ip TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS login_count BIGINT NOT NULL DEFAULT 0`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS admin_note TEXT NOT NULL DEFAULT ''`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'::text[]`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT ''`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
       await database.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS local_users_username_lower
         ON ${table('users')} (LOWER(username))
@@ -250,6 +316,24 @@ async function initialize() {
         ON ${table('login_events')} (principal_id, created_at DESC)
       `);
       await database.query(`
+        CREATE INDEX IF NOT EXISTS local_login_events_created
+        ON ${table('login_events')} (created_at DESC)
+      `);
+      await database.query(`
+        CREATE TABLE IF NOT EXISTS ${table('auth_failures')} (
+          id BIGSERIAL PRIMARY KEY,
+          username TEXT NOT NULL DEFAULT '',
+          reason TEXT NOT NULL,
+          ip_address TEXT NOT NULL DEFAULT '',
+          user_agent TEXT NOT NULL DEFAULT '',
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await database.query(`
+        CREATE INDEX IF NOT EXISTS local_auth_failures_created
+        ON ${table('auth_failures')} (created_at DESC)
+      `);
+      await database.query(`
         CREATE TABLE IF NOT EXISTS ${table('player_revocations')} (
           id BIGSERIAL PRIMARY KEY,
           subject_id UUID NOT NULL,
@@ -260,6 +344,10 @@ async function initialize() {
       await database.query(`
         CREATE INDEX IF NOT EXISTS local_player_revocations_created
         ON ${table('player_revocations')} (created_at DESC)
+      `);
+      await database.query(`
+        CREATE INDEX IF NOT EXISTS local_audit_logs_created
+        ON ${table('audit_logs')} (created_at DESC)
       `);
     })().catch((error) => {
       initialized = null;
@@ -291,12 +379,7 @@ function requestIp(req: NextApiRequest) {
     const value = Array.isArray(internal) ? internal[0] : internal;
     if (value) return value.slice(0, 128);
   }
-  let value = req.socket.remoteAddress || '';
-  if (process.env.BOX_TRUST_PROXY === 'true') {
-    const forwarded = req.headers['x-forwarded-for'];
-    value = (Array.isArray(forwarded) ? forwarded[0] : forwarded || value).split(',')[0].trim();
-  }
-  return value.replace(/^::ffff:/, '').slice(0, 128);
+  return requestClientAddress(req).slice(0, 128);
 }
 
 function requestUserAgent(req: NextApiRequest) {
@@ -306,6 +389,10 @@ function requestUserAgent(req: NextApiRequest) {
     if (value) return value.slice(0, 512);
   }
   return String(req.headers['user-agent'] || '').slice(0, 512);
+}
+
+export function createAdminActionContext(req: NextApiRequest): AdminActionContext {
+  return { ip: requestIp(req), userAgent: requestUserAgent(req) };
 }
 
 function tokenHash(token: string) {
@@ -398,7 +485,21 @@ function toView(identity: RuntimePlayerIdentity, dates: Partial<IdentityRow> = {
     lastLoginIp: dates.last_login_ip || '',
     loginCount: Number(dates.login_count || 0),
     activeSessionCount: Number(dates.active_session_count || 0),
+    adminNote: dates.admin_note || '',
+    tags: Array.isArray(dates.tags) ? dates.tags : [],
+    banReason: dates.ban_reason || '',
+    bannedAt: iso(dates.banned_at),
+    bannedUntil: iso(dates.banned_until),
   };
+}
+
+async function expireTemporaryBans(database: Pool) {
+  await database.query(`
+    UPDATE ${table('users')}
+    SET status = 'active', ban_reason = '', banned_at = NULL, banned_until = NULL,
+      updated_at = NOW()
+    WHERE status = 'banned' AND banned_until IS NOT NULL AND banned_until <= NOW()
+  `);
 }
 
 async function findSession(database: Pool, token: string, req: NextApiRequest) {
@@ -477,6 +578,18 @@ function derivePassword(password: string, salt: string) {
   });
 }
 
+async function recordAuthFailure(
+  database: Pool,
+  req: NextApiRequest,
+  username: string,
+  reason: 'invalid_credentials' | 'banned',
+) {
+  await database.query(`
+    INSERT INTO ${table('auth_failures')} (username, reason, ip_address, user_agent)
+    VALUES ($1, $2, $3, $4)
+  `, [username.slice(0, 64), reason, requestIp(req), requestUserAgent(req)]);
+}
+
 export async function registerPlayer(
   req: NextApiRequest,
   res: NextApiResponse,
@@ -551,6 +664,7 @@ export async function loginPlayer(
   const database = getPool();
   if (!database) throw new Error('玩家账号功能需要配置 PostgreSQL');
   await initialize();
+  await expireTemporaryBans(database);
   const username = typeof values.username === 'string' ? values.username.trim() : '';
   const password = typeof values.password === 'string' ? values.password : '';
   const result = await database.query<IdentityRow & { password_salt: string; password_hash: string }>(`
@@ -570,9 +684,13 @@ export async function loginPlayer(
     ? Buffer.from(row.password_hash, 'base64url')
     : await derivePassword('box-local-invalid-password', fallbackSalt);
   if (!row || derived.length !== expected.length || !timingSafeEqual(derived, expected)) {
+    await recordAuthFailure(database, req, username, 'invalid_credentials');
     throw new Error('用户名或密码错误');
   }
-  if (row.status === 'banned') throw new Error('该玩家已被封禁');
+  if (row.status === 'banned') {
+    await recordAuthFailure(database, req, username, 'banned');
+    throw new Error('该玩家已被封禁');
+  }
   const oldToken = sessionToken(req);
   const token = randomBytes(32).toString('base64url');
   const ip = requestIp(req);
@@ -642,38 +760,82 @@ export async function currentPlayer(req: NextApiRequest, res: NextApiResponse) {
   };
 }
 
-export async function listManagedPlayers(search = '') {
+export async function listManagedPlayers(options: ManagedPlayerListOptions = {}): Promise<ManagedPlayerList> {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
-  const normalized = search.trim().slice(0, 64);
+  await expireTemporaryBans(database);
+  const normalized = (options.search || '').trim().slice(0, 64);
+  const pageSize = Math.max(10, Math.min(100, Math.trunc(options.pageSize || 30)));
+  const page = Math.max(1, Math.trunc(options.page || 1));
+  const identity = ['all', 'user', 'banned'].includes(options.identity || '') ? options.identity : 'all';
+  const role = ['player', 'moderator', 'admin'].includes(options.role || '') ? options.role : 'all';
+  const online = ['online', 'offline'].includes(options.online || '') ? options.online : 'all';
+  const orderBy = {
+    lastSeen: 'p.last_seen_at DESC',
+    registered: 'u.created_at DESC NULLS LAST',
+    displayName: 'u.display_name ASC NULLS LAST',
+    loginCount: 'u.login_count DESC NULLS LAST',
+  }[options.sort || 'lastSeen'] || 'p.last_seen_at DESC';
+  const values: unknown[] = [normalized, identity, role, online];
+  const where = `
+    ($1 = '' OR u.username ILIKE '%' || $1 || '%'
+      OR u.display_name ILIKE '%' || $1 || '%'
+      OR u.admin_note ILIKE '%' || $1 || '%'
+      OR $1 = ANY(u.tags)
+      OR CAST(u.id AS TEXT) = $1 OR CAST(p.id AS TEXT) ILIKE $1 || '%')
+    AND ($2 = 'all' OR ($2 = 'user' AND u.id IS NOT NULL) OR ($2 = 'banned' AND u.status = 'banned'))
+    AND ($3 = 'all' OR u.role = $3)
+    AND ($4 = 'all' OR ($4 = 'online' AND EXISTS (
+      SELECT 1 FROM ${table('sessions')} sx WHERE sx.principal_id = p.id AND sx.expires_at > NOW()
+    )) OR ($4 = 'offline' AND NOT EXISTS (
+      SELECT 1 FROM ${table('sessions')} sx WHERE sx.principal_id = p.id AND sx.expires_at > NOW()
+    )))
+  `;
+  const countResult = await database.query<{ total: string }>(`
+    SELECT COUNT(*) AS total
+    FROM ${table('principals')} p
+    LEFT JOIN ${table('users')} u ON u.principal_id = p.id
+    WHERE ${where}
+  `, values);
+  const total = Number(countResult.rows[0]?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  values.push(pageSize, (safePage - 1) * pageSize);
   const result = await database.query<IdentityRow>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
       u.id AS user_id, u.username, u.display_name, u.avatar_hash, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
-      u.last_login_at, u.last_login_ip, u.login_count,
+      u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
+      u.ban_reason, u.banned_at, u.banned_until,
       (SELECT COUNT(*) FROM ${table('sessions')} s
         WHERE s.principal_id = p.id AND s.expires_at > NOW()) AS active_session_count
     FROM ${table('principals')} p
     LEFT JOIN ${table('users')} u ON u.principal_id = p.id
-    WHERE $1 = '' OR u.username ILIKE '%' || $1 || '%'
-      OR u.display_name ILIKE '%' || $1 || '%'
-      OR CAST(u.id AS TEXT) = $1 OR CAST(p.id AS TEXT) ILIKE $1 || '%'
-    ORDER BY p.last_seen_at DESC
-    LIMIT 500
-  `, [normalized]);
-  return result.rows.map((row) => toView(rowToIdentity(row), row));
+    WHERE ${where}
+    ORDER BY ${orderBy}
+    LIMIT $5 OFFSET $6
+  `, values);
+  return {
+    players: result.rows.map((row) => toView(rowToIdentity(row), row)),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+  };
 }
 
 export async function getPlayerAdminOverview(): Promise<PlayerAdminOverview> {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
+  await expireTemporaryBans(database);
   const [totalsResult, loginResult, auditResult] = await Promise.all([
     database.query<{
       identities: string; users: string; guests: string; banned: string;
       active_sessions: string; active_last_24_hours: string; new_last_7_days: string;
-      logins_last_24_hours: string; unique_login_ips_last_7_days: string;
+      logins_last_24_hours: string; failed_logins_last_24_hours: string;
+      unique_login_ips_last_7_days: string;
       moderators: string; admins: string;
     }>(`
       SELECT
@@ -685,6 +847,7 @@ export async function getPlayerAdminOverview(): Promise<PlayerAdminOverview> {
         COUNT(*) FILTER (WHERE p.last_seen_at >= NOW() - INTERVAL '24 hours') AS active_last_24_hours,
         COUNT(*) FILTER (WHERE p.created_at >= NOW() - INTERVAL '7 days') AS new_last_7_days,
         (SELECT COUNT(*) FROM ${table('login_events')} WHERE created_at >= NOW() - INTERVAL '24 hours') AS logins_last_24_hours,
+        (SELECT COUNT(*) FROM ${table('auth_failures')} WHERE created_at >= NOW() - INTERVAL '24 hours') AS failed_logins_last_24_hours,
         (SELECT COUNT(DISTINCT NULLIF(ip_address, '')) FROM ${table('login_events')} WHERE created_at >= NOW() - INTERVAL '7 days') AS unique_login_ips_last_7_days,
         COUNT(*) FILTER (WHERE u.role = 'moderator') AS moderators,
         COUNT(*) FILTER (WHERE u.role = 'admin') AS admins
@@ -723,6 +886,7 @@ export async function getPlayerAdminOverview(): Promise<PlayerAdminOverview> {
       activeLast24Hours: Number(totals?.active_last_24_hours || 0),
       newLast7Days: Number(totals?.new_last_7_days || 0),
       loginsLast24Hours: Number(totals?.logins_last_24_hours || 0),
+      failedLoginsLast24Hours: Number(totals?.failed_logins_last_24_hours || 0),
       uniqueLoginIpsLast7Days: Number(totals?.unique_login_ips_last_7_days || 0),
       moderators: Number(totals?.moderators || 0),
       admins: Number(totals?.admins || 0),
@@ -749,11 +913,13 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
+  await expireTemporaryBans(database);
   const result = await database.query<IdentityRow>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
       u.id AS user_id, u.username, u.display_name, u.avatar_hash, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
-      u.last_login_at, u.last_login_ip, u.login_count,
+      u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
+      u.ban_reason, u.banned_at, u.banned_until,
       (SELECT COUNT(*) FROM ${table('sessions')} s
         WHERE s.principal_id = p.id AND s.expires_at > NOW()) AS active_session_count
     FROM ${table('principals')} p
@@ -763,6 +929,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   const row = result.rows[0];
   if (!row) throw new Error('玩家不存在');
   const sessions = await database.query<{
+    session_id: string;
     created_at: string | Date;
     last_seen_at: string | Date;
     expires_at: string | Date;
@@ -770,7 +937,8 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
     last_seen_ip: string;
     user_agent: string;
   }>(`
-    SELECT created_at, last_seen_at, expires_at, created_ip, last_seen_ip, user_agent
+    SELECT LEFT(token_hash, 16) AS session_id, created_at, last_seen_at, expires_at,
+      created_ip, last_seen_ip, user_agent
     FROM ${table('sessions')}
     WHERE principal_id = $1 AND expires_at > NOW()
     ORDER BY last_seen_at DESC
@@ -790,6 +958,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   return {
     player: toView(rowToIdentity(row), row),
     sessions: sessions.rows.map((session) => ({
+      sessionId: session.session_id,
       createdAt: new Date(session.created_at).toISOString(),
       lastSeenAt: new Date(session.last_seen_at).toISOString(),
       expiresAt: new Date(session.expires_at).toISOString(),
@@ -805,11 +974,106 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   };
 }
 
-async function audit(client: Pool | PoolClient, action: string, subjectId: string, details: unknown) {
+async function audit(
+  client: Pool | PoolClient,
+  action: string,
+  subjectId: string,
+  details: unknown,
+  context?: AdminActionContext,
+) {
   await client.query(`
     INSERT INTO ${table('audit_logs')} (actor, action, subject_id, details)
-    VALUES ('server-owner', $1, $2, $3::jsonb)
-  `, [action, subjectId, JSON.stringify(details || {})]);
+    VALUES ($1, $2, $3, $4::jsonb)
+  `, [context?.actor || 'server-owner', action, subjectId, JSON.stringify({
+    ...(details && typeof details === 'object' ? details : {}),
+    actorDisplayName: context?.actorDisplayName || '服主密钥',
+    actorRole: context?.actorRole || 'owner',
+    actorIp: context?.ip || '',
+    actorUserAgent: context?.userAgent || '',
+  })]);
+}
+
+export async function listPlayerAdminActivity(options: {
+  kind?: 'all' | 'login' | 'admin';
+  search?: string;
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<PlayerAdminActivity> {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const kind = ['login', 'admin'].includes(options.kind || '') ? options.kind : 'all';
+  const search = (options.search || '').trim().slice(0, 64);
+  const pageSize = Math.max(10, Math.min(100, Math.trunc(options.pageSize || 30)));
+  const page = Math.max(1, Math.trunc(options.page || 1));
+  const eventQuery = `
+    WITH events AS (
+      SELECT 'login'::text AS kind, 'login:' || e.id::text AS id,
+        'login.success'::text AS action, 'player:' || REPLACE(e.principal_id::text, '-', '') AS actor,
+        COALESCE(u.display_name, '') AS actor_display_name,
+        e.principal_id AS subject_id, COALESCE(u.display_name, '') AS display_name,
+        COALESCE(u.username, '') AS username, e.ip_address AS ip,
+        e.user_agent, '{}'::jsonb AS details, e.created_at
+      FROM ${table('login_events')} e
+      LEFT JOIN ${table('users')} u ON u.principal_id = e.principal_id
+      UNION ALL
+      SELECT 'login'::text AS kind, 'failure:' || f.id::text AS id,
+        'login.failed'::text AS action, 'anonymous'::text AS actor,
+        f.username AS actor_display_name, NULL::uuid AS subject_id,
+        f.username AS display_name, f.username, f.ip_address AS ip,
+        f.user_agent, jsonb_build_object('reason', f.reason) AS details, f.created_at
+      FROM ${table('auth_failures')} f
+      UNION ALL
+      SELECT 'admin'::text AS kind, 'audit:' || a.id::text AS id,
+        a.action, a.actor, COALESCE(a.details->>'actorDisplayName', a.actor) AS actor_display_name,
+        a.subject_id, COALESCE(u.display_name, '') AS display_name,
+        COALESCE(u.username, '') AS username, COALESCE(a.details->>'actorIp', '') AS ip,
+        COALESCE(a.details->>'actorUserAgent', '') AS user_agent,
+        a.details, a.created_at
+      FROM ${table('audit_logs')} a
+      LEFT JOIN ${table('users')} u ON u.principal_id = a.subject_id
+    )
+  `;
+  const where = `
+    ($1 = 'all' OR kind = $1)
+    AND ($2 = '' OR action ILIKE '%' || $2 || '%'
+      OR actor ILIKE '%' || $2 || '%' OR actor_display_name ILIKE '%' || $2 || '%'
+      OR display_name ILIKE '%' || $2 || '%' OR username ILIKE '%' || $2 || '%'
+      OR COALESCE(subject_id::text, '') ILIKE $2 || '%' OR ip ILIKE $2 || '%')
+  `;
+  const count = await database.query<{ total: string }>(`${eventQuery} SELECT COUNT(*) AS total FROM events WHERE ${where}`, [kind, search]);
+  const total = Number(count.rows[0]?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const result = await database.query<{
+    id: string; kind: 'login' | 'admin'; action: string; actor: string;
+    actor_display_name: string; subject_id: string | null; display_name: string;
+    username: string; ip: string; user_agent: string; details: Record<string, unknown>;
+    created_at: string | Date;
+  }>(`${eventQuery}
+    SELECT * FROM events WHERE ${where}
+    ORDER BY created_at DESC, id DESC LIMIT $3 OFFSET $4
+  `, [kind, search, pageSize, (safePage - 1) * pageSize]);
+  return {
+    events: result.rows.map((event) => ({
+      id: event.id,
+      kind: event.kind,
+      action: event.action,
+      actor: event.actor,
+      actorDisplayName: event.actor_display_name || event.actor,
+      subjectId: event.subject_id ? normalizeSubjectId(event.subject_id) : '',
+      displayName: event.display_name || '',
+      username: event.username || '',
+      ip: event.ip || '',
+      userAgent: event.user_agent || '',
+      details: event.details || {},
+      createdAt: new Date(event.created_at).toISOString(),
+    })),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+  };
 }
 
 async function publishPlayerRevocation(
@@ -860,7 +1124,11 @@ export async function listPlayerRevocations(
 
 export async function updateManagedPlayer(
   subjectId: string,
-  changes: { displayName?: unknown; role?: unknown; status?: unknown; avatar?: unknown },
+  changes: {
+    displayName?: unknown; role?: unknown; status?: unknown; avatar?: unknown;
+    adminNote?: unknown; tags?: unknown; banReason?: unknown; bannedUntil?: unknown;
+  },
+  context?: AdminActionContext,
 ) {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
@@ -869,29 +1137,54 @@ export async function updateManagedPlayer(
   const avatar = typeof changes.avatar === 'string' ? changes.avatar.trim() : undefined;
   const role = changes.role as LocalPlayerRole | undefined;
   const status = changes.status as LocalPlayerStatus | undefined;
+  const adminNote = typeof changes.adminNote === 'string' ? changes.adminNote.trim() : undefined;
+  const tags = Array.isArray(changes.tags)
+    ? [...new Set(changes.tags.map((tag) => String(tag).trim()).filter(Boolean))]
+    : undefined;
+  const banReason = typeof changes.banReason === 'string' ? changes.banReason.trim() : undefined;
+  const bannedUntil = changes.bannedUntil === '' || changes.bannedUntil == null
+    ? null
+    : new Date(String(changes.bannedUntil));
   if (displayName !== undefined && !displayNamePattern.test(displayName)) throw new Error('昵称长度必须为 1 到 32 个字符');
   if (avatar !== undefined && avatar.length > 2048) throw new Error('头像地址过长');
   if (role !== undefined && !['player', 'moderator', 'admin'].includes(role)) throw new Error('角色无效');
   if (status !== undefined && !['active', 'banned'].includes(status)) throw new Error('状态无效');
+  if (adminNote !== undefined && adminNote.length > 2000) throw new Error('服主备注不能超过 2000 个字符');
+  if (tags && (tags.length > 20 || tags.some((tag) => tag.length > 32))) throw new Error('最多设置 20 个标签，每个不超过 32 个字符');
+  if (banReason !== undefined && banReason.length > 500) throw new Error('封禁原因不能超过 500 个字符');
+  if (bannedUntil && Number.isNaN(bannedUntil.getTime())) throw new Error('封禁截止时间无效');
+  if (status === 'banned' && bannedUntil && bannedUntil <= new Date()) throw new Error('封禁截止时间必须晚于当前时间');
   const client = await database.connect();
   try {
     await client.query('BEGIN');
+    const previous = await client.query<{ status: LocalPlayerStatus }>(`
+      SELECT status FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE
+    `, [subjectId]);
+    if (!previous.rows[0]) throw new Error('只能修改已经注册的玩家');
     const result = await client.query<IdentityRow>(`
       UPDATE ${table('users')} SET
         display_name = COALESCE($2, display_name),
         avatar_hash = COALESCE($3, avatar_hash),
         role = COALESCE($4, role),
         status = COALESCE($5, status),
+        admin_note = COALESCE($6, admin_note),
+        tags = COALESCE($7, tags),
+        ban_reason = CASE WHEN $5 = 'active' THEN '' ELSE COALESCE($8, ban_reason) END,
+        banned_at = CASE WHEN $5 = 'banned' AND status <> 'banned' THEN NOW() WHEN $5 = 'active' THEN NULL ELSE banned_at END,
+        banned_until = CASE WHEN $5 = 'active' THEN NULL WHEN $5 = 'banned' THEN $9 ELSE banned_until END,
         updated_at = NOW()
       WHERE principal_id = $1
       RETURNING principal_id AS subject_id
-    `, [subjectId, displayName, avatar, role, status]);
+    `, [subjectId, displayName, avatar, role, status, adminNote, tags, banReason, bannedUntil]);
     if (!result.rows[0]) throw new Error('只能修改已经注册的玩家');
-    if (status === 'banned') {
+    if (status === 'banned' && previous.rows[0].status !== 'banned') {
       await client.query(`DELETE FROM ${table('sessions')} WHERE principal_id = $1`, [subjectId]);
       await publishPlayerRevocation(client, subjectId, 'banned');
     }
-    await audit(client, 'player.update', subjectId, { displayName, avatar, role, status });
+    await audit(client, 'player.update', subjectId, {
+      displayName, avatar, role, status, adminNote,
+      tags, banReason, bannedUntil: bannedUntil?.toISOString() || null,
+    }, context);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -902,7 +1195,36 @@ export async function updateManagedPlayer(
   return (await getManagedPlayerDetails(subjectId)).player;
 }
 
-export async function revokeManagedPlayerSessions(subjectId: string) {
+export async function revokeManagedPlayerSession(
+  subjectId: string,
+  sessionId: string,
+  context?: AdminActionContext,
+) {
+  if (!/^[0-9a-f]{16}$/i.test(sessionId)) throw new Error('会话标识无效');
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(`
+      DELETE FROM ${table('sessions')}
+      WHERE principal_id = $1 AND LEFT(token_hash, 16) = LOWER($2)
+    `, [subjectId, sessionId]);
+    if (!result.rowCount) throw new Error('会话不存在或已经失效');
+    const eventId = await publishPlayerRevocation(client, subjectId, 'sessions-revoked');
+    await audit(client, 'player.session.revoke', subjectId, { sessionId, eventId }, context);
+    await client.query('COMMIT');
+    return { revoked: 1, eventId };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function revokeManagedPlayerSessions(subjectId: string, context?: AdminActionContext) {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
@@ -916,7 +1238,7 @@ export async function revokeManagedPlayerSessions(subjectId: string) {
     await audit(client, 'player.sessions.revoke', subjectId, {
       revoked: result.rowCount || 0,
       eventId,
-    });
+    }, context);
     await client.query('COMMIT');
     return { revoked: result.rowCount || 0, eventId };
   } catch (error) {
@@ -927,14 +1249,119 @@ export async function revokeManagedPlayerSessions(subjectId: string) {
   }
 }
 
-export async function deleteManagedPlayer(subjectId: string) {
+export async function resetManagedPlayerPassword(
+  subjectId: string,
+  password: unknown,
+  context?: AdminActionContext,
+) {
+  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    throw new Error('新密码长度必须为 8 到 128 个字符');
+  }
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const salt = randomBytes(16).toString('base64url');
+  const hash = (await derivePassword(password, salt)).toString('base64url');
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const updated = await client.query(`
+      UPDATE ${table('users')}
+      SET password_salt = $2, password_hash = $3, updated_at = NOW()
+      WHERE principal_id = $1
+    `, [subjectId, salt, hash]);
+    if (!updated.rowCount) throw new Error('只能重置已经注册的玩家密码');
+    const sessions = await client.query(`DELETE FROM ${table('sessions')} WHERE principal_id = $1`, [subjectId]);
+    const eventId = await publishPlayerRevocation(client, subjectId, 'sessions-revoked');
+    await audit(client, 'player.password.reset', subjectId, {
+      revoked: sessions.rowCount || 0,
+      eventId,
+    }, context);
+    await client.query('COMMIT');
+    return { reset: true, revoked: sessions.rowCount || 0, eventId };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export type ManagedPlayerBatchAction =
+  | 'revoke-sessions'
+  | 'ban'
+  | 'unban'
+  | 'add-tag'
+  | 'remove-tag';
+
+export async function batchManagePlayers(
+  subjectIds: unknown,
+  action: unknown,
+  payload: { reason?: unknown; bannedUntil?: unknown; tag?: unknown } = {},
+  context?: AdminActionContext,
+) {
+  if (!Array.isArray(subjectIds)) throw new Error('请选择要操作的玩家');
+  const ids = [...new Set(subjectIds.map(String))].filter((id) => /^[0-9a-f]{32}$/i.test(id));
+  if (!ids.length) throw new Error('请选择有效的玩家');
+  if (ids.length > 100) throw new Error('单次最多管理 100 位玩家');
+  if (!['revoke-sessions', 'ban', 'unban', 'add-tag', 'remove-tag'].includes(String(action))) {
+    throw new Error('不支持的批量操作');
+  }
+  const batchAction = action as ManagedPlayerBatchAction;
+  const tag = typeof payload.tag === 'string' ? payload.tag.trim() : '';
+  if ((batchAction === 'add-tag' || batchAction === 'remove-tag') && (!tag || tag.length > 32)) {
+    throw new Error('标签长度必须为 1 到 32 个字符');
+  }
+  const results: Array<{ subjectId: string; ok: boolean; message?: string }> = [];
+  for (const subjectId of ids) {
+    try {
+      if (context?.subjectId && context.subjectId === subjectId
+        && ['revoke-sessions', 'ban'].includes(batchAction)) {
+        throw new Error('不能对当前正在操作的管理员账号执行此操作');
+      }
+      if (context?.actorRole === 'moderator') {
+        const target = await getManagedPlayerDetails(subjectId);
+        if (target.player.role !== 'player') throw new Error('管理员不能管理其他管理角色');
+      }
+      if (batchAction === 'revoke-sessions') {
+        await revokeManagedPlayerSessions(subjectId, context);
+      } else if (batchAction === 'ban') {
+        await updateManagedPlayer(subjectId, {
+          status: 'banned',
+          banReason: payload.reason,
+          bannedUntil: payload.bannedUntil,
+        }, context);
+      } else if (batchAction === 'unban') {
+        await updateManagedPlayer(subjectId, { status: 'active' }, context);
+      } else {
+        const details = await getManagedPlayerDetails(subjectId);
+        const tags = batchAction === 'add-tag'
+          ? [...new Set([...details.player.tags, tag])]
+          : details.player.tags.filter((value) => value !== tag);
+        await updateManagedPlayer(subjectId, { tags }, context);
+      }
+      results.push({ subjectId, ok: true });
+    } catch (error) {
+      results.push({ subjectId, ok: false, message: (error as Error).message });
+    }
+  }
+  return {
+    action: batchAction,
+    requested: ids.length,
+    succeeded: results.filter((result) => result.ok).length,
+    failed: results.filter((result) => !result.ok).length,
+    results,
+  };
+}
+
+export async function deleteManagedPlayer(subjectId: string, context?: AdminActionContext) {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
   const client = await database.connect();
   try {
     await client.query('BEGIN');
-    await audit(client, 'player.delete', subjectId, {});
+    await audit(client, 'player.delete', subjectId, {}, context);
     await publishPlayerRevocation(client, subjectId, 'deleted');
     const result = await client.query(`DELETE FROM ${table('principals')} WHERE id = $1`, [subjectId]);
     if (!result.rowCount) throw new Error('玩家不存在');

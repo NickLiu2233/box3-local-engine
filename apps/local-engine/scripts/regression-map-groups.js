@@ -67,8 +67,30 @@ try {
     manager.listMapGroup('group-dungeon').map(({ id }) => id),
     ['group-main', 'group-dungeon'],
   )
-  const exported = manager.exportProject('group-dungeon')
+  assert.throws(
+    () => manager.exportProject('group-dungeon', { scope: 'group' }),
+    /只有主地图可以导出地图组工程/,
+  )
+  const exportedMap = manager.exportProject('group-dungeon', { scope: 'map' })
+  assert.equal(exportedMap.mapCount, 1)
+  assert.equal(exportedMap.scope, 'map')
+  const importedMap = manager.importProject(exportedMap.archivePath)
+  const importedMapMembers = manager.listMapGroup(importedMap.id)
+  assert.equal(importedMapMembers.length, 1)
+  assert.equal(importedMapMembers[0].mapRole, 'main')
+  const importedMapGroupState = JSON.parse(
+    fs.readFileSync(
+      path.join(process.env.BOX_LOCAL_PROJECTS_PATH, importedMap.id, 'group-state.json'),
+      'utf8',
+    ),
+  )
+  assert.deepEqual(importedMapGroupState.projectModelPathsByMap, {
+    [importedMap.id]: ['mesh/shared-model.vb', 'mesh/main-model.vb'],
+  })
+
+  const exported = manager.exportProject('group-main', { scope: 'group' })
   assert.equal(exported.mapCount, 2)
+  assert.equal(exported.scope, 'group')
   const imported = manager.importProject(exported.archivePath)
   const importedMembers = manager.listMapGroup(imported.id)
   assert.equal(importedMembers.length, 2)
@@ -99,7 +121,7 @@ try {
     'an imported uninitialized submap must keep shared state at the group root',
   )
   const target = manager.createProject({ id: 'target-main', name: '目标主地图' })
-  const attached = manager.importProject(exported.archivePath, {
+  const attached = manager.importProject(exportedMap.archivePath, {
     mode: 'submap',
     targetMainProjectId: target.id,
   })
@@ -114,7 +136,7 @@ try {
     [target.id, attached.id],
   )
   assert.throws(
-    () => manager.importProject(exported.archivePath, {
+    () => manager.importProject(exportedMap.archivePath, {
       mode: 'submap',
       targetMainProjectId: attached.id,
     }),

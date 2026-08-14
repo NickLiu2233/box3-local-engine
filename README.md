@@ -215,6 +215,12 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `PERMISSION_TOKEN_SECRET` | 空 | 正式部署使用的稳定随机密钥 |
 | `BOX_SERVER_PUBLIC_URL` | 空 | 公网反向代理后的完整 HTTPS 地址 |
 | `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
+| `BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS` | `10` | 单一来源 IP 在登录窗口内允许的失败次数 |
+| `BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS` | `5` | 单一来源 IP 在注册窗口内允许的注册次数 |
+| `BOX_CREATOR_EDIT_MAX_RUNTIMES` | `6` | 创作端同时保留的编辑运行时数量 |
+| `BOX_CREATOR_PLAY_MAX_RUNTIMES` | `4` | 创作端同时保留的预览运行时数量 |
+| `BOX_PLAY_MAX_RUNTIMES` | `8` | 游玩端同时保留的地图运行时数量 |
+| `BOX_RUNTIME_IDLE_TIMEOUT_MS` | `900000` | 无活动连接运行时的空闲回收时间 |
 | `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
 | `BOX_SCRIPT_MEMORY_MB` | `512` | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置 |
 | `BOX_SCRIPT_HEAP_MB` | `512` | 兼容其他脚本执行路径的堆内存上限（MiB），建议与上一项保持一致 |

@@ -7,7 +7,7 @@ import { Modal, Toast } from '@box-local/box-design';
 import {
   IMAGE_EXTS_WITHOUT_DOT,
   IMAGE_MIMES,
-  TOTAL_SPACE,
+  MAX_PICTURE_FILE_SIZE,
 } from '../fileSystemPanel/defs';
 import { setCenterPanel } from 'src/redux/edit/creator';
 import { CenterPanelEnum } from '../../defs';
@@ -52,7 +52,7 @@ export function useUploadPicture(options: {
           return;
         }
 
-        if (size > TOTAL_SPACE) {
+        if (size > MAX_PICTURE_FILE_SIZE) {
           const destroy = Modal.show({
             title: intl.formatMessage({
               id: 'uploadPictureSizeErrorTitle',

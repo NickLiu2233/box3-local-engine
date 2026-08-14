@@ -177,14 +177,23 @@ function groupStorageNamespace(projectId = '') {
   if (process.env.BOX_GROUP_STORAGE_NAMESPACE) {
     return process.env.BOX_GROUP_STORAGE_NAMESPACE
   }
-  if (projectId) {
+  const identity =
+    projectId ||
+    process.env.BOX_WORLD_GROUP_ID ||
+    process.env.BOX_WORLD_MAIN_PROJECT_ID ||
+    process.env.BOX_WORLD_ID ||
+    process.env.BOX_SERVER_CONTENT_ID ||
+    ''
+  if (identity && projectManager) {
     try {
-      return projectManager.mapGroupIdentity(projectId).mapGroupId
+      return projectManager.mapGroupIdentity(identity).mapGroupId
     } catch {
       // Standalone runtime fixtures do not necessarily have project metadata.
     }
   }
-  return 'global'
+  // Generated distributions set BOX_WORLD_GROUP_ID. BOX_WORLD_ID remains a
+  // safe legacy fallback; unrelated packages must never collapse to global.
+  return identity || 'standalone-default'
 }
 
 function validateDefaultAvatar() {
@@ -283,6 +292,27 @@ let playLibrary
 let editLibrary
 let creatorPlayLibrary
 let backupTimer
+
+async function terminateRuntimeChild(child, runtime, graceMs) {
+  if (runtime.exited) return
+  child.kill('SIGTERM')
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, graceMs)
+    child.once('exit', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
+  if (runtime.exited) return
+  child.kill('SIGKILL')
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, 1000)
+    child.once('exit', () => {
+      clearTimeout(timer)
+      resolve()
+    })
+  })
+}
 
 function shutdown(code = 0) {
   if (shuttingDown) return
@@ -485,8 +515,8 @@ async function main() {
             process.env.BOX_SERVER_CONTENT_ID ||
             'default'
           ),
-          // getGroupStorage is shared by every map in this deployment and
-          // must never fall back to the per-map data storage namespace.
+          // getGroupStorage is shared inside one map group, never across
+          // unrelated projects or independently distributed game packages.
           BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
           BOX_SERVER_NAME:
             process.env.BOX_WORLD_NAME ||
@@ -552,15 +582,7 @@ async function main() {
       startedAt: new Date().toISOString(),
       exited: false,
       async stop() {
-        if (!runtime.exited) child.kill('SIGTERM')
-        await new Promise((resolve) => {
-          if (runtime.exited) return resolve()
-          const timer = setTimeout(resolve, 1500)
-          child.once('exit', () => {
-            clearTimeout(timer)
-            resolve()
-          })
-        })
+        await terminateRuntimeChild(child, runtime, 1500)
         fs.rmSync(temporaryRoot, { recursive: true, force: true })
       },
     }
@@ -606,15 +628,7 @@ async function main() {
       startedAt: new Date().toISOString(),
       exited: false,
       async stop() {
-        if (!runtime.exited) child.kill('SIGTERM')
-        await new Promise((resolve) => {
-          if (runtime.exited) return resolve()
-          const timer = setTimeout(resolve, 5000)
-          child.once('exit', () => {
-            clearTimeout(timer)
-            resolve()
-          })
-        })
+        await terminateRuntimeChild(child, runtime, 5000)
       },
     }
     child.once('exit', () => {
@@ -642,6 +656,8 @@ async function main() {
       startRuntime: (project, port) =>
         startProjectRuntime(project, port, 'edit'),
       waitForRuntime: waitFor,
+      maxRuntimes: process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || '6',
+      idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
     })
     creatorPlayLibrary = require('./edit-library').startEditLibrary({
       host: playRuntimeHost,
@@ -652,6 +668,8 @@ async function main() {
       startRuntime: (project, port) =>
         startProjectRuntime(project, port, 'play'),
       waitForRuntime: waitFor,
+      maxRuntimes: process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || '4',
+      idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
     })
     await Promise.all([editLibrary.ready, creatorPlayLibrary.ready])
 
@@ -725,6 +743,8 @@ async function main() {
       port: playPort,
       startRuntime: startLibraryRuntime,
       waitForRuntime: waitFor,
+      maxRuntimes: process.env.BOX_PLAY_MAX_RUNTIMES || '8',
+      idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
     })
     await playLibrary.ready
   } else if (startsPlayServer) {

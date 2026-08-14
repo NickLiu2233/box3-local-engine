@@ -20,6 +20,7 @@ import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/stora
 import { StorageLimiters } from './limiters';
 import { getConfigSync } from '../../config/server';
 import { FeatureFlag } from '@box-local/env/constants';
+import { resolveGroupStorageNamespace } from './storage-namespace';
 
 type DbFetchResultType = ReturnValue | ListReturnValue | undefined | number;
 export class StorageController {
@@ -45,9 +46,7 @@ export class StorageController {
         config.contentId ||
         'default',
       );
-    const groupNamespace = String(
-      config.groupStorageNamespace || config.groupId || 'global',
-    );
+    const groupNamespace = resolveGroupStorageNamespace(config);
     if (usePostgres) {
       this.dbServer = new PostgresDataStorage({
         connectionString: config.databaseUrl,

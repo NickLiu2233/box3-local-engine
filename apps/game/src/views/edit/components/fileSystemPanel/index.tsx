@@ -32,7 +32,6 @@ import { ClickPopup } from '../../../components/basic/click-popup';
 import { notice } from '../../../components/common/notice';
 import { Modal } from '../../../components/edit/modal';
 
-import Tooltip from '../../../components/common/tooltip';
 import { calc_class_name } from 'src/utils/classname';
 import { copyToClipboard } from 'src/utils/copy2clipboard';
 import { isMobile, isTablet } from 'src/utils/mobile';
@@ -49,7 +48,6 @@ import {
   IMAGE_EXTS_WITHOUT_DOT,
   IMAGE_MIMES,
   isOSSAsset,
-  TOTAL_SPACE,
 } from './defs';
 import type { ImageResource } from 'src/engine/resource/schema';
 import { VoxaDataType, setVoxaData } from 'src/redux/edit/creator';
@@ -146,10 +144,6 @@ enum ModalType {
   PermanentlyRemoveOne,
   UploadAudio,
   UploadWarning,
-  /**
-   * 空间不足的警告⚠️弹窗
-   */
-  InsufficientSpace,
   None,
 }
 
@@ -283,11 +277,6 @@ class FileSystemContainer extends React.Component<Props, State> {
   private purgeProjectModel = async (key: string) => {
     await this.requestProjectModel({ action: 'purge', meshPath: key });
   };
-
-  /**
-   * 当前所有用户文件占用的存储空间（模型、音频、图片）
-   */
-  private spaceUsage = 0;
 
   public constructor(props) {
     super(props);
@@ -1904,7 +1893,6 @@ class FileSystemContainer extends React.Component<Props, State> {
     const { meshAssets } = editor.state.replica.extraProjectInfo;
     const { codeEditorState } = this.context;
 
-    let useSpace = 0;
     /**
      * 记录“全部”数据数量，已经没用了，因为“全部”不会显示了
      * 但是又不能把后面的case TabList.ALL删掉，否则资源数组顺序会错
@@ -1929,8 +1917,6 @@ class FileSystemContainer extends React.Component<Props, State> {
           value: assetEntries[key],
         });
 
-        useSpace += assetEntries[key].size;
-
         assetLength++;
       }
     };
@@ -1941,10 +1927,6 @@ class FileSystemContainer extends React.Component<Props, State> {
      */
     countAssets(assets, ({ type }) => type !== AssetType.AUDIO);
 
-    this.spaceUsage = useSpace;
-
-    const percent = Number((useSpace / TOTAL_SPACE).toFixed(2));
-    const isNearLimit = percent >= 0.9;
     const tabs: Tab[] = [];
 
     this.TAB_ITEM.forEach((tabItem) => {
@@ -2039,32 +2021,6 @@ class FileSystemContainer extends React.Component<Props, State> {
               </React.Fragment>
             );
           })}
-        </div>
-        <div className={styles.fileSystemTabFoot}>
-          <div className={styles.footSpaceInfo}>
-            <div>{this.props.intl.formatMessage({ id: 'space' })}</div>
-            <div>
-              <span
-                className={
-                  isNearLimit
-                    ? styles.footSpaceUsedDanger
-                    : styles.footSpaceUsed
-                }
-              >
-                {this.transformSizeUnit(useSpace, true)}
-              </span>
-              <span>/{this.transformSizeUnit(TOTAL_SPACE)}</span>
-            </div>
-          </div>
-          <div className={styles.progressBar}>
-            <div
-              style={{ width: `${percent}%` }}
-              className={calc_class_name(
-                styles.progress,
-                isNearLimit ? styles.progressDanger : '',
-              )}
-            ></div>
-          </div>
         </div>
       </div>
     );
@@ -2452,16 +2408,6 @@ class FileSystemContainer extends React.Component<Props, State> {
   };
 
   private _renderPhoneFileSystemTabs = () => {
-    const { assets } = editor.state.replica.project;
-    let useSpace = 0;
-    Object.keys(assets).forEach((key) => {
-      useSpace += assets[key].size;
-    });
-    const percent = Number((useSpace / TOTAL_SPACE).toFixed(2));
-    // const percent = 0.5;
-    const isNearLimit = percent >= 0.9;
-    const stroke = isNearLimit ? '#F44336' : '#FFFFFF';
-    const circleLength = Math.floor(2 * Math.PI * 10);
     return (
       <div className={styles.phoneFileSystemTab}>
         <div className={styles.phoneFileSystemTabContent}>
@@ -2470,61 +2416,6 @@ class FileSystemContainer extends React.Component<Props, State> {
           })}
         </div>
         <div className={styles.phoneFileSystemTabFoot}>
-          <Tooltip
-            content={
-              <div className={styles.phoneFootSpaceInfoWrapper}>
-                <div className={styles.phoneFootSpaceInfo}>
-                  <div>{this.props.intl.formatMessage({ id: 'space' })}</div>
-                  <div>
-                    <span
-                      className={
-                        isNearLimit
-                          ? styles.footSpaceUsedDanger
-                          : styles.footSpaceUsed
-                      }
-                    >
-                      {this.transformSizeUnit(useSpace, true)}
-                    </span>
-                    <span>/{this.transformSizeUnit(TOTAL_SPACE)}</span>
-                  </div>
-                </div>
-                <div className={styles.progressBar}>
-                  <div
-                    style={{ width: `${percent}%` }}
-                    className={calc_class_name(
-                      styles.progress,
-                      isNearLimit ? styles.progressDanger : '',
-                    )}
-                  ></div>
-                </div>
-              </div>
-            }
-          >
-            <div className={styles.phoneProgressRing}>
-              <svg xmlns="http://www.w3.org/200/svg" height="24" width="24">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  fill="none"
-                  stroke="grey"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-                <circle
-                  transform="rotate(-90)"
-                  transform-origin="12px 12px"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  fill="none"
-                  stroke={stroke}
-                  strokeWidth="2"
-                  strokeDasharray={`${percent * circleLength},${circleLength}`}
-                />
-              </svg>
-            </div>
-          </Tooltip>
           <div
             className={styles.closeIcon}
             onClick={this.props.closeModal}
@@ -3051,35 +2942,6 @@ class FileSystemContainer extends React.Component<Props, State> {
             </div>
             <div className={styles.textColor}>
               {this.props.intl.formatMessage({ id: 'uploadFileSizeLimit' })}10MB
-            </div>
-          </Modal>
-        ) : (
-          ''
-        )}
-        {openModal === ModalType.InsufficientSpace ? (
-          <Modal
-            width={400}
-            title={this.props.intl.formatMessage({
-              id: 'uploadPictureSizeErrorTitle',
-            })}
-            visible={openModal === ModalType.InsufficientSpace}
-            cancel={this.props.intl.formatMessage({ id: 'cancel' })}
-            confirm={this.props.intl.formatMessage({
-              id: 'uploadPictureReselect',
-            })}
-            disableBackgroundClick
-            handleCancel={() => {
-              this.handleModalChange(ModalType.None);
-            }}
-            handleConfirm={() => {
-              this.handleModalChange(ModalType.None);
-              this.uploadInputRef.click();
-            }}
-          >
-            <div className={styles.textColor}>
-              {this.props.intl.formatMessage({
-                id: 'uploadPictureSizeErrorContent',
-              })}
             </div>
           </Modal>
         ) : (

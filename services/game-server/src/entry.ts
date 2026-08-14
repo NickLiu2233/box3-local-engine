@@ -53,6 +53,7 @@ import { createGameServer, HttpRoutes } from './createServer';
 import { createLocalContentWithVoxa } from './content/local-content-with-voxa';
 import { GameServerStateSchema } from './game-server-schema';
 import { createRuntimeRedisStore } from './redis/runtime-redis';
+import { resolveGroupStorageNamespace } from './storage/storage-namespace';
 import {
   getExtraProject,
   mergeExtraProjectInfo,
@@ -263,8 +264,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
   );
 
   // initialize build system
-  const redisNamespace =
-    spec.groupStorageNamespace || String(spec.groupId || 'global');
+  const redisNamespace = resolveGroupStorageNamespace(spec);
   const [businessRedis, cacheRedis] = await Promise.all([
     createRuntimeRedisStore({
       host: spec.REDIS_HOST,

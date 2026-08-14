@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import {
+  checkAuthRateLimit,
+  recordAuthRateLimitAttempt,
+  resetAuthRateLimit,
+} from '../../../server/auth-rate-limit';
+import { requestClientAddress } from '../../../server/client-address';
 import { loginPlayer } from '../../../server/local-player-identity';
-
-const failures = new Map<string, { count: number; resetAt: number }>();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
@@ -10,21 +14,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'POST');
     return res.status(405).end();
   }
-  const address = req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const attempt = failures.get(address);
-  if (attempt && attempt.resetAt > now && attempt.count >= 10) {
-    res.setHeader('Retry-After', String(Math.ceil((attempt.resetAt - now) / 1000)));
+  const address = requestClientAddress(req);
+  const limit = checkAuthRateLimit('login', address);
+  if (!limit.allowed) {
+    res.setHeader('Retry-After', String(limit.retryAfterSeconds));
     return res.status(429).json({ message: '登录失败次数过多，请稍后再试' });
   }
   try {
     const player = await loginPlayer(req, res, req.body || {});
-    failures.delete(address);
+    resetAuthRateLimit('login', address);
     return res.status(200).json({ player });
   } catch (error) {
-    const active = attempt && attempt.resetAt > now ? attempt : { count: 0, resetAt: now + 5 * 60_000 };
-    active.count += 1;
-    failures.set(address, active);
+    recordAuthRateLimitAttempt('login', address);
     return res.status(401).json({ message: (error as Error).message });
   }
 }

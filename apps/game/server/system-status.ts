@@ -85,6 +85,34 @@ async function voxaHealth(): Promise<ServiceHealth> {
   }
 }
 
+async function httpService(
+  id: string,
+  name: string,
+  raw: string,
+  pathname: string,
+  disabledDetail: string,
+): Promise<ServiceHealth> {
+  if (!raw) return { id, name, configured: false, state: 'disabled', detail: disabledDetail, check: 'http' };
+  try {
+    const url = new URL(pathname, raw.endsWith('/') ? raw : `${raw}/`);
+    const startedAt = Date.now();
+    const response = await fetch(url, { signal: AbortSignal.timeout(2000) });
+    if (!response.ok) throw Object.assign(new Error('bad response'), { code: `HTTP_${response.status}` });
+    return {
+      id,
+      name,
+      configured: true,
+      state: 'healthy',
+      detail: '服务正常',
+      latencyMs: Date.now() - startedAt,
+      endpoint: url.host,
+      check: 'http',
+    };
+  } catch (error) {
+    return { id, name, configured: true, state: 'unhealthy', detail: safeError(error), check: 'http' };
+  }
+}
+
 function endpointFromUrl(value: string, defaultPort: number) {
   try {
     const parsed = new URL(value);
@@ -94,11 +122,18 @@ function endpointFromUrl(value: string, defaultPort: number) {
   }
 }
 
-async function serviceHealth() {
+export async function getServiceHealth() {
   const databaseUrl = process.env.BOX_DATABASE_URL || '';
   const database = endpointFromUrl(databaseUrl, 5432);
   const redisHost = process.env.REDIS_HOST || '';
   const services = await Promise.all([
+    httpService(
+      'player-service',
+      '玩家服务',
+      process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || '',
+      '/api/health-check',
+      '未配置玩家服务地址',
+    ),
     voxaHealth(),
     tcpService(
       'postgres',
@@ -122,7 +157,7 @@ async function serviceHealth() {
   return services;
 }
 
-async function runtimeStatus(projectId: string, mode: 'edit' | 'play') {
+export async function getRuntimeStatus(projectId: string, mode: 'edit' | 'play') {
   const port = Number(mode === 'edit'
     ? process.env.BOX_EDIT_RUNTIME_PORT || process.env.BOX_EDIT_SERVER_PORT || 9967
     : process.env.BOX_PLAY_RUNTIME_PORT || process.env.BOX_SERVER_PORT || 9966);
@@ -155,12 +190,12 @@ export async function getSystemStatus() {
   const projects = manager.listProjects();
   const mainProjects = projects.filter((project) => project.mapRole === 'main');
   const [services, runtimePairs] = await Promise.all([
-    serviceHealth(),
+    getServiceHealth(),
     Promise.all(projects.map(async (project) => ({
       projectId: project.id,
       projectName: project.name,
-      edit: await runtimeStatus(project.id, 'edit'),
-      play: await runtimeStatus(project.id, 'play'),
+      edit: await getRuntimeStatus(project.id, 'edit'),
+      play: await getRuntimeStatus(project.id, 'play'),
     }))),
   ]);
   const diskTarget = fs.existsSync(manager.projectsRoot) ? manager.projectsRoot : path.dirname(manager.projectsRoot);

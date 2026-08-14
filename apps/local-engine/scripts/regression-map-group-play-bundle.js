@@ -1,6 +1,7 @@
 'use strict'
 
 const assert = require('node:assert/strict')
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -66,7 +67,11 @@ try {
   )
 
   saveProject('release-dungeon', '6789A')
-  const published = manager.publishMapGroup('release-dungeon', 'v1', '整组回归')
+  assert.throws(
+    () => manager.publishMapGroup('release-dungeon', 'v1', '整组回归'),
+    /只有主地图可以导出游戏包/,
+  )
+  const published = manager.publishMapGroup('release-main', 'v1', '整组回归')
   assert.equal(published.type, 'map-group-release')
   assert.equal(published.mainProjectId, 'release-main')
   assert.equal(published.mapCount, 2)
@@ -84,7 +89,53 @@ try {
   assert.equal(mainManifest.mapGroupId, 'release-main')
   assert.equal(submapManifest.mainProjectId, 'release-main')
 
-  const bundle = manager.exportPlayBundle('release-dungeon@v1')
+  const distributionPath = path.join(temporaryRoot, 'distribution')
+  const packaged = manager.packageProject('release-main@v1', distributionPath, {
+    includeImages: false,
+  })
+  assert.equal(packaged.directory, distributionPath)
+  const compose = fs.readFileSync(path.join(distributionPath, 'compose.yml'), 'utf8')
+  assert.match(compose, /BOX_GROUP_STORAGE_NAMESPACE: \$\{BOX_GROUP_STORAGE_NAMESPACE:-release-main\}/)
+  assert.doesNotMatch(compose, /GROUP_STORAGE_NAMESPACE[^\n]*global/)
+  const envExample = fs.readFileSync(path.join(distributionPath, '.env.example'), 'utf8')
+  const documentedVariables = new Set(
+    [...envExample.matchAll(/^#?\s*([A-Z][A-Z0-9_]*)=/gm)].map((match) => match[1]),
+  )
+  const composeVariables = new Set(
+    [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*)/g)].map((match) => match[1]),
+  )
+  assert.deepEqual(
+    [...composeVariables].filter((name) => !documentedVariables.has(name)),
+    [],
+    'every generated Compose parameter must be documented in .env.example',
+  )
+  for (const required of [
+    '.env.example',
+    'BUILD-INFO.json',
+    'LICENSE.txt',
+    'THIRD-PARTY-NOTICES.json',
+    'SHA256SUMS',
+  ]) {
+    assert.equal(fs.existsSync(path.join(distributionPath, required)), true, `${required} must be packaged`)
+  }
+  const checksums = fs.readFileSync(path.join(distributionPath, 'SHA256SUMS'), 'utf8')
+    .trim()
+    .split('\n')
+  assert(checksums.length > 5)
+  for (const line of checksums) {
+    const match = line.match(/^([a-f0-9]{64})  (.+)$/)
+    assert(match, `invalid checksum line: ${line}`)
+    const actual = crypto.createHash('sha256')
+      .update(fs.readFileSync(path.join(distributionPath, match[2])))
+      .digest('hex')
+    assert.equal(actual, match[1], `checksum mismatch: ${match[2]}`)
+  }
+
+  assert.throws(
+    () => manager.exportPlayBundle('release-dungeon@v1'),
+    /只有主地图可以导出游戏包/,
+  )
+  const bundle = manager.exportPlayBundle('release-main@v1')
   assert.equal(bundle.mapCount, 2)
   const entries = execFileSync('tar', ['-tzf', bundle.archivePath], { encoding: 'utf8' })
     .trim()

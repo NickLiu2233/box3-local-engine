@@ -5,7 +5,7 @@ import { IntlProvider } from 'react-intl';
 import { PlayLoading } from '../components/play-loading';
 import { LoadingStage } from '../src/defs/loading-stage';
 import { hasAuthenticatedPlayer, playerAccountURL } from '../server/player-service-client';
-import { getPlayWorlds } from '../server/play-worlds';
+import { findPlayWorld } from '../server/play-worlds';
 
 type RuntimeStatus = {
   phase: 'idle' | 'starting' | 'loading' | 'ready' | 'error';
@@ -21,7 +21,7 @@ export const getServerSideProps: GetServerSideProps<PlayLaunchProps> = async ({ 
     return { redirect: { destination: playerAccountURL('play'), permanent: false } };
   }
   const worldId = Array.isArray(query.world) ? query.world[0] : query.world;
-  const world = getPlayWorlds().find((item) => item.id === worldId);
+  const world = findPlayWorld(String(worldId || ''));
   return { props: { cover: world?.cover || '', worldName: world?.name || '本地作品' } };
 };
 

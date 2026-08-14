@@ -10,4 +10,5 @@ export function isOSSAsset(type: AssetType) {
   return OSS_ASSET_TYPES.includes(type);
 }
 
-export const TOTAL_SPACE = 100 * 1024 * 1024;
+// Per-file safety limit; this is not a project storage quota.
+export const MAX_PICTURE_FILE_SIZE = 100 * 1024 * 1024;

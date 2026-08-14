@@ -73,6 +73,7 @@ import { ServerParticleSetSchema } from '../particle/particle-server-state';
 import { InteractComponentSetSchema } from '@box-local/schema/interact/interact-protocol';
 import { DialogServer } from '../dialog/dialog-server';
 import { StorageController } from '../storage/storage-controller';
+import { resolveGroupStorageNamespace } from '../storage/storage-namespace';
 import { CommonSQL } from '../storage/types';
 import { ServerSoundStateSchema } from '../sound/server-sound-state';
 import { SoundServer } from '../sound/server-sound-controller';
@@ -633,12 +634,10 @@ export class ScriptHost {
 
           // Project name
           initPacket.projectName = this._state.project.name;
-          initPacket.groupId =
-            (this._state.settings.groupId &&
-              this._state.settings.groupId.toString()) ||
-            (config.method === 'local' &&
-              (config.groupStorageNamespace || 'global')) ||
-            '';
+          initPacket.groupId = config.method === 'local'
+            ? resolveGroupStorageNamespace(config)
+            : (this._state.settings.groupId &&
+                this._state.settings.groupId.toString()) || '';
 
           // copy resources
           this._getResources(initPacket.resources);

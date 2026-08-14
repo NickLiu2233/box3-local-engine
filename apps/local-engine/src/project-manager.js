@@ -9,10 +9,12 @@ const {
   ensurePlayImageArchive,
   getPlayImageConfig,
 } = require('./play-image')
+const { generateDistributionMetadata } = require('./distribution-metadata')
 const { scanProjectCompatibility } = require('./project-compatibility')
 const { createMapGroupManager } = require('./map-group-manager')
 
 const packageRoot = path.resolve(__dirname, '..')
+const repoRoot = path.resolve(packageRoot, '../..')
 const projectsRoot = process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects')
 const templateDataRoot = path.join(packageRoot, 'data')
 const voxaDataRoot =
@@ -22,6 +24,7 @@ const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packageRoot, 'backups')
 const snapshotLimit = 5
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
+const publicMapIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const mapGroupManager = createMapGroupManager(projectsRoot)
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
 // extraProject metadata is binary, so publishing must discover both forms or
@@ -687,6 +690,7 @@ function toProjectSummary(metadata) {
   const latestRelease = releases.length ? releases[releases.length - 1] : undefined
   return {
     id: metadata.id,
+    publicId: metadata.publicId || metadata.id,
     name: metadata.name,
     description: metadata.description || '',
     updatedAt: relativeTime(metadata.updatedAt),
@@ -737,10 +741,37 @@ function listProjects() {
     .sort((left, right) => right.updatedAtISO.localeCompare(left.updatedAtISO))
 }
 
+function assertPublicMapId(value) {
+  const publicId = String(value || '').trim().toLowerCase()
+  if (!publicMapIdPattern.test(publicId)) {
+    throw new Error('地图 ID 只能包含小写字母、数字和连字符，长度为 1–63 个字符')
+  }
+  return publicId
+}
+
+function publicMapIdExists(publicId, excludeProjectId = '') {
+  return listProjects().some(
+    (project) => project.id !== excludeProjectId &&
+      (project.id === publicId || project.publicId === publicId),
+  )
+}
+
+function nextPublicMapId(value, excludeProjectId = '') {
+  const preferred = assertPublicMapId(value)
+  if (!publicMapIdExists(preferred, excludeProjectId)) return preferred
+  for (let index = 2; index < 10000; index += 1) {
+    const suffix = `-${index}`
+    const candidate = `${preferred.slice(0, 63 - suffix.length)}${suffix}`
+    if (!publicMapIdExists(candidate, excludeProjectId)) return candidate
+  }
+  throw new Error('无法生成唯一的地图 ID')
+}
+
 function createProject({ id, name, author = '', description = '' }) {
   const safeId = assertProjectId(id)
   const root = projectRoot(safeId)
   if (fs.existsSync(root)) throw new Error(`Project already exists: ${safeId}`)
+  if (publicMapIdExists(safeId)) throw new Error(`地图 ID“${safeId}”已被其他项目使用`)
   if (!name || !name.trim()) throw new Error('Project name is required')
   if (!fs.existsSync(templateDataRoot)) throw new Error('Local Engine template data is missing')
 
@@ -751,6 +782,7 @@ function createProject({ id, name, author = '', description = '' }) {
   const metadata = {
     formatVersion: 1,
     id: safeId,
+    publicId: safeId,
     name: name.trim(),
     author: author.trim().slice(0, 80),
     description: description.trim(),
@@ -805,6 +837,11 @@ function createSubmap(mainId, { id, name, description = '' }) {
 
 function updateProject(id, patch) {
   const metadata = getProject(id)
+  if (typeof patch.publicId === 'string') {
+    const publicId = assertPublicMapId(patch.publicId)
+    if (publicMapIdExists(publicId, id)) throw new Error(`地图 ID“${publicId}”已被其他项目使用`)
+    metadata.publicId = publicId
+  }
   if (typeof patch.name === 'string' && patch.name.trim()) metadata.name = patch.name.trim()
   if (typeof patch.author === 'string') metadata.author = patch.author.trim().slice(0, 80)
   if (typeof patch.description === 'string') metadata.description = patch.description.trim()
@@ -826,9 +863,15 @@ function runTar(args, message) {
   return result.stdout
 }
 
-function writeMapGroupArchive(id, archivePath, snapshotReason) {
+function writeMapGroupArchive(id, archivePath, snapshotReason, options = {}) {
   const identity = mapGroupIdentity(id)
-  const members = listMapGroup(id)
+  const singleMap = options.scope === 'map'
+  const members = singleMap
+    ? [toProjectSummary(getProject(id))]
+    : listMapGroup(id)
+  const archiveIdentity = singleMap
+    ? { mapGroupId: id, mainProjectId: id }
+    : identity
   for (const member of members) {
     mapGroupManager.materialize(member.id)
     if (snapshotReason) createProjectSnapshot(member.id, snapshotReason)
@@ -849,27 +892,40 @@ function writeMapGroupArchive(id, archivePath, snapshotReason) {
         recursive: true,
         dereference: true,
       })
-      if (member.id === identity.mainProjectId) {
-        copyReadableFileSync(
-          mapGroupManager.paths(member.id).statePath,
-          path.join(destination, 'group-state.json'),
-        )
+      if (member.id === archiveIdentity.mainProjectId) {
+        const groupState = readJSON(mapGroupManager.paths(member.id).statePath)
+        if (singleMap) {
+          groupState.mapGroupId = id
+          if (
+            groupState.projectModelPathsByMap &&
+            typeof groupState.projectModelPathsByMap === 'object' &&
+            !Array.isArray(groupState.projectModelPathsByMap)
+          ) {
+            groupState.projectModelPathsByMap = groupState.projectModelPathsByMap[id] === undefined
+              ? {}
+              : { [id]: groupState.projectModelPathsByMap[id] }
+          }
+          writeJSON(path.join(destination, 'group-state.json'), groupState)
+        } else {
+          writeJSON(path.join(destination, 'group-state.json'), groupState)
+        }
       }
     }
     writeJSON(path.join(temporaryRoot, 'group.json'), {
       formatVersion: 2,
       type: 'map-group',
-      mapGroupId: identity.mapGroupId,
-      mainProjectId: identity.mainProjectId,
+      mapGroupId: archiveIdentity.mapGroupId,
+      mainProjectId: archiveIdentity.mainProjectId,
       // Remember which card initiated the export. Importing as a submap uses
       // this member, while importing independently restores the whole group.
       exportedProjectId: id,
       exportedAt: new Date().toISOString(),
       members: members.map((member) => ({
         id: member.id,
+        publicId: member.publicId || member.id,
         name: member.name,
-        mapRole: member.mapRole,
-        mainProjectId: identity.mainProjectId,
+        mapRole: singleMap ? 'main' : member.mapRole,
+        mainProjectId: archiveIdentity.mainProjectId,
       })),
     })
     runTar(
@@ -883,20 +939,28 @@ function writeMapGroupArchive(id, archivePath, snapshotReason) {
   return { identity, members }
 }
 
-function exportProject(id) {
+function exportProject(id, options = {}) {
+  const scope = options.scope || 'group'
+  if (!['map', 'group'].includes(scope)) throw new Error('不支持的工程导出范围')
   const metadata = getProject(id)
   const identity = mapGroupIdentity(id)
+  if (scope === 'group' && identity.mapRole !== 'main') {
+    throw new Error('只有主地图可以导出地图组工程')
+  }
   fs.mkdirSync(projectExportRoot, { recursive: true })
   const safeName = metadata.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '作品'
-  const filename = `${safeName}_${identity.mapGroupId}.boxproject`
+  const filename = scope === 'map'
+    ? `${safeName}_${id}.boxproject`
+    : `${safeName}_${identity.mapGroupId}_地图组.boxproject`
   const archivePath = path.join(projectExportRoot, filename)
-  const { members } = writeMapGroupArchive(id, archivePath, 'export')
+  const { members } = writeMapGroupArchive(id, archivePath, 'export', { scope })
   return {
     archivePath,
     filename,
     name: metadata.name,
     mapCount: members.length,
-    mapGroupId: identity.mapGroupId,
+    mapGroupId: scope === 'map' ? id : identity.mapGroupId,
+    scope,
   }
 }
 
@@ -1241,6 +1305,7 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
     writeJSON(path.join(root, 'project.json'), {
       formatVersion: 1,
       id,
+      publicId: nextPublicMapId(sourceMetadata.publicId || id),
       name: sourceMetadata.name,
       description: sourceMetadata.description || '',
       author: sourceMetadata.author || targetMain.author || '',
@@ -1321,6 +1386,7 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
       const imported = {
         formatVersion: 1,
         id,
+        publicId: nextPublicMapId(metadata.publicId || id),
         name: metadata.name,
         description: metadata.description || '',
         author: metadata.author || '',
@@ -1412,6 +1478,7 @@ function publishProject(id, requestedVersion, notes = '') {
   const release = {
     formatVersion: 1,
     id: metadata.id,
+    publicId: metadata.publicId || metadata.id,
     projectName: metadata.name,
     author: metadata.author || '',
     description: metadata.description || '',
@@ -1452,6 +1519,9 @@ function publishProject(id, requestedVersion, notes = '') {
 function publishMapGroup(id, requestedVersion, notes = '') {
   const members = listMapGroup(id)
   const identity = mapGroupIdentity(id)
+  if (identity.mapRole !== 'main' || identity.mainProjectId !== id) {
+    throw new Error('只有主地图可以导出游戏包')
+  }
   const version = assertVersion(
     requestedVersion ||
       `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`,
@@ -1645,6 +1715,9 @@ function safeFilename(value, fallback) {
 function exportPlayBundle(reference) {
   const target = getLaunchTarget({ release: reference })
   const identity = mapGroupIdentity(target.id)
+  if (identity.mapRole !== 'main' || identity.mainProjectId !== target.id) {
+    throw new Error('只有主地图可以导出游戏包')
+  }
   const members = listMapGroup(target.id)
   const main = getProject(identity.mainProjectId)
   const exportRoot = path.join(distributionRoot, '.exports')
@@ -1689,6 +1762,7 @@ function exportPlayBundle(reference) {
       createdAt: new Date().toISOString(),
       members: manifests.map((manifest) => ({
         id: manifest.id,
+        publicId: manifest.publicId || manifest.id,
         name: manifest.projectName,
         mapRole: manifest.mapRole,
         mainProjectId: manifest.mainProjectId,
@@ -1725,7 +1799,16 @@ function packageProject(reference, outputDirectory, options = {}) {
   }
 
   let playImageConfig = getPlayImageConfig()
-  const contents = ['world', 'compose.yml', 'README.md']
+  const contents = [
+    'world',
+    'compose.yml',
+    '.env.example',
+    'README.md',
+    'BUILD-INFO.json',
+    'LICENSE.txt',
+    'THIRD-PARTY-NOTICES.json',
+    'SHA256SUMS',
+  ]
   if (options.includeImages) contents.push('play-image.tar')
   const temporaryBundleRoot = `${bundleRoot}.${process.pid}.tmp`
 
@@ -1745,6 +1828,7 @@ function packageProject(reference, outputDirectory, options = {}) {
       )
     }
 
+    const generatedAt = new Date().toISOString()
     writeJSON(path.join(temporaryBundleRoot, 'release.json'), {
       formatVersion: 1,
       project: target.id,
@@ -1754,7 +1838,7 @@ function packageProject(reference, outputDirectory, options = {}) {
       cover: manifest.cover || '',
       version: target.version,
       notes: manifest.notes || '',
-      createdAt: new Date().toISOString(),
+      createdAt: generatedAt,
       permissionHash: manifest.permissionHash,
       mapGroupId: manifest.mapGroupId || manifest.id,
       mapRole: manifest.mapRole,
@@ -1765,30 +1849,36 @@ function packageProject(reference, outputDirectory, options = {}) {
       platform: playImageConfig.platform,
       contents,
     })
+    const groupStorageNamespace = manifest.mapGroupId || manifest.id
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'compose.yml'),
-      `services:\n  player-service:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAYER_SERVICE_IMAGE:-${playImageConfig.playerServiceImage}}\n    restart: unless-stopped\n    environment:\n      BOX_DEPLOYMENT_MODE: player-service\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAY_PUBLIC_URL: \${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_IDENTITY_DATABASE_SCHEMA: \${BOX_IDENTITY_DATABASE_SCHEMA:-box_identity}\n      BOX_PLAYER_REGISTRATION_ENABLED: \${BOX_PLAYER_REGISTRATION_ENABLED:-true}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n    ports:\n      - \"\${BOX_PLAYER_SERVICE_PORT:-3213}:3213\"\n\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    depends_on:\n      player-service:\n        condition: service_healthy\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_PLAYER_SERVICE_INTERNAL_URL: http://player-service:3213\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-global}\n    ports:\n      - \"\${BOX_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n`,
+      `services:\n  player-service:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAYER_SERVICE_IMAGE:-${playImageConfig.playerServiceImage}}\n    restart: unless-stopped\n    mem_limit: \${BOX_PLAYER_SERVICE_MEMORY_LIMIT:-1g}\n    cpus: \${BOX_PLAYER_SERVICE_CPU_LIMIT:-1.0}\n    pids_limit: \${BOX_PLAYER_SERVICE_PIDS_LIMIT:-256}\n    environment:\n      BOX_DEPLOYMENT_MODE: player-service\n      NEXT_PUBLIC_APP_ENV: development\n      NEXT_PUBLIC_APP_EDITION: createra\n      NEXT_PUBLIC_APP_REGION: cn\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAY_PUBLIC_URL: \${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_RUNTIME_IDENTITY_TTL_MS: \${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_IDENTITY_DATABASE_SCHEMA: \${BOX_IDENTITY_DATABASE_SCHEMA:-box_identity}\n      BOX_PLAYER_REGISTRATION_ENABLED: \${BOX_PLAYER_REGISTRATION_ENABLED:-true}\n      BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: \${BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-10}\n      BOX_LOGIN_RATE_LIMIT_WINDOW_MS: \${BOX_LOGIN_RATE_LIMIT_WINDOW_MS:-300000}\n      BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS: \${BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS:-5}\n      BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS: \${BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS:-3600000}\n      BOX_PLAYER_COOKIE_DOMAIN: \${BOX_PLAYER_COOKIE_DOMAIN:-}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n    ports:\n      - \"\${BOX_PLAYER_SERVICE_HOST_IP:-127.0.0.1}:\${BOX_PLAYER_SERVICE_PORT:-3213}:3213\"\n\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    mem_limit: \${BOX_PLAY_MEMORY_LIMIT:-4g}\n    cpus: \${BOX_PLAY_CPU_LIMIT:-4.0}\n    pids_limit: \${BOX_PLAY_PIDS_LIMIT:-1024}\n    depends_on:\n      player-service:\n        condition: service_healthy\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_PUBLIC_ID: ${manifest.publicId || manifest.id}\n      BOX_WORLD_GROUP_ID: ${groupStorageNamespace}\n      BOX_WORLD_MAIN_PROJECT_ID: ${manifest.mainProjectId || manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: \${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: \${BOX_LOCAL_PLAYER_ID:-10000001}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_PLAYER_SERVICE_INTERNAL_URL: http://player-service:3213\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_RUNTIME_IDENTITY_TTL_MS: \${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}\n      BOX_SCRIPT_HEAP_MB: \${BOX_SCRIPT_HEAP_MB:-512}\n      SCRIPT_MEMORY_LIMIT: \${BOX_SCRIPT_MEMORY_MB:-512}\n      BOX_PLAYER_REVOCATION_POLL_MS: \${BOX_PLAYER_REVOCATION_POLL_MS:-1000}\n      BOX_CREATE_SESSION_TIMEOUT_MS: \${BOX_CREATE_SESSION_TIMEOUT_MS:-120000}\n      BOX_PLAY_MAX_RUNTIMES: \${BOX_PLAY_MAX_RUNTIMES:-8}\n      BOX_RUNTIME_IDLE_TIMEOUT_MS: \${BOX_RUNTIME_IDLE_TIMEOUT_MS:-900000}\n      BOX_DATA_STORAGE_PATH: /app/storage\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-${groupStorageNamespace}}\n      REDIS_HOST: \${REDIS_HOST:-}\n      REDIS_PORT: \${REDIS_PORT:-6379}\n      REDIS_PASSWORD: \${REDIS_PASSWORD:-}\n      REDIS_DB: \${REDIS_DB:-0}\n      STORAGE_CACHE_REDIS_DB: \${STORAGE_CACHE_REDIS_DB:-1}\n      STORAGE_CACHE_REDIS_TTL: \${STORAGE_CACHE_REDIS_TTL:-240}\n    ports:\n      - \"\${BOX_PLAY_HOST_IP:-127.0.0.1}:\${BOX_PLAY_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n`,
     )
-    const composePath = path.join(temporaryBundleRoot, 'compose.yml')
-    const offlineCompose = fs.readFileSync(composePath, 'utf8')
-      .replace(
-        'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-global}',
-        'BOX_GROUP_STORAGE_NAMESPACE: ${BOX_GROUP_STORAGE_NAMESPACE:-' +
-          (manifest.mapGroupId || manifest.id) +
-          '}',
-      )
-      .replace(
-        'BOX_DEPLOYMENT_MODE: player-service',
-        'BOX_DEPLOYMENT_MODE: player-service\n      NEXT_PUBLIC_APP_ENV: development\n      NEXT_PUBLIC_APP_EDITION: createra\n      NEXT_PUBLIC_APP_REGION: cn',
-      )
-      .replace('BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}', 'BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: ${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: ${BOX_LOCAL_PLAYER_ID:-10000001}')
-      .replace('      BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}', '      BOX_DATA_STORAGE_PATH: /app/storage\n      BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}')
-      .replace('          create_host_path: false\n', '          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n')
-    fs.writeFileSync(composePath, offlineCompose)
+    const distributionEnvExample = path.join(repoRoot, 'distribution', 'play', '.env.example')
+    fs.copyFileSync(
+      distributionEnvExample,
+      path.join(temporaryBundleRoot, '.env.example'),
+    )
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'README.md'),
-      `# ${manifest.projectName} ${target.version}\n\n作者：${manifest.author || '未署名'}\n\n${manifest.description || '暂无作品简介。'}\n\n这是一个只读游玩发布包，不包含作品的 \`source/\` 工程目录、编辑器或创作管理器。镜像架构为 \`${playImageConfig.platform}\`。\n\n## 部署\n\n1. 在同目录创建 \`.env\`，至少设置 \`PERMISSION_TOKEN_SECRET\` 和 PostgreSQL 的 \`BOX_DATABASE_URL\`。\n2. 执行 \`docker load -i play-image.tar\` 加载游玩镜像。\n3. 另行加载独立分发的 \`player-service-image.tar\`；玩家服务更新不需要重新导出本作品。\n4. 执行 \`docker compose up -d\`。\n5. 玩家打开 \`http://服务器地址:3000/\`，玩家中心默认位于 \`http://服务器地址:3213/\`。\n\n如需修改端口，可在同一个 \`.env\` 中填写 \`BOX_PORT\` 和 \`BOX_PLAYER_SERVICE_PORT\`。玩家身份由独立玩家服务统一存入 PostgreSQL 的 \`box_identity\` schema；地图脚本数据存入 \`box_engine\` schema，数据库凭据只会传入服务端容器。\n\n\`world/\` 是 ${target.version} 的不可变世界快照，并以只读方式挂载，不能被 Local Engine 直接当作可编辑工程导入。可信服主仍可读取运行所需的世界数据，因此不要把未发布素材或真正的服务器秘密放进作品资源。\n`,
+      `# ${manifest.projectName} ${target.version}\n\n作者：${manifest.author || '未署名'}\n\n${manifest.description || '暂无作品简介。'}\n\n这是一个只读游玩发布包，不包含作品的 \`source/\` 工程目录、编辑器或创作管理器。镜像架构为 \`${playImageConfig.platform}\`。\n\n## 完整性校验\n\n部署前在 Linux 执行 \`sha256sum -c SHA256SUMS\`，macOS 执行 \`shasum -a 256 -c SHA256SUMS\`。\`BUILD-INFO.json\` 记录构建版本、源码修订和镜像；\`LICENSE.txt\` 与 \`THIRD-PARTY-NOTICES.json\` 记录许可和第三方依赖。\n\n## 部署\n\n1. 复制 \`.env.example\` 为 \`.env\`，至少设置 \`PERMISSION_TOKEN_SECRET\` 和 PostgreSQL 的 \`BOX_DATABASE_URL\`。\n2. 执行 \`docker load -i play-image.tar\` 加载游玩镜像。\n3. 另行加载独立分发的 \`player-service-image.tar\`；玩家服务更新不需要重新导出本作品。\n4. 执行 \`docker compose up -d\`。\n5. 玩家打开 \`http://服务器地址:3000/\`，玩家中心默认位于 \`http://服务器地址:3213/\`。\n\n如需修改端口，可在同一个 \`.env\` 中填写 \`BOX_PLAY_PORT\` 和 \`BOX_PLAYER_SERVICE_PORT\`。玩家身份由独立玩家服务统一存入 PostgreSQL 的 \`box_identity\` schema；地图脚本数据存入 \`box_engine\` schema，数据库凭据只会传入服务端容器。\n\n\`getDataStorage\` 按地图隔离；\`getGroupStorage\` 默认使用地图组 ID，仅在同一主图/副图组内共享。不要把 \`BOX_GROUP_STORAGE_NAMESPACE\` 手动设成 \`global\`。\n\n\`world/\` 是 ${target.version} 的不可变世界快照，并以只读方式挂载，不能被 Local Engine 直接当作可编辑工程导入。可信服主仍可读取运行所需的世界数据，因此不要把未发布素材或真正的服务器秘密放进作品资源。\n`,
     )
+    generateDistributionMetadata(temporaryBundleRoot, {
+      repoRoot,
+      generatedAt,
+      imageTag: playImageConfig.tag,
+      platform: playImageConfig.platform,
+      release: {
+        project: target.id,
+        version: target.version,
+        permissionHash: manifest.permissionHash,
+        mapGroupId: manifest.mapGroupId || manifest.id,
+      },
+      images: {
+        play: playImageConfig.image,
+        playerService: playImageConfig.playerServiceImage,
+      },
+    })
     fs.renameSync(temporaryBundleRoot, bundleRoot)
   } catch (error) {
     fs.rmSync(temporaryBundleRoot, { recursive: true, force: true })

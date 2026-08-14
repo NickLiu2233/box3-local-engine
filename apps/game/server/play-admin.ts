@@ -35,6 +35,14 @@ function assertWorldId(id: string) {
   return id;
 }
 
+function assertPublicId(value: unknown) {
+  const publicId = String(value || '').trim().toLowerCase();
+  if (!idPattern.test(publicId)) {
+    throw new Error('地图 ID 只能包含小写字母、数字和连字符，长度为 1–63 个字符');
+  }
+  return publicId;
+}
+
 function safeArchivePath(value: string) {
   const normalized = value.replace(/^\.\//, '').replace(/\/$/, '');
   if (
@@ -145,13 +153,14 @@ function validateWorld(root: string) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.json'), 'utf8'));
   const state = JSON.parse(fs.readFileSync(path.join(root, 'data', 'project-state.json'), 'utf8'));
   const id = assertWorldId(String(manifest.id || ''));
+  const publicId = assertPublicId(manifest.publicId || id);
   if (!manifest.permissionHash || state.permissionHash !== manifest.permissionHash) {
     throw new Error('地图权限数据不完整或不一致');
   }
   if (!fs.statSync(path.join(root, 'data', 'blobs')).isDirectory()) {
     throw new Error('地图资源目录不存在');
   }
-  return { id, manifest };
+  return { id, publicId, manifest };
 }
 
 function validateMapGroupBundle(
@@ -160,6 +169,14 @@ function validateMapGroupBundle(
 ) {
   if (new Set(worlds.map((world) => world.id)).size !== worlds.length) {
     throw new Error('游玩包包含重复地图');
+  }
+  const referenceOwners = new Map<string, string>();
+  for (const world of worlds) {
+    for (const reference of [world.id, assertPublicId(world.manifest.publicId || world.id)]) {
+      const owner = referenceOwners.get(reference);
+      if (owner && owner !== world.id) throw new Error('游玩包包含重复的地图 ID');
+      referenceOwners.set(reference, world.id);
+    }
   }
   if (worlds.length === 1) return;
 
@@ -207,9 +224,15 @@ export async function importPlayBundle(archivePath: string) {
     validateMapGroupBundle(temporaryRoot, validated);
     const root = libraryRoot();
     fs.mkdirSync(root, { recursive: true });
+    const installedReferences = new Set(
+      getPlayWorlds().flatMap((world) => [world.id, world.publicId]),
+    );
     for (const world of validated) {
       if (fs.existsSync(path.join(root, world.id))) {
         throw new Error(`同 ID 地图“${world.manifest.projectName || world.id}”已经存在，请先删除旧地图`);
+      }
+      if (installedReferences.has(world.id) || installedReferences.has(world.publicId)) {
+        throw new Error(`地图 ID“${world.publicId}”已经被其他地图使用`);
       }
     }
     const nonce = `${process.pid}-${Date.now()}`;
@@ -260,6 +283,43 @@ export function deletePlayWorld(id: string) {
   }
 }
 
+export function updatePlayWorld(id: string, patch: Record<string, unknown>) {
+  const safeId = assertWorldId(id);
+  const manifestPath = path.join(libraryRoot(), safeId, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) throw new Error('地图不存在');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const publicId = typeof patch.publicId === 'string'
+    ? assertPublicId(patch.publicId)
+    : assertPublicId(manifest.publicId || safeId);
+  if (getPlayWorlds().some(
+    (world) => world.id !== safeId && (world.id === publicId || world.publicId === publicId),
+  )) {
+    throw new Error(`地图 ID“${publicId}”已经被其他地图使用`);
+  }
+  manifest.publicId = publicId;
+  if (typeof patch.name === 'string' && patch.name.trim()) manifest.projectName = patch.name.trim().slice(0, 40);
+  if (typeof patch.author === 'string') manifest.author = patch.author.trim().slice(0, 80);
+  if (typeof patch.description === 'string') manifest.description = patch.description.trim().slice(0, 300);
+  if (typeof patch.cover === 'string') {
+    if (patch.cover && (!/^data:image\/(png|jpeg|webp);base64,/.test(patch.cover) || Buffer.byteLength(patch.cover, 'utf8') > 2 * 1024 * 1024)) {
+      throw new Error('封面必须是小于 2MB 的 PNG、JPG 或 WebP 图片');
+    }
+    manifest.cover = patch.cover;
+  }
+  const temporaryPath = `${manifestPath}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o644 });
+    fs.renameSync(temporaryPath, manifestPath);
+  } catch (error) {
+    fs.rmSync(temporaryPath, { force: true });
+    if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
+      throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
+    }
+    throw error;
+  }
+  return getPlayWorlds().find((world) => world.id === safeId);
+}
+
 function safeFilename(value: string) {
   return value.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '作品';
 }
@@ -283,6 +343,7 @@ export function createPlayBundle(id: string) {
     createdAt: new Date().toISOString(),
     members: worlds.map((entry) => ({
       id: entry.id,
+      publicId: entry.publicId,
       name: entry.name,
       version: entry.version,
       mapRole: entry.mapRole,

@@ -1,4 +1,8 @@
 ARG NODE_IMAGE=docker.1ms.run/library/node:22.17.0-bookworm-slim
+ARG BOX_BUILD_VERSION=0.1.0
+ARG BOX_BUILD_COMMIT=unknown
+ARG BOX_BUILD_DATE=unknown
+ARG BOX_BUILD_SOURCE=local
 
 FROM ${NODE_IMAGE} AS source-base
 
@@ -124,7 +128,22 @@ ENTRYPOINT ["tini", "--"]
 
 FROM runtime-base AS creator
 
+ARG BOX_BUILD_VERSION
+ARG BOX_BUILD_COMMIT
+ARG BOX_BUILD_DATE
+ARG BOX_BUILD_SOURCE
+LABEL org.opencontainers.image.title="BOX Local Engine Creator" \
+      org.opencontainers.image.version="${BOX_BUILD_VERSION}" \
+      org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
+      org.opencontainers.image.created="${BOX_BUILD_DATE}" \
+      org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
+      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+
 ENV BOX_DEPLOYMENT_MODE=creator \
+    BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
+    BOX_BUILD_COMMIT=${BOX_BUILD_COMMIT} \
+    BOX_BUILD_DATE=${BOX_BUILD_DATE} \
+    BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE} \
     BOX_WEB_HOST=0.0.0.0 \
     BOX_WEB_PORT=3000 \
     BOX_PLAY_RUNTIME_HOST=0.0.0.0 \
@@ -142,11 +161,15 @@ COPY --from=creator-build --chown=node:node /app/apps/game/.next/standalone /app
 COPY --from=creator-build --chown=node:node /opt/game-server /app/services/game-server
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/edit-library.js /app/apps/local-engine/src/edit-library.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/project-manager.js /app/apps/local-engine/src/project-manager.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/distribution-metadata.js /app/apps/local-engine/src/distribution-metadata.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/map-group-manager.js /app/apps/local-engine/src/map-group-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
+COPY --from=creator-build --chown=node:node /app/distribution/play/.env.example /app/distribution/play/.env.example
+COPY --from=creator-build --chown=node:node /app/distribution/LICENSE.txt /app/distribution/LICENSE.txt
 COPY --from=creator-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
 
 RUN mkdir -p /app/apps/local-engine/projects /app/apps/local-engine/dist \
@@ -164,7 +187,17 @@ CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--creator"]
 
 FROM runtime-base AS play
 
-LABEL org.box.local-engine.play-format="6"
+ARG BOX_BUILD_VERSION
+ARG BOX_BUILD_COMMIT
+ARG BOX_BUILD_DATE
+ARG BOX_BUILD_SOURCE
+LABEL org.box.local-engine.play-format="7" \
+      org.opencontainers.image.title="BOX Local Engine Play" \
+      org.opencontainers.image.version="${BOX_BUILD_VERSION}" \
+      org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
+      org.opencontainers.image.created="${BOX_BUILD_DATE}" \
+      org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
+      org.opencontainers.image.licenses="LicenseRef-Proprietary"
 
 ENV BOX_DEPLOYMENT_MODE=play \
     BOX_WEB_HOST=0.0.0.0 \
@@ -180,6 +213,7 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/launcher.js 
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library.js /app/apps/local-engine/src/play-library.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
 
@@ -194,8 +228,18 @@ CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--play"]
 
 FROM runtime-base AS player-service
 
-LABEL org.box.local-engine.player-service-format="6" \
-      org.box.local-engine.play-format="6"
+ARG BOX_BUILD_VERSION
+ARG BOX_BUILD_COMMIT
+ARG BOX_BUILD_DATE
+ARG BOX_BUILD_SOURCE
+LABEL org.box.local-engine.player-service-format="7" \
+      org.box.local-engine.play-format="7" \
+      org.opencontainers.image.title="BOX Local Engine Player Service" \
+      org.opencontainers.image.version="${BOX_BUILD_VERSION}" \
+      org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
+      org.opencontainers.image.created="${BOX_BUILD_DATE}" \
+      org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
+      org.opencontainers.image.licenses="LicenseRef-Proprietary"
 
 ENV BOX_DEPLOYMENT_MODE=player-service \
     NEXT_PUBLIC_APP_ENV=development \

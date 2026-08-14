@@ -12,6 +12,10 @@ compose.yml
 play-worlds/
 ```
 
+通过创作端正式导出的分发目录还会包含 `BUILD-INFO.json`、`LICENSE.txt`、
+`THIRD-PARTY-NOTICES.json` 和 `SHA256SUMS`。收到这种目录后先校验完整性：Linux 执行
+`sha256sum -c SHA256SUMS`，macOS 执行 `shasum -a 256 -c SHA256SUMS`。
+
 首次部署：
 
 ```bash

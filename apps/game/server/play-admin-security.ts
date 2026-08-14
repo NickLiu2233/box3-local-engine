@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { requestClientAddress } from './client-address';
 
 const WINDOW_MS = 5 * 60 * 1000;
 const MAX_FAILURES = 10;
@@ -13,20 +14,14 @@ export function isPlayAdminEnabled() {
   );
 }
 
-function requestAddress(req: NextApiRequest) {
-  if (process.env.BOX_TRUST_PROXY === 'true') {
-    const forwarded = req.headers['x-forwarded-for'];
-    const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)
-      ?.split(',')[0]
-      ?.trim();
-    if (first) return first;
-  }
-  return req.socket.remoteAddress || 'unknown';
-}
-
 function bearerToken(req: NextApiRequest) {
   const authorization = req.headers.authorization || '';
   return authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+}
+
+export function hasValidPlayAdminBearer(req: NextApiRequest) {
+  if (!isPlayAdminEnabled()) return false;
+  return tokensMatch(bearerToken(req), process.env.BOX_PLAY_ADMIN_TOKEN || '');
 }
 
 function tokensMatch(provided: string, expected: string) {
@@ -42,7 +37,7 @@ export function allowPlayAdmin(req: NextApiRequest, res: NextApiResponse) {
     return false;
   }
 
-  const address = requestAddress(req);
+  const address = requestClientAddress(req);
   const now = Date.now();
   const current = failures.get(address);
   if (current && current.resetAt > now && current.count >= MAX_FAILURES) {
@@ -51,8 +46,7 @@ export function allowPlayAdmin(req: NextApiRequest, res: NextApiResponse) {
     return false;
   }
 
-  const expected = process.env.BOX_PLAY_ADMIN_TOKEN || '';
-  if (!tokensMatch(bearerToken(req), expected)) {
+  if (!hasValidPlayAdminBearer(req)) {
     const active = current && current.resetAt > now
       ? current
       : { count: 0, resetAt: now + WINDOW_MS };

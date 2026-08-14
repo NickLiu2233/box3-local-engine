@@ -835,7 +835,7 @@ for (const filePath of playAdminApiFiles) {
     source,
     file,
     'play admin API guard',
-    /allowPlay(?:Library)?Admin\(req, res\)/,
+    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin)\(req, res/,
   )
 }
 

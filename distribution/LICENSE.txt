@@ -1,0 +1,13 @@
+BOX Local Engine Distribution License Notice
+
+Copyright (c) BOX Local Engine contributors and the respective rights holders.
+All rights reserved.
+
+No open-source license is granted for the BOX Local Engine application,
+engine, bundled game content, or container images by this file. Redistribution,
+hosting, modification, and commercial use require permission from the
+applicable rights holder or a separate written agreement.
+
+Third-party software remains licensed under its own terms. See the generated
+THIRD-PARTY-NOTICES.json file in each distribution for the dependency names,
+versions, licenses, and upstream project references discovered at build time.

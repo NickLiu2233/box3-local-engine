@@ -2,6 +2,7 @@
 
 const http = require('http')
 const net = require('net')
+const { createRuntimeLifecycle } = require('./runtime-lifecycle')
 
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 
@@ -37,6 +38,8 @@ function startEditLibrary({
   resolveProject,
   startRuntime,
   waitForRuntime,
+  maxRuntimes = 4,
+  idleTimeoutMs = 15 * 60_000,
 }) {
   const runtimes = new Map()
   const starts = new Map()
@@ -68,6 +71,15 @@ function startEditLibrary({
     await runtime.stop()
   }
 
+  const lifecycle = createRuntimeLifecycle({
+    runtimes,
+    starts,
+    stopRuntime,
+    setStatus,
+    maxRuntimes,
+    idleTimeoutMs,
+  })
+
   async function ensureRuntime(id) {
     if (!projectIdPattern.test(id || '')) {
       throw Object.assign(new Error('工程 ID 无效'), { statusCode: 400 })
@@ -82,14 +94,17 @@ function startEditLibrary({
     if (starts.has(id)) return starts.get(id)
     const current = runtimes.get(id)
     if (current && !current.exited) {
+      lifecycle.touch(current)
       setStatus(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
       return current
     }
 
     const promise = (async () => {
+      await lifecycle.ensureCapacity(id)
       setStatus(id, { phase: 'starting', percent: 18, message: '正在创建独立运行时' })
       const runtimePort = nextPort++
       const runtime = await startRuntime(project, runtimePort)
+      lifecycle.touch(runtime)
       runtimes.set(id, runtime)
       try {
         setStatus(id, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
@@ -160,6 +175,8 @@ function startEditLibrary({
         : existingRuntime && !existingRuntime.exited
           ? existingRuntime
           : await ensureRuntime(id)
+      const releaseConnection = lifecycle.acquire(runtime)
+      res.once('close', releaseConnection)
       const proxy = http.request({
         hostname: '127.0.0.1',
         port: runtime.port,
@@ -189,6 +206,8 @@ function startEditLibrary({
     const id = extractProjectId(req.url)
     try {
       const runtime = await ensureRuntime(id)
+      const releaseConnection = lifecycle.acquire(runtime)
+      socket.once('close', releaseConnection)
       const upstream = net.connect(runtime.port, '127.0.0.1')
       upstream.on('connect', () => {
         const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
@@ -211,6 +230,12 @@ function startEditLibrary({
     }
   })
 
+  const recycleTimer = setInterval(() => {
+    lifecycle.collectIdle().catch((error) =>
+      console.error('Unable to recycle idle project runtimes:', error))
+  }, Math.max(5_000, Math.min(60_000, Math.floor(lifecycle.idleAfter / 2))))
+  recycleTimer.unref()
+
   const ready = new Promise((resolve) => server.listen(port, host, resolve))
 
   return {
@@ -220,6 +245,7 @@ function startEditLibrary({
     async stop() {
       if (closed) return
       closed = true
+      clearInterval(recycleTimer)
       await new Promise((resolve) => server.close(resolve))
       await Promise.all([...runtimes.keys()].map(stopRuntime))
     },

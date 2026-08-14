@@ -5,7 +5,11 @@ import path from 'path';
 
 import { afterEach, describe, expect, test } from '@jest/globals';
 
-import { importPlayBundle } from './play-admin';
+import { importPlayBundle, updatePlayWorld } from './play-admin';
+
+const { resolveWorld } = require('../../local-engine/src/play-library') as {
+  resolveWorld: (root: string, reference: string) => { id: string } | null;
+};
 
 const temporaryRoots: string[] = [];
 
@@ -90,5 +94,23 @@ describe('map group play bundle import', () => {
     expect(
       fs.readdirSync(library).some((entry) => entry.includes('-importing-')),
     ).toBe(false);
+  });
+
+  test('stores a unique public map ID without changing the internal world ID', async () => {
+    const { root, archivePath } = createGroupBundle();
+    process.env.BOX_PLAY_LIBRARY_PATH = path.join(root, 'library');
+    await importPlayBundle(archivePath);
+
+    const updated = updatePlayWorld('group-main', { publicId: 'my-town' });
+
+    expect(updated?.id).toBe('group-main');
+    expect(updated?.publicId).toBe('my-town');
+    expect(resolveWorld(process.env.BOX_PLAY_LIBRARY_PATH!, 'my-town')?.id).toBe('group-main');
+    expect(() => updatePlayWorld('group-dungeon', { publicId: 'my-town' }))
+      .toThrow('已经被其他地图使用');
+    expect(() => updatePlayWorld('group-dungeon', { publicId: 'group-main' }))
+      .toThrow('已经被其他地图使用');
+    expect(() => updatePlayWorld('group-dungeon', { publicId: '非法 ID' }))
+      .toThrow('只能包含小写字母');
   });
 });
