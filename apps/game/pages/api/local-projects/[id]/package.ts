@@ -32,6 +32,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Content-Disposition', `attachment; filename="world.boxplay"; filename*=UTF-8''${encodeURIComponent(bundle.filename)}`);
     res.setHeader('Content-Length', String(fs.statSync(bundle.archivePath).size));
+    res.setHeader('X-Box-Map-Count', String(bundle.mapCount || 1));
+    res.setHeader('X-Box-Map-Group-Id', bundle.mapGroupId || id);
     res.setHeader('Cache-Control', 'no-store');
     const stream = fs.createReadStream(bundle.archivePath);
     stream.on('error', () => {

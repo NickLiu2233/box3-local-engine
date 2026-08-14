@@ -31,8 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
       fs.createWriteStream(temporaryPath, { flags: 'wx' }),
     );
-    const world = await importPlayBundle(temporaryPath);
-    return res.status(201).json({ world });
+    const imported = await importPlayBundle(temporaryPath);
+    return res.status(201).json(imported);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   } finally {

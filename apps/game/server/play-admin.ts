@@ -154,31 +154,93 @@ function validateWorld(root: string) {
   return { id, manifest };
 }
 
+function validateMapGroupBundle(
+  temporaryRoot: string,
+  worlds: Array<{ id: string; manifest: Record<string, unknown>; root: string }>,
+) {
+  if (new Set(worlds.map((world) => world.id)).size !== worlds.length) {
+    throw new Error('游玩包包含重复地图');
+  }
+  if (worlds.length === 1) return;
+
+  const descriptorPath = path.join(temporaryRoot, 'bundle.json');
+  if (!fs.existsSync(descriptorPath)) throw new Error('多地图游玩包缺少地图组关系');
+  const descriptor = JSON.parse(fs.readFileSync(descriptorPath, 'utf8'));
+  if (
+    descriptor?.formatVersion !== 1 ||
+    descriptor?.type !== 'map-group-play-bundle' ||
+    !Array.isArray(descriptor.members)
+  ) {
+    throw new Error('地图组游玩包描述无效');
+  }
+  const ids = worlds.map((world) => world.id).sort();
+  const describedIds = descriptor.members.map((member: { id?: unknown }) => String(member?.id || '')).sort();
+  if (JSON.stringify(ids) !== JSON.stringify(describedIds)) {
+    throw new Error('地图组游玩包成员与关系描述不一致');
+  }
+  const mainMaps = worlds.filter((world) => world.manifest.mapRole === 'main');
+  if (
+    mainMaps.length !== 1 ||
+    mainMaps[0].id !== descriptor.mainProjectId ||
+    worlds.some((world) =>
+      world.manifest.mapGroupId !== descriptor.mapGroupId ||
+      world.manifest.mainProjectId !== descriptor.mainProjectId ||
+      (world.id === descriptor.mainProjectId
+        ? world.manifest.mapRole !== 'main'
+        : world.manifest.mapRole !== 'submap'),
+    )
+  ) {
+    throw new Error('地图组游玩包主副地图关系无效');
+  }
+}
+
 export async function importPlayBundle(archivePath: string) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-import-'));
   try {
     await extractArchive(archivePath, temporaryRoot);
     const candidates = findWorldRoots(temporaryRoot);
-    if (candidates.length !== 1) {
-      throw new Error(candidates.length ? '游玩包中包含多个地图' : '游玩包中未找到有效地图');
-    }
-    const { id } = validateWorld(candidates[0]);
+    if (!candidates.length) throw new Error('游玩包中未找到有效地图');
+    const validated = candidates.map((candidate) => ({
+      ...validateWorld(candidate),
+      root: candidate,
+    }));
+    validateMapGroupBundle(temporaryRoot, validated);
     const root = libraryRoot();
     fs.mkdirSync(root, { recursive: true });
-    const destination = path.join(root, id);
-    if (fs.existsSync(destination)) throw new Error('同 ID 地图已经存在，请先删除旧地图');
-    const staging = path.join(root, `.${id}-importing-${process.pid}-${Date.now()}`);
+    for (const world of validated) {
+      if (fs.existsSync(path.join(root, world.id))) {
+        throw new Error(`同 ID 地图“${world.manifest.projectName || world.id}”已经存在，请先删除旧地图`);
+      }
+    }
+    const nonce = `${process.pid}-${Date.now()}`;
+    const staging = new Map(
+      validated.map((world) => [world.id, path.join(root, `.${world.id}-importing-${nonce}`)]),
+    );
+    const installed: string[] = [];
     try {
-      fs.cpSync(candidates[0], staging, { recursive: true, errorOnExist: true });
-      fs.renameSync(staging, destination);
+      for (const world of validated) {
+        fs.cpSync(world.root, staging.get(world.id)!, { recursive: true, errorOnExist: true });
+      }
+      for (const world of validated) {
+        fs.renameSync(staging.get(world.id)!, path.join(root, world.id));
+        installed.push(world.id);
+      }
     } catch (error) {
-      fs.rmSync(staging, { recursive: true, force: true });
+      for (const target of staging.values()) fs.rmSync(target, { recursive: true, force: true });
+      for (const id of installed) fs.rmSync(path.join(root, id), { recursive: true, force: true });
       if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
         throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
       }
       throw error;
     }
-    return getPlayWorlds().find((world) => world.id === id);
+    const installedWorlds = getPlayWorlds().filter((world) => installed.includes(world.id));
+    const mainProjectId = String(validated[0].manifest.mainProjectId || validated[0].id);
+    return {
+      world: installedWorlds.find((world) => world.id === mainProjectId) || installedWorlds[0],
+      worlds: installedWorlds,
+      mapCount: installedWorlds.length,
+      mainProjectId,
+    };
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true });
   }
@@ -204,18 +266,42 @@ function safeFilename(value: string) {
 
 export function createPlayBundle(id: string) {
   const safeId = assertWorldId(id);
-  const world = getPlayWorlds().find((entry) => entry.id === safeId);
+  const installed = getPlayWorlds();
+  const world = installed.find((entry) => entry.id === safeId);
   if (!world) throw new Error('地图不存在或数据不完整');
+  const groupId = world.mapGroupId || world.id;
+  const worlds = installed.filter((entry) => (entry.mapGroupId || entry.id) === groupId);
+  const mainProjectId = world.mainProjectId || world.id;
+  const main = worlds.find((entry) => entry.id === mainProjectId);
+  if (!main) throw new Error('地图组缺少主地图，无法导出完整游玩包');
   const archive = archiver('tar', { gzip: true, gzipOptions: { level: 6 } });
-  archive.directory(path.join(libraryRoot(), safeId), safeId, (entry) => {
-    const segments = entry.name.split('/');
-    if (segments.some((segment) => segment === '.DS_Store' || segment.startsWith('._'))) {
-      return false;
-    }
-    return entry;
-  });
+  archive.append(JSON.stringify({
+    formatVersion: 1,
+    type: 'map-group-play-bundle',
+    mapGroupId: groupId,
+    mainProjectId,
+    createdAt: new Date().toISOString(),
+    members: worlds.map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      version: entry.version,
+      mapRole: entry.mapRole,
+      mainProjectId: entry.mainProjectId,
+    })),
+  }, null, 2), { name: 'bundle.json' });
+  for (const entry of worlds) {
+    archive.directory(path.join(libraryRoot(), entry.id), `worlds/${entry.id}`, (archiveEntry) => {
+      const segments = archiveEntry.name.split('/');
+      if (segments.some((segment) => segment === '.DS_Store' || segment.startsWith('._'))) {
+        return false;
+      }
+      return archiveEntry;
+    });
+  }
   return {
     archive,
-    filename: `${safeFilename(world.name)}_${safeId}_${safeFilename(world.version || 'latest')}.boxplay`,
+    filename: `${safeFilename(main.name)}_${groupId}_${safeFilename(main.version || 'latest')}.boxplay`,
+    mapCount: worlds.length,
+    mapGroupId: groupId,
   };
 }

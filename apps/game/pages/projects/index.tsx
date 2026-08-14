@@ -70,6 +70,8 @@ type ImportProgress = {
   message?: string;
 };
 
+type ImportMode = 'independent' | 'submap';
+
 type PublishProgress = {
   projectName: string;
   version: string;
@@ -135,6 +137,9 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const [projectCover, setProjectCover] = useState('');
   const [dialogError, setDialogError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<ImportMode>('independent');
+  const [importTargetMainId, setImportTargetMainId] = useState('');
   const [releaseVersion, setReleaseVersion] = useState('v1.0.0');
   const [releaseNotes, setReleaseNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -200,6 +205,10 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     }));
   }, [projects, visibleProjects]);
   const isFiltering = Boolean(query.trim()) || status !== '全部';
+  const mainProjects = useMemo(
+    () => projects.filter((project) => project.mapRole === 'main'),
+    [projects],
+  );
 
   const openCreateDialog = () => {
     setSelectedProject(null);
@@ -220,7 +229,17 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     setDialog('submap');
   };
 
-  const importProjectFile = async (file: File) => {
+  const chooseProjectFile = (file: File) => {
+    setPendingImportFile(file);
+    setImportMode('independent');
+    setImportTargetMainId(mainProjects[0]?.id || '');
+  };
+
+  const importProjectFile = async (
+    file: File,
+    mode: ImportMode,
+    targetMainProjectId = '',
+  ) => {
     if (importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error') return;
     setNotice('');
     const startedAt = Date.now();
@@ -240,7 +259,9 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     try {
       const data = await new Promise<{ project?: LocalProject; message?: string }>((resolve, reject) => {
         const request = new XMLHttpRequest();
-        request.open('POST', '/api/local-projects/import');
+        const parameters = new URLSearchParams({ mode });
+        if (mode === 'submap') parameters.set('targetMainProjectId', targetMainProjectId);
+        request.open('POST', `/api/local-projects/import?${parameters.toString()}`);
         request.setRequestHeader('Content-Type', 'application/octet-stream');
         request.upload.onprogress = (event) => {
           const total = event.lengthComputable ? event.total : file.size;
@@ -285,9 +306,12 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         projectName: data.project?.name,
       });
       const report = data.project?.compatibility;
+      const location = mode === 'submap'
+        ? `，已成为“${mainProjects.find((project) => project.id === targetMainProjectId)?.name || targetMainProjectId}”的副地图`
+        : '，原地图组主副关系已保留';
       setNotice(report && (report.summary.warnings || report.summary.errors)
-        ? `工程已导入：${data.project?.name || file.name}；兼容性检查发现 ${report.summary.errors} 个错误、${report.summary.warnings} 个提醒`
-        : `工程已导入：${data.project?.name || file.name}；兼容性检查通过`);
+        ? `工程已导入：${data.project?.name || file.name}${location}；兼容性检查发现 ${report.summary.errors} 个错误、${report.summary.warnings} 个提醒`
+        : `工程已导入：${data.project?.name || file.name}${location}；兼容性检查通过`);
     } catch (error) {
       setImportProgress((current) => ({
         filename: file.name,
@@ -303,6 +327,19 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     }
   };
 
+  const confirmProjectImport = () => {
+    if (!pendingImportFile) return;
+    if (importMode === 'submap' && !importTargetMainId) {
+      setNotice('请先选择副地图所属的主地图');
+      return;
+    }
+    const file = pendingImportFile;
+    const mode = importMode;
+    const targetMainProjectId = importTargetMainId;
+    setPendingImportFile(null);
+    void importProjectFile(file, mode, targetMainProjectId);
+  };
+
   const openDetailsDialog = (project: LocalProject) => {
     setMenuProject(null);
     setSelectedProject(project);
@@ -316,7 +353,9 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
 
   const openPublishDialog = (project: LocalProject) => {
     setMenuProject(null);
-    setSelectedProject(project);
+    setSelectedProject(
+      projects.find((entry) => entry.id === project.mainProjectId) || project,
+    );
     setReleaseVersion('v1.0.0');
     setReleaseNotes('');
     setDialogError('');
@@ -421,7 +460,19 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
         const data = await response.json();
         if (response.ok) {
           publishedVersion = data.release.version;
-          compatibility = data.release.compatibility;
+          const reports = Array.isArray(data.release.releases)
+            ? data.release.releases.map((release: { compatibility?: CompatibilityReport }) => release.compatibility).filter(Boolean) as CompatibilityReport[]
+            : [];
+          compatibility = reports.length ? {
+            level: reports.some((report) => report.level === 'error')
+              ? 'error'
+              : reports.some((report) => report.level === 'warning') ? 'warning' : 'compatible',
+            summary: reports.reduce((summary, report) => ({
+              warnings: summary.warnings + report.summary.warnings,
+              errors: summary.errors + report.summary.errors,
+              missingBlobCount: summary.missingBlobCount + report.summary.missingBlobCount,
+            }), { warnings: 0, errors: 0, missingBlobCount: 0 }),
+          } : undefined;
         } else if (!String(data.message || '').includes('Release already exists')) {
           throw new Error(data.message || '发布失败');
         }
@@ -446,6 +497,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
           ? decodeURIComponent(encodedName)
           : `${project.name}_${project.id}_${publishedVersion}.boxplay`;
         const total = Number(packageResponse.headers.get('Content-Length') || 0);
+        const mapCount = Number(packageResponse.headers.get('X-Box-Map-Count') || 1);
         let received = 0;
         const chunks: Uint8Array[] = [];
         setPublishProgress((current) => current ? {
@@ -498,8 +550,8 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
           filename,
         });
         setNotice(compatibility && (compatibility.summary.warnings || compatibility.summary.errors)
-          ? `已发布并导出游玩包 ${publishedVersion}；兼容性检查发现 ${compatibility.summary.errors} 个错误、${compatibility.summary.warnings} 个提醒`
-          : `已发布并导出游玩包 ${publishedVersion}；兼容性检查通过`);
+          ? `已发布并导出地图组游玩包 ${publishedVersion}，包含 ${mapCount} 张地图；兼容性检查发现 ${compatibility.summary.errors} 个错误、${compatibility.summary.warnings} 个提醒`
+          : `已发布并导出地图组游玩包 ${publishedVersion}，包含 ${mapCount} 张地图；兼容性检查通过`);
         await refreshProjects();
       } catch (error) {
         setPublishProgress((current) => ({
@@ -572,7 +624,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     setDialog('delete');
   };
 
-  const copyProjectCommand = (project: LocalProject, mode: 'edit' | 'play') => {
+  const openProjectEditor = (project: LocalProject) => {
     // Match boxes' navigation model: open the engine route immediately and
     // let its built-in Connecting flow own the whole startup lifecycle. The
     // local runtime allocation is started in parallel and deduplicated by the
@@ -580,10 +632,10 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
     void fetch(`/api/local-projects/${encodeURIComponent(project.id)}/runtime`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode: 'edit' }),
     }).catch(() => undefined);
     window.open(
-      mode === 'edit' ? `/e/${encodeURIComponent(project.id)}` : `/p/${encodeURIComponent(project.id)}`,
+      `/e/${encodeURIComponent(project.id)}`,
       '_blank',
       'noopener',
     );
@@ -706,7 +758,9 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
           <div>
             <div className={styles.projectTitle}>
               <h2>{project.name}</h2>
-              <span className={`${styles.projectStatus} ${project.status === '已发布' ? styles.published : ''}`}>{project.status}</span>
+              {project.mapRole === 'main' && (
+                <span className={`${styles.projectStatus} ${project.status === '已发布' ? styles.published : ''}`}>{project.status}</span>
+              )}
             </div>
             <span className={styles.projectAuthor}>作者：{project.author || '未署名'}</span>
             <p>{project.description || '未填写简介'}</p>
@@ -726,14 +780,14 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
                   <Pencil size={15} /> 编辑信息
                 </button>
                 <button role="menuitem" onClick={() => openPublishDialog(project)}>
-                  <Play size={15} /> 发布为游玩包
+                  <Play size={15} /> 发布地图组游玩包
                 </button>
                 <button
                   role="menuitem"
                   disabled={Boolean(exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error')}
                   onClick={() => void exportProjectFile(project)}
                 >
-                  <Download size={15} /> 导出可编辑工程
+                  <Download size={15} /> 导出完整地图组
                 </button>
                 <button role="menuitem" onClick={() => void openRecoveryDialog(project)}>
                   <History size={15} /> 恢复历史版本
@@ -755,8 +809,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
           <span><Clock3 size={14} /> {project.latestRelease ? `${project.latestRelease}${project.latestReleaseNotes ? ` · ${project.latestReleaseNotes}` : ''}` : project.updatedAt}</span>
           <span className={styles.cardActions}>
             {project.isEngineWorld && <span className={styles.defaultTag}>默认世界</span>}
-            <button onClick={() => copyProjectCommand(project, 'edit')}><Pencil size={14} /> 编辑</button>
-            <button onClick={() => copyProjectCommand(project, 'play')}><Play size={14} fill="currentColor" /> 游玩</button>
+            <button onClick={() => openProjectEditor(project)}><Pencil size={14} /> 编辑</button>
           </span>
         </div>
       </div>
@@ -799,7 +852,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             <button className={styles.importButton} disabled={Boolean(importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error')} onClick={() => importInputRef.current?.click()}>
               <Upload size={16} /> 导入工程
             </button>
-            <input ref={importInputRef} className={styles.hiddenFileInput} type="file" accept=".boxproject,.tar.gz,application/gzip" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void importProjectFile(file); }} />
+            <input ref={importInputRef} className={styles.hiddenFileInput} type="file" accept=".boxproject,.tar.gz,application/gzip" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) chooseProjectFile(file); }} />
             <button className={styles.createButton} onClick={openCreateDialog}>
               <Plus size={18} strokeWidth={2.5} />
               新建作品
@@ -878,6 +931,61 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
 
       </section>
 
+      {pendingImportFile && (
+        <div className={styles.dialogBackdrop} role="presentation" onMouseDown={() => setPendingImportFile(null)}>
+          <section className={`${styles.dialog} ${styles.importChoiceDialog}`} role="dialog" aria-modal="true" aria-labelledby="import-choice-title" onMouseDown={(event) => event.stopPropagation()}>
+            <div className={styles.dialogIcon}><Upload size={22} /></div>
+            <h2 id="import-choice-title">选择工程归属</h2>
+            <p className={styles.importFilename}>{pendingImportFile.name}</p>
+            <div className={styles.importModeList} role="radiogroup" aria-label="工程导入方式">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={importMode === 'independent'}
+                className={importMode === 'independent' ? styles.importModeSelected : undefined}
+                onClick={() => setImportMode('independent')}
+              >
+                <span className={styles.importModeRadio} aria-hidden="true" />
+                <span>
+                  <strong>作为独立地图组</strong>
+                  <small>导入工程包中的全部地图，并完整保留原来的主地图和副地图关系。</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={importMode === 'submap'}
+                aria-disabled={mainProjects.length === 0}
+                disabled={mainProjects.length === 0}
+                className={importMode === 'submap' ? styles.importModeSelected : undefined}
+                onClick={() => setImportMode('submap')}
+              >
+                <span className={styles.importModeRadio} aria-hidden="true" />
+                <span>
+                  <strong>成为现有地图的副地图</strong>
+                  <small>导入当初点击导出的那张地图，并使用目标地图组的共享资源库。</small>
+                </span>
+              </button>
+            </div>
+            {importMode === 'submap' && (
+              <label className={styles.importTargetLabel} htmlFor="import-target-main">
+                所属主地图
+                <select id="import-target-main" value={importTargetMainId} onChange={(event) => setImportTargetMainId(event.target.value)}>
+                  {mainProjects.map((project) => (
+                    <option key={project.id} value={project.id}>{project.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {mainProjects.length === 0 && <p className={styles.importHint}>当前还没有可接收副地图的主地图，请先作为独立地图组导入。</p>}
+            <div className={styles.dialogActions}>
+              <button type="button" className={styles.cancelButton} onClick={() => setPendingImportFile(null)}>取消</button>
+              <button type="button" className={styles.confirmButton} disabled={importMode === 'submap' && !importTargetMainId} onClick={confirmProjectImport}>开始导入</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {dialog && (
         <div className={styles.dialogBackdrop} role="presentation" onMouseDown={() => { if (!submitting) setDialog(null); }}>
           <form className={`${styles.dialog} ${dialog === 'publish' ? styles.releaseDialog : ''}`} onSubmit={(event) => {
@@ -891,7 +999,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               .finally(() => setSubmitting(false));
           }} onMouseDown={(event) => event.stopPropagation()}>
             <div className={styles.dialogIcon}><Grid2X2 size={22} /></div>
-            <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '发布为游玩包'}</h2>
+            <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '发布地图组游玩包'}</h2>
             {dialog === 'delete' && <p>{selectedProject?.mapRole === 'main' ? `将删除整个地图组“${selectedProject?.name}”及其全部副地图，删除后无法恢复。` : `将删除副地图“${selectedProject?.name}”，删除后无法恢复。`}</p>}
             {(dialog === 'create' || dialog === 'submap' || dialog === 'details') && <>
               <label htmlFor="project-name">作品名称</label>
@@ -904,6 +1012,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               {dialog === 'details' && <><label htmlFor="project-cover">封面</label><input id="project-cover" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 1400000) { setDialogError('封面图片不能超过 1.4MB'); return; } const reader = new FileReader(); reader.onload = () => { setProjectCover(String(reader.result)); setDialogError(''); }; reader.readAsDataURL(file); }} /></>}
             </>}
             {dialog === 'publish' && <>
+              <p>主地图和全部副地图将使用同一版本号发布，并合并为一个可一次导入的游玩包。</p>
               <label htmlFor="release-version">版本号</label>
               <input id="release-version" autoFocus value={releaseVersion} onChange={(event) => setReleaseVersion(event.target.value)} placeholder="v1.0.0" />
               <label htmlFor="release-notes">更新说明</label>
@@ -914,7 +1023,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             <div className={styles.dialogActions}>
               <button type="button" className={styles.cancelButton} onClick={() => setDialog(null)}>取消</button>
               <button type="submit" className={dialog === 'delete' ? styles.deleteConfirm : styles.confirmButton} disabled={submitting || ((dialog === 'create' || dialog === 'submap' || dialog === 'details') ? !projectName.trim() : dialog === 'publish' ? !releaseVersion.trim() : false)}>
-                {submitting ? '处理中…' : dialog === 'create' ? '创建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '保存' : dialog === 'delete' ? '删除' : '发布为游玩包'}
+                {submitting ? '处理中…' : dialog === 'create' ? '创建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '保存' : dialog === 'delete' ? '删除' : '发布地图组游玩包'}
               </button>
             </div>
           </form>
@@ -1048,14 +1157,14 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               {publishProgress.phase === 'saving'
                 ? '正在保存工程'
                 : publishProgress.phase === 'publishing'
-                  ? '正在创建只读版本'
+                    ? '正在创建整组只读版本'
                   : publishProgress.phase === 'packing'
-                    ? '正在生成游玩包'
+                    ? '正在生成地图组游玩包'
                     : publishProgress.phase === 'downloading'
-                      ? '正在下载游玩包'
+                      ? '正在下载地图组游玩包'
                       : publishProgress.phase === 'done'
-                        ? '游玩包导出完成'
-                        : '游玩包导出失败'}
+                        ? '地图组游玩包导出完成'
+                        : '地图组游玩包导出失败'}
             </h2>
             <p className={styles.exportProjectName}>{publishProgress.projectName} · {publishProgress.version}</p>
             <div className={styles.exportProgressTrack} aria-label="游玩包导出进度">
@@ -1067,7 +1176,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
                 {publishProgress.phase === 'saving'
                   ? `正在同步编辑器中的最新修改 · ${publishProgress.elapsedSeconds}s`
                   : publishProgress.phase === 'publishing'
-                    ? `正在生成不可变世界快照 · ${publishProgress.elapsedSeconds}s`
+                      ? `正在为主地图和全部副地图生成不可变快照 · ${publishProgress.elapsedSeconds}s`
                     : publishProgress.phase === 'packing'
                       ? `正在收集运行资源并压缩 · ${publishProgress.elapsedSeconds}s`
                       : publishProgress.phase === 'downloading'
@@ -1091,8 +1200,8 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
 
 function ReleaseFlow({ project, version }: { project: LocalProject | null; version: string }) {
   return <div className={styles.releaseFlow} aria-label="发布产物流程">
-    <div className={styles.flowSource}><small>源工程</small><strong>{project?.name || '作品'}</strong></div>
+    <div className={styles.flowSource}><small>地图组</small><strong>{project?.name || '作品'}</strong></div>
     <div className={styles.flowArrow}>→</div>
-    <div className={styles.flowRelease}><small>只读版本</small><strong>{version}</strong></div>
+    <div className={styles.flowRelease}><small>整组游玩包</small><strong>{version}</strong></div>
   </div>;
 }

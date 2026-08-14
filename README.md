@@ -178,8 +178,8 @@ play-worlds/
 [部署与联机指南](docs/deployment.md#只分发镜像的多地图部署)中的 Compose 配置。
 
 需要在网页中管理地图时，可以配置 `BOX_PLAY_ADMIN_TOKEN` 和
-`BOX_PLAY_LIBRARY_READ_ONLY=false`。服主在首页验证后即可导入、导出 `.boxplay` 游玩包
-或删除地图。默认不配置密钥，管理接口不会开放。
+`BOX_PLAY_LIBRARY_READ_ONLY=false`。服主在首页验证后即可用一个 `.boxplay` 导入或导出
+完整地图组（主地图和全部副地图），或删除地图。默认不配置密钥，管理接口不会开放。
 
 停止当前部署：
 
@@ -216,6 +216,8 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_SERVER_PUBLIC_URL` | 空 | 公网反向代理后的完整 HTTPS 地址 |
 | `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
 | `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
+| `BOX_SCRIPT_MEMORY_MB` | `512` | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置 |
+| `BOX_SCRIPT_HEAP_MB` | `512` | 兼容其他脚本执行路径的堆内存上限（MiB），建议与上一项保持一致 |
 | `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到各地图运行时的间隔（毫秒） |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 每个 IP 每分钟创建 Session 上限 |
 | `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端 |

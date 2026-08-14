@@ -106,6 +106,22 @@
 .importButton:active { transform: scale(.97); }
 .importButton:disabled { cursor: not-allowed; opacity: .55; transform: none; }
 .hiddenFileInput { display: none; }
+.importChoiceDialog { width: min(100%, 540px); }
+.importFilename { overflow: hidden; margin: 5px 0 0; color: rgba(255,255,255,.52) !important; font-size: 12px !important; text-overflow: ellipsis; white-space: nowrap; }
+.importModeList { display: grid; gap: 9px; margin-top: 20px; }
+.importModeList > button { display: flex; width: 100%; align-items: flex-start; gap: 11px; padding: 13px 14px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; color: rgba(255,255,255,.76); background: #333; text-align: left; }
+.importModeList > button:hover { border-color: rgba(255,219,0,.48); background: #383838; }
+.importModeList > button:disabled { cursor: not-allowed; opacity: .45; }
+.importModeList > button.importModeSelected { border-color: #ffdb00; background: rgba(255,219,0,.08); box-shadow: 0 0 0 2px rgba(255,219,0,.09); }
+.importModeList > button > span:last-child { display: grid; min-width: 0; gap: 5px; }
+.importModeList strong { color: #fff; font-size: 13px; }
+.importModeList small { color: rgba(255,255,255,.52); font-size: 11px; line-height: 1.55; }
+.importModeRadio { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 1px; border: 1px solid rgba(255,255,255,.4); border-radius: 50%; box-shadow: inset 0 0 0 3px #333; }
+.importModeSelected .importModeRadio { border-color: #ffdb00; background: #ffdb00; }
+.importTargetLabel { display: grid; gap: 7px; margin-top: 16px; }
+.importTargetLabel select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid rgba(255,255,255,.2); border-radius: 6px; outline: 0; color: #fff; background: #404040; font: inherit; }
+.importTargetLabel select:focus { border-color: #ffdb00; box-shadow: 0 0 0 3px rgba(255,219,0,.14); }
+.importHint { margin-top: 12px !important; color: #ffdb00 !important; font-size: 11px !important; }
 .dialog input[type='file'] { height: auto; padding: 8px; color: rgba(255,255,255,.7); }
 .dialog input[type='file']::file-selector-button { margin-right: 9px; padding: 5px 8px; border: 0; border-radius: 4px; color: #262626; background: #ffdb00; font: inherit; font-size: 12px; cursor: pointer; }
 .cover img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }

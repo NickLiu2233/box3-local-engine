@@ -68,7 +68,7 @@ export const GAME_SERVER_SCHEMA: JTDSchemaType<GameServerRuntimeConfig> = {
       type: 'string',
     },
     SCRIPT_TIMEOUT: { type: 'uint8' },
-    SCRIPT_MEMORY_LIMIT: { type: 'uint8' },
+    SCRIPT_MEMORY_LIMIT: { type: 'uint16' },
   },
   additionalProperties: true,
 } as const;

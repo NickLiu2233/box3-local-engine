@@ -215,7 +215,7 @@ const GAME_SERVER_SCHEMA = {
             type: 'string',
         },
         SCRIPT_TIMEOUT: { type: 'uint8' },
-        SCRIPT_MEMORY_LIMIT: { type: 'uint8' },
+        SCRIPT_MEMORY_LIMIT: { type: 'uint16' },
     },
     additionalProperties: true,
 };

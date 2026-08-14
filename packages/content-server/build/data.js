@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.retrieveData = retrieveData;
+const semaphore_1 = require("@box-local/utils/semaphore");
+const LOCAL_RUNTIME_REQUEST_CONCURRENCY = 32;
+const localRuntimeRequests = new semaphore_1.Semaphore(LOCAL_RUNTIME_REQUEST_CONCURRENCY);
+function isLocalRuntimeURL(url) {
+    return /^(?:https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?)?\/runtime\/(?:edit|play)(?:\/|$)/.test(url);
+}
 let retrieve;
 async function retrieveData(out, url, retryCount = 0, timeout = 0) {
     const count = Math.max(retryCount + 1, 1);
@@ -17,12 +23,21 @@ async function retrieveData(out, url, retryCount = 0, timeout = 0) {
     }
     let adjustedTimeout = timeout;
     for (let i = 0; i < count; i++) {
+        const limitLocalRuntime = isLocalRuntimeURL(url);
+        if (limitLocalRuntime) {
+            await localRuntimeRequests.p();
+        }
         try {
             return await retrieve(out, url, adjustedTimeout);
         }
         catch (err) {
             if (i === count - 1) {
                 return Promise.reject(err);
+            }
+        }
+        finally {
+            if (limitLocalRuntime) {
+                localRuntimeRequests.v();
             }
         }
         adjustedTimeout = timeout << i;

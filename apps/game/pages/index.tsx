@@ -16,6 +16,7 @@ type ImportProgress = {
   total: number;
   elapsedSeconds: number;
   worldName?: string;
+  mapCount?: number;
   message?: string;
 };
 
@@ -100,7 +101,7 @@ export default function HomePage({
       });
     }, 500);
     try {
-      const data = await new Promise<{ world?: PlayWorld; message?: string }>((resolve, reject) => {
+      const data = await new Promise<{ world?: PlayWorld; worlds?: PlayWorld[]; mapCount?: number; message?: string }>((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open('POST', '/api/play-admin/import');
         request.setRequestHeader('Authorization', `Bearer ${adminToken}`);
@@ -129,15 +130,20 @@ export default function HomePage({
         request.onerror = () => reject(new Error('无法连接游玩端，游玩包上传失败'));
         request.onabort = () => reject(new Error('导入已取消'));
         request.onload = () => {
-          let result: { world?: PlayWorld; message?: string } = {};
+          let result: { world?: PlayWorld; worlds?: PlayWorld[]; mapCount?: number; message?: string } = {};
           try { result = JSON.parse(request.responseText || '{}'); } catch { /* handled below */ }
           if (request.status >= 200 && request.status < 300) resolve(result);
           else reject(new Error(result.message || `导入失败（HTTP ${request.status}）`));
         };
         request.send(file);
       });
-      if (data.world) {
-        setWorldList((current) => [data.world!, ...current.filter((world) => world.id !== data.world!.id)]);
+      const importedWorlds = data.worlds?.length ? data.worlds : data.world ? [data.world] : [];
+      if (importedWorlds.length) {
+        const importedIds = new Set(importedWorlds.map((world) => world.id));
+        setWorldList((current) => [
+          ...importedWorlds,
+          ...current.filter((world) => !importedIds.has(world.id)),
+        ]);
       }
       setImportProgress({
         filename: file.name,
@@ -147,6 +153,7 @@ export default function HomePage({
         total: file.size,
         elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
         worldName: data.world?.name,
+        mapCount: data.mapCount || importedWorlds.length || 1,
       });
     } catch (error) {
       setImportProgress((current) => ({
@@ -230,7 +237,7 @@ export default function HomePage({
               verified ? (
                 <>
                 <button className="button primary" disabled={Boolean(busy)} onClick={() => importInput.current?.click()}>
-                  {busy === 'import' ? '导入中…' : '导入游玩包'}
+                  {busy === 'import' ? '导入中…' : '导入地图组游玩包'}
                 </button>
                 <button className="button" onClick={exitAdmin}>退出管理</button>
                 </>
@@ -269,7 +276,7 @@ export default function HomePage({
                 {verified ? (
                   <div className="cardActions">
                     <button disabled={Boolean(busy)} onClick={() => exportBundle(world)}>
-                      {busy === `export:${world.id}` ? '导出中…' : '导出游玩包'}
+                      {busy === `export:${world.id}` ? '导出中…' : '导出地图组游玩包'}
                     </button>
                     <button className="dangerText" disabled={Boolean(busy)} onClick={() => setDeleteWorld(world)}>删除</button>
                   </div>
@@ -280,7 +287,7 @@ export default function HomePage({
         ) : (
           <div className="empty">
             <span>暂无可游玩的作品</span>
-            {verified ? <button className="button primary" onClick={() => importInput.current?.click()}>导入游玩包</button> : null}
+            {verified ? <button className="button primary" onClick={() => importInput.current?.click()}>导入地图组游玩包</button> : null}
           </div>
         )}
       </main>
@@ -335,12 +342,12 @@ export default function HomePage({
               {importProgress.phase === 'uploading'
                 ? '正在上传游玩包'
                 : importProgress.phase === 'processing'
-                  ? '正在导入作品'
+                  ? '正在导入地图组作品'
                   : importProgress.phase === 'done'
                     ? '导入完成'
                     : '导入失败'}
             </h2>
-            <p className="progressFilename">{importProgress.worldName || importProgress.filename}</p>
+            <p className="progressFilename">{importProgress.worldName || importProgress.filename}{importProgress.phase === 'done' && importProgress.mapCount ? ` · ${importProgress.mapCount} 张地图` : ''}</p>
             <div className="progressTrack" aria-label="游玩包导入进度" aria-valuenow={Math.round(importProgress.percent)} role="progressbar">
               <span style={{ width: `${importProgress.percent}%` }} />
             </div>
@@ -350,7 +357,7 @@ export default function HomePage({
                 {importProgress.phase === 'uploading'
                   ? `${formatBytes(importProgress.sent)} / ${formatBytes(importProgress.total)} · ${importProgress.elapsedSeconds}s`
                   : importProgress.phase === 'processing'
-                    ? `正在解压、校验并写入游玩目录 · ${importProgress.elapsedSeconds}s`
+                    ? `正在解压、校验主副关系并原子写入游玩目录 · ${importProgress.elapsedSeconds}s`
                     : importProgress.phase === 'done'
                       ? `${formatBytes(importProgress.total)} · 用时 ${importProgress.elapsedSeconds}s`
                       : importProgress.message}

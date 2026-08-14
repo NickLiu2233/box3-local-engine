@@ -98,6 +98,28 @@ try {
     false,
     'an imported uninitialized submap must keep shared state at the group root',
   )
+  const target = manager.createProject({ id: 'target-main', name: '目标主地图' })
+  const attached = manager.importProject(exported.archivePath, {
+    mode: 'submap',
+    targetMainProjectId: target.id,
+  })
+  assert.equal(attached.name, '地下城', 'submap import must use the member that initiated the export')
+  assert.equal(attached.mapRole, 'submap')
+  assert.equal(attached.mainProjectId, target.id)
+  assert.equal(attached.mapGroupId, target.mapGroupId)
+  assert.equal(attached.importedMapCount, 1)
+  assert.equal(attached.importedAs, 'submap')
+  assert.deepEqual(
+    manager.listMapGroup(target.id).map(({ id }) => id),
+    [target.id, attached.id],
+  )
+  assert.throws(
+    () => manager.importProject(exported.archivePath, {
+      mode: 'submap',
+      targetMainProjectId: attached.id,
+    }),
+    /只能把工程导入到主地图下/,
+  )
   assert.throws(
     () => manager.createSubmap('group-dungeon', { id: 'nested', name: '非法嵌套' }),
     /只能在主地图下创建副地图/,

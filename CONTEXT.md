@@ -44,7 +44,8 @@ _Avoid_: Global database, common database
 ## Architecture Decisions
 
 - Map groups preserve Boxes' project and group schemas. Local metadata only owns membership and the authoritative shared root pointer.
-- Exporting any map-group member exports the complete group. Import assigns new local IDs while preserving main/submap roles and one shared root.
-- A published map records the map group ID, main map ID, and shared resource revision used to build its immutable snapshot.
+- Exporting any map-group member exports the complete group and records the member that initiated the export. Independent import assigns new local IDs while preserving main/submap roles and one shared root; submap import attaches only that initiating member to a selected existing main map and adopts the target group's shared library.
+- Publishing any map-group member publishes every member under one version and exports one `.boxplay`; each immutable world records the map group ID, main map ID, role, and shared resource revision used to build it.
+- Importing a multi-map `.boxplay` is atomic: all member IDs and relationships are validated before any world becomes visible, and any conflict rejects the complete bundle.
 - Local Engine does not set a non-zero cloud `GROUP_ID`; doing so would activate cloud backend and shared-script routes.
 - Cross-editor live action broadcast is intentionally not claimed. Members synchronize from the shared snapshot when opened.

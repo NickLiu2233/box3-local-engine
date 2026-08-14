@@ -315,6 +315,15 @@ forbidPattern(
   /scriptTimeout: N\('SCRIPT_HEAP_MB'/,
 )
 
+const gameServerEnvSchemaFile = 'internals/env/src/schemas/game-server.ts'
+const gameServerEnvSchemaSource = readRequired(gameServerEnvSchemaFile)
+requirePattern(
+  gameServerEnvSchemaSource,
+  gameServerEnvSchemaFile,
+  'large-map ivmp memory limit schema',
+  /SCRIPT_MEMORY_LIMIT:\s*\{\s*type:\s*'uint16'\s*\}/,
+)
+
 const gameServerEntryFile = 'services/game-server/src/entry.ts'
 const gameServerEntrySource = readRequired(gameServerEntryFile)
 requirePattern(
@@ -1301,6 +1310,11 @@ for (const key of [
 const fullLocalConfig = JSON.parse(
   readRequired('apps/local-engine/config/local.config.json'),
 )
+if ((fullLocalConfig['game-server']?.SCRIPT_MEMORY_LIMIT || 0) < 512) {
+  fail(
+    'apps/local-engine/config/local.config.json: game-server.SCRIPT_MEMORY_LIMIT must support 512x256x512 maps',
+  )
+}
 function checkEmptySecrets(value, prefix = '') {
   if (!value || typeof value !== 'object') return
   for (const [key, child] of Object.entries(value)) {

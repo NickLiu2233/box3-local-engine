@@ -857,14 +857,19 @@ function writeMapGroupArchive(id, archivePath, snapshotReason) {
       }
     }
     writeJSON(path.join(temporaryRoot, 'group.json'), {
-      formatVersion: 1,
+      formatVersion: 2,
       type: 'map-group',
       mapGroupId: identity.mapGroupId,
       mainProjectId: identity.mainProjectId,
+      // Remember which card initiated the export. Importing as a submap uses
+      // this member, while importing independently restores the whole group.
+      exportedProjectId: id,
       exportedAt: new Date().toISOString(),
       members: members.map((member) => ({
         id: member.id,
+        name: member.name,
         mapRole: member.mapRole,
+        mainProjectId: identity.mainProjectId,
       })),
     })
     runTar(
@@ -1166,7 +1171,7 @@ function normalizeImportedProjectPermissions(root) {
   }
 }
 
-function importProject(archivePath) {
+function importProject(archivePath, options = {}) {
   if (!archivePath || !fs.existsSync(archivePath)) throw new Error('未找到工程包')
   archiveEntriesAreSafe(archivePath)
   // Extract outside the Docker Desktop bind mount first. On macOS, archive
@@ -1177,17 +1182,17 @@ function importProject(archivePath) {
   try {
     runTar(['-xzf', archivePath, '-C', temporaryRoot], 'Unable to import project')
     normalizeImportedProjectPermissions(temporaryRoot)
-    return importMapGroupDirectory(temporaryRoot)
+    return importMapGroupDirectory(temporaryRoot, options)
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
   }
 }
 
-function importMapGroupDirectory(temporaryRoot) {
+function validateMapGroupDescriptor(temporaryRoot) {
   const descriptor = readJSON(path.join(temporaryRoot, 'group.json'))
   if (
     descriptor?.type !== 'map-group' ||
-    descriptor.formatVersion !== 1 ||
+    ![1, 2].includes(descriptor.formatVersion) ||
     !Array.isArray(descriptor.members) ||
     descriptor.members.length === 0
   ) {
@@ -1197,6 +1202,101 @@ function importMapGroupDirectory(temporaryRoot) {
   if (new Set(memberIds).size !== memberIds.length || !memberIds.includes(descriptor.mainProjectId)) {
     throw new Error('地图组成员关系无效')
   }
+  if (
+    descriptor.exportedProjectId !== undefined &&
+    !memberIds.includes(descriptor.exportedProjectId)
+  ) {
+    throw new Error('地图组导出入口无效')
+  }
+  return { descriptor, memberIds }
+}
+
+function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) {
+  const targetMain = getProject(assertProjectId(targetMainProjectId))
+  const targetIdentity = mapGroupIdentity(targetMain.id)
+  if (targetIdentity.mapRole !== 'main' || targetIdentity.mainProjectId !== targetMain.id) {
+    throw new Error('只能把工程导入到主地图下')
+  }
+  const sourceId = descriptor.exportedProjectId || descriptor.mainProjectId
+  const sourceRoot = path.join(temporaryRoot, 'projects', sourceId)
+  const sourceMetadata = readJSON(path.join(sourceRoot, 'project.json'))
+  if (
+    sourceMetadata?.id !== sourceId ||
+    !sourceMetadata.name ||
+    !fs.existsSync(path.join(sourceRoot, 'source'))
+  ) {
+    throw new Error(`地图组成员工程无效：${sourceId}`)
+  }
+
+  const id = nextImportedId(sourceId)
+  const root = projectRoot(id)
+  const now = new Date().toISOString()
+  try {
+    fs.mkdirSync(root, { recursive: true })
+    fs.cpSync(path.join(sourceRoot, 'source'), path.join(root, 'source'), {
+      recursive: true,
+      dereference: true,
+    })
+    normalizeImportedProjectPermissions(root)
+    writeJSON(path.join(root, 'project.json'), {
+      formatVersion: 1,
+      id,
+      name: sourceMetadata.name,
+      description: sourceMetadata.description || '',
+      author: sourceMetadata.author || targetMain.author || '',
+      cover: sourceMetadata.cover || '',
+      theme: sourceMetadata.theme || 'sunset',
+      createdAt: now,
+      updatedAt: now,
+      releases: [],
+      mapGroupId: targetIdentity.mapGroupId,
+      mapRole: 'submap',
+      mainProjectId: targetMain.id,
+    })
+    writeJSON(
+      path.join(root, 'compatibility.json'),
+      scanProjectCompatibility(path.join(root, 'source')),
+    )
+
+    // Imported map resources remain readable by content hash, while shared
+    // scripts, UI and libraries continue to come from the target map group.
+    const targetBlobRoot = mapGroupManager.paths(targetMain.id).blobRoot
+    const importedBlobRoot = path.join(root, 'source', 'blobs')
+    fs.mkdirSync(targetBlobRoot, { recursive: true })
+    if (fs.existsSync(importedBlobRoot)) {
+      for (const entry of fs.readdirSync(importedBlobRoot, { withFileTypes: true })) {
+        if (!entry.isFile()) continue
+        const destination = path.join(targetBlobRoot, entry.name)
+        if (!fs.existsSync(destination)) fs.copyFileSync(path.join(importedBlobRoot, entry.name), destination)
+      }
+    }
+    mapGroupManager.ensure(targetMain.id)
+    mapGroupManager.materialize(id)
+    return {
+      ...toProjectSummary(getProject(id)),
+      importedMapCount: 1,
+      importedAs: 'submap',
+      sourceMapGroupId: descriptor.mapGroupId,
+      compatibility: readJSON(path.join(root, 'compatibility.json'), {}),
+    }
+  } catch (error) {
+    fs.rmSync(root, { recursive: true, force: true })
+    throw error
+  }
+}
+
+function importMapGroupDirectory(temporaryRoot, options = {}) {
+  const { descriptor, memberIds } = validateMapGroupDescriptor(temporaryRoot)
+  const mode = options.mode || 'independent'
+  if (mode === 'submap') {
+    if (!options.targetMainProjectId) throw new Error('请选择副地图所属的主地图')
+    return importMapGroupAsSubmap(
+      temporaryRoot,
+      descriptor,
+      options.targetMainProjectId,
+    )
+  }
+  if (mode !== 'independent') throw new Error('不支持的工程导入方式')
   const idMap = new Map()
   for (const oldId of memberIds) idMap.set(oldId, nextImportedId(oldId))
   const newMainId = idMap.get(descriptor.mainProjectId)
@@ -1270,6 +1370,8 @@ function importMapGroupDirectory(temporaryRoot) {
     return {
       ...main,
       importedMapCount: memberIds.length,
+      importedAs: 'independent',
+      sourceMapGroupId: descriptor.mapGroupId,
       compatibility: readJSON(path.join(projectRoot(newMainId), 'compatibility.json'), {}),
     }
   } catch (error) {
@@ -1345,6 +1447,70 @@ function publishProject(id, requestedVersion, notes = '') {
   metadata.updatedAt = release.createdAt
   writeJSON(path.join(root, 'project.json'), metadata)
   return { ...release, compatibility }
+}
+
+function publishMapGroup(id, requestedVersion, notes = '') {
+  const members = listMapGroup(id)
+  const identity = mapGroupIdentity(id)
+  const version = assertVersion(
+    requestedVersion ||
+      `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`,
+  )
+  if (!members.length) throw new Error('地图组中没有可发布的地图')
+  const metadataSnapshots = new Map()
+
+  // Validate every member before writing the first immutable release. A map
+  // group is one deployment unit, so a half-published group is never valid.
+  for (const member of members) {
+    mapGroupManager.materialize(member.id)
+    const state = readJSON(
+      path.join(projectRoot(member.id), 'source', 'project-state.json'),
+      {},
+    )
+    if (!state.permissionHash) {
+      throw new Error(`请先打开并保存地图“${member.name}”，再发布地图组游玩包`)
+    }
+    if (
+      fs.existsSync(
+        path.join(projectRoot(member.id), 'releases', version),
+      )
+    ) {
+      throw new Error(`Release already exists: ${version}`)
+    }
+    metadataSnapshots.set(member.id, getProject(member.id))
+  }
+
+  const published = []
+  try {
+    for (const member of members) {
+      published.push(publishProject(member.id, version, notes))
+    }
+  } catch (error) {
+    // Validation above guarantees this version did not previously exist, so
+    // every matching release directory belongs to this transaction. Restore
+    // exact metadata snapshots as well, including their original timestamps.
+    for (const member of members) {
+      fs.rmSync(
+        path.join(projectRoot(member.id), 'releases', version),
+        { recursive: true, force: true },
+      )
+      writeJSON(
+        path.join(projectRoot(member.id), 'project.json'),
+        metadataSnapshots.get(member.id),
+      )
+    }
+    throw error
+  }
+
+  return {
+    formatVersion: 1,
+    type: 'map-group-release',
+    mapGroupId: identity.mapGroupId,
+    mainProjectId: identity.mainProjectId,
+    version,
+    mapCount: published.length,
+    releases: published,
+  }
 }
 
 function getLaunchTarget({ project, release }) {
@@ -1478,24 +1644,67 @@ function safeFilename(value, fallback) {
 
 function exportPlayBundle(reference) {
   const target = getLaunchTarget({ release: reference })
-  const root = projectRoot(target.id)
-  const releaseRoot = path.join(root, 'releases', target.version)
-  const manifest = readJSON(path.join(releaseRoot, 'manifest.json'))
+  const identity = mapGroupIdentity(target.id)
+  const members = listMapGroup(target.id)
+  const main = getProject(identity.mainProjectId)
   const exportRoot = path.join(distributionRoot, '.exports')
   const nonce = `${process.pid}_${Date.now()}`
-  const temporaryRoot = path.join(exportRoot, `${target.id}_${target.version}_${nonce}`)
-  const worldRoot = path.join(temporaryRoot, target.id)
-  const filename = `${safeFilename(manifest.projectName, '作品')}_${target.id}_${safeFilename(target.version, 'latest')}.boxplay`
+  const temporaryRoot = path.join(exportRoot, `${identity.mapGroupId}_${target.version}_${nonce}`)
+  const worldsRoot = path.join(temporaryRoot, 'worlds')
+  const filename = `${safeFilename(main.name, '作品')}_${identity.mapGroupId}_${safeFilename(target.version, 'latest')}.boxplay`
   const archivePath = path.join(exportRoot, `${nonce}.boxplay`)
 
   fs.mkdirSync(exportRoot, { recursive: true })
   try {
-    copyReleaseWorld(releaseRoot, path.join(root, 'source'), worldRoot)
+    const manifests = []
+    for (const member of members) {
+      const root = projectRoot(member.id)
+      const releaseRoot = path.join(root, 'releases', target.version)
+      const manifestPath = path.join(releaseRoot, 'manifest.json')
+      if (!fs.existsSync(manifestPath)) {
+        throw new Error(`地图“${member.name}”尚未发布版本 ${target.version}`)
+      }
+      const manifest = readJSON(manifestPath)
+      if (
+        manifest.id !== member.id ||
+        manifest.version !== target.version ||
+        manifest.mapGroupId !== identity.mapGroupId ||
+        manifest.mainProjectId !== identity.mainProjectId
+      ) {
+        throw new Error(`地图“${member.name}”的发布关系与地图组不一致，请重新发布`)
+      }
+      copyReleaseWorld(
+        releaseRoot,
+        path.join(root, 'source'),
+        path.join(worldsRoot, member.id),
+      )
+      manifests.push(manifest)
+    }
+    writeJSON(path.join(temporaryRoot, 'bundle.json'), {
+      formatVersion: 1,
+      type: 'map-group-play-bundle',
+      mapGroupId: identity.mapGroupId,
+      mainProjectId: identity.mainProjectId,
+      version: target.version,
+      createdAt: new Date().toISOString(),
+      members: manifests.map((manifest) => ({
+        id: manifest.id,
+        name: manifest.projectName,
+        mapRole: manifest.mapRole,
+        mainProjectId: manifest.mainProjectId,
+      })),
+    })
     runTar(
-      ['-czf', archivePath, '-C', temporaryRoot, target.id],
+      ['-czf', archivePath, '-C', temporaryRoot, 'bundle.json', 'worlds'],
       'Unable to export play bundle',
     )
-    return { archivePath, temporaryRoot, filename }
+    return {
+      archivePath,
+      temporaryRoot,
+      filename,
+      mapCount: members.length,
+      mapGroupId: identity.mapGroupId,
+    }
   } catch (error) {
     fs.rmSync(archivePath, { force: true })
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
@@ -1626,6 +1835,7 @@ module.exports = {
   packageProject,
   projectsRoot,
   publishProject,
+  publishMapGroup,
   updateProject,
 }
 

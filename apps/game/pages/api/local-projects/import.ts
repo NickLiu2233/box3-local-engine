@@ -32,7 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }),
       fs.createWriteStream(temporaryPath, { flags: 'wx' }),
     );
-    const project = getLocalProjectManager().importProject(temporaryPath);
+    const mode = Array.isArray(req.query.mode) ? req.query.mode[0] : req.query.mode;
+    const targetMainProjectId = Array.isArray(req.query.targetMainProjectId)
+      ? req.query.targetMainProjectId[0]
+      : req.query.targetMainProjectId;
+    if (mode && mode !== 'independent' && mode !== 'submap') {
+      throw new Error('不支持的工程导入方式');
+    }
+    const project = getLocalProjectManager().importProject(temporaryPath, {
+      mode: mode || 'independent',
+      targetMainProjectId,
+    });
     return res.status(201).json({ project });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });

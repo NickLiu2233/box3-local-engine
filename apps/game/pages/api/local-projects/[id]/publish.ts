@@ -42,9 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   if (!id) return res.status(400).json({ message: 'Project ID is required' });
   try {
-    await flushActiveEditor(id);
     const manager = getLocalProjectManager();
-    return res.status(201).json({ release: manager.publishProject(id, req.body?.version, req.body?.notes) });
+    const members = manager.listMapGroup(id);
+    await Promise.all(members.map((member) => flushActiveEditor(member.id)));
+    return res.status(201).json({
+      release: manager.publishMapGroup(id, req.body?.version, req.body?.notes),
+    });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }

@@ -12,8 +12,10 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     res.setHeader('Content-Type', 'application/gzip');
     res.setHeader('Cache-Control', 'no-store');
-    const { archive, filename } = createPlayBundle(String(req.query.id || ''));
+    const { archive, filename, mapCount, mapGroupId } = createPlayBundle(String(req.query.id || ''));
     res.setHeader('Content-Disposition', `attachment; filename="world.boxplay"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader('X-Box-Map-Count', String(mapCount));
+    res.setHeader('X-Box-Map-Group-Id', mapGroupId);
     archive.on('error', (error) => res.destroy(error));
     archive.pipe(res);
     archive.finalize();

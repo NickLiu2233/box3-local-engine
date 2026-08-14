@@ -79,6 +79,19 @@ openssl rand -hex 32
 PERMISSION_TOKEN_SECRET=上一步生成的值
 ```
 
+地图运行时内存也由服主在 `.env` 中配置，默认值适合常见地图和
+`512x256x512` 的大型体素地图：
+
+```env
+BOX_SCRIPT_MEMORY_MB=512
+BOX_SCRIPT_HEAP_MB=512
+```
+
+这两个值都是“每个已启动地图运行时”的 MiB 上限，不是整个 Docker 容器的总内存。
+`BOX_SCRIPT_MEMORY_MB` 是当前 `ivmp` 执行路径实际使用的主要限制；建议两项保持一致。
+降低后如果出现 `Array buffer allocation failed`，应恢复为 `512` 或继续提高。修改后需
+重新创建 Creator、Play 容器；通过本项目的 `pnpm creator` / `pnpm play` 命令也会自动完成。
+
 更换该值会让已有运行时身份断言失效，并改变账号的 `entity.player.userKey`，因此完成正式部署后不要
 随意轮换。
 
@@ -196,8 +209,8 @@ pnpm stop
 
 | 产物 | 包含可编辑源工程 | 用途 |
 | --- | --- | --- |
-| `.boxproject` | 是 | 换设备、备份、继续编辑 |
-| `.boxplay` / 游玩部署包 | 否 | 安装到 Play 并提供给玩家 |
+| `.boxproject` | 是，包含完整地图组 | 换设备、备份、继续编辑 |
+| `.boxplay` / 游玩部署包 | 否，包含完整地图组的只读版本 | 一次安装到 Play 并提供给玩家 |
 
 Creator 工程位置：
 

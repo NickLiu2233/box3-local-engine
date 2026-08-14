@@ -1,9 +1,25 @@
+import { Semaphore } from '@box-local/utils/semaphore';
+
 export type DataRequest = {
   data: Uint8Array | null;
   loaded: boolean;
   error: boolean;
   abort?: () => void;
 };
+
+// The cloud client talks to an HTTP/2 CDN, but Local Engine routes terrain
+// chunks through a same-origin HTTP proxy. Large maps can enqueue thousands of
+// XHRs at once; browsers start each XHR timeout while it is still waiting for a
+// connection slot and eventually report status 0. Keep the boxes retrieval
+// path unchanged for cloud URLs and bound only local runtime traffic.
+const LOCAL_RUNTIME_REQUEST_CONCURRENCY = 32;
+const localRuntimeRequests = new Semaphore(LOCAL_RUNTIME_REQUEST_CONCURRENCY);
+
+function isLocalRuntimeURL(url: string): boolean {
+  return /^(?:https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?)?\/runtime\/(?:edit|play)(?:\/|$)/.test(
+    url,
+  );
+}
 
 let retrieve:
   | ((out: DataRequest, url: string, timeout: number) => Promise<void>)
@@ -30,11 +46,19 @@ export async function retrieveData(
   let adjustedTimeout = timeout;
 
   for (let i = 0; i < count; i++) {
+    const limitLocalRuntime = isLocalRuntimeURL(url);
+    if (limitLocalRuntime) {
+      await localRuntimeRequests.p();
+    }
     try {
       return await retrieve(out, url, adjustedTimeout);
     } catch (err) {
       if (i === count - 1) {
         return Promise.reject(err);
+      }
+    } finally {
+      if (limitLocalRuntime) {
+        localRuntimeRequests.v();
       }
     }
 
