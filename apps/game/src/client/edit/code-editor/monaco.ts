@@ -89,10 +89,13 @@ export class MonacoEditorController {
       CodeEditorClientController.instance.onDidBlurEditorText();
     });
 
-    // 配置
+    // Keep diagnostics intentionally small: syntax errors plus API/type misuse.
+    // Style suggestions (for example unused variables) stay disabled so game
+    // scripts are not flooded with low-value warnings.
     monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: true,
+      noSemanticValidation: false,
       noSyntaxValidation: false,
+      noSuggestionDiagnostics: true,
     });
 
     // compiler options
@@ -100,8 +103,11 @@ export class MonacoEditorController {
       target: monaco.languages.typescript.ScriptTarget.ES2020,
       allowNonTsExtensions: true,
       allowJs: true,
+      checkJs: true,
+      noEmit: true,
       lib: ['es2015'],
     });
+    monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
 
     if (!this._sqlEnabled) {
       setTimeout(() => {

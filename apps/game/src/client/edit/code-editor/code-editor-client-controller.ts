@@ -32,6 +32,18 @@ import type { ClientStateType } from '../edit-schema';
 import type { CodeEditorClientState } from './code-editor-client-state';
 import { monacoController } from './monaco';
 
+export type CodeEditorProblem = {
+  fileId: string;
+  fileName: string;
+  message: string;
+  severity: number;
+  code?: string;
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+};
+
 // codeEditor控制器
 export class CodeEditorClientController {
   public static instance: CodeEditorClientController;
@@ -152,9 +164,50 @@ export class CodeEditorClientController {
       .then((content) => {
         if (content) {
           this.serverDeclarations = decodeUTF8(content);
+          this.applySelectedFileDeclarations();
         }
       })
       .catch();
+  }
+
+  /**
+   * Keep Monaco's global declarations aligned with the selected script type.
+   * The legacy server declarations load asynchronously, so this is called both
+   * when Monaco becomes ready and when that download finishes.
+   */
+  private applySelectedFileDeclarations() {
+    if (!this.monacoController.isReady) {
+      return;
+    }
+
+    const file = this._editorState.fileDict[this._editorState.selectedFileId];
+    if (!file) {
+      return;
+    }
+
+    if (file.isClient) {
+      this.monacoController.setLibs([
+        {
+          content: CLIENT_API_TYPES,
+          filePath: 'client-api.d.ts',
+        },
+      ]);
+      return;
+    }
+
+    const declarations = [
+      {
+        content: SERVER_API_TYPES,
+        filePath: 'server-api.d.ts',
+      },
+    ];
+    if (this.serverDeclarations) {
+      declarations.unshift({
+        content: this.serverDeclarations,
+        filePath: 'api.d.ts',
+      });
+    }
+    this.monacoController.setLibs(declarations);
   }
 
   public monacoReady(monacoEditor, monaco) {
@@ -167,8 +220,12 @@ export class CodeEditorClientController {
       contentChange: this.editText,
       selectionChange: this.setSelectionRange,
     });
+    this.applySelectedFileDeclarations();
     monacoController.setText(this.getSelectedFile().text);
     monacoController.recoverCursor({ idx: this.getCursorIndex() });
+    // Start project-wide diagnostics while the editor is becoming ready. This
+    // keeps the Problems tab from doing all model creation on its first open.
+    this.prepareModelForAllFiles();
   }
 
   // 文件恢复-fileSystem用的
@@ -244,27 +301,7 @@ export class CodeEditorClientController {
       cursor.fileId = fileId;
       this._protocol.server.message.syncCursor(cursor);
 
-      if (this.getSelectedFile().isClient) {
-        this.monacoController.setLibs([
-          {
-            content: CLIENT_API_TYPES,
-            filePath: 'client-api.d.ts',
-          },
-        ]);
-      } else {
-        this.monacoController.setLibs([
-          // 旧的通过 schema/api/js 生成的定义
-          {
-            content: this.serverDeclarations,
-            filePath: 'api.d.ts',
-          },
-          // 叠加上新的 script-api 中的定义
-          {
-            content: SERVER_API_TYPES,
-            filePath: 'server-api.d.ts',
-          },
-        ]);
-      }
+      this.applySelectedFileDeclarations();
       if (this.monacoController.isReady) {
         this.monacoController.setText(this.getSelectedFile().text);
         this.monacoController.recoverCursor({ idx: this.getCursorIndex() });
@@ -546,7 +583,9 @@ export class CodeEditorClientController {
       const file = dict[fileId];
       const model = this._fileModels[fileId];
       if (model) {
-        model.setValue(file.text);
+        if (model.getValue() !== file.text) {
+          model.setValue(file.text);
+        }
       } else {
         this._fileModels[fileId] =
           this.monacoController.isReady &&
@@ -563,6 +602,85 @@ export class CodeEditorClientController {
         delete models[fileId];
       }
     }
+  }
+
+  /** Returns a complete Monaco diagnostic snapshot for every project script. */
+  public async getProblems(): Promise<CodeEditorProblem[]> {
+    if (!this.monacoController.isReady) {
+      return [];
+    }
+
+    this.prepareModelForAllFiles();
+    const { monaco } = this.monacoController;
+    const getWorker =
+      await monaco.languages.typescript.getJavaScriptWorker();
+    const problems = (
+      await Promise.all(
+        Object.entries(this._fileModels).map(async ([fileId, model]) => {
+          const file = this._editorState.fileDict[fileId];
+          if (!file || !model) {
+            return [];
+          }
+
+          const worker = await getWorker(model.uri);
+          const resource = model.uri.toString();
+          const diagnostics = [
+            ...(await worker.getSyntacticDiagnostics(resource)),
+            ...(await worker.getSemanticDiagnostics(resource)),
+          ];
+
+          return diagnostics.flatMap((diagnostic) => {
+            // TypeScript categories: Warning = 0, Error = 1. Suggestions and
+            // informational messages stay out of this intentionally basic list.
+            if (diagnostic.category !== 0 && diagnostic.category !== 1) {
+              return [];
+            }
+
+            const startOffset = diagnostic.start || 0;
+            const endOffset = Math.min(
+              model.getValueLength(),
+              startOffset + (diagnostic.length || 0),
+            );
+            const start = model.getPositionAt(startOffset);
+            const end = model.getPositionAt(endOffset);
+            const flattenMessage = (message): string => {
+              if (typeof message === 'string') {
+                return message;
+              }
+              return [
+                message.messageText,
+                ...(message.next || []).map(flattenMessage),
+              ].join('\n');
+            };
+
+            return [
+              {
+                fileId,
+                fileName: file.name,
+                message: flattenMessage(diagnostic.messageText),
+                severity:
+                  diagnostic.category === 1
+                    ? monaco.MarkerSeverity.Error
+                    : monaco.MarkerSeverity.Warning,
+                code: String(diagnostic.code),
+                startLineNumber: start.lineNumber,
+                startColumn: start.column,
+                endLineNumber: end.lineNumber,
+                endColumn: end.column,
+              },
+            ];
+          });
+        }),
+      )
+    ).flat();
+
+    return problems.sort(
+        (a, b) =>
+          b.severity - a.severity ||
+          a.fileName.localeCompare(b.fileName) ||
+          a.startLineNumber - b.startLineNumber ||
+          a.startColumn - b.startColumn,
+      );
   }
 
   private findErrorFile(model_id, idx) {

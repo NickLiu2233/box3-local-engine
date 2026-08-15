@@ -11,6 +11,7 @@ import { connect } from 'react-redux';
 import { RootState } from 'src/redux/edit';
 import { setIsShowDebugLogPanel, setNavMode } from 'src/redux/edit/creator';
 import { LeftNavModeEnum } from '../../defs';
+import type { CodeEditorProblem } from 'src/client/edit/code-editor/code-editor-client-controller';
 
 type Props = {
   intl: IntlShape;
@@ -23,12 +24,20 @@ type State = {
   expr: string;
   isInputPause: boolean;
   debuggerInfo: typeof DebuggerClientStateSchema.identity;
+  activeTab: 'problems' | 'output';
+  problems: CodeEditorProblem[];
+  problemsReady: boolean;
 };
 
 class DebugContainer extends React.Component<Props, State> {
   private logListElm: HTMLElement | undefined;
   private shouldScrollToBottom = true;
   private inputListStep: number = 0;
+  private markerDisposable?: { dispose: () => void };
+  private markerConnectTimer?: ReturnType<typeof setTimeout>;
+  private problemRefreshTimer?: ReturnType<typeof setTimeout>;
+  private problemScanVersion = 0;
+  private isUnmounted = false;
 
   constructor(props: Props) {
     super(props);
@@ -36,14 +45,19 @@ class DebugContainer extends React.Component<Props, State> {
       expr: '',
       isInputPause: false,
       debuggerInfo: editor.state.debugger,
+      activeTab: 'output',
+      problems: [],
+      problemsReady: false,
     };
   }
 
   public componentDidMount() {
+    this.isUnmounted = false;
     if (this.logListElm && this.shouldScrollToBottom) {
       this.logListElm.scrollTop = this.logListElm.scrollHeight;
     }
     editor.listeners.debugger.sub(this._debuggerSub);
+    this.connectProblemDiagnostics();
   }
 
   public componentDidUpdate() {
@@ -52,8 +66,55 @@ class DebugContainer extends React.Component<Props, State> {
     }
   }
   public componentWillUnmount(): void {
+    this.isUnmounted = true;
+    this.problemScanVersion += 1;
     editor.listeners.debugger.unsub(this._debuggerSub);
+    this.markerDisposable?.dispose();
+    this.markerConnectTimer && clearTimeout(this.markerConnectTimer);
+    this.problemRefreshTimer && clearTimeout(this.problemRefreshTimer);
   }
+
+  private connectProblemDiagnostics = () => {
+    if (this.props.float || this.markerDisposable) {
+      return;
+    }
+
+    const monacoController = editor.codeEditorController.monacoController;
+    if (!monacoController.isReady) {
+      this.markerConnectTimer = setTimeout(this.connectProblemDiagnostics, 100);
+      return;
+    }
+
+    this.markerDisposable = monacoController.monaco.editor.onDidChangeMarkers(
+      this.scheduleProblemRefresh,
+    );
+    void this.refreshProblems();
+  };
+
+  private scheduleProblemRefresh = () => {
+    this.problemRefreshTimer && clearTimeout(this.problemRefreshTimer);
+    this.problemRefreshTimer = setTimeout(() => {
+      void this.refreshProblems();
+    }, 120);
+  };
+
+  private refreshProblems = async () => {
+    const scanVersion = ++this.problemScanVersion;
+    try {
+      const problems = await editor.codeEditorController.getProblems();
+      if (this.isUnmounted || scanVersion !== this.problemScanVersion) {
+        return;
+      }
+      this.setState({ problems, problemsReady: true });
+    } catch {
+      if (this.isUnmounted || scanVersion !== this.problemScanVersion) {
+        return;
+      }
+      // The editor may be closing while Monaco tears down its worker. Keep the
+      // previous stable list instead of replacing it with a false empty state.
+      this.setState({ problemsReady: true });
+    }
+  };
 
   private _debuggerSub = (data) => {
     this.setState({ debuggerInfo: DebuggerClientStateSchema.clone(data) });
@@ -219,6 +280,65 @@ class DebugContainer extends React.Component<Props, State> {
     );
   }
 
+  public renderProblemList() {
+    const { problems, problemsReady } = this.state;
+    if (!problemsReady) {
+      return (
+        <div className={style.problemEmpty}>
+          {this.props.intl.formatMessage({ id: 'checkingProblems' })}
+        </div>
+      );
+    }
+    if (problems.length === 0) {
+      return (
+        <div className={style.problemEmpty}>
+          {this.props.intl.formatMessage({ id: 'noProblems' })}
+        </div>
+      );
+    }
+
+    const errorSeverity =
+      editor.codeEditorController.monacoController.monaco.MarkerSeverity.Error;
+    return (
+      <div className={style.problemList}>
+        {problems.map((problem) => {
+          const isError = problem.severity === errorSeverity;
+          const key = `${problem.fileId}:${problem.startLineNumber}:${problem.startColumn}:${problem.code || ''}:${problem.message}`;
+          return (
+            <button
+              type="button"
+              key={key}
+              className={style.problemItem}
+              onClick={() => {
+                this.props.setNavMode(LeftNavModeEnum.Script);
+                editor.codeEditorController.gotoFileWithPos(
+                  problem.fileName,
+                  problem.startLineNumber,
+                  problem.startColumn,
+                );
+              }}
+            >
+              <span
+                className={isError ? style.problemError : style.problemWarning}
+                aria-hidden="true"
+              >
+                {isError ? '×' : '!'}
+              </span>
+              <span className={style.problemContent}>
+                <span className={style.problemMessage}>{problem.message}</span>
+                <span className={style.problemLocation}>
+                  {problem.fileName}:{problem.startLineNumber}:
+                  {problem.startColumn}
+                  {problem.code ? ` · ${problem.code}` : ''}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   public render() {
     return (
       <div
@@ -226,8 +346,34 @@ class DebugContainer extends React.Component<Props, State> {
       >
         {!this.props.float && (
           <div className={style.consoleTitleContainer}>
-            <div className={style.consoleTitle}>
-              {this.props.intl.formatMessage({ id: 'output' })}
+            <div className={style.consoleTabs}>
+              <button
+                type="button"
+                className={
+                  this.state.activeTab === 'problems'
+                    ? style.consoleTabActive
+                    : style.consoleTab
+                }
+                onClick={() => this.setState({ activeTab: 'problems' })}
+              >
+                {this.props.intl.formatMessage({ id: 'problems' })}
+                {this.state.problems.length > 0 && (
+                  <span className={style.problemCount}>
+                    {this.state.problems.length}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                className={
+                  this.state.activeTab === 'output'
+                    ? style.consoleTabActive
+                    : style.consoleTab
+                }
+                onClick={() => this.setState({ activeTab: 'output' })}
+              >
+                {this.props.intl.formatMessage({ id: 'output' })}
+              </button>
             </div>
             <div
               className={style.closeBtn}
@@ -235,8 +381,14 @@ class DebugContainer extends React.Component<Props, State> {
             ></div>
           </div>
         )}
-        {this.renderLogList()}
-        {this.renderDebugInput()}
+        {this.props.float || this.state.activeTab === 'output' ? (
+          <>
+            {this.renderLogList()}
+            {this.renderDebugInput()}
+          </>
+        ) : (
+          this.renderProblemList()
+        )}
       </div>
     );
   }
