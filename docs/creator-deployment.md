@@ -176,7 +176,6 @@ PERMISSION_TOKEN_SECRET=
 | `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到编辑/预览运行时的间隔（毫秒） |
 | `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只进入游戏服务端 |
-| `BOX_DATA_STORAGE_NAMESPACE` | 空 | 迁移旧 edit 数据时填写原作品 ID |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选的 Docker 基础镜像 |
 
 完整配置参阅 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。创作端 `edit`

@@ -64,9 +64,7 @@ BOX_DATABASE_POOL_SIZE=10
 BOX_DATABASE_SSL=true
 BOX_DATABASE_SSL_REJECT_UNAUTHORIZED=true
 BOX_DATA_STORAGE_LOCK_TIMEOUT_MS=10000
-BOX_DATA_STORAGE_NAMESPACE=
 BOX_DATA_STORAGE_NAMESPACE_PREFIX=
-BOX_GROUP_STORAGE_NAMESPACE=你的地图组ID
 ```
 
 | 变量 | 默认值 | 说明 |
@@ -77,9 +75,7 @@ BOX_GROUP_STORAGE_NAMESPACE=你的地图组ID
 | `BOX_DATABASE_SSL` | `false` | 托管数据库通常需要设为 `true` |
 | `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` | `true` | 是否验证数据库服务器证书 |
 | `BOX_DATA_STORAGE_LOCK_TIMEOUT_MS` | `10000` | 脚本 `update` 事务锁的最长保留时间 |
-| `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写原作品 ID，例如 `100010141` |
 | `BOX_DATA_STORAGE_NAMESPACE_PREFIX` | 空 | 多套私服共用数据库时使用的命名空间前缀 |
-| `BOX_GROUP_STORAGE_NAMESPACE` | 自动使用主地图 UUID | `getGroupStorage` 的地图组共享标识；同组地图一致、不同组隔离 |
 
 不建议把 `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` 设为 `false`。只有数据库供应商明确使用
 无法由系统信任链验证的证书时才临时关闭验证。
@@ -87,9 +83,8 @@ BOX_GROUP_STORAGE_NAMESPACE=你的地图组ID
 ## 4. 数据隔离方式
 
 - `world.getDataStorage(name)` 使用每张地图自己的 namespace，其他地图无法访问。
-- `world.getGroupStorage(name)` 使用地图组 namespace；Creator 和自动生成的单作品游玩包默认
-  使用发布清单中的主地图 UUID，同组地图可访问，不同地图组不可访问。只有迁移旧数据或明确需要
-  自定义命名空间时才手动设置 `BOX_GROUP_STORAGE_NAMESPACE`。
+- `world.getGroupStorage(name)` 使用地图组 namespace；Creator 和自动生成的游玩包固定使用
+  发布清单中的主地图 UUID，同组地图可访问，不同地图组不可访问，不能被全局环境变量覆盖。
 - 两类空间即使传入相同的 `name` 也使用不同的表，不会互相覆盖。
 
 表名沿用旧 boxes 双表格式。以地图 UUID `11111111-1111-4111-8111-111111111111`
@@ -181,21 +176,13 @@ BOX_DATABASE_URL=
 
 留空后自动恢复为本地文件数据空间，不需要选择驱动。
 
-从旧 boxes 数据库迁移时，先把对应主表与 `_keys` 表恢复到配置的 schema。单地图、单运行时
-部署可以设置：
-
-```env
-BOX_DATA_STORAGE_NAMESPACE=原作品ID
-BOX_GROUP_STORAGE_NAMESPACE=原地图组ID
-```
-
-必须同时迁移主表和 `_keys` 表，不能只复制其中一张。引擎会通过
+从旧 boxes 数据库迁移时，先把对应主表与 `_keys` 表恢复到配置的 schema，并将表名中的旧
+作品 ID 转换为目标地图 UUID、旧地图组 ID 转换为目标主地图 UUID。必须同时迁移主表和
+`_keys` 表，不能只复制其中一张。引擎会通过
 `_keys.record` 查找当前记录，并自动忽略 `isDelete=true` 的记录。
 
-`BOX_DATA_STORAGE_NAMESPACE` 是进程级配置，不是每张地图各自的配置。在 Creator 或一个 Play
-进程同时承载多张地图时，不能用一个全局旧作品 ID 映射所有地图。此时应把各旧表转换到目标地图
-UUID 对应的表名，或在导入器中建立“旧 contentId -> mapUuid”的逐地图迁移；不要把所有地图都
-指向同一个 namespace，否则 `getDataStorage` 会失去地图隔离。
+Creator 或 Play 可以同时承载多张地图，因此不能用一个进程级全局 ID 映射所有地图。应把各旧表
+转换到目标地图 UUID 对应的表名，或在导入器中建立“旧 contentId -> mapUuid”的逐地图迁移。
 
 ## 8. 备份
 
@@ -235,8 +222,8 @@ pg_dump --format=custom --schema=box_engine --file=box-data.dump 数据库名
 
 1. **地图身份不同。** boxes 请求使用数字 `contentId/groupId`；Local Engine 默认使用不可变
    `mapUuid` 和主地图 UUID。这保证访问 ID 改名后不丢档，但旧表不会仅凭复制就自动绑定到 UUID。
-2. **多地图不能只靠全局旧 namespace。** 多地图 Play 会按每张地图发布清单中的 UUID 隔离；
-   一个 `BOX_DATA_STORAGE_NAMESPACE=旧ID` 不能表达多张地图各自的旧 ID。
+2. **旧数据需要逐地图改名。** 多地图 Play 会按每张地图发布清单中的 UUID 隔离；迁移工具需要
+   将每个旧作品 ID 和旧地图组 ID 分别映射到目标地图 UUID，不能用进程级全局 ID 代替。
 3. **超长物理表名不同。** PostgreSQL 标识符最多 63 字节。UUID 与较长 storage name 组合
    超限时，Local 使用确定性的 `storage_<sha256>` 表名；旧数字 ID 通常不会触发该规则。
 4. **本地文件后端只保证脚本行为。** 它不是双表结构，也没有跨进程数据库锁。多个副地图并发

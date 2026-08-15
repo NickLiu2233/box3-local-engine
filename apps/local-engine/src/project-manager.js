@@ -1906,6 +1906,8 @@ function packageProject(reference, outputDirectory, options = {}) {
     )
     const packagedComposePath = path.join(temporaryBundleRoot, 'compose.yml')
     const packagedCompose = fs.readFileSync(packagedComposePath, 'utf8')
+      .replace(/^\s*BOX_DATA_STORAGE_NAMESPACE:.*\n/m, '')
+      .replace(/^\s*BOX_GROUP_STORAGE_NAMESPACE:.*\n/m, '')
       .replaceAll(
         '    restart: unless-stopped\n',
         '    restart: unless-stopped\n    security_opt:\n      - no-new-privileges:true\n    cap_drop:\n      - ALL\n',

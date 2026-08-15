@@ -63,15 +63,19 @@ async function main() {
     return originalQuery(...args);
   };
   const logger = new Logger(() => undefined, ['postgres-test'], 'test');
-  const createStorage = (projectNamespace: string) => new PostgresDataStorage({
+  const createStorage = (
+    projectNamespace: string,
+    groupNamespace = '100010141',
+    mode = 'play',
+  ) => new PostgresDataStorage({
     connectionString: 'postgresql://unused/box_test',
     schema: 'box_engine',
     poolSize: 4,
     ssl: false,
     sslRejectUnauthorized: true,
     projectNamespace,
-    groupNamespace: '100010141',
-    mode: 'play',
+    groupNamespace,
+    mode,
     lockTimeoutMs: 5_000,
     logger,
     pool,
@@ -80,6 +84,11 @@ async function main() {
   const first = createStorage('world-a');
   const second = createStorage('world-b');
   const uuidStorage = createStorage('11111111-1111-4111-8111-111111111111');
+  const editUuidStorage = createStorage(
+    '22222222-2222-4222-8222-222222222222',
+    '33333333-3333-4333-8333-333333333333',
+    'edit',
+  );
   assert.equal(
     queryCount,
     0,
@@ -111,6 +120,15 @@ async function main() {
     (await uuidStorage.get('project', longestValidStorageName, 'uuid-player'))?.value,
     1,
     'UUID namespaces must support the full 50-character storage-space name',
+  );
+
+  await editUuidStorage.set('project', 'player', 'editor', { coins: 1 });
+  await editUuidStorage.set('group', 'player', 'editor', { season: 2 });
+  await pool.query(
+    `SELECT 1 FROM "box_engine"."edit_22222222-2222-4222-8222-222222222222_player" LIMIT 1`,
+  );
+  await pool.query(
+    `SELECT 1 FROM "box_engine"."group_edit_33333333-3333-4333-8333-333333333333_player" LIMIT 1`,
   );
 
   const locked = await first.get('project', 'players', 'alice', undefined, 'ticket-1');

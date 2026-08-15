@@ -100,13 +100,10 @@ try {
   })
   assert.equal(packaged.directory, distributionPath)
   const compose = fs.readFileSync(path.join(distributionPath, 'compose.yml'), 'utf8')
-  assert.match(
-    compose,
-    new RegExp(`BOX_GROUP_STORAGE_NAMESPACE: \\$\\{BOX_GROUP_STORAGE_NAMESPACE:-${mainManifest.mapUuid}\\}`),
-  )
   assert.match(compose, new RegExp(`BOX_WORLD_MAP_UUID: ${mainManifest.mapUuid}`))
   assert.match(compose, new RegExp(`BOX_WORLD_GROUP_UUID: ${mainManifest.mapUuid}`))
-  assert.doesNotMatch(compose, /GROUP_STORAGE_NAMESPACE[^\n]*global/)
+  assert.doesNotMatch(compose, /BOX_GROUP_STORAGE_NAMESPACE:/)
+  assert.doesNotMatch(compose, /BOX_DATA_STORAGE_NAMESPACE:/)
   assert.match(
     compose,
     /play-storage-init:[\s\S]*?chown -R 1000:1000 \/app\/storage/,

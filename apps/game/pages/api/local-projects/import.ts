@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { getLocalProjectManager } from '../../../server/local-project-manager';
 import { allowAuthenticatedCreatorApi } from '../../../server/creator-api-security';
+import { prewarmLocalRuntimes } from '../../../server/runtime-prewarm';
 
 export const config = { api: { bodyParser: false } };
 
@@ -39,10 +40,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (mode && mode !== 'independent' && mode !== 'submap') {
       throw new Error('不支持的工程导入方式');
     }
-    const project = getLocalProjectManager().importProject(temporaryPath, {
+    const manager = getLocalProjectManager();
+    const project = manager.importProject(temporaryPath, {
       mode: mode || 'independent',
       targetMainProjectId,
     });
+    const members = manager.listMapGroup(project.id);
+    void prewarmLocalRuntimes(members.map((member) => member.id), ['edit', 'play']);
     return res.status(201).json({ project });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });

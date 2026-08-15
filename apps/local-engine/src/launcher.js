@@ -5,6 +5,10 @@ const http = require('http')
 const path = require('path')
 const crypto = require('crypto')
 const { spawn, spawnSync } = require('child_process')
+const {
+  resolveMapRuntimeNamespace,
+  resolveGroupRuntimeNamespace,
+} = require('./runtime-storage-namespace')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
@@ -167,12 +171,11 @@ const startsEditServer = runtimeOnly && runtimeMode !== 'play'
 const usesPlayerWeb = playMode
 const requiresServerBuild = true
 
-function dataStorageNamespace(id, allowExplicit = true) {
-  if (allowExplicit && process.env.BOX_DATA_STORAGE_NAMESPACE) {
-    return process.env.BOX_DATA_STORAGE_NAMESPACE
-  }
-  const prefix = process.env.BOX_DATA_STORAGE_NAMESPACE_PREFIX || ''
-  return `${prefix}${id || 'default'}`
+function dataStorageNamespace(id) {
+  return resolveMapRuntimeNamespace({
+    mapUuid: id,
+    prefix: process.env.BOX_DATA_STORAGE_NAMESPACE_PREFIX || '',
+  })
 }
 
 function derivedRuntimePath(mode, identity) {
@@ -191,17 +194,6 @@ function prewarmCount(name, fallback, maximum) {
 }
 
 function groupStorageNamespace(projectId = '') {
-  if (process.env.BOX_GROUP_STORAGE_NAMESPACE) {
-    return process.env.BOX_GROUP_STORAGE_NAMESPACE
-  }
-  const identity =
-    process.env.BOX_WORLD_GROUP_UUID ||
-    process.env.BOX_WORLD_GROUP_ID ||
-    process.env.BOX_WORLD_MAIN_PROJECT_ID ||
-    process.env.BOX_WORLD_ID ||
-    projectId ||
-    process.env.BOX_SERVER_CONTENT_ID ||
-    ''
   if (projectId && projectManager) {
     try {
       return projectManager.projectStorageIdentity(projectId).mapGroupUuid
@@ -209,9 +201,15 @@ function groupStorageNamespace(projectId = '') {
       // Standalone runtime fixtures do not necessarily have project metadata.
     }
   }
-  // Generated distributions set BOX_WORLD_GROUP_ID. BOX_WORLD_ID remains a
-  // safe legacy fallback; unrelated packages must never collapse to global.
-  return identity || 'standalone-default'
+  return resolveGroupRuntimeNamespace({
+    mapGroupUuid: process.env.BOX_WORLD_GROUP_UUID,
+    mapGroupId: process.env.BOX_WORLD_GROUP_ID,
+    mainProjectId: process.env.BOX_WORLD_MAIN_PROJECT_ID || projectId,
+    mapUuid: process.env.BOX_WORLD_MAP_UUID,
+    mapId:
+      process.env.BOX_WORLD_ID ||
+      process.env.BOX_SERVER_CONTENT_ID,
+  })
 }
 
 function validateDefaultAvatar() {
@@ -592,11 +590,14 @@ async function main() {
           // immutable Map UUID always remains part of the namespace.
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
             world.manifest.mapUuid || world.id,
-            false,
           ),
-          BOX_GROUP_STORAGE_NAMESPACE:
-            world.manifest.mapGroupUuid ||
-            groupStorageNamespace(world.manifest.mainProjectId || world.id),
+          BOX_GROUP_STORAGE_NAMESPACE: resolveGroupRuntimeNamespace({
+            mapGroupUuid: world.manifest.mapGroupUuid,
+            mapGroupId: world.manifest.mapGroupId,
+            mainProjectId: world.manifest.mainProjectId,
+            mapUuid: world.manifest.mapUuid,
+            mapId: world.id,
+          }),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
@@ -863,12 +864,12 @@ async function main() {
         const projects = projectManager.listProjects()
         const editCount = prewarmCount(
           'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
-          1,
+          process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6,
           process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6
         )
         const playCount = prewarmCount(
           'BOX_CREATOR_PLAY_PREWARM_RUNTIMES',
-          1,
+          process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || 4,
           process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || 4
         )
         for (const project of projects.slice(0, editCount)) {
@@ -885,7 +886,7 @@ async function main() {
         })
         const count = prewarmCount(
           'BOX_PLAY_PREWARM_RUNTIMES',
-          1,
+          process.env.BOX_PLAY_MAX_RUNTIMES || 8,
           process.env.BOX_PLAY_MAX_RUNTIMES || 8
         )
         for (const world of worlds.slice(0, count)) {

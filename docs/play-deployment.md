@@ -459,7 +459,6 @@ docker compose up -d
 | `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只注入服务端容器 |
 | `BOX_IDENTITY_DATABASE_SCHEMA` | `box_identity` | 玩家账号、会话和审计记录的独立 schema |
 | `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许新玩家自助注册；已有账号始终可登录 |
-| `BOX_DATA_STORAGE_NAMESPACE` | 空 | 单作品迁移时填写旧 boxes 作品 ID |
 | `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选构建基础镜像 |
 
 数据库账号权限、SSL、多作品隔离和备份参阅

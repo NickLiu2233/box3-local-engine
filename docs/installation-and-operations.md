@@ -106,9 +106,9 @@ BOX_SCRIPT_HEAP_MB=512
 BOX_CREATOR_EDIT_MAX_RUNTIMES=6
 BOX_CREATOR_PLAY_MAX_RUNTIMES=4
 BOX_PLAY_MAX_RUNTIMES=8
-BOX_CREATOR_EDIT_PREWARM_RUNTIMES=1
-BOX_CREATOR_PLAY_PREWARM_RUNTIMES=1
-BOX_PLAY_PREWARM_RUNTIMES=1
+BOX_CREATOR_EDIT_PREWARM_RUNTIMES=6
+BOX_CREATOR_PLAY_PREWARM_RUNTIMES=4
+BOX_PLAY_PREWARM_RUNTIMES=8
 BOX_RUNTIME_IDLE_TIMEOUT_MS=900000
 ```
 
@@ -301,8 +301,8 @@ Player Service 是玩家身份的唯一写入者。Creator 和 Play 只消费它
 地图存储语义：
 
 - `getDataStorage` 按不可变 Map UUID 隔离，修改玩家访问 ID 不会切换存档；
-- `getGroupStorage` 默认按主地图 UUID 隔离，同一地图组共享、不同地图组隔离；只有迁移既有
-  namespace 时才显式设置 `BOX_GROUP_STORAGE_NAMESPACE`；
+- `getGroupStorage` 固定按主地图 UUID 隔离，同一地图组共享、不同地图组隔离，不允许使用
+  全局环境变量覆盖；
 - Creator 的 `edit` 数据和 Play 的 `play` 数据默认隔离。
 
 不要使用昵称、IP 或 `entity.player.id` 作为永久存档键。

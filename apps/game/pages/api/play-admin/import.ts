@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { importPlayBundle } from '../../../server/play-admin';
 import { allowPlayLibraryAdmin } from '../../../server/play-admin-security';
+import { prewarmLocalRuntimes } from '../../../server/runtime-prewarm';
 
 export const config = { api: { bodyParser: false } };
 const MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024;
@@ -32,6 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fs.createWriteStream(temporaryPath, { flags: 'wx' }),
     );
     const imported = await importPlayBundle(temporaryPath);
+    void prewarmLocalRuntimes(imported.worlds.map((world) => world.id), ['play']);
     return res.status(201).json(imported);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });

@@ -42,6 +42,31 @@ async function main() {
     /BOX_PLAY_PREWARM_RUNTIMES/,
     'play runtime prewarm must be configurable',
   );
+  assert.doesNotMatch(
+    launcherSource,
+    /prewarmCount\([\s\S]{0,120}PREWARM_RUNTIMES[\s\S]{0,80}\n\s*1,\n/,
+    'runtime prewarm must not default to only one map',
+  );
+
+  const composeSource = fs.readFileSync(
+    path.resolve(__dirname, '../../../docker-compose.yml'),
+    'utf8',
+  );
+  assert.match(
+    composeSource,
+    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-6\}/,
+    'creator must prewarm its configured edit capacity by default',
+  );
+  assert.match(
+    composeSource,
+    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES: \$\{BOX_CREATOR_PLAY_PREWARM_RUNTIMES:-4\}/,
+    'creator must prewarm its configured preview capacity by default',
+  );
+  assert.match(
+    composeSource,
+    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-8\}/,
+    'play must prewarm its configured runtime capacity by default',
+  );
 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-derived-content-'));
   const sourceRoot = path.join(root, 'world', 'blobs');

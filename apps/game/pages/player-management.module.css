@@ -362,6 +362,10 @@
 .formGrid input:focus, .formGrid select:focus, .formGrid textarea:focus { border-color: #7a7f87; box-shadow: 0 0 0 3px rgba(40, 44, 50, .08); }
 .fullField { grid-column: 1 / -1; }
 .fieldHelp { align-self: end; padding: 10px 12px; border-radius: 7px; color: #777b82; background: #f5f6f7; font-size: 11px; line-height: 1.5; }
+.banPresets { display: grid; align-content: end; gap: 7px; color: #656970; font-size: 12px; font-weight: 600; }
+.banPresets > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.banPresets button { min-height: 30px; padding: 0 9px; border: 1px solid #d7d9dc; border-radius: 6px; color: #555960; background: #fff; font: inherit; font-size: 11px; cursor: pointer; }
+.banPresets button:hover { border-color: #9da1a8; background: #f5f6f7; }
 .passwordReset { display: grid; gap: 14px; }
 .passwordReset > div { display: flex; align-items: center; gap: 10px; }
 .passwordReset > div:first-child { color: #676b72; }

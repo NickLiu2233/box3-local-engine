@@ -166,6 +166,15 @@ function dateTimeLocalValue(value?: string) {
   return local.toISOString().slice(0, 16);
 }
 
+function temporaryBanUntil(hours: number) {
+  return new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+}
+
+function playerBanMode(player: Player): 'active' | 'temporary' | 'permanent' {
+  if (player.status !== 'banned') return 'active';
+  return player.bannedUntil ? 'temporary' : 'permanent';
+}
+
 function deviceLabel(userAgent?: string) {
   if (!userAgent) return '未知设备';
   const system = /iPhone|iPad/.test(userAgent) ? 'iOS'
@@ -517,19 +526,36 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
     }
   }
 
-  async function batchAction(action: 'revoke-sessions' | 'ban' | 'unban' | 'add-tag' | 'remove-tag') {
+  async function batchAction(action: 'revoke-sessions' | 'temporary-ban' | 'ban' | 'unban' | 'add-tag' | 'remove-tag') {
     if (!selectedIds.length || busy) return;
-    const label = action === 'revoke-sessions' ? '强制下线' : action === 'ban' ? '封禁' : action === 'unban' ? '解除封禁' : action === 'add-tag' ? '增加标签' : '移除标签';
+    const label = action === 'revoke-sessions' ? '强制下线' : action === 'temporary-ban' ? '临时封禁' : action === 'ban' ? '永久封禁' : action === 'unban' ? '解除封禁' : action === 'add-tag' ? '增加标签' : '移除标签';
     const tag = action === 'add-tag' || action === 'remove-tag' ? prompt(`请输入要${label}的标签`)?.trim() : '';
     if ((action === 'add-tag' || action === 'remove-tag') && !tag) return;
-    const reason = action === 'ban' ? prompt('请输入批量封禁原因（可以留空）') || '' : '';
+    let bannedUntil = '';
+    if (action === 'temporary-ban') {
+      const input = prompt('请输入临时封禁小时数（例如 24、72、168）', '24');
+      if (input === null) return;
+      const hours = Number(input);
+      if (!Number.isFinite(hours) || hours <= 0 || hours > 8760) {
+        setNotice('临时封禁时长必须在 1 小时到 1 年之间');
+        return;
+      }
+      bannedUntil = temporaryBanUntil(hours);
+    }
+    const reason = action === 'ban' || action === 'temporary-ban' ? prompt('请输入批量封禁原因（可以留空）') || '' : '';
     if (!confirm(`确定对选中的 ${selectedIds.length} 位玩家执行“${label}”吗？`)) return;
     setBusy('batch');
     setNotice('');
     try {
       const response = await fetch('/api/play-admin/players/batch', {
         method: 'POST', headers: adminHeaders(token, true),
-        body: JSON.stringify({ subjectIds: selectedIds, action, tag, reason }),
+        body: JSON.stringify({
+          subjectIds: selectedIds,
+          action: action === 'temporary-ban' ? 'ban' : action,
+          tag,
+          reason,
+          bannedUntil,
+        }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || '批量操作失败');
@@ -632,7 +658,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
               <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={() => void exportPlayers()}><Download size={14} />{busy === 'export' ? '导出中…' : '导出 CSV'}</button>
               {search || appliedSearch ? <button className={styles.textButton} onClick={() => { setSearch(''); setAppliedSearch(''); setPage(1); }}>清除</button> : null}
             </div>
-            {selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong><button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button><button onClick={() => void batchAction('ban')}><Ban size={14} />封禁</button><button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解封</button><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button><button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
+            {selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong><button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button><button onClick={() => void batchAction('temporary-ban')}><Ban size={14} />临时封禁</button><button onClick={() => void batchAction('ban')}><Ban size={14} />永久封禁</button><button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解封</button><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button><button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
             <section className={styles.tableCard} aria-busy={busy === 'loading'}><table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>玩家</th><th>身份与角色</th><th>注册信息</th><th>最后登录</th><th>最后在线</th><th>状态</th></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player)} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><div className={styles.playerCell}><span className={styles.avatar}>{player.displayName.slice(0, 1).toUpperCase()}</span><span><strong>{player.displayName}</strong><small>{player.username ? `@${player.username}` : player.userKey}</small></span></div></td><td><strong>{player.guest ? '游客' : `账号 #${player.userId}`}</strong><small>{roleLabel(player.role)} · {player.activeSessionCount} 个会话</small></td><td><strong>{formatDate(player.registeredAt || player.createdAt)}</strong><small>{displayIp(player.registrationIp || player.firstSeenIp)}</small></td><td><strong>{player.guest ? '未注册账号' : formatDate(player.lastLoginAt)}</strong><small>{player.guest ? '—' : `${player.loginCount} 次 · ${displayIp(player.lastLoginIp)}`}</small></td><td><strong>{formatDate(player.lastSeenAt)}</strong><small>{displayIp(player.lastSeenIp)}</small></td><td><span className={player.status === 'banned' ? styles.badStatus : styles.goodStatus}>{player.status === 'banned' ? (player.bannedUntil ? `封禁至 ${formatDate(player.bannedUntil)}` : '永久封禁') : '正常'}</span></td></tr>)}</tbody></table>{busy === 'loading' && !displayedPlayers.length ? <div className={styles.empty}>正在读取玩家记录…</div> : null}{busy !== 'loading' && !displayedPlayers.length ? <div className={styles.empty}>暂无符合条件的玩家记录</div> : null}</section>
             <div className={styles.pagination}><span>共 {total} 位玩家 · 第 {page} / {totalPages} 页</span><div><button className={styles.secondaryButton} disabled={page <= 1 || busy === 'loading'} onClick={() => setPage((value) => Math.max(1, value - 1))}>上一页</button><button className={styles.secondaryButton} disabled={page >= totalPages || busy === 'loading'} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>下一页</button></div></div>
           </> : null}
@@ -682,13 +708,27 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
                     <label>昵称<input value={selected.displayName} onChange={(event) => setSelected({ ...selected, displayName: event.target.value })} /></label>
                     <label>头像资源或地址<input value={selected.avatar || ''} onChange={(event) => setSelected({ ...selected, avatar: event.target.value })} placeholder="可留空" /></label>
                     <label>角色<select disabled={!ownerAccess} value={selected.role} onChange={(event) => setSelected({ ...selected, role: event.target.value as Player['role'] })}><option value="player">玩家</option><option value="moderator">管理员</option><option value="admin">服主</option></select></label>
-                    <label>状态<select value={selected.status} onChange={(event) => setSelected({ ...selected, status: event.target.value as Player['status'] })}><option value="active">正常</option><option value="banned">封禁并撤销全部会话</option></select></label>
+                    <label>账号状态<select value={playerBanMode(selected)} onChange={(event) => {
+                      const mode = event.target.value as 'active' | 'temporary' | 'permanent';
+                      setSelected({
+                        ...selected,
+                        status: mode === 'active' ? 'active' : 'banned',
+                        bannedUntil: mode === 'temporary'
+                          ? selected.bannedUntil || temporaryBanUntil(24)
+                          : undefined,
+                      });
+                    }}><option value="active">正常</option><option value="temporary">临时封禁</option><option value="permanent">永久封禁</option></select></label>
                     <label className={styles.fullField}>标签（用逗号分隔）<input value={selected.tags.join(', ')} onChange={(event) => setSelected({ ...selected, tags: event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean) })} placeholder="例如：测试员, 重点关注" /></label>
                     <label className={styles.fullField}>服主备注<textarea value={selected.adminNote} onChange={(event) => setSelected({ ...selected, adminNote: event.target.value })} placeholder="仅服主后台可见，不会发送给游戏脚本" /></label>
                     {selected.status === 'banned' ? <>
                       <label className={styles.fullField}>封禁原因<textarea value={selected.banReason} onChange={(event) => setSelected({ ...selected, banReason: event.target.value })} placeholder="记录处罚依据，留空也可封禁" /></label>
-                      <label>封禁截止时间<input type="datetime-local" value={dateTimeLocalValue(selected.bannedUntil)} onChange={(event) => setSelected({ ...selected, bannedUntil: event.target.value ? new Date(event.target.value).toISOString() : undefined })} /></label>
-                      <div className={styles.fieldHelp}>不设置截止时间表示永久封禁。保存后会立即撤销全部会话并通知正在运行的地图。</div>
+                      {selected.bannedUntil ? <>
+                        <label>自动解封时间<input type="datetime-local" min={dateTimeLocalValue(new Date().toISOString())} value={dateTimeLocalValue(selected.bannedUntil)} onChange={(event) => setSelected({ ...selected, bannedUntil: event.target.value ? new Date(event.target.value).toISOString() : temporaryBanUntil(24) })} /></label>
+                        <div className={styles.banPresets}><span>快速设置</span><div>{[
+                          [1, '1 小时'], [24, '1 天'], [72, '3 天'], [168, '7 天'], [720, '30 天'],
+                        ].map(([hours, label]) => <button type="button" key={String(hours)} onClick={() => setSelected({ ...selected, bannedUntil: temporaryBanUntil(Number(hours)) })}>{label}</button>)}</div></div>
+                        <div className={`${styles.fieldHelp} ${styles.fullField}`}>到期后账号会自动恢复正常。保存时会立即撤销全部会话，并通知正在运行的地图断开该玩家。</div>
+                      </> : <div className={`${styles.fieldHelp} ${styles.fullField}`}>永久封禁没有自动解封时间。保存时会立即撤销全部会话，并通知正在运行的地图断开该玩家。</div>}
                     </> : null}
                   </div>
                 )}
