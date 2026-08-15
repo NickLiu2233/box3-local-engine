@@ -25,6 +25,26 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain("localStorage.setItem(THEME_KEY, next)");
   });
 
+  test('uses the Box Web palette and brand treatment instead of generic dashboard colors', () => {
+    for (const color of ['#383838', '#262626', '#404040', '#ffdb00', '#d9b500']) {
+      expect(styleSource).toContain(color);
+    }
+    for (const color of ['#111214', '#17181b', '#1b1c20']) {
+      expect(styleSource).not.toContain(color);
+    }
+    expect(styleSource).toContain('font-family: MiSans, Montserrat, "Microsoft YaHei"');
+    expect(styleSource).toMatch(/\.accountCard\s*\{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
+    expect(styleSource).toMatch(/\.sidebar nav \.navActive\s*\{[^}]*background:\s*var\(--brand\);/s);
+  });
+
+  test('keeps player administration text readable without changing login density', () => {
+    expect(styleSource).toMatch(/\.adminShell\s*\{[^}]*grid-template-columns:\s*256px[^}]*font-size:\s*14px;/s);
+    expect(styleSource).toMatch(/\.sidebar nav button div\s*\{[^}]*font-size:\s*14px;/s);
+    expect(styleSource).toMatch(/\.tableCard td,\s*\.tableCard td strong\s*\{[^}]*font-size:\s*12px;/s);
+    expect(styleSource).toMatch(/\.detailTabs button strong\s*\{[^}]*font-size:\s*12px;/s);
+    expect(styleSource).toMatch(/\.loginDialog input\s*\{[^}]*font-size:\s*13px;/s);
+  });
+
   test('constrains the workspace before wide tables can overflow on narrow screens', () => {
     expect(styleSource).toMatch(/@media\s*\(max-width:\s*820px\)[\s\S]*\.workspace\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100vw;/);
     expect(styleSource).toMatch(/@media\s*\(max-width:\s*1100px\)[\s\S]*\.tableCard\s*\{[^}]*overflow-x:\s*auto;/);
@@ -67,7 +87,7 @@ describe('player management visual consistency', () => {
   test('keeps account login inside the same themed player-service experience', () => {
     expect(accountSource).toContain('className={`${styles.themeRoot} ${styles.accountShell}`}');
     expect(accountSource).toContain('data-theme={theme}');
-    expect(accountSource).toContain("localStorage.setItem(THEME_KEY, next)");
+    expect(accountSource).toContain('localStorage.getItem(THEME_KEY)');
     expect(accountSource).toContain('className={styles.accountCard}');
     expect(accountSource).toContain('className={styles.accountForm}');
     expect(styleSource).toContain('.accountShell');
@@ -76,6 +96,9 @@ describe('player management visual consistency', () => {
     expect(accountSource).not.toContain('accountIntro');
     expect(accountSource).not.toContain('accountBenefits');
     expect(accountSource).not.toContain('accountIdentityList');
+    expect(accountSource).not.toContain('accountTopbar');
+    expect(accountSource).not.toContain('accountBrand');
+    expect(accountSource).not.toContain('accountThemeButton');
   });
 
   test('provides accessible login, registration and signed-in account states', () => {

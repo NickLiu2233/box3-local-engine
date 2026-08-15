@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import {
   ArrowRight, Eye, EyeOff, LoaderCircle,
-  LockKeyhole, LogOut, MonitorUp, Moon, Sun,
+  LockKeyhole, LogOut,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import styles from './player-management.module.css';
@@ -71,12 +71,6 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
       .finally(() => setLoaded(true));
   }, []);
 
-  function cycleTheme() {
-    const next: ConsoleTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
-    setTheme(next);
-    localStorage.setItem(THEME_KEY, next);
-  }
-
   function switchMode(next: 'login' | 'register') {
     setMode(next);
     setPassword('');
@@ -97,10 +91,7 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
       if (!response.ok) throw new Error(data.message || '操作失败');
       setPlayer(data.player);
       setPassword('');
-      setNotice({
-        kind: 'success',
-        message: mode === 'login' ? '登录成功，可以继续进入作品。' : '账号创建成功，已经为你自动登录。',
-      });
+      setNotice(null);
     } catch (error) {
       setNotice({ kind: 'error', message: (error as Error).message });
     } finally {
@@ -123,31 +114,18 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
     }
   }
 
-  const themeLabel = theme === 'system' ? '跟随系统' : theme === 'light' ? '亮色模式' : '暗色模式';
-  const ThemeIcon = theme === 'system' ? MonitorUp : theme === 'light' ? Sun : Moon;
-
   return (
     <main className={`${styles.themeRoot} ${styles.accountShell}`} data-theme={theme}>
       <Head><title>玩家账号 · BOX Local Engine</title></Head>
 
-      <header className={styles.accountTopbar}>
-        <div className={styles.accountBrand}>
-          <span>BOX</span>
-          <strong>Local Engine</strong>
-        </div>
-        <button className={styles.accountThemeButton} type="button" onClick={cycleTheme} title={`当前：${themeLabel}`} aria-label={`切换主题，当前为${themeLabel}`}>
-          <ThemeIcon size={16} />
-        </button>
-      </header>
-
       <div className={styles.accountLayout}>
         <section className={styles.accountCard} aria-labelledby="account-card-title">
-          <div className={styles.accountCardHeader}>
+          {player ? <div className={styles.accountCardHeader}>
             <div>
-              <h1 id="account-card-title">{player ? '登录成功' : mode === 'login' ? '登录' : '注册账号'}</h1>
-              {player ? <p>欢迎回来，{player.displayName}</p> : null}
+              <h1 id="account-card-title">欢迎回来</h1>
+              <p>已登录为 {player.displayName}</p>
             </div>
-          </div>
+          </div> : <h1 id="account-card-title" className={styles.accountPageTitle}>玩家账号</h1>}
 
           {notice ? <div className={`${styles.accountNotice} ${styles[`accountNotice_${notice.kind}`]}`} role={notice.kind === 'error' ? 'alert' : 'status'} aria-live="polite">{notice.message}</div> : null}
 
