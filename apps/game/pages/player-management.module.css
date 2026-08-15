@@ -139,6 +139,20 @@
 .metricGrid small { overflow: hidden; color: #9a9da3; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .metricGrid .dangerText { color: #c83a3a; }
 
+.riskGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.riskGrid article { min-width: 0; padding: 16px; border: 1px solid #e3e5e7; border-radius: 10px; background: #fff; }
+.riskGrid span { display: flex; align-items: center; gap: 7px; color: #73777e; font-size: 11px; font-weight: 650; }
+.riskGrid strong { display: block; margin: 10px 0 6px; color: #2d3035; font-size: 24px; letter-spacing: -.03em; }
+.riskGrid small { display: block; overflow: hidden; color: #92959b; font-size: 10px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.riskGrid .inlineAction { padding: 0; border: 0; color: #4f555d; background: transparent; font: inherit; font-size: 10px; font-weight: 650; cursor: pointer; }
+.riskGrid .inlineAction:hover { color: #171a1f; text-decoration: underline; }
+.riskList { display: grid; }
+.riskList article { display: grid; grid-template-columns: minmax(0, 1fr) 80px 150px; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid #f0f0f2; }
+.riskList article:last-child { border-bottom: 0; }
+.riskList strong { overflow: hidden; color: #3a3d43; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.riskList span, .riskList time { color: #85888f; font-size: 10px; }
+.riskList time { text-align: right; }
+
 .dashboardColumns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr); gap: 14px; }
 .securityGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .dataPanel { overflow: hidden; min-width: 0; border: 1px solid #e3e5e7; border-radius: 10px; background: #fff; }
@@ -370,8 +384,26 @@
 .recordList strong { color: #3a3d43; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; }
 .recordList span, .recordList small { color: #8a8d93; font-size: 11px; }
 .recordList p { overflow: hidden; margin: 7px 0 5px; color: #656970; font-size: 11px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+.recordList .recordIp { display: block; margin-top: 5px; color: #73777e; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 .sessionFooter { margin-top: 4px; }
 .sessionFooter .textButton { min-height: 28px; padding: 0 4px; color: #b93232; font-size: 11px; }
+
+.relatedList { display: grid; gap: 7px; }
+.relatedList button { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 11px; border: 1px solid #ececef; border-radius: 8px; color: inherit; background: #fff; text-align: left; cursor: pointer; }
+.relatedList button:hover { background: #f6f7f8; }
+.relatedList button > span { min-width: 0; }
+.relatedList button > span:last-child { text-align: right; }
+.relatedList strong, .relatedList small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.relatedList strong { color: #3a3d43; font-size: 11px; }
+.relatedList small { margin-top: 4px; color: #92959b; font-size: 9px; }
+.timelineList { display: grid; }
+.timelineList article { display: grid; grid-template-columns: 28px minmax(0, 1fr) 150px; align-items: center; gap: 9px; padding: 9px 0; border-bottom: 1px solid #f0f0f2; }
+.timelineList article:last-child { border-bottom: 0; }
+.timelineList article > span { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 6px; color: #6e7279; background: #f0f1f2; }
+.timelineList strong, .timelineList small { display: block; }
+.timelineList strong { color: #3a3d43; font-size: 11px; }
+.timelineList small { margin-top: 3px; color: #92959b; font-size: 9px; }
+.timelineList time { color: #7d8188; font-size: 10px; text-align: right; }
 
 .drawerActions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid #e2e3e5; background: #fff; }
 .drawerActions span { flex: 1; }
@@ -402,6 +434,7 @@
   .sidebarFooter { display: none; }
   .workspace { padding: 28px 22px 60px; }
   .metricGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .riskGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboardColumns, .securityGrid { grid-template-columns: 1fr; }
   .tableCard { overflow-x: auto; }
   .tableCard table { min-width: 980px; }
@@ -418,6 +451,7 @@
 @media (max-width: 640px) {
   .workspace { padding: 22px 12px 50px; }
   .metricGrid { grid-template-columns: 1fr 1fr; }
+  .riskGrid { grid-template-columns: 1fr 1fr; }
   .headerButtons { flex-wrap: wrap; justify-content: flex-end; }
   .page { width: min(100% - 24px, 1120px); padding-top: 24px; }
   .header { align-items: flex-start; }

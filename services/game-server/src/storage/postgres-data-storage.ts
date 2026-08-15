@@ -151,12 +151,17 @@ export class PostgresDataStorage implements CommonGameDataServer {
     }
     const groupPrefix = tableType === 'group' ? 'group_' : '';
     const baseName = `${groupPrefix}${this.options.mode}_${this.namespace(tableType)}_${storageName}`;
-    if (Buffer.byteLength(`${baseName}_keys`, 'utf8') > 63) {
-      throw new Error(
-        `legacy-compatible PostgreSQL table name is too long: ${baseName}_keys`,
-      );
-    }
-    return baseName;
+    if (Buffer.byteLength(`${baseName}_keys`, 'utf8') <= 63) return baseName;
+    // PostgreSQL identifiers are limited to 63 bytes. UUID namespaces plus a
+    // valid 50-character storage name can exceed that limit, so keep readable
+    // legacy names when possible and use a deterministic physical name only
+    // for oversized combinations. The full UUID still remains the logical
+    // namespace and lock identity through this digest.
+    const digest = createHash('sha256')
+      .update(`${tableType}\0${this.options.mode}\0${this.namespace(tableType)}\0${storageName}`)
+      .digest('hex')
+      .slice(0, 48);
+    return `storage_${digest}`;
   }
 
   private tableBaseCandidates(tableType: TableType, storageName: string) {
@@ -164,10 +169,10 @@ export class PostgresDataStorage implements CommonGameDataServer {
     if (tableType === 'group') return [canonical];
     // Some older boxes deployments used an explicit map_ prefix. Prefer the
     // canonical unprefixed name for new tables, but accept either on restore.
-    return [
-      canonical,
-      `map_${this.options.mode}_${this.namespace(tableType)}_${storageName}`,
-    ];
+    const legacy = `map_${this.options.mode}_${this.namespace(tableType)}_${storageName}`;
+    return Buffer.byteLength(`${legacy}_keys`, 'utf8') <= 63
+      ? [canonical, legacy]
+      : [canonical];
   }
 
   private tablesForBase(baseName: string): StorageTables {

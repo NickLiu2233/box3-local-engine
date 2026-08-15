@@ -31,6 +31,7 @@ type CompatibilityReport = {
 
 type LocalProject = {
   id: string;
+  mapUuid: string;
   publicId: string;
   name: string;
   author: string;
@@ -776,6 +777,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               )}
             </div>
             <span className={styles.projectAuthor}>作者：{project.author || '未署名'}</span>
+            <span className={styles.projectIdentity}>地图 ID：{project.mapUuid}</span>
             <p>{project.description || '未填写简介'}</p>
           </div>
           <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
@@ -1053,7 +1055,15 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               <label htmlFor="project-name">作品名称</label>
               <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
               {dialog === 'details' && <>
-                <label htmlFor="project-public-id">地图 ID</label>
+                <label htmlFor="project-map-uuid">地图 ID</label>
+                <input
+                  id="project-map-uuid"
+                  value={selectedProject?.mapUuid || ''}
+                  readOnly
+                  aria-readonly="true"
+                />
+                <small className={styles.fieldHint}>永久 UUID，用于地图存档隔离，创建后不可修改</small>
+                <label htmlFor="project-public-id">访问 ID</label>
                 <input
                   id="project-public-id"
                   maxLength={63}
@@ -1062,7 +1072,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
                   onChange={(event) => setProjectPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                   placeholder="例如：my-adventure"
                 />
-                <small className={styles.fieldHint}>玩家链接：/p/{projectPublicId || '地图-id'} · 全部项目中必须唯一</small>
+                <small className={styles.fieldHint}>玩家链接：/p/{projectPublicId || '访问-id'} · 可以修改，全部项目中必须唯一</small>
               </>}
               {dialog !== 'submap' && <><label htmlFor="project-author">作者</label>
               <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} /></>}

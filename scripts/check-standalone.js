@@ -92,7 +92,9 @@ const requiredFiles = [
   'apps/local-engine/src/prune-player-build.js',
   'apps/local-engine/src/stage-runtime-data.js',
   'services/game-server/scripts/dev-launch.js',
+  'services/game-server/scripts/check-local-derived-content.ts',
   'services/game-server/src/assets/block_info.ts',
+  'services/game-server/src/content/local-derived-content.ts',
   'services/game-server/src/player/default-avatar.json',
   'services/game-server/src/player/default-avatar-skin.ts',
 ]
@@ -396,6 +398,8 @@ for (const extension of [
 
 const creatorDockerStage = getDockerStage(dockerSource, 'creator')
 const playDockerStage = getDockerStage(dockerSource, 'play')
+const playerServiceBuildStage = getDockerStage(dockerSource, 'player-service-build')
+const playerServiceDockerStage = getDockerStage(dockerSource, 'player-service')
 const voxaDockerStage = getDockerStage(dockerSource, 'voxa')
 for (const [name, stage, flag] of [
   ['creator', creatorDockerStage, '--creator'],
@@ -451,6 +455,18 @@ forbidPattern(
   /project-manager\.js|\/app\/apps\/local-engine\/projects/,
 )
 requirePattern(
+  playerServiceBuildStage,
+  dockerFile,
+  'player service route pruning',
+  /prune-player-build\.js --player-service[\s\S]*?apps\/game\/\.next\/standalone\/apps\/game\/\.next/,
+)
+requirePattern(
+  playerServiceDockerStage,
+  dockerFile,
+  'player service standalone server',
+  /CMD \["node", "apps\/game\/\.next\/standalone\/apps\/game\/server\.js"\]/,
+)
+requirePattern(
   voxaDockerStage,
   dockerFile,
   'VOXA local data volume',
@@ -487,7 +503,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,player-service,creator,play,voxa,migrator'
+    'postgres,redis,player-service,creator,play-storage-init,play,voxa,migrator'
 ) {
   fail(
     `${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`,
@@ -496,6 +512,7 @@ if (
 
 const creatorCompose = getComposeService(composeSource, 'creator')
 const playCompose = getComposeService(composeSource, 'play')
+const playStorageInitCompose = getComposeService(composeSource, 'play-storage-init')
 const playerServiceCompose = getComposeService(composeSource, 'player-service')
 const voxaCompose = getComposeService(composeSource, 'voxa')
 for (const [name, service] of [
@@ -533,7 +550,25 @@ forbidPattern(
   playCompose,
   composeFile,
   'play hard dependency on player-service',
-  /depends_on:[\s\S]*?player-service/,
+  /depends_on:\s*\n(?:\s{6}[A-Za-z0-9_-]+:\s*\n\s{8}condition:[^\n]*\n)*\s{6}player-service:/,
+)
+requirePattern(
+  playStorageInitCompose,
+  composeFile,
+  'play storage ownership initialization',
+  /chown -R 1000:1000 \/app\/play-storage/,
+)
+requirePattern(
+  playStorageInitCompose,
+  composeFile,
+  'play storage init only retains CHOWN capability',
+  /cap_drop:\s*\n\s*- ALL[\s\S]*?cap_add:\s*\n\s*- CHOWN/,
+)
+requirePattern(
+  playCompose,
+  composeFile,
+  'play waits for storage initialization',
+  /play-storage-init:\s*\n\s*condition: service_completed_successfully/,
 )
 requirePattern(voxaCompose, composeFile, 'VOXA profile', /profiles: \[voxa\]/)
 requirePattern(
@@ -670,8 +705,12 @@ for (const [label, pattern] of [
     /fs\.existsSync\(nextBuildId\) \|\| fs\.existsSync\(standaloneBuildId\)/,
   ],
   [
-    'immutable play-world copy',
-    /startLibraryRuntime[\s\S]*?fs\.mkdtempSync\([\s\S]*?box-local-engine-\$\{world\.id\}-[\s\S]*?fs\.cpSync\(world\.dataRoot, temporaryRoot/,
+    'read-only play-world source',
+    /startLibraryRuntime[\s\S]*?STORAGE_PATH: world\.dataRoot/,
+  ],
+  [
+    'persistent derived runtime storage',
+    /BOX_DERIVED_STORAGE_PATH: derivedRuntimePath\(/,
   ],
   [
     'mode-specific runtime storage',
@@ -689,6 +728,12 @@ requirePattern(
   launcherFile,
   'same-origin play runtime',
   /BOX_REMOTE_SERVER_URL: ''/,
+)
+forbidPattern(
+  launcherSource,
+  launcherFile,
+  'full play-world copy on runtime startup',
+  /fs\.cpSync\(world\.dataRoot/,
 )
 forbidPattern(
   launcherSource,
@@ -789,8 +834,8 @@ requirePattern(
 requirePattern(
   readRequired('apps/game/pages/api/local-projects/[id]/publish.ts'),
   'apps/game/pages/api/local-projects/[id]/publish.ts',
-  'flush editor before local release creation',
-  /await flushActiveEditor\(id\)[\s\S]*?manager\.publishProject/,
+  'flush every map-group editor before local release creation',
+  /manager\.listMapGroup\(id\)[\s\S]*?members\.map\(\(member\) => flushActiveEditor\(member\.id\)\)[\s\S]*?manager\.publishMapGroup/,
 )
 requirePattern(
   readRequired('apps/local-engine/src/play-library.js'),
@@ -954,7 +999,7 @@ requirePattern(
   readRequired('apps/game/src/apis/api-java/index.ts'),
   'apps/game/src/apis/api-java/index.ts',
   'local uploads use the writable edit runtime',
-  /fetch\('\/runtime\/edit\/block'[\s\S]*?method: 'POST'/,
+  /resolveRuntimeURL\(getConfig\(\)\.BACKEND_SERVER_URL \|\| '', 'block'\)[\s\S]*?method: 'POST'/,
 )
 
 const nextConfigFile = 'apps/game/next.config.js'
@@ -1001,8 +1046,20 @@ requirePattern(
 requirePattern(
   launcherSource,
   'apps/local-engine/src/launcher.js',
-  'Docker Desktop runtime copy permission normalization',
-  /function makeRuntimeDataReadable[\s\S]*?fs\.chmodSync\(target, 0o755\)[\s\S]*?fs\.chmodSync\(entryPath, 0o644\)[\s\S]*?fs\.cpSync\(world\.dataRoot, temporaryRoot[\s\S]*?makeRuntimeDataReadable\(temporaryRoot\)/,
+  'Docker Desktop source-project permission normalization',
+  /function makeRuntimeDataReadable[\s\S]*?fs\.chmodSync\(target, 0o755\)[\s\S]*?fs\.chmodSync\(entryPath, 0o644\)[\s\S]*?startsEditServer[\s\S]*?makeRuntimeDataReadable\(dataRoot\)/,
+)
+requirePattern(
+  readRequired('docker-compose.yml'),
+  'docker-compose.yml',
+  'persistent creator and play runtime caches',
+  /BOX_RUNTIME_CACHE_PATH: \/app\/apps\/local-engine\/projects\/\.runtime-cache[\s\S]*?BOX_RUNTIME_CACHE_PATH: \/app\/play-storage\/runtime-cache/,
+)
+requirePattern(
+  readRequired('distribution/play/compose.yml'),
+  'distribution/play/compose.yml',
+  'persistent distributed play runtime cache',
+  /BOX_RUNTIME_CACHE_PATH: \/app\/play-storage\/runtime-cache/,
 )
 requirePattern(
   launcherSource,
@@ -1053,8 +1110,8 @@ const projectManagerSource = readRequired(projectManagerFile)
 requirePattern(
   projectManagerSource,
   projectManagerFile,
-  'single-port exported play package',
-  /BOX_WORLD_PATH: \/app\/world\/data[\s\S]*?BOX_WORLD_HASH:[\s\S]*?BOX_PORT:-3000\}:3000/,
+  'single public play port in exported package',
+  /BOX_WORLD_PATH: \/app\/world\/data[\s\S]*?BOX_WORLD_HASH:[\s\S]*?BOX_PLAY_PORT:-3000\}:3000/,
 )
 requirePattern(
   projectManagerSource,
@@ -1255,6 +1312,68 @@ function checkPlayerPruning() {
 }
 
 checkPlayerPruning()
+
+function checkPlayerServicePruning() {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-player-service-prune-'))
+  const write = (file, value = 'fixture') => {
+    const target = path.join(tempRoot, file)
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(target, typeof value === 'string' ? value : `${JSON.stringify(value)}\n`)
+  }
+  try {
+    const pages = {
+      '/': 'pages/index.js',
+      '/account': 'pages/account.js',
+      '/players': 'pages/players.js',
+      '/api/health-check': 'pages/api/health-check.js',
+      '/api/player-auth/login': 'pages/api/player-auth/login.js',
+      '/api/play-admin/players': 'pages/api/play-admin/players.js',
+      '/projects': 'pages/projects.js',
+      '/p/[gameName]': 'pages/p/[gameName].js',
+      '/api/local-projects': 'pages/api/local-projects.js',
+      '/api/play-worlds': 'pages/api/play-worlds.js',
+    }
+    for (const relative of Object.values(pages)) write(`server/${relative}`)
+    write('server/pages-manifest.json', pages)
+    write('server/app/e/[container]/page.js')
+    write('static/chunks/app/e/editor.js')
+    write('server/app-paths-manifest.json', {
+      '/e/[container]/page': 'app/e/[container]/page.js',
+    })
+    write('routes-manifest.json', {
+      dynamicRoutes: [{ page: '/p/[gameName]' }],
+      staticRoutes: [{ page: '/' }, { page: '/account' }, { page: '/projects' }],
+      dataRoutes: [{ page: '/players' }],
+    })
+    write('build-manifest.json', {
+      pages: Object.fromEntries(Object.keys(pages).map((route) => [route, [`${route}.js`]])),
+    })
+
+    const { prunePlayerServiceBuild } = require(path.join(
+      root,
+      'apps/local-engine/src/prune-player-build.js',
+    ))
+    prunePlayerServiceBuild(tempRoot)
+    const pruned = JSON.parse(fs.readFileSync(
+      path.join(tempRoot, 'server/pages-manifest.json'), 'utf8'))
+    for (const route of ['/', '/account', '/players', '/api/health-check',
+      '/api/player-auth/login', '/api/play-admin/players']) {
+      if (!pruned[route]) fail(`player-service pruning removed ${route}`)
+    }
+    for (const route of ['/projects', '/p/[gameName]', '/api/local-projects', '/api/play-worlds']) {
+      if (pruned[route]) fail(`player-service pruning retained ${route}`)
+    }
+    if (fs.existsSync(path.join(tempRoot, 'server/app'))) {
+      fail('player-service pruning retained App Router engine pages')
+    }
+  } catch (error) {
+    fail(`player-service pruning behavior check failed: ${error.message}`)
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true })
+  }
+}
+
+checkPlayerServicePruning()
 
 // Sensitive authoring data must never enter the Docker build context. The
 // final image is additionally assembled from referenced runtime blobs only.

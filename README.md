@@ -156,7 +156,8 @@ apps/local-engine/play-worlds/island/
 ```
 
 只复制发布目录，不要复制可编辑的 `source/`。地图复制完整后，游玩端通常会在 3 秒内发现；
-真正的游戏运行时会在玩家首次访问该地图时启动。
+主地图会按 `BOX_PLAY_PREWARM_RUNTIMES` 在后台预热，其余地图在玩家首次访问时启动。
+预烘焙结果保存在独立运行时缓存中，空闲回收后不会重复烘焙，也不会修改只读发布目录。
 
 ### 镜像打包后增加地图
 
@@ -220,6 +221,9 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_CREATOR_EDIT_MAX_RUNTIMES` | `6` | 创作端同时保留的编辑运行时数量 |
 | `BOX_CREATOR_PLAY_MAX_RUNTIMES` | `4` | 创作端同时保留的预览运行时数量 |
 | `BOX_PLAY_MAX_RUNTIMES` | `8` | 游玩端同时保留的地图运行时数量 |
+| `BOX_CREATOR_EDIT_PREWARM_RUNTIMES` | `1` | Creator 后台预热的最近编辑工程数量，`0` 为关闭 |
+| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES` | `1` | Creator 后台预热的最近预览工程数量，`0` 为关闭 |
+| `BOX_PLAY_PREWARM_RUNTIMES` | `1` | Play 后台预热的主地图优先数量，`0` 为关闭 |
 | `BOX_RUNTIME_IDLE_TIMEOUT_MS` | `900000` | 无活动连接运行时的空闲回收时间 |
 | `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
 | `BOX_SCRIPT_MEMORY_MB` | `512` | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置 |

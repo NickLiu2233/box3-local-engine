@@ -142,6 +142,21 @@ export type ManagedPlayerDetails = {
     ip: string;
     userAgent: string;
   }>;
+  adminHistory: Array<{
+    id: string;
+    action: string;
+    actor: string;
+    actorDisplayName: string;
+    details: Record<string, unknown>;
+    createdAt: string;
+  }>;
+  relatedAccounts: Array<{
+    subjectId: string;
+    displayName: string;
+    username: string;
+    sharedIp: string;
+    lastSeenAt: string;
+  }>;
 };
 
 export type PlayerAdminOverview = {
@@ -174,6 +189,12 @@ export type PlayerAdminOverview = {
     details: Record<string, unknown>;
     createdAt: string;
   }>;
+  security: {
+    topFailedIps: Array<{ ip: string; attempts: number; lastAttemptAt: string }>;
+    sharedLoginIps: Array<{ ip: string; accounts: number; lastSeenAt: string }>;
+    temporaryBansEndingSoon: number;
+    expiredSessions: number;
+  };
 };
 
 let pool: Pool | null = null;
@@ -825,12 +846,56 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
   };
 }
 
+function csvCell(value: unknown) {
+  const raw = value == null ? '' : String(value);
+  // Spreadsheet programs may execute cells beginning with these characters.
+  // Player-controlled names, tags and notes must remain inert in exports.
+  const text = typeof value === 'string' && /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function serializeManagedPlayersCsv(rows: PlayerAccountView[]) {
+  const columns = [
+    '用户ID', '身份ID', 'userKey', '用户名', '昵称', '角色', '状态', '标签',
+    '注册时间', '注册IP', '最后登录时间', '最后登录IP', '登录次数',
+    '最后在线时间', '最后在线IP', '有效会话', '封禁原因', '封禁截止', '服主备注',
+  ];
+  const lines = rows.map((player) => [
+    player.userId, player.subjectId, player.userKey, player.username,
+    player.displayName, player.role, player.status, player.tags.join('|'),
+    player.registeredAt || player.createdAt || '', player.registrationIp || player.firstSeenIp,
+    player.lastLoginAt || '', player.lastLoginIp, player.loginCount,
+    player.lastSeenAt || '', player.lastSeenIp, player.activeSessionCount,
+    player.banReason, player.bannedUntil || '', player.adminNote,
+  ].map(csvCell).join(','));
+  return `\uFEFF${columns.map(csvCell).join(',')}\r\n${lines.join('\r\n')}\r\n`;
+}
+
+export async function exportManagedPlayersCsv(options: ManagedPlayerListOptions = {}) {
+  const rows: PlayerAccountView[] = [];
+  const maximum = 10_000;
+  let page = 1;
+  let total = 0;
+  do {
+    const result = await listManagedPlayers({ ...options, page, pageSize: 100 });
+    total = result.total;
+    rows.push(...result.players);
+    page += 1;
+  } while (rows.length < Math.min(total, maximum));
+  return {
+    csv: serializeManagedPlayersCsv(rows.slice(0, maximum)),
+    exported: Math.min(rows.length, maximum),
+    total,
+    truncated: total > maximum,
+  };
+}
+
 export async function getPlayerAdminOverview(): Promise<PlayerAdminOverview> {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
   await expireTemporaryBans(database);
-  const [totalsResult, loginResult, auditResult] = await Promise.all([
+  const [totalsResult, loginResult, auditResult, failedIpResult, sharedIpResult, securityCountResult] = await Promise.all([
     database.query<{
       identities: string; users: string; guests: string; banned: string;
       active_sessions: string; active_last_24_hours: string; new_last_7_days: string;
@@ -874,6 +939,36 @@ export async function getPlayerAdminOverview(): Promise<PlayerAdminOverview> {
       ORDER BY created_at DESC
       LIMIT 30
     `),
+    database.query<{
+      ip_address: string; attempts: string; last_attempt_at: string | Date;
+    }>(`
+      SELECT ip_address, COUNT(*) AS attempts, MAX(created_at) AS last_attempt_at
+      FROM ${table('auth_failures')}
+      WHERE created_at >= NOW() - INTERVAL '24 hours' AND ip_address <> ''
+      GROUP BY ip_address
+      ORDER BY COUNT(*) DESC, MAX(created_at) DESC
+      LIMIT 10
+    `),
+    database.query<{
+      ip_address: string; accounts: string; last_seen_at: string | Date;
+    }>(`
+      SELECT ip_address, COUNT(DISTINCT principal_id) AS accounts,
+        MAX(created_at) AS last_seen_at
+      FROM ${table('login_events')}
+      WHERE created_at >= NOW() - INTERVAL '30 days' AND ip_address <> ''
+      GROUP BY ip_address
+      HAVING COUNT(DISTINCT principal_id) > 1
+      ORDER BY COUNT(DISTINCT principal_id) DESC, MAX(created_at) DESC
+      LIMIT 10
+    `),
+    database.query<{ temporary_bans: string; expired_sessions: string }>(`
+      SELECT
+        (SELECT COUNT(*) FROM ${table('users')}
+          WHERE status = 'banned' AND banned_until > NOW()
+            AND banned_until <= NOW() + INTERVAL '24 hours') AS temporary_bans,
+        (SELECT COUNT(*) FROM ${table('sessions')}
+          WHERE expires_at <= NOW()) AS expired_sessions
+    `),
   ]);
   const totals = totalsResult.rows[0];
   return {
@@ -906,6 +1001,20 @@ export async function getPlayerAdminOverview(): Promise<PlayerAdminOverview> {
       details: event.details || {},
       createdAt: new Date(event.created_at).toISOString(),
     })),
+    security: {
+      topFailedIps: failedIpResult.rows.map((entry) => ({
+        ip: entry.ip_address,
+        attempts: Number(entry.attempts || 0),
+        lastAttemptAt: new Date(entry.last_attempt_at).toISOString(),
+      })),
+      sharedLoginIps: sharedIpResult.rows.map((entry) => ({
+        ip: entry.ip_address,
+        accounts: Number(entry.accounts || 0),
+        lastSeenAt: new Date(entry.last_seen_at).toISOString(),
+      })),
+      temporaryBansEndingSoon: Number(securityCountResult.rows[0]?.temporary_bans || 0),
+      expiredSessions: Number(securityCountResult.rows[0]?.expired_sessions || 0),
+    },
   };
 }
 
@@ -928,33 +1037,58 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   `, [subjectId]);
   const row = result.rows[0];
   if (!row) throw new Error('玩家不存在');
-  const sessions = await database.query<{
-    session_id: string;
-    created_at: string | Date;
-    last_seen_at: string | Date;
-    expires_at: string | Date;
-    created_ip: string;
-    last_seen_ip: string;
-    user_agent: string;
-  }>(`
-    SELECT LEFT(token_hash, 16) AS session_id, created_at, last_seen_at, expires_at,
-      created_ip, last_seen_ip, user_agent
-    FROM ${table('sessions')}
-    WHERE principal_id = $1 AND expires_at > NOW()
-    ORDER BY last_seen_at DESC
-    LIMIT 20
-  `, [subjectId]);
-  const history = await database.query<{
-    created_at: string | Date;
-    ip_address: string;
-    user_agent: string;
-  }>(`
-    SELECT created_at, ip_address, user_agent
-    FROM ${table('login_events')}
-    WHERE principal_id = $1
-    ORDER BY created_at DESC
-    LIMIT 20
-  `, [subjectId]);
+  const [sessions, history, adminHistory, relatedAccounts] = await Promise.all([
+    database.query<{
+      session_id: string; created_at: string | Date; last_seen_at: string | Date;
+      expires_at: string | Date; created_ip: string; last_seen_ip: string; user_agent: string;
+    }>(`
+      SELECT LEFT(token_hash, 16) AS session_id, created_at, last_seen_at, expires_at,
+        created_ip, last_seen_ip, user_agent
+      FROM ${table('sessions')}
+      WHERE principal_id = $1 AND expires_at > NOW()
+      ORDER BY last_seen_at DESC
+      LIMIT 20
+    `, [subjectId]),
+    database.query<{
+      created_at: string | Date; ip_address: string; user_agent: string;
+    }>(`
+      SELECT created_at, ip_address, user_agent
+      FROM ${table('login_events')}
+      WHERE principal_id = $1
+      ORDER BY created_at DESC
+      LIMIT 50
+    `, [subjectId]),
+    database.query<{
+      id: string | number; action: string; actor: string;
+      details: Record<string, unknown>; created_at: string | Date;
+    }>(`
+      SELECT id, action, actor, details, created_at
+      FROM ${table('audit_logs')}
+      WHERE subject_id = $1
+      ORDER BY created_at DESC
+      LIMIT 50
+    `, [subjectId]),
+    database.query<{
+      subject_id: string; display_name: string; username: string;
+      shared_ip: string; last_seen_at: string | Date;
+    }>(`
+      WITH target_ips AS (
+        SELECT DISTINCT ip_address
+        FROM ${table('login_events')}
+        WHERE principal_id = $1 AND created_at >= NOW() - INTERVAL '90 days'
+          AND ip_address <> ''
+      )
+      SELECT e.principal_id AS subject_id, u.display_name, u.username,
+        e.ip_address AS shared_ip, MAX(e.created_at) AS last_seen_at
+      FROM ${table('login_events')} e
+      JOIN target_ips target ON target.ip_address = e.ip_address
+      JOIN ${table('users')} u ON u.principal_id = e.principal_id
+      WHERE e.principal_id <> $1 AND e.created_at >= NOW() - INTERVAL '90 days'
+      GROUP BY e.principal_id, u.display_name, u.username, e.ip_address
+      ORDER BY MAX(e.created_at) DESC
+      LIMIT 30
+    `, [subjectId]),
+  ]);
   return {
     player: toView(rowToIdentity(row), row),
     sessions: sessions.rows.map((session) => ({
@@ -971,13 +1105,28 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       ip: event.ip_address || '',
       userAgent: event.user_agent || '',
     })),
+    adminHistory: adminHistory.rows.map((event) => ({
+      id: String(event.id),
+      action: event.action,
+      actor: event.actor,
+      actorDisplayName: String(event.details?.actorDisplayName || event.actor),
+      details: event.details || {},
+      createdAt: new Date(event.created_at).toISOString(),
+    })),
+    relatedAccounts: relatedAccounts.rows.map((account) => ({
+      subjectId: normalizeSubjectId(account.subject_id),
+      displayName: account.display_name || '',
+      username: account.username || '',
+      sharedIp: account.shared_ip || '',
+      lastSeenAt: new Date(account.last_seen_at).toISOString(),
+    })),
   };
 }
 
 async function audit(
   client: Pool | PoolClient,
   action: string,
-  subjectId: string,
+  subjectId: string | null,
   details: unknown,
   context?: AdminActionContext,
 ) {
@@ -991,6 +1140,27 @@ async function audit(
     actorIp: context?.ip || '',
     actorUserAgent: context?.userAgent || '',
   })]);
+}
+
+export async function cleanupExpiredPlayerSessions(context?: AdminActionContext) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(`DELETE FROM ${table('sessions')} WHERE expires_at <= NOW()`);
+    await audit(client, 'system.sessions.cleanup', null, {
+      deleted: result.rowCount || 0,
+    }, context);
+    await client.query('COMMIT');
+    return { deleted: result.rowCount || 0 };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function listPlayerAdminActivity(options: {

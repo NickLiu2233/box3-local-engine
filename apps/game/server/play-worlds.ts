@@ -3,6 +3,7 @@ import path from 'path';
 
 export type PlayWorld = {
   id: string;
+  mapUuid: string;
   publicId: string;
   name: string;
   author: string;
@@ -44,6 +45,7 @@ export function getPlayWorlds(): PlayWorld[] {
           }
           return [{
             id: entry.name,
+            mapUuid: String(manifest.mapUuid || entry.name),
             publicId: idPattern.test(String(manifest.publicId || ''))
               ? String(manifest.publicId)
               : entry.name,

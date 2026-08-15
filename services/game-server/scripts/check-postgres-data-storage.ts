@@ -79,6 +79,7 @@ async function main() {
 
   const first = createStorage('world-a');
   const second = createStorage('world-b');
+  const uuidStorage = createStorage('11111111-1111-4111-8111-111111111111');
   assert.equal(
     queryCount,
     0,
@@ -103,6 +104,14 @@ async function main() {
     level: 2,
   });
   assert.equal(await second.get('project', 'players', 'alice'), undefined);
+
+  const longestValidStorageName = 'a'.repeat(50);
+  await uuidStorage.set('project', longestValidStorageName, 'uuid-player', 1);
+  assert.equal(
+    (await uuidStorage.get('project', longestValidStorageName, 'uuid-player'))?.value,
+    1,
+    'UUID namespaces must support the full 50-character storage-space name',
+  );
 
   const locked = await first.get('project', 'players', 'alice', undefined, 'ticket-1');
   await first.set('project', 'players', 'alice', {

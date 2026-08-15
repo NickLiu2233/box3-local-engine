@@ -35,6 +35,14 @@ function assertWorldId(id: string) {
   return id;
 }
 
+const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+function assertMapUuid(value: unknown, label = '地图 UUID') {
+  const mapUuid = String(value || '').toLowerCase();
+  if (!mapUuidPattern.test(mapUuid)) throw new Error(`${label}无效`);
+  return mapUuid;
+}
+
 function assertPublicId(value: unknown) {
   const publicId = String(value || '').trim().toLowerCase();
   if (!idPattern.test(publicId)) {
@@ -154,6 +162,8 @@ function validateWorld(root: string) {
   const state = JSON.parse(fs.readFileSync(path.join(root, 'data', 'project-state.json'), 'utf8'));
   const id = assertWorldId(String(manifest.id || ''));
   const publicId = assertPublicId(manifest.publicId || id);
+  manifest.mapUuid = assertMapUuid(manifest.mapUuid);
+  manifest.mapGroupUuid = assertMapUuid(manifest.mapGroupUuid, '地图组 UUID');
   if (!manifest.permissionHash || state.permissionHash !== manifest.permissionHash) {
     throw new Error('地图权限数据不完整或不一致');
   }
@@ -169,6 +179,9 @@ function validateMapGroupBundle(
 ) {
   if (new Set(worlds.map((world) => world.id)).size !== worlds.length) {
     throw new Error('游玩包包含重复地图');
+  }
+  if (new Set(worlds.map((world) => world.manifest.mapUuid)).size !== worlds.length) {
+    throw new Error('游玩包包含重复的地图 UUID');
   }
   const referenceOwners = new Map<string, string>();
   for (const world of worlds) {
@@ -199,8 +212,10 @@ function validateMapGroupBundle(
   if (
     mainMaps.length !== 1 ||
     mainMaps[0].id !== descriptor.mainProjectId ||
+    descriptor.mapGroupUuid !== mainMaps[0].manifest.mapUuid ||
     worlds.some((world) =>
       world.manifest.mapGroupId !== descriptor.mapGroupId ||
+      world.manifest.mapGroupUuid !== descriptor.mapGroupUuid ||
       world.manifest.mainProjectId !== descriptor.mainProjectId ||
       (world.id === descriptor.mainProjectId
         ? world.manifest.mapRole !== 'main'

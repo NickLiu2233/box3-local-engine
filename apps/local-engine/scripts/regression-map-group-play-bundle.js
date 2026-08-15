@@ -88,6 +88,11 @@ try {
   assert.equal(submapManifest.mapRole, 'submap')
   assert.equal(mainManifest.mapGroupId, 'release-main')
   assert.equal(submapManifest.mainProjectId, 'release-main')
+  assert.match(mainManifest.mapUuid, /^[0-9a-f-]{36}$/)
+  assert.match(submapManifest.mapUuid, /^[0-9a-f-]{36}$/)
+  assert.notEqual(submapManifest.mapUuid, mainManifest.mapUuid)
+  assert.equal(mainManifest.mapGroupUuid, mainManifest.mapUuid)
+  assert.equal(submapManifest.mapGroupUuid, mainManifest.mapUuid)
 
   const distributionPath = path.join(temporaryRoot, 'distribution')
   const packaged = manager.packageProject('release-main@v1', distributionPath, {
@@ -95,8 +100,23 @@ try {
   })
   assert.equal(packaged.directory, distributionPath)
   const compose = fs.readFileSync(path.join(distributionPath, 'compose.yml'), 'utf8')
-  assert.match(compose, /BOX_GROUP_STORAGE_NAMESPACE: \$\{BOX_GROUP_STORAGE_NAMESPACE:-release-main\}/)
+  assert.match(
+    compose,
+    new RegExp(`BOX_GROUP_STORAGE_NAMESPACE: \\$\\{BOX_GROUP_STORAGE_NAMESPACE:-${mainManifest.mapUuid}\\}`),
+  )
+  assert.match(compose, new RegExp(`BOX_WORLD_MAP_UUID: ${mainManifest.mapUuid}`))
+  assert.match(compose, new RegExp(`BOX_WORLD_GROUP_UUID: ${mainManifest.mapUuid}`))
   assert.doesNotMatch(compose, /GROUP_STORAGE_NAMESPACE[^\n]*global/)
+  assert.match(
+    compose,
+    /play-storage-init:[\s\S]*?chown -R 1000:1000 \/app\/storage/,
+    'generated deployment must repair existing storage ownership',
+  )
+  assert.match(
+    compose,
+    /play-storage-init:\s*\n\s*condition: service_completed_successfully/,
+    'play must wait until its writable storage is ready',
+  )
   const envExample = fs.readFileSync(path.join(distributionPath, '.env.example'), 'utf8')
   const documentedVariables = new Set(
     [...envExample.matchAll(/^#?\s*([A-Z][A-Z0-9_]*)=/gm)].map((match) => match[1]),

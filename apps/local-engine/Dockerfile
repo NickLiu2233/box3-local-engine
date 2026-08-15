@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=docker.1ms.run/library/node:22.17.0-bookworm-slim
+ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 ARG BOX_BUILD_VERSION=0.1.0
 ARG BOX_BUILD_COMMIT=unknown
 ARG BOX_BUILD_DATE=unknown
@@ -107,6 +107,9 @@ RUN NEXT_PUBLIC_APP_ENV=development \
     NEXT_PUBLIC_APP_EDITION=createra \
     NEXT_PUBLIC_APP_REGION=cn \
     pnpm --filter @box-local/game build-next
+RUN node apps/local-engine/src/prune-player-build.js --player-service \
+      apps/game/.next \
+      apps/game/.next/standalone/apps/game/.next
 
 FROM source-base AS voxa-build
 
@@ -216,6 +219,9 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
+
+RUN mkdir -p /app/play-storage/runtime-cache \
+    && chown -R node:node /app/play-storage
 
 USER node
 

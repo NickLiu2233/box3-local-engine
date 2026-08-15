@@ -16,7 +16,10 @@ type CacheData = Record<string, string>;
 export class LocalBuildCache implements BuildCacheAPI {
   private readonly pending = new Map<string, Promise<string>>();
 
-  constructor(private readonly filename: string) {}
+  constructor(
+    private readonly filename: string,
+    private readonly fallbackFilename = '',
+  ) {}
 
   private token(name: string, params: any[]) {
     return createHash('sha1')
@@ -24,13 +27,24 @@ export class LocalBuildCache implements BuildCacheAPI {
       .digest('hex');
   }
 
-  private read(): CacheData {
+  private readFile(filename: string): CacheData {
     try {
-      const data = JSON.parse(fs.readFileSync(this.filename, 'utf8'));
+      const data = JSON.parse(fs.readFileSync(filename, 'utf8'));
       return data && typeof data === 'object' ? data : {};
     } catch {
       return {};
     }
+  }
+
+  private read(): CacheData {
+    return this.readFile(this.filename);
+  }
+
+  private cached(token: string) {
+    return (
+      this.read()[token] ||
+      (this.fallbackFilename ? this.readFile(this.fallbackFilename)[token] : '')
+    );
   }
 
   private write(data: CacheData) {
@@ -41,7 +55,7 @@ export class LocalBuildCache implements BuildCacheAPI {
   }
 
   public async retrieve(name: string, params: any[]): Promise<string> {
-    return this.read()[this.token(name, params)] || '';
+    return this.cached(this.token(name, params));
   }
 
   public async store(
@@ -50,7 +64,7 @@ export class LocalBuildCache implements BuildCacheAPI {
     method: () => Promise<string>,
   ): Promise<string> {
     const token = this.token(name, params);
-    const cached = this.read()[token];
+    const cached = this.cached(token);
     if (cached) return cached;
 
     const current = this.pending.get(token);

@@ -20,6 +20,10 @@ Local Engine 保留 `boxes` 的工程 schema、预烘焙、编辑器、浏览器
 这些是独立镜像。Creator 和 Play 共用 Player Service，但 Play 镜像不包含登录、注册或玩家
 后台；VOXA 也不需要与 Play 一起部署。
 
+Player Service 的发布镜像会在构建阶段物理移除 Creator、Play、编辑器和地图管理路由，而不只是
+在运行时返回 404。各服务容器默认启用 `no-new-privileges` 并移除 Linux capabilities，降低
+容器被利用后的权限范围。
+
 ## 2. 最低要求
 
 - macOS、Linux，或支持 Linux 容器的 Windows；
@@ -46,13 +50,17 @@ Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 如果构建日志长时间停在 `docker.io/library/node`，可在 `.env` 中只替换基础镜像来源：
 
 ```env
-BOX_DOCKER_NODE_IMAGE=docker.1ms.run/library/node:22.17.0-bookworm-slim
+BOX_DOCKER_NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 ```
 
 Compose 会把该值传给所有镜像的 `NODE_IMAGE` 构建参数，不需要修改 Dockerfile。代理地址可以
 由部署者替换，但 `node:22.17.0-bookworm-slim` 的版本和 Debian 变体必须保持一致，避免原生
 依赖或 Node 行为发生变化。该配置只解决基础镜像拉取；pnpm 仍按仓库 `.npmrc` 使用配置的
 npm registry。
+
+国内代理不是项目自身的服务，可能随时下线或缺少某个标签。维护者发布前必须执行一次镜像元数据
+或实际构建检查；代理不可用时可临时改回 `node:22.17.0-bookworm-slim`，不要改 Node 版本来
+绕过拉取问题。
 
 ## 3. 第一次安装
 
@@ -91,6 +99,26 @@ BOX_SCRIPT_HEAP_MB=512
 `BOX_SCRIPT_MEMORY_MB` 是当前 `ivmp` 执行路径实际使用的主要限制；建议两项保持一致。
 降低后如果出现 `Array buffer allocation failed`，应恢复为 `512` 或继续提高。修改后需
 重新创建 Creator、Play 容器；通过本项目的 `pnpm creator` / `pnpm play` 命令也会自动完成。
+
+运行时首次预烘焙、后台预热和空闲回收可由服主配置：
+
+```env
+BOX_CREATOR_EDIT_MAX_RUNTIMES=6
+BOX_CREATOR_PLAY_MAX_RUNTIMES=4
+BOX_PLAY_MAX_RUNTIMES=8
+BOX_CREATOR_EDIT_PREWARM_RUNTIMES=1
+BOX_CREATOR_PLAY_PREWARM_RUNTIMES=1
+BOX_PLAY_PREWARM_RUNTIMES=1
+BOX_RUNTIME_IDLE_TIMEOUT_MS=900000
+```
+
+预热数量不能超过对应运行时上限，设为 `0` 可关闭。Creator 默认预热最近编辑和预览工程各
+一个；Play 默认优先预热一个主地图。预烘焙 blob 与 Build Cache 位于持久运行时缓存，不写入
+只读地图目录；运行时空闲回收、Play 容器重启后仍可复用。地图内容、共享资源或引擎版本变化时，
+构建参数随之变化，旧缓存不会被错误复用。
+
+游玩运行时直接读取只读发布资源，只把派生数据写到缓存层，不再在每次冷启动时复制整份地图。
+Docker 部署的缓存随 Creator 工程卷或 Play 的 `box-play-storage` 卷持久化。
 
 更换该值会让已有运行时身份断言失效，并改变账号的 `entity.player.userKey`，因此完成正式部署后不要
 随意轮换。
@@ -272,8 +300,8 @@ Player Service 是玩家身份的唯一写入者。Creator 和 Play 只消费它
 
 地图存储语义：
 
-- `getDataStorage` 按实际地图 ID 隔离；
-- `getGroupStorage` 默认按地图组 ID 隔离，同一地图组共享、不同地图组隔离；只有迁移既有
+- `getDataStorage` 按不可变 Map UUID 隔离，修改玩家访问 ID 不会切换存档；
+- `getGroupStorage` 默认按主地图 UUID 隔离，同一地图组共享、不同地图组隔离；只有迁移既有
   namespace 时才显式设置 `BOX_GROUP_STORAGE_NAMESPACE`；
 - Creator 的 `edit` 数据和 Play 的 `play` 数据默认隔离。
 
@@ -308,6 +336,9 @@ docker compose logs --tail=200 play
 docker compose logs --tail=200 player-service
 docker compose logs --tail=200 voxa
 ```
+
+Play 部署会包含一次性的 `play-storage-init`。它负责兼容旧 volume 或 Linux 主机上由 root
+创建的挂载目录，成功后显示 `Exited (0)`，这不是服务异常；随后 Play 才会启动。
 
 健康接口：
 
@@ -355,6 +386,10 @@ PostgreSQL 的 box_engine 与 box_identity schema
 
 镜像重建不会替代数据库和工程备份。
 
+工程目录备份只覆盖地图工程和资源，不能替代 PostgreSQL 备份。正式服应由数据库服务或服主
+定期执行 `pg_dump`（至少包含 `box_engine`、`box_identity`），并实际做一次恢复演练；Redis
+只承担缓存和可回退会话状态，通常不作为唯一持久数据源。
+
 ## 12. 维护者发布检查
 
 发布给其他人前必须执行：
@@ -368,6 +403,13 @@ docker compose config
 ```
 
 然后分别构建 Creator、Play、Player Service 和 VOXA，并用全新 `.env` 做一次干净安装。
+
+构建命令会自动把根版本号、Git commit、UTC 构建时间和来源写入镜像/分发包的构建信息；CI
+也可用 `BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE`、`BOX_BUILD_SOURCE`
+显式覆盖。生成的信息不包含数据库连接串、签名密钥或其他环境变量。
+
+公开分发前还必须由发行负责人确认版本号、发行状态、许可证文本和第三方依赖清单。当前仓库
+仍标记为 developer preview 且使用专有许可证标识，这属于发布决策，不能由构建脚本自动决定。
 
 维护原则见 [与 boxes 的能力边界](boxes-parity.md)。核心要求是：工程 schema、预烘焙和
 协议行为保持同源；本地差异集中在 adapter；平台业务不进入引擎核心路径。

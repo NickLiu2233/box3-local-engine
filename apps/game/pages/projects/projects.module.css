@@ -130,6 +130,7 @@
 .dialog textarea { width: 100%; min-height: 72px; padding: 9px 11px; border: 1px solid rgba(255,255,255,.2); border-radius: 6px; outline: 0; resize: vertical; color: #fff; background: #404040; font: inherit; }
 .dialog textarea:focus { border-color: #ffdb00; box-shadow: 0 0 0 3px rgba(255,219,0,.14); }
 .projectAuthor { display: block; margin-top: 5px; color: rgba(255,255,255,.55); font-size: 11px; }
+.projectIdentity { display: block; max-width: 100%; margin-top: 4px; overflow: hidden; color: rgba(255,255,255,.48); font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .dialogError { margin: 12px 0 0 !important; color: #f65252 !important; font-size: 12px !important; }
 .exportBackdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(0,0,0,.66); }
 .exportDialog { width: min(100%, 460px); padding: 28px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; color: #fff; background: #262626; box-shadow: 0 22px 70px rgba(0,0,0,.5); }

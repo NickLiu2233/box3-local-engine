@@ -13,6 +13,7 @@ import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/grou
 import { createDefaultPermissions } from '@box-local/build-system/permissions/permission-init';
 import { PrebakeCacheSchema } from '@box-local/build-system/project/prebake-schema';
 import { LocalBuildCache } from './utils/local-build-cache';
+import { LocalDerivedContentServer } from './content/local-derived-content';
 import { RedisBuildCache } from './utils/redis-build-cache';
 import { prebakeMap } from '@box-local/build-system/tasks/prebake';
 import { CachingContentServer } from '@box-local/content-server/caching-content-server';
@@ -209,9 +210,20 @@ export async function startServer(spec: ServerRuntimeConfig) {
   }
 
   // create content server
-  const localContentServer = new FileSystemContentServer(
+  const sourceLocalContentServer = new FileSystemContentServer(
     path.join(spec.storagePath, 'blobs'),
   );
+  const derivedStoragePath = isLocal
+    ? String(process.env.BOX_DERIVED_STORAGE_PATH || '').trim()
+    : '';
+  const localContentServer = derivedStoragePath
+    ? new LocalDerivedContentServer({
+        source: sourceLocalContentServer,
+        derived: new FileSystemContentServer(
+          path.join(derivedStoragePath, 'blobs'),
+        ),
+      })
+    : sourceLocalContentServer;
   const bundledContentPath = process.env.BOX_BUNDLED_CONTENT_PATH || '';
   const bundledContentServer = bundledContentPath
     ? new FileSystemContentServer(bundledContentPath)
@@ -301,8 +313,14 @@ export async function startServer(spec: ServerRuntimeConfig) {
     );
   } else {
     const storagePath = process.env.STORAGE_PATH || '';
-    const persistentBuildCache = isLocal && storagePath
-      ? new LocalBuildCache(path.join(storagePath, 'build-cache.json'))
+    const buildCacheRoot = derivedStoragePath || storagePath;
+    const persistentBuildCache = isLocal && buildCacheRoot
+      ? new LocalBuildCache(
+          path.join(buildCacheRoot, 'build-cache.json'),
+          derivedStoragePath
+            ? path.join(storagePath, 'build-cache.json')
+            : '',
+        )
       : new MockBuildCache();
     const buildCache = cacheRedis && spec.STORAGE_CACHE_REDIS_TTL > 0
       ? new RedisBuildCache(

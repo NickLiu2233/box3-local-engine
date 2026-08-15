@@ -13,6 +13,7 @@
     "check:postgres-storage": "node -r @swc-node/register scripts/check-postgres-data-storage.ts",
     "check:local-storage": "node -r @swc-node/register scripts/check-local-data-storage.ts",
     "check:redis-runtime": "node -r @swc-node/register scripts/check-redis-runtime.ts",
+    "check:local-derived-content": "node -r @swc-node/register scripts/check-local-derived-content.ts",
     "check:default-skin-scope": "node -r @swc-node/register scripts/regression-default-skin-project-scope.ts",
     "check:player-revocation": "node -r @swc-node/register scripts/regression-player-revocation-poller.ts",
     "check:pending-player-joins": "node -r @swc-node/register scripts/regression-pending-player-joins.ts",

@@ -14,6 +14,17 @@ const removedPageRoutes = new Set([
   '/api/local-projects/import',
 ])
 const removedAppRoutes = new Set(['/e/[container]/page'])
+const playerServiceRoutes = new Set([
+  '/', '/404', '/_app', '/_document', '/_error', '/account', '/players',
+  '/api/config/[...slug]', '/api/health-check',
+  '/api/player-auth/login', '/api/player-auth/logout',
+  '/api/player-auth/register', '/api/player-auth/session',
+  '/api/player-internal/revocations', '/api/player-internal/runtime-identity',
+  '/api/play-admin/activity', '/api/play-admin/maintenance',
+  '/api/play-admin/players', '/api/play-admin/players/[subjectId]',
+  '/api/play-admin/players/batch', '/api/play-admin/players/export',
+  '/api/play-admin/players/overview', '/api/play-admin/verify',
+])
 
 function readJSON(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'))
@@ -92,12 +103,62 @@ function prunePlayerBuild(nextRoot) {
   )
 }
 
-module.exports = { prunePlayerBuild }
+function prunePlayerServiceBuild(nextRoot) {
+  if (!fs.existsSync(nextRoot)) return
+  const pagesManifestPath = path.join(nextRoot, 'server/pages-manifest.json')
+  if (!fs.existsSync(pagesManifestPath)) return
+  const pagesManifest = readJSON(pagesManifestPath)
+  for (const [route, relative] of Object.entries(pagesManifest)) {
+    if (playerServiceRoutes.has(route)) continue
+    const compiled = path.join(nextRoot, 'server', relative)
+    fs.rmSync(compiled, { recursive: true, force: true })
+    fs.rmSync(`${compiled}.nft.json`, { force: true })
+    delete pagesManifest[route]
+  }
+  writeJSON(pagesManifestPath, pagesManifest)
+
+  pruneRoutesManifestToSet(path.join(nextRoot, 'routes-manifest.json'), playerServiceRoutes)
+  pruneBuildManifestToSet(path.join(nextRoot, 'build-manifest.json'), playerServiceRoutes)
+
+  // Player Service has no App Router page. Removing the editor App bundle
+  // keeps engine/editor code out of the independently distributed image.
+  fs.rmSync(path.join(nextRoot, 'server/app'), { recursive: true, force: true })
+  fs.rmSync(path.join(nextRoot, 'static/chunks/app'), { recursive: true, force: true })
+  fs.rmSync(path.join(nextRoot, 'static/css/app'), { recursive: true, force: true })
+  const appPaths = path.join(nextRoot, 'server/app-paths-manifest.json')
+  if (fs.existsSync(appPaths)) writeJSON(appPaths, {})
+}
+
+function pruneRoutesManifestToSet(filePath, allowedRoutes) {
+  if (!fs.existsSync(filePath)) return
+  const manifest = readJSON(filePath)
+  const keep = ({ page }) => allowedRoutes.has(page)
+  manifest.dynamicRoutes = (manifest.dynamicRoutes || []).filter(keep)
+  manifest.staticRoutes = (manifest.staticRoutes || []).filter(keep)
+  manifest.dataRoutes = (manifest.dataRoutes || []).filter(keep)
+  writeJSON(filePath, manifest)
+}
+
+function pruneBuildManifestToSet(filePath, allowedRoutes) {
+  if (!fs.existsSync(filePath) || !filePath.endsWith('.json')) return
+  const manifest = readJSON(filePath)
+  for (const route of Object.keys(manifest.pages || {})) {
+    if (!allowedRoutes.has(route)) delete manifest.pages[route]
+  }
+  writeJSON(filePath, manifest)
+}
+
+module.exports = { prunePlayerBuild, prunePlayerServiceBuild, playerServiceRoutes }
 
 if (require.main === module) {
   const roots = process.argv.slice(2)
   if (roots.length === 0) {
     throw new Error('Usage: node prune-player-build.js <next-root> [...]')
   }
-  for (const root of roots) prunePlayerBuild(path.resolve(root))
+  const playerService = roots[0] === '--player-service'
+  for (const root of (playerService ? roots.slice(1) : roots)) {
+    const resolved = path.resolve(root)
+    if (playerService) prunePlayerServiceBuild(resolved)
+    else prunePlayerBuild(resolved)
+  }
 }

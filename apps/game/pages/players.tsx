@@ -2,8 +2,8 @@ import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import {
-  Activity, Ban, KeyRound, LayoutDashboard, LogOut, RefreshCw,
-  Search, ShieldCheck, Tags, Trash2, UserCog, Users, X,
+  Activity, AlertTriangle, Ban, Download, KeyRound, LayoutDashboard, LogOut,
+  Monitor, RefreshCw, Search, ShieldCheck, Tags, Trash2, UserCog, Users, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import styles from './player-management.module.css';
@@ -54,6 +54,14 @@ type PlayerDetails = {
     ip: string;
     userAgent: string;
   }>;
+  adminHistory: Array<{
+    id: string; action: string; actor: string; actorDisplayName: string;
+    details: Record<string, unknown>; createdAt: string;
+  }>;
+  relatedAccounts: Array<{
+    subjectId: string; displayName: string; username: string;
+    sharedIp: string; lastSeenAt: string;
+  }>;
 };
 
 type AdminOverview = {
@@ -72,6 +80,12 @@ type AdminOverview = {
     id: string; action: string; subjectId: string;
     details: Record<string, unknown>; createdAt: string;
   }>;
+  security: {
+    topFailedIps: Array<{ ip: string; attempts: number; lastAttemptAt: string }>;
+    sharedLoginIps: Array<{ ip: string; accounts: number; lastSeenAt: string }>;
+    temporaryBansEndingSoon: number;
+    expiredSessions: number;
+  };
 };
 
 type AdminSection = 'overview' | 'players' | 'accounts' | 'security';
@@ -133,6 +147,7 @@ function auditLabel(action: string) {
   if (action === 'player.sessions.revoke') return '强制玩家下线';
   if (action === 'player.session.revoke') return '撤销单个设备会话';
   if (action === 'player.password.reset') return '重置玩家密码';
+  if (action === 'system.sessions.cleanup') return '清理过期登录会话';
   return action;
 }
 
@@ -149,6 +164,20 @@ function dateTimeLocalValue(value?: string) {
   if (Number.isNaN(date.getTime())) return '';
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function deviceLabel(userAgent?: string) {
+  if (!userAgent) return '未知设备';
+  const system = /iPhone|iPad/.test(userAgent) ? 'iOS'
+    : /Android/.test(userAgent) ? 'Android'
+      : /Windows/.test(userAgent) ? 'Windows'
+        : /Macintosh|Mac OS X/.test(userAgent) ? 'macOS'
+          : /Linux/.test(userAgent) ? 'Linux' : '其他系统';
+  const browser = /Edg\//.test(userAgent) ? 'Edge'
+    : /Firefox\//.test(userAgent) ? 'Firefox'
+      : /Chrome\//.test(userAgent) ? 'Chrome'
+        : /Safari\//.test(userAgent) ? 'Safari' : '未知浏览器';
+  return `${system} · ${browser}`;
 }
 
 export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps) {
@@ -405,6 +434,67 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
     setAppliedSearch(search.trim());
   }
 
+  async function exportPlayers() {
+    if (busy) return;
+    setBusy('export');
+    setNotice('正在生成玩家 CSV，数据较多时可能需要几秒…');
+    try {
+      const query = new URLSearchParams({
+        search: appliedSearch,
+        identity: identityFilter,
+        role: roleFilter,
+        online: onlineFilter,
+        sort,
+      });
+      const response = await fetch(`/api/play-admin/players/export?${query}`, {
+        headers: adminHeaders(token || sessionStorage.getItem(TOKEN_KEY) || ''),
+        cache: 'no-store',
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || '导出玩家数据失败');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `players-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      const exported = response.headers.get('X-BOX-Exported-Rows') || '0';
+      const totalRows = response.headers.get('X-BOX-Total-Rows') || exported;
+      setNotice(`已导出 ${exported} / ${totalRows} 条玩家记录`);
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function cleanupExpiredSessions() {
+    const count = overview?.security.expiredSessions || 0;
+    if (!ownerAccess || !count || !confirm(`确定清理 ${count} 条已经过期的会话记录吗？`)) return;
+    setBusy('maintenance');
+    setNotice('正在清理过期会话…');
+    try {
+      const response = await fetch('/api/play-admin/maintenance', {
+        method: 'POST',
+        headers: adminHeaders(token || sessionStorage.getItem(TOKEN_KEY) || '', true),
+        body: JSON.stringify({ action: 'cleanup-expired-sessions' }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || '清理过期会话失败');
+      await load();
+      setNotice(`已清理 ${data.deleted || 0} 条过期会话记录`);
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function revokeSession(sessionId: string) {
     if (!selected || !confirm('确定撤销这个设备的登录会话吗？该设备会立即退出。')) return;
     setBusy(`session:${sessionId}`);
@@ -539,6 +629,7 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
               <select className={styles.filterSelect} aria-label="在线筛选" value={onlineFilter} onChange={(event) => { setOnlineFilter(event.target.value as typeof onlineFilter); setPage(1); }}><option value="all">全部会话</option><option value="online">当前在线</option><option value="offline">当前离线</option></select>
               <select className={styles.filterSelect} aria-label="排序方式" value={sort} onChange={(event) => { setSort(event.target.value as typeof sort); setPage(1); }}><option value="lastSeen">最近在线</option><option value="registered">最近注册</option><option value="displayName">昵称排序</option><option value="loginCount">登录次数</option></select>
               <button className={styles.primaryButton} disabled={busy === 'loading'} onClick={submitSearch}>{busy === 'loading' ? '读取中…' : '搜索'}</button>
+              <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={() => void exportPlayers()}><Download size={14} />{busy === 'export' ? '导出中…' : '导出 CSV'}</button>
               {search || appliedSearch ? <button className={styles.textButton} onClick={() => { setSearch(''); setAppliedSearch(''); setPage(1); }}>清除</button> : null}
             </div>
             {selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong><button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button><button onClick={() => void batchAction('ban')}><Ban size={14} />封禁</button><button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解封</button><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button><button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
@@ -547,6 +638,16 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
           </> : null}
 
           {section === 'security' ? <>
+            <section className={styles.riskGrid}>
+              <article><span><AlertTriangle size={16} />24 小时登录失败</span><strong>{stats.failedLoginsLast24Hours}</strong><small>{overview?.security.topFailedIps[0] ? `最高来源 ${overview.security.topFailedIps[0].ip}（${overview.security.topFailedIps[0].attempts} 次）` : '暂未发现失败登录'}</small></article>
+              <article><span><Users size={16} />共享登录 IP</span><strong>{overview?.security.sharedLoginIps.length || 0}</strong><small>近 30 天被多个账号使用的 IP</small></article>
+              <article><span><Ban size={16} />即将到期封禁</span><strong>{overview?.security.temporaryBansEndingSoon || 0}</strong><small>未来 24 小时内自动解封</small></article>
+              <article><span><Monitor size={16} />过期会话记录</span><strong>{overview?.security.expiredSessions || 0}</strong>{ownerAccess && overview?.security.expiredSessions ? <button className={styles.inlineAction} disabled={Boolean(busy)} onClick={() => void cleanupExpiredSessions()}>立即清理</button> : <small>不会授权登录，可定期清理</small>}</article>
+            </section>
+            <section className={styles.securityGrid}>
+              <div className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>高频失败来源</h2><p>近 24 小时登录失败次数最多的 IP</p></div></div><div className={styles.riskList}>{overview?.security.topFailedIps.map((entry) => <article key={entry.ip}><strong className={styles.mono}>{entry.ip}</strong><span>{entry.attempts} 次</span><time>{formatDate(entry.lastAttemptAt)}</time></article>)}{!overview?.security.topFailedIps.length ? <div className={styles.compactEmpty}>没有失败登录来源</div> : null}</div></div>
+              <div className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>账号关联线索</h2><p>近 30 天被多个账号共同使用的登录 IP，仅作为排查线索</p></div></div><div className={styles.riskList}>{overview?.security.sharedLoginIps.map((entry) => <article key={entry.ip}><strong className={styles.mono}>{entry.ip}</strong><span>{entry.accounts} 个账号</span><time>{formatDate(entry.lastSeenAt)}</time></article>)}{!overview?.security.sharedLoginIps.length ? <div className={styles.compactEmpty}>没有共享登录 IP</div> : null}</div></div>
+            </section>
             <div className={styles.activityToolbar}><div className={styles.segmented}><button className={activityKind === 'all' ? styles.segmentActive : ''} onClick={() => { setActivityKind('all'); setActivityPage(1); }}>全部事件</button><button className={activityKind === 'login' ? styles.segmentActive : ''} onClick={() => { setActivityKind('login'); setActivityPage(1); }}>账号登录</button><button className={activityKind === 'admin' ? styles.segmentActive : ''} onClick={() => { setActivityKind('admin'); setActivityPage(1); }}>管理操作</button></div><div className={styles.searchField}><Search size={16} /><input placeholder="搜索动作、操作者、玩家、IP 或身份 ID" value={activitySearch} onChange={(event) => { setActivitySearch(event.target.value); setActivityPage(1); }} /></div></div>
             <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>完整安全活动</h2><p>账号登录和所有敏感管理操作，按时间统一追溯</p></div><span>{busy === 'activity' ? '读取中…' : `第 ${activityPage} 页`}</span></div><div className={styles.auditTable}>{activity.map((event) => <article key={event.id}><span className={styles.auditIcon}>{event.kind === 'login' ? <Activity size={16} /> : <ShieldCheck size={16} />}</span><div className={styles.auditMain}><strong>{auditLabel(event.action)}</strong><small>目标：{event.displayName || event.username || event.subjectId || '系统'}</small></div><div><strong>{event.actorDisplayName || event.actor}</strong><small>操作者</small></div><div><strong className={styles.mono}>{displayIp(event.ip)}</strong><small>{event.userAgent || '客户端未记录'}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div>{!activity.length && busy !== 'activity' ? <div className={styles.compactEmpty}>暂无符合条件的安全活动</div> : null}</section>
             <div className={styles.pagination}><span>第 {activityPage} / {activityTotalPages} 页</span><div><button className={styles.secondaryButton} disabled={activityPage <= 1} onClick={() => setActivityPage((value) => value - 1)}>上一页</button><button className={styles.secondaryButton} disabled={activityPage >= activityTotalPages} onClick={() => setActivityPage((value) => value + 1)}>下一页</button></div></div>
@@ -623,7 +724,8 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
                     <div className={styles.sectionHeading}><h3>当前会话</h3><span>{details.sessions.length} 条</span></div>
                     {details.sessions.length ? <div className={styles.recordList}>{details.sessions.map((session, index) => (
                       <article key={`${session.createdAt}-${index}`}>
-                        <div><strong>{displayIp(session.lastSeenIp || session.createdIp)}</strong><span>{formatDate(session.lastSeenAt)}</span></div>
+                        <div><strong>{deviceLabel(session.userAgent)}</strong><span>{formatDate(session.lastSeenAt)}</span></div>
+                        <small className={styles.recordIp}>{displayIp(session.lastSeenIp || session.createdIp)}</small>
                         <p>{session.userAgent || '未记录客户端信息'}</p>
                         <div className={styles.sessionFooter}><small>创建 {formatDate(session.createdAt)} · 到期 {formatDate(session.expiresAt)}</small><button className={styles.textButton} disabled={Boolean(busy)} onClick={() => revokeSession(session.sessionId)}>{busy === `session:${session.sessionId}` ? '撤销中…' : '撤销此设备'}</button></div>
                       </article>
@@ -634,11 +736,30 @@ export default function PlayersPage({ returnUrl, returnLabel }: PlayersPageProps
                     <div className={styles.sectionHeading}><h3>最近登录记录</h3><span>最近 {details.loginHistory.length} 条</span></div>
                     {details.loginHistory.length ? <div className={styles.recordList}>{details.loginHistory.map((event, index) => (
                       <article key={`${event.createdAt}-${index}`}>
-                        <div><strong>{displayIp(event.ip)}</strong><span>{formatDate(event.createdAt)}</span></div>
+                        <div><strong>{deviceLabel(event.userAgent)}</strong><span>{formatDate(event.createdAt)}</span></div>
+                        <small className={styles.recordIp}>{displayIp(event.ip)}</small>
                         <p>{event.userAgent || '未记录客户端信息'}</p>
                       </article>
                     ))}</div> : <div className={styles.compactEmpty}>旧账号或尚无登录历史</div>}
                   </section> : null}
+
+                  <section className={styles.detailSection}>
+                    <div className={styles.sectionHeading}><h3>关联账号线索</h3><span>近 90 天同登录 IP</span></div>
+                    {details.relatedAccounts.length ? <div className={styles.relatedList}>{details.relatedAccounts.map((account) => (
+                      <button key={`${account.subjectId}:${account.sharedIp}`} type="button" onClick={() => {
+                        const target = players.find((player) => player.subjectId === account.subjectId);
+                        if (target) void openDetails(target);
+                        else setNotice(`关联账号 ${account.displayName || account.username} 不在当前筛选页，可用身份 ID 搜索：${account.subjectId}`);
+                      }}><span><strong>{account.displayName || account.username}</strong><small>@{account.username || '未记录用户名'}</small></span><span><strong className={styles.mono}>{account.sharedIp}</strong><small>{formatDate(account.lastSeenAt)}</small></span></button>
+                    ))}</div> : <div className={styles.compactEmpty}>近 90 天没有发现其他账号使用相同登录 IP</div>}
+                  </section>
+
+                  <section className={styles.detailSection}>
+                    <div className={styles.sectionHeading}><h3>管理操作时间线</h3><span>最近 {details.adminHistory.length} 条</span></div>
+                    {details.adminHistory.length ? <div className={styles.timelineList}>{details.adminHistory.map((event) => (
+                      <article key={event.id}><span><ShieldCheck size={14} /></span><div><strong>{auditLabel(event.action)}</strong><small>{event.actorDisplayName || event.actor}</small></div><time>{formatDate(event.createdAt)}</time></article>
+                    ))}</div> : <div className={styles.compactEmpty}>尚无针对该玩家的管理操作</div>}
+                  </section>
                 </>
               ) : null}
 

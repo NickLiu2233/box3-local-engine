@@ -277,6 +277,7 @@ function startPlayLibrary({
     server,
     ready,
     listWorlds: () => listWorlds(libraryRoot),
+    ensureRuntime,
     async stop() {
       if (closed) return
       closed = true

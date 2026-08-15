@@ -34,15 +34,27 @@ docker compose up -d
 docker compose ps
 ```
 
+`play-storage-init` 显示 `Exited (0)` 是正常状态：它只在启动前修复持久卷目录所有权，完成后
+立即退出；Play 主容器仍以非 root 的 `node` 用户运行。只有该任务退出码非 `0` 时才需要检查
+volume 权限。
+
 默认只允许本机访问 `http://127.0.0.1:3000/`。直接通过服务器 IP 访问时，将
 `BOX_PLAY_HOST_IP` 改为 `0.0.0.0` 并配置服务器防火墙。正式公网环境推荐使用 HTTPS
 反向代理。
+
+`BOX_DATABASE_URL` 和固定的 `PERMISSION_TOKEN_SECRET` 是分发部署的必填项；后者不能在
+重启或升级时更换，否则现有会话和运行时身份会失效。公网只暴露 HTTPS 反向代理，Player
+Service 管理页、PostgreSQL 和 Redis 不应直接暴露到互联网。
 
 两个镜像归档相互独立，更新玩家服务不需要重新分发游玩镜像。玩家中心默认是
 `http://127.0.0.1:3213/`；需要远程访问时还要配置 `BOX_PLAYER_SERVICE_HOST_IP` 和
 `BOX_PLAYER_SERVICE_PUBLIC_URL`。
 
 登录、注册和玩家管理只在玩家服务中提供；Play 的 `3000` 端口不显示这些入口。
+
+Play 默认在后台预热一个主地图，并把预烘焙结果保存到 `box-play-storage` 卷。可在 `.env`
+使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整预热数量，设为 `0` 可关闭；该值不应超过
+`BOX_PLAY_MAX_RUNTIMES`。运行时回收或容器重启不会再次完整烘焙未变化的地图。
 
 地图可以通过网页服主管理导入。先在 `.env` 设置：
 
@@ -64,3 +76,6 @@ docker compose up -d
 ```
 
 不要把 `.env`、管理员密钥、数据库密码或 `play-worlds` 玩家数据公开发送。
+
+地图包、镜像和工程目录备份不包含 PostgreSQL 数据。服主必须另外安排数据库快照或
+`pg_dump`，并验证可以恢复玩家账号、审计记录和地图数据空间。

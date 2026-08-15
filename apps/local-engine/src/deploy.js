@@ -8,11 +8,27 @@ const {
   ensurePlayerServiceImageArchive,
   getPlayImageConfig,
 } = require('./play-image')
+const { resolveBuildMetadata } = require('./build-metadata')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const command = process.argv[2]
 const commandArgs = process.argv.slice(3)
+const rootManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'))
+
+function gitRevision() {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  })
+  return result.status === 0 ? result.stdout.trim() : 'unknown'
+}
+
+const automaticBuildMetadata = resolveBuildMetadata({
+  version: rootManifest.version,
+  revision: gitRevision(),
+})
 
 function readDotEnvValue(name) {
   try {
@@ -106,6 +122,7 @@ function dockerEnvironment(extra = {}) {
   const config = getPlayImageConfig()
   return {
     ...process.env,
+    ...automaticBuildMetadata,
     BOX_IMAGE_TAG: config.tag,
     BOX_PLAY_PLATFORM: config.platform,
     BOX_PLAY_LIBRARY_DIR:

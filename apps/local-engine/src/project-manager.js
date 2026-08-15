@@ -25,6 +25,7 @@ const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packa
 const snapshotLimit = 5
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const publicMapIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
+const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const mapGroupManager = createMapGroupManager(projectsRoot)
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
 // extraProject metadata is binary, so publishing must discover both forms or
@@ -523,6 +524,26 @@ function writeJSON(filePath, value) {
   fs.renameSync(temporaryPath, filePath)
 }
 
+function mapUuidExists(mapUuid, excludeProjectId = '') {
+  if (!fs.existsSync(projectsRoot)) return false
+  return fs.readdirSync(projectsRoot, { withFileTypes: true }).some((entry) => {
+    if (!entry.isDirectory() || entry.name === excludeProjectId) return false
+    try {
+      const metadata = readJSON(path.join(projectsRoot, entry.name, 'project.json'))
+      return metadata?.mapUuid === mapUuid
+    } catch {
+      return false
+    }
+  })
+}
+
+function createMapUuid() {
+  for (;;) {
+    const mapUuid = crypto.randomUUID()
+    if (!mapUuidExists(mapUuid)) return mapUuid
+  }
+}
+
 function validateProjectSource(sourceRoot) {
   const statePath = path.join(sourceRoot, 'project-state.json')
   const blobRoot = path.join(sourceRoot, 'blobs')
@@ -690,6 +711,7 @@ function toProjectSummary(metadata) {
   const latestRelease = releases.length ? releases[releases.length - 1] : undefined
   return {
     id: metadata.id,
+    mapUuid: metadata.mapUuid,
     publicId: metadata.publicId || metadata.id,
     name: metadata.name,
     description: metadata.description || '',
@@ -713,6 +735,14 @@ function getProject(id) {
   const metadataPath = path.join(root, 'project.json')
   const metadata = readJSON(metadataPath)
   if (!metadata || metadata.id !== id) throw new Error(`Invalid project metadata: ${id}`)
+  if (metadata.mapUuid === undefined) {
+    // Assign existing local projects one permanent storage identity exactly
+    // once. Public route IDs and directory names are deliberately excluded.
+    metadata.mapUuid = createMapUuid()
+    writeJSON(metadataPath, metadata)
+  } else if (!mapUuidPattern.test(metadata.mapUuid) || mapUuidExists(metadata.mapUuid, id)) {
+    throw new Error(`Invalid or duplicate map UUID: ${id}`)
+  }
   const validMapGroupIdentity =
     metadata.formatVersion === 1 &&
     typeof metadata.mapGroupId === 'string' &&
@@ -782,6 +812,7 @@ function createProject({ id, name, author = '', description = '' }) {
   const metadata = {
     formatVersion: 1,
     id: safeId,
+    mapUuid: createMapUuid(),
     publicId: safeId,
     name: name.trim(),
     author: author.trim().slice(0, 80),
@@ -796,6 +827,17 @@ function createProject({ id, name, author = '', description = '' }) {
   }
   writeJSON(path.join(root, 'project.json'), metadata)
   return toProjectSummary(metadata)
+}
+
+function projectStorageIdentity(id) {
+  const project = getProject(id)
+  const main = project.mainProjectId === project.id
+    ? project
+    : getProject(project.mainProjectId)
+  return {
+    mapUuid: project.mapUuid,
+    mapGroupUuid: main.mapUuid,
+  }
 }
 
 function mapGroupIdentity(id) {
@@ -1305,6 +1347,7 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
     writeJSON(path.join(root, 'project.json'), {
       formatVersion: 1,
       id,
+      mapUuid: createMapUuid(),
       publicId: nextPublicMapId(sourceMetadata.publicId || id),
       name: sourceMetadata.name,
       description: sourceMetadata.description || '',
@@ -1386,6 +1429,7 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
       const imported = {
         formatVersion: 1,
         id,
+        mapUuid: createMapUuid(),
         publicId: nextPublicMapId(metadata.publicId || id),
         name: metadata.name,
         description: metadata.description || '',
@@ -1478,6 +1522,8 @@ function publishProject(id, requestedVersion, notes = '') {
   const release = {
     formatVersion: 1,
     id: metadata.id,
+    mapUuid: metadata.mapUuid,
+    mapGroupUuid: projectStorageIdentity(id).mapGroupUuid,
     publicId: metadata.publicId || metadata.id,
     projectName: metadata.name,
     author: metadata.author || '',
@@ -1757,11 +1803,13 @@ function exportPlayBundle(reference) {
       formatVersion: 1,
       type: 'map-group-play-bundle',
       mapGroupId: identity.mapGroupId,
+      mapGroupUuid: projectStorageIdentity(identity.mainProjectId).mapGroupUuid,
       mainProjectId: identity.mainProjectId,
       version: target.version,
       createdAt: new Date().toISOString(),
       members: manifests.map((manifest) => ({
         id: manifest.id,
+        mapUuid: manifest.mapUuid,
         publicId: manifest.publicId || manifest.id,
         name: manifest.projectName,
         mapRole: manifest.mapRole,
@@ -1840,7 +1888,9 @@ function packageProject(reference, outputDirectory, options = {}) {
       notes: manifest.notes || '',
       createdAt: generatedAt,
       permissionHash: manifest.permissionHash,
+      mapUuid: manifest.mapUuid,
       mapGroupId: manifest.mapGroupId || manifest.id,
+      mapGroupUuid: manifest.mapGroupUuid || manifest.mapUuid,
       mapRole: manifest.mapRole,
       mainProjectId: manifest.mainProjectId || manifest.id,
       sharedRevision: manifest.sharedRevision || 1,
@@ -1849,11 +1899,38 @@ function packageProject(reference, outputDirectory, options = {}) {
       platform: playImageConfig.platform,
       contents,
     })
-    const groupStorageNamespace = manifest.mapGroupId || manifest.id
+    const groupStorageNamespace = manifest.mapGroupUuid || manifest.mapGroupId || manifest.id
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'compose.yml'),
       `services:\n  player-service:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAYER_SERVICE_IMAGE:-${playImageConfig.playerServiceImage}}\n    restart: unless-stopped\n    mem_limit: \${BOX_PLAYER_SERVICE_MEMORY_LIMIT:-1g}\n    cpus: \${BOX_PLAYER_SERVICE_CPU_LIMIT:-1.0}\n    pids_limit: \${BOX_PLAYER_SERVICE_PIDS_LIMIT:-256}\n    environment:\n      BOX_DEPLOYMENT_MODE: player-service\n      NEXT_PUBLIC_APP_ENV: development\n      NEXT_PUBLIC_APP_EDITION: createra\n      NEXT_PUBLIC_APP_REGION: cn\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAY_PUBLIC_URL: \${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_RUNTIME_IDENTITY_TTL_MS: \${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_IDENTITY_DATABASE_SCHEMA: \${BOX_IDENTITY_DATABASE_SCHEMA:-box_identity}\n      BOX_PLAYER_REGISTRATION_ENABLED: \${BOX_PLAYER_REGISTRATION_ENABLED:-true}\n      BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: \${BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-10}\n      BOX_LOGIN_RATE_LIMIT_WINDOW_MS: \${BOX_LOGIN_RATE_LIMIT_WINDOW_MS:-300000}\n      BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS: \${BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS:-5}\n      BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS: \${BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS:-3600000}\n      BOX_PLAYER_COOKIE_DOMAIN: \${BOX_PLAYER_COOKIE_DOMAIN:-}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n    ports:\n      - \"\${BOX_PLAYER_SERVICE_HOST_IP:-127.0.0.1}:\${BOX_PLAYER_SERVICE_PORT:-3213}:3213\"\n\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    mem_limit: \${BOX_PLAY_MEMORY_LIMIT:-4g}\n    cpus: \${BOX_PLAY_CPU_LIMIT:-4.0}\n    pids_limit: \${BOX_PLAY_PIDS_LIMIT:-1024}\n    depends_on:\n      player-service:\n        condition: service_healthy\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_PUBLIC_ID: ${manifest.publicId || manifest.id}\n      BOX_WORLD_GROUP_ID: ${groupStorageNamespace}\n      BOX_WORLD_MAIN_PROJECT_ID: ${manifest.mainProjectId || manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      BOX_LOCAL_PLAYER_NAME: \${BOX_LOCAL_PLAYER_NAME:-本地玩家}\n      BOX_LOCAL_PLAYER_ID: \${BOX_LOCAL_PLAYER_ID:-10000001}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_PLAYER_SERVICE_INTERNAL_URL: http://player-service:3213\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_RUNTIME_IDENTITY_TTL_MS: \${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}\n      BOX_SCRIPT_HEAP_MB: \${BOX_SCRIPT_HEAP_MB:-512}\n      SCRIPT_MEMORY_LIMIT: \${BOX_SCRIPT_MEMORY_MB:-512}\n      BOX_PLAYER_REVOCATION_POLL_MS: \${BOX_PLAYER_REVOCATION_POLL_MS:-1000}\n      BOX_CREATE_SESSION_TIMEOUT_MS: \${BOX_CREATE_SESSION_TIMEOUT_MS:-120000}\n      BOX_PLAY_MAX_RUNTIMES: \${BOX_PLAY_MAX_RUNTIMES:-8}\n      BOX_RUNTIME_IDLE_TIMEOUT_MS: \${BOX_RUNTIME_IDLE_TIMEOUT_MS:-900000}\n      BOX_DATA_STORAGE_PATH: /app/storage\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-${groupStorageNamespace}}\n      REDIS_HOST: \${REDIS_HOST:-}\n      REDIS_PORT: \${REDIS_PORT:-6379}\n      REDIS_PASSWORD: \${REDIS_PASSWORD:-}\n      REDIS_DB: \${REDIS_DB:-0}\n      STORAGE_CACHE_REDIS_DB: \${STORAGE_CACHE_REDIS_DB:-1}\n      STORAGE_CACHE_REDIS_TTL: \${STORAGE_CACHE_REDIS_TTL:-240}\n    ports:\n      - \"\${BOX_PLAY_HOST_IP:-127.0.0.1}:\${BOX_PLAY_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n`,
     )
+    const packagedComposePath = path.join(temporaryBundleRoot, 'compose.yml')
+    const packagedCompose = fs.readFileSync(packagedComposePath, 'utf8')
+      .replaceAll(
+        '    restart: unless-stopped\n',
+        '    restart: unless-stopped\n    security_opt:\n      - no-new-privileges:true\n    cap_drop:\n      - ALL\n',
+      )
+      .replace(
+        '\n  play:\n',
+        `\n  play-storage-init:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    user: "0:0"\n    command:\n      - sh\n      - -c\n      - mkdir -p /app/storage/runtime-cache && chown -R 1000:1000 /app/storage\n    restart: "no"\n    network_mode: none\n    read_only: true\n    security_opt:\n      - no-new-privileges:true\n    cap_drop:\n      - ALL\n    cap_add:\n      - CHOWN\n    volumes:\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n\n  play:\n`,
+      )
+      .replace(
+        '      player-service:\n        condition: service_healthy\n',
+        '      player-service:\n        condition: service_healthy\n      play-storage-init:\n        condition: service_completed_successfully\n',
+      )
+      .replace(
+        `      BOX_WORLD_ID: ${manifest.id}\n`,
+        `      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_MAP_UUID: ${manifest.mapUuid || manifest.id}\n`,
+      )
+      .replace(
+        `      BOX_WORLD_GROUP_ID: ${groupStorageNamespace}\n`,
+        `      BOX_WORLD_GROUP_ID: ${groupStorageNamespace}\n      BOX_WORLD_GROUP_UUID: ${groupStorageNamespace}\n`,
+      )
+      .replace(
+        '      BOX_DATA_STORAGE_PATH: /app/storage\n',
+        '      BOX_RUNTIME_CACHE_PATH: /app/storage/runtime-cache\n      BOX_DATA_STORAGE_PATH: /app/storage\n',
+      )
+    fs.writeFileSync(packagedComposePath, packagedCompose)
     const distributionEnvExample = path.join(repoRoot, 'distribution', 'play', '.env.example')
     fs.copyFileSync(
       distributionEnvExample,
@@ -1909,6 +1986,7 @@ module.exports = {
   exportPlayBundle,
   getLaunchTarget,
   getProject,
+  projectStorageIdentity,
   mapGroupIdentity,
   mapGroupPaths: (id) => mapGroupManager.paths(id),
   materializeMapGroupState: (id) => mapGroupManager.materialize(id),

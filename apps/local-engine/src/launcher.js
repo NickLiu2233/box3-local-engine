@@ -2,7 +2,6 @@
 
 const fs = require('fs')
 const http = require('http')
-const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
 const { spawn, spawnSync } = require('child_process')
@@ -105,6 +104,9 @@ const configuredWorldPath =
 const configuredDataRoot = configuredWorldPath
   ? path.resolve(configuredWorldPath)
   : defaultDataRoot
+const runtimeCacheRoot = path.resolve(
+  process.env.BOX_RUNTIME_CACHE_PATH || path.join(packageRoot, 'runtime-cache')
+)
 const dataRoot = launchTarget ? launchTarget.dataRoot : configuredDataRoot
 const projectStatePath = launchTarget
   ? launchTarget.statePath
@@ -173,20 +175,36 @@ function dataStorageNamespace(id, allowExplicit = true) {
   return `${prefix}${id || 'default'}`
 }
 
+function derivedRuntimePath(mode, identity) {
+  const digest = crypto
+    .createHash('sha256')
+    .update(`${mode}\0${identity || 'default'}`)
+    .digest('hex')
+    .slice(0, 32)
+  return path.join(runtimeCacheRoot, mode, digest)
+}
+
+function prewarmCount(name, fallback, maximum) {
+  const value = Number(process.env[name] ?? fallback)
+  if (!Number.isSafeInteger(value) || value < 0) return fallback
+  return Math.min(value, Math.max(0, Number(maximum) || 0))
+}
+
 function groupStorageNamespace(projectId = '') {
   if (process.env.BOX_GROUP_STORAGE_NAMESPACE) {
     return process.env.BOX_GROUP_STORAGE_NAMESPACE
   }
   const identity =
-    projectId ||
+    process.env.BOX_WORLD_GROUP_UUID ||
     process.env.BOX_WORLD_GROUP_ID ||
     process.env.BOX_WORLD_MAIN_PROJECT_ID ||
     process.env.BOX_WORLD_ID ||
+    projectId ||
     process.env.BOX_SERVER_CONTENT_ID ||
     ''
-  if (identity && projectManager) {
+  if (projectId && projectManager) {
     try {
-      return projectManager.mapGroupIdentity(identity).mapGroupId
+      return projectManager.projectStorageIdentity(projectId).mapGroupUuid
     } catch {
       // Standalone runtime fixtures do not necessarily have project metadata.
     }
@@ -273,7 +291,6 @@ function waitFor(url, attempts = 120) {
 
 const children = []
 let shuttingDown = false
-let disposablePlayDataRoot = ''
 
 function makeRuntimeDataReadable(root) {
   const pending = [root]
@@ -325,10 +342,6 @@ function shutdown(code = 0) {
   if (creatorPlayLibrary) creatorPlayLibrary.stop().catch(() => {})
   if (backupTimer) clearInterval(backupTimer)
   setTimeout(() => {
-    if (disposablePlayDataRoot) {
-      fs.rmSync(disposablePlayDataRoot, { recursive: true, force: true })
-      disposablePlayDataRoot = ''
-    }
     process.exit(code)
   }, 200)
 }
@@ -381,15 +394,10 @@ async function main() {
   }
 
   if (startsPlayServer && !usesPlayLibrary) {
-    // Published worlds are immutable inputs. The game runtime can create
-    // derived content while booting or running, so give it a disposable
-    // writable copy instead of ever writing into the mounted release.
-    disposablePlayDataRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), 'box-local-engine-play-')
-    )
-    fs.cpSync(dataRoot, disposablePlayDataRoot, { recursive: true })
-    makeRuntimeDataReadable(disposablePlayDataRoot)
-    playServerDataRoot = disposablePlayDataRoot
+    // Published worlds stay immutable. The game server reads them in place
+    // and writes prebake/build products into BOX_DERIVED_STORAGE_PATH, so a
+    // cold runtime no longer copies the complete world or loses its cache.
+    playServerDataRoot = dataRoot
   }
 
   if (production) {
@@ -466,6 +474,10 @@ async function main() {
     NODE_ENV: production ? 'production' : 'development',
   }
 
+  const localStorageIdentity = launchTarget && projectManager
+    ? projectManager.projectStorageIdentity(launchTarget.id)
+    : null
+
   const startGameServer = (mode, port, hostIP = '') =>
     run(
       process.execPath,
@@ -489,9 +501,21 @@ async function main() {
           IS_HTTPS: 'false',
           PORT: String(port),
           HOST_IP: hostIP,
-          // The launcher resolves one authoritative data root. Play mode uses
-          // its disposable writable copy; edit mode uses the project source.
+          // The launcher resolves one authoritative read source. Play writes
+          // generated prebake/build data only to BOX_DERIVED_STORAGE_PATH.
           STORAGE_PATH: mode === 'play' ? playServerDataRoot : dataRoot,
+          BOX_DERIVED_STORAGE_PATH:
+            mode === 'play'
+              ? derivedRuntimePath(
+                  mode,
+                  localStorageIdentity?.mapUuid ||
+                    projectId ||
+                    releaseId ||
+                    process.env.BOX_WORLD_MAP_UUID ||
+                    process.env.BOX_WORLD_ID ||
+                    readProjectHash()
+                )
+              : '',
           BOX_PROJECT_STATE_PATH: projectStatePath,
           BOX_GROUP_PROJECT_STATE_PATH: groupStatePath,
           BOX_GROUP_CONTENT_PATH: groupBlobRoot,
@@ -509,8 +533,8 @@ async function main() {
             readCloudMapId() ||
             '0',
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
-            projectId ||
-            releaseId ||
+            localStorageIdentity?.mapUuid ||
+            process.env.BOX_WORLD_MAP_UUID ||
             process.env.BOX_WORLD_ID ||
             process.env.BOX_SERVER_CONTENT_ID ||
             'default'
@@ -538,11 +562,6 @@ async function main() {
     )
 
   const startLibraryRuntime = async (world, port) => {
-    const temporaryRoot = fs.mkdtempSync(
-      path.join(os.tmpdir(), `box-local-engine-${world.id}-`)
-    )
-    fs.cpSync(world.dataRoot, temporaryRoot, { recursive: true })
-    makeRuntimeDataReadable(temporaryRoot)
     const child = spawn(
       process.execPath,
       production
@@ -559,16 +578,25 @@ async function main() {
           IS_HTTPS: 'false',
           PORT: String(port),
           HOST_IP: '127.0.0.1',
-          STORAGE_PATH: temporaryRoot,
-          BOX_PROJECT_STATE_PATH: path.join(temporaryRoot, 'project-state.json'),
+          STORAGE_PATH: world.dataRoot,
+          BOX_PROJECT_STATE_PATH: world.statePath,
+          BOX_DERIVED_STORAGE_PATH: derivedRuntimePath(
+            'play',
+            world.manifest.mapUuid || world.id
+          ),
           HASH: world.manifest.permissionHash,
           VM: scriptVm,
           CONTENT_ID: world.id,
           // Multi-world play deployments must never collapse all maps into a
           // single data namespace. Server owners can add a prefix, while the
-          // actual world id always remains part of the namespace.
-          BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(world.id, false),
-          BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(world.manifest.mainProjectId || world.id),
+          // immutable Map UUID always remains part of the namespace.
+          BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
+            world.manifest.mapUuid || world.id,
+            false,
+          ),
+          BOX_GROUP_STORAGE_NAMESPACE:
+            world.manifest.mapGroupUuid ||
+            groupStorageNamespace(world.manifest.mainProjectId || world.id),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
@@ -583,12 +611,10 @@ async function main() {
       exited: false,
       async stop() {
         await terminateRuntimeChild(child, runtime, 1500)
-        fs.rmSync(temporaryRoot, { recursive: true, force: true })
       },
     }
     child.once('exit', () => {
       runtime.exited = true
-      fs.rmSync(temporaryRoot, { recursive: true, force: true })
     })
     return runtime
   }
@@ -826,6 +852,52 @@ async function main() {
   )
 
   await waitFor(`http://127.0.0.1:${webPort}/api/health-check`)
+
+  // Boxes makes container allocation and shared-build-cache work happen
+  // before the engine route becomes interactive. Keep the manager responsive,
+  // then warm a small, configurable recent set in the background. Runtime
+  // capacity/LRU still owns the hard upper bound.
+  const prewarmTimer = setTimeout(async () => {
+    try {
+      if (creatorMode && editLibrary && creatorPlayLibrary) {
+        const projects = projectManager.listProjects()
+        const editCount = prewarmCount(
+          'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
+          1,
+          process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6
+        )
+        const playCount = prewarmCount(
+          'BOX_CREATOR_PLAY_PREWARM_RUNTIMES',
+          1,
+          process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || 4
+        )
+        for (const project of projects.slice(0, editCount)) {
+          await editLibrary.ensureRuntime(project.id)
+        }
+        for (const project of projects.slice(0, playCount)) {
+          await creatorPlayLibrary.ensureRuntime(project.id)
+        }
+      } else if (usesPlayLibrary && playLibrary) {
+        const worlds = playLibrary.listWorlds().sort((left, right) => {
+          const leftMain = left.manifest.mapRole === 'main' ? 0 : 1
+          const rightMain = right.manifest.mapRole === 'main' ? 0 : 1
+          return leftMain - rightMain || left.id.localeCompare(right.id)
+        })
+        const count = prewarmCount(
+          'BOX_PLAY_PREWARM_RUNTIMES',
+          1,
+          process.env.BOX_PLAY_MAX_RUNTIMES || 8
+        )
+        for (const world of worlds.slice(0, count)) {
+          await playLibrary.ensureRuntime(world.id)
+        }
+      }
+    } catch (error) {
+      console.warn(`Runtime background prewarm failed: ${error.message}`)
+    }
+  }, 1000)
+  prewarmTimer.unref()
+
   console.log(
     `\nBOX ${creatorMode ? 'Creator' : 'Play'} is ready (${
       production ? 'production' : 'development'

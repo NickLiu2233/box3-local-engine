@@ -282,7 +282,7 @@ export default function HomePage({
       if (!response.ok) throw new Error(data.message || '保存失败');
       setWorldList((current) => current.map((world) => world.id === editWorld.id ? data.world : world));
       setEditWorld(null);
-      setNotice(`地图信息已保存，玩家链接为 /p/${data.world.publicId}`);
+      setNotice(`地图信息已保存，访问链接为 /p/${data.world.publicId}`);
     } catch (error) {
       setNotice((error as Error).message);
     } finally {
@@ -474,7 +474,7 @@ export default function HomePage({
             <h2>编辑地图信息</h2>
             <label htmlFor="play-world-name">作品名称</label>
             <input id="play-world-name" maxLength={40} value={editName} onChange={(event) => setEditName(event.target.value)} />
-            <label htmlFor="play-world-id">地图 ID</label>
+            <label htmlFor="play-world-id">访问 ID</label>
             <input
               id="play-world-id"
               maxLength={63}
@@ -482,7 +482,7 @@ export default function HomePage({
               value={editPublicId}
               onChange={(event) => setEditPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
             />
-            <small className="fieldHint">玩家链接：/p/{editPublicId || '地图-id'} · 当前游玩端中必须唯一</small>
+            <small className="fieldHint">访问链接：/p/{editPublicId || '访问-id'} · 可以修改，当前游玩端中必须唯一</small>
             <label htmlFor="play-world-author">作者</label>
             <input id="play-world-author" maxLength={80} value={editAuthor} onChange={(event) => setEditAuthor(event.target.value)} />
             <label htmlFor="play-world-description">简介</label>
