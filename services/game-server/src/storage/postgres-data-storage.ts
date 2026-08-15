@@ -150,7 +150,8 @@ export class PostgresDataStorage implements CommonGameDataServer {
       );
     }
     const groupPrefix = tableType === 'group' ? 'group_' : '';
-    const baseName = `${groupPrefix}${this.options.mode}_${this.namespace(tableType)}_${storageName}`;
+    const namespace = this.namespace(tableType);
+    const baseName = `${groupPrefix}${this.options.mode}_${namespace}_${storageName}`;
     if (Buffer.byteLength(`${baseName}_keys`, 'utf8') <= 63) return baseName;
     // PostgreSQL identifiers are limited to 63 bytes. UUID namespaces plus a
     // valid 50-character storage name can exceed that limit, so keep readable
@@ -158,21 +159,10 @@ export class PostgresDataStorage implements CommonGameDataServer {
     // for oversized combinations. The full UUID still remains the logical
     // namespace and lock identity through this digest.
     const digest = createHash('sha256')
-      .update(`${tableType}\0${this.options.mode}\0${this.namespace(tableType)}\0${storageName}`)
+      .update(`${tableType}\0${this.options.mode}\0${namespace}\0${storageName}`)
       .digest('hex')
       .slice(0, 48);
     return `storage_${digest}`;
-  }
-
-  private tableBaseCandidates(tableType: TableType, storageName: string) {
-    const canonical = this.tableBaseName(tableType, storageName);
-    if (tableType === 'group') return [canonical];
-    // Some older boxes deployments used an explicit map_ prefix. Prefer the
-    // canonical unprefixed name for new tables, but accept either on restore.
-    const legacy = `map_${this.options.mode}_${this.namespace(tableType)}_${storageName}`;
-    return Buffer.byteLength(`${legacy}_keys`, 'utf8') <= 63
-      ? [canonical, legacy]
-      : [canonical];
   }
 
   private tablesForBase(baseName: string): StorageTables {
@@ -225,21 +215,17 @@ export class PostgresDataStorage implements CommonGameDataServer {
     tableType: TableType,
     storageName: string,
   ) {
-    for (const baseName of this.tableBaseCandidates(tableType, storageName)) {
-      const candidate = this.tablesForBase(baseName);
-      try {
-        await this.pool.query(`SELECT 1 FROM ${candidate.data} LIMIT 0`);
-        await this.pool.query(`SELECT 1 FROM ${candidate.keys} LIMIT 0`);
-        return candidate;
-      } catch (error) {
-        // Missing candidates are normal. The first canonical pair is created
-        // below when no complete restored pair exists.
-        const code = (error as { code?: string }).code;
-        const message = error instanceof Error ? error.message : String(error);
-        if (code !== '42P01' && !/does not exist/i.test(message)) throw error;
-      }
+    const canonical = this.tables(tableType, storageName);
+    try {
+      await this.pool.query(`SELECT 1 FROM ${canonical.data} LIMIT 0`);
+      await this.pool.query(`SELECT 1 FROM ${canonical.keys} LIMIT 0`);
+      return canonical;
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      const message = error instanceof Error ? error.message : String(error);
+      if (code !== '42P01' && !/does not exist/i.test(message)) throw error;
     }
-    return this.createTables(this.tables(tableType, storageName));
+    return this.createTables(canonical);
   }
 
   private async createTables(tables: StorageTables) {

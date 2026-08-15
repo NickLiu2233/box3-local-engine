@@ -26,6 +26,8 @@ function validIdentity(value) {
     return (subjectPattern.test(value.subjectId) &&
         userIdPattern.test(value.userId) &&
         usernamePattern.test(value.username) &&
+        typeof value.boxId === 'string' &&
+        value.boxId.length <= 64 &&
         typeof value.displayName === 'string' &&
         value.displayName.length >= 1 &&
         value.displayName.length <= 32 &&

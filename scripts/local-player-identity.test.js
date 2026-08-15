@@ -12,6 +12,7 @@ const account = {
   subjectId: '0123456789abcdef0123456789abcdef',
   userId: '42',
   username: 'local_player',
+  boxId: 'legacy_box_player',
   displayName: '本地玩家',
   avatar: '',
   role: 'player',
@@ -61,4 +62,12 @@ test('anonymous runtime identities are rejected', () => {
     userId: '',
     username: '',
   }, secret), /invalid runtime player identity/);
+});
+
+test('an unbound legacy Box ID is represented by an empty string', () => {
+  const assertion = signRuntimePlayerIdentity({ ...account, boxId: '' }, secret, 60_000);
+  const identity = verifyRuntimePlayerIdentity(assertion, secret);
+
+  assert.ok(identity);
+  assert.equal(identity.boxId, '');
 });

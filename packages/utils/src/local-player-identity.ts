@@ -7,6 +7,8 @@ export type RuntimePlayerIdentity = {
   subjectId: string;
   userId: string;
   username: string;
+  /** Optional legacy Box/神岛 account identifier. Empty when not bound. */
+  boxId: string;
   displayName: string;
   avatar: string;
   role: LocalPlayerRole;
@@ -41,6 +43,8 @@ function validIdentity(value: RuntimePlayerIdentity) {
     subjectPattern.test(value.subjectId) &&
     userIdPattern.test(value.userId) &&
     usernamePattern.test(value.username) &&
+    typeof value.boxId === 'string' &&
+    value.boxId.length <= 64 &&
     typeof value.displayName === 'string' &&
     value.displayName.length >= 1 &&
     value.displayName.length <= 32 &&

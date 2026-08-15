@@ -310,7 +310,10 @@ export async function createGameServer(spec: {
         userData = UserDetailSchema.alloc();
         userData.id = runtimeIdentity.userId;
         userData.displayname = runtimeIdentity.displayName;
-        userData.username = runtimeIdentity.username;
+        // Boxes exposes the legacy Box account identifier through the engine
+        // user's username field, which is then bound to entity.player.boxId.
+        // Keep the local login username separate from this compatibility ID.
+        userData.username = runtimeIdentity.boxId;
         userData.avatar_hash = runtimeIdentity.avatar;
         // A registered account editing a local project needs the same engine
         // privileges the old fake-admin shortcut supplied, while retaining

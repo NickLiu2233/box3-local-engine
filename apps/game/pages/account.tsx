@@ -2,17 +2,21 @@ import type { FormEvent } from 'react';
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
+import {
+  ArrowRight, Eye, EyeOff, LoaderCircle,
+  LockKeyhole, LogOut, MonitorUp, Moon, Sun,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import styles from './player-management.module.css';
 
+const THEME_KEY = 'box-player-admin-theme';
+
+type ConsoleTheme = 'system' | 'light' | 'dark';
+type NoticeKind = 'success' | 'error' | 'info';
+
 type Player = {
-  userId: string;
   username: string;
   displayName: string;
-  guest: boolean;
-  userKey: string;
-  role: string;
-  status: string;
 };
 
 type AccountPageProps = { returnUrl: string; returnLabel: string };
@@ -31,7 +35,7 @@ export const getServerSideProps: GetServerSideProps<AccountPageProps> = async ({
       returnUrl: creator
         ? process.env.BOX_CREATOR_PUBLIC_URL || 'http://127.0.0.1:3002'
         : process.env.BOX_PLAY_PUBLIC_URL || 'http://127.0.0.1:3000',
-      returnLabel: creator ? '返回创作端' : '返回游玩端',
+      returnLabel: creator ? '进入创作端' : '进入游玩端',
     },
   };
 };
@@ -44,8 +48,11 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState('');
+  const [loaded, setLoaded] = useState(false);
+  const [theme, setTheme] = useState<ConsoleTheme>('system');
+  const [notice, setNotice] = useState<{ kind: NoticeKind; message: string } | null>(null);
 
   async function refresh() {
     const response = await fetch('/api/player-auth/session', { cache: 'no-store' });
@@ -56,12 +63,30 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
     setRegistrationEnabled(data.registrationEnabled !== false);
   }
 
-  useEffect(() => { refresh().catch((error) => setNotice(error.message)); }, []);
+  useEffect(() => {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark' || stored === 'system') setTheme(stored);
+    refresh()
+      .catch((error) => setNotice({ kind: 'error', message: error.message }))
+      .finally(() => setLoaded(true));
+  }, []);
+
+  function cycleTheme() {
+    const next: ConsoleTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
+    setTheme(next);
+    localStorage.setItem(THEME_KEY, next);
+  }
+
+  function switchMode(next: 'login' | 'register') {
+    setMode(next);
+    setPassword('');
+    setNotice(null);
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setNotice('');
+    setNotice(null);
     try {
       const response = await fetch(`/api/player-auth/${mode}`, {
         method: 'POST',
@@ -72,9 +97,12 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
       if (!response.ok) throw new Error(data.message || '操作失败');
       setPlayer(data.player);
       setPassword('');
-      setNotice(mode === 'login' ? '登录成功' : '账号创建成功并已登录');
+      setNotice({
+        kind: 'success',
+        message: mode === 'login' ? '登录成功，可以继续进入作品。' : '账号创建成功，已经为你自动登录。',
+      });
     } catch (error) {
-      setNotice((error as Error).message);
+      setNotice({ kind: 'error', message: (error as Error).message });
     } finally {
       setBusy(false);
     }
@@ -82,53 +110,81 @@ export default function AccountPage({ returnUrl, returnLabel }: AccountPageProps
 
   async function logout() {
     setBusy(true);
-    await fetch('/api/player-auth/logout', { method: 'POST' });
-    await refresh();
-    setBusy(false);
-    setNotice('已安全退出，请重新登录后继续');
+    setNotice(null);
+    try {
+      const response = await fetch('/api/player-auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('退出登录失败，请稍后重试');
+      await refresh();
+      setNotice({ kind: 'info', message: '已安全退出，请重新登录后继续。' });
+    } catch (error) {
+      setNotice({ kind: 'error', message: (error as Error).message });
+    } finally {
+      setBusy(false);
+    }
   }
 
+  const themeLabel = theme === 'system' ? '跟随系统' : theme === 'light' ? '亮色模式' : '暗色模式';
+  const ThemeIcon = theme === 'system' ? MonitorUp : theme === 'light' ? Sun : Moon;
+
   return (
-    <>
-      <Head><title>玩家账号</title></Head>
-      <main className={styles.page}>
-        <header className={styles.header}>
-          <div><span className={styles.eyebrow}>PLAYER IDENTITY</span><h1>玩家账号</h1></div>
-          {player ? <Link className={styles.secondaryButton} href={returnUrl}>{returnLabel}</Link> : null}
-        </header>
+    <main className={`${styles.themeRoot} ${styles.accountShell}`} data-theme={theme}>
+      <Head><title>玩家账号 · BOX Local Engine</title></Head>
 
-        {notice ? <div className={styles.notice}>{notice}</div> : null}
-        <section className={styles.card}>
-          <div className={styles.identityBadge}>{player?.displayName?.slice(0, 1) || '账'}</div>
-          <div className={styles.identityInfo}>
-            <h2>{player?.displayName || '尚未登录'}</h2>
-            <p>{player ? `@${player.username}` : '登录后才能进入创作端和游玩端'}</p>
-            {player ? <code>{player.userKey}</code> : null}
-          </div>
-          {player ? <button className={styles.secondaryButton} disabled={busy} onClick={logout}>退出登录</button> : null}
-        </section>
+      <header className={styles.accountTopbar}>
+        <div className={styles.accountBrand}>
+          <span>BOX</span>
+          <strong>Local Engine</strong>
+        </div>
+        <button className={styles.accountThemeButton} type="button" onClick={cycleTheme} title={`当前：${themeLabel}`} aria-label={`切换主题，当前为${themeLabel}`}>
+          <ThemeIcon size={16} />
+        </button>
+      </header>
 
-        {!player ? (
-          <section className={styles.panel}>
-            <div className={styles.tabs}>
-              <button className={mode === 'login' ? styles.activeTab : ''} onClick={() => setMode('login')}>登录</button>
-              {registrationEnabled ? <button className={mode === 'register' ? styles.activeTab : ''} onClick={() => setMode('register')}>注册账号</button> : null}
+      <div className={styles.accountLayout}>
+        <section className={styles.accountCard} aria-labelledby="account-card-title">
+          <div className={styles.accountCardHeader}>
+            <div>
+              <h1 id="account-card-title">{player ? '登录成功' : mode === 'login' ? '登录' : '注册账号'}</h1>
+              {player ? <p>欢迎回来，{player.displayName}</p> : null}
             </div>
-            {!databaseEnabled ? (
-              <div className={styles.empty}>服主尚未配置 PostgreSQL，账号服务不可用，暂时不能进入创作端或游玩端。</div>
-            ) : mode === 'register' && !registrationEnabled ? (
-              <div className={styles.empty}>服主已关闭玩家注册。</div>
-            ) : (
-              <form className={styles.form} onSubmit={submit}>
-                <label>用户名<input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" /></label>
-                {mode === 'register' ? <label>游戏昵称<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="nickname" /></label> : null}
-                <label>密码<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} /></label>
-                <button className={styles.primaryButton} disabled={busy} type="submit">{busy ? '处理中…' : mode === 'login' ? '登录' : '创建账号'}</button>
-              </form>
-            )}
-          </section>
-        ) : null}
-      </main>
-    </>
+          </div>
+
+          {notice ? <div className={`${styles.accountNotice} ${styles[`accountNotice_${notice.kind}`]}`} role={notice.kind === 'error' ? 'alert' : 'status'} aria-live="polite">{notice.message}</div> : null}
+
+          {!loaded ? (
+            <div className={styles.accountLoading}><LoaderCircle className={styles.spinning} size={20} /><strong>正在验证登录状态</strong><small>正在连接 Player Service…</small></div>
+          ) : player ? (
+            <div className={styles.accountSignedIn}>
+              <div className={styles.accountProfile}>
+                <span className={styles.accountAvatar}>{player.displayName?.slice(0, 1) || '玩'}</span>
+                <div><strong>{player.displayName}</strong><span>@{player.username}</span></div>
+              </div>
+              <Link className={`${styles.primaryButton} ${styles.accountContinueButton}`} href={returnUrl}>{returnLabel}<ArrowRight size={15} /></Link>
+              <button className={styles.accountLogoutButton} type="button" disabled={busy} onClick={logout}><LogOut size={14} />{busy ? '正在退出…' : '退出当前账号'}</button>
+            </div>
+          ) : (
+            <>
+              <div className={styles.accountTabs} role="tablist" aria-label="账号操作">
+                <button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? styles.accountTabActive : ''} onClick={() => switchMode('login')}>登录</button>
+                {registrationEnabled ? <button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? styles.accountTabActive : ''} onClick={() => switchMode('register')}>注册账号</button> : null}
+              </div>
+
+              {!databaseEnabled ? (
+                <div className={styles.accountUnavailable}><LockKeyhole size={20} /><strong>账号服务尚未启用</strong><p>服主需要先配置 PostgreSQL，玩家才能注册并进入创作端或游玩端。</p></div>
+              ) : mode === 'register' && !registrationEnabled ? (
+                <div className={styles.accountUnavailable}><LockKeyhole size={20} /><strong>注册通道已关闭</strong><p>请联系服主创建账号，或使用已有账号登录。</p></div>
+              ) : (
+                <form className={styles.accountForm} onSubmit={submit}>
+                  <label htmlFor="account-username"><span>用户名</span><input id="account-username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" autoFocus required minLength={mode === 'register' ? 3 : 1} maxLength={32} pattern={mode === 'register' ? '[A-Za-z][A-Za-z0-9_]{2,31}' : undefined} placeholder="输入用户名" /></label>
+                  {mode === 'register' ? <label htmlFor="account-display-name"><span>游戏昵称</span><input id="account-display-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} autoComplete="nickname" required maxLength={32} placeholder="其他玩家看到的名字" /></label> : null}
+                  <label htmlFor="account-password"><span>密码</span><div className={styles.accountPasswordField}><input id="account-password" type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} maxLength={128} placeholder="至少 8 个字符" /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? '隐藏密码' : '显示密码'} title={showPassword ? '隐藏密码' : '显示密码'}>{showPassword ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>
+                  <button className={`${styles.primaryButton} ${styles.accountSubmitButton}`} disabled={busy} type="submit">{busy ? <><LoaderCircle className={styles.spinning} size={15} />正在处理…</> : <>{mode === 'login' ? '登录并继续' : '创建账号'}<ArrowRight size={15} /></>}</button>
+                </form>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+    </main>
   );
 }

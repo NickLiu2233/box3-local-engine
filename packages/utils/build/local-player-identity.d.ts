@@ -4,6 +4,7 @@ export type RuntimePlayerIdentity = {
     subjectId: string;
     userId: string;
     username: string;
+    boxId: string;
     displayName: string;
     avatar: string;
     role: LocalPlayerRole;

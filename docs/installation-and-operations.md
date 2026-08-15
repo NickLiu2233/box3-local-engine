@@ -296,7 +296,7 @@ Player Service 是玩家身份的唯一写入者。Creator 和 Play 只消费它
 - `entity.player.id`：当次连接实体 ID，会变化；
 - `entity.player.userKey`：账号的稳定伪名键，推荐作为存档键；
 - `entity.player.userId`：注册账号的 PostgreSQL ID；未登录玩家无法建立游戏会话；
-- `entity.player.boxId`：本地唯一用户名；
+- `entity.player.boxId`：管理员绑定的旧平台神岛 ID，未绑定时为空字符串；
 - `entity.player.name`：显示昵称。
 
 地图存储语义：

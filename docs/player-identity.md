@@ -28,18 +28,22 @@ HTTPS。三个服务使用完全不同的顶级域名时不能共享登录 Cooki
 | --- | --- |
 | `entity.player.userKey` | 服务端从稳定 subject 签名出的伪名键，推荐作为玩家存档键 |
 | `entity.player.userId` | PostgreSQL 账号 ID |
-| `entity.player.boxId` | 唯一登录用户名 |
+| `entity.player.boxId` | 管理员绑定的旧平台神岛 ID；未绑定时为空字符串 |
 | `entity.player.name` | 服主可管理的游戏昵称 |
 
 不要用昵称、IP 或临时 `player.id` 作为长期存档键。`PERMISSION_TOKEN_SECRET` 更换后
 `userKey` 会变化，正式部署后不得随意轮换。
+
+神岛 ID 由 Player Service 的玩家管理后台单独维护。服主和管理员可以绑定、修改或
+清除；普通玩家不能自行设置。该字段只兼容旧地图脚本，不参与登录、权限判断或存档
+隔离。绑定变更会在玩家下一次建立地图连接时生效。
 
 ## PostgreSQL 数据
 
 默认 schema 为 `box_identity`：
 
 - `principals`：稳定 subject、创建时间、首次/最后访问时间与 IP；
-- `users`：用户名、昵称、密码摘要、头像、角色、状态、注册 IP、最后登录时间/IP和登录次数；
+- `users`：用户名、可选神岛 ID、昵称、密码摘要、头像、角色、状态、注册 IP、最后登录时间/IP和登录次数；
 - `sessions`：有效设备会话、创建/最后访问时间与 IP、User-Agent 和过期时间；
 - `login_events`：每一次成功登录的时间、IP 与 User-Agent；
 - `audit_logs`：服主修改资料、封禁、强制下线和删除等敏感操作；

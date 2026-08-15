@@ -8,6 +8,7 @@ function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
     subjectId: '0123456789abcdef0123456789abcdef',
     userId: '42',
     username: 'player_42',
+    boxId: '',
     displayName: '玩家四十二',
     avatar: '',
     role: 'player',
@@ -51,5 +52,15 @@ describe('player management CSV export', () => {
     expect(csv).toContain("'=HYPERLINK");
     expect(csv).toContain("'@danger");
     expect(csv).toContain("'+cmd");
+  });
+
+  test('exports the optional legacy Box ID independently from the local username', () => {
+    const csv = serializeManagedPlayersCsv([player({
+      username: 'local_player',
+      boxId: 'legacy_box_player',
+    })]);
+
+    expect(csv).toContain('神岛ID');
+    expect(csv).toContain('local_player,legacy_box_player');
   });
 });
