@@ -37,8 +37,9 @@
 .brand strong { color: #25282d; font-size: 15px; }
 .brand small { color: #9a9da3; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
 .sidebar nav { display: grid; gap: 5px; }
-.sidebar nav button { display: flex; width: 100%; align-items: center; gap: 11px; padding: 11px 10px; border: 0; border-radius: 8px; color: #656970; background: transparent; text-align: left; cursor: pointer; }
+.sidebar nav button { display: flex; width: 100%; align-items: center; gap: 11px; padding: 11px 10px; border: 0; border-radius: 8px; color: #656970; background: transparent; text-align: left; cursor: pointer; transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(.23, 1, .32, 1); }
 .sidebar nav button:hover { background: #f5f6f7; }
+.sidebar nav button:active { transform: scale(.98); }
 .sidebar nav button > span { display: grid; width: 26px; height: 26px; place-items: center; color: #8b8e94; font-size: 17px; }
 .sidebar nav button div { display: grid; gap: 3px; font-size: 13px; font-weight: 650; }
 .sidebar nav button small { color: #9a9da3; font-size: 10px; font-weight: 450; }
@@ -58,11 +59,12 @@
 }
 
 .header p { margin: 8px 0 0; color: #73767d; font-size: 14px; }
-.headerButtons { display: flex; align-items: center; gap: 8px; }
-.operatorChip { display: flex; min-height: 38px; align-items: center; gap: 8px; padding: 5px 10px; border: 1px solid #dfe1e4; border-radius: 8px; color: #656970; background: #fff; }
-.operatorChip > span { display: grid; gap: 1px; }
-.operatorChip strong { color: #303238; font-size: 11px; font-weight: 650; }
-.operatorChip small { color: #92959b; font-size: 9px; }
+.headerTools { display: flex; flex: 0 0 auto; align-items: center; gap: 14px; }
+.headerIdentity { display: flex; min-width: 0; align-items: center; gap: 9px; padding-right: 14px; border-right: 1px solid #dfe1e4; color: #70747b; }
+.headerIdentity > span { display: grid; min-width: 0; gap: 2px; }
+.headerIdentity strong { overflow: hidden; max-width: 180px; color: #303238; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.headerIdentity small { color: #92959b; font-size: 9px; }
+.headerActions { display: flex; align-items: center; gap: 8px; }
 .titleRow { display: flex; align-items: baseline; gap: 12px; }
 .titleRow h1 { margin: 0; font-size: 26px; letter-spacing: -.025em; }
 .titleRow span { color: #85888f; font-size: 13px; }
@@ -139,6 +141,71 @@
 .metricGrid small { overflow: hidden; color: #9a9da3; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .metricGrid .dangerText { color: #c83a3a; }
 
+.managementShortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.managementShortcuts button {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e3e5e7;
+  border-radius: 9px;
+  color: inherit;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(.23, 1, .32, 1);
+}
+.managementShortcuts button:hover { border-color: #cfd2d6; background: #fafafa; }
+.managementShortcuts button:active { transform: scale(.98); }
+.managementShortcuts button > span { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 7px; color: #62666d; background: #f0f1f2; }
+.managementShortcuts button > div { display: grid; min-width: 0; gap: 3px; }
+.managementShortcuts strong { color: #34373c; font-size: 11px; }
+.managementShortcuts small { overflow: hidden; color: #92959b; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.managementShortcuts b { color: #555960; font-size: 16px; }
+
+.contextStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.contextStats article {
+  min-width: 0;
+  padding: 17px 18px;
+  border: 1px solid #e3e5e7;
+  border-radius: 10px;
+  background: #fff;
+}
+.contextStats span, .contextStats strong, .contextStats small { display: block; }
+.contextStats span { color: #7f8288; font-size: 11px; font-weight: 650; }
+.contextStats strong { margin: 8px 0 6px; color: #292c31; font-size: 24px; letter-spacing: -.04em; }
+.contextStats small { overflow: hidden; color: #979aa0; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.contextStats .dangerText { color: #c83a3a; }
+
+.sectionCallout {
+  display: flex;
+  min-height: 58px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #dfe1e4;
+  border-radius: 9px;
+  background: #fff;
+}
+.sectionCallout > div { display: flex; min-width: 0; align-items: center; gap: 10px; color: #666a71; }
+.sectionCallout > div > span { display: grid; min-width: 0; gap: 3px; }
+.sectionCallout strong { color: #373a40; font-size: 12px; }
+.sectionCallout small { overflow: hidden; color: #898c92; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
 .riskGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
 .riskGrid article { min-width: 0; padding: 16px; border: 1px solid #e3e5e7; border-radius: 10px; background: #fff; }
 .riskGrid span { display: flex; align-items: center; gap: 7px; color: #73777e; font-size: 11px; font-weight: 650; }
@@ -154,7 +221,7 @@
 .riskList time { text-align: right; }
 
 .dashboardColumns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr); gap: 14px; }
-.securityGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.securityGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
 .dataPanel { overflow: hidden; min-width: 0; border: 1px solid #e3e5e7; border-radius: 10px; background: #fff; }
 .panelHeading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 16px 18px; border-bottom: 1px solid #ececef; }
 .panelHeading h2 { margin: 0 0 4px; color: #303238; font-size: 14px; }
@@ -216,7 +283,7 @@
 
 .primaryButton, .secondaryButton, .dangerButton, .textButton {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 38px;
   align-items: center;
   justify-content: center;
   padding: 0 14px;
@@ -263,8 +330,9 @@
 
 .batchToolbar { display: flex; align-items: center; gap: 7px; margin: -4px 0 12px; padding: 9px 10px; border: 1px solid #dfe1e4; border-radius: 8px; background: #fff; box-shadow: 0 4px 16px rgba(28, 31, 35, .05); }
 .batchToolbar strong { margin-right: 4px; color: #34373c; font-size: 12px; }
-.batchToolbar button { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #dedfe2; border-radius: 6px; color: #555960; background: #fafafa; font: inherit; font-size: 11px; cursor: pointer; }
+.batchToolbar button { display: inline-flex; min-height: 30px; align-items: center; gap: 5px; padding: 0 9px; border: 1px solid #dedfe2; border-radius: 6px; color: #555960; background: #fafafa; font: inherit; font-size: 11px; cursor: pointer; transition: background-color 140ms ease, transform 140ms cubic-bezier(.23, 1, .32, 1); }
 .batchToolbar button:hover { background: #f0f1f2; }
+.batchToolbar button:active { transform: scale(.97); }
 .batchToolbar .batchClear { margin-left: auto; border-color: transparent; background: transparent; }
 
 .activityToolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
@@ -324,7 +392,7 @@
 
 .drawer {
   display: flex;
-  width: min(720px, 100%);
+  width: min(920px, 100%);
   height: 100%;
   flex-direction: column;
   background: #f7f7f8;
@@ -348,8 +416,58 @@
 .closeButton { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; color: #73767d; font-size: 24px; }
 .closeButton:hover { background: #f1f2f3; }
 
-.drawerBody { overflow: auto; flex: 1; padding: 18px 22px 28px; }
-.detailSection { margin-bottom: 14px; padding: 18px; border: 1px solid #e4e5e7; border-radius: 10px; background: #fff; }
+.detailWorkspace {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 190px minmax(0, 1fr);
+}
+.detailTabs {
+  display: flex;
+  overflow-y: auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-right: 1px solid #e2e3e5;
+  background: #fff;
+}
+.detailTabs button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 52px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  color: #75787f;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(.23, 1, .32, 1);
+}
+.detailTabs button > svg { flex: 0 0 auto; }
+.detailTabs button > span { display: grid; min-width: 0; gap: 3px; }
+.detailTabs button strong, .detailTabs button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detailTabs button strong { color: inherit; font-size: 11px; font-weight: 650; }
+.detailTabs button small { color: #9a9da3; font-size: 9px; font-weight: 450; }
+.detailTabs button:hover { color: #303238; background: #f2f3f4; }
+.detailTabs button:active { transform: scale(.97); }
+.detailTabs .detailTabActive { color: #fff; background: #272b31; }
+.detailTabs .detailTabActive:hover { color: #fff; background: #272b31; }
+.detailTabs .detailTabActive small { color: #c8cbd0; }
+.detailTabs .detailDangerTab { margin-top: auto; color: #b13a3a; }
+.detailTabs .detailDangerTab small { color: #b97c7c; }
+
+.drawerBody { overflow: auto; min-width: 0; padding: 22px 24px 30px; }
+.detailPageHeader { margin-bottom: 18px; }
+.detailPageHeader > span { color: #96999f; font-size: 9px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+.detailPageHeader h3 { margin: 6px 0 5px; color: #2e3136; font-size: 19px; letter-spacing: -.02em; }
+.detailPageHeader p { margin: 0; color: #858990; font-size: 11px; line-height: 1.55; }
+.detailSection { padding: 20px; border: 1px solid #e4e5e7; border-radius: 10px; background: #fff; }
 .sectionHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 15px; }
 .sectionHeading h3 { margin: 0; color: #303238; font-size: 14px; }
 .sectionHeading span { color: #94979d; font-size: 11px; }
@@ -360,6 +478,10 @@
 .formGrid input, .formGrid select { height: 38px; }
 .formGrid textarea { min-height: 76px; padding-top: 9px; padding-bottom: 9px; resize: vertical; line-height: 1.5; }
 .formGrid input:focus, .formGrid select:focus, .formGrid textarea:focus { border-color: #7a7f87; box-shadow: 0 0 0 3px rgba(40, 44, 50, .08); }
+.singleField { display: grid; gap: 12px; }
+.singleField label { display: grid; gap: 7px; color: #656970; font-size: 12px; font-weight: 600; }
+.singleField select { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #d7d9dc; border-radius: 7px; outline: none; color: #303238; background: #fff; font: inherit; }
+.singleField p { margin: 0; color: #858990; font-size: 11px; line-height: 1.6; }
 .fullField { grid-column: 1 / -1; }
 .fieldHelp { align-self: end; padding: 10px 12px; border-radius: 7px; color: #777b82; background: #f5f6f7; font-size: 11px; line-height: 1.5; }
 .banPresets { display: grid; align-content: end; gap: 7px; color: #656970; font-size: 12px; font-weight: 600; }
@@ -408,6 +530,11 @@
 .timelineList strong { color: #3a3d43; font-size: 11px; }
 .timelineList small { margin-top: 3px; color: #92959b; font-size: 9px; }
 .timelineList time { color: #7d8188; font-size: 10px; text-align: right; }
+.dangerSection { border-color: #efcccc; background: #fffafa; }
+.dangerSummary { display: flex; align-items: flex-start; gap: 12px; color: #b43b3b; }
+.dangerSummary svg { flex: 0 0 auto; margin-top: 1px; }
+.dangerSummary strong { display: block; color: #8f2d2d; font-size: 12px; }
+.dangerSummary p { margin: 5px 0 0; color: #9b5b5b; font-size: 11px; line-height: 1.65; }
 
 .drawerActions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid #e2e3e5; background: #fff; }
 .drawerActions span { flex: 1; }
@@ -431,13 +558,15 @@
 
 @media (max-width: 900px) {
   .adminShell { grid-template-columns: 1fr; }
-  .sidebar { position: static; height: auto; padding-bottom: 12px; border-right: 0; border-bottom: 1px solid #e1e3e6; }
+  .sidebar { position: static; width: 100%; max-width: 100vw; min-width: 0; height: auto; overflow: hidden; padding-bottom: 12px; border-right: 0; border-bottom: 1px solid #e1e3e6; }
   .brand { padding-bottom: 14px; }
   .sidebar nav { display: flex; overflow-x: auto; }
   .sidebar nav button { min-width: 160px; }
   .sidebarFooter { display: none; }
-  .workspace { padding: 28px 22px 60px; }
+  .workspace { width: 100%; max-width: 100vw; padding: 28px 22px 60px; }
   .metricGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .managementShortcuts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .contextStats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .riskGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboardColumns, .securityGrid { grid-template-columns: 1fr; }
   .tableCard { overflow-x: auto; }
@@ -455,8 +584,16 @@
 @media (max-width: 640px) {
   .workspace { padding: 22px 12px 50px; }
   .metricGrid { grid-template-columns: 1fr 1fr; }
+  .managementShortcuts { grid-template-columns: 1fr; }
+  .contextStats { grid-template-columns: 1fr 1fr; }
+  .sectionCallout { align-items: stretch; flex-direction: column; }
+  .sectionCallout .secondaryButton { justify-content: center; }
   .riskGrid { grid-template-columns: 1fr 1fr; }
-  .headerButtons { flex-wrap: wrap; justify-content: flex-end; }
+  .header { flex-direction: column; }
+  .headerTools { width: 100%; align-items: stretch; flex-direction: column; gap: 10px; }
+  .headerIdentity { padding: 0 0 10px; border-right: 0; border-bottom: 1px solid #e1e3e6; }
+  .headerActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .headerActions .secondaryButton { padding-right: 10px; padding-left: 10px; }
   .page { width: min(100% - 24px, 1120px); padding-top: 24px; }
   .header { align-items: flex-start; }
   .header p { max-width: 260px; }
@@ -467,12 +604,119 @@
   .searchField { flex-basis: 100%; }
   .drawer { width: 100%; }
   .drawerHeader, .drawerActions { padding-right: 14px; padding-left: 14px; }
-  .drawerBody { padding-right: 14px; padding-left: 14px; }
+  .detailWorkspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+  .detailTabs { overflow-x: auto; overflow-y: hidden; flex-direction: row; padding: 8px 10px; border-right: 0; border-bottom: 1px solid #e2e3e5; }
+  .detailTabs button { width: auto; min-width: 148px; min-height: 48px; }
+  .detailTabs .detailDangerTab { margin-top: 0; }
+  .drawerBody { padding: 18px 14px 24px; }
   .formGrid, .detailGrid { grid-template-columns: 1fr; }
   .drawerActions .dangerButton { padding-right: 10px; padding-left: 10px; }
-  .operatorChip { display: none; }
   .segmented { width: 100%; }
   .segmented button { flex: 1; }
   .auditTable article { grid-template-columns: 30px minmax(0, 1fr); }
   .auditTable time { grid-column: 2; text-align: left; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .adminShell { color-scheme: dark; color: #e7e9ec; background: #141619; }
+  .sidebar { border-color: #2d3035; background: #1a1c20; }
+  .brand strong, .titleRow h1 { color: #f0f1f3; }
+  .brand small, .header p, .titleRow span { color: #92969d; }
+  .sidebar nav button { color: #aeb2b9; }
+  .sidebar nav button:hover { background: #23262b; }
+  .sidebar nav button > span, .sidebar nav button small { color: #858a92; }
+  .sidebar nav .navActive { color: #f4f5f6; background: #2a2d32; }
+  .sidebar nav .navActive > span { color: #f4f5f6; }
+  .sidebarFooter { border-color: #2d3035; color: #92969d; }
+  .healthDot { box-shadow: 0 0 0 3px #263b2e; }
+
+  .notice, .metricGrid article, .contextStats article,
+  .managementShortcuts button, .riskGrid article, .dataPanel, .sectionCallout,
+  .tableCard, .batchToolbar, .stats, .card, .panel {
+    border-color: #30343a;
+    color: #dfe2e6;
+    background: #1d2024;
+  }
+  .headerIdentity strong, .metricGrid strong, .contextStats strong,
+  .managementShortcuts strong, .riskGrid strong, .sectionCallout strong,
+  .panelHeading h2, .breakdown dd { color: #eceef1; }
+  .headerIdentity small, .metricGrid span, .metricGrid small,
+  .contextStats span, .contextStats small, .managementShortcuts small,
+  .riskGrid span, .riskGrid small, .sectionCallout small,
+  .panelHeading p, .panelHeading > span, .breakdown dt { color: #92969d; }
+  .managementShortcuts button:hover { border-color: #454a52; background: #24272c; }
+  .managementShortcuts button > span, .auditIcon { color: #b1b5bc; background: #2b2e34; }
+  .managementShortcuts b { color: #c5c8ce; }
+  .panelHeading, .activityList article, .breakdown div, .riskList article,
+  .auditTable article { border-color: #2d3035; }
+  .activityList strong, .riskList strong, .auditTable strong { color: #dfe2e6; }
+  .activityList small, .activityMeta strong, .riskList span, .riskList time,
+  .auditTable small, .auditTable time { color: #8f949c; }
+
+  .searchField, .filterSelect, .segmented, .formGrid input, .formGrid select,
+  .formGrid textarea, .singleField select, .passwordReset input, .loginDialog input {
+    border-color: #3a3e45;
+    color: #e7e9ec;
+    background: #202328;
+  }
+  .searchField input { color: #e7e9ec; }
+  .searchField svg { color: #8d929a; }
+  .filterSelect:hover, .searchField:focus-within { border-color: #616771; }
+  .secondaryButton { border-color: #3a3e45; color: #dfe2e6; background: #22252a; }
+  .secondaryButton:hover { background: #2b2f35; }
+  .primaryButton { border-color: #f0f1f3; color: #17191c; background: #f0f1f3; }
+  .primaryButton:hover { background: #d7dade; }
+  .dangerButton { border-color: #663737; color: #ff9d9d; background: #332123; }
+  .textButton { color: #aeb3ba; }
+  .batchToolbar button { border-color: #3a3e45; color: #c7cad0; background: #25282d; }
+  .batchToolbar button:hover { background: #30343a; }
+  .segmented button { color: #9ca1a9; }
+  .segmented .segmentActive { color: #17191c; background: #eceef1; }
+
+  .headerIdentity { border-color: #353940; color: #aeb3ba; }
+  .tableCard thead,
+  .tableCard thead tr,
+  .tableCard thead th { color: #a6abb2; background: #23262b; }
+  .tableCard th, .tableCard td { border-color: #2c3035; }
+  .tableCard td, .tableCard td strong { color: #dfe2e6; }
+  .tableCard td small { color: #8f949c; }
+  .tableCard tbody tr:hover, .tableCard tbody tr:focus { background: #24272c; }
+  .avatar, .largeAvatar { color: #dfe2e6; background: #30343a; }
+  .goodStatus { color: #87d8a6; background: #21362a; }
+  .badStatus { color: #ff9c9c; background: #3a2325; }
+  .compactEmpty { border-color: #3a3e45; color: #8f949c; }
+
+  .drawer { color: #e7e9ec; background: #17191c; }
+  .drawerHeader, .detailTabs, .drawerActions { border-color: #30343a; background: #1d2024; }
+  .drawerHeader h2, .detailPageHeader h3, .detailSection h3, .passwordReset strong { color: #eceef1; }
+  .drawerHeader small, .drawerEyebrow, .detailPageHeader > span, .detailPageHeader p, .sectionHeading span { color: #92969d; }
+  .closeButton:hover, .detailTabs button:hover { background: #2a2d32; }
+  .detailTabs button { color: #a7abb2; }
+  .detailTabs .detailTabActive, .detailTabs .detailTabActive:hover { color: #17191c; background: #eceef1; }
+  .detailTabs .detailTabActive small { color: #60646b; }
+  .detailTabs .detailDangerTab { color: #ff9c9c; }
+  .detailTabs .detailDangerTab small { color: #b97878; }
+  .detailSection { border-color: #30343a; background: #1d2024; }
+  .formGrid label, .singleField label, .banPresets { color: #afb3ba; }
+  .singleField p { color: #92969d; }
+  .fieldHelp, .infoNote, .detailGrid div { color: #aeb2b9; background: #25282d; }
+  .detailGrid dt { color: #8f949c; }
+  .detailGrid dd { color: #dfe2e6; }
+  .recordList article, .relatedList button { border-color: #30343a; background: #202328; }
+  .recordList strong, .relatedList strong, .timelineList strong { color: #dfe2e6; }
+  .recordList span, .recordList small, .relatedList small, .timelineList small,
+  .timelineList time { color: #8f949c; }
+  .relatedList button:hover { background: #292d32; }
+  .timelineList article { border-color: #30343a; }
+  .timelineList article > span { color: #b1b5bc; background: #2b2e34; }
+  .dangerSection { border-color: #60363a; background: #2a1f21; }
+  .dangerSummary { color: #ff9c9c; }
+  .dangerSummary strong { color: #ffb0b0; }
+  .dangerSummary p { color: #c98b8b; }
+
+  .loginBackdrop, .backdrop { background: rgba(6, 7, 8, .66); }
+  .loginDialog { color: #e7e9ec; background: #1d2024; }
+  .loginDialog h2 { color: #f0f1f3; }
+  .loginDialog p, .loginDialog label { color: #a1a5ac; }
+  .loginError { color: #ff9c9c; background: #3a2325; }
 }

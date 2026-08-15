@@ -341,7 +341,7 @@ export default function HomePage({
           <div className="playerGrid">
             {worldGroups.map(({ groupId, main }) => (
               <article className="card" key={groupId}>
-                <Link className="cardLink" href={`/play-launch?world=${encodeURIComponent(main.publicId)}`}>
+                <Link className="cardLink" href={`/p/${encodeURIComponent(main.publicId)}`}>
                   <div className="cover">
                     {main.cover ? <img src={main.cover} alt="" /> : <span>{main.name.slice(0, 1)}</span>}
                   </div>
@@ -377,7 +377,7 @@ export default function HomePage({
                   <div className="mainMap">
                     <span className="roleLabel mainRole">主地图</span>
                     <article className="card">
-                      <Link className="cardLink" href={`/play-launch?world=${encodeURIComponent(main.publicId)}`}>
+                      <Link className="cardLink" href={`/p/${encodeURIComponent(main.publicId)}`}>
                         <div className="cover">
                           {main.cover ? <img src={main.cover} alt="" /> : <span>{main.name.slice(0, 1)}</span>}
                         </div>
@@ -399,7 +399,7 @@ export default function HomePage({
                           <div className="submapItem" key={world.id}>
                             <span className="roleLabel">副地图 {String(index + 1).padStart(2, '0')}</span>
                             <article className="card">
-                              <Link className="cardLink" href={`/play-launch?world=${encodeURIComponent(world.publicId)}`}>
+                              <Link className="cardLink" href={`/p/${encodeURIComponent(world.publicId)}`}>
                                 <div className="cover">
                                   {world.cover ? <img src={world.cover} alt="" /> : <span>{world.name.slice(0, 1)}</span>}
                                 </div>

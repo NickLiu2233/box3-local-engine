@@ -42,6 +42,11 @@ async function main() {
     /BOX_PLAY_PREWARM_RUNTIMES/,
     'play runtime prewarm must be configurable',
   );
+  assert.match(
+    launcherSource,
+    /for \(const world of worlds\) \{\s*await playLibrary\.ensureRuntime\(world\.id\)/,
+    'play must generate a persistent prebake cache for every installed map',
+  );
   assert.doesNotMatch(
     launcherSource,
     /prewarmCount\([\s\S]{0,120}PREWARM_RUNTIMES[\s\S]{0,80}\n\s*1,\n/,

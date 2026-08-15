@@ -52,9 +52,9 @@ Service 管理页、PostgreSQL 和 Redis 不应直接暴露到互联网。
 
 登录、注册和玩家管理只在玩家服务中提供；Play 的 `3000` 端口不显示这些入口。
 
-Play 默认在后台预热一个主地图，并把预烘焙结果保存到 `box-play-storage` 卷。可在 `.env`
-使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整预热数量，设为 `0` 可关闭；该值不应超过
-`BOX_PLAY_MAX_RUNTIMES`。运行时回收或容器重启不会再次完整烘焙未变化的地图。
+Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到 `box-play-storage` 卷。
+使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整缓存完成后继续常驻的地图数量，设为 `0` 可关闭；
+该值不应超过 `BOX_PLAY_MAX_RUNTIMES`。运行时回收或容器重启不会再次完整烘焙未变化的地图。
 
 地图可以通过网页服主管理导入。先在 `.env` 设置：
 

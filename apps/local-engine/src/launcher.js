@@ -854,10 +854,10 @@ async function main() {
 
   await waitFor(`http://127.0.0.1:${webPort}/api/health-check`)
 
-  // Boxes makes container allocation and shared-build-cache work happen
-  // before the engine route becomes interactive. Keep the manager responsive,
-  // then warm a small, configurable recent set in the background. Runtime
-  // capacity/LRU still owns the hard upper bound.
+  // Boxes prepares shared build-cache products before the engine route becomes
+  // interactive. Do the same in the background for every installed play map.
+  // Runtime capacity/LRU still owns the hard process bound; evicted runtimes
+  // leave their persistent prebake products behind for the next player.
   const prewarmTimer = setTimeout(async () => {
     try {
       if (creatorMode && editLibrary && creatorPlayLibrary) {
@@ -889,8 +889,16 @@ async function main() {
           process.env.BOX_PLAY_MAX_RUNTIMES || 8,
           process.env.BOX_PLAY_MAX_RUNTIMES || 8
         )
-        for (const world of worlds.slice(0, count)) {
-          await playLibrary.ensureRuntime(world.id)
+        if (count > 0) {
+          for (const world of worlds) {
+            await playLibrary.ensureRuntime(world.id)
+          }
+          // The complete library now has a persistent cache. Re-open the
+          // preferred main-map-first set so the configured number also remains
+          // resident for truly immediate player joins.
+          for (const world of worlds.slice(0, count)) {
+            await playLibrary.ensureRuntime(world.id)
+          }
         }
       }
     } catch (error) {
