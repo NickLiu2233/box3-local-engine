@@ -90,6 +90,7 @@ const requiredFiles = [
   'apps/local-engine/src/play-library.js',
   'apps/local-engine/src/play-image.js',
   'apps/local-engine/src/prune-player-build.js',
+  'apps/local-engine/src/runtime-storage-namespace.js',
   'apps/local-engine/src/stage-runtime-data.js',
   'services/game-server/scripts/dev-launch.js',
   'services/game-server/scripts/check-local-derived-content.ts',
@@ -421,6 +422,12 @@ for (const [name, stage, flag] of [
     dockerFile,
     `${name} staged runtime data`,
     /COPY --from=[^\s]+ --chown=node:node \/opt\/runtime-data \/app\/apps\/local-engine\/data/,
+  )
+  requirePattern(
+    stage,
+    dockerFile,
+    `${name} storage namespace runtime`,
+    /COPY --from=[^\s]+ --chown=node:node \/app\/apps\/local-engine\/src\/runtime-storage-namespace\.js \/app\/apps\/local-engine\/src\/runtime-storage-namespace\.js/,
   )
   forbidPattern(stage, dockerFile, `${name} broad source-tree copy`, /^COPY (?!.*--from=).*$/m)
 }
