@@ -654,10 +654,16 @@ function restoreProjectSnapshot(id, requestedSnapshot) {
     throw new Error('所选工程恢复快照不存在')
   }
   for (const name of snapshots) {
-    const temporaryRoot = path.join(os.tmpdir(), `box-project-restore-${process.pid}-${Date.now()}`)
+    // Keep the extracted snapshot on the same filesystem as the project. In
+    // Docker, /tmp belongs to the container layer while projectsRoot is often
+    // a mounted volume; renameSync across those mounts fails with EXDEV. A
+    // same-volume staging directory also preserves the atomic source swap and
+    // rollback behavior below.
+    const temporaryRoot = fs.mkdtempSync(
+      path.join(projectRoot(id), '.box-project-restore-'),
+    )
     let brokenRoot
     try {
-      fs.mkdirSync(temporaryRoot, { recursive: true })
       runTar(['-xzf', path.join(root, name), '-C', temporaryRoot], '无法读取工程恢复快照')
       const restoredSource = path.join(temporaryRoot, 'source')
       const validation = validateProjectSource(restoredSource)
