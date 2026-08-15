@@ -51,7 +51,6 @@ export class MonacoEditorController {
     this.monaco = monaco;
     this.isReady = true;
     this.model = monacoEditor.getModel();
-    this.model.setEOL(0);
 
     // 增加监听
     this.monacoEditor.addCommand(
@@ -89,12 +88,12 @@ export class MonacoEditorController {
       CodeEditorClientController.instance.onDidBlurEditorText();
     });
 
-    // Keep diagnostics intentionally small: syntax errors plus API/type misuse.
-    // Style suggestions (for example unused variables) stay disabled so game
-    // scripts are not flooded with low-value warnings.
+    // Project-wide live diagnostics are intentionally disabled. Imported maps
+    // can contain many scripts, and keeping the JavaScript worker validating
+    // them while the editor is open competes with the renderer and runtime.
     monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-      noSemanticValidation: false,
-      noSyntaxValidation: false,
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
       noSuggestionDiagnostics: true,
     });
 
@@ -103,11 +102,10 @@ export class MonacoEditorController {
       target: monaco.languages.typescript.ScriptTarget.ES2020,
       allowNonTsExtensions: true,
       allowJs: true,
-      checkJs: true,
+      checkJs: false,
       noEmit: true,
       lib: ['es2015'],
     });
-    monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
 
     if (!this._sqlEnabled) {
       setTimeout(() => {
@@ -131,7 +129,6 @@ export class MonacoEditorController {
     }
     this.pauseSendChange = true;
     this.monacoEditor.setValue(text);
-    this.model.setEOL(0);
     this.pauseSendChange = false;
   };
 

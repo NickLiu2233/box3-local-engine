@@ -899,10 +899,40 @@ function updateProject(id, patch) {
 }
 
 function runTar(args, message) {
-  const result = spawnSync('tar', args, { encoding: 'utf8' })
+  const result = spawnSync('tar', args, {
+    encoding: 'utf8',
+    // Keep ordinary tar failures readable without allowing the Node default
+    // 1 MiB child-process buffer to abort larger project operations.
+    maxBuffer: 16 * 1024 * 1024,
+  })
   if (result.error) throw result.error
   if (result.status !== 0) throw new Error(`${message}: ${result.stderr || result.stdout || 'tar failed'}`)
   return result.stdout
+}
+
+function forEachFileLineSync(filePath, visit) {
+  const descriptor = fs.openSync(filePath, 'r')
+  const chunk = Buffer.allocUnsafe(64 * 1024)
+  let pending = ''
+  try {
+    while (true) {
+      const bytesRead = fs.readSync(descriptor, chunk, 0, chunk.length, null)
+      if (!bytesRead) break
+      pending += chunk.toString('utf8', 0, bytesRead)
+      let newline = pending.indexOf('\n')
+      while (newline >= 0) {
+        visit(pending.slice(0, newline).replace(/\r$/, ''))
+        pending = pending.slice(newline + 1)
+        newline = pending.indexOf('\n')
+      }
+      if (pending.length > 16 * 1024) {
+        throw new Error('工程包包含过长的文件路径')
+      }
+    }
+    if (pending) visit(pending.replace(/\r$/, ''))
+  } finally {
+    fs.closeSync(descriptor)
+  }
 }
 
 function writeMapGroupArchive(id, archivePath, snapshotReason, options = {}) {
@@ -1230,18 +1260,45 @@ function runProjectBackups(reason = 'automatic') {
 }
 
 function archiveEntriesAreSafe(archivePath) {
-  const entries = runTar(['-tzf', archivePath], 'Unable to read project archive').trim().split('\n').filter(Boolean)
-  const mapGroup = entries.includes('group.json') &&
-    entries.some((entry) => entry === 'projects/' || entry.startsWith('projects/'))
-  if (!mapGroup) throw new Error('工程包必须使用地图组格式')
-  for (const entry of entries) {
-    if (entry.startsWith('/') || entry.includes('\\') || entry.split('/').includes('..')) {
-      throw new Error('工程包包含不安全的文件路径')
+  // A map with many blobs can produce several megabytes of names from `tar
+  // -tzf`. Direct spawnSync capture then throws ENOBUFS before validation. Send
+  // the listing to disk and inspect it in bounded chunks instead.
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-project-list-'))
+  const entryListPath = path.join(temporaryRoot, 'entries.txt')
+  let outputDescriptor
+  try {
+    outputDescriptor = fs.openSync(entryListPath, 'wx')
+    const result = spawnSync('tar', ['-tzf', archivePath], {
+      encoding: 'utf8',
+      stdio: ['ignore', outputDescriptor, 'pipe'],
+      maxBuffer: 16 * 1024 * 1024,
+    })
+    fs.closeSync(outputDescriptor)
+    outputDescriptor = undefined
+    if (result.error) throw result.error
+    if (result.status !== 0) {
+      throw new Error(`Unable to read project archive: ${result.stderr || 'tar failed'}`)
     }
-    const supportedGroupEntry = entry === 'group.json' || entry === 'projects' || entry.startsWith('projects/')
-    if (!supportedGroupEntry) {
-      throw new Error('工程包包含不支持的内容')
-    }
+
+    let hasGroupDescriptor = false
+    let hasProjects = false
+    let entryCount = 0
+    forEachFileLineSync(entryListPath, (entry) => {
+      if (!entry) return
+      entryCount += 1
+      if (entryCount > 1_000_000) throw new Error('工程包文件数量超过 100 万个')
+      if (entry.startsWith('/') || entry.includes('\\') || entry.split('/').includes('..')) {
+        throw new Error('工程包包含不安全的文件路径')
+      }
+      const supportedGroupEntry = entry === 'group.json' || entry === 'projects' || entry.startsWith('projects/')
+      if (!supportedGroupEntry) throw new Error('工程包包含不支持的内容')
+      if (entry === 'group.json') hasGroupDescriptor = true
+      if (entry === 'projects/' || entry.startsWith('projects/')) hasProjects = true
+    })
+    if (!hasGroupDescriptor || !hasProjects) throw new Error('工程包必须使用地图组格式')
+  } finally {
+    if (outputDescriptor !== undefined) fs.closeSync(outputDescriptor)
+    fs.rmSync(temporaryRoot, { recursive: true, force: true })
   }
   return true
 }
@@ -2001,6 +2058,7 @@ module.exports = {
   restoreProjectSnapshot,
   restoreLatestProjectSnapshot,
   validateProjectSource,
+  archiveEntriesAreSafe,
   normalizeImportedProjectPermissions,
   packageProject,
   projectsRoot,
