@@ -165,6 +165,7 @@ COPY --from=creator-build --chown=node:node /opt/game-server /app/services/game-
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-storage-namespace.js /app/apps/local-engine/src/runtime-storage-namespace.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/edit-library.js /app/apps/local-engine/src/edit-library.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/teleport-room-manager.js /app/apps/local-engine/src/teleport-room-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/project-manager.js /app/apps/local-engine/src/project-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/distribution-metadata.js /app/apps/local-engine/src/distribution-metadata.js
@@ -218,6 +219,7 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-stor
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library.js /app/apps/local-engine/src/play-library.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/teleport-room-manager.js /app/apps/local-engine/src/teleport-room-manager.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data

@@ -27,6 +27,9 @@ if (!process.env.PERMISSION_TOKEN_SECRET) {
     'PERMISSION_TOKEN_SECRET is unset; generated an ephemeral launcher secret.',
   )
 }
+if (!process.env.BOX_TELEPORT_INTERNAL_TOKEN) {
+  process.env.BOX_TELEPORT_INTERNAL_TOKEN = crypto.randomBytes(32).toString('hex')
+}
 const configPath = path.join(packageRoot, 'config/local.config.json')
 const defaultDataRoot = path.join(packageRoot, 'data')
 const generatedAsset = path.join(
@@ -96,6 +99,8 @@ const editPort = Number(
     process.env.BOX_EDIT_SERVER_PORT ||
     9967
 )
+const playTeleportControlURL = `http://127.0.0.1:${playPort}/__local_teleport`
+const editTeleportControlURL = `http://127.0.0.1:${editPort}/__local_teleport`
 const launchTarget =
   projectId || releaseId
     ? projectManager.getLaunchTarget({
@@ -431,6 +436,9 @@ async function main() {
     BOX_LOCAL_CONFIG_PATH: configPath,
     BOX_LOCAL_ENGINE_ROOT: packageRoot,
     BOX_LOCAL_PROJECTS_PATH: path.join(packageRoot, 'projects'),
+    BOX_TELEPORT_INTERNAL_TOKEN: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
+    BOX_PLAY_TELEPORT_CONTROL_URL: playTeleportControlURL,
+    BOX_EDIT_TELEPORT_CONTROL_URL: editTeleportControlURL,
     NEXT_PUBLIC_APP_ENV: 'development',
     NEXT_PUBLIC_APP_EDITION: 'createra',
     NEXT_PUBLIC_APP_REGION: 'cn',
@@ -559,7 +567,7 @@ async function main() {
       }
     )
 
-  const startLibraryRuntime = async (world, port) => {
+  const startLibraryRuntime = async (world, port, instance = {}) => {
     const child = spawn(
       process.execPath,
       production
@@ -600,6 +608,10 @@ async function main() {
           }),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
+          SERVER_ID: instance.serverId || 'public',
+          TYPE: instance.privateRoom ? 'teleport' : 'public',
+          TELEPORT_ACCESS: 'true',
+          BOX_TELEPORT_CONTROL_URL: playTeleportControlURL,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
           MAX_ZERO_PLAYER_TIME: '2147483647',
         },
@@ -620,7 +632,7 @@ async function main() {
     return runtime
   }
 
-  const startProjectRuntime = async (project, port, mode) => {
+  const startProjectRuntime = async (project, port, mode, instance = {}) => {
     const child = spawn(
       process.execPath,
       [
@@ -637,6 +649,11 @@ async function main() {
         stdio: 'inherit',
         env: {
           ...process.env,
+          SERVER_ID: instance.serverId || 'public',
+          TYPE: instance.privateRoom ? 'teleport' : 'public',
+          TELEPORT_ACCESS: 'true',
+          BOX_TELEPORT_CONTROL_URL:
+            mode === 'edit' ? editTeleportControlURL : playTeleportControlURL,
           ...(mode === 'edit'
             ? {
                 BOX_EDIT_RUNTIME_PORT: String(port),
@@ -665,12 +682,31 @@ async function main() {
   }
 
   if (creatorMode) {
-    const resolveProject = (id) => {
+    const resolveProject = (reference) => {
       try {
-        const target = projectManager.getLaunchTarget({ project: id })
-        return target.kind === 'source' ? { id, target } : null
+        let metadata
+        try {
+          metadata = projectManager.getProject(reference)
+        } catch {
+          const summary = projectManager.listProjects().find(
+            (project) => project.publicId === reference,
+          )
+          if (!summary) return null
+          metadata = projectManager.getProject(summary.id)
+        }
+        const id = metadata.id
+        const identity = projectManager.projectStorageIdentity(id)
+        return {
+          id,
+          publicId: metadata.publicId || id,
+          mapGroupId: metadata.mapGroupId,
+          mainProjectId: metadata.mainProjectId,
+          mapGroupUuid: identity.mapGroupUuid,
+        }
       } catch (error) {
-        console.error(`Unable to resolve local project ${id}: ${error.message}`)
+        console.error(
+          `Unable to resolve local project ${reference}: ${error.message}`,
+        )
         return null
       }
     }
@@ -685,6 +721,10 @@ async function main() {
       waitForRuntime: waitFor,
       maxRuntimes: process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || '6',
       idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
+      teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
+      teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
+      teleportRoomIdleTimeoutMs:
+        process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
     })
     creatorPlayLibrary = require('./edit-library').startEditLibrary({
       host: playRuntimeHost,
@@ -692,11 +732,15 @@ async function main() {
       mode: 'play',
       runtimePortStart: 12000,
       resolveProject,
-      startRuntime: (project, port) =>
-        startProjectRuntime(project, port, 'play'),
+      startRuntime: (project, port, instance) =>
+        startProjectRuntime(project, port, 'play', instance),
       waitForRuntime: waitFor,
       maxRuntimes: process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || '4',
       idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
+      teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
+      teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
+      teleportRoomIdleTimeoutMs:
+        process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
     })
     await Promise.all([editLibrary.ready, creatorPlayLibrary.ready])
 
@@ -772,6 +816,10 @@ async function main() {
       waitForRuntime: waitFor,
       maxRuntimes: process.env.BOX_PLAY_MAX_RUNTIMES || '8',
       idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
+      teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
+      teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
+      teleportRoomIdleTimeoutMs:
+        process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
     })
     await playLibrary.ready
   } else if (startsPlayServer) {

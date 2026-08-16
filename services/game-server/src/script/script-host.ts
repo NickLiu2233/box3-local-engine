@@ -91,7 +91,6 @@ import { RTCServer } from '../rtc/rtc-server';
 import { NavigatorServer } from '../navigator/navigator-server';
 import { GUIServer } from '../gui/gui-server';
 import { MarketProtocol } from '@box-local/schema/market/market-protocol';
-import { TeleportProtocol } from '@box-local/schema/teleport/teleport-protocol';
 import { InputServer } from '../input/server-input-controller';
 import {
   HashType,
@@ -101,6 +100,7 @@ import {
 import { getConfigSync } from '../../config/server';
 import { RemoteChannelServer } from '../remote-channel/channel-server';
 import { PlayerServer } from '../player/player-server';
+import { TeleportServer } from '../teleport/teleport-server';
 import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
 import { EntityNameComponentSetSchema } from '@box-local/schema/entity-name/entity-name';
 import { getHashFromContainerName } from '../utils/container-name';
@@ -135,7 +135,7 @@ export class ScriptHost {
   public navigator: NavigatorServer;
   public gui: GUIServer;
   private marketProtocol: MuServerProtocol<typeof MarketProtocol>;
-  private teleportProtocol: MuServerProtocol<typeof TeleportProtocol>;
+  public teleport: TeleportServer;
   public remoteChannel: RemoteChannelServer;
   public input: InputServer;
   public player: PlayerServer;
@@ -805,13 +805,16 @@ export class ScriptHost {
       server: spec.netServer,
       scriptServer: this.muServer,
     });
-    // Keep the engine wire protocol order aligned with GameClient. These are
-    // transport-only slots: the local engine exposes no marketplace or
-    // cross-map teleport script API and performs no platform request.
+    // Keep the engine wire protocol order aligned with GameClient. Marketplace
+    // remains a transport-only slot; teleport is backed by the local room
+    // allocator instead of the retired platform container API.
     this.marketProtocol = spec.netServer.protocol(MarketProtocol);
     this.marketProtocol.configure({ message: {} });
-    this.teleportProtocol = spec.netServer.protocol(TeleportProtocol);
-    this.teleportProtocol.configure({ message: {} });
+    this.teleport = new TeleportServer({
+      server: spec.netServer,
+      scriptServer: this.muServer,
+      state: spec.state,
+    });
     this.remoteChannel = new RemoteChannelServer({
       server: spec.netServer,
       scriptServer: this.muServer,

@@ -130,6 +130,18 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
         code: 'CONTAINER_CREATING',
       });
     } else {
+      const status = sessionError?.response?.status;
+      const responseCode = (err as {
+        response?: { data?: { code?: string; message?: string } };
+      })?.response?.data?.code;
+      if (status === 403 && responseCode) {
+        return res.status(403).json({
+          code: responseCode,
+          message:
+            (err as { response?: { data?: { message?: string } } }).response
+              ?.data?.message || '无权加入该私有房间',
+        });
+      }
       sharedLogger.error(
         `createSession failed: code=${sessionError?.code || 'unknown'} status=${
           sessionError?.response?.status || 'unknown'
@@ -161,6 +173,8 @@ async function getSessionData(
   let refererServerId = '';
   let runtimeAuth = req.headers.auth || '';
   let runtimeFingerPrint = fingerPrint;
+  let authenticatedSubjectId = '';
+  let privateRoomId = '';
 
   try {
     // rust项目发起的请求没有referer
@@ -188,13 +202,42 @@ async function getSessionData(
       const identity = resolved.identity;
       runtimeAuth = resolved.assertion;
       runtimeFingerPrint = identity.subjectId;
+      authenticatedSubjectId = identity.subjectId;
+    }
+    if (mode === 'play' && serverId && serverId !== 'public') {
+      const controlURL = process.env.BOX_PLAY_TELEPORT_CONTROL_URL || '';
+      const internalToken = process.env.BOX_TELEPORT_INTERNAL_TOKEN || '';
+      if (!controlURL || !internalToken) {
+        throw new Error('本地传送房间服务未配置');
+      }
+      if (!authenticatedSubjectId) {
+        throw new PlayerAuthenticationRequiredError();
+      }
+      await axios.post(
+        `${controlURL.replace(/\/$/, '')}/authorize`,
+        {
+          targetMapId: containerName,
+          serverId,
+          subjectId: authenticatedSubjectId,
+        },
+        {
+          headers: { 'x-box-teleport-token': internalToken },
+          timeout: 10_000,
+        },
+      );
+      privateRoomId = serverId;
     }
     const localRuntimeURL = mode === 'edit'
       ? ServerConfig.localEditServerURL
       : ServerConfig.localGameServerURL;
+    const runtimeMapPath = `${encodeURIComponent(containerName)}${
+      privateRoomId
+        ? `/__room/${encodeURIComponent(privateRoomId)}`
+        : ''
+    }`;
     httpServerUrl = process.env.BOX_DEPLOYMENT_MODE === 'creator' ||
       (mode === 'play' && process.env.BOX_PLAY_LIBRARY_PATH)
-      ? `${localRuntimeURL.replace(/\/$/, '')}/${encodeURIComponent(containerName)}`
+      ? `${localRuntimeURL.replace(/\/$/, '')}/${runtimeMapPath}`
       : localRuntimeURL;
     // 本地就直接把 http server url 处理成 socket server url
     socketServerUrl = httpServerUrl.replace('http', 'ws');
@@ -247,10 +290,17 @@ async function getSessionData(
         : undefined;
       const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
       const requestHost = req.headers.host || '127.0.0.1:3000';
-      json.data.socketServerUrl = `${protocol}://${requestHost}/runtime/${mode}/${encodeURIComponent(containerName)}`;
+      const roomPath = privateRoomId
+        ? `/__room/${encodeURIComponent(privateRoomId)}`
+        : '';
+      json.data.socketServerUrl = `${protocol}://${requestHost}/runtime/${mode}/${encodeURIComponent(containerName)}${roomPath}`;
     } else if (deploymentMode === 'play') {
       const runtimePath = process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
-        ? `/runtime/play/${encodeURIComponent(containerName)}`
+        ? `/runtime/play/${encodeURIComponent(containerName)}${
+            privateRoomId
+              ? `/__room/${encodeURIComponent(privateRoomId)}`
+              : ''
+          }`
         : `/runtime/${mode}`;
       if (ServerConfig.serverPublicUrl) {
         const publicURL = ServerConfig.serverPublicUrl.replace(/\/$/, '');

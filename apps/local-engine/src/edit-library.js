@@ -3,26 +3,32 @@
 const http = require('http')
 const net = require('net')
 const { createRuntimeLifecycle } = require('./runtime-lifecycle')
+const {
+  createTeleportControlHandler,
+  createTeleportRoomManager,
+  roomIdPattern,
+} = require('./teleport-room-manager')
 
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 
-function extractProjectId(requestUrl) {
-  try {
-    const pathname = new URL(requestUrl || '/', 'http://127.0.0.1').pathname
-    const segment = pathname.split('/').filter(Boolean)[0] || ''
-    return decodeURIComponent(segment)
-  } catch {
-    return ''
-  }
-}
-
-function requestPathWithoutProject(requestUrl, id) {
+function parseProjectRequest(requestUrl) {
   const parsed = new URL(requestUrl || '/', 'http://127.0.0.1')
-  const prefix = `/${encodeURIComponent(id)}`
-  const pathname = parsed.pathname === prefix
-    ? '/'
-    : parsed.pathname.slice(prefix.length) || '/'
-  return `${pathname}${parsed.search}`
+  const segments = parsed.pathname.split('/').filter(Boolean)
+  const reference = decodeURIComponent(segments[0] || '')
+  let roomId = ''
+  let consumed = 1
+  if (segments[1] === '__room') {
+    roomId = decodeURIComponent(segments[2] || '')
+    consumed = 3
+    if (!roomIdPattern.test(roomId)) {
+      throw Object.assign(new Error('房间 ID 无效'), { statusCode: 400 })
+    }
+  }
+  return {
+    reference,
+    roomId,
+    forwardedPath: `/${segments.slice(consumed).join('/')}${parsed.search}`,
+  }
 }
 
 /**
@@ -40,6 +46,9 @@ function startEditLibrary({
   waitForRuntime,
   maxRuntimes = 4,
   idleTimeoutMs = 15 * 60_000,
+  teleportInternalToken,
+  teleportMaxRooms = 64,
+  teleportRoomIdleTimeoutMs = 15 * 60_000,
 }) {
   const runtimes = new Map()
   const starts = new Map()
@@ -80,67 +89,105 @@ function startEditLibrary({
     idleTimeoutMs,
   })
 
-  async function ensureRuntime(id) {
-    if (!projectIdPattern.test(id || '')) {
+  const runtimeKey = (projectId, roomId = '') =>
+    roomId ? `room:${roomId}` : projectId
+
+  async function ensureRuntime(reference, roomId = '') {
+    const project = reference && typeof reference === 'object'
+      ? reference
+      : resolveProject(reference)
+    const id = project?.id || String(reference || '')
+    if (!projectIdPattern.test(id)) {
       throw Object.assign(new Error('工程 ID 无效'), { statusCode: 400 })
     }
-    const project = resolveProject(id)
     if (!project) {
       throw Object.assign(new Error('工程不存在'), { statusCode: 404 })
     }
+    const key = runtimeKey(id, roomId)
     // A child is inserted into `runtimes` before its health check completes.
     // Concurrent block/createSession requests must join that same startup
     // promise instead of proxying early to a port that is not ready yet.
-    if (starts.has(id)) return starts.get(id)
-    const current = runtimes.get(id)
+    if (starts.has(key)) return starts.get(key)
+    const current = runtimes.get(key)
     if (current && !current.exited) {
       lifecycle.touch(current)
-      setStatus(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
+      setStatus(key, { phase: 'ready', percent: 100, message: '运行时已就绪' })
       return current
     }
 
     const promise = (async () => {
-      await lifecycle.ensureCapacity(id)
-      setStatus(id, { phase: 'starting', percent: 18, message: '正在创建独立运行时' })
+      await lifecycle.ensureCapacity(key)
+      setStatus(key, {
+        phase: 'starting',
+        percent: 18,
+        message: roomId ? '正在创建私有传送房间' : '正在创建独立运行时',
+      })
       const runtimePort = nextPort++
-      const runtime = await startRuntime(project, runtimePort)
+      const runtime = await startRuntime(project, runtimePort, {
+        serverId: roomId || 'public',
+        privateRoom: Boolean(roomId),
+      })
       lifecycle.touch(runtime)
-      runtimes.set(id, runtime)
+      runtime.projectId = id
+      runtime.roomId = roomId
+      runtimes.set(key, runtime)
       try {
-        setStatus(id, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
+        setStatus(key, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
         await waitForRuntime(
           `http://127.0.0.1:${runtimePort}/api/health-check`,
           120,
         )
       } catch (error) {
-        runtimes.delete(id)
-        setStatus(id, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
+        runtimes.delete(key)
+        setStatus(key, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
         await runtime.stop()
         throw error
       }
-      setStatus(id, { phase: 'ready', percent: 100, message: '运行时已就绪' })
+      setStatus(key, { phase: 'ready', percent: 100, message: '运行时已就绪' })
       console.log(
-        mode === 'play'
+        roomId
+          ? `  Private room ready: ${id}/${roomId}`
+          : mode === 'play'
           ? `  Play project ready: /p/${id}`
           : `  Edit project ready: /e/${id}`
       )
       return runtime
-    })().finally(() => starts.delete(id))
-    starts.set(id, promise)
+    })().finally(() => starts.delete(key))
+    starts.set(key, promise)
     return promise
   }
 
+  const teleportRooms = createTeleportRoomManager({
+    resolveMap: resolveProject,
+    ensureRuntime: (project, roomId) =>
+      mode === 'play' ? ensureRuntime(project, roomId) : undefined,
+    stopRuntime: (roomId) => stopRuntime(runtimeKey('', roomId)),
+    isRoomActive: (roomId) =>
+      Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
+    maxRooms: teleportMaxRooms,
+    roomIdleTimeoutMs: teleportRoomIdleTimeoutMs,
+  })
+  const handleTeleportControl = teleportInternalToken
+    ? createTeleportControlHandler({
+        manager: teleportRooms,
+        internalToken: teleportInternalToken,
+      })
+    : async () => false
+
   const server = http.createServer(async (req, res) => {
-    const id = extractProjectId(req.url)
     try {
-      const forwardedPath = requestPathWithoutProject(req.url, id)
+      if (await handleTeleportControl(req, res)) return
+      const { reference, roomId, forwardedPath } = parseProjectRequest(req.url)
+      let project = null
+      let id = reference
+      let key = runtimeKey(id, roomId)
       if (forwardedPath === '/__local_runtime/status') {
-        const runtime = runtimes.get(id)
-        if (runtime?.exited && statuses.get(id)?.phase === 'ready') {
-          setStatus(id, { phase: 'error', percent: 0, message: '运行时异常退出' })
+        const runtime = runtimes.get(key)
+        if (runtime?.exited && statuses.get(key)?.phase === 'ready') {
+          setStatus(key, { phase: 'error', percent: 0, message: '运行时异常退出' })
         }
         const status = runtimeStatus(
-          id,
+          key,
           runtime,
           runtime && !runtime.exited
             ? { phase: 'ready', percent: 100, message: '运行时已就绪' }
@@ -151,17 +198,21 @@ function startEditLibrary({
         return
       }
       if (forwardedPath === '/__local_runtime/start' && req.method === 'POST') {
-        if (!projectIdPattern.test(id || '') || !resolveProject(id)) {
+        project = resolveProject(reference)
+        if (!project) {
           res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
           res.end(JSON.stringify({ message: '工程不存在' }))
           return
         }
-        void ensureRuntime(id).catch(() => undefined)
+        id = project.id
+        key = runtimeKey(id, roomId)
+        if (roomId) teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+        void ensureRuntime(project, roomId).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(statuses.get(id) || setStatus(id, { phase: 'starting', percent: 10, message: '正在启动' })))
+        res.end(JSON.stringify(statuses.get(key) || setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' })))
         return
       }
-      const existingRuntime = runtimes.get(id)
+      let existingRuntime = runtimes.get(key)
       // Publishing asks an already-open editor to flush its state. A project
       // that is not open is already authoritative on disk and must not start a
       // heavyweight edit runtime merely to acknowledge this request.
@@ -170,11 +221,20 @@ function startEditLibrary({
         res.end()
         return
       }
-      const runtime = starts.has(id)
-        ? await ensureRuntime(id)
+      if (roomId || (!existingRuntime && !starts.has(key))) {
+        project = resolveProject(reference)
+        id = project?.id || reference
+        key = runtimeKey(id, roomId)
+        existingRuntime = runtimes.get(key)
+      }
+      if (roomId) {
+        teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+      }
+      const runtime = starts.has(key)
+        ? await ensureRuntime(project || reference, roomId)
         : existingRuntime && !existingRuntime.exited
           ? existingRuntime
-          : await ensureRuntime(id)
+          : await ensureRuntime(project || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       res.once('close', releaseConnection)
       const proxy = http.request({
@@ -203,16 +263,19 @@ function startEditLibrary({
   })
 
   server.on('upgrade', async (req, socket, head) => {
-    const id = extractProjectId(req.url)
     try {
-      const runtime = await ensureRuntime(id)
+      const { reference, roomId, forwardedPath } = parseProjectRequest(req.url)
+      const project = resolveProject(reference)
+      const id = project?.id || reference
+      if (roomId) teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+      const runtime = await ensureRuntime(project || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       socket.once('close', releaseConnection)
       const upstream = net.connect(runtime.port, '127.0.0.1')
       upstream.on('connect', () => {
         const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
         const lines = [
-          `${req.method} ${requestPathWithoutProject(req.url, id)} HTTP/${req.httpVersion}`,
+          `${req.method} ${forwardedPath} HTTP/${req.httpVersion}`,
           ...Object.entries(headers).map(([key, value]) =>
             `${key}: ${Array.isArray(value) ? value.join(', ') : value}`,
           ),
@@ -231,6 +294,8 @@ function startEditLibrary({
   })
 
   const recycleTimer = setInterval(() => {
+    teleportRooms.collectIdle().catch((error) =>
+      console.error('Unable to recycle idle teleport rooms:', error))
     lifecycle.collectIdle().catch((error) =>
       console.error('Unable to recycle idle project runtimes:', error))
   }, Math.max(5_000, Math.min(60_000, Math.floor(lifecycle.idleAfter / 2))))
@@ -242,6 +307,7 @@ function startEditLibrary({
     server,
     ready,
     ensureRuntime,
+    teleportRooms,
     async stop() {
       if (closed) return
       closed = true

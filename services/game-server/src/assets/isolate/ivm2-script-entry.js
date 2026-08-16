@@ -1763,7 +1763,7 @@ class Sound {
     }
 }
 class GameWorld {
-    constructor(url, entityQuota, onRespawn, nextRespawn, createEntity, querySelector, querySelectorAll, testSelector, addCollisionFilter, removeCollisionFilter, clearCollisionFilters, collisionFilters, raycast, searchBox, animate, getAnimations, getEntityAnimations, getPlayerAnimations, onTick, nextTick, onTakeDamage, nextTakeDamage, onDie, nextDie, onPlayerJoin, nextPlayerJoin, onPlayerLeave, nextPlayerLeave, onEntityCreate, nextEntityCreate, onEntityDestroy, nextEntityDestroy, say, onChat, nextChat, onClick, nextClick, onPress, nextPress, onRelease, nextRelease, onEntityContact, nextEntityContact, onEntitySeparate, nextEntitySeparate, onVoxelContact, nextVoxelContact, onVoxelSeparate, nextVoxelSeparate, onFluidEnter, nextFluidEnter, onFluidLeave, nextFluidLeave, zones, addZone, removeZone, onInteract, nextInteract, onPlayerPurchaseSuccess, nextPlayerPurchaseSuccess, sound, serverId){
+    constructor(url, entityQuota, onRespawn, nextRespawn, createEntity, querySelector, querySelectorAll, testSelector, addCollisionFilter, removeCollisionFilter, clearCollisionFilters, collisionFilters, raycast, searchBox, animate, getAnimations, getEntityAnimations, getPlayerAnimations, onTick, nextTick, onTakeDamage, nextTakeDamage, onDie, nextDie, onPlayerJoin, nextPlayerJoin, onPlayerLeave, nextPlayerLeave, onEntityCreate, nextEntityCreate, onEntityDestroy, nextEntityDestroy, say, onChat, nextChat, onClick, nextClick, onPress, nextPress, onRelease, nextRelease, onEntityContact, nextEntityContact, onEntitySeparate, nextEntitySeparate, onVoxelContact, nextVoxelContact, onVoxelSeparate, nextVoxelSeparate, onFluidEnter, nextFluidEnter, onFluidLeave, nextFluidLeave, zones, addZone, removeZone, onInteract, nextInteract, onPlayerPurchaseSuccess, nextPlayerPurchaseSuccess, sound, teleport, serverId){
         this.url = url;
         this.entityQuota = entityQuota;
         this.onRespawn = onRespawn;
@@ -1825,6 +1825,7 @@ class GameWorld {
         this.onPlayerPurchaseSuccess = onPlayerPurchaseSuccess;
         this.nextPlayerPurchaseSuccess = nextPlayerPurchaseSuccess;
         this.sound = sound;
+        this.teleport = teleport;
         this.serverId = serverId;
         this.projectName = 'Project';
         this.currentTick = 0;
@@ -24565,7 +24566,7 @@ let nanoid = (size = 21)=>{
 
 const MAX_KEY_BYTES = 1024;
 const MAX_VALUE_BYTES = 4 * 1024 * 1024;
-const errorMsgList = {
+const errorMsgList$1 = {
     DB_NAME_INVALID: {
         status: 'DB_NAME_INVALID',
         code: 400,
@@ -24613,7 +24614,7 @@ const errorMsgList = {
     }
 };
 function getErrorMsg(key, errorMsg) {
-    let msgObject = errorMsgList[key] || errorMsgList['UNKNOWN'];
+    let msgObject = errorMsgList$1[key] || errorMsgList$1['UNKNOWN'];
     if (errorMsg) {
         msgObject.msg = errorMsg;
     }
@@ -25259,6 +25260,93 @@ class StorageSynchronizer {
                     } else {
                         (_b = this.storageDbs[dbKey]) === null || _b === void 0 ? void 0 : _b.fetchError(handle, error);
                     }
+                }
+            }
+        });
+    }
+}
+
+const TeleportScriptProtocol = {
+    name: 'teleport-api',
+    client: {
+        teleportDone: new schemaExports.MuStruct({
+            handle: new schemaExports.MuVarint(),
+            serverId: new schemaExports.MuUTF8()
+        }),
+        teleportError: new schemaExports.MuStruct({
+            handle: new schemaExports.MuVarint(),
+            error: new schemaExports.MuStruct({
+                key: new schemaExports.MuASCII(),
+                msg: new schemaExports.MuOption(new schemaExports.MuUTF8())
+            })
+        })
+    },
+    server: {
+        teleport: new schemaExports.MuStruct({
+            handle: new schemaExports.MuVarint(),
+            mapId: new schemaExports.MuUTF8(),
+            playerIds: new schemaExports.MuArray(new schemaExports.MuVarint(), Infinity),
+            serverId: new schemaExports.MuUTF8()
+        })
+    }
+};
+
+const errorMsgList = {
+    PLAYER_OFFLINE: {
+        status: 'PLAYER_OFFLINE',
+        code: 400,
+        msg: 'Teleport cannot be completed, some of the specified players are currently offline.'
+    },
+    ACCESS_DENIED: {
+        status: 'ACCESS_DENIED',
+        code: 401,
+        msg: 'The map does not have the necessary permissions to utilize the teleport API.'
+    },
+    UNKNOWN: {
+        status: 'UNKNOWN',
+        code: 500,
+        msg: 'Internal Server Error.'
+    }
+};
+class TeleportScriptShell {
+    _getErrorMsg(err) {
+        const base = errorMsgList[err.key] || errorMsgList.UNKNOWN;
+        return JSON.stringify(err.msg ? Object.assign(Object.assign({}, base), {
+            msg: err.msg
+        }) : base);
+    }
+    constructor(client, schedule){
+        this.schedule = schedule;
+        this.wrappers = {};
+        this.handleCounter = 0;
+        this.teleport = (mapId, playerIds, serverId = '')=>{
+            const wrapper = new PromiseWrapper(this.schedule);
+            const handle = wrapper.handle = this.handleCounter++;
+            this.wrappers[handle] = wrapper;
+            this.protocol.server.message.teleport({
+                handle,
+                mapId,
+                playerIds,
+                serverId
+            });
+            return wrapper.query;
+        };
+        this.protocol = client.protocol(TeleportScriptProtocol);
+        this.protocol.configure({
+            message: {
+                teleportDone: ({ handle, serverId })=>{
+                    const wrapper = this.wrappers[handle];
+                    if (!wrapper) return;
+                    wrapper.notifyDone({
+                        serverId
+                    });
+                    delete this.wrappers[handle];
+                },
+                teleportError: ({ handle, error })=>{
+                    const wrapper = this.wrappers[handle];
+                    if (!wrapper) return;
+                    wrapper.notifyError(new Error(this._getErrorMsg(error)));
+                    delete this.wrappers[handle];
                 }
             }
         });
@@ -33429,6 +33517,20 @@ class ScriptWorldSync {
             }
             throw new Error('invalid arguments world.sound()');
         };
+        this.teleport = (mapId, players, serverId)=>{
+            if (!mapId || typeof mapId !== 'string' || !Array.isArray(players) || players.length <= 0 || players.length > 50 || typeof serverId !== 'undefined' && typeof serverId !== 'string') {
+                throw new Error('invalid arguments world.teleport()');
+            }
+            const playerIds = [];
+            for (const playerEntity of players){
+                const entityWrapper = this.entity.getEntityWrapper(playerEntity);
+                if (!entityWrapper || !entityWrapper.isPlayer) {
+                    throw new Error('invalid arguments world.teleport()');
+                }
+                playerIds.push(entityWrapper.id);
+            }
+            return this._teleport(mapId, playerIds, serverId);
+        };
         this.logger = spec.logger.create('world');
         this.config = spec.config;
         this.resource = spec.resource;
@@ -33436,6 +33538,7 @@ class ScriptWorldSync {
         this._shell = spec.shell;
         this._schedule = spec.schedule;
         this._say = spec.say;
+        this._teleport = spec.teleport;
         this._playSound = spec.playSound;
         this._blockInfo = spec.blockInfo;
         this._blockIndex = spec.blockIndex;
@@ -33444,7 +33547,7 @@ class ScriptWorldSync {
         this.entity = new ScriptEntitySync(this.config, this.resource, spec.logger.create('entity'), this.perf, spec.scheduler, this._onEntityCreate, this._onEntityDestroy, spec.schedule, this._say, spec.kick, spec.hurtEntity, spec.forceRespawn, spec.openDialog, spec.cancelDialogs, spec.openLink, spec.postMessage, spec.addEventListener, spec.playSound, spec.setCameraPitch, spec.setCameraYaw, this.physicsSelectors, spec.keyframeParser);
         this.zones = new ScriptZoneSystem(this.resource, spec.schedule, spec.scheduler, this.physicsSelectors, this.perf);
         this._voxel = spec.voxel;
-        this.world = new GameWorld(new URL(spec.config.url || 'https://localhost'), this.entity.quota, this.onRespawn.channel, this.onRespawn.future, this.entity.createEntity, this.entity.querySelector, this.entity.querySelectorAll, this.entity.testSelector, this.addCollisionFilter, this.removeCollisionFilter, this.clearCollisionFilters, this.collisionFilters, this.raycast, this.searchBox, this.animations.animate, this.animations.getAnimations, this.entity.animations.getAnimations, this.entity.playerAnimations.getAnimations, this.onTick.channel, this.onTick.future, this.onDamage.channel, this.onDamage.future, this.onDie.channel, this.onDie.future, this.onPlayerJoin.channel, this.onPlayerJoin.future, this.onPlayerLeave.channel, this.onPlayerLeave.future, this.onEntityCreate.channel, this.onEntityCreate.future, this.onEntityDestroy.channel, this.onEntityDestroy.future, this.say, this.onChat.channel, this.onChat.future, this.onClick.channel, this.onClick.future, this.onPress.channel, this.onPress.future, this.onRelease.channel, this.onRelease.future, this.onEntityContact.channel, this.onEntityContact.future, this.onEntitySeparate.channel, this.onEntitySeparate.future, this.onVoxelContact.channel, this.onVoxelContact.future, this.onVoxelSeparate.channel, this.onVoxelSeparate.future, this.onFluidEnter.channel, this.onFluidEnter.future, this.onFluidLeave.channel, this.onFluidLeave.future, this.zones.listZones, this.zones.addZone, this.zones.removeZone, this.onInteract.channel, this.onInteract.future, this.onPlayerPurchaseSuccess.channel, this.onPlayerPurchaseSuccess.future, this.playWorldSound, spec.config.serverId);
+        this.world = new GameWorld(new URL(spec.config.url || 'https://localhost'), this.entity.quota, this.onRespawn.channel, this.onRespawn.future, this.entity.createEntity, this.entity.querySelector, this.entity.querySelectorAll, this.entity.testSelector, this.addCollisionFilter, this.removeCollisionFilter, this.clearCollisionFilters, this.collisionFilters, this.raycast, this.searchBox, this.animations.animate, this.animations.getAnimations, this.entity.animations.getAnimations, this.entity.playerAnimations.getAnimations, this.onTick.channel, this.onTick.future, this.onDamage.channel, this.onDamage.future, this.onDie.channel, this.onDie.future, this.onPlayerJoin.channel, this.onPlayerJoin.future, this.onPlayerLeave.channel, this.onPlayerLeave.future, this.onEntityCreate.channel, this.onEntityCreate.future, this.onEntityDestroy.channel, this.onEntityDestroy.future, this.say, this.onChat.channel, this.onChat.future, this.onClick.channel, this.onClick.future, this.onPress.channel, this.onPress.future, this.onRelease.channel, this.onRelease.future, this.onEntityContact.channel, this.onEntityContact.future, this.onEntitySeparate.channel, this.onEntitySeparate.future, this.onVoxelContact.channel, this.onVoxelContact.future, this.onVoxelSeparate.channel, this.onVoxelSeparate.future, this.onFluidEnter.channel, this.onFluidEnter.future, this.onFluidLeave.channel, this.onFluidLeave.future, this.zones.listZones, this.zones.addZone, this.zones.removeZone, this.onInteract.channel, this.onInteract.future, this.onPlayerPurchaseSuccess.channel, this.onPlayerPurchaseSuccess.future, this.playWorldSound, this.teleport, spec.config.serverId);
         this.animations.target = this.world;
     }
 }
@@ -34861,6 +34964,7 @@ class ScriptShell {
         this.http = new HttpScriptShell(this.client, this.scheduler.schedule, this.config);
         this.rtc = new RTCScriptShell(this);
         this.gui = new GUIScriptShell(this);
+        this.teleport = new TeleportScriptShell(this.client, this.scheduler.schedule);
         this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
         this.console = new GameConsole(this.log, this.clearLog);
         this.resource = new ScriptResourceSync(this._eval);
@@ -34889,7 +34993,8 @@ class ScriptShell {
             keyframeParser: this.keyframeParser,
             kick: this.kick,
             setCameraPitch: this.setCameraPitch,
-            setCameraYaw: this.setCameraYaw
+            setCameraYaw: this.setCameraYaw,
+            teleport: this.teleport.teleport
         });
         this.api = createScriptAPI({
             scheduler: this.scheduler.scheduler,

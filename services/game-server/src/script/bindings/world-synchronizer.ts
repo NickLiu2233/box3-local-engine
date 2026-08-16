@@ -51,6 +51,8 @@ import {
   NavigatorEventType,
   Sound,
   GamePurchaseSuccessEvent,
+  TeleportType,
+  TeleportResult,
 } from '@box-local/schema/api/js/api';
 import {
   WorldPhysicsBinding,
@@ -159,6 +161,11 @@ export class ScriptWorldSync {
     message: string,
     options?: { duration?: number; hideFloat?: boolean },
   ) => void;
+  private _teleport: (
+    mapId: string,
+    playerIds: number[],
+    serverId?: string,
+  ) => Promise<TeleportResult>;
   private _playSound: (
     sample: string,
     position: PlaySoundPosition,
@@ -414,6 +421,11 @@ export class ScriptWorldSync {
     kick: (playerId: number) => void;
     setCameraPitch: (playerId: number, value: number) => void;
     setCameraYaw: (playerId: number, value: number) => void;
+    teleport: (
+      mapId: string,
+      playerIds: number[],
+      serverId?: string,
+    ) => Promise<TeleportResult>;
   }) {
     this.logger = spec.logger.create('world');
     this.config = spec.config;
@@ -422,6 +434,7 @@ export class ScriptWorldSync {
     this._shell = spec.shell;
     this._schedule = spec.schedule;
     this._say = spec.say;
+    this._teleport = spec.teleport;
     this._playSound = spec.playSound;
     this._blockInfo = spec.blockInfo;
     this._blockIndex = spec.blockIndex;
@@ -530,6 +543,7 @@ export class ScriptWorldSync {
       this.onPlayerPurchaseSuccess.channel,
       this.onPlayerPurchaseSuccess.future,
       this.playWorldSound,
+      this.teleport,
       spec.config.serverId,
     );
     this.animations.target = this.world;
@@ -652,6 +666,28 @@ export class ScriptWorldSync {
       }
     }
     throw new Error('invalid arguments world.sound()');
+  };
+
+  public teleport: TeleportType = (mapId, players, serverId) => {
+    if (
+      !mapId ||
+      typeof mapId !== 'string' ||
+      !Array.isArray(players) ||
+      players.length <= 0 ||
+      players.length > 50 ||
+      (typeof serverId !== 'undefined' && typeof serverId !== 'string')
+    ) {
+      throw new Error('invalid arguments world.teleport()');
+    }
+    const playerIds: number[] = [];
+    for (const playerEntity of players) {
+      const entityWrapper = this.entity.getEntityWrapper(playerEntity);
+      if (!entityWrapper || !entityWrapper.isPlayer) {
+        throw new Error('invalid arguments world.teleport()');
+      }
+      playerIds.push(entityWrapper.id);
+    }
+    return this._teleport(mapId, playerIds, serverId);
   };
 
 }

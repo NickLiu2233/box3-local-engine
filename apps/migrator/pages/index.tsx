@@ -20,6 +20,8 @@ type Job = {
   attempt?: number;
   error?: string;
   filename?: string;
+  startedAt: number;
+  updatedAt: number;
 };
 const formatBytes = (bytes: number) => bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const stages = [
@@ -39,19 +41,50 @@ export default function Home() {
   const [projectName, setProjectName] = useState('');
   const [job, setJob] = useState<Job>();
   const [busy, setBusy] = useState(false);
+  const [pollWarning, setPollWarning] = useState('');
+  const [clock, setClock] = useState(() => Date.now());
 
   useEffect(() => {
     if (!job || job.status !== 'running') return;
-    const timer = window.setInterval(async () => {
+    let stopped = false;
+    let timer = 0;
+    const poll = async () => {
       try {
         const response = await fetch(`/api/migration?id=${encodeURIComponent(job.id)}`, { cache: 'no-store' });
         const body = await response.json();
+        if (response.status === 404) {
+          if (!stopped) {
+            setPollWarning('');
+            setJob((previous) => previous && ({
+              ...previous,
+              status: 'failed',
+              error: body.message || '迁移任务不存在，请重新开始',
+            }));
+          }
+          stopped = true;
+          return;
+        }
         if (!response.ok) throw new Error(body.message || '无法读取迁移状态');
-        setJob(body.job);
+        if (!stopped) {
+          setPollWarning('');
+          setJob(body.job);
+        }
       } catch (error) {
-        setJob((previous) => previous && ({ ...previous, status: 'failed', error: (error as Error).message }));
+        if (!stopped) setPollWarning((error as Error).message || '状态连接暂时中断，正在重试');
+      } finally {
+        if (!stopped) timer = window.setTimeout(poll, 1000);
       }
-    }, 700);
+    };
+    void poll();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [job?.id, job?.status]);
+
+  useEffect(() => {
+    if (!job || job.status !== 'running') return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [job?.id, job?.status]);
 
@@ -59,6 +92,7 @@ export default function Home() {
     event.preventDefault();
     setBusy(true);
     setJob(undefined);
+    setPollWarning('');
     try {
       const response = await fetch('/api/migration', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ hash, mapId: Number(mapId), mode, projectName }) });
       if (!response.ok) {
@@ -68,7 +102,8 @@ export default function Home() {
       const body = await response.json();
       setJob(body.job);
     } catch (error) {
-      setJob({ id: '', status: 'failed', stage: '', blobCount: 0, totalBytes: 0, discoveredCount: 0, traversedCount: 0, skippedCount: 0, skippedBlobs: [], activeDownloadCount: 0, detail: '', error: (error as Error).message });
+      const now = Date.now();
+      setJob({ id: '', status: 'failed', stage: '', blobCount: 0, totalBytes: 0, discoveredCount: 0, traversedCount: 0, skippedCount: 0, skippedBlobs: [], activeDownloadCount: 0, detail: '', error: (error as Error).message, startedAt: now, updatedAt: now });
     } finally {
       setBusy(false);
     }
@@ -88,6 +123,12 @@ export default function Home() {
           <strong>{job.status === 'failed' ? '迁移失败' : job.status === 'completed' ? (job.skippedCount ? '迁移完成（部分资源已跳过）' : '迁移完成') : job.detail}</strong>
           {job.status === 'running' && <span className={styles.pulse}>运行中</span>}
         </div>
+        {job.status === 'running' && <div className={`${styles.activity} ${clock - (job.updatedAt || job.startedAt) > 30_000 ? styles.activitySlow : ''}`}>
+          <span>已运行 {Math.max(0, Math.floor((clock - job.startedAt) / 1000))} 秒</span>
+          <span>最近进度 {Math.max(0, Math.floor((clock - (job.updatedAt || job.startedAt)) / 1000))} 秒前</span>
+          {pollWarning && <span>状态连接异常：{pollWarning}，正在自动重试</span>}
+          {!pollWarning && clock - (job.updatedAt || job.startedAt) > 30_000 && <span>当前云端节点响应较慢，任务仍在运行，不会再被误删</span>}
+        </div>}
         <div className={styles.steps}>
           {stages.map(([key, label], index) => <div key={key} className={`${styles.step} ${index <= stageRank(job.stage) ? styles.stepActive : ''} ${key === job.stage && job.status === 'running' ? styles.stepCurrent : ''}`}>
             <i>{index + 1}</i><span>{label}</span>

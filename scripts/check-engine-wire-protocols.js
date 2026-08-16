@@ -7,6 +7,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 
 const client = read('apps/game/src/engine/game-client.ts');
 const server = read('services/game-server/src/script/script-host.ts');
+const teleportServer = read('services/game-server/src/teleport/teleport-server.ts');
 
 const orderedTokens = (source, tokens, label) => {
   let cursor = -1;
@@ -36,10 +37,15 @@ orderedTokens(
   [
     'this.gui = new GUIServer',
     'spec.netServer.protocol(MarketProtocol)',
-    'spec.netServer.protocol(TeleportProtocol)',
+    'this.teleport = new TeleportServer',
     'this.remoteChannel = new RemoteChannelServer',
   ],
   'ScriptHost network server',
+);
+
+assert.ok(
+  teleportServer.includes('server.protocol(TeleportProtocol)'),
+  'TeleportServer is missing its engine network protocol registration',
 );
 
 for (const forbidden of [
@@ -48,9 +54,9 @@ for (const forbidden of [
   'getContainerHashById',
 ]) {
   assert.equal(
-    server.includes(forbidden),
+    `${server}\n${teleportServer}`.includes(forbidden),
     false,
-    `transport-only protocol unexpectedly uses platform API: ${forbidden}`,
+    `local teleport unexpectedly uses platform API: ${forbidden}`,
   );
 }
 

@@ -76,6 +76,7 @@ import { HttpScriptShell } from '../http/http-script';
 import { NavigatorScriptShell } from '../navigator/navigator-script';
 import { RTCScriptShell } from '../rtc/rtc-script';
 import { StorageSynchronizer } from '../storage/storage-script';
+import { TeleportScriptShell } from '../teleport/teleport-script';
 import { warnDeprecate } from '../utils/deprecate';
 import { PromiseWrapper } from '../utils/script-promise';
 import { ScriptParserAPI } from './bindings/animations';
@@ -264,6 +265,7 @@ export class ScriptShell {
   public rtc: RTCScriptShell;
   public gui: GUIScriptShell;
   public navigator: NavigatorScriptShell;
+  public teleport: TeleportScriptShell;
   public remoteChannel: RemoteChannelScriptShell;
   public perf = ScriptPerfCounterSchema.clone(ScriptPerfCounterSchema.identity);
 
@@ -949,6 +951,10 @@ export class ScriptShell {
     );
     this.rtc = new RTCScriptShell(this);
     this.gui = new GUIScriptShell(this);
+    this.teleport = new TeleportScriptShell(
+      this.client,
+      this.scheduler.schedule,
+    );
     this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
 
     this.console = new GameConsole(this.log, this.clearLog);
@@ -985,6 +991,7 @@ export class ScriptShell {
       kick: this.kick,
       setCameraPitch: this.setCameraPitch,
       setCameraYaw: this.setCameraYaw,
+      teleport: this.teleport.teleport,
     });
     this.api = createScriptAPI({
       scheduler: this.scheduler.scheduler,

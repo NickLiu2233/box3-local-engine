@@ -18,6 +18,7 @@ import {
 } from '@box-local/schema/code-editor/murda-text';
 import CLIENT_API_TYPES from '@box-local/script-api/dts/client-api-types.dts';
 import SERVER_API_TYPES from '@box-local/script-api/dts/server-api-types.dts';
+import LOCAL_API_DECLARATIONS from 'src/resource/api-declarations.dts';
 import { EventBus } from '@box-local/utils/event';
 import { clientConfig } from 'src/config/client';
 import { reduxDispatch } from 'src/redux/edit';
@@ -45,7 +46,10 @@ export class CodeEditorClientController {
   private _cursorPosIdDict: { [key: string]: string } = {};
   private _fileModels: { [key: string]: any } = {};
   public monacoController = monacoController;
-  private serverDeclarations: string = '';
+  // Keep the core engine declarations available synchronously. The complete
+  // content-addressed declaration blob is still loaded below, but editor
+  // hints must not disappear when that request is slow or unavailable.
+  private serverDeclarations: string = LOCAL_API_DECLARATIONS;
   public onSelectFile = new EventBus<void>();
   public onShareAutoSave = new EventBus<void>();
   private _canUnlockSelectedFile = true;

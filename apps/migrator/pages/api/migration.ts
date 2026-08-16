@@ -14,7 +14,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   if (req.method === 'GET') {
     const job = getMigration(String(req.query.id || ''));
-    return job ? res.status(200).json({ job }) : res.status(404).json({ message: '迁移任务不存在或已过期' });
+    return job
+      ? res.status(200).json({ job })
+      : res.status(404).json({ message: '迁移任务不存在，迁移器服务可能已经重启，请重新开始' });
   }
   res.setHeader('Allow', 'GET, POST');
   return res.status(405).end();

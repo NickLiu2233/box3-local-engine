@@ -110,6 +110,8 @@ BOX_CREATOR_EDIT_PREWARM_RUNTIMES=6
 BOX_CREATOR_PLAY_PREWARM_RUNTIMES=4
 BOX_PLAY_PREWARM_RUNTIMES=8
 BOX_RUNTIME_IDLE_TIMEOUT_MS=900000
+BOX_TELEPORT_MAX_ROOMS=64
+BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS=900000
 ```
 
 常驻数量不能超过对应运行时上限，设为 `0` 可关闭。Creator 默认分别预热并常驻最近使用的
@@ -120,6 +122,20 @@ BOX_RUNTIME_IDLE_TIMEOUT_MS=900000
 
 游玩运行时直接读取只读发布资源，只把派生数据写到缓存层，不再在每次冷启动时复制整份地图。
 Docker 部署的缓存随 Creator 工程卷或 Play 的 `box-play-storage` 卷持久化。
+
+地图脚本可使用与 Boxes 一致的地图组内传送接口：
+
+```js
+const room = await world.teleport('副地图访问ID', [player])
+// 后续可把其他玩家送入同一私有房间
+await world.teleport('副地图访问ID', [anotherPlayer], room.serverId)
+// 显式进入目标地图的公共实例
+await world.teleport('副地图访问ID', [player], 'public')
+```
+
+默认调用会启动一个独立私有运行时，只有被传送的登录玩家可以创建会话；该房间不会出现在
+地图列表中。目标必须属于当前地图组，跨组请求会被拒绝。私有房间运行时计入 Creator 预览
+或 Play 的运行时总量限制，无连接超过 `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS` 后自动回收。
 
 更换该值会让已有运行时身份断言失效，并改变账号的 `entity.player.userKey`，因此完成正式部署后不要
 随意轮换。

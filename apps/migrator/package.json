@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3212",
     "build": "next build",
-    "test": "node scripts/regression-preview-image.cjs",
+    "test": "node scripts/regression-preview-image.cjs && node scripts/regression-running-job-retention.cjs",
     "start": "next start -p 3212"
   },
   "dependencies": {

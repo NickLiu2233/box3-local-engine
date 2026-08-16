@@ -202,6 +202,19 @@ export class PlayClient extends EngineClient {
 
     const mapInfo = await response.json();
     clientConfig.mapInfo = mapInfo;
+    clientConfig.name = hash;
+    if (clientConfig.isLocalGameServer) {
+      const roomPath = serverId && serverId !== 'public'
+        ? `/__room/${encodeURIComponent(serverId)}`
+        : '';
+      const runtimeBase = `/runtime/play/${encodeURIComponent(hash)}${roomPath}`;
+      clientConfig.CDN_PATH = runtimeBase;
+      clientConfig.OSS_CDN_URL = runtimeBase;
+      clientConfig.BACKEND_SERVER_URL = runtimeBase;
+      clientConfig.MAAS_BACKEND_SERVER_URL = runtimeBase;
+      clientConfig.JAVA_BACKEND_SERVER_URL = runtimeBase;
+      clientConfig.CREATERA_BACKEND_SERVER_URL = runtimeBase;
+    }
 
     hideAdminFn?.();
     // 对应 SoundClient 里的引用

@@ -11,6 +11,13 @@ export declare class GameWorld {
      */
     constructor();
     /**
+     * 将玩家传送到同一地图组内的目标地图。默认创建一个私有房间；传入
+     * 上一次返回的 serverId 可加入同一房间，传入 `public` 则进入公共实例。
+     */
+    teleport(mapId: string, players: GamePlayerEntity[], serverId?: string): Promise<TeleportResult>;
+    /** 当前运行实例的 ID。公共实例为 `public`。 */
+    readonly serverId: string;
+    /**
      
      * The entities in game can be searched using a jQuery selector-like syntax.
      * For more examples see {@link GameSelectorString}
@@ -53,6 +60,9 @@ export declare class GameWorld {
      */
     nextTick: GameEventFuture<GameTickEvent>;
 }
+export type TeleportResult = {
+    serverId: string;
+};
 /**
  * @ignore
  * @event

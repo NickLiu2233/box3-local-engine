@@ -81,7 +81,9 @@ pnpm voxa
 （自动请求 `/block/get?arg=<hash>`）；也可配置静态地址
 `BOX_MIGRATOR_CONTENT_URL=https://cdn.example.com/block/{hash}`。体素模型会先读取 IPFS，失败后按
 `BOX_MIGRATOR_OSS_URL/engine/m/<hash>` 回退，并继续复制模型元数据引用的 `dataHash`。私有服务可再配置
-`BOX_MIGRATOR_AUTHORIZATION`。然后启动：
+`BOX_MIGRATOR_AUTHORIZATION`。运行中的迁移任务不会按结果保留时间过期；完成或失败的状态默认保留
+1 小时。大工程默认使用 512 个引用扫描任务和 32 个实际 HTTP 请求，避免状态页面因上万并发任务
+失去响应。然后启动：
 
 ```bash
 pnpm migrator
@@ -225,6 +227,8 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_CREATOR_PLAY_PREWARM_RUNTIMES` | `4` | Creator 后台预热的最近预览工程数量，`0` 为关闭 |
 | `BOX_PLAY_PREWARM_RUNTIMES` | `8` | 全部地图缓存完成后常驻的主地图优先数量，`0` 为关闭后台预热 |
 | `BOX_RUNTIME_IDLE_TIMEOUT_MS` | `900000` | 无活动连接运行时的空闲回收时间 |
+| `BOX_TELEPORT_MAX_ROOMS` | `64` | 地图组传送可同时保留的私有房间数量；房间运行时仍计入对应的总运行时上限 |
+| `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS` | `900000` | 私有传送房间无人连接后的回收时间 |
 | `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
 | `BOX_SCRIPT_MEMORY_MB` | `512` | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置 |
 | `BOX_SCRIPT_HEAP_MB` | `512` | 兼容其他脚本执行路径的堆内存上限（MiB），建议与上一项保持一致 |

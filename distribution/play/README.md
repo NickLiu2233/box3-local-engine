@@ -56,6 +56,11 @@ Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到
 使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整缓存完成后继续常驻的地图数量，设为 `0` 可关闭；
 该值不应超过 `BOX_PLAY_MAX_RUNTIMES`。运行时回收或容器重启不会再次完整烘焙未变化的地图。
 
+地图组脚本支持 `world.teleport(mapId, players, serverId?)`。默认会创建不公开展示的独立
+私有房间；只有被传送的登录玩家可以进入。`BOX_TELEPORT_MAX_ROOMS` 控制可保留的房间数量，
+`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS` 控制无人房间的回收时间，房间运行时仍计入
+`BOX_PLAY_MAX_RUNTIMES`。
+
 地图可以通过网页服主管理导入。先在 `.env` 设置：
 
 ```env

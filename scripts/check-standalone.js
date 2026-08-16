@@ -91,6 +91,7 @@ const requiredFiles = [
   'apps/local-engine/src/play-image.js',
   'apps/local-engine/src/prune-player-build.js',
   'apps/local-engine/src/runtime-storage-namespace.js',
+  'apps/local-engine/src/teleport-room-manager.js',
   'apps/local-engine/src/stage-runtime-data.js',
   'services/game-server/scripts/dev-launch.js',
   'services/game-server/scripts/check-local-derived-content.ts',
@@ -428,6 +429,12 @@ for (const [name, stage, flag] of [
     dockerFile,
     `${name} storage namespace runtime`,
     /COPY --from=[^\s]+ --chown=node:node \/app\/apps\/local-engine\/src\/runtime-storage-namespace\.js \/app\/apps\/local-engine\/src\/runtime-storage-namespace\.js/,
+  )
+  requirePattern(
+    stage,
+    dockerFile,
+    `${name} teleport room manager runtime`,
+    /COPY --from=[^\s]+ --chown=node:node \/app\/apps\/local-engine\/src\/teleport-room-manager\.js \/app\/apps\/local-engine\/src\/teleport-room-manager\.js/,
   )
   forbidPattern(stage, dockerFile, `${name} broad source-tree copy`, /^COPY (?!.*--from=).*$/m)
 }
@@ -994,13 +1001,13 @@ requirePattern(
   readRequired('apps/game/pages/api/createSession.ts'),
   'apps/game/pages/api/createSession.ts',
   'same-origin creator WebSocket URL',
-  /deploymentMode === 'creator'[\s\S]*?json\.data\.socketServerUrl = `\$\{protocol\}:\/\/\$\{requestHost\}\/runtime\/\$\{mode\}\/\$\{encodeURIComponent\(containerName\)\}`/,
+  /deploymentMode === 'creator'[\s\S]*?roomPath = privateRoomId[\s\S]*?json\.data\.socketServerUrl = `\$\{protocol\}:\/\/\$\{requestHost\}\/runtime\/\$\{mode\}\/\$\{encodeURIComponent\(containerName\)\}\$\{roomPath\}`/,
 )
 requirePattern(
   readRequired('apps/game/pages/api/createSession.ts'),
   'apps/game/pages/api/createSession.ts',
   'same-origin play WebSocket URL',
-  /deploymentMode === 'play'[\s\S]*?runtimePath =[\s\S]*?`\/runtime\/play\/\$\{encodeURIComponent\(containerName\)\}`[\s\S]*?json\.data\.socketServerUrl/,
+  /deploymentMode === 'play'[\s\S]*?runtimePath =[\s\S]*?`\/runtime\/play\/\$\{encodeURIComponent\(containerName\)\}\$\{[\s\S]*?privateRoomId[\s\S]*?json\.data\.socketServerUrl/,
 )
 requirePattern(
   readRequired('apps/game/src/apis/api-java/index.ts'),

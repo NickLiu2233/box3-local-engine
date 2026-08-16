@@ -898,9 +898,13 @@ export async function generateProjectArchive(
   // Match boxes' preload model: create all lightweight retrieval promises,
   // then let the content layer gate only true network misses. This prevents
   // requests waiting for a network slot from blocking later disk-cache hits.
+  // Traversal workers mostly wait for the separately gated HTTP pool. Creating
+  // one promise per possible blob (the old default was 20,000) does not make
+  // the network faster and can starve status polling on large projects.
   const scanConcurrency = Math.min(
     limit.maxBlobs,
-    positiveInteger('BOX_MIGRATOR_SCAN_CONCURRENCY', limit.maxBlobs),
+    2_048,
+    positiveInteger('BOX_MIGRATOR_SCAN_CONCURRENCY', 512),
   );
   const requestConcurrency = Math.min(128, positiveInteger('BOX_MIGRATOR_CONCURRENCY', 32));
   const withRequestSlot = createConcurrencyGate(requestConcurrency);

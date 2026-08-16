@@ -591,6 +591,11 @@ declare class GameWorld {
         pitch?: number;
     } | string) => Sound;
     /**
+     * 地图组内传送能力。默认创建仅被传送玩家可见的独立房间；传入返回的
+     * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
+     */
+    teleport: TeleportType;
+    /**
      * 当前服务器id
      */
     serverId: string;
@@ -999,6 +1004,11 @@ declare class GameWorld {
         gain?: number;
         pitch?: number;
     } | string) => Sound, 
+    /**
+     * 地图组内传送能力。默认创建仅被传送玩家可见的独立房间；传入返回的
+     * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
+     */
+    teleport: TeleportType,
     /**
      * 当前服务器id
      */
