@@ -26,9 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       assertion: createRuntimeIdentityAssertion(identity),
     });
   } catch (error) {
-    if ((error as Error).message === 'AUTH_REQUIRED') {
+    const message = (error as Error).message;
+    if (message === 'AUTH_REQUIRED') {
       return res.status(401).json({ message: 'AUTH_REQUIRED' });
     }
-    return res.status(503).json({ message: (error as Error).message });
+    if (message === 'IP_BANNED' || message === 'DEVICE_BANNED') {
+      return res.status(403).json({ message });
+    }
+    return res.status(503).json({ message });
   }
 }

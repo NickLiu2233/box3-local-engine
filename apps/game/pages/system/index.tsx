@@ -160,9 +160,9 @@ function RuntimeCell({ label, status }: { label: string; status: RuntimeStatus }
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') return { notFound: true };
-  const { hasAuthenticatedPlayer, playerAccountURL } = await import('../../server/player-service-client');
+  const { hasAuthenticatedPlayer, playerLoginURL } = await import('../../server/player-service-client');
   if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
-    return { redirect: { destination: playerAccountURL('creator'), permanent: false } };
+    return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
   }
   return { props: {} };
 };

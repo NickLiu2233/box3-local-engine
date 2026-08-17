@@ -24,7 +24,14 @@ export function startPlayerRevocationPoller(game: GameServer, logger: Logger) {
   const intervalMs = Number.isFinite(configuredInterval)
     ? Math.max(250, Math.min(30_000, configuredInterval))
     : 1_000;
-  const startedAt = new Date(Date.now() - intervalMs).toISOString();
+  const configuredIdentityTtl = Number(process.env.BOX_RUNTIME_IDENTITY_TTL_MS);
+  const identityTtlMs = Number.isFinite(configuredIdentityTtl) && configuredIdentityTtl >= 5_000
+    ? configuredIdentityTtl
+    : 5 * 60_000;
+  // A runtime can start after a player was banned while the browser still
+  // holds an assertion issued before the ban. Replay the complete assertion
+  // validity window so newly started runtimes cannot miss that revocation.
+  const startedAt = new Date(Date.now() - identityTtlMs - intervalMs).toISOString();
   let cursor = '0';
   let polling = false;
 

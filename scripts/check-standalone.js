@@ -103,6 +103,44 @@ const requiredFiles = [
 
 for (const file of requiredFiles) readRequired(file)
 
+// Keep retired single-map and unauthenticated-player knobs out of every
+// server-owner-facing configuration surface. Project names now come from the
+// project manifest, and Creator/Play identities come from Player Service.
+const publicConfigurationFiles = [
+  '.env.docker.example',
+  'docker-compose.yml',
+  'distribution/play/.env.example',
+  'apps/local-engine/src/project-manager.js',
+  'docs/deployment.md',
+]
+for (const file of publicConfigurationFiles) {
+  const source = readRequired(file)
+  for (const retiredName of [
+    'BOX_MIGRATOR_CREATERA_API_URL',
+    'BOX_LOCAL_PLAYER_NAME',
+    'BOX_LOCAL_PLAYER_ID',
+  ]) {
+    forbidPattern(
+      source,
+      file,
+      `retired environment parameter ${retiredName}`,
+      new RegExp(`\\b${retiredName}\\b`),
+    )
+  }
+}
+forbidPattern(
+  readRequired('.env.docker.example'),
+  '.env.docker.example',
+  'retired single-map BOX_WORLD_NAME parameter',
+  /^BOX_WORLD_NAME=/m,
+)
+forbidPattern(
+  readRequired('docs/deployment.md'),
+  'docs/deployment.md',
+  'retired single-map BOX_WORLD_NAME parameter',
+  /^BOX_WORLD_NAME=/m,
+)
+
 // Workspace dependencies must stay self-contained and must not point at the
 // old private registry.
 const workspaceText = readRequired('pnpm-workspace.yaml')
@@ -191,6 +229,8 @@ for (const [label, pattern] of [
   ['creator builds only the creator image', /'build', 'creator'/],
   ['play uses the external world library', /BOX_PLAY_LIBRARY_DIR/],
   ['play accepts no release argument', /pnpm \$\{build \? 'play' : 'play:up'\} 不接受作品参数/],
+  ['play command forces a metadata-labelled image rebuild', /build\s*\?\s*ensurePlayImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/],
+  ['player service forwards automatic build metadata', /ensurePlayerServiceImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/],
   ['creator starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'creator'/],
   ['play starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'play'/],
   ['VOXA builds only its Docker target', /'build', 'voxa'/],
@@ -403,6 +443,27 @@ const playDockerStage = getDockerStage(dockerSource, 'play')
 const playerServiceBuildStage = getDockerStage(dockerSource, 'player-service-build')
 const playerServiceDockerStage = getDockerStage(dockerSource, 'player-service')
 const voxaDockerStage = getDockerStage(dockerSource, 'voxa')
+for (const [name, stage] of [
+  ['creator', creatorDockerStage],
+  ['play', playDockerStage],
+  ['player service', playerServiceDockerStage],
+  ['VOXA', voxaDockerStage],
+]) {
+  for (const label of [
+    'org.opencontainers.image.version',
+    'org.opencontainers.image.revision',
+    'org.opencontainers.image.created',
+    'org.opencontainers.image.source',
+    'org.opencontainers.image.licenses',
+  ]) {
+    requirePattern(
+      stage,
+      dockerFile,
+      `${name} ${label} label`,
+      new RegExp(label.replaceAll('.', '\\.')),
+    )
+  }
+}
 for (const [name, stage, flag] of [
   ['creator', creatorDockerStage, '--creator'],
   ['play', playDockerStage, '--play'],
@@ -592,6 +653,19 @@ requirePattern(
   /dockerfile: apps\/local-engine\/Dockerfile/,
 )
 requirePattern(voxaCompose, composeFile, 'VOXA Docker target', /target: voxa/)
+for (const name of [
+  'BOX_BUILD_VERSION',
+  'BOX_BUILD_COMMIT',
+  'BOX_BUILD_DATE',
+  'BOX_BUILD_SOURCE',
+]) {
+  requirePattern(
+    voxaCompose,
+    composeFile,
+    `VOXA ${name} build argument`,
+    new RegExp(`${name}: \\$\\{${name}:-`),
+  )
+}
 requirePattern(
   voxaCompose,
   composeFile,
@@ -1337,10 +1411,10 @@ function checkPlayerServicePruning() {
   try {
     const pages = {
       '/': 'pages/index.js',
-      '/account': 'pages/account.js',
       '/players': 'pages/players.js',
       '/api/health-check': 'pages/api/health-check.js',
       '/api/player-auth/login': 'pages/api/player-auth/login.js',
+      '/api/player-auth/login-required': 'pages/api/player-auth/login-required.js',
       '/api/play-admin/players': 'pages/api/play-admin/players.js',
       '/projects': 'pages/projects.js',
       '/p/[gameName]': 'pages/p/[gameName].js',
@@ -1356,7 +1430,7 @@ function checkPlayerServicePruning() {
     })
     write('routes-manifest.json', {
       dynamicRoutes: [{ page: '/p/[gameName]' }],
-      staticRoutes: [{ page: '/' }, { page: '/account' }, { page: '/projects' }],
+      staticRoutes: [{ page: '/' }, { page: '/projects' }],
       dataRoutes: [{ page: '/players' }],
     })
     write('build-manifest.json', {
@@ -1370,8 +1444,8 @@ function checkPlayerServicePruning() {
     prunePlayerServiceBuild(tempRoot)
     const pruned = JSON.parse(fs.readFileSync(
       path.join(tempRoot, 'server/pages-manifest.json'), 'utf8'))
-    for (const route of ['/', '/account', '/players', '/api/health-check',
-      '/api/player-auth/login', '/api/play-admin/players']) {
+    for (const route of ['/', '/players', '/api/health-check',
+      '/api/player-auth/login', '/api/player-auth/login-required', '/api/play-admin/players']) {
       if (!pruned[route]) fail(`player-service pruning removed ${route}`)
     }
     for (const route of ['/projects', '/p/[gameName]', '/api/local-projects', '/api/play-worlds']) {

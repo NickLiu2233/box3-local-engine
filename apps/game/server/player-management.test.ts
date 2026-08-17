@@ -24,6 +24,7 @@ function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
     adminNote: '',
     tags: [],
     banReason: '',
+    adminPermissions: [],
     ...changes,
   };
 }

@@ -217,7 +217,10 @@ function startPlayerService({ build }) {
   }
   assertRuntimeConfiguration('player-service')
   const config = build
-    ? ensurePlayerServiceImageArchive({ forceBuild: true })
+    ? ensurePlayerServiceImageArchive({
+        forceBuild: true,
+        buildMetadata: automaticBuildMetadata,
+      })
     : getPlayImageConfig()
   stopProduct('player-service')
   runDocker([
@@ -246,7 +249,10 @@ function deployPlay({ build }) {
   )
   fs.mkdirSync(libraryRoot, { recursive: true })
   const playImage = build
-    ? ensurePlayImageArchive()
+    ? ensurePlayImageArchive({
+        forceBuild: true,
+        buildMetadata: automaticBuildMetadata,
+      })
     : getPlayImageConfig()
   runDocker([
     'compose',
@@ -292,7 +298,7 @@ function startVoxa({ build }) {
   ])
   console.log('\nVOXA 已启动：http://127.0.0.1:' + configuredVoxaPort())
   console.log(
-    '本地模型库：http://127.0.0.1:' + configuredVoxaPort() + '/library',
+    '模型列表已整合到创作端作品中心：http://127.0.0.1:3002/projects?view=models',
   )
   console.log(`数据目录：${dataRoot}\n`)
 }

@@ -6,9 +6,14 @@ import {
   Activity, AlertTriangle, Ban, ChevronRight, CircleUserRound, Clock3, Copy,
   Database, Download, FileClock, KeyRound, Laptop, LayoutDashboard, Link2,
   LogOut, Monitor, Moon, RefreshCw, Search, ShieldCheck, Sun, Tags, Trash2,
-  UserCog, Users, X,
+  UserCog, UserPlus, Users, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  PLAYER_ADMIN_CAPABILITY_META,
+  PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
+  type PlayerAdminCapability,
+} from '../shared/player-admin-policy';
 import styles from './player-management.module.css';
 
 const TOKEN_KEY = 'box-play-admin-token';
@@ -41,6 +46,7 @@ type Player = {
   banReason: string;
   bannedAt?: string;
   bannedUntil?: string;
+  adminPermissions: PlayerAdminCapability[];
 };
 
 type PlayerDetails = {
@@ -53,11 +59,15 @@ type PlayerDetails = {
     createdIp: string;
     lastSeenIp: string;
     userAgent: string;
+    deviceHash: string;
+    deviceId: string;
   }>;
   loginHistory: Array<{
     createdAt: string;
     ip: string;
     userAgent: string;
+    deviceHash: string;
+    deviceId: string;
   }>;
   adminHistory: Array<{
     id: string; action: string; actor: string; actorDisplayName: string;
@@ -66,6 +76,10 @@ type PlayerDetails = {
   relatedAccounts: Array<{
     subjectId: string; displayName: string; username: string;
     sharedIp: string; lastSeenAt: string;
+  }>;
+  identityBans: Array<{
+    id: string; kind: 'ip' | 'device'; displayValue: string; reason: string;
+    bannedAt: string; bannedUntil?: string;
   }>;
 };
 
@@ -101,12 +115,28 @@ type AdminActor = {
   role: 'moderator' | 'admin' | 'owner';
   subjectId?: string;
   credential: 'owner-token' | 'account';
+  permissions: PlayerAdminCapability[];
 };
 type AdminActivity = {
   id: string; kind: 'login' | 'admin'; action: string; actor: string;
   actorDisplayName: string; subjectId: string; displayName: string;
   username: string; ip: string; userAgent: string;
   details: Record<string, unknown>; createdAt: string;
+};
+
+type CreateUserForm = {
+  username: string;
+  displayName: string;
+  password: string;
+  role: Player['role'];
+  boxId: string;
+  tags: string;
+  adminNote: string;
+};
+
+const emptyCreateUser: CreateUserForm = {
+  username: '', displayName: '', password: '', role: 'player',
+  boxId: '', tags: '', adminNote: '',
 };
 
 type PlayersPageProps = {
@@ -184,6 +214,7 @@ function roleLabel(role: Player['role']) {
 function auditLabel(action: string) {
   if (action === 'login.success') return '账号登录成功';
   if (action === 'login.failed') return '账号登录失败';
+  if (action === 'player.create') return '创建玩家账号';
   if (action === 'player.update') return '修改玩家资料';
   if (action === 'player.box-id.update') return '修改神岛 ID 绑定';
   if (action === 'player.delete') return '删除玩家身份';
@@ -264,6 +295,8 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('loading');
   const [loginOpen, setLoginOpen] = useState(false);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [createUser, setCreateUser] = useState<CreateUserForm>(emptyCreateUser);
   const [adminToken, setAdminToken] = useState('');
   const [identityFilter, setIdentityFilter] = useState<'all' | 'user' | 'banned'>(
     initialSection === 'bans' ? 'banned' : ['sessions', 'roles'].includes(initialSection) ? 'user' : 'all',
@@ -301,14 +334,18 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
         event.preventDefault();
         searchInputRef.current?.focus();
       }
-      if (event.key === 'Escape' && selected) {
-        setSelected(null);
-        setDetails(null);
+      if (event.key === 'Escape') {
+        if (createUserOpen && busy !== 'create-user') {
+          setCreateUserOpen(false);
+        } else if (selected) {
+          setSelected(null);
+          setDetails(null);
+        }
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [section, selected]);
+  }, [busy, createUserOpen, section, selected]);
 
   function cycleTheme() {
     const next: ConsoleTheme = theme === 'system' ? 'light' : theme === 'light' ? 'dark' : 'system';
@@ -471,7 +508,16 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   };
   const displayedPlayers = players;
   const ownerAccess = actor?.role === 'owner' || actor?.role === 'admin';
-  const moderatorAccess = ownerAccess || actor?.role === 'moderator';
+  const hasCapability = (capability: PlayerAdminCapability) => ownerAccess
+    || Boolean(actor?.permissions?.includes(capability));
+  const canManageProfiles = hasCapability('players.manage');
+  const canManageBans = hasCapability('players.ban');
+  const canManageSessions = hasCapability('sessions.manage');
+  const canManageIdentityBans = hasCapability('identity-bans.manage');
+  const canCreatePlayers = hasCapability('players.create');
+  const canExportPlayers = hasCapability('players.export');
+  const canResetPasswords = hasCapability('passwords.reset');
+  const canViewAudit = hasCapability('audit.view');
   const searchPlaceholder = section === 'sessions' ? '搜索在线玩家、设备来源或身份 ID'
     : section === 'bans' ? '搜索被封禁玩家、标签或身份 ID'
       : section === 'roles' ? '搜索用户名、昵称或管理角色'
@@ -515,7 +561,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     }
   }
 
-  async function save() {
+  async function saveChanges(changes: Record<string, unknown>, successMessage: string) {
     if (!selected) return;
     setBusy('save');
     setNotice('');
@@ -523,23 +569,14 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
         method: 'PATCH',
         headers: adminHeaders(token, true),
-        body: JSON.stringify({
-          displayName: selected.displayName,
-          avatar: selected.avatar,
-          ...(ownerAccess ? { role: selected.role } : {}),
-          status: selected.status,
-          adminNote: selected.adminNote,
-          tags: selected.tags,
-          banReason: selected.banReason,
-          bannedUntil: selected.bannedUntil || '',
-        }),
+        body: JSON.stringify(changes),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || '保存失败');
       setSelected(data.player);
       setDetails((current) => current ? { ...current, player: data.player } : current);
       await load();
-      setNotice('玩家资料已保存');
+      setNotice(successMessage);
     } catch (error) {
       setNotice((error as Error).message);
     } finally {
@@ -547,8 +584,37 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     }
   }
 
+  function saveProfile() {
+    if (!selected || !canManageProfiles) return;
+    return saveChanges({
+      displayName: selected.displayName,
+      avatar: selected.avatar,
+      adminNote: selected.adminNote,
+      tags: selected.tags,
+    }, '玩家资料已保存');
+  }
+
+  function saveBan() {
+    if (!selected || !canManageBans) return;
+    return saveChanges({
+      status: selected.status,
+      banReason: selected.banReason,
+      bannedUntil: selected.bannedUntil || '',
+    }, selected.status === 'banned'
+      ? '封禁已经生效：全部登录会话已撤销，正在通知运行中的地图断开该玩家。'
+      : '封禁已经解除：该玩家可以重新登录并进入地图。');
+  }
+
+  function savePermissions() {
+    if (!selected || !ownerAccess) return;
+    return saveChanges({
+      role: selected.role,
+      adminPermissions: selected.role === 'moderator' ? selected.adminPermissions : [],
+    }, '角色与管理员权限已保存');
+  }
+
   async function saveBoxId() {
-    if (!selected || !moderatorAccess) return;
+    if (!selected || !canManageProfiles) return;
     setBusy('boxId');
     setNotice('');
     try {
@@ -592,7 +658,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   async function revokeSessions() {
-    if (!selected || !confirm(`确定强制“${selected.displayName}”的全部设备退出登录并断开游戏连接吗？`)) return;
+    if (!selected || !canManageSessions || !confirm(`确定强制“${selected.displayName}”的全部设备退出登录并断开游戏连接吗？`)) return;
     setBusy('revoke');
     setNotice('');
     try {
@@ -620,7 +686,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   async function exportPlayers() {
-    if (busy) return;
+    if (busy || !canExportPlayers) return;
     setBusy('export');
     setNotice('正在生成玩家 CSV，数据较多时可能需要几秒…');
     try {
@@ -681,7 +747,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   async function revokeSession(sessionId: string) {
-    if (!selected || !confirm('确定撤销这个设备的登录会话吗？该设备会立即退出。')) return;
+    if (!selected || !canManageSessions || !confirm('确定撤销这个设备的登录会话吗？该设备会立即退出。')) return;
     setBusy(`session:${sessionId}`);
     setNotice('');
     try {
@@ -702,8 +768,67 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     }
   }
 
+  async function banSource(kind: 'ip' | 'device', value: string, label: string) {
+    if (!selected || !value || busy || !canManageIdentityBans) return;
+    const duration = prompt(`封禁${label}的小时数（留空表示永久封禁，例如 24、72、168）`, '24');
+    if (duration === null) return;
+    const hours = duration.trim() ? Number(duration) : 0;
+    if (duration.trim() && (!Number.isFinite(hours) || hours <= 0 || hours > 8760)) {
+      setNotice('临时封禁时长必须在 1 小时到 1 年之间');
+      return;
+    }
+    const reason = prompt(`请输入封禁${label}的原因（可以留空）`) || '';
+    if (!confirm(`确定封禁${label}“${kind === 'device' ? value.slice(0, 16) : value}”吗？匹配的在线账号会立即下线。`)) return;
+    setBusy(`ban-source:${kind}`);
+    setNotice('');
+    try {
+      const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
+        method: 'POST',
+        headers: adminHeaders(token, true),
+        body: JSON.stringify({
+          action: kind === 'ip' ? 'ban-ip' : 'ban-device',
+          value,
+          reason,
+          bannedUntil: hours ? temporaryBanUntil(hours) : '',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || `封禁${label}失败`);
+      await openDetails(selected, 'ban');
+      await load();
+      setNotice(`${label}封禁已生效，撤销 ${data.affectedSessions || 0} 个会话，影响 ${data.affectedPlayers || 0} 位在线玩家`);
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function unbanSource(banId: string, label: string) {
+    if (!selected || busy || !canManageIdentityBans || !confirm(`确定解除这个${label}封禁吗？`)) return;
+    setBusy(`unban-source:${banId}`);
+    setNotice('');
+    try {
+      const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
+        method: 'POST', headers: adminHeaders(token, true),
+        body: JSON.stringify({ action: 'unban-source', banId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || '解除封禁失败');
+      await openDetails(selected, 'ban');
+      setNotice(`${label}封禁已解除；已退出的玩家需要重新登录`);
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   async function batchAction(action: 'revoke-sessions' | 'temporary-ban' | 'ban' | 'unban' | 'add-tag' | 'remove-tag') {
     if (!selectedIds.length || busy) return;
+    if (action === 'revoke-sessions' && !canManageSessions) return;
+    if (['temporary-ban', 'ban', 'unban'].includes(action) && !canManageBans) return;
+    if (['add-tag', 'remove-tag'].includes(action) && !canManageProfiles) return;
     const label = action === 'revoke-sessions' ? '强制下线' : action === 'temporary-ban' ? '临时封禁' : action === 'ban' ? '永久封禁' : action === 'unban' ? '解除封禁' : action === 'add-tag' ? '增加标签' : '移除标签';
     const tag = action === 'add-tag' || action === 'remove-tag' ? prompt(`请输入要${label}的标签`)?.trim() : '';
     if ((action === 'add-tag' || action === 'remove-tag') && !tag) return;
@@ -746,7 +871,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   async function resetPassword() {
-    if (!selected || !ownerAccess || newPassword.length < 8) return;
+    if (!selected || !canResetPasswords || newPassword.length < 8) return;
     if (!confirm(`确定重置“${selected.displayName}”的密码并撤销全部会话吗？`)) return;
     setBusy('password');
     try {
@@ -766,6 +891,34 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     }
   }
 
+  async function submitCreateUser() {
+    if (!canCreatePlayers || busy || createUser.password.length < 8) return;
+    setBusy('create-user');
+    setNotice('');
+    try {
+      const response = await fetch('/api/play-admin/players', {
+        method: 'POST',
+        headers: adminHeaders(token || sessionStorage.getItem(TOKEN_KEY) || '', true),
+        body: JSON.stringify({
+          ...createUser,
+          role: ownerAccess ? createUser.role : 'player',
+          tags: createUser.tags.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || '用户创建失败');
+      setCreateUserOpen(false);
+      setCreateUser(emptyCreateUser);
+      await load();
+      setNotice(`用户“${data.player.displayName}”已创建，尚未产生登录会话`);
+      await openDetails(data.player, 'profile');
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
   return (
     <div className={styles.themeRoot} data-theme={theme}>
       <Head><title>玩家管理</title></Head>
@@ -777,8 +930,8 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             <button aria-current={section === 'players' ? 'page' : undefined} className={section === 'players' ? styles.navActive : ''} onClick={() => navigateSection('players')}><span><Users size={17} /></span><div>玩家目录<small>资料、标签与备注</small></div></button>
             <button aria-current={section === 'sessions' ? 'page' : undefined} className={section === 'sessions' ? styles.navActive : ''} onClick={() => navigateSection('sessions')}><span><Monitor size={17} /></span><div>在线与会话<small>设备和强制下线</small></div></button>
             <button aria-current={section === 'bans' ? 'page' : undefined} className={section === 'bans' ? styles.navActive : ''} onClick={() => navigateSection('bans')}><span><Ban size={17} /></span><div>封禁管理<small>临时与永久处罚</small></div></button>
-            <button aria-current={section === 'roles' ? 'page' : undefined} className={section === 'roles' ? styles.navActive : ''} onClick={() => navigateSection('roles')}><span><UserCog size={17} /></span><div>角色与权限<small>管理员和服主</small></div></button>
-            <button aria-current={section === 'audit' ? 'page' : undefined} className={section === 'audit' ? styles.navActive : ''} onClick={() => navigateSection('audit')}><span><ShieldCheck size={17} /></span><div>安全与审计<small>登录风险与操作记录</small></div></button>
+            {ownerAccess ? <button aria-current={section === 'roles' ? 'page' : undefined} className={section === 'roles' ? styles.navActive : ''} onClick={() => navigateSection('roles')}><span><UserCog size={17} /></span><div>角色与权限<small>仅服主可授权</small></div></button> : null}
+            {canViewAudit ? <button aria-current={section === 'audit' ? 'page' : undefined} className={section === 'audit' ? styles.navActive : ''} onClick={() => navigateSection('audit')}><span><ShieldCheck size={17} /></span><div>安全与审计<small>登录风险与操作记录</small></div></button> : null}
           </nav>
           <div className={styles.sidebarFooter}><span className={styles.healthDot} /><span><strong>身份服务正常</strong><small>PostgreSQL 已连接</small></span></div>
         </aside>
@@ -801,7 +954,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             </div>
           </header>
 
-          {notice ? <div className={styles.notice} role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}><X size={16} /></button></div> : null}
+          {notice && !selected ? <div className={styles.notice} role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}><X size={16} /></button></div> : null}
 
           {section === 'overview' ? <>
             <section className={styles.metricGrid} aria-label="玩家核心指标">
@@ -849,7 +1002,8 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             <div className={styles.toolbar}>
               <div className={styles.searchField}><Search size={16} aria-hidden="true" /><input ref={searchInputRef} aria-label="搜索玩家" aria-keyshortcuts="/" placeholder={searchPlaceholder} value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitSearch(); }} /><kbd>/</kbd></div>
               <button className={styles.primaryButton} disabled={busy === 'loading'} onClick={submitSearch}>{busy === 'loading' ? '读取中…' : '搜索'}</button>
-              <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={() => void exportPlayers()}><Download size={14} />{busy === 'export' ? '导出中…' : '导出 CSV'}</button>
+              {section === 'players' && canCreatePlayers ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={() => setCreateUserOpen(true)}><UserPlus size={14} />新增用户</button> : null}
+              {canExportPlayers ? <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={() => void exportPlayers()}><Download size={14} />{busy === 'export' ? '导出中…' : '导出 CSV'}</button> : null}
             </div>
             <div className={styles.filterBar}>
               <div className={styles.filterGroup}>
@@ -860,12 +1014,12 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               </div>
               <span>当前显示 {displayedPlayers.length} / {total} 位玩家</span>
             </div>
-            {selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong>{section === 'sessions' || section === 'players' ? <button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button> : null}{section === 'players' ? <><button onClick={() => void batchAction('temporary-ban')}><Ban size={14} />临时封禁</button><button onClick={() => void batchAction('ban')}><Ban size={14} />永久封禁</button><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button></> : null}{section === 'bans' ? <button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解除封禁</button> : null}<button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
+            {selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong>{canManageSessions && (section === 'sessions' || section === 'players') ? <button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button> : null}{section === 'players' ? <>{canManageBans ? <><button onClick={() => void batchAction('temporary-ban')}><Ban size={14} />临时封禁</button><button onClick={() => void batchAction('ban')}><Ban size={14} />永久封禁</button></> : null}{canManageProfiles ? <><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button></> : null}</> : null}{section === 'bans' && canManageBans ? <button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解除封禁</button> : null}<button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
             <section className={styles.tableCard} aria-busy={busy === 'loading'}>
               {section === 'players' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>玩家</th><th>账号标识</th><th>注册信息</th><th>最后在线</th><th>状态</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'profile')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'profile'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><strong>账号 #{player.userId}</strong><small>{player.boxId ? `神岛 ID：${player.boxId}` : '未绑定神岛 ID'}</small></td><td><strong>{formatDate(player.registeredAt || player.createdAt)}</strong><small>{displayIp(player.registrationIp || player.firstSeenIp)}</small></td><td><strong>{formatDate(player.lastSeenAt)}</strong><small>{player.activeSessionCount ? `${player.activeSessionCount} 个有效会话` : '当前离线'}</small></td><td><StatusBadge player={player} /></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'profile'); }}>管理 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
               {section === 'sessions' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>在线玩家</th><th>有效会话</th><th>最后登录</th><th>来源地址</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'sessions')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'sessions'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><strong>{player.activeSessionCount} 个设备</strong><small>{player.activeSessionCount ? '登录凭据仍有效' : '没有有效会话'}</small></td><td><strong>{formatDate(player.lastLoginAt)}</strong><small>累计登录 {player.loginCount} 次</small></td><td><strong className={styles.mono}>{displayIp(player.lastLoginIp)}</strong><small>最近在线 {formatDate(player.lastSeenAt)}</small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'sessions'); }}>管理会话 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
               {section === 'bans' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>被封禁玩家</th><th>处罚类型</th><th>封禁原因</th><th>处理时间</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'ban')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'ban'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><StatusBadge player={player} /><small>{player.bannedUntil ? `至 ${formatDate(player.bannedUntil)}` : '不会自动解除'}</small></td><td><strong>{player.banReason || '未填写原因'}</strong><small>由管理后台执行</small></td><td><strong>{formatDate(player.bannedAt)}</strong><small>最后在线 {formatDate(player.lastSeenAt)}</small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'ban'); }}>处理封禁 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
-              {section === 'roles' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>账号</th><th>后台角色</th><th>权限范围</th><th>最后在线</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'permissions')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'permissions'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><span className={styles.roleBadge}>{roleLabel(player.role)}</span><small>账号 #{player.userId}</small></td><td><strong>{player.role === 'admin' ? '全部后台权限' : player.role === 'moderator' ? '管理普通玩家' : '无后台权限'}</strong><small>{player.role === 'admin' ? '可管理角色和危险操作' : player.role === 'moderator' ? '不可修改管理角色' : '仅可登录游戏与创作端'}</small></td><td><strong>{formatDate(player.lastSeenAt)}</strong><small><StatusBadge player={player} /></small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'permissions'); }}>设置角色 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
+              {section === 'roles' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>账号</th><th>后台角色</th><th>权限范围</th><th>最后在线</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'permissions')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'permissions'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><span className={styles.roleBadge}>{roleLabel(player.role)}</span><small>账号 #{player.userId}</small></td><td><strong>{player.role === 'admin' ? '服主全部权限' : player.role === 'moderator' ? `${(player.adminPermissions || []).length} 项授权能力` : '无后台权限'}</strong><small>{player.role === 'admin' ? '可授权、设置服主并删除账号' : player.role === 'moderator' ? '只能执行服主勾选的操作' : '仅可登录游戏与创作端'}</small></td><td><strong>{formatDate(player.lastSeenAt)}</strong><small><StatusBadge player={player} /></small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'permissions'); }}>设置权限 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
               {busy === 'loading' && !displayedPlayers.length ? <div className={styles.empty}><RefreshCw className={styles.spinning} size={20} /><strong>正在读取玩家记录</strong><small>正在从 Player Service 获取最新数据…</small></div> : null}
               {busy !== 'loading' && !displayedPlayers.length ? <div className={styles.empty}><CircleUserRound size={24} /><strong>没有符合条件的玩家</strong><small>尝试清除搜索词或调整上方筛选条件。</small></div> : null}
             </section>
@@ -929,10 +1083,10 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                 {detailTab === 'profile' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>玩家资料</h3><span>可编辑</span></div>
                   {selected.guest ? <div className={styles.infoNote}>游客没有可编辑账号资料。</div> : <div className={styles.formGrid}>
-                    <label>昵称<input value={selected.displayName} onChange={(event) => setSelected({ ...selected, displayName: event.target.value })} /></label>
-                    <label>头像资源或地址<input value={selected.avatar || ''} onChange={(event) => setSelected({ ...selected, avatar: event.target.value })} placeholder="可留空" /></label>
-                    <label className={styles.fullField}>标签（用逗号分隔）<input value={selected.tags.join(', ')} onChange={(event) => setSelected({ ...selected, tags: event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean) })} placeholder="例如：测试员, 重点关注" /></label>
-                    <label className={styles.fullField}>服主备注<textarea value={selected.adminNote} onChange={(event) => setSelected({ ...selected, adminNote: event.target.value })} placeholder="仅后台可见，不会发送给游戏脚本" /></label>
+                    <label>昵称<input disabled={!canManageProfiles} value={selected.displayName} onChange={(event) => setSelected({ ...selected, displayName: event.target.value })} /></label>
+                    <label>头像资源或地址<input disabled={!canManageProfiles} value={selected.avatar || ''} onChange={(event) => setSelected({ ...selected, avatar: event.target.value })} placeholder="可留空" /></label>
+                    <label className={styles.fullField}>标签（用逗号分隔）<input disabled={!canManageProfiles} value={selected.tags.join(', ')} onChange={(event) => setSelected({ ...selected, tags: event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean) })} placeholder="例如：测试员, 重点关注" /></label>
+                    <label className={styles.fullField}>服主备注<textarea disabled={!canManageProfiles} value={selected.adminNote} onChange={(event) => setSelected({ ...selected, adminNote: event.target.value })} placeholder="仅后台可见，不会发送给游戏脚本" /></label>
                   </div>}
                 </section> : null}
 
@@ -959,37 +1113,52 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                 {detailTab === 'boxId' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>旧平台身份绑定</h3><span>{selected.boxId ? '已绑定' : '未绑定'}</span></div>
                   {!selected.guest ? <div className={styles.singleField}>
-                    <label>神岛 ID<input disabled={!moderatorAccess} maxLength={64} value={selected.boxId} onChange={(event) => setSelected({ ...selected, boxId: event.target.value })} placeholder="未绑定（entity.player.boxId 返回空字符串）" /></label>
+                    <label>神岛 ID<input disabled={!canManageProfiles} maxLength={64} value={selected.boxId} onChange={(event) => setSelected({ ...selected, boxId: event.target.value })} placeholder="未绑定（entity.player.boxId 返回空字符串）" /></label>
                     <p>只用于兼容旧平台脚本。它不会改变本地用户名、userId、userKey、登录方式、存档隔离或后台权限；清空并保存即可解除绑定。</p>
                   </div> : <div className={styles.infoNote}>未注册身份不能绑定神岛 ID。</div>}
                 </section> : null}
 
                 {detailTab === 'permissions' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>后台管理角色</h3><span>{ownerAccess ? '服主可修改' : '只读'}</span></div>
-                  {!selected.guest ? <div className={styles.singleField}><label>角色<select disabled={!ownerAccess} value={selected.role} onChange={(event) => setSelected({ ...selected, role: event.target.value as Player['role'] })}><option value="player">玩家</option><option value="moderator">管理员</option><option value="admin">服主</option></select></label><p>管理员可处理玩家与封禁；服主还可管理角色、重置密码和删除身份。</p></div> : <div className={styles.infoNote}>游客不能获得后台管理角色。</div>}
+                  {!selected.guest ? <div className={styles.permissionEditor}>
+                    <div className={styles.singleField}><label>角色<select disabled={!ownerAccess} value={selected.role} onChange={(event) => { const role = event.target.value as Player['role']; setSelected({ ...selected, role, adminPermissions: role === 'moderator' ? selected.adminPermissions || [] : [] }); }}><option value="player">玩家</option><option value="moderator">管理员</option><option value="admin">服主</option></select></label><p>只有服主可以设置角色和授权。管理员不能授权他人、设置服主或删除账号。</p></div>
+                    {selected.role === 'moderator' ? <div className={styles.permissionGrid}>
+                      <article className={styles.permissionLocked}><span><strong>{PLAYER_ADMIN_CAPABILITY_META['players.view'].label}</strong><small>{PLAYER_ADMIN_CAPABILITY_META['players.view'].description}</small></span><em>管理员基础权限</em></article>
+                      {PLAYER_ADMIN_GRANTABLE_CAPABILITIES.map((capability) => {
+                        const checked = (selected.adminPermissions || []).includes(capability);
+                        return <label key={capability}><input type="checkbox" disabled={!ownerAccess} checked={checked} onChange={(event) => setSelected({ ...selected, adminPermissions: event.target.checked ? [...new Set([...(selected.adminPermissions || []), capability])] : (selected.adminPermissions || []).filter((value) => value !== capability) })} /><span><strong>{PLAYER_ADMIN_CAPABILITY_META[capability].label}</strong><small>{PLAYER_ADMIN_CAPABILITY_META[capability].description}</small></span></label>;
+                      })}
+                    </div> : selected.role === 'admin' ? <div className={styles.infoNote}>服主自动拥有全部后台权限，包括权限授权、设置其他服主和删除账号。</div> : <div className={styles.infoNote}>普通玩家没有后台管理权限。</div>}
+                  </div> : <div className={styles.infoNote}>游客不能获得后台管理角色。</div>}
                 </section> : null}
 
                 {detailTab === 'sessions' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>当前有效会话</h3><span>{details?.sessions.length || 0} 条</span></div>
-                  {details?.sessions.length ? <div className={styles.recordList}>{details.sessions.map((session, index) => <article key={`${session.createdAt}-${index}`}><div><strong>{deviceLabel(session.userAgent)}</strong><span>{formatDate(session.lastSeenAt)}</span></div><small className={styles.recordIp}>{displayIp(session.lastSeenIp || session.createdIp)}</small><p>{session.userAgent || '未记录客户端信息'}</p><div className={styles.sessionFooter}><small>创建 {formatDate(session.createdAt)} · 到期 {formatDate(session.expiresAt)}</small><button className={styles.textButton} disabled={Boolean(busy)} onClick={() => revokeSession(session.sessionId)}>{busy === `session:${session.sessionId}` ? '撤销中…' : '撤销此设备'}</button></div></article>)}</div> : <div className={styles.compactEmpty}>没有有效登录会话</div>}
+                  {details?.sessions.length ? <div className={styles.recordList}>{details.sessions.map((session, index) => <article key={`${session.createdAt}-${index}`}><div><strong>{deviceLabel(session.userAgent)}</strong><span>{formatDate(session.lastSeenAt)}</span></div><small className={styles.recordIp}>{displayIp(session.lastSeenIp || session.createdIp)} · 设备 {session.deviceId || '旧会话未识别'}</small><p>{session.userAgent || '未记录客户端信息'}</p><div className={styles.sessionFooter}><small>创建 {formatDate(session.createdAt)} · 到期 {formatDate(session.expiresAt)}</small><span className={styles.sourceActions}>{canManageIdentityBans ? <><button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void banSource('ip', session.lastSeenIp || session.createdIp, 'IP')}>封禁 IP</button>{session.deviceHash ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void banSource('device', session.deviceHash, '设备')}>封禁设备</button> : null}</> : null}{canManageSessions ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => revokeSession(session.sessionId)}>{busy === `session:${session.sessionId}` ? '撤销中…' : '撤销会话'}</button> : null}</span></div></article>)}</div> : <div className={styles.compactEmpty}>没有有效登录会话</div>}
                 </section> : null}
 
                 {detailTab === 'logins' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>最近成功登录</h3><span>{details?.loginHistory.length || 0} 条</span></div>
-                  {details?.loginHistory.length ? <div className={styles.recordList}>{details.loginHistory.map((event, index) => <article key={`${event.createdAt}-${index}`}><div><strong>{deviceLabel(event.userAgent)}</strong><span>{formatDate(event.createdAt)}</span></div><small className={styles.recordIp}>{displayIp(event.ip)}</small><p>{event.userAgent || '未记录客户端信息'}</p></article>)}</div> : <div className={styles.compactEmpty}>{selected.guest ? '游客没有账号登录记录' : '旧账号或尚无登录历史'}</div>}
+                  {details?.loginHistory.length ? <div className={styles.recordList}>{details.loginHistory.map((event, index) => <article key={`${event.createdAt}-${index}`}><div><strong>{deviceLabel(event.userAgent)}</strong><span>{formatDate(event.createdAt)}</span></div><small className={styles.recordIp}>{displayIp(event.ip)} · 设备 {event.deviceId || '旧记录未识别'}</small><p>{event.userAgent || '未记录客户端信息'}</p>{canManageIdentityBans ? <div className={styles.sourceActions}><button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void banSource('ip', event.ip, 'IP')}>封禁 IP</button>{event.deviceHash ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void banSource('device', event.deviceHash, '设备')}>封禁设备</button> : null}</div> : null}</article>)}</div> : <div className={styles.compactEmpty}>{selected.guest ? '游客没有账号登录记录' : '旧账号或尚无登录历史'}</div>}
                 </section> : null}
 
                 {detailTab === 'ban' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>账号处罚状态</h3><span>{selected.status === 'banned' ? '已封禁' : '正常'}</span></div>
+                  {actor?.subjectId === selected.subjectId ? <div className={styles.infoNote}>当前正在使用这个账号管理后台，不能用账号自身封禁自己。需要测试该账号时，请先通过“身份验证”改用服主密钥，或选择其他玩家账号。</div> : null}
                   <div className={styles.formGrid}>
-                    <label className={styles.fullField}>封禁状态<select value={playerBanMode(selected)} onChange={(event) => { const mode = event.target.value as 'active' | 'temporary' | 'permanent'; setSelected({ ...selected, status: mode === 'active' ? 'active' : 'banned', bannedUntil: mode === 'temporary' ? selected.bannedUntil || temporaryBanUntil(24) : undefined }); }}><option value="active">正常</option><option value="temporary">临时封禁</option><option value="permanent">永久封禁</option></select></label>
-                    {selected.status === 'banned' ? <><label className={styles.fullField}>封禁原因<textarea value={selected.banReason} onChange={(event) => setSelected({ ...selected, banReason: event.target.value })} placeholder="记录处罚依据" /></label>{selected.bannedUntil ? <><label>自动解封时间<input type="datetime-local" min={dateTimeLocalValue(new Date().toISOString())} value={dateTimeLocalValue(selected.bannedUntil)} onChange={(event) => setSelected({ ...selected, bannedUntil: event.target.value ? new Date(event.target.value).toISOString() : temporaryBanUntil(24) })} /></label><div className={styles.banPresets}><span>快速设置</span><div>{[[1, '1 小时'], [24, '1 天'], [72, '3 天'], [168, '7 天'], [720, '30 天']].map(([hours, label]) => <button type="button" key={String(hours)} onClick={() => setSelected({ ...selected, bannedUntil: temporaryBanUntil(Number(hours)) })}>{label}</button>)}</div></div></> : null}<div className={`${styles.fieldHelp} ${styles.fullField}`}>保存封禁后会撤销全部会话，并通知运行中的地图断开该玩家。</div></> : <div className={`${styles.fieldHelp} ${styles.fullField}`}>当前账号可以正常登录和进入地图。</div>}
+                    <label className={styles.fullField}>封禁状态<select disabled={!canManageBans} value={playerBanMode(selected)} onChange={(event) => { const mode = event.target.value as 'active' | 'temporary' | 'permanent'; setSelected({ ...selected, status: mode === 'active' ? 'active' : 'banned', bannedUntil: mode === 'temporary' ? selected.bannedUntil || temporaryBanUntil(24) : undefined }); }}><option value="active">正常</option><option value="temporary">临时封禁</option><option value="permanent">永久封禁</option></select></label>
+                    {selected.status === 'banned' ? <><label className={styles.fullField}>封禁原因<textarea disabled={!canManageBans} value={selected.banReason} onChange={(event) => setSelected({ ...selected, banReason: event.target.value })} placeholder="记录处罚依据" /></label>{selected.bannedUntil ? <><label>自动解封时间<input disabled={!canManageBans} type="datetime-local" min={dateTimeLocalValue(new Date().toISOString())} value={dateTimeLocalValue(selected.bannedUntil)} onChange={(event) => setSelected({ ...selected, bannedUntil: event.target.value ? new Date(event.target.value).toISOString() : temporaryBanUntil(24) })} /></label>{canManageBans ? <div className={styles.banPresets}><span>快速设置</span><div>{[[1, '1 小时'], [24, '1 天'], [72, '3 天'], [168, '7 天'], [720, '30 天']].map(([hours, label]) => <button type="button" key={String(hours)} onClick={() => setSelected({ ...selected, bannedUntil: temporaryBanUntil(Number(hours)) })}>{label}</button>)}</div></div> : null}</> : null}<div className={`${styles.fieldHelp} ${styles.fullField}`}>保存封禁后会撤销全部会话，并通知运行中的地图断开该玩家。</div></> : <div className={`${styles.fieldHelp} ${styles.fullField}`}>当前账号可以正常登录和进入地图。</div>}
+                  </div>
+                  <div className={styles.sourceBanSection}>
+                    <div className={styles.sectionHeading}><h3>IP 与设备处罚</h3><span>{details?.identityBans.length || 0} 条生效中</span></div>
+                    <p>可在“会话设备”或“登录记录”中选择具体 IP/设备进行封禁。设备标识是随机 Cookie 的哈希，不使用容易误判的浏览器指纹。</p>
+                    {details?.identityBans.length ? <div className={styles.sourceBanList}>{details.identityBans.map((ban) => <article key={ban.id}><span><strong>{ban.kind === 'ip' ? 'IP 封禁' : '设备封禁'}</strong><small className={styles.mono}>{ban.displayValue}</small></span><span><strong>{ban.bannedUntil ? `至 ${formatDate(ban.bannedUntil)}` : '永久'}</strong><small>{ban.reason || '未填写原因'} · {formatDate(ban.bannedAt)}</small></span>{canManageIdentityBans ? <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={() => void unbanSource(ban.id, ban.kind === 'ip' ? 'IP' : '设备')}>解除</button> : null}</article>)}</div> : <div className={styles.compactEmpty}>当前没有关联的 IP 或设备封禁</div>}
                   </div>
                 </section> : null}
 
                 {detailTab === 'password' ? <section className={styles.detailSection}>
-                  <div className={styles.sectionHeading}><h3>设置临时新密码</h3><span>仅服主可操作</span></div>
-                  {ownerAccess && !selected.guest ? <div className={styles.passwordReset}><div><KeyRound size={17} /><span><strong>重置登录凭据</strong><small>完成后所有设备立即退出，玩家需要使用新密码重新登录。</small></span></div><div><input type="password" minLength={8} maxLength={128} placeholder="8–128 位临时密码" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button className={styles.secondaryButton} disabled={newPassword.length < 8 || Boolean(busy)} onClick={() => void resetPassword()}>重置密码</button></div></div> : <div className={styles.infoNote}>{selected.guest ? '游客没有可重置的账号密码。' : '当前管理角色没有重置密码的权限。'}</div>}
+                  <div className={styles.sectionHeading}><h3>设置临时新密码</h3><span>{canResetPasswords ? '已授权' : '无权限'}</span></div>
+                  {canResetPasswords && !selected.guest ? <div className={styles.passwordReset}><div><KeyRound size={17} /><span><strong>重置登录凭据</strong><small>完成后所有设备立即退出，玩家需要使用新密码重新登录。</small></span></div><div><input type="password" minLength={8} maxLength={128} placeholder="8–128 位临时密码" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button className={styles.secondaryButton} disabled={newPassword.length < 8 || Boolean(busy)} onClick={() => void resetPassword()}>重置密码</button></div></div> : <div className={styles.infoNote}>{selected.guest ? '游客没有可重置的账号密码。' : '服主尚未授予当前管理员重置密码权限。'}</div>}
                 </section> : null}
 
                 {detailTab === 'related' ? <section className={styles.detailSection}>
@@ -1009,15 +1178,17 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               </div>
             </div>
 
+            {notice ? <div className={styles.drawerNotice} role="status"><span>{notice}</span><button aria-label="关闭提示" onClick={() => setNotice('')}><X size={15} /></button></div> : null}
+
             <footer className={styles.drawerActions}>
               {detailTab === 'danger' && ownerAccess ? <button className={styles.dangerButton} disabled={Boolean(busy)} onClick={remove}><Trash2 size={14} />{busy === 'delete' ? '删除中…' : '确认删除身份'}</button> : null}
-              {detailTab === 'sessions' ? <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={revokeSessions}>{busy === 'revoke' ? '下线中…' : '全部强制下线'}</button> : null}
+              {detailTab === 'sessions' && canManageSessions ? <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={revokeSessions}>{busy === 'revoke' ? '下线中…' : '全部强制下线'}</button> : null}
               <span />
               <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={closeDetails}>关闭</button>
-              {detailTab === 'profile' && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={save}>{busy === 'save' ? '保存中…' : '保存资料'}</button> : null}
-              {detailTab === 'boxId' && moderatorAccess && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={saveBoxId}>{busy === 'boxId' ? '保存中…' : selected.boxId ? '保存绑定' : '清除绑定'}</button> : null}
-              {detailTab === 'permissions' && ownerAccess && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={save}>{busy === 'save' ? '保存中…' : '保存角色'}</button> : null}
-              {detailTab === 'ban' ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={save}>{busy === 'save' ? '保存中…' : '保存封禁状态'}</button> : null}
+              {detailTab === 'profile' && canManageProfiles && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={() => void saveProfile()}>{busy === 'save' ? '保存中…' : '保存资料'}</button> : null}
+              {detailTab === 'boxId' && canManageProfiles && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={saveBoxId}>{busy === 'boxId' ? '保存中…' : selected.boxId ? '保存绑定' : '清除绑定'}</button> : null}
+              {detailTab === 'permissions' && ownerAccess && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={() => void savePermissions()}>{busy === 'save' ? '保存中…' : '保存角色与权限'}</button> : null}
+              {detailTab === 'ban' && canManageBans ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={() => void saveBan()}>{busy === 'save' ? '保存中…' : '保存封禁状态'}</button> : null}
             </footer>
           </section>
         </div>
@@ -1036,6 +1207,31 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               <button className={styles.secondaryButton} type="button" onClick={() => void loginWithCurrentAccount()}>使用当前管理员账号</button>
               <button className={styles.primaryButton} disabled={!adminToken || busy === 'verify'} type="submit">{busy === 'verify' ? '验证中…' : '验证并进入'}</button>
             </div>
+          </form>
+        </div>
+      ) : null}
+
+      {createUserOpen ? (
+        <div className={styles.createUserBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && busy !== 'create-user') setCreateUserOpen(false); }}>
+          <form className={styles.createUserDialog} aria-labelledby="create-user-title" onSubmit={(event) => { event.preventDefault(); void submitCreateUser(); }}>
+            <header>
+              <div><span className={styles.eyebrow}>PLAYER ACCOUNT</span><h2 id="create-user-title">新增用户</h2><p>{ownerAccess ? '服主可以创建玩家或管理角色；创建后不会自动登录。' : '当前权限只能创建普通玩家账号；创建后不会自动登录。'}</p></div>
+              <button type="button" className={styles.iconButton} aria-label="关闭新增用户" disabled={busy === 'create-user'} onClick={() => setCreateUserOpen(false)}><X size={16} /></button>
+            </header>
+            <div className={styles.createUserGrid}>
+              <label>用户名<input autoFocus required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createUser.username} onChange={(event) => setCreateUser({ ...createUser, username: event.target.value })} placeholder="例如 player_001" /></label>
+              <label>昵称<input required maxLength={32} value={createUser.displayName} onChange={(event) => setCreateUser({ ...createUser, displayName: event.target.value })} placeholder="玩家显示名称" /></label>
+              <label>初始密码<input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={createUser.password} onChange={(event) => setCreateUser({ ...createUser, password: event.target.value })} placeholder="8–128 位" /></label>
+              {ownerAccess ? <label>后台角色<select value={createUser.role} onChange={(event) => setCreateUser({ ...createUser, role: event.target.value as Player['role'] })}><option value="player">玩家</option><option value="moderator">管理员</option><option value="admin">服主</option></select></label> : <label>后台角色<input disabled value="普通玩家" /></label>}
+              <label>神岛 ID（可选）<input maxLength={64} value={createUser.boxId} onChange={(event) => setCreateUser({ ...createUser, boxId: event.target.value })} placeholder="未绑定" /></label>
+              <label>标签（可选）<input value={createUser.tags} onChange={(event) => setCreateUser({ ...createUser, tags: event.target.value })} placeholder="测试员, 白名单" /></label>
+              <label className={styles.fullField}>内部备注（可选）<textarea maxLength={2000} value={createUser.adminNote} onChange={(event) => setCreateUser({ ...createUser, adminNote: event.target.value })} placeholder="仅玩家管理后台可见" /></label>
+            </div>
+            {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
+            <footer className={styles.createUserActions}>
+              <button className={styles.secondaryButton} type="button" disabled={busy === 'create-user'} onClick={() => setCreateUserOpen(false)}>取消</button>
+              <button className={styles.primaryButton} type="submit" disabled={busy === 'create-user' || createUser.password.length < 8}>{busy === 'create-user' ? '创建中…' : '创建用户'}</button>
+            </footer>
           </form>
         </div>
       ) : null}

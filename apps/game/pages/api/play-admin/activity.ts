@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'GET');
     return res.status(405).end();
   }
-  if (!await authorizePlayerAdmin(req, res, 'read')) return;
+  if (!await authorizePlayerAdmin(req, res, 'audit.view')) return;
   const queryValue = (name: string) => {
     const value = req.query[name];
     return Array.isArray(value) ? value[0] : value;

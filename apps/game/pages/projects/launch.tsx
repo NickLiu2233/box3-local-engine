@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ArenaBg } from '../../components/loading/arena';
-import { hasAuthenticatedPlayer, playerAccountURL } from '../../server/player-service-client';
+import { hasAuthenticatedPlayer, playerLoginURL } from '../../server/player-service-client';
+import { getLocalProjectManager } from '../../server/local-project-manager';
 
 
 type RuntimeStatus = {
@@ -13,10 +14,16 @@ type RuntimeStatus = {
   playUrl?: string;
 };
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') return { notFound: true };
+  const projectId = Array.isArray(query.project) ? query.project[0] : query.project;
+  try {
+    getLocalProjectManager().getProject(String(projectId || ''));
+  } catch {
+    return { notFound: true };
+  }
   if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
-    return { redirect: { destination: playerAccountURL('creator'), permanent: false } };
+    return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
   }
   return { props: {} };
 };

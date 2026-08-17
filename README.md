@@ -217,6 +217,9 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 最大玩家数 |
 | `PERMISSION_TOKEN_SECRET` | 空 | 正式部署使用的稳定随机密钥 |
 | `BOX_SERVER_PUBLIC_URL` | 空 | 公网反向代理后的完整 HTTPS 地址 |
+| `BOX_PLAYER_LOGIN_URL` | 空 | 服主自行部署的玩家登录页；留空时显示“未开启登录” |
+| `BOX_PLAYER_AUTH_API_KEY` | 空 | 玩家认证接口的服务端密钥，至少 16 位，禁止放入浏览器 |
+| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 空 | 认证接口允许的 Origin 附加白名单，不代替服务端 Key |
 | `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
 | `BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS` | `10` | 单一来源 IP 在登录窗口内允许的失败次数 |
 | `BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS` | `5` | 单一来源 IP 在注册窗口内允许的注册次数 |
@@ -306,6 +309,7 @@ BOX 的服务器或 CDN。
 - [游戏运行时内部说明](services/game-server/README.md)
 - [PostgreSQL 数据空间部署手册](docs/postgresql-data-storage.md)
 - [本地玩家身份与管理](docs/player-identity.md)
+- [Player Service 对外 API 与自建登录页](docs/player-service-api.md)
 - [与 boxes 的能力边界](docs/boxes-parity.md)
 
 ## 许可证

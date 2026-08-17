@@ -561,14 +561,14 @@ export default function HomePage({
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
-    return { redirect: { destination: '/account', permanent: false } };
+    return { redirect: { destination: '/players', permanent: false } };
   }
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') {
     return { redirect: { destination: '/projects', permanent: false } };
   }
-  const { hasAuthenticatedPlayer, playerAccountURL } = await import('../server/player-service-client');
+  const { hasAuthenticatedPlayer, playerLoginURL } = await import('../server/player-service-client');
   if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
-    return { redirect: { destination: playerAccountURL('play'), permanent: false } };
+    return { redirect: { destination: playerLoginURL('play'), permanent: false } };
   }
   if (!process.env.BOX_PLAY_LIBRARY_PATH) {
     return {

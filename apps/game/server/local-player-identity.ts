@@ -1,5 +1,6 @@
 import {
   createHash,
+  createHmac,
   randomBytes,
   randomUUID,
   scrypt,
@@ -16,9 +17,14 @@ import {
   type LocalPlayerStatus,
   type RuntimePlayerIdentity,
 } from '@box-local/utils/local-player-identity';
+import {
+  normalizePlayerAdminCapabilities,
+  type PlayerAdminCapability,
+} from '../shared/player-admin-policy';
 import { requestClientAddress } from './client-address';
 
 const COOKIE_NAME = 'box_local_player_session';
+const DEVICE_COOKIE_NAME = 'box_local_player_device';
 const SESSION_DAYS = 30;
 const schemaPattern = /^[a-z_][a-z0-9_]{0,62}$/;
 const usernamePattern = /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
@@ -49,6 +55,7 @@ type IdentityRow = QueryResultRow & {
   ban_reason?: string | null;
   banned_at?: string | Date | null;
   banned_until?: string | Date | null;
+  admin_permissions?: string[] | null;
 };
 
 export type PlayerAccountView = {
@@ -78,6 +85,7 @@ export type PlayerAccountView = {
   banReason: string;
   bannedAt?: string;
   bannedUntil?: string;
+  adminPermissions: PlayerAdminCapability[];
 };
 
 export type ManagedPlayerListOptions = {
@@ -101,10 +109,12 @@ export type ManagedPlayerList = {
 export type AdminActionContext = {
   ip: string;
   userAgent: string;
+  deviceHash: string;
   subjectId?: string;
   actor?: string;
   actorDisplayName?: string;
   actorRole?: LocalPlayerRole | 'owner';
+  actorPermissions?: PlayerAdminCapability[];
 };
 
 export type PlayerAdminActivity = {
@@ -138,11 +148,15 @@ export type ManagedPlayerDetails = {
     createdIp: string;
     lastSeenIp: string;
     userAgent: string;
+    deviceHash: string;
+    deviceId: string;
   }>;
   loginHistory: Array<{
     createdAt: string;
     ip: string;
     userAgent: string;
+    deviceHash: string;
+    deviceId: string;
   }>;
   adminHistory: Array<{
     id: string;
@@ -158,6 +172,14 @@ export type ManagedPlayerDetails = {
     username: string;
     sharedIp: string;
     lastSeenAt: string;
+  }>;
+  identityBans: Array<{
+    id: string;
+    kind: 'ip' | 'device';
+    displayValue: string;
+    reason: string;
+    bannedAt: string;
+    bannedUntil?: string;
   }>;
 };
 
@@ -293,6 +315,7 @@ async function initialize() {
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS admin_permissions TEXT[] NOT NULL DEFAULT '{}'::text[]`);
       await database.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS local_users_username_lower
         ON ${table('users')} (LOWER(username))
@@ -316,6 +339,7 @@ async function initialize() {
       await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS created_ip TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS last_seen_ip TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS user_agent TEXT NOT NULL DEFAULT ''`);
+      await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS device_hash TEXT NOT NULL DEFAULT ''`);
       await database.query(`
         CREATE INDEX IF NOT EXISTS local_sessions_principal
         ON ${table('sessions')} (principal_id)
@@ -339,6 +363,7 @@ async function initialize() {
           created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
       `);
+      await database.query(`ALTER TABLE ${table('login_events')} ADD COLUMN IF NOT EXISTS device_hash TEXT NOT NULL DEFAULT ''`);
       await database.query(`
         CREATE INDEX IF NOT EXISTS local_login_events_principal_created
         ON ${table('login_events')} (principal_id, created_at DESC)
@@ -370,6 +395,26 @@ async function initialize() {
         )
       `);
       await database.query(`
+        CREATE TABLE IF NOT EXISTS ${table('identity_bans')} (
+          id BIGSERIAL PRIMARY KEY,
+          kind TEXT NOT NULL CHECK (kind IN ('ip', 'device')),
+          value_hash TEXT NOT NULL,
+          display_value TEXT NOT NULL DEFAULT '',
+          reason TEXT NOT NULL DEFAULT '',
+          banned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          banned_until TIMESTAMPTZ,
+          created_by TEXT NOT NULL DEFAULT '',
+          source_subject_id UUID,
+          revoked_at TIMESTAMPTZ,
+          revoked_by TEXT NOT NULL DEFAULT ''
+        )
+      `);
+      await database.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS local_identity_bans_active
+        ON ${table('identity_bans')} (kind, value_hash) WHERE revoked_at IS NULL
+      `);
+      await database.query(`CREATE INDEX IF NOT EXISTS local_identity_bans_source ON ${table('identity_bans')} (source_subject_id, banned_at DESC)`);
+      await database.query(`
         CREATE INDEX IF NOT EXISTS local_player_revocations_created
         ON ${table('player_revocations')} (created_at DESC)
       `);
@@ -387,6 +432,11 @@ async function initialize() {
 
 function sessionToken(req: NextApiRequest) {
   return parse(req.headers.cookie || '')[COOKIE_NAME] || '';
+}
+
+function deviceToken(req: NextApiRequest) {
+  const value = parse(req.headers.cookie || '')[DEVICE_COOKIE_NAME] || '';
+  return /^[A-Za-z0-9_-]{40,64}$/.test(value) ? value : '';
 }
 
 function secretsMatch(provided: string, expected: string) {
@@ -420,7 +470,8 @@ function requestUserAgent(req: NextApiRequest) {
 }
 
 export function createAdminActionContext(req: NextApiRequest): AdminActionContext {
-  return { ip: requestIp(req), userAgent: requestUserAgent(req) };
+  const token = deviceToken(req);
+  return { ip: requestIp(req), userAgent: requestUserAgent(req), deviceHash: token ? tokenHash(token) : '' };
 }
 
 function tokenHash(token: string) {
@@ -457,6 +508,23 @@ function setSessionCookie(req: NextApiRequest, res: NextApiResponse, token: stri
       : {}),
     maxAge: SESSION_DAYS * 24 * 60 * 60,
   }));
+}
+
+function ensureDeviceToken(req: NextApiRequest, res: NextApiResponse) {
+  const existing = deviceToken(req);
+  if (existing) return existing;
+  const token = randomBytes(32).toString('base64url');
+  appendCookie(res, serialize(DEVICE_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: secureCookie(req),
+    path: '/',
+    ...(process.env.BOX_PLAYER_COOKIE_DOMAIN
+      ? { domain: process.env.BOX_PLAYER_COOKIE_DOMAIN.trim() }
+      : {}),
+    maxAge: 365 * 24 * 60 * 60,
+  }));
+  return token;
 }
 
 function clearSessionCookie(req: NextApiRequest, res: NextApiResponse) {
@@ -520,6 +588,7 @@ function toView(identity: RuntimePlayerIdentity, dates: Partial<IdentityRow> = {
     banReason: dates.ban_reason || '',
     bannedAt: iso(dates.banned_at),
     bannedUntil: iso(dates.banned_until),
+    adminPermissions: normalizePlayerAdminCapabilities(dates.admin_permissions),
   };
 }
 
@@ -532,13 +601,40 @@ async function expireTemporaryBans(database: Pool) {
   `);
 }
 
+function identityBanHash(kind: 'ip' | 'device', value: string) {
+  if (kind === 'device') return value.toLowerCase();
+  return createHmac('sha256', identitySecret()).update(value.trim().toLowerCase()).digest('hex');
+}
+
+async function activeIdentityBan(database: Pool, kind: 'ip' | 'device', value: string) {
+  if (!value) return null;
+  const result = await database.query<{ id: string; reason: string }>(`
+    SELECT id::text, reason FROM ${table('identity_bans')}
+    WHERE kind = $1 AND value_hash = $2 AND revoked_at IS NULL
+      AND (banned_until IS NULL OR banned_until > NOW())
+    LIMIT 1
+  `, [kind, identityBanHash(kind, value)]);
+  return result.rows[0] || null;
+}
+
+async function assertRequestSourceAllowed(database: Pool, req: NextApiRequest, res: NextApiResponse) {
+  const token = ensureDeviceToken(req, res);
+  const [ipBan, deviceBan] = await Promise.all([
+    activeIdentityBan(database, 'ip', requestIp(req)),
+    activeIdentityBan(database, 'device', tokenHash(token)),
+  ]);
+  if (ipBan) throw new Error('IP_BANNED');
+  if (deviceBan) throw new Error('DEVICE_BANNED');
+  return tokenHash(token);
+}
+
 async function findSession(database: Pool, token: string, req: NextApiRequest) {
   if (!token || token.startsWith('guest.')) return null;
-  const result = await database.query<IdentityRow>(`
+  const result = await database.query<IdentityRow & { session_device_hash: string }>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
       u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
-      u.last_login_at, u.last_login_ip, u.login_count
+      u.last_login_at, u.last_login_ip, u.login_count, s.device_hash AS session_device_hash
     FROM ${table('sessions')} s
     JOIN ${table('principals')} p ON p.id = s.principal_id
     LEFT JOIN ${table('users')} u ON u.principal_id = p.id
@@ -546,6 +642,11 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   `, [tokenHash(token)]);
   const row = result.rows[0];
   if (!row) return null;
+  const storedDeviceBan = await activeIdentityBan(database, 'device', row.session_device_hash || '');
+  if (storedDeviceBan) {
+    await database.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(token)]);
+    throw new Error('DEVICE_BANNED');
+  }
   await database.query(`
     UPDATE ${table('sessions')} SET last_seen_at = NOW(), last_seen_ip = $2,
       expires_at = NOW() + INTERVAL '${SESSION_DAYS} days'
@@ -567,13 +668,25 @@ export async function checkPlayerDatabaseReady() {
   await database.query('SELECT 1');
 }
 
+export async function getAssignedPlayerAdminCapabilities(subjectId: string) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const result = await database.query<{ admin_permissions: string[] }>(`
+    SELECT admin_permissions FROM ${table('users')} WHERE principal_id = $1
+  `, [subjectId]);
+  return normalizePlayerAdminCapabilities(result.rows[0]?.admin_permissions);
+}
+
 export async function resolvePlayerIdentity(req: NextApiRequest, res: NextApiResponse) {
   identitySecret();
   const database = getPool();
   if (!database) throw new Error('玩家身份服务需要配置 PostgreSQL');
   await initialize();
+  const currentDeviceHash = await assertRequestSourceAllowed(database, req, res);
   const row = await findSession(database, sessionToken(req), req);
   if (!row?.user_id) throw new Error('AUTH_REQUIRED');
+  await database.query(`UPDATE ${table('sessions')} SET device_hash = $2 WHERE token_hash = $1 AND device_hash = ''`, [tokenHash(sessionToken(req)), currentDeviceHash]);
   return rowToIdentity(row);
 }
 
@@ -631,6 +744,7 @@ export async function registerPlayer(
   const database = getPool();
   if (!database) throw new Error('玩家账号功能需要配置 PostgreSQL');
   await initialize();
+  const deviceHash = await assertRequestSourceAllowed(database, req, res);
   const existing = await findSession(database, sessionToken(req), req);
   if (existing?.user_id) throw new Error('当前已经登录');
   const input = validateRegistration(values.username, values.displayName, values.password);
@@ -665,13 +779,13 @@ export async function registerPlayer(
     `, [subjectUUID, input.username, input.displayName, salt, hash, ip]);
     await client.query(`
       INSERT INTO ${table('sessions')}
-        (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent)
-      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4)
-    `, [tokenHash(token), subjectUUID, ip, userAgent]);
+        (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent, device_hash)
+      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4, $5)
+    `, [tokenHash(token), subjectUUID, ip, userAgent, deviceHash]);
     await client.query(`
-      INSERT INTO ${table('login_events')} (principal_id, ip_address, user_agent)
-      VALUES ($1, $2, $3)
-    `, [subjectUUID, ip, userAgent]);
+      INSERT INTO ${table('login_events')} (principal_id, ip_address, user_agent, device_hash)
+      VALUES ($1, $2, $3, $4)
+    `, [subjectUUID, ip, userAgent, deviceHash]);
     const row = result.rows[0];
     if (!row) throw new Error('账号创建失败');
     await client.query('COMMIT');
@@ -680,6 +794,98 @@ export async function registerPlayer(
   } catch (error) {
     await client.query('ROLLBACK');
     if ((error as { code?: string }).code === '23505') throw new Error('用户名已经存在');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function createManagedPlayer(
+  values: {
+    username?: unknown;
+    displayName?: unknown;
+    password?: unknown;
+    role?: unknown;
+    boxId?: unknown;
+    tags?: unknown;
+    adminNote?: unknown;
+    adminPermissions?: unknown;
+  },
+  context?: AdminActionContext,
+) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const input = validateRegistration(values.username, values.displayName, values.password);
+  const role = (values.role || 'player') as LocalPlayerRole;
+  if (!['player', 'moderator', 'admin'].includes(role)) throw new Error('角色无效');
+  const adminPermissions = role === 'moderator'
+    ? normalizePlayerAdminCapabilities(values.adminPermissions)
+    : [];
+  if (values.boxId != null && typeof values.boxId !== 'string') throw new Error('神岛 ID 必须是字符串');
+  const normalizedBoxId = typeof values.boxId === 'string' ? values.boxId.trim() : '';
+  if (normalizedBoxId.length > 64 || /[\u0000-\u001f\u007f]/.test(normalizedBoxId)) {
+    throw new Error('神岛 ID 不能超过 64 个字符或包含控制字符');
+  }
+  const tags = Array.isArray(values.tags)
+    ? [...new Set(values.tags.map((tag) => String(tag).trim()).filter(Boolean))]
+    : [];
+  if (tags.length > 20 || tags.some((tag) => tag.length > 32)) {
+    throw new Error('最多设置 20 个标签，每个不超过 32 个字符');
+  }
+  const adminNote = typeof values.adminNote === 'string' ? values.adminNote.trim() : '';
+  if (adminNote.length > 2000) throw new Error('服主备注不能超过 2000 个字符');
+
+  const salt = randomBytes(16).toString('base64url');
+  const hash = (await derivePassword(input.password, salt)).toString('base64url');
+  const subjectUUID = randomUUID();
+  const ip = context?.ip || '';
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`
+      INSERT INTO ${table('principals')} (id, kind, first_seen_ip, last_seen_ip)
+      VALUES ($1, 'user', $2, $2)
+    `, [subjectUUID, ip]);
+    const result = await client.query<IdentityRow>(`
+      WITH inserted AS (
+        INSERT INTO ${table('users')}
+          (principal_id, username, display_name, password_salt, password_hash,
+           role, box_id, tags, admin_note, registration_ip, admin_permissions, login_count)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)
+        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, role, status,
+          created_at AS registered_at, updated_at, registration_ip,
+          last_login_at, last_login_ip, login_count, admin_note, tags,
+          ban_reason, banned_at, banned_until, admin_permissions
+      )
+      SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
+        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+        u.registered_at, u.updated_at, u.registration_ip,
+        u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
+        u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
+        0 AS active_session_count
+      FROM ${table('principals')} p JOIN inserted u ON u.principal_id = p.id
+    `, [
+      subjectUUID, input.username, input.displayName, salt, hash, role,
+      normalizedBoxId || null, tags, adminNote, ip, adminPermissions,
+    ]);
+    const row = result.rows[0];
+    if (!row) throw new Error('账号创建失败');
+    await audit(client, 'player.create', subjectUUID, {
+      username: input.username,
+      displayName: input.displayName,
+      role,
+      boxId: normalizedBoxId,
+      tags,
+      adminPermissions,
+    }, context);
+    await client.query('COMMIT');
+    return toView(rowToIdentity(row), row);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if ((error as { code?: string }).code === '23505') {
+      throw new Error('用户名或神岛 ID 已经存在');
+    }
     throw error;
   } finally {
     client.release();
@@ -695,6 +901,7 @@ export async function loginPlayer(
   if (!database) throw new Error('玩家账号功能需要配置 PostgreSQL');
   await initialize();
   await expireTemporaryBans(database);
+  const deviceHash = await assertRequestSourceAllowed(database, req, res);
   const username = typeof values.username === 'string' ? values.username.trim() : '';
   const password = typeof values.password === 'string' ? values.password : '';
   const result = await database.query<IdentityRow & { password_salt: string; password_hash: string }>(`
@@ -733,9 +940,9 @@ export async function loginPlayer(
     }
     await client.query(`
       INSERT INTO ${table('sessions')}
-        (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent)
-      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4)
-    `, [tokenHash(token), row.subject_id, ip, userAgent]);
+        (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent, device_hash)
+      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4, $5)
+    `, [tokenHash(token), row.subject_id, ip, userAgent, deviceHash]);
     await client.query(`
       UPDATE ${table('users')} SET last_login_at = NOW(), last_login_ip = $2,
         login_count = login_count + 1, updated_at = NOW()
@@ -745,9 +952,9 @@ export async function loginPlayer(
       UPDATE ${table('principals')} SET last_seen_at = NOW(), last_seen_ip = $2 WHERE id = $1
     `, [row.subject_id, ip]);
     await client.query(`
-      INSERT INTO ${table('login_events')} (principal_id, ip_address, user_agent)
-      VALUES ($1, $2, $3)
-    `, [row.subject_id, ip, userAgent]);
+      INSERT INTO ${table('login_events')} (principal_id, ip_address, user_agent, device_hash)
+      VALUES ($1, $2, $3, $4)
+    `, [row.subject_id, ip, userAgent, deviceHash]);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -838,7 +1045,7 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
       u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
-      u.ban_reason, u.banned_at, u.banned_until,
+      u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
       (SELECT COUNT(*) FROM ${table('sessions')} s
         WHERE s.principal_id = p.id AND s.expires_at > NOW()) AS active_session_count
     FROM ${table('principals')} p
@@ -1038,7 +1245,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
-      u.ban_reason, u.banned_at, u.banned_until,
+      u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
       (SELECT COUNT(*) FROM ${table('sessions')} s
         WHERE s.principal_id = p.id AND s.expires_at > NOW()) AS active_session_count
     FROM ${table('principals')} p
@@ -1047,22 +1254,23 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   `, [subjectId]);
   const row = result.rows[0];
   if (!row) throw new Error('玩家不存在');
-  const [sessions, history, adminHistory, relatedAccounts] = await Promise.all([
+  const [sessions, history, adminHistory, relatedAccounts, identityBans] = await Promise.all([
     database.query<{
       session_id: string; created_at: string | Date; last_seen_at: string | Date;
       expires_at: string | Date; created_ip: string; last_seen_ip: string; user_agent: string;
+      device_hash: string;
     }>(`
       SELECT LEFT(token_hash, 16) AS session_id, created_at, last_seen_at, expires_at,
-        created_ip, last_seen_ip, user_agent
+        created_ip, last_seen_ip, user_agent, device_hash
       FROM ${table('sessions')}
       WHERE principal_id = $1 AND expires_at > NOW()
       ORDER BY last_seen_at DESC
       LIMIT 20
     `, [subjectId]),
     database.query<{
-      created_at: string | Date; ip_address: string; user_agent: string;
+      created_at: string | Date; ip_address: string; user_agent: string; device_hash: string;
     }>(`
-      SELECT created_at, ip_address, user_agent
+      SELECT created_at, ip_address, user_agent, device_hash
       FROM ${table('login_events')}
       WHERE principal_id = $1
       ORDER BY created_at DESC
@@ -1098,6 +1306,16 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       ORDER BY MAX(e.created_at) DESC
       LIMIT 30
     `, [subjectId]),
+    database.query<{
+      id: string; kind: 'ip' | 'device'; display_value: string; reason: string;
+      banned_at: string | Date; banned_until: string | Date | null;
+    }>(`
+      SELECT b.id::text, b.kind, b.display_value, b.reason, b.banned_at, b.banned_until
+      FROM ${table('identity_bans')} b
+      WHERE b.revoked_at IS NULL AND (b.banned_until IS NULL OR b.banned_until > NOW())
+        AND b.source_subject_id = $1
+      ORDER BY b.banned_at DESC
+    `, [subjectId]),
   ]);
   return {
     player: toView(rowToIdentity(row), row),
@@ -1109,11 +1327,15 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       createdIp: session.created_ip || '',
       lastSeenIp: session.last_seen_ip || '',
       userAgent: session.user_agent || '',
+      deviceHash: session.device_hash || '',
+      deviceId: session.device_hash ? session.device_hash.slice(0, 16) : '',
     })),
     loginHistory: history.rows.map((event) => ({
       createdAt: new Date(event.created_at).toISOString(),
       ip: event.ip_address || '',
       userAgent: event.user_agent || '',
+      deviceHash: event.device_hash || '',
+      deviceId: event.device_hash ? event.device_hash.slice(0, 16) : '',
     })),
     adminHistory: adminHistory.rows.map((event) => ({
       id: String(event.id),
@@ -1129,6 +1351,14 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       username: account.username || '',
       sharedIp: account.shared_ip || '',
       lastSeenAt: new Date(account.last_seen_at).toISOString(),
+    })),
+    identityBans: identityBans.rows.map((ban) => ({
+      id: ban.id,
+      kind: ban.kind,
+      displayValue: ban.display_value,
+      reason: ban.reason,
+      bannedAt: new Date(ban.banned_at).toISOString(),
+      bannedUntil: ban.banned_until ? new Date(ban.banned_until).toISOString() : undefined,
     })),
   };
 }
@@ -1302,12 +1532,118 @@ export async function listPlayerRevocations(
   };
 }
 
+export async function createIdentityBan(
+  subjectId: string,
+  values: { kind?: unknown; value?: unknown; reason?: unknown; bannedUntil?: unknown },
+  context?: AdminActionContext,
+) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const kind = values.kind === 'ip' || values.kind === 'device' ? values.kind : null;
+  if (!kind) throw new Error('封禁类型无效');
+  const value = typeof values.value === 'string' ? values.value.trim() : '';
+  if (kind === 'ip' && (!value || value.length > 128)) throw new Error('IP 地址无效');
+  if (kind === 'device' && !/^[0-9a-f]{64}$/i.test(value)) throw new Error('设备标识无效');
+  if (kind === 'ip' && context?.ip && context.ip === value) {
+    throw new Error('不能封禁当前管理会话使用的 IP 地址');
+  }
+  if (kind === 'device' && context?.deviceHash && context.deviceHash === value.toLowerCase()) {
+    throw new Error('不能封禁当前管理会话使用的设备');
+  }
+  const reason = typeof values.reason === 'string' ? values.reason.trim() : '';
+  if (reason.length > 500) throw new Error('封禁原因不能超过 500 个字符');
+  const bannedUntil = values.bannedUntil === '' || values.bannedUntil == null
+    ? null
+    : new Date(String(values.bannedUntil));
+  if (bannedUntil && (Number.isNaN(bannedUntil.getTime()) || bannedUntil <= new Date())) {
+    throw new Error('封禁截止时间必须晚于当前时间');
+  }
+  const valueHash = identityBanHash(kind, value);
+  const displayValue = kind === 'device' ? value.slice(0, 16) : value;
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`
+      UPDATE ${table('identity_bans')} SET revoked_at = NOW(), revoked_by = 'system-expired'
+      WHERE kind = $1 AND value_hash = $2 AND revoked_at IS NULL
+        AND banned_until IS NOT NULL AND banned_until <= NOW()
+    `, [kind, valueHash]);
+    const inserted = await client.query<{ id: string }>(`
+      INSERT INTO ${table('identity_bans')}
+        (kind, value_hash, display_value, reason, banned_until, created_by, source_subject_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id::text
+    `, [kind, valueHash, displayValue, reason, bannedUntil, context?.actor || 'server-owner', subjectId]);
+    const affected = await client.query<{ principal_id: string }>(kind === 'ip' ? `
+      DELETE FROM ${table('sessions')}
+      WHERE created_ip = $1 OR last_seen_ip = $1
+      RETURNING principal_id
+    ` : `
+      DELETE FROM ${table('sessions')}
+      WHERE device_hash = $1
+      RETURNING principal_id
+    `, [kind === 'ip' ? value : value.toLowerCase()]);
+    const subjects = [...new Set(affected.rows.map((row) => row.principal_id))];
+    for (const affectedSubjectId of subjects) {
+      await publishPlayerRevocation(client, affectedSubjectId, 'sessions-revoked');
+    }
+    await audit(client, `identity.${kind}.ban`, subjectId, {
+      banId: inserted.rows[0]?.id || '', displayValue, reason,
+      bannedUntil: bannedUntil?.toISOString() || null,
+      affectedSessions: affected.rowCount || 0,
+      affectedPlayers: subjects.length,
+    }, context);
+    await client.query('COMMIT');
+    return {
+      id: inserted.rows[0]?.id || '', kind, displayValue, reason,
+      bannedUntil: bannedUntil?.toISOString(),
+      affectedSessions: affected.rowCount || 0,
+      affectedPlayers: subjects.length,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if ((error as { code?: string }).code === '23505') throw new Error('该 IP 或设备已经处于封禁状态');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function revokeIdentityBan(subjectId: string, banId: unknown, context?: AdminActionContext) {
+  if (!/^\d+$/.test(String(banId || ''))) throw new Error('封禁记录无效');
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<{ kind: string; display_value: string }>(`
+      UPDATE ${table('identity_bans')}
+      SET revoked_at = NOW(), revoked_by = $3
+      WHERE id = $1 AND source_subject_id = $2 AND revoked_at IS NULL
+      RETURNING kind, display_value
+    `, [String(banId), subjectId, context?.actor || 'server-owner']);
+    if (!result.rowCount) throw new Error('封禁记录不存在或已经解除');
+    await audit(client, `identity.${result.rows[0].kind}.unban`, subjectId, {
+      banId: String(banId), displayValue: result.rows[0].display_value,
+    }, context);
+    await client.query('COMMIT');
+    return { revoked: true };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function updateManagedPlayer(
   subjectId: string,
   changes: {
     displayName?: unknown; role?: unknown; status?: unknown; avatar?: unknown;
     adminNote?: unknown; tags?: unknown; banReason?: unknown; bannedUntil?: unknown;
-    boxId?: unknown;
+    boxId?: unknown; adminPermissions?: unknown;
   },
   context?: AdminActionContext,
 ) {
@@ -1327,6 +1663,13 @@ export async function updateManagedPlayer(
     ? null
     : new Date(String(changes.bannedUntil));
   const hasBoxId = Object.prototype.hasOwnProperty.call(changes, 'boxId');
+  const hasAdminPermissions = Object.prototype.hasOwnProperty.call(changes, 'adminPermissions');
+  if (hasAdminPermissions && !Array.isArray(changes.adminPermissions)) {
+    throw new Error('管理员权限必须是数组');
+  }
+  const adminPermissions = hasAdminPermissions
+    ? normalizePlayerAdminCapabilities(changes.adminPermissions)
+    : undefined;
   if (hasBoxId && typeof changes.boxId !== 'string') throw new Error('神岛 ID 必须是字符串');
   const normalizedBoxId = hasBoxId ? String(changes.boxId).trim() : undefined;
   const boxId = normalizedBoxId === '' ? null : normalizedBoxId;
@@ -1361,10 +1704,18 @@ export async function updateManagedPlayer(
         banned_at = CASE WHEN $5 = 'banned' AND status <> 'banned' THEN NOW() WHEN $5 = 'active' THEN NULL ELSE banned_at END,
         banned_until = CASE WHEN $5 = 'active' THEN NULL WHEN $5 = 'banned' THEN $9 ELSE banned_until END,
         box_id = CASE WHEN $10 THEN $11 ELSE box_id END,
+        admin_permissions = CASE
+          WHEN COALESCE($4, role) <> 'moderator' THEN '{}'::text[]
+          WHEN $12 THEN $13
+          ELSE admin_permissions
+        END,
         updated_at = NOW()
       WHERE principal_id = $1
       RETURNING principal_id AS subject_id
-    `, [subjectId, displayName, avatar, role, status, adminNote, tags, banReason, bannedUntil, hasBoxId, boxId]);
+    `, [
+      subjectId, displayName, avatar, role, status, adminNote, tags, banReason,
+      bannedUntil, hasBoxId, boxId, hasAdminPermissions, adminPermissions || [],
+    ]);
     if (!result.rows[0]) throw new Error('只能修改已经注册的玩家');
     if (status === 'banned' && previous.rows[0].status !== 'banned') {
       await client.query(`DELETE FROM ${table('sessions')} WHERE principal_id = $1`, [subjectId]);
@@ -1374,7 +1725,7 @@ export async function updateManagedPlayer(
       ? 'player.box-id.update'
       : 'player.update';
     await audit(client, auditAction, subjectId, {
-      displayName, avatar, role, status, adminNote,
+      displayName, avatar, role, status, adminNote, adminPermissions,
       tags, banReason, bannedUntil: bannedUntil?.toISOString() || null,
       ...(hasBoxId ? { previousBoxId: previous.rows[0].box_id || '', boxId: boxId || '' } : {}),
     }, context);

@@ -8,7 +8,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'POST');
     return res.status(405).end();
   }
-  const actor = await authorizePlayerAdmin(req, res, 'moderate');
+  const requirement = req.body?.action === 'revoke-sessions'
+    ? 'sessions.manage'
+    : req.body?.action === 'ban' || req.body?.action === 'unban'
+      ? 'players.ban'
+      : 'players.manage';
+  const actor = await authorizePlayerAdmin(req, res, requirement);
   if (!actor) return;
   try {
     return res.status(200).json(await batchManagePlayers(

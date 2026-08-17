@@ -18,10 +18,13 @@ import {
   Trash2,
   Upload,
   Users,
+  Map as MapIcon,
+  Box,
 } from 'lucide-react';
 
 import styles from './projects.module.css';
-import { hasAuthenticatedPlayer, playerAccountURL } from '../../server/player-service-client';
+import { CreatorModelLibrary } from '../../components/creator-model-library';
+import { hasAuthenticatedPlayer, playerLoginURL } from '../../server/player-service-client';
 
 type ProjectStatus = '草稿' | '已发布';
 type CompatibilityReport = {
@@ -111,23 +114,31 @@ function formatBytes(value: number) {
   return `${(value / 1024 ** unit).toFixed(unit ? 1 : 0)} ${units[unit]}`;
 }
 
-type ProjectsPageProps = { playerServiceUrl: string };
+type WorkCenterView = 'maps' | 'models';
+type ProjectsPageProps = {
+  playerServiceUrl: string;
+  voxaUrl: string;
+  initialView: WorkCenterView;
+};
 
-export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req }) => {
+export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req, query }) => {
   if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
     return { notFound: true };
   }
   if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
-    return { redirect: { destination: playerAccountURL('creator'), permanent: false } };
+    return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
   }
   return {
     props: {
       playerServiceUrl: (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, ''),
+      voxaUrl: (process.env.VOXA_URL || '').replace(/\/$/, ''),
+      initialView: query.view === 'models' ? 'models' : 'maps',
     },
   };
 };
 
-export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
+export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }: ProjectsPageProps) {
+  const [activeView, setActiveView] = useState<WorkCenterView>(initialView);
   const [projects, setProjects] = useState<LocalProject[]>([]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
@@ -160,6 +171,20 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
   const [selectedSnapshot, setSelectedSnapshot] = useState('');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
+
+  const switchView = (view: WorkCenterView) => {
+    setActiveView(view);
+    const url = view === 'models' ? '/projects?view=models' : '/projects';
+    window.history.replaceState(window.history.state, '', url);
+  };
+
+  useEffect(() => {
+    const handleHistory = () => {
+      setActiveView(new URLSearchParams(window.location.search).get('view') === 'models' ? 'models' : 'maps');
+    };
+    window.addEventListener('popstate', handleHistory);
+    return () => window.removeEventListener('popstate', handleHistory);
+  }, []);
 
   const refreshProjects = useCallback(async () => {
     const response = await fetch('/api/local-projects');
@@ -852,7 +877,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
       <section className={styles.content} aria-labelledby="page-title">
         <div className={styles.titleRow}>
           <div>
-            <h1 id="page-title">作品</h1>
+            <h1 id="page-title">作品中心</h1>
           </div>
           <div className={styles.titleActions}>
             <a className={styles.importButton} href={`${playerServiceUrl}/players?from=creator`}>
@@ -861,6 +886,37 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             <a className={styles.importButton} href="/system">
               <Activity size={16} /> 运行状态
             </a>
+          </div>
+        </div>
+
+        <nav className={styles.workCenterTabs} aria-label="作品分类">
+          <button
+            type="button"
+            aria-current={activeView === 'maps' ? 'page' : undefined}
+            className={activeView === 'maps' ? styles.workCenterTabActive : undefined}
+            onClick={() => switchView('maps')}
+          >
+            <MapIcon size={17} />
+            <span><strong>地图列表</strong><small>{projects.length} 个地图</small></span>
+          </button>
+          <button
+            type="button"
+            aria-current={activeView === 'models' ? 'page' : undefined}
+            className={activeView === 'models' ? styles.workCenterTabActive : undefined}
+            onClick={() => switchView('models')}
+          >
+            <Box size={17} />
+            <span><strong>模型列表</strong><small>模型与皮肤</small></span>
+          </button>
+        </nav>
+
+        {activeView === 'maps' ? <>
+        <div className={styles.sectionHeader}>
+          <div className={styles.sectionSummary}>
+            <strong>地图作品</strong>
+            <span>{projects.length} 个地图</span>
+          </div>
+          <div className={styles.sectionActions}>
             <button className={styles.importButton} disabled={Boolean(importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error')} onClick={() => importInputRef.current?.click()}>
               <Upload size={16} /> 导入工程
             </button>
@@ -871,7 +927,6 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             </button>
           </div>
         </div>
-
         <div className={styles.toolbar}>
           <label className={styles.search}>
             <Search size={18} aria-hidden="true" />
@@ -940,7 +995,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
             </button>}
           </div>
         )}
-
+        </> : <CreatorModelLibrary voxaUrl={voxaUrl} />}
       </section>
 
       {pendingImportFile && (
@@ -1038,7 +1093,7 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
 
       {dialog && (
         <div className={styles.dialogBackdrop} role="presentation" onMouseDown={() => { if (!submitting) setDialog(null); }}>
-          <form className={`${styles.dialog} ${dialog === 'publish' ? styles.releaseDialog : ''}`} onSubmit={(event) => {
+          <form className={`${styles.dialog} ${dialog === 'publish' ? styles.releaseDialog : ''} ${dialog === 'details' ? styles.detailsDialog : ''}`} onSubmit={(event) => {
             if (submitting) {
               event.preventDefault();
               return;
@@ -1048,38 +1103,71 @@ export default function ProjectsPage({ playerServiceUrl }: ProjectsPageProps) {
               .catch((error) => setDialogError(error.message))
               .finally(() => setSubmitting(false));
           }} onMouseDown={(event) => event.stopPropagation()}>
-            <div className={styles.dialogIcon}><Grid2X2 size={22} /></div>
-            <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '导出游戏包'}</h2>
+            <div className={styles.dialogHeading}>
+              <div className={styles.dialogIcon}><Grid2X2 size={22} /></div>
+              <div>
+                <h2>{dialog === 'create' ? '新建地图组' : dialog === 'submap' ? '创建副地图' : dialog === 'details' ? '编辑信息' : dialog === 'delete' ? '删除作品' : '导出游戏包'}</h2>
+                {dialog === 'details' && <p>管理地图资料、玩家访问链接与展示封面</p>}
+              </div>
+            </div>
             {dialog === 'delete' && <p>{selectedProject?.mapRole === 'main' ? `将删除整个地图组“${selectedProject?.name}”及其全部副地图，删除后无法恢复。` : `将删除副地图“${selectedProject?.name}”，删除后无法恢复。`}</p>}
             {(dialog === 'create' || dialog === 'submap' || dialog === 'details') && <>
-              <label htmlFor="project-name">作品名称</label>
-              <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
-              {dialog === 'details' && <>
-                <label htmlFor="project-map-uuid">地图 ID</label>
-                <input
-                  id="project-map-uuid"
-                  value={selectedProject?.mapUuid || ''}
-                  readOnly
-                  aria-readonly="true"
-                />
-                <small className={styles.fieldHint}>永久 UUID，用于地图存档隔离，创建后不可修改</small>
-                <label htmlFor="project-public-id">访问 ID</label>
-                <input
-                  id="project-public-id"
-                  maxLength={63}
-                  spellCheck={false}
-                  value={projectPublicId}
-                  onChange={(event) => setProjectPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="例如：my-adventure"
-                />
-                <small className={styles.fieldHint}>玩家链接：/p/{projectPublicId || '访问-id'} · 可以修改，全部项目中必须唯一</small>
-              </>}
-              {dialog !== 'submap' && <><label htmlFor="project-author">作者</label>
-              <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} /></>}
-              <label htmlFor="project-description">简介</label>
-              <textarea id="project-description" maxLength={300} value={projectDescription} onChange={(event) => setProjectDescription(event.target.value)} />
+              <div className={styles.dialogFields}>
+                <div className={styles.fieldGroup}>
+                  <label htmlFor="project-name">作品名称</label>
+                  <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
+                </div>
+                {dialog === 'details' && <>
+                  <div className={styles.fieldGroup}>
+                    <label htmlFor="project-map-uuid">地图 ID</label>
+                    <input
+                      id="project-map-uuid"
+                      value={selectedProject?.mapUuid || ''}
+                      readOnly
+                      aria-readonly="true"
+                    />
+                    <small className={styles.fieldHint}>永久 UUID，用于地图存档隔离，创建后不可修改</small>
+                  </div>
+                  <div className={styles.fieldGroup}>
+                    <label htmlFor="project-public-id">访问 ID</label>
+                    <input
+                      id="project-public-id"
+                      maxLength={63}
+                      spellCheck={false}
+                      value={projectPublicId}
+                      onChange={(event) => setProjectPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder="例如：my-adventure"
+                    />
+                    <small className={styles.fieldHint}>玩家链接：/p/{projectPublicId || '访问-id'} · 可以修改，全部项目中必须唯一</small>
+                  </div>
+                </>}
+                {dialog !== 'submap' && <div className={styles.fieldGroup}>
+                  <label htmlFor="project-author">作者</label>
+                  <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} placeholder="填写地图作者" />
+                </div>}
+                <div className={styles.fieldGroup}>
+                  <label htmlFor="project-description">简介</label>
+                  <textarea id="project-description" maxLength={300} value={projectDescription} onChange={(event) => setProjectDescription(event.target.value)} placeholder="简单介绍这张地图" />
+                  <small className={styles.characterCount}>{projectDescription.length} / 300</small>
+                </div>
+                {dialog === 'details' && <div className={styles.fieldGroup}>
+                  <label htmlFor="project-cover">封面</label>
+                  <div className={styles.coverPickerRow}>
+                    <div className={styles.coverPreview}>
+                      {projectCover ? <img src={projectCover} alt="当前地图封面" /> : <Grid2X2 size={20} aria-hidden="true" />}
+                    </div>
+                    <label className={styles.coverPicker} htmlFor="project-cover">
+                      <Upload size={17} aria-hidden="true" />
+                      <span>
+                        <strong>{projectCover ? '更换封面' : '选择封面'}</strong>
+                        <small>PNG、JPG 或 WebP，最大 1.4MB</small>
+                      </span>
+                    </label>
+                    <input className={styles.coverFileInput} id="project-cover" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 1400000) { setDialogError('封面图片不能超过 1.4MB'); return; } const reader = new FileReader(); reader.onload = () => { setProjectCover(String(reader.result)); setDialogError(''); }; reader.readAsDataURL(file); }} />
+                  </div>
+                </div>}
+              </div>
               {dialog === 'submap' && <p>副地图拥有独立地形和实体，并归属于“{selectedProject?.name}”地图组。</p>}
-              {dialog === 'details' && <><label htmlFor="project-cover">封面</label><input id="project-cover" type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => { const file = event.target.files?.[0]; if (!file) return; if (file.size > 1400000) { setDialogError('封面图片不能超过 1.4MB'); return; } const reader = new FileReader(); reader.onload = () => { setProjectCover(String(reader.result)); setDialogError(''); }; reader.readAsDataURL(file); }} /></>}
             </>}
             {dialog === 'publish' && <>
               <p>主地图和全部副地图将使用同一版本号，合并为一个可一次导入游玩端的游戏包。</p>

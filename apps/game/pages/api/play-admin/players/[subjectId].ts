@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
+  createIdentityBan,
   deleteManagedPlayer,
   getManagedPlayerDetails,
   resetManagedPlayerPassword,
   revokeManagedPlayerSessions,
   revokeManagedPlayerSession,
+  revokeIdentityBan,
   updateManagedPlayer,
 } from '../../../../server/local-player-identity';
 import { authorizePlayerAdmin } from '../../../../server/player-admin-authorization';
@@ -19,12 +21,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   try {
     if (req.method === 'GET') {
-      if (!await authorizePlayerAdmin(req, res, 'read')) return;
+      if (!await authorizePlayerAdmin(req, res, 'players.view')) return;
       return res.status(200).json(await getManagedPlayerDetails(subjectId));
     }
     if (req.method === 'PATCH') {
-      const permission = req.body && Object.prototype.hasOwnProperty.call(req.body, 'role') ? 'owner' : 'moderate';
-      const context = await authorizePlayerAdmin(req, res, permission);
+      const body = req.body || {};
+      const requirements = [] as Array<'owner' | 'players.manage' | 'players.ban'>;
+      if (Object.prototype.hasOwnProperty.call(body, 'role')
+        || Object.prototype.hasOwnProperty.call(body, 'adminPermissions')) requirements.push('owner');
+      if (['status', 'banReason', 'bannedUntil'].some((field) => Object.prototype.hasOwnProperty.call(body, field))) {
+        requirements.push('players.ban');
+      }
+      if (['displayName', 'avatar', 'adminNote', 'tags', 'boxId'].some((field) => Object.prototype.hasOwnProperty.call(body, field))) {
+        requirements.push('players.manage');
+      }
+      if (!requirements.length) return res.status(400).json({ message: '没有可更新的玩家字段' });
+      const context = await authorizePlayerAdmin(req, res, requirements);
       if (!context) return;
       const target = await getManagedPlayerDetails(subjectId);
       if (context.actorRole === 'moderator' && target.player.role !== 'player') {
@@ -41,8 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
     if (req.method === 'POST') {
-      const ownerOnly = req.body?.action === 'reset-password';
-      const context = await authorizePlayerAdmin(req, res, ownerOnly ? 'owner' : 'moderate');
+      const requirement = req.body?.action === 'reset-password' ? 'passwords.reset'
+        : req.body?.action === 'revoke-sessions' || req.body?.action === 'revoke-session' ? 'sessions.manage'
+          : req.body?.action === 'ban-ip' || req.body?.action === 'ban-device' || req.body?.action === 'unban-source'
+            ? 'identity-bans.manage'
+            : 'players.manage';
+      const context = await authorizePlayerAdmin(req, res, requirement);
       if (!context) return;
       const target = await getManagedPlayerDetails(subjectId);
       if (context.actorRole === 'moderator' && target.player.role !== 'player') {
@@ -58,6 +74,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (req.body?.action === 'reset-password') {
         if (context.subjectId === subjectId) return res.status(400).json({ message: '请通过账号设置修改自己的密码' });
         return res.status(200).json(await resetManagedPlayerPassword(subjectId, req.body?.password, context));
+      }
+      if (req.body?.action === 'ban-ip' || req.body?.action === 'ban-device') {
+        return res.status(200).json(await createIdentityBan(subjectId, {
+          kind: req.body.action === 'ban-ip' ? 'ip' : 'device',
+          value: req.body.value,
+          reason: req.body.reason,
+          bannedUntil: req.body.bannedUntil,
+        }, context));
+      }
+      if (req.body?.action === 'unban-source') {
+        return res.status(200).json(await revokeIdentityBan(subjectId, req.body.banId, context));
       }
       return res.status(400).json({ message: '不支持的玩家操作' });
     }

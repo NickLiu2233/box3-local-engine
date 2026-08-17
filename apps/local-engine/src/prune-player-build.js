@@ -15,9 +15,10 @@ const removedPageRoutes = new Set([
 ])
 const removedAppRoutes = new Set(['/e/[container]/page'])
 const playerServiceRoutes = new Set([
-  '/', '/404', '/_app', '/_document', '/_error', '/account', '/players',
+  '/', '/404', '/_app', '/_document', '/_error', '/players',
   '/api/config/[...slug]', '/api/health-check',
   '/api/player-auth/login', '/api/player-auth/logout',
+  '/api/player-auth/login-required',
   '/api/player-auth/register', '/api/player-auth/session',
   '/api/player-internal/revocations', '/api/player-internal/runtime-identity',
   '/api/play-admin/activity', '/api/play-admin/maintenance',

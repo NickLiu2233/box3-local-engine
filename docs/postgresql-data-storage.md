@@ -105,8 +105,9 @@ group_play_11111111-1111-4111-8111-111111111111_player_keys
 `_keys.record`。
 
 PostgreSQL 标识符最长 63 字节。如果 UUID 与最长 50 字符的数据空间名称组合后超长，
-adapter 会使用 `storage_<sha256>` 形式的确定性物理表名；逻辑命名空间仍是完整 UUID，
-不会降低地图隔离性。
+adapter 仍保留 `edit/play`、完整地图 UUID（group storage 为完整地图组 UUID），只把数据
+空间名称的尾部缩短为“可读前缀 + 确定性摘要”。因此物理表始终能直接看出所属模式和地图，
+同时不会超过 PostgreSQL 上限；逻辑命名空间仍是完整 UUID，不会降低地图隔离性。
 
 多地图游玩端始终把发布清单中的 Map UUID 放进命名空间，因此访问 ID 即使修改，或者两张地图
 使用相同的数据空间名称，也不会互相覆盖。
@@ -224,8 +225,9 @@ pg_dump --format=custom --schema=box_engine --file=box-data.dump 数据库名
    `mapUuid` 和主地图 UUID。这保证访问 ID 改名后不丢档，但旧表不会仅凭复制就自动绑定到 UUID。
 2. **旧数据需要逐地图改名。** 多地图 Play 会按每张地图发布清单中的 UUID 隔离；迁移工具需要
    将每个旧作品 ID 和旧地图组 ID 分别映射到目标地图 UUID，不能用进程级全局 ID 代替。
-3. **超长物理表名不同。** PostgreSQL 标识符最多 63 字节。UUID 与较长 storage name 组合
-   超限时，Local 使用确定性的 `storage_<sha256>` 表名；旧数字 ID 通常不会触发该规则。
+3. **超长物理表名的尾部可能不同。** PostgreSQL 标识符最多 63 字节。UUID 与较长 storage
+   name 组合超限时，Local 保留 `edit/play + 完整 UUID`，只缩短 storage name 尾部并附加
+   确定性摘要；boxes 使用较短的数字 ID，通常不会触发该规则。
 4. **本地文件后端只保证脚本行为。** 它不是双表结构，也没有跨进程数据库锁。多个副地图并发
    写 `getGroupStorage` 时应使用 PostgreSQL，不能用文件后端承接旧数据库。
 5. **错误细码不同。** boxes 的外部 Java 服务可能返回如 `33000009` 的业务错误；Local 目前

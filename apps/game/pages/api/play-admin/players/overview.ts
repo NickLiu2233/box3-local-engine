@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'GET');
     return res.status(405).end();
   }
-  if (!await authorizePlayerAdmin(req, res, 'read')) return;
+  if (!await authorizePlayerAdmin(req, res, 'players.view')) return;
   try {
     return res.status(200).json(await getPlayerAdminOverview());
   } catch (error) {

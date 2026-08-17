@@ -89,6 +89,43 @@ async function main() {
     '33333333-3333-4333-8333-333333333333',
     'edit',
   );
+  const longStorageName = 'player_profile_archive';
+  const longProjectTableName = (editUuidStorage as any).tableBaseName(
+    'project',
+    longStorageName,
+  );
+  const longGroupTableName = (editUuidStorage as any).tableBaseName(
+    'group',
+    longStorageName,
+  );
+  assert.match(
+    longProjectTableName,
+    /^edit_22222222-2222-4222-8222-222222222222_/,
+    'oversized project storage names must still expose the boxes mode and map UUID',
+  );
+  assert.match(
+    longGroupTableName,
+    /^group_edit_33333333-3333-4333-8333-333333333333_/,
+    'oversized group storage names must still expose the boxes mode and group UUID',
+  );
+  assert.ok(
+    Buffer.byteLength(`${longProjectTableName}_keys`, 'utf8') <= 63,
+    'project storage tables must fit the PostgreSQL identifier limit',
+  );
+  assert.ok(
+    Buffer.byteLength(`${longGroupTableName}_keys`, 'utf8') <= 63,
+    'group storage tables must fit the PostgreSQL identifier limit',
+  );
+  assert.equal(
+    longProjectTableName.startsWith('storage_'),
+    false,
+    'project storage must never fall back to an opaque storage_<hash> table',
+  );
+  assert.equal(
+    longGroupTableName.startsWith('storage_'),
+    false,
+    'group storage must never fall back to an opaque storage_<hash> table',
+  );
   assert.equal(
     queryCount,
     0,
@@ -96,6 +133,16 @@ async function main() {
   );
   await Promise.all([first.connect(), second.connect()]);
   assert.ok(queryCount > 0, 'the first storage connection should initialize PostgreSQL');
+  const tablesBeforeFirstStorageAccess = await pool.query(
+    `SELECT table_name
+     FROM information_schema.tables
+     WHERE table_schema = 'box_engine'`,
+  );
+  assert.deepEqual(
+    tablesBeforeFirstStorageAccess.rows,
+    [],
+    'connecting a runtime must not create empty data-storage tables',
+  );
 
   await first.set('project', 'players', 'alice', { coins: 10, level: 2 });
   await pool.query(

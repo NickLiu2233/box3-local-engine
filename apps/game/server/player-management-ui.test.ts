@@ -3,8 +3,8 @@ import path from 'node:path';
 
 const pagesDirectory = path.resolve(__dirname, '../pages');
 const pageSource = fs.readFileSync(path.join(pagesDirectory, 'players.tsx'), 'utf8');
-const accountSource = fs.readFileSync(path.join(pagesDirectory, 'account.tsx'), 'utf8');
 const styleSource = fs.readFileSync(path.join(pagesDirectory, 'player-management.module.css'), 'utf8');
+const identitySource = fs.readFileSync(path.resolve(__dirname, 'local-player-identity.ts'), 'utf8');
 
 describe('player management visual consistency', () => {
   test('keeps operator identity separate from page actions', () => {
@@ -33,11 +33,10 @@ describe('player management visual consistency', () => {
       expect(styleSource).not.toContain(color);
     }
     expect(styleSource).toContain('font-family: MiSans, Montserrat, "Microsoft YaHei"');
-    expect(styleSource).toMatch(/\.accountCard\s*\{[^}]*background:\s*transparent;[^}]*box-shadow:\s*none;/s);
     expect(styleSource).toMatch(/\.sidebar nav \.navActive\s*\{[^}]*background:\s*var\(--brand\);/s);
   });
 
-  test('keeps player administration text readable without changing login density', () => {
+  test('keeps player administration text and dialogs readable', () => {
     expect(styleSource).toMatch(/\.adminShell\s*\{[^}]*grid-template-columns:\s*256px[^}]*font-size:\s*14px;/s);
     expect(styleSource).toMatch(/\.sidebar nav button div\s*\{[^}]*font-size:\s*14px;/s);
     expect(styleSource).toMatch(/\.tableCard td,\s*\.tableCard td strong\s*\{[^}]*font-size:\s*12px;/s);
@@ -84,29 +83,45 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain('navigator.clipboard.writeText(value)');
   });
 
-  test('keeps account login inside the same themed player-service experience', () => {
-    expect(accountSource).toContain('className={`${styles.themeRoot} ${styles.accountShell}`}');
-    expect(accountSource).toContain('data-theme={theme}');
-    expect(accountSource).toContain('localStorage.getItem(THEME_KEY)');
-    expect(accountSource).toContain('className={styles.accountCard}');
-    expect(accountSource).toContain('className={styles.accountForm}');
-    expect(styleSource).toContain('.accountShell');
-    expect(styleSource).toContain('.accountCard');
-    expect(styleSource).toContain('.accountForm');
-    expect(accountSource).not.toContain('accountIntro');
-    expect(accountSource).not.toContain('accountBenefits');
-    expect(accountSource).not.toContain('accountIdentityList');
-    expect(accountSource).not.toContain('accountTopbar');
-    expect(accountSource).not.toContain('accountBrand');
-    expect(accountSource).not.toContain('accountThemeButton');
+  test('does not ship an embedded player login page', () => {
+    expect(fs.existsSync(path.join(pagesDirectory, 'account.tsx'))).toBe(false);
+    expect(styleSource).not.toContain('.accountShell');
+    expect(styleSource).not.toContain('.accountForm');
   });
 
-  test('provides accessible login, registration and signed-in account states', () => {
-    expect(accountSource).toContain('role="tablist"');
-    expect(accountSource).toContain('aria-selected={mode === \'login\'}');
-    expect(accountSource).toContain('aria-live="polite"');
-    expect(accountSource).toContain("mode === 'login' ? 'current-password' : 'new-password'");
-    expect(accountSource).toContain('minLength={8}');
-    expect(accountSource).toContain('accountUnavailable');
+  test('provides a permission-gated user creation workflow', () => {
+    expect(pageSource).toContain('<UserPlus size={14} />新增用户');
+    expect(pageSource).toContain("fetch('/api/play-admin/players'");
+    expect(pageSource).toContain('aria-labelledby="create-user-title"');
+    expect(pageSource).toContain('autoComplete="new-password"');
+    expect(pageSource).toContain("setNotice(`用户“${data.player.displayName}”已创建");
+  });
+
+  test('keeps ban errors and confirmation visible inside the player drawer', () => {
+    expect(pageSource).toContain('className={styles.drawerNotice}');
+    expect(pageSource).toContain("selected.status === 'banned'");
+    expect(pageSource).toContain('封禁已经生效');
+    expect(styleSource).toContain('.drawerNotice');
+  });
+
+  test('lets only owners assign layered administrator capabilities', () => {
+    expect(identitySource).toContain('admin_permissions TEXT[]');
+    expect(pageSource).toContain('PLAYER_ADMIN_GRANTABLE_CAPABILITIES.map');
+    expect(pageSource).toContain("adminPermissions: selected.role === 'moderator'");
+    expect(pageSource).toContain('只有服主可以设置角色和授权');
+    expect(pageSource).toContain("detailTab === 'danger' && ownerAccess");
+    expect(styleSource).toContain('.permissionGrid');
+  });
+
+  test('supports persistent account, IP and random-device bans', () => {
+    expect(identitySource).toContain("const DEVICE_COOKIE_NAME = 'box_local_player_device'");
+    expect(identitySource).toContain("kind TEXT NOT NULL CHECK (kind IN ('ip', 'device'))");
+    expect(identitySource).toContain("WHERE created_ip = $1 OR last_seen_ip = $1");
+    expect(identitySource).toContain("WHERE device_hash = $1");
+    expect(identitySource).toContain("if (ipBan) throw new Error('IP_BANNED')");
+    expect(identitySource).toContain("if (deviceBan) throw new Error('DEVICE_BANNED')");
+    expect(pageSource).toContain("banSource('ip'");
+    expect(pageSource).toContain("banSource('device'");
+    expect(pageSource).toContain('IP 与设备处罚');
   });
 });

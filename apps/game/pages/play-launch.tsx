@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { IntlProvider } from 'react-intl';
 import { PlayLoading } from '../components/play-loading';
 import { LoadingStage } from '../src/defs/loading-stage';
-import { hasAuthenticatedPlayer, playerAccountURL } from '../server/player-service-client';
+import { hasAuthenticatedPlayer, playerLoginURL } from '../server/player-service-client';
 import { findPlayWorld } from '../server/play-worlds';
 
 type RuntimeStatus = {
@@ -17,11 +17,12 @@ type PlayLaunchProps = { cover: string; worldName: string };
 
 export const getServerSideProps: GetServerSideProps<PlayLaunchProps> = async ({ req, query }) => {
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') return { notFound: true };
-  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
-    return { redirect: { destination: playerAccountURL('play'), permanent: false } };
-  }
   const worldId = Array.isArray(query.world) ? query.world[0] : query.world;
   const world = findPlayWorld(String(worldId || ''));
+  if (!world) return { notFound: true };
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+    return { redirect: { destination: playerLoginURL('play'), permanent: false } };
+  }
   return { props: { cover: world?.cover || '', worldName: world?.name || '本地作品' } };
 };
 

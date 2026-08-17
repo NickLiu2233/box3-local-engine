@@ -9,7 +9,11 @@ const { execFileSync } = require('node:child_process')
 
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-map-group-play-'))
 const projectsRoot = path.join(temporaryRoot, 'projects')
+const templateDataRoot = path.join(temporaryRoot, 'template-data')
 process.env.BOX_LOCAL_PROJECTS_PATH = projectsRoot
+process.env.BOX_LOCAL_TEMPLATE_DATA_PATH = templateDataRoot
+
+fs.mkdirSync(templateDataRoot, { recursive: true })
 
 const manager = require('../src/project-manager')
 
@@ -67,6 +71,19 @@ try {
   )
 
   saveProject('release-dungeon', '6789A')
+  // Runtime template blobs are added after the projects are created, matching
+  // an upgraded Creator image publishing an older editable project. They are
+  // intentionally absent from each project's source/blobs directory.
+  const runtimeTemplateHash = hash('B')
+  fs.mkdirSync(path.join(templateDataRoot, 'blobs'), { recursive: true })
+  fs.writeFileSync(
+    path.join(templateDataRoot, 'blobs', runtimeTemplateHash),
+    'runtime template resource\n',
+  )
+  fs.writeFileSync(
+    path.join(templateDataRoot, 'runtime-blobs.json'),
+    JSON.stringify({ formatVersion: 1, hashes: [runtimeTemplateHash] }),
+  )
   assert.throws(
     () => manager.publishMapGroup('release-dungeon', 'v1', '整组回归'),
     /只有主地图可以导出游戏包/,
@@ -102,6 +119,12 @@ try {
   const compose = fs.readFileSync(path.join(distributionPath, 'compose.yml'), 'utf8')
   assert.match(compose, new RegExp(`BOX_WORLD_MAP_UUID: ${mainManifest.mapUuid}`))
   assert.match(compose, new RegExp(`BOX_WORLD_GROUP_UUID: ${mainManifest.mapUuid}`))
+  assert.match(
+    compose,
+    /BOX_PLAYER_LOGIN_URL: \$\{BOX_PLAYER_LOGIN_URL:-\}/,
+    'a missing external login page must not prevent the play package from starting',
+  )
+  assert.doesNotMatch(compose, /BOX_PLAYER_LOGIN_URL: \$\{BOX_PLAYER_LOGIN_URL:\?/)
   assert.doesNotMatch(compose, /BOX_GROUP_STORAGE_NAMESPACE:/)
   assert.doesNotMatch(compose, /BOX_DATA_STORAGE_NAMESPACE:/)
   assert.match(

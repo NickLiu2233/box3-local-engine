@@ -1,15 +1,23 @@
 import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { EditorPage } from 'src/entry/editor-page';
 import { getArenaServerRenderProps } from '/server/server-render';
-import { hasAuthenticatedPlayer, playerAccountURL } from '/server/player-service-client';
+import { getLocalProjectManager } from '/server/local-project-manager';
+import { hasAuthenticatedPlayer, playerLoginURL } from '/server/player-service-client';
 
 export default async function Page({ params, searchParams }) {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
-    redirect('/account');
+    redirect('/players');
   }
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
     redirect('/p/local');
+  }
+
+  const container = (await params)!['container'];
+  try {
+    getLocalProjectManager().getProject(container);
+  } catch {
+    notFound();
   }
 
   const cookie = (await cookies()).toString();
@@ -20,11 +28,11 @@ export default async function Page({ params, searchParams }) {
     requestHeaders.get('x-forwarded-for') || '',
     requestHeaders.get('user-agent') || '',
   )) {
-    redirect(playerAccountURL('creator'));
+    redirect(playerLoginURL('creator'));
   }
   const { token } = await searchParams;
   const { props } = await getArenaServerRenderProps({
-    containerName: (await params)!['container'], // TODO 做点错误处理，走到 404 去？
+    containerName: container,
     mode: 'edit',
     cookie,
     browserLanguage,

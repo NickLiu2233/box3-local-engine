@@ -1,13 +1,15 @@
 # 本地玩家身份与服主管理
 
-Local Engine 使用独立 `player-service` 镜像管理玩家身份。Creator 与 Play 都不创建游客，
-也不会在 Player Service 或 PostgreSQL 不可用时降级为匿名访问。玩家必须先注册或登录，
+Local Engine 使用独立、无界面的 `player-service` 镜像管理玩家身份。Creator 与 Play 都不创建游客，
+也不会在 Player Service 或 PostgreSQL 不可用时降级为匿名访问。玩家必须通过服主提供的页面注册或登录，
 随后才能查看工程、打开编辑器、启动地图或建立游戏 Session。
 
 默认入口：
 
-- 账号登录与注册：`http://127.0.0.1:3213/account`
+- 账号登录与注册：服主配置的 `BOX_PLAYER_LOGIN_URL`
 - 服主玩家后台：`http://127.0.0.1:3213/players`
+
+公开认证接口、跨域配置和自建登录页示例参阅 [Player Service 对外 API](player-service-api.md)。
 
 ## 启动
 
@@ -17,7 +19,8 @@ pnpm player-service
 pnpm player-service:up
 ```
 
-Player Service 必须配置 PostgreSQL、`PERMISSION_TOKEN_SECRET` 和管理令牌。Creator 与 Play
+Player Service 必须配置 PostgreSQL、`PERMISSION_TOKEN_SECRET`、`BOX_PLAYER_AUTH_API_KEY`
+和管理令牌。认证 Key 只供服主登录后端调用，不得放进浏览器。Creator 与 Play
 共享它签发的会话 Cookie。本机的 `127.0.0.1` 不同端口可直接共享；生产环境若使用不同
 子域名，应将 `BOX_PLAYER_COOKIE_DOMAIN` 配置为共同父域（例如 `.example.com`），并启用
 HTTPS。三个服务使用完全不同的顶级域名时不能共享登录 Cookie。
@@ -56,7 +59,7 @@ HTTPS。三个服务使用完全不同的顶级域名时不能共享登录 Cooki
 
 玩家后台当前覆盖：
 
-- 按用户名、昵称、身份 ID、标签和服主备注搜索，按角色、状态、在线情况筛选；
+- 由服主新增初始账号，以及按用户名、昵称、身份 ID、标签和服主备注搜索、筛选；
 - 昵称、头像、角色、标签与内部备注维护，临时或永久封禁及自动解封；
 - 单设备撤销、全部设备强制下线、批量封禁/解封/下线/标签操作；
 - 注册、登录、最后在线 IP 和 User-Agent，设备系统与浏览器识别；
@@ -75,5 +78,5 @@ HTTPS。三个服务使用完全不同的顶级域名时不能共享登录 Cooki
 ## 入口守卫
 
 身份校验覆盖 Creator 工程列表、工程 API、编辑器、Play 作品列表、启动页、地图页及
-`createSession`。未登录请求会被重定向至账号页；API 请求返回 HTTP 401 和
+`createSession`。未登录请求会被重定向至 `BOX_PLAYER_LOGIN_URL`；API 请求返回 HTTP 401 和
 `AUTH_REQUIRED`，不能通过直接拼接 URL 绕过。

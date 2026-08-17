@@ -13,6 +13,15 @@ export class PlayerAuthenticationRequiredError extends Error {
   }
 }
 
+export class PlayerLoginURLNotConfiguredError extends Error {
+  code = 'LOGIN_URL_NOT_CONFIGURED' as const;
+
+  constructor() {
+    super('服主尚未配置 BOX_PLAYER_LOGIN_URL，无法跳转到登录页面');
+    this.name = 'PlayerLoginURLNotConfiguredError';
+  }
+}
+
 function internalURL() {
   const value = (process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || '').trim();
   if (!value) throw new Error('BOX_PLAYER_SERVICE_INTERNAL_URL is not configured');
@@ -104,7 +113,49 @@ export async function hasAuthenticatedPlayer(cookie = '', ip = '', userAgent = '
   }
 }
 
-export function playerAccountURL(from: 'creator' | 'play') {
-  const base = (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, '');
-  return `${base}/account?from=${from}`;
+function publicApplicationURL(from: 'creator' | 'play') {
+  const configured = from === 'creator'
+    ? process.env.BOX_CREATOR_PUBLIC_URL
+    : process.env.BOX_PLAY_PUBLIC_URL;
+  const fallback = from === 'creator' ? 'http://127.0.0.1:3002' : 'http://127.0.0.1:3000';
+  return new URL((configured || fallback).trim());
+}
+
+function trustedReturnURL(from: 'creator' | 'play', requestedReturnUrl?: string) {
+  const application = publicApplicationURL(from);
+  if (!requestedReturnUrl) return application.toString();
+  try {
+    const requested = new URL(requestedReturnUrl, application);
+    return requested.origin === application.origin ? requested.toString() : application.toString();
+  } catch {
+    return application.toString();
+  }
+}
+
+export function requirePlayerLoginURL(from: 'creator' | 'play', requestedReturnUrl?: string) {
+  const configured = (process.env.BOX_PLAYER_LOGIN_URL || '').trim();
+  if (!configured) throw new PlayerLoginURLNotConfiguredError();
+  const login = new URL(configured);
+  if (!['http:', 'https:'].includes(login.protocol)) {
+    throw new Error('BOX_PLAYER_LOGIN_URL 只能使用 HTTP 或 HTTPS 地址');
+  }
+  login.searchParams.set('source', from);
+  login.searchParams.set('returnUrl', trustedReturnURL(from, requestedReturnUrl));
+  return login.toString();
+}
+
+export function playerLoginURL(from: 'creator' | 'play', requestedReturnUrl?: string) {
+  try {
+    return requirePlayerLoginURL(from, requestedReturnUrl);
+  } catch (error) {
+    if (!(error instanceof PlayerLoginURLNotConfiguredError)) throw error;
+    const search = new URLSearchParams({ source: from });
+    if (requestedReturnUrl) {
+      search.set(
+        'returnUrl',
+        trustedReturnURL(from, requestedReturnUrl),
+      );
+    }
+    return `/login-required?${search.toString()}`;
+  }
 }

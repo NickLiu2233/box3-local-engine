@@ -452,6 +452,9 @@ docker compose up -d
 | `BOX_LOCAL_PLAYER_LIMIT` | `8` | 单地图最大连接人数 |
 | `PERMISSION_TOKEN_SECRET` | 空 | 会话签名密钥，正式部署必须固定 |
 | `BOX_SERVER_PUBLIC_URL` | 空 | 公网地址，例如 `https://game.example.com` |
+| `BOX_PLAYER_LOGIN_URL` | 空 | 可选的服主登录页面；留空时未登录用户看到“未开启登录” |
+| `BOX_PLAYER_AUTH_API_KEY` | 空 | 认证接口服务端密钥，至少 16 位，分发部署必填 |
+| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 空 | 认证接口允许的 Origin 附加白名单，不代替服务端 Key |
 | `BOX_TRUST_PROXY` | `false` | 是否信任反向代理提供的客户端 IP 和协议头 |
 | `BOX_SESSION_TTL_MS` | `60000` | Session 在连接前的有效时间（毫秒） |
 | `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到各地图运行时的间隔（毫秒） |

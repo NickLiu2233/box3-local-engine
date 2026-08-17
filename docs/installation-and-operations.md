@@ -215,7 +215,9 @@ pnpm creator:up
 
 - Creator：`http://127.0.0.1:3002/`
 - Player Service：`http://127.0.0.1:3213/`
-- VOXA 模型库：`http://127.0.0.1:3001/library`
+- Creator 模型列表：`http://127.0.0.1:3002/projects?view=models`
+
+VOXA 只提供模型编辑服务，不再提供独立作品管理页面；请从 Creator 模型列表打开模型。
 
 ### 游玩服务器
 

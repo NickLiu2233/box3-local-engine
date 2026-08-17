@@ -10,7 +10,8 @@ import { getCreateraInstance } from '../../server/request';
 import { localhostRegex } from 'src/utils/url-helpers';
 import {
   PlayerAuthenticationRequiredError,
-  playerAccountURL,
+  PlayerLoginURLNotConfiguredError,
+  requirePlayerLoginURL,
   resolvePlayerServiceIdentity,
 } from '../../server/player-service-client';
 
@@ -107,11 +108,24 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   } catch (err) {
     if (err instanceof PlayerAuthenticationRequiredError) {
       const from = process.env.BOX_DEPLOYMENT_MODE === 'creator' ? 'creator' : 'play';
-      return res.status(401).json({
-        code: 'AUTH_REQUIRED',
-        message: '请先注册或登录账号',
-        loginUrl: playerAccountURL(from),
-      });
+      try {
+        return res.status(401).json({
+          code: 'AUTH_REQUIRED',
+          message: '请先登录账号',
+          loginUrl: requirePlayerLoginURL(from),
+        });
+      } catch (loginError) {
+        if (loginError instanceof PlayerLoginURLNotConfiguredError) {
+          return res.status(503).json({
+            code: loginError.code,
+            message: loginError.message,
+          });
+        }
+        return res.status(503).json({
+          code: 'LOGIN_URL_INVALID',
+          message: (loginError as Error).message,
+        });
+      }
     }
     const sharedLogger = await getSharedLogger();
     const sessionError = err as {

@@ -5,19 +5,24 @@ import { startPlayerRevocationPoller } from '../src/player/player-revocation-pol
 const subjectId = 'daf88e0865a546b39018906fd6aa0ee1';
 const kicked: string[] = [];
 const messages: string[] = [];
+const eventCreatedAt = new Date(Date.now() - 2 * 60_000);
 
 process.env.BOX_PLAYER_SERVICE_INTERNAL_URL = 'http://player-service:3213';
 process.env.PERMISSION_TOKEN_SECRET = 'regression-secret';
 process.env.BOX_PLAYER_REVOCATION_POLL_MS = '30000';
 
-global.fetch = async (_input, init) => {
+global.fetch = async (input, init) => {
   assert.equal(
     (init?.headers as Record<string, string>).Authorization,
     'Bearer regression-secret',
   );
+  const since = new Date(new URL(String(input)).searchParams.get('since') || '');
+  const events = since <= eventCreatedAt
+    ? [{ id: '41', subjectId, reason: 'banned' }]
+    : [];
   return new Response(JSON.stringify({
-    cursor: '41',
-    events: [{ id: '41', subjectId, reason: 'sessions-revoked' }],
+    cursor: events.length ? '41' : '0',
+    events,
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 

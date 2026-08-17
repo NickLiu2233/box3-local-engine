@@ -10,7 +10,9 @@ import { PlayLoading } from '../../../components/play-loading';
 import { getArenaServerRenderProps } from '../../../server/server-render';
 import { FeatureFlag } from '@box-local/env/constants';
 import { hashToUrl } from '../../../server/utils/hash';
-import { hasAuthenticatedPlayer, playerAccountURL } from '../../../server/player-service-client';
+import { hasAuthenticatedPlayer, playerLoginURL } from '../../../server/player-service-client';
+import { findPlayWorld } from '../../../server/play-worlds';
+import { getLocalProjectManager } from '../../../server/local-project-manager';
 
 // 浏览器执行的代码
 const DynamicPlayUi = dynamic(() => import('../../../src/views/play'), {
@@ -53,8 +55,23 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
 ) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
     return {
-      redirect: { destination: '/account', permanent: false },
+      redirect: { destination: '/players', permanent: false },
     };
+  }
+  const gameName = String(context.params?.gameName || '');
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
+    const exists = process.env.BOX_PLAY_LIBRARY_PATH
+      ? Boolean(findPlayWorld(gameName))
+      : [process.env.BOX_WORLD_PUBLIC_ID, process.env.BOX_WORLD_ID]
+          .filter(Boolean)
+          .includes(gameName);
+    if (!exists) return { notFound: true };
+  } else {
+    try {
+      getLocalProjectManager().getProject(gameName);
+    } catch {
+      return { notFound: true };
+    }
   }
   const from = process.env.BOX_DEPLOYMENT_MODE === 'creator' ? 'creator' : 'play';
   if (!await hasAuthenticatedPlayer(
@@ -62,7 +79,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
     context.req.socket.remoteAddress || '',
     String(context.req.headers['user-agent'] || ''),
   )) {
-    return { redirect: { destination: playerAccountURL(from), permanent: false } };
+    return { redirect: { destination: playerLoginURL(from), permanent: false } };
   }
   const cookie = context.req.headers.cookie!;
   const { token } = context.query;

@@ -191,9 +191,9 @@ function archiveMatches(config, archive = config.archive) {
   )
 }
 
-function buildPlayImage(config) {
+function buildPlayImage(config, buildMetadata = {}) {
   runDocker(['compose', '--profile', 'play', 'build', 'play'], {
-    env: dockerEnvironment(config),
+    env: dockerEnvironment(config, buildMetadata),
   })
   const actualPlatform = inspectLocalImagePlatform(config)
   if (actualPlatform !== config.platform) {
@@ -231,7 +231,10 @@ function savePlayImage(config) {
   }
 }
 
-function ensurePlayImageArchive({ forceBuild = false } = {}) {
+function ensurePlayImageArchive({
+  forceBuild = false,
+  buildMetadata = {},
+} = {}) {
   const config = getPlayImageConfig()
   if (!forceBuild && archiveMatches(config)) {
     if (
@@ -257,7 +260,7 @@ function ensurePlayImageArchive({ forceBuild = false } = {}) {
     localPlatform !== config.platform ||
     localFormat !== playFormat
   ) {
-    buildPlayImage(config)
+    buildPlayImage(config, buildMetadata)
   }
   savePlayImage(config)
   return config
@@ -274,7 +277,10 @@ function playerServiceArchiveMatches(
   )
 }
 
-function ensurePlayerServiceImageArchive({ forceBuild = false } = {}) {
+function ensurePlayerServiceImageArchive({
+  forceBuild = false,
+  buildMetadata = {},
+} = {}) {
   const config = getPlayImageConfig()
   const localPlatform = inspectLocalImagePlatform(
     config,
@@ -292,7 +298,7 @@ function ensurePlayerServiceImageArchive({ forceBuild = false } = {}) {
   ) {
     runDocker(
       ['compose', '--profile', 'player-service', 'build', 'player-service'],
-      { env: dockerEnvironment(config) },
+      { env: dockerEnvironment(config, buildMetadata) },
     )
   }
   if (

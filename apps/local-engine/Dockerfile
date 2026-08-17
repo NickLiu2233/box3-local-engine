@@ -278,7 +278,22 @@ CMD ["node", "apps/game/.next/standalone/apps/game/server.js"]
 
 FROM runtime-base AS voxa
 
-ENV VOXA_DATA_PATH=/app/apps/voxa/data \
+ARG BOX_BUILD_VERSION
+ARG BOX_BUILD_COMMIT
+ARG BOX_BUILD_DATE
+ARG BOX_BUILD_SOURCE
+LABEL org.opencontainers.image.title="BOX Local Engine VOXA" \
+      org.opencontainers.image.version="${BOX_BUILD_VERSION}" \
+      org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
+      org.opencontainers.image.created="${BOX_BUILD_DATE}" \
+      org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
+      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+
+ENV BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
+    BOX_BUILD_COMMIT=${BOX_BUILD_COMMIT} \
+    BOX_BUILD_DATE=${BOX_BUILD_DATE} \
+    BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE} \
+    VOXA_DATA_PATH=/app/apps/voxa/data \
     HOSTNAME=0.0.0.0 \
     PORT=3001
 
@@ -299,6 +314,6 @@ EXPOSE 3001
 VOLUME ["/app/apps/voxa/data"]
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:3001/library').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3001/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 CMD ["node", "apps/voxa/.next/standalone/apps/voxa/server.js"]

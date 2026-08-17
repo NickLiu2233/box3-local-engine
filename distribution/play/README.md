@@ -46,11 +46,13 @@ volume 权限。
 重启或升级时更换，否则现有会话和运行时身份会失效。公网只暴露 HTTPS 反向代理，Player
 Service 管理页、PostgreSQL 和 Redis 不应直接暴露到互联网。
 
-两个镜像归档相互独立，更新玩家服务不需要重新分发游玩镜像。玩家中心默认是
-`http://127.0.0.1:3213/`；需要远程访问时还要配置 `BOX_PLAYER_SERVICE_HOST_IP` 和
-`BOX_PLAYER_SERVICE_PUBLIC_URL`。
+两个镜像归档相互独立，更新玩家服务不需要重新分发游玩镜像。玩家管理后台默认是
+`http://127.0.0.1:3213/players`。玩家登录页由服主自行部署；配置
+`BOX_PLAYER_LOGIN_URL` 后，未登录玩家会跳转到该地址，留空则显示“未开启登录”。认证接口仍必须配置
+至少 16 位的 `BOX_PLAYER_AUTH_API_KEY`。Key 只能配置在服主登录
+后端与 Player Service，不能放进浏览器；Origin 限制可通过 `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` 配置。
 
-登录、注册和玩家管理只在玩家服务中提供；Play 的 `3000` 端口不显示这些入口。
+登录、注册 API 和玩家管理只在玩家服务中提供；Player Service 和 Play 都不内置玩家登录页。
 
 Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到 `box-play-storage` 卷。
 使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整缓存完成后继续常驻的地图数量，设为 `0` 可关闭；

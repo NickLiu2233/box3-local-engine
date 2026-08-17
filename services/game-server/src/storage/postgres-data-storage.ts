@@ -39,6 +39,8 @@ export type PostgresDataStorageOptions = {
 const schemaPattern = /^[a-z_][a-z0-9_]{0,62}$/;
 const storageNamePattern = /^[a-zA-Z0-9_]+$/;
 const modePattern = /^[a-zA-Z0-9_]+$/;
+const postgresIdentifierByteLimit = 63;
+const storageKeysTableSuffix = '_keys';
 
 function quoteIdentifier(value: string) {
   return `"${value.replace(/"/g, '""')}"`;
@@ -142,6 +144,11 @@ export class PostgresDataStorage implements CommonGameDataServer {
    * Preserve the original boxes naming convention:
    *   group_play_100010141_player (+ _keys)
    *   play_100010141_player       (+ _keys)
+   *
+   * Local map identities are UUIDs rather than the short numeric content IDs
+   * used by boxes. Keep the mode and the complete UUID visible even when a
+   * long user-defined storage name would exceed PostgreSQL's 63-byte
+   * identifier limit; only the storage-name tail is shortened in that case.
    */
   private tableBaseName(tableType: TableType, storageName: string) {
     if (!storageNamePattern.test(storageName) || storageName.length > 50) {
@@ -151,18 +158,30 @@ export class PostgresDataStorage implements CommonGameDataServer {
     }
     const groupPrefix = tableType === 'group' ? 'group_' : '';
     const namespace = this.namespace(tableType);
-    const baseName = `${groupPrefix}${this.options.mode}_${namespace}_${storageName}`;
-    if (Buffer.byteLength(`${baseName}_keys`, 'utf8') <= 63) return baseName;
-    // PostgreSQL identifiers are limited to 63 bytes. UUID namespaces plus a
-    // valid 50-character storage name can exceed that limit, so keep readable
-    // legacy names when possible and use a deterministic physical name only
-    // for oversized combinations. The full UUID still remains the logical
-    // namespace and lock identity through this digest.
+    const prefix = `${groupPrefix}${this.options.mode}_${namespace}_`;
+    const maxBaseNameBytes =
+      postgresIdentifierByteLimit - Buffer.byteLength(storageKeysTableSuffix, 'utf8');
+    const storageNameByteBudget =
+      maxBaseNameBytes - Buffer.byteLength(prefix, 'utf8');
+    if (storageNameByteBudget < 1) {
+      throw new Error(
+        'data storage namespace is too long for a readable PostgreSQL table name',
+      );
+    }
+    if (Buffer.byteLength(storageName, 'utf8') <= storageNameByteBudget) {
+      return `${prefix}${storageName}`;
+    }
+
+    // storageName is ASCII by validation above. An eight-hex digest keeps the
+    // shortened tail deterministic while the visible prefix still identifies
+    // the exact edit/play map or map group that owns the table.
     const digest = createHash('sha256')
-      .update(`${tableType}\0${this.options.mode}\0${namespace}\0${storageName}`)
+      .update(storageName)
       .digest('hex')
-      .slice(0, 48);
-    return `storage_${digest}`;
+      .slice(0, Math.min(8, storageNameByteBudget));
+    const readableLength = storageNameByteBudget - digest.length - 1;
+    if (readableLength < 1) return `${prefix}${digest}`;
+    return `${prefix}${storageName.slice(0, readableLength)}_${digest}`;
   }
 
   private tablesForBase(baseName: string): StorageTables {

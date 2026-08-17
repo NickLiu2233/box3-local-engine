@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end();
   }
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
-    const actor = await authorizePlayerAdmin(req, res, 'read');
+    const actor = await authorizePlayerAdmin(req, res, 'players.view');
     if (!actor) return;
     return res.status(200).json({
       verified: true,
@@ -17,6 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         role: actor.actorRole,
         subjectId: actor.subjectId,
         credential: actor.actor === 'server-owner' ? 'owner-token' : 'account',
+        permissions: actor.actorPermissions || [],
       },
     });
   }
