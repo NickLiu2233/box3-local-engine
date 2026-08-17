@@ -206,7 +206,9 @@ function startEditLibrary({
         }
         id = project.id
         key = runtimeKey(id, roomId)
-        if (roomId) teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+        if (roomId) {
+          teleportRooms.resolveRoom({ targetMapId: project.mapUuid, serverId: roomId })
+        }
         void ensureRuntime(project, roomId).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify(statuses.get(key) || setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' })))
@@ -228,7 +230,10 @@ function startEditLibrary({
         existingRuntime = runtimes.get(key)
       }
       if (roomId) {
-        teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+        teleportRooms.resolveRoom({
+          targetMapId: project?.mapUuid,
+          serverId: roomId,
+        })
       }
       const runtime = starts.has(key)
         ? await ensureRuntime(project || reference, roomId)
@@ -267,7 +272,12 @@ function startEditLibrary({
       const { reference, roomId, forwardedPath } = parseProjectRequest(req.url)
       const project = resolveProject(reference)
       const id = project?.id || reference
-      if (roomId) teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+      if (roomId) {
+        teleportRooms.resolveRoom({
+          targetMapId: project?.mapUuid,
+          serverId: roomId,
+        })
+      }
       const runtime = await ensureRuntime(project || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       socket.once('close', releaseConnection)

@@ -3,6 +3,7 @@
 const crypto = require('crypto')
 
 const roomIdPattern = /^[A-Za-z0-9_-]{16,128}$/
+const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 function roomError(code, message, statusCode = 400) {
   return Object.assign(new Error(message), { code, statusCode })
@@ -31,7 +32,11 @@ function mapIdentity(map) {
   if (!groupId) {
     throw roomError('MAP_GROUP_MISSING', '地图缺少地图组身份', 409)
   }
-  return { id: map.id, groupId }
+  const mapUuid = String(map.mapUuid || map.manifest?.mapUuid || '').toLowerCase()
+  if (!mapUuidPattern.test(mapUuid)) {
+    throw roomError('MAP_UUID_MISSING', '地图缺少有效且不可变的地图 UUID', 409)
+  }
+  return { id: map.id, mapUuid, groupId }
 }
 
 function normalizedSubjects(subjectIds) {
@@ -137,8 +142,18 @@ function createTeleportRoomManager({
   const maximum = positiveInteger(maxRooms, 64, 1024)
 
   function resolve(reference) {
-    const map = resolveMap(String(reference || ''))
-    mapIdentity(map)
+    const normalized = String(reference || '').trim().toLowerCase()
+    if (!mapUuidPattern.test(normalized)) {
+      throw roomError(
+        'MAP_UUID_REQUIRED',
+        'world.teleport() 的 mapId 必须填写目标地图不可变的地图 UUID',
+      )
+    }
+    const map = resolveMap(normalized)
+    const identity = mapIdentity(map)
+    if (identity.mapUuid !== normalized) {
+      throw roomError('MAP_UUID_MISMATCH', '目标地图 UUID 不匹配', 409)
+    }
     return map
   }
 
@@ -201,7 +216,7 @@ function createTeleportRoomManager({
         throw roomError('ROOM_NOT_FOUND', '传送房间不存在或已回收', 404)
       }
       if (
-        room.targetMapId !== targetIdentity.id ||
+        room.targetMapId !== targetIdentity.mapUuid ||
         room.mapGroupId !== targetIdentity.groupId
       ) {
         throw roomError('ROOM_TARGET_MISMATCH', '传送房间与目标地图不匹配', 403)
@@ -221,7 +236,7 @@ function createTeleportRoomManager({
       }
       room = {
         id: roomId,
-        targetMapId: targetIdentity.id,
+        targetMapId: targetIdentity.mapUuid,
         mapGroupId: targetIdentity.groupId,
         subjects: new Set(),
         createdAt: now(),
@@ -253,7 +268,7 @@ function createTeleportRoomManager({
       throw roomError('ROOM_NOT_FOUND', '传送房间不存在或已回收', 404)
     }
     if (
-      room.targetMapId !== targetIdentity.id ||
+      room.targetMapId !== targetIdentity.mapUuid ||
       room.mapGroupId !== targetIdentity.groupId
     ) {
       throw roomError('ROOM_TARGET_MISMATCH', '传送房间与目标地图不匹配', 403)

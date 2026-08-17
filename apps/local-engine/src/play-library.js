@@ -73,7 +73,7 @@ function resolveWorld(libraryRoot, reference) {
     const publicId = worldIdPattern.test(String(world.manifest.publicId || ''))
       ? String(world.manifest.publicId)
       : world.id
-    return publicId === reference
+    return publicId === reference || world.manifest.mapUuid === reference
   }) || null
 }
 
@@ -246,13 +246,23 @@ function startPlayLibrary({
           res.end(JSON.stringify({ message: '地图不存在或数据不完整' }))
           return
         }
-        if (roomId) teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+        if (roomId) {
+          teleportRooms.resolveRoom({
+            targetMapId: resolvedWorld.manifest.mapUuid,
+            serverId: roomId,
+          })
+        }
         void ensureRuntime(resolvedWorld, roomId).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify(statuses.get(key) || setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' })))
         return
       }
-      if (roomId) teleportRooms.resolveRoom({ targetMapId: id, serverId: roomId })
+      if (roomId) {
+        teleportRooms.resolveRoom({
+          targetMapId: resolvedWorld?.manifest.mapUuid,
+          serverId: roomId,
+        })
+      }
       const runtime = await ensureRuntime(resolvedWorld || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       res.once('close', releaseConnection)
@@ -282,7 +292,10 @@ function startPlayLibrary({
       const { reference, roomId, forwardedPath } = parseWorldRequest(req.url)
       const world = resolveWorld(libraryRoot, reference)
       if (roomId) {
-        teleportRooms.resolveRoom({ targetMapId: world?.id, serverId: roomId })
+        teleportRooms.resolveRoom({
+          targetMapId: world?.manifest.mapUuid,
+          serverId: roomId,
+        })
       }
       const runtime = await ensureRuntime(world || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)

@@ -8,6 +8,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const client = read('apps/game/src/engine/game-client.ts');
 const server = read('services/game-server/src/script/script-host.ts');
 const teleportServer = read('services/game-server/src/teleport/teleport-server.ts');
+const launcher = read('apps/local-engine/src/launcher.js');
 
 const orderedTokens = (source, tokens, label) => {
   let cursor = -1;
@@ -46,6 +47,14 @@ orderedTokens(
 assert.ok(
   teleportServer.includes('server.protocol(TeleportProtocol)'),
   'TeleportServer is missing its engine network protocol registration',
+);
+assert.ok(
+  teleportServer.includes('process.env.BOX_WORLD_MAP_UUID || state.settings.containerName'),
+  'TeleportServer must identify the source map by its immutable map UUID',
+);
+assert.ok(
+  launcher.includes('BOX_WORLD_MAP_UUID: world.manifest.mapUuid'),
+  'Play runtimes must receive their immutable map UUID',
 );
 
 for (const forbidden of [

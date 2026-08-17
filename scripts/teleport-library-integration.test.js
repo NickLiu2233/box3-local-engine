@@ -76,7 +76,7 @@ async function mockRuntime(project, instance, starts) {
   return runtime
 }
 
-function writeWorld(root, id, publicId, mapGroupUuid) {
+function writeWorld(root, id, publicId, mapUuid, mapGroupUuid) {
   const worldRoot = path.join(root, id)
   fs.mkdirSync(path.join(worldRoot, 'data', 'blobs'), { recursive: true })
   fs.writeFileSync(path.join(worldRoot, 'manifest.json'), JSON.stringify({
@@ -84,7 +84,7 @@ function writeWorld(root, id, publicId, mapGroupUuid) {
     publicId,
     version: '1.0.0',
     permissionHash: `permission-${id}`,
-    mapUuid: `uuid-${id}`,
+    mapUuid,
     mapGroupUuid,
     mapGroupId: 'main-map',
     mainProjectId: 'main-map',
@@ -97,8 +97,20 @@ function writeWorld(root, id, publicId, mapGroupUuid) {
 test('play library keeps public and teleported rooms in isolated runtimes', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-teleport-play-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
-  writeWorld(root, 'main-map', 'town', 'group-uuid')
-  writeWorld(root, 'sub-map', 'dungeon', 'group-uuid')
+  writeWorld(
+    root,
+    'main-map',
+    'town',
+    '11111111-1111-4111-8111-111111111111',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  )
+  writeWorld(
+    root,
+    'sub-map',
+    'dungeon',
+    '22222222-2222-4222-8222-222222222222',
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  )
   const starts = []
   const library = startPlayLibrary({
     libraryRoot: root,
@@ -121,8 +133,8 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
     method: 'POST',
     token: 'integration-token',
     body: {
-      sourceMapId: 'town',
-      targetMapId: 'dungeon',
+      sourceMapId: '11111111-1111-4111-8111-111111111111',
+      targetMapId: '22222222-2222-4222-8222-222222222222',
       subjectIds: ['player-a'],
     },
   })
@@ -144,19 +156,31 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
     method: 'POST',
     token: 'integration-token',
     body: {
-      targetMapId: 'sub-map',
+      targetMapId: '22222222-2222-4222-8222-222222222222',
       serverId: allocation.body.serverId,
       subjectId: 'player-b',
     },
   })
   assert.equal(denied.status, 403)
   assert.equal(denied.body.code, 'ROOM_ACCESS_DENIED')
+
+  const mutableId = await request(port, '/__local_teleport/allocate', {
+    method: 'POST',
+    token: 'integration-token',
+    body: {
+      sourceMapId: '11111111-1111-4111-8111-111111111111',
+      targetMapId: 'dungeon',
+      subjectIds: ['player-a'],
+    },
+  })
+  assert.equal(mutableId.status, 400)
+  assert.equal(mutableId.body.code, 'MAP_UUID_REQUIRED')
 })
 
 test('creator edit switches maps without allocating a room runtime', async (t) => {
   const projects = [
-    { id: 'main-map', publicId: 'town', mapGroupUuid: 'group-uuid' },
-    { id: 'sub-map', publicId: 'dungeon', mapGroupUuid: 'group-uuid' },
+    { id: 'main-map', publicId: 'town', mapUuid: '11111111-1111-4111-8111-111111111111', mapGroupUuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
+    { id: 'sub-map', publicId: 'dungeon', mapUuid: '22222222-2222-4222-8222-222222222222', mapGroupUuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
   ]
   const starts = []
   const library = startEditLibrary({
@@ -164,7 +188,10 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
     port: 0,
     mode: 'edit',
     resolveProject: (reference) => projects.find(
-      (project) => project.id === reference || project.publicId === reference,
+      (project) =>
+        project.id === reference ||
+        project.publicId === reference ||
+        project.mapUuid === reference,
     ) || null,
     teleportInternalToken: 'integration-token',
     startRuntime: (project, _port, instance) =>
@@ -179,8 +206,8 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
     method: 'POST',
     token: 'integration-token',
     body: {
-      sourceMapId: 'town',
-      targetMapId: 'dungeon',
+      sourceMapId: '11111111-1111-4111-8111-111111111111',
+      targetMapId: '22222222-2222-4222-8222-222222222222',
       subjectIds: ['player-a'],
       mode: 'edit',
     },

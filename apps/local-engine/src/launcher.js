@@ -545,6 +545,10 @@ async function main() {
             process.env.BOX_SERVER_CONTENT_ID ||
             'default'
           ),
+          BOX_WORLD_MAP_UUID:
+            localStorageIdentity?.mapUuid ||
+            process.env.BOX_WORLD_MAP_UUID ||
+            '',
           // getGroupStorage is shared inside one map group, never across
           // unrelated projects or independently distributed game packages.
           BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
@@ -599,6 +603,7 @@ async function main() {
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
             world.manifest.mapUuid || world.id,
           ),
+          BOX_WORLD_MAP_UUID: world.manifest.mapUuid || '',
           BOX_GROUP_STORAGE_NAMESPACE: resolveGroupRuntimeNamespace({
             mapGroupUuid: world.manifest.mapGroupUuid,
             mapGroupId: world.manifest.mapGroupId,
@@ -689,7 +694,8 @@ async function main() {
           metadata = projectManager.getProject(reference)
         } catch {
           const summary = projectManager.listProjects().find(
-            (project) => project.publicId === reference,
+            (project) =>
+              project.publicId === reference || project.mapUuid === reference,
           )
           if (!summary) return null
           metadata = projectManager.getProject(summary.id)
@@ -698,6 +704,7 @@ async function main() {
         const identity = projectManager.projectStorageIdentity(id)
         return {
           id,
+          mapUuid: identity.mapUuid,
           publicId: metadata.publicId || id,
           mapGroupId: metadata.mapGroupId,
           mainProjectId: metadata.mainProjectId,
