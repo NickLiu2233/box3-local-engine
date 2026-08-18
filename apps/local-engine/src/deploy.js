@@ -227,10 +227,9 @@ function startPlayerAuthPortal({ build }) {
   if (build) {
     runDocker(['compose', '--profile', 'auth-portal', 'build', 'player-auth-portal'])
   }
-  runDocker(
-    ['compose', '--profile', 'auth-portal', 'stop', 'player-auth-portal'],
-    { allowFailure: true },
-  )
+  runDocker(['compose', '--profile', 'auth-portal', 'stop', 'player-auth-portal'], {
+    allowFailure: true,
+  })
   runDocker([
     'compose',
     '--profile',
