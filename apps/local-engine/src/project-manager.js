@@ -5,10 +5,7 @@ const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
 const { spawnSync } = require('child_process')
-const {
-  ensurePlayImageArchive,
-  getPlayImageConfig,
-} = require('./play-image')
+const { ensurePlayImageArchive, getPlayImageConfig } = require('./play-image')
 const { generateDistributionMetadata } = require('./distribution-metadata')
 const { scanProjectCompatibility } = require('./project-compatibility')
 const { createMapGroupManager } = require('./map-group-manager')
@@ -16,10 +13,8 @@ const { createMapGroupManager } = require('./map-group-manager')
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const projectsRoot = process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects')
-const templateDataRoot =
-  process.env.BOX_LOCAL_TEMPLATE_DATA_PATH || path.join(packageRoot, 'data')
-const voxaDataRoot =
-  process.env.BOX_LOCAL_VOXA_DATA_PATH || path.join(packageRoot, '../voxa/data')
+const templateDataRoot = process.env.BOX_LOCAL_TEMPLATE_DATA_PATH || path.join(packageRoot, 'data')
+const voxaDataRoot = process.env.BOX_LOCAL_VOXA_DATA_PATH || path.join(packageRoot, '../voxa/data')
 const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packageRoot, 'backups')
@@ -33,8 +28,7 @@ const mapGroupManager = createMapGroupManager(projectsRoot)
 // models, skins and shared scripts disappear from the play package.
 const cidV0Pattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
 const urlSafeHashPattern = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g
-const base58Alphabet =
-  '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const sensitiveContentRules = [
   ['私钥', /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/],
   ['数据库连接串', /(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s"']+:[^\s"'@]+@/i],
@@ -50,10 +44,7 @@ const sensitiveContentRules = [
 ]
 
 function isContentHash(hash) {
-  return (
-    /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash) ||
-    /^[A-Za-z0-9_-]{43}$/.test(hash)
-  )
+  return /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash) || /^[A-Za-z0-9_-]{43}$/.test(hash)
 }
 
 function normalizedContentHash(value) {
@@ -171,9 +162,7 @@ function extractReferencedHashes(content, binaryHashExists = () => true) {
   const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content)
   const text = buffer.toString('utf8')
   const hashes = new Set()
-  const isText = buffer.every(
-    (byte) => byte >= 32 || byte === 9 || byte === 10 || byte === 13,
-  )
+  const isText = buffer.every((byte) => byte >= 32 || byte === 9 || byte === 10 || byte === 13)
 
   if (isText) {
     try {
@@ -199,10 +188,7 @@ function extractReferencedHashes(content, binaryHashExists = () => true) {
   for (let index = 0; index + 44 <= buffer.length; index += 1) {
     if (buffer[index] !== 43) continue
     const candidate = buffer.subarray(index + 1, index + 44).toString('ascii')
-    if (
-      /^[A-Za-z0-9_-]{43}$/.test(candidate) &&
-      binaryHashExists(candidate)
-    ) {
+    if (/^[A-Za-z0-9_-]{43}$/.test(candidate) && binaryHashExists(candidate)) {
       hashes.add(candidate)
     }
   }
@@ -224,10 +210,7 @@ function collectReferencedHashes(target, hashes) {
 }
 
 function getRuntimeTemplateHashes() {
-  const manifest = readJSON(
-    path.join(templateDataRoot, 'runtime-blobs.json'),
-    null,
-  )
+  const manifest = readJSON(path.join(templateDataRoot, 'runtime-blobs.json'), null)
   if (Array.isArray(manifest?.hashes)) return new Set(manifest.hashes)
 
   const hashes = new Set()
@@ -235,10 +218,7 @@ function getRuntimeTemplateHashes() {
     path.join(packageRoot, '../game/src/resource'),
     path.join(packageRoot, '../../services/game-server/dist/src/assets'),
     path.join(packageRoot, '../../services/game-server/src/assets'),
-    path.join(
-      packageRoot,
-      '../../services/game-server/src/player/default-avatar.json',
-    ),
+    path.join(packageRoot, '../../services/game-server/src/player/default-avatar.json'),
   ]) {
     collectReferencedHashes(target, hashes)
   }
@@ -280,9 +260,8 @@ function getReachableProjectHashes(blobRoot, rootHash) {
     const stat = fs.statSync(blobPath)
     if (stat.size > 32 * 1024 * 1024) continue
     const content = fs.readFileSync(blobPath)
-    for (const childHash of extractReferencedHashes(
-      content,
-      (candidate) => projectBlobExists(blobRoot, candidate),
+    for (const childHash of extractReferencedHashes(content, (candidate) =>
+      projectBlobExists(blobRoot, candidate),
     )) {
       if (!hashes.has(childHash)) pending.push(childHash)
     }
@@ -313,27 +292,11 @@ function copyReadableFileSync(source, destination) {
 function createReleaseData(sourceRoot, releaseDataRoot, state) {
   const sourceBlobRoot = path.join(sourceRoot, 'blobs')
   const releaseBlobRoot = path.join(releaseDataRoot, 'blobs')
-  const permission = readBlobJSON(
-    sourceBlobRoot,
-    state.permissionHash,
-    '工程权限数据',
-  )
-  const versionControl = readBlobJSON(
-    sourceBlobRoot,
-    permission.versionControl,
-    '工程版本数据',
-  )
+  const permission = readBlobJSON(sourceBlobRoot, state.permissionHash, '工程权限数据')
+  const versionControl = readBlobJSON(sourceBlobRoot, permission.versionControl, '工程版本数据')
   const sourceProjectHash = versionControl?.branches?.master?.headHash
-  const project = readBlobJSON(
-    sourceBlobRoot,
-    sourceProjectHash,
-    '工程地图数据',
-  )
-  const scriptAssets = readBlobJSON(
-    sourceBlobRoot,
-    project.scriptAssets,
-    '工程脚本索引',
-  )
+  const project = readBlobJSON(sourceBlobRoot, sourceProjectHash, '工程地图数据')
+  const scriptAssets = readBlobJSON(sourceBlobRoot, project.scriptAssets, '工程脚本索引')
 
   // A published world only needs the current project head. Remove editor
   // history, commit identity and asset ownership before creating the release.
@@ -351,10 +314,7 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
       privateHashes.add(asset.hash)
     }
   }
-  const publishedScriptAssetsHash = storeReleaseJSON(
-    releaseBlobRoot,
-    publishedScriptAssets,
-  )
+  const publishedScriptAssetsHash = storeReleaseJSON(releaseBlobRoot, publishedScriptAssets)
   const publishedProject = {
     ...project,
     committerId: 0,
@@ -362,10 +322,7 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
     scriptAssets: publishedScriptAssetsHash,
     timestamp: new Date(0).toISOString(),
   }
-  const publishedProjectHash = storeReleaseJSON(
-    releaseBlobRoot,
-    publishedProject,
-  )
+  const publishedProjectHash = storeReleaseJSON(releaseBlobRoot, publishedProject)
 
   // Permissions are required by the prebake schema, but user lists, groups,
   // collaborators and version history are editor-only private information.
@@ -418,10 +375,7 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
     }
   }
   if (state.extraProjectHash) {
-    for (const hash of getReachableProjectHashes(
-      sourceBlobRoot,
-      state.extraProjectHash,
-    )) {
+    for (const hash of getReachableProjectHashes(sourceBlobRoot, state.extraProjectHash)) {
       currentProjectHashes.add(hash)
     }
   }
@@ -470,11 +424,7 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
   )
   fs.writeFileSync(
     path.join(releaseDataRoot, 'private-blobs.json'),
-    `${JSON.stringify(
-      { formatVersion: 1, hashes: [...privateHashes].sort() },
-      null,
-      2,
-    )}\n`,
+    `${JSON.stringify({ formatVersion: 1, hashes: [...privateHashes].sort() }, null, 2)}\n`,
   )
   fs.writeFileSync(
     path.join(releaseDataRoot, 'runtime-blobs.json'),
@@ -506,7 +456,9 @@ function assertProjectId(id) {
 
 function assertVersion(version) {
   if (!/^v?[0-9][a-zA-Z0-9.-]{0,62}$/.test(version || '')) {
-    throw new Error('Version must start with a number and contain only letters, numbers, dots, or hyphens')
+    throw new Error(
+      'Version must start with a number and contain only letters, numbers, dots, or hyphens',
+    )
   }
   return version
 }
@@ -610,10 +562,14 @@ function createProjectSnapshot(id, reason = 'automatic') {
     .slice(0, 16)
   const existing = fs.readdirSync(root).find((name) => name.includes(`-${signature}.tar.gz`))
   if (existing) return { created: false, validation, archivePath: path.join(root, existing) }
-  const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:.TZ]/g, '')
+    .slice(0, 14)
   const archivePath = path.join(root, `${timestamp}-${reason}-${signature}.tar.gz`)
   runTar(['-czf', archivePath, '-C', projectRoot(id), 'source'], '无法创建工程恢复快照')
-  const snapshots = fs.readdirSync(root)
+  const snapshots = fs
+    .readdirSync(root)
     .filter((name) => name.endsWith('.tar.gz'))
     .sort()
     .reverse()
@@ -643,7 +599,8 @@ function listProjectSnapshots(id) {
   getProject(id)
   const root = snapshotRoot(id)
   if (!fs.existsSync(root)) return []
-  return fs.readdirSync(root)
+  return fs
+    .readdirSync(root)
     .filter((name) => name.endsWith('.tar.gz'))
     .sort()
     .reverse()
@@ -666,9 +623,7 @@ function restoreProjectSnapshot(id, requestedSnapshot) {
     // a mounted volume; renameSync across those mounts fails with EXDEV. A
     // same-volume staging directory also preserves the atomic source swap and
     // rollback behavior below.
-    const temporaryRoot = fs.mkdtempSync(
-      path.join(projectRoot(id), '.box-project-restore-'),
-    )
+    const temporaryRoot = fs.mkdtempSync(path.join(projectRoot(id), '.box-project-restore-'))
     let brokenRoot
     try {
       runTar(['-xzf', path.join(root, name), '-C', temporaryRoot], '无法读取工程恢复快照')
@@ -772,7 +727,8 @@ function getProject(id) {
 
 function listProjects() {
   if (!fs.existsSync(projectsRoot)) return []
-  return fs.readdirSync(projectsRoot, { withFileTypes: true })
+  return fs
+    .readdirSync(projectsRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && projectIdPattern.test(entry.name))
     .flatMap((entry) => {
       try {
@@ -785,7 +741,9 @@ function listProjects() {
 }
 
 function assertPublicMapId(value) {
-  const publicId = String(value || '').trim().toLowerCase()
+  const publicId = String(value || '')
+    .trim()
+    .toLowerCase()
   if (!publicMapIdPattern.test(publicId)) {
     throw new Error('地图 ID 只能包含小写字母、数字和连字符，长度为 1–63 个字符')
   }
@@ -794,8 +752,8 @@ function assertPublicMapId(value) {
 
 function publicMapIdExists(publicId, excludeProjectId = '') {
   return listProjects().some(
-    (project) => project.id !== excludeProjectId &&
-      (project.id === publicId || project.publicId === publicId),
+    (project) =>
+      project.id !== excludeProjectId && (project.id === publicId || project.publicId === publicId),
   )
 }
 
@@ -844,9 +802,7 @@ function createProject({ id, name, author = '', description = '' }) {
 
 function projectStorageIdentity(id) {
   const project = getProject(id)
-  const main = project.mainProjectId === project.id
-    ? project
-    : getProject(project.mainProjectId)
+  const main = project.mainProjectId === project.id ? project : getProject(project.mainProjectId)
   return {
     mapUuid: project.mapUuid,
     mapGroupUuid: main.mapUuid,
@@ -901,7 +857,11 @@ function updateProject(id, patch) {
   if (typeof patch.author === 'string') metadata.author = patch.author.trim().slice(0, 80)
   if (typeof patch.description === 'string') metadata.description = patch.description.trim()
   if (typeof patch.cover === 'string') {
-    if (patch.cover && (!/^data:image\/(png|jpeg|webp);base64,/.test(patch.cover) || Buffer.byteLength(patch.cover, 'utf8') > 2 * 1024 * 1024)) {
+    if (
+      patch.cover &&
+      (!/^data:image\/(png|jpeg|webp);base64,/.test(patch.cover) ||
+        Buffer.byteLength(patch.cover, 'utf8') > 2 * 1024 * 1024)
+    ) {
       throw new Error('封面必须是小于 2MB 的 PNG、JPG 或 WebP 图片')
     }
     metadata.cover = patch.cover
@@ -919,7 +879,8 @@ function runTar(args, message) {
     maxBuffer: 16 * 1024 * 1024,
   })
   if (result.error) throw result.error
-  if (result.status !== 0) throw new Error(`${message}: ${result.stderr || result.stdout || 'tar failed'}`)
+  if (result.status !== 0)
+    throw new Error(`${message}: ${result.stderr || result.stdout || 'tar failed'}`)
   return result.stdout
 }
 
@@ -951,12 +912,8 @@ function forEachFileLineSync(filePath, visit) {
 function writeMapGroupArchive(id, archivePath, snapshotReason, options = {}) {
   const identity = mapGroupIdentity(id)
   const singleMap = options.scope === 'map'
-  const members = singleMap
-    ? [toProjectSummary(getProject(id))]
-    : listMapGroup(id)
-  const archiveIdentity = singleMap
-    ? { mapGroupId: id, mainProjectId: id }
-    : identity
+  const members = singleMap ? [toProjectSummary(getProject(id))] : listMapGroup(id)
+  const archiveIdentity = singleMap ? { mapGroupId: id, mainProjectId: id } : identity
   for (const member of members) {
     mapGroupManager.materialize(member.id)
     if (snapshotReason) createProjectSnapshot(member.id, snapshotReason)
@@ -986,9 +943,10 @@ function writeMapGroupArchive(id, archivePath, snapshotReason, options = {}) {
             typeof groupState.projectModelPathsByMap === 'object' &&
             !Array.isArray(groupState.projectModelPathsByMap)
           ) {
-            groupState.projectModelPathsByMap = groupState.projectModelPathsByMap[id] === undefined
-              ? {}
-              : { [id]: groupState.projectModelPathsByMap[id] }
+            groupState.projectModelPathsByMap =
+              groupState.projectModelPathsByMap[id] === undefined
+                ? {}
+                : { [id]: groupState.projectModelPathsByMap[id] }
           }
           writeJSON(path.join(destination, 'group-state.json'), groupState)
         } else {
@@ -1033,10 +991,15 @@ function exportProject(id, options = {}) {
     throw new Error('只有主地图可以导出地图组工程')
   }
   fs.mkdirSync(projectExportRoot, { recursive: true })
-  const safeName = metadata.name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '作品'
-  const filename = scope === 'map'
-    ? `${safeName}_${id}.boxproject`
-    : `${safeName}_${identity.mapGroupId}_地图组.boxproject`
+  const safeName =
+    metadata.name
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+      .trim()
+      .slice(0, 80) || '作品'
+  const filename =
+    scope === 'map'
+      ? `${safeName}_${id}.boxproject`
+      : `${safeName}_${identity.mapGroupId}_地图组.boxproject`
   const archivePath = path.join(projectExportRoot, filename)
   const { members } = writeMapGroupArchive(id, archivePath, 'export', { scope })
   return {
@@ -1083,7 +1046,11 @@ function readBackupStatus() {
   try {
     return readJSON(backupStatusPath(), fallback)
   } catch (error) {
-    return { ...fallback, state: 'warning', failed: [{ projectId: '', projectName: '备份状态', message: error.message }] }
+    return {
+      ...fallback,
+      state: 'warning',
+      failed: [{ projectId: '', projectName: '备份状态', message: error.message }],
+    }
   }
 }
 
@@ -1100,9 +1067,14 @@ function pruneProjectBackups(id, configuration = getBackupConfiguration()) {
   const root = backupDirectory(id)
   if (!fs.existsSync(root)) return
   const expiresBefore = Date.now() - configuration.retentionDays * 24 * 60 * 60 * 1000
-  const backups = fs.readdirSync(root)
+  const backups = fs
+    .readdirSync(root)
     .filter((name) => name.endsWith('.boxproject'))
-    .map((name) => ({ name, path: path.join(root, name), stat: fs.statSync(path.join(root, name)) }))
+    .map((name) => ({
+      name,
+      path: path.join(root, name),
+      stat: fs.statSync(path.join(root, name)),
+    }))
     .sort((left, right) => right.stat.mtimeMs - left.stat.mtimeMs)
   for (const [index, backup] of backups.entries()) {
     if (index >= configuration.retentionCount || backup.stat.mtimeMs < expiresBefore) {
@@ -1131,7 +1103,8 @@ function listProjectBackups(id) {
   getProject(id)
   const root = backupDirectory(id)
   if (!fs.existsSync(root)) return []
-  return fs.readdirSync(root)
+  return fs
+    .readdirSync(root)
     .filter((name) => name.endsWith('.boxproject'))
     .sort()
     .reverse()
@@ -1167,15 +1140,18 @@ function createProjectBackup(id, reason = 'automatic') {
       validation: invalid.validation,
     }
   }
-  const signature = crypto.createHash('sha256')
-    .update(stableStringify({
-      group: readJSON(mapGroupManager.paths(mainProjectId).statePath, {}),
-      members: validations.map(({ projectId, validation }) => ({
-        projectId,
-        metadata: getProject(projectId),
-        state: validation.state,
-      })),
-    }))
+  const signature = crypto
+    .createHash('sha256')
+    .update(
+      stableStringify({
+        group: readJSON(mapGroupManager.paths(mainProjectId).statePath, {}),
+        members: validations.map(({ projectId, validation }) => ({
+          projectId,
+          metadata: getProject(projectId),
+          state: validation.state,
+        })),
+      }),
+    )
     .digest('hex')
     .slice(0, 16)
   const root = backupDirectory(mainProjectId)
@@ -1185,15 +1161,14 @@ function createProjectBackup(id, reason = 'automatic') {
     pruneProjectBackups(id)
     return { created: false, projectId: mainProjectId, archivePath: path.join(root, existing) }
   }
-  const timestamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)
+  const timestamp = new Date()
+    .toISOString()
+    .replace(/[-:.TZ]/g, '')
+    .slice(0, 14)
   const archivePath = path.join(root, `${timestamp}-${reason}-${signature}.boxproject`)
   const temporaryPath = `${archivePath}.${process.pid}.tmp`
   try {
-    writeMapGroupArchive(
-      mainProjectId,
-      temporaryPath,
-      reason === 'manual' ? 'manual' : 'automatic',
-    )
+    writeMapGroupArchive(mainProjectId, temporaryPath, reason === 'manual' ? 'manual' : 'automatic')
     fs.renameSync(temporaryPath, archivePath)
   } finally {
     fs.rmSync(temporaryPath, { force: true })
@@ -1303,7 +1278,8 @@ function archiveEntriesAreSafe(archivePath) {
       if (entry.startsWith('/') || entry.includes('\\') || entry.split('/').includes('..')) {
         throw new Error('工程包包含不安全的文件路径')
       }
-      const supportedGroupEntry = entry === 'group.json' || entry === 'projects' || entry.startsWith('projects/')
+      const supportedGroupEntry =
+        entry === 'group.json' || entry === 'projects' || entry.startsWith('projects/')
       if (!supportedGroupEntry) throw new Error('工程包包含不支持的内容')
       if (entry === 'group.json') hasGroupDescriptor = true
       if (entry === 'projects/' || entry.startsWith('projects/')) hasProjects = true
@@ -1375,7 +1351,10 @@ function validateMapGroupDescriptor(temporaryRoot) {
     throw new Error('地图组工程包描述无效')
   }
   const memberIds = descriptor.members.map((member) => assertProjectId(member?.id))
-  if (new Set(memberIds).size !== memberIds.length || !memberIds.includes(descriptor.mainProjectId)) {
+  if (
+    new Set(memberIds).size !== memberIds.length ||
+    !memberIds.includes(descriptor.mainProjectId)
+  ) {
     throw new Error('地图组成员关系无效')
   }
   if (
@@ -1445,7 +1424,8 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
       for (const entry of fs.readdirSync(importedBlobRoot, { withFileTypes: true })) {
         if (!entry.isFile()) continue
         const destination = path.join(targetBlobRoot, entry.name)
-        if (!fs.existsSync(destination)) fs.copyFileSync(path.join(importedBlobRoot, entry.name), destination)
+        if (!fs.existsSync(destination))
+          fs.copyFileSync(path.join(importedBlobRoot, entry.name), destination)
       }
     }
     mapGroupManager.ensure(targetMain.id)
@@ -1468,11 +1448,7 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
   const mode = options.mode || 'independent'
   if (mode === 'submap') {
     if (!options.targetMainProjectId) throw new Error('请选择副地图所属的主地图')
-    return importMapGroupAsSubmap(
-      temporaryRoot,
-      descriptor,
-      options.targetMainProjectId,
-    )
+    return importMapGroupAsSubmap(temporaryRoot, descriptor, options.targetMainProjectId)
   }
   if (mode !== 'independent') throw new Error('不支持的工程导入方式')
   const idMap = new Map()
@@ -1483,7 +1459,11 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
     for (const member of descriptor.members) {
       const sourceRoot = path.join(temporaryRoot, 'projects', member.id)
       const metadata = readJSON(path.join(sourceRoot, 'project.json'))
-      if (metadata?.id !== member.id || !metadata.name || !fs.existsSync(path.join(sourceRoot, 'source'))) {
+      if (
+        metadata?.id !== member.id ||
+        !metadata.name ||
+        !fs.existsSync(path.join(sourceRoot, 'source'))
+      ) {
         throw new Error(`地图组成员工程无效：${member.id}`)
       }
       const id = idMap.get(member.id)
@@ -1564,9 +1544,10 @@ function deleteProject(id) {
   const root = projectRoot(id)
   if (!fs.existsSync(root)) throw new Error(`Project does not exist: ${id}`)
   const identity = mapGroupIdentity(id)
-  const targets = identity.mapRole === 'main'
-    ? listMapGroup(id).map((project) => projectRoot(project.id))
-    : [root]
+  const targets =
+    identity.mapRole === 'main'
+      ? listMapGroup(id).map((project) => projectRoot(project.id))
+      : [root]
   for (const target of targets) {
     fs.rmSync(target, { recursive: true, force: false })
   }
@@ -1585,7 +1566,13 @@ function publishProject(id, requestedVersion, notes = '') {
   }
   createProjectSnapshot(id, 'publish')
 
-  const version = assertVersion(requestedVersion || `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`)
+  const version = assertVersion(
+    requestedVersion ||
+      `v${new Date()
+        .toISOString()
+        .replace(/[-:.TZ]/g, '')
+        .slice(0, 14)}`,
+  )
   const releaseRoot = path.join(root, 'releases', version)
   if (fs.existsSync(releaseRoot)) throw new Error(`Release already exists: ${version}`)
 
@@ -1640,7 +1627,10 @@ function publishMapGroup(id, requestedVersion, notes = '') {
   }
   const version = assertVersion(
     requestedVersion ||
-      `v${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`,
+      `v${new Date()
+        .toISOString()
+        .replace(/[-:.TZ]/g, '')
+        .slice(0, 14)}`,
   )
   if (!members.length) throw new Error('地图组中没有可发布的地图')
   const metadataSnapshots = new Map()
@@ -1649,18 +1639,11 @@ function publishMapGroup(id, requestedVersion, notes = '') {
   // group is one deployment unit, so a half-published group is never valid.
   for (const member of members) {
     mapGroupManager.materialize(member.id)
-    const state = readJSON(
-      path.join(projectRoot(member.id), 'source', 'project-state.json'),
-      {},
-    )
+    const state = readJSON(path.join(projectRoot(member.id), 'source', 'project-state.json'), {})
     if (!state.permissionHash) {
       throw new Error(`请先打开并保存地图“${member.name}”，再发布地图组游玩包`)
     }
-    if (
-      fs.existsSync(
-        path.join(projectRoot(member.id), 'releases', version),
-      )
-    ) {
+    if (fs.existsSync(path.join(projectRoot(member.id), 'releases', version))) {
       throw new Error(`Release already exists: ${version}`)
     }
     metadataSnapshots.set(member.id, getProject(member.id))
@@ -1676,14 +1659,11 @@ function publishMapGroup(id, requestedVersion, notes = '') {
     // every matching release directory belongs to this transaction. Restore
     // exact metadata snapshots as well, including their original timestamps.
     for (const member of members) {
-      fs.rmSync(
-        path.join(projectRoot(member.id), 'releases', version),
-        { recursive: true, force: true },
-      )
-      writeJSON(
-        path.join(projectRoot(member.id), 'project.json'),
-        metadataSnapshots.get(member.id),
-      )
+      fs.rmSync(path.join(projectRoot(member.id), 'releases', version), {
+        recursive: true,
+        force: true,
+      })
+      writeJSON(path.join(projectRoot(member.id), 'project.json'), metadataSnapshots.get(member.id))
     }
     throw error
   }
@@ -1703,7 +1683,8 @@ function getLaunchTarget({ project, release }) {
   if (project && release) throw new Error('Choose a project source or a release, not both')
   if (project) {
     const root = projectRoot(project)
-    if (!fs.existsSync(path.join(root, 'project.json'))) throw new Error(`Project does not exist: ${project}`)
+    if (!fs.existsSync(path.join(root, 'project.json')))
+      throw new Error(`Project does not exist: ${project}`)
     mapGroupManager.materialize(project)
     let validation = validateProjectSource(path.join(root, 'source'))
     if (!validation.ok) {
@@ -1769,10 +1750,7 @@ function includePlayImage(destination) {
 function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
   const releaseDataRoot = path.join(releaseRoot, 'data')
   const destinationDataRoot = path.join(destination, 'data')
-  const runtimeManifest = readJSON(
-    path.join(releaseDataRoot, 'runtime-blobs.json'),
-    null,
-  )
+  const runtimeManifest = readJSON(path.join(releaseDataRoot, 'runtime-blobs.json'), null)
   if (!Array.isArray(runtimeManifest?.hashes)) {
     throw new Error('发布版本缺少资源清单，请重新发布该版本')
   }
@@ -1822,10 +1800,12 @@ function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
 }
 
 function safeFilename(value, fallback) {
-  return String(value || '')
-    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
-    .trim()
-    .slice(0, 80) || fallback
+  return (
+    String(value || '')
+      .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+      .trim()
+      .slice(0, 80) || fallback
+  )
 }
 
 function exportPlayBundle(reference) {
@@ -1862,11 +1842,7 @@ function exportPlayBundle(reference) {
       ) {
         throw new Error(`地图“${member.name}”的发布关系与地图组不一致，请重新发布`)
       }
-      copyReleaseWorld(
-        releaseRoot,
-        path.join(root, 'source'),
-        path.join(worldsRoot, member.id),
-      )
+      copyReleaseWorld(releaseRoot, path.join(root, 'source'), path.join(worldsRoot, member.id))
       manifests.push(manifest)
     }
     writeJSON(path.join(temporaryRoot, 'bundle.json'), {
@@ -1941,9 +1917,7 @@ function packageProject(reference, outputDirectory, options = {}) {
     )
 
     if (options.includeImages) {
-      playImageConfig = includePlayImage(
-        path.join(temporaryBundleRoot, 'play-image.tar'),
-      )
+      playImageConfig = includePlayImage(path.join(temporaryBundleRoot, 'play-image.tar'))
     }
 
     const generatedAt = new Date().toISOString()
@@ -1975,7 +1949,8 @@ function packageProject(reference, outputDirectory, options = {}) {
       `services:\n  player-service:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAYER_SERVICE_IMAGE:-${playImageConfig.playerServiceImage}}\n    restart: unless-stopped\n    mem_limit: \${BOX_PLAYER_SERVICE_MEMORY_LIMIT:-1g}\n    cpus: \${BOX_PLAYER_SERVICE_CPU_LIMIT:-1.0}\n    pids_limit: \${BOX_PLAYER_SERVICE_PIDS_LIMIT:-256}\n    environment:\n      BOX_DEPLOYMENT_MODE: player-service\n      NEXT_PUBLIC_APP_ENV: development\n      NEXT_PUBLIC_APP_EDITION: createra\n      NEXT_PUBLIC_APP_REGION: cn\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAY_PUBLIC_URL: \${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_RUNTIME_IDENTITY_TTL_MS: \${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_IDENTITY_DATABASE_SCHEMA: \${BOX_IDENTITY_DATABASE_SCHEMA:-box_identity}\n      BOX_PLAYER_REGISTRATION_ENABLED: \${BOX_PLAYER_REGISTRATION_ENABLED:-true}\n      BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS: \${BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:-10}\n      BOX_LOGIN_RATE_LIMIT_WINDOW_MS: \${BOX_LOGIN_RATE_LIMIT_WINDOW_MS:-300000}\n      BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS: \${BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS:-5}\n      BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS: \${BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS:-3600000}\n      BOX_PLAYER_COOKIE_DOMAIN: \${BOX_PLAYER_COOKIE_DOMAIN:-}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n    ports:\n      - \"\${BOX_PLAYER_SERVICE_HOST_IP:-127.0.0.1}:\${BOX_PLAYER_SERVICE_PORT:-3213}:3213\"\n\n  play:\n    platform: \${BOX_PLAY_PLATFORM:-${playImageConfig.platform}}\n    image: \${BOX_PLAY_IMAGE:-${playImageConfig.image}}\n    restart: unless-stopped\n    mem_limit: \${BOX_PLAY_MEMORY_LIMIT:-4g}\n    cpus: \${BOX_PLAY_CPU_LIMIT:-4.0}\n    pids_limit: \${BOX_PLAY_PIDS_LIMIT:-1024}\n    depends_on:\n      player-service:\n        condition: service_healthy\n    environment:\n      BOX_DEPLOYMENT_MODE: play\n      BOX_WORLD_PATH: /app/world/data\n      BOX_WORLD_STATE_PATH: /app/world/data/project-state.json\n      BOX_WORLD_HASH: ${manifest.permissionHash}\n      BOX_WORLD_ID: ${manifest.id}\n      BOX_WORLD_PUBLIC_ID: ${manifest.publicId || manifest.id}\n      BOX_WORLD_GROUP_ID: ${groupStorageNamespace}\n      BOX_WORLD_MAIN_PROJECT_ID: ${manifest.mainProjectId || manifest.id}\n      BOX_WORLD_NAME: ${JSON.stringify(manifest.projectName)}\n      BOX_PLAY_ADMIN_TOKEN: \${BOX_PLAY_ADMIN_TOKEN:-}\n      BOX_LOCAL_PLAYER_LIMIT: \${BOX_LOCAL_PLAYER_LIMIT:-8}\n      PERMISSION_TOKEN_SECRET: \${PERMISSION_TOKEN_SECRET:?请在 .env 中设置 PERMISSION_TOKEN_SECRET}\n      BOX_SERVER_PUBLIC_URL: \${BOX_SERVER_PUBLIC_URL:-}\n      BOX_PLAYER_SERVICE_INTERNAL_URL: http://player-service:3213\n      BOX_PLAYER_SERVICE_PUBLIC_URL: \${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_TRUST_PROXY: \${BOX_TRUST_PROXY:-false}\n      BOX_SESSION_TTL_MS: \${BOX_SESSION_TTL_MS:-60000}\n      BOX_SESSION_RATE_LIMIT_PER_MINUTE: \${BOX_SESSION_RATE_LIMIT_PER_MINUTE:-60}\n      BOX_RUNTIME_IDENTITY_TTL_MS: \${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}\n      BOX_SCRIPT_HEAP_MB: \${BOX_SCRIPT_HEAP_MB:-512}\n      SCRIPT_MEMORY_LIMIT: \${BOX_SCRIPT_MEMORY_MB:-512}\n      BOX_PLAYER_REVOCATION_POLL_MS: \${BOX_PLAYER_REVOCATION_POLL_MS:-1000}\n      BOX_CREATE_SESSION_TIMEOUT_MS: \${BOX_CREATE_SESSION_TIMEOUT_MS:-120000}\n      BOX_PLAY_MAX_RUNTIMES: \${BOX_PLAY_MAX_RUNTIMES:-8}\n      BOX_RUNTIME_IDLE_TIMEOUT_MS: \${BOX_RUNTIME_IDLE_TIMEOUT_MS:-900000}\n      BOX_DATA_STORAGE_PATH: /app/storage\n      BOX_DATABASE_URL: \${BOX_DATABASE_URL:?请在 .env 中设置 BOX_DATABASE_URL}\n      BOX_DATABASE_SCHEMA: \${BOX_DATABASE_SCHEMA:-box_engine}\n      BOX_DATABASE_POOL_SIZE: \${BOX_DATABASE_POOL_SIZE:-10}\n      BOX_DATABASE_SSL: \${BOX_DATABASE_SSL:-false}\n      BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: \${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}\n      BOX_DATA_STORAGE_LOCK_TIMEOUT_MS: \${BOX_DATA_STORAGE_LOCK_TIMEOUT_MS:-10000}\n      BOX_DATA_STORAGE_NAMESPACE: \${BOX_DATA_STORAGE_NAMESPACE:-}\n      BOX_DATA_STORAGE_NAMESPACE_PREFIX: \${BOX_DATA_STORAGE_NAMESPACE_PREFIX:-}\n      BOX_GROUP_STORAGE_NAMESPACE: \${BOX_GROUP_STORAGE_NAMESPACE:-${groupStorageNamespace}}\n      REDIS_HOST: \${REDIS_HOST:-}\n      REDIS_PORT: \${REDIS_PORT:-6379}\n      REDIS_PASSWORD: \${REDIS_PASSWORD:-}\n      REDIS_DB: \${REDIS_DB:-0}\n      STORAGE_CACHE_REDIS_DB: \${STORAGE_CACHE_REDIS_DB:-1}\n      STORAGE_CACHE_REDIS_TTL: \${STORAGE_CACHE_REDIS_TTL:-240}\n    ports:\n      - \"\${BOX_PLAY_HOST_IP:-127.0.0.1}:\${BOX_PLAY_PORT:-3000}:3000\"\n    volumes:\n      - type: bind\n        source: ./world\n        target: /app/world\n        read_only: true\n        bind:\n          create_host_path: false\n      - type: bind\n        source: ./storage\n        target: /app/storage\n        bind:\n          create_host_path: true\n`,
     )
     const packagedComposePath = path.join(temporaryBundleRoot, 'compose.yml')
-    const packagedCompose = fs.readFileSync(packagedComposePath, 'utf8')
+    const packagedCompose = fs
+      .readFileSync(packagedComposePath, 'utf8')
       .replace(
         '      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_TRUST_PROXY:',
         '      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}\n      BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:?请在 .env 中设置 BOX_PLAYER_AUTH_API_KEY}\n      BOX_PLAYER_AUTH_ALLOWED_ORIGINS: ${BOX_PLAYER_AUTH_ALLOWED_ORIGINS:-}\n      BOX_TRUST_PROXY:',
@@ -2012,10 +1987,7 @@ function packageProject(reference, outputDirectory, options = {}) {
       )
     fs.writeFileSync(packagedComposePath, packagedCompose)
     const distributionEnvExample = path.join(repoRoot, 'distribution', 'play', '.env.example')
-    fs.copyFileSync(
-      distributionEnvExample,
-      path.join(temporaryBundleRoot, '.env.example'),
-    )
+    fs.copyFileSync(distributionEnvExample, path.join(temporaryBundleRoot, '.env.example'))
     fs.writeFileSync(
       path.join(temporaryBundleRoot, 'README.md'),
       `# ${manifest.projectName} ${target.version}\n\n作者：${manifest.author || '未署名'}\n\n${manifest.description || '暂无作品简介。'}\n\n这是一个只读游玩发布包，不包含作品的 \`source/\` 工程目录、编辑器或创作管理器。镜像架构为 \`${playImageConfig.platform}\`。\n\n## 完整性校验\n\n部署前在 Linux 执行 \`sha256sum -c SHA256SUMS\`，macOS 执行 \`shasum -a 256 -c SHA256SUMS\`。\`BUILD-INFO.json\` 记录构建版本、源码修订和镜像；\`LICENSE.txt\` 与 \`THIRD-PARTY-NOTICES.json\` 记录许可和第三方依赖。\n\n## 部署\n\n1. 复制 \`.env.example\` 为 \`.env\`，至少设置 \`PERMISSION_TOKEN_SECRET\` 和 PostgreSQL 的 \`BOX_DATABASE_URL\`。\n2. 执行 \`docker load -i play-image.tar\` 加载游玩镜像。\n3. 另行加载独立分发的 \`player-service-image.tar\`；玩家服务更新不需要重新导出本作品。\n4. 执行 \`docker compose up -d\`。\n5. 玩家打开 \`http://服务器地址:3000/\`，玩家中心默认位于 \`http://服务器地址:3213/\`。\n\n如需修改端口，可在同一个 \`.env\` 中填写 \`BOX_PLAY_PORT\` 和 \`BOX_PLAYER_SERVICE_PORT\`。玩家身份由独立玩家服务统一存入 PostgreSQL 的 \`box_identity\` schema；地图脚本数据存入 \`box_engine\` schema，数据库凭据只会传入服务端容器。\n\n\`getDataStorage\` 按地图隔离；\`getGroupStorage\` 默认使用地图组 ID，仅在同一主图/副图组内共享。不要把 \`BOX_GROUP_STORAGE_NAMESPACE\` 手动设成 \`global\`。\n\n\`world/\` 是 ${target.version} 的不可变世界快照，并以只读方式挂载，不能被 Local Engine 直接当作可编辑工程导入。可信服主仍可读取运行所需的世界数据，因此不要把未发布素材或真正的服务器秘密放进作品资源。\n`,
@@ -2102,7 +2074,9 @@ if (require.main === module) {
     } else if (command === 'package') {
       const includeImages = !args.includes('--no-image')
       const [reference, outputDirectory] = args.filter((arg) => arg !== '--no-image')
-      console.log(JSON.stringify(packageProject(reference, outputDirectory, { includeImages }), null, 2))
+      console.log(
+        JSON.stringify(packageProject(reference, outputDirectory, { includeImages }), null, 2),
+      )
     } else {
       throw new Error('Usage: project-manager.js <list|create|publish|package> [arguments]')
     }

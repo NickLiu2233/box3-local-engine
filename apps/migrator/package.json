@@ -6,13 +6,15 @@
   "scripts": {
     "dev": "next dev -p 3212",
     "build": "next build",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --cache --cache-location .next/cache/eslint/.eslintcache",
     "test": "node scripts/regression-preview-image.cjs && node scripts/regression-running-job-retention.cjs",
+    "typecheck": "tsc --noEmit",
     "start": "next start -p 3212"
   },
   "dependencies": {
     "@box-local/mudb": "workspace:1.0.4",
     "@box-local/schema": "workspace:~0.4.3",
-    "next": "15.5.7",
+    "next": "15.5.21",
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },
@@ -20,6 +22,9 @@
     "@types/node": "20.16.15",
     "@types/react": "19.2.4",
     "@types/react-dom": "19.2.3",
+    "eslint": "8.57.1",
+    "eslint-config-next": "15.5.21",
+    "eslint-config-prettier": "9.1.0",
     "typescript": "5.6.3"
   }
 }

@@ -1,5 +1,5 @@
 var FeatureFlag;
-(function (FeatureFlag) {
+(function(FeatureFlag) {
     FeatureFlag["Vobi"] = "vobi";
     FeatureFlag["StorageJava"] = "dataStorageJava";
     // Play端能否启用WebGPU

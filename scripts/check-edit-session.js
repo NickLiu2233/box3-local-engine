@@ -33,8 +33,8 @@ async function main() {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      origin: target,
-      referer: `${target}/e/local`,
+      'origin': target,
+      'referer': `${target}/e/local`,
     },
     body: JSON.stringify({
       mode: 'edit',

@@ -29,8 +29,8 @@
     "bit-twiddle": "1.0.2",
     "gl-matrix": "3.4.3",
     "ioredis": "5.3.2",
-    "minimatch": "3.1.2",
-    "redis": "2.8.0",
+    "minimatch": "3.1.4",
+    "redis": "3.1.2",
     "redis-mock": "0.46.0",
     "typescript": "5.6.3"
   }

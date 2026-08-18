@@ -16,6 +16,7 @@ import { MenuModal, Panel } from './menu-modal';
 import { setCenterPanel } from 'src/redux/edit/creator';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
+import { getLibraryMapId } from 'src/utils/local-voxa-library';
 import { ProjectSkin } from './project-skin/index';
 import { SkinLib } from './project-skin/skin-lib';
 import { GamepadSkin } from './gamepad-skin';
@@ -36,7 +37,7 @@ import style from './style.module.scss';
 export const FETCH_LIMIT = 12;
 
 export async function fetchSkinData(query: {
-  modelType: ModelType;
+  modelType?: ModelType;
   modelName?: string;
   offset?: number;
   limit?: number;
@@ -56,7 +57,10 @@ export async function fetchSkinData(query: {
         modelName,
         offset,
         limit,
-        mapId: clientConfig.mapInfo.contentId,
+        mapId: getLibraryMapId(
+          clientConfig.isLocalGameServer,
+          clientConfig.mapInfo.contentId,
+        ),
         // 1, 自由创作；2，定向创作皮肤
         creativeMode: CreativeMode.Skin,
         containerMode: clientConfig.mode,

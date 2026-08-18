@@ -266,7 +266,7 @@ services:
       VOXA_DATA_PATH: /app/apps/voxa/data
       VOXA_MAX_BLOB_BYTES: 268435456
     ports:
-      - "127.0.0.1:3001:3001"
+      - '127.0.0.1:3001:3001'
     volumes:
       - ./voxa-data:/app/apps/voxa/data
 ```

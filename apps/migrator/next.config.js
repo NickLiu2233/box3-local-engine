@@ -1,4 +1,4 @@
-const path = require('path');
+const path = require('path')
 
 /** @type {import('next').NextConfig} */
 module.exports = {
@@ -6,4 +6,4 @@ module.exports = {
   outputFileTracingRoot: path.join(__dirname, '../..'),
   productionBrowserSourceMaps: false,
   reactStrictMode: true,
-};
+}

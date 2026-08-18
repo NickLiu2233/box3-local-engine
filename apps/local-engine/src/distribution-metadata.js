@@ -88,13 +88,16 @@ function collectThirdPartyDependencies(repoRoot) {
         entry.name === 'node_modules' ||
         entry.name === '.pnpm' ||
         entry.name.startsWith('@')
-      ) visit(child)
+      )
+        visit(child)
     }
   }
 
   candidates.forEach(visit)
-  return [...dependencies.values()].sort((left, right) =>
-    left.name.localeCompare(right.name) || left.version.localeCompare(right.version))
+  return [...dependencies.values()].sort(
+    (left, right) =>
+      left.name.localeCompare(right.name) || left.version.localeCompare(right.version),
+  )
 }
 
 function listFiles(root) {
@@ -140,29 +143,31 @@ function generateDistributionMetadata(bundleRoot, options) {
   )
   fs.writeFileSync(
     path.join(bundleRoot, 'BUILD-INFO.json'),
-    `${JSON.stringify({
-      formatVersion: 1,
-      product: rootManifest.name || 'box-local-engine',
-      version:
-        process.env.BOX_BUILD_VERSION ||
-        rootManifest.version ||
-        options.imageTag ||
-        'unknown',
-      release: options.release,
-      generatedAt: options.generatedAt,
-      buildCreatedAt: process.env.BOX_BUILD_DATE || 'unknown',
-      sourceRevision: sourceRevision(repoRoot),
-      source: process.env.BOX_BUILD_SOURCE || 'local',
-      nodeVersion: process.version,
-      platform: options.platform,
-      images: options.images,
-      checksumAlgorithm: 'SHA-256',
-      thirdPartyDependencyCount: dependencies.length,
-    }, null, 2)}\n`,
+    `${JSON.stringify(
+      {
+        formatVersion: 1,
+        product: rootManifest.name || 'box-local-engine',
+        version:
+          process.env.BOX_BUILD_VERSION || rootManifest.version || options.imageTag || 'unknown',
+        release: options.release,
+        generatedAt: options.generatedAt,
+        buildCreatedAt: process.env.BOX_BUILD_DATE || 'unknown',
+        sourceRevision: sourceRevision(repoRoot),
+        source: process.env.BOX_BUILD_SOURCE || 'local',
+        nodeVersion: process.version,
+        platform: options.platform,
+        images: options.images,
+        checksumAlgorithm: 'SHA-256',
+        thirdPartyDependencyCount: dependencies.length,
+      },
+      null,
+      2,
+    )}\n`,
   )
 
-  const checksums = listFiles(bundleRoot).map((relative) =>
-    `${sha256(path.join(bundleRoot, relative))}  ${relative}`)
+  const checksums = listFiles(bundleRoot).map(
+    (relative) => `${sha256(path.join(bundleRoot, relative))}  ${relative}`,
+  )
   fs.writeFileSync(path.join(bundleRoot, 'SHA256SUMS'), `${checksums.join('\n')}\n`)
   return { dependencyCount: dependencies.length, checksumCount: checksums.length }
 }

@@ -53,7 +53,8 @@ export function resolveParentEditStorageURL(
       return '';
     }
     const basePath = storageOrigin.pathname.replace(/\/$/, '') || '/runtime/edit';
-    return `${storageOrigin.origin}${basePath}/block${hash ? `/${encodeURIComponent(hash)}` : ''}`;
+    const encodedHash = hash ? `/${encodeURIComponent(hash)}` : '';
+    return `${storageOrigin.origin}${basePath}/block${encodedHash}`;
   } catch {
     return '';
   }

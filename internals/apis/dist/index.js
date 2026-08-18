@@ -3428,7 +3428,7 @@ function requireMd5 () {
 		                var M_offset_13 = M[offset + 13];
 		                var M_offset_14 = M[offset + 14];
 		                var M_offset_15 = M[offset + 15];
-		                // Working varialbes
+		                // Working variables
 		                var a = H[0];
 		                var b = H[1];
 		                var c = H[2];

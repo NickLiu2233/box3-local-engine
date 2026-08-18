@@ -3,23 +3,16 @@
 const fs = require('fs')
 const path = require('path')
 
-const {
-  FileSystemContentServer,
-} = require('@box-local/content-server/file-system-store-node')
+const { FileSystemContentServer } = require('@box-local/content-server/file-system-store-node')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const blobRoot = path.join(packageRoot, 'data/blobs')
-const manifestPath = path.join(
-  repoRoot,
-  'services/game-server/src/player/default-avatar.json'
-)
+const manifestPath = path.join(repoRoot, 'services/game-server/src/player/default-avatar.json')
 
 const avatarApiUrl =
-  process.env.BOX_AVATAR_SYNC_API_URL ||
-  'https://staging-code-api-pc.dao3.fun/avatar/suit'
-const avatarCdnUrl =
-  process.env.BOX_AVATAR_SYNC_CDN_URL || 'https://assets.box3.fun'
+  process.env.BOX_AVATAR_SYNC_API_URL || 'https://staging-code-api-pc.dao3.fun/avatar/suit'
+const avatarCdnUrl = process.env.BOX_AVATAR_SYNC_CDN_URL || 'https://assets.box3.fun'
 
 const bodyParts = {
   1: 'head',
@@ -53,9 +46,7 @@ async function fetchBytes(url) {
 async function main() {
   const response = await fetch(avatarApiUrl)
   if (!response.ok) {
-    throw new Error(
-      `Unable to fetch default avatar metadata: HTTP ${response.status}`
-    )
+    throw new Error(`Unable to fetch default avatar metadata: HTTP ${response.status}`)
   }
 
   const payload = await response.json()
@@ -82,11 +73,11 @@ async function main() {
   }
 
   const orderedParts = Object.fromEntries(
-    Object.values(bodyParts).map((part) => [part, parts[part]])
+    Object.values(bodyParts).map((part) => [part, parts[part]]),
   )
   fs.writeFileSync(
     manifestPath,
-    `${JSON.stringify({ name: suit.suitName, parts: orderedParts }, null, 2)}\n`
+    `${JSON.stringify({ name: suit.suitName, parts: orderedParts }, null, 2)}\n`,
   )
 
   console.log(`Default avatar saved to ${manifestPath}`)

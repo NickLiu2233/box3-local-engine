@@ -8,11 +8,13 @@ const { startPlayLibrary } = require('../apps/local-engine/src/play-library')
 
 function request(port, pathname) {
   return new Promise((resolve, reject) => {
-    http.get({ hostname: '127.0.0.1', port, path: pathname }, (response) => {
-      const chunks = []
-      response.on('data', (chunk) => chunks.push(chunk))
-      response.on('end', () => resolve(Buffer.concat(chunks).toString()))
-    }).on('error', reject)
+    http
+      .get({ hostname: '127.0.0.1', port, path: pathname }, (response) => {
+        const chunks = []
+        response.on('data', (chunk) => chunks.push(chunk))
+        response.on('end', () => resolve(Buffer.concat(chunks).toString()))
+      })
+      .on('error', reject)
   })
 }
 
@@ -27,15 +29,21 @@ async function main() {
   fs.mkdirSync(path.join(dataRoot, 'blobs'), { recursive: true })
 
   const writeWorld = (version, marker) => {
-    fs.writeFileSync(manifestPath, JSON.stringify({
-      id: 'world',
-      version,
-      permissionHash: 'QmTestPermissionHash',
-    }))
-    fs.writeFileSync(statePath, JSON.stringify({
-      permissionHash: 'QmTestPermissionHash',
-      extraProjectHash: '',
-    }))
+    fs.writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        id: 'world',
+        version,
+        permissionHash: 'QmTestPermissionHash',
+      }),
+    )
+    fs.writeFileSync(
+      statePath,
+      JSON.stringify({
+        permissionHash: 'QmTestPermissionHash',
+        extraProjectHash: '',
+      }),
+    )
     fs.writeFileSync(markerPath, marker)
     // Reproduce archive replacement where timestamps and file sizes are
     // unchanged. Version must still invalidate the active runtime.

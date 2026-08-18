@@ -31,24 +31,39 @@ function saveProject(id, characters) {
   const scriptHash = hash(characters[4])
 
   fs.mkdirSync(blobRoot, { recursive: true })
-  fs.writeFileSync(path.join(blobRoot, permissionHash), JSON.stringify({
-    accessLevel: 1,
-    versionControl: versionControlHash,
-  }))
-  fs.writeFileSync(path.join(blobRoot, versionControlHash), JSON.stringify({
-    branches: { master: { headHash: projectHash } },
-  }))
-  fs.writeFileSync(path.join(blobRoot, projectHash), JSON.stringify({
-    scriptAssets: scriptAssetsHash,
-  }))
-  fs.writeFileSync(path.join(blobRoot, scriptAssetsHash), JSON.stringify({
-    'index.js': { type: 1, hash: scriptHash },
-  }))
+  fs.writeFileSync(
+    path.join(blobRoot, permissionHash),
+    JSON.stringify({
+      accessLevel: 1,
+      versionControl: versionControlHash,
+    }),
+  )
+  fs.writeFileSync(
+    path.join(blobRoot, versionControlHash),
+    JSON.stringify({
+      branches: { master: { headHash: projectHash } },
+    }),
+  )
+  fs.writeFileSync(
+    path.join(blobRoot, projectHash),
+    JSON.stringify({
+      scriptAssets: scriptAssetsHash,
+    }),
+  )
+  fs.writeFileSync(
+    path.join(blobRoot, scriptAssetsHash),
+    JSON.stringify({
+      'index.js': { type: 1, hash: scriptHash },
+    }),
+  )
   fs.writeFileSync(path.join(blobRoot, scriptHash), 'module.exports = {}\n')
-  fs.writeFileSync(path.join(sourceRoot, 'project-state.json'), JSON.stringify({
-    formatVersion: 1,
-    permissionHash,
-  }))
+  fs.writeFileSync(
+    path.join(sourceRoot, 'project-state.json'),
+    JSON.stringify({
+      formatVersion: 1,
+      permissionHash,
+    }),
+  )
 }
 
 try {
@@ -93,14 +108,18 @@ try {
   assert.equal(published.mainProjectId, 'release-main')
   assert.equal(published.mapCount, 2)
 
-  const mainManifest = JSON.parse(fs.readFileSync(
-    path.join(projectsRoot, 'release-main', 'releases', 'v1', 'manifest.json'),
-    'utf8',
-  ))
-  const submapManifest = JSON.parse(fs.readFileSync(
-    path.join(projectsRoot, 'release-dungeon', 'releases', 'v1', 'manifest.json'),
-    'utf8',
-  ))
+  const mainManifest = JSON.parse(
+    fs.readFileSync(
+      path.join(projectsRoot, 'release-main', 'releases', 'v1', 'manifest.json'),
+      'utf8',
+    ),
+  )
+  const submapManifest = JSON.parse(
+    fs.readFileSync(
+      path.join(projectsRoot, 'release-dungeon', 'releases', 'v1', 'manifest.json'),
+      'utf8',
+    ),
+  )
   assert.equal(mainManifest.mapRole, 'main')
   assert.equal(submapManifest.mapRole, 'submap')
   assert.equal(mainManifest.mapGroupId, 'release-main')
@@ -156,25 +175,28 @@ try {
     'THIRD-PARTY-NOTICES.json',
     'SHA256SUMS',
   ]) {
-    assert.equal(fs.existsSync(path.join(distributionPath, required)), true, `${required} must be packaged`)
+    assert.equal(
+      fs.existsSync(path.join(distributionPath, required)),
+      true,
+      `${required} must be packaged`,
+    )
   }
-  const checksums = fs.readFileSync(path.join(distributionPath, 'SHA256SUMS'), 'utf8')
+  const checksums = fs
+    .readFileSync(path.join(distributionPath, 'SHA256SUMS'), 'utf8')
     .trim()
     .split('\n')
   assert(checksums.length > 5)
   for (const line of checksums) {
-    const match = line.match(/^([a-f0-9]{64})  (.+)$/)
+    const match = line.match(/^([a-f0-9]{64}) {2}(.+)$/)
     assert(match, `invalid checksum line: ${line}`)
-    const actual = crypto.createHash('sha256')
+    const actual = crypto
+      .createHash('sha256')
       .update(fs.readFileSync(path.join(distributionPath, match[2])))
       .digest('hex')
     assert.equal(actual, match[1], `checksum mismatch: ${match[2]}`)
   }
 
-  assert.throws(
-    () => manager.exportPlayBundle('release-dungeon@v1'),
-    /只有主地图可以导出游戏包/,
-  )
+  assert.throws(() => manager.exportPlayBundle('release-dungeon@v1'), /只有主地图可以导出游戏包/)
   const bundle = manager.exportPlayBundle('release-main@v1')
   assert.equal(bundle.mapCount, 2)
   const entries = execFileSync('tar', ['-tzf', bundle.archivePath], { encoding: 'utf8' })
@@ -183,11 +205,9 @@ try {
   assert(entries.includes('bundle.json'))
   assert(entries.includes('worlds/release-main/manifest.json'))
   assert(entries.includes('worlds/release-dungeon/manifest.json'))
-  const descriptor = JSON.parse(execFileSync(
-    'tar',
-    ['-xOzf', bundle.archivePath, 'bundle.json'],
-    { encoding: 'utf8' },
-  ))
+  const descriptor = JSON.parse(
+    execFileSync('tar', ['-xOzf', bundle.archivePath, 'bundle.json'], { encoding: 'utf8' }),
+  )
   assert.equal(descriptor.type, 'map-group-play-bundle')
   assert.equal(descriptor.mainProjectId, 'release-main')
   assert.deepEqual(

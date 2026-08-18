@@ -10,13 +10,7 @@ function resolveMapRuntimeNamespace({ mapUuid, mapId, prefix = '' }) {
   return `${prefix}${identity || 'isolated-standalone'}`
 }
 
-function resolveGroupRuntimeNamespace({
-  mapGroupUuid,
-  mapGroupId,
-  mainProjectId,
-  mapUuid,
-  mapId,
-}) {
+function resolveGroupRuntimeNamespace({ mapGroupUuid, mapGroupId, mainProjectId, mapUuid, mapId }) {
   return (
     identityPart(mapGroupUuid) ||
     identityPart(mapGroupId) ||

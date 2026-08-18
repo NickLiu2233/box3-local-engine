@@ -18,8 +18,14 @@ try {
   fs.mkdirSync(blobRoot, { recursive: true })
 
   const writeVersion = (permissionHash, marker) => {
-    fs.writeFileSync(path.join(blobRoot, permissionHash), JSON.stringify({ type: 'permission', marker }))
-    fs.writeFileSync(path.join(sourceRoot, 'project-state.json'), JSON.stringify({ permissionHash, marker }))
+    fs.writeFileSync(
+      path.join(blobRoot, permissionHash),
+      JSON.stringify({ type: 'permission', marker }),
+    )
+    fs.writeFileSync(
+      path.join(sourceRoot, 'project-state.json'),
+      JSON.stringify({ permissionHash, marker }),
+    )
   }
 
   writeVersion('permission-one', 'one')
@@ -39,7 +45,11 @@ try {
   assert.equal(restored.restored, true)
   const state = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'project-state.json'), 'utf8'))
   assert.equal(state.marker, 'one')
-  assert.ok(manager.listProjectSnapshots(project.id).some((snapshot) => snapshot.name === path.basename(second.archivePath)))
+  assert.ok(
+    manager
+      .listProjectSnapshots(project.id)
+      .some((snapshot) => snapshot.name === path.basename(second.archivePath)),
+  )
 
   assert.throws(
     () => manager.restoreProjectSnapshot(project.id, '../../outside.tar.gz'),
@@ -58,11 +68,16 @@ try {
   fs.mkdirSync(path.join(legacyArchiveRoot, 'source'))
   const legacyArchive = path.join(temporaryRoot, 'legacy.boxproject')
   require('child_process').execFileSync('tar', [
-    '-czf', legacyArchive, '-C', legacyArchiveRoot, 'project.json', 'source',
+    '-czf',
+    legacyArchive,
+    '-C',
+    legacyArchiveRoot,
+    'project.json',
+    'source',
   ])
   assert.throws(
     () => manager.importProject(legacyArchive),
-    /必须使用地图组格式/,
+    /工程包包含不支持的内容|工程包必须使用地图组格式/,
   )
   const duplicate = manager.createProjectBackup(project.id, 'manual')
   assert.equal(duplicate.created, false)
@@ -70,7 +85,9 @@ try {
   assert.equal(backupRun.state, 'ready')
   assert.equal(manager.readBackupStatus().completedProjects, 2)
 
-  console.log('PASS: project snapshots restore safely and validated .boxproject backups are retained without duplicates')
+  console.log(
+    'PASS: project snapshots restore safely and validated .boxproject backups are retained without duplicates',
+  )
 } finally {
   fs.rmSync(temporaryRoot, { recursive: true, force: true })
 }

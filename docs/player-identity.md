@@ -27,12 +27,12 @@ HTTPS。三个服务使用完全不同的顶级域名时不能共享登录 Cooki
 
 ## 游戏脚本身份字段
 
-| 字段 | 含义 |
-| --- | --- |
+| 字段                    | 含义                                                    |
+| ----------------------- | ------------------------------------------------------- |
 | `entity.player.userKey` | 服务端从稳定 subject 签名出的伪名键，推荐作为玩家存档键 |
-| `entity.player.userId` | PostgreSQL 账号 ID |
-| `entity.player.boxId` | 管理员绑定的旧平台神岛 ID；未绑定时为空字符串 |
-| `entity.player.name` | 服主可管理的游戏昵称 |
+| `entity.player.userId`  | PostgreSQL 账号 ID                                      |
+| `entity.player.boxId`   | 管理员绑定的旧平台神岛 ID；未绑定时为空字符串           |
+| `entity.player.name`    | 服主可管理的游戏昵称                                    |
 
 不要用昵称、IP 或临时 `player.id` 作为长期存档键。`PERMISSION_TOKEN_SECRET` 更换后
 `userKey` 会变化，正式部署后不得随意轮换。

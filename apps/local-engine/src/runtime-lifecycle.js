@@ -2,9 +2,7 @@
 
 function positiveInteger(value, fallback, maximum) {
   const parsed = Number(value)
-  return Number.isSafeInteger(parsed) && parsed > 0
-    ? Math.min(parsed, maximum)
-    : fallback
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback
 }
 
 function runtimeLimit(value, fallback = 4) {
@@ -53,15 +51,15 @@ function createRuntimeLifecycle({
     const allocated = allocatedIds()
     if (allocated.has(requestedId) || allocated.size < maximum) return
     const candidates = [...runtimes.entries()]
-      .filter(([id, runtime]) => id !== requestedId && !runtime.exited && !runtime.activeConnections)
-      .sort((left, right) =>
-        (left[1].lastAccessAt || 0) - (right[1].lastAccessAt || 0))
+      .filter(
+        ([id, runtime]) => id !== requestedId && !runtime.exited && !runtime.activeConnections,
+      )
+      .sort((left, right) => (left[1].lastAccessAt || 0) - (right[1].lastAccessAt || 0))
     const oldest = candidates[0]
     if (!oldest) {
-      throw Object.assign(
-        new Error(`运行时数量已达到上限（${maximum}），请稍后重试`),
-        { statusCode: 503 },
-      )
+      throw Object.assign(new Error(`运行时数量已达到上限（${maximum}），请稍后重试`), {
+        statusCode: 503,
+      })
     }
     const [id] = oldest
     setStatus(id, { phase: 'idle', percent: 0, message: '运行时已按容量限制回收' })
@@ -70,15 +68,19 @@ function createRuntimeLifecycle({
 
   async function collectIdle(now = Date.now()) {
     const expired = [...runtimes.entries()]
-      .filter(([, runtime]) =>
-        !runtime.exited &&
-        !runtime.activeConnections &&
-        now - (runtime.lastAccessAt || now) >= idleAfter)
+      .filter(
+        ([, runtime]) =>
+          !runtime.exited &&
+          !runtime.activeConnections &&
+          now - (runtime.lastAccessAt || now) >= idleAfter,
+      )
       .map(([id]) => id)
-    await Promise.all(expired.map(async (id) => {
-      setStatus(id, { phase: 'idle', percent: 0, message: idleMessage })
-      await stopRuntime(id)
-    }))
+    await Promise.all(
+      expired.map(async (id) => {
+        setStatus(id, { phase: 'idle', percent: 0, message: idleMessage })
+        await stopRuntime(id)
+      }),
+    )
     return expired
   }
 

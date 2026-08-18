@@ -10,15 +10,16 @@ Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创
 在线账号、Redis 或 BOX 内部服务。地图、默认人物、动画和基础运行资源均从本地
 读取。
 
-## 两种部署
+## 产品与服务
 
-| 产品 | 用途 | 一键部署 | 默认入口 |
-| --- | --- | --- | --- |
-| 创作端 | 管理、编辑、预览和发布作品 | `pnpm creator` | `/` |
-| 游玩端 | 从固定目录提供多个只读作品 | `pnpm play` | `/` |
-| 玩家中心 | 创作端与游玩端共用的玩家身份和服主管理 | `pnpm player-service` | `http://127.0.0.1:3213/` |
-| VOXA | 制作和管理本地体素模型 | `pnpm voxa` | `http://127.0.0.1:3001/` |
-| 云端迁移器 | 将云端工程 hash 导出为可编辑本地工程 | `pnpm migrator` | `http://127.0.0.1:3212/` |
+| 产品       | 用途                                   | 一键部署              | 默认入口                 |
+| ---------- | -------------------------------------- | --------------------- | ------------------------ |
+| 创作端     | 管理、编辑、预览和发布作品             | `pnpm creator`        | `/`                      |
+| 游玩端     | 从固定目录提供多个只读作品             | `pnpm play`           | `/`                      |
+| 玩家中心   | 创作端与游玩端共用的玩家身份和服主管理 | `pnpm player-service`     | `http://127.0.0.1:3213/` |
+| 登录门户   | 可直接部署的玩家登录与注册页面         | `pnpm player-auth-portal` | `http://127.0.0.1:3214/` |
+| VOXA       | 制作和管理本地体素模型                 | `pnpm voxa`               | `http://127.0.0.1:3001/` |
+| 云端迁移器 | 将云端工程 hash 导出为可编辑本地工程   | `pnpm migrator`           | `http://127.0.0.1:3212/` |
 
 每种形态都是一个完整部署。启动器会自动协调网页和所需运行时，使用者只选择创作端或
 游玩端，不再分别构建、启动其他子项目。
@@ -57,6 +58,7 @@ Docker 生产部署：
 
 ```bash
 pnpm player-service
+pnpm player-auth-portal
 pnpm creator
 ```
 
@@ -71,6 +73,7 @@ pnpm voxa
 - 创作端：<http://127.0.0.1:3002/>
 - 游玩端：<http://127.0.0.1:3000/>
 - 玩家中心：<http://127.0.0.1:3213/>
+- 登录门户：<http://127.0.0.1:3214/>
 - VOXA：<http://127.0.0.1:3001/>
 - 云端迁移器：<http://127.0.0.1:3212/>
 
@@ -209,38 +212,40 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 
 ## 常用配置
 
-| 变量 | 默认值 | 作用 |
-| --- | --- | --- |
-| `BOX_PLAY_PORT` | `3000` | 游玩端公开端口 |
-| `BOX_CREATOR_PORT` | `3002` | 创作端本机端口 |
-| `BOX_WORLD_NAME` | `BOX 世界` | 玩家看到的世界名称 |
-| `BOX_LOCAL_PLAYER_LIMIT` | `8` | 最大玩家数 |
-| `PERMISSION_TOKEN_SECRET` | 空 | 正式部署使用的稳定随机密钥 |
-| `BOX_SERVER_PUBLIC_URL` | 空 | 公网反向代理后的完整 HTTPS 地址 |
-| `BOX_PLAYER_LOGIN_URL` | 空 | 服主自行部署的玩家登录页；留空时显示“未开启登录” |
-| `BOX_PLAYER_AUTH_API_KEY` | 空 | 玩家认证接口的服务端密钥，至少 16 位，禁止放入浏览器 |
-| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 空 | 认证接口允许的 Origin 附加白名单，不代替服务端 Key |
-| `BOX_TRUST_PROXY` | `false` | 仅在可信反向代理后启用转发请求头 |
-| `BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS` | `10` | 单一来源 IP 在登录窗口内允许的失败次数 |
-| `BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS` | `5` | 单一来源 IP 在注册窗口内允许的注册次数 |
-| `BOX_CREATOR_EDIT_MAX_RUNTIMES` | `6` | 创作端同时保留的编辑运行时数量 |
-| `BOX_CREATOR_PLAY_MAX_RUNTIMES` | `4` | 创作端同时保留的预览运行时数量 |
-| `BOX_PLAY_MAX_RUNTIMES` | `8` | 游玩端同时保留的地图运行时数量 |
-| `BOX_CREATOR_EDIT_PREWARM_RUNTIMES` | `6` | Creator 后台预热的最近编辑工程数量，`0` 为关闭 |
-| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES` | `4` | Creator 后台预热的最近预览工程数量，`0` 为关闭 |
-| `BOX_PLAY_PREWARM_RUNTIMES` | `8` | 全部地图缓存完成后常驻的主地图优先数量，`0` 为关闭后台预热 |
-| `BOX_RUNTIME_IDLE_TIMEOUT_MS` | `900000` | 无活动连接运行时的空闲回收时间 |
-| `BOX_TELEPORT_MAX_ROOMS` | `64` | 地图组传送可同时保留的私有房间数量；房间运行时仍计入对应的总运行时上限 |
-| `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS` | `900000` | 私有传送房间无人连接后的回收时间 |
-| `BOX_SESSION_TTL_MS` | `60000` | 未连接玩家 Session 的有效时间 |
-| `BOX_SCRIPT_MEMORY_MB` | `512` | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置 |
-| `BOX_SCRIPT_HEAP_MB` | `512` | 兼容其他脚本执行路径的堆内存上限（MiB），建议与上一项保持一致 |
-| `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到各地图运行时的间隔（毫秒） |
-| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 每个 IP 每分钟创建 Session 上限 |
-| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端 |
-| `BOX_IDENTITY_DATABASE_SCHEMA` | `box_identity` | 玩家账号、会话和审计记录使用的独立 schema |
-| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许新玩家注册本地账号；关闭不影响已有账号登录 |
-| `REDIS_HOST` | 空 | 可选 Redis；启用跨实例 Session、共享限流和预烘焙构建缓存，并保留本地回退 |
+| 变量                                       | 默认值         | 作用                                                                     |
+| ------------------------------------------ | -------------- | ------------------------------------------------------------------------ |
+| `BOX_PLAY_PORT`                            | `3000`         | 游玩端公开端口                                                           |
+| `BOX_CREATOR_PORT`                         | `3002`         | 创作端本机端口                                                           |
+| `BOX_WORLD_NAME`                           | `BOX 世界`     | 玩家看到的世界名称                                                       |
+| `BOX_LOCAL_PLAYER_LIMIT`                   | `8`            | 最大玩家数                                                               |
+| `PERMISSION_TOKEN_SECRET`                  | 空             | 正式部署使用的稳定随机密钥                                               |
+| `BOX_SERVER_PUBLIC_URL`                    | 空             | 公网反向代理后的完整 HTTPS 地址                                          |
+| `BOX_PLAYER_LOGIN_URL`                     | 空             | 服主自行部署的玩家登录页；留空时显示“未开启登录”                         |
+| `BOX_PLAYER_AUTH_API_KEY`                  | 空             | 玩家认证接口的服务端密钥，至少 16 位，禁止放入浏览器                     |
+| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS`          | 空             | 认证接口允许的 Origin 附加白名单，不代替服务端 Key                       |
+| `BOX_AUTH_PORTAL_PORT`                     | `3214`         | 独立登录门户的宿主机端口                                                 |
+| `BOX_AUTH_PORTAL_PUBLIC_URL`               | 本机 `3214`    | 玩家浏览器访问登录门户的公开地址                                         |
+| `BOX_TRUST_PROXY`                          | `false`        | 仅在可信反向代理后启用转发请求头                                         |
+| `BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS`        | `10`           | 单一来源 IP 在登录窗口内允许的失败次数                                   |
+| `BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS` | `5`            | 单一来源 IP 在注册窗口内允许的注册次数                                   |
+| `BOX_CREATOR_EDIT_MAX_RUNTIMES`            | `6`            | 创作端同时保留的编辑运行时数量                                           |
+| `BOX_CREATOR_PLAY_MAX_RUNTIMES`            | `4`            | 创作端同时保留的预览运行时数量                                           |
+| `BOX_PLAY_MAX_RUNTIMES`                    | `8`            | 游玩端同时保留的地图运行时数量                                           |
+| `BOX_CREATOR_EDIT_PREWARM_RUNTIMES`        | `6`            | Creator 后台预热的最近编辑工程数量，`0` 为关闭                           |
+| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES`        | `4`            | Creator 后台预热的最近预览工程数量，`0` 为关闭                           |
+| `BOX_PLAY_PREWARM_RUNTIMES`                | `8`            | 全部地图缓存完成后常驻的主地图优先数量，`0` 为关闭后台预热               |
+| `BOX_RUNTIME_IDLE_TIMEOUT_MS`              | `900000`       | 无活动连接运行时的空闲回收时间                                           |
+| `BOX_TELEPORT_MAX_ROOMS`                   | `64`           | 地图组传送可同时保留的私有房间数量；房间运行时仍计入对应的总运行时上限   |
+| `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`        | `900000`       | 私有传送房间无人连接后的回收时间                                         |
+| `BOX_SESSION_TTL_MS`                       | `60000`        | 未连接玩家 Session 的有效时间                                            |
+| `BOX_SCRIPT_MEMORY_MB`                     | `512`          | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置    |
+| `BOX_SCRIPT_HEAP_MB`                       | `512`          | 兼容其他脚本执行路径的堆内存上限（MiB），建议与上一项保持一致            |
+| `BOX_PLAYER_REVOCATION_POLL_MS`            | `1000`         | 强制下线事件同步到各地图运行时的间隔（毫秒）                             |
+| `BOX_SESSION_RATE_LIMIT_PER_MINUTE`        | `60`           | 每个 IP 每分钟创建 Session 上限                                          |
+| `BOX_DATABASE_URL`                         | 空             | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端               |
+| `BOX_IDENTITY_DATABASE_SCHEMA`             | `box_identity` | 玩家账号、会话和审计记录使用的独立 schema                                |
+| `BOX_PLAYER_REGISTRATION_ENABLED`          | `true`         | 是否允许新玩家注册本地账号；关闭不影响已有账号登录                       |
+| `REDIS_HOST`                               | 空             | 可选 Redis；启用跨实例 Session、共享限流和预烘焙构建缓存，并保留本地回退 |
 
 公网部署时把域名反向代理到 `BOX_PLAY_PORT`，允许 WebSocket Upgrade，并填写
 `BOX_SERVER_PUBLIC_URL=https://你的域名`。只有反向代理会覆盖并清洗
@@ -248,20 +253,22 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 
 ## 常用命令
 
-| 命令 | 作用 |
-| --- | --- |
-| `pnpm dev` | 启动创作端开发环境 |
-| `pnpm player-service` | 独立构建、打包并部署玩家服务镜像 |
-| `pnpm player-service:up` | 直接启动已有玩家服务镜像，不重新构建 |
-| `pnpm creator` | 只构建并部署创作端，不构建玩家服务 |
-| `pnpm creator:up` | 直接启动已有创作端镜像，不重新构建 |
-| `pnpm play` | 只准备并启动游玩端，不构建玩家服务 |
-| `pnpm infra` | 启动可选的本地 PostgreSQL 和 Redis 容器 |
-| `pnpm infra:stop` | 停止可选基础设施但保留数据 volume |
-| `pnpm stop` | 停止当前 Docker 部署 |
-| `pnpm check` | 检查独立依赖、离线资源和本地运行约束 |
-| `pnpm check:edit-session` | 检查本地创作会话 |
-| `pnpm project:package -- <作品>@<版本>` | 导出不含工程源目录的服主分发包 |
+| 命令                                    | 作用                                    |
+| --------------------------------------- | --------------------------------------- |
+| `pnpm dev`                              | 启动创作端开发环境                      |
+| `pnpm player-service`                   | 独立构建、打包并部署玩家服务镜像        |
+| `pnpm player-service:up`                | 直接启动已有玩家服务镜像，不重新构建    |
+| `pnpm player-auth-portal`               | 独立构建并部署玩家登录门户镜像          |
+| `pnpm player-auth-portal:up`            | 直接启动已有登录门户镜像，不重新构建    |
+| `pnpm creator`                          | 只构建并部署创作端，不构建玩家服务      |
+| `pnpm creator:up`                       | 直接启动已有创作端镜像，不重新构建      |
+| `pnpm play`                             | 只准备并启动游玩端，不构建玩家服务      |
+| `pnpm infra`                            | 启动可选的本地 PostgreSQL 和 Redis 容器 |
+| `pnpm infra:stop`                       | 停止可选基础设施但保留数据 volume       |
+| `pnpm stop`                             | 停止当前 Docker 部署                    |
+| `pnpm check`                            | 检查独立依赖、离线资源和本地运行约束    |
+| `pnpm check:edit-session`               | 检查本地创作会话                        |
+| `pnpm project:package -- <作品>@<版本>` | 导出不含工程源目录的服主分发包          |
 
 维护者如需只构建或直接运行源码产物，仍可使用
 `build:creator`、`start:creator`、`build:play` 和 `start:play`。这些是内部调试入口，

@@ -54,7 +54,7 @@ export const SkinLib = (props: SkinLibProps) => {
 
   useEffect(() => {
     if (clientConfig.isLocalGameServer) {
-      fetchSkinData({ modelType: ModelType.ExtensionLib }).then((list) => {
+      fetchSkinData({}).then((list) => {
         if (list) setLocalSkins(list);
       });
       return () => {
@@ -84,7 +84,7 @@ export const SkinLib = (props: SkinLibProps) => {
     }
     fetchSkinData({
       modelType: clientConfig.isLocalGameServer
-        ? ModelType.ExtensionLib
+        ? undefined
         : libTab,
       modelName: searchName,
     }).then(
@@ -160,7 +160,7 @@ export const SkinLib = (props: SkinLibProps) => {
     setLoading(true);
     const data = await fetchSkinData({
       modelType: clientConfig.isLocalGameServer
-        ? ModelType.ExtensionLib
+        ? undefined
         : libTab,
       offset: skinList.length,
       modelName: searchName,

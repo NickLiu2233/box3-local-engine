@@ -96,6 +96,42 @@ services:
     ports:
       - "127.0.0.1:${BOX_PLAYER_SERVICE_PORT:-3213}:3213"
 
+  player-auth-portal:
+    profiles: [auth-portal]
+    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
+    image: box-local-engine-player-auth-portal:${BOX_IMAGE_TAG:-0.1.0}
+    build:
+      context: ./examples/player-auth-portal
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.1.0}
+        BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
+        BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
+        BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: ${BOX_AUTH_PORTAL_MEMORY_LIMIT:-128m}
+    cpus: ${BOX_AUTH_PORTAL_CPU_LIMIT:-0.5}
+    pids_limit: ${BOX_AUTH_PORTAL_PIDS_LIMIT:-64}
+    environment:
+      AUTH_DEMO_HOST: 0.0.0.0
+      AUTH_DEMO_PORT: 3214
+      AUTH_DEMO_PLAYER_SERVICE_URL: http://player-service:3213
+      AUTH_DEMO_PUBLIC_URL: ${BOX_AUTH_PORTAL_PUBLIC_URL:-http://127.0.0.1:3214}
+      AUTH_DEMO_CREATOR_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3002}
+      AUTH_DEMO_PLAY_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}
+      AUTH_DEMO_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
+      AUTH_DEMO_REQUEST_TIMEOUT_MS: ${BOX_AUTH_PORTAL_REQUEST_TIMEOUT_MS:-10000}
+      AUTH_DEMO_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
+    ports:
+      - "${BOX_AUTH_PORTAL_HOST_IP:-127.0.0.1}:${BOX_AUTH_PORTAL_PORT:-3214}:3214"
+
   creator:
     profiles: [creator]
     image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}

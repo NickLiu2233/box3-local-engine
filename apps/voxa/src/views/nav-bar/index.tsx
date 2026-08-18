@@ -42,8 +42,6 @@ import {
   PivotMode,
   ToolType,
 } from '../../redux/animator-slice';
-import { PublishButton } from './publish-button';
-import { clientConfig } from '../../config/client';
 import { VoxelDimension } from '../../models/project/defs';
 import styles from './style.module.scss';
 
@@ -755,9 +753,6 @@ export function NavBar(props: TopBarProps) {
   const { onTabDown: onProjectInfoTabDown } = useFocusTrap(projectInfoRef);
 
   const projectInfo = useMemo(() => {
-    const isPublishAvailable =
-      clientConfig.appEdition === 'createra' && parentType === 'none';
-
     return (
       <div
         className={styles.project}
@@ -779,10 +774,9 @@ export function NavBar(props: TopBarProps) {
           }}
         />
         <SaveButton />
-        {isPublishAvailable && <PublishButton />}
       </div>
     );
-  }, [dispatch, onProjectInfoTabDown, projectName, parentType]);
+  }, [dispatch, onProjectInfoTabDown, projectName]);
 
   return (
     <div className={styles.navBar} onMouseLeave={() => setDisplayed(false)}>

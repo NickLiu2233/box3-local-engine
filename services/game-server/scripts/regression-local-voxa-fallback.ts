@@ -1,10 +1,86 @@
 import assert from 'assert';
+import { once } from 'events';
+import { createServer } from 'http';
 
 import { createLocalContentWithVoxa } from '../src/content/local-content-with-voxa';
-import { mergeExtraProjectInfo } from '../src/project/project-extra';
+import {
+  getLocalExtraProject,
+  mergeExtraProjectInfo,
+} from '../src/project/project-extra';
 import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
 
+async function checkAllLocalVoxaAssetsAreVisible() {
+  const models = [
+    {
+      modelId: 1,
+      modelName: 'Private model',
+      modelType: 0,
+      creativeMode: 1,
+      modelFileHash: 'private-model-hash',
+      modelPreviewHash: 'private-model-preview',
+      animated: false,
+      updatedAt: '2026-08-18T00:00:00.000Z',
+    },
+    {
+      modelId: 2,
+      modelName: 'Private skin',
+      modelType: 0,
+      creativeMode: 2,
+      modelFileHash: 'private-skin-hash',
+    },
+    {
+      modelId: 3,
+      modelName: 'Extension skin',
+      modelType: 3,
+      creativeMode: 2,
+      modelFileHash: 'extension-skin-hash',
+    },
+  ];
+  const server = createServer((request, response) => {
+    const url = new URL(request.url || '/', 'http://127.0.0.1');
+    response.setHeader('content-type', 'application/json');
+    if (url.pathname === '/api/local/default-skin') {
+      response.end('{}');
+      return;
+    }
+    const modelType = url.searchParams.get('modelType');
+    const creativeMode = url.searchParams.get('creativeMode');
+    const rows = models.filter(
+      (model) =>
+        (modelType === null || model.modelType === Number(modelType)) &&
+        (creativeMode === null || model.creativeMode === Number(creativeMode)),
+    );
+    response.end(JSON.stringify({ rows, count: rows.length }));
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    const extra = await getLocalExtraProject(
+      `http://127.0.0.1:${address.port}`,
+      0,
+      { info: () => undefined, error: () => undefined } as never,
+    );
+    assert.equal(
+      Object.keys(extra.meshAssets).length,
+      1,
+      'all locally owned VOXA models must be visible in Creator regardless of modelType',
+    );
+    assert.equal(
+      Object.keys(extra.skinAssets).length,
+      2,
+      'all locally owned VOXA skins must be visible in Creator regardless of modelType',
+    );
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
+  console.log('PASS: Creator includes every local VOXA model and skin');
+}
+
 async function main() {
+  await checkAllLocalVoxaAssetsAreVisible();
   const expected = Buffer.from('voxa-model-bytes');
   const bundledRuntime = Buffer.from('bundled-block-info');
   const local = {

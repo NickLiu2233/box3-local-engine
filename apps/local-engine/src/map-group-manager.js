@@ -32,9 +32,7 @@ function writeJSON(filePath, value) {
 
 function pickSharedState(state) {
   return Object.fromEntries(
-    sharedStateKeys
-      .filter((key) => state[key] !== undefined)
-      .map((key) => [key, state[key]]),
+    sharedStateKeys.filter((key) => state[key] !== undefined).map((key) => [key, state[key]]),
   )
 }
 
@@ -77,10 +75,7 @@ function createMapGroupManager(projectsRoot) {
     const current = readJSON(group.statePath, null)
     if (current) return current
 
-    const mainState = readJSON(
-      path.join(sourceRoot(group.mainProjectId), 'project-state.json'),
-      {},
-    )
+    const mainState = readJSON(path.join(sourceRoot(group.mainProjectId), 'project-state.json'), {})
     const now = new Date().toISOString()
     const initial = {
       formatVersion: 1,

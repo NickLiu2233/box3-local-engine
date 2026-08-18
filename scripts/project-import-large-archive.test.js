@@ -36,9 +36,7 @@ test('large project archive entry listings do not overflow spawnSync buffers', (
   try {
     const entries = [tarEntry('group.json'), tarEntry('projects/', '5')]
     for (let index = 0; index < 24_000; index += 1) {
-      entries.push(
-        tarEntry(`projects/map/blobs/Qm${String(index).padStart(44, '1')}`),
-      )
+      entries.push(tarEntry(`projects/map/blobs/Qm${String(index).padStart(44, '1')}`))
     }
     entries.push(Buffer.alloc(1024))
     fs.writeFileSync(archivePath, zlib.gzipSync(Buffer.concat(entries)))

@@ -52,4 +52,13 @@ describe('Creator work center model integration', () => {
   test('does not expose a separate VOXA library route', () => {
     expect(fs.existsSync(path.join(root, '../voxa/pages/library.tsx'))).toBe(false);
   });
+
+  test('keeps local VOXA save-only without a platform publish action', () => {
+    const navBar = source('../voxa/src/views/nav-bar/index.tsx');
+    expect(navBar).toContain('<SaveButton />');
+    expect(navBar).not.toContain('PublishButton');
+    expect(
+      fs.existsSync(path.join(root, '../voxa/src/views/nav-bar/publish-button.tsx')),
+    ).toBe(false);
+  });
 });

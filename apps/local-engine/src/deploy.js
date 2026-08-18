@@ -33,9 +33,7 @@ const automaticBuildMetadata = resolveBuildMetadata({
 function readDotEnvValue(name) {
   try {
     const source = fs.readFileSync(path.join(repoRoot, '.env'), 'utf8')
-    const line = source
-      .split(/\r?\n/)
-      .find((entry) => entry.trimStart().startsWith(`${name}=`))
+    const line = source.split(/\r?\n/).find((entry) => entry.trimStart().startsWith(`${name}=`))
     if (line) {
       return line
         .slice(line.indexOf('=') + 1)
@@ -89,11 +87,7 @@ function assertRuntimeConfiguration(product) {
 }
 
 function configuredCreatorPort() {
-  return (
-    process.env.BOX_CREATOR_PORT ||
-    readDotEnvValue('BOX_CREATOR_PORT') ||
-    '3002'
-  )
+  return process.env.BOX_CREATOR_PORT || readDotEnvValue('BOX_CREATOR_PORT') || '3002'
 }
 
 function configuredPlayPort() {
@@ -107,11 +101,11 @@ function configuredPlayPort() {
 }
 
 function configuredPlayerServicePort() {
-  return (
-    process.env.BOX_PLAYER_SERVICE_PORT ||
-    readDotEnvValue('BOX_PLAYER_SERVICE_PORT') ||
-    '3213'
-  )
+  return process.env.BOX_PLAYER_SERVICE_PORT || readDotEnvValue('BOX_PLAYER_SERVICE_PORT') || '3213'
+}
+
+function configuredAuthPortalPort() {
+  return process.env.BOX_AUTH_PORTAL_PORT || readDotEnvValue('BOX_AUTH_PORTAL_PORT') || '3214'
 }
 
 function configuredVoxaPort() {
@@ -125,16 +119,12 @@ function dockerEnvironment(extra = {}) {
     ...automaticBuildMetadata,
     BOX_IMAGE_TAG: config.tag,
     BOX_PLAY_PLATFORM: config.platform,
-    BOX_PLAY_LIBRARY_DIR:
-      process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
+    BOX_PLAY_LIBRARY_DIR: process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
     ...extra,
   }
 }
 
-function runDocker(
-  args,
-  { allowFailure = false, capture = false, env = {} } = {},
-) {
+function runDocker(args, { allowFailure = false, capture = false, env = {} } = {}) {
   const result = spawnSync('docker', args, {
     cwd: repoRoot,
     env: dockerEnvironment(env),
@@ -154,10 +144,7 @@ function runDocker(
 }
 
 function stopProduct(product) {
-  runDocker(
-    ['compose', '--profile', product, 'stop', product],
-    { allowFailure: true },
-  )
+  runDocker(['compose', '--profile', product, 'stop', product], { allowFailure: true })
 }
 
 function assertPlayerServiceHealthy() {
@@ -194,26 +181,14 @@ function deployCreator({ build }) {
   assertPlayerServiceHealthy()
   if (build) runDocker(['compose', '--profile', 'creator', 'build', 'creator'])
   stopProduct('creator')
-  runDocker([
-    'compose',
-    '--profile',
-    'creator',
-    'up',
-    '-d',
-    '--no-build',
-    'creator',
-  ])
+  runDocker(['compose', '--profile', 'creator', 'up', '-d', '--no-build', 'creator'])
   console.log('\n创作端已启动：http://127.0.0.1:' + configuredCreatorPort() + '\n')
-  console.log(
-    '玩家中心：http://127.0.0.1:' + configuredPlayerServicePort() + '\n',
-  )
+  console.log('玩家中心：http://127.0.0.1:' + configuredPlayerServicePort() + '\n')
 }
 
 function startPlayerService({ build }) {
   if (commandArgs.length) {
-    throw new Error(
-      `pnpm ${build ? 'player-service' : 'player-service:up'} 不接受参数`,
-    )
+    throw new Error(`pnpm ${build ? 'player-service' : 'player-service:up'} 不接受参数`)
   }
   assertRuntimeConfiguration('player-service')
   const config = build
@@ -233,11 +208,43 @@ function startPlayerService({ build }) {
     '--force-recreate',
     'player-service',
   ])
-  console.log(
-    `\n玩家服务已启动：http://127.0.0.1:${configuredPlayerServicePort()}`,
-  )
+  console.log(`\n玩家服务已启动：http://127.0.0.1:${configuredPlayerServicePort()}`)
   if (build) console.log(`可分发镜像：${config.playerServiceArchive}`)
   console.log('Creator 和 Play 会共用这个服务；更新它时无需重建另外两个镜像。\n')
+}
+
+function startPlayerAuthPortal({ build }) {
+  if (commandArgs.length) {
+    throw new Error(`pnpm ${build ? 'player-auth-portal' : 'player-auth-portal:up'} 不接受参数`)
+  }
+  const apiKey = configuredValue('BOX_PLAYER_AUTH_API_KEY')
+  if (apiKey.length < 16) {
+    throw new Error(
+      'BOX_PLAYER_AUTH_API_KEY 必须设置为至少 16 个字符，并与 Player Service 使用相同值',
+    )
+  }
+  assertPlayerServiceHealthy()
+  if (build) {
+    runDocker(['compose', '--profile', 'auth-portal', 'build', 'player-auth-portal'])
+  }
+  runDocker(
+    ['compose', '--profile', 'auth-portal', 'stop', 'player-auth-portal'],
+    { allowFailure: true },
+  )
+  runDocker([
+    'compose',
+    '--profile',
+    'auth-portal',
+    'up',
+    '-d',
+    '--no-build',
+    '--force-recreate',
+    'player-auth-portal',
+  ])
+  const portalUrl = `http://127.0.0.1:${configuredAuthPortalPort()}`
+  console.log(`\n玩家登录门户已启动：${portalUrl}`)
+  console.log(`请把 BOX_PLAYER_LOGIN_URL 设置为 ${portalUrl}，再重建 Creator/Play 容器。`)
+  console.log('该门户只代理认证请求，玩家账号与会话仍由 Player Service 统一管理。\n')
 }
 
 function deployPlay({ build }) {
@@ -254,20 +261,14 @@ function deployPlay({ build }) {
         buildMetadata: automaticBuildMetadata,
       })
     : getPlayImageConfig()
-  runDocker([
-    'compose',
-    '--profile',
-    'play',
-    'up',
-    '-d',
-    '--no-build',
-    '--force-recreate',
-    'play',
-  ], {
-    env: {
-      BOX_PLAY_LIBRARY_DIR: libraryRoot,
+  runDocker(
+    ['compose', '--profile', 'play', 'up', '-d', '--no-build', '--force-recreate', 'play'],
+    {
+      env: {
+        BOX_PLAY_LIBRARY_DIR: libraryRoot,
+      },
     },
-  })
+  )
   console.log('\n游玩端已启动：http://127.0.0.1:' + configuredPlayPort())
   console.log('玩家中心：http://127.0.0.1:' + configuredPlayerServicePort())
   console.log(`地图目录：${libraryRoot}`)
@@ -286,20 +287,9 @@ function startVoxa({ build }) {
     runDocker(['compose', '--profile', 'voxa', 'build', 'voxa'])
   }
   stopProduct('voxa')
-  runDocker([
-    'compose',
-    '--profile',
-    'voxa',
-    'up',
-    '-d',
-    '--no-build',
-    '--force-recreate',
-    'voxa',
-  ])
+  runDocker(['compose', '--profile', 'voxa', 'up', '-d', '--no-build', '--force-recreate', 'voxa'])
   console.log('\nVOXA 已启动：http://127.0.0.1:' + configuredVoxaPort())
-  console.log(
-    '模型列表已整合到创作端作品中心：http://127.0.0.1:3002/projects?view=models',
-  )
+  console.log('模型列表已整合到创作端作品中心：http://127.0.0.1:3002/projects?view=models')
   console.log(`数据目录：${dataRoot}\n`)
 }
 
@@ -323,6 +313,8 @@ function stopAll() {
     'voxa',
     '--profile',
     'player-service',
+    '--profile',
+    'auth-portal',
     'down',
   ])
 }
@@ -334,12 +326,15 @@ try {
   else if (command === 'play-up') deployPlay({ build: false })
   else if (command === 'player-service') startPlayerService({ build: true })
   else if (command === 'player-service-up') startPlayerService({ build: false })
+  else if (command === 'player-auth-portal') startPlayerAuthPortal({ build: true })
+  else if (command === 'player-auth-portal-up') startPlayerAuthPortal({ build: false })
   else if (command === 'voxa') deployVoxa()
   else if (command === 'voxa-up') startExistingVoxa()
   else if (command === 'stop') stopAll()
-  else throw new Error(
-    'Usage: deploy.js <creator|creator-up|play|play-up|player-service|player-service-up|voxa|voxa-up|stop>',
-  )
+  else
+    throw new Error(
+      'Usage: deploy.js <creator|creator-up|play|play-up|player-service|player-service-up|player-auth-portal|player-auth-portal-up|voxa|voxa-up|stop>',
+    )
 } catch (error) {
   console.error(`部署失败：${error.message}`)
   process.exitCode = 1

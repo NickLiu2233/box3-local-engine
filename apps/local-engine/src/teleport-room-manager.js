@@ -11,9 +11,7 @@ function roomError(code, message, statusCode = 400) {
 
 function positiveInteger(value, fallback, maximum) {
   const parsed = Number(value)
-  return Number.isSafeInteger(parsed) && parsed > 0
-    ? Math.min(parsed, maximum)
-    : fallback
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback
 }
 
 function mapIdentity(map) {
@@ -134,15 +132,13 @@ function createTeleportRoomManager({
   maxRooms = 64,
 }) {
   const rooms = new Map()
-  const idleAfter = positiveInteger(
-    roomIdleTimeoutMs,
-    15 * 60_000,
-    7 * 24 * 60 * 60_000,
-  )
+  const idleAfter = positiveInteger(roomIdleTimeoutMs, 15 * 60_000, 7 * 24 * 60 * 60_000)
   const maximum = positiveInteger(maxRooms, 64, 1024)
 
   function resolve(reference) {
-    const normalized = String(reference || '').trim().toLowerCase()
+    const normalized = String(reference || '')
+      .trim()
+      .toLowerCase()
     if (!mapUuidPattern.test(normalized)) {
       throw roomError(
         'MAP_UUID_REQUIRED',
@@ -165,11 +161,7 @@ function createTeleportRoomManager({
   async function collectIdle() {
     const timestamp = now()
     const expired = [...rooms.values()]
-      .filter(
-        (room) =>
-          !isRoomActive(room.id) &&
-          timestamp - room.lastAccessAt >= idleAfter,
-      )
+      .filter((room) => !isRoomActive(room.id) && timestamp - room.lastAccessAt >= idleAfter)
       .map((room) => room.id)
     for (const roomId of expired) {
       rooms.delete(roomId)
@@ -178,23 +170,13 @@ function createTeleportRoomManager({
     return expired
   }
 
-  async function allocate({
-    sourceMapId,
-    targetMapId,
-    subjectIds,
-    serverId = '',
-    mode = 'play',
-  }) {
+  async function allocate({ sourceMapId, targetMapId, subjectIds, serverId = '', mode = 'play' }) {
     const source = resolve(sourceMapId)
     const target = resolve(targetMapId)
     const sourceIdentity = mapIdentity(source)
     const targetIdentity = mapIdentity(target)
     if (sourceIdentity.groupId !== targetIdentity.groupId) {
-      throw roomError(
-        'MAP_GROUP_MISMATCH',
-        '只能传送到同一地图组内的地图',
-        403,
-      )
+      throw roomError('MAP_GROUP_MISMATCH', '只能传送到同一地图组内的地图', 403)
     }
     const subjects = normalizedSubjects(subjectIds)
 
@@ -224,11 +206,7 @@ function createTeleportRoomManager({
     } else {
       await collectIdle()
       if (rooms.size >= maximum) {
-        throw roomError(
-          'ROOM_CAPACITY_REACHED',
-          `私有房间数量已达上限（${maximum}）`,
-          503,
-        )
+        throw roomError('ROOM_CAPACITY_REACHED', `私有房间数量已达上限（${maximum}）`, 503)
       }
       const roomId = randomRoomId()
       if (!roomIdPattern.test(roomId) || rooms.has(roomId)) {
@@ -267,10 +245,7 @@ function createTeleportRoomManager({
     if (!room) {
       throw roomError('ROOM_NOT_FOUND', '传送房间不存在或已回收', 404)
     }
-    if (
-      room.targetMapId !== targetIdentity.mapUuid ||
-      room.mapGroupId !== targetIdentity.groupId
-    ) {
+    if (room.targetMapId !== targetIdentity.mapUuid || room.mapGroupId !== targetIdentity.groupId) {
       throw roomError('ROOM_TARGET_MISMATCH', '传送房间与目标地图不匹配', 403)
     }
     return { room: shouldTouch ? touch(room) : room, target }

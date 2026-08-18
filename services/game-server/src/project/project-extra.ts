@@ -6,7 +6,7 @@ import {
   ExtraProjectInfoSchema,
   getMeshPath,
 } from '@box-local/schema/project/hot-schema';
-import { CreativeMode, ModelType } from '@box-local/apis';
+import { CreativeMode } from '@box-local/apis';
 
 export type Mode = 'edit' | 'play';
 
@@ -84,14 +84,12 @@ export async function getLocalExtraProject(
       await Promise.all([
         axios.get(`${baseURL}/api/local/models`, {
           params: {
-            modelType: ModelType.Project,
             creativeMode: CreativeMode.Model,
           },
           timeout: 10_000,
         }),
         axios.get(`${baseURL}/api/local/models`, {
           params: {
-            modelType: ModelType.ExtensionLib,
             creativeMode: CreativeMode.Skin,
           },
           timeout: 10_000,

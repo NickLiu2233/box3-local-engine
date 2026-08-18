@@ -58,7 +58,8 @@ RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-lib
     && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
       -name '@types+*' -exec rm -rf {} + \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
-    && test -f /opt/game-server/node_modules/.pnpm/yaml@2.1.1/node_modules/yaml/dist/doc/directives.js
+    && cd /opt/game-server \
+    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)"
 
 FROM engine-build-base AS play-build
 
@@ -99,7 +100,8 @@ RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-lib
     && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
       -name '@types+*' -exec rm -rf {} + \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
-    && test -f /opt/game-server/node_modules/.pnpm/yaml@2.1.1/node_modules/yaml/dist/doc/directives.js
+    && cd /opt/game-server \
+    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)"
 
 FROM engine-build-base AS player-service-build
 

@@ -15,9 +15,7 @@ const playFormat = '7'
 function readDotEnvValue(name) {
   try {
     const source = fs.readFileSync(path.join(repoRoot, '.env'), 'utf8')
-    const line = source
-      .split(/\r?\n/)
-      .find((entry) => entry.trimStart().startsWith(`${name}=`))
+    const line = source.split(/\r?\n/).find((entry) => entry.trimStart().startsWith(`${name}=`))
     if (!line) return ''
     return line
       .slice(line.indexOf('=') + 1)
@@ -30,21 +28,15 @@ function readDotEnvValue(name) {
 }
 
 function getPlayImageConfig() {
-  const tag =
-    process.env.BOX_IMAGE_TAG || readDotEnvValue('BOX_IMAGE_TAG') || '0.1.0'
+  const tag = process.env.BOX_IMAGE_TAG || readDotEnvValue('BOX_IMAGE_TAG') || '0.1.0'
   const platform =
-    process.env.BOX_PLAY_PLATFORM ||
-    readDotEnvValue('BOX_PLAY_PLATFORM') ||
-    'linux/amd64'
+    process.env.BOX_PLAY_PLATFORM || readDotEnvValue('BOX_PLAY_PLATFORM') || 'linux/amd64'
   if (!supportedPlatforms.has(platform)) {
-    throw new Error(
-      `BOX_PLAY_PLATFORM must be linux/amd64 or linux/arm64, received: ${platform}`,
-    )
+    throw new Error(`BOX_PLAY_PLATFORM must be linux/amd64 or linux/arm64, received: ${platform}`)
   }
 
   const configuredArchive =
-    process.env.BOX_PLAY_IMAGE_ARCHIVE ||
-    path.join(packageRoot, 'dist/images/play-image.tar')
+    process.env.BOX_PLAY_IMAGE_ARCHIVE || path.join(packageRoot, 'dist/images/play-image.tar')
   const archive = path.isAbsolute(configuredArchive)
     ? configuredArchive
     : path.resolve(repoRoot, configuredArchive)
@@ -71,8 +63,7 @@ function dockerEnvironment(config, extra = {}) {
     BOX_IMAGE_TAG: config.tag,
     BOX_PLAY_PLATFORM: config.platform,
     // Compose parses the play volume even for image-only build commands.
-    BOX_PLAY_LIBRARY_DIR:
-      process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
+    BOX_PLAY_LIBRARY_DIR: process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
     ...extra,
   }
 }
@@ -91,31 +82,18 @@ function runDocker(args, { allowFailure = false, capture = false, env } = {}) {
     throw result.error
   }
   if (result.status !== 0 && !allowFailure) {
-    const details = capture
-      ? String(result.stderr || result.stdout || '').trim()
-      : ''
-    throw new Error(
-      details || `Docker command failed with exit code ${result.status}`,
-    )
+    const details = capture ? String(result.stderr || result.stdout || '').trim() : ''
+    throw new Error(details || `Docker command failed with exit code ${result.status}`)
   }
   return result
 }
 
 function inspectLocalImagePlatform(config, image = config.image) {
-  const result = runDocker(
-    [
-      'image',
-      'inspect',
-      '--format',
-      '{{.Os}}/{{.Architecture}}',
-      image,
-    ],
-    {
-      allowFailure: true,
-      capture: true,
-      env: dockerEnvironment(config),
-    },
-  )
+  const result = runDocker(['image', 'inspect', '--format', '{{.Os}}/{{.Architecture}}', image], {
+    allowFailure: true,
+    capture: true,
+    env: dockerEnvironment(config),
+  })
   if (result.status !== 0) return ''
   return String(result.stdout || '').trim()
 }
@@ -126,13 +104,7 @@ function inspectLocalImageFormat(
   label = 'org.box.local-engine.play-format',
 ) {
   const result = runDocker(
-    [
-      'image',
-      'inspect',
-      '--format',
-      `{{index .Config.Labels "${label}"}}`,
-      image,
-    ],
+    ['image', 'inspect', '--format', `{{index .Config.Labels "${label}"}}`, image],
     {
       allowFailure: true,
       capture: true,
@@ -161,8 +133,7 @@ function inspectPlayImageArchive(archive, image) {
   const manifest = extractArchiveJSON(archive, 'manifest.json')
   if (!Array.isArray(manifest)) return null
   const imageEntry = manifest.find(
-    (entry) =>
-      Array.isArray(entry?.RepoTags) && entry.RepoTags.includes(image),
+    (entry) => Array.isArray(entry?.RepoTags) && entry.RepoTags.includes(image),
   )
   const configEntry = imageEntry?.Config
   if (
@@ -178,17 +149,13 @@ function inspectPlayImageArchive(archive, image) {
   return {
     image,
     platform: `${imageConfig.os}/${imageConfig.architecture}`,
-    playFormat:
-      imageConfig?.config?.Labels?.['org.box.local-engine.play-format'] || '',
+    playFormat: imageConfig?.config?.Labels?.['org.box.local-engine.play-format'] || '',
   }
 }
 
 function archiveMatches(config, archive = config.archive) {
   const inspected = inspectPlayImageArchive(archive, config.image)
-  return (
-    inspected?.platform === config.platform &&
-    inspected?.playFormat === playFormat
-  )
+  return inspected?.platform === config.platform && inspected?.playFormat === playFormat
 }
 
 function buildPlayImage(config, buildMetadata = {}) {
@@ -197,9 +164,7 @@ function buildPlayImage(config, buildMetadata = {}) {
   })
   const actualPlatform = inspectLocalImagePlatform(config)
   if (actualPlatform !== config.platform) {
-    throw new Error(
-      `游玩镜像架构不正确：期望 ${config.platform}，实际 ${actualPlatform || '未知'}`,
-    )
+    throw new Error(`游玩镜像架构不正确：期望 ${config.platform}，实际 ${actualPlatform || '未知'}`)
   }
   if (inspectLocalImageFormat(config) !== playFormat) {
     throw new Error('游玩镜像格式不正确，需要重新构建')
@@ -209,18 +174,15 @@ function buildPlayImage(config, buildMetadata = {}) {
 function savePlayImage(config) {
   const actualPlatform = inspectLocalImagePlatform(config)
   if (actualPlatform !== config.platform) {
-    throw new Error(
-      `本地游玩镜像 ${config.image} 不是 ${config.platform}，需要重新构建`,
-    )
+    throw new Error(`本地游玩镜像 ${config.image} 不是 ${config.platform}，需要重新构建`)
   }
   fs.mkdirSync(path.dirname(config.archive), { recursive: true })
   const temporaryArchive = `${config.archive}.${process.pid}.tmp`
   fs.rmSync(temporaryArchive, { force: true })
   try {
-    runDocker(
-      ['image', 'save', '--output', temporaryArchive, config.image],
-      { env: dockerEnvironment(config) },
-    )
+    runDocker(['image', 'save', '--output', temporaryArchive, config.image], {
+      env: dockerEnvironment(config),
+    })
     if (!archiveMatches(config, temporaryArchive)) {
       throw new Error('导出的游玩镜像标签或架构校验失败')
     }
@@ -231,10 +193,7 @@ function savePlayImage(config) {
   }
 }
 
-function ensurePlayImageArchive({
-  forceBuild = false,
-  buildMetadata = {},
-} = {}) {
+function ensurePlayImageArchive({ forceBuild = false, buildMetadata = {} } = {}) {
   const config = getPlayImageConfig()
   if (!forceBuild && archiveMatches(config)) {
     if (
@@ -255,55 +214,33 @@ function ensurePlayImageArchive({
 
   const localPlatform = inspectLocalImagePlatform(config)
   const localFormat = inspectLocalImageFormat(config)
-  if (
-    forceBuild ||
-    localPlatform !== config.platform ||
-    localFormat !== playFormat
-  ) {
+  if (forceBuild || localPlatform !== config.platform || localFormat !== playFormat) {
     buildPlayImage(config, buildMetadata)
   }
   savePlayImage(config)
   return config
 }
 
-function playerServiceArchiveMatches(
-  config,
-  archive = config.playerServiceArchive,
-) {
+function playerServiceArchiveMatches(config, archive = config.playerServiceArchive) {
   const inspected = inspectPlayImageArchive(archive, config.playerServiceImage)
-  return (
-    inspected?.platform === config.platform &&
-    inspected?.playFormat === playFormat
-  )
+  return inspected?.platform === config.platform && inspected?.playFormat === playFormat
 }
 
-function ensurePlayerServiceImageArchive({
-  forceBuild = false,
-  buildMetadata = {},
-} = {}) {
+function ensurePlayerServiceImageArchive({ forceBuild = false, buildMetadata = {} } = {}) {
   const config = getPlayImageConfig()
-  const localPlatform = inspectLocalImagePlatform(
-    config,
-    config.playerServiceImage,
-  )
+  const localPlatform = inspectLocalImagePlatform(config, config.playerServiceImage)
   const localFormat = inspectLocalImageFormat(
     config,
     config.playerServiceImage,
     'org.box.local-engine.player-service-format',
   )
-  if (
-    forceBuild ||
-    localPlatform !== config.platform ||
-    localFormat !== playFormat
-  ) {
-    runDocker(
-      ['compose', '--profile', 'player-service', 'build', 'player-service'],
-      { env: dockerEnvironment(config, buildMetadata) },
-    )
+  if (forceBuild || localPlatform !== config.platform || localFormat !== playFormat) {
+    runDocker(['compose', '--profile', 'player-service', 'build', 'player-service'], {
+      env: dockerEnvironment(config, buildMetadata),
+    })
   }
   if (
-    inspectLocalImagePlatform(config, config.playerServiceImage) !==
-      config.platform ||
+    inspectLocalImagePlatform(config, config.playerServiceImage) !== config.platform ||
     inspectLocalImageFormat(
       config,
       config.playerServiceImage,
@@ -317,16 +254,9 @@ function ensurePlayerServiceImageArchive({
   const temporaryArchive = `${config.playerServiceArchive}.${process.pid}.tmp`
   fs.rmSync(temporaryArchive, { force: true })
   try {
-    runDocker(
-      [
-        'image',
-        'save',
-        '--output',
-        temporaryArchive,
-        config.playerServiceImage,
-      ],
-      { env: dockerEnvironment(config) },
-    )
+    runDocker(['image', 'save', '--output', temporaryArchive, config.playerServiceImage], {
+      env: dockerEnvironment(config),
+    })
     if (!playerServiceArchiveMatches(config, temporaryArchive)) {
       throw new Error('导出的玩家服务镜像标签或架构校验失败')
     }

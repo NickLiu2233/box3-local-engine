@@ -16,7 +16,9 @@ try {
   assert.equal(main.mapGroupId, 'group-main')
   assert.equal(manager.getLaunchTarget({ project: 'group-main' }).kind, 'source')
   assert.equal(
-    fs.existsSync(path.join(process.env.BOX_LOCAL_PROJECTS_PATH, 'group-main', 'source', 'project-state.json')),
+    fs.existsSync(
+      path.join(process.env.BOX_LOCAL_PROJECTS_PATH, 'group-main', 'source', 'project-state.json'),
+    ),
     false,
     'opening a blank main map must leave first-launch initialization to the runtime',
   )
@@ -35,15 +37,18 @@ try {
     'a blank submap must not be marked initialized without a permission root',
   )
   const mainStatePath = path.join(mainRoot, 'source', 'project-state.json')
-  fs.writeFileSync(mainStatePath, JSON.stringify({
-    permissionHash: 'main-permission',
-    extraProjectHash: 'shared-extra',
-    groupProjectMetaData: { version: '0.0.2', hashes: { uiTree: 'shared-ui' } },
-    projectModelPathsByMap: {
-      'group-main': ['mesh/main-model.vb'],
-      'group-dungeon': ['mesh/shared-model.vb', 'mesh/main-model.vb'],
-    },
-  }))
+  fs.writeFileSync(
+    mainStatePath,
+    JSON.stringify({
+      permissionHash: 'main-permission',
+      extraProjectHash: 'shared-extra',
+      groupProjectMetaData: { version: '0.0.2', hashes: { uiTree: 'shared-ui' } },
+      projectModelPathsByMap: {
+        'group-main': ['mesh/main-model.vb'],
+        'group-dungeon': ['mesh/shared-model.vb', 'mesh/main-model.vb'],
+      },
+    }),
+  )
   fs.writeFileSync(path.join(mainRoot, 'source', 'blobs', 'shared-extra'), 'extra')
   // Group state is initialized lazily from the main map. Recreate the initial
   // state to model a new main map receiving its first submap.
@@ -125,7 +130,11 @@ try {
     mode: 'submap',
     targetMainProjectId: target.id,
   })
-  assert.equal(attached.name, '地下城', 'submap import must use the member that initiated the export')
+  assert.equal(
+    attached.name,
+    '地下城',
+    'submap import must use the member that initiated the export',
+  )
   assert.equal(attached.mapRole, 'submap')
   assert.equal(attached.mainProjectId, target.id)
   assert.equal(attached.mapGroupId, target.mapGroupId)
@@ -136,10 +145,11 @@ try {
     [target.id, attached.id],
   )
   assert.throws(
-    () => manager.importProject(exportedMap.archivePath, {
-      mode: 'submap',
-      targetMainProjectId: attached.id,
-    }),
+    () =>
+      manager.importProject(exportedMap.archivePath, {
+        mode: 'submap',
+        targetMainProjectId: attached.id,
+      }),
     /只能把工程导入到主地图下/,
   )
   assert.throws(
@@ -152,10 +162,7 @@ try {
   manager.createSubmap('group-main', { id: 'group-town', name: '城镇' })
   manager.deleteProject('group-main')
   assert.equal(fs.existsSync(mainRoot), false)
-  assert.equal(
-    fs.existsSync(path.join(process.env.BOX_LOCAL_PROJECTS_PATH, 'group-town')),
-    false,
-  )
+  assert.equal(fs.existsSync(path.join(process.env.BOX_LOCAL_PROJECTS_PATH, 'group-town')), false)
   console.log('map group lifecycle regression passed')
 } finally {
   fs.rmSync(temporaryRoot, { recursive: true, force: true })

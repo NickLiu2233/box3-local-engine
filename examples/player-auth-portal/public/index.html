@@ -15,9 +15,19 @@
         <span><strong>玩家登录</strong><small>PLAYER SERVICE</small></span>
       </div>
       <button id="theme-toggle" class="icon-button" type="button" aria-label="切换界面主题">
-        <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>
-        <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"></path></svg>
-        <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path></svg>
+        <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="13" rx="2"></rect>
+          <path d="M8 21h8M12 17v4"></path>
+        </svg>
+        <svg class="theme-icon theme-icon-light" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path
+            d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"
+          ></path>
+        </svg>
+        <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"></path>
+        </svg>
       </button>
     </header>
     <main class="page-shell">
@@ -35,7 +45,13 @@
 
         <div id="auth-view" hidden>
           <div class="tabs" role="tablist" aria-label="账号操作">
-            <button id="login-tab" class="tab is-active" type="button" role="tab" aria-selected="true">
+            <button
+              id="login-tab"
+              class="tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+            >
               登录
             </button>
             <button id="register-tab" class="tab" type="button" role="tab" aria-selected="false">
@@ -52,7 +68,13 @@
             </label>
             <label class="field">
               <span>密码</span>
-              <input name="password" type="password" autocomplete="current-password" minlength="8" required />
+              <input
+                name="password"
+                type="password"
+                autocomplete="current-password"
+                minlength="8"
+                required
+              />
             </label>
             <button class="primary-button" type="submit">登录</button>
           </form>
@@ -68,11 +90,23 @@
             </label>
             <label class="field">
               <span>密码</span>
-              <input name="password" type="password" autocomplete="new-password" minlength="8" required />
+              <input
+                name="password"
+                type="password"
+                autocomplete="new-password"
+                minlength="8"
+                required
+              />
             </label>
             <label class="field">
               <span>确认密码</span>
-              <input name="confirmPassword" type="password" autocomplete="new-password" minlength="8" required />
+              <input
+                name="confirmPassword"
+                type="password"
+                autocomplete="new-password"
+                minlength="8"
+                required
+              />
             </label>
             <button class="primary-button" type="submit">创建账号</button>
           </form>

@@ -15,16 +15,29 @@ const removedPageRoutes = new Set([
 ])
 const removedAppRoutes = new Set(['/e/[container]/page'])
 const playerServiceRoutes = new Set([
-  '/', '/404', '/_app', '/_document', '/_error', '/players',
-  '/api/config/[...slug]', '/api/health-check',
-  '/api/player-auth/login', '/api/player-auth/logout',
+  '/',
+  '/404',
+  '/_app',
+  '/_document',
+  '/_error',
+  '/players',
+  '/api/config/[...slug]',
+  '/api/health-check',
+  '/api/player-auth/login',
+  '/api/player-auth/logout',
   '/api/player-auth/login-required',
-  '/api/player-auth/register', '/api/player-auth/session',
-  '/api/player-internal/revocations', '/api/player-internal/runtime-identity',
-  '/api/play-admin/activity', '/api/play-admin/maintenance',
-  '/api/play-admin/players', '/api/play-admin/players/[subjectId]',
-  '/api/play-admin/players/batch', '/api/play-admin/players/export',
-  '/api/play-admin/players/overview', '/api/play-admin/verify',
+  '/api/player-auth/register',
+  '/api/player-auth/session',
+  '/api/player-internal/revocations',
+  '/api/player-internal/runtime-identity',
+  '/api/play-admin/activity',
+  '/api/play-admin/maintenance',
+  '/api/play-admin/players',
+  '/api/play-admin/players/[subjectId]',
+  '/api/play-admin/players/batch',
+  '/api/play-admin/players/export',
+  '/api/play-admin/players/overview',
+  '/api/play-admin/verify',
 ])
 
 function readJSON(filePath) {
@@ -89,19 +102,10 @@ function prunePlayerBuild(nextRoot) {
     }
   }
 
-  updateObjectManifest(
-    path.join(nextRoot, 'server/pages-manifest.json'),
-    removedPageRoutes,
-  )
-  updateObjectManifest(
-    path.join(nextRoot, 'server/app-paths-manifest.json'),
-    removedAppRoutes,
-  )
+  updateObjectManifest(path.join(nextRoot, 'server/pages-manifest.json'), removedPageRoutes)
+  updateObjectManifest(path.join(nextRoot, 'server/app-paths-manifest.json'), removedAppRoutes)
   pruneRoutesManifest(path.join(nextRoot, 'routes-manifest.json'))
-  pruneBuildManifest(
-    path.join(nextRoot, 'app-build-manifest.json'),
-    removedAppRoutes,
-  )
+  pruneBuildManifest(path.join(nextRoot, 'app-build-manifest.json'), removedAppRoutes)
 }
 
 function prunePlayerServiceBuild(nextRoot) {
@@ -157,7 +161,7 @@ if (require.main === module) {
     throw new Error('Usage: node prune-player-build.js <next-root> [...]')
   }
   const playerService = roots[0] === '--player-service'
-  for (const root of (playerService ? roots.slice(1) : roots)) {
+  for (const root of playerService ? roots.slice(1) : roots) {
     const resolved = path.resolve(root)
     if (playerService) prunePlayerServiceBuild(resolved)
     else prunePlayerBuild(resolved)

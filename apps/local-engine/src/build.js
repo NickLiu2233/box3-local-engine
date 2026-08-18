@@ -12,16 +12,8 @@ const buildLockInfo = path.join(buildLockRoot, 'owner.json')
 const gameRoot = path.join(repoRoot, 'apps/game')
 const gameServerRoot = path.join(repoRoot, 'services/game-server')
 const configPath = path.join(packageRoot, 'config/local.config.json')
-const generatedServerAsset = path.join(
-  gameServerRoot,
-  'src/assets/block_info.ts'
-)
-const generatedClientAsset = path.join(gameRoot, 'src/resource/engine.ts')
 const playBuildMarker = path.join(gameRoot, '.next/BOX_PLAY_BUILD')
-const standaloneGameRoot = path.join(
-  gameRoot,
-  '.next/standalone/apps/game',
-)
+const standaloneGameRoot = path.join(gameRoot, '.next/standalone/apps/game')
 const buildArgs = process.argv.slice(2)
 for (const arg of buildArgs) {
   if (arg !== '--creator' && arg !== '--play') {
@@ -50,10 +42,8 @@ const sharedEnv = {
   NEXT_PUBLIC_APP_REGION: 'cn',
   BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
   INTRANET_BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
-  OSS_CDN_URL:
-    process.env.BOX_LOCAL_OSS_CDN_URL || 'http://127.0.0.1:9966',
-  CREATERA_BACKEND_SERVER_URL:
-    process.env.BOX_LOCAL_AVATAR_API_URL || 'http://127.0.0.1:9966',
+  OSS_CDN_URL: process.env.BOX_LOCAL_OSS_CDN_URL || 'http://127.0.0.1:9966',
+  CREATERA_BACKEND_SERVER_URL: process.env.BOX_LOCAL_AVATAR_API_URL || 'http://127.0.0.1:9966',
   INTRANET_CREATERA_BACKEND_SERVER_URL:
     process.env.BOX_LOCAL_AVATAR_API_URL || 'http://127.0.0.1:9966',
   MAAS_BACKEND_SERVER_URL: 'http://127.0.0.1:9966',
@@ -63,18 +53,10 @@ const sharedEnv = {
   IS_LOCAL_GAME_SERVER: 'true',
   LOCAL_GAME_SERVER_URL: 'http://127.0.0.1:9966',
   LOCAL_EDIT_SERVER_URL: 'http://127.0.0.1:9967',
-  ARENA_URL: playBuild
-    ? 'http://127.0.0.1:3000'
-    : 'http://127.0.0.1:3002',
-  WEBSITE_URL: playBuild
-    ? 'http://127.0.0.1:3000'
-    : 'http://127.0.0.1:3002',
-  HOME_URL: playBuild
-    ? 'http://127.0.0.1:3000'
-    : 'http://127.0.0.1:3002',
-  PLATFORM_URL: playBuild
-    ? 'http://127.0.0.1:3000'
-    : 'http://127.0.0.1:3002',
+  ARENA_URL: playBuild ? 'http://127.0.0.1:3000' : 'http://127.0.0.1:3002',
+  WEBSITE_URL: playBuild ? 'http://127.0.0.1:3000' : 'http://127.0.0.1:3002',
+  HOME_URL: playBuild ? 'http://127.0.0.1:3000' : 'http://127.0.0.1:3002',
+  PLATFORM_URL: playBuild ? 'http://127.0.0.1:3000' : 'http://127.0.0.1:3002',
   CACHE_IPFS: 'true',
   BOX_PLAY_BUILD: playBuild ? 'true' : 'false',
   BUILD_SERVER_URL: '',
@@ -107,11 +89,15 @@ function acquireBuildLock() {
       ownsBuildLock = true
       fs.writeFileSync(
         buildLockInfo,
-        `${JSON.stringify({
-          pid: process.pid,
-          mode: creatorMode ? 'creator' : 'play',
-          startedAt: new Date().toISOString(),
-        }, null, 2)}\n`,
+        `${JSON.stringify(
+          {
+            pid: process.pid,
+            mode: creatorMode ? 'creator' : 'play',
+            startedAt: new Date().toISOString(),
+          },
+          null,
+          2,
+        )}\n`,
       )
       return
     } catch (error) {
@@ -231,9 +217,7 @@ function main() {
   // API declarations are content-addressed runtime assets. Rebuild them after
   // declaration generation on every product build; otherwise API_RES can keep
   // pointing at an obsolete blob even though the source .d.ts files changed.
-  run('Prepare local assets', packageRoot, [
-    path.join(__dirname, 'prepare-assets.js'),
-  ])
+  run('Prepare local assets', packageRoot, [path.join(__dirname, 'prepare-assets.js')])
 
   run('Build optimized browser application', gameRoot, [
     path.join(gameRoot, 'node_modules/next/dist/bin/next'),
@@ -249,30 +233,23 @@ function main() {
     recursive: true,
     force: true,
   })
-  fs.cpSync(
-    path.join(gameRoot, '.next/static'),
-    path.join(standaloneGameRoot, '.next/static'),
-    { recursive: true },
-  )
+  fs.cpSync(path.join(gameRoot, '.next/static'), path.join(standaloneGameRoot, '.next/static'), {
+    recursive: true,
+  })
   if (fs.existsSync(path.join(gameRoot, 'public'))) {
     fs.rmSync(path.join(standaloneGameRoot, 'public'), {
       recursive: true,
       force: true,
     })
-    fs.cpSync(
-      path.join(gameRoot, 'public'),
-      path.join(standaloneGameRoot, 'public'),
-      { recursive: true },
-    )
+    fs.cpSync(path.join(gameRoot, 'public'), path.join(standaloneGameRoot, 'public'), {
+      recursive: true,
+    })
   }
   cleanStandaloneArtifacts()
 
   if (playBuild) {
     fs.writeFileSync(playBuildMarker, 'play-only\n')
-    fs.writeFileSync(
-      path.join(standaloneGameRoot, '.next/BOX_PLAY_BUILD'),
-      'play-only\n',
-    )
+    fs.writeFileSync(path.join(standaloneGameRoot, '.next/BOX_PLAY_BUILD'), 'play-only\n')
   }
 
   // dist 是可分发的运行时产物。先清理，防止已经删除的平台模块残留在包里。
@@ -291,9 +268,7 @@ function main() {
     path.join(gameServerRoot, 'node_modules/typescript/bin/tsc'),
   ])
 
-  console.log(
-    `\nBOX Local Engine ${creatorMode ? 'creator' : 'play'} build is ready.`,
-  )
+  console.log(`\nBOX Local Engine ${creatorMode ? 'creator' : 'play'} build is ready.`)
   console.log('This is a maintainer build artifact.\n')
 }
 

@@ -9,6 +9,7 @@ import { CreativeMode, ModelType, REQUEST_TIMEOUT, SortOrder } from '@box-local/
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
 import { editor } from 'src/client/edit/edit-client';
+import { getLibraryMapId } from 'src/utils/local-voxa-library';
 import Preview from 'src/views/edit/components/stage-area/edit-model-panel/preview';
 
 import style from './index.module.scss';
@@ -64,7 +65,10 @@ export async function fetchModelList(query: {
         offset,
         limit,
         modelName,
-        mapId: clientConfig.mapInfo.contentId,
+        mapId: getLibraryMapId(
+          clientConfig.isLocalGameServer,
+          clientConfig.mapInfo.contentId,
+        ),
         creativeMode: CreativeMode.Model,
         orderBy: SortOrder.ModifyTimeDesc,
       },

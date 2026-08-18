@@ -32,7 +32,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "rm -rf dist && rollup --config rollup.config.mjs && node scripts/normalize-dist.js",
+    "build": "rm -rf dist && tsc --emitDeclarationOnly && rollup --config rollup.config.mjs && node scripts/normalize-dist.js",
     "build:watch": "pnpm run build"
   },
   "dependencies": {
@@ -40,19 +40,21 @@
     "@types/node": "20.16.15",
     "@types/ramda": "0.28.15",
     "ajv": "8.11.0",
-    "axios": "1.7.0",
+    "axios": "1.18.0",
     "debug": "4.3.4",
     "dotenv": "16.0.1",
-    "form-data": "4.0.0",
+    "form-data": "4.0.6",
     "ramda": "0.28.0",
     "typescript": "5.6.3",
-    "yaml": "2.1.1"
+    "yaml": "2.8.3"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "28.0.3",
-    "@rollup/plugin-typescript": "12.1.4",
+    "@rollup/plugin-node-resolve": "16.0.1",
+    "@rollup/plugin-swc": "0.4.0",
+    "@swc/core": "1.4.13",
     "@types/debug": "4.1.7",
-    "rollup": "4.41.1",
+    "rollup": "4.59.0",
     "tslib": "2.3.1"
   }
 }

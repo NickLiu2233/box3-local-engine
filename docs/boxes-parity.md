@@ -31,14 +31,14 @@
 
 以下代码除明确修复上游引擎缺陷外，不应加入本地业务判断：
 
-| 核心 | 保持一致的内容 |
-| --- | --- |
-| 工程 schema | RDA、hot/cold project、权限、实体、模型、皮肤、UI 和脚本格式 |
+| 核心         | 保持一致的内容                                                  |
+| ------------ | --------------------------------------------------------------- |
+| 工程 schema  | RDA、hot/cold project、权限、实体、模型、皮肤、UI 和脚本格式    |
 | build-system | 历史工程迁移、group project、bake/prebake、资源处理和 hash 计算 |
-| MuDB | 协议 schema、握手、客户端/服务端验证条件和状态同步 |
-| game-server | tick、实体、物理、脚本、玩家、动画、声音、UI 和存储调用语义 |
-| 浏览器引擎 | 渲染、输入、动画、资源预取、Creator/Play 生命周期 |
-| script-api | `world`、`entity`、`player`、`storage` 等脚本可见接口 |
+| MuDB         | 协议 schema、握手、客户端/服务端验证条件和状态同步              |
+| game-server  | tick、实体、物理、脚本、玩家、动画、声音、UI 和存储调用语义     |
+| 浏览器引擎   | 渲染、输入、动画、资源预取、Creator/Play 生命周期               |
+| script-api   | `world`、`entity`、`player`、`storage` 等脚本可见接口           |
 
 本地修复如果改变协议，客户端和 game-server 必须成对修改并验证。禁止只让一端“兼容一下”。
 
@@ -46,37 +46,37 @@
 
 平台能力只能在以下 seam 替换，不能散落进引擎各模块：
 
-| Seam | boxes adapter | Local Engine adapter |
-| --- | --- | --- |
-| 内容寻址 | IPFS / OSS / 内容服务 | 工程 `blobs/`、发布只读内容、VOXA 本地回退 |
-| 地图生命周期 | 容器平台和后端调度 | `launcher`、Creator 双运行时、多地图 Play library |
+| Seam           | boxes adapter         | Local Engine adapter                               |
+| -------------- | --------------------- | -------------------------------------------------- |
+| 内容寻址       | IPFS / OSS / 内容服务 | 工程 `blobs/`、发布只读内容、VOXA 本地回退         |
+| 地图生命周期   | 容器平台和后端调度    | `launcher`、Creator 双运行时、多地图 Play library  |
 | Session 与身份 | BOX 账号和后端 cookie | 独立 Player Service、强制注册/登录、签名运行时身份 |
-| 数据空间 | 在线 Java/PG 服务 | 本地文件或服主 PostgreSQL，保持旧双表语义 |
-| 热缓存 | 平台 Redis | 可选 Redis adapter，本地持久缓存回退 |
-| 模型和皮肤目录 | 云端模型 API | VOXA Local 与当前 Project 素材 |
-| 项目管理 | 云端工程/发布 API | 本地工程目录、不可变 release、导入导出和备份 |
+| 数据空间       | 在线 Java/PG 服务     | 本地文件或服主 PostgreSQL，保持旧双表语义          |
+| 热缓存         | 平台 Redis            | 可选 Redis adapter，本地持久缓存回退               |
+| 模型和皮肤目录 | 云端模型 API          | VOXA Local 与当前 Project 素材                     |
+| 项目管理       | 云端工程/发布 API     | 本地工程目录、不可变 release、导入导出和备份       |
 
 每个 seam 的外部 interface 应尽量小：调用方只知道“取内容”“创建 Session”“访问数据空间”
 或“启动作品”，不应该知道文件路径、PostgreSQL 表名或 Player Service 内部路由。
 
 ## 已对齐的本地能力
 
-| 能力 | 当前状态 |
-| --- | --- |
-| 地形、实体、脚本、UI、图片、音频、模型和皮肤 | 使用同一工程 schema 和内容 hash |
-| Creator 与 Play | 使用同一浏览器引擎和 game-server 主流程 |
-| 多工程 Creator | 每个项目独立编辑/预览运行时和项目作用域 |
-| 多地图 Play | 按地图 ID 启动独立运行时，发布数据只读挂载 |
-| Project 模型和皮肤 | 只包含当前工程引用；发布后完全从工程 blob 读取 |
-| 默认皮肤 | 按项目 `CONTAINER_NAME` 隔离；未设置时不读取其他工程默认值 |
-| 数据空间 | 本地文件和 PostgreSQL 两个 adapter；保持 boxes 的旧表兼容 |
-| 玩家身份 | 独立 Player Service，同时供 Creator 预览和 Play 使用 |
-| Redis | 可选 Session/限流/预烘焙热缓存；失败时本地回退 |
-| 导入、导出、发布 | `.boxproject` 与只读游玩产物分离，带完整性校验和进度 |
-| 快照与备份 | 工程快照恢复、定时 `.boxproject` 备份和运行状态聚合 |
-| 地图组 | 一个主地图、多个副地图；地图级状态独立，共享资源使用一个权威根 |
-| 地图组迁移 | `.boxproject` 只存在地图组格式；从任意成员导出完整组，导入后重建成员关系与共享根 |
-| 共享版本发布 | 发布清单记录 `mapGroupId`、`mainProjectId` 和 `sharedRevision` |
+| 能力                                         | 当前状态                                                                         |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| 地形、实体、脚本、UI、图片、音频、模型和皮肤 | 使用同一工程 schema 和内容 hash                                                  |
+| Creator 与 Play                              | 使用同一浏览器引擎和 game-server 主流程                                          |
+| 多工程 Creator                               | 每个项目独立编辑/预览运行时和项目作用域                                          |
+| 多地图 Play                                  | 按地图 ID 启动独立运行时，发布数据只读挂载                                       |
+| Project 模型和皮肤                           | 只包含当前工程引用；发布后完全从工程 blob 读取                                   |
+| 默认皮肤                                     | 按项目 `CONTAINER_NAME` 隔离；未设置时不读取其他工程默认值                       |
+| 数据空间                                     | 本地文件和 PostgreSQL 两个 adapter；保持 boxes 的旧表兼容                        |
+| 玩家身份                                     | 独立 Player Service，同时供 Creator 预览和 Play 使用                             |
+| Redis                                        | 可选 Session/限流/预烘焙热缓存；失败时本地回退                                   |
+| 导入、导出、发布                             | `.boxproject` 与只读游玩产物分离，带完整性校验和进度                             |
+| 快照与备份                                   | 工程快照恢复、定时 `.boxproject` 备份和运行状态聚合                              |
+| 地图组                                       | 一个主地图、多个副地图；地图级状态独立，共享资源使用一个权威根                   |
+| 地图组迁移                                   | `.boxproject` 只存在地图组格式；从任意成员导出完整组，导入后重建成员关系与共享根 |
+| 共享版本发布                                 | 发布清单记录 `mapGroupId`、`mainProjectId` 和 `sharedRevision`                   |
 
 ## 明确不迁入
 

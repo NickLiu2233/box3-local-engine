@@ -39,57 +39,72 @@ try {
   const statePath = path.join(sourceRoot, 'project-state.json')
   fs.mkdirSync(projectRoot, { recursive: true })
   fs.cpSync(path.join(__dirname, '..', 'data'), sourceRoot, { recursive: true })
-  fs.writeFileSync(path.join(projectRoot, 'project.json'), JSON.stringify({
-    formatVersion: 1,
-    id: 'voxa-publish',
-    name: 'VOXA publish regression',
-    createdAt: new Date(0).toISOString(),
-    updatedAt: new Date(0).toISOString(),
-    releases: [],
-    mapGroupId: 'voxa-publish',
-    mapRole: 'main',
-    mainProjectId: 'voxa-publish',
-  }))
-  fs.writeFileSync(path.join(sourceBlobRoot, permissionHash), JSON.stringify({
-    accessLevel: 1,
-    versionControl: versionControlHash,
-  }))
-  fs.writeFileSync(path.join(sourceBlobRoot, versionControlHash), JSON.stringify({
-    branches: { master: { headHash: projectHash } },
-  }))
-  fs.writeFileSync(path.join(sourceBlobRoot, projectHash), JSON.stringify({
-    scriptAssets: scriptAssetsHash,
-    assets: assetIndexHash,
-  }))
-  fs.writeFileSync(path.join(sourceBlobRoot, scriptAssetsHash), JSON.stringify({
-    'index.js': { type: 1, hash: scriptHash },
-  }))
+  fs.writeFileSync(
+    path.join(projectRoot, 'project.json'),
+    JSON.stringify({
+      formatVersion: 1,
+      id: 'voxa-publish',
+      name: 'VOXA publish regression',
+      createdAt: new Date(0).toISOString(),
+      updatedAt: new Date(0).toISOString(),
+      releases: [],
+      mapGroupId: 'voxa-publish',
+      mapRole: 'main',
+      mainProjectId: 'voxa-publish',
+    }),
+  )
+  fs.writeFileSync(
+    path.join(sourceBlobRoot, permissionHash),
+    JSON.stringify({
+      accessLevel: 1,
+      versionControl: versionControlHash,
+    }),
+  )
+  fs.writeFileSync(
+    path.join(sourceBlobRoot, versionControlHash),
+    JSON.stringify({
+      branches: { master: { headHash: projectHash } },
+    }),
+  )
+  fs.writeFileSync(
+    path.join(sourceBlobRoot, projectHash),
+    JSON.stringify({
+      scriptAssets: scriptAssetsHash,
+      assets: assetIndexHash,
+    }),
+  )
+  fs.writeFileSync(
+    path.join(sourceBlobRoot, scriptAssetsHash),
+    JSON.stringify({
+      'index.js': { type: 1, hash: scriptHash },
+    }),
+  )
   fs.writeFileSync(
     path.join(sourceBlobRoot, scriptHash),
     '// -------------------------------------------\nmodule.exports = {}\n',
   )
-  fs.writeFileSync(path.join(sourceBlobRoot, assetIndexHash), JSON.stringify({
-    'lut/test.lut': {
-      type: 3,
-      hash: '',
-      previewImage: missingPreviewName,
-    },
-  }))
-  fs.writeFileSync(statePath, JSON.stringify({
-    formatVersion: 1,
-    permissionHash,
-    extraProjectHash: referencedHash,
-  }))
+  fs.writeFileSync(
+    path.join(sourceBlobRoot, assetIndexHash),
+    JSON.stringify({
+      'lut/test.lut': {
+        type: 3,
+        hash: '',
+        previewImage: missingPreviewName,
+      },
+    }),
+  )
+  fs.writeFileSync(
+    statePath,
+    JSON.stringify({
+      formatVersion: 1,
+      permissionHash,
+      extraProjectHash: referencedHash,
+    }),
+  )
 
   fs.mkdirSync(path.join(voxaRoot, 'blobs'), { recursive: true })
-  fs.writeFileSync(
-    path.join(voxaRoot, 'blobs', referencedHash),
-    voxaPayload,
-  )
-  fs.writeFileSync(
-    path.join(voxaRoot, 'blobs', binaryChildHash),
-    'nested VOXA dependency',
-  )
+  fs.writeFileSync(path.join(voxaRoot, 'blobs', referencedHash), voxaPayload)
+  fs.writeFileSync(path.join(voxaRoot, 'blobs', binaryChildHash), 'nested VOXA dependency')
 
   manager.publishProject('voxa-publish', 'v1')
   const bundle = manager.exportPlayBundle('voxa-publish@v1')
@@ -101,15 +116,7 @@ try {
   )
   assert.deepEqual(
     fs.readFileSync(
-      path.join(
-        projectsRoot,
-        'voxa-publish',
-        'releases',
-        'v1',
-        'data',
-        'blobs',
-        referencedHash,
-      ),
+      path.join(projectsRoot, 'voxa-publish', 'releases', 'v1', 'data', 'blobs', referencedHash),
     ),
     voxaPayload,
     'the immutable play release should contain the referenced VOXA blob',

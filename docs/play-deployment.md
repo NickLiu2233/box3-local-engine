@@ -174,14 +174,14 @@ http://127.0.0.1:3000/
 
 ### 游玩端命令的区别
 
-| 命令 | 是否构建 Docker 镜像 | 是否启动容器 | 是否准备 `play-image.tar` | 适用场景 |
-| --- | --- | --- | --- | --- |
-| `pnpm player-service` | 是，只构建玩家服务 | 是 | 独立生成 `player-service-image.tar` | 首次部署或玩家服务更新 |
-| `pnpm play` | 缺失或过旧时只构建游玩端 | 是 | 是 | 推荐的正常部署方式 |
-| `docker compose --profile play build play` | 是，只构建游玩端 | 否 | 否 | 运维只想构建本机镜像 |
-| `docker compose --profile play up -d --no-build play` | 否 | 是 | 否 | 已准备好环境变量和地图挂载时直接启动 |
-| `pnpm build:play` | 否，生成本机源码生产产物 | 否 | 否 | 引擎维护者调试 |
-| `pnpm start:play` | 否 | 否，直接运行本机生产产物 | 否 | 引擎维护者调试 |
+| 命令                                                  | 是否构建 Docker 镜像     | 是否启动容器             | 是否准备 `play-image.tar`           | 适用场景                             |
+| ----------------------------------------------------- | ------------------------ | ------------------------ | ----------------------------------- | ------------------------------------ |
+| `pnpm player-service`                                 | 是，只构建玩家服务       | 是                       | 独立生成 `player-service-image.tar` | 首次部署或玩家服务更新               |
+| `pnpm play`                                           | 缺失或过旧时只构建游玩端 | 是                       | 是                                  | 推荐的正常部署方式                   |
+| `docker compose --profile play build play`            | 是，只构建游玩端         | 否                       | 否                                  | 运维只想构建本机镜像                 |
+| `docker compose --profile play up -d --no-build play` | 否                       | 是                       | 否                                  | 已准备好环境变量和地图挂载时直接启动 |
+| `pnpm build:play`                                     | 否，生成本机源码生产产物 | 否                       | 否                                  | 引擎维护者调试                       |
+| `pnpm start:play`                                     | 否                       | 否，直接运行本机生产产物 | 否                                  | 引擎维护者调试                       |
 
 普通私服部署优先使用 `pnpm play`。它不仅处理镜像，还会校验目标架构、镜像格式和归档，并
 按当前地图库路径重新创建容器。单独执行 `pnpm build:play` 不会生成 Docker 镜像。
@@ -379,7 +379,7 @@ services:
       BOX_SERVER_PUBLIC_URL: ${BOX_SERVER_PUBLIC_URL:-}
       BOX_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
     ports:
-      - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
+      - '${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000'
     volumes:
       - type: bind
         source: ./play-worlds
@@ -440,29 +440,29 @@ docker compose up -d
 
 ## 12. 常用配置
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `BOX_IMAGE_TAG` | `0.1.0` | 游玩镜像标签 |
-| `BOX_PLAY_HOST_IP` | `127.0.0.1` | 宿主机监听地址；直接公网访问时设为 `0.0.0.0` |
-| `BOX_PLAY_PORT` | `3000` | 唯一公开端口 |
-| `BOX_PLAY_PLATFORM` | `linux/amd64` | 分发镜像目标架构 |
-| `BOX_PLAY_LIBRARY_DIR` | 仓库内 `play-worlds` | 宿主机多地图库目录 |
-| `BOX_PLAY_LIBRARY_READ_ONLY` | `true` | 地图库是否只读；网页管理导入/删除地图时设为 `false` |
-| `BOX_PLAY_ADMIN_TOKEN` | 空 | 服主管理密钥；留空时管理接口关闭 |
-| `BOX_LOCAL_PLAYER_LIMIT` | `8` | 单地图最大连接人数 |
-| `PERMISSION_TOKEN_SECRET` | 空 | 会话签名密钥，正式部署必须固定 |
-| `BOX_SERVER_PUBLIC_URL` | 空 | 公网地址，例如 `https://game.example.com` |
-| `BOX_PLAYER_LOGIN_URL` | 空 | 可选的服主登录页面；留空时未登录用户看到“未开启登录” |
-| `BOX_PLAYER_AUTH_API_KEY` | 空 | 认证接口服务端密钥，至少 16 位，分发部署必填 |
-| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 空 | 认证接口允许的 Origin 附加白名单，不代替服务端 Key |
-| `BOX_TRUST_PROXY` | `false` | 是否信任反向代理提供的客户端 IP 和协议头 |
-| `BOX_SESSION_TTL_MS` | `60000` | Session 在连接前的有效时间（毫秒） |
-| `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到各地图运行时的间隔（毫秒） |
-| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
-| `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只注入服务端容器 |
-| `BOX_IDENTITY_DATABASE_SCHEMA` | `box_identity` | 玩家账号、会话和审计记录的独立 schema |
-| `BOX_PLAYER_REGISTRATION_ENABLED` | `true` | 是否允许新玩家自助注册；已有账号始终可登录 |
-| `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选构建基础镜像 |
+| 变量                                | 默认值               | 说明                                                 |
+| ----------------------------------- | -------------------- | ---------------------------------------------------- |
+| `BOX_IMAGE_TAG`                     | `0.1.0`              | 游玩镜像标签                                         |
+| `BOX_PLAY_HOST_IP`                  | `127.0.0.1`          | 宿主机监听地址；直接公网访问时设为 `0.0.0.0`         |
+| `BOX_PLAY_PORT`                     | `3000`               | 唯一公开端口                                         |
+| `BOX_PLAY_PLATFORM`                 | `linux/amd64`        | 分发镜像目标架构                                     |
+| `BOX_PLAY_LIBRARY_DIR`              | 仓库内 `play-worlds` | 宿主机多地图库目录                                   |
+| `BOX_PLAY_LIBRARY_READ_ONLY`        | `true`               | 地图库是否只读；网页管理导入/删除地图时设为 `false`  |
+| `BOX_PLAY_ADMIN_TOKEN`              | 空                   | 服主管理密钥；留空时管理接口关闭                     |
+| `BOX_LOCAL_PLAYER_LIMIT`            | `8`                  | 单地图最大连接人数                                   |
+| `PERMISSION_TOKEN_SECRET`           | 空                   | 会话签名密钥，正式部署必须固定                       |
+| `BOX_SERVER_PUBLIC_URL`             | 空                   | 公网地址，例如 `https://game.example.com`            |
+| `BOX_PLAYER_LOGIN_URL`              | 空                   | 可选的服主登录页面；留空时未登录用户看到“未开启登录” |
+| `BOX_PLAYER_AUTH_API_KEY`           | 空                   | 认证接口服务端密钥，至少 16 位，分发部署必填         |
+| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS`   | 空                   | 认证接口允许的 Origin 附加白名单，不代替服务端 Key   |
+| `BOX_TRUST_PROXY`                   | `false`              | 是否信任反向代理提供的客户端 IP 和协议头             |
+| `BOX_SESSION_TTL_MS`                | `60000`              | Session 在连接前的有效时间（毫秒）                   |
+| `BOX_PLAYER_REVOCATION_POLL_MS`     | `1000`               | 强制下线事件同步到各地图运行时的间隔（毫秒）         |
+| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60`                 | 单 IP 每分钟创建 Session 上限                        |
+| `BOX_DATABASE_URL`                  | 空                   | PostgreSQL 连接串；填写后自动启用，只注入服务端容器  |
+| `BOX_IDENTITY_DATABASE_SCHEMA`      | `box_identity`       | 玩家账号、会话和审计记录的独立 schema                |
+| `BOX_PLAYER_REGISTRATION_ENABLED`   | `true`               | 是否允许新玩家自助注册；已有账号始终可登录           |
+| `BOX_DOCKER_NODE_IMAGE`             | Node 22 Debian 镜像  | 可选构建基础镜像                                     |
 
 数据库账号权限、SSL、多作品隔离和备份参阅
 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。

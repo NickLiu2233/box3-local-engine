@@ -67,15 +67,15 @@ BOX_DATA_STORAGE_LOCK_TIMEOUT_MS=10000
 BOX_DATA_STORAGE_NAMESPACE_PREFIX=
 ```
 
-| 变量 | 默认值 | 说明 |
-|---|---|---|
-| `BOX_DATABASE_URL` | 空 | 服主自己的 PostgreSQL 连接串；非空时自动启用 PostgreSQL |
-| `BOX_DATABASE_SCHEMA` | `box_engine` | 自动建表使用的 schema，必须是小写标识符 |
-| `BOX_DATABASE_POOL_SIZE` | `10` | 每个运行中的地图进程最大连接数 |
-| `BOX_DATABASE_SSL` | `false` | 托管数据库通常需要设为 `true` |
-| `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` | `true` | 是否验证数据库服务器证书 |
-| `BOX_DATA_STORAGE_LOCK_TIMEOUT_MS` | `10000` | 脚本 `update` 事务锁的最长保留时间 |
-| `BOX_DATA_STORAGE_NAMESPACE_PREFIX` | 空 | 多套私服共用数据库时使用的命名空间前缀 |
+| 变量                                   | 默认值       | 说明                                                    |
+| -------------------------------------- | ------------ | ------------------------------------------------------- |
+| `BOX_DATABASE_URL`                     | 空           | 服主自己的 PostgreSQL 连接串；非空时自动启用 PostgreSQL |
+| `BOX_DATABASE_SCHEMA`                  | `box_engine` | 自动建表使用的 schema，必须是小写标识符                 |
+| `BOX_DATABASE_POOL_SIZE`               | `10`         | 每个运行中的地图进程最大连接数                          |
+| `BOX_DATABASE_SSL`                     | `false`      | 托管数据库通常需要设为 `true`                           |
+| `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` | `true`       | 是否验证数据库服务器证书                                |
+| `BOX_DATA_STORAGE_LOCK_TIMEOUT_MS`     | `10000`      | 脚本 `update` 事务锁的最长保留时间                      |
+| `BOX_DATA_STORAGE_NAMESPACE_PREFIX`    | 空           | 多套私服共用数据库时使用的命名空间前缀                  |
 
 不建议把 `BOX_DATABASE_SSL_REJECT_UNAUTHORIZED` 设为 `false`。只有数据库供应商明确使用
 无法由系统信任链验证的证书时才临时关闭验证。
@@ -201,15 +201,15 @@ pg_dump --format=custom --schema=box_engine --file=box-data.dump 数据库名
 
 ### 已对齐
 
-| 能力 | 对齐情况 | 说明 |
-|---|---|---|
-| 脚本 API | 已对齐 | `get`、`set`、`update`、`increment`、`list`、`remove`、`destroy` 的 MuDB 调度和返回结构沿用 boxes |
-| 模式隔离 | 已对齐 | `edit` 与 `play` 使用不同命名空间 |
-| 地图组隔离 | 已对齐 | 普通空间使用地图身份，group 空间使用主地图/地图组身份 |
-| 值格式 | 已对齐 | 新写入保存为 `{ "content": value }`，读取时返回其中的 `content` |
-| 删除语义 | 已对齐 | `_keys.isDelete=true` 逻辑删除，`remove` 返回删除前的当前值 |
-| 历史版本 | 已对齐 | 每次写入新增历史记录，并让 `_keys.record` 指向当前记录 |
-| 并发更新 | PostgreSQL 已对齐 | `update` 使用 ticket、事务和 PostgreSQL advisory lock，失败或超时回滚 |
+| 能力       | 对齐情况          | 说明                                                                                              |
+| ---------- | ----------------- | ------------------------------------------------------------------------------------------------- |
+| 脚本 API   | 已对齐            | `get`、`set`、`update`、`increment`、`list`、`remove`、`destroy` 的 MuDB 调度和返回结构沿用 boxes |
+| 模式隔离   | 已对齐            | `edit` 与 `play` 使用不同命名空间                                                                 |
+| 地图组隔离 | 已对齐            | 普通空间使用地图身份，group 空间使用主地图/地图组身份                                             |
+| 值格式     | 已对齐            | 新写入保存为 `{ "content": value }`，读取时返回其中的 `content`                                   |
+| 删除语义   | 已对齐            | `_keys.isDelete=true` 逻辑删除，`remove` 返回删除前的当前值                                       |
+| 历史版本   | 已对齐            | 每次写入新增历史记录，并让 `_keys.record` 指向当前记录                                            |
+| 并发更新   | PostgreSQL 已对齐 | `update` 使用 ticket、事务和 PostgreSQL advisory lock，失败或超时回滚                             |
 
 主要源码依据：
 

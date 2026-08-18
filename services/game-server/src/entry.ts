@@ -2,8 +2,8 @@ import fs from 'fs';
 import crypto from 'crypto';
 import http from 'http';
 import https from 'https';
-import ip from 'ip';
 import { AddressInfo } from 'net';
+import os from 'os';
 import path from 'path';
 import url from 'url';
 
@@ -75,6 +75,15 @@ import { Ivm2ScriptServer } from './utils/script-server/ivm2/ivm2-script-socket-
 import { IvmpScriptSocketServer } from './utils/script-server/ivmp/ivmp-script-socket-server';
 import { LocalScriptSocketServer } from './utils/script-server/local-script-socket';
 import { ScriptServer } from './utils/script-server/type';
+
+function localNetworkAddress(): string {
+  for (const addresses of Object.values(os.networkInterfaces())) {
+    for (const candidate of addresses || []) {
+      if (candidate.family === 'IPv4' && !candidate.internal) return candidate.address;
+    }
+  }
+  return '127.0.0.1';
+}
 
 function localAssetContentType(fileName: string, content: Uint8Array) {
   const extension = path.extname(fileName).toLowerCase();
@@ -179,7 +188,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
   }
 
   // ip address
-  const address = ip.address();
+  const address = localNetworkAddress();
   // TODO: 移除直接赋值操作
   if (!spec.permissionTokenSecret) {
     // Local/private deployments must not share a predictable signing secret.

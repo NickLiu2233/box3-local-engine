@@ -4,7 +4,7 @@ Player Service 是无界面的身份服务。Local Engine 不再内置玩家登�
 任意前端技术实现登录页，通过下列 API 创建 Session。玩家管理后台仍位于 `/players`。
 
 仓库提供了一个不进入任何镜像的完整服务端代理示例：
-[独立玩家登录示例](../examples/player-auth-portal/README.md)。它可以直接运行，也可以作为服主
+[独立玩家登录门户](../examples/player-auth-portal/README.md)。它可以直接运行或作为独立镜像部署，也可以作为服主
 自有登录程序的最小参考实现。
 
 ## 部署与跳转
@@ -93,7 +93,7 @@ const upstream = await fetch(`${process.env.PLAYER_SERVICE}/api/player-auth/logi
   headers: {
     'Content-Type': 'application/json',
     'X-Box-Player-Auth-Key': process.env.BOX_PLAYER_AUTH_API_KEY,
-    Cookie: request.headers.cookie || '',
+    'Cookie': request.headers.cookie || '',
   },
   body: JSON.stringify(request.body),
 })
@@ -121,14 +121,14 @@ Content-Type: application/json
 管理令牌只允许保存在服主后端、命令行或秘密管理系统中。不要从浏览器前端直接调用带管理
 令牌的接口。
 
-| 方法与路径 | 权限 | 用途 |
-| --- | --- | --- |
-| `GET /api/play-admin/players` | 管理员 | 搜索、筛选和分页查询玩家 |
-| `POST /api/play-admin/players` | 服主 | 创建用户，不创建登录 Session |
-| `GET /api/play-admin/players/:subjectId` | 管理员 | 资料、会话、登录历史和审计详情 |
-| `PATCH /api/play-admin/players/:subjectId` | 管理员/服主 | 修改资料、封禁、角色、神岛 ID 等 |
-| `POST /api/play-admin/players/:subjectId` | 管理员/服主 | 强制下线、撤销设备、重置密码 |
-| `DELETE /api/play-admin/players/:subjectId` | 服主 | 永久删除身份 |
+| 方法与路径                                  | 权限        | 用途                             |
+| ------------------------------------------- | ----------- | -------------------------------- |
+| `GET /api/play-admin/players`               | 管理员      | 搜索、筛选和分页查询玩家         |
+| `POST /api/play-admin/players`              | 服主        | 创建用户，不创建登录 Session     |
+| `GET /api/play-admin/players/:subjectId`    | 管理员      | 资料、会话、登录历史和审计详情   |
+| `PATCH /api/play-admin/players/:subjectId`  | 管理员/服主 | 修改资料、封禁、角色、神岛 ID 等 |
+| `POST /api/play-admin/players/:subjectId`   | 管理员/服主 | 强制下线、撤销设备、重置密码     |
+| `DELETE /api/play-admin/players/:subjectId` | 服主        | 永久删除身份                     |
 
 管理员创建用户：
 

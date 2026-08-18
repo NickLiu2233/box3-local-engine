@@ -6,9 +6,7 @@ const fs = require('fs')
 const { MockBuildCache } = require('@box-local/build-system/build-cache-mock')
 const { BuildSystem } = require('@box-local/build-system/build-system')
 const { buildResources } = require('@box-local/build-system/utils/resource')
-const {
-  FileSystemContentServer,
-} = require('@box-local/content-server/file-system-store-node')
+const { FileSystemContentServer } = require('@box-local/content-server/file-system-store-node')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
@@ -24,19 +22,13 @@ function writeFileIfChanged(filePath, content) {
 
 function bundleEditorApiDeclarations() {
   const resourceRoot = path.join(repoRoot, 'apps/game/src/resource')
-  const apiResourceSource = fs.readFileSync(
-    path.join(resourceRoot, 'api.ts'),
-    'utf8'
-  )
+  const apiResourceSource = fs.readFileSync(path.join(resourceRoot, 'api.ts'), 'utf8')
   const apiHash = apiResourceSource.match(/`([^`]+)`/)?.[1]
   if (!apiHash) {
     throw new Error('Unable to resolve the generated API declaration hash')
   }
   const declarationBlob = fs.readFileSync(path.join(blobRoot, apiHash))
-  writeFileIfChanged(
-    path.join(resourceRoot, 'api-declarations.dts'),
-    declarationBlob
-  )
+  writeFileIfChanged(path.join(resourceRoot, 'api-declarations.dts'), declarationBlob)
 }
 
 function createLogger(bindings = {}) {
@@ -63,10 +55,9 @@ async function main() {
     new MockBuildCache(),
     contentServer,
     contentServer,
-    async ({ num }) =>
-      Array.from({ length: num }, () => `local-${nextUid++}`),
+    async ({ num }) => Array.from({ length: num }, () => `local-${nextUid++}`),
     logger.child({ caller: 'local-assets' }),
-    false
+    false,
   )
 
   await buildResources(buildSystem, contentServer, logger, {

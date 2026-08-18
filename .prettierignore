@@ -1,0 +1,42 @@
+# Dependencies and build output
+**/node_modules/
+**/.next/
+**/dist/
+**/coverage/
+**/*.tsbuildinfo
+apps/game/html-report/
+
+# Runtime and user data
+apps/local-engine/data/
+apps/local-engine/projects/
+apps/local-engine/play-worlds/
+apps/local-engine/backups/
+apps/local-engine/.build-lock/
+apps/voxa/data/
+apps/migrator/cache/
+
+# Generated and binary-heavy assets
+apps/game/public/
+apps/game/assets/
+apps/voxa/public/
+apps/voxa/assets/
+**/*.glsl
+**/*.frag
+**/*.vert
+**/*.min.js
+pnpm-lock.yaml
+
+# Compose files are validated as distributable text templates. Keep their
+# double-quoted interpolation syntax stable for the release regression checks.
+docker-compose.yml
+distribution/play/compose.yml
+
+# These directories are synchronized from boxes. Format them only as part of
+# an explicit upstream-alignment change, otherwise a formatter creates a large
+# compatibility-only diff.
+apps/game/
+apps/voxa/
+services/game-server/
+internals/
+packages/
+types/

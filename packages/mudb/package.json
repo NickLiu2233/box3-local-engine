@@ -52,7 +52,7 @@
     "content-type": "1.0.4",
     "debug": "4.3.4",
     "utf-8-validate": "5.0.10",
-    "ws": "7.4.0"
+    "ws": "7.5.13"
   },
   "devDependencies": {
     "@types/debug": "4.1.7",

@@ -5,7 +5,7 @@
   "description": "Standalone local-first voxel engine developer preview",
   "license": "UNLICENSED",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "22.17.x"
   },
   "packageManager": "pnpm@10.12.1",
   "scripts": {
@@ -13,6 +13,8 @@
     "creator:up": "node apps/local-engine/src/deploy.js creator-up",
     "player-service": "node apps/local-engine/src/deploy.js player-service",
     "player-service:up": "node apps/local-engine/src/deploy.js player-service-up",
+    "player-auth-portal": "node apps/local-engine/src/deploy.js player-auth-portal",
+    "player-auth-portal:up": "node apps/local-engine/src/deploy.js player-auth-portal-up",
     "voxa": "node apps/local-engine/src/deploy.js voxa",
     "voxa:up": "node apps/local-engine/src/deploy.js voxa-up",
     "voxa:image": "docker compose --profile voxa build voxa",
@@ -37,19 +39,44 @@
     "project:create": "node apps/local-engine/src/project-manager.js create",
     "project:publish": "node apps/local-engine/src/project-manager.js publish",
     "project:package": "node apps/local-engine/src/project-manager.js package",
-    "check": "node apps/local-engine/src/build-metadata.test.js && node apps/local-engine/scripts/regression-project-storage-identity.js && node scripts/check-standalone.js && node scripts/check-play-version-refresh.js && node scripts/platform-api-removal.test.js && node scripts/check-engine-wire-protocols.js && node scripts/check-local-api-declarations.js && pnpm --filter @box-local/migrator test && node --test scripts/teleport-room-manager.test.js scripts/teleport-library-integration.test.js",
+    "check": "node apps/local-engine/src/build-metadata.test.js && node apps/local-engine/scripts/regression-project-storage-identity.js && node scripts/check-standalone.js && node scripts/check-play-version-refresh.js && node scripts/platform-api-removal.test.js && node scripts/check-engine-wire-protocols.js && node scripts/check-local-api-declarations.js && pnpm --dir examples/player-auth-portal check && pnpm --filter @box-local/migrator test && node --test scripts/teleport-room-manager.test.js scripts/teleport-library-integration.test.js",
     "check:voxa-map-link": "pnpm --filter @box-local/game-server exec node -r @swc-node/register ../../scripts/check-local-voxa-map-link.ts",
     "check:voxa-extra-project": "pnpm --filter @box-local/game-server exec node -r @swc-node/register ../../scripts/check-local-voxa-extra-project.ts",
     "check:voxa-render": "pnpm --filter @box-local/game-server exec node -r @swc-node/register ../../scripts/check-local-voxa-render.ts",
     "check:edit-session": "node scripts/check-edit-session.js",
-    "check:project-identity": "node apps/local-engine/scripts/regression-project-storage-identity.js"
+    "check:project-identity": "node apps/local-engine/scripts/regression-project-storage-identity.js",
+    "lint": "pnpm lint:control && pnpm --filter @box-local/game lint && pnpm --filter @box-local/voxa lint && pnpm --filter @box-local/migrator lint",
+    "lint:control": "eslint apps/local-engine/src apps/local-engine/scripts scripts --ext .js,.cjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm --filter @box-local/migrator typecheck",
+    "test": "pnpm --filter @box-local/local-engine test && pnpm check",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
   },
   "pnpm": {
+    "overrides": {
+      "axios@0.21.4": "0.32.0",
+      "dompurify@3.4.12": "3.4.13",
+      "form-data@2.3.3": "2.5.6",
+      "mermaid@11.16.0": "11.16.1",
+      "minimatch@3.1.2": "3.1.4",
+      "minimist@0.0.8": "0.2.4",
+      "postcss@8.4.31": "8.5.23",
+      "serialize-javascript@6.0.2": "7.0.3",
+      "sharp@0.34.5": "0.35.0",
+      "undici@5.29.0": "6.27.0",
+      "ws@7.4.0": "7.5.13"
+    },
     "onlyBuiltDependencies": [
       "@swc/core",
       "esbuild",
       "isolated-vm",
       "sharp"
     ]
+  },
+  "devDependencies": {
+    "eslint": "8.57.1",
+    "eslint-config-prettier": "9.1.0",
+    "prettier": "3.6.2"
   }
 }

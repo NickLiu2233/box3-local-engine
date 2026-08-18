@@ -89,13 +89,11 @@ function startEditLibrary({
     idleTimeoutMs,
   })
 
-  const runtimeKey = (projectId, roomId = '') =>
-    roomId ? `room:${roomId}` : projectId
+  const runtimeKey = (projectId, roomId = '') => (roomId ? `room:${roomId}` : projectId)
 
   async function ensureRuntime(reference, roomId = '') {
-    const project = reference && typeof reference === 'object'
-      ? reference
-      : resolveProject(reference)
+    const project =
+      reference && typeof reference === 'object' ? reference : resolveProject(reference)
     const id = project?.id || String(reference || '')
     if (!projectIdPattern.test(id)) {
       throw Object.assign(new Error('工程 ID 无效'), { statusCode: 400 })
@@ -133,10 +131,7 @@ function startEditLibrary({
       runtimes.set(key, runtime)
       try {
         setStatus(key, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
-        await waitForRuntime(
-          `http://127.0.0.1:${runtimePort}/api/health-check`,
-          120,
-        )
+        await waitForRuntime(`http://127.0.0.1:${runtimePort}/api/health-check`, 120)
       } catch (error) {
         runtimes.delete(key)
         setStatus(key, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
@@ -148,8 +143,8 @@ function startEditLibrary({
         roomId
           ? `  Private room ready: ${id}/${roomId}`
           : mode === 'play'
-          ? `  Play project ready: /p/${id}`
-          : `  Edit project ready: /e/${id}`
+            ? `  Play project ready: /p/${id}`
+            : `  Edit project ready: /e/${id}`,
       )
       return runtime
     })().finally(() => starts.delete(key))
@@ -162,8 +157,7 @@ function startEditLibrary({
     ensureRuntime: (project, roomId) =>
       mode === 'play' ? ensureRuntime(project, roomId) : undefined,
     stopRuntime: (roomId) => stopRuntime(runtimeKey('', roomId)),
-    isRoomActive: (roomId) =>
-      Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
+    isRoomActive: (roomId) => Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
     maxRooms: teleportMaxRooms,
     roomIdleTimeoutMs: teleportRoomIdleTimeoutMs,
   })
@@ -211,7 +205,12 @@ function startEditLibrary({
         }
         void ensureRuntime(project, roomId).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(statuses.get(key) || setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' })))
+        res.end(
+          JSON.stringify(
+            statuses.get(key) ||
+              setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' }),
+          ),
+        )
         return
       }
       let existingRuntime = runtimes.get(key)
@@ -242,16 +241,19 @@ function startEditLibrary({
           : await ensureRuntime(project || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       res.once('close', releaseConnection)
-      const proxy = http.request({
-        hostname: '127.0.0.1',
-        port: runtime.port,
-        method: req.method,
-        path: forwardedPath,
-        headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
-      }, (upstream) => {
-        res.writeHead(upstream.statusCode || 502, upstream.headers)
-        upstream.pipe(res)
-      })
+      const proxy = http.request(
+        {
+          hostname: '127.0.0.1',
+          port: runtime.port,
+          method: req.method,
+          path: forwardedPath,
+          headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
+        },
+        (upstream) => {
+          res.writeHead(upstream.statusCode || 502, upstream.headers)
+          upstream.pipe(res)
+        },
+      )
       proxy.on('error', (error) => {
         if (!res.headersSent) {
           res.writeHead(502, { 'content-type': 'application/json; charset=utf-8' })
@@ -271,7 +273,6 @@ function startEditLibrary({
     try {
       const { reference, roomId, forwardedPath } = parseProjectRequest(req.url)
       const project = resolveProject(reference)
-      const id = project?.id || reference
       if (roomId) {
         teleportRooms.resolveRoom({
           targetMapId: project?.mapUuid,
@@ -286,8 +287,8 @@ function startEditLibrary({
         const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
         const lines = [
           `${req.method} ${forwardedPath} HTTP/${req.httpVersion}`,
-          ...Object.entries(headers).map(([key, value]) =>
-            `${key}: ${Array.isArray(value) ? value.join(', ') : value}`,
+          ...Object.entries(headers).map(
+            ([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`,
           ),
           '',
           '',
@@ -303,12 +304,17 @@ function startEditLibrary({
     }
   })
 
-  const recycleTimer = setInterval(() => {
-    teleportRooms.collectIdle().catch((error) =>
-      console.error('Unable to recycle idle teleport rooms:', error))
-    lifecycle.collectIdle().catch((error) =>
-      console.error('Unable to recycle idle project runtimes:', error))
-  }, Math.max(5_000, Math.min(60_000, Math.floor(lifecycle.idleAfter / 2))))
+  const recycleTimer = setInterval(
+    () => {
+      teleportRooms
+        .collectIdle()
+        .catch((error) => console.error('Unable to recycle idle teleport rooms:', error))
+      lifecycle
+        .collectIdle()
+        .catch((error) => console.error('Unable to recycle idle project runtimes:', error))
+    },
+    Math.max(5_000, Math.min(60_000, Math.floor(lifecycle.idleAfter / 2))),
+  )
   recycleTimer.unref()
 
   const ready = new Promise((resolve) => server.listen(port, host, resolve))

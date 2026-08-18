@@ -106,26 +106,26 @@ pnpm voxa
 
 默认端口用途：
 
-| 端口 | 用途 | 默认暴露范围 |
-| --- | --- | --- |
-| `3002` | 作品管理和编辑器网页 | 仅宿主机 `127.0.0.1` |
+| 端口   | 用途                   | 默认暴露范围         |
+| ------ | ---------------------- | -------------------- |
+| `3002` | 作品管理和编辑器网页   | 仅宿主机 `127.0.0.1` |
 | `3213` | 共用玩家账号与服主管理 | 仅宿主机 `127.0.0.1` |
-| `9966` | 创作端本机游玩预览 | 仅宿主机 `127.0.0.1` |
-| `9967` | 创作端编辑会话 | 仅宿主机 `127.0.0.1` |
+| `9966` | 创作端本机游玩预览     | 仅宿主机 `127.0.0.1` |
+| `9967` | 创作端编辑会话         | 仅宿主机 `127.0.0.1` |
 
 这三个端口都不应直接向公网开放。
 
 ### 创作端命令的区别
 
-| 命令 | 是否构建 Docker 镜像 | 是否启动容器 | 适用场景 |
-| --- | --- | --- | --- |
-| `pnpm player-service` | 是，只构建玩家服务 | 是 | 首次部署或玩家服务代码更新 |
-| `pnpm creator` | 是，只构建创作端 | 是 | 正常首次部署、创作端代码更新 |
-| `pnpm creator:up` | 否 | 是 | 镜像已经存在且内容未变化 |
-| `docker compose --profile creator build creator` | 是，只构建创作端 | 否 | 运维只想准备镜像 |
-| `docker compose --profile creator up -d --no-build creator` | 否 | 是 | 直接运行 Compose 中指定的已有镜像 |
-| `pnpm build:creator` | 否，生成本机源码生产产物 | 否 | 引擎维护者调试，不是普通 Docker 部署 |
-| `pnpm start:creator` | 否 | 否，直接运行本机生产产物 | 引擎维护者调试 |
+| 命令                                                        | 是否构建 Docker 镜像     | 是否启动容器             | 适用场景                             |
+| ----------------------------------------------------------- | ------------------------ | ------------------------ | ------------------------------------ |
+| `pnpm player-service`                                       | 是，只构建玩家服务       | 是                       | 首次部署或玩家服务代码更新           |
+| `pnpm creator`                                              | 是，只构建创作端         | 是                       | 正常首次部署、创作端代码更新         |
+| `pnpm creator:up`                                           | 否                       | 是                       | 镜像已经存在且内容未变化             |
+| `docker compose --profile creator build creator`            | 是，只构建创作端         | 否                       | 运维只想准备镜像                     |
+| `docker compose --profile creator up -d --no-build creator` | 否                       | 是                       | 直接运行 Compose 中指定的已有镜像    |
+| `pnpm build:creator`                                        | 否，生成本机源码生产产物 | 否                       | 引擎维护者调试，不是普通 Docker 部署 |
+| `pnpm start:creator`                                        | 否                       | 否，直接运行本机生产产物 | 引擎维护者调试                       |
 
 普通创作者优先使用前两条。单独执行 `pnpm build:creator` 不会得到 Docker 镜像，也不会启动
 网页；它和 `pnpm creator` 不是同一层级的命令。
@@ -165,18 +165,18 @@ PERMISSION_TOKEN_SECRET=
 
 变量说明：
 
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `BOX_IMAGE_TAG` | `0.1.0` | 创作端和游玩端镜像标签 |
-| `BOX_CREATOR_PORT` | `3002` | 创作端网页映射到宿主机的端口 |
-| `BOX_LOCAL_PLAYER_LIMIT` | `8` | 本机预览允许的最大连接数 |
-| `PERMISSION_TOKEN_SECRET` | 空 | 会话签名密钥；长期部署建议设置固定随机值 |
-| `BOX_CREATOR_ALLOWED_HOSTS` | 空 | 额外允许访问创作 API 的本地域名，逗号分隔 |
-| `BOX_SESSION_TTL_MS` | `60000` | 编辑/预览 Session 的有效时间 |
-| `BOX_PLAYER_REVOCATION_POLL_MS` | `1000` | 强制下线事件同步到编辑/预览运行时的间隔（毫秒） |
-| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60` | 单 IP 每分钟创建 Session 上限 |
-| `BOX_DATABASE_URL` | 空 | PostgreSQL 连接串；填写后自动启用，只进入游戏服务端 |
-| `BOX_DOCKER_NODE_IMAGE` | Node 22 Debian 镜像 | 可选的 Docker 基础镜像 |
+| 变量                                | 默认值              | 说明                                                |
+| ----------------------------------- | ------------------- | --------------------------------------------------- |
+| `BOX_IMAGE_TAG`                     | `0.1.0`             | 创作端和游玩端镜像标签                              |
+| `BOX_CREATOR_PORT`                  | `3002`              | 创作端网页映射到宿主机的端口                        |
+| `BOX_LOCAL_PLAYER_LIMIT`            | `8`                 | 本机预览允许的最大连接数                            |
+| `PERMISSION_TOKEN_SECRET`           | 空                  | 会话签名密钥；长期部署建议设置固定随机值            |
+| `BOX_CREATOR_ALLOWED_HOSTS`         | 空                  | 额外允许访问创作 API 的本地域名，逗号分隔           |
+| `BOX_SESSION_TTL_MS`                | `60000`             | 编辑/预览 Session 的有效时间                        |
+| `BOX_PLAYER_REVOCATION_POLL_MS`     | `1000`              | 强制下线事件同步到编辑/预览运行时的间隔（毫秒）     |
+| `BOX_SESSION_RATE_LIMIT_PER_MINUTE` | `60`                | 单 IP 每分钟创建 Session 上限                       |
+| `BOX_DATABASE_URL`                  | 空                  | PostgreSQL 连接串；填写后自动启用，只进入游戏服务端 |
+| `BOX_DOCKER_NODE_IMAGE`             | Node 22 Debian 镜像 | 可选的 Docker 基础镜像                              |
 
 完整配置参阅 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。创作端 `edit`
 数据与正式游玩端 `play` 数据默认隔离。
@@ -283,9 +283,9 @@ services:
       BOX_LOCAL_PLAYER_LIMIT: 8
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
     ports:
-      - "127.0.0.1:3002:3000"
-      - "127.0.0.1:9966:9966"
-      - "127.0.0.1:9967:9967"
+      - '127.0.0.1:3002:3000'
+      - '127.0.0.1:9966:9966'
+      - '127.0.0.1:9967:9967'
     volumes:
       - ./projects:/app/apps/local-engine/projects
       - ./dist:/app/apps/local-engine/dist

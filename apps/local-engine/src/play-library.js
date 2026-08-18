@@ -69,12 +69,14 @@ function listWorlds(libraryRoot) {
 function resolveWorld(libraryRoot, reference) {
   const direct = readWorld(libraryRoot, reference)
   if (direct) return direct
-  return listWorlds(libraryRoot).find((world) => {
-    const publicId = worldIdPattern.test(String(world.manifest.publicId || ''))
-      ? String(world.manifest.publicId)
-      : world.id
-    return publicId === reference || world.manifest.mapUuid === reference
-  }) || null
+  return (
+    listWorlds(libraryRoot).find((world) => {
+      const publicId = worldIdPattern.test(String(world.manifest.publicId || ''))
+        ? String(world.manifest.publicId)
+        : world.id
+      return publicId === reference || world.manifest.mapUuid === reference
+    }) || null
+  )
 }
 
 function parseWorldRequest(requestUrl) {
@@ -151,14 +153,11 @@ function startPlayLibrary({
     idleTimeoutMs,
   })
 
-  const runtimeKey = (worldId, roomId = '') =>
-    roomId ? `room:${roomId}` : worldId
+  const runtimeKey = (worldId, roomId = '') => (roomId ? `room:${roomId}` : worldId)
 
   async function ensureRuntime(reference, roomId = '') {
     const world =
-      reference && typeof reference === 'object'
-        ? reference
-        : resolveWorld(libraryRoot, reference)
+      reference && typeof reference === 'object' ? reference : resolveWorld(libraryRoot, reference)
     if (!world) throw Object.assign(new Error('地图不存在或数据不完整'), { statusCode: 404 })
     const id = world.id
     const key = runtimeKey(id, roomId)
@@ -192,7 +191,11 @@ function startPlayLibrary({
         await waitForRuntime(`http://127.0.0.1:${runtimePort}/api/health-check`, 120)
       } catch (error) {
         runtimes.delete(key)
-        setStatus(key, { phase: 'error', percent: 0, message: error.message || '游戏运行时启动失败' })
+        setStatus(key, {
+          phase: 'error',
+          percent: 0,
+          message: error.message || '游戏运行时启动失败',
+        })
         await runtime.stop()
         throw error
       }
@@ -208,8 +211,7 @@ function startPlayLibrary({
     resolveMap: (reference) => resolveWorld(libraryRoot, reference),
     ensureRuntime: (world, roomId) => ensureRuntime(world, roomId),
     stopRuntime: (roomId) => stopRuntime(runtimeKey('', roomId)),
-    isRoomActive: (roomId) =>
-      Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
+    isRoomActive: (roomId) => Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
     maxRooms: teleportMaxRooms,
     roomIdleTimeoutMs: teleportRoomIdleTimeoutMs,
   })
@@ -233,11 +235,16 @@ function startPlayLibrary({
           setStatus(key, { phase: 'error', percent: 0, message: '游戏运行时异常退出' })
         }
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(runtimeStatus(
-          key,
-          runtime,
-          { phase: 'idle', percent: 0, message: '等待启动', updatedAt: '' },
-        )))
+        res.end(
+          JSON.stringify(
+            runtimeStatus(key, runtime, {
+              phase: 'idle',
+              percent: 0,
+              message: '等待启动',
+              updatedAt: '',
+            }),
+          ),
+        )
         return
       }
       if (forwardedPath === '/__local_runtime/start' && req.method === 'POST') {
@@ -254,7 +261,12 @@ function startPlayLibrary({
         }
         void ensureRuntime(resolvedWorld, roomId).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
-        res.end(JSON.stringify(statuses.get(key) || setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' })))
+        res.end(
+          JSON.stringify(
+            statuses.get(key) ||
+              setStatus(key, { phase: 'starting', percent: 10, message: '正在启动' }),
+          ),
+        )
         return
       }
       if (roomId) {
@@ -266,16 +278,19 @@ function startPlayLibrary({
       const runtime = await ensureRuntime(resolvedWorld || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       res.once('close', releaseConnection)
-      const proxy = http.request({
-        hostname: '127.0.0.1',
-        port: runtime.port,
-        method: req.method,
-        path: forwardedPath,
-        headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
-      }, (upstream) => {
-        res.writeHead(upstream.statusCode || 502, upstream.headers)
-        upstream.pipe(res)
-      })
+      const proxy = http.request(
+        {
+          hostname: '127.0.0.1',
+          port: runtime.port,
+          method: req.method,
+          path: forwardedPath,
+          headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
+        },
+        (upstream) => {
+          res.writeHead(upstream.statusCode || 502, upstream.headers)
+          upstream.pipe(res)
+        },
+      )
       proxy.on('error', (error) => {
         if (!res.headersSent) res.writeHead(502, { 'content-type': 'application/json' })
         res.end(JSON.stringify({ message: error.message }))
@@ -305,7 +320,9 @@ function startPlayLibrary({
         const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
         const lines = [
           `${req.method} ${forwardedPath} HTTP/${req.httpVersion}`,
-          ...Object.entries(headers).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`),
+          ...Object.entries(headers).map(
+            ([key, value]) => `${key}: ${Array.isArray(value) ? value.join(', ') : value}`,
+          ),
           '',
           '',
         ]
@@ -325,13 +342,17 @@ function startPlayLibrary({
     for (const [key, runtime] of runtimes) {
       const world = worlds.get(runtime.worldId || key)
       if (!world || world.signature !== runtime.signature) {
-        stopRuntime(key).catch((error) => console.error(`Unable to stop map ${runtime.worldId || key}:`, error))
+        stopRuntime(key).catch((error) =>
+          console.error(`Unable to stop map ${runtime.worldId || key}:`, error),
+        )
       }
     }
-    teleportRooms.collectIdle().catch((error) =>
-      console.error('Unable to recycle idle teleport rooms:', error))
-    lifecycle.collectIdle().catch((error) =>
-      console.error('Unable to recycle idle map runtimes:', error))
+    teleportRooms
+      .collectIdle()
+      .catch((error) => console.error('Unable to recycle idle teleport rooms:', error))
+    lifecycle
+      .collectIdle()
+      .catch((error) => console.error('Unable to recycle idle map runtimes:', error))
   }, 3000)
   scanTimer.unref()
 

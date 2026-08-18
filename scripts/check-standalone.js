@@ -3,7 +3,6 @@
 const fs = require('fs')
 const os = require('os')
 const path = require('path')
-const { spawnSync } = require('child_process')
 
 const root = path.resolve(__dirname, '..')
 const failures = []
@@ -35,9 +34,7 @@ function forbidPattern(source, file, label, pattern) {
 
 function requireScript(manifest, manifestFile, name, expected) {
   if (manifest.scripts?.[name] !== expected) {
-    fail(
-      `${manifestFile}: script ${name} must be ${JSON.stringify(expected)}`,
-    )
+    fail(`${manifestFile}: script ${name} must be ${JSON.stringify(expected)}`)
   }
 }
 
@@ -60,16 +57,16 @@ function getDockerStage(source, name) {
   const match = header.exec(source)
   if (!match) return ''
   const remainder = source.slice(match.index + match[0].length)
-  const nextStage = /^FROM\s+[^\n]+(?:\s+AS\s+[^\s]+)?\s*$/mi.exec(remainder)
+  const nextStage = /^FROM\s+[^\n]+(?:\s+AS\s+[^\s]+)?\s*$/im.exec(remainder)
   return nextStage ? remainder.slice(0, nextStage.index) : remainder
 }
 
 function getComposeService(source, name) {
-  const header = new RegExp(`^  ${name}:\\s*$`, 'm')
+  const header = new RegExp(`^ {2}${name}:\\s*$`, 'm')
   const match = header.exec(source)
   if (!match) return ''
   const remainder = source.slice(match.index + match[0].length)
-  const nextSection = /^(?:  [A-Za-z0-9_-]+:|\S[^\n]*:)\s*$/m.exec(remainder)
+  const nextSection = /^(?: {2}[A-Za-z0-9_-]+:|\S[^\n]*:)\s*$/m.exec(remainder)
   return nextSection ? remainder.slice(0, nextSection.index) : remainder
 }
 
@@ -180,24 +177,22 @@ for (const { directory, manifest } of packages.values()) {
 // expose the old client/server split as separate commands.
 const rootManifest = JSON.parse(readRequired('package.json'))
 for (const [name, command] of Object.entries({
-  creator: 'node apps/local-engine/src/deploy.js creator',
+  'creator': 'node apps/local-engine/src/deploy.js creator',
   'creator:up': 'node apps/local-engine/src/deploy.js creator-up',
   'player-service': 'node apps/local-engine/src/deploy.js player-service',
-  'player-service:up':
-    'node apps/local-engine/src/deploy.js player-service-up',
-  voxa: 'node apps/local-engine/src/deploy.js voxa',
+  'player-service:up': 'node apps/local-engine/src/deploy.js player-service-up',
+  'voxa': 'node apps/local-engine/src/deploy.js voxa',
   'voxa:image': 'docker compose --profile voxa build voxa',
   'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
   'voxa:dev': 'pnpm --filter @box-local/voxa dev',
-  infra: 'docker compose --profile infra up -d postgres redis',
+  'infra': 'docker compose --profile infra up -d postgres redis',
   'infra:stop': 'docker compose --profile infra stop postgres redis',
-  play: 'node apps/local-engine/src/deploy.js play',
+  'play': 'node apps/local-engine/src/deploy.js play',
   'play:up': 'node apps/local-engine/src/deploy.js play-up',
-  stop: 'node apps/local-engine/src/deploy.js stop',
-  dev: 'node apps/local-engine/src/launcher.js --creator',
+  'stop': 'node apps/local-engine/src/deploy.js stop',
+  'dev': 'node apps/local-engine/src/launcher.js --creator',
   'build:creator': 'node apps/local-engine/src/build.js --creator',
-  'start:creator':
-    'node apps/local-engine/src/launcher.js --production --creator',
+  'start:creator': 'node apps/local-engine/src/launcher.js --production --creator',
   'build:play': 'node apps/local-engine/src/build.js --play',
   'build:voxa': 'pnpm --filter @box-local/voxa build',
   'start:play': 'node apps/local-engine/src/launcher.js --production --play',
@@ -229,8 +224,14 @@ for (const [label, pattern] of [
   ['creator builds only the creator image', /'build', 'creator'/],
   ['play uses the external world library', /BOX_PLAY_LIBRARY_DIR/],
   ['play accepts no release argument', /pnpm \$\{build \? 'play' : 'play:up'\} 不接受作品参数/],
-  ['play command forces a metadata-labelled image rebuild', /build\s*\?\s*ensurePlayImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/],
-  ['player service forwards automatic build metadata', /ensurePlayerServiceImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/],
+  [
+    'play command forces a metadata-labelled image rebuild',
+    /build\s*\?\s*ensurePlayImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/,
+  ],
+  [
+    'player service forwards automatic build metadata',
+    /ensurePlayerServiceImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/,
+  ],
   ['creator starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'creator'/],
   ['play starts without rebuilding', /'up',[\s\S]*?'-d',[\s\S]*?'--no-build',[\s\S]*?'play'/],
   ['VOXA builds only its Docker target', /'build', 'voxa'/],
@@ -253,17 +254,14 @@ for (const [label, pattern] of [
   ['image archive export', /'image', 'save'/],
   ['archive tag validation', /RepoTags\.includes\(image\)/],
   ['multi-world image format validation', /org\.box\.local-engine\.play-format/],
-  [
-    'archive platform validation',
-    /imageConfig\.os[\s\S]*?imageConfig\.architecture/,
-  ],
+  ['archive platform validation', /imageConfig\.os[\s\S]*?imageConfig\.architecture/],
 ]) {
   requirePattern(playImageSource, playImageFile, label, pattern)
 }
 
 const engineManifest = JSON.parse(readRequired('apps/local-engine/package.json'))
 for (const [name, command] of Object.entries({
-  dev: 'node src/launcher.js --creator',
+  'dev': 'node src/launcher.js --creator',
   'build:creator': 'node src/build.js --creator',
   'start:creator': 'node src/launcher.js --production --creator',
   'build:play': 'node src/build.js --play',
@@ -276,16 +274,9 @@ for (const name of ['build', 'start']) {
     fail(`apps/local-engine/package.json: ambiguous script must be removed: ${name}`)
   }
 }
-for (const name of [
-  'build:client',
-  'build:server',
-  'start:client',
-  'start:server',
-]) {
+for (const name of ['build:client', 'build:server', 'start:client', 'start:server']) {
   if (engineManifest.scripts?.[name]) {
-    fail(
-      `apps/local-engine/package.json: legacy public script must be removed: ${name}`,
-    )
+    fail(`apps/local-engine/package.json: legacy public script must be removed: ${name}`)
   }
 }
 
@@ -300,10 +291,7 @@ for (const name of ['cdn-upload', 'upload-rusty']) {
 // both sides. Using `||` here makes the browser skip validation while the
 // local game server expects it, so the first `start ...` packet is parsed as
 // JSON and the websocket is closed immediately.
-for (const file of [
-  'apps/game/src/client/index.ts',
-  'apps/game/src/client/play/play-client.ts',
-]) {
+for (const file of ['apps/game/src/client/index.ts', 'apps/game/src/client/play/play-client.ts']) {
   const source = readRequired(file)
   requirePattern(
     source,
@@ -319,18 +307,14 @@ for (const file of [
   )
 }
 
-const gameServerManifest = JSON.parse(
-  readRequired('services/game-server/package.json'),
-)
+const gameServerManifest = JSON.parse(readRequired('services/game-server/package.json'))
 requireScript(
   gameServerManifest,
   'services/game-server/package.json',
   'dev',
   'node scripts/dev-launch.js',
 )
-const gameServerDevLauncher = readRequired(
-  'services/game-server/scripts/dev-launch.js',
-)
+const gameServerDevLauncher = readRequired('services/game-server/scripts/dev-launch.js')
 for (const [label, pattern] of [
   ['local config path', /BOX_LOCAL_CONFIG_PATH/],
   ['local runtime method', /METHOD: 'local'/],
@@ -376,10 +360,7 @@ requirePattern(
   'normalized script timeout passed to isolated process',
   /new IvmpScriptSocketServer\([\s\S]*?spec\.scriptTimeout,[\s\S]*?spec\.SCRIPT_MEMORY_LIMIT/,
 )
-for (const file of [
-  'apps/game/rusty/.env.prod',
-  'apps/game/rusty/.env.local.example',
-]) {
+for (const file of ['apps/game/rusty/.env.prod', 'apps/game/rusty/.env.local.example']) {
   forbidPattern(
     readRequired(file),
     file,
@@ -407,13 +388,13 @@ for (const [label, pattern] of [
   ['creator final target', /^FROM runtime-base AS creator$/m],
   ['play final target', /^FROM runtime-base AS play$/m],
   ['VOXA build stage', /^FROM source-base AS voxa-build$/m],
-  ['VOXA filtered dependency install', /pnpm install --frozen-lockfile --filter @box-local\/voxa\.\.\./],
+  [
+    'VOXA filtered dependency install',
+    /pnpm install --frozen-lockfile --filter @box-local\/voxa\.\.\./,
+  ],
   ['VOXA build command', /^RUN pnpm --filter @box-local\/voxa build$/m],
   ['VOXA final target', /^FROM runtime-base AS voxa$/m],
-  [
-    'referenced runtime-blob staging',
-    /stage-runtime-data\.js \/opt\/runtime-data/,
-  ],
+  ['referenced runtime-blob staging', /stage-runtime-data\.js \/opt\/runtime-data/],
   [
     'play server editor removal',
     /play-build[\s\S]*?rm -rf[\s\S]*?\/opt\/game-server\/dist\/src\/edit[\s\S]*?\/opt\/game-server\/dist\/src\/deploy/,
@@ -477,7 +458,9 @@ for (const [name, stage, flag] of [
     stage,
     dockerFile,
     `${name} launcher command`,
-    new RegExp(`CMD \\["node", "apps/local-engine/src/launcher\\.js", "--production", "${flag}"\\]`),
+    new RegExp(
+      `CMD \\["node", "apps/local-engine/src/launcher\\.js", "--production", "${flag}"\\]`,
+    ),
   )
   requirePattern(
     stage,
@@ -517,12 +500,7 @@ requirePattern(
   'creator project and export volumes',
   /VOLUME \["\/app\/apps\/local-engine\/projects", "\/app\/apps\/local-engine\/dist"\]/,
 )
-requirePattern(
-  playDockerStage,
-  dockerFile,
-  'play deployment runtime',
-  /BOX_DEPLOYMENT_MODE=play/,
-)
+requirePattern(playDockerStage, dockerFile, 'play deployment runtime', /BOX_DEPLOYMENT_MODE=play/)
 forbidPattern(
   playDockerStage,
   dockerFile,
@@ -573,16 +551,14 @@ for (const line of composeSource.split('\n')) {
     continue
   }
   if (inServices && /^\S/.test(line) && line.trim()) break
-  const match = inServices ? line.match(/^  ([A-Za-z0-9_-]+):\s*$/) : null
+  const match = inServices ? line.match(/^ {2}([A-Za-z0-9_-]+):\s*$/) : null
   if (match) composeServiceNames.push(match[1])
 }
 if (
   composeServiceNames.join(',') !==
-    'postgres,redis,player-service,creator,play-storage-init,play,voxa,migrator'
+  'postgres,redis,player-service,creator,play-storage-init,play,voxa,migrator'
 ) {
-  fail(
-    `${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`,
-  )
+  fail(`${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`)
 }
 
 const creatorCompose = getComposeService(composeSource, 'creator')
@@ -696,12 +672,7 @@ requirePattern(
   'host-backed creator projects',
   /\.\/apps\/local-engine\/projects:.*\/app\/apps\/local-engine\/projects/,
 )
-forbidPattern(
-  composeSource,
-  composeFile,
-  'legacy creator project volume',
-  /box-creator-projects/,
-)
+forbidPattern(composeSource, composeFile, 'legacy creator project volume', /box-creator-projects/)
 requirePattern(
   creatorCompose,
   composeFile,
@@ -758,8 +729,14 @@ for (const [label, pattern] of [
   ],
   ['standalone local-engine removal', /path\.join\(standaloneGameRoot, '\.\.\/local-engine'\)/],
   ['standalone environment removal', /path\.join\(standaloneGameRoot, '\.env\.local'\)/],
-  ['standalone private-key removal', /entry\.name\.endsWith\('\.pem'\)[\s\S]*?entry\.name\.endsWith\('\.key'\)/],
-  ['cross-process build lock', /acquireBuildLock\(\)[\s\S]*?Another \$\{owner\.mode \|\| 'creator\/play'\} build is already running/],
+  [
+    'standalone private-key removal',
+    /entry\.name\.endsWith\('\.pem'\)[\s\S]*?entry\.name\.endsWith\('\.key'\)/,
+  ],
+  [
+    'cross-process build lock',
+    /acquireBuildLock\(\)[\s\S]*?Another \$\{owner\.mode \|\| 'creator\/play'\} build is already running/,
+  ],
 ]) {
   requirePattern(buildSource, buildFile, label, pattern)
 }
@@ -782,24 +759,15 @@ for (const [label, pattern] of [
   ['creator project runtime mode', /--runtime-only requires --project <project-id>/],
   ['play rejects editable source projects', /playMode && launchTarget\?\.kind === 'source'/],
   ['product environment flag', /BOX_DEPLOYMENT_MODE: playMode \? 'play' : 'creator'/],
-  [
-    'isolated server script runtime',
-    /const scriptVm = process\.env\.BOX_SCRIPT_VM \|\| 'ivmp'/,
-  ],
+  ['isolated server script runtime', /const scriptVm = process\.env\.BOX_SCRIPT_VM \|\| 'ivmp'/],
   ['server script VM propagation', /VM: scriptVm/],
   ['single product address', /Open: http:\/\/127\.0\.0\.1:\$\{webPort\}\//],
   [
     'standalone build-id validation',
     /fs\.existsSync\(nextBuildId\) \|\| fs\.existsSync\(standaloneBuildId\)/,
   ],
-  [
-    'read-only play-world source',
-    /startLibraryRuntime[\s\S]*?STORAGE_PATH: world\.dataRoot/,
-  ],
-  [
-    'persistent derived runtime storage',
-    /BOX_DERIVED_STORAGE_PATH: derivedRuntimePath\(/,
-  ],
+  ['read-only play-world source', /startLibraryRuntime[\s\S]*?STORAGE_PATH: world\.dataRoot/],
+  ['persistent derived runtime storage', /BOX_DERIVED_STORAGE_PATH: derivedRuntimePath\(/],
   [
     'mode-specific runtime storage',
     /STORAGE_PATH: mode === 'play' \? playServerDataRoot : dataRoot/,
@@ -841,20 +809,17 @@ requirePattern(
 for (const [label, pattern] of [
   ['sanitized published permissions', /publishedPermissionHash[\s\S]*?emptyUsersHash/],
   ['private server script manifest', /private-blobs\.json[\s\S]*?privateHashes/],
-  ['exported private blob manifest', /releaseDataRoot, 'private-blobs\.json'[\s\S]*?destinationDataRoot, 'private-blobs\.json'/],
+  [
+    'exported private blob manifest',
+    /releaseDataRoot, 'private-blobs\.json'[\s\S]*?destinationDataRoot, 'private-blobs\.json'/,
+  ],
   ['sensitive content publication guard', /assertNoSensitiveContent/],
   ['published project history removal', /committerId: 0[\s\S]*?prevHash: ''/],
 ]) {
-  requirePattern(
-    projectManagerModelsSource,
-    projectManagerModelsFile,
-    label,
-    pattern,
-  )
+  requirePattern(projectManagerModelsSource, projectManagerModelsFile, label, pattern)
 }
 
-const localProjectStateFile =
-  'services/game-server/src/project/local-project-state.ts'
+const localProjectStateFile = 'services/game-server/src/project/local-project-state.ts'
 const localProjectStateSource = readRequired(localProjectStateFile)
 requirePattern(
   localProjectStateSource,
@@ -978,11 +943,7 @@ for (const [file, label, pattern] of [
     'play admin disabled without a configured token',
     /BOX_PLAY_ADMIN_TOKEN[\s\S]*?mode === 'play'/,
   ],
-  [
-    'docker-compose.yml',
-    'play library write access is opt-in',
-    /BOX_PLAY_LIBRARY_READ_ONLY:-true/,
-  ],
+  ['docker-compose.yml', 'play library write access is opt-in', /BOX_PLAY_LIBRARY_READ_ONLY:-true/],
 ]) {
   requirePattern(readRequired(file), file, label, pattern)
 }
@@ -1093,10 +1054,19 @@ requirePattern(
 const nextConfigFile = 'apps/game/next.config.js'
 const nextConfigSource = readRequired(nextConfigFile)
 for (const [label, pattern] of [
-  ['internal play runtime target', /BOX_PLAY_RUNTIME_PORT[\s\S]*?'9966'[\s\S]*?BOX_INTERNAL_PLAY_RUNTIME/],
-  ['internal edit runtime target', /BOX_EDIT_RUNTIME_PORT[\s\S]*?'9967'[\s\S]*?BOX_INTERNAL_EDIT_RUNTIME/],
+  [
+    'internal play runtime target',
+    /BOX_PLAY_RUNTIME_PORT[\s\S]*?'9966'[\s\S]*?BOX_INTERNAL_PLAY_RUNTIME/,
+  ],
+  [
+    'internal edit runtime target',
+    /BOX_EDIT_RUNTIME_PORT[\s\S]*?'9967'[\s\S]*?BOX_INTERNAL_EDIT_RUNTIME/,
+  ],
   ['prefixed play runtime proxy', /source: '\/runtime\/play\/:path\*'[\s\S]*?localPlayRuntime/],
-  ['play world lifecycle proxy', /source: '\/p\/:world\/__local_runtime\/:path\*'[\s\S]*?localPlayRuntime/],
+  [
+    'play world lifecycle proxy',
+    /source: '\/p\/:world\/__local_runtime\/:path\*'[\s\S]*?localPlayRuntime/,
+  ],
   ['prefixed edit runtime proxy', /source: '\/runtime\/edit\/:path\*'[\s\S]*?localEditRuntime/],
   ['same-origin session proxy', /source: '\/api\/session'[\s\S]*?\/api\/session/],
   ['same-origin server info proxy', /source: '\/api\/server-info'[\s\S]*?\/api\/server-info/],
@@ -1122,9 +1092,8 @@ requirePattern(
   /BOX_WEB_HOST[\s\S]*?server\.listen\(port, host/,
 )
 
-const projectRuntimeApiFile =
-  'apps/game/pages/api/local-projects/[id]/runtime.ts'
-const projectRuntimeApiSource = readRequired(projectRuntimeApiFile)
+const projectRuntimeApiFile = 'apps/game/pages/api/local-projects/[id]/runtime.ts'
+readRequired(projectRuntimeApiFile)
 requirePattern(
   launcherSource,
   'apps/local-engine/src/launcher.js',
@@ -1174,18 +1143,8 @@ requirePattern(
   'creator web and loopback runtime ports',
   /^EXPOSE 3000 9966 9967$/m,
 )
-requirePattern(
-  playDockerStage,
-  dockerFile,
-  'single exposed play port',
-  /^EXPOSE 3000$/m,
-)
-forbidPattern(
-  playDockerStage,
-  dockerFile,
-  'public runtime port in play image',
-  /EXPOSE[^\n]*9966/,
-)
+requirePattern(playDockerStage, dockerFile, 'single exposed play port', /^EXPOSE 3000$/m)
+forbidPattern(playDockerStage, dockerFile, 'public runtime port in play image', /EXPOSE[^\n]*9966/)
 requirePattern(
   playDockerStage,
   dockerFile,
@@ -1287,10 +1246,7 @@ function checkPlayerPruning() {
   const write = (file, value = 'fixture') => {
     const target = path.join(tempRoot, file)
     fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(
-      target,
-      typeof value === 'string' ? value : `${JSON.stringify(value)}\n`,
-    )
+    fs.writeFileSync(target, typeof value === 'string' ? value : `${JSON.stringify(value)}\n`)
   }
   try {
     write('server/pages/projects.js')
@@ -1326,10 +1282,9 @@ function checkPlayerPruning() {
       },
     })
 
-    const { prunePlayerBuild } = require(path.join(
-      root,
-      'apps/local-engine/src/prune-player-build.js',
-    ))
+    const { prunePlayerBuild } = require(
+      path.join(root, 'apps/local-engine/src/prune-player-build.js'),
+    )
     prunePlayerBuild(tempRoot)
 
     for (const file of [
@@ -1359,10 +1314,7 @@ function checkPlayerPruning() {
     }
 
     const appPaths = JSON.parse(
-      fs.readFileSync(
-        path.join(tempRoot, 'server/app-paths-manifest.json'),
-        'utf8',
-      ),
+      fs.readFileSync(path.join(tempRoot, 'server/app-paths-manifest.json'), 'utf8'),
     )
     if (appPaths['/e/[container]/page']) {
       fail('prune-player-build.js: editor route remains in app manifest')
@@ -1371,9 +1323,7 @@ function checkPlayerPruning() {
       fail('prune-player-build.js: player route is missing from app manifest')
     }
 
-    const routes = JSON.parse(
-      fs.readFileSync(path.join(tempRoot, 'routes-manifest.json'), 'utf8'),
-    )
+    const routes = JSON.parse(fs.readFileSync(path.join(tempRoot, 'routes-manifest.json'), 'utf8'))
     const routePages = [
       ...(routes.dynamicRoutes || []),
       ...(routes.staticRoutes || []),
@@ -1437,15 +1387,21 @@ function checkPlayerServicePruning() {
       pages: Object.fromEntries(Object.keys(pages).map((route) => [route, [`${route}.js`]])),
     })
 
-    const { prunePlayerServiceBuild } = require(path.join(
-      root,
-      'apps/local-engine/src/prune-player-build.js',
-    ))
+    const { prunePlayerServiceBuild } = require(
+      path.join(root, 'apps/local-engine/src/prune-player-build.js'),
+    )
     prunePlayerServiceBuild(tempRoot)
-    const pruned = JSON.parse(fs.readFileSync(
-      path.join(tempRoot, 'server/pages-manifest.json'), 'utf8'))
-    for (const route of ['/', '/players', '/api/health-check',
-      '/api/player-auth/login', '/api/player-auth/login-required', '/api/play-admin/players']) {
+    const pruned = JSON.parse(
+      fs.readFileSync(path.join(tempRoot, 'server/pages-manifest.json'), 'utf8'),
+    )
+    for (const route of [
+      '/',
+      '/players',
+      '/api/health-check',
+      '/api/player-auth/login',
+      '/api/player-auth/login-required',
+      '/api/play-admin/players',
+    ]) {
       if (!pruned[route]) fail(`player-service pruning removed ${route}`)
     }
     for (const route of ['/projects', '/p/[gameName]', '/api/local-projects', '/api/play-worlds']) {
@@ -1493,17 +1449,21 @@ for (const entry of [
 const stageFile = 'apps/local-engine/src/stage-runtime-data.js'
 const stageSource = readRequired(stageFile)
 for (const [label, pattern] of [
-  ['runtime reference roots', /const referenceRoots = \[[\s\S]*?apps\/game\/src\/resource[\s\S]*?services\/game-server/],
+  [
+    'runtime reference roots',
+    /const referenceRoots = \[[\s\S]*?apps\/game\/src\/resource[\s\S]*?services\/game-server/,
+  ],
   ['CID-only collection', /const cidPattern = \/Qm/],
-  ['referenced blob copy', /for \(const hash of \[\.\.\.hashes\]\.sort\(\)\)[\s\S]*?fs\.copyFileSync/],
+  [
+    'referenced blob copy',
+    /for \(const hash of \[\.\.\.hashes\]\.sort\(\)\)[\s\S]*?fs\.copyFileSync/,
+  ],
   ['runtime blob manifest', /runtime-blobs\.json/],
 ]) {
   requirePattern(stageSource, stageFile, label, pattern)
 }
 
-const localConfig = JSON.parse(
-  readRequired('apps/local-engine/config/local.config.json'),
-).common
+const localConfig = JSON.parse(readRequired('apps/local-engine/config/local.config.json')).common
 for (const key of [
   'OSS_CDN_URL',
   'CREATERA_BACKEND_SERVER_URL',
@@ -1514,9 +1474,7 @@ for (const key of [
   }
 }
 
-const fullLocalConfig = JSON.parse(
-  readRequired('apps/local-engine/config/local.config.json'),
-)
+const fullLocalConfig = JSON.parse(readRequired('apps/local-engine/config/local.config.json'))
 if ((fullLocalConfig['game-server']?.SCRIPT_MEMORY_LIMIT || 0) < 512) {
   fail(
     'apps/local-engine/config/local.config.json: game-server.SCRIPT_MEMORY_LIMIT must support 512x256x512 maps',
@@ -1559,10 +1517,7 @@ const blobCount = fs.existsSync(blobDir)
   : 0
 if (blobCount === 0) fail('local runtime blob store is empty')
 
-const avatarManifestPath = path.join(
-  root,
-  'services/game-server/src/player/default-avatar.json',
-)
+const avatarManifestPath = path.join(root, 'services/game-server/src/player/default-avatar.json')
 if (fs.existsSync(avatarManifestPath)) {
   const avatarManifest = JSON.parse(fs.readFileSync(avatarManifestPath, 'utf8'))
   const avatarHashes = Object.values(avatarManifest.parts || {})

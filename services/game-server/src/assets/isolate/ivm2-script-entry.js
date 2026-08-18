@@ -310,23 +310,23 @@ var hasRequiredStream;
 function requireStream () {
 	if (hasRequiredStream) return stream;
 	hasRequiredStream = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.MuReadStream = exports.MuWriteStream = exports.MuBuffer = exports.decodeUTF8 = exports.encodeUTF8 = void 0;
-		exports.allocBuffer = allocBuffer;
-		exports.freeBuffer = freeBuffer;
+		exports$1.MuReadStream = exports$1.MuWriteStream = exports$1.MuBuffer = exports$1.decodeUTF8 = exports$1.encodeUTF8 = void 0;
+		exports$1.allocBuffer = allocBuffer;
+		exports$1.freeBuffer = freeBuffer;
 		const root = typeof self == 'object' && self['Object'] == Object && self || typeof commonjsGlobal == 'object' && commonjsGlobal['Object'] == Object && commonjsGlobal;
 		if (typeof root === 'object' && 'TextEncoder' in root) {
 		    const encoder = new TextEncoder();
-		    exports.encodeUTF8 = (str)=>encoder.encode(str);
+		    exports$1.encodeUTF8 = (str)=>encoder.encode(str);
 		    const decoder = new TextDecoder();
-		    exports.decodeUTF8 = (bytes)=>decoder.decode(bytes);
+		    exports$1.decodeUTF8 = (bytes)=>decoder.decode(bytes);
 		} else {
 		    const codec = requireCodec();
-		    exports.encodeUTF8 = codec.encode;
-		    exports.decodeUTF8 = codec.decode;
+		    exports$1.encodeUTF8 = codec.encode;
+		    exports$1.decodeUTF8 = codec.decode;
 		}
 		function ceilLog2(v_) {
 		    let v = v_ - 1;
@@ -350,7 +350,7 @@ function requireStream () {
 		        this.uint8 = new Uint8Array(buffer);
 		    }
 		}
-		exports.MuBuffer = MuBuffer;
+		exports$1.MuBuffer = MuBuffer;
 		const bufferPool = new Array(31);
 		for(let i = 0; i < 31; ++i){
 		    bufferPool[i] = [];
@@ -454,7 +454,7 @@ function requireStream () {
 		        this.offset = ptr;
 		    }
 		    writeString(str) {
-		        const bytes = (0, exports.encodeUTF8)(str);
+		        const bytes = (0, exports$1.encodeUTF8)(str);
 		        this.grow(5 + bytes.length);
 		        this.writeVarint(bytes.length);
 		        this.buffer.uint8.set(bytes, this.offset);
@@ -471,7 +471,7 @@ function requireStream () {
 		        this.offset = 0;
 		    }
 		}
-		exports.MuWriteStream = MuWriteStream;
+		exports$1.MuWriteStream = MuWriteStream;
 		class MuReadStream {
 		    bytes() {
 		        return this.buffer.uint8.subarray(this.offset, this.length);
@@ -577,7 +577,7 @@ function requireStream () {
 		        this.offset += byteLength;
 		        this.checkBounds();
 		        const bytes = this.buffer.uint8.subarray(head, this.offset);
-		        return (0, exports.decodeUTF8)(bytes);
+		        return (0, exports$1.decodeUTF8)(bytes);
 		    }
 		    readUint8At(offset) {
 		        return this.buffer.dataView.getUint8(offset);
@@ -588,7 +588,7 @@ function requireStream () {
 		        this.length = data.byteLength + data.byteOffset;
 		    }
 		}
-		exports.MuReadStream = MuReadStream; 
+		exports$1.MuReadStream = MuReadStream;
 	} (stream));
 	return stream;
 }
@@ -3606,15 +3606,15 @@ var hasRequired_number;
 function require_number () {
 	if (hasRequired_number) return _number;
 	hasRequired_number = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.MuNumber = exports.ranges = void 0;
+		exports$1.MuNumber = exports$1.ranges = void 0;
 		function tuple(...args) {
 		    return args;
 		}
-		exports.ranges = {
+		exports$1.ranges = {
 		    float32: tuple(-34028234663852886e22, 3.4028234663852886e+38),
 		    float64: tuple(-17976931348623157e292, 1.7976931348623157e+308),
 		    int8: tuple(-128, 0x7f),
@@ -3651,7 +3651,7 @@ function require_number () {
 		    }
 		    constructor(identity_, type){
 		        const identity = identity_ === identity_ ? identity_ || 0 : NaN;
-		        const range = exports.ranges[type];
+		        const range = exports$1.ranges[type];
 		        if (identity !== Infinity && identity !== -Infinity && identity === identity) {
 		            if (identity < range[0] || identity > range[1]) {
 		                throw new RangeError(`${identity} is out of range of ${type}`);
@@ -3667,7 +3667,7 @@ function require_number () {
 		        };
 		    }
 		}
-		exports.MuNumber = MuNumber; 
+		exports$1.MuNumber = MuNumber;
 	} (_number));
 	return _number;
 }
@@ -5508,11 +5508,11 @@ var hasRequiredJson;
 function requireJson () {
 	if (hasRequiredJson) return json;
 	hasRequiredJson = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.MuJSON = exports.deepClone = exports.deepEqual = void 0;
+		exports$1.MuJSON = exports$1.deepClone = exports$1.deepEqual = void 0;
 		function equal(a, b) {
 		    if (a === b) {
 		        return true;
@@ -5568,24 +5568,24 @@ function requireJson () {
 		    }
 		    return copy;
 		}
-		exports.deepEqual = equal;
-		exports.deepClone = clone;
+		exports$1.deepEqual = equal;
+		exports$1.deepClone = clone;
 		class MuJSON {
 		    alloc() {
 		        return {};
 		    }
 		    free() {}
 		    equal(a, b) {
-		        return (0, exports.deepEqual)(a, b);
+		        return (0, exports$1.deepEqual)(a, b);
 		    }
 		    clone(obj) {
-		        return (0, exports.deepClone)(obj);
+		        return (0, exports$1.deepClone)(obj);
 		    }
 		    assign(dst, src) {
 		        if (Array.isArray(dst) && Array.isArray(src)) {
 		            dst.length = src.length;
 		            for(let i = 0; i < dst.length; ++i){
-		                dst[i] = (0, exports.deepClone)(src[i]);
+		                dst[i] = (0, exports$1.deepClone)(src[i]);
 		            }
 		            return dst;
 		        }
@@ -5599,7 +5599,7 @@ function requireJson () {
 		        const sKeys = Object.keys(src);
 		        for(let i = 0; i < sKeys.length; ++i){
 		            const key = sKeys[i];
-		            dst[key] = (0, exports.deepClone)(src[key]);
+		            dst[key] = (0, exports$1.deepClone)(src[key]);
 		        }
 		        return dst;
 		    }
@@ -5630,7 +5630,7 @@ function requireJson () {
 		        };
 		    }
 		}
-		exports.MuJSON = MuJSON; 
+		exports$1.MuJSON = MuJSON;
 	} (json));
 	return json;
 }
@@ -5640,188 +5640,188 @@ var hasRequiredSchema;
 function requireSchema () {
 	if (hasRequiredSchema) return schema;
 	hasRequiredSchema = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.MuJSON = exports.MuDate = exports.MuDictionary = exports.MuVector = exports.MuBytes = exports.MuUnion = exports.MuStruct = exports.MuSortedArray = exports.MuOption = exports.MuArray = exports.MuQuantizedFloat = exports.MuRelativeVarint = exports.MuVarint = exports.MuUint32 = exports.MuUint16 = exports.MuUint8 = exports.MuInt32 = exports.MuInt16 = exports.MuInt8 = exports.MuFloat64 = exports.MuFloat32 = exports.MuUTF8 = exports.MuFixedASCII = exports.MuASCII = exports.MuBoolean = exports.MuVoid = void 0;
+		exports$1.MuJSON = exports$1.MuDate = exports$1.MuDictionary = exports$1.MuVector = exports$1.MuBytes = exports$1.MuUnion = exports$1.MuStruct = exports$1.MuSortedArray = exports$1.MuOption = exports$1.MuArray = exports$1.MuQuantizedFloat = exports$1.MuRelativeVarint = exports$1.MuVarint = exports$1.MuUint32 = exports$1.MuUint16 = exports$1.MuUint8 = exports$1.MuInt32 = exports$1.MuInt16 = exports$1.MuInt8 = exports$1.MuFloat64 = exports$1.MuFloat32 = exports$1.MuUTF8 = exports$1.MuFixedASCII = exports$1.MuASCII = exports$1.MuBoolean = exports$1.MuVoid = void 0;
 		const void_1 = require_void();
-		Object.defineProperty(exports, "MuVoid", {
+		Object.defineProperty(exports$1, "MuVoid", {
 		    enumerable: true,
 		    get: function() {
 		        return void_1.MuVoid;
 		    }
 		});
 		const boolean_1 = requireBoolean();
-		Object.defineProperty(exports, "MuBoolean", {
+		Object.defineProperty(exports$1, "MuBoolean", {
 		    enumerable: true,
 		    get: function() {
 		        return boolean_1.MuBoolean;
 		    }
 		});
 		const ascii_1 = requireAscii();
-		Object.defineProperty(exports, "MuASCII", {
+		Object.defineProperty(exports$1, "MuASCII", {
 		    enumerable: true,
 		    get: function() {
 		        return ascii_1.MuASCII;
 		    }
 		});
 		const fixed_ascii_1 = requireFixedAscii();
-		Object.defineProperty(exports, "MuFixedASCII", {
+		Object.defineProperty(exports$1, "MuFixedASCII", {
 		    enumerable: true,
 		    get: function() {
 		        return fixed_ascii_1.MuFixedASCII;
 		    }
 		});
 		const utf8_1 = requireUtf8();
-		Object.defineProperty(exports, "MuUTF8", {
+		Object.defineProperty(exports$1, "MuUTF8", {
 		    enumerable: true,
 		    get: function() {
 		        return utf8_1.MuUTF8;
 		    }
 		});
 		const float32_1 = requireFloat32();
-		Object.defineProperty(exports, "MuFloat32", {
+		Object.defineProperty(exports$1, "MuFloat32", {
 		    enumerable: true,
 		    get: function() {
 		        return float32_1.MuFloat32;
 		    }
 		});
 		const float64_1 = requireFloat64();
-		Object.defineProperty(exports, "MuFloat64", {
+		Object.defineProperty(exports$1, "MuFloat64", {
 		    enumerable: true,
 		    get: function() {
 		        return float64_1.MuFloat64;
 		    }
 		});
 		const int8_1 = requireInt8();
-		Object.defineProperty(exports, "MuInt8", {
+		Object.defineProperty(exports$1, "MuInt8", {
 		    enumerable: true,
 		    get: function() {
 		        return int8_1.MuInt8;
 		    }
 		});
 		const int16_1 = requireInt16();
-		Object.defineProperty(exports, "MuInt16", {
+		Object.defineProperty(exports$1, "MuInt16", {
 		    enumerable: true,
 		    get: function() {
 		        return int16_1.MuInt16;
 		    }
 		});
 		const int32_1 = requireInt32();
-		Object.defineProperty(exports, "MuInt32", {
+		Object.defineProperty(exports$1, "MuInt32", {
 		    enumerable: true,
 		    get: function() {
 		        return int32_1.MuInt32;
 		    }
 		});
 		const uint8_1 = requireUint8();
-		Object.defineProperty(exports, "MuUint8", {
+		Object.defineProperty(exports$1, "MuUint8", {
 		    enumerable: true,
 		    get: function() {
 		        return uint8_1.MuUint8;
 		    }
 		});
 		const uint16_1 = requireUint16();
-		Object.defineProperty(exports, "MuUint16", {
+		Object.defineProperty(exports$1, "MuUint16", {
 		    enumerable: true,
 		    get: function() {
 		        return uint16_1.MuUint16;
 		    }
 		});
 		const uint32_1 = requireUint32();
-		Object.defineProperty(exports, "MuUint32", {
+		Object.defineProperty(exports$1, "MuUint32", {
 		    enumerable: true,
 		    get: function() {
 		        return uint32_1.MuUint32;
 		    }
 		});
 		const varint_1 = requireVarint();
-		Object.defineProperty(exports, "MuVarint", {
+		Object.defineProperty(exports$1, "MuVarint", {
 		    enumerable: true,
 		    get: function() {
 		        return varint_1.MuVarint;
 		    }
 		});
 		const rvarint_1 = requireRvarint();
-		Object.defineProperty(exports, "MuRelativeVarint", {
+		Object.defineProperty(exports$1, "MuRelativeVarint", {
 		    enumerable: true,
 		    get: function() {
 		        return rvarint_1.MuRelativeVarint;
 		    }
 		});
 		const quantized_float_1 = requireQuantizedFloat();
-		Object.defineProperty(exports, "MuQuantizedFloat", {
+		Object.defineProperty(exports$1, "MuQuantizedFloat", {
 		    enumerable: true,
 		    get: function() {
 		        return quantized_float_1.MuQuantizedFloat;
 		    }
 		});
 		const array_1 = requireArray();
-		Object.defineProperty(exports, "MuArray", {
+		Object.defineProperty(exports$1, "MuArray", {
 		    enumerable: true,
 		    get: function() {
 		        return array_1.MuArray;
 		    }
 		});
 		const option_1 = requireOption();
-		Object.defineProperty(exports, "MuOption", {
+		Object.defineProperty(exports$1, "MuOption", {
 		    enumerable: true,
 		    get: function() {
 		        return option_1.MuOption;
 		    }
 		});
 		const sorted_array_1 = requireSortedArray();
-		Object.defineProperty(exports, "MuSortedArray", {
+		Object.defineProperty(exports$1, "MuSortedArray", {
 		    enumerable: true,
 		    get: function() {
 		        return sorted_array_1.MuSortedArray;
 		    }
 		});
 		const struct_1 = requireStruct$1();
-		Object.defineProperty(exports, "MuStruct", {
+		Object.defineProperty(exports$1, "MuStruct", {
 		    enumerable: true,
 		    get: function() {
 		        return struct_1.MuStruct;
 		    }
 		});
 		const union_1 = requireUnion();
-		Object.defineProperty(exports, "MuUnion", {
+		Object.defineProperty(exports$1, "MuUnion", {
 		    enumerable: true,
 		    get: function() {
 		        return union_1.MuUnion;
 		    }
 		});
 		const bytes_1 = requireBytes();
-		Object.defineProperty(exports, "MuBytes", {
+		Object.defineProperty(exports$1, "MuBytes", {
 		    enumerable: true,
 		    get: function() {
 		        return bytes_1.MuBytes;
 		    }
 		});
 		const dictionary_1 = requireDictionary();
-		Object.defineProperty(exports, "MuDictionary", {
+		Object.defineProperty(exports$1, "MuDictionary", {
 		    enumerable: true,
 		    get: function() {
 		        return dictionary_1.MuDictionary;
 		    }
 		});
 		const vector_1 = requireVector();
-		Object.defineProperty(exports, "MuVector", {
+		Object.defineProperty(exports$1, "MuVector", {
 		    enumerable: true,
 		    get: function() {
 		        return vector_1.MuVector;
 		    }
 		});
 		const date_1 = requireDate();
-		Object.defineProperty(exports, "MuDate", {
+		Object.defineProperty(exports$1, "MuDate", {
 		    enumerable: true,
 		    get: function() {
 		        return date_1.MuDate;
 		    }
 		});
 		const json_1 = requireJson();
-		Object.defineProperty(exports, "MuJSON", {
+		Object.defineProperty(exports$1, "MuJSON", {
 		    enumerable: true,
 		    get: function() {
 		        return json_1.MuJSON;
@@ -13612,22 +13612,22 @@ var hasRequired_id;
 function require_id () {
 	if (hasRequired_id) return _id;
 	hasRequired_id = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.ID_MIN = exports.ID_MAX = exports.IdSetSchema = exports.IdSchema = void 0;
-		exports.initialIds = initialIds;
-		exports.allocIds = allocIds;
-		exports.compareId = compareId;
-		exports.compareTaggedId = compareTaggedId;
-		exports.searchId = searchId;
+		exports$1.ID_MIN = exports$1.ID_MAX = exports$1.IdSetSchema = exports$1.IdSchema = void 0;
+		exports$1.initialIds = initialIds;
+		exports$1.allocIds = allocIds;
+		exports$1.compareId = compareId;
+		exports$1.compareTaggedId = compareTaggedId;
+		exports$1.searchId = searchId;
 		const ascii_1 = requireAscii();
 		const sorted_array_1 = requireSortedArray();
-		exports.IdSchema = new ascii_1.MuASCII();
-		exports.IdSetSchema = new sorted_array_1.MuSortedArray(exports.IdSchema, Infinity, compareId);
-		exports.ID_MAX = String.fromCharCode(128);
-		exports.ID_MIN = '';
+		exports$1.IdSchema = new ascii_1.MuASCII();
+		exports$1.IdSetSchema = new sorted_array_1.MuSortedArray(exports$1.IdSchema, Infinity, compareId);
+		exports$1.ID_MAX = String.fromCharCode(128);
+		exports$1.ID_MIN = '';
 		const BASE_COUNT = 10;
 		function log2(v_) {
 		    let r = 0;
@@ -14324,71 +14324,71 @@ var hasRequiredRda;
 function requireRda () {
 	if (hasRequiredRda) return rda;
 	hasRequiredRda = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.MuRDAListStore = exports.MuRDAList = exports.MuRDAMapStore = exports.MuRDAMap = exports.MuRDAStructStore = exports.MuRDAStruct = exports.MuRDARegisterStore = exports.MuRDARegister = exports.MuRDAConstantStore = exports.MuRDAConstant = void 0;
+		exports$1.MuRDAListStore = exports$1.MuRDAList = exports$1.MuRDAMapStore = exports$1.MuRDAMap = exports$1.MuRDAStructStore = exports$1.MuRDAStruct = exports$1.MuRDARegisterStore = exports$1.MuRDARegister = exports$1.MuRDAConstantStore = exports$1.MuRDAConstant = void 0;
 		const constant_1 = requireConstant();
-		Object.defineProperty(exports, "MuRDAConstant", {
+		Object.defineProperty(exports$1, "MuRDAConstant", {
 		    enumerable: true,
 		    get: function() {
 		        return constant_1.MuRDAConstant;
 		    }
 		});
-		Object.defineProperty(exports, "MuRDAConstantStore", {
+		Object.defineProperty(exports$1, "MuRDAConstantStore", {
 		    enumerable: true,
 		    get: function() {
 		        return constant_1.MuRDAConstantStore;
 		    }
 		});
 		const register_1 = requireRegister();
-		Object.defineProperty(exports, "MuRDARegister", {
+		Object.defineProperty(exports$1, "MuRDARegister", {
 		    enumerable: true,
 		    get: function() {
 		        return register_1.MuRDARegister;
 		    }
 		});
-		Object.defineProperty(exports, "MuRDARegisterStore", {
+		Object.defineProperty(exports$1, "MuRDARegisterStore", {
 		    enumerable: true,
 		    get: function() {
 		        return register_1.MuRDARegisterStore;
 		    }
 		});
 		const struct_1 = requireStruct();
-		Object.defineProperty(exports, "MuRDAStruct", {
+		Object.defineProperty(exports$1, "MuRDAStruct", {
 		    enumerable: true,
 		    get: function() {
 		        return struct_1.MuRDAStruct;
 		    }
 		});
-		Object.defineProperty(exports, "MuRDAStructStore", {
+		Object.defineProperty(exports$1, "MuRDAStructStore", {
 		    enumerable: true,
 		    get: function() {
 		        return struct_1.MuRDAStructStore;
 		    }
 		});
 		const map_1 = requireMap();
-		Object.defineProperty(exports, "MuRDAMap", {
+		Object.defineProperty(exports$1, "MuRDAMap", {
 		    enumerable: true,
 		    get: function() {
 		        return map_1.MuRDAMap;
 		    }
 		});
-		Object.defineProperty(exports, "MuRDAMapStore", {
+		Object.defineProperty(exports$1, "MuRDAMapStore", {
 		    enumerable: true,
 		    get: function() {
 		        return map_1.MuRDAMapStore;
 		    }
 		});
 		const list_1 = requireList();
-		Object.defineProperty(exports, "MuRDAList", {
+		Object.defineProperty(exports$1, "MuRDAList", {
 		    enumerable: true,
 		    get: function() {
 		        return list_1.MuRDAList;
 		    }
 		});
-		Object.defineProperty(exports, "MuRDAListStore", {
+		Object.defineProperty(exports$1, "MuRDAListStore", {
 		    enumerable: true,
 		    get: function() {
 		        return list_1.MuRDAListStore;
@@ -21861,11 +21861,11 @@ var hasRequiredLogger;
 function requireLogger () {
 	if (hasRequiredLogger) return logger;
 	hasRequiredLogger = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.BufferSink = exports.Logger = exports.LogMessageSchema = exports.LogLevel = void 0;
+		exports$1.BufferSink = exports$1.Logger = exports$1.LogMessageSchema = exports$1.LogLevel = void 0;
 		const schema_1 = requireSchema();
 		var LogLevel;
 		(function(LogLevel) {
@@ -21873,8 +21873,8 @@ function requireLogger () {
 		    LogLevel[LogLevel["WARN"] = 1] = "WARN";
 		    LogLevel[LogLevel["INFO"] = 2] = "INFO";
 		    LogLevel[LogLevel["DEBUG"] = 3] = "DEBUG";
-		})(LogLevel || (exports.LogLevel = LogLevel = {}));
-		exports.LogMessageSchema = new schema_1.MuStruct({
+		})(LogLevel || (exports$1.LogLevel = LogLevel = {}));
+		exports$1.LogMessageSchema = new schema_1.MuStruct({
 		    uuid: new schema_1.MuASCII(),
 		    level: new schema_1.MuUint8(LogLevel.INFO),
 		    timestamp: new schema_1.MuDate(new Date(0)),
@@ -21929,13 +21929,13 @@ function requireLogger () {
 		        };
 		    }
 		}
-		exports.Logger = Logger;
+		exports$1.Logger = Logger;
 		class BufferSink {
 		    replace(nextSink) {
 		        this._sink = nextSink;
 		        for(let i = 0; i < this.buffer.length; ++i){
 		            nextSink(this.buffer[i]);
-		            exports.LogMessageSchema.free(this.buffer[i]);
+		            exports$1.LogMessageSchema.free(this.buffer[i]);
 		        }
 		        this.buffer.length = 0;
 		    }
@@ -21945,12 +21945,12 @@ function requireLogger () {
 		            if (this._sink) {
 		                this._sink(message);
 		            } else {
-		                this.buffer.push(exports.LogMessageSchema.clone(message));
+		                this.buffer.push(exports$1.LogMessageSchema.clone(message));
 		            }
 		        };
 		    }
 		}
-		exports.BufferSink = BufferSink; 
+		exports$1.BufferSink = BufferSink;
 	} (logger));
 	return logger;
 }
@@ -21990,21 +21990,21 @@ var hasRequiredPairingHeap;
 function requirePairingHeap () {
 	if (hasRequiredPairingHeap) return pairingHeap;
 	hasRequiredPairingHeap = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", {
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", {
 		    value: true
 		});
-		exports.NIL = exports.NIL_LAMBDA = void 0;
-		exports.clearPool = clearPool;
-		exports.stats = stats;
-		exports.create = create;
-		exports.free = free;
-		exports.cmp = cmp;
-		exports.merge = merge;
-		exports.takeMin = takeMin;
-		exports.decreaseKey = decreaseKey;
+		exports$1.NIL = exports$1.NIL_LAMBDA = void 0;
+		exports$1.clearPool = clearPool;
+		exports$1.stats = stats;
+		exports$1.create = create;
+		exports$1.free = free;
+		exports$1.cmp = cmp;
+		exports$1.merge = merge;
+		exports$1.takeMin = takeMin;
+		exports$1.decreaseKey = decreaseKey;
 		const NIL_LAMBDA = ()=>false;
-		exports.NIL_LAMBDA = NIL_LAMBDA;
+		exports$1.NIL_LAMBDA = NIL_LAMBDA;
 		let _series = 0;
 		class PairingHeapNode {
 		    constructor(weight, taskId, lambda, _serial, _parent, _left, _right){
@@ -22031,36 +22031,36 @@ function requirePairingHeap () {
 		        nodesReused
 		    };
 		}
-		exports.NIL = new PairingHeapNode(-Infinity, -1, exports.NIL_LAMBDA, -1, null, null, null);
-		exports.NIL._left = exports.NIL._right = exports.NIL._parent = exports.NIL;
+		exports$1.NIL = new PairingHeapNode(-Infinity, -1, exports$1.NIL_LAMBDA, -1, null, null, null);
+		exports$1.NIL._left = exports$1.NIL._right = exports$1.NIL._parent = exports$1.NIL;
 		function create(weight, taskId) {
 		    if (taskId < 0) {
 		        throw new Error('negative taskID not allowed');
 		    }
 		    if (!_pool) {
 		        nodesCreated++;
-		        return new PairingHeapNode(weight, taskId, exports.NIL_LAMBDA, _series++, exports.NIL, exports.NIL, exports.NIL);
+		        return new PairingHeapNode(weight, taskId, exports$1.NIL_LAMBDA, _series++, exports$1.NIL, exports$1.NIL, exports$1.NIL);
 		    }
 		    nodesReused++;
 		    const head = _pool;
-		    if (head._parent === exports.NIL) {
+		    if (head._parent === exports$1.NIL) {
 		        _pool = null;
 		    } else {
 		        _pool = head._parent;
 		    }
-		    head._parent = exports.NIL;
+		    head._parent = exports$1.NIL;
 		    head.weight = weight;
 		    head.taskId = taskId;
 		    head._serial = _series++;
 		    return head;
 		}
 		function free(node) {
-		    if (node === exports.NIL) {
+		    if (node === exports$1.NIL) {
 		        return;
 		    }
 		    node._parent = _pool;
-		    node.lambda = exports.NIL_LAMBDA;
-		    node._left = node._right = exports.NIL;
+		    node.lambda = exports$1.NIL_LAMBDA;
+		    node._left = node._right = exports$1.NIL;
 		    _pool = node;
 		}
 		function cmp(a, b) {
@@ -22075,13 +22075,13 @@ function requirePairingHeap () {
 		    al._parent = b;
 		    b._parent = a;
 		    a._left = b;
-		    a._right = exports.NIL;
+		    a._right = exports$1.NIL;
 		    return a;
 		}
 		function merge(a, b) {
-		    if (a === exports.NIL) {
+		    if (a === exports$1.NIL) {
 		        return b;
-		    } else if (b === exports.NIL) {
+		    } else if (b === exports$1.NIL) {
 		        return a;
 		    } else if (cmp(a, b)) {
 		        return link(a, b);
@@ -22091,11 +22091,11 @@ function requirePairingHeap () {
 		}
 		function takeMin(root) {
 		    let p = root._left;
-		    root._left = exports.NIL;
+		    root._left = exports$1.NIL;
 		    root = p;
 		    while(true){
 		        let q = root._right;
-		        if (q === exports.NIL) {
+		        if (q === exports$1.NIL) {
 		            break;
 		        }
 		        p = root;
@@ -22105,19 +22105,19 @@ function requirePairingHeap () {
 		        while(true){
 		            p = r;
 		            q = r._right;
-		            if (q === exports.NIL) {
+		            if (q === exports$1.NIL) {
 		                break;
 		            }
 		            r = q._right;
 		            s = s._right = merge(p, q);
 		        }
-		        s._right = exports.NIL;
-		        if (p !== exports.NIL) {
+		        s._right = exports$1.NIL;
+		        if (p !== exports$1.NIL) {
 		            p._right = root;
 		            root = p;
 		        }
 		    }
-		    root._parent = exports.NIL;
+		    root._parent = exports$1.NIL;
 		    return root;
 		}
 		function decreaseKey(root, p) {
@@ -22145,7 +22145,7 @@ function requirePairingHeap () {
 		        l._parent = root;
 		        p._left = root;
 		        root._parent = p;
-		        p._right = p._parent = exports.NIL;
+		        p._right = p._parent = exports$1.NIL;
 		        return p;
 		    }
 		} 
@@ -23177,6 +23177,7 @@ function requireMinimatch () {
 	        pattern = pattern.split(path.sep).join('/');
 	    }
 	    this.options = options;
+	    this.maxGlobstarRecursion = options.maxGlobstarRecursion !== undefined ? options.maxGlobstarRecursion : 200;
 	    this.set = [];
 	    this.pattern = pattern;
 	    this.regexp = null;
@@ -23380,6 +23381,8 @@ function requireMinimatch () {
 	                    re += c;
 	                    continue;
 	                }
+	                // coalesce consecutive non-globstar * characters
+	                if (c === '*' && stateChar === '*') continue;
 	                // if we already have a stateChar, then it means
 	                // that there was something like ** or +? in there.
 	                // Handle the stateChar, then proceed with this one.
@@ -23718,95 +23721,149 @@ function requireMinimatch () {
 	// out of pattern, then that's fine, as long as all
 	// the parts match.
 	Minimatch.prototype.matchOne = function(file, pattern, partial) {
-	    var options = this.options;
-	    this.debug('matchOne', {
-	        'this': this,
-	        file: file,
-	        pattern: pattern
-	    });
-	    this.debug('matchOne', file.length, pattern.length);
-	    for(var fi = 0, pi = 0, fl = file.length, pl = pattern.length; fi < fl && pi < pl; fi++, pi++){
+	    if (pattern.indexOf(GLOBSTAR) !== -1) {
+	        return this._matchGlobstar(file, pattern, partial, 0, 0);
+	    }
+	    return this._matchOne(file, pattern, partial, 0, 0);
+	};
+	Minimatch.prototype._matchGlobstar = function(file, pattern, partial, fileIndex, patternIndex) {
+	    var i;
+	    // find first globstar from patternIndex
+	    var firstgs = -1;
+	    for(i = patternIndex; i < pattern.length; i++){
+	        if (pattern[i] === GLOBSTAR) {
+	            firstgs = i;
+	            break;
+	        }
+	    }
+	    // find last globstar
+	    var lastgs = -1;
+	    for(i = pattern.length - 1; i >= 0; i--){
+	        if (pattern[i] === GLOBSTAR) {
+	            lastgs = i;
+	            break;
+	        }
+	    }
+	    var head = pattern.slice(patternIndex, firstgs);
+	    var body = pattern.slice(firstgs + 1, lastgs);
+	    var tail = pattern.slice(lastgs + 1);
+	    // check the head
+	    if (head.length) {
+	        var fileHead = file.slice(fileIndex, fileIndex + head.length);
+	        if (!this._matchOne(fileHead, head, partial, 0, 0)) {
+	            return false;
+	        }
+	        fileIndex += head.length;
+	    }
+	    // check the tail
+	    var fileTailMatch = 0;
+	    if (tail.length) {
+	        if (tail.length + fileIndex > file.length) return false;
+	        var tailStart = file.length - tail.length;
+	        if (this._matchOne(file, tail, partial, tailStart, 0)) {
+	            fileTailMatch = tail.length;
+	        } else {
+	            // affordance for stuff like a/**/* matching a/b/
+	            if (file[file.length - 1] !== '' || fileIndex + tail.length === file.length) {
+	                return false;
+	            }
+	            tailStart--;
+	            if (!this._matchOne(file, tail, partial, tailStart, 0)) {
+	                return false;
+	            }
+	            fileTailMatch = tail.length + 1;
+	        }
+	    }
+	    // if body is empty (single ** between head and tail)
+	    if (!body.length) {
+	        var sawSome = !!fileTailMatch;
+	        for(i = fileIndex; i < file.length - fileTailMatch; i++){
+	            var f = String(file[i]);
+	            sawSome = true;
+	            if (f === '.' || f === '..' || !this.options.dot && f.charAt(0) === '.') {
+	                return false;
+	            }
+	        }
+	        return sawSome;
+	    }
+	    // split body into segments at each GLOBSTAR
+	    var bodySegments = [
+	        [
+	            [],
+	            0
+	        ]
+	    ];
+	    var currentBody = bodySegments[0];
+	    var nonGsParts = 0;
+	    var nonGsPartsSums = [
+	        0
+	    ];
+	    for(var bi = 0; bi < body.length; bi++){
+	        var b = body[bi];
+	        if (b === GLOBSTAR) {
+	            nonGsPartsSums.push(nonGsParts);
+	            currentBody = [
+	                [],
+	                0
+	            ];
+	            bodySegments.push(currentBody);
+	        } else {
+	            currentBody[0].push(b);
+	            nonGsParts++;
+	        }
+	    }
+	    var idx = bodySegments.length - 1;
+	    var fileLength = file.length - fileTailMatch;
+	    for(var si = 0; si < bodySegments.length; si++){
+	        bodySegments[si][1] = fileLength - (nonGsPartsSums[idx--] + bodySegments[si][0].length);
+	    }
+	    return !!this._matchGlobStarBodySections(file, bodySegments, fileIndex, 0, partial, 0, !!fileTailMatch);
+	};
+	// return false for "nope, not matching"
+	// return null for "not matching, cannot keep trying"
+	Minimatch.prototype._matchGlobStarBodySections = function(file, bodySegments, fileIndex, bodyIndex, partial, globStarDepth, sawTail) {
+	    var bs = bodySegments[bodyIndex];
+	    if (!bs) {
+	        // just make sure there are no bad dots
+	        for(var i = fileIndex; i < file.length; i++){
+	            sawTail = true;
+	            var f = file[i];
+	            if (f === '.' || f === '..' || !this.options.dot && f.charAt(0) === '.') {
+	                return false;
+	            }
+	        }
+	        return sawTail;
+	    }
+	    var body = bs[0];
+	    var after = bs[1];
+	    while(fileIndex <= after){
+	        var m = this._matchOne(file.slice(0, fileIndex + body.length), body, partial, fileIndex, 0);
+	        // if limit exceeded, no match. intentional false negative,
+	        // acceptable break in correctness for security.
+	        if (m && globStarDepth < this.maxGlobstarRecursion) {
+	            var sub = this._matchGlobStarBodySections(file, bodySegments, fileIndex + body.length, bodyIndex + 1, partial, globStarDepth + 1, sawTail);
+	            if (sub !== false) {
+	                return sub;
+	            }
+	        }
+	        var f = file[fileIndex];
+	        if (f === '.' || f === '..' || !this.options.dot && f.charAt(0) === '.') {
+	            return false;
+	        }
+	        fileIndex++;
+	    }
+	    return null;
+	};
+	Minimatch.prototype._matchOne = function(file, pattern, partial, fileIndex, patternIndex) {
+	    var fi, pi, fl, pl;
+	    for(fi = fileIndex, pi = patternIndex, fl = file.length, pl = pattern.length; fi < fl && pi < pl; fi++, pi++){
 	        this.debug('matchOne loop');
 	        var p = pattern[pi];
 	        var f = file[fi];
 	        this.debug(pattern, p, f);
 	        // should be impossible.
 	        // some invalid regexp stuff in the set.
-	        /* istanbul ignore if */ if (p === false) return false;
-	        if (p === GLOBSTAR) {
-	            this.debug('GLOBSTAR', [
-	                pattern,
-	                p,
-	                f
-	            ]);
-	            // "**"
-	            // a/**/b/**/c would match the following:
-	            // a/b/x/y/z/c
-	            // a/x/y/z/b/c
-	            // a/b/x/b/x/c
-	            // a/b/c
-	            // To do this, take the rest of the pattern after
-	            // the **, and see if it would match the file remainder.
-	            // If so, return success.
-	            // If not, the ** "swallows" a segment, and try again.
-	            // This is recursively awful.
-	            //
-	            // a/**/b/**/c matching a/b/x/y/z/c
-	            // - a matches a
-	            // - doublestar
-	            //   - matchOne(b/x/y/z/c, b/**/c)
-	            //     - b matches b
-	            //     - doublestar
-	            //       - matchOne(x/y/z/c, c) -> no
-	            //       - matchOne(y/z/c, c) -> no
-	            //       - matchOne(z/c, c) -> no
-	            //       - matchOne(c, c) yes, hit
-	            var fr = fi;
-	            var pr = pi + 1;
-	            if (pr === pl) {
-	                this.debug('** at the end');
-	                // a ** at the end will just swallow the rest.
-	                // We have found a match.
-	                // however, it will not swallow /.x, unless
-	                // options.dot is set.
-	                // . and .. are *never* matched by **, for explosively
-	                // exponential reasons.
-	                for(; fi < fl; fi++){
-	                    if (file[fi] === '.' || file[fi] === '..' || !options.dot && file[fi].charAt(0) === '.') return false;
-	                }
-	                return true;
-	            }
-	            // ok, let's see if we can swallow whatever we can.
-	            while(fr < fl){
-	                var swallowee = file[fr];
-	                this.debug('\nglobstar while', file, fr, pattern, pr, swallowee);
-	                // XXX remove this slice.  Just pass the start index.
-	                if (this.matchOne(file.slice(fr), pattern.slice(pr), partial)) {
-	                    this.debug('globstar found match!', fr, fl, swallowee);
-	                    // found a match.
-	                    return true;
-	                } else {
-	                    // can't swallow "." or ".." ever.
-	                    // can only swallow ".foo" when explicitly asked.
-	                    if (swallowee === '.' || swallowee === '..' || !options.dot && swallowee.charAt(0) === '.') {
-	                        this.debug('dot detected!', file, fr, pattern, pr);
-	                        break;
-	                    }
-	                    // ** swallows a segment, and continue.
-	                    this.debug('globstar swallow a segment, and continue');
-	                    fr++;
-	                }
-	            }
-	            // no match was found.
-	            // However, in partial mode, we can't say this is necessarily over.
-	            // If there's more *pattern* left, then
-	            /* istanbul ignore if */ if (partial) {
-	                // ran out of file
-	                this.debug('\n>>> no match, partial?', file, fr, pattern, pr);
-	                if (fr === fl) return true;
-	            }
-	            return false;
-	        }
+	        /* istanbul ignore if */ if (p === false || p === GLOBSTAR) return false;
 	        // something other than **
 	        // non-magic patterns just have to match exactly
 	        // patterns with magic have been turned into regexps.
@@ -23820,16 +23877,6 @@ function requireMinimatch () {
 	        }
 	        if (!hit) return false;
 	    }
-	    // Note: ending in / means that we'll get a final ""
-	    // at the end of the pattern.  This can only match a
-	    // corresponding "" at the end of the file.
-	    // If the file ends in /, then it can only match a
-	    // a pattern that ends in /, unless the pattern just
-	    // doesn't have any more for it. But, a/b/ should *not*
-	    // match "a/b/*", even though "" matches against the
-	    // [^/]*? pattern, except in partial mode, where it might
-	    // simply not be reached yet.
-	    // However, a/b/ should still satisfy a/*
 	    // now either we fell off the end of the pattern, or we're done.
 	    if (fi === fl && pi === pl) {
 	        // ran out of pattern and filename at the same time.
@@ -24557,8 +24604,8 @@ class PromiseWrapper {
 let urlAlphabet = 'useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict';
 let nanoid = (size = 21)=>{
     let id = '';
-    let i = size;
-    while(i--){
+    let i = size | 0;
+    while(i-- > 0){
         id += urlAlphabet[Math.random() * 64 | 0];
     }
     return id;
@@ -27619,7 +27666,7 @@ const RigidBodyBinding = new ScriptSynchronizer('body', RigidBodySchema, [
         'vx',
         'vy',
         'vz'
-    ], -128, MAX_VELOCITY),
+    ], -MAX_VELOCITY, MAX_VELOCITY),
     bindBody.propVec3('bounds', [
         'rx',
         'ry',
@@ -29875,16 +29922,16 @@ function requireHelper () {
 	                    v
 	                ],
 	                [
-	                    -2e3,
+	                    -v,
 	                    v
 	                ],
 	                [
-	                    -2e3,
-	                    -2e3
+	                    -v,
+	                    -v
 	                ],
 	                [
 	                    v,
-	                    -2e3
+	                    -v
 	                ]
 	            ];
 	        } else {
@@ -29895,14 +29942,14 @@ function requireHelper () {
 	                ],
 	                [
 	                    v,
-	                    -2e3
+	                    -v
 	                ],
 	                [
-	                    -2e3,
-	                    -2e3
+	                    -v,
+	                    -v
 	                ],
 	                [
-	                    -2e3,
+	                    -v,
 	                    v
 	                ]
 	            ];
@@ -29926,14 +29973,14 @@ function requireHelper () {
 	                ],
 	                [
 	                    v,
-	                    -2e3
+	                    -v
 	                ],
 	                [
-	                    -2e3,
-	                    -2e3
+	                    -v,
+	                    -v
 	                ],
 	                [
-	                    -2e3,
+	                    -v,
 	                    v
 	                ]
 	            ];
@@ -29944,16 +29991,16 @@ function requireHelper () {
 	                    v
 	                ],
 	                [
-	                    -2e3,
+	                    -v,
 	                    v
 	                ],
 	                [
-	                    -2e3,
-	                    -2e3
+	                    -v,
+	                    -v
 	                ],
 	                [
 	                    v,
-	                    -2e3
+	                    -v
 	                ]
 	            ];
 	        }
@@ -29975,16 +30022,16 @@ function requireHelper () {
 	                    v
 	                ],
 	                [
-	                    -2e3,
+	                    -v,
 	                    v
 	                ],
 	                [
-	                    -2e3,
-	                    -2e3
+	                    -v,
+	                    -v
 	                ],
 	                [
 	                    v,
-	                    -2e3
+	                    -v
 	                ]
 	            ];
 	        } else if (C < 0) {
@@ -29995,14 +30042,14 @@ function requireHelper () {
 	                ],
 	                [
 	                    v,
-	                    -2e3
+	                    -v
 	                ],
 	                [
-	                    -2e3,
-	                    -2e3
+	                    -v,
+	                    -v
 	                ],
 	                [
-	                    -2e3,
+	                    -v,
 	                    v
 	                ]
 	            ];

@@ -1,8 +1,8 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..')
 const sourceFiles = [
   'internals/apis/src/createra/createra.ts',
   'internals/apis/dist/createra/createra.d.ts',
@@ -12,7 +12,7 @@ const sourceFiles = [
   'services/game-server/src/script/script-host.ts',
   'services/game-server/src/script/bindings/world-synchronizer.ts',
   'services/game-server/src/script/bindings/entity-synchronizer.ts',
-];
+]
 const forbiddenScriptApis = [
   'getMiaoShells',
   'querySocial',
@@ -34,12 +34,12 @@ const forbiddenScriptApis = [
   'tempChatIdsUsingGet',
   'removeTempChatUserUsingPost',
   'getTempChatUsersUsingGet',
-];
+]
 
 for (const file of sourceFiles) {
-  const source = fs.readFileSync(path.join(root, file), 'utf8');
+  const source = fs.readFileSync(path.join(root, file), 'utf8')
   for (const api of forbiddenScriptApis) {
-    assert.equal(source.includes(api), false, `${file} still exposes ${api}`);
+    assert.equal(source.includes(api), false, `${file} still exposes ${api}`)
   }
 }
 
@@ -50,7 +50,7 @@ for (const removed of [
   'services/game-server/src/apis/index.ts',
   'services/game-server/src/storage/java-storage-api.ts',
 ]) {
-  assert.equal(fs.existsSync(path.join(root, removed)), false, `${removed} still exists`);
+  assert.equal(fs.existsSync(path.join(root, removed)), false, `${removed} still exists`)
 }
 
-console.log('platform API and analytics removal checks passed');
+console.log('platform API and analytics removal checks passed')

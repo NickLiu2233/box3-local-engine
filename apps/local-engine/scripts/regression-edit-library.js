@@ -14,29 +14,36 @@ function close(server) {
 
 async function get(port, path) {
   return new Promise((resolve, reject) => {
-    http.get(`http://127.0.0.1:${port}${path}`, (response) => {
-      const chunks = []
-      response.on('data', (chunk) => chunks.push(chunk))
-      response.on('end', () => resolve(Buffer.concat(chunks).toString()))
-    }).on('error', reject)
+    http
+      .get(`http://127.0.0.1:${port}${path}`, (response) => {
+        const chunks = []
+        response.on('data', (chunk) => chunks.push(chunk))
+        response.on('end', () => resolve(Buffer.concat(chunks).toString()))
+      })
+      .on('error', reject)
   })
 }
 
 async function post(port, path) {
   return new Promise((resolve, reject) => {
-    const request = http.request({
-      hostname: '127.0.0.1',
-      port,
-      path,
-      method: 'POST',
-    }, (response) => {
-      const chunks = []
-      response.on('data', (chunk) => chunks.push(chunk))
-      response.on('end', () => resolve({
-        statusCode: response.statusCode,
-        body: Buffer.concat(chunks).toString(),
-      }))
-    })
+    const request = http.request(
+      {
+        hostname: '127.0.0.1',
+        port,
+        path,
+        method: 'POST',
+      },
+      (response) => {
+        const chunks = []
+        response.on('data', (chunk) => chunks.push(chunk))
+        response.on('end', () =>
+          resolve({
+            statusCode: response.statusCode,
+            body: Buffer.concat(chunks).toString(),
+          }),
+        )
+      },
+    )
     request.on('error', reject)
     request.end()
   })
@@ -50,29 +57,29 @@ async function main() {
       releaseProjectStatus = resolve
     })
     const library = startEditLibrary({
-    mode,
-    host: '127.0.0.1',
-    port: proxyPortStart,
-    runtimePortStart,
-    resolveProject: (id) => ({ id }),
-    waitForRuntime: async (_url) => {
-      if (_url.includes(String(runtimePortStart))) await projectStatusReady
-    },
-    startRuntime: async (project, port) => {
-      const server = http.createServer((req, res) => res.end(`${project.id}:${req.url}`))
-      await listen(server, port)
-      const runtime = {
-        port,
-        exited: false,
-        async stop() {
-          runtime.exited = true
-          await close(server)
-        },
-      }
-      children.set(project.id, runtime)
-      return runtime
-    },
-  })
+      mode,
+      host: '127.0.0.1',
+      port: proxyPortStart,
+      runtimePortStart,
+      resolveProject: (id) => ({ id }),
+      waitForRuntime: async (_url) => {
+        if (_url.includes(String(runtimePortStart))) await projectStatusReady
+      },
+      startRuntime: async (project, port) => {
+        const server = http.createServer((req, res) => res.end(`${project.id}:${req.url}`))
+        await listen(server, port)
+        const runtime = {
+          port,
+          exited: false,
+          async stop() {
+            runtime.exited = true
+            await close(server)
+          },
+        }
+        children.set(project.id, runtime)
+        return runtime
+      },
+    })
     await library.ready
     const address = library.server.address()
     assert(address && typeof address !== 'string')
@@ -90,11 +97,10 @@ async function main() {
         'loading',
       )
       let earlyProxyResolved = false
-      const earlyProxy = get(address.port, '/project-status/block/runtime-asset')
-        .then((value) => {
-          earlyProxyResolved = true
-          return value
-        })
+      const earlyProxy = get(address.port, '/project-status/block/runtime-asset').then((value) => {
+        earlyProxyResolved = true
+        return value
+      })
       await new Promise((resolve) => setTimeout(resolve, 20))
       assert.equal(
         earlyProxyResolved,
@@ -102,17 +108,17 @@ async function main() {
         'resource requests must wait until the child runtime health check passes',
       )
       releaseProjectStatus()
-      assert.equal(
-        await earlyProxy,
-        'project-status:/block/runtime-asset',
-      )
-      assert.equal(
-        await get(address.port, '/project-idle/internal/save-local-project'),
-        '',
-      )
+      assert.equal(await earlyProxy, 'project-status:/block/runtime-asset')
+      assert.equal(await get(address.port, '/project-idle/internal/save-local-project'), '')
       assert.equal(children.has('project-idle'), false)
-      assert.equal(await get(address.port, '/project-one/api/health-check'), 'project-one:/api/health-check')
-      assert.equal(await get(address.port, '/project-two/api/health-check'), 'project-two:/api/health-check')
+      assert.equal(
+        await get(address.port, '/project-one/api/health-check'),
+        'project-one:/api/health-check',
+      )
+      assert.equal(
+        await get(address.port, '/project-two/api/health-check'),
+        'project-two:/api/health-check',
+      )
       assert.equal(
         await get(address.port, '/project-one/internal/save-local-project'),
         'project-one:/internal/save-local-project',

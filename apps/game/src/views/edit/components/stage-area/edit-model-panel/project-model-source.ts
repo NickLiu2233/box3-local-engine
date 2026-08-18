@@ -122,7 +122,7 @@ const boxesProjectModelSource: ProjectModelSource = {
 async function loadLocalModels(searchName: string) {
   const models =
     (await fetchModelList({
-      modelType: ModelType.Project,
+      modelType: ModelType.Private,
       modelName: searchName,
     })) || [];
 

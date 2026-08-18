@@ -1,24 +1,24 @@
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 
-const root = path.resolve(__dirname, '..');
-const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const root = path.resolve(__dirname, '..')
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 
-const client = read('apps/game/src/engine/game-client.ts');
-const server = read('services/game-server/src/script/script-host.ts');
-const teleportServer = read('services/game-server/src/teleport/teleport-server.ts');
-const launcher = read('apps/local-engine/src/launcher.js');
+const client = read('apps/game/src/engine/game-client.ts')
+const server = read('services/game-server/src/script/script-host.ts')
+const teleportServer = read('services/game-server/src/teleport/teleport-server.ts')
+const launcher = read('apps/local-engine/src/launcher.js')
 
 const orderedTokens = (source, tokens, label) => {
-  let cursor = -1;
+  let cursor = -1
   for (const token of tokens) {
-    const next = source.indexOf(token, cursor + 1);
-    assert.notEqual(next, -1, `${label} is missing ${token}`);
-    assert.ok(next > cursor, `${label} registers ${token} out of order`);
-    cursor = next;
+    const next = source.indexOf(token, cursor + 1)
+    assert.notEqual(next, -1, `${label} is missing ${token}`)
+    assert.ok(next > cursor, `${label} registers ${token} out of order`)
+    cursor = next
   }
-};
+}
 
 // MuDB assigns numeric protocol IDs by registration order. Even disabled local
 // features need matching transport slots on both sides of the engine socket.
@@ -31,7 +31,7 @@ orderedTokens(
     'this.remoteChannel = new RemoteChannelClient',
   ],
   'GameClient',
-);
+)
 
 orderedTokens(
   server,
@@ -42,31 +42,27 @@ orderedTokens(
     'this.remoteChannel = new RemoteChannelServer',
   ],
   'ScriptHost network server',
-);
+)
 
 assert.ok(
   teleportServer.includes('server.protocol(TeleportProtocol)'),
   'TeleportServer is missing its engine network protocol registration',
-);
+)
 assert.ok(
   teleportServer.includes('process.env.BOX_WORLD_MAP_UUID || state.settings.containerName'),
   'TeleportServer must identify the source map by its immutable map UUID',
-);
+)
 assert.ok(
   launcher.includes('BOX_WORLD_MAP_UUID: world.manifest.mapUuid'),
   'Play runtimes must receive their immutable map UUID',
-);
+)
 
-for (const forbidden of [
-  "from '../apis'",
-  'containerTeleport',
-  'getContainerHashById',
-]) {
+for (const forbidden of ["from '../apis'", 'containerTeleport', 'getContainerHashById']) {
   assert.equal(
     `${server}\n${teleportServer}`.includes(forbidden),
     false,
     `local teleport unexpectedly uses platform API: ${forbidden}`,
-  );
+  )
 }
 
-console.log('engine wire protocol order checks passed');
+console.log('engine wire protocol order checks passed')
