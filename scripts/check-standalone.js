@@ -387,6 +387,7 @@ for (const [label, pattern] of [
   ['creator build command', /^RUN pnpm build:creator$/m],
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
   ['play build command', /^RUN pnpm build:play$/m],
+  ['clean-checkout runtime asset generation', /^RUN pnpm prepare:assets$/m],
   ['creator final target', /^FROM runtime-base AS creator$/m],
   ['play final target', /^FROM runtime-base AS play$/m],
   ['VOXA build stage', /^FROM source-base AS voxa-build$/m],

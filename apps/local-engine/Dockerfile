@@ -29,6 +29,11 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       --filter @box-local/game-server... \
       --filter @box-local/local-engine...
 
+# Generated content-addressed runtime resources are intentionally excluded
+# from Git. Rebuild them inside the shared build stage so clean CI checkouts
+# and local Docker builds produce the same Creator/Play runtime data.
+RUN pnpm prepare:assets
+
 FROM engine-build-base AS creator-build
 
 RUN pnpm build:creator

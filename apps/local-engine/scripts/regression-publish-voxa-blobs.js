@@ -8,6 +8,7 @@ const path = require('path')
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-publish-voxa-'))
 const projectsRoot = path.join(temporaryRoot, 'projects')
 const voxaRoot = path.join(temporaryRoot, 'voxa')
+const templateRoot = path.join(temporaryRoot, 'template')
 const referencedHash = `Qm${'1'.repeat(44)}`
 const permissionHash = `Qm${'2'.repeat(44)}`
 const versionControlHash = `Qm${'3'.repeat(44)}`
@@ -30,15 +31,20 @@ const voxaPayload = Buffer.concat([
 
 process.env.BOX_LOCAL_PROJECTS_PATH = projectsRoot
 process.env.BOX_LOCAL_VOXA_DATA_PATH = voxaRoot
+process.env.BOX_LOCAL_TEMPLATE_DATA_PATH = templateRoot
 
 try {
-  const manager = require('../src/project-manager')
   const projectRoot = path.join(projectsRoot, 'voxa-publish')
   const sourceRoot = path.join(projectsRoot, 'voxa-publish', 'source')
   const sourceBlobRoot = path.join(sourceRoot, 'blobs')
   const statePath = path.join(sourceRoot, 'project-state.json')
-  fs.mkdirSync(projectRoot, { recursive: true })
-  fs.cpSync(path.join(__dirname, '..', 'data'), sourceRoot, { recursive: true })
+  fs.mkdirSync(sourceBlobRoot, { recursive: true })
+  fs.mkdirSync(path.join(templateRoot, 'blobs'), { recursive: true })
+  fs.writeFileSync(
+    path.join(templateRoot, 'runtime-blobs.json'),
+    JSON.stringify({ formatVersion: 1, hashes: [] }),
+  )
+  const manager = require('../src/project-manager')
   fs.writeFileSync(
     path.join(projectRoot, 'project.json'),
     JSON.stringify({
