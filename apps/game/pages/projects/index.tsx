@@ -897,7 +897,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
             onClick={() => switchView('maps')}
           >
             <MapIcon size={17} />
-            <span><strong>地图列表</strong><small>{projects.length} 个地图</small></span>
+            <strong>地图列表</strong>
           </button>
           <button
             type="button"
@@ -906,7 +906,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
             onClick={() => switchView('models')}
           >
             <Box size={17} />
-            <span><strong>模型列表</strong><small>模型与皮肤</small></span>
+            <strong>模型列表</strong>
           </button>
         </nav>
 
