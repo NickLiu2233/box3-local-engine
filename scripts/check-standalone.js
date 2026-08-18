@@ -181,6 +181,8 @@ for (const [name, command] of Object.entries({
   'creator:up': 'node apps/local-engine/src/deploy.js creator-up',
   'player-service': 'node apps/local-engine/src/deploy.js player-service',
   'player-service:up': 'node apps/local-engine/src/deploy.js player-service-up',
+  'player-auth-portal': 'node apps/local-engine/src/deploy.js player-auth-portal',
+  'player-auth-portal:up': 'node apps/local-engine/src/deploy.js player-auth-portal-up',
   'voxa': 'node apps/local-engine/src/deploy.js voxa',
   'voxa:image': 'docker compose --profile voxa build voxa',
   'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
@@ -556,7 +558,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,player-service,creator,play-storage-init,play,voxa,migrator'
+  'postgres,redis,player-service,player-auth-portal,creator,play-storage-init,play,voxa,migrator'
 ) {
   fail(`${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`)
 }
@@ -565,6 +567,7 @@ const creatorCompose = getComposeService(composeSource, 'creator')
 const playCompose = getComposeService(composeSource, 'play')
 const playStorageInitCompose = getComposeService(composeSource, 'play-storage-init')
 const playerServiceCompose = getComposeService(composeSource, 'player-service')
+const playerAuthPortalCompose = getComposeService(composeSource, 'player-auth-portal')
 const voxaCompose = getComposeService(composeSource, 'voxa')
 for (const [name, service] of [
   ['creator', creatorCompose],
@@ -590,6 +593,30 @@ requirePattern(
   composeFile,
   'independent player-service profile',
   /profiles: \[player-service\]/,
+)
+requirePattern(
+  playerAuthPortalCompose,
+  composeFile,
+  'independent player auth portal profile',
+  /profiles: \[auth-portal\]/,
+)
+requirePattern(
+  playerAuthPortalCompose,
+  composeFile,
+  'player auth portal standalone build context',
+  /context: \.\/examples\/player-auth-portal[\s\S]*?dockerfile: Dockerfile/,
+)
+requirePattern(
+  playerAuthPortalCompose,
+  composeFile,
+  'player auth portal server-side API key',
+  /AUTH_DEMO_API_KEY: \$\{BOX_PLAYER_AUTH_API_KEY:-\}/,
+)
+requirePattern(
+  playerAuthPortalCompose,
+  composeFile,
+  'read-only player auth portal',
+  /read_only: true[\s\S]*?cap_drop:\s*\n\s*- ALL/,
 )
 forbidPattern(
   creatorCompose,
