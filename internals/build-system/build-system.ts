@@ -123,7 +123,13 @@ export class BuildSystem implements BuildSystemAPI {
   ): Promise<string> {
     const cached = await this.cache.retrieve(name, params);
     if (cached) {
-      return cached;
+      if (await this.contentServer.retrieve(cached)) {
+        return cached;
+      }
+      this.logger.warn(
+        `Build cache result is unavailable in the current content store; rebuilding ${String(name)} (${cached}).`,
+      );
+      await this.cache.invalidate(name, params, cached);
     }
 
     const task = this.tasks[name as string];
@@ -131,22 +137,37 @@ export class BuildSystem implements BuildSystemAPI {
       throw new Error(`no such build task: ${name}`);
     }
     this.logger.info(`${name}(${(params as any[]).join(',')})`);
-    try {
-      return await this.cache.store(name, params, () =>
-        task(
-          new BuildSystem(
-            this.cache,
-            this.contentServer,
-            this.ossContentServer,
-            this.nextUidListUsingGet,
-            this.logger.child({
-              caller: name,
-            }),
-            this.debug,
-          ),
-          ...(params as any[]),
+    const runTask = () =>
+      task(
+        new BuildSystem(
+          this.cache,
+          this.contentServer,
+          this.ossContentServer,
+          this.nextUidListUsingGet,
+          this.logger.child({
+            caller: name,
+          }),
+          this.debug,
         ),
+        ...(params as any[]),
       );
+    try {
+      const result = await this.cache.store(name, params, runTask);
+      if (await this.contentServer.retrieve(result)) {
+        return result;
+      }
+
+      // Another runtime can win a shared Redis lock while writing its result
+      // into a different derived content store. Do not let that foreign hash
+      // strand this runtime in its startup screen: invalidate it, build once
+      // against the current store, then best-effort publish the usable result.
+      this.logger.warn(
+        `Concurrent build cache result is unavailable in the current content store; rebuilding ${String(name)} (${result}).`,
+      );
+      await this.cache.invalidate(name, params, result);
+      const recovered = await runTask();
+      await this.cache.store(name, params, async () => recovered);
+      return recovered;
     } catch (e) {
       this.logger.error(
         `Error in build task: ${name}(${JSON.stringify(params)})`,

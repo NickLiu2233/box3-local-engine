@@ -116,17 +116,34 @@ class BuildSystem {
         return __awaiter(this, void 0, void 0, function* () {
             const cached = yield this.cache.retrieve(name, params);
             if (cached) {
-                return cached;
+                if (yield this.contentServer.retrieve(cached)) {
+                    return cached;
+                }
+                this.logger.warn(`Build cache result is unavailable in the current content store; rebuilding ${String(name)} (${cached}).`);
+                yield this.cache.invalidate(name, params, cached);
             }
             const task = this.tasks[name];
             if (!task) {
                 throw new Error(`no such build task: ${name}`);
             }
             this.logger.info(`${name}(${params.join(',')})`);
+            const runTask = () => task(new BuildSystem(this.cache, this.contentServer, this.ossContentServer, this.nextUidListUsingGet, this.logger.child({
+                caller: name,
+            }), this.debug), ...params);
             try {
-                return yield this.cache.store(name, params, () => task(new BuildSystem(this.cache, this.contentServer, this.ossContentServer, this.nextUidListUsingGet, this.logger.child({
-                    caller: name,
-                }), this.debug), ...params));
+                const result = yield this.cache.store(name, params, runTask);
+                if (yield this.contentServer.retrieve(result)) {
+                    return result;
+                }
+                // Another runtime can win a shared Redis lock while writing its result
+                // into a different derived content store. Do not let that foreign hash
+                // strand this runtime in its startup screen: invalidate it, build once
+                // against the current store, then best-effort publish the usable result.
+                this.logger.warn(`Concurrent build cache result is unavailable in the current content store; rebuilding ${String(name)} (${result}).`);
+                yield this.cache.invalidate(name, params, result);
+                const recovered = yield runTask();
+                yield this.cache.store(name, params, () => __awaiter(this, void 0, void 0, function* () { return recovered; }));
+                return recovered;
             }
             catch (e) {
                 this.logger.error(`Error in build task: ${name}(${JSON.stringify(params)})`);

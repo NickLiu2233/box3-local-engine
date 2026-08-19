@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { FileSystemContentServer } from '@box-local/content-server/file-system-store-node';
+import { BuildSystem } from '@box-local/build-system/build-system';
 import { LocalDerivedContentServer } from '../src/content/local-derived-content';
 import { LocalBuildCache } from '../src/utils/local-build-cache';
 
@@ -167,6 +168,49 @@ async function main() {
       sourceHash,
       'creator play preview must reuse the editor prebake cache',
     );
+
+    // A play-preview runtime and an edit runtime can share cache keys while
+    // writing derived blobs to different stores. A cached task result that is
+    // absent from the current content store must be rebuilt instead of being
+    // returned forever and leaving the UI stuck at "starting runtime".
+    const staleCache = new LocalBuildCache(path.join(root, 'stale', 'build-cache.json'));
+    await staleCache.store('runtimeScopedTask', ['same-project'], async () =>
+      'QmStaleResultOwnedByAnotherRuntime',
+    );
+    const currentContent = new FileSystemContentServer(
+      path.join(root, 'current-runtime', 'blobs'),
+    );
+    await currentContent.init();
+    const logger = {
+      child() { return this; },
+      info() {},
+      warn() {},
+      error() {},
+    } as any;
+    const buildSystem = new BuildSystem(
+      staleCache,
+      currentContent,
+      currentContent,
+      async () => [],
+      logger,
+    );
+    let staleRebuilds = 0;
+    await buildSystem.addTasks({
+      runtimeScopedTask: async (bs: BuildSystem) => {
+        staleRebuilds += 1;
+        return bs.storeContent(Buffer.from('rebuilt-for-current-runtime'));
+      },
+    });
+    const recoveredHash = await (buildSystem as any).build(
+      'runtimeScopedTask',
+      'same-project',
+    );
+    assert.equal(
+      Buffer.from((await currentContent.retrieve(recoveredHash))!).toString(),
+      'rebuilt-for-current-runtime',
+      'an inaccessible cached build result must be rebuilt in the current store',
+    );
+    assert.equal(staleRebuilds, 1, 'the stale cache entry must not suppress rebuilding');
     process.stdout.write('Local derived content checks passed.\n');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

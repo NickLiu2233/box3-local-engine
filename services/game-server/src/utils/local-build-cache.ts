@@ -5,6 +5,7 @@ import path from 'path';
 import type { BuildCacheAPI } from '@box-local/build-system/type';
 
 type CacheData = Record<string, string>;
+const INVALID_CACHE_ENTRY = '!';
 
 /**
  * Local counterpart of boxes' persistent build-cache service.
@@ -41,10 +42,10 @@ export class LocalBuildCache implements BuildCacheAPI {
   }
 
   private cached(token: string) {
-    return (
-      this.read()[token] ||
-      (this.fallbackFilename ? this.readFile(this.fallbackFilename)[token] : '')
-    );
+    const primary = this.read()[token];
+    if (primary === INVALID_CACHE_ENTRY) return '';
+    return primary ||
+      (this.fallbackFilename ? this.readFile(this.fallbackFilename)[token] : '');
   }
 
   private write(data: CacheData) {
@@ -56,6 +57,23 @@ export class LocalBuildCache implements BuildCacheAPI {
 
   public async retrieve(name: string, params: any[]): Promise<string> {
     return this.cached(this.token(name, params));
+  }
+
+  public async invalidate(
+    name: string,
+    params: any[],
+    result = '',
+  ): Promise<void> {
+    const token = this.token(name, params);
+    const latest = this.read();
+    const current = latest[token];
+    if (result && current && current !== result && current !== INVALID_CACHE_ENTRY) {
+      return;
+    }
+    // Persist a tombstone so a stale fallback cache cannot poison every new
+    // runtime process after the first recovery.
+    latest[token] = INVALID_CACHE_ENTRY;
+    this.write(latest);
   }
 
   public async store(

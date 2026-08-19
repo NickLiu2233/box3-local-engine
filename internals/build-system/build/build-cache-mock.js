@@ -32,6 +32,14 @@ class MockBuildCache {
             return '';
         });
     }
+    invalidate(name_1, params_1) {
+        return __awaiter(this, arguments, void 0, function* (name, params, result = '') {
+            const token = this.token(name, params);
+            if (!result || this.cache[token] === result) {
+                delete this.cache[token];
+            }
+        });
+    }
     store(name, params, method) {
         return __awaiter(this, void 0, void 0, function* () {
             const token = this.token(name, params);

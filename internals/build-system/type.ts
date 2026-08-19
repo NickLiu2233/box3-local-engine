@@ -34,6 +34,7 @@ export interface BuildSystemAPI {
 
 export interface BuildCacheAPI {
   retrieve(name: string, params: any[]): Promise<string>;
+  invalidate(name: string, params: any[], result?: string): Promise<void>;
   store(
     name: string,
     params: any[],

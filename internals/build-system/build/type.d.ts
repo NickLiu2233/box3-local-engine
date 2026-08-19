@@ -23,6 +23,7 @@ export interface BuildSystemAPI {
 }
 export interface BuildCacheAPI {
     retrieve(name: string, params: any[]): Promise<string>;
+    invalidate(name: string, params: any[], result?: string): Promise<void>;
     store(name: string, params: any[], result: () => Promise<string>): Promise<string>;
 }
 export type Task = (buildSystem: BuildSystem, ...args: any[]) => Promise<string>;

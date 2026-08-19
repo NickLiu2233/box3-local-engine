@@ -55,6 +55,18 @@ export class RedisBuildCache implements BuildCacheAPI {
     return local;
   }
 
+  public async invalidate(name: string, params: any[], result = '') {
+    const key = this.resultKey(name, params);
+    try {
+      if (result) {
+        await this.redis.compareAndDelete(key, result);
+      }
+    } catch (error) {
+      this.warn(error);
+    }
+    await this.fallback.invalidate(name, params, result);
+  }
+
   public async store(
     name: string,
     params: any[],

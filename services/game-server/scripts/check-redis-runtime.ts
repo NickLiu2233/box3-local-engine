@@ -57,6 +57,10 @@ class MemoryBuildCache implements BuildCacheAPI {
   public async retrieve(name: string, params: any[]) {
     return this.values.get(this.token(name, params)) || '';
   }
+  public async invalidate(name: string, params: any[], result = '') {
+    const token = this.token(name, params);
+    if (!result || this.values.get(token) === result) this.values.delete(token);
+  }
   public async store(name: string, params: any[], method: () => Promise<string>) {
     const token = this.token(name, params);
     const cached = this.values.get(token);

@@ -23,6 +23,17 @@ export class MockBuildCache implements BuildCacheAPI {
     return '';
   }
 
+  public async invalidate(
+    name: string,
+    params: any[],
+    result = '',
+  ): Promise<void> {
+    const token = this.token(name, params);
+    if (!result || this.cache[token] === result) {
+      delete this.cache[token];
+    }
+  }
+
   public async store(
     name: string,
     params: any[],
