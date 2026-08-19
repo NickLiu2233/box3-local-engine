@@ -36,8 +36,15 @@ import { useEdit } from 'src/client/edit/edit-context';
 import { ModelData } from '.';
 import { clientConfig } from 'src/config/client';
 import { StageAreaContext } from 'src/views/edit/components/stage-area/context';
+import { EditActionLabel } from 'src/client/edit/replica/replica-client-schema';
 
 import type { LoadingSeed } from '../seeds';
+import {
+  createProjectModelSeedReplacement,
+  LocalProjectModelImportCache,
+  placeLocalModelImmediately,
+  type PlacementMeshInfo,
+} from './local-model-placement';
 import style from './index.module.scss';
 
 type PreviewSeed = {
@@ -88,6 +95,7 @@ export default function Preview() {
   const intl = useIntl();
   const dispatch = useDispatch();
   const editor = useEdit();
+  const localModelImports = useRef(new LocalProjectModelImportCache());
 
   const setElementCursor = useCallback(
     (state: CursorState) => {
@@ -313,9 +321,10 @@ export default function Preview() {
         return;
       }
 
-      const newFormatName = clientConfig.isLocalGameServer
-        ? getLocalMeshPath(res.name, res.id)
-        : getMeshPath(res.name);
+      // The copy API returns a project-owned model. Keep its mesh path
+      // independent from the VOXA local-library alias used for the immediate
+      // preview/placement; the server stores this asset at mesh/<name>.vb.
+      const newFormatName = getMeshPath(res.name);
 
       return {
         modelId: res.id,
@@ -326,6 +335,23 @@ export default function Preview() {
     [getSeedMeshInfo, handleCopyAsProjectModel],
   );
 
+  const updatePlacedSeedMesh = useCallback(
+    (seedId: string, mesh: PlacementMeshInfo) => {
+      const node = editor.seedController.getTreeNode(seedId);
+      if (!node) return;
+      const replacement = createProjectModelSeedReplacement(node, mesh);
+      if (!replacement) return;
+      // meshId is an RDA constant in Boxes. Replace the existing node with
+      // the same id in one action so the constant is initialized correctly
+      // without creating a second scene entity.
+      editor.replica
+        .projectTransaction()
+        .push((action) => action.entitiesTree.add(replacement))
+        .commit(EditActionLabel.PROJECT, false);
+    },
+    [editor],
+  );
+
   const mouseUpListener = async (hitRes: UI3DVoxelEvent) => {
     if (!targetModel || !targetModel.modelFileHash || !previewSeed) {
       return;
@@ -334,6 +360,60 @@ export default function Preview() {
     if (!newSeed) {
       return;
     }
+    newSeed.name = editor.seedController.genNewName(
+      getProjectModelDisplayName(targetModel.name),
+    );
+    const newSeedId = editor.seedController.genNodeId();
+
+    if (clientConfig.isLocalGameServer) {
+      const provisionalMesh: PlacementMeshInfo = {
+        modelId: targetModel.id,
+        formatName:
+          targetModel.meshPath ||
+          (targetModel.libraryScope === 'local'
+            ? getLocalMeshPath(targetModel.name, targetModel.id)
+            : getMeshPath(targetModel.name)),
+        defaultMotionId: '',
+      };
+      newSeed.mesh = provisionalMesh.formatName;
+      newSeed.meshId = provisionalMesh.modelId;
+
+      const resolveProjectMesh = async () => {
+        const resolve = async () => {
+          const mesh = await handleAddToProjectList(targetModel);
+          if (!mesh) throw new Error('project model import failed');
+          return mesh;
+        };
+        if (targetModel.type === ModelType.Project) return await resolve();
+        return await localModelImports.current.resolve(
+          `${targetModel.id}:${targetModel.modelFileHash}`,
+          resolve,
+        );
+      };
+
+      void placeLocalModelImmediately({
+        seedId: newSeedId,
+        addSeed: () => editor.seedController.addSeed(newSeedId, newSeed),
+        resolveProjectMesh,
+        updateSeed: updatePlacedSeedMesh,
+        removeSeed: (seedId) => {
+          if (editor.seedController.getTreeNode(seedId)) {
+            editor.seedController.removeTreeNodes([seedId]);
+          }
+        },
+      })
+        .then(() => editor.replica.updateExtraProject())
+        .catch((error) => {
+          editor.logger.error(`error placing local model: ${String(error)}`);
+          Toast.error({
+            content: intl.formatMessage({
+              id: 'gameObject.modelPlaceFailed',
+            }),
+          });
+        });
+      return;
+    }
+
     const { mesh, model } = previewSeed;
     const loadingSeed: LoadingSeed = {
       mesh,
@@ -353,10 +433,6 @@ export default function Preview() {
         return;
       }
 
-      newSeed.name = editor.seedController.genNewName(
-        getProjectModelDisplayName(targetModel.name),
-      );
-      const newSeedId = editor.seedController.genNodeId();
       newSeed.mesh = newMeshInfo.formatName;
       newSeed.defaultMotionId = newMeshInfo.defaultMotionId;
       newSeed.meshId = newMeshInfo.modelId;

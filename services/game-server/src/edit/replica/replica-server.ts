@@ -180,6 +180,30 @@ export class EditReplicaServer {
   private _observedLocalExtraProjectHash = getLocalExtraProjectStateHash();
   private _nextLocalExtraProjectCheck = 0;
   private _localExtraProjectRefreshPending = false;
+  private _localProjectModelPathsSignature: string | undefined;
+
+  private _syncLocalProjectModelMembership() {
+    if (
+      getConfigSync()?.method !== 'local' ||
+      !process.env.BOX_GROUP_PROJECT_STATE_PATH
+    ) {
+      return;
+    }
+    const replicaState = this._state.replica;
+    replicaState.projectStore.state(ProjectRDA, replicaState.project);
+    const paths = Array.from(
+      new Set(
+        Object.values(replicaState.project.entitiesTree).flatMap((node) => {
+          const mesh = node.value?.mesh;
+          return typeof mesh === 'string' && mesh ? [mesh] : [];
+        }),
+      ),
+    ).sort();
+    const signature = paths.join('\u0000');
+    if (signature === this._localProjectModelPathsSignature) return;
+    syncLocalProjectModelPaths(paths);
+    this._localProjectModelPathsSignature = signature;
+  }
 
   private async _savePermissions() {
     const replicaState = this._state.replica;
@@ -500,6 +524,7 @@ export class EditReplicaServer {
               store.apply(ProjectRDA, actions[i]);
             }
             this._setProjectDirty();
+            this._syncLocalProjectModelMembership();
 
             // broadcast to all clients except the client that dispatched the optimistic action
             const connections = this._state.game.state.connectionSet;
@@ -1205,6 +1230,7 @@ export class EditReplicaServer {
         store.apply(ProjectRDA, actions[i]);
       }
       this._setProjectDirty();
+      this._syncLocalProjectModelMembership();
       this._protocol.broadcast.project(actions);
     } catch (e) {
       this._logger.error(`error updating project: ${e}`);
@@ -1655,6 +1681,7 @@ export class EditReplicaServer {
 
     // update project
     store.state(ProjectRDA, replicaState.project);
+    this._syncLocalProjectModelMembership();
 
     // clear dirty flag for project reference
     replicaState.projectDirty = false;

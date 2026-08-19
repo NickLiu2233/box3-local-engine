@@ -25,11 +25,19 @@ import {
 import styles from './projects.module.css';
 import { CreatorModelLibrary } from '../../components/creator-model-library';
 import { hasAuthenticatedPlayer, playerLoginURL } from '../../server/player-service-client';
+import {
+  compatibilityDiagnostics,
+  importResponseError,
+  type DetailedImportError,
+  type ImportDiagnostic,
+} from '../../server/import-diagnostics';
 
 type ProjectStatus = '草稿' | '已发布';
 type CompatibilityReport = {
   level: 'compatible' | 'warning' | 'error';
   summary: { warnings: number; errors: number; missingBlobCount: number };
+  errors?: Array<{ code?: string; message: string }>;
+  warnings?: Array<{ code?: string; message: string }>;
 };
 
 type LocalProject = {
@@ -73,6 +81,7 @@ type ImportProgress = {
   elapsedSeconds: number;
   projectName?: string;
   message?: string;
+  details?: ImportDiagnostic[];
 };
 
 type ImportMode = 'independent' | 'submap';
@@ -289,7 +298,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
         : current);
     }, 500);
     try {
-      const data = await new Promise<{ project?: LocalProject; message?: string }>((resolve, reject) => {
+      const data = await new Promise<{ project?: LocalProject; message?: string; details?: ImportDiagnostic[] }>((resolve, reject) => {
         const request = new XMLHttpRequest();
         const parameters = new URLSearchParams({ mode });
         if (mode === 'submap') parameters.set('targetMainProjectId', targetMainProjectId);
@@ -320,14 +329,16 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
         request.onerror = () => reject(new Error('无法连接创作端，工程包上传失败'));
         request.onabort = () => reject(new Error('导入已取消'));
         request.onload = () => {
-          let result: { project?: LocalProject; message?: string } = {};
+          let result: { project?: LocalProject; message?: string; details?: ImportDiagnostic[] } = {};
           try { result = JSON.parse(request.responseText || '{}'); } catch { /* handled below */ }
           if (request.status >= 200 && request.status < 300) resolve(result);
-          else reject(new Error(result.message || `导入工程失败（HTTP ${request.status}）`));
+          else reject(importResponseError(result, request.status, '导入工程失败'));
         };
         request.send(file);
       });
       await refreshProjects();
+      const report = data.project?.compatibility;
+      const details = compatibilityDiagnostics(report);
       setImportProgress({
         filename: file.name,
         phase: 'done',
@@ -336,8 +347,8 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
         total: file.size,
         elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
         projectName: data.project?.name,
+        details,
       });
-      const report = data.project?.compatibility;
       const location = mode === 'submap'
         ? `，已成为“${mainProjects.find((project) => project.id === targetMainProjectId)?.name || targetMainProjectId}”的副地图`
         : '，原地图组主副关系已保留';
@@ -353,6 +364,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
         total: current?.total || file.size,
         elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
         message: error instanceof Error ? error.message : '导入工程失败',
+        details: (error as Partial<DetailedImportError>)?.details || [],
       }));
     } finally {
       window.clearInterval(timer);
@@ -1297,6 +1309,26 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
                       : importProgress.message}
               </span>
             </div>
+            {importProgress.details?.length ? (
+              <div className={styles.importDiagnostics} role="log" aria-label="导入检查详情">
+                <div className={styles.importDiagnosticsHeader}>
+                  <strong>检查详情</strong>
+                  <span>
+                    {importProgress.details.filter((detail) => detail.level === 'error').length} 个错误 ·{' '}
+                    {importProgress.details.filter((detail) => detail.level === 'warning').length} 个提醒
+                  </span>
+                </div>
+                <ul>
+                  {importProgress.details.map((detail, index) => (
+                    <li key={`${detail.level}-${detail.code || 'detail'}-${index}`} data-level={detail.level}>
+                      <span>{detail.level === 'error' ? '错误' : '提醒'}</span>
+                      <p>{detail.message}</p>
+                      {detail.code ? <code>{detail.code}</code> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {(importProgress.phase === 'done' || importProgress.phase === 'error') && (
               <button className={styles.exportCloseButton} type="button" onClick={() => setImportProgress(null)}>
                 {importProgress.phase === 'done' ? '完成' : '关闭'}

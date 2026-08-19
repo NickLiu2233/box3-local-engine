@@ -1,5 +1,7 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
 
 type LocalProjectState = {
@@ -25,6 +27,23 @@ type LocalGroupProjectState = LocalProjectState & {
   createdAt?: string;
 };
 
+type GroupStateLockMetadata = {
+  formatVersion: 1;
+  pid: number;
+  hostname: string;
+  token: string;
+  createdAt: string;
+};
+
+type GroupStateLockSnapshot = {
+  metadata?: GroupStateLockMetadata;
+  ageMs: number;
+  device: number;
+  inode: number;
+  size: number;
+  modifiedMs: number;
+};
+
 function writeStateAtomically(statePath: string, state: object) {
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
   const temporaryPath = `${statePath}.${process.pid}.${Date.now()}.tmp`;
@@ -42,34 +61,195 @@ function copyProjectBlobsToGroup() {
   for (const entry of fs.readdirSync(projectBlobRoot, { withFileTypes: true })) {
     if (!entry.isFile()) continue;
     const destination = path.join(groupBlobRoot, entry.name);
-    if (!fs.existsSync(destination)) {
-      fs.copyFileSync(path.join(projectBlobRoot, entry.name), destination);
-      fs.chmodSync(destination, 0o644);
+    if (fs.existsSync(destination)) continue;
+    const temporaryPath = `${destination}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      fs.copyFileSync(path.join(projectBlobRoot, entry.name), temporaryPath);
+      fs.chmodSync(temporaryPath, 0o644);
+      if (fs.existsSync(destination)) continue;
+      try {
+        fs.renameSync(temporaryPath, destination);
+      } catch (error) {
+        // Multiple map runtimes can publish the same immutable hash. The
+        // winner has already installed the complete file atomically.
+        if (!fs.existsSync(destination)) throw error;
+      }
+    } finally {
+      fs.rmSync(temporaryPath, { force: true });
     }
   }
+}
+
+function positiveMilliseconds(name: string, fallback: number, minimum: number) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value >= minimum
+    ? Math.floor(value)
+    : fallback;
+}
+
+function lockTimings() {
+  const timeoutMs = positiveMilliseconds(
+    'BOX_GROUP_STATE_LOCK_TIMEOUT_MS',
+    30_000,
+    50,
+  );
+  const staleMs = positiveMilliseconds(
+    'BOX_GROUP_STATE_LOCK_STALE_MS',
+    300_000,
+    1_000,
+  );
+  return { timeoutMs, staleMs: Math.max(staleMs, timeoutMs * 2) };
+}
+
+function readGroupStateLock(lockPath: string): GroupStateLockSnapshot | undefined {
+  try {
+    const stats = fs.statSync(lockPath);
+    let metadata: GroupStateLockMetadata | undefined;
+    try {
+      const candidate = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+      if (
+        candidate?.formatVersion === 1 &&
+        Number.isInteger(candidate.pid) &&
+        candidate.pid > 0 &&
+        typeof candidate.hostname === 'string' &&
+        typeof candidate.token === 'string' &&
+        typeof candidate.createdAt === 'string'
+      ) {
+        metadata = candidate;
+      }
+    } catch {
+      // Locks written by older builds were empty. Their mtime still permits
+      // conservative expiry without treating a live legacy owner as dead.
+    }
+    return {
+      metadata,
+      ageMs: Math.max(0, Date.now() - stats.mtimeMs),
+      device: stats.dev,
+      inode: stats.ino,
+      size: stats.size,
+      modifiedMs: stats.mtimeMs,
+    };
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw error;
+  }
+}
+
+function isLocalLockOwnerAlive(metadata: GroupStateLockMetadata) {
+  if (metadata.hostname !== os.hostname()) return undefined;
+  try {
+    process.kill(metadata.pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ESRCH' ? false : true;
+  }
+}
+
+function sameLockSnapshot(
+  left: GroupStateLockSnapshot,
+  right: GroupStateLockSnapshot,
+) {
+  if (left.metadata?.token || right.metadata?.token) {
+    return left.metadata?.token === right.metadata?.token;
+  }
+  return left.device === right.device &&
+    left.inode === right.inode &&
+    left.size === right.size &&
+    left.modifiedMs === right.modifiedMs;
+}
+
+function recoverAbandonedGroupStateLock(lockPath: string, staleMs: number) {
+  const observed = readGroupStateLock(lockPath);
+  if (!observed) return true;
+  const ownerAlive = observed.metadata
+    ? isLocalLockOwnerAlive(observed.metadata)
+    : undefined;
+  if (ownerAlive === true) return false;
+  if (ownerAlive !== false && observed.ageMs < staleMs) return false;
+
+  // Verify the path still names the lock we inspected. This avoids removing
+  // a replacement lock acquired after the original owner released it.
+  const current = readGroupStateLock(lockPath);
+  if (!current || !sameLockSnapshot(observed, current)) return true;
+  const abandonedPath = `${lockPath}.${process.pid}.${randomUUID()}.abandoned`;
+  try {
+    fs.renameSync(lockPath, abandonedPath);
+    const moved = readGroupStateLock(abandonedPath);
+    if (!moved || sameLockSnapshot(observed, moved)) return true;
+    // An extremely narrow replacement race moved a different lock. Restore
+    // it when possible rather than allowing two state writers to proceed.
+    if (!fs.existsSync(lockPath)) fs.renameSync(abandonedPath, lockPath);
+    return false;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return true;
+    throw error;
+  } finally {
+    fs.rmSync(abandonedPath, { force: true });
+  }
+}
+
+function lockOwnerDescription(lockPath: string) {
+  const snapshot = readGroupStateLock(lockPath);
+  if (!snapshot) return 'owner=unknown';
+  const age = Math.round(snapshot.ageMs);
+  const metadata = snapshot.metadata;
+  return metadata
+    ? `owner pid=${metadata.pid} host=${metadata.hostname} age=${age}ms token=${metadata.token}`
+    : `owner=legacy age=${age}ms`;
+}
+
+function releaseOwnedGroupStateLock(
+  lockPath: string,
+  descriptor: number,
+  token: string,
+) {
+  fs.closeSync(descriptor);
+  const snapshot = readGroupStateLock(lockPath);
+  if (snapshot?.metadata?.token === token) fs.rmSync(lockPath, { force: true });
 }
 
 function withGroupStateLock<T>(statePath: string, operation: () => T): T {
   const lockPath = `${statePath}.lock`;
   fs.mkdirSync(path.dirname(statePath), { recursive: true });
-  const deadline = Date.now() + 5_000;
+  const { timeoutMs, staleMs } = lockTimings();
+  const deadline = Date.now() + timeoutMs;
   let descriptor: number | undefined;
+  const token = randomUUID();
   while (descriptor === undefined) {
     try {
       descriptor = fs.openSync(lockPath, 'wx');
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      if (recoverAbandonedGroupStateLock(lockPath, staleMs)) continue;
       if (Date.now() >= deadline) {
-        throw new Error('timed out waiting for map group state lock');
+        throw new Error(
+          `timed out waiting for map group state lock (${lockOwnerDescription(lockPath)})`,
+        );
       }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+      continue;
+    }
+    try {
+      const metadata: GroupStateLockMetadata = {
+        formatVersion: 1,
+        pid: process.pid,
+        hostname: os.hostname(),
+        token,
+        createdAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(descriptor, `${JSON.stringify(metadata)}\n`);
+      fs.fsyncSync(descriptor);
+    } catch (error) {
+      fs.closeSync(descriptor);
+      descriptor = undefined;
+      fs.rmSync(lockPath, { force: true });
+      throw error;
     }
   }
   try {
     return operation();
   } finally {
-    fs.closeSync(descriptor);
-    fs.rmSync(lockPath, { force: true });
+    releaseOwnedGroupStateLock(lockPath, descriptor, token);
   }
 }
 
@@ -78,6 +258,10 @@ function updateLocalGroupProjectState(
 ) {
   const statePath = process.env.BOX_GROUP_PROJECT_STATE_PATH;
   if (!statePath) return;
+  // Content hashes are immutable and copied through an atomic rename. Keep
+  // this potentially expensive I/O outside the small state merge lock so a
+  // large model library cannot prevent another map runtime from starting.
+  copyProjectBlobsToGroup();
   withGroupStateLock(statePath, () => {
     const previous = readLocalProjectState(statePath) as LocalGroupProjectState;
     const now = new Date().toISOString();
@@ -89,7 +273,6 @@ function updateLocalGroupProjectState(
       updatedAt: now,
     };
     if (update(next) === false) return;
-    copyProjectBlobsToGroup();
     writeStateAtomically(statePath, next);
   });
 }

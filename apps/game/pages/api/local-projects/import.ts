@@ -8,6 +8,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLocalProjectManager } from '../../../server/local-project-manager';
 import { allowAuthenticatedCreatorApi } from '../../../server/creator-api-security';
 import { prewarmLocalRuntimes } from '../../../server/runtime-prewarm';
+import { serializeImportError } from '../../../server/import-diagnostics';
 
 export const config = { api: { bodyParser: false } };
 
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     void prewarmLocalRuntimes(members.map((member) => member.id), ['edit', 'play']);
     return res.status(201).json({ project });
   } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+    return res.status(400).json(serializeImportError(error));
   } finally {
     fs.rmSync(temporaryPath, { force: true });
   }

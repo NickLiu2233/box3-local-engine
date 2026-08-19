@@ -69,7 +69,8 @@ function createRuntimeLifecycle({
   async function collectIdle(now = Date.now()) {
     const expired = [...runtimes.entries()]
       .filter(
-        ([, runtime]) =>
+        ([id, runtime]) =>
+          !starts.has(id) &&
           !runtime.exited &&
           !runtime.activeConnections &&
           now - (runtime.lastAccessAt || now) >= idleAfter,

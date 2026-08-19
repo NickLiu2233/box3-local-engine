@@ -43,6 +43,13 @@ async function main() {
 
   runtimes.get('new').activeConnections = 0
   runtimes.get('new').lastAccessAt = 1000
+  starts.set('new', Promise.resolve())
+  assert.deepEqual(
+    await lifecycle.collectIdle(2000),
+    [],
+    'idle recycling must not stop a runtime whose startup is still in progress',
+  )
+  starts.clear()
   const expired = await lifecycle.collectIdle(2000)
   assert.deepEqual(expired, ['new'])
   assert.equal(statuses.get('new').phase, 'idle')

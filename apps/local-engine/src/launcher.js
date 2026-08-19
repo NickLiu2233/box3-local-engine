@@ -9,6 +9,8 @@ const {
   resolveMapRuntimeNamespace,
   resolveGroupRuntimeNamespace,
 } = require('./runtime-storage-namespace')
+const { makeRuntimeDataReadable } = require('./runtime-data-permissions')
+const { runtimeStartTimeout } = require('./runtime-readiness')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
@@ -233,48 +235,45 @@ function run(command, args, options = {}) {
   return child
 }
 
-function waitFor(url, attempts = 120) {
+function waitFor(url, attemptsOrOptions = 120) {
   return new Promise((resolve, reject) => {
+    const usesDeadline = typeof attemptsOrOptions === 'object'
+    const initialAttempts = usesDeadline ? Number.POSITIVE_INFINITY : attemptsOrOptions
+    const deadline = usesDeadline
+      ? Date.now() + runtimeStartTimeout(attemptsOrOptions.timeoutMs)
+      : Number.POSITIVE_INFINITY
+    const retryOrReject = (remaining) => {
+      if (remaining > 0 && Date.now() < deadline) {
+        setTimeout(() => check(remaining - 1), 500)
+      } else {
+        reject(new Error(`Timed out waiting for ${url}`))
+      }
+    }
     const check = (remaining) => {
       const req = http.get(url, (res) => {
         res.resume()
         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
           resolve()
-        } else if (remaining > 0) {
-          setTimeout(() => check(remaining - 1), 500)
         } else {
-          reject(new Error(`Timed out waiting for ${url}`))
+          retryOrReject(remaining)
         }
       })
-      req.on('error', () => {
-        if (remaining > 0) {
-          setTimeout(() => check(remaining - 1), 500)
-        } else {
-          reject(new Error(`Timed out waiting for ${url}`))
-        }
-      })
+      req.on('error', () => retryOrReject(remaining))
       req.setTimeout(1000, () => req.destroy())
     }
-    check(attempts)
+    check(initialAttempts)
+  })
+}
+
+function waitForGameRuntime(url) {
+  return waitFor(url, {
+    timeoutMs: process.env.BOX_RUNTIME_START_TIMEOUT_MS || '1800000',
   })
 }
 
 const children = []
 let shuttingDown = false
 
-function makeRuntimeDataReadable(root) {
-  const pending = [root]
-  while (pending.length) {
-    const target = pending.pop()
-    fs.chmodSync(target, 0o755)
-    for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
-      const entryPath = path.join(target, entry.name)
-      if (entry.isDirectory()) pending.push(entryPath)
-      else if (entry.isFile()) fs.chmodSync(entryPath, 0o644)
-      else throw new Error(`运行数据包含不支持的文件类型：${entryPath}`)
-    }
-  }
-}
 let playLibrary
 let editLibrary
 let creatorPlayLibrary
@@ -564,8 +563,14 @@ async function main() {
         await terminateRuntimeChild(child, runtime, 1500)
       },
     }
-    child.once('exit', () => {
+    runtime.exitPromise = new Promise((resolve) => {
+      runtime.resolveExit = resolve
+    })
+    child.once('exit', (code, signal) => {
       runtime.exited = true
+      runtime.exitCode = code
+      runtime.exitSignal = signal
+      runtime.resolveExit({ code, signal })
     })
     return runtime
   }
@@ -613,8 +618,14 @@ async function main() {
         await terminateRuntimeChild(child, runtime, 5000)
       },
     }
-    child.once('exit', () => {
+    runtime.exitPromise = new Promise((resolve) => {
+      runtime.resolveExit = resolve
+    })
+    child.once('exit', (code, signal) => {
       runtime.exited = true
+      runtime.exitCode = code
+      runtime.exitSignal = signal
+      runtime.resolveExit({ code, signal })
     })
     return runtime
   }
@@ -657,6 +668,7 @@ async function main() {
       waitForRuntime: waitFor,
       maxRuntimes: process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || '6',
       idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
+      startupTimeoutMs: process.env.BOX_RUNTIME_START_TIMEOUT_MS || '1800000',
       teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
       teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
       teleportRoomIdleTimeoutMs: process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
@@ -672,6 +684,7 @@ async function main() {
       waitForRuntime: waitFor,
       maxRuntimes: process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || '4',
       idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
+      startupTimeoutMs: process.env.BOX_RUNTIME_START_TIMEOUT_MS || '1800000',
       teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
       teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
       teleportRoomIdleTimeoutMs: process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
@@ -735,7 +748,7 @@ async function main() {
   if (launchTarget?.kind === 'source' && startsEditServer && !readProjectHash()) {
     startGameServer('edit', editPort, runtimeOnly ? editRuntimeHost : '')
     editStarted = true
-    await waitFor(`http://127.0.0.1:${editPort}/api/health-check`)
+    await waitForGameRuntime(`http://127.0.0.1:${editPort}/api/health-check`)
   }
 
   if (usesPlayLibrary) {
@@ -747,6 +760,7 @@ async function main() {
       waitForRuntime: waitFor,
       maxRuntimes: process.env.BOX_PLAY_MAX_RUNTIMES || '8',
       idleTimeoutMs: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '900000',
+      startupTimeoutMs: process.env.BOX_RUNTIME_START_TIMEOUT_MS || '1800000',
       teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
       teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
       teleportRoomIdleTimeoutMs: process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
@@ -755,13 +769,13 @@ async function main() {
   } else if (startsPlayServer) {
     startGameServer('play', playPort, playRuntimeHost)
 
-    await waitFor(`http://127.0.0.1:${playPort}/api/health-check`)
+    await waitForGameRuntime(`http://127.0.0.1:${playPort}/api/health-check`)
   }
 
   if (startsEditServer && !editStarted) {
     startGameServer('edit', editPort, runtimeOnly ? editRuntimeHost : '')
 
-    await waitFor(`http://127.0.0.1:${editPort}/api/health-check`)
+    await waitForGameRuntime(`http://127.0.0.1:${editPort}/api/health-check`)
   }
 
   if (runtimeOnly) {

@@ -7,6 +7,11 @@ import { Activity, LogOut, Settings, Upload } from 'lucide-react';
 import type { PlayWorld } from '../server/play-worlds';
 import { getPlayWorlds } from '../server/play-worlds';
 import { isPlayAdminEnabled } from '../server/play-admin-security';
+import {
+  importResponseError,
+  type DetailedImportError,
+  type ImportDiagnostic,
+} from '../server/import-diagnostics';
 
 const TOKEN_KEY = 'box-play-admin-token';
 
@@ -20,6 +25,7 @@ type ImportProgress = {
   worldName?: string;
   mapCount?: number;
   message?: string;
+  details?: ImportDiagnostic[];
 };
 
 function formatBytes(value: number) {
@@ -129,7 +135,7 @@ export default function HomePage({
       });
     }, 500);
     try {
-      const data = await new Promise<{ world?: PlayWorld; worlds?: PlayWorld[]; mapCount?: number; message?: string }>((resolve, reject) => {
+      const data = await new Promise<{ world?: PlayWorld; worlds?: PlayWorld[]; mapCount?: number; message?: string; details?: ImportDiagnostic[] }>((resolve, reject) => {
         const request = new XMLHttpRequest();
         request.open('POST', '/api/play-admin/import');
         request.setRequestHeader('Authorization', `Bearer ${adminToken}`);
@@ -158,10 +164,10 @@ export default function HomePage({
         request.onerror = () => reject(new Error('无法连接游玩端，游玩包上传失败'));
         request.onabort = () => reject(new Error('导入已取消'));
         request.onload = () => {
-          let result: { world?: PlayWorld; worlds?: PlayWorld[]; mapCount?: number; message?: string } = {};
+          let result: { world?: PlayWorld; worlds?: PlayWorld[]; mapCount?: number; message?: string; details?: ImportDiagnostic[] } = {};
           try { result = JSON.parse(request.responseText || '{}'); } catch { /* handled below */ }
           if (request.status >= 200 && request.status < 300) resolve(result);
-          else reject(new Error(result.message || `导入失败（HTTP ${request.status}）`));
+          else reject(importResponseError(result, request.status, '导入游玩包失败'));
         };
         request.send(file);
       });
@@ -192,6 +198,7 @@ export default function HomePage({
         total: current?.total || file.size,
         elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
         message: error instanceof Error ? error.message : '导入游玩包失败',
+        details: (error as Partial<DetailedImportError>)?.details || [],
       }));
     } finally {
       window.clearInterval(timer);
@@ -537,6 +544,23 @@ export default function HomePage({
                       : importProgress.message}
               </span>
             </div>
+            {importProgress.details?.length ? (
+              <div className="importDiagnostics" role="log" aria-label="游玩包检查详情">
+                <div className="importDiagnosticsHeader">
+                  <strong>检查详情</strong>
+                  <span>{importProgress.details.length} 项</span>
+                </div>
+                <ul>
+                  {importProgress.details.map((detail, index) => (
+                    <li key={`${detail.code || 'detail'}-${index}`} data-level={detail.level}>
+                      <span>{detail.level === 'error' ? '错误' : '提醒'}</span>
+                      <p>{detail.message}</p>
+                      {detail.code ? <code>{detail.code}</code> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             {(importProgress.phase === 'done' || importProgress.phase === 'error') ? (
               <button className="progressClose" type="button" onClick={() => setImportProgress(null)}>
                 {importProgress.phase === 'done' ? '完成' : '关闭'}
@@ -551,7 +575,7 @@ export default function HomePage({
         button,input{font:inherit}.page{width:min(1120px,calc(100% - 40px));margin:0 auto;padding:44px 0 80px}.header{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:24px}.title{display:flex;align-items:baseline;gap:12px}.title h1{font-size:26px;margin:0}.title span{font-size:13px;color:#85888f}.headerActions{display:flex;gap:8px}.button{display:inline-flex;height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid #d9dadd;border-radius:7px;background:#fff;color:#303238;text-decoration:none;cursor:pointer;transition:transform 140ms cubic-bezier(.23,1,.32,1),background-color 140ms ease,border-color 140ms ease}.button:hover{background:#f3f4f5}.button:active{transform:scale(.97)}.button:disabled{cursor:default;opacity:.55;transform:none}.button.primary{border-color:#1f2329;background:#1f2329;color:#fff}.button.primary:hover{background:#34383f}.button.danger{border-color:#d94343;background:#d94343;color:#fff}.hidden{display:none}
         .notice{display:flex;justify-content:space-between;align-items:center;margin:-8px 0 18px;padding:10px 12px;border:1px solid #efd0d0;border-radius:7px;background:#fff5f5;color:#b42323;font-size:13px}.notice button{border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer}.playerGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}.groups{display:grid;gap:20px}.mapGroup{padding:18px;border:1px solid #e1e3e7;border-radius:12px;background:#fff}.groupHeader{display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:16px;border-bottom:1px solid #eceef1}.groupIdentity{display:flex;min-width:0;align-items:center;gap:12px}.groupIdentity>div{display:grid;min-width:0;gap:4px}.groupIdentity strong{overflow:hidden;font-size:16px;text-overflow:ellipsis;white-space:nowrap}.groupIdentity small,.branchHeading small{color:#85888f;font-size:12px}.groupBadge{flex:0 0 auto;padding:5px 8px;border-radius:6px;color:#fff;background:#282c32;font-size:11px;font-weight:700}.groupExport{height:34px;padding:0 12px;border:1px solid #d9dadd;border-radius:7px;color:#303238;background:#fff;font-size:12px;cursor:pointer}.groupExport:hover{background:#f3f4f5}.groupExport:active{transform:scale(.97)}.groupExport:disabled{cursor:default;opacity:.55;transform:none}.mapTree{padding-top:16px}.mainMap,.submapItem{position:relative;padding-top:25px}.roleLabel{position:absolute;z-index:2;top:0;left:12px;color:#777c84;font-size:11px;font-weight:700}.mainRole{color:#20242a}.mainMap{width:min(100%,360px)}.submapBranch{position:relative;margin:18px 0 0 38px;padding:0 0 0 28px;border-left:2px solid #d8dbe0}.submapBranch::before{position:absolute;top:-18px;left:-2px;width:28px;height:34px;border-bottom:2px solid #d8dbe0;content:''}.branchHeading{display:flex;align-items:baseline;gap:9px;margin:0 0 10px}.branchHeading span{font-size:13px;font-weight:700}.submapGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}.submapItem::before{position:absolute;top:11px;left:-30px;width:20px;border-top:2px solid #d8dbe0;content:''}.card{overflow:hidden;background:#fff;border:1px solid #e6e7e9;border-radius:10px;transition:border-color .15s,transform .15s,box-shadow .15s}.mainMap .card{border-color:#b9bdc4;box-shadow:0 2px 10px rgba(28,32,38,.06)}.submapItem .card{background:#fcfcfd}.card:hover{border-color:#aeb2b9;box-shadow:0 8px 22px rgba(28,32,38,.08);transform:translateY(-2px)}.cardLink{display:block;color:inherit;text-decoration:none}.cover{aspect-ratio:16/9;background:#eceef1;display:flex;align-items:center;justify-content:center;color:#a2a6ad;font-size:32px}.cover img{width:100%;height:100%;object-fit:cover}.info{padding:14px}.info strong{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.info small{display:block;color:#85888f;margin-top:6px}.info p{margin:10px 0 0;color:#5e6269;font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.cardActions{display:flex;border-top:1px solid #ececef}.cardActions button{flex:1;height:38px;border:0;background:#fff;color:#555960;font-size:13px;cursor:pointer}.cardActions button+button{border-left:1px solid #ececef}.cardActions button:hover{background:#f6f6f7}.cardActions .dangerText{color:#cf3939}.empty{min-height:164px;padding:54px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;color:#92959b;background:#fff;border:1px solid #e6e7e9;border-radius:10px}
         .backdrop{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(20,22,25,.38)}.dialog{width:min(400px,100%);padding:22px;background:#fff;border-radius:10px;box-shadow:0 18px 55px rgba(0,0,0,.2)}.editDialog{max-height:min(760px,calc(100vh - 40px));overflow:auto}.dialog h2{margin:0 0 20px;font-size:19px}.dialog p{margin:0 0 22px;color:#5d6168;font-size:14px;line-height:1.6}.dialog label{display:block;margin:13px 0 8px;color:#555960;font-size:13px}.dialog input,.dialog textarea{width:100%;padding:0 11px;border:1px solid #d6d8dc;border-radius:7px;outline:none;background:#fff;color:#303238}.dialog input{height:40px}.dialog textarea{min-height:82px;padding-top:9px;resize:vertical;font:inherit}.dialog input:focus,.dialog textarea:focus{border-color:#7a7f87;box-shadow:0 0 0 3px rgba(40,44,50,.08)}.dialog input[type=file]{height:auto;padding:7px}.fieldHint{display:block;margin-top:7px;color:#85888f;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;overflow-wrap:anywhere}.dialogActions{display:flex;justify-content:flex-end;gap:8px;margin-top:22px}
-        .progressBackdrop{position:fixed;z-index:30;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.66)}.progressDialog{width:min(100%,460px);padding:28px;border:1px solid rgba(255,255,255,.14);border-radius:16px;color:#fff;background:#262626;box-shadow:0 22px 70px rgba(0,0,0,.5)}.progressIcon{display:grid;width:44px;height:44px;place-items:center;border-radius:9px;color:#262626;background:#ffdb00;font-size:24px;font-weight:800}.progressIcon.done{color:#fff;background:#78c95d}.progressIcon.error{color:#fff;background:#f65252}.progressDialog h2{margin:18px 0 6px;font-size:20px}.progressFilename{overflow:hidden;margin:0;color:rgba(255,255,255,.62);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.progressTrack{overflow:hidden;height:8px;margin-top:24px;border-radius:999px;background:rgba(255,255,255,.12)}.progressTrack span{display:block;height:100%;border-radius:inherit;background:#ffdb00;transition:width 260ms ease}.progressMeta{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-top:10px}.progressMeta strong{flex:0 0 auto;color:#ffdb00;font-size:13px}.progressMeta span{color:rgba(255,255,255,.58);font-size:12px;line-height:1.55;text-align:right;word-break:break-all}.progressClose{display:flex;min-width:88px;height:36px;align-items:center;justify-content:center;margin:24px 0 0 auto;border:0;border-radius:7px;color:#262626;background:#ffdb00;font-size:13px;font-weight:700;cursor:pointer}.progressClose:hover{background:#ffe44d}
+        .progressBackdrop{position:fixed;z-index:30;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.66)}.progressDialog{width:min(100%,520px);padding:28px;border:1px solid rgba(255,255,255,.14);border-radius:16px;color:#fff;background:#262626;box-shadow:0 22px 70px rgba(0,0,0,.5)}.progressIcon{display:grid;width:44px;height:44px;place-items:center;border-radius:9px;color:#262626;background:#ffdb00;font-size:24px;font-weight:800}.progressIcon.done{color:#fff;background:#78c95d}.progressIcon.error{color:#fff;background:#f65252}.progressDialog h2{margin:18px 0 6px;font-size:20px}.progressFilename{overflow:hidden;margin:0;color:rgba(255,255,255,.62);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.progressTrack{overflow:hidden;height:8px;margin-top:24px;border-radius:999px;background:rgba(255,255,255,.12)}.progressTrack span{display:block;height:100%;border-radius:inherit;background:#ffdb00;transition:width 260ms ease}.progressMeta{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-top:10px}.progressMeta strong{flex:0 0 auto;color:#ffdb00;font-size:13px}.progressMeta span{color:rgba(255,255,255,.58);font-size:12px;line-height:1.55;text-align:right;word-break:break-all}.importDiagnostics{max-height:min(310px,38vh);overflow:hidden;margin-top:18px;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:#303030}.importDiagnosticsHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.1)}.importDiagnosticsHeader strong{color:rgba(255,255,255,.9);font-size:12px}.importDiagnosticsHeader span{color:rgba(255,255,255,.48);font-size:11px}.importDiagnostics ul{display:grid;max-height:min(260px,31vh);overflow-y:auto;margin:0;padding:5px 0;list-style:none}.importDiagnostics li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 9px;padding:8px 12px}.importDiagnostics li+li{border-top:1px solid rgba(255,255,255,.06)}.importDiagnostics li>span{align-self:start;min-width:34px;padding:2px 5px;border-radius:4px;color:#fff;background:#d94b4b;font-size:10px;line-height:1.35;text-align:center}.importDiagnostics li[data-level='warning']>span{color:#2b2600;background:#ffdb00}.importDiagnostics p{margin:0;color:rgba(255,255,255,.78);font-size:12px;line-height:1.55;text-align:left;word-break:break-word}.importDiagnostics code{grid-column:2;color:rgba(255,255,255,.38);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px}.progressClose{display:flex;min-width:88px;height:36px;align-items:center;justify-content:center;margin:24px 0 0 auto;border:0;border-radius:7px;color:#262626;background:#ffdb00;font-size:13px;font-weight:700;cursor:pointer}.progressClose:hover{background:#ffe44d}
         @media(prefers-reduced-motion:reduce){.card,.groupExport{transition:none}}
         @media(max-width:640px){.page{width:min(100% - 24px,1120px);padding-top:24px}.header{align-items:flex-start;flex-direction:column}.headerActions{width:100%;flex-wrap:wrap}.playerGrid{grid-template-columns:1fr}.mapGroup{padding:14px}.groupHeader{align-items:flex-start;flex-direction:column}.groupExport{width:100%}.mainMap{width:100%}.submapBranch{margin-left:12px;padding-left:18px}.submapItem::before{left:-20px;width:12px}.submapGrid{grid-template-columns:1fr}}
       `}</style>

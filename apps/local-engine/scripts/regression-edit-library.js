@@ -50,6 +50,67 @@ async function post(port, path) {
 }
 
 async function main() {
+  async function verifySlowStartupSurvivesHealthCheckWindow() {
+    let startCalls = 0
+    let stopCalls = 0
+    let waitCalls = 0
+    let releaseHealthCheck
+    const healthCheckReady = new Promise((resolve) => {
+      releaseHealthCheck = resolve
+    })
+    const runtime = {
+      port: 19100,
+      exited: false,
+      async stop() {
+        stopCalls += 1
+        runtime.exited = true
+      },
+    }
+    const library = startEditLibrary({
+      mode: 'edit',
+      host: '127.0.0.1',
+      port: 0,
+      runtimePortStart: runtime.port,
+      resolveProject: (id) => ({ id }),
+      startRuntime: async () => {
+        startCalls += 1
+        return runtime
+      },
+      waitForRuntime: async () => {
+        waitCalls += 1
+        if (waitCalls === 1) throw new Error('health check window elapsed')
+        await healthCheckReady
+      },
+    })
+    await library.ready
+
+    try {
+      let startupError
+      const firstStartup = library.ensureRuntime('slow-project').catch((error) => {
+        startupError = error
+      })
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(
+        startupError,
+        undefined,
+        'one elapsed health-check window must not fail the runtime startup',
+      )
+      assert.equal(startCalls, 1, 'the slow runtime must only be spawned once')
+      assert.equal(stopCalls, 0, 'a live runtime must not be stopped while it is still loading')
+
+      const secondStartup = library.ensureRuntime('slow-project')
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(startCalls, 1, 'later callers must join the existing slow startup')
+      releaseHealthCheck()
+      await Promise.all([firstStartup, secondStartup])
+      assert.equal(waitCalls, 2)
+      assert.equal(runtime.exited, false)
+      console.log('PASS: slow runtime startup survives an elapsed health-check window')
+    } finally {
+      await library.stop()
+    }
+  }
+
   async function verifyMode(mode, proxyPortStart, runtimePortStart) {
     const children = new Map()
     let releaseProjectStatus
@@ -135,6 +196,7 @@ async function main() {
 
   await verifyMode('edit', 0, 19120)
   await verifyMode('play', 0, 19140)
+  await verifySlowStartupSurvivesHealthCheckWindow()
 }
 
 main().catch((error) => {

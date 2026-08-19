@@ -549,7 +549,11 @@ function snapshotRoot(id) {
   return path.join(projectRoot(id), '.snapshots')
 }
 
-function createProjectSnapshot(id, reason = 'automatic') {
+function isConcurrentSnapshotChange(error) {
+  return /file changed as we read it/i.test(String(error?.message || error))
+}
+
+function createProjectSnapshot(id, reason = 'automatic', options = {}) {
   const sourceRoot = path.join(projectRoot(id), 'source')
   const validation = validateProjectSource(sourceRoot)
   if (!validation.ok || !validation.initialized) return { created: false, validation }
@@ -567,7 +571,22 @@ function createProjectSnapshot(id, reason = 'automatic') {
     .replace(/[-:.TZ]/g, '')
     .slice(0, 14)
   const archivePath = path.join(root, `${timestamp}-${reason}-${signature}.tar.gz`)
-  runTar(['-czf', archivePath, '-C', projectRoot(id), 'source'], '无法创建工程恢复快照')
+  try {
+    ;(options.runTar || runTar)(
+      ['-czf', archivePath, '-C', projectRoot(id), 'source'],
+      '无法创建工程恢复快照',
+    )
+  } catch (error) {
+    fs.rmSync(archivePath, { force: true })
+    if (isConcurrentSnapshotChange(error)) {
+      return {
+        created: false,
+        validation,
+        skipped: 'source-changed',
+      }
+    }
+    throw error
+  }
   const snapshots = fs
     .readdirSync(root)
     .filter((name) => name.endsWith('.tar.gz'))
@@ -1435,11 +1454,61 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
       importedMapCount: 1,
       importedAs: 'submap',
       sourceMapGroupId: descriptor.mapGroupId,
-      compatibility: readJSON(path.join(root, 'compatibility.json'), {}),
+      compatibility: aggregateImportCompatibility([id]),
     }
   } catch (error) {
     fs.rmSync(root, { recursive: true, force: true })
     throw error
+  }
+}
+
+function aggregateImportCompatibility(projectIds) {
+  const reports = projectIds.map((projectId) => {
+    const project = getProject(projectId)
+    return {
+      project,
+      report: readJSON(path.join(projectRoot(projectId), 'compatibility.json'), {}),
+    }
+  })
+  const decorate = ({ project }, issue, level) => ({
+    ...issue,
+    level,
+    projectId: project.id,
+    projectName: project.name,
+    message: `${project.name}：${issue.message}`,
+  })
+  const errors = reports.flatMap((entry) =>
+    Array.isArray(entry.report.errors)
+      ? entry.report.errors.map((issue) => decorate(entry, issue, 'error'))
+      : [],
+  )
+  const warnings = reports.flatMap((entry) =>
+    Array.isArray(entry.report.warnings)
+      ? entry.report.warnings.map((issue) => decorate(entry, issue, 'warning'))
+      : [],
+  )
+  return {
+    generatedAt: new Date().toISOString(),
+    level: errors.length ? 'error' : warnings.length ? 'warning' : 'compatible',
+    summary: reports.reduce(
+      (summary, { report }) => ({
+        filesScanned: summary.filesScanned + Number(report.summary?.filesScanned || 0),
+        scriptsScanned: summary.scriptsScanned + Number(report.summary?.scriptsScanned || 0),
+        warnings: summary.warnings + Number(report.summary?.warnings || 0),
+        errors: summary.errors + Number(report.summary?.errors || 0),
+        missingBlobCount: summary.missingBlobCount + Number(report.summary?.missingBlobCount || 0),
+      }),
+      { filesScanned: 0, scriptsScanned: 0, warnings: 0, errors: 0, missingBlobCount: 0 },
+    ),
+    capabilities: [
+      ...new Set(
+        reports.flatMap(({ report }) =>
+          Array.isArray(report.capabilities) ? report.capabilities : [],
+        ),
+      ),
+    ],
+    errors,
+    warnings,
   }
 }
 
@@ -1532,7 +1601,7 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
       importedMapCount: memberIds.length,
       importedAs: 'independent',
       sourceMapGroupId: descriptor.mapGroupId,
-      compatibility: readJSON(path.join(projectRoot(newMainId), 'compatibility.json'), {}),
+      compatibility: aggregateImportCompatibility([...idMap.values()]),
     }
   } catch (error) {
     for (const root of createdRoots) fs.rmSync(root, { recursive: true, force: true })
@@ -1694,7 +1763,14 @@ function getLaunchTarget({ project, release }) {
       }
       validation = validateProjectSource(path.join(root, 'source'))
     }
-    createProjectSnapshot(project, 'launch')
+    try {
+      createProjectSnapshot(project, 'launch')
+    } catch (error) {
+      // A recovery snapshot is maintenance, not a runtime dependency. Boxes
+      // starts from the validated project roots; a full/different filesystem
+      // must not turn an otherwise healthy map launch into a permanent 500.
+      console.warn(`Launch snapshot skipped for ${project}: ${error.message}`)
+    }
     return {
       kind: 'source',
       id: project,

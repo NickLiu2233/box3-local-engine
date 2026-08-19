@@ -235,6 +235,9 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_CREATOR_PLAY_PREWARM_RUNTIMES`        | `4`            | Creator 后台预热的最近预览工程数量，`0` 为关闭                           |
 | `BOX_PLAY_PREWARM_RUNTIMES`                | `8`            | 全部地图缓存完成后常驻的主地图优先数量，`0` 为关闭后台预热               |
 | `BOX_RUNTIME_IDLE_TIMEOUT_MS`              | `900000`       | 无活动连接运行时的空闲回收时间                                           |
+| `BOX_RUNTIME_START_TIMEOUT_MS`             | `1800000`      | 大地图迁移/预烘焙的最长启动时间；期间不会因单次健康检查超时而重启        |
+| `BOX_GROUP_STATE_LOCK_TIMEOUT_MS`          | `30000`        | 地图组共享状态写锁的最长等待时间                                         |
+| `BOX_GROUP_STATE_LOCK_STALE_MS`            | `300000`       | 无法确认所有者的旧锁超过该时间后可回收；活跃本机进程不会被抢锁           |
 | `BOX_TELEPORT_MAX_ROOMS`                   | `64`           | 地图组传送可同时保留的私有房间数量；房间运行时仍计入对应的总运行时上限   |
 | `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`        | `900000`       | 私有传送房间无人连接后的回收时间                                         |
 | `BOX_SESSION_TTL_MS`                       | `60000`        | 未连接玩家 Session 的有效时间                                            |

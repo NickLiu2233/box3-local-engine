@@ -61,6 +61,11 @@ import {
   getLocalProjectSkinProjects,
   syncLocalProjectModelPaths,
 } from './project/local-project-state';
+import {
+  AsyncSingleFlight,
+  findReusableProjectModel,
+  projectModelNameFromPath,
+} from './project/project-model-import';
 
 export type HttpRoutes = {
   [route: string]: (
@@ -548,6 +553,10 @@ export async function createGameServer(spec: {
         },
       ),
     );
+    const localModelImports = new AsyncSingleFlight<
+      number,
+      Record<string, unknown>
+    >();
 
     spec.httpRoutes['/api/project-models'] = async (req, res) => {
       res.setHeader('Content-Type', 'application/json');
@@ -584,52 +593,88 @@ export async function createGameServer(spec: {
           if (!Number.isSafeInteger(modelId) || modelId <= 0) {
             throw new Error('local model id is required');
           }
-          const modelResponse = await fetch(`${voxaURL}/api/local/models/${modelId}`);
-          if (!modelResponse.ok) throw new Error('local model not found');
-          const model = await modelResponse.json() as Record<string, unknown>;
-          const modelFileHash = String(model.modelFileHash || '');
-          const previewHash = String(model.modelPreviewHash || '');
-          const projectFileHash = String(model.projectFileHash || '');
-          for (const hash of [modelFileHash, previewHash, projectFileHash].filter(Boolean)) {
-            const blobResponse = await fetch(
-              `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+          const result = await localModelImports.run(modelId, async () => {
+            const modelResponse = await fetch(
+              `${voxaURL}/api/local/models/${modelId}`,
             );
-            if (!blobResponse.ok) throw new Error(`local model resource is missing: ${hash}`);
-            const storedHash = await spec.contentServer.store(
-              new Uint8Array(await blobResponse.arrayBuffer()),
+            if (!modelResponse.ok) throw new Error('local model not found');
+            const model =
+              (await modelResponse.json()) as Record<string, unknown>;
+            const modelFileHash = String(model.modelFileHash || '');
+            const previewHash = String(model.modelPreviewHash || '');
+            const projectFileHash = String(model.projectFileHash || '');
+            const meshAssets =
+              editServer!.state.replica.extraProjectInfo.meshAssets;
+            const reusable = findReusableProjectModel(
+              meshAssets,
+              modelFileHash,
             );
-            if (storedHash !== hash) throw new Error(`model resource verification failed: ${hash}`);
-          }
-          const meshAssets = editServer!.state.replica.extraProjectInfo.meshAssets;
-          const baseName = String(model.modelName || `模型 ${modelId}`).trim();
-          let modelName = baseName;
-          let suffix = 2;
-          while (meshAssets[getMeshPath(modelName)]) {
-            modelName = `${baseName} (${suffix++})`;
-          }
-          // Project ids are independent from VOXA library ids. A timestamp is
-          // precise within JS safe integers and avoids colliding with imported
-          // cloud ids or the source local id.
-          let projectModelId = Date.now();
-          const usedIds = new Set(Object.values(meshAssets).map((asset) => asset.modelId));
-          while (usedIds.has(projectModelId)) projectModelId += 1;
-          await editServer!.replica.updateLocalProjectModel({
-            action: 'create',
-            newName: modelName,
-            modelId: projectModelId,
-            modelFileHash,
-            animated: Boolean(model.animated),
-            previewHash,
-            projectFileHash,
+            if (reusable) {
+              const [meshPath, asset] = reusable;
+              return {
+                modelId: asset.modelId,
+                modelName: projectModelNameFromPath(meshPath),
+                modelFileHash: asset.hash,
+                modelPreviewHash: asset.modelPreviewHash,
+                modelPreviewUrl: asset.modelPreviewHash
+                  ? `/block/${asset.modelPreviewHash}`
+                  : '',
+                animated: asset.animated,
+              };
+            }
+
+            for (const hash of [
+              modelFileHash,
+              previewHash,
+              projectFileHash,
+            ].filter(Boolean)) {
+              const blobResponse = await fetch(
+                `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+              );
+              if (!blobResponse.ok) {
+                throw new Error(`local model resource is missing: ${hash}`);
+              }
+              const storedHash = await spec.contentServer.store(
+                new Uint8Array(await blobResponse.arrayBuffer()),
+              );
+              if (storedHash !== hash) {
+                throw new Error(`model resource verification failed: ${hash}`);
+              }
+            }
+            const baseName = String(
+              model.modelName || `模型 ${modelId}`,
+            ).trim();
+            let modelName = baseName;
+            let suffix = 2;
+            while (meshAssets[getMeshPath(modelName)]) {
+              modelName = `${baseName} (${suffix++})`;
+            }
+            // Project ids are independent from VOXA library ids. A timestamp
+            // stays within JS safe integers and avoids cloud/local collisions.
+            let projectModelId = Date.now();
+            const usedIds = new Set(
+              Object.values(meshAssets).map((asset) => asset.modelId),
+            );
+            while (usedIds.has(projectModelId)) projectModelId += 1;
+            await editServer!.replica.updateLocalProjectModel({
+              action: 'create',
+              newName: modelName,
+              modelId: projectModelId,
+              modelFileHash,
+              animated: Boolean(model.animated),
+              previewHash,
+              projectFileHash,
+            });
+            return {
+              modelId: projectModelId,
+              modelName,
+              modelFileHash,
+              modelPreviewHash: previewHash,
+              modelPreviewUrl: previewHash ? `/block/${previewHash}` : '',
+              animated: Boolean(model.animated),
+            };
           });
-          res.end(JSON.stringify({
-            modelId: projectModelId,
-            modelName,
-            modelFileHash,
-            modelPreviewHash: previewHash,
-            modelPreviewUrl: previewHash ? `/block/${previewHash}` : '',
-            animated: Boolean(model.animated),
-          }));
+          res.end(JSON.stringify(result));
           return;
         }
         if (

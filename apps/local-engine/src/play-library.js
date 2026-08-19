@@ -5,6 +5,7 @@ const http = require('http')
 const net = require('net')
 const path = require('path')
 const { createRuntimeLifecycle } = require('./runtime-lifecycle')
+const { waitForRuntimeReady } = require('./runtime-readiness')
 const {
   createTeleportControlHandler,
   createTeleportRoomManager,
@@ -109,6 +110,7 @@ function startPlayLibrary({
   waitForRuntime,
   maxRuntimes = 4,
   idleTimeoutMs = 15 * 60_000,
+  startupTimeoutMs,
   teleportInternalToken,
   teleportMaxRooms = 64,
   teleportRoomIdleTimeoutMs = 15 * 60_000,
@@ -161,6 +163,10 @@ function startPlayLibrary({
     if (!world) throw Object.assign(new Error('地图不存在或数据不完整'), { statusCode: 404 })
     const id = world.id
     const key = runtimeKey(id, roomId)
+    // The runtime is registered before its health check completes. Always
+    // join that startup first; treating the child as ready here proxies into
+    // a port that is still prebaking and produces intermittent 500/502s.
+    if (starts.has(key)) return starts.get(key)
     const current = runtimes.get(key)
     if (current?.signature === world.signature && !current.exited) {
       lifecycle.touch(current)
@@ -168,7 +174,6 @@ function startPlayLibrary({
       return current
     }
     if (current) await stopRuntime(key)
-    if (starts.has(key)) return starts.get(key)
     const promise = (async () => {
       await lifecycle.ensureCapacity(key)
       setStatus(key, {
@@ -188,7 +193,20 @@ function startPlayLibrary({
       runtimes.set(key, runtime)
       try {
         setStatus(key, { phase: 'loading', percent: 42, message: '正在加载地图与预烘焙资源' })
-        await waitForRuntime(`http://127.0.0.1:${runtimePort}/api/health-check`, 120)
+        await waitForRuntimeReady({
+          runtime,
+          url: `http://127.0.0.1:${runtimePort}/api/health-check`,
+          waitForRuntime,
+          startupTimeoutMs,
+          onWindowElapsed: ({ elapsedMs, timeoutMs }) => {
+            const percent = Math.min(90, 42 + Math.floor((elapsedMs / timeoutMs) * 48))
+            setStatus(key, {
+              phase: 'loading',
+              percent,
+              message: '地图仍在迁移和预烘焙，运行时会继续加载',
+            })
+          },
+        })
       } catch (error) {
         runtimes.delete(key)
         setStatus(key, {

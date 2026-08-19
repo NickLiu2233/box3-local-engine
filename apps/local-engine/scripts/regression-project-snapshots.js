@@ -36,6 +36,21 @@ try {
   const second = manager.createProjectSnapshot(project.id, 'manual')
   assert.equal(second.created, true)
 
+  writeVersion('permission-three', 'three')
+  const concurrent = manager.createProjectSnapshot(project.id, 'launch', {
+    runTar() {
+      throw new Error('tar: source/blobs: file changed as we read it')
+    },
+  })
+  assert.equal(concurrent.created, false)
+  assert.equal(concurrent.skipped, 'source-changed')
+  assert.equal(
+    fs
+      .readdirSync(path.join(temporaryRoot, project.id, '.snapshots'))
+      .filter((name) => name.includes('launch')).length,
+    0,
+  )
+
   const snapshots = manager.listProjectSnapshots(project.id)
   assert.equal(snapshots.length, 2)
   assert.ok(snapshots.every((snapshot) => snapshot.size > 0 && snapshot.createdAt))

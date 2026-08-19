@@ -87,6 +87,8 @@ const requiredFiles = [
   'apps/local-engine/src/play-library.js',
   'apps/local-engine/src/play-image.js',
   'apps/local-engine/src/prune-player-build.js',
+  'apps/local-engine/src/runtime-data-permissions.js',
+  'apps/local-engine/src/runtime-readiness.js',
   'apps/local-engine/src/runtime-storage-namespace.js',
   'apps/local-engine/src/teleport-room-manager.js',
   'apps/local-engine/src/stage-runtime-data.js',
@@ -427,6 +429,24 @@ const playDockerStage = getDockerStage(dockerSource, 'play')
 const playerServiceBuildStage = getDockerStage(dockerSource, 'player-service-build')
 const playerServiceDockerStage = getDockerStage(dockerSource, 'player-service')
 const voxaDockerStage = getDockerStage(dockerSource, 'voxa')
+const launcherBootstrapSource = readRequired('apps/local-engine/src/launcher.js').split(
+  'const packageRoot =',
+)[0]
+const launcherBootstrapModules = [
+  ...launcherBootstrapSource.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g),
+].map((match) => `${match[1].slice(2)}.js`)
+
+for (const [name, stage] of [
+  ['creator', creatorDockerStage],
+  ['play', playDockerStage],
+]) {
+  for (const moduleFile of launcherBootstrapModules) {
+    const imagePath = `/app/apps/local-engine/src/${moduleFile}`
+    if (!stage.includes(`${imagePath} ${imagePath}`)) {
+      fail(`${dockerFile}: ${name} target is missing launcher bootstrap module ${moduleFile}`)
+    }
+  }
+}
 for (const [name, stage] of [
   ['creator', creatorDockerStage],
   ['play', playDockerStage],
@@ -1131,8 +1151,20 @@ requirePattern(
 requirePattern(
   launcherSource,
   'apps/local-engine/src/launcher.js',
+  'runtime-only game server keeps loading through long prebakes',
+  /function waitForGameRuntime[\s\S]*?BOX_RUNTIME_START_TIMEOUT_MS[\s\S]*?startsPlayServer[\s\S]*?waitForGameRuntime[\s\S]*?startsEditServer[\s\S]*?waitForGameRuntime/,
+)
+requirePattern(
+  readRequired('apps/local-engine/src/runtime-data-permissions.js'),
+  'apps/local-engine/src/runtime-data-permissions.js',
   'Docker Desktop source-project permission normalization',
-  /function makeRuntimeDataReadable[\s\S]*?fs\.chmodSync\(target, 0o755\)[\s\S]*?fs\.chmodSync\(entryPath, 0o644\)[\s\S]*?startsEditServer[\s\S]*?makeRuntimeDataReadable\(dataRoot\)/,
+  /RECOVERABLE_CHMOD_CODES[\s\S]*?chmodSync\(target, mode\)[\s\S]*?accessSync\(target, accessMode\)/,
+)
+requirePattern(
+  launcherSource,
+  'apps/local-engine/src/launcher.js',
+  'Docker Desktop permission compatibility is applied before edit startup',
+  /require\('\.\/runtime-data-permissions'\)[\s\S]*?startsEditServer[\s\S]*?makeRuntimeDataReadable\(dataRoot\)/,
 )
 requirePattern(
   readRequired('docker-compose.yml'),

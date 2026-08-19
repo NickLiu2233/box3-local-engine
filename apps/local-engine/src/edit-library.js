@@ -3,6 +3,7 @@
 const http = require('http')
 const net = require('net')
 const { createRuntimeLifecycle } = require('./runtime-lifecycle')
+const { waitForRuntimeReady } = require('./runtime-readiness')
 const {
   createTeleportControlHandler,
   createTeleportRoomManager,
@@ -46,6 +47,7 @@ function startEditLibrary({
   waitForRuntime,
   maxRuntimes = 4,
   idleTimeoutMs = 15 * 60_000,
+  startupTimeoutMs,
   teleportInternalToken,
   teleportMaxRooms = 64,
   teleportRoomIdleTimeoutMs = 15 * 60_000,
@@ -131,7 +133,20 @@ function startEditLibrary({
       runtimes.set(key, runtime)
       try {
         setStatus(key, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
-        await waitForRuntime(`http://127.0.0.1:${runtimePort}/api/health-check`, 120)
+        await waitForRuntimeReady({
+          runtime,
+          url: `http://127.0.0.1:${runtimePort}/api/health-check`,
+          waitForRuntime,
+          startupTimeoutMs,
+          onWindowElapsed: ({ elapsedMs, timeoutMs }) => {
+            const percent = Math.min(90, 42 + Math.floor((elapsedMs / timeoutMs) * 48))
+            setStatus(key, {
+              phase: 'loading',
+              percent,
+              message: '地图仍在迁移和预烘焙，运行时会继续加载',
+            })
+          },
+        })
       } catch (error) {
         runtimes.delete(key)
         setStatus(key, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
