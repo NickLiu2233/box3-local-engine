@@ -155,6 +155,24 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
   assert.equal(starts[1].privateRoom, true)
   assert.notEqual(starts[0].runtime, starts[1].runtime)
 
+  const authorized = await request(port, '/__local_teleport/authorize', {
+    method: 'POST',
+    token: 'integration-token',
+    body: {
+      targetMapReference: allocation.body.playHash,
+      serverId: allocation.body.serverId,
+      subjectId: 'player-a',
+    },
+  })
+  assert.deepEqual(authorized, {
+    status: 200,
+    body: {
+      authorized: true,
+      serverId: allocation.body.serverId,
+      targetMapId: '22222222-2222-4222-8222-222222222222',
+    },
+  })
+
   const roomResponse = await request(port, `/sub-map/__room/${allocation.body.serverId}/probe`)
   assert.equal(roomResponse.status, 200)
   assert.equal(roomResponse.body.serverId, allocation.body.serverId)

@@ -45,6 +45,25 @@ pnpm --version
 Apple Silicon 本机测试可以使用 `linux/arm64`。准备交付给常见 x86_64 Linux 服务器的
 Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
+### Windows ARM64 离线包的一键部署
+
+维护者发布的 Windows ARM64 离线包内含 `ONE-CLICK-DEPLOY.cmd`。使用者只需：
+
+1. 完整解压 ZIP，并启动 Docker Desktop 的 Linux containers；
+2. 双击 `ONE-CLICK-DEPLOY.cmd`；
+3. 选择内置 PostgreSQL/Redis，或分别填写已有 PostgreSQL 的地址、端口、数据库名、
+   账号和密码。
+
+向导会自动校验离线包、导入五个应用镜像、生成三个独立安全密钥、写入
+`.env`、启动 Compose、检查五个 HTTP 入口，然后打开 Creator。数据库密码隐藏输入，
+向导会自动进行 URL 编码；地图数据表由引擎按 UUID 命名空间自动创建，不要求服主填表名。
+已有 `.env` 和数据不会
+被覆盖；重新运行向导可安全重试。内置数据库模式首次需要 Docker 能获取 PostgreSQL
+和 Redis 镜像；如果环境完全断网，请使用已预装的基础镜像或选择外部 PostgreSQL。
+
+离线包还提供 `start.cmd`、`stop.cmd`、`status.cmd` 和 `logs.cmd`，日常使用不需要手写
+Docker 命令。`.env` 仍然只存在部署者电脑，不应返传或分发。
+
 ### 中国大陆网络的镜像源
 
 如果构建日志长时间停在 `docker.io/library/node`，可在 `.env` 中只替换基础镜像来源：

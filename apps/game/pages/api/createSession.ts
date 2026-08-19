@@ -233,7 +233,10 @@ async function getSessionData(
       await axios.post(
         `${controlURL.replace(/\/$/, '')}/authorize`,
         {
-          targetMapId: containerName,
+          // Teleport allocation returns the target world's local play route
+          // as playHash. The internal control service resolves this route and
+          // verifies it against the room's immutable target Map UUID.
+          targetMapReference: containerName,
           serverId,
           subjectId: authenticatedSubjectId,
         },

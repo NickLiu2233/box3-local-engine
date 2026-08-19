@@ -157,6 +157,7 @@ function generateDistributionMetadata(bundleRoot, options) {
         nodeVersion: process.version,
         platform: options.platform,
         images: options.images,
+        ...(options.imageRevisions ? { imageRevisions: options.imageRevisions } : {}),
         checksumAlgorithm: 'SHA-256',
         thirdPartyDependencyCount: dependencies.length,
       },

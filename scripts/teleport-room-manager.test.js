@@ -83,6 +83,34 @@ test('teleport allocates an unlisted private room inside the same map group', as
   assert.equal(manager.listPublicRooms, undefined)
 })
 
+test('private-room authorization accepts the local play route returned after teleport', async () => {
+  const { manager } = fixture()
+  const result = await manager.allocate({
+    sourceMapId: '11111111-1111-4111-8111-111111111111',
+    targetMapId: '22222222-2222-4222-8222-222222222222',
+    subjectIds: ['player-a'],
+  })
+
+  assert.equal(result.playHash, 'sub-map')
+  assert.equal(
+    manager.authorize({
+      targetMapReference: result.playHash,
+      serverId: result.serverId,
+      subjectId: 'player-a',
+    }).id,
+    result.serverId,
+  )
+  assert.throws(
+    () =>
+      manager.authorize({
+        targetMapReference: 'other-map',
+        serverId: result.serverId,
+        subjectId: 'player-a',
+      }),
+    (error) => error.code === 'ROOM_TARGET_MISMATCH' && error.statusCode === 403,
+  )
+})
+
 test('teleport rejects mutable access IDs and local project keys', async () => {
   const { manager } = fixture()
   for (const targetMapId of ['dungeon', 'sub-map']) {

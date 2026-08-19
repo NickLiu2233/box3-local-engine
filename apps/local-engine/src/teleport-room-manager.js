@@ -153,6 +153,15 @@ function createTeleportRoomManager({
     return map
   }
 
+  function resolveInternalReference(reference) {
+    const normalized = String(reference || '').trim()
+    const map = resolveMap(normalized)
+    if (!map) {
+      throw roomError('MAP_NOT_FOUND', '地图不存在', 404)
+    }
+    return map
+  }
+
   function touch(room) {
     room.lastAccessAt = now()
     return room
@@ -235,11 +244,18 @@ function createTeleportRoomManager({
     return { playHash: targetIdentity.id, serverId: room.id }
   }
 
-  function resolveRoom({ targetMapId, serverId }, shouldTouch = true) {
+  function resolveRoom({ targetMapId, targetMapReference, serverId }, shouldTouch = true) {
     if (!roomIdPattern.test(String(serverId || ''))) {
       throw roomError('INVALID_ROOM_ID', '房间 ID 无效')
     }
-    const target = resolve(targetMapId)
+    // world.teleport() remains UUID-only, but after a successful allocation
+    // the client reconnects with playHash, which is the target world's local
+    // runtime route. Only the token-protected internal authorization path may
+    // resolve that route; the room's stored UUID/group checks below still
+    // prevent it from authorizing a different map.
+    const target = targetMapReference
+      ? resolveInternalReference(targetMapReference)
+      : resolve(targetMapId)
     const targetIdentity = mapIdentity(target)
     const room = rooms.get(serverId)
     if (!room) {
@@ -251,8 +267,8 @@ function createTeleportRoomManager({
     return { room: shouldTouch ? touch(room) : room, target }
   }
 
-  function authorize({ targetMapId, serverId, subjectId }) {
-    const { room } = resolveRoom({ targetMapId, serverId }, false)
+  function authorize({ targetMapId, targetMapReference, serverId, subjectId }) {
+    const { room } = resolveRoom({ targetMapId, targetMapReference, serverId }, false)
     const subject = String(subjectId || '').trim()
     if (!subject || !room.subjects.has(subject)) {
       throw roomError('ROOM_ACCESS_DENIED', '玩家未被传送到该私有房间', 403)
