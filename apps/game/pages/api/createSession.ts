@@ -14,6 +14,7 @@ import {
   requirePlayerLoginURL,
   resolvePlayerServiceIdentity,
 } from '../../server/player-service-client';
+import { prepareLocalRuntimeSession } from '../../server/local-runtime-session';
 
 export type CreateSessionResult =
   | RedirectData
@@ -94,7 +95,8 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
     if (!data) {
       return res.status(202).json({
-        message: `cannot get metadata of game ${contentId}, try to resume it`,
+        code: 'RUNTIME_STARTING',
+        message: '地图运行时正在迁移或预烘焙，请稍候',
       });
     }
 
@@ -190,14 +192,15 @@ async function getSessionData(
   let authenticatedSubjectId = '';
   let privateRoomId = '';
 
-  try {
-    // rust项目发起的请求没有referer
-    const url = new URL(req.headers.referer || '');
-
-    teamId = url.searchParams.get('teamId') || '';
-    refererServerId = url.searchParams.get('refererServerId') || '';
-  } catch (err) {
-    console.warn('Failed to parse request referer');
+  const requestReferer = req.headers.referer;
+  if (requestReferer) {
+    try {
+      const url = new URL(requestReferer);
+      teamId = url.searchParams.get('teamId') || '';
+      refererServerId = url.searchParams.get('refererServerId') || '';
+    } catch {
+      console.warn(`Failed to parse request referer: ${requestReferer}`);
+    }
   }
 
   let httpServerUrl: string;
@@ -253,6 +256,13 @@ async function getSessionData(
       (mode === 'play' && process.env.BOX_PLAY_LIBRARY_PATH)
       ? `${localRuntimeURL.replace(/\/$/, '')}/${runtimeMapPath}`
       : localRuntimeURL;
+    if (
+      process.env.BOX_DEPLOYMENT_MODE === 'creator' ||
+      (mode === 'play' && process.env.BOX_PLAY_LIBRARY_PATH)
+    ) {
+      const runtime = await prepareLocalRuntimeSession(httpServerUrl);
+      if (!runtime.ready) return undefined;
+    }
     // 本地就直接把 http server url 处理成 socket server url
     socketServerUrl = httpServerUrl.replace('http', 'ws');
   } else {

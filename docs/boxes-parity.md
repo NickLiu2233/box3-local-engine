@@ -18,9 +18,10 @@
 
 对比结论：
 
-- `packages/schema` 没有语义差异；
-- `internals/build-system` 的源码差异仅为包名从 `@box/*` 改成 `@box-local/*`，核心迁移、
-  bake、prebake 和资源任务保持同源；
+- `internals/schema` 的工程、实体、物理和同步 schema 保持同源；脚本公开 API 只移除了商城、
+  社交、临时聊天和分析等平台能力，并为本地 Teleport 明确使用不可变地图 UUID；
+- `internals/build-system` 的迁移、bake、prebake 和资源任务保持同源，仅在实体已有明确
+  `mesh` 路径时优先按路径解析 Project 模型，避免本地模型与 Project 模型数字 ID 碰撞；
 - Creator/Play 的渲染、物理、动画、实体、UI 和脚本主流程保留 `boxes` 实现；
 - game-server 的语义差异集中在本地内容、身份、存储、运行时调度和 VOXA 素材；
 - RabbitMQ、神策、Nacos、CI 镜像注册和云容器回收已从本地发行路径移除。
@@ -51,7 +52,7 @@
 | 内容寻址       | IPFS / OSS / 内容服务 | 工程 `blobs/`、发布只读内容、VOXA 本地回退         |
 | 地图生命周期   | 容器平台和后端调度    | `launcher`、Creator 双运行时、多地图 Play library  |
 | Session 与身份 | BOX 账号和后端 cookie | 独立 Player Service、强制注册/登录、签名运行时身份 |
-| 数据空间       | 在线 Java/PG 服务     | 本地文件或服主 PostgreSQL，保持旧双表语义          |
+| 数据空间       | 在线 Java/PG 服务     | 本地文件或服主 PostgreSQL，保持地图/地图组隔离语义 |
 | 热缓存         | 平台 Redis            | 可选 Redis adapter，本地持久缓存回退               |
 | 模型和皮肤目录 | 云端模型 API          | VOXA Local 与当前 Project 素材                     |
 | 项目管理       | 云端工程/发布 API     | 本地工程目录、不可变 release、导入导出和备份       |
@@ -66,10 +67,10 @@
 | 地形、实体、脚本、UI、图片、音频、模型和皮肤 | 使用同一工程 schema 和内容 hash                                                  |
 | Creator 与 Play                              | 使用同一浏览器引擎和 game-server 主流程                                          |
 | 多工程 Creator                               | 每个项目独立编辑/预览运行时和项目作用域                                          |
-| 多地图 Play                                  | 按地图 ID 启动独立运行时，发布数据只读挂载                                       |
+| 多地图 Play                                  | 按可编辑访问 ID 启动独立运行时，发布数据只读挂载                                 |
 | Project 模型和皮肤                           | 只包含当前工程引用；发布后完全从工程 blob 读取                                   |
 | 默认皮肤                                     | 按项目 `CONTAINER_NAME` 隔离；未设置时不读取其他工程默认值                       |
-| 数据空间                                     | 本地文件和 PostgreSQL 两个 adapter；保持 boxes 的旧表兼容                        |
+| 数据空间                                     | 本地文件和 PostgreSQL 两个 adapter；内部以不可变地图 UUID 建立命名空间           |
 | 玩家身份                                     | 独立 Player Service，同时供 Creator 预览和 Play 使用                             |
 | Redis                                        | 可选 Session/限流/预烘焙热缓存；失败时本地回退                                   |
 | 导入、导出、发布                             | `.boxproject` 与只读游玩产物分离，带完整性校验和进度                             |
@@ -77,6 +78,24 @@
 | 地图组                                       | 一个主地图、多个副地图；地图级状态独立，共享资源使用一个权威根                   |
 | 地图组迁移                                   | `.boxproject` 只存在地图组格式；从任意成员导出完整组，导入后重建成员关系与共享根 |
 | 共享版本发布                                 | 发布清单记录 `mapGroupId`、`mainProjectId` 和 `sharedRevision`                   |
+
+## 经回归保护的必要核心差异
+
+以下差异触及上游核心，但都有本地架构原因，不能在同步 `boxes` 时直接覆盖：
+
+| 差异                                        | 原因                                                                       | 默认回归                                       |
+| ------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------- |
+| MuDB 生产本地运行时保持协议校验             | 本地客户端和服务端都是 `method=local`；照搬云端跳过条件会使首包错位并断线  | `scripts/check-engine-wire-protocols.js`       |
+| 玩家 contact 快照可晚于人物快照             | contact 只影响受击动画，不应决定人物和名字是否渲染                         | `player-animation-contact.spec.ts`             |
+| Session 数据晚于 WebSocket join 时暂存 join | 防止冷启动竞态导致偶现没有人物                                             | `regression-pending-player-joins.ts`           |
+| Project 模型按实体路径优先解析              | 本地库与 Project 库可能有相同数字 ID，但两者必须保持独立                   | `regression-project-model-runtime-identity.ts` |
+| 已删除模型不能从历史 mesh 表复活            | mesh 表为了协议 ID 稳定会保留历史项，实际可用性必须以当前 Project 资源为准 | `regression-deleted-project-model.ts`          |
+| 默认皮肤和共享资源按项目/地图组隔离         | 多运行时不能读取上一个工程的本地状态                                       | `regression-default-skin-project-scope.ts`     |
+| PostgreSQL/本地文件替换平台数据空间 adapter | 保持 `getDataStorage` 地图隔离与 `getGroupStorage` 地图组共享语义          | `regression-storage-namespace.ts`              |
+
+上述 game-server 回归已进入 `pnpm --filter @box-local/game-server test`，并由根目录
+`pnpm test` 执行。Creator 的 Play 预览默认不预热（`BOX_CREATOR_PLAY_PREWARM_RUNTIMES=0`），
+避免用户尚未点击“运行”就执行地图脚本；独立 Play 服务的后台预热仍保留。
 
 ## 明确不迁入
 
@@ -113,8 +132,8 @@ diff，忽略包名前缀，然后逐个审查非前缀差异。
 
 ```bash
 pnpm check
+pnpm --filter @box-local/game-server test
 pnpm check:edit-session
-pnpm --filter @box-local/game-server check:default-skin-scope
 pnpm --filter @box-local/voxa check:default-skin-scope
 docker compose config
 ```

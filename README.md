@@ -232,7 +232,7 @@ VOXA 的独立镜像、数据备份和创作端接入参阅
 | `BOX_CREATOR_PLAY_MAX_RUNTIMES`            | `4`            | 创作端同时保留的预览运行时数量                                           |
 | `BOX_PLAY_MAX_RUNTIMES`                    | `8`            | 游玩端同时保留的地图运行时数量                                           |
 | `BOX_CREATOR_EDIT_PREWARM_RUNTIMES`        | `6`            | Creator 后台预热的最近编辑工程数量，`0` 为关闭                           |
-| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES`        | `4`            | Creator 后台预热的最近预览工程数量，`0` 为关闭                           |
+| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES`        | `0`            | Creator 后台预热的预览工程数量；开启会在无人访问时执行地图脚本           |
 | `BOX_PLAY_PREWARM_RUNTIMES`                | `8`            | 全部地图缓存完成后常驻的主地图优先数量，`0` 为关闭后台预热               |
 | `BOX_RUNTIME_IDLE_TIMEOUT_MS`              | `900000`       | 无活动连接运行时的空闲回收时间                                           |
 | `BOX_RUNTIME_START_TIMEOUT_MS`             | `1800000`      | 大地图迁移/预烘焙的最长启动时间；期间不会因单次健康检查超时而重启        |

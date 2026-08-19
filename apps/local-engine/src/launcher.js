@@ -828,7 +828,8 @@ async function main() {
   await waitFor(`http://127.0.0.1:${webPort}/api/health-check`)
 
   // Boxes prepares shared build-cache products before the engine route becomes
-  // interactive. Do the same in the background for every installed play map.
+  // interactive. Keep edit runtimes and standalone Play maps warm, but do not
+  // execute Creator preview scripts until a user requests that preview.
   // Runtime capacity/LRU still owns the hard process bound; evicted runtimes
   // leave their persistent prebake products behind for the next player.
   const prewarmTimer = setTimeout(async () => {
@@ -842,7 +843,7 @@ async function main() {
         )
         const playCount = prewarmCount(
           'BOX_CREATOR_PLAY_PREWARM_RUNTIMES',
-          process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || 4,
+          0,
           process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || 4,
         )
         for (const project of projects.slice(0, editCount)) {

@@ -3,6 +3,9 @@
 const fs = require('fs')
 const path = require('path')
 const cidPattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
+const exactCidPattern =
+  /^Qm[1-9A-HJ-NP-Za-km-z]{44}(?:\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|lut))?$/i
+const displayOnlyResourceFields = new Set(['previewImage', 'bannerImages'])
 const checks = [
   [
     'group-storage',
@@ -43,6 +46,33 @@ function walkFiles(root) {
   return files
 }
 
+function collectJSONCids(value, result = new Set()) {
+  if (typeof value === 'string') {
+    if (exactCidPattern.test(value)) result.add(value.split('.')[0])
+    return result
+  }
+  if (Array.isArray(value)) {
+    for (const child of value) collectJSONCids(child, result)
+    return result
+  }
+  if (!value || typeof value !== 'object') return result
+  for (const [key, child] of Object.entries(value)) {
+    // Cloud project covers, banners, and asset thumbnails are presentation
+    // metadata. The migrator deliberately does not require them for an
+    // offline runtime, so their absence must not make an import incompatible.
+    if (!displayOnlyResourceFields.has(key)) collectJSONCids(child, result)
+  }
+  return result
+}
+
+function referencedCids(text) {
+  try {
+    return collectJSONCids(JSON.parse(text))
+  } catch {
+    return new Set(text.match(cidPattern) || [])
+  }
+}
+
 function scanProjectCompatibility(sourceRoot) {
   const blobsRoot = path.join(sourceRoot, 'blobs')
   const files = walkFiles(sourceRoot)
@@ -68,7 +98,7 @@ function scanProjectCompatibility(sourceRoot) {
         }
       }
     }
-    for (const hash of text.match(cidPattern) || []) {
+    for (const hash of referencedCids(text)) {
       if (!fs.existsSync(path.join(blobsRoot, hash))) missingBlobs.add(hash)
     }
   }
@@ -93,4 +123,4 @@ function scanProjectCompatibility(sourceRoot) {
   }
 }
 
-module.exports = { scanProjectCompatibility }
+module.exports = { collectJSONCids, scanProjectCompatibility }

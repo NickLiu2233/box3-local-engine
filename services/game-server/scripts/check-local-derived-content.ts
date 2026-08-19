@@ -64,13 +64,33 @@ async function main() {
   );
   assert.match(
     composeSource,
-    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES: \$\{BOX_CREATOR_PLAY_PREWARM_RUNTIMES:-4\}/,
-    'creator must prewarm its configured preview capacity by default',
+    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES: \$\{BOX_CREATOR_PLAY_PREWARM_RUNTIMES:-0\}/,
+    'creator must not execute play-preview scripts before a user requests them',
   );
   assert.match(
     composeSource,
     /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-8\}/,
     'play must prewarm its configured runtime capacity by default',
+  );
+
+  const envExampleSource = fs.readFileSync(
+    path.resolve(__dirname, '../../../.env.docker.example'),
+    'utf8',
+  );
+  assert.match(
+    envExampleSource,
+    /^BOX_CREATOR_EDIT_PREWARM_RUNTIMES=6$/m,
+    'the example env must not override creator edit prewarm with an old default',
+  );
+  assert.match(
+    envExampleSource,
+    /^BOX_CREATOR_PLAY_PREWARM_RUNTIMES=0$/m,
+    'the example env must keep unattended creator preview scripts disabled',
+  );
+  assert.match(
+    envExampleSource,
+    /^BOX_PLAY_PREWARM_RUNTIMES=8$/m,
+    'the example env must not override play prewarm with an old default',
   );
 
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-derived-content-'));

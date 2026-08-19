@@ -107,7 +107,7 @@ BOX_CREATOR_EDIT_MAX_RUNTIMES=6
 BOX_CREATOR_PLAY_MAX_RUNTIMES=4
 BOX_PLAY_MAX_RUNTIMES=8
 BOX_CREATOR_EDIT_PREWARM_RUNTIMES=6
-BOX_CREATOR_PLAY_PREWARM_RUNTIMES=4
+BOX_CREATOR_PLAY_PREWARM_RUNTIMES=0
 BOX_PLAY_PREWARM_RUNTIMES=8
 BOX_RUNTIME_IDLE_TIMEOUT_MS=900000
 BOX_RUNTIME_START_TIMEOUT_MS=1800000
@@ -117,8 +117,9 @@ BOX_TELEPORT_MAX_ROOMS=64
 BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS=900000
 ```
 
-常驻数量不能超过对应运行时上限，设为 `0` 可关闭。Creator 默认分别预热并常驻最近使用的
-6 个编辑工程和 4 个预览工程。Play 会依次为全部已安装地图生成持久预烘焙缓存，完成后默认
+常驻数量不能超过对应运行时上限，设为 `0` 可关闭。Creator 默认只预热编辑运行时；预览运行时
+会实际执行地图脚本，因此默认关闭，直到玩家访问预览地址。Creator 默认预热并常驻最近使用的
+6 个编辑工程。编辑器内的运行按钮只在用户点击后启动当前工程脚本。Play 会依次为全部已安装地图生成持久预烘焙缓存，完成后默认
 按主地图优先常驻 8 个运行时；运行时上限只限制同时运行的进程数量，不限制缓存覆盖的地图数量。
 预烘焙 blob 与 Build Cache 位于持久运行时缓存，不写入只读地图目录；运行时空闲回收、Play
 容器重启后仍可复用。地图内容、共享资源或引擎版本变化时，构建参数随之变化，旧缓存不会被错误复用。

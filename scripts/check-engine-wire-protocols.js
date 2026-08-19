@@ -6,7 +6,10 @@ const root = path.resolve(__dirname, '..')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 
 const client = read('apps/game/src/engine/game-client.ts')
+const playClient = read('apps/game/src/client/play/play-client.ts')
+const sharedClient = read('apps/game/src/client/index.ts')
 const server = read('services/game-server/src/script/script-host.ts')
+const createServer = read('services/game-server/src/createServer.ts')
 const teleportServer = read('services/game-server/src/teleport/teleport-server.ts')
 const launcher = read('apps/local-engine/src/launcher.js')
 
@@ -55,6 +58,35 @@ assert.ok(
 assert.ok(
   launcher.includes('BOX_WORLD_MAP_UUID: world.manifest.mapUuid'),
   'Play runtimes must receive their immutable map UUID',
+)
+
+// MuClient/MuServer's third constructor argument means "skip protocol
+// validation". Boxes skips it for production cloud sockets, but a production
+// local runtime deliberately validates both sides. If only the client skips,
+// its first protocol packet is parsed as validation JSON and the socket closes.
+const localClientValidationRule =
+  "process.env.NODE_ENV !== 'development' && !clientConfig.isLocalGameServer"
+const localServerValidationRule =
+  "process.env.NODE_ENV !== 'development' && serverConfig.method !== 'local'"
+
+for (const [label, source] of [
+  ['PlayClient', playClient],
+  ['shared game client', sharedClient],
+]) {
+  assert.ok(
+    source.includes(localClientValidationRule),
+    `${label} must validate the MuDB handshake for production local runtimes`,
+  )
+  assert.equal(
+    source.includes("process.env.NODE_ENV !== 'development' || !clientConfig.isLocalGameServer"),
+    false,
+    `${label} unexpectedly restored the cloud-only MuDB validation rule`,
+  )
+}
+
+assert.ok(
+  createServer.includes(localServerValidationRule),
+  'game-server must validate the MuDB handshake for local runtimes',
 )
 
 for (const forbidden of ["from '../apis'", 'containerTeleport', 'getContainerHashById']) {

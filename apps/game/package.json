@@ -15,7 +15,8 @@
     "dev": "node -r ts-node/register --inspect server/dev-server/index.ts",
     "export": "NEXT_PUBLIC_EXPORT_MODE=true npm run build && NEXT_PUBLIC_EXPORT_MODE=true next export",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --cache --cache-location .next/cache/eslint/.eslintcache",
-    "test": "jest"
+    "test": "jest",
+    "test:local-runtime-session": "node -r ts-node/register scripts/regression-local-runtime-session.ts"
   },
   "browserslist": [
     "defaults"

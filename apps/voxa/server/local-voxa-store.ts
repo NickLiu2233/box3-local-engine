@@ -138,12 +138,11 @@ export function matchesMapFilter(
   model: Pick<StoredModel, 'mapId' | 'modelType'>,
   mapId?: number,
 ) {
-  if (mapId === undefined) return true;
-  if (model.mapId === mapId) return true;
-  // Project models saved by older local VOXA builds did not persist mapId
-  // when the local engine used its valid sentinel ID (0). Keep those models
-  // visible so creators do not lose access after upgrading.
-  return mapId === 0 && model.mapId === undefined && model.modelType === 2;
+  // An unscoped query is the server-wide local work center. Map-scoped VOXA
+  // records are editor adapters for project models/skins and must only be
+  // visible when that exact map asks for them.
+  if (mapId === undefined) return model.mapId === undefined;
+  return model.mapId === mapId;
 }
 
 export async function storeBlob(data: Buffer, contentType = '') {
