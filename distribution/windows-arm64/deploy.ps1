@@ -222,14 +222,22 @@ function Ensure-Images {
   )
   $expectedRevision = ''
   $expectedImageRevisions = @{}
+  $expectedImageCreatedAt = @{}
   $buildInfoPath = Join-Path $PackageRoot 'BUILD-INFO.json'
   if (Test-Path -LiteralPath $buildInfoPath -PathType Leaf) {
     try {
       $buildInfo = [System.IO.File]::ReadAllText($buildInfoPath) | ConvertFrom-Json
       $expectedRevision = $buildInfo.sourceRevision
-      if ($null -ne $buildInfo.imageRevisions) {
-        foreach ($property in $buildInfo.imageRevisions.PSObject.Properties) {
+      $imageRevisionsProperty = $buildInfo.PSObject.Properties['imageRevisions']
+      if ($null -ne $imageRevisionsProperty -and $null -ne $imageRevisionsProperty.Value) {
+        foreach ($property in $imageRevisionsProperty.Value.PSObject.Properties) {
           $expectedImageRevisions[$property.Name] = [string]$property.Value
+        }
+      }
+      $imageCreatedAtProperty = $buildInfo.PSObject.Properties['imageCreatedAt']
+      if ($null -ne $imageCreatedAtProperty -and $null -ne $imageCreatedAtProperty.Value) {
+        foreach ($property in $imageCreatedAtProperty.Value.PSObject.Properties) {
+          $expectedImageCreatedAt[$property.Name] = [string]$property.Value
         }
       }
     } catch {
@@ -242,11 +250,23 @@ function Ensure-Images {
     if ($expectedImageRevisions.ContainsKey($image)) {
       $imageExpectedRevision = $expectedImageRevisions[$image]
     }
-    $revision = (& docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' $image 2>$null)
+    $imageExpectedCreatedAt = ''
+    if ($expectedImageCreatedAt.ContainsKey($image)) {
+      $imageExpectedCreatedAt = $expectedImageCreatedAt[$image]
+    }
+    $metadata = (& docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}|{{ index .Config.Labels "org.opencontainers.image.created" }}' $image 2>$null)
     if ($LASTEXITCODE -ne 0) {
       $needsImport += $image
-    } elseif (-not [string]::IsNullOrWhiteSpace($imageExpectedRevision) -and $revision -ne $imageExpectedRevision) {
-      $needsImport += $image
+    } else {
+      $metadataParts = $metadata -split '\|', 2
+      $revision = $metadataParts[0]
+      $createdAt = $(if ($metadataParts.Count -gt 1) { $metadataParts[1] } else { '' })
+      if (
+        (-not [string]::IsNullOrWhiteSpace($imageExpectedRevision) -and $revision -ne $imageExpectedRevision) -or
+        (-not [string]::IsNullOrWhiteSpace($imageExpectedCreatedAt) -and $createdAt -ne $imageExpectedCreatedAt)
+      ) {
+        $needsImport += $image
+      }
     }
   }
   if ($needsImport.Count -eq 0) {
@@ -261,11 +281,19 @@ function Ensure-Images {
     if ($expectedImageRevisions.ContainsKey($image)) {
       $imageExpectedRevision = $expectedImageRevisions[$image]
     }
-    $details = (& docker image inspect --format '{{.Os}}/{{.Architecture}} {{ index .Config.Labels "org.opencontainers.image.revision" }}' $image 2>$null)
+    $imageExpectedCreatedAt = ''
+    if ($expectedImageCreatedAt.ContainsKey($image)) {
+      $imageExpectedCreatedAt = $expectedImageCreatedAt[$image]
+    }
+    $details = (& docker image inspect --format '{{.Os}}/{{.Architecture}}|{{ index .Config.Labels "org.opencontainers.image.revision" }}|{{ index .Config.Labels "org.opencontainers.image.created" }}' $image 2>$null)
     if ($LASTEXITCODE -ne 0) { throw "镜像导入后仍不存在：$image" }
-    if ($details -notmatch '^linux/arm64 ') { throw "镜像架构不是 linux/arm64：$image ($details)" }
-    if (-not [string]::IsNullOrWhiteSpace($imageExpectedRevision) -and $details -notlike "* $imageExpectedRevision") {
+    $detailParts = $details -split '\|', 3
+    if ($detailParts[0] -ne 'linux/arm64') { throw "镜像架构不是 linux/arm64：$image ($details)" }
+    if (-not [string]::IsNullOrWhiteSpace($imageExpectedRevision) -and $detailParts[1] -ne $imageExpectedRevision) {
       throw "镜像版本与离线包不一致：$image"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($imageExpectedCreatedAt) -and $detailParts[2] -ne $imageExpectedCreatedAt) {
+      throw "镜像构建时间与离线包不一致：$image"
     }
   }
 }
