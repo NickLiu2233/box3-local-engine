@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Activity, LogOut, Settings, Upload } from 'lucide-react';
+import { LogOut, Settings, Upload } from 'lucide-react';
 import type { PlayWorld } from '../server/play-worlds';
 import { getPlayWorlds } from '../server/play-worlds';
 import { isPlayAdminEnabled } from '../server/play-admin-security';
@@ -323,7 +323,6 @@ export default function HomePage({
                 <button className="button primary" disabled={Boolean(busy)} onClick={() => importInput.current?.click()}>
                   <Upload size={16} />{busy === 'import' ? '导入中…' : '导入地图组游玩包'}
                 </button>
-                <Link className="button statusLink" href="/play-system"><Activity size={16} />运行状态</Link>
                 <button className="button" onClick={exitAdmin}><LogOut size={16} />退出管理</button>
                 </>
               ) : <button className="button" onClick={() => setLoginOpen(true)}><Settings size={16} />服主管理</button>

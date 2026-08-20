@@ -22,9 +22,10 @@ function allowedCreatorHosts() {
 
 /**
  * Creator APIs can mutate and export editable projects. Keep them unavailable
- * in every other product and reject browser cross-site requests. The creator
- * Docker profile remains bound to host loopback; this guard is defense in
- * depth, not a replacement for the loopback port binding.
+ * in every other product and reject browser cross-site requests. The
+ * deployment manager writes the configured public host into
+ * BOX_CREATOR_ALLOWED_HOSTS; this guard remains defense in depth for both
+ * local-only and LAN deployments.
  */
 export function allowCreatorApi(
   req: NextApiRequest,

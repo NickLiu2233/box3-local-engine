@@ -15,7 +15,7 @@ import {
 } from './storage-schema';
 import { Semaphore } from '@box-local/utils/semaphore';
 import { PostgresDataStorage } from './postgres-data-storage';
-import { LocalDataStorage } from './local-data-storage';
+import { DisabledDataStorage } from './disabled-data-storage';
 import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/storage';
 import { StorageLimiters } from './limiters';
 import { getConfigSync } from '../../config/server';
@@ -61,14 +61,7 @@ export class StorageController {
         logger: this.state.logger,
       });
     } else {
-      this.dbServer = new LocalDataStorage({
-        storagePath: config.dataStoragePath || config.storagePath,
-        projectNamespace,
-        groupNamespace,
-        mode: config.mode,
-        lockTimeoutMs: config.dataStorageLockTimeoutMs,
-        logger: this.state.logger,
-      });
+      this.dbServer = new DisabledDataStorage();
     }
     this._limiters = new StorageLimiters();
 
@@ -343,8 +336,11 @@ export class StorageController {
           } catch (error) {
             const config = getConfigSync();
             let msg;
-            if (config.FEATURE_FLAGS?.includes(FeatureFlag.StorageJava)) {
-              msg = error.msg;
+            if (
+              config.method === 'local' ||
+              config.FEATURE_FLAGS?.includes(FeatureFlag.StorageJava)
+            ) {
+              msg = error instanceof Error ? (error as Error & { msg?: string }).msg || error.message : String(error);
             }
             client.message.dbFetchError({
               dbKey,

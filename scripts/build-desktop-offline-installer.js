@@ -143,7 +143,7 @@ function main() {
   }
   fs.writeFileSync(
     path.join(packageRoot, '开始使用.txt'),
-    `BOX Local Engine ${version}\n\n准备：\n- 已安装并启动 Docker Desktop。\n- PostgreSQL 和 Redis 均为选填，本程序不会安装或启动数据库。\n\n1. 双击 ${spec.executable}。\n2. 按需填写远程 PostgreSQL 和 Redis；也可以全部留空使用本机模式。\n3. 点击“安装并启动”。\n\n未配置 PostgreSQL 时，地图数据保存在本机，玩家管理和登录门户不启用；未配置 Redis 时使用本机缓存。\n`,
+    `BOX Local Engine ${version}\n\n准备：\n- 已安装并启动 Docker Desktop。\n- PostgreSQL 和 Redis 均为选填，本程序不会安装或启动数据库。\n\n1. 双击 ${spec.executable}。\n2. 按需填写远程 PostgreSQL 和 Redis。\n3. 点击“保存配置”，程序不会自动启动容器。\n4. 回到“总览”，选择启动全部服务、创作端或游玩端。\n\n未配置 PostgreSQL 时，地图数据存储 API、玩家管理和登录门户不启用；未配置 Redis 时不启用 Redis 缓存。\n`,
   )
   const checksums = walk(packageRoot).map(
     (file) => `${sha256(file)}  ${path.relative(packageRoot, file).split(path.sep).join('/')}`,

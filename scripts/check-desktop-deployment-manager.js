@@ -15,6 +15,11 @@ const builder = fs.readFileSync(
   path.join(root, 'scripts/build-desktop-offline-installer.js'),
   'utf8',
 )
+const creatorWorkCenter = fs.readFileSync(
+  path.join(root, 'apps/game/pages/projects/index.tsx'),
+  'utf8',
+)
+const playWorkCenter = fs.readFileSync(path.join(root, 'apps/game/pages/index.tsx'), 'utf8')
 
 for (const file of [
   'package.json',
@@ -34,7 +39,8 @@ for (const file of [
 
 for (const value of [
   '总览',
-  '安装配置',
+  '数据配置',
+  '性能监控',
   '运行日志',
   '帮助手册',
   '数据服务',
@@ -56,8 +62,31 @@ assert.match(defaults, /^REDIS_HOST=$/m)
 assert.match(backend, /if !config\.database_host\.trim\(\)\.is_empty\(\)/)
 assert.match(backend, /if !config\.redis_host\.trim\(\)\.is_empty\(\)/)
 assert.match(backend, /"creator,play,voxa"/)
+assert.match(backend, /Applications\/Docker\.app\/Contents\/Resources\/bin\/docker/)
+assert.ok(backend.includes(String.raw`r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"`))
+assert.match(backend, /fn docker_message/)
+assert.doesNotMatch(backend, /Command::new\("docker"\)\.args/)
 assert.match(frontend, /data-setup-section/)
 assert.match(frontend, /captureSetupForm/)
+// A setup-tab click is registered after the raw .env handlers. Keep those
+// handlers top-level: nesting either in saveConfiguration makes bindEvents
+// throw a ReferenceError and leaves every later setup tab inert.
+assert.match(
+  frontend,
+  /async function saveConfiguration\(event\)[\s\S]*?\n}\n\nasync function saveRawEnvironment\(\)/,
+)
+assert.match(frontend, /function switchSetupSection\(section\)/)
+assert.match(frontend, /data-network-host="127\.0\.0\.1"/)
+assert.match(frontend, /未检测到可用地址/)
+assert.match(backend, /fn detect_lan_ip/)
+for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 'authPortalPort']) {
+  assert.match(frontend, new RegExp(`input\\('${port}'`))
+}
+assert.match(backend, /不能使用同一个端口/)
+assert.match(backend, /BOX_AUTH_PORTAL_PORT/)
+assert.match(compose, /VOXA_URL: \$\{BOX_VOXA_PUBLIC_URL/)
+assert.match(backend, /只允许打开当前配置中的 BOX 服务地址/)
+assert.doesNotMatch(backend, /只允许打开本机 BOX 服务地址/)
 assert.match(frontend, /认识产品/)
 assert.match(frontend, /快速部署/)
 assert.match(frontend, /服务与端口/)
@@ -65,6 +94,29 @@ assert.match(frontend, /创作与游玩/)
 assert.match(frontend, /玩家与权限/)
 assert.match(frontend, /运维与排障/)
 assert.match(frontend, /data-help-section/)
+assert.match(frontend, /box-manager-theme/)
+assert.match(frontend, /跟随系统/)
+assert.match(frontend, /data-theme-choice/)
+assert.match(frontend, /get_performance_status/)
+assert.match(frontend, /环境检查/)
+assert.doesNotMatch(frontend, /managementPage/)
+assert.doesNotMatch(frontend, /navItem\('projects'/)
+assert.doesNotMatch(frontend, /navItem\('players'/)
+assert.doesNotMatch(styles, /\.embedded-page/)
+assert.match(frontend, /run_environment_checks/)
+assert.match(frontend, /test_remote_connection/)
+assert.match(frontend, /data-service-action/)
+assert.match(frontend, /data-service-logs/)
+assert.match(frontend, /export_diagnostics/)
+assert.match(backend, /fn is_sensitive_env_key/)
+assert.match(backend, /\[REDACTED\]/)
+assert.match(backend, /async fn control_service/)
+assert.match(frontend, /setInterval\(refreshPerformance, 5000\)/)
+assert.match(backend, /"stats",\s*"--no-stream"/)
+assert.match(styles, /:root\[data-theme='light'\]/)
+assert.match(styles, /:root\[data-theme='dark'\]/)
+assert.doesNotMatch(creatorWorkCenter, /href="\/system"/)
+assert.doesNotMatch(playWorkCenter, /href="\/play-system"/)
 assert.match(styles, /html,\s*body,\s*#app[\s\S]*overflow: hidden/)
 assert.match(styles, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
 assert.match(styles, /\.help-layout/)
@@ -78,8 +130,54 @@ assert.match(builder, /windows-arm64/)
 assert.match(builder, /macos-amd64/)
 assert.match(builder, /macos-arm64/)
 assert.match(builder, /--no-bundle/)
-assert.match(compose, /BOX_PLAYER_SERVICE_HOST_IP/)
-assert.match(compose, /127\.0\.0\.1:\$\{BOX_CREATOR_PORT/)
-assert.match(compose, /127\.0\.0\.1:\$\{BOX_VOXA_PORT/)
+assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1/)
+assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1}:\$\{BOX_CREATOR_PORT/)
+assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1}:\$\{BOX_VOXA_PORT/)
+assert.doesNotMatch(frontend, /name="bindIp"/)
+// Saving data configuration must be a non-disruptive operation. Starting
+// containers is an explicit choice made from the overview page.
+assert.match(frontend, /保存配置/)
+assert.match(frontend, /配置已保存，请在总览选择启动范围/)
+assert.match(frontend, /function getServiceUrl\(/)
+assert.match(frontend, /function startScopeDialog\(/)
+assert.match(frontend, /class="dialog-backdrop"/)
+assert.match(frontend, /data-start-scope="all"/)
+assert.match(frontend, /data-start-scope="play"/)
+assert.match(frontend, /data-start-scope="creator"/)
+assert.match(frontend, /service-more-menu/)
+assert.match(styles, /\.start-dialog/)
+assert.match(styles, /\.dialog-backdrop/)
+assert.doesNotMatch(frontend, /function overviewNextStep\(/)
+assert.doesNotMatch(styles, /\.next-step-card/)
+assert.doesNotMatch(frontend, /install_and_start/)
+assert.match(backend, /async fn save_configuration_command/)
+assert.match(backend, /async fn start_services\(app: AppHandle, scope: String\)/)
+for (const scope of ['"all"', '"creator"', '"play"']) {
+  assert.match(backend, new RegExp(scope))
+}
+assert.doesNotMatch(backend, /async fn install_and_start/)
+assert.match(backend, /"BOX_CREATOR_ALLOWED_HOSTS",\s*&public_host/)
+assert.match(frontend, /服主与安全/)
+assert.match(frontend, /原始 \.env/)
+assert.match(frontend, /配置说明：这些服务用来做什么？/)
+assert.match(frontend, /业务 DB \/ 缓存 DB/)
+assert.match(styles, /\.setup-explainer/)
+assert.match(frontend, /secretInput\('playAdminToken'/)
+assert.match(frontend, /data-save-raw-environment/)
+assert.match(backend, /fn get_raw_environment/)
+assert.match(backend, /fn save_raw_environment/)
+const saveConfigurationCommand = backend.match(
+  /async fn save_configuration_command[\s\S]*?(?=\n#\[tauri::command\]\nasync fn start_services)/,
+)?.[0]
+assert.ok(saveConfigurationCommand, 'missing save configuration command body')
+assert.doesNotMatch(saveConfigurationCommand, /ensure_images|compose_output/)
+assert.match(frontend, /allHealthy \? '' : `<button class="button primary" id="start"/)
+// The main shell is intentionally fixed-height. The log pane therefore needs
+// to reserve space for the page header and filters, then expose its own
+// vertical scrollbar instead of being clipped below the viewport.
+assert.match(styles, /\.logs-page[\s\S]*grid-template-rows: 56px 40px minmax\(0, 1fr\)/)
+assert.match(styles, /\.log-card[\s\S]*min-height: 0[\s\S]*display: flex/)
+assert.match(styles, /\.log-card pre[\s\S]*overflow: auto/)
+assert.doesNotMatch(styles, /\.log-card pre[\s\S]*scrollbar-width: none/)
 
 console.log('Desktop deployment manager checks passed')

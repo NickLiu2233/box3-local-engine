@@ -41,7 +41,7 @@ docker compose --profile creator up -d --no-build creator
 ```
 
 也可以不启动仓库内的 PostgreSQL，直接把 `BOX_DATABASE_URL` 指向用户自己的数据库。连接串
-非空时自动使用 PostgreSQL，留空时自动使用本地文件数据空间，不再需要单独选择驱动。
+非空时自动使用 PostgreSQL，留空时停用数据存储 API，不会写入本地数据文件。
 完整的 schema、SSL、连接池、旧 boxes 数据表兼容和备份说明见
 [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)。
 
@@ -58,7 +58,7 @@ cache 相关字段。实现沿用 boxes 的职责边界：业务 DB 保存短期
 - `STORAGE_CACHE_REDIS_DB` 默认 `1`，用于构建结果热缓存和并发构建去重；
 - `STORAGE_CACHE_REDIS_TTL` 是构建热缓存秒数，必须在 `0` 到 `255` 之间；设为 `0` 可停用构建缓存；
 - Redis 断线或启动时不可用会自动回退到内存 Session、内存限流和本地文件构建缓存，地图仍可启动；
-- Redis 不保存 `getDataStorage/getGroupStorage` 数据，游戏存档仍由本地文件或 PostgreSQL 负责。
+- Redis 不保存 `getDataStorage/getGroupStorage` 数据，游戏存档只由已配置的 PostgreSQL 负责。
 
 源码启动和 Docker Compose 都会读取仓库根目录 `.env`。运行状态页会显示业务 DB 与缓存 DB，
 运行时 `/api/health-check` 还会报告两个 Redis adapter 当前是 `ready` 还是 `fallback`。

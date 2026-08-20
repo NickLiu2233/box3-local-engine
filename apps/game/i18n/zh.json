@@ -266,7 +266,6 @@
   "aboutLocalEditMode": "本地创作模式",
   "aboutDataStorage": "数据存储",
   "aboutRedisConfigured": "已启用 · Session DB {businessDb} · 构建缓存 DB {cacheDb}",
-  "aboutLocalFileStorage": "本地文件",
   "aboutLegacyStorage": "兼容存储",
   "aboutPostgresStorage": "PostgreSQL",
   "aboutConfigured": "已配置",

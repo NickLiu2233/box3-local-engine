@@ -35,7 +35,7 @@ SQL 权限。这样可以避免不可信地图脚本读取数据库中的其他�
 BOX_DATABASE_URL=postgresql://box_game:请替换密码@数据库地址:5432/box_game
 ```
 
-填写 `BOX_DATABASE_URL` 后会自动启用 PostgreSQL；留空时自动使用本地文件数据空间。
+填写 `BOX_DATABASE_URL` 后会自动启用 PostgreSQL；留空时数据存储 API 不可用，不会写入本地文件数据空间。
 
 然后重新创建容器：
 
@@ -175,7 +175,7 @@ PostgreSQL legacy-compatible data storage ready
 BOX_DATABASE_URL=
 ```
 
-留空后自动恢复为本地文件数据空间，不需要选择驱动。
+留空后数据存储 API 会返回“未配置”，不会创建或写入本地数据文件。
 
 从旧 boxes 数据库迁移时，先把对应主表与 `_keys` 表恢复到配置的 schema，并将表名中的旧
 作品 ID 转换为目标地图 UUID、旧地图组 ID 转换为目标主地图 UUID。必须同时迁移主表和

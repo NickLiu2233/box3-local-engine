@@ -255,7 +255,7 @@ export const SettingPanel = (props: Props) => {
     const dataStorage =
       runtime?.dataStorageBackend === 'postgres'
         ? intl.formatMessage({ id: 'aboutPostgresStorage' })
-        : intl.formatMessage({ id: 'aboutLocalFileStorage' });
+        : intl.formatMessage({ id: 'aboutNotConfigured' });
     const configured = (value?: boolean) =>
       intl.formatMessage({
         id: value ? 'aboutConfigured' : 'aboutNotConfigured',

@@ -579,17 +579,19 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,player-service,player-auth-portal,creator,play-storage-init,play,voxa,migrator'
+  'postgres,redis,player-service,player-auth-portal,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init,migrator'
 ) {
   fail(`${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`)
 }
 
 const creatorCompose = getComposeService(composeSource, 'creator')
+const creatorStorageInitCompose = getComposeService(composeSource, 'creator-storage-init')
 const playCompose = getComposeService(composeSource, 'play')
 const playStorageInitCompose = getComposeService(composeSource, 'play-storage-init')
 const playerServiceCompose = getComposeService(composeSource, 'player-service')
 const playerAuthPortalCompose = getComposeService(composeSource, 'player-auth-portal')
 const voxaCompose = getComposeService(composeSource, 'voxa')
+const voxaStorageInitCompose = getComposeService(composeSource, 'voxa-storage-init')
 for (const [name, service] of [
   ['creator', creatorCompose],
   ['play', playCompose],
@@ -643,7 +645,7 @@ forbidPattern(
   creatorCompose,
   composeFile,
   'creator hard dependency on player-service',
-  /depends_on:[\s\S]*?player-service/,
+  /depends_on:\s*\n\s{6}player-service:/,
 )
 forbidPattern(
   playCompose,
@@ -693,8 +695,8 @@ for (const name of [
 requirePattern(
   voxaCompose,
   composeFile,
-  'localhost-only VOXA port',
-  /127\.0\.0\.1:\$\{BOX_VOXA_PORT:-3001\}:3001/,
+  'configurable VOXA port with a safe loopback default',
+  /\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_VOXA_PORT:-3001\}:3001/,
 )
 requirePattern(
   voxaCompose,
@@ -709,10 +711,51 @@ requirePattern(
   /VOXA_MAX_BLOB_BYTES: \$\{VOXA_MAX_BLOB_BYTES:-268435456\}/,
 )
 requirePattern(
+  voxaCompose,
+  composeFile,
+  'VOXA configured public origin for LAN API writes',
+  /BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL:-http:\/\/127\.0\.0\.1:3001\}/,
+)
+requirePattern(
+  voxaCompose,
+  composeFile,
+  'VOXA optional trusted origins for reverse proxies',
+  /BOX_VOXA_ALLOWED_ORIGINS: \$\{BOX_VOXA_ALLOWED_ORIGINS:-\}/,
+)
+for (const [name, service, path] of [
+  ['creator', creatorStorageInitCompose, '/app/apps/local-engine/projects'],
+  ['VOXA', voxaStorageInitCompose, '/app/apps/voxa/data'],
+]) {
+  requirePattern(
+    service,
+    composeFile,
+    `${name} storage ownership initialization`,
+    new RegExp(`chown -R 1000:1000 ${path.replaceAll('/', '\\/')}`),
+  )
+  requirePattern(
+    service,
+    composeFile,
+    `${name} storage init has only the minimum write-repair capabilities`,
+    /cap_drop:\s*\n\s*- ALL[\s\S]*?cap_add:\s*\n\s*- CHOWN\s*\n\s*- DAC_OVERRIDE/,
+  )
+}
+requirePattern(
   creatorCompose,
   composeFile,
-  'single localhost-only creator port',
-  /ports:\s*\n\s*- "127\.0\.0\.1:\$\{BOX_CREATOR_PORT:-3002\}:3000"/,
+  'creator waits for writable project storage',
+  /creator-storage-init:\s*\n\s*condition: service_completed_successfully/,
+)
+requirePattern(
+  voxaCompose,
+  composeFile,
+  'VOXA waits for writable model storage',
+  /voxa-storage-init:\s*\n\s*condition: service_completed_successfully/,
+)
+requirePattern(
+  creatorCompose,
+  composeFile,
+  'single configurable creator port with a safe loopback default',
+  /ports:\s*\n\s*- "\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_CREATOR_PORT:-3002\}:3000"/,
 )
 requirePattern(
   creatorCompose,
@@ -724,14 +767,14 @@ forbidPattern(composeSource, composeFile, 'legacy creator project volume', /box-
 requirePattern(
   creatorCompose,
   composeFile,
-  'localhost-only creator runtime ports',
-  /127\.0\.0\.1:9966:9966[\s\S]*?127\.0\.0\.1:9967:9967/,
+  'creator runtime ports with a safe loopback default',
+  /\$\{BOX_BIND_IP:-127\.0\.0\.1}:9966:9966[\s\S]*?\$\{BOX_BIND_IP:-127\.0\.0\.1}:9967:9967/,
 )
 requirePattern(
   playCompose,
   composeFile,
   'single configurable play port with safe loopback default',
-  /ports:\s*\n\s*- "\$\{BOX_PLAY_HOST_IP:-127\.0\.0\.1\}:\$\{BOX_PLAY_PORT:-3000\}:3000"/,
+  /ports:\s*\n\s*- "\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_PLAY_PORT:-3000\}:3000"/,
 )
 requirePattern(
   playCompose,

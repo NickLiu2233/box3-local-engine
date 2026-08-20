@@ -47,7 +47,7 @@ export type LocalRuntimeInfo = {
   productVersion: string;
   nodeVersion: string;
   deploymentMode: string;
-  dataStorageBackend: 'local' | 'postgres';
+  dataStorageBackend: 'disabled' | 'postgres';
   voxaConfigured: boolean;
   redisConfigured: boolean;
   redisBusinessDb: number;
@@ -110,7 +110,7 @@ export function extractServerConfigForClient(
         productVersion: process.env.BOX_IMAGE_TAG || '0.1.0',
         nodeVersion: process.version,
         deploymentMode: process.env.BOX_DEPLOYMENT_MODE || 'local',
-        dataStorageBackend: process.env.BOX_DATABASE_URL ? 'postgres' : 'local',
+        dataStorageBackend: process.env.BOX_DATABASE_URL ? 'postgres' : 'disabled',
         voxaConfigured: Boolean(process.env.VOXA_URL),
         redisConfigured: Boolean(process.env.REDIS_HOST),
         redisBusinessDb: Number(process.env.REDIS_DB || 0),

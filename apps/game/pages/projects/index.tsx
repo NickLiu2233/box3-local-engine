@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import {
   ChevronDown,
-  Activity,
   Clock3,
   Download,
   FolderOpen,
@@ -894,9 +893,6 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
           <div className={styles.titleActions}>
             <a className={styles.importButton} href={`${playerServiceUrl}/players?from=creator`}>
               <Users size={16} /> 玩家管理
-            </a>
-            <a className={styles.importButton} href="/system">
-              <Activity size={16} /> 运行状态
             </a>
           </div>
         </div>

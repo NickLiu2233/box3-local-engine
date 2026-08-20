@@ -17,7 +17,7 @@ describe('Creator work center model integration', () => {
     expect(page).toContain('地图作品');
     expect(page).toContain('styles.sectionHeader');
     expect(page).toContain('玩家管理');
-    expect(page).toContain('运行状态');
+    expect(page).not.toContain('href="/system"');
     expect(page).toContain('<CreatorModelLibrary voxaUrl={voxaUrl} />');
     expect(library).toContain('模型作品');
     expect(library).toContain('styles.sectionHeader');

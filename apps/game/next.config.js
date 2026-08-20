@@ -157,12 +157,8 @@ const config = {
             value: 'camera=(), microphone=(self), geolocation=()',
           },
           {
-            key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
-          },
-          {
             key: 'Content-Security-Policy',
-            value: "base-uri 'self'; frame-ancestors 'self'; object-src 'none'",
+            value: "base-uri 'self'; frame-ancestors 'self' http://tauri.localhost tauri://localhost; object-src 'none'",
           },
         ],
       },

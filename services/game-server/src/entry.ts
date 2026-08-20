@@ -360,11 +360,19 @@ export async function startServer(spec: ServerRuntimeConfig) {
       res.end(JSON.stringify({
         status: 'ok',
         runtime: 'ready',
-        storage: spec.databaseUrl ? 'postgres' : isLocal ? 'local' : 'remote',
+        storage: spec.databaseUrl ? 'postgres' : isLocal ? 'disabled' : 'remote',
         redis: {
           configured: Boolean(spec.REDIS_HOST),
-          business: businessRedis?.isReady() ? 'ready' : 'fallback',
-          cache: cacheRedis?.isReady() ? 'ready' : 'fallback',
+          business: !spec.REDIS_HOST
+            ? 'disabled'
+            : businessRedis?.isReady()
+              ? 'ready'
+              : 'fallback',
+          cache: !spec.REDIS_HOST
+            ? 'disabled'
+            : cacheRedis?.isReady()
+              ? 'ready'
+              : 'fallback',
         },
       }));
     },

@@ -94,7 +94,7 @@ services:
       BOX_DATABASE_SSL: ${BOX_DATABASE_SSL:-false}
       BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: ${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}
     ports:
-      - "${BOX_PLAYER_SERVICE_HOST_IP:-127.0.0.1}:${BOX_PLAYER_SERVICE_PORT:-3213}:3213"
+      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAYER_SERVICE_PORT:-3213}:3213"
 
   player-auth-portal:
     profiles: [auth-portal]
@@ -130,7 +130,7 @@ services:
       AUTH_DEMO_REQUEST_TIMEOUT_MS: ${BOX_AUTH_PORTAL_REQUEST_TIMEOUT_MS:-10000}
       AUTH_DEMO_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
     ports:
-      - "${BOX_AUTH_PORTAL_HOST_IP:-127.0.0.1}:${BOX_AUTH_PORTAL_PORT:-3214}:3214"
+      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_AUTH_PORTAL_PORT:-3214}:3214"
 
   creator:
     profiles: [creator]
@@ -153,13 +153,16 @@ services:
     mem_limit: ${BOX_CREATOR_MEMORY_LIMIT:-6g}
     cpus: ${BOX_CREATOR_CPU_LIMIT:-4.0}
     pids_limit: ${BOX_CREATOR_PIDS_LIMIT:-1024}
+    depends_on:
+      creator-storage-init:
+        condition: service_completed_successfully
     environment:
       BOX_DEPLOYMENT_MODE: creator
       BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.1.0}
       BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
       BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
       BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
-      VOXA_URL: http://127.0.0.1:${BOX_VOXA_PORT:-3001}
+      VOXA_URL: ${BOX_VOXA_PUBLIC_URL:-http://127.0.0.1:3001}
       VOXA_INTERNAL_URL: http://voxa:3001
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.0}
       BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
@@ -218,14 +221,40 @@ services:
       STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
       STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-240}
     ports:
-      - "127.0.0.1:${BOX_CREATOR_PORT:-3002}:3000"
-      - "127.0.0.1:9966:9966"
-      - "127.0.0.1:9967:9967"
+      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_CREATOR_PORT:-3002}:3000"
+      - "${BOX_BIND_IP:-127.0.0.1}:9966:9966"
+      - "${BOX_BIND_IP:-127.0.0.1}:9967:9967"
     volumes:
       - ./apps/local-engine/projects:/app/apps/local-engine/projects
       - ./apps/local-engine/dist:/app/apps/local-engine/dist
       - ./apps/local-engine/backups:/app/apps/local-engine/backups
       - ./apps/voxa/data:/app/apps/voxa/data:ro
+
+  # A host bind mount can belong to a different UID than the non-root runtime
+  # user, especially on Linux servers and Docker Desktop. Repair ownership
+  # once before Creator starts; the long-running service remains unprivileged.
+  creator-storage-init:
+    profiles: [creator]
+    image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - chown -R 1000:1000 /app/apps/local-engine/projects /app/apps/local-engine/dist /app/apps/local-engine/backups
+    restart: "no"
+    network_mode: none
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+    volumes:
+      - ./apps/local-engine/projects:/app/apps/local-engine/projects
+      - ./apps/local-engine/dist:/app/apps/local-engine/dist
+      - ./apps/local-engine/backups:/app/apps/local-engine/backups
 
   play-storage-init:
     profiles: [play]
@@ -313,7 +342,7 @@ services:
       STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
       STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-240}
     ports:
-      - "${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
+      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000"
     volumes:
       - type: bind
         source: "${BOX_PLAY_LIBRARY_DIR:-./apps/local-engine/play-worlds}"
@@ -341,12 +370,43 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    depends_on:
+      voxa-storage-init:
+        condition: service_completed_successfully
     environment:
       VOXA_DATA_PATH: /app/apps/voxa/data
       VOXA_MAX_BLOB_BYTES: ${VOXA_MAX_BLOB_BYTES:-268435456}
+      # Used by VOXA's same-origin API guard. The browser URL must be passed
+      # into the container so LAN saves are accepted without opening the API
+      # to arbitrary origins.
+      BOX_VOXA_PUBLIC_URL: ${BOX_VOXA_PUBLIC_URL:-http://127.0.0.1:3001}
+      BOX_VOXA_ALLOWED_ORIGINS: ${BOX_VOXA_ALLOWED_ORIGINS:-}
       BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3002}
     ports:
-      - "127.0.0.1:${BOX_VOXA_PORT:-3001}:3001"
+      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_VOXA_PORT:-3001}:3001"
+    volumes:
+      - ./apps/voxa/data:/app/apps/voxa/data
+
+  # Keep the model editor itself on the non-root image user while ensuring its
+  # host-backed library stays writable on every supported Docker host.
+  voxa-storage-init:
+    profiles: [voxa]
+    image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.1.0}
+    user: "0:0"
+    command:
+      - sh
+      - -c
+      - chown -R 1000:1000 /app/apps/voxa/data
+    restart: "no"
+    network_mode: none
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
     volumes:
       - ./apps/voxa/data:/app/apps/voxa/data
 

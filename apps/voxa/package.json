@@ -7,6 +7,7 @@
   "main": "index.js",
   "scripts": {
     "check:default-skin-scope": "node -r ts-node/register scripts/regression-default-skin-project-scope.ts",
+    "check:local-cors": "node -r ts-node/register scripts/regression-local-cors.ts",
     "check:model-library-scope": "node -r ts-node/register scripts/regression-model-library-scope.ts",
     "check:parent-storage-url": "node -r ts-node/register scripts/check-parent-storage-url.ts",
     "build": "pnpm run build-i18n && next build",
