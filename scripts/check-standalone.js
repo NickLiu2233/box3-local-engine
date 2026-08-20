@@ -1124,9 +1124,16 @@ for (const [label, pattern] of [
   ['disabled framework disclosure', /poweredByHeader: false/],
   ['content type sniffing protection', /X-Content-Type-Options[\s\S]*?nosniff/],
   ['referrer privacy policy', /Referrer-Policy[\s\S]*?no-referrer/],
+  ['same-origin microphone permission', /Permissions-Policy[\s\S]*?microphone=\(self\)/],
 ]) {
   requirePattern(nextConfigSource, nextConfigFile, label, pattern)
 }
+forbidPattern(
+  nextConfigSource,
+  nextConfigFile,
+  'a Permissions-Policy that disables the microphone API',
+  /microphone=\(\)/,
+)
 requirePattern(
   readRequired('apps/game/server/dev-server/index.ts'),
   'apps/game/server/dev-server/index.ts',

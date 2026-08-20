@@ -45,9 +45,11 @@ pnpm --version
 Apple Silicon 本机测试可以使用 `linux/arm64`。准备交付给常见 x86_64 Linux 服务器的
 Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
-### Windows ARM64 离线包的一键部署
+### Windows AMD64/ARM64 离线包的一键部署
 
-维护者发布的 Windows ARM64 离线包内含 `ONE-CLICK-DEPLOY.cmd`。使用者只需：
+维护者分别发布 Windows AMD64 与 ARM64 离线包，两者都内含 `ONE-CLICK-DEPLOY.cmd`。
+常见的 Intel/AMD 64 位 Windows 电脑选择 AMD64 包；Windows on ARM 设备选择 ARM64 包，
+不要混用。使用者只需：
 
 1. 完整解压 ZIP，并启动 Docker Desktop 的 Linux containers；
 2. 双击 `ONE-CLICK-DEPLOY.cmd`；
@@ -149,11 +151,12 @@ Docker 部署的缓存随 Creator 工程卷或 Play 的 `box-play-storage` 卷�
 地图脚本可使用与 Boxes 一致的地图组内传送接口：
 
 ```js
-const room = await world.teleport('副地图访问ID', [player])
+const targetMapUuid = '22222222-2222-4222-8222-222222222222'
+const room = await world.teleport(targetMapUuid, [player])
 // 后续可把其他玩家送入同一私有房间
-await world.teleport('副地图访问ID', [anotherPlayer], room.serverId)
+await world.teleport(targetMapUuid, [anotherPlayer], room.serverId)
 // 显式进入目标地图的公共实例
-await world.teleport('副地图访问ID', [player], 'public')
+await world.teleport(targetMapUuid, [player], 'public')
 ```
 
 默认调用会启动一个独立私有运行时，只有被传送的登录玩家可以创建会话；该房间不会出现在
