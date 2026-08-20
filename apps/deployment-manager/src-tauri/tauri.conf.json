@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "BOX Local Engine",
+  "version": "0.1.0",
+  "identifier": "com.boxlocal.engine.manager",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "BOX Local Engine",
+        "width": 1180,
+        "height": 760,
+        "minWidth": 940,
+        "minHeight": 640,
+        "center": true,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": ["../../game/public/logo512.png"],
+    "category": "DeveloperTool",
+    "shortDescription": "Install and manage BOX Local Engine",
+    "longDescription": "A native graphical installer and operations console for BOX Local Engine.",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

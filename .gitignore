@@ -26,3 +26,8 @@ apps/local-engine/.build-lock/
 # VOXA model projects and uploaded blobs belong to the local creator.
 apps/voxa/data/
 apps/migrator/cache/
+
+# Native deployment manager build output is reproducible and must not enter source releases.
+apps/deployment-manager/dist/
+apps/deployment-manager/src-tauri/gen/
+apps/deployment-manager/src-tauri/target/
