@@ -23,6 +23,36 @@ const tarStream = require('tar-stream') as {
 const idPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const MAX_EXPANDED_BYTES = 2 * 1024 * 1024 * 1024;
 const MAX_FILES = 200000;
+const DIRECTORY_RETRY_ERRORS = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM']);
+
+function removeDirectoryWithRetry(target: string, retries = 5, retryDelay = 120) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      fs.rmSync(target, { recursive: true, force: true, maxRetries: 3, retryDelay });
+      return;
+    } catch (error) {
+      lastError = error;
+      const code = (error as NodeJS.ErrnoException).code;
+      if (!DIRECTORY_RETRY_ERRORS.has(code || '') || attempt === retries) throw error;
+      // Docker Desktop can briefly report a bind-mounted directory as busy
+      // while its file synchronization catches up. Keep the retry synchronous
+      // so callers never observe a half-cleaned staging directory.
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, retryDelay);
+    }
+  }
+  throw lastError;
+}
+
+function cleanupDirectoryQuietly(target: string) {
+  try {
+    removeDirectoryWithRetry(target);
+  } catch (error) {
+    // Preserve the installation/validation error; the orphaned path is left
+    // for diagnostics if Docker keeps reporting it as busy.
+    console.warn(`无法清理游玩包临时目录 ${target}: ${(error as Error).message}`);
+  }
+}
 
 function libraryRoot() {
   const root = process.env.BOX_PLAY_LIBRARY_PATH;
@@ -264,8 +294,8 @@ export async function importPlayBundle(archivePath: string) {
         installed.push(world.id);
       }
     } catch (error) {
-      for (const target of staging.values()) fs.rmSync(target, { recursive: true, force: true });
-      for (const id of installed) fs.rmSync(path.join(root, id), { recursive: true, force: true });
+      for (const target of staging.values()) cleanupDirectoryQuietly(target);
+      for (const id of installed) cleanupDirectoryQuietly(path.join(root, id));
       if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
         throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
       }
@@ -280,7 +310,7 @@ export async function importPlayBundle(archivePath: string) {
       mainProjectId,
     };
   } finally {
-    fs.rmSync(temporaryRoot, { recursive: true, force: true });
+    cleanupDirectoryQuietly(temporaryRoot);
   }
 }
 

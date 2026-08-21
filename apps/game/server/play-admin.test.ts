@@ -100,6 +100,42 @@ describe('map group play bundle import', () => {
     ).toBe(false);
   });
 
+  test('retries transient staging cleanup failures without hiding the install error', async () => {
+    const { root, archivePath } = createGroupBundle();
+    const library = path.join(root, 'library');
+    process.env.BOX_PLAY_LIBRARY_PATH = library;
+    const originalRename = fs.renameSync;
+    const originalRemove = fs.rmSync;
+    let cleanupAttempts = 0;
+
+    fs.renameSync = ((source: fs.PathLike, destination: fs.PathLike) => {
+      if (String(source).includes('.group-main-importing-')) {
+        throw new Error('fixture installation failure');
+      }
+      return originalRename(source, destination);
+    }) as typeof fs.renameSync;
+    fs.rmSync = ((target: fs.PathLike, options?: fs.RmDirOptions) => {
+      if (
+        String(target).includes('.group-main-importing-') &&
+        cleanupAttempts++ === 0
+      ) {
+        const error = new Error(`ENOTEMPTY: directory not empty, rmdir '${target}/data'`) as NodeJS.ErrnoException;
+        error.code = 'ENOTEMPTY';
+        throw error;
+      }
+      return originalRemove(target, options);
+    }) as typeof fs.rmSync;
+    try {
+      await expect(importPlayBundle(archivePath)).rejects.toThrow('fixture installation failure');
+    } finally {
+      fs.renameSync = originalRename;
+      fs.rmSync = originalRemove;
+    }
+
+    expect(cleanupAttempts).toBe(2);
+    expect(fs.readdirSync(library).some((entry) => entry.includes('-importing-'))).toBe(false);
+  });
+
   test('stores a unique public map ID without changing the internal world ID', async () => {
     const { root, archivePath } = createGroupBundle();
     process.env.BOX_PLAY_LIBRARY_PATH = path.join(root, 'library');
