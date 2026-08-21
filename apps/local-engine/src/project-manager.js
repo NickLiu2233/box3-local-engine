@@ -42,6 +42,49 @@ const sensitiveContentRules = [
     /\b(?:api[_-]?key|secret|password|passwd|access[_-]?token|refresh[_-]?token)\b\s*[:=]\s*["'][^"'\r\n]{12,}["']/i,
   ],
 ]
+const removableDirectoryRetryErrors = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM'])
+
+function waitForFilesystemRetry(milliseconds) {
+  if (milliseconds <= 0) return
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds)
+}
+
+/**
+ * Docker Desktop may briefly report a bind-mounted directory as non-empty
+ * while a previous copy/remove is still being synchronized. Retrying here is
+ * important for import rollback: a cleanup error must never hide the actual
+ * archive/import error shown to the creator.
+ */
+function removeDirectoryWithRetry(target, { retries = 5, retryDelay = 120, force = true } = {}) {
+  let lastError
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      fs.rmSync(target, {
+        recursive: true,
+        force,
+        maxRetries: 3,
+        retryDelay,
+      })
+      return true
+    } catch (error) {
+      lastError = error
+      if (!removableDirectoryRetryErrors.has(error?.code) || attempt === retries) throw error
+      waitForFilesystemRetry(retryDelay)
+    }
+  }
+  throw lastError
+}
+
+function rollbackDirectory(target) {
+  try {
+    removeDirectoryWithRetry(target)
+  } catch (error) {
+    // The caller is already handling a more useful import/copy error. Keep the
+    // unfinished directory for diagnostics rather than replacing that error
+    // with a misleading ENOTEMPTY cleanup failure.
+    console.warn(`Unable to clean up local project directory ${target}: ${error.message}`)
+  }
+}
 
 function isContentHash(hash) {
   return /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash) || /^[A-Za-z0-9_-]{43}$/.test(hash)
@@ -821,11 +864,7 @@ function createProject({ id, name, author = '', description = '' }) {
     // A failed first attempt must not leave a project that blocks retrying the
     // same map ID. Cleanup is best-effort because Docker Desktop may briefly
     // report a directory as busy while the bind mount is syncing.
-    try {
-      fs.rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
-    } catch {
-      // Preserve the original, actionable copy error.
-    }
+    rollbackDirectory(root)
     throw error
   }
   const now = new Date().toISOString()
@@ -1438,10 +1477,11 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
   const now = new Date().toISOString()
   try {
     fs.mkdirSync(root, { recursive: true })
-    fs.cpSync(path.join(sourceRoot, 'source'), path.join(root, 'source'), {
-      recursive: true,
-      dereference: true,
-    })
+    // Do not use fs.cpSync for the final copy into the Docker Desktop bind
+    // mount. It preserves an archive's directory modes, which can make the
+    // destination source/ directory unreadable before this import gets a
+    // chance to normalize permissions.
+    copyReadableDirectorySync(path.join(sourceRoot, 'source'), path.join(root, 'source'))
     normalizeImportedProjectPermissions(root)
     writeJSON(path.join(root, 'project.json'), {
       formatVersion: 1,
@@ -1488,7 +1528,7 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
       compatibility: aggregateImportCompatibility([id]),
     }
   } catch (error) {
-    fs.rmSync(root, { recursive: true, force: true })
+    rollbackDirectory(root)
     throw error
   }
 }
@@ -1571,10 +1611,9 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
       const now = new Date().toISOString()
       fs.mkdirSync(root, { recursive: true })
       createdRoots.push(root)
-      fs.cpSync(path.join(sourceRoot, 'source'), path.join(root, 'source'), {
-        recursive: true,
-        dereference: true,
-      })
+      // See the submap import path above: imported archives must be copied
+      // with known-readable modes before they enter the mounted projects root.
+      copyReadableDirectorySync(path.join(sourceRoot, 'source'), path.join(root, 'source'))
       normalizeImportedProjectPermissions(root)
       const imported = {
         formatVersion: 1,
@@ -1635,7 +1674,7 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
       compatibility: aggregateImportCompatibility([...idMap.values()]),
     }
   } catch (error) {
-    for (const root of createdRoots) fs.rmSync(root, { recursive: true, force: true })
+    for (const root of createdRoots) rollbackDirectory(root)
     throw error
   }
 }
@@ -1649,7 +1688,7 @@ function deleteProject(id) {
       ? listMapGroup(id).map((project) => projectRoot(project.id))
       : [root]
   for (const target of targets) {
-    fs.rmSync(target, { recursive: true, force: false })
+    removeDirectoryWithRetry(target, { force: false })
   }
 }
 
@@ -2160,6 +2199,7 @@ module.exports = {
   validateProjectSource,
   archiveEntriesAreSafe,
   normalizeImportedProjectPermissions,
+  removeDirectoryWithRetry,
   packageProject,
   projectsRoot,
   publishProject,

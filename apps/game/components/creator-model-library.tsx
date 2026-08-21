@@ -265,7 +265,6 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
           </div>
           <div className={styles.cardFooter}>
             <time dateTime={model.updatedAt}><Clock3 size={13} />{formatUpdatedAt(model.updatedAt)}</time>
-            <button onClick={() => openEditor(model)}><Pencil size={13} />编辑</button>
           </div>
         </div>
         <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>

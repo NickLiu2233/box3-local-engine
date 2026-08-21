@@ -800,6 +800,12 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
       className={`${styles.card} ${project.mapRole === 'submap' ? styles.submapCard : styles.mainMapCard}`}
       key={project.id}
     >
+      <button
+        type="button"
+        className={styles.cardLink}
+        aria-label={`编辑地图 ${project.name}`}
+        onClick={() => openProjectEditor(project)}
+      />
       <div className={`${styles.cover} ${styles[`cover${project.theme}`]}`}>
         {project.cover && <img src={project.cover} alt="" />}
       </div>
@@ -855,10 +861,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
         </div>
         <div className={styles.cardFooter}>
           <span><Clock3 size={14} /> {project.latestRelease ? `${project.latestRelease}${project.latestReleaseNotes ? ` · ${project.latestReleaseNotes}` : ''}` : project.updatedAt}</span>
-          <span className={styles.cardActions}>
-            {project.isEngineWorld && <span className={styles.defaultTag}>默认世界</span>}
-            <button onClick={() => openProjectEditor(project)}><Pencil size={14} /> 编辑</button>
-          </span>
+          {project.isEngineWorld && <span className={styles.cardActions}><span className={styles.defaultTag}>默认世界</span></span>}
         </div>
       </div>
     </article>

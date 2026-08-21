@@ -19,8 +19,13 @@ describe('Creator work center model integration', () => {
     expect(page).toContain('玩家管理');
     expect(page).not.toContain('href="/system"');
     expect(page).toContain('<CreatorModelLibrary voxaUrl={voxaUrl} />');
+    expect(page).toContain('className={styles.cardLink}');
+    expect(page).toContain('aria-label={`编辑地图 ${project.name}`}');
+    expect(page).not.toContain('<Pencil size={14} /> 编辑</button>');
     expect(library).toContain('模型作品');
     expect(library).toContain('styles.sectionHeader');
+    expect(library).toContain('className={styles.cardLink}');
+    expect(library).not.toContain('<Pencil size={13} />编辑</button>');
   });
 
   test('shows a recovery message when VOXA is unavailable', () => {

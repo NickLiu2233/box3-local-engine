@@ -333,13 +333,17 @@ h1 {
   color: #262626;
 }
 
+.button.danger {
+  border-color: color-mix(in srgb, var(--danger) 44%, var(--border));
+  color: var(--danger);
+}
+
 button:disabled {
   cursor: default;
   opacity: 0.42;
   transform: none;
 }
 
-.notice,
 .progress-panel {
   margin-bottom: 12px;
   padding: 10px 12px;
@@ -347,17 +351,6 @@ button:disabled {
   border-radius: 8px;
   background: var(--panel);
   font-size: 12px;
-}
-
-.notice {
-  display: flex;
-  gap: 10px;
-  border-color: color-mix(in srgb, var(--danger) 25%, var(--border));
-  background: color-mix(in srgb, var(--danger) 6%, var(--panel));
-}
-
-.notice span {
-  color: var(--muted);
 }
 
 .summary-bar {
@@ -450,6 +443,34 @@ button:disabled {
 .start-dialog h2,
 .start-dialog p {
   margin: 0;
+}
+
+.backup-dialog-file {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel) 85%, var(--text));
+}
+
+.backup-dialog-file span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.backup-dialog-file strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .start-dialog h2 {
@@ -756,46 +777,6 @@ button:disabled {
   transition: width 180ms var(--ease-out);
 }
 
-.backup-intro,
-.backup-warning {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 15px 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-}
-
-.backup-intro strong,
-.backup-intro span,
-.backup-warning strong,
-.backup-warning span {
-  display: block;
-}
-
-.backup-intro strong,
-.backup-warning strong {
-  font-size: 13px;
-}
-
-.backup-intro div > span,
-.backup-warning span {
-  max-width: 680px;
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.backup-count {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .backup-list {
   overflow: hidden;
   margin: 12px 0;
@@ -812,6 +793,12 @@ button:disabled {
   gap: 16px;
   padding: 10px 12px 10px 16px;
   border-bottom: 1px solid var(--border);
+}
+
+.backup-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 .backup-row:last-child {
@@ -854,11 +841,6 @@ button:disabled {
 
 .empty-backup span {
   font-size: 12px;
-}
-
-.backup-warning {
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
 }
 
 form {
@@ -978,19 +960,6 @@ form.environment-mode {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.5;
-}
-
-.connection-result {
-  margin: 8px 0 0;
-  font-size: 11px;
-}
-
-.connection-result.success {
-  color: var(--success);
-}
-
-.connection-result.error {
-  color: var(--danger);
 }
 
 .setup-explainer {
@@ -1125,22 +1094,18 @@ form.environment-mode {
   font-size: 12px;
 }
 
-.notice.success {
-  border-color: color-mix(in srgb, var(--success) 25%, var(--border));
-  background: color-mix(in srgb, var(--success) 6%, var(--panel));
-}
-
 .toast {
   position: fixed;
   top: 24px;
   right: 24px;
   z-index: 20;
   display: grid;
-  grid-template-columns: auto auto 20px;
+  grid-template-columns: auto minmax(0, 1fr) 20px;
   align-items: center;
   gap: 8px;
+  width: min(440px, calc(100vw - 48px));
   min-height: 38px;
-  padding: 0 8px 0 12px;
+  padding: 10px 8px 10px 12px;
   border: 1px solid color-mix(in srgb, var(--success) 28%, var(--border));
   border-radius: 7px;
   background: var(--panel);
@@ -1153,8 +1118,18 @@ form.environment-mode {
   font-weight: 650;
 }
 
+.toast.danger {
+  border-color: color-mix(in srgb, var(--danger) 38%, var(--border));
+}
+
+.toast.danger span {
+  color: var(--danger);
+}
+
 .toast small {
   color: var(--muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .toast button {

@@ -13,6 +13,9 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager};
 
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 const COMPOSE_TEMPLATE: &str = include_str!("../../../../docker-compose.yml");
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
 const PROJECT_NAME: &str = "box-local-engine";
@@ -1472,11 +1475,43 @@ fn copy_directory_contents(source: &Path, destination: &Path) -> Result<(), Stri
         if from.is_dir() {
             copy_directory_contents(&from, &to)?;
         } else {
-            fs::copy(&from, &to)
-                .map_err(|error| format!("无法备份 {}：{error}", from.display()))?;
+            copy_file_for_backup(&from, &to)?;
         }
     }
     Ok(())
+}
+
+fn copy_file_for_backup(source: &Path, destination: &Path) -> Result<(), String> {
+    match fs::copy(source, destination) {
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            #[cfg(unix)]
+            {
+                // Files created through a bind-mounted container can retain
+                // owner-write-only permissions on macOS. The desktop app owns
+                // the file but cannot read it until the read bit is restored.
+                let original = fs::metadata(source)
+                    .map_err(|metadata_error| format!("无法读取 {}：{metadata_error}", source.display()))?
+                    .permissions();
+                let mut readable = original.clone();
+                readable.set_mode(readable.mode() | 0o400);
+                fs::set_permissions(source, readable)
+                    .map_err(|permission_error| format!("无法读取 {}：{permission_error}", source.display()))?;
+                let copied = fs::copy(source, destination)
+                    .map(|_| ())
+                    .map_err(|copy_error| format!("无法备份 {}：{copy_error}", source.display()));
+                fs::set_permissions(source, original).map_err(|restore_error| {
+                    format!("无法恢复 {} 的原始权限：{restore_error}", source.display())
+                })?;
+                copied
+            }
+            #[cfg(not(unix))]
+            {
+                Err(format!("无法备份 {}：{error}", source.display()))
+            }
+        }
+        Err(error) => Err(format!("无法备份 {}：{error}", source.display())),
+    }
 }
 
 fn create_backup_archive(source: &Path, destination: &Path) -> Result<(), String> {
@@ -1550,6 +1585,129 @@ fn extract_backup_archive(archive: &Path, destination: &Path) -> Result<(), Stri
 
 fn backup_directory(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join("apps/local-engine/backups"))
+}
+
+fn is_backup_archive(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|value| value.to_str()),
+        Some("zip" | "gz" | "tar")
+    )
+}
+
+fn validate_backup_archive(archive: &Path, staging: &Path) -> Result<(), String> {
+    if !archive.is_file() || !is_backup_archive(archive) {
+        return Err("请选择 BOX3 Engine 备份包（.zip、.tar 或 .tar.gz）".into());
+    }
+    if staging.exists() {
+        fs::remove_dir_all(staging).map_err(|error| format!("无法清理导入校验目录：{error}"))?;
+    }
+    fs::create_dir_all(staging).map_err(|error| format!("无法创建导入校验目录：{error}"))?;
+    let extracted = extract_backup_archive(archive, staging);
+    let valid = extracted.is_ok()
+        && staging.join("BACKUP-README.txt").is_file()
+        && [
+            "apps/local-engine/projects",
+            "apps/local-engine/dist",
+            "apps/local-engine/play-worlds",
+            "apps/voxa/data",
+        ]
+        .iter()
+        .any(|relative| staging.join(relative).exists());
+    let cleanup = fs::remove_dir_all(staging)
+        .map_err(|error| format!("无法清理导入校验目录：{error}"));
+    extracted?;
+    cleanup?;
+    if !valid {
+        return Err("该文件不是有效的 BOX3 Engine 数据备份包".into());
+    }
+    Ok(())
+}
+
+fn unique_backup_path(directory: &Path, original_name: &str) -> PathBuf {
+    let candidate = directory.join(original_name);
+    if !candidate.exists() {
+        return candidate;
+    }
+    let name = Path::new(original_name)
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy();
+    let extension = Path::new(original_name)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("zip");
+    directory.join(format!("{name}-import-{}.{}", random_hex(6), extension))
+}
+
+fn dialog_result(mut command: Command) -> Result<Option<PathBuf>, String> {
+    let output = command
+        .output()
+        .map_err(|error| format!("无法打开文件选择器：{error}"))?;
+    if !output.status.success() {
+        let detail = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        if detail.contains("User canceled") || detail.contains("-128") {
+            return Ok(None);
+        }
+        return Err(format!("文件选择器未完成：{}", detail.trim()));
+    }
+    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok((!path.is_empty()).then(|| PathBuf::from(path)))
+}
+
+#[cfg(target_os = "macos")]
+fn choose_backup_import() -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("/usr/bin/osascript");
+    command.args([
+        "-e",
+        "POSIX path of (choose file with prompt \"选择 BOX3 Engine 备份包\")",
+    ]);
+    dialog_result(command)
+}
+
+#[cfg(target_os = "macos")]
+fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
+    let safe_name = name.replace('\\', "\\\\").replace('"', "\\\"");
+    let mut command = Command::new("/usr/bin/osascript");
+    command.args([
+        "-e",
+        &format!(
+            "POSIX path of (choose file name with prompt \"导出 BOX3 Engine 备份包\" default name \"{safe_name}\")"
+        ),
+    ]);
+    dialog_result(command)
+}
+
+#[cfg(target_os = "windows")]
+fn choose_backup_import() -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("powershell");
+    command.args(["-NoProfile", "-Command", "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Filter='BOX3 Engine backup (*.zip;*.tar;*.gz)|*.zip;*.tar;*.gz'; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){Write-Output $d.FileName}"]);
+    dialog_result(command)
+}
+
+#[cfg(target_os = "windows")]
+fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
+    let safe_name = name.replace('\'', "''");
+    let mut command = Command::new("powershell");
+    command.args(["-NoProfile", "-Command", &format!("Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.SaveFileDialog; $d.Filter='BOX3 Engine backup (*.zip;*.tar;*.gz)|*.zip;*.tar;*.gz'; $d.FileName='{safe_name}'; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){{Write-Output $d.FileName}}")]);
+    dialog_result(command)
+}
+
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+fn choose_backup_import() -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("zenity");
+    command.args(["--file-selection", "--title=选择 BOX3 Engine 备份包", "--file-filter=*.zip *.tar *.gz"]);
+    dialog_result(command)
+}
+
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("zenity");
+    command.args(["--file-selection", "--save", "--confirm-overwrite", "--filename", name]);
+    dialog_result(command)
 }
 
 #[tauri::command]
@@ -1693,6 +1851,87 @@ async fn restore_backup(app: AppHandle, archive: String) -> Result<(), String> {
     })
     .await
     .map_err(|error| format!("恢复任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+async fn delete_backup(app: AppHandle, archive: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let backups = backup_directory(&app)?;
+        let requested = PathBuf::from(&archive);
+        let canonical_directory =
+            fs::canonicalize(&backups).map_err(|error| format!("无法定位备份目录：{error}"))?;
+        let canonical_archive =
+            fs::canonicalize(&requested).map_err(|error| format!("找不到备份文件：{error}"))?;
+        let extension = canonical_archive
+            .extension()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        if canonical_archive.parent() != Some(canonical_directory.as_path())
+            || !canonical_archive.is_file()
+            || !matches!(extension, "zip" | "gz" | "tar")
+        {
+            return Err("只能删除应用备份目录中的备份文件".into());
+        }
+        fs::remove_file(&canonical_archive)
+            .map_err(|error| format!("无法删除备份 {}：{error}", canonical_archive.display()))
+    })
+    .await
+    .map_err(|error| format!("删除备份任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+async fn export_backup(app: AppHandle, archive: String) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let backups = backup_directory(&app)?;
+        let canonical_directory =
+            fs::canonicalize(&backups).map_err(|error| format!("无法定位备份目录：{error}"))?;
+        let canonical_archive = fs::canonicalize(PathBuf::from(&archive))
+            .map_err(|error| format!("找不到备份文件：{error}"))?;
+        if canonical_archive.parent() != Some(canonical_directory.as_path())
+            || !canonical_archive.is_file()
+            || !is_backup_archive(&canonical_archive)
+        {
+            return Err("只能导出应用备份目录中的备份文件".into());
+        }
+        let suggested_name = canonical_archive
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string();
+        let Some(destination) = choose_backup_export(&suggested_name)? else {
+            return Ok(None);
+        };
+        if destination == canonical_archive {
+            return Err("导出位置不能与原始备份相同".into());
+        }
+        fs::copy(&canonical_archive, &destination)
+            .map_err(|error| format!("无法导出备份：{error}"))?;
+        Ok(Some(destination.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|error| format!("导出备份任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+async fn import_backup(app: AppHandle) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(source) = choose_backup_import()? else {
+            return Ok(None);
+        };
+        let source = fs::canonicalize(source).map_err(|error| format!("无法读取备份文件：{error}"))?;
+        let backups = backup_directory(&app)?;
+        fs::create_dir_all(&backups).map_err(|error| format!("无法创建备份目录：{error}"))?;
+        let validation = backups.join(format!(".import-check-{}", random_hex(8)));
+        validate_backup_archive(&source, &validation)?;
+        let destination = unique_backup_path(
+            &backups,
+            &source.file_name().unwrap_or_default().to_string_lossy(),
+        );
+        fs::copy(&source, &destination).map_err(|error| format!("无法导入备份：{error}"))?;
+        Ok(Some(destination.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|error| format!("导入备份任务异常结束：{error}"))?
 }
 
 #[tauri::command]
@@ -2033,6 +2272,7 @@ mod tests {
         let nested = source.join("apps/local-engine/projects");
         fs::create_dir_all(&nested).unwrap();
         fs::write(nested.join("world.json"), "world-data").unwrap();
+        fs::write(source.join("BACKUP-README.txt"), "BOX3 Engine 数据备份。\n").unwrap();
         let archive = root.join(
             if cfg!(target_os = "windows") || cfg!(target_os = "macos") {
                 "snapshot.zip"
@@ -2041,6 +2281,9 @@ mod tests {
             },
         );
         create_backup_archive(&source, &archive).unwrap();
+        let validation = root.join("validation");
+        validate_backup_archive(&archive, &validation).unwrap();
+        assert!(!validation.exists());
         let restored = root.join("restored");
         fs::create_dir_all(&restored).unwrap();
         extract_backup_archive(&archive, &restored).unwrap();
@@ -2048,6 +2291,24 @@ mod tests {
             fs::read_to_string(restored.join("apps/local-engine/projects/world.json")).unwrap(),
             "world-data"
         );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn backup_copy_temporarily_reads_owner_write_only_files() {
+        let root = std::env::temp_dir().join(format!("box-manager-backup-permission-{}", random_hex(8)));
+        let source = root.join("source.bin");
+        let destination = root.join("backup.bin");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&source, "backup-data").unwrap();
+        fs::set_permissions(&source, fs::Permissions::from_mode(0o200)).unwrap();
+
+        copy_file_for_backup(&source, &destination).unwrap();
+
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "backup-data");
+        assert_eq!(fs::metadata(&source).unwrap().permissions().mode() & 0o777, 0o200);
+        fs::set_permissions(&source, fs::Permissions::from_mode(0o600)).unwrap();
         fs::remove_dir_all(root).unwrap();
     }
 }
@@ -2064,6 +2325,9 @@ pub fn run() {
             list_backups,
             create_backup,
             restore_backup,
+            delete_backup,
+            export_backup,
+            import_backup,
             run_environment_checks,
             test_remote_connection,
             save_configuration_command,

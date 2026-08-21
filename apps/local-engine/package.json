@@ -4,7 +4,7 @@
   "private": true,
   "description": "Offline-first local runner for the Box engine",
   "scripts": {
-    "test": "node scripts/regression-project-compatibility.js && node scripts/regression-create-project-bind-mount.js && node scripts/regression-runtime-data-permissions.js && node scripts/regression-runtime-lifecycle.js && node scripts/regression-edit-library.js && node scripts/regression-play-library.js && node scripts/regression-import-permissions.js && node scripts/regression-publish-voxa-blobs.js && node scripts/regression-project-snapshots.js && node scripts/regression-map-groups.js && node scripts/regression-map-group-play-bundle.js",
+    "test": "node scripts/regression-project-compatibility.js && node scripts/regression-create-project-bind-mount.js && node scripts/regression-runtime-data-permissions.js && node scripts/regression-runtime-lifecycle.js && node scripts/regression-edit-library.js && node scripts/regression-play-library.js && node scripts/regression-import-permissions.js && node scripts/regression-import-bind-mount-permissions.js && node scripts/regression-import-cleanup.js && node scripts/regression-publish-voxa-blobs.js && node scripts/regression-project-snapshots.js && node scripts/regression-map-groups.js && node scripts/regression-map-group-play-bundle.js",
     "build:creator": "node src/build.js --creator",
     "build:play": "node src/build.js --play",
     "prepare-assets": "node src/prepare-assets.js",

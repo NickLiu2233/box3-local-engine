@@ -9,6 +9,12 @@ coverage/
 .env.local
 .env.*.local
 .env
+# Runtime environment files can contain deployment secrets. Keep only the
+# documented defaults and examples in source control.
+.env.*
+!.env.docker.example
+!**/.env.example
+!**/.env.*.example
 
 # 本机创作数据只能通过工程导入/导出流转，不能随代码提交或发行。
 # 已跟踪的默认资源不受此规则影响；新增素材会被忽略。

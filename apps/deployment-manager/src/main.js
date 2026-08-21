@@ -38,6 +38,7 @@ const state = {
   backups: [],
   backupsLoading: false,
   backupMessage: '',
+  backupDialog: null,
   performance: null,
   performanceLoading: false,
   performanceError: '',
@@ -119,13 +120,71 @@ function shell(content) {
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
-    ${state.notice ? `<div class="toast success" role="status"><span>已保存</span><small>${escapeHtml(state.notice)}</small><button type="button" data-dismiss-notice aria-label="关闭提示">×</button></div>` : ''}
+    ${feedbackToast()}
     ${state.startMenuOpen ? startScopeDialog() : ''}
+    ${state.backupDialog ? backupConfirmDialog() : ''}
   </div>`
+}
+
+function feedbackToast() {
+  let type = ''
+  let title = ''
+  let message = ''
+  if (state.error) {
+    type = 'danger'
+    title = '操作未完成'
+    message = state.error
+  } else if (state.notice) {
+    type = 'success'
+    title = '操作完成'
+    message = state.notice
+  } else if (state.backupMessage) {
+    type = 'success'
+    title = '数据与备份'
+    message = state.backupMessage
+  } else if (state.performanceError) {
+    type = 'danger'
+    title = '性能数据读取失败'
+    message = state.performanceError
+  } else if (state.diagnosticPath) {
+    type = 'success'
+    title = '诊断包已生成'
+    message = state.diagnosticPath
+  }
+  if (!message) return ''
+  if (type === 'success') {
+    return `<div class="toast success" role="status"><span>${title}</span><small>${escapeHtml(message)}</small><button type="button" data-dismiss-feedback aria-label="关闭提示">×</button></div>`
+  }
+  return `<div class="toast danger" role="status"><span>${title}</span><small>${escapeHtml(message)}</small><button type="button" data-dismiss-feedback aria-label="关闭提示">×</button></div>`
+}
+
+function dismissFeedback() {
+  clearFeedback()
+  render()
+}
+
+function clearFeedback() {
+  state.error = ''
+  state.notice = ''
+  state.backupMessage = ''
+  state.performanceError = ''
+  state.diagnosticPath = ''
+  state.environmentMessage = ''
 }
 
 function startScopeDialog() {
   return `<div class="dialog-backdrop" data-start-dialog-dismiss><section class="start-dialog" role="dialog" aria-modal="true" aria-labelledby="start-dialog-title"><header><div><h2 id="start-dialog-title">启动服务</h2><p>选择本次需要运行的服务。</p></div><button class="dialog-close" id="cancel-start" aria-label="取消">×</button></header><div class="start-scope-list"><button data-start-scope="all"><strong>全部服务</strong><span>创作端、游玩与已配置的附属服务</span></button><button data-start-scope="play"><strong>游玩端</strong><span>Play 与游玩所需服务</span></button><button data-start-scope="creator"><strong>创作端</strong><span>ARENA、VOXA 与创作所需服务</span></button></div></section></div>`
+}
+
+function backupConfirmDialog() {
+  const dialog = state.backupDialog
+  const restoring = dialog.action === 'restore'
+  const title = restoring ? '恢复此备份？' : '删除此备份？'
+  const description = restoring
+    ? '恢复会停止全部服务，并替换当前地图、游玩包和 VOXA 本地资源。当前未备份的修改将丢失。'
+    : '删除后无法恢复此备份文件。'
+  const confirmLabel = restoring ? '确认恢复' : '确认删除'
+  return `<div class="dialog-backdrop" data-backup-dialog-dismiss><section class="start-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-dialog-title"><header><div><h2 id="backup-dialog-title">${title}</h2><p>${description}</p></div><button class="dialog-close" id="cancel-backup-action" aria-label="取消">×</button></header><div class="backup-dialog-file"><span>备份文件</span><strong>${escapeHtml(dialog.name)}</strong></div><div class="dialog-actions"><button class="button" id="cancel-backup-action-secondary">取消</button><button class="button ${restoring ? 'primary' : 'danger'}" id="confirm-backup-action">${confirmLabel}</button></div></section></div>`
 }
 
 function formatMetric(value, suffix = '%') {
@@ -144,7 +203,6 @@ function performance() {
       })
     : '尚未采样'
   return `<header><div><h1>性能监控</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="refresh-performance" ${state.performanceLoading ? 'disabled' : ''}>${icon('refresh')}${state.performanceLoading ? '采样中' : '刷新'}</button></div></header>
-    ${state.performanceError ? `<section class="notice danger"><strong>无法读取性能数据</strong><span>${escapeHtml(state.performanceError)}</span></section>` : ''}
     <section class="metric-grid"><article><span>运行服务</span><strong>${running.length} / ${samples.filter((service) => service.enabled).length || 0}</strong><small>已启用服务</small></article><article><span>总 CPU</span><strong>${formatMetric(totalCpu)}</strong><small>当前容器合计</small></article><article><span>内存状态</span><strong>${running.length ? '正常采样' : '—'}</strong><small>${sampledAt}</small></article></section>
     <section class="performance-panel"><div class="performance-head"><span>服务</span><span>CPU</span><span>内存</span><span>占用率</span><span>进程</span><span>状态</span></div>${services
       .map(([id, name]) => {
@@ -176,19 +234,11 @@ function overview() {
     : '完成配置后即可启动'
   return `<header><div><h1>服务总览</h1></div>
     <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button><button class="icon-button" id="refresh" title="刷新">${icon('refresh')}</button></div></header>
-    ${!state.status?.dockerReady ? `<section class="notice danger"><strong>Docker Desktop 尚未就绪</strong><span>${escapeHtml(state.status?.dockerMessage || '请安装并启动 Docker Desktop。')}</span></section>` : ''}
-    ${errorBanner()}
     ${state.busy ? progressPanel() : ''}
     <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
       <div class="hero-actions">${installed ? `${allHealthy ? '' : `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
     <div class="section-title"><h2>应用服务</h2></div>
     <div class="service-grid">${services.map(serviceCard).join('')}</div>`
-}
-
-function errorBanner() {
-  return state.error
-    ? `<section class="notice danger"><strong>操作未完成</strong><span>${escapeHtml(state.error)}</span></section>`
-    : ''
 }
 
 function serviceCard([id, name, description, portKey, defaultPort, path]) {
@@ -218,8 +268,6 @@ function getServiceUrl(serviceId) {
 function diagnostics() {
   const checks = state.environmentChecks
   return `<header><div><h1>环境检查</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="export-diagnostics" ${state.busy ? 'disabled' : ''}>${icon('logs')}生成诊断包</button><button class="button primary" id="run-environment-checks" ${state.checkingEnvironment ? 'disabled' : ''}>${icon('check')}${state.checkingEnvironment ? '检查中' : '开始检查'}</button></div></header>
-    ${errorBanner()}
-    ${state.diagnosticPath ? `<section class="notice success"><strong>诊断包已生成</strong><span>${escapeHtml(state.diagnosticPath)}</span></section>` : ''}
     <section class="check-panel">${
       checks.length
         ? checks
@@ -267,14 +315,13 @@ function setup() {
     ],
   )}</section>`
   return `<header><div><h1>数据配置</h1></div></header>
-    ${errorBanner()}
     ${state.busy ? progressPanel() : ''}
     <form id="setup-form" class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
       <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
-          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>选填 · 留空则数据存储 API 不可用</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名')}${input('databasePort', '端口', config.databasePort || '5432', 'number')}${input('databaseName', '数据库', config.databaseName || 'box')}${input('databaseUser', '账号', config.databaseUser || 'box')}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '')}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>${state.connectionTests.postgresql ? `<p class="connection-result ${state.connectionTests.postgresql.ok ? 'success' : 'error'}">${escapeHtml(state.connectionTests.postgresql.message)}</p>` : ''}</div>
-          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>选填 · 留空则不启用缓存服务</span></div><button type="button" class="text-button" data-test-connection="redis">测试连接</button></div><div class="form-grid compact three">${input('redisHost', '地址', config.redisHost, 'text', 'IP 或域名')}${input('redisPort', '端口', config.redisPort || '6379', 'number')}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number')}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number')}</div>${state.connectionTests.redis ? `<p class="connection-result ${state.connectionTests.redis.ok ? 'success' : 'error'}">${escapeHtml(state.connectionTests.redis.message)}</p>` : ''}</div>
+          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>选填 · 留空则数据存储 API 不可用</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名')}${input('databasePort', '端口', config.databasePort || '5432', 'number')}${input('databaseName', '数据库', config.databaseName || 'box')}${input('databaseUser', '账号', config.databaseUser || 'box')}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '')}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
+          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>选填 · 留空则不启用缓存服务</span></div><button type="button" class="text-button" data-test-connection="redis">测试连接</button></div><div class="form-grid compact three">${input('redisHost', '地址', config.redisHost, 'text', 'IP 或域名')}${input('redisPort', '端口', config.redisPort || '6379', 'number')}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number')}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number')}</div></div>
           ${setupExplanation('配置说明：这些服务用来做什么？', [
             [
               'PostgreSQL',
@@ -367,15 +414,11 @@ function backups() {
   const items = state.backups
     .map(
       (backup) =>
-        `<article class="backup-row"><div><strong>${escapeHtml(backup.name)}</strong><span>${formatBackupTime(backup.modifiedAt)} · ${formatBytes(backup.sizeBytes)}</span></div><button class="button" data-restore-backup="${escapeHtml(backup.path)}" ${state.busy ? 'disabled' : ''}>恢复此备份</button></article>`,
+        `<article class="backup-row"><div><strong>${escapeHtml(backup.name)}</strong><span>${formatBackupTime(backup.modifiedAt)} · ${formatBytes(backup.sizeBytes)}</span></div><div class="backup-actions"><button class="button" data-export-backup="${escapeHtml(backup.path)}" ${state.busy ? 'disabled' : ''}>导出</button><button class="button" data-backup-action="restore" data-backup-path="${escapeHtml(backup.path)}" data-backup-name="${escapeHtml(backup.name)}" ${state.busy ? 'disabled' : ''}>恢复</button><button class="button danger" data-backup-action="delete" data-backup-path="${escapeHtml(backup.path)}" data-backup-name="${escapeHtml(backup.name)}" ${state.busy ? 'disabled' : ''}>删除</button></div></article>`,
     )
     .join('')
-  return `<header><div><h1>数据与备份</h1></div><div class="header-actions"><button class="button" id="refresh-backups" ${state.backupsLoading || state.busy ? 'disabled' : ''}>${icon('refresh')}刷新</button><button class="button primary" id="create-backup" ${state.backupsLoading || state.busy ? 'disabled' : ''}>${icon('archive')}立即备份</button></div></header>
-    ${errorBanner()}
-    ${state.backupMessage ? `<section class="notice success"><strong>操作完成</strong><span>${escapeHtml(state.backupMessage)}</span></section>` : ''}
-    <section class="backup-intro"><div><strong>源工程与本地资源</strong><span>备份地图工程、游玩包、本地模型与资源；数据库中的玩家和脚本数据由远程 PostgreSQL 自行备份。</span></div><span class="backup-count">${items ? `${state.backups.length} 个备份` : '暂无备份'}</span></section>
-    <section class="backup-list">${state.backupsLoading ? '<div class="empty-backup"><strong>正在读取备份…</strong></div>' : items || '<div class="empty-backup"><strong>尚无本地备份</strong><span>重要修改前可点击右上角“立即备份”。</span></div>'}</section>
-    <section class="backup-warning"><strong>恢复说明</strong><span>恢复会先停止全部 BOX 服务，再替换当前地图、游玩包和 VOXA 本地资源。恢复后请回到服务总览重新启动需要的服务。</span></section>`
+  return `<header><div><h1>数据与备份</h1></div><div class="header-actions"><button class="button" id="refresh-backups" ${state.backupsLoading || state.busy ? 'disabled' : ''}>${icon('refresh')}刷新</button><button class="button" id="import-backup" ${state.backupsLoading || state.busy ? 'disabled' : ''}>导入备份</button><button class="button primary" id="create-backup" ${state.backupsLoading || state.busy ? 'disabled' : ''}>${icon('archive')}立即备份</button></div></header>
+    <section class="backup-list">${state.backupsLoading ? '<div class="empty-backup"><strong>正在读取备份…</strong></div>' : items || '<div class="empty-backup"><strong>尚无本地备份</strong><span>重要修改前可点击右上角“立即备份”。</span></div>'}</section>`
 }
 
 const helpChapters = [
@@ -408,7 +451,7 @@ function helpContent() {
     configuration: `<div class="guide-heading"><span>数据配置</span><h2>配置说明</h2><p>常用参数分为五个页面，配置保存与服务启动彼此独立。</p></div><div class="guide-grid">${helpSection('PostgreSQL · 选填', helpList(['填写地址后启用玩家管理和登录门户', '地图脚本数据使用 PostgreSQL 数据空间', '留空时数据存储 API 不可用', 'SSL 由数据库服务端要求决定']))}${helpSection('Redis · 选填', helpList(['业务 DB 与缓存 DB 应使用不同编号', '留空时不启用 Redis 缓存', 'Redis 不保存唯一业务数据，可随时重建']))}${helpSection('访问设置', helpList(['127.0.0.1：五个服务仅当前电脑访问', '局域网 IP/域名：五个服务均可从外部访问', '开放 Creator 前应配置登录权限与防火墙']))}${helpSection('服主与安全', helpList(['可替换服主操作令牌、玩家服务 API Key 和运行时身份密钥', '密钥至少 16 个字符；留空会保留当前值', '修改密钥后旧会话或 API 调用会失效']))}${helpSection('原始 .env', helpList(['显示当前 .env 原文，适合高级配置和排障', '会显示密码与密钥，请勿截图或转发', '保存后不会自动重启服务，需在总览手动启动或重启']))}${helpSection('运行容量', helpList(['游玩运行时：同时活跃的地图/房间', '编辑运行时：同时打开的编辑项目', '创作预览：编辑器内运行实例', '上限越高，占用的内存越多']))}</div>`,
     workflow: `<div class="guide-heading"><span>日常使用</span><h2>创作与游玩</h2><p>Creator 管理源工程，Play 运行导出的游戏包。</p></div><div class="workflow-columns">${helpSection('Creator', helpList(['新建或导入地图工程', '主地图下可创建共享资源的副地图', '项目模型只属于当前项目，不修改本地模型原件', '共享脚本、图片、音频和角色在地图组内同步', '通过 VOXA 编辑模型后返回项目继续使用', '导出单地图工程、地图组工程或游戏包']))}${helpSection('Play', helpList(['导入 Creator 导出的游戏包', '玩家通过 /p/地图访问 ID 进入作品', '主地图负责地图组入口，副地图通常通过传送进入', '后台预热可降低首位玩家进入等待时间', '游玩包是只读运行快照，不作为源工程编辑']))}</div><div class="guide-callout"><strong>备份建议</strong><span>重要修改前导出地图组工程；游戏包用于部署，不能代替源工程备份。</span></div>`,
     players: `<div class="guide-heading"><span>需要 PostgreSQL</span><h2>玩家与权限</h2><p>玩家身份由独立玩家服务统一管理。</p></div><div class="guide-grid">${helpSection('账号资料', helpList(['记录用户名、显示名、注册与登录时间', '记录可信代理后的注册 IP、最后登录 IP', '支持绑定兼容用神岛 ID（boxId）', '可查看会话、设备与登录历史']))}${helpSection('权限层级', helpList(['服主：管理权限、管理员及账号删除', '管理员：按服主授予的权限执行管理', '协管员：处理指定范围的玩家事务', '玩家：进入游戏并访问自己的数据']))}${helpSection('安全操作', helpList(['支持临时封禁和永久封禁', '支持账号、IP 与设备维度封禁', '强制下线会撤销会话并通知运行时', '管理 API 必须携带服主配置的密钥']))}${helpSection('登录门户', '<p>内置门户用于快速部署和测试。正式运营时，服主也可以自行开发登录页，通过玩家服务公开 API 完成注册、登录和账号维护。</p>')}</div>`,
-    operations: `<div class="guide-heading"><span>维护指南</span><h2>运维与排障</h2><p>先看状态，再看日志，最后检查外部依赖。</p></div><div class="diagnostic-list"><div><b>服务无法启动</b><span>确认 Docker Desktop 正在运行、磁盘空间充足，镜像架构与电脑一致。</span></div><div><b>无法进入地图</b><span>查看 Creator/Play 日志，检查运行时上限、地图资源完整性与脚本内存。</span></div><div><b>数据库不可用</b><span>检查安全组、防火墙、5432 端口、账号密码和 SSL 设置；清空地址会停用数据存储 API。</span></div><div><b>Redis 不可用</b><span>检查 6379 端口和密码；清空地址会停用 Redis 缓存，不会影响源工程。</span></div><div><b>外部设备打不开</b><span>访问地址填写服务器 IP 或域名，并在防火墙中开放对应端口。</span></div><div><b>升级镜像</b><span>停止服务，备份应用数据目录，替换离线包后重新打开管理器；已有数据不会被程序目录覆盖。</span></div></div><div class="guide-callout"><strong>日志</strong><span>“运行日志”集中显示最近 500 行容器输出。反馈问题时，请同时提供服务名、发生时间和相关错误段。</span></div>`,
+    operations: `<div class="guide-heading"><span>维护指南</span><h2>运维与排障</h2><p>先看状态，再看日志，最后检查外部依赖。</p></div><div class="diagnostic-list"><div><b>服务无法启动</b><span>确认 Docker Desktop 正在运行、磁盘空间充足，镜像架构与电脑一致。</span></div><div><b>无法进入地图</b><span>查看 Creator/Play 日志，检查运行时上限、地图资源完整性与脚本内存。</span></div><div><b>数据库不可用</b><span>检查安全组、防火墙、5432 端口、账号密码和 SSL 设置；清空地址会停用数据存储 API。</span></div><div><b>Redis 不可用</b><span>检查 6379 端口和密码；清空地址会停用 Redis 缓存，不会影响源工程。</span></div><div><b>外部设备打不开</b><span>访问地址填写服务器 IP 或域名，并在防火墙中开放对应端口。</span></div><div><b>升级镜像</b><span>停止服务，备份应用数据目录，替换离线包后重新打开管理器；已有数据不会被程序目录覆盖。</span></div></div><div class="guide-callout"><strong>备份与恢复</strong><span>本地备份包含地图工程、游玩包、VOXA 本地模型与资源；不包含 .env、服主密钥、密码、远程 PostgreSQL 数据和 Redis 缓存。玩家与脚本数据请由数据库服务商或服主自行备份。备份可导出分享，导入后仍需点击“恢复”并确认才会写入本机。</span></div><div class="guide-callout"><strong>日志</strong><span>“运行日志”集中显示最近 500 行容器输出。反馈问题时，请同时提供服务名、发生时间和相关错误段。</span></div>`,
   }
   return chapters[state.helpSection] || chapters.welcome
 }
@@ -449,18 +492,33 @@ function bindEvents() {
     }),
   )
   document.querySelector('#refresh')?.addEventListener('click', refreshStatus)
-  document.querySelector('[data-dismiss-notice]')?.addEventListener('click', () => {
-    state.notice = ''
-    render()
-  })
+  document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
   document.querySelector('#refresh-performance')?.addEventListener('click', refreshPerformance)
   document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
   document.querySelector('#create-backup')?.addEventListener('click', createBackup)
+  document.querySelector('#import-backup')?.addEventListener('click', importBackup)
+  document.querySelectorAll('[data-backup-action]').forEach((node) =>
+    node.addEventListener('click', () => {
+      state.backupDialog = {
+        action: node.dataset.backupAction,
+        archive: node.dataset.backupPath,
+        name: node.dataset.backupName,
+      }
+      render()
+    }),
+  )
   document
-    .querySelectorAll('[data-restore-backup]')
+    .querySelectorAll('[data-export-backup]')
     .forEach((node) =>
-      node.addEventListener('click', () => restoreBackup(node.dataset.restoreBackup)),
+      node.addEventListener('click', () => exportBackup(node.dataset.exportBackup)),
     )
+  for (const selector of ['#cancel-backup-action', '#cancel-backup-action-secondary']) {
+    document.querySelector(selector)?.addEventListener('click', closeBackupDialog)
+  }
+  document.querySelector('[data-backup-dialog-dismiss]')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeBackupDialog()
+  })
+  document.querySelector('#confirm-backup-action')?.addEventListener('click', confirmBackupAction)
   document.querySelector('#theme-trigger')?.addEventListener('click', () => {
     state.themeMenuOpen = !state.themeMenuOpen
     render()
@@ -605,7 +663,7 @@ function syncLogPolling() {
 async function refreshPerformance() {
   if (state.performanceLoading || state.page !== 'performance') return
   state.performanceLoading = true
-  state.performanceError = ''
+  clearFeedback()
   render()
   try {
     state.performance = await invoke('get_performance_status')
@@ -649,7 +707,7 @@ function switchSetupSection(section) {
   captureRawEnvironment()
   captureSetupForm()
   state.setupSection = section
-  state.error = ''
+  clearFeedback()
   render()
 }
 
@@ -679,20 +737,27 @@ function normalizedConfig() {
 
 async function testConnection(kind) {
   captureSetupForm()
+  clearFeedback()
   const config = state.config || {}
   const host = kind === 'postgresql' ? config.databaseHost : config.redisHost
   const port = kind === 'postgresql' ? config.databasePort : config.redisPort
   if (!host) {
-    state.connectionTests[kind] = { ok: false, message: '请先填写地址' }
+    state.error = `请先填写 ${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 地址。`
     render()
     return
   }
-  state.connectionTests[kind] = { ok: true, message: '正在测试…' }
+  state.notice = `正在测试 ${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 连接…`
   render()
   try {
     state.connectionTests[kind] = await invoke('test_remote_connection', { kind, host, port })
+    if (state.connectionTests[kind].ok) {
+      state.notice = `${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 连接正常。`
+    } else {
+      state.error = state.connectionTests[kind].message
+    }
   } catch (error) {
     state.connectionTests[kind] = { ok: false, message: String(error) }
+    state.error = String(error)
   }
   render()
 }
@@ -700,7 +765,7 @@ async function testConnection(kind) {
 async function runEnvironmentChecks() {
   if (state.checkingEnvironment) return
   state.checkingEnvironment = true
-  state.error = ''
+  clearFeedback()
   render()
   try {
     state.environmentChecks = await invoke('run_environment_checks', {
@@ -717,7 +782,7 @@ async function runEnvironmentChecks() {
 async function exportDiagnostics() {
   if (state.busy) return
   state.busy = true
-  state.error = ''
+  clearFeedback()
   render()
   try {
     state.diagnosticPath = await invoke('export_diagnostics')
@@ -746,8 +811,7 @@ async function loadBackups() {
 async function createBackup() {
   if (state.busy) return
   state.busy = true
-  state.error = ''
-  state.backupMessage = ''
+  clearFeedback()
   render()
   try {
     const path = await invoke('create_backup')
@@ -761,20 +825,63 @@ async function createBackup() {
   }
 }
 
-async function restoreBackup(archive) {
-  if (state.busy || !archive) return
-  const confirmed = window.confirm(
-    '恢复会停止全部服务，并替换当前地图、游玩包和本地 VOXA 资源。当前未备份的修改将丢失，确定继续吗？',
-  )
-  if (!confirmed) return
+async function importBackup() {
+  if (state.busy) return
   state.busy = true
-  state.error = ''
-  state.backupMessage = ''
+  clearFeedback()
   render()
   try {
-    await invoke('restore_backup', { archive })
-    state.backupMessage = '恢复完成。服务已停止，请在服务总览按需重新启动。'
-    await refreshStatus()
+    const path = await invoke('import_backup')
+    if (path) {
+      state.backupMessage = `备份已导入：${path}`
+      await loadBackups()
+    }
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    if (state.page === 'backups') render()
+  }
+}
+
+async function exportBackup(archive) {
+  if (state.busy || !archive) return
+  state.busy = true
+  clearFeedback()
+  render()
+  try {
+    const path = await invoke('export_backup', { archive })
+    if (path) state.backupMessage = `备份已导出：${path}`
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    if (state.page === 'backups') render()
+  }
+}
+
+function closeBackupDialog() {
+  state.backupDialog = null
+  render()
+}
+
+async function confirmBackupAction() {
+  const dialog = state.backupDialog
+  if (state.busy || !dialog?.archive) return
+  state.backupDialog = null
+  state.busy = true
+  clearFeedback()
+  render()
+  try {
+    if (dialog.action === 'delete') {
+      await invoke('delete_backup', { archive: dialog.archive })
+      state.backupMessage = '备份已删除。'
+      await loadBackups()
+    } else {
+      await invoke('restore_backup', { archive: dialog.archive })
+      state.backupMessage = '恢复完成。服务已停止，请在服务总览按需重新启动。'
+      await refreshStatus()
+    }
   } catch (error) {
     state.error = String(error)
   } finally {
@@ -803,10 +910,16 @@ async function refreshStatus() {
 async function runAction(command, payload = {}) {
   if (state.busy) return
   state.busy = true
-  state.error = ''
+  clearFeedback()
   render()
   try {
     await invoke(command, payload)
+    state.notice =
+      {
+        start_services: '服务已启动。',
+        stop_services: '服务已停止。',
+        control_service: '服务操作已完成。',
+      }[command] || '操作已完成。'
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
     state.error = String(error)
@@ -860,8 +973,7 @@ async function saveConfiguration(event) {
   }
   if (state.busy) return
   state.busy = true
-  state.error = ''
-  state.notice = ''
+  clearFeedback()
   render()
   try {
     await invoke('save_configuration_command', { config })
@@ -880,9 +992,7 @@ async function saveRawEnvironment() {
   const textarea = document.querySelector('#raw-environment')
   if (!textarea || state.environmentFileSaving) return
   state.environmentFileSaving = true
-  state.environmentMessage = ''
-  state.error = ''
-  state.notice = ''
+  clearFeedback()
   state.environmentFile = textarea.value
   render()
   try {
@@ -900,9 +1010,11 @@ async function saveRawEnvironment() {
 
 async function reloadRawEnvironment() {
   if (state.environmentFileSaving) return
+  clearFeedback()
   try {
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentMessage = '已重新读取磁盘中的 .env。'
+    state.notice = state.environmentMessage
   } catch (error) {
     state.error = String(error)
   }
