@@ -858,17 +858,33 @@ fn archive_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
     archives
 }
 
-fn image_tag(app: &AppHandle) -> Result<String, String> {
-    let values = load_existing_env(app);
-    values
-        .get("BOX_IMAGE_TAG")
-        .cloned()
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| "部署配置缺少 BOX_IMAGE_TAG".into())
+fn synchronize_runtime_image_tag(app: &AppHandle) -> Result<(), String> {
+    ensure_runtime_files(app)?;
+    let path = env_path(app)?;
+    let mut content = if path.exists() {
+        fs::read_to_string(&path).map_err(|error| format!("无法读取部署配置：{error}"))?
+    } else {
+        ENV_TEMPLATE.to_string()
+    };
+    // The app owns the offline image archive and its tag. A configuration
+    // created by an older app version must not make Compose pull or build an
+    // obsolete tag from source after the user upgrades the application.
+    set_env(&mut content, "BOX_IMAGE_TAG", IMAGE_TAG)?;
+    set_env(
+        &mut content,
+        "BOX_PLAY_PLATFORM",
+        if cfg!(target_arch = "aarch64") {
+            "linux/arm64"
+        } else {
+            "linux/amd64"
+        },
+    )?;
+    fs::write(path, content).map_err(|error| format!("无法更新镜像运行配置：{error}"))
 }
 
 fn ensure_images(app: &AppHandle) -> Result<(), String> {
-    let tag = image_tag(app)?;
+    synchronize_runtime_image_tag(app)?;
+    let tag = IMAGE_TAG;
     let missing = SERVICE_NAMES.iter().any(|name| {
         let image_name = match *name {
             "player-auth-portal" => "box-local-engine-player-auth-portal",
@@ -893,7 +909,7 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
     };
     let archive = archive_candidates(Some(app)).into_iter()
         .find(|path| path.file_name().is_some_and(|name| name.to_string_lossy().contains(expected)))
-        .ok_or_else(|| format!("未找到 Windows/macOS {expected} 离线镜像归档。请把 box-local-engine-images-*-{expected}.tar.gz 与程序放在同一目录。"))?;
+        .ok_or_else(|| format!("未找到 {expected} 离线镜像归档。请重新下载完整离线包。"))?;
     let archive_string = archive.to_string_lossy().to_string();
     docker_output(&["load", "-i", &archive_string])?;
     Ok(())

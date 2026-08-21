@@ -80,6 +80,11 @@ export function getEnvironmentConfig(): EnvironmentConfig &
         process.env.INTRANET_MAAS_BACKEND_SERVER_URL,
       ),
       MAAS_BACKEND_SERVER_URL: maybeS(process.env.MAAS_BACKEND_SERVER_URL),
+      // VOXA is published on a configurable host port. The bundled local
+      // config only contains the development default (3001), which made an
+      // editor opened through Deployment Manager keep requesting that stale
+      // port after the owner changed BOX_VOXA_PORT.
+      VOXA_URL: maybeS(process.env.VOXA_URL),
       // 本地覆盖稍稍有点 tricky，需要做一下转换
       FEATURE_FLAGS: a(process.env.FEATURE_FLAGS),
       // 覆盖ARENA_URL，本地开发用

@@ -46,4 +46,23 @@ describe('local VOXA library query contract', () => {
     );
     expect(contents.match(/\? undefined\n\s*: libTab/g)).toHaveLength(2);
   });
+
+  test('proxies local model queries through Creator instead of the browser VOXA origin', () => {
+    const api = source('src/apis/api-java/index.ts');
+    const route = source('pages/api/creator-models/index.ts');
+
+    expect(api).toContain("fetch(`/api/creator-models?${params}`");
+    expect(api).toContain("credentials: 'same-origin'");
+    expect(route).toContain('`/api/local/models${suffix}`');
+    expect(route).toContain("['modelType', 'mapId', 'creativeMode', 'modelName']");
+  });
+
+  test('opens the configured local VOXA origin instead of a removed platform route', () => {
+    const render = source('server/server-render.ts');
+    const config = source('configs/server.ts');
+
+    expect(render).toContain('serverConfig.isLocalGameServer');
+    expect(render).toContain('? extractedConfig.VOXA_URL');
+    expect(config).toContain('VOXA_URL: maybeS(process.env.VOXA_URL)');
+  });
 });

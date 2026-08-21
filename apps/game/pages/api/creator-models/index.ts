@@ -21,7 +21,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const response = await requestCreatorModelService('/api/local/models');
+    // Keep browser model requests same-origin with Creator.  Directly using
+    // VOXA_URL from the browser breaks as soon as the public port/host differs
+    // from the value baked into an older image (and is especially common on
+    // LAN deployments).  The server already has the internal VOXA address.
+    const query = new URLSearchParams();
+    for (const key of ['modelType', 'mapId', 'creativeMode', 'modelName']) {
+      const value = req.query[key];
+      if (value !== undefined) query.set(key, String(Array.isArray(value) ? value[0] : value));
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const response = await requestCreatorModelService(`/api/local/models${suffix}`);
     if (!response.ok) throw await creatorModelServiceError(response, '无法读取模型列表');
     const data = await response.json() as { rows?: ModelRow[]; count?: number };
     const rows = (data.rows || []).map((model) => ({

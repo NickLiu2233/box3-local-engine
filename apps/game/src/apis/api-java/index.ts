@@ -116,7 +116,14 @@ if (clientConfig.isLocalGameServer) {
   };
 
   const absoluteVoxaURL = (value?: string) => {
-    if (!value || /^https?:\/\//.test(value)) return value;
+    // Creator proxies model previews through its own origin.  Preserve those
+    // paths; prefixing them with VOXA_URL would send the browser back to the
+    // stale/public VOXA address and produces an empty model panel on LAN.
+    if (
+      !value ||
+      /^https?:\/\//.test(value) ||
+      value.startsWith('/api/creator-models/')
+    ) return value;
     return `${clientConfig.VOXA_URL.replace(/\/$/, '')}/${value.replace(/^\//, '')}`;
   };
 
@@ -210,7 +217,18 @@ if (clientConfig.isLocalGameServer) {
     for (const [key, value] of Object.entries(query || {})) {
       if (value !== undefined && value !== null) params.set(key, String(value));
     }
-    const result = await voxaRequest(`/models?${params}`);
+    const result = clientConfig.isLocalGameServer
+      ? await (async () => {
+          const response = await fetch(`/api/creator-models?${params}`, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+          });
+          if (!response.ok) {
+            throw new Error((await response.text()) || '本地模型服务请求失败');
+          }
+          return await response.json();
+        })()
+      : await voxaRequest(`/models?${params}`);
     return {
       ...result,
       rows: result.rows.map((model) => ({

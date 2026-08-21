@@ -876,6 +876,12 @@ requirePattern(
   'same-origin play runtime',
   /BOX_REMOTE_SERVER_URL: ''/,
 )
+requirePattern(
+  readRequired('apps/local-engine/src/project-manager.js'),
+  'apps/local-engine/src/project-manager.js',
+  'project creation uses explicit readable template copy',
+  /function copyReadableDirectorySync[\s\S]*?copyReadableFileSync[\s\S]*?createProject[\s\S]*?copyReadableDirectorySync\(templateDataRoot/,
+)
 forbidPattern(
   launcherSource,
   launcherFile,

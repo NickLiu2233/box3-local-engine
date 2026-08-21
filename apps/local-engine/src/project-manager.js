@@ -289,6 +289,25 @@ function copyReadableFileSync(source, destination) {
   }
 }
 
+// fs.cpSync preserves source metadata while copying. On Docker Desktop's
+// macOS bind mounts that can create destination blobs as mode 0200 and then
+// fail while traversing the directory. Copy the template tree explicitly so
+// every directory and blob gets a stable mode that the node runtime can use.
+function copyReadableDirectorySync(source, destination) {
+  fs.mkdirSync(destination, { recursive: true, mode: 0o755 })
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = path.join(source, entry.name)
+    const destinationPath = path.join(destination, entry.name)
+    if (entry.isDirectory()) {
+      copyReadableDirectorySync(sourcePath, destinationPath)
+    } else if (entry.isFile()) {
+      copyReadableFileSync(sourcePath, destinationPath)
+    } else {
+      throw new Error(`本地模板包含不支持的文件类型：${sourcePath}`)
+    }
+  }
+}
+
 function createReleaseData(sourceRoot, releaseDataRoot, state) {
   const sourceBlobRoot = path.join(sourceRoot, 'blobs')
   const releaseBlobRoot = path.join(releaseDataRoot, 'blobs')
@@ -795,8 +814,20 @@ function createProject({ id, name, author = '', description = '' }) {
   if (!name || !name.trim()) throw new Error('Project name is required')
   if (!fs.existsSync(templateDataRoot)) throw new Error('Local Engine template data is missing')
 
-  fs.mkdirSync(root, { recursive: true })
-  fs.cpSync(templateDataRoot, path.join(root, 'source'), { recursive: true })
+  fs.mkdirSync(root, { recursive: true, mode: 0o755 })
+  try {
+    copyReadableDirectorySync(templateDataRoot, path.join(root, 'source'))
+  } catch (error) {
+    // A failed first attempt must not leave a project that blocks retrying the
+    // same map ID. Cleanup is best-effort because Docker Desktop may briefly
+    // report a directory as busy while the bind mount is syncing.
+    try {
+      fs.rmSync(root, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 })
+    } catch {
+      // Preserve the original, actionable copy error.
+    }
+    throw error
+  }
   const now = new Date().toISOString()
   const themes = ['sunset', 'ocean', 'forest', 'violet']
   const metadata = {

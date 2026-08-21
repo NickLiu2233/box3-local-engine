@@ -47,7 +47,13 @@ export async function getArenaServerRenderProps(spec: {
           mapInfo,
           mode,
           name: containerName,
-          WEBSITE_VOXA_URL: `${extractedConfig.WEBSITE_URL}/edit-model`,
+          // Local deployments expose VOXA as its own product.  WEBSITE_URL is
+          // intentionally empty in local mode, so `${WEBSITE_URL}/edit-model`
+          // resolves to a dead relative route.  Use the configured public VOXA
+          // origin locally while retaining the platform editor route in cloud.
+          WEBSITE_VOXA_URL: serverConfig.isLocalGameServer
+            ? extractedConfig.VOXA_URL
+            : `${extractedConfig.WEBSITE_URL}/edit-model`,
         },
         userInfo,
       },
