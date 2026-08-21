@@ -54,6 +54,38 @@ function cleanupDirectoryQuietly(target: string) {
   }
 }
 
+// fs.cpSync preserves archive file modes. Docker Desktop can represent a
+// host-side 0600 file as 0200 in a Linux bind mount, which makes a staged
+// world unreadable and later impossible to clean up. Create every destination
+// path with the explicit modes used by the Play runtime instead.
+function copyReadableFile(source: string, destination: string) {
+  fs.mkdirSync(path.dirname(destination), { recursive: true, mode: 0o755 });
+  const input = fs.openSync(source, 'r');
+  const output = fs.openSync(destination, 'w', 0o644);
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  try {
+    let bytesRead = 0;
+    do {
+      bytesRead = fs.readSync(input, buffer, 0, buffer.length, null);
+      if (bytesRead) fs.writeSync(output, buffer, 0, bytesRead);
+    } while (bytesRead);
+  } finally {
+    fs.closeSync(input);
+    fs.closeSync(output);
+  }
+}
+
+function copyReadableDirectory(source: string, destination: string) {
+  fs.mkdirSync(destination, { recursive: true, mode: 0o755 });
+  for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
+    const sourcePath = path.join(source, entry.name);
+    const destinationPath = path.join(destination, entry.name);
+    if (entry.isDirectory()) copyReadableDirectory(sourcePath, destinationPath);
+    else if (entry.isFile()) copyReadableFile(sourcePath, destinationPath);
+    else throw new Error(`游玩包包含不支持的文件类型：${sourcePath}`);
+  }
+}
+
 function libraryRoot() {
   const root = process.env.BOX_PLAY_LIBRARY_PATH;
   if (!root) throw new Error('游玩地图库未配置');
@@ -287,7 +319,7 @@ export async function importPlayBundle(archivePath: string) {
     const installed: string[] = [];
     try {
       for (const world of validated) {
-        fs.cpSync(world.root, staging.get(world.id)!, { recursive: true, errorOnExist: true });
+        copyReadableDirectory(world.root, staging.get(world.id)!);
       }
       for (const world of validated) {
         fs.renameSync(staging.get(world.id)!, path.join(root, world.id));

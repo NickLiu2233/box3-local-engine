@@ -136,6 +136,27 @@ describe('map group play bundle import', () => {
     expect(fs.readdirSync(library).some((entry) => entry.includes('-importing-'))).toBe(false);
   });
 
+  test('copies imported worlds with readable bind-mount-safe file modes', async () => {
+    const { root, archivePath } = createGroupBundle();
+    process.env.BOX_PLAY_LIBRARY_PATH = path.join(root, 'library');
+    const originalCopy = fs.cpSync;
+
+    fs.cpSync = ((source: fs.PathLike, destination: fs.PathLike, options?: fs.CopySyncOptions) => {
+      if (String(destination).includes('-importing-')) {
+        const error = new Error(`EACCES: permission denied, copy '${destination}'`) as NodeJS.ErrnoException;
+        error.code = 'EACCES';
+        throw error;
+      }
+      return originalCopy(source, destination, options);
+    }) as typeof fs.cpSync;
+    try {
+      const result = await importPlayBundle(archivePath);
+      expect(result.mapCount).toBe(2);
+    } finally {
+      fs.cpSync = originalCopy;
+    }
+  });
+
   test('stores a unique public map ID without changing the internal world ID', async () => {
     const { root, archivePath } = createGroupBundle();
     process.env.BOX_PLAY_LIBRARY_PATH = path.join(root, 'library');
