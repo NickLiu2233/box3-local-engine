@@ -70,6 +70,15 @@ struct PerformanceStatus {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct BackupInfo {
+    name: String,
+    path: String,
+    size_bytes: u64,
+    modified_at: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct EnvironmentCheck {
     id: String,
     label: String,
@@ -907,8 +916,12 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
     } else {
         "amd64"
     };
-    let archive = archive_candidates(Some(app)).into_iter()
-        .find(|path| path.file_name().is_some_and(|name| name.to_string_lossy().contains(expected)))
+    let archive = archive_candidates(Some(app))
+        .into_iter()
+        .find(|path| {
+            path.file_name()
+                .is_some_and(|name| name.to_string_lossy().contains(expected))
+        })
         .ok_or_else(|| format!("未找到 {expected} 离线镜像归档。请重新下载完整离线包。"))?;
     let archive_string = archive.to_string_lossy().to_string();
     docker_output(&["load", "-i", &archive_string])?;
@@ -1449,6 +1462,239 @@ fn create_diagnostic_zip(source: &Path, destination: &Path) -> Result<(), String
     Ok(())
 }
 
+fn copy_directory_contents(source: &Path, destination: &Path) -> Result<(), String> {
+    fs::create_dir_all(destination).map_err(|error| format!("无法创建备份目录：{error}"))?;
+    for entry in fs::read_dir(source).map_err(|error| format!("无法读取数据目录：{error}"))?
+    {
+        let entry = entry.map_err(|error| format!("无法读取数据目录项：{error}"))?;
+        let from = entry.path();
+        let to = destination.join(entry.file_name());
+        if from.is_dir() {
+            copy_directory_contents(&from, &to)?;
+        } else {
+            fs::copy(&from, &to)
+                .map_err(|error| format!("无法备份 {}：{error}", from.display()))?;
+        }
+    }
+    Ok(())
+}
+
+fn create_backup_archive(source: &Path, destination: &Path) -> Result<(), String> {
+    if destination.exists() {
+        fs::remove_file(destination).map_err(|error| format!("无法覆盖旧备份：{error}"))?;
+    }
+    #[cfg(target_os = "windows")]
+    let command = {
+        let mut command = Command::new("powershell");
+        let source = source.to_string_lossy().replace('\'', "''");
+        let destination = destination.to_string_lossy().replace('\'', "''");
+        command.args([
+            "-NoProfile",
+            "-Command",
+            &format!(
+                "Compress-Archive -Path '{source}\\*' -DestinationPath '{destination}' -Force"
+            ),
+        ]);
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let command = {
+        let mut command = Command::new("/usr/bin/ditto");
+        command.args(["-c", "-k", "--norsrc"]);
+        command.arg(source).arg(destination);
+        command
+    };
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    let command = {
+        let mut command = Command::new("tar");
+        command.args(["-czf"]);
+        command.arg(destination).arg("-C").arg(source).arg(".");
+        command
+    };
+    run_command(command)?;
+    Ok(())
+}
+
+fn extract_backup_archive(archive: &Path, destination: &Path) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    let command = {
+        let mut command = Command::new("powershell");
+        let archive = archive.to_string_lossy().replace('\'', "''");
+        let destination = destination.to_string_lossy().replace('\'', "''");
+        command.args([
+            "-NoProfile",
+            "-Command",
+            &format!(
+                "Expand-Archive -LiteralPath '{archive}' -DestinationPath '{destination}' -Force"
+            ),
+        ]);
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let command = {
+        let mut command = Command::new("/usr/bin/ditto");
+        command.args(["-x", "-k"]);
+        command.arg(archive).arg(destination);
+        command
+    };
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    let command = {
+        let mut command = Command::new("tar");
+        command.args(["-xzf"]);
+        command.arg(archive).arg("-C").arg(destination);
+        command
+    };
+    run_command(command)?;
+    Ok(())
+}
+
+fn backup_directory(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(runtime_root(app)?.join("apps/local-engine/backups"))
+}
+
+#[tauri::command]
+async fn list_backups(app: AppHandle) -> Result<Vec<BackupInfo>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let directory = backup_directory(&app)?;
+        fs::create_dir_all(&directory).map_err(|error| format!("无法创建备份目录：{error}"))?;
+        let mut backups = Vec::new();
+        for entry in
+            fs::read_dir(directory).map_err(|error| format!("无法读取备份目录：{error}"))?
+        {
+            let entry = entry.map_err(|error| format!("无法读取备份项：{error}"))?;
+            let path = entry.path();
+            let extension = path
+                .extension()
+                .and_then(|value| value.to_str())
+                .unwrap_or_default();
+            if !path.is_file() || !matches!(extension, "zip" | "gz" | "tar") {
+                continue;
+            }
+            let metadata =
+                fs::metadata(&path).map_err(|error| format!("无法读取备份信息：{error}"))?;
+            let modified_at = metadata
+                .modified()
+                .ok()
+                .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
+                .map(|value| value.as_secs())
+                .unwrap_or_default();
+            backups.push(BackupInfo {
+                name: path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string(),
+                path: path.to_string_lossy().to_string(),
+                size_bytes: metadata.len(),
+                modified_at,
+            });
+        }
+        backups.sort_by(|left, right| right.modified_at.cmp(&left.modified_at));
+        Ok(backups)
+    })
+    .await
+    .map_err(|error| format!("备份列表任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+async fn create_backup(app: AppHandle) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = runtime_root(&app)?;
+        let backups = backup_directory(&app)?;
+        fs::create_dir_all(&backups).map_err(|error| format!("无法创建备份目录：{error}"))?;
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let staging = backups.join(format!(".staging-{timestamp}"));
+        if staging.exists() {
+            fs::remove_dir_all(&staging).map_err(|error| format!("无法清理临时备份：{error}"))?;
+        }
+        fs::create_dir_all(&staging).map_err(|error| format!("无法创建临时备份：{error}"))?;
+        for relative in [
+            "apps/local-engine/projects",
+            "apps/local-engine/dist",
+            "apps/local-engine/play-worlds",
+            "apps/voxa/data",
+        ] {
+            let source = root.join(relative);
+            if source.exists() {
+                copy_directory_contents(&source, &staging.join(relative))?;
+            }
+        }
+        fs::write(
+            staging.join("BACKUP-README.txt"),
+            "BOX3 Engine 数据备份。此文件不包含 .env、密码或密钥。\n",
+        )
+        .map_err(|error| format!("无法写入备份说明：{error}"))?;
+        let archive = backups.join(format!(
+            "BOX-backup-{timestamp}.{}",
+            if cfg!(target_os = "windows") || cfg!(target_os = "macos") {
+                "zip"
+            } else {
+                "tar.gz"
+            }
+        ));
+        create_backup_archive(&staging, &archive)?;
+        fs::remove_dir_all(staging).map_err(|error| format!("无法清理临时备份：{error}"))?;
+        Ok(archive.to_string_lossy().to_string())
+    })
+    .await
+    .map_err(|error| format!("备份任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+async fn restore_backup(app: AppHandle, archive: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let backups = backup_directory(&app)?;
+        let requested = PathBuf::from(&archive);
+        let canonical_directory =
+            fs::canonicalize(&backups).map_err(|error| format!("无法定位备份目录：{error}"))?;
+        let canonical_archive =
+            fs::canonicalize(&requested).map_err(|error| format!("找不到备份文件：{error}"))?;
+        if canonical_archive.parent() != Some(canonical_directory.as_path())
+            || !canonical_archive.is_file()
+        {
+            return Err("只能恢复应用备份目录中的文件".into());
+        }
+        // A restore replaces bind-mounted source data. Stop containers first
+        // so a running Creator/VOXA process cannot write a newer state while
+        // files are being replaced.
+        if env_path(&app).is_ok_and(|path| path.exists()) {
+            compose_output(&app, &["stop"])?;
+        }
+        let root = runtime_root(&app)?;
+        let staging = backups.join(".restore-staging");
+        if staging.exists() {
+            fs::remove_dir_all(&staging)
+                .map_err(|error| format!("无法清理恢复临时目录：{error}"))?;
+        }
+        fs::create_dir_all(&staging).map_err(|error| format!("无法创建恢复临时目录：{error}"))?;
+        extract_backup_archive(&canonical_archive, &staging)?;
+        for relative in [
+            "apps/local-engine/projects",
+            "apps/local-engine/dist",
+            "apps/local-engine/play-worlds",
+            "apps/voxa/data",
+        ] {
+            let source = staging.join(relative);
+            if !source.exists() {
+                continue;
+            }
+            let destination = root.join(relative);
+            if destination.exists() {
+                fs::remove_dir_all(&destination)
+                    .map_err(|error| format!("无法替换 {}：{error}", destination.display()))?;
+            }
+            copy_directory_contents(&source, &destination)?;
+        }
+        fs::remove_dir_all(staging).map_err(|error| format!("无法清理恢复临时目录：{error}"))?;
+        Ok(())
+    })
+    .await
+    .map_err(|error| format!("恢复任务异常结束：{error}"))?
+}
+
 #[tauri::command]
 async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -1779,6 +2025,31 @@ mod tests {
         .unwrap();
         assert_eq!(value, "owner-controlled-token");
     }
+
+    #[test]
+    fn backup_archive_round_trip_preserves_file_tree() {
+        let root = std::env::temp_dir().join(format!("box-manager-backup-{}", random_hex(8)));
+        let source = root.join("source");
+        let nested = source.join("apps/local-engine/projects");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(nested.join("world.json"), "world-data").unwrap();
+        let archive = root.join(
+            if cfg!(target_os = "windows") || cfg!(target_os = "macos") {
+                "snapshot.zip"
+            } else {
+                "snapshot.tar.gz"
+            },
+        );
+        create_backup_archive(&source, &archive).unwrap();
+        let restored = root.join("restored");
+        fs::create_dir_all(&restored).unwrap();
+        extract_backup_archive(&archive, &restored).unwrap();
+        assert_eq!(
+            fs::read_to_string(restored.join("apps/local-engine/projects/world.json")).unwrap(),
+            "world-data"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -1790,6 +2061,9 @@ pub fn run() {
             save_raw_environment,
             get_system_status,
             get_performance_status,
+            list_backups,
+            create_backup,
+            restore_backup,
             run_environment_checks,
             test_remote_connection,
             save_configuration_command,

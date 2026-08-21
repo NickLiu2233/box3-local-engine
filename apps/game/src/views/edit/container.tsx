@@ -17,12 +17,6 @@ import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
 import { setPermission } from 'src/redux/edit/permission';
 import { JavaPermissionsMap } from '@box-local/utils/createra-permissions';
-import { Toast } from '@box-local/box-design';
-import {
-  ExtraProjectChange,
-  hasExtraProjectChange,
-} from 'src/client/edit/replica/extra-project-change';
-import { useIntl } from 'react-intl';
 
 export type EngineStatus = 'preConnect' | 'loading' | 'started' | 'stop';
 
@@ -32,49 +26,11 @@ type MainPageProps = {
 };
 
 export const MainPage = (props: MainPageProps) => {
-  const intl = useIntl();
   const dispatch = useDispatch();
   const [engineStatus, setEngineStatus] = useState<EngineStatus>();
   const [closeError, setCloseError] = useState<CloseType>(CloseType.Normal);
   const editor = useEdit();
   resolveEditor(editor);
-
-  useEffect(() => {
-    // EditClient creates the replica during preconnect(). On the first React
-    // render it is still the null MuRef placeholder, so subscribe only after
-    // preconnect has advanced the editor lifecycle and capture that instance
-    // for symmetric cleanup.
-    const replica = editor.replica;
-    if (!clientConfig.mapInfo.isLocalMapGroup || !replica) return;
-    const onSharedResourcesChanged = (change: ExtraProjectChange) => {
-      if (!hasExtraProjectChange(change)) return;
-      const parts: string[] = [];
-      const append = (
-        id: 'sharedResourceScripts' | 'sharedResourceModels' | 'sharedResourceSkins',
-        value: ExtraProjectChange['scripts'],
-      ) => {
-        const count = value.added + value.updated + value.removed;
-        if (count > 0) {
-          parts.push(`${intl.formatMessage({ id })} ${count}`);
-        }
-      };
-      append('sharedResourceScripts', change.scripts);
-      append('sharedResourceModels', change.models);
-      append('sharedResourceSkins', change.skins);
-      if (change.defaultSkinChanged && change.skins.added + change.skins.updated + change.skins.removed === 0) {
-        parts.push(intl.formatMessage({ id: 'sharedResourceDefaultSkin' }));
-      }
-      Toast.info({
-        content: intl.formatMessage(
-          { id: 'sharedResourcesAutoSynced' },
-          { summary: parts.join(' · ') },
-        ),
-      });
-    };
-    replica.onExtraProjectChange.sub(onSharedResourcesChanged);
-    return () =>
-      replica.onExtraProjectChange.unsub(onSharedResourcesChanged);
-  }, [editor, engineStatus, intl]);
 
   // 一次性初始化的内容
   useEffect(() => {

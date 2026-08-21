@@ -105,7 +105,7 @@ function main() {
     .basename(archive)
     .match(/^box-local-engine-images-(.+)-(?:windows|macos|linux)-(?:amd64|arm64)\.tar(?:\.gz)?$/)
   const imageTag = imageTagMatch
-    ? `${imageTagMatch[1]}-windows-${expectedArchitecture}`
+    ? `${imageTagMatch[1]}-${platform.startsWith('windows') ? 'windows' : 'macos'}-${expectedArchitecture}`
     : process.env.BOX_IMAGE_TAG
   if (!imageTag) fail('无法从归档名称确定 BOX_IMAGE_TAG，请设置环境变量 BOX_IMAGE_TAG')
 

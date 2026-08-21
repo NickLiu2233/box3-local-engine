@@ -35,6 +35,9 @@ const state = {
   environmentFileSaving: false,
   environmentMessage: '',
   diagnosticPath: '',
+  backups: [],
+  backupsLoading: false,
+  backupMessage: '',
   performance: null,
   performanceLoading: false,
   performanceError: '',
@@ -54,6 +57,7 @@ const icons = {
   logs: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   performance: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V8"/><path d="M2 19h22"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.8 1.95c-.94.66-1.5 1.03-1.5 2.05M12 17h.01"/>',
+  archive: '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
   play: '<path d="m8 5 11 7-11 7Z"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
   refresh: '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
@@ -111,7 +115,7 @@ function shell(content) {
   return `<div class="shell">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}</nav>
+      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}</nav>
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
@@ -335,6 +339,45 @@ function logs() {
     <section class="log-card"><pre id="log-output">${escapeHtml(state.logs || '正在连接日志流…')}</pre></section></section>`
 }
 
+function formatBytes(value) {
+  const bytes = Number(value || 0)
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB', 'TB']
+  let size = bytes / 1024
+  let index = 0
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024
+    index += 1
+  }
+  return `${size.toFixed(size >= 10 ? 0 : 1)} ${units[index]}`
+}
+
+function formatBackupTime(value) {
+  if (!value) return '未知时间'
+  return new Date(Number(value) * 1000).toLocaleString([], {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function backups() {
+  const items = state.backups
+    .map(
+      (backup) =>
+        `<article class="backup-row"><div><strong>${escapeHtml(backup.name)}</strong><span>${formatBackupTime(backup.modifiedAt)} · ${formatBytes(backup.sizeBytes)}</span></div><button class="button" data-restore-backup="${escapeHtml(backup.path)}" ${state.busy ? 'disabled' : ''}>恢复此备份</button></article>`,
+    )
+    .join('')
+  return `<header><div><h1>数据与备份</h1></div><div class="header-actions"><button class="button" id="refresh-backups" ${state.backupsLoading || state.busy ? 'disabled' : ''}>${icon('refresh')}刷新</button><button class="button primary" id="create-backup" ${state.backupsLoading || state.busy ? 'disabled' : ''}>${icon('archive')}立即备份</button></div></header>
+    ${errorBanner()}
+    ${state.backupMessage ? `<section class="notice success"><strong>操作完成</strong><span>${escapeHtml(state.backupMessage)}</span></section>` : ''}
+    <section class="backup-intro"><div><strong>源工程与本地资源</strong><span>备份地图工程、游玩包、本地模型与资源；数据库中的玩家和脚本数据由远程 PostgreSQL 自行备份。</span></div><span class="backup-count">${items ? `${state.backups.length} 个备份` : '暂无备份'}</span></section>
+    <section class="backup-list">${state.backupsLoading ? '<div class="empty-backup"><strong>正在读取备份…</strong></div>' : items || '<div class="empty-backup"><strong>尚无本地备份</strong><span>重要修改前可点击右上角“立即备份”。</span></div>'}</section>
+    <section class="backup-warning"><strong>恢复说明</strong><span>恢复会先停止全部 BOX 服务，再替换当前地图、游玩包和 VOXA 本地资源。恢复后请回到服务总览重新启动需要的服务。</span></section>`
+}
+
 const helpChapters = [
   ['welcome', '认识产品'],
   ['quickstart', '快速部署'],
@@ -382,11 +425,13 @@ function render() {
         ? diagnostics()
         : state.page === 'performance'
           ? performance()
-          : state.page === 'logs'
-            ? logs()
-            : state.page === 'help'
-              ? help()
-              : overview()
+          : state.page === 'backups'
+            ? backups()
+            : state.page === 'logs'
+              ? logs()
+              : state.page === 'help'
+                ? help()
+                : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
   syncPerformancePolling()
@@ -400,6 +445,7 @@ function bindEvents() {
     node.addEventListener('click', () => {
       state.page = node.dataset.page
       render()
+      if (state.page === 'backups') loadBackups()
     }),
   )
   document.querySelector('#refresh')?.addEventListener('click', refreshStatus)
@@ -408,6 +454,13 @@ function bindEvents() {
     render()
   })
   document.querySelector('#refresh-performance')?.addEventListener('click', refreshPerformance)
+  document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
+  document.querySelector('#create-backup')?.addEventListener('click', createBackup)
+  document
+    .querySelectorAll('[data-restore-backup]')
+    .forEach((node) =>
+      node.addEventListener('click', () => restoreBackup(node.dataset.restoreBackup)),
+    )
   document.querySelector('#theme-trigger')?.addEventListener('click', () => {
     state.themeMenuOpen = !state.themeMenuOpen
     render()
@@ -673,6 +726,60 @@ async function exportDiagnostics() {
   } finally {
     state.busy = false
     render()
+  }
+}
+
+async function loadBackups() {
+  if (state.backupsLoading) return
+  state.backupsLoading = true
+  if (state.page === 'backups') render()
+  try {
+    state.backups = await invoke('list_backups')
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.backupsLoading = false
+    if (state.page === 'backups') render()
+  }
+}
+
+async function createBackup() {
+  if (state.busy) return
+  state.busy = true
+  state.error = ''
+  state.backupMessage = ''
+  render()
+  try {
+    const path = await invoke('create_backup')
+    state.backupMessage = `备份已创建：${path}`
+    await loadBackups()
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    if (state.page === 'backups') render()
+  }
+}
+
+async function restoreBackup(archive) {
+  if (state.busy || !archive) return
+  const confirmed = window.confirm(
+    '恢复会停止全部服务，并替换当前地图、游玩包和本地 VOXA 资源。当前未备份的修改将丢失，确定继续吗？',
+  )
+  if (!confirmed) return
+  state.busy = true
+  state.error = ''
+  state.backupMessage = ''
+  render()
+  try {
+    await invoke('restore_backup', { archive })
+    state.backupMessage = '恢复完成。服务已停止，请在服务总览按需重新启动。'
+    await refreshStatus()
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    if (state.page === 'backups') render()
   }
 }
 

@@ -4,8 +4,11 @@ import { setLocalCors } from '../server/local-cors';
 
 type Headers = Record<string, string | string[] | undefined>;
 
-function request(origin?: string): { headers: Headers } {
-  return { headers: origin ? { origin } : {} };
+function request(origin?: string, host?: string): { headers: Headers } {
+  const headers: Headers = {};
+  if (origin) headers.origin = origin;
+  if (host) headers.host = host;
+  return { headers };
 }
 
 function response() {
@@ -45,6 +48,22 @@ try {
     setLocalCors(request('http://10.240.28.132:3221') as any, response() as any),
     false,
     'a different LAN host must remain rejected',
+  );
+  assert.equal(
+    setLocalCors(
+      request('http://10.240.28.131:3222', '10.240.28.131:3222') as any,
+      response() as any,
+    ),
+    true,
+    'the current VOXA host must be able to save without an extra origin setting',
+  );
+  assert.equal(
+    setLocalCors(
+      request('http://10.240.28.132:3222', '10.240.28.131:3222') as any,
+      response() as any,
+    ),
+    false,
+    'a different origin must not be trusted merely because it is on the LAN',
   );
   assert.equal(
     setLocalCors(request('http://127.0.0.1:3001') as any, response() as any),
