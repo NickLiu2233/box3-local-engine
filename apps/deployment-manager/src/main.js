@@ -55,8 +55,7 @@ const icons = {
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.8 1.95c-.94.66-1.5 1.03-1.5 2.05M12 17h.01"/>',
   play: '<path d="m8 5 11 7-11 7Z"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
-  refresh:
-    '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M18.5 9A7 7 0 0 0 6 7l-2 5M5.5 15A7 7 0 0 0 18 17l2-5"/>',
+  refresh: '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
   external: '<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 13v6H5V6h6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>',
   moon: '<path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2Z"/>',
@@ -110,11 +109,12 @@ function themeControl() {
 function shell(content) {
   return `<div class="shell">
     <aside>
-      <div class="brand"><div class="brand-mark">B</div><div><strong>BOX</strong><span>部署管理器</span></div></div>
-      <nav>${navItem('overview', 'home', '总览')}${navItem('diagnostics', 'check', '环境检查')}${navItem('performance', 'performance', '性能监控')}${navItem('setup', 'settings', '数据配置')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}</nav>
+      <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
+      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}</nav>
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
+    ${state.notice ? `<div class="toast success" role="status"><span>已保存</span><small>${escapeHtml(state.notice)}</small><button type="button" data-dismiss-notice aria-label="关闭提示">×</button></div>` : ''}
     ${state.startMenuOpen ? startScopeDialog() : ''}
   </div>`
 }
@@ -138,7 +138,7 @@ function performance() {
         second: '2-digit',
       })
     : '尚未采样'
-  return `<header><div><h1>性能监控</h1><p class="header-description">查看 BOX 服务的实时资源占用</p></div><button class="button" id="refresh-performance" ${state.performanceLoading ? 'disabled' : ''}>${icon('refresh')}${state.performanceLoading ? '采样中' : '刷新'}</button></header>
+  return `<header><div><h1>性能监控</h1><p class="header-description">查看 BOX 服务的实时资源占用</p></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="refresh-performance" ${state.performanceLoading ? 'disabled' : ''}>${icon('refresh')}${state.performanceLoading ? '采样中' : '刷新'}</button></div></header>
     ${state.performanceError ? `<section class="notice danger"><strong>无法读取性能数据</strong><span>${escapeHtml(state.performanceError)}</span></section>` : ''}
     <section class="metric-grid"><article><span>运行服务</span><strong>${running.length} / ${samples.filter((service) => service.enabled).length || 0}</strong><small>已启用服务</small></article><article><span>总 CPU</span><strong>${formatMetric(totalCpu)}</strong><small>当前容器合计</small></article><article><span>内存状态</span><strong>${running.length ? '正常采样' : '—'}</strong><small>${sampledAt}</small></article></section>
     <section class="performance-panel"><div class="performance-head"><span>服务</span><span>CPU</span><span>内存</span><span>占用率</span><span>进程</span><span>状态</span></div>${services
@@ -169,14 +169,13 @@ function overview() {
   const summaryDetail = installed
     ? `${runningCount} / ${enabledCount} 个服务运行中`
     : '完成配置后即可启动'
-  return `<header><div><h1>服务总览</h1></div>
-    <button class="icon-button" id="refresh" title="刷新">${icon('refresh')}</button></header>
+  return `<header><div><h1>服务总览</h1><p class="header-description">管理本机的创作、游玩和玩家服务</p></div>
+    <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button><button class="icon-button" id="refresh" title="刷新">${icon('refresh')}</button></div></header>
     ${!state.status?.dockerReady ? `<section class="notice danger"><strong>Docker Desktop 尚未就绪</strong><span>${escapeHtml(state.status?.dockerMessage || '请安装并启动 Docker Desktop。')}</span></section>` : ''}
     ${errorBanner()}
-    ${state.notice ? `<section class="notice success"><strong>配置已保存</strong><span>${escapeHtml(state.notice)}</span></section>` : ''}
     ${state.busy ? progressPanel() : ''}
     <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
-      <div class="hero-actions">${installed ? `${allHealthy ? '' : `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>`}<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
+      <div class="hero-actions">${installed ? `${allHealthy ? '' : `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
     <div class="section-title"><h2>应用服务</h2></div>
     <div class="service-grid">${services.map(serviceCard).join('')}</div>`
 }
@@ -198,7 +197,7 @@ function serviceCard([id, name, description, portKey, defaultPort, path]) {
     state.serviceMenu === id
       ? `<div class="service-more-menu"><button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button><button data-service-logs="${id}">${icon('logs')}查看运行日志</button><button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
       : ''
-  return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-icon">${name.slice(0, 1)}</div><div class="service-copy"><h3>${name}</h3><p>${availability}<span>· :${port}</span></p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands"><button class="service-open" data-open="${escapeHtml(url)}" ${running ? '' : 'disabled'}>打开</button><button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
+  return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-icon">${name.slice(0, 1)}</div><div class="service-copy"><h3>${name}</h3><p>${availability}${running ? `<span>· :${port}</span>` : ''}</p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands"><button class="service-open" data-open="${escapeHtml(url)}" ${running ? '' : 'disabled'}>打开</button><button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
 }
 
 function getServiceUrl(serviceId) {
@@ -212,7 +211,7 @@ function getServiceUrl(serviceId) {
 
 function diagnostics() {
   const checks = state.environmentChecks
-  return `<header><div><h1>环境检查</h1><p class="header-description">部署前检查 Docker、数据目录、端口和远程服务</p></div><div class="header-actions"><button class="button" id="export-diagnostics" ${state.busy ? 'disabled' : ''}>${icon('logs')}生成诊断包</button><button class="button primary" id="run-environment-checks" ${state.checkingEnvironment ? 'disabled' : ''}>${icon('check')}${state.checkingEnvironment ? '检查中' : '开始检查'}</button></div></header>
+  return `<header><div><h1>环境检查</h1><p class="header-description">部署前检查 Docker、数据目录、端口和远程服务</p></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="export-diagnostics" ${state.busy ? 'disabled' : ''}>${icon('logs')}生成诊断包</button><button class="button primary" id="run-environment-checks" ${state.checkingEnvironment ? 'disabled' : ''}>${icon('check')}${state.checkingEnvironment ? '检查中' : '开始检查'}</button></div></header>
     ${errorBanner()}
     ${state.diagnosticPath ? `<section class="notice success"><strong>诊断包已生成</strong><span>${escapeHtml(state.diagnosticPath)}</span></section>` : ''}
     <section class="check-panel">${
@@ -260,7 +259,7 @@ function setup() {
       ['保存生效', '保存只写入文件，不会自动重启；请回到总览重新启动受影响的服务。'],
       ['安全提醒', '这里会显示数据库密码和密钥，不要截图、提交到仓库或发送给其他人。'],
     ],
-  )}<div class="form-actions"><span>${escapeHtml(state.environmentMessage || '支持注释与 KEY=VALUE。保存后需在总览重新启动受影响服务。')}</span><button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存 .env</button></div></section>`
+  )}<div class="form-actions submit-actions"><button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存配置</button></div></section>`
   return `<header><div><h1>数据配置</h1></div></header>
     ${errorBanner()}
     ${state.busy ? progressPanel() : ''}
@@ -310,7 +309,7 @@ function setup() {
             ],
           ],
         )}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>建议使用至少 16 个字符的随机值；修改后旧会话和旧 API 调用会失效</span></div></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div><p class="config-note">三个密钥都会安全写入本机 .env；留空时保留当前值。若需要查看现有原文，请使用“原始 .env”。</p>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>建议使用至少 16 个字符的随机值；修改后旧会话和旧 API 调用会失效</span></div></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
           '配置说明：服主密钥分别做什么？',
           [
             ['服主操作令牌', '保护 Play 端的服主操作接口。'],
@@ -324,7 +323,7 @@ function setup() {
         )}</section>
         ${rawEnvironmentPanel}
       </div>
-      ${state.setupSection === 'environment' ? '' : `<div class="form-actions"><span>保存后不会自动启动服务，请回到总览选择启动范围。</span><button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button></div>`}
+      ${state.setupSection === 'environment' ? '' : `<div class="form-actions submit-actions"><button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button></div>`}
     </form>`
 }
 
@@ -399,6 +398,10 @@ function bindEvents() {
     }),
   )
   document.querySelector('#refresh')?.addEventListener('click', refreshStatus)
+  document.querySelector('[data-dismiss-notice]')?.addEventListener('click', () => {
+    state.notice = ''
+    render()
+  })
   document.querySelector('#refresh-performance')?.addEventListener('click', refreshPerformance)
   document.querySelector('#theme-trigger')?.addEventListener('click', () => {
     state.themeMenuOpen = !state.themeMenuOpen
@@ -737,8 +740,7 @@ async function saveConfiguration(event) {
   render()
   try {
     await invoke('save_configuration_command', { config })
-    state.page = 'overview'
-    state.notice = '配置已保存，请在总览选择启动范围。'
+    state.notice = '已保存在当前页面，服务不会自动启动。'
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
@@ -755,11 +757,13 @@ async function saveRawEnvironment() {
   state.environmentFileSaving = true
   state.environmentMessage = ''
   state.error = ''
+  state.notice = ''
   state.environmentFile = textarea.value
   render()
   try {
     await invoke('save_raw_environment', { content: state.environmentFile })
     state.environmentMessage = '环境变量已保存，不会自动重启服务。'
+    state.notice = state.environmentMessage
     state.progress = { stage: 'saved', message: '环境变量已保存', percent: 100 }
   } catch (error) {
     state.error = String(error)

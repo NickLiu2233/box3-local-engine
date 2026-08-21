@@ -134,10 +134,13 @@ assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1/)
 assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1}:\$\{BOX_CREATOR_PORT/)
 assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1}:\$\{BOX_VOXA_PORT/)
 assert.doesNotMatch(frontend, /name="bindIp"/)
-// Saving data configuration must be a non-disruptive operation. Starting
-// containers is an explicit choice made from the overview page.
+// Saving data configuration must be a non-disruptive operation. It keeps the
+// user on the current setup page; starting containers remains an explicit
+// choice from the overview page.
 assert.match(frontend, /保存配置/)
-assert.match(frontend, /配置已保存，请在总览选择启动范围/)
+assert.match(frontend, /已保存在当前页面，服务不会自动启动/)
+assert.match(frontend, /class="toast success"/)
+assert.doesNotMatch(frontend, /state\.page = 'overview'\s*\n\s*state\.notice/)
 assert.match(frontend, /function getServiceUrl\(/)
 assert.match(frontend, /function startScopeDialog\(/)
 assert.match(frontend, /class="dialog-backdrop"/)

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "BOX Local Engine",
+  "productName": "BOX3 Engine",
   "version": "0.1.0",
   "identifier": "com.boxlocal.engine.manager",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "BOX Local Engine",
+        "title": "BOX3 Engine",
         "width": 1180,
         "height": 760,
         "minWidth": 940,
@@ -31,8 +31,8 @@
     "targets": "all",
     "icon": ["../../game/public/logo512.png"],
     "category": "DeveloperTool",
-    "shortDescription": "Install and manage BOX Local Engine",
-    "longDescription": "A native graphical installer and operations console for BOX Local Engine.",
+    "shortDescription": "Install and manage BOX3 Engine",
+    "longDescription": "A native graphical installer and operations console for BOX3 Engine.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
