@@ -358,7 +358,7 @@ Player Service 是玩家身份的唯一写入者。Creator 和 Play 只消费它
 Upgrade 到 `3000`：
 
 ```env
-BOX_PLAY_HOST_IP=127.0.0.1
+BOX_BIND_IP=127.0.0.1
 BOX_PLAY_PORT=3000
 BOX_SERVER_PUBLIC_URL=https://play.example.com
 BOX_TRUST_PROXY=true

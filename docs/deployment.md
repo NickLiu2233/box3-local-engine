@@ -123,7 +123,7 @@ services:
       BOX_LOCAL_PLAYER_LIMIT: 8
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
     ports:
-      - '${BOX_PLAY_HOST_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000'
+      - '${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000'
     volumes:
       - ./play-worlds:/app/play-worlds:ro
 ```
@@ -173,7 +173,7 @@ docker compose up -d
 游玩端只公开一个端口：
 
 ```env
-BOX_PLAY_HOST_IP=0.0.0.0
+BOX_BIND_IP=0.0.0.0
 BOX_PLAY_PORT=3000
 BOX_LOCAL_PLAYER_LIMIT=8
 PERMISSION_TOKEN_SECRET=

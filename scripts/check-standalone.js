@@ -768,7 +768,7 @@ requirePattern(
   creatorCompose,
   composeFile,
   'creator runtime ports with a safe loopback default',
-  /\$\{BOX_BIND_IP:-127\.0\.0\.1}:9966:9966[\s\S]*?\$\{BOX_BIND_IP:-127\.0\.0\.1}:9967:9967/,
+  /127\.0\.0\.1:9966:9966[\s\S]*?127\.0\.0\.1:9967:9967/,
 )
 requirePattern(
   playCompose,
