@@ -3,11 +3,11 @@ import { listen } from '@tauri-apps/api/event'
 import './styles.css'
 
 const services = [
-  ['creator', '创作端', '地图与模型创作', 'creatorPort', 3002, '/'],
+  ['creator', 'ARENA', '地图编辑服务', 'creatorPort', 3002, '/'],
+  ['voxa', 'VOXA', '模型编辑服务', 'voxaPort', 3001, '/'],
   ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3000, '/'],
   ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3213, '/players'],
   ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3214, '/'],
-  ['voxa', 'VOXA', '模型编辑服务', 'voxaPort', 3001, '/'],
 ]
 
 const THEME_KEY = 'box-manager-theme'
@@ -25,6 +25,7 @@ const state = {
   status: null,
   config: null,
   logs: '',
+  logLoading: false,
   logService: '',
   environmentChecks: [],
   checkingEnvironment: false,
@@ -120,7 +121,7 @@ function shell(content) {
 }
 
 function startScopeDialog() {
-  return `<div class="dialog-backdrop" data-start-dialog-dismiss><section class="start-dialog" role="dialog" aria-modal="true" aria-labelledby="start-dialog-title"><header><div><h2 id="start-dialog-title">启动服务</h2><p>选择本次需要运行的服务。</p></div><button class="dialog-close" id="cancel-start" aria-label="取消">×</button></header><div class="start-scope-list"><button data-start-scope="all"><strong>全部服务</strong><span>创作、游玩与已配置的附属服务</span></button><button data-start-scope="play"><strong>游玩端</strong><span>Play 与游玩所需服务</span></button><button data-start-scope="creator"><strong>创作端</strong><span>Creator、VOXA 与创作所需服务</span></button></div></section></div>`
+  return `<div class="dialog-backdrop" data-start-dialog-dismiss><section class="start-dialog" role="dialog" aria-modal="true" aria-labelledby="start-dialog-title"><header><div><h2 id="start-dialog-title">启动服务</h2><p>选择本次需要运行的服务。</p></div><button class="dialog-close" id="cancel-start" aria-label="取消">×</button></header><div class="start-scope-list"><button data-start-scope="all"><strong>全部服务</strong><span>创作端、游玩与已配置的附属服务</span></button><button data-start-scope="play"><strong>游玩端</strong><span>Play 与游玩所需服务</span></button><button data-start-scope="creator"><strong>创作端</strong><span>ARENA、VOXA 与创作所需服务</span></button></div></section></div>`
 }
 
 function formatMetric(value, suffix = '%') {
@@ -138,7 +139,7 @@ function performance() {
         second: '2-digit',
       })
     : '尚未采样'
-  return `<header><div><h1>性能监控</h1><p class="header-description">查看 BOX 服务的实时资源占用</p></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="refresh-performance" ${state.performanceLoading ? 'disabled' : ''}>${icon('refresh')}${state.performanceLoading ? '采样中' : '刷新'}</button></div></header>
+  return `<header><div><h1>性能监控</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="refresh-performance" ${state.performanceLoading ? 'disabled' : ''}>${icon('refresh')}${state.performanceLoading ? '采样中' : '刷新'}</button></div></header>
     ${state.performanceError ? `<section class="notice danger"><strong>无法读取性能数据</strong><span>${escapeHtml(state.performanceError)}</span></section>` : ''}
     <section class="metric-grid"><article><span>运行服务</span><strong>${running.length} / ${samples.filter((service) => service.enabled).length || 0}</strong><small>已启用服务</small></article><article><span>总 CPU</span><strong>${formatMetric(totalCpu)}</strong><small>当前容器合计</small></article><article><span>内存状态</span><strong>${running.length ? '正常采样' : '—'}</strong><small>${sampledAt}</small></article></section>
     <section class="performance-panel"><div class="performance-head"><span>服务</span><span>CPU</span><span>内存</span><span>占用率</span><span>进程</span><span>状态</span></div>${services
@@ -146,7 +147,7 @@ function performance() {
         const item = samples.find((sample) => sample.name === id)
         const enabled = item?.enabled !== false
         const memoryPercent = Math.min(100, Math.max(0, item?.memoryPercent || 0))
-        return `<article class="performance-row ${enabled ? '' : 'disabled'}"><div class="performance-name"><span class="service-icon">${name.slice(0, 1)}</span><strong>${name}</strong></div><b>${formatMetric(item?.cpuPercent)}</b><div><b>${escapeHtml(item?.memoryUsage || '0 B')}</b><small>/ ${escapeHtml(item?.memoryLimit || '—')}</small></div><div class="memory-meter"><span><i style="width:${memoryPercent}%"></i></span><b>${formatMetric(memoryPercent)}</b></div><b>${item?.pids || 0}</b><span class="service-state ${item?.running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : item?.running ? '运行中' : '已停止'}</span></article>`
+        return `<article class="performance-row ${enabled ? '' : 'disabled'}"><div class="performance-name"><strong>${name}</strong></div><b>${formatMetric(item?.cpuPercent)}</b><div><b>${escapeHtml(item?.memoryUsage || '0 B')}</b><small>/ ${escapeHtml(item?.memoryLimit || '—')}</small></div><div class="memory-meter"><span><i style="width:${memoryPercent}%"></i></span><b>${formatMetric(memoryPercent)}</b></div><b>${item?.pids || 0}</b><span class="service-state ${item?.running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : item?.running ? '运行中' : '已停止'}</span></article>`
       })
       .join(
         '',
@@ -169,7 +170,7 @@ function overview() {
   const summaryDetail = installed
     ? `${runningCount} / ${enabledCount} 个服务运行中`
     : '完成配置后即可启动'
-  return `<header><div><h1>服务总览</h1><p class="header-description">管理本机的创作、游玩和玩家服务</p></div>
+  return `<header><div><h1>服务总览</h1></div>
     <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button><button class="icon-button" id="refresh" title="刷新">${icon('refresh')}</button></div></header>
     ${!state.status?.dockerReady ? `<section class="notice danger"><strong>Docker Desktop 尚未就绪</strong><span>${escapeHtml(state.status?.dockerMessage || '请安装并启动 Docker Desktop。')}</span></section>` : ''}
     ${errorBanner()}
@@ -192,12 +193,13 @@ function serviceCard([id, name, description, portKey, defaultPort, path]) {
   const running = service?.running
   const url = getServiceUrl(id)
   const port = Number(state.config?.[portKey]) || defaultPort
+  const endpoint = `${state.config?.publicHost || '127.0.0.1'}:${port}`
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
     state.serviceMenu === id
-      ? `<div class="service-more-menu"><button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button><button data-service-logs="${id}">${icon('logs')}查看运行日志</button><button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
+      ? `<div class="service-more-menu">${running ? `<button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button>` : ''}<button data-service-logs="${id}">${icon('logs')}查看运行日志</button><button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
       : ''
-  return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-icon">${name.slice(0, 1)}</div><div class="service-copy"><h3>${name}</h3><p>${availability}${running ? `<span>· :${port}</span>` : ''}</p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands"><button class="service-open" data-open="${escapeHtml(url)}" ${running ? '' : 'disabled'}>打开</button><button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
+  return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-copy"><h3>${name}</h3><p>${availability}${running ? `<span>· ${escapeHtml(endpoint)}</span>` : ''}</p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands">${running ? `<button class="service-open" data-open="${escapeHtml(url)}">打开</button>` : ''}<button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
 }
 
 function getServiceUrl(serviceId) {
@@ -211,7 +213,7 @@ function getServiceUrl(serviceId) {
 
 function diagnostics() {
   const checks = state.environmentChecks
-  return `<header><div><h1>环境检查</h1><p class="header-description">部署前检查 Docker、数据目录、端口和远程服务</p></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="export-diagnostics" ${state.busy ? 'disabled' : ''}>${icon('logs')}生成诊断包</button><button class="button primary" id="run-environment-checks" ${state.checkingEnvironment ? 'disabled' : ''}>${icon('check')}${state.checkingEnvironment ? '检查中' : '开始检查'}</button></div></header>
+  return `<header><div><h1>环境检查</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="export-diagnostics" ${state.busy ? 'disabled' : ''}>${icon('logs')}生成诊断包</button><button class="button primary" id="run-environment-checks" ${state.checkingEnvironment ? 'disabled' : ''}>${icon('check')}${state.checkingEnvironment ? '检查中' : '开始检查'}</button></div></header>
     ${errorBanner()}
     ${state.diagnosticPath ? `<section class="notice success"><strong>诊断包已生成</strong><span>${escapeHtml(state.diagnosticPath)}</span></section>` : ''}
     <section class="check-panel">${
@@ -252,14 +254,14 @@ function setup() {
       'password',
       config[name] ? '本次配置已输入，保存时会使用' : configured ? '留空保留当前密钥' : hint,
     )
-  const rawEnvironmentPanel = `<section class="setup-panel environment-panel ${state.setupSection === 'environment' ? 'active' : ''}" data-setup-panel="environment"><div class="group-title"><div><h2>原始 .env</h2><span>仅限服主使用 · 会显示密钥，请勿截图或转发</span></div><button type="button" class="text-button" id="reload-raw-environment" ${state.environmentFileSaving ? 'disabled' : ''}>重新读取</button></div><textarea id="raw-environment" class="raw-environment" spellcheck="false" ${state.environmentFileSaving ? 'disabled' : ''}>${escapeHtml(state.environmentFile)}</textarea>${setupExplanation(
+  const rawEnvironmentPanel = `<section class="setup-panel environment-panel ${state.setupSection === 'environment' ? 'active' : ''}" data-setup-panel="environment"><div class="config-group raw-config-group"><div class="group-title"><div><h2>原始 .env</h2><span>仅限服主使用 · 会显示密钥，请勿截图或转发</span></div><button type="button" class="text-button" id="reload-raw-environment" ${state.environmentFileSaving ? 'disabled' : ''}>重新读取</button></div><textarea id="raw-environment" class="raw-environment" spellcheck="false" ${state.environmentFileSaving ? 'disabled' : ''}>${escapeHtml(state.environmentFile)}</textarea></div>${setupExplanation(
     '配置说明：什么时候需要编辑原始 .env？',
     [
       ['适合场景', '需要调整模板中没有展示的高级参数，或排查服主部署问题时使用。'],
       ['保存生效', '保存只写入文件，不会自动重启；请回到总览重新启动受影响的服务。'],
       ['安全提醒', '这里会显示数据库密码和密钥，不要截图、提交到仓库或发送给其他人。'],
     ],
-  )}<div class="form-actions submit-actions"><button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存配置</button></div></section>`
+  )}</section>`
   return `<header><div><h1>数据配置</h1></div></header>
     ${errorBanner()}
     ${state.busy ? progressPanel() : ''}
@@ -288,7 +290,7 @@ function setup() {
             ],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="config-group"><div class="group-title"><div><h2>对外访问</h2><span>统一设置地址，也可以分别调整端口</span></div></div><div class="network-presets"><button type="button" class="${localSelected ? 'active' : ''}" data-network-host="127.0.0.1"><strong>仅本机</strong><span>127.0.0.1</span></button><button type="button" class="${lanSelected ? 'active' : ''}" data-network-host="${escapeHtml(config.lanIp || '')}" ${config.lanIp ? '' : 'disabled'}><strong>局域网</strong><span>${escapeHtml(config.lanIp || '未检测到可用地址')}</span></button></div><div class="form-grid single">${input('publicHost', '访问地址', config.publicHost || '127.0.0.1', 'text', '也可以填写服务器 IP 或域名')}</div><div class="form-grid port-grid">${input('playPort', 'Play', config.playPort || 3000, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3001, 'number')}${input('creatorPort', 'Creator', config.creatorPort || 3002, 'number')}${input('playerServicePort', '玩家管理', config.playerServicePort || 3213, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3214, 'number')}</div><p class="config-note">局域网预设会使用当前电脑的主要局域网地址。五个服务会同步应用访问范围，并使用上方各自的端口。</p></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="config-group"><div class="group-title"><div><h2>对外访问</h2><span>统一设置地址，也可以分别调整端口</span></div></div><div class="network-presets"><button type="button" class="${localSelected ? 'active' : ''}" data-network-host="127.0.0.1"><strong>仅本机</strong><span>127.0.0.1</span></button><button type="button" class="${lanSelected ? 'active' : ''}" data-network-host="${escapeHtml(config.lanIp || '')}" ${config.lanIp ? '' : 'disabled'}><strong>局域网</strong><span>${escapeHtml(config.lanIp || '未检测到可用地址')}</span></button></div><div class="form-grid single">${input('publicHost', '访问地址', config.publicHost || '127.0.0.1', 'text', '也可以填写服务器 IP 或域名')}</div><div class="form-grid port-grid">${input('playPort', 'Play', config.playPort || 3000, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3001, 'number')}${input('creatorPort', 'ARENA', config.creatorPort || 3002, 'number')}${input('playerServicePort', '玩家管理', config.playerServicePort || 3213, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3214, 'number')}</div><p class="config-note">局域网预设会使用当前电脑的主要局域网地址。五个服务会同步应用访问范围，并使用上方各自的端口。</p></div>${setupExplanation(
           '配置说明：访问地址和端口有什么影响？',
           [
             ['仅本机', '使用 127.0.0.1，只允许当前电脑访问，适合本地测试。'],
@@ -323,14 +325,14 @@ function setup() {
         )}</section>
         ${rawEnvironmentPanel}
       </div>
-      ${state.setupSection === 'environment' ? '' : `<div class="form-actions submit-actions"><button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button></div>`}
+      <div class="form-actions submit-actions">${state.setupSection === 'environment' ? `<button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存配置</button>` : `<button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button>`}</div>
     </form>`
 }
 
 function logs() {
   const selectedLabel = services.find(([id]) => id === state.logService)?.[1] || '全部服务'
-  return `<section class="logs-page"><header><div><h1>运行日志</h1><p class="header-description">${selectedLabel}</p></div><button class="button" id="load-logs">${icon('refresh')}刷新</button></header><div class="log-filters"><button class="${state.logService ? '' : 'active'}" data-log-service="">全部</button>${services.map(([id, name]) => `<button class="${state.logService === id ? 'active' : ''}" data-log-service="${id}">${name}</button>`).join('')}</div>
-    <section class="log-card"><div class="log-toolbar"><span>最近 ${state.logService ? '300' : '500'} 行</span><button class="text-button" id="copy-logs">复制</button></div><pre>${escapeHtml(state.logs || '点击“刷新”读取服务日志。')}</pre></section></section>`
+  return `<section class="logs-page"><header><div><h1>运行日志</h1></div><div class="header-actions"><span class="log-live-status" id="log-live-status"><i></i>实时</span></div></header><div class="log-filters"><button class="${state.logService ? '' : 'active'}" data-log-service="">全部</button>${services.map(([id, name]) => `<button class="${state.logService === id ? 'active' : ''}" data-log-service="${id}">${name}</button>`).join('')}</div>
+    <section class="log-card"><pre id="log-output">${escapeHtml(state.logs || '正在连接日志流…')}</pre></section></section>`
 }
 
 const helpChapters = [
@@ -357,7 +359,7 @@ function helpList(items) {
 
 function helpContent() {
   const chapters = {
-    welcome: `<div class="guide-heading"><span>产品介绍</span><h2>BOX Local Engine</h2><p>面向服主的 BOX 本地化创作、游玩与玩家运营环境。</p></div><div class="guide-grid">${helpSection('能做什么', helpList(['在本机或服务器运行 Creator 与 Play', '管理地图、地图组、模型和游玩包', '使用 VOXA 编辑本地模型', '按需启用玩家账号、权限与封禁']))}${helpSection('产品定位', '<p>本项目保留 BOX 核心引擎与创作流程，并将平台依赖替换为本地服务。它不是 BOX 云平台的完整复制品，不包含云社区、商业化、平台审核与数据分析。</p>')}${helpSection('部署组成', '<div class="tag-row"><span>Creator</span><span>Play</span><span>玩家服务</span><span>登录门户</span><span>VOXA</span></div>')}${helpSection('数据原则', '<p>地图、模型和运行缓存保存在应用数据目录。配置 PostgreSQL 后，玩家与地图脚本数据写入远程数据库；Redis 仅用于缓存和运行时协调。</p>')}</div>`,
+    welcome: `<div class="guide-heading"><h2>BOX3 Engine</h2></div><div class="guide-grid">${helpSection('能做什么', helpList(['在本机或服务器运行 Creator 与 Play', '管理地图、地图组、模型和游玩包', '使用 VOXA 编辑本地模型', '按需启用玩家账号、权限与封禁']))}${helpSection('产品定位', '<p>本项目保留 BOX 核心引擎与创作流程，并将平台依赖替换为本地服务。它不是 BOX 云平台的完整复制品，不包含云社区、商业化、平台审核与数据分析。</p>')}${helpSection('部署组成', '<div class="tag-row"><span>Creator</span><span>Play</span><span>玩家服务</span><span>登录门户</span><span>VOXA</span></div>')}${helpSection('数据原则', '<p>地图、模型和运行缓存保存在应用数据目录。配置 PostgreSQL 后，玩家与地图脚本数据写入远程数据库；Redis 仅用于缓存和运行时协调。</p>')}</div>`,
     quickstart: `<div class="guide-heading"><span>首次使用</span><h2>快速部署</h2><p>准备 Docker Desktop，几步完成本机部署。</p></div><ol class="step-list"><li><b>启动 Docker</b><span>安装 Docker Desktop，并保持 Linux containers 模式。</span></li><li><b>打开管理器</b><span>Windows 运行 EXE，macOS 打开 APP。</span></li><li><b>保存配置</b><span>PostgreSQL 和 Redis 均可留空；保存配置不会启动容器。</span></li><li><b>选择启动范围</b><span>回到总览，选择全部服务、创作端或游玩端；管理器会导入所需离线镜像并启动对应服务。</span></li><li><b>开始使用</b><span>状态变为“运行正常”后点击对应服务的打开按钮。</span></li></ol><div class="guide-callout"><strong>未配置数据服务</strong><span>仍可创建、编辑和游玩地图，但数据存储 API、玩家管理和登录门户不可用，不会在本机文件中保存脚本数据。</span></div>`,
     services: `<div class="guide-heading"><span>系统组成</span><h2>服务与端口</h2><p>每个模块职责独立，可以从总览直接打开。</p></div><div class="service-table"><div class="table-head"><span>服务</span><span>默认地址</span><span>用途</span></div><div><b>Creator</b><code>:3002</code><span>地图和项目资源创作</span></div><div><b>Play</b><code>:3000</code><span>玩家游玩与作品管理</span></div><div><b>玩家管理</b><code>:3213</code><span>账号、角色、封禁和审计</span></div><div><b>登录门户</b><code>:3214</code><span>示例登录与注册入口</span></div><div><b>VOXA</b><code>:3001</code><span>模型创建和编辑</span></div></div>${helpSection('访问范围', '<p>“访问设置”只需填写一个地址，并统一应用于 Creator、Play、玩家管理、登录门户和 VOXA。填写 127.0.0.1 时仅本机可访问；填写局域网 IP 或域名时五个服务都会对外开放。公网部署建议配置 HTTPS 反向代理、访问权限和防火墙。</p>')}`,
     configuration: `<div class="guide-heading"><span>数据配置</span><h2>配置说明</h2><p>常用参数分为五个页面，配置保存与服务启动彼此独立。</p></div><div class="guide-grid">${helpSection('PostgreSQL · 选填', helpList(['填写地址后启用玩家管理和登录门户', '地图脚本数据使用 PostgreSQL 数据空间', '留空时数据存储 API 不可用', 'SSL 由数据库服务端要求决定']))}${helpSection('Redis · 选填', helpList(['业务 DB 与缓存 DB 应使用不同编号', '留空时不启用 Redis 缓存', 'Redis 不保存唯一业务数据，可随时重建']))}${helpSection('访问设置', helpList(['127.0.0.1：五个服务仅当前电脑访问', '局域网 IP/域名：五个服务均可从外部访问', '开放 Creator 前应配置登录权限与防火墙']))}${helpSection('服主与安全', helpList(['可替换服主操作令牌、玩家服务 API Key 和运行时身份密钥', '密钥至少 16 个字符；留空会保留当前值', '修改密钥后旧会话或 API 调用会失效']))}${helpSection('原始 .env', helpList(['显示当前 .env 原文，适合高级配置和排障', '会显示密码与密钥，请勿截图或转发', '保存后不会自动重启服务，需在总览手动启动或重启']))}${helpSection('运行容量', helpList(['游玩运行时：同时活跃的地图/房间', '编辑运行时：同时打开的编辑项目', '创作预览：编辑器内运行实例', '上限越高，占用的内存越多']))}</div>`,
@@ -387,14 +389,17 @@ function render() {
               : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
+  syncPerformancePolling()
+  syncLogPolling()
 }
 
 function bindEvents() {
+  document.removeEventListener('click', closeServiceMenuOnOutside)
+  document.addEventListener('click', closeServiceMenuOnOutside)
   document.querySelectorAll('[data-page]').forEach((node) =>
     node.addEventListener('click', () => {
       state.page = node.dataset.page
       render()
-      syncPerformancePolling()
     }),
   )
   document.querySelector('#refresh')?.addEventListener('click', refreshStatus)
@@ -427,10 +432,6 @@ function bindEvents() {
     }),
   )
   document.querySelector('#stop')?.addEventListener('click', () => runAction('stop_services'))
-  document.querySelector('#load-logs')?.addEventListener('click', loadLogs)
-  document
-    .querySelector('#copy-logs')
-    ?.addEventListener('click', () => navigator.clipboard.writeText(state.logs))
   document
     .querySelectorAll('[data-open]')
     .forEach((node) =>
@@ -521,7 +522,16 @@ function bindEvents() {
   )
 }
 
+function closeServiceMenuOnOutside(event) {
+  if (!state.serviceMenu) return
+  const target = event.target
+  if (target instanceof Element && target.closest('.service-more')) return
+  state.serviceMenu = ''
+  render()
+}
+
 let performanceTimer
+let logTimer
 
 function syncPerformancePolling() {
   clearInterval(performanceTimer)
@@ -529,6 +539,14 @@ function syncPerformancePolling() {
   if (state.page !== 'performance') return
   if (!state.performance && !state.performanceLoading) refreshPerformance()
   performanceTimer = window.setInterval(refreshPerformance, 5000)
+}
+
+function syncLogPolling() {
+  clearInterval(logTimer)
+  logTimer = undefined
+  if (state.page !== 'logs') return
+  if (!state.logs && !state.logLoading) loadLogs({ renderPage: false })
+  logTimer = window.setInterval(() => loadLogs({ renderPage: false }), 1500)
 }
 
 async function refreshPerformance() {
@@ -784,21 +802,39 @@ async function reloadRawEnvironment() {
   render()
 }
 
-async function loadLogs() {
+async function loadLogs({ renderPage = true } = {}) {
+  if (state.logLoading) return
+  state.logLoading = true
+  const requestedService = state.logService
+  const refreshButton = renderPage ? document.querySelector('#load-logs') : null
+  if (refreshButton) refreshButton.disabled = true
   try {
-    state.logs = state.logService
-      ? await invoke('get_service_logs', { service: state.logService })
+    const nextLogs = requestedService
+      ? await invoke('get_service_logs', { service: requestedService })
       : await invoke('get_logs')
+    if (state.logService !== requestedService) return
+    state.logs = String(nextLogs)
   } catch (error) {
+    if (state.logService !== requestedService) return
     state.logs = String(error)
+  } finally {
+    state.logLoading = false
+    if (refreshButton) refreshButton.disabled = false
   }
-  render()
+  const output = document.querySelector('#log-output')
+  if (output) {
+    const followTail = output.scrollHeight - output.scrollTop - output.clientHeight < 48
+    output.textContent = state.logs || '暂无日志输出。'
+    if (followTail) output.scrollTop = output.scrollHeight
+  }
 }
 
 listen('install-progress', ({ payload }) => {
   state.progress = payload
   if (state.busy) render()
 })
+
+document.addEventListener('contextmenu', (event) => event.preventDefault())
 
 applyTheme(state.theme)
 refreshStatus()

@@ -29,6 +29,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": ["payload"],
     "icon": ["../../game/public/logo512.png"],
     "category": "DeveloperTool",
     "shortDescription": "Install and manage BOX3 Engine",

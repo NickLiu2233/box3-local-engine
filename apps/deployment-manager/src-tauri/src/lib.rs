@@ -1197,13 +1197,13 @@ async fn run_environment_checks(
         match docker_output(&["info", "--format", "{{.ServerVersion}}"]).map_err(docker_message) {
             Ok(version) => checks.push(EnvironmentCheck {
                 id: "docker".into(),
-                label: "Docker Desktop".into(),
+                label: "Docker".into(),
                 level: "success".into(),
                 message: format!("已连接，服务端版本 {version}"),
             }),
             Err(error) => checks.push(EnvironmentCheck {
                 id: "docker".into(),
-                label: "Docker Desktop".into(),
+                label: "Docker".into(),
                 level: "error".into(),
                 message: error,
             }),

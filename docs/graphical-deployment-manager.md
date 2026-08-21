@@ -6,7 +6,7 @@ BOX 图形化部署管理器是 Creator、Play、玩家管理、登录门户和 
 
 1. 安装并启动 Docker Desktop，保持 Linux containers 模式。
 2. 解压对应系统与架构的离线包。
-3. Windows 双击 `box-local-engine-manager.exe`；macOS 双击 `BOX Local Engine.app`。
+3. Windows 双击 `box-local-engine-manager.exe`；macOS 双击 `BOX3 Engine.app`。
 4. 按需填写远程 PostgreSQL 和 Redis，也可以全部留空。
 5. 点击“保存配置”。管理器会检查已填写的远程端点并生成安全配置，但不会启动容器。
 6. 回到“总览”，选择“全部服务”“创作端”或“游玩端”。此时才会导入需要的离线镜像并启动对应服务。
@@ -28,7 +28,7 @@ BOX 图形化部署管理器是 Creator、Play、玩家管理、登录门户和 
 离线包根目录只保留这些内容：
 
 - 一个原生管理程序：Windows `.exe` 或 macOS `.app`；
-- 一个架构匹配的五镜像归档；
+- Windows 包包含一个与 EXE 放在同一目录的架构匹配五镜像归档；macOS 包将该归档内置在 APP 内；
 - `BUILD-INFO.json`、许可证、第三方依赖清单与 SHA-256 校验文件；
 - 一份很短的“开始使用”说明。
 
