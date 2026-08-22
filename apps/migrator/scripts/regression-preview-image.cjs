@@ -500,6 +500,38 @@ fs.writeFileSync(
   assert.equal(peakRequests, 3, 'the HTTP gate must cap actual active requests')
   console.log('PASS: actual HTTP requests respect the configured concurrency cap')
 
+  // A CDN can send response headers and then stall forever while streaming the
+  // body. AbortSignal.timeout() only reaches fetch; keep this regression at
+  // the body-read seam so a migration slot cannot remain occupied forever.
+  const originalRequestTimeout = process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS
+  process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS = '20'
+  global.fetch = async () => ({
+    ok: true,
+    headers: new Headers(),
+    arrayBuffer: () => new Promise(() => undefined),
+  })
+  await assert.rejects(
+    () =>
+      Promise.race([
+        fetchBlob(
+          'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          1024,
+          undefined,
+          undefined,
+          's3-model',
+        ),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('body stream was never timed out')), 100),
+        ),
+      ]),
+    /无法下载 blob/,
+    'a response body that never finishes must release the migration request slot',
+  )
+  global.fetch = originalFetch
+  if (originalRequestTimeout === undefined) delete process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS
+  else process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS = originalRequestTimeout
+  console.log('PASS: stalled response bodies respect the migration request timeout')
+
   process.env.BOX_MIGRATOR_ENGINE_API_URL = 'https://engine.invalid.test'
   process.env.BOX_MIGRATOR_ENGINE_API_KEY = 'fixed-key'
   const engineRequests = []

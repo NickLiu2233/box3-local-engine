@@ -195,22 +195,45 @@ export async function fetchBlob(
           try {
             return await withRequestSlot(async () => {
               onAttempt(source, 1)
-              const response = await fetch(url, {
-                headers,
-                cache: 'no-store',
-                signal: AbortSignal.any([
-                  controllers[index].signal,
-                  AbortSignal.timeout(timeoutMs),
-                ]),
+              // Some CDN connections return headers but never finish the
+              // response body. Native fetch abort signals are not sufficient
+              // in every Node/undici edge case, so race both fetch and body
+              // consumption against an application-level deadline. This also
+              // guarantees the request-concurrency slot is released.
+              const deadlineController = new AbortController()
+              let deadline: ReturnType<typeof setTimeout> | undefined
+              const timeout = new Promise<never>((_, reject) => {
+                deadline = setTimeout(() => {
+                  const error = new Error(`请求超时（${timeoutMs}ms）`)
+                  deadlineController.abort(error)
+                  controllers[index].abort(error)
+                  reject(error)
+                }, timeoutMs)
               })
-              if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`)
+              try {
+                const response = await Promise.race([
+                  fetch(url, {
+                    headers,
+                    cache: 'no-store',
+                    signal: AbortSignal.any([
+                      controllers[index].signal,
+                      deadlineController.signal,
+                      AbortSignal.timeout(timeoutMs),
+                    ]),
+                  }),
+                  timeout,
+                ])
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}`)
+                }
+                const declaredLength = Number(response.headers.get('content-length') || '0')
+                if (declaredLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
+                const bytes = new Uint8Array(await Promise.race([response.arrayBuffer(), timeout]))
+                if (bytes.byteLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
+                return bytes
+              } finally {
+                if (deadline) clearTimeout(deadline)
               }
-              const declaredLength = Number(response.headers.get('content-length') || '0')
-              if (declaredLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
-              const bytes = new Uint8Array(await response.arrayBuffer())
-              if (bytes.byteLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
-              return bytes
             })
           } catch (error) {
             errors.push(`${url}: ${error instanceof Error ? error.message : String(error)}`)

@@ -162,6 +162,7 @@ export type LocalProjectModelAction =
 
 export type LocalSharedScriptAction =
   | { action: 'share'; fileId: string; hash: string }
+  | { action: 'save'; fileId: string; hash: string }
   | { action: 'unshare'; fileId: string };
 
 type ReplicaRemoteClient = MuRemoteClient<
@@ -2234,6 +2235,15 @@ export class EditReplicaServer {
         lockedMapId: 0,
         id: fileId,
       };
+    } else if (input.action === 'save') {
+      hash = String(input.hash || '').trim();
+      if (!hash) throw new Error('script hash is required');
+      const shared = extra.scriptAssets[fileId];
+      if (!shared?.isShare) throw new Error('script is not shared');
+      shared.hash = hash;
+      shared.name = file.name;
+      shared.isClient = file.isClient;
+      shared.order = file.order;
     } else {
       const shared = extra.scriptAssets[fileId];
       if (!shared?.isShare) throw new Error('script is not shared');

@@ -677,6 +677,17 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_CREATOR_PUBLIC_URL",
         &format!("http://{public_host}:{}", config.creator_port),
     )?;
+    // The embedded VOXA editor saves project-local blobs directly through the
+    // game runtime. It is a different browser origin from Creator, so the
+    // runtime must explicitly allow both configured public addresses.
+    set_env(
+        &mut content,
+        "BOX_RESOURCE_ALLOWED_ORIGINS",
+        &format!(
+            "http://{public_host}:{},http://{public_host}:{}",
+            config.voxa_port, config.creator_port
+        ),
+    )?;
     // Creator APIs mutate source projects. Keep the browser Host allow-list
     // aligned with the one public address selected by the owner instead of
     // accepting arbitrary LAN hosts.

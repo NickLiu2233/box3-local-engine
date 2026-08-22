@@ -85,8 +85,10 @@ export class CodeEditorServerController {
       disconnect: (client) => {
         this._removeCursor(client.sessionId);
         // 断连检查选中状态
+        const selectedFileId = this._editorState.selectedFiles[client.sessionId];
         delete this._editorState.selectedFiles[client.sessionId];
         this._updateFilesState();
+        if (selectedFileId) this._saveFile(selectedFileId).catch(() => {});
       },
       message: {
         copyFile: (client, fileId) => {
@@ -196,9 +198,13 @@ export class CodeEditorServerController {
             return;
           }
 
+          const previousFileId = this._editorState.selectedFiles[client.sessionId];
           this._editorState.selectedFiles[client.sessionId] = fileId;
           this._recordFileSelected(fileId);
           this._updateFilesState();
+          if (previousFileId && previousFileId !== fileId) {
+            this._saveFile(previousFileId).catch(() => {});
+          }
         },
 
         // client所有脚本失焦时调用
@@ -209,8 +215,10 @@ export class CodeEditorServerController {
           ) {
             return;
           }
+          const selectedFileId = this._editorState.selectedFiles[client.sessionId];
           delete this._editorState.selectedFiles[client.sessionId];
           this._updateFilesState();
+          if (selectedFileId) this._saveFile(selectedFileId).catch(() => {});
         },
 
         removeFile: (client, fileId) => {
@@ -283,8 +291,29 @@ export class CodeEditorServerController {
 
   // 保存共享文件
   private async _saveFile(fileId: string) {
-    if (!this._getFileByFileId(fileId)?.isShare) return;
-    this._clearAutoSaveTimer(fileId);
+    const file = this._getFileByFileId(fileId);
+    if (!file?.isShare) return;
+    const { text, name } = file;
+    try {
+      // Boxes persists a shared script independently from a whole-project
+      // save. Keep the local runtime's authoritative group snapshot in sync
+      // the same way so another map can observe the edit immediately.
+      const hash = await this._contentServer.store(Buffer.from(text));
+      await this._editServer.replica.updateLocalSharedScript({
+        action: 'save',
+        fileId,
+        hash,
+      });
+      this._state.logger.info(`script: save shared file success, name is ${name}`);
+    } catch (error) {
+      this._state.logger.error(
+        `save shared script failed, filename is ${name}: ${String(error)}`,
+      );
+      throw error;
+    } finally {
+      this._unLockFile(fileId);
+      this._clearAutoSaveTimer(fileId);
+    }
   }
 
   // 当一个共享文件地图内所有人都没有焦点时保存文件
@@ -489,7 +518,7 @@ export class CodeEditorServerController {
               .lockedMapTitle(lockedMapTitle),
           );
           // hash变化则更新内容，共享文件被其它图编辑了
-          if (hash && preExtraScriptAssets[id].hash !== hash) {
+          if (hash && preExtraScriptAssets[id]?.hash !== hash) {
             this._updateFileTextAndSize(id, hash);
             this._state.logger.log(`file ${name} change hash: ${hash}`);
           }

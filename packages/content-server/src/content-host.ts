@@ -149,7 +149,14 @@ export function createContentRouter(
       options.readOnly ? 'OPTIONS, GET' : 'OPTIONS, POST, GET',
     );
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Auth');
-    res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    // The VOXA iframe persists project-local blobs through the editor runtime.
+    // When the owner uses LAN/public addresses those two services legitimately
+    // have different origins. CORS above still limits callers to the configured
+    // origins; CORP must not reject a request that passed that check.
+    res.setHeader(
+      'Cross-Origin-Resource-Policy',
+      origin && originAllowed ? 'cross-origin' : 'same-origin',
+    );
     if (req.method == 'OPTIONS') {
       if (!originAllowed) {
         error(res, 403, 'cross-origin request is not allowed');

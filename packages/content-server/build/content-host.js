@@ -119,7 +119,7 @@ function createContentRouter(contentServer, options = {}) {
         }
         res.setHeader('Access-Control-Allow-Methods', options.readOnly ? 'OPTIONS, GET' : 'OPTIONS, POST, GET');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Auth');
-        res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+        res.setHeader('Cross-Origin-Resource-Policy', origin && originAllowed ? 'cross-origin' : 'same-origin');
         if (req.method == 'OPTIONS') {
             if (!originAllowed) {
                 error(res, 403, 'cross-origin request is not allowed');

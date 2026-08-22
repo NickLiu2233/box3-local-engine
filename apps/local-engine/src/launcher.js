@@ -146,6 +146,18 @@ const startsPlayServer = playMode || (runtimeOnly && runtimeMode !== 'edit')
 const startsEditServer = runtimeOnly && runtimeMode !== 'play'
 const usesPlayerWeb = playMode
 const requiresServerBuild = true
+const resourceAllowedOrigins = Array.from(
+  new Set(
+    [
+      process.env.BOX_RESOURCE_ALLOWED_ORIGINS,
+      process.env.BOX_CREATOR_PUBLIC_URL,
+      process.env.BOX_VOXA_PUBLIC_URL,
+    ]
+      .flatMap((value) => String(value || '').split(','))
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+).join(',')
 
 function dataStorageNamespace(id) {
   return resolveMapRuntimeNamespace({
@@ -385,6 +397,10 @@ async function main() {
     BOX_LOCAL_CONFIG_PATH: configPath,
     BOX_LOCAL_ENGINE_ROOT: packageRoot,
     BOX_LOCAL_PROJECTS_PATH: path.join(packageRoot, 'projects'),
+    // VOXA is embedded from its own public origin and writes project-local
+    // blobs to the editor runtime. Keep its public URL in the runtime CORS
+    // list automatically, including when the deployment manager uses LAN.
+    BOX_RESOURCE_ALLOWED_ORIGINS: resourceAllowedOrigins,
     BOX_TELEPORT_INTERNAL_TOKEN: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
     BOX_PLAY_TELEPORT_CONTROL_URL: playTeleportControlURL,
     BOX_EDIT_TELEPORT_CONTROL_URL: editTeleportControlURL,
