@@ -163,6 +163,7 @@ services:
       BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
       BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
       VOXA_URL: ${BOX_VOXA_PUBLIC_URL:-http://127.0.0.1:3001}
+      BOX_VOXA_PUBLIC_URL: ${BOX_VOXA_PUBLIC_URL:-http://127.0.0.1:3001}
       VOXA_INTERNAL_URL: http://voxa:3001
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.0}
       BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}

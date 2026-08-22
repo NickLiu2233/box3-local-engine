@@ -12,6 +12,7 @@ const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), '
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
 const compose = fs.readFileSync(path.join(root, 'docker-compose.yml'), 'utf8')
+const launcher = fs.readFileSync(path.join(root, 'apps/local-engine/src/launcher.js'), 'utf8')
 const builder = fs.readFileSync(
   path.join(root, 'scripts/build-desktop-offline-installer.js'),
   'utf8',
@@ -69,7 +70,10 @@ assert.match(backend, /fn docker_message/)
 assert.match(backend, /fn synchronize_runtime_image_tag/)
 assert.match(backend, /set_env\(&mut content, "BOX_IMAGE_TAG", IMAGE_TAG\)/)
 assert.match(backend, /synchronize_runtime_image_tag\(app\)\?;/)
-assert.doesNotMatch(backend, /请把 box-local-engine-images-\*-\{expected\}\.tar\.gz 与程序放在同一目录/)
+assert.doesNotMatch(
+  backend,
+  /请把 box-local-engine-images-\*-\{expected\}\.tar\.gz 与程序放在同一目录/,
+)
 assert.doesNotMatch(backend, /Command::new\("docker"\)\.args/)
 assert.match(frontend, /data-setup-section/)
 assert.match(frontend, /captureSetupForm/)
@@ -90,6 +94,9 @@ for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 
 assert.match(backend, /不能使用同一个端口/)
 assert.match(backend, /BOX_AUTH_PORTAL_PORT/)
 assert.match(compose, /VOXA_URL: \$\{BOX_VOXA_PUBLIC_URL/)
+assert.match(compose, /\n      BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL/)
+assert.match(compose, /BOX_RESOURCE_ALLOWED_ORIGINS: \$\{BOX_RESOURCE_ALLOWED_ORIGINS:-\}/)
+assert.match(launcher, /process\.env\.VOXA_URL/)
 assert.match(backend, /只允许打开当前配置中的 BOX 服务地址/)
 assert.doesNotMatch(backend, /只允许打开本机 BOX 服务地址/)
 assert.match(frontend, /认识产品/)
@@ -172,6 +179,16 @@ for (const scope of ['"all"', '"creator"', '"play"']) {
 }
 assert.doesNotMatch(backend, /async fn install_and_start/)
 assert.match(backend, /"BOX_CREATOR_ALLOWED_HOSTS",\s*&public_host/)
+assert.match(
+  backend,
+  /"BOX_RESOURCE_ALLOWED_ORIGINS",[\s\S]*?config\.voxa_port,[\s\S]*?config\.creator_port/,
+  'saving a LAN/public address must allow the embedded VOXA origin to read Creator runtime blobs',
+)
+assert.match(
+  compose,
+  /VOXA_URL: \$\{BOX_VOXA_PUBLIC_URL[^\n]*\n\s*BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL/,
+  'Creator must receive the VOXA public origin so its child runtimes expose the required CORS header',
+)
 assert.match(frontend, /服主与安全/)
 assert.match(frontend, /原始 \.env/)
 assert.match(frontend, /配置说明：这些服务用来做什么？/)

@@ -18,10 +18,7 @@ const supported = new Map([
     { os: 'win32', arch: 'arm64', bundle: false, executable: 'box-local-engine-manager.exe' },
   ],
   ['macos-amd64', { os: 'darwin', arch: 'x64', bundle: 'app', executable: 'BOX3 Engine.app' }],
-  [
-    'macos-arm64',
-    { os: 'darwin', arch: 'arm64', bundle: 'app', executable: 'BOX3 Engine.app' },
-  ],
+  ['macos-arm64', { os: 'darwin', arch: 'arm64', bundle: 'app', executable: 'BOX3 Engine.app' }],
 ])
 
 function fail(message) {

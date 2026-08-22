@@ -118,8 +118,28 @@ export function getMapGroupProject(mapId: number, mode: EngineMode) {
   return engineApiRequest<Record<string, string>>('/engine/map-group-project', { mapId, mode })
 }
 
-export function migrateMapGroupProject(mapId: number) {
-  return engineApiRequest<null>('/engine/map-group-project/migration', { mapId })
+export async function migrateMapGroupProject(mapId: number) {
+  // Match Boxes' edit-server startup behavior. The cloud migration endpoint
+  // uses a short-lived map-group lock, so a concurrent editor must not make a
+  // read-only export fail on its first response.
+  const maxAttempts = positiveInteger('BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRIES', 10)
+  const retryDelayMs = positiveInteger('BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRY_DELAY_MS', 5_000)
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await engineApiRequest<null>('/engine/map-group-project/migration', { mapId })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const lockFailed = /\block failed\b/i.test(message)
+      if (!lockFailed) throw error
+      if (attempt >= maxAttempts) {
+        throw new Error(
+          `云端地图组仍被占用，已重试 ${maxAttempts} 次。请关闭该地图的云端编辑器后再试。原始错误：${message}`,
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs))
+    }
+  }
+  throw new Error('云端地图组迁移重试意外结束')
 }
 
 export function migratePlayPictures(mapId: number) {

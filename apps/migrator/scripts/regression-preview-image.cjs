@@ -576,6 +576,39 @@ fs.writeFileSync(
   console.log(
     'PASS: production engine API client sends boxes-compatible paths, parameters and credentials',
   )
+
+  // boxes retries map-group migration while another cloud editor holds its
+  // short-lived lock. The migrator must use the same behavior instead of
+  // failing the export on the first lock response.
+  const originalMigrationRetries = process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRIES
+  const originalMigrationRetryDelay = process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRY_DELAY_MS
+  process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRIES = '3'
+  process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRY_DELAY_MS = '1'
+  let migrationAttempts = 0
+  global.fetch = async (url) => {
+    const parsed = new URL(String(url))
+    assert.equal(parsed.pathname, '/engine/map-group-project/migration')
+    assert.equal(parsed.searchParams.get('mapId'), '100017201')
+    migrationAttempts += 1
+    const locked = migrationAttempts < 3
+    return new Response(
+      JSON.stringify({ code: locked ? 500 : 200, data: null, msg: locked ? 'lock failed' : '' }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    )
+  }
+  await engineApi.migrateMapGroupProject(100017201)
+  assert.equal(migrationAttempts, 3, 'map-group migration should wait for a transient cloud lock')
+  global.fetch = originalFetch
+  if (originalMigrationRetries === undefined)
+    delete process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRIES
+  else process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRIES = originalMigrationRetries
+  if (originalMigrationRetryDelay === undefined)
+    delete process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRY_DELAY_MS
+  else process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRY_DELAY_MS = originalMigrationRetryDelay
+  console.log('PASS: cloud map-group migration retries transient locks like boxes')
 })()
   .finally(() => {
     fs.rmSync(compiledPath, { force: true })

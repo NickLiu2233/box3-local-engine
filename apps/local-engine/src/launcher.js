@@ -152,6 +152,10 @@ const resourceAllowedOrigins = Array.from(
       process.env.BOX_RESOURCE_ALLOWED_ORIGINS,
       process.env.BOX_CREATOR_PUBLIC_URL,
       process.env.BOX_VOXA_PUBLIC_URL,
+      // Earlier launcher bundles only passed the public VOXA endpoint as
+      // VOXA_URL. Keep that deployed configuration working when an embedded
+      // VOXA iframe falls back to the editor runtime for a project blob.
+      process.env.VOXA_URL,
     ]
       .flatMap((value) => String(value || '').split(','))
       .map((value) => value.trim())
