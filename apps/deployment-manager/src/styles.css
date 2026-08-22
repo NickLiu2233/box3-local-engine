@@ -1172,44 +1172,106 @@ form.environment-mode {
   color: var(--accent);
 }
 
-.network-presets {
+.network-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
+  align-content: start;
+  gap: 14px;
 }
 
-.network-presets button {
+.network-primary-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 10px;
-  min-height: 46px;
-  padding: 0 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.network-service-card {
+  min-width: 0;
+  align-self: start;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.network-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.network-card-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.network-card-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.access-choice,
+.creator-network-choice {
+  display: inline-flex;
+  width: fit-content;
+  padding: 3px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel-soft);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
 }
 
-.network-presets button span {
+.access-choice button,
+.creator-network-choice button {
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
   color: var(--muted);
-  font-size: 12px;
-  text-align: right;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
-.network-presets button.active {
-  border-color: color-mix(in srgb, var(--accent) 68%, var(--border));
-  background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+.access-choice button.active,
+.creator-network-choice button.active {
+  background: var(--panel);
   color: var(--text);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 12%, transparent);
 }
 
-.network-presets button:disabled {
+.access-choice button:disabled,
+.creator-network-choice button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.card-port-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: auto;
+}
+
+.network-primary-grid .card-port-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.player-service-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.player-service-card .network-card-heading,
+.player-service-card .player-port-grid {
+  grid-column: 1 / -1;
+}
+
+.player-port-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .group-title {
@@ -1832,6 +1894,14 @@ form.environment-mode {
 }
 
 @media (max-width: 1040px) {
+  .network-primary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .player-service-card {
+    grid-template-columns: 1fr;
+  }
+
   main {
     padding-inline: 22px;
   }

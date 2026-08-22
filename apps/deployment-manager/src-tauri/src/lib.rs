@@ -6,7 +6,7 @@ use std::{
     collections::BTreeMap,
     fs,
     io::Read,
-    net::{TcpListener, TcpStream, ToSocketAddrs, UdpSocket},
+    net::{IpAddr, TcpListener, TcpStream, ToSocketAddrs, UdpSocket},
     path::{Path, PathBuf},
     process::{Command, Output},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -122,6 +122,7 @@ struct InstallConfigView {
     redis_db: u8,
     storage_cache_redis_db: u8,
     public_host: String,
+    creator_host: String,
     lan_ip: String,
     play_port: u16,
     voxa_port: u16,
@@ -151,6 +152,7 @@ impl Default for InstallConfigView {
             redis_db: 0,
             storage_cache_redis_db: 1,
             public_host: "127.0.0.1".into(),
+            creator_host: "127.0.0.1".into(),
             lan_ip: detect_lan_ip().unwrap_or_default(),
             play_port: 3000,
             voxa_port: 3001,
@@ -197,6 +199,8 @@ struct InstallConfigInput {
     storage_cache_redis_db: u8,
     #[serde(default = "default_public_host")]
     public_host: String,
+    #[serde(default = "default_creator_host")]
+    creator_host: String,
     #[serde(default = "default_play_port")]
     play_port: u16,
     #[serde(default = "default_voxa_port")]
@@ -231,6 +235,9 @@ fn default_storage_cache_redis_db() -> u8 {
     1
 }
 fn default_public_host() -> String {
+    "127.0.0.1".into()
+}
+fn default_creator_host() -> String {
     "127.0.0.1".into()
 }
 fn default_play_port() -> u16 {
@@ -473,6 +480,10 @@ fn docker_output(args: &[&str]) -> Result<String, String> {
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
     ensure_runtime_files(app)?;
+    // Do this immediately before every Compose invocation. The .env editor is
+    // intentionally available to the owner, but it must never be able to
+    // publish ARENA or VOXA outside the local network.
+    enforce_creator_network_policy(app)?;
     let root = runtime_root(app)?;
     let env = env_path(app)?;
     if !env.exists() {
@@ -505,6 +516,127 @@ fn validate_host(value: &str, label: &str) -> Result<String, String> {
         return Err(format!("{label}无效，请只填写 IP 或域名"));
     }
     Ok(value.into())
+}
+
+fn validate_creator_host(value: &str) -> Result<String, String> {
+    let host = validate_host(value, "创作端访问地址")?;
+    if matches!(host.as_str(), "localhost" | "127.0.0.1" | "::1") {
+        return Ok(host);
+    }
+    let ip = host
+        .parse::<IpAddr>()
+        .map_err(|_| "创作端只允许填写本机或局域网 IP，不能使用公网 IP 或域名".to_string())?;
+    let private = match ip {
+        IpAddr::V4(ip) => ip.is_private() || ip.is_loopback() || ip.is_link_local(),
+        IpAddr::V6(ip) => {
+            ip.is_loopback() || ip.is_unicast_link_local() || (ip.segments()[0] & 0xfe00) == 0xfc00
+        }
+    };
+    if private {
+        Ok(host)
+    } else {
+        Err("创作端只允许本机或局域网地址，禁止公网部署".into())
+    }
+}
+
+fn host_from_http_url(value: &str) -> Option<String> {
+    let authority = value
+        .trim()
+        .strip_prefix("http://")
+        .or_else(|| value.trim().strip_prefix("https://"))?
+        .split('/')
+        .next()?;
+    if authority.is_empty() || authority.contains('@') {
+        return None;
+    }
+    if let Some(bracketed) = authority.strip_prefix('[') {
+        return bracketed
+            .split_once(']')
+            .map(|(host, _)| host.to_string())
+            .filter(|host| !host.is_empty());
+    }
+    match authority.rsplit_once(':') {
+        Some((host, port)) if port.parse::<u16>().is_ok() => Some(host.to_string()),
+        Some(_) => None,
+        None => Some(authority.to_string()),
+    }
+}
+
+fn origin_host(host: &str) -> String {
+    if host.contains(':') {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    }
+}
+
+fn env_port(values: &BTreeMap<String, String>, key: &str, fallback: u16) -> u16 {
+    values
+        .get(key)
+        .and_then(|value| value.parse::<u16>().ok())
+        .filter(|port| *port != 0)
+        .unwrap_or(fallback)
+}
+
+/// Force Creator and VOXA to one private address, even when an owner edits
+/// the raw .env. A Docker host administrator can always run a different
+/// container manually, but every deployment performed by this application is
+/// constrained here and at the port-binding layer.
+fn enforce_creator_network_policy(app: &AppHandle) -> Result<bool, String> {
+    let path = env_path(app)?;
+    if !path.exists() {
+        return Ok(false);
+    }
+    let mut content =
+        fs::read_to_string(&path).map_err(|error| format!("无法读取部署配置：{error}"))?;
+    let original = content.clone();
+    let values = parse_env(&content);
+    let candidate_hosts = [
+        values.get("BOX_CREATOR_BIND_IP").cloned(),
+        values.get("BOX_VOXA_BIND_IP").cloned(),
+        values
+            .get("BOX_CREATOR_PUBLIC_URL")
+            .and_then(|value| host_from_http_url(value)),
+        values
+            .get("BOX_VOXA_PUBLIC_URL")
+            .and_then(|value| host_from_http_url(value)),
+    ];
+    let creator_host = candidate_hosts
+        .iter()
+        .flatten()
+        .find_map(|value| validate_creator_host(value).ok())
+        .unwrap_or_else(default_creator_host);
+    let creator_origin_host = origin_host(&creator_host);
+    let voxa_port = env_port(&values, "BOX_VOXA_PORT", default_voxa_port());
+    let creator_port = env_port(&values, "BOX_CREATOR_PORT", default_creator_port());
+
+    set_env(&mut content, "BOX_CREATOR_BIND_IP", &creator_host)?;
+    set_env(&mut content, "BOX_VOXA_BIND_IP", &creator_host)?;
+    set_env(
+        &mut content,
+        "BOX_CREATOR_PUBLIC_URL",
+        &format!("http://{creator_origin_host}:{creator_port}"),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_VOXA_PUBLIC_URL",
+        &format!("http://{creator_origin_host}:{voxa_port}"),
+    )?;
+    set_env(&mut content, "BOX_CREATOR_ALLOWED_HOSTS", &creator_host)?;
+    let creator_origins = format!(
+        "http://{creator_origin_host}:{voxa_port},http://{creator_origin_host}:{creator_port}"
+    );
+    set_env(&mut content, "BOX_VOXA_ALLOWED_ORIGINS", &creator_origins)?;
+    set_env(
+        &mut content,
+        "BOX_RESOURCE_ALLOWED_ORIGINS",
+        &creator_origins,
+    )?;
+    if content != original {
+        fs::write(&path, content).map_err(|error| format!("无法修正创作端网络策略：{error}"))?;
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 fn validate_port(value: &str) -> Result<u16, String> {
@@ -597,11 +729,17 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         return Err("运行时数量必须大于 0".into());
     }
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
+    let creator_host = validate_creator_host(&config.creator_host)?;
     validate_service_ports(config)?;
     let bind_ip = if public_host == "127.0.0.1" || public_host == "localhost" {
         "127.0.0.1"
     } else {
         "0.0.0.0"
+    };
+    let creator_bind_ip = if creator_host == "localhost" || creator_host == "127.0.0.1" {
+        "127.0.0.1"
+    } else {
+        creator_host.as_str()
     };
     let existing = load_existing_env(app);
     let existing_file = env_path(app)?;
@@ -637,6 +775,8 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     set_env(&mut content, "BOX_PLAY_LIBRARY_READ_ONLY", "false")?;
     set_env(&mut content, "BOX_IMAGE_TAG", IMAGE_TAG)?;
     set_env(&mut content, "BOX_BIND_IP", bind_ip)?;
+    set_env(&mut content, "BOX_CREATOR_BIND_IP", creator_bind_ip)?;
+    set_env(&mut content, "BOX_VOXA_BIND_IP", creator_bind_ip)?;
     set_env(&mut content, "BOX_PLAY_PORT", &config.play_port.to_string())?;
     set_env(&mut content, "BOX_VOXA_PORT", &config.voxa_port.to_string())?;
     set_env(
@@ -662,20 +802,20 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     set_env(
         &mut content,
         "BOX_VOXA_PUBLIC_URL",
-        &format!("http://{public_host}:{}", config.voxa_port),
+        &format!("http://{creator_host}:{}", config.voxa_port),
     )?;
     set_env(
         &mut content,
         "BOX_VOXA_ALLOWED_ORIGINS",
         &format!(
-            "http://{public_host}:{},http://{public_host}:{}",
+            "http://{creator_host}:{},http://{creator_host}:{}",
             config.voxa_port, config.creator_port
         ),
     )?;
     set_env(
         &mut content,
         "BOX_CREATOR_PUBLIC_URL",
-        &format!("http://{public_host}:{}", config.creator_port),
+        &format!("http://{creator_host}:{}", config.creator_port),
     )?;
     // The embedded VOXA editor saves project-local blobs directly through the
     // game runtime. It is a different browser origin from Creator, so the
@@ -684,14 +824,14 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &mut content,
         "BOX_RESOURCE_ALLOWED_ORIGINS",
         &format!(
-            "http://{public_host}:{},http://{public_host}:{}",
+            "http://{creator_host}:{},http://{creator_host}:{}",
             config.voxa_port, config.creator_port
         ),
     )?;
     // Creator APIs mutate source projects. Keep the browser Host allow-list
     // aligned with the one public address selected by the owner instead of
     // accepting arbitrary LAN hosts.
-    set_env(&mut content, "BOX_CREATOR_ALLOWED_HOSTS", &public_host)?;
+    set_env(&mut content, "BOX_CREATOR_ALLOWED_HOSTS", &creator_host)?;
     set_env(
         &mut content,
         "BOX_PLAYER_SERVICE_PUBLIC_URL",
@@ -711,7 +851,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &mut content,
         "BOX_PLAYER_AUTH_ALLOWED_ORIGINS",
         &format!(
-            "http://{public_host}:{},http://{public_host}:{},http://{public_host}:{}",
+            "http://{public_host}:{},http://{creator_host}:{},http://{public_host}:{}",
             config.play_port, config.creator_port, config.auth_portal_port
         ),
     )?;
@@ -902,7 +1042,9 @@ fn synchronize_runtime_image_tag(app: &AppHandle) -> Result<(), String> {
             "linux/amd64"
         },
     )?;
-    fs::write(path, content).map_err(|error| format!("无法更新镜像运行配置：{error}"))
+    fs::write(path, content).map_err(|error| format!("无法更新镜像运行配置：{error}"))?;
+    enforce_creator_network_policy(app)?;
+    Ok(())
 }
 
 fn ensure_images(app: &AppHandle) -> Result<(), String> {
@@ -944,6 +1086,9 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 fn get_install_config(app: AppHandle) -> InstallConfigView {
+    // Loading configuration is also a policy boundary: a manually edited
+    // public Creator address is normalized before it reaches the UI.
+    let _ = enforce_creator_network_policy(&app);
     let values = load_existing_env(&app);
     if values.is_empty() {
         return InstallConfigView::default();
@@ -1007,6 +1152,11 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .and_then(|url| url.strip_prefix("http://"))
             .and_then(|value| value.rsplit_once(':').map(|(host, _)| host.to_string()))
             .unwrap_or_else(default_public_host),
+        creator_host: values
+            .get("BOX_CREATOR_PUBLIC_URL")
+            .and_then(|url| url.strip_prefix("http://"))
+            .and_then(|value| value.rsplit_once(':').map(|(host, _)| host.to_string()))
+            .unwrap_or_else(default_creator_host),
         lan_ip: detect_lan_ip().unwrap_or_default(),
         play_port: number_u32("BOX_PLAY_PORT", 3000).try_into().unwrap_or(3000),
         voxa_port: number_u32("BOX_VOXA_PORT", 3001).try_into().unwrap_or(3001),
@@ -1028,6 +1178,7 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
 #[tauri::command]
 fn get_raw_environment(app: AppHandle) -> Result<String, String> {
     ensure_runtime_files(&app)?;
+    enforce_creator_network_policy(&app)?;
     let path = env_path(&app)?;
     if path.exists() {
         fs::read_to_string(path).map_err(|error| format!("无法读取 .env：{error}"))
@@ -1037,15 +1188,17 @@ fn get_raw_environment(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-fn save_raw_environment(app: AppHandle, content: String) -> Result<(), String> {
+fn save_raw_environment(app: AppHandle, content: String) -> Result<bool, String> {
     validate_raw_environment(&content)?;
     ensure_runtime_files(&app)?;
     fs::write(env_path(&app)?, format!("{}\n", content.trim_end()))
-        .map_err(|error| format!("无法保存 .env：{error}"))
+        .map_err(|error| format!("无法保存 .env：{error}"))?;
+    enforce_creator_network_policy(&app)
 }
 
 #[tauri::command]
 fn get_system_status(app: AppHandle) -> SystemStatus {
+    let _ = enforce_creator_network_policy(&app);
     let data_directory = runtime_root(&app)
         .map(|path| path.to_string_lossy().to_string())
         .unwrap_or_default();
@@ -1502,12 +1655,15 @@ fn copy_file_for_backup(source: &Path, destination: &Path) -> Result<(), String>
                 // owner-write-only permissions on macOS. The desktop app owns
                 // the file but cannot read it until the read bit is restored.
                 let original = fs::metadata(source)
-                    .map_err(|metadata_error| format!("无法读取 {}：{metadata_error}", source.display()))?
+                    .map_err(|metadata_error| {
+                        format!("无法读取 {}：{metadata_error}", source.display())
+                    })?
                     .permissions();
                 let mut readable = original.clone();
                 readable.set_mode(readable.mode() | 0o400);
-                fs::set_permissions(source, readable)
-                    .map_err(|permission_error| format!("无法读取 {}：{permission_error}", source.display()))?;
+                fs::set_permissions(source, readable).map_err(|permission_error| {
+                    format!("无法读取 {}：{permission_error}", source.display())
+                })?;
                 let copied = fs::copy(source, destination)
                     .map(|_| ())
                     .map_err(|copy_error| format!("无法备份 {}：{copy_error}", source.display()));
@@ -1624,8 +1780,8 @@ fn validate_backup_archive(archive: &Path, staging: &Path) -> Result<(), String>
         ]
         .iter()
         .any(|relative| staging.join(relative).exists());
-    let cleanup = fs::remove_dir_all(staging)
-        .map_err(|error| format!("无法清理导入校验目录：{error}"));
+    let cleanup =
+        fs::remove_dir_all(staging).map_err(|error| format!("无法清理导入校验目录：{error}"));
     extracted?;
     cleanup?;
     if !valid {
@@ -1710,14 +1866,24 @@ fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
 #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
 fn choose_backup_import() -> Result<Option<PathBuf>, String> {
     let mut command = Command::new("zenity");
-    command.args(["--file-selection", "--title=选择 BOX3 Engine 备份包", "--file-filter=*.zip *.tar *.gz"]);
+    command.args([
+        "--file-selection",
+        "--title=选择 BOX3 Engine 备份包",
+        "--file-filter=*.zip *.tar *.gz",
+    ]);
     dialog_result(command)
 }
 
 #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
 fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
     let mut command = Command::new("zenity");
-    command.args(["--file-selection", "--save", "--confirm-overwrite", "--filename", name]);
+    command.args([
+        "--file-selection",
+        "--save",
+        "--confirm-overwrite",
+        "--filename",
+        name,
+    ]);
     dialog_result(command)
 }
 
@@ -1929,7 +2095,8 @@ async fn import_backup(app: AppHandle) -> Result<Option<String>, String> {
         let Some(source) = choose_backup_import()? else {
             return Ok(None);
         };
-        let source = fs::canonicalize(source).map_err(|error| format!("无法读取备份文件：{error}"))?;
+        let source =
+            fs::canonicalize(source).map_err(|error| format!("无法读取备份文件：{error}"))?;
         let backups = backup_directory(&app)?;
         fs::create_dir_all(&backups).map_err(|error| format!("无法创建备份目录：{error}"))?;
         let validation = backups.join(format!(".import-check-{}", random_hex(8)));
@@ -2231,6 +2398,7 @@ mod tests {
             redis_db: 0,
             storage_cache_redis_db: 1,
             public_host: default_public_host(),
+            creator_host: default_creator_host(),
             play_port: 3000,
             voxa_port: 3000,
             creator_port: 3002,
@@ -2263,6 +2431,20 @@ mod tests {
         .is_ok());
         assert!(validate_raw_environment("BOX_PLAY_PORT\n").is_err());
         assert!(validate_raw_environment("box_play_port=3000\n").is_err());
+    }
+
+    #[test]
+    fn creator_network_policy_rejects_public_hosts() {
+        assert!(validate_creator_host("127.0.0.1").is_ok());
+        assert!(validate_creator_host("192.168.1.10").is_ok());
+        assert!(validate_creator_host("10.0.0.10").is_ok());
+        assert!(validate_creator_host("0.0.0.0").is_err());
+        assert!(validate_creator_host("203.0.113.20").is_err());
+        assert!(validate_creator_host("arena.example.com").is_err());
+        assert_eq!(
+            host_from_http_url("https://[fd00::10]:3002/path"),
+            Some("fd00::10".into())
+        );
     }
 
     #[test]
@@ -2308,7 +2490,8 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn backup_copy_temporarily_reads_owner_write_only_files() {
-        let root = std::env::temp_dir().join(format!("box-manager-backup-permission-{}", random_hex(8)));
+        let root =
+            std::env::temp_dir().join(format!("box-manager-backup-permission-{}", random_hex(8)));
         let source = root.join("source.bin");
         let destination = root.join("backup.bin");
         fs::create_dir_all(&root).unwrap();
@@ -2318,7 +2501,10 @@ mod tests {
         copy_file_for_backup(&source, &destination).unwrap();
 
         assert_eq!(fs::read_to_string(&destination).unwrap(), "backup-data");
-        assert_eq!(fs::metadata(&source).unwrap().permissions().mode() & 0o777, 0o200);
+        assert_eq!(
+            fs::metadata(&source).unwrap().permissions().mode() & 0o777,
+            0o200
+        );
         fs::set_permissions(&source, fs::Permissions::from_mode(0o600)).unwrap();
         fs::remove_dir_all(root).unwrap();
     }

@@ -3,6 +3,39 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 const localOriginPattern =
   /^https?:\/\/(?:127\.0\.0\.1|localhost|\[::1\])(?::\d+)?$/i;
 
+function isPrivateOrLoopbackHost(host: string) {
+  const normalized = host.toLowerCase();
+  if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1') {
+    return true;
+  }
+  const parts = normalized.split('.');
+  if (parts.length === 4 && parts.every((part) => /^\d+$/.test(part))) {
+    const octets = parts.map(Number);
+    if (octets.some((octet) => octet > 255)) return false;
+    return (
+      octets[0] === 10 ||
+      octets[0] === 127 ||
+      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168) ||
+      (octets[0] === 169 && octets[1] === 254)
+    );
+  }
+  return (
+    normalized === '::1' ||
+    /^f[cd][0-9a-f:]*$/i.test(normalized) ||
+    /^fe[89ab][0-9a-f:]*$/i.test(normalized)
+  );
+}
+
+function isPrivateOrigin(value: string) {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'http:' || url.protocol === 'https:') && isPrivateOrLoopbackHost(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function configuredOrigins() {
   return [process.env.BOX_VOXA_PUBLIC_URL, process.env.BOX_VOXA_ALLOWED_ORIGINS]
     .flatMap((value) => String(value || '').split(','))
@@ -10,7 +43,8 @@ function configuredOrigins() {
     .filter(Boolean)
     .flatMap((value) => {
       try {
-        return [new URL(value).origin];
+        const origin = new URL(value).origin;
+        return isPrivateOrigin(origin) ? [origin] : [];
       } catch {
         return [];
       }
@@ -19,7 +53,7 @@ function configuredOrigins() {
 
 function isAllowedOrigin(origin: string) {
   if (localOriginPattern.test(origin)) return true;
-  return configuredOrigins().includes(origin);
+  return isPrivateOrigin(origin) && configuredOrigins().includes(origin);
 }
 
 function originForRequestHost(req: NextApiRequest) {
@@ -47,7 +81,7 @@ export function setLocalCors(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Vary', 'Origin');
   if (!origin) return true;
   if (Array.isArray(origin)) return false;
-  const sameVoxaHost = origin === originForRequestHost(req);
+  const sameVoxaHost = origin === originForRequestHost(req) && isPrivateOrigin(origin);
   if (!sameVoxaHost && !isAllowedOrigin(origin)) return false;
   res.setHeader('Access-Control-Allow-Origin', origin);
   return true;

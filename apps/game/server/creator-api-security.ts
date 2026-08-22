@@ -12,11 +12,36 @@ function hostnameOf(value: string | undefined) {
   }
 }
 
+function isPrivateOrLoopbackHost(host: string) {
+  const normalized = host.toLowerCase();
+  if (LOOPBACK_HOSTS.has(normalized)) return true;
+
+  const parts = normalized.split('.');
+  if (parts.length === 4 && parts.every((part) => /^\d+$/.test(part))) {
+    const octets = parts.map(Number);
+    if (octets.some((octet) => octet > 255)) return false;
+    return (
+      octets[0] === 10 ||
+      octets[0] === 127 ||
+      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+      (octets[0] === 192 && octets[1] === 168) ||
+      (octets[0] === 169 && octets[1] === 254)
+    );
+  }
+
+  // IPv6 loopback, unique-local (fc00::/7), and link-local (fe80::/10).
+  return (
+    normalized === '::1' ||
+    /^f[cd][0-9a-f:]*$/i.test(normalized) ||
+    /^fe[89ab][0-9a-f:]*$/i.test(normalized)
+  );
+}
+
 function allowedCreatorHosts() {
   const configured = (process.env.BOX_CREATOR_ALLOWED_HOSTS || '')
     .split(',')
     .map((host) => hostnameOf(host.trim()))
-    .filter(Boolean);
+    .filter(isPrivateOrLoopbackHost);
   return new Set([...LOOPBACK_HOSTS, ...configured]);
 }
 

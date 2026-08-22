@@ -223,7 +223,7 @@ services:
       STORAGE_CACHE_REDIS_DB: ${STORAGE_CACHE_REDIS_DB:-1}
       STORAGE_CACHE_REDIS_TTL: ${STORAGE_CACHE_REDIS_TTL:-240}
     ports:
-      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_CREATOR_PORT:-3002}:3000"
+      - "${BOX_CREATOR_BIND_IP:-127.0.0.1}:${BOX_CREATOR_PORT:-3002}:3000"
       # Browser clients access runtimes through Creator's same-origin
       # /runtime proxy. Never expose raw edit/preview sockets on LAN/public
       # interfaces, even when the Creator web port is intentionally shared.
@@ -396,7 +396,7 @@ services:
       BOX_VOXA_ALLOWED_ORIGINS: ${BOX_VOXA_ALLOWED_ORIGINS:-}
       BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3002}
     ports:
-      - "${BOX_BIND_IP:-127.0.0.1}:${BOX_VOXA_PORT:-3001}:3001"
+      - "${BOX_VOXA_BIND_IP:-127.0.0.1}:${BOX_VOXA_PORT:-3001}:3001"
     volumes:
       - ./apps/voxa/data:/app/apps/voxa/data
 

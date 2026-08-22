@@ -46,6 +46,7 @@ const state = {
   themeMenuOpen: false,
   startMenuOpen: false,
   serviceMenu: '',
+  playAccessMode: '',
   error: '',
   notice: '',
   progress: { stage: 'idle', message: '等待操作', percent: 0 },
@@ -247,7 +248,9 @@ function serviceCard([id, name, description, portKey, defaultPort, path]) {
   const running = service?.running
   const url = getServiceUrl(id)
   const port = Number(state.config?.[portKey]) || defaultPort
-  const endpoint = `${state.config?.publicHost || '127.0.0.1'}:${port}`
+  const host =
+    id === 'creator' || id === 'voxa' ? state.config?.creatorHost : state.config?.publicHost
+  const endpoint = `${host || '127.0.0.1'}:${port}`
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
     state.serviceMenu === id
@@ -260,7 +263,10 @@ function getServiceUrl(serviceId) {
   const service = services.find(([id]) => id === serviceId)
   if (!service) return ''
   const [, , , portKey, defaultPort, path] = service
-  const host = state.config?.publicHost || '127.0.0.1'
+  const host =
+    serviceId === 'creator' || serviceId === 'voxa'
+      ? state.config?.creatorHost || '127.0.0.1'
+      : state.config?.publicHost || '127.0.0.1'
   const port = Number(state.config?.[portKey]) || defaultPort
   return `http://${host}:${port}${path}`
 }
@@ -294,8 +300,16 @@ function setupExplanation(title, items) {
 
 function setup() {
   const config = state.config || {}
-  const localSelected = config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
-  const lanSelected = Boolean(config.lanIp) && config.publicHost === config.lanIp
+  const creatorHost = config.creatorHost || '127.0.0.1'
+  const localSelected = creatorHost === '127.0.0.1' || creatorHost === 'localhost'
+  const lanSelected = Boolean(config.lanIp) && creatorHost === config.lanIp
+  const inferredPlayAccessMode =
+    config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
+      ? 'local'
+      : config.lanIp && config.publicHost === config.lanIp
+        ? 'lan'
+        : 'public'
+  const playAccessMode = state.playAccessMode || inferredPlayAccessMode
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
   const secretInput = (name, label, configured, hint) =>
@@ -341,13 +355,15 @@ function setup() {
             ],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="config-group"><div class="group-title"><div><h2>对外访问</h2><span>统一设置地址，也可以分别调整端口</span></div></div><div class="network-presets"><button type="button" class="${localSelected ? 'active' : ''}" data-network-host="127.0.0.1"><strong>仅本机</strong><span>127.0.0.1</span></button><button type="button" class="${lanSelected ? 'active' : ''}" data-network-host="${escapeHtml(config.lanIp || '')}" ${config.lanIp ? '' : 'disabled'}><strong>局域网</strong><span>${escapeHtml(config.lanIp || '未检测到可用地址')}</span></button></div><div class="form-grid single">${input('publicHost', '访问地址', config.publicHost || '127.0.0.1', 'text', '也可以填写服务器 IP 或域名')}</div><div class="form-grid port-grid">${input('playPort', 'Play', config.playPort || 3000, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3001, 'number')}${input('creatorPort', 'ARENA', config.creatorPort || 3002, 'number')}${input('playerServicePort', '玩家管理', config.playerServicePort || 3213, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3214, 'number')}</div><p class="config-note">局域网预设会使用当前电脑的主要局域网地址。五个服务会同步应用访问范围，并使用上方各自的端口。</p></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3000, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/><div class="creator-network-choice"><button type="button" class="${localSelected ? 'active' : ''}" data-creator-network-host="127.0.0.1">本机</button><button type="button" class="${lanSelected ? 'active' : ''}" data-creator-network-host="${escapeHtml(config.lanIp || '')}" ${config.lanIp ? '' : 'disabled'}>局域网</button></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3002, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3001, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>玩家服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3213, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3214, 'number')}</div></section></div>${setupExplanation(
           '配置说明：访问地址和端口有什么影响？',
           [
-            ['仅本机', '使用 127.0.0.1，只允许当前电脑访问，适合本地测试。'],
-            ['局域网', '使用局域网 IP，同一网络的其他设备可以访问；还需要开放系统防火墙端口。'],
+            ['创作端限制', 'ARENA 与 VOXA 只可绑定本机或局域网私有 IP，不能使用公网 IP 或域名。'],
+            [
+              '游玩访问',
+              'Play、玩家管理和登录门户可填写公网 IP 或域名；生产环境建议使用 HTTPS 反向代理。',
+            ],
             ['端口', '每个服务使用独立端口，不能重复；修改后访问链接也会随之改变。'],
-            ['公网部署', '建议使用域名和 HTTPS 反向代理，不要直接暴露管理接口。'],
           ],
         )}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity"><div class="config-group"><div class="group-title"><div><h2>运行时上限</h2><span>按服务器内存调整</span></div></div><div class="form-grid three">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number')}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number')}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number')}</div></div>${setupExplanation(
@@ -608,13 +624,29 @@ function bindEvents() {
       switchSetupSection(node.dataset.setupSection)
     }),
   )
-  document.querySelectorAll('[data-network-host]').forEach((node) =>
+  document.querySelectorAll('[data-creator-network-host]').forEach((node) =>
     node.addEventListener('click', () => {
-      const host = node.dataset.networkHost
+      const host = node.dataset.creatorNetworkHost
       if (!host) return
-      const input = document.querySelector('[name="publicHost"]')
+      const input = document.querySelector('[name="creatorHost"]')
       if (input) input.value = host
       captureSetupForm()
+      render()
+    }),
+  )
+  document.querySelectorAll('[data-play-network-mode]').forEach((node) =>
+    node.addEventListener('click', () => {
+      captureSetupForm()
+      const mode = node.dataset.playNetworkMode
+      if (mode === 'local') state.config.publicHost = '127.0.0.1'
+      if (mode === 'lan' && state.config.lanIp) state.config.publicHost = state.config.lanIp
+      if (
+        mode === 'public' &&
+        ['127.0.0.1', 'localhost', state.config.lanIp].includes(state.config.publicHost)
+      ) {
+        state.config.publicHost = ''
+      }
+      state.playAccessMode = mode || ''
       render()
     }),
   )
@@ -894,6 +926,7 @@ async function refreshStatus() {
   try {
     state.status = await invoke('get_system_status')
     state.config = await invoke('get_install_config')
+    state.playAccessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
   } catch (error) {
@@ -996,8 +1029,12 @@ async function saveRawEnvironment() {
   state.environmentFile = textarea.value
   render()
   try {
-    await invoke('save_raw_environment', { content: state.environmentFile })
-    state.environmentMessage = '环境变量已保存，不会自动重启服务。'
+    const creatorPolicyCorrected = await invoke('save_raw_environment', {
+      content: state.environmentFile,
+    })
+    state.environmentMessage = creatorPolicyCorrected
+      ? '环境变量已保存；创作端的公网配置已自动改回本机或局域网范围。'
+      : '环境变量已保存，不会自动重启服务。'
     state.notice = state.environmentMessage
     state.progress = { stage: 'saved', message: '环境变量已保存', percent: 100 }
   } catch (error) {

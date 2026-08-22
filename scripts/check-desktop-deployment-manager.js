@@ -85,8 +85,11 @@ assert.match(
   /async function saveConfiguration\(event\)[\s\S]*?\n}\n\nasync function saveRawEnvironment\(\)/,
 )
 assert.match(frontend, /function switchSetupSection\(section\)/)
-assert.match(frontend, /data-network-host="127\.0\.0\.1"/)
-assert.match(frontend, /未检测到可用地址/)
+assert.match(frontend, /data-creator-network-host="127\.0\.0\.1"/)
+assert.match(frontend, /name="creatorHost" type="hidden"/)
+assert.doesNotMatch(frontend, /创作端访问地址/)
+assert.match(frontend, /data-play-network-mode="public"/)
+assert.match(frontend, /const inferredPlayAccessMode/)
 assert.match(backend, /fn detect_lan_ip/)
 for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 'authPortalPort']) {
   assert.match(frontend, new RegExp(`input\\('${port}'`))
@@ -147,8 +150,8 @@ assert.match(builder, /if \(!spec\.bundle\) fs\.copyFileSync\(archive/)
 assert.match(tauriConfig, /"resources": \["payload"\]/)
 assert.match(builder, /--no-bundle/)
 assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1/)
-assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1}:\$\{BOX_CREATOR_PORT/)
-assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1}:\$\{BOX_VOXA_PORT/)
+assert.match(compose, /BOX_CREATOR_BIND_IP:-127\.0\.0\.1}:\$\{BOX_CREATOR_PORT/)
+assert.match(compose, /BOX_VOXA_BIND_IP:-127\.0\.0\.1}:\$\{BOX_VOXA_PORT/)
 assert.doesNotMatch(frontend, /name="bindIp"/)
 // Saving data configuration must be a non-disruptive operation. It keeps the
 // user on the current setup page; starting containers remains an explicit
@@ -178,7 +181,15 @@ for (const scope of ['"all"', '"creator"', '"play"']) {
   assert.match(backend, new RegExp(scope))
 }
 assert.doesNotMatch(backend, /async fn install_and_start/)
-assert.match(backend, /"BOX_CREATOR_ALLOWED_HOSTS",\s*&public_host/)
+assert.match(backend, /fn validate_creator_host/)
+assert.match(backend, /禁止公网部署/)
+assert.match(backend, /"BOX_CREATOR_BIND_IP", creator_bind_ip/)
+assert.match(backend, /"BOX_VOXA_BIND_IP", creator_bind_ip/)
+assert.match(backend, /fn enforce_creator_network_policy/)
+assert.match(backend, /enforce_creator_network_policy\(app\)\?;/)
+assert.match(backend, /BOX_CREATOR_PUBLIC_URL/)
+assert.match(backend, /BOX_VOXA_ALLOWED_ORIGINS/)
+assert.match(backend, /"BOX_CREATOR_ALLOWED_HOSTS", &creator_host/)
 assert.match(
   backend,
   /"BOX_RESOURCE_ALLOWED_ORIGINS",[\s\S]*?config\.voxa_port,[\s\S]*?config\.creator_port/,

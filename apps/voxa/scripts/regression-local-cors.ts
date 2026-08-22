@@ -41,8 +41,8 @@ try {
 
   assert.equal(
     setLocalCors(request('https://voxa.example.test') as any, response() as any),
-    true,
-    'explicit reverse-proxy origins must be accepted',
+    false,
+    'public origins must remain rejected even when an .env value was edited manually',
   );
   assert.equal(
     setLocalCors(request('http://10.240.28.132:3221') as any, response() as any),
