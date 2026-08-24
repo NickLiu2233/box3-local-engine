@@ -1,13 +1,57 @@
-BOX Local Engine Distribution License Notice
+BOX3 Engine 非商业本地部署最终用户许可协议
+BOX3 Engine End User License Agreement — Non-Commercial Local Deployment
 
-Copyright (c) BOX Local Engine contributors and the respective rights holders.
-All rights reserved.
+生效日期：2026 年 8 月 24 日
 
-No open-source license is granted for the BOX Local Engine application,
-engine, bundled game content, or container images by this file. Redistribution,
-hosting, modification, and commercial use require permission from the
-applicable rights holder or a separate written agreement.
+请在下载、安装、部署、运行或使用 BOX3 Engine（以下简称“软件”）前仔细阅读本协议。
+一旦进行上述任一操作，即表示您已同意受本协议约束；如不同意，请勿使用软件。
 
-Third-party software remains licensed under its own terms. See the generated
-THIRD-PARTY-NOTICES.json file in each distribution for the dependency names,
-versions, licenses, and upstream project references discovered at build time.
+一、权利归属
+
+软件及其随附的容器镜像、程序、代码、文档、界面、品牌标识、Logo、素材和其他内容的
+版权及其他全部权利，均由相应权利人保留。本协议不转让任何所有权，也不授予任何商标、
+品牌或名称使用权。
+
+二、有限许可
+
+在您遵守本协议的前提下，权利人授予您一项不可转让、不可再许可、非排他、可撤销的
+有限许可，仅可在您本人或您所管理的设备、局域网或服务器上，为个人、教育、研究、
+社团或其他非商业目的安装、部署和使用软件。
+
+三、禁止事项
+
+除非事先取得相应权利人的明确书面许可，您不得：
+
+1. 将软件用于任何商业目的，包括但不限于收费服务、订阅、广告变现、销售、出租、
+   转售、代运营、托管或向第三方提供 SaaS、云服务或类似服务；
+2. 修改、改编、翻译、二次开发、制作衍生作品，或将软件与其他产品合并后发布；
+3. 分发、复制、公开传播、上传、出售、转让、出租、出借软件或其镜像、安装包、
+   资源、文档的全部或部分；
+4. 对软件进行反编译、反汇编、逆向工程、绕过技术限制或尝试获取源代码；
+5. 删除、隐藏、修改版权、商标、许可证、归属或其他权利声明；
+6. 以任何违反适用法律、侵犯他人权利或损害软件安全与稳定性的方式使用软件。
+
+前述限制不影响适用法律明确规定且不得通过合同排除的权利。
+
+四、第三方组件
+
+软件可能包含第三方软件、开源组件或其衍生物。该等组件仍分别受其自身许可证约束。
+随发行包提供的 THIRD-PARTY-NOTICES.json 仅用于记录第三方依赖信息，不改变本协议，
+亦不限制适用的第三方许可证所强制授予的权利。
+
+五、无担保与责任限制
+
+软件按“现状”和“可用”基础提供。在适用法律允许的最大范围内，权利人不作任何明示
+或默示保证，包括适销性、特定用途适用性、无侵权、持续可用性或无错误保证。对于因
+使用、无法使用或依赖软件导致的任何直接、间接、附带、特殊、惩罚性或后果性损失，
+权利人在适用法律允许的最大范围内不承担责任。
+
+六、终止
+
+如您违反本协议，许可将自动终止，且您必须立即停止使用软件并删除所持有的全部副本。
+权利人保留依法追究责任的权利。
+
+七、商业或特殊授权
+
+任何商业使用、二次开发、再分发、品牌合作或本协议未明确授权的使用，均须事先取得
+相应权利人的书面许可。

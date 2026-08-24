@@ -31,6 +31,36 @@ const SERVICE_NAMES: [&str; 5] = [
     "voxa",
 ];
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OfflineImageManifest {
+    format_version: u8,
+    archive: String,
+    sha256: String,
+    image_tag: String,
+    platform: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AboutInfo {
+    application_version: String,
+    image_tag: String,
+    source_revision: String,
+    build_created_at: String,
+    build_source: String,
+    platform: String,
+    architecture: String,
+    license: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LegalNotices {
+    license_name: String,
+    license_text: String,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ServiceStatus {
@@ -132,6 +162,14 @@ struct InstallConfigView {
     play_runtimes: u32,
     creator_edit_runtimes: u32,
     creator_play_runtimes: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OwnerSecretsView {
+    permission_token_secret: String,
+    player_auth_api_key: String,
+    play_admin_token: String,
 }
 
 impl Default for InstallConfigView {
@@ -287,6 +325,13 @@ fn runtime_root(app: &AppHandle) -> Result<PathBuf, String> {
 fn env_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join(".env"))
 }
+
+/// The owner-facing file intentionally contains only values that an operator
+/// needs to choose. Docker receives a separate generated file so URL, CORS,
+/// image and binding details never need to be edited by hand.
+fn runtime_env_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(runtime_root(app)?.join(".runtime.env"))
+}
 fn compose_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join("docker-compose.yml"))
 }
@@ -344,6 +389,59 @@ fn set_env(content: &mut String, key: &str, value: &str) -> Result<(), String> {
         lines.push(replacement);
     }
     *content = format!("{}\n", lines.join("\n"));
+    Ok(())
+}
+
+fn remove_env(content: &mut String, key: &str) {
+    *content = format!(
+        "{}\n",
+        content
+            .lines()
+            .filter(|line| !line.trim_start().starts_with(&format!("{key}=")))
+            .collect::<Vec<_>>()
+            .join("\n")
+    );
+}
+
+fn write_private_file(path: &Path, content: impl AsRef<[u8]>, label: &str) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("无法确定 {label} 的保存目录"))?;
+    fs::create_dir_all(parent).map_err(|error| format!("无法创建 {label} 目录：{error}"))?;
+    let temporary = parent.join(format!(
+        ".{}.{}.tmp",
+        path.file_name().unwrap_or_default().to_string_lossy(),
+        random_hex(8)
+    ));
+    fs::write(&temporary, content).map_err(|error| format!("无法写入 {label}：{error}"))?;
+    #[cfg(unix)]
+    fs::set_permissions(&temporary, fs::Permissions::from_mode(0o600))
+        .map_err(|error| format!("无法保护 {label} 权限：{error}"))?;
+    if let Err(error) = fs::rename(&temporary, path) {
+        // Unix replaces the destination atomically. Windows does not allow
+        // that when the destination already exists, so retry after removing
+        // the old file. This path is only used after the complete replacement
+        // was safely written to the private temporary file above.
+        #[cfg(windows)]
+        {
+            fs::remove_file(path).map_err(|remove_error| {
+                let _ = fs::remove_file(&temporary);
+                format!("无法替换 {label}：{error}；无法移除旧文件：{remove_error}")
+            })?;
+            fs::rename(&temporary, path).map_err(|rename_error| {
+                let _ = fs::remove_file(&temporary);
+                format!("无法替换 {label}：{rename_error}")
+            })?;
+        }
+        #[cfg(not(windows))]
+        {
+            let _ = fs::remove_file(&temporary);
+            return Err(format!("无法替换 {label}：{error}"));
+        }
+    }
+    #[cfg(unix)]
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+        .map_err(|error| format!("无法保护 {label} 权限：{error}"))?;
     Ok(())
 }
 
@@ -480,15 +578,11 @@ fn docker_output(args: &[&str]) -> Result<String, String> {
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
     ensure_runtime_files(app)?;
-    // Do this immediately before every Compose invocation. The .env editor is
-    // intentionally available to the owner, but it must never be able to
-    // publish ARENA or VOXA outside the local network.
-    enforce_creator_network_policy(app)?;
     let root = runtime_root(app)?;
-    let env = env_path(app)?;
-    if !env.exists() {
-        return Err("尚未完成安装配置".into());
-    }
+    // Regenerate on every invocation. The owner can edit .env directly, but
+    // Docker only ever consumes the policy-checked derived configuration.
+    generate_runtime_environment(app)?;
+    let env = runtime_env_path(app)?;
     let compose = compose_path(app)?;
     let mut command = docker_command();
     command
@@ -578,65 +672,357 @@ fn env_port(values: &BTreeMap<String, String>, key: &str, fallback: u16) -> u16 
         .unwrap_or(fallback)
 }
 
-/// Force Creator and VOXA to one private address, even when an owner edits
-/// the raw .env. A Docker host administrator can always run a different
-/// container manually, but every deployment performed by this application is
-/// constrained here and at the port-binding layer.
+const GENERATED_ENV_KEYS: [&str; 16] = [
+    "COMPOSE_PROFILES",
+    "BOX_IMAGE_TAG",
+    "BOX_PLAY_PLATFORM",
+    "BOX_BIND_IP",
+    "BOX_CREATOR_BIND_IP",
+    "BOX_VOXA_BIND_IP",
+    "BOX_PLAY_PUBLIC_URL",
+    "BOX_VOXA_PUBLIC_URL",
+    "BOX_CREATOR_PUBLIC_URL",
+    "BOX_PLAYER_SERVICE_PUBLIC_URL",
+    "BOX_AUTH_PORTAL_PUBLIC_URL",
+    "BOX_PLAYER_LOGIN_URL",
+    "BOX_PLAYER_AUTH_ALLOWED_ORIGINS",
+    "BOX_CREATOR_ALLOWED_HOSTS",
+    "BOX_VOXA_ALLOWED_ORIGINS",
+    "BOX_RESOURCE_ALLOWED_ORIGINS",
+];
+
+fn decode_database_url_component(value: &str) -> Option<String> {
+    urlencoding::decode(value)
+        .ok()
+        .map(|value| value.into_owned())
+}
+
+/// Best-effort support for a pre-manager installation that only has the
+/// standard DATABASE_URL. The manager itself always writes the clearer split
+/// fields, but this prevents an upgrade from silently disabling accounts.
+fn legacy_database_url_fields(value: &str) -> Option<(String, String, String, String, String)> {
+    let value = value
+        .trim()
+        .strip_prefix("postgresql://")
+        .or_else(|| value.trim().strip_prefix("postgres://"))?;
+    let (credentials, authority_and_database) = value.rsplit_once('@')?;
+    let (user, password) = credentials.split_once(':')?;
+    let authority_and_database = authority_and_database
+        .split_once('?')
+        .map_or(authority_and_database, |(authority_and_database, _)| {
+            authority_and_database
+        });
+    let (authority, database) = authority_and_database.split_once('/')?;
+    let (host, port) = if let Some(bracketed) = authority.strip_prefix('[') {
+        let (host, rest) = bracketed.split_once(']')?;
+        (host, rest.strip_prefix(':')?)
+    } else {
+        authority.rsplit_once(':')?
+    };
+    port.parse::<u16>().ok().filter(|port| *port > 0)?;
+    Some((
+        host.to_string(),
+        port.to_string(),
+        decode_database_url_component(database)?,
+        decode_database_url_component(user)?,
+        decode_database_url_component(password)?,
+    ))
+}
+
+/// Convert installations created by earlier manager releases to the compact
+/// operator configuration. Derived fields are discarded; they are recreated
+/// in .runtime.env every time Docker Compose is invoked.
+fn normalize_owner_environment(content: &str) -> Result<String, String> {
+    let mut normalized = content.to_string();
+    let values = parse_env(content);
+
+    let play_host = values
+        .get("BOX_PLAY_PUBLIC_HOST")
+        .cloned()
+        .or_else(|| {
+            values
+                .get("BOX_PLAY_PUBLIC_URL")
+                .and_then(|url| host_from_http_url(url))
+        })
+        .or_else(|| values.get("BOX_BIND_IP").cloned())
+        .filter(|host| validate_host(host, "游玩端访问地址").is_ok())
+        .unwrap_or_else(default_public_host);
+    let creator_host = values
+        .get("BOX_CREATOR_HOST")
+        .cloned()
+        .or_else(|| {
+            values
+                .get("BOX_CREATOR_PUBLIC_URL")
+                .and_then(|url| host_from_http_url(url))
+        })
+        .or_else(|| values.get("BOX_CREATOR_BIND_IP").cloned())
+        .filter(|host| validate_creator_host(host).is_ok())
+        .unwrap_or_else(default_creator_host);
+
+    set_env(&mut normalized, "BOX_PLAY_PUBLIC_HOST", &play_host)?;
+    set_env(&mut normalized, "BOX_CREATOR_HOST", &creator_host)?;
+
+    // Old versions duplicated the database password in five manager-only
+    // variables. Move it to the standard database fields once and remove the
+    // duplicate copies.
+    for (target, legacy) in [
+        ("BOX_DATABASE_HOST", "BOX_DEPLOYMENT_MANAGER_DATABASE_HOST"),
+        ("BOX_DATABASE_PORT", "BOX_DEPLOYMENT_MANAGER_DATABASE_PORT"),
+        ("BOX_DATABASE_NAME", "BOX_DEPLOYMENT_MANAGER_DATABASE_NAME"),
+        ("BOX_DATABASE_USER", "BOX_DEPLOYMENT_MANAGER_DATABASE_USER"),
+        (
+            "BOX_DATABASE_PASSWORD",
+            "BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD",
+        ),
+    ] {
+        if !values.contains_key(target) {
+            if let Some(value) = values.get(legacy) {
+                set_env(&mut normalized, target, value)?;
+            }
+        }
+        remove_env(&mut normalized, legacy);
+    }
+    let has_database_fields = [
+        "BOX_DATABASE_HOST",
+        "BOX_DATABASE_PORT",
+        "BOX_DATABASE_NAME",
+        "BOX_DATABASE_USER",
+        "BOX_DATABASE_PASSWORD",
+    ]
+    .iter()
+    .any(|key| values.get(*key).is_some_and(|value| !value.is_empty()));
+    if !has_database_fields {
+        if let Some((host, port, database, user, password)) = values
+            .get("BOX_DATABASE_URL")
+            .and_then(|value| legacy_database_url_fields(value))
+        {
+            set_env(&mut normalized, "BOX_DATABASE_HOST", &host)?;
+            set_env(&mut normalized, "BOX_DATABASE_PORT", &port)?;
+            set_env(&mut normalized, "BOX_DATABASE_NAME", &database)?;
+            set_env(&mut normalized, "BOX_DATABASE_USER", &user)?;
+            set_env(&mut normalized, "BOX_DATABASE_PASSWORD", &password)?;
+        }
+    }
+    for key in GENERATED_ENV_KEYS {
+        remove_env(&mut normalized, key);
+    }
+    // Compose already supplies these defaults. Keep a value only when the
+    // owner intentionally changed it as an advanced override.
+    for (key, default) in [
+        ("BOX_DATABASE_SCHEMA", "box_engine"),
+        ("BOX_IDENTITY_DATABASE_SCHEMA", "box_identity"),
+        ("BOX_DATABASE_POOL_SIZE", "10"),
+        ("BOX_DATABASE_SSL_REJECT_UNAUTHORIZED", "true"),
+        ("STORAGE_CACHE_REDIS_TTL", "240"),
+        ("BOX_RUNTIME_IDLE_TIMEOUT_MS", "900000"),
+        ("BOX_TRUST_PROXY", "false"),
+    ] {
+        if values.get(key).is_some_and(|value| value == default) {
+            remove_env(&mut normalized, key);
+        }
+    }
+    // This contains the same credential as the split configuration above and
+    // belongs only in the generated runtime file.
+    remove_env(&mut normalized, "BOX_DATABASE_URL");
+    remove_env(&mut normalized, "BOX_PLAYER_SERVICE_INTERNAL_URL");
+    Ok(normalized)
+}
+
+/// Creator and VOXA are deliberately constrained to loopback or a private
+/// network address. This is applied after raw editing too, so changing a
+/// derived variable can never bypass the deployment policy.
 fn enforce_creator_network_policy(app: &AppHandle) -> Result<bool, String> {
     let path = env_path(app)?;
     if !path.exists() {
         return Ok(false);
     }
-    let mut content =
+    let original =
         fs::read_to_string(&path).map_err(|error| format!("无法读取部署配置：{error}"))?;
-    let original = content.clone();
-    let values = parse_env(&content);
-    let candidate_hosts = [
-        values.get("BOX_CREATOR_BIND_IP").cloned(),
-        values.get("BOX_VOXA_BIND_IP").cloned(),
-        values
-            .get("BOX_CREATOR_PUBLIC_URL")
-            .and_then(|value| host_from_http_url(value)),
-        values
-            .get("BOX_VOXA_PUBLIC_URL")
-            .and_then(|value| host_from_http_url(value)),
-    ];
-    let creator_host = candidate_hosts
-        .iter()
-        .flatten()
-        .find_map(|value| validate_creator_host(value).ok())
-        .unwrap_or_else(default_creator_host);
-    let creator_origin_host = origin_host(&creator_host);
-    let voxa_port = env_port(&values, "BOX_VOXA_PORT", default_voxa_port());
-    let creator_port = env_port(&values, "BOX_CREATOR_PORT", default_creator_port());
+    let normalized = normalize_owner_environment(&original)?;
+    if normalized != original {
+        write_private_file(&path, normalized, "部署配置")?;
+        return Ok(true);
+    }
+    Ok(false)
+}
 
-    set_env(&mut content, "BOX_CREATOR_BIND_IP", &creator_host)?;
-    set_env(&mut content, "BOX_VOXA_BIND_IP", &creator_host)?;
+fn database_url(values: &BTreeMap<String, String>) -> Result<String, String> {
+    let host = values
+        .get("BOX_DATABASE_HOST")
+        .map(|value| value.trim())
+        .unwrap_or_default();
+    if host.is_empty() {
+        return Err("必须配置 PostgreSQL 数据库地址后才能启动服务".into());
+    }
+    let host = validate_host(host, "数据库地址")?;
+    let port = validate_port(
+        values
+            .get("BOX_DATABASE_PORT")
+            .map(String::as_str)
+            .unwrap_or("5432"),
+    )?;
+    let database = values
+        .get("BOX_DATABASE_NAME")
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .ok_or("启用 PostgreSQL 时，数据库名不能为空")?;
+    let user = values
+        .get("BOX_DATABASE_USER")
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .ok_or("启用 PostgreSQL 时，数据库账号不能为空")?;
+    let password = values
+        .get("BOX_DATABASE_PASSWORD")
+        .map(String::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or("启用 PostgreSQL 时，数据库密码不能为空")?;
+    let host = if host.contains(':') && !host.starts_with('[') {
+        format!("[{host}]")
+    } else {
+        host
+    };
+    Ok(format!(
+        "postgresql://{}:{}@{}:{}/{}",
+        urlencoding::encode(user),
+        urlencoding::encode(password),
+        host,
+        port,
+        urlencoding::encode(database)
+    ))
+}
+
+fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, String>, String> {
+    ensure_runtime_files(app)?;
+    enforce_creator_network_policy(app)?;
+    let owner_path = env_path(app)?;
+    if !owner_path.exists() {
+        return Err("尚未完成安装配置".into());
+    }
+    let owner =
+        fs::read_to_string(&owner_path).map_err(|error| format!("无法读取部署配置：{error}"))?;
+    let owner_values = parse_env(&owner);
+    let play_host = owner_values
+        .get("BOX_PLAY_PUBLIC_HOST")
+        .map(String::as_str)
+        .map(|host| validate_host(host, "游玩端访问地址"))
+        .transpose()?
+        .unwrap_or_else(default_public_host);
+    let creator_host = owner_values
+        .get("BOX_CREATOR_HOST")
+        .map(String::as_str)
+        .map(validate_creator_host)
+        .transpose()?
+        .unwrap_or_else(default_creator_host);
+    let play_port = env_port(&owner_values, "BOX_PLAY_PORT", default_play_port());
+    let voxa_port = env_port(&owner_values, "BOX_VOXA_PORT", default_voxa_port());
+    let creator_port = env_port(&owner_values, "BOX_CREATOR_PORT", default_creator_port());
+    let player_service_port = env_port(
+        &owner_values,
+        "BOX_PLAYER_SERVICE_PORT",
+        default_player_service_port(),
+    );
+    let auth_portal_port = env_port(
+        &owner_values,
+        "BOX_AUTH_PORTAL_PORT",
+        default_auth_portal_port(),
+    );
+    let play_bind_ip = if matches!(play_host.as_str(), "127.0.0.1" | "localhost" | "::1") {
+        "127.0.0.1"
+    } else {
+        "0.0.0.0"
+    };
+    let creator_bind_ip = if matches!(creator_host.as_str(), "127.0.0.1" | "localhost" | "::1") {
+        "127.0.0.1"
+    } else {
+        creator_host.as_str()
+    };
+    let play_origin_host = origin_host(&play_host);
+    let creator_origin_host = origin_host(&creator_host);
+    let database_url = database_url(&owner_values)?;
+    let mut runtime = owner;
     set_env(
-        &mut content,
+        &mut runtime,
+        "COMPOSE_PROFILES",
+        "player-service,auth-portal,creator,play,voxa",
+    )?;
+    set_env(&mut runtime, "BOX_IMAGE_TAG", IMAGE_TAG)?;
+    set_env(
+        &mut runtime,
+        "BOX_PLAY_PLATFORM",
+        if cfg!(target_arch = "aarch64") {
+            "linux/arm64"
+        } else {
+            "linux/amd64"
+        },
+    )?;
+    set_env(&mut runtime, "BOX_BIND_IP", play_bind_ip)?;
+    set_env(&mut runtime, "BOX_CREATOR_BIND_IP", creator_bind_ip)?;
+    set_env(&mut runtime, "BOX_VOXA_BIND_IP", creator_bind_ip)?;
+    set_env(&mut runtime, "BOX_PLAY_PORT", &play_port.to_string())?;
+    set_env(&mut runtime, "BOX_VOXA_PORT", &voxa_port.to_string())?;
+    set_env(&mut runtime, "BOX_CREATOR_PORT", &creator_port.to_string())?;
+    set_env(
+        &mut runtime,
+        "BOX_PLAYER_SERVICE_PORT",
+        &player_service_port.to_string(),
+    )?;
+    set_env(
+        &mut runtime,
+        "BOX_AUTH_PORTAL_PORT",
+        &auth_portal_port.to_string(),
+    )?;
+    set_env(
+        &mut runtime,
+        "BOX_PLAY_PUBLIC_URL",
+        &format!("http://{play_origin_host}:{play_port}"),
+    )?;
+    set_env(
+        &mut runtime,
+        "BOX_VOXA_PUBLIC_URL",
+        &format!("http://{creator_origin_host}:{voxa_port}"),
+    )?;
+    set_env(
+        &mut runtime,
         "BOX_CREATOR_PUBLIC_URL",
         &format!("http://{creator_origin_host}:{creator_port}"),
     )?;
     set_env(
-        &mut content,
-        "BOX_VOXA_PUBLIC_URL",
-        &format!("http://{creator_origin_host}:{voxa_port}"),
+        &mut runtime,
+        "BOX_PLAYER_SERVICE_PUBLIC_URL",
+        &format!("http://{play_origin_host}:{player_service_port}"),
     )?;
-    set_env(&mut content, "BOX_CREATOR_ALLOWED_HOSTS", &creator_host)?;
+    set_env(
+        &mut runtime,
+        "BOX_AUTH_PORTAL_PUBLIC_URL",
+        &format!("http://{play_origin_host}:{auth_portal_port}"),
+    )?;
+    let login_url = format!("http://{play_origin_host}:{auth_portal_port}");
+    set_env(&mut runtime, "BOX_PLAYER_LOGIN_URL", &login_url)?;
     let creator_origins = format!(
         "http://{creator_origin_host}:{voxa_port},http://{creator_origin_host}:{creator_port}"
     );
-    set_env(&mut content, "BOX_VOXA_ALLOWED_ORIGINS", &creator_origins)?;
+    set_env(&mut runtime, "BOX_VOXA_ALLOWED_ORIGINS", &creator_origins)?;
     set_env(
-        &mut content,
+        &mut runtime,
         "BOX_RESOURCE_ALLOWED_ORIGINS",
         &creator_origins,
     )?;
-    if content != original {
-        fs::write(&path, content).map_err(|error| format!("无法修正创作端网络策略：{error}"))?;
-        return Ok(true);
-    }
-    Ok(false)
+    set_env(&mut runtime, "BOX_CREATOR_ALLOWED_HOSTS", &creator_host)?;
+    set_env(
+        &mut runtime,
+        "BOX_PLAYER_AUTH_ALLOWED_ORIGINS",
+        &format!(
+            "http://{play_origin_host}:{play_port},http://{creator_origin_host}:{creator_port},http://{play_origin_host}:{auth_portal_port}"
+        ),
+    )?;
+    set_env(&mut runtime, "BOX_DATABASE_URL", &database_url)?;
+    set_env(
+        &mut runtime,
+        "BOX_PLAYER_SERVICE_INTERNAL_URL",
+        "http://player-service:3213",
+    )?;
+    write_private_file(&runtime_env_path(app)?, runtime, "运行时配置")?;
+    Ok(owner_values)
 }
 
 fn validate_port(value: &str) -> Result<u16, String> {
@@ -645,23 +1031,8 @@ fn validate_port(value: &str) -> Result<u16, String> {
         .map_err(|_| "数据库端口必须是 1-65535 之间的整数".into())
 }
 
-fn enabled_services(values: &BTreeMap<String, String>) -> Vec<&str> {
-    let profiles = values
-        .get("COMPOSE_PROFILES")
-        .map(String::as_str)
-        .unwrap_or("creator,play,voxa");
-    SERVICE_NAMES
-        .iter()
-        .copied()
-        .filter(|name| {
-            let profile = match *name {
-                "player-service" => "player-service",
-                "player-auth-portal" => "auth-portal",
-                other => other,
-            };
-            profiles.split(',').any(|value| value.trim() == profile)
-        })
-        .collect()
+fn enabled_services(_values: &BTreeMap<String, String>) -> Vec<&str> {
+    SERVICE_NAMES.to_vec()
 }
 
 fn check_remote_endpoint(label: &str, host: &str, port: u16) -> Result<(), String> {
@@ -731,23 +1102,14 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_service_ports(config)?;
-    let bind_ip = if public_host == "127.0.0.1" || public_host == "localhost" {
-        "127.0.0.1"
-    } else {
-        "0.0.0.0"
-    };
-    let creator_bind_ip = if creator_host == "localhost" || creator_host == "127.0.0.1" {
-        "127.0.0.1"
-    } else {
-        creator_host.as_str()
-    };
     let existing = load_existing_env(app);
     let existing_file = env_path(app)?;
-    let mut content = if existing_file.exists() {
+    let source = if existing_file.exists() {
         fs::read_to_string(&existing_file).map_err(|error| format!("无法读取现有配置：{error}"))?
     } else {
         ENV_TEMPLATE.to_string()
     };
+    let mut content = normalize_owner_environment(&source)?;
 
     set_env(
         &mut content,
@@ -773,10 +1135,8 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &resolve_secret("BOX_PLAY_ADMIN_TOKEN", &config.play_admin_token, &existing)?,
     )?;
     set_env(&mut content, "BOX_PLAY_LIBRARY_READ_ONLY", "false")?;
-    set_env(&mut content, "BOX_IMAGE_TAG", IMAGE_TAG)?;
-    set_env(&mut content, "BOX_BIND_IP", bind_ip)?;
-    set_env(&mut content, "BOX_CREATOR_BIND_IP", creator_bind_ip)?;
-    set_env(&mut content, "BOX_VOXA_BIND_IP", creator_bind_ip)?;
+    set_env(&mut content, "BOX_PLAY_PUBLIC_HOST", &public_host)?;
+    set_env(&mut content, "BOX_CREATOR_HOST", &creator_host)?;
     set_env(&mut content, "BOX_PLAY_PORT", &config.play_port.to_string())?;
     set_env(&mut content, "BOX_VOXA_PORT", &config.voxa_port.to_string())?;
     set_env(
@@ -796,67 +1156,6 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     )?;
     set_env(
         &mut content,
-        "BOX_PLAY_PUBLIC_URL",
-        &format!("http://{public_host}:{}", config.play_port),
-    )?;
-    set_env(
-        &mut content,
-        "BOX_VOXA_PUBLIC_URL",
-        &format!("http://{creator_host}:{}", config.voxa_port),
-    )?;
-    set_env(
-        &mut content,
-        "BOX_VOXA_ALLOWED_ORIGINS",
-        &format!(
-            "http://{creator_host}:{},http://{creator_host}:{}",
-            config.voxa_port, config.creator_port
-        ),
-    )?;
-    set_env(
-        &mut content,
-        "BOX_CREATOR_PUBLIC_URL",
-        &format!("http://{creator_host}:{}", config.creator_port),
-    )?;
-    // The embedded VOXA editor saves project-local blobs directly through the
-    // game runtime. It is a different browser origin from Creator, so the
-    // runtime must explicitly allow both configured public addresses.
-    set_env(
-        &mut content,
-        "BOX_RESOURCE_ALLOWED_ORIGINS",
-        &format!(
-            "http://{creator_host}:{},http://{creator_host}:{}",
-            config.voxa_port, config.creator_port
-        ),
-    )?;
-    // Creator APIs mutate source projects. Keep the browser Host allow-list
-    // aligned with the one public address selected by the owner instead of
-    // accepting arbitrary LAN hosts.
-    set_env(&mut content, "BOX_CREATOR_ALLOWED_HOSTS", &creator_host)?;
-    set_env(
-        &mut content,
-        "BOX_PLAYER_SERVICE_PUBLIC_URL",
-        &format!("http://{public_host}:{}", config.player_service_port),
-    )?;
-    set_env(
-        &mut content,
-        "BOX_AUTH_PORTAL_PUBLIC_URL",
-        &format!("http://{public_host}:{}", config.auth_portal_port),
-    )?;
-    set_env(
-        &mut content,
-        "BOX_PLAYER_LOGIN_URL",
-        &format!("http://{public_host}:{}", config.auth_portal_port),
-    )?;
-    set_env(
-        &mut content,
-        "BOX_PLAYER_AUTH_ALLOWED_ORIGINS",
-        &format!(
-            "http://{public_host}:{},http://{creator_host}:{},http://{public_host}:{}",
-            config.play_port, config.creator_port, config.auth_portal_port
-        ),
-    )?;
-    set_env(
-        &mut content,
         "BOX_PLAY_MAX_RUNTIMES",
         &config.play_runtimes.to_string(),
     )?;
@@ -870,60 +1169,25 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_CREATOR_PLAY_MAX_RUNTIMES",
         &config.creator_play_runtimes.to_string(),
     )?;
-    set_env(
-        &mut content,
-        "BOX_PLAY_PLATFORM",
-        if cfg!(target_arch = "aarch64") {
-            "linux/arm64"
-        } else {
-            "linux/amd64"
-        },
-    )?;
-
-    let database_enabled = !config.database_host.trim().is_empty();
-    let (host, port, database, user, password, url) = if database_enabled {
-        let host = validate_host(&config.database_host, "数据库地址")?;
-        let port = validate_port(&config.database_port)?;
-        let database = config.database_name.trim().to_string();
-        let user = config.database_user.trim().to_string();
-        if database.is_empty() || user.is_empty() {
-            return Err("启用 PostgreSQL 时，数据库名和账号不能为空".into());
-        }
-        let password = if config.database_password.is_empty() {
-            existing
-                .get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD")
-                .cloned()
-                .unwrap_or_default()
-        } else {
-            config.database_password.clone()
-        };
-        if password.is_empty() {
-            return Err("启用 PostgreSQL 时，数据库密码不能为空".into());
-        }
-        let host_for_url = if host.contains(':') && !host.starts_with('[') {
-            format!("[{host}]")
-        } else {
-            host.clone()
-        };
-        let url = format!(
-            "postgresql://{}:{}@{}:{}/{}",
-            urlencoding::encode(&user),
-            urlencoding::encode(&password),
-            host_for_url,
-            port,
-            urlencoding::encode(&database)
-        );
-        (host, port.to_string(), database, user, password, url)
+    let host = validate_host(&config.database_host, "数据库地址")?;
+    let port = validate_port(&config.database_port)?;
+    let database = config.database_name.trim().to_string();
+    let user = config.database_user.trim().to_string();
+    if database.is_empty() || user.is_empty() {
+        return Err("PostgreSQL 数据库名和账号不能为空".into());
+    }
+    let password = if config.database_password.is_empty() {
+        existing
+            .get("BOX_DATABASE_PASSWORD")
+            .or_else(|| existing.get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD"))
+            .cloned()
+            .unwrap_or_default()
     } else {
-        (
-            String::new(),
-            String::new(),
-            String::new(),
-            String::new(),
-            String::new(),
-            String::new(),
-        )
+        config.database_password.clone()
     };
+    if password.is_empty() {
+        return Err("PostgreSQL 数据库密码不能为空".into());
+    }
     let redis_enabled = !config.redis_host.trim().is_empty();
     let (redis_host, redis_port, redis_password) = if redis_enabled {
         let host = validate_host(&config.redis_host, "Redis 地址")?;
@@ -937,16 +1201,11 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     } else {
         (String::new(), String::new(), String::new())
     };
-    set_env(
-        &mut content,
-        "COMPOSE_PROFILES",
-        if database_enabled {
-            "player-service,auth-portal,creator,play,voxa"
-        } else {
-            "creator,play,voxa"
-        },
-    )?;
-    set_env(&mut content, "BOX_DATABASE_URL", &url)?;
+    set_env(&mut content, "BOX_DATABASE_HOST", &host)?;
+    set_env(&mut content, "BOX_DATABASE_PORT", &port.to_string())?;
+    set_env(&mut content, "BOX_DATABASE_NAME", &database)?;
+    set_env(&mut content, "BOX_DATABASE_USER", &user)?;
+    set_env(&mut content, "BOX_DATABASE_PASSWORD", &password)?;
     set_env(
         &mut content,
         "BOX_DATABASE_SSL",
@@ -961,35 +1220,12 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "STORAGE_CACHE_REDIS_DB",
         &config.storage_cache_redis_db.to_string(),
     )?;
-    set_env(&mut content, "BOX_DEPLOYMENT_MANAGER_DATABASE_HOST", &host)?;
-    set_env(&mut content, "BOX_DEPLOYMENT_MANAGER_DATABASE_PORT", &port)?;
-    set_env(
-        &mut content,
-        "BOX_DEPLOYMENT_MANAGER_DATABASE_NAME",
-        &database,
-    )?;
-    set_env(&mut content, "BOX_DEPLOYMENT_MANAGER_DATABASE_USER", &user)?;
-    set_env(
-        &mut content,
-        "BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD",
-        &password,
-    )?;
-    set_env(
-        &mut content,
-        "BOX_PLAYER_SERVICE_INTERNAL_URL",
-        if database_enabled {
-            "http://player-service:3213"
-        } else {
-            ""
-        },
-    )?;
-    if !database_enabled {
-        set_env(&mut content, "BOX_PLAYER_LOGIN_URL", "")?;
-    }
-    fs::write(existing_file, content).map_err(|error| format!("无法保存部署配置：{error}"))
+    write_private_file(&existing_file, content, "部署配置")?;
+    generate_runtime_environment(app)?;
+    Ok(())
 }
 
-fn archive_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
+fn offline_archive_search_roots(app: Option<&AppHandle>) -> Vec<PathBuf> {
     let mut roots = Vec::new();
     if let Some(app) = app {
         if let Ok(resource_dir) = app.path().resource_dir() {
@@ -1003,8 +1239,14 @@ fn archive_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
         }
     }
     roots.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("payload"));
+    roots.sort();
+    roots.dedup();
+    roots
+}
+
+fn archive_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
     let mut archives = Vec::new();
-    for root in roots {
+    for root in offline_archive_search_roots(app) {
         if let Ok(entries) = fs::read_dir(root) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
@@ -1021,29 +1263,48 @@ fn archive_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
     archives
 }
 
-fn synchronize_runtime_image_tag(app: &AppHandle) -> Result<(), String> {
-    ensure_runtime_files(app)?;
-    let path = env_path(app)?;
-    let mut content = if path.exists() {
-        fs::read_to_string(&path).map_err(|error| format!("无法读取部署配置：{error}"))?
+fn verify_offline_image_archive(app: &AppHandle, archive: &Path) -> Result<String, String> {
+    let archive_name = archive
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or("离线镜像归档名称无效")?;
+    let expected_platform = if cfg!(target_arch = "aarch64") {
+        "linux/arm64"
     } else {
-        ENV_TEMPLATE.to_string()
+        "linux/amd64"
     };
-    // The app owns the offline image archive and its tag. A configuration
-    // created by an older app version must not make Compose pull or build an
-    // obsolete tag from source after the user upgrades the application.
-    set_env(&mut content, "BOX_IMAGE_TAG", IMAGE_TAG)?;
-    set_env(
-        &mut content,
-        "BOX_PLAY_PLATFORM",
-        if cfg!(target_arch = "aarch64") {
-            "linux/arm64"
-        } else {
-            "linux/amd64"
-        },
-    )?;
-    fs::write(path, content).map_err(|error| format!("无法更新镜像运行配置：{error}"))?;
-    enforce_creator_network_policy(app)?;
+    let manifest = offline_archive_search_roots(Some(app))
+        .into_iter()
+        .map(|root| root.join("BOX-OFFLINE-IMAGE.json"))
+        .find_map(|path| fs::read_to_string(path).ok())
+        .ok_or("离线包缺少完整性清单 BOX-OFFLINE-IMAGE.json，请重新下载完整离线包")?;
+    let manifest: OfflineImageManifest = serde_json::from_str(&manifest)
+        .map_err(|error| format!("离线镜像完整性清单格式无效：{error}"))?;
+    if manifest.format_version != 1
+        || manifest.archive != archive_name
+        || manifest.image_tag != IMAGE_TAG
+        || manifest.platform != expected_platform
+        || manifest.sha256.len() != 64
+        || !manifest
+            .sha256
+            .chars()
+            .all(|character| character.is_ascii_hexdigit())
+    {
+        return Err("离线镜像与当前启动器不匹配，请下载同一版本、同一架构的完整离线包".into());
+    }
+    let actual = file_sha256(archive).map_err(|error| format!("无法校验离线镜像：{error}"))?;
+    if !actual.eq_ignore_ascii_case(&manifest.sha256) {
+        return Err("离线镜像 SHA-256 校验失败，文件可能损坏或被替换，请重新下载离线包".into());
+    }
+    Ok(actual)
+}
+
+fn synchronize_runtime_image_tag(app: &AppHandle) -> Result<(), String> {
+    // The image tag is owned by this application. It is generated into the
+    // Docker-only file rather than being persisted in the operator's .env.
+    if env_path(app)?.exists() {
+        generate_runtime_environment(app)?;
+    }
     Ok(())
 }
 
@@ -1079,6 +1340,7 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
                 .is_some_and(|name| name.to_string_lossy().contains(expected))
         })
         .ok_or_else(|| format!("未找到 {expected} 离线镜像归档。请重新下载完整离线包。"))?;
+    verify_offline_image_archive(app, &archive)?;
     let archive_string = archive.to_string_lossy().to_string();
     docker_output(&["load", "-i", &archive_string])?;
     Ok(())
@@ -1106,27 +1368,24 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .unwrap_or(fallback)
     };
     InstallConfigView {
-        database_host: values
-            .get("BOX_DEPLOYMENT_MANAGER_DATABASE_HOST")
-            .cloned()
-            .unwrap_or_default(),
+        database_host: values.get("BOX_DATABASE_HOST").cloned().unwrap_or_default(),
         database_port: values
-            .get("BOX_DEPLOYMENT_MANAGER_DATABASE_PORT")
+            .get("BOX_DATABASE_PORT")
             .cloned()
             .unwrap_or_else(default_database_port),
         database_name: values
-            .get("BOX_DEPLOYMENT_MANAGER_DATABASE_NAME")
+            .get("BOX_DATABASE_NAME")
             .cloned()
             .unwrap_or_else(default_database_name),
         database_user: values
-            .get("BOX_DEPLOYMENT_MANAGER_DATABASE_USER")
+            .get("BOX_DATABASE_USER")
             .cloned()
             .unwrap_or_else(default_database_user),
         database_ssl: values
             .get("BOX_DATABASE_SSL")
             .is_some_and(|value| value == "true"),
         has_database_password: values
-            .get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD")
+            .get("BOX_DATABASE_PASSWORD")
             .is_some_and(|value| !value.is_empty()),
         has_permission_token_secret: values
             .get("PERMISSION_TOKEN_SECRET")
@@ -1148,14 +1407,12 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         redis_db: number_u8("REDIS_DB", 0),
         storage_cache_redis_db: number_u8("STORAGE_CACHE_REDIS_DB", 1),
         public_host: values
-            .get("BOX_PLAY_PUBLIC_URL")
-            .and_then(|url| url.strip_prefix("http://"))
-            .and_then(|value| value.rsplit_once(':').map(|(host, _)| host.to_string()))
+            .get("BOX_PLAY_PUBLIC_HOST")
+            .cloned()
             .unwrap_or_else(default_public_host),
         creator_host: values
-            .get("BOX_CREATOR_PUBLIC_URL")
-            .and_then(|url| url.strip_prefix("http://"))
-            .and_then(|value| value.rsplit_once(':').map(|(host, _)| host.to_string()))
+            .get("BOX_CREATOR_HOST")
+            .cloned()
             .unwrap_or_else(default_creator_host),
         lan_ip: detect_lan_ip().unwrap_or_default(),
         play_port: number_u32("BOX_PLAY_PORT", 3000).try_into().unwrap_or(3000),
@@ -1176,6 +1433,23 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
 }
 
 #[tauri::command]
+fn get_owner_secrets(app: AppHandle) -> Result<OwnerSecretsView, String> {
+    let values = load_existing_env(&app);
+    let secret = |name: &str| {
+        values
+            .get(name)
+            .filter(|value| value.len() >= 16)
+            .cloned()
+            .ok_or_else(|| "服主密钥尚未生成，请先保存一次配置".to_string())
+    };
+    Ok(OwnerSecretsView {
+        permission_token_secret: secret("PERMISSION_TOKEN_SECRET")?,
+        player_auth_api_key: secret("BOX_PLAYER_AUTH_API_KEY")?,
+        play_admin_token: secret("BOX_PLAY_ADMIN_TOKEN")?,
+    })
+}
+
+#[tauri::command]
 fn get_raw_environment(app: AppHandle) -> Result<String, String> {
     ensure_runtime_files(&app)?;
     enforce_creator_network_policy(&app)?;
@@ -1191,9 +1465,14 @@ fn get_raw_environment(app: AppHandle) -> Result<String, String> {
 fn save_raw_environment(app: AppHandle, content: String) -> Result<bool, String> {
     validate_raw_environment(&content)?;
     ensure_runtime_files(&app)?;
-    fs::write(env_path(&app)?, format!("{}\n", content.trim_end()))
-        .map_err(|error| format!("无法保存 .env：{error}"))?;
-    enforce_creator_network_policy(&app)
+    write_private_file(
+        &env_path(&app)?,
+        format!("{}\n", content.trim_end()),
+        ".env",
+    )?;
+    let normalized = enforce_creator_network_policy(&app)?;
+    generate_runtime_environment(&app)?;
+    Ok(normalized)
 }
 
 #[tauri::command]
@@ -1259,6 +1538,28 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
         all_healthy,
         services,
         data_directory,
+    }
+}
+
+#[tauri::command]
+fn get_about_info() -> AboutInfo {
+    AboutInfo {
+        application_version: env!("CARGO_PKG_VERSION").into(),
+        image_tag: IMAGE_TAG.into(),
+        source_revision: option_env!("BOX_BUILD_COMMIT").unwrap_or("unknown").into(),
+        build_created_at: option_env!("BOX_BUILD_DATE").unwrap_or("unknown").into(),
+        build_source: option_env!("BOX_BUILD_SOURCE").unwrap_or("local").into(),
+        platform: std::env::consts::OS.into(),
+        architecture: std::env::consts::ARCH.into(),
+        license: "非商业本地部署许可".into(),
+    }
+}
+
+#[tauri::command]
+fn get_legal_notices() -> LegalNotices {
+    LegalNotices {
+        license_name: "BOX3 Engine 非商业本地部署最终用户许可协议".into(),
+        license_text: include_str!("../../../../distribution/LICENSE.txt").into(),
     }
 }
 
@@ -1487,8 +1788,17 @@ async fn run_environment_checks(
                 checks.push(EnvironmentCheck {
                     id: id.into(),
                     label: label.into(),
-                    level: "neutral".into(),
-                    message: "未配置（选填）".into(),
+                    level: if id == "postgresql" {
+                        "error"
+                    } else {
+                        "neutral"
+                    }
+                    .into(),
+                    message: if id == "postgresql" {
+                        "必须配置后才能启动服务".into()
+                    } else {
+                        "未配置（选填）".into()
+                    },
                 });
                 continue;
             }
@@ -2125,6 +2435,11 @@ async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
         }
         fs::create_dir_all(&staging).map_err(|error| format!("无法创建诊断目录：{error}"))?;
         let environment = load_existing_env(&app);
+        let runtime_environment = runtime_env_path(&app)
+            .ok()
+            .and_then(|path| fs::read_to_string(path).ok())
+            .map(|content| parse_env(&content))
+            .unwrap_or_default();
         let safe_environment: BTreeMap<String, String> = environment
             .iter()
             .map(|(key, value)| {
@@ -2140,8 +2455,11 @@ async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
             .collect();
         let docker_info = docker_output(&["info", "--format", "{{json .}}"])
         .unwrap_or_else(|error| format!("Docker info unavailable: {error}"));
-        let compose_state = compose_output(&app, &["ps", "--format", "json"])
-            .unwrap_or_else(|error| format!("Compose state unavailable: {error}"));
+        let compose_state = redact_text(
+            compose_output(&app, &["ps", "--format", "json"])
+                .unwrap_or_else(|error| format!("Compose state unavailable: {error}")),
+            &runtime_environment,
+        );
         let report = serde_json::json!({
             "formatVersion": 1,
             "generatedAtMs": SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis(),
@@ -2161,7 +2479,8 @@ async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
         .map_err(|error| format!("无法写入诊断报告：{error}"))?;
         let logs = compose_output(&app, &["logs", "--tail", "500", "--no-color"])
             .unwrap_or_else(|error| format!("Logs unavailable: {error}"));
-        fs::write(staging.join("logs.txt"), redact_text(logs, &environment))
+        let logs = redact_text(redact_text(logs, &runtime_environment), &environment);
+        fs::write(staging.join("logs.txt"), logs)
             .map_err(|error| format!("无法写入诊断日志：{error}"))?;
         fs::write(
             staging.join("README.txt"),
@@ -2187,12 +2506,10 @@ async fn save_configuration_command(
     config: InstallConfigInput,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        emit_progress(&app, "preflight", "正在检查可选远程数据服务…", 20);
-        if !config.database_host.trim().is_empty() {
-            let database_host = validate_host(&config.database_host, "数据库地址")?;
-            let database_port = validate_port(&config.database_port)?;
-            check_remote_endpoint(" PostgreSQL", &database_host, database_port)?;
-        }
+        emit_progress(&app, "preflight", "正在检查 PostgreSQL 数据库…", 20);
+        let database_host = validate_host(&config.database_host, "数据库地址")?;
+        let database_port = validate_port(&config.database_port)?;
+        check_remote_endpoint(" PostgreSQL", &database_host, database_port)?;
         if !config.redis_host.trim().is_empty() {
             let redis_host = validate_host(&config.redis_host, "Redis 地址")?;
             let redis_port = validate_port(&config.redis_port)?;
@@ -2213,9 +2530,6 @@ async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
         emit_progress(&app, "images", "正在检查离线镜像…", 20);
         ensure_images(&app)?;
-        let database_enabled = load_existing_env(&app)
-            .get("BOX_DATABASE_URL")
-            .is_some_and(|url| !url.trim().is_empty());
         let label = match scope.as_str() {
             "all" => {
                 emit_progress(&app, "start", "正在启动全部服务…", 65);
@@ -2224,19 +2538,20 @@ async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
             }
             "creator" => {
                 emit_progress(&app, "start", "正在启动创作端…", 65);
-                let mut args = vec!["up", "-d", "creator", "voxa"];
-                if database_enabled {
-                    args.extend(["player-service", "player-auth-portal"]);
-                }
+                let args = vec![
+                    "up",
+                    "-d",
+                    "creator",
+                    "voxa",
+                    "player-service",
+                    "player-auth-portal",
+                ];
                 compose_output(&app, &args)?;
                 "创作端"
             }
             "play" => {
                 emit_progress(&app, "start", "正在启动游玩端…", 65);
-                let mut args = vec!["up", "-d", "play"];
-                if database_enabled {
-                    args.extend(["player-service", "player-auth-portal"]);
-                }
+                let args = vec!["up", "-d", "play", "player-service", "player-auth-portal"];
                 compose_output(&app, &args)?;
                 "游玩端"
             }
@@ -2272,7 +2587,12 @@ async fn get_logs(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 fn open_service(app: AppHandle, url: String) -> Result<(), String> {
-    let values = load_existing_env(&app);
+    generate_runtime_environment(&app)?;
+    let values = runtime_env_path(&app)
+        .ok()
+        .and_then(|path| fs::read_to_string(path).ok())
+        .map(|content| parse_env(&content))
+        .unwrap_or_default();
     let configured_url = |name: &str, fallback: &str| {
         values
             .get(name)
@@ -2352,7 +2672,7 @@ fn verify_archive(app: AppHandle) -> Result<String, String> {
         .into_iter()
         .next()
         .ok_or_else(|| "未找到离线镜像归档".to_string())?;
-    file_sha256(&archive)
+    verify_offline_image_archive(&app, &archive)
 }
 
 #[cfg(test)]
@@ -2414,6 +2734,13 @@ mod tests {
     }
 
     #[test]
+    fn requires_postgresql_before_generating_runtime_configuration() {
+        assert!(database_url(&BTreeMap::new())
+            .unwrap_err()
+            .contains("必须配置 PostgreSQL"));
+    }
+
+    #[test]
     fn diagnostic_redaction_hides_secret_values() {
         let values = BTreeMap::from([
             ("BOX_PLAY_ADMIN_TOKEN".into(), "owner-secret-value".into()),
@@ -2456,6 +2783,26 @@ mod tests {
         )
         .unwrap();
         assert_eq!(value, "owner-controlled-token");
+    }
+
+    #[test]
+    fn migrates_a_legacy_database_url_without_retaining_it() {
+        let normalized = normalize_owner_environment(
+            "BOX_DATABASE_URL=postgresql://box%20user:secret%21@db.example.test:5432/box%20data\nBOX_TRUST_PROXY=false\nBOX_RUNTIME_IDLE_TIMEOUT_MS=900000\n",
+        )
+        .unwrap();
+        let values = parse_env(&normalized);
+        assert_eq!(
+            values.get("BOX_DATABASE_HOST"),
+            Some(&"db.example.test".into())
+        );
+        assert_eq!(values.get("BOX_DATABASE_PORT"), Some(&"5432".into()));
+        assert_eq!(values.get("BOX_DATABASE_NAME"), Some(&"box data".into()));
+        assert_eq!(values.get("BOX_DATABASE_USER"), Some(&"box user".into()));
+        assert_eq!(values.get("BOX_DATABASE_PASSWORD"), Some(&"secret!".into()));
+        assert!(!values.contains_key("BOX_DATABASE_URL"));
+        assert!(!values.contains_key("BOX_TRUST_PROXY"));
+        assert!(!values.contains_key("BOX_RUNTIME_IDLE_TIMEOUT_MS"));
     }
 
     #[test]
@@ -2515,9 +2862,12 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             get_install_config,
+            get_owner_secrets,
             get_raw_environment,
             save_raw_environment,
             get_system_status,
+            get_about_info,
+            get_legal_notices,
             get_performance_status,
             list_backups,
             create_backup,

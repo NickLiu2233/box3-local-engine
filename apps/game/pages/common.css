@@ -53,10 +53,11 @@
     noto-sans-sc-v12-latin_chinese-simplified-700, PingFangSC-Semibold,
     PingFang SC, Helvetica, arial;
 
-  --color-primary: #fc8308;
-  --color-primary-hover: #fd9c39;
-  --color-primary-press: #e38007;
-  --color-primary-light: rgba(252, 131, 8, 0.3);
+  /* Shared with the desktop launcher and service dashboards. */
+  --color-primary: #ffdb00;
+  --color-primary-hover: #ffe44d;
+  --color-primary-press: #d9b500;
+  --color-primary-light: rgba(255, 219, 0, 0.22);
   --color-danger: #f44336;
   --color-danger-hover: #f6695e;
   --color-danger-press: #dc4336;

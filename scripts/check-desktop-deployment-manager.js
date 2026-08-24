@@ -17,6 +17,10 @@ const builder = fs.readFileSync(
   path.join(root, 'scripts/build-desktop-offline-installer.js'),
   'utf8',
 )
+const packageVerifier = fs.readFileSync(
+  path.join(root, 'scripts/verify-desktop-offline-package.js'),
+  'utf8',
+)
 const creatorWorkCenter = fs.readFileSync(
   path.join(root, 'apps/game/pages/projects/index.tsx'),
   'utf8',
@@ -45,6 +49,7 @@ for (const value of [
   '性能监控',
   '运行日志',
   '帮助手册',
+  '关于',
   '数据服务',
   '访问设置',
   '运行容量',
@@ -56,19 +61,31 @@ for (const value of [
 assert.doesNotMatch(frontend, /内置数据库|databaseMode/)
 assert.doesNotMatch(backend, /database_mode|COMPOSE_PROFILES.*infra/)
 assert.doesNotMatch(builder, /选择内置数据库/)
-assert.match(builder, /PostgreSQL 和 Redis 均为选填/)
+assert.match(frontend, /PostgreSQL 为必填；Redis 可留空/)
 assert.match(builder, /--norsrc/)
-assert.match(defaults, /^COMPOSE_PROFILES=creator,play,voxa$/m)
-assert.match(defaults, /^BOX_DATABASE_URL=$/m)
+assert.match(defaults, /^BOX_PLAY_PUBLIC_HOST=127\.0\.0\.1$/m)
+assert.match(defaults, /^BOX_CREATOR_HOST=127\.0\.0\.1$/m)
+assert.match(defaults, /^BOX_DATABASE_HOST=$/m)
+assert.match(defaults, /^BOX_DATABASE_PASSWORD=$/m)
+assert.doesNotMatch(defaults, /^COMPOSE_PROFILES=/m)
+assert.doesNotMatch(defaults, /^BOX_DATABASE_URL=/m)
+assert.doesNotMatch(defaults, /^BOX_IMAGE_TAG=/m)
+assert.doesNotMatch(defaults, /^BOX_.*PUBLIC_URL=/m)
 assert.match(defaults, /^REDIS_HOST=$/m)
-assert.match(backend, /if !config\.database_host\.trim\(\)\.is_empty\(\)/)
+assert.match(frontend, /PostgreSQL<\/h2><span>必填/)
+assert.match(backend, /必须配置 PostgreSQL 数据库地址后才能启动服务/)
+assert.match(backend, /check_remote_endpoint\(" PostgreSQL", &database_host, database_port\)/)
 assert.match(backend, /if !config\.redis_host\.trim\(\)\.is_empty\(\)/)
-assert.match(backend, /"creator,play,voxa"/)
+assert.match(backend, /"player-service,auth-portal,creator,play,voxa"/)
+assert.doesNotMatch(backend, /"creator,play,voxa"/)
 assert.match(backend, /Applications\/Docker\.app\/Contents\/Resources\/bin\/docker/)
 assert.ok(backend.includes(String.raw`r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"`))
 assert.match(backend, /fn docker_message/)
 assert.match(backend, /fn synchronize_runtime_image_tag/)
-assert.match(backend, /set_env\(&mut content, "BOX_IMAGE_TAG", IMAGE_TAG\)/)
+assert.match(backend, /fn runtime_env_path/)
+assert.match(backend, /fn generate_runtime_environment/)
+assert.match(backend, /runtime_env_path\(app\)/)
+assert.match(backend, /set_env\(&mut runtime, "BOX_IMAGE_TAG", IMAGE_TAG\)/)
 assert.match(backend, /synchronize_runtime_image_tag\(app\)\?;/)
 assert.doesNotMatch(
   backend,
@@ -97,7 +114,7 @@ for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 
 assert.match(backend, /不能使用同一个端口/)
 assert.match(backend, /BOX_AUTH_PORTAL_PORT/)
 assert.match(compose, /VOXA_URL: \$\{BOX_VOXA_PUBLIC_URL/)
-assert.match(compose, /\n      BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL/)
+assert.match(compose, /\n {6}BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL/)
 assert.match(compose, /BOX_RESOURCE_ALLOWED_ORIGINS: \$\{BOX_RESOURCE_ALLOWED_ORIGINS:-\}/)
 assert.match(launcher, /process\.env\.VOXA_URL/)
 assert.match(backend, /只允许打开当前配置中的 BOX 服务地址/)
@@ -111,6 +128,15 @@ assert.match(frontend, /运维与排障/)
 assert.match(frontend, /data-help-section/)
 assert.match(frontend, /box-manager-theme/)
 assert.match(frontend, /跟随系统/)
+assert.match(frontend, /发行许可/)
+assert.match(frontend, /发行许可证/)
+assert.match(frontend, /get_legal_notices/)
+assert.match(backend, /fn get_legal_notices/)
+assert.match(backend, /include_str!\("\.\.\/\.\.\/\.\.\/\.\.\/distribution\/LICENSE\.txt"\)/)
+assert.match(frontend, /data-open-legal-document/)
+assert.match(frontend, /function legalDocumentDialog\(\)/)
+assert.match(styles, /\.about-document-row/)
+assert.match(styles, /\.legal-dialog/)
 assert.match(frontend, /data-theme-choice/)
 assert.match(frontend, /get_performance_status/)
 assert.match(frontend, /环境检查/)
@@ -146,7 +172,20 @@ assert.match(builder, /macos-amd64/)
 assert.match(builder, /macos-arm64/)
 assert.match(builder, /windows\|macos\|linux/)
 assert.match(builder, /Embed its[\s\S]*image archive/)
-assert.match(builder, /if \(!spec\.bundle\) fs\.copyFileSync\(archive/)
+assert.match(builder, /BOX-OFFLINE-IMAGE\.json/)
+assert.match(builder, /sha256: sha256\(archive\)/)
+assert.match(builder, /Contents\/Resources\/metadata/)
+assert.match(builder, /generateDistributionMetadata\(metadataRoot/)
+assert.doesNotMatch(builder, /开始使用\.txt/)
+assert.match(builder, /BOX_ALLOW_DIRTY_RELEASE/)
+assert.match(builder, /BOX_BUILD_COMMIT/)
+assert.match(builder, /BOX_BUILD_DATE/)
+assert.match(builder, /verify-desktop-offline-package\.js/)
+assert.match(packageVerifier, /BOX-OFFLINE-IMAGE\.json/)
+assert.match(packageVerifier, /THIRD-PARTY-NOTICES\.json/)
+assert.match(packageVerifier, /SHA-256 不匹配/)
+assert.match(packageVerifier, /function findMetadataRoot/)
+assert.match(builder, /if \(!spec\.bundle\) \{[\s\S]*?fs\.copyFileSync\(archive/)
 assert.match(tauriConfig, /"resources": \["payload"\]/)
 assert.match(builder, /--no-bundle/)
 assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1/)
@@ -192,8 +231,8 @@ assert.match(backend, /BOX_VOXA_ALLOWED_ORIGINS/)
 assert.match(backend, /"BOX_CREATOR_ALLOWED_HOSTS", &creator_host/)
 assert.match(
   backend,
-  /"BOX_RESOURCE_ALLOWED_ORIGINS",[\s\S]*?config\.voxa_port,[\s\S]*?config\.creator_port/,
-  'saving a LAN/public address must allow the embedded VOXA origin to read Creator runtime blobs',
+  /"BOX_RESOURCE_ALLOWED_ORIGINS",\s*&creator_origins/,
+  'the generated runtime config must allow the embedded VOXA origin to read Creator runtime blobs',
 )
 assert.match(
   compose,
@@ -206,6 +245,11 @@ assert.match(frontend, /配置说明：这些服务用来做什么？/)
 assert.match(frontend, /业务 DB \/ 缓存 DB/)
 assert.match(styles, /\.setup-explainer/)
 assert.match(frontend, /secretInput\('playAdminToken'/)
+assert.match(frontend, /首次保存配置时会自动生成/)
+assert.match(frontend, /id="toggle-owner-secrets"/)
+assert.match(frontend, /async function toggleOwnerSecrets\(\)/)
+assert.match(backend, /fn get_owner_secrets\(app: AppHandle\)/)
+assert.match(backend, /OwnerSecretsView/)
 assert.match(frontend, /data-save-raw-environment/)
 assert.match(frontend, /function syncLogPolling\(/)
 assert.match(frontend, /setInterval\(\(\) => loadLogs\(\{ renderPage: false \}\), 1500\)/)
@@ -214,6 +258,18 @@ assert.match(frontend, /followTail/)
 assert.match(frontend, /addEventListener\('contextmenu', \(event\) => event\.preventDefault\(\)\)/)
 assert.match(backend, /fn get_raw_environment/)
 assert.match(backend, /fn save_raw_environment/)
+assert.match(backend, /fn get_about_info/)
+assert.match(backend, /source_revision/)
+assert.match(frontend, /function about\(\)/)
+assert.match(frontend, /get_about_info/)
+assert.match(styles, /\.about-page/)
+assert.match(backend, /normalize_owner_environment/)
+assert.match(backend, /BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD/)
+assert.match(backend, /remove_env\(&mut normalized, legacy\)/)
+assert.match(backend, /fn write_private_file/)
+assert.match(backend, /fn verify_offline_image_archive/)
+assert.match(backend, /SHA-256 校验失败/)
+assert.match(backend, /BOX-OFFLINE-IMAGE\.json/)
 const saveConfigurationCommand = backend.match(
   /async fn save_configuration_command[\s\S]*?(?=\n#\[tauri::command\]\nasync fn start_services)/,
 )?.[0]

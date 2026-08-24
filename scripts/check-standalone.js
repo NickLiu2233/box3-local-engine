@@ -83,6 +83,7 @@ const requiredFiles = [
   'apps/local-engine/Dockerfile',
   'apps/local-engine/config/local.config.json',
   'apps/local-engine/src/build.js',
+  'apps/local-engine/src/asset-distribution.js',
   'apps/local-engine/src/launcher.js',
   'apps/local-engine/src/play-library.js',
   'apps/local-engine/src/play-image.js',
@@ -514,6 +515,12 @@ requirePattern(
 requirePattern(
   creatorDockerStage,
   dockerFile,
+  'creator asset distribution runtime',
+  /COPY --from=[^\s]+ --chown=node:node \/app\/apps\/local-engine\/src\/asset-distribution\.js \/app\/apps\/local-engine\/src\/asset-distribution\.js/,
+)
+requirePattern(
+  creatorDockerStage,
+  dockerFile,
   'creator play-image cache validator',
   /play-image\.js/,
 )
@@ -695,8 +702,8 @@ for (const name of [
 requirePattern(
   voxaCompose,
   composeFile,
-  'configurable VOXA port with a safe loopback default',
-  /\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_VOXA_PORT:-3001\}:3001/,
+  'configurable private VOXA port with a safe loopback default',
+  /\$\{BOX_VOXA_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_VOXA_PORT:-3001\}:3001/,
 )
 requirePattern(
   voxaCompose,
@@ -754,8 +761,8 @@ requirePattern(
 requirePattern(
   creatorCompose,
   composeFile,
-  'single configurable creator port with a safe loopback default',
-  /ports:\s*\n\s*- "\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_CREATOR_PORT:-3002\}:3000"/,
+  'single configurable private creator port with a safe loopback default',
+  /ports:\s*\n\s*- "\$\{BOX_CREATOR_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_CREATOR_PORT:-3002\}:3000"/,
 )
 requirePattern(
   creatorCompose,

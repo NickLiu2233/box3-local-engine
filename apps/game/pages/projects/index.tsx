@@ -106,6 +106,16 @@ type ProjectSnapshot = {
   size: number;
 };
 
+type AssetDistributionConfiguration = {
+  endpoint: string;
+  bucket: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  cdnBaseUrl: string;
+  hasSecretAccessKey: boolean;
+};
+
 const snapshotReasonLabels: Record<string, string> = {
   automatic: '自动保存',
   launch: '打开工程',
@@ -165,6 +175,10 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
   const [importTargetMainId, setImportTargetMainId] = useState('');
   const [releaseVersion, setReleaseVersion] = useState('v1.0.0');
   const [releaseNotes, setReleaseNotes] = useState('');
+  const [assetMode, setAssetMode] = useState<'local' | 'oss'>('local');
+  const [assetConfig, setAssetConfig] = useState<AssetDistributionConfiguration>({
+    endpoint: '', bucket: '', region: 'auto', accessKeyId: '', secretAccessKey: '', cdnBaseUrl: '', hasSecretAccessKey: false,
+  });
   const [submitting, setSubmitting] = useState(false);
   const [selectedProject, setSelectedProject] = useState<LocalProject | null>(
     null,
@@ -402,8 +416,16 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
     );
     setReleaseVersion('v1.0.0');
     setReleaseNotes('');
+    setAssetMode('local');
     setDialogError('');
     setDialog('publish');
+    void fetch('/api/local-projects/asset-distribution')
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.message || '无法读取 OSS 配置');
+        setAssetConfig((current) => ({ ...current, ...(data.configuration || {}), secretAccessKey: '' }));
+      })
+      .catch((error) => setDialogError(error.message));
   };
 
   const openExportDialog = (project: LocalProject) => {
@@ -469,6 +491,17 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
       let publishedVersion = releaseVersion.trim();
       let compatibility: CompatibilityReport | undefined;
       const startedAt = Date.now();
+      if (assetMode === 'oss') {
+        const configurationResponse = await fetch('/api/local-projects/asset-distribution', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(assetConfig),
+        });
+        const configurationData = await configurationResponse.json().catch(() => ({}));
+        if (!configurationResponse.ok) {
+          throw new Error(configurationData.message || '无法保存 OSS 资源分发设置');
+        }
+      }
       setDialog(null);
       setNotice('');
       setPublishProgress({
@@ -534,7 +567,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
         const packageResponse = await fetch(`/api/local-projects/${project.id}/package`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ version: publishedVersion }),
+          body: JSON.stringify({ version: publishedVersion, assetMode }),
         });
         if (!packageResponse.ok) {
           const packageData = await packageResponse.json().catch(() => ({}));
@@ -1186,6 +1219,27 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
               <input id="release-version" autoFocus value={releaseVersion} onChange={(event) => setReleaseVersion(event.target.value)} placeholder="v1.0.0" />
               <label htmlFor="release-notes">更新说明</label>
               <textarea id="release-notes" maxLength={500} value={releaseNotes} onChange={(event) => setReleaseNotes(event.target.value)} />
+              <div className={styles.assetModeOptions} role="radiogroup" aria-label="资源发布方式">
+                <label className={assetMode === 'local' ? styles.assetModeSelected : undefined}>
+                  <input type="radio" name="asset-mode" checked={assetMode === 'local'} onChange={() => setAssetMode('local')} />
+                  <span><strong>仅本地资源</strong><small>包最大，但完全离线。</small></span>
+                </label>
+                <label className={assetMode === 'oss' ? styles.assetModeSelected : undefined}>
+                  <input type="radio" name="asset-mode" checked={assetMode === 'oss'} onChange={() => setAssetMode('oss')} />
+                  <span><strong>仅引用 OSS</strong><small>包最小、加载最快；请勿删除已上传资源。</small></span>
+                </label>
+              </div>
+              {assetMode === 'oss' && <div className={styles.assetConfigFields}>
+                <small className={styles.fieldHint}>凭证只保存到本机 Creator，不会写进游玩包或发送给服主。</small>
+                <div className={styles.fieldGroup}><label htmlFor="asset-cdn">资源公开地址</label><input id="asset-cdn" value={assetConfig.cdnBaseUrl} placeholder="https://cdn.example.com" onChange={(event) => setAssetConfig((value) => ({ ...value, cdnBaseUrl: event.target.value }))} /></div>
+                <div className={styles.fieldGroup}><label htmlFor="asset-endpoint">S3 Endpoint</label><input id="asset-endpoint" value={assetConfig.endpoint} placeholder="https://s3.example.com" onChange={(event) => setAssetConfig((value) => ({ ...value, endpoint: event.target.value }))} /></div>
+                <div className={styles.assetConfigGrid}>
+                  <div className={styles.fieldGroup}><label htmlFor="asset-bucket">Bucket</label><input id="asset-bucket" value={assetConfig.bucket} onChange={(event) => setAssetConfig((value) => ({ ...value, bucket: event.target.value }))} /></div>
+                  <div className={styles.fieldGroup}><label htmlFor="asset-region">Region</label><input id="asset-region" value={assetConfig.region} placeholder="auto" onChange={(event) => setAssetConfig((value) => ({ ...value, region: event.target.value }))} /></div>
+                </div>
+                <div className={styles.fieldGroup}><label htmlFor="asset-key">Access Key</label><input id="asset-key" value={assetConfig.accessKeyId} onChange={(event) => setAssetConfig((value) => ({ ...value, accessKeyId: event.target.value }))} /></div>
+                <div className={styles.fieldGroup}><label htmlFor="asset-secret">Secret Key</label><input id="asset-secret" type="password" autoComplete="new-password" placeholder={assetConfig.hasSecretAccessKey ? '留空则沿用已保存的密钥' : ''} value={assetConfig.secretAccessKey} onChange={(event) => setAssetConfig((value) => ({ ...value, secretAccessKey: event.target.value }))} /></div>
+              </div>}
               <ReleaseFlow project={selectedProject} version={releaseVersion || 'v1.0.0'} />
             </>}
             {dialogError && <p className={styles.dialogError} role="alert">{dialogError}</p>}

@@ -241,6 +241,22 @@ export async function startServer(spec: ServerRuntimeConfig) {
   const groupContentServer = groupContentPath
     ? new FileSystemContentServer(groupContentPath)
     : undefined;
+  let externalAssetDistribution: { cdnBaseUrl: string; hashes: string[] } | undefined;
+  try {
+    const hashes = JSON.parse(process.env.BOX_EXTERNAL_ASSET_HASHES || '[]');
+    if (
+      process.env.BOX_EXTERNAL_ASSET_CDN_URL &&
+      Array.isArray(hashes) &&
+      hashes.every((hash) => typeof hash === 'string')
+    ) {
+      externalAssetDistribution = {
+        cdnBaseUrl: process.env.BOX_EXTERNAL_ASSET_CDN_URL,
+        hashes,
+      };
+    }
+  } catch {
+    logger.warn('Ignoring invalid external asset distribution manifest');
+  }
   const localContentWithVoxa = createLocalContentWithVoxa(
     localContentServer,
     logger,
@@ -248,6 +264,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
     undefined,
     bundledContentServer,
     groupContentServer,
+    externalAssetDistribution,
   );
   const contentServer = isLocal
     ? new ContentSplitter(

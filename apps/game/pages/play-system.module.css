@@ -143,3 +143,17 @@
   .diskPanel { align-items: flex-start; flex-wrap: wrap; }
   .diskTrack { min-width: 100%; }
 }
+
+/* Shared Arena surface language: this page intentionally retains its dense
+   monitoring layout while using the same palette, radii and emphasis rules as
+   Creator, Play and the desktop launcher. */
+.page { color: rgba(255,255,255,.9); background: #262626; box-shadow: 0 0 0 100vmax #262626; font-family: var(--font-regular), sans-serif; }
+.headerTitle h1 { color: #fff; }.headerTitle > span,.intro,.checkedAt { color: rgba(255,255,255,.45); }
+.back,.refreshButton { border-color: rgba(255,255,255,.14); color: rgba(255,255,255,.8); background: #404040; }.back:hover,.refreshButton:hover { background: #4a4a4a; }
+.overall { border-color: rgba(120,201,93,.25); color: #9be7b0; background: rgba(120,201,93,.09); }.overall > span { background: #78c95d; box-shadow: 0 0 0 3px rgba(120,201,93,.13); }.overall.warning { border-color: rgba(240,184,75,.25); color: #ffd278; background: rgba(240,184,75,.09); }.overall.warning > span { background: #f0b84b; box-shadow: 0 0 0 3px rgba(240,184,75,.13); }
+.error { border-color: rgba(246,82,82,.3); color: #ff9a9a; background: rgba(246,82,82,.08); }
+.summaryGrid article,.panel,.diskPanel { border-color: rgba(255,255,255,.08); background: #333; }.summaryGrid svg,.panelTitle > svg,.diskPanel > svg { color: #ffdb00; }.summaryGrid strong,.panelTitle h2,.runtime strong,.diskPanel strong { color: #fff; }.summaryGrid span,.panelTitle p { color: rgba(255,255,255,.45); }
+.creatorGrid,.runtime { border-color: transparent; background: rgba(255,255,255,.08); }.creatorGrid > div,.runtimeIdentity,.runtimeCell { background: #404040; }.creatorGrid > div > span,.creatorGrid > div > small,.runtimeIdentity small,.runtime code,.runtimeMeta { color: rgba(255,255,255,.32); }.creatorGrid > div > strong,.runtimeCellTop small { color: rgba(255,255,255,.84); }.creatorPrimary > strong { color: #fff !important; }.creatorState { color: #9be7b0 !important; }.creatorState i { background: #78c95d; box-shadow: 0 0 0 3px rgba(120,201,93,.12); }
+.diagnosticsPanel { border-color: rgba(240,184,75,.2); background: #333; }.diagnosticsPanel .panelTitle > svg { color: #f0b84b; }.diagnosticList > div { background: rgba(240,184,75,.06); }.diagnosticList span { color: #ffd278; }.diagnosticList p { color: rgba(255,255,255,.64); }.diagnosticList em { color: rgba(255,255,255,.4); }
+.service { border-color: rgba(255,255,255,.08); background: #404040; }.service > svg { color: rgba(255,255,255,.42); }.service strong { color: rgba(255,255,255,.86); }.service span,.service small { color: rgba(255,255,255,.44); }.service em,.runtimeCellTop em { color: rgba(255,255,255,.72); }.state_healthy { color: #9be7b0; background: rgba(82,196,116,.14); }.state_warning { color: #ffd278; background: rgba(240,184,75,.14); }.state_unhealthy { color: #ff9999; background: rgba(246,82,82,.13); }.state_disabled { color: rgba(255,255,255,.45); background: rgba(255,255,255,.07); }
+.runtimeCell p { color: rgba(255,255,255,.56); }.runtimeProgress,.diskTrack { background: rgba(255,255,255,.1); }.runtimeProgress span { background: #ffdb00; }.diskTrack span { background: #78c95d; }

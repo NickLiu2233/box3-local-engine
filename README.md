@@ -6,6 +6,12 @@ Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创
 交付给其他人安装或部署时，请从
 [安装、部署与使用手册](docs/installation-and-operations.md) 开始。
 
+维护者构建图形化启动器、离线包和 GitHub Release 时，请参阅
+[桌面启动器打包、分发与 CI 发布手册](docs/release-and-distribution.md)。
+
+参与开发、评审或发布协作时，请从
+[BOX3 Engine 开发者与协作手册](docs/developer-guide.md) 开始。
+
 仓库可以独立安装、构建和运行，不依赖原始 `boxes` 工程、私有 npm 仓库、云端 CDN、
 在线账号、Redis 或 BOX 内部服务。地图、默认人物、动画和基础运行资源均从本地
 读取。
@@ -310,6 +316,7 @@ BOX 的服务器或 CDN。
 ## 更多文档
 
 - [创作端构建与部署手册](docs/creator-deployment.md)
+- [BOX3 Engine 开发者与协作手册](docs/developer-guide.md)
 - [游玩端构建、分发与多地图部署手册](docs/play-deployment.md)
 - [部署与联机指南](docs/deployment.md)
 - [作品创建、编辑与发布](docs/projects.md)

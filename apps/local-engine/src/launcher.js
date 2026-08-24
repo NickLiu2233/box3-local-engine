@@ -529,6 +529,15 @@ async function main() {
     )
 
   const startLibraryRuntime = async (world, port, instance = {}) => {
+    const externalDistribution = world.manifest?.assetDistribution
+    const externalCDN =
+      externalDistribution?.mode === 'external-cdn' &&
+      typeof externalDistribution?.cdnBaseUrl === 'string'
+        ? externalDistribution.cdnBaseUrl
+        : ''
+    const externalHashes = Array.isArray(externalDistribution?.hashes)
+      ? externalDistribution.hashes.filter((hash) => typeof hash === 'string')
+      : []
     const child = spawn(
       process.execPath,
       production
@@ -568,6 +577,16 @@ async function main() {
           SERVER_ID: instance.serverId || 'public',
           TYPE: instance.privateRoom ? 'teleport' : 'public',
           TELEPORT_ACCESS: 'true',
+          // A referenced play package owns its CDN setting. Never use a
+          // server-wide OSS setting here: different published maps can come
+          // from different developers and storage providers.
+          ...(externalCDN
+            ? {
+                OSS_CDN_URL: externalCDN,
+                BOX_EXTERNAL_ASSET_CDN_URL: externalCDN,
+                BOX_EXTERNAL_ASSET_HASHES: JSON.stringify(externalHashes),
+              }
+            : {}),
           BOX_TELEPORT_CONTROL_URL: playTeleportControlURL,
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
           MAX_ZERO_PLAYER_TIME: '2147483647',

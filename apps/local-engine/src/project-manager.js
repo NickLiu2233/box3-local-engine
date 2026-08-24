@@ -9,6 +9,12 @@ const { ensurePlayImageArchive, getPlayImageConfig } = require('./play-image')
 const { generateDistributionMetadata } = require('./distribution-metadata')
 const { scanProjectCompatibility } = require('./project-compatibility')
 const { createMapGroupManager } = require('./map-group-manager')
+const {
+  assertAssetMode,
+  readConfiguration: readAssetDistributionConfiguration,
+  saveConfiguration: saveAssetDistributionConfiguration,
+  uploadPublicAssets,
+} = require('./asset-distribution')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
@@ -370,9 +376,10 @@ function createReleaseData(sourceRoot, releaseDataRoot, state) {
       contentId: 0,
       ownerId: 0,
     }
-    // Server scripts run inside the isolated server VM. Players never need
-    // their source bytes, so keep them in the package but deny HTTP access.
-    if (asset?.type === 1 && typeof asset.hash === 'string') {
+    // Never upload source code to the publisher's public CDN. Client scripts
+    // are still available from the signed play package when the browser needs
+    // them, while server scripts remain inaccessible over HTTP as before.
+    if (typeof asset?.hash === 'string') {
       privateHashes.add(asset.hash)
     }
   }
@@ -1893,18 +1900,73 @@ function includePlayImage(destination) {
   return config
 }
 
-function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
+function readReleaseAssetLists(releaseRoot) {
   const releaseDataRoot = path.join(releaseRoot, 'data')
-  const destinationDataRoot = path.join(destination, 'data')
   const runtimeManifest = readJSON(path.join(releaseDataRoot, 'runtime-blobs.json'), null)
-  if (!Array.isArray(runtimeManifest?.hashes)) {
+  const privateManifest = readJSON(path.join(releaseDataRoot, 'private-blobs.json'), null)
+  if (!Array.isArray(runtimeManifest?.hashes) || !Array.isArray(privateManifest?.hashes)) {
     throw new Error('发布版本缺少资源清单，请重新发布该版本')
   }
+  for (const hash of [...runtimeManifest.hashes, ...privateManifest.hashes]) {
+    if (typeof hash !== 'string' || !isContentHash(hash)) {
+      throw new Error('发布版本的资源清单无效')
+    }
+  }
+  return {
+    runtimeHashes: runtimeManifest.hashes,
+    privateHashes: new Set(privateManifest.hashes),
+  }
+}
 
-  copyReadableFileSync(
-    path.join(releaseRoot, 'manifest.json'),
-    path.join(destination, 'manifest.json'),
-  )
+function locateReleaseBlob(releaseRoot, sourceRoot, hash) {
+  const candidates = [
+    path.join(releaseRoot, 'data', 'blobs', hash),
+    path.join(sourceRoot, 'blobs', hash),
+  ]
+  for (const candidate of candidates) {
+    try {
+      const stat = fs.statSync(candidate)
+      if (stat.isFile()) return candidate
+    } catch (error) {
+      if (!['EACCES', 'ENOENT', 'EPERM'].includes(error?.code)) throw error
+    }
+  }
+  throw new Error(`发布版本缺少资源：${hash}`)
+}
+
+function getExternalReleaseAssets(releases) {
+  const assets = new Map()
+  for (const { releaseRoot, sourceRoot } of releases) {
+    const { runtimeHashes, privateHashes } = readReleaseAssetLists(releaseRoot)
+    for (const hash of runtimeHashes) {
+      if (privateHashes.has(hash) || assets.has(hash)) continue
+      const source = locateReleaseBlob(releaseRoot, sourceRoot, hash)
+      assets.set(hash, { hash, path: source, size: fs.statSync(source).size })
+    }
+  }
+  return [...assets.values()]
+}
+
+function copyReleaseWorld(releaseRoot, sourceRoot, destination, assetDistribution) {
+  const releaseDataRoot = path.join(releaseRoot, 'data')
+  const destinationDataRoot = path.join(destination, 'data')
+  const { runtimeHashes, privateHashes } = readReleaseAssetLists(releaseRoot)
+  const sourceManifest = readJSON(path.join(releaseRoot, 'manifest.json'))
+  const externalHashes =
+    assetDistribution?.mode === 'external-cdn'
+      ? runtimeHashes.filter((hash) => !privateHashes.has(hash))
+      : []
+  const manifest =
+    assetDistribution?.mode === 'external-cdn'
+      ? {
+          ...sourceManifest,
+          assetDistribution: {
+            ...assetDistribution,
+            hashes: externalHashes,
+          },
+        }
+      : sourceManifest
+  writeJSON(path.join(destination, 'manifest.json'), manifest)
   copyReadableFileSync(
     path.join(releaseDataRoot, 'project-state.json'),
     path.join(destinationDataRoot, 'project-state.json'),
@@ -1915,33 +1977,18 @@ function copyReleaseWorld(releaseRoot, sourceRoot, destination) {
   )
   fs.writeFileSync(
     path.join(destinationDataRoot, 'runtime-blobs.json'),
-    `${JSON.stringify(runtimeManifest, null, 2)}\n`,
+    `${JSON.stringify({ formatVersion: 1, hashes: runtimeHashes }, null, 2)}\n`,
   )
 
-  for (const hash of runtimeManifest.hashes) {
-    if (typeof hash !== 'string' || !isContentHash(hash)) {
-      throw new Error('发布版本的资源清单无效')
-    }
-    const releasedBlob = path.join(releaseDataRoot, 'blobs', hash)
-    const sourceBlob = path.join(sourceRoot, 'blobs', hash)
+  for (const hash of runtimeHashes) {
+    // The non-private entries are immutable public assets already uploaded to
+    // the publisher's CDN. Keep scripts, permissions and runtime metadata in
+    // the package so a CDN never becomes a source of private project data.
+    if (externalHashes.includes(hash)) continue
     const destinationBlob = path.join(destinationDataRoot, 'blobs', hash)
-    try {
-      // Docker Desktop may report R_OK for an old 0200 file and still fail
-      // with ENOENT when it is actually opened, so probe by copying it.
-      copyReadableFileSync(releasedBlob, destinationBlob)
-    } catch (error) {
-      if (!['EACCES', 'ENOENT', 'EPERM'].includes(error?.code)) throw error
-      // Older releases created through Docker Desktop may contain unreadable
-      // 0200 files. The source blob with the same content hash is byte-identical.
-      try {
-        copyReadableFileSync(sourceBlob, destinationBlob)
-      } catch (sourceError) {
-        if (!['EACCES', 'ENOENT', 'EPERM'].includes(sourceError?.code)) {
-          throw sourceError
-        }
-        throw new Error(`发布版本缺少资源：${hash}`)
-      }
-    }
+    // Docker Desktop may report R_OK for an old 0200 file and still fail
+    // with ENOENT when it is actually opened, so probe by copying it.
+    copyReadableFileSync(locateReleaseBlob(releaseRoot, sourceRoot, hash), destinationBlob)
   }
 }
 
@@ -1954,7 +2001,8 @@ function safeFilename(value, fallback) {
   )
 }
 
-function exportPlayBundle(reference) {
+async function exportPlayBundle(reference, options = {}) {
+  const assetMode = assertAssetMode(options.assetMode)
   const target = getLaunchTarget({ release: reference })
   const identity = mapGroupIdentity(target.id)
   if (identity.mapRole !== 'main' || identity.mainProjectId !== target.id) {
@@ -1972,6 +2020,7 @@ function exportPlayBundle(reference) {
   fs.mkdirSync(exportRoot, { recursive: true })
   try {
     const manifests = []
+    const releases = []
     for (const member of members) {
       const root = projectRoot(member.id)
       const releaseRoot = path.join(root, 'releases', target.version)
@@ -1988,8 +2037,21 @@ function exportPlayBundle(reference) {
       ) {
         throw new Error(`地图“${member.name}”的发布关系与地图组不一致，请重新发布`)
       }
-      copyReleaseWorld(releaseRoot, path.join(root, 'source'), path.join(worldsRoot, member.id))
+      releases.push({ member, root, releaseRoot, sourceRoot: path.join(root, 'source'), manifest })
       manifests.push(manifest)
+    }
+    let assetDistribution
+    if (assetMode === 'oss') {
+      const upload = await uploadPublicAssets(projectsRoot, getExternalReleaseAssets(releases))
+      assetDistribution = upload.distribution
+    }
+    for (const release of releases) {
+      copyReleaseWorld(
+        release.releaseRoot,
+        release.sourceRoot,
+        path.join(worldsRoot, release.member.id),
+        assetDistribution,
+      )
     }
     writeJSON(path.join(temporaryRoot, 'bundle.json'), {
       formatVersion: 1,
@@ -1999,6 +2061,7 @@ function exportPlayBundle(reference) {
       mainProjectId: identity.mainProjectId,
       version: target.version,
       createdAt: new Date().toISOString(),
+      ...(assetDistribution ? { assetDistribution } : {}),
       members: manifests.map((manifest) => ({
         id: manifest.id,
         mapUuid: manifest.mapUuid,
@@ -2182,6 +2245,9 @@ module.exports = {
   readBackupStatus,
   runProjectBackups,
   exportPlayBundle,
+  getAssetDistributionConfiguration: () => readAssetDistributionConfiguration(projectsRoot),
+  saveAssetDistributionConfiguration: (configuration) =>
+    saveAssetDistributionConfiguration(projectsRoot, configuration),
   getLaunchTarget,
   getProject,
   projectStorageIdentity,

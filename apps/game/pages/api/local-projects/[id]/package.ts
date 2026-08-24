@@ -24,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   try {
     const manager = getLocalProjectManager();
-    const bundle = manager.exportPlayBundle(`${id}@${version}`);
+    const assetMode = req.body?.assetMode === 'oss' ? 'oss' : 'local';
+    const bundle = await manager.exportPlayBundle(`${id}@${version}`, { assetMode });
     const cleanup = () => {
       fs.rmSync(bundle.archivePath, { force: true });
       fs.rmSync(bundle.temporaryRoot, { recursive: true, force: true });

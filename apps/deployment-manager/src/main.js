@@ -24,6 +24,9 @@ const state = {
   busy: false,
   status: null,
   config: null,
+  about: null,
+  legal: null,
+  legalLoading: false,
   logs: '',
   logLoading: false,
   logService: '',
@@ -46,7 +49,10 @@ const state = {
   themeMenuOpen: false,
   startMenuOpen: false,
   serviceMenu: '',
+  legalDialog: '',
   playAccessMode: '',
+  ownerSecrets: null,
+  ownerSecretsVisible: false,
   error: '',
   notice: '',
   progress: { stage: 'idle', message: '等待操作', percent: 0 },
@@ -59,6 +65,7 @@ const icons = {
   logs: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   performance: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V8"/><path d="M2 19h22"/>',
   help: '<circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.8 1.95c-.94.66-1.5 1.03-1.5 2.05M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/>',
   archive: '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
   play: '<path d="m8 5 11 7-11 7Z"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
@@ -117,13 +124,14 @@ function shell(content) {
   return `<div class="shell">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}</nav>
+      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}${navItem('about', 'info', '关于')}</nav>
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
     ${feedbackToast()}
     ${state.startMenuOpen ? startScopeDialog() : ''}
     ${state.backupDialog ? backupConfirmDialog() : ''}
+    ${state.legalDialog ? legalDocumentDialog() : ''}
   </div>`
 }
 
@@ -186,6 +194,14 @@ function backupConfirmDialog() {
     : '删除后无法恢复此备份文件。'
   const confirmLabel = restoring ? '确认恢复' : '确认删除'
   return `<div class="dialog-backdrop" data-backup-dialog-dismiss><section class="start-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-dialog-title"><header><div><h2 id="backup-dialog-title">${title}</h2><p>${description}</p></div><button class="dialog-close" id="cancel-backup-action" aria-label="取消">×</button></header><div class="backup-dialog-file"><span>备份文件</span><strong>${escapeHtml(dialog.name)}</strong></div><div class="dialog-actions"><button class="button" id="cancel-backup-action-secondary">取消</button><button class="button ${restoring ? 'primary' : 'danger'}" id="confirm-backup-action">${confirmLabel}</button></div></section></div>`
+}
+
+function legalDocumentDialog() {
+  const legal = state.legal || {}
+  const title = '发行许可证'
+  const meta = legal.licenseName || 'BOX3 Engine 非商业本地部署最终用户许可协议'
+  const document = legal.licenseText || '正在读取许可证全文…'
+  return `<div class="dialog-backdrop legal-dialog-backdrop" data-legal-dialog-dismiss><section class="legal-dialog" role="dialog" aria-modal="true" aria-labelledby="legal-dialog-title"><header><div><h2 id="legal-dialog-title">${title}</h2><p>${escapeHtml(meta)}</p></div><button class="dialog-close" id="close-legal-dialog" aria-label="关闭">×</button></header><pre class="legal-document-content">${escapeHtml(document)}</pre></section></div>`
 }
 
 function formatMetric(value, suffix = '%') {
@@ -290,8 +306,8 @@ function progressPanel() {
   return `<section class="progress-panel"><div><strong>${escapeHtml(state.progress.message)}</strong><span>${Math.max(0, Math.min(100, state.progress.percent))}%</span></div><div class="progress-track"><i style="width:${state.progress.percent}%"></i></div></section>`
 }
 
-function input(name, label, value = '', type = 'text', hint = '') {
-  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${type === 'number' ? 'min="0"' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
+function input(name, label, value = '', type = 'text', hint = '', required = false) {
+  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${type === 'number' ? 'min="0"' : ''} ${required ? 'required' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
 }
 
 function setupExplanation(title, items) {
@@ -316,9 +332,15 @@ function setup() {
     input(
       name,
       label,
-      '',
-      'password',
-      config[name] ? '本次配置已输入，保存时会使用' : configured ? '留空保留当前密钥' : hint,
+      state.ownerSecretsVisible ? state.ownerSecrets?.[name] || '' : '',
+      state.ownerSecretsVisible ? 'text' : 'password',
+      state.ownerSecretsVisible
+        ? '仅在本机当前页面显示；离开页面后自动隐藏'
+        : config[name]
+          ? '本次配置已输入，保存时会使用'
+          : configured
+            ? '留空保留当前密钥'
+            : `首次保存时自动生成，可直接留空${hint ? ` · ${hint}` : ''}`,
     )
   const rawEnvironmentPanel = `<section class="setup-panel environment-panel ${state.setupSection === 'environment' ? 'active' : ''}" data-setup-panel="environment"><div class="config-group raw-config-group"><div class="group-title"><div><h2>原始 .env</h2><span>仅限服主使用 · 会显示密钥，请勿截图或转发</span></div><button type="button" class="text-button" id="reload-raw-environment" ${state.environmentFileSaving ? 'disabled' : ''}>重新读取</button></div><textarea id="raw-environment" class="raw-environment" spellcheck="false" ${state.environmentFileSaving ? 'disabled' : ''}>${escapeHtml(state.environmentFile)}</textarea></div>${setupExplanation(
     '配置说明：什么时候需要编辑原始 .env？',
@@ -334,12 +356,12 @@ function setup() {
       <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
-          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>选填 · 留空则数据存储 API 不可用</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名')}${input('databasePort', '端口', config.databasePort || '5432', 'number')}${input('databaseName', '数据库', config.databaseName || 'box')}${input('databaseUser', '账号', config.databaseUser || 'box')}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '')}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
+          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>必填 · 保存玩家、权限与地图脚本数据</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true)}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
           <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>选填 · 留空则不启用缓存服务</span></div><button type="button" class="text-button" data-test-connection="redis">测试连接</button></div><div class="form-grid compact three">${input('redisHost', '地址', config.redisHost, 'text', 'IP 或域名')}${input('redisPort', '端口', config.redisPort || '6379', 'number')}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number')}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number')}</div></div>
           ${setupExplanation('配置说明：这些服务用来做什么？', [
             [
               'PostgreSQL',
-              '保存玩家账号、权限和地图脚本等需要长期保留的数据。留空仍可创作和游玩，但数据存储 API、玩家管理和登录门户不可用。',
+              '必须配置。用于保存玩家账号、权限和地图脚本等需要长期保留的数据；未完成配置时不能启动服务。',
             ],
             [
               'Redis',
@@ -378,9 +400,14 @@ function setup() {
             ],
           ],
         )}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>建议使用至少 16 个字符的随机值；修改后旧会话和旧 API 调用会失效</span></div></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>首次保存配置时会自动生成；无需手动填写，修改后旧会话和旧 API 调用会失效</span></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
           '配置说明：服主密钥分别做什么？',
           [
+            ['自动生成', '首次保存配置时，三个密钥会自动生成；只有需要自定义时才填写新的值。'],
+            [
+              '查看密钥',
+              '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
+            ],
             ['服主操作令牌', '保护 Play 端的服主操作接口。'],
             ['玩家服务 API Key', '供服主自建登录、注册或用户接入程序调用玩家服务。'],
             ['运行时身份密钥', '用于 Creator 和 Play 之间签发、校验运行时身份。'],
@@ -462,18 +489,61 @@ function helpList(items) {
 function helpContent() {
   const chapters = {
     welcome: `<div class="guide-heading"><h2>BOX3 Engine</h2></div><div class="guide-grid">${helpSection('能做什么', helpList(['在本机或服务器运行 Creator 与 Play', '管理地图、地图组、模型和游玩包', '使用 VOXA 编辑本地模型', '按需启用玩家账号、权限与封禁']))}${helpSection('产品定位', '<p>本项目保留 BOX 核心引擎与创作流程，并将平台依赖替换为本地服务。它不是 BOX 云平台的完整复制品，不包含云社区、商业化、平台审核与数据分析。</p>')}${helpSection('部署组成', '<div class="tag-row"><span>Creator</span><span>Play</span><span>玩家服务</span><span>登录门户</span><span>VOXA</span></div>')}${helpSection('数据原则', '<p>地图、模型和运行缓存保存在应用数据目录。配置 PostgreSQL 后，玩家与地图脚本数据写入远程数据库；Redis 仅用于缓存和运行时协调。</p>')}</div>`,
-    quickstart: `<div class="guide-heading"><span>首次使用</span><h2>快速部署</h2><p>准备 Docker Desktop，几步完成本机部署。</p></div><ol class="step-list"><li><b>启动 Docker</b><span>安装 Docker Desktop，并保持 Linux containers 模式。</span></li><li><b>打开管理器</b><span>Windows 运行 EXE，macOS 打开 APP。</span></li><li><b>保存配置</b><span>PostgreSQL 和 Redis 均可留空；保存配置不会启动容器。</span></li><li><b>选择启动范围</b><span>回到总览，选择全部服务、创作端或游玩端；管理器会导入所需离线镜像并启动对应服务。</span></li><li><b>开始使用</b><span>状态变为“运行正常”后点击对应服务的打开按钮。</span></li></ol><div class="guide-callout"><strong>未配置数据服务</strong><span>仍可创建、编辑和游玩地图，但数据存储 API、玩家管理和登录门户不可用，不会在本机文件中保存脚本数据。</span></div>`,
-    services: `<div class="guide-heading"><span>系统组成</span><h2>服务与端口</h2><p>每个模块职责独立，可以从总览直接打开。</p></div><div class="service-table"><div class="table-head"><span>服务</span><span>默认地址</span><span>用途</span></div><div><b>Creator</b><code>:3002</code><span>地图和项目资源创作</span></div><div><b>Play</b><code>:3000</code><span>玩家游玩与作品管理</span></div><div><b>玩家管理</b><code>:3213</code><span>账号、角色、封禁和审计</span></div><div><b>登录门户</b><code>:3214</code><span>示例登录与注册入口</span></div><div><b>VOXA</b><code>:3001</code><span>模型创建和编辑</span></div></div>${helpSection('访问范围', '<p>“访问设置”只需填写一个地址，并统一应用于 Creator、Play、玩家管理、登录门户和 VOXA。填写 127.0.0.1 时仅本机可访问；填写局域网 IP 或域名时五个服务都会对外开放。公网部署建议配置 HTTPS 反向代理、访问权限和防火墙。</p>')}`,
-    configuration: `<div class="guide-heading"><span>数据配置</span><h2>配置说明</h2><p>常用参数分为五个页面，配置保存与服务启动彼此独立。</p></div><div class="guide-grid">${helpSection('PostgreSQL · 选填', helpList(['填写地址后启用玩家管理和登录门户', '地图脚本数据使用 PostgreSQL 数据空间', '留空时数据存储 API 不可用', 'SSL 由数据库服务端要求决定']))}${helpSection('Redis · 选填', helpList(['业务 DB 与缓存 DB 应使用不同编号', '留空时不启用 Redis 缓存', 'Redis 不保存唯一业务数据，可随时重建']))}${helpSection('访问设置', helpList(['127.0.0.1：五个服务仅当前电脑访问', '局域网 IP/域名：五个服务均可从外部访问', '开放 Creator 前应配置登录权限与防火墙']))}${helpSection('服主与安全', helpList(['可替换服主操作令牌、玩家服务 API Key 和运行时身份密钥', '密钥至少 16 个字符；留空会保留当前值', '修改密钥后旧会话或 API 调用会失效']))}${helpSection('原始 .env', helpList(['显示当前 .env 原文，适合高级配置和排障', '会显示密码与密钥，请勿截图或转发', '保存后不会自动重启服务，需在总览手动启动或重启']))}${helpSection('运行容量', helpList(['游玩运行时：同时活跃的地图/房间', '编辑运行时：同时打开的编辑项目', '创作预览：编辑器内运行实例', '上限越高，占用的内存越多']))}</div>`,
+    quickstart: `<div class="guide-heading"><span>首次使用</span><h2>快速部署</h2><p>准备 Docker Desktop，几步完成本机部署。</p></div><ol class="step-list"><li><b>启动 Docker</b><span>安装 Docker Desktop，并保持 Linux containers 模式。</span></li><li><b>打开管理器</b><span>Windows 运行 EXE，macOS 打开 APP。</span></li><li><b>填写 PostgreSQL</b><span>PostgreSQL 为必填；Redis 可留空。保存配置不会启动容器。</span></li><li><b>选择启动范围</b><span>回到总览，选择全部服务、创作端或游玩端；管理器会导入所需离线镜像并启动对应服务。</span></li><li><b>开始使用</b><span>状态变为“运行正常”后点击对应服务的打开按钮。</span></li></ol><div class="guide-callout"><strong>数据服务要求</strong><span>启动前必须完成 PostgreSQL 配置。Redis 仅用于缓存和运行时协调，未配置时会使用本地回退能力。</span></div>`,
+    services: `<div class="guide-heading"><span>系统组成</span><h2>服务与端口</h2><p>每个模块职责独立，可以从总览直接打开。</p></div><div class="service-table"><div class="table-head"><span>服务</span><span>默认地址</span><span>用途</span></div><div><b>Creator</b><code>:3002</code><span>地图和项目资源创作</span></div><div><b>Play</b><code>:3000</code><span>玩家游玩与作品管理</span></div><div><b>玩家管理</b><code>:3213</code><span>账号、角色、封禁和审计</span></div><div><b>登录门户</b><code>:3214</code><span>示例登录与注册入口</span></div><div><b>VOXA</b><code>:3001</code><span>模型创建和编辑</span></div></div>${helpSection('访问范围', '<p>Play、玩家管理和登录门户可使用本机、局域网或公网地址。Creator 与 VOXA 仅允许本机或局域网私有 IP，启动器会强制阻止公网 IP 和域名。公网游玩建议配置 HTTPS 反向代理、访问权限和防火墙。</p>')}`,
+    configuration: `<div class="guide-heading"><span>数据配置</span><h2>配置说明</h2><p>常用参数分为五个页面，配置保存与服务启动彼此独立。</p></div><div class="guide-grid">${helpSection('PostgreSQL · 必填', helpList(['保存前会检查地址和端口是否可达', '玩家管理、登录门户与地图脚本数据都使用 PostgreSQL', '地址、数据库名、账号与首次密码都必须填写', 'SSL 由数据库服务端要求决定']))}${helpSection('Redis · 选填', helpList(['业务 DB 与缓存 DB 应使用不同编号', '留空时不启用 Redis 缓存', 'Redis 不保存唯一业务数据，可随时重建']))}${helpSection('访问设置', helpList(['127.0.0.1：仅当前电脑访问', 'Play、玩家管理和登录门户可使用局域网或公网 IP', 'Creator 与 VOXA 仅支持本机或局域网私有 IP，不能部署到公网或域名']))}${helpSection('服主与安全', helpList(['可替换服主操作令牌、玩家服务 API Key 和运行时身份密钥', '密钥至少 16 个字符；留空会保留当前值', '修改密钥后旧会话或 API 调用会失效']))}${helpSection('原始 .env', helpList(['显示当前 .env 原文，适合高级配置和排障', '会显示密码与密钥，请勿截图或转发', '保存后不会自动重启服务，需在总览手动启动或重启']))}${helpSection('运行容量', helpList(['游玩运行时：同时活跃的地图/房间', '编辑运行时：同时打开的编辑项目', '创作预览：编辑器内运行实例', '上限越高，占用的内存越多']))}</div>`,
     workflow: `<div class="guide-heading"><span>日常使用</span><h2>创作与游玩</h2><p>Creator 管理源工程，Play 运行导出的游戏包。</p></div><div class="workflow-columns">${helpSection('Creator', helpList(['新建或导入地图工程', '主地图下可创建共享资源的副地图', '项目模型只属于当前项目，不修改本地模型原件', '共享脚本、图片、音频和角色在地图组内同步', '通过 VOXA 编辑模型后返回项目继续使用', '导出单地图工程、地图组工程或游戏包']))}${helpSection('Play', helpList(['导入 Creator 导出的游戏包', '玩家通过 /p/地图访问 ID 进入作品', '主地图负责地图组入口，副地图通常通过传送进入', '后台预热可降低首位玩家进入等待时间', '游玩包是只读运行快照，不作为源工程编辑']))}</div><div class="guide-callout"><strong>备份建议</strong><span>重要修改前导出地图组工程；游戏包用于部署，不能代替源工程备份。</span></div>`,
     players: `<div class="guide-heading"><span>需要 PostgreSQL</span><h2>玩家与权限</h2><p>玩家身份由独立玩家服务统一管理。</p></div><div class="guide-grid">${helpSection('账号资料', helpList(['记录用户名、显示名、注册与登录时间', '记录可信代理后的注册 IP、最后登录 IP', '支持绑定兼容用神岛 ID（boxId）', '可查看会话、设备与登录历史']))}${helpSection('权限层级', helpList(['服主：管理权限、管理员及账号删除', '管理员：按服主授予的权限执行管理', '协管员：处理指定范围的玩家事务', '玩家：进入游戏并访问自己的数据']))}${helpSection('安全操作', helpList(['支持临时封禁和永久封禁', '支持账号、IP 与设备维度封禁', '强制下线会撤销会话并通知运行时', '管理 API 必须携带服主配置的密钥']))}${helpSection('登录门户', '<p>内置门户用于快速部署和测试。正式运营时，服主也可以自行开发登录页，通过玩家服务公开 API 完成注册、登录和账号维护。</p>')}</div>`,
-    operations: `<div class="guide-heading"><span>维护指南</span><h2>运维与排障</h2><p>先看状态，再看日志，最后检查外部依赖。</p></div><div class="diagnostic-list"><div><b>服务无法启动</b><span>确认 Docker Desktop 正在运行、磁盘空间充足，镜像架构与电脑一致。</span></div><div><b>无法进入地图</b><span>查看 Creator/Play 日志，检查运行时上限、地图资源完整性与脚本内存。</span></div><div><b>数据库不可用</b><span>检查安全组、防火墙、5432 端口、账号密码和 SSL 设置；清空地址会停用数据存储 API。</span></div><div><b>Redis 不可用</b><span>检查 6379 端口和密码；清空地址会停用 Redis 缓存，不会影响源工程。</span></div><div><b>外部设备打不开</b><span>访问地址填写服务器 IP 或域名，并在防火墙中开放对应端口。</span></div><div><b>升级镜像</b><span>停止服务，备份应用数据目录，替换离线包后重新打开管理器；已有数据不会被程序目录覆盖。</span></div></div><div class="guide-callout"><strong>备份与恢复</strong><span>本地备份包含地图工程、游玩包、VOXA 本地模型与资源；不包含 .env、服主密钥、密码、远程 PostgreSQL 数据和 Redis 缓存。玩家与脚本数据请由数据库服务商或服主自行备份。备份可导出分享，导入后仍需点击“恢复”并确认才会写入本机。</span></div><div class="guide-callout"><strong>日志</strong><span>“运行日志”集中显示最近 500 行容器输出。反馈问题时，请同时提供服务名、发生时间和相关错误段。</span></div>`,
+    operations: `<div class="guide-heading"><span>维护指南</span><h2>运维与排障</h2><p>先看状态，再看日志，最后检查外部依赖。</p></div><div class="diagnostic-list"><div><b>服务无法启动</b><span>确认 Docker Desktop 正在运行、PostgreSQL 已配置且可连接、磁盘空间充足，镜像架构与电脑一致。</span></div><div><b>无法进入地图</b><span>查看 Creator/Play 日志，检查运行时上限、地图资源完整性与脚本内存。</span></div><div><b>数据库不可用</b><span>检查安全组、防火墙、5432 端口、账号密码和 SSL 设置；PostgreSQL 为必填，修复后重新保存配置。</span></div><div><b>Redis 不可用</b><span>检查 6379 端口和密码；清空地址会停用 Redis 缓存，不会影响源工程。</span></div><div><b>外部设备打不开</b><span>访问地址填写服务器 IP 或域名，并在防火墙中开放对应端口。</span></div><div><b>升级镜像</b><span>停止服务，备份应用数据目录，替换离线包后重新打开管理器；已有数据不会被程序目录覆盖。</span></div></div><div class="guide-callout"><strong>备份与恢复</strong><span>本地备份包含地图工程、游玩包、VOXA 本地模型与资源；不包含 .env、服主密钥、密码、远程 PostgreSQL 数据和 Redis 缓存。玩家与脚本数据请由数据库服务商或服主自行备份。备份可导出分享，导入后仍需点击“恢复”并确认才会写入本机。</span></div><div class="guide-callout"><strong>日志</strong><span>“运行日志”集中显示最近 500 行容器输出。反馈问题时，请同时提供服务名、发生时间和相关错误段。</span></div>`,
   }
   return chapters[state.helpSection] || chapters.welcome
 }
 
 function help() {
   return `<header><div><h1>帮助手册</h1></div></header><div class="help-layout"><nav class="help-nav">${helpChapters.map(helpNav).join('')}</nav><article class="guide-content">${helpContent()}</article></div>`
+}
+
+function about() {
+  const info = state.about || {}
+  const legal = state.legal || {}
+  const values = [
+    ['启动器版本', info.applicationVersion || '读取中'],
+    ['镜像版本', info.imageTag || '读取中'],
+    ['运行平台', [info.platform, info.architecture].filter(Boolean).join(' / ') || '未知'],
+    ['构建提交', info.sourceRevision || '未知'],
+    ['构建时间', formatBeijingBuildTime(info.buildCreatedAt)],
+    ['构建来源', formatBuildSource(info.buildSource)],
+  ]
+  return `<header><div><h1>关于</h1></div></header><section class="about-page"><article class="about-card"><div class="about-card-heading"><h2>版本信息</h2></div><dl class="about-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt>${label === '构建提交' ? `<dd class="about-build-revision" title="${escapeHtml(title || '')}"><code>${escapeHtml(value)}</code><button class="about-copy-button" type="button" data-copy-build-revision="${escapeHtml(value)}" aria-label="复制构建提交" title="复制构建提交">${icon('copy')}</button></dd>` : `<dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd>`}</div>`).join('')}</dl></article><article class="about-card"><div class="about-card-heading"><h2>发行许可</h2></div><div class="about-document-list"><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article></section>`
+}
+
+function formatBeijingBuildTime(value) {
+  if (!value || value === '未知' || value === 'unknown') return '未知'
+  const buildTime = new Date(value)
+  if (Number.isNaN(buildTime.getTime())) return value
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(buildTime)
+      .filter(({ type }) => type !== 'literal')
+      .map(({ type, value: part }) => [type, part]),
+  )
+  return `${parts.year}年${parts.month}月${parts.day}日 ${parts.hour}:${parts.minute}:${parts.second}（北京时间）`
+}
+
+function formatBuildSource(value) {
+  if (value === 'local-dirty') return '本地测试构建（含未提交修改）'
+  if (value === 'local') return '本地构建'
+  if (value === 'github-actions') return 'GitHub Actions 构建'
+  return value || '未知'
 }
 
 function render() {
@@ -490,7 +560,9 @@ function render() {
               ? logs()
               : state.page === 'help'
                 ? help()
-                : overview()
+                : state.page === 'about'
+                  ? about()
+                  : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
   syncPerformancePolling()
@@ -502,9 +574,14 @@ function bindEvents() {
   document.addEventListener('click', closeServiceMenuOnOutside)
   document.querySelectorAll('[data-page]').forEach((node) =>
     node.addEventListener('click', () => {
+      if (node.dataset.page !== 'setup') {
+        state.ownerSecrets = null
+        state.ownerSecretsVisible = false
+      }
       state.page = node.dataset.page
       render()
       if (state.page === 'backups') loadBackups()
+      if (state.page === 'about') loadLegalNotices()
     }),
   )
   document.querySelector('#refresh')?.addEventListener('click', refreshStatus)
@@ -535,6 +612,15 @@ function bindEvents() {
     if (event.target === event.currentTarget) closeBackupDialog()
   })
   document.querySelector('#confirm-backup-action')?.addEventListener('click', confirmBackupAction)
+  document.querySelector('#close-legal-dialog')?.addEventListener('click', closeLegalDialog)
+  document.querySelector('[data-legal-dialog-dismiss]')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeLegalDialog()
+  })
+  document
+    .querySelectorAll('[data-open-legal-document]')
+    .forEach((node) =>
+      node.addEventListener('click', () => openLegalDocument(node.dataset.openLegalDocument)),
+    )
   document.querySelector('#theme-trigger')?.addEventListener('click', () => {
     state.themeMenuOpen = !state.themeMenuOpen
     render()
@@ -570,6 +656,17 @@ function bindEvents() {
       node.title = '已复制'
     }),
   )
+  document.querySelectorAll('[data-copy-build-revision]').forEach((node) =>
+    node.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(node.dataset.copyBuildRevision)
+        state.notice = '构建提交已复制。'
+      } catch (error) {
+        state.error = `复制构建提交失败：${String(error)}`
+      }
+      render()
+    }),
+  )
   document.querySelectorAll('[data-service-action]').forEach((node) =>
     node.addEventListener('click', () => {
       state.serviceMenu = ''
@@ -600,6 +697,7 @@ function bindEvents() {
     .querySelector('[data-save-raw-environment]')
     ?.addEventListener('click', saveRawEnvironment)
   document.querySelector('#reload-raw-environment')?.addEventListener('click', reloadRawEnvironment)
+  document.querySelector('#toggle-owner-secrets')?.addEventListener('click', toggleOwnerSecrets)
   document
     .querySelectorAll('[data-test-connection]')
     .forEach((node) =>
@@ -711,6 +809,9 @@ function captureSetupForm() {
   const form = document.querySelector('#setup-form')
   if (!form) return
   const values = Object.fromEntries(new FormData(form).entries())
+  for (const key of ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']) {
+    if (state.ownerSecretsVisible && values[key] === state.ownerSecrets?.[key]) delete values[key]
+  }
   const databaseSsl = form.elements.namedItem('databaseSsl')
   const next = {
     ...state.config,
@@ -738,8 +839,30 @@ function switchSetupSection(section) {
   if (!section || section === state.setupSection) return
   captureRawEnvironment()
   captureSetupForm()
+  if (section !== 'security') {
+    state.ownerSecrets = null
+    state.ownerSecretsVisible = false
+  }
   state.setupSection = section
   clearFeedback()
+  render()
+}
+
+async function toggleOwnerSecrets() {
+  captureSetupForm()
+  clearFeedback()
+  if (state.ownerSecretsVisible) {
+    state.ownerSecrets = null
+    state.ownerSecretsVisible = false
+    render()
+    return
+  }
+  try {
+    state.ownerSecrets = await invoke('get_owner_secrets')
+    state.ownerSecretsVisible = true
+  } catch (error) {
+    state.error = String(error)
+  }
   render()
 }
 
@@ -926,6 +1049,7 @@ async function refreshStatus() {
   try {
     state.status = await invoke('get_system_status')
     state.config = await invoke('get_install_config')
+    state.about = await invoke('get_about_info')
     state.playAccessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
@@ -938,6 +1062,35 @@ async function refreshStatus() {
     }
   }
   render()
+}
+
+async function loadLegalNotices() {
+  if (state.legalLoading || state.legal) return
+  state.legalLoading = true
+  render()
+  try {
+    state.legal = await invoke('get_legal_notices')
+  } catch (error) {
+    state.legal = {
+      licenseText: '无法读取许可证信息。',
+      thirdPartyNotices: String(error),
+      thirdPartyGeneratedAt: '读取失败',
+    }
+  } finally {
+    state.legalLoading = false
+    if (state.page === 'about') render()
+  }
+}
+
+function closeLegalDialog() {
+  state.legalDialog = ''
+  render()
+}
+
+function openLegalDocument() {
+  state.legalDialog = 'license'
+  render()
+  loadLegalNotices()
 }
 
 async function runAction(command, payload = {}) {

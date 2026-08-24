@@ -226,6 +226,7 @@ function validateWorld(root: string) {
   const publicId = assertPublicId(manifest.publicId || id);
   manifest.mapUuid = assertMapUuid(manifest.mapUuid);
   manifest.mapGroupUuid = assertMapUuid(manifest.mapGroupUuid, '地图组 UUID');
+  validateAssetDistribution(manifest.assetDistribution);
   if (!manifest.permissionHash || state.permissionHash !== manifest.permissionHash) {
     throw new Error('地图权限数据不完整或不一致');
   }
@@ -233,6 +234,29 @@ function validateWorld(root: string) {
     throw new Error('地图资源目录不存在');
   }
   return { id, publicId, manifest };
+}
+
+function validateAssetDistribution(value: unknown) {
+  if (value === undefined) return;
+  if (!value || typeof value !== 'object') throw new Error('游玩包资源分发配置无效');
+  const distribution = value as { formatVersion?: unknown; mode?: unknown; cdnBaseUrl?: unknown; pathTemplate?: unknown; hashes?: unknown };
+  if (
+    distribution.formatVersion !== 1 ||
+    distribution.mode !== 'external-cdn' ||
+    distribution.pathTemplate !== 'engine/m/{hash}' ||
+    !Array.isArray(distribution.hashes) ||
+    distribution.hashes.some((hash) => !/^(Qm[1-9A-HJ-NP-Za-km-z]{44}|[A-Za-z0-9_-]{43})$/.test(String(hash)))
+  ) {
+    throw new Error('游玩包资源分发配置无效');
+  }
+  try {
+    const url = new URL(String(distribution.cdnBaseUrl || ''));
+    if (url.username || url.password || url.search || url.hash || url.protocol !== 'https:') {
+      throw new Error('invalid');
+    }
+  } catch {
+    throw new Error('游玩包的外部资源地址不安全，只允许 HTTPS 地址');
+  }
 }
 
 function validateMapGroupBundle(
