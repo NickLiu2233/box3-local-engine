@@ -28,6 +28,7 @@ const playerServiceRoutes = new Set([
   '/api/player-auth/login-required',
   '/api/player-auth/register',
   '/api/player-auth/session',
+  '/api/player-internal/map-library',
   '/api/player-internal/revocations',
   '/api/player-internal/runtime-identity',
   '/api/play-admin/activity',
