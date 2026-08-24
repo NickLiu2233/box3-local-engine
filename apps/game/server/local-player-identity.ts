@@ -345,6 +345,20 @@ async function initialize() {
         ON ${table('sessions')} (principal_id)
       `);
       await database.query(`
+        CREATE TABLE IF NOT EXISTS ${table('player_map_library')} (
+          principal_id UUID NOT NULL REFERENCES ${table('principals')}(id) ON DELETE CASCADE,
+          map_id TEXT NOT NULL,
+          favorite BOOLEAN NOT NULL DEFAULT FALSE,
+          last_played_at TIMESTAMPTZ,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (principal_id, map_id)
+        )
+      `);
+      await database.query(`
+        CREATE INDEX IF NOT EXISTS local_player_map_library_recent
+        ON ${table('player_map_library')} (principal_id, last_played_at DESC)
+      `);
+      await database.query(`
         CREATE TABLE IF NOT EXISTS ${table('audit_logs')} (
           id BIGSERIAL PRIMARY KEY,
           actor TEXT NOT NULL,
@@ -995,6 +1009,45 @@ export async function currentPlayer(req: NextApiRequest, res: NextApiResponse) {
     databaseEnabled: isPlayerDatabaseEnabled(),
     registrationEnabled: process.env.BOX_PLAYER_REGISTRATION_ENABLED !== 'false',
   };
+}
+
+export async function playerMapLibrary(req: NextApiRequest, res: NextApiResponse) {
+  const database = getPool();
+  const identity = await resolvePlayerIdentity(req, res);
+  if (!database) {
+    return { player: toView(identity), entries: [], libraryEnabled: false };
+  }
+  await initialize();
+  const result = await database.query<{ map_id: string; favorite: boolean; last_played_at: Date | null }>(`
+    SELECT map_id, favorite, last_played_at FROM ${table('player_map_library')}
+    WHERE principal_id = $1 AND (favorite = TRUE OR last_played_at IS NOT NULL)
+    ORDER BY last_played_at DESC NULLS LAST
+  `, [identity.subjectId]);
+  return {
+    player: toView(identity),
+    entries: result.rows.map((entry) => ({
+      mapId: entry.map_id,
+      favorite: entry.favorite,
+      lastPlayedAt: entry.last_played_at?.toISOString() || null,
+    })),
+    libraryEnabled: true,
+  };
+}
+
+export async function updatePlayerMapLibrary(req: NextApiRequest, res: NextApiResponse, mapId: string, changes: { favorite?: boolean; played?: boolean }) {
+  const database = getPool();
+  if (!database) throw new Error('PLAYER_DATABASE_NOT_CONFIGURED');
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(mapId)) throw new Error('地图 ID 无效');
+  await initialize();
+  const identity = await resolvePlayerIdentity(req, res);
+  await database.query(`
+    INSERT INTO ${table('player_map_library')} (principal_id, map_id, favorite, last_played_at)
+    VALUES ($1, $2, COALESCE($3, FALSE), CASE WHEN $4 THEN NOW() ELSE NULL END)
+    ON CONFLICT (principal_id, map_id) DO UPDATE SET
+      favorite = COALESCE($3, ${table('player_map_library')}.favorite),
+      last_played_at = CASE WHEN $4 THEN NOW() ELSE ${table('player_map_library')}.last_played_at END,
+      updated_at = NOW()
+  `, [identity.subjectId, mapId, changes.favorite, changes.played === true]);
 }
 
 export async function listManagedPlayers(options: ManagedPlayerListOptions = {}): Promise<ManagedPlayerList> {

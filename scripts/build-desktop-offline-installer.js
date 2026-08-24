@@ -20,6 +20,14 @@ const supported = new Map([
   ],
   ['macos-amd64', { os: 'darwin', arch: 'x64', bundle: 'app', executable: 'BOX3 Engine.app' }],
   ['macos-arm64', { os: 'darwin', arch: 'arm64', bundle: 'app', executable: 'BOX3 Engine.app' }],
+  [
+    'linux-amd64',
+    { os: 'linux', arch: 'x64', bundle: false, executable: 'box-local-engine-manager' },
+  ],
+  [
+    'linux-arm64',
+    { os: 'linux', arch: 'arm64', bundle: false, executable: 'box-local-engine-manager' },
+  ],
 ])
 
 function fail(message) {
@@ -73,7 +81,12 @@ function createZip(packageRoot, destination) {
   fs.rmSync(destination, { force: true })
   const parent = path.dirname(packageRoot)
   const name = path.basename(packageRoot)
-  const command = process.platform === 'win32' ? 'powershell' : '/usr/bin/ditto'
+  const command =
+    process.platform === 'win32'
+      ? 'powershell'
+      : process.platform === 'darwin'
+        ? '/usr/bin/ditto'
+        : 'zip'
   const args =
     process.platform === 'win32'
       ? [
@@ -81,7 +94,9 @@ function createZip(packageRoot, destination) {
           '-Command',
           `Compress-Archive -LiteralPath '${packageRoot.replaceAll("'", "''")}' -DestinationPath '${destination.replaceAll("'", "''")}' -Force`,
         ]
-      : ['-c', '-k', '--norsrc', '--keepParent', name, destination]
+      : process.platform === 'darwin'
+        ? ['-c', '-k', '--norsrc', '--keepParent', name, destination]
+        : ['-rq', destination, name]
   const result = spawnSync(command, args, {
     cwd: parent,
     env: { ...process.env, COPYFILE_DISABLE: '1' },
@@ -115,7 +130,7 @@ function main() {
     .basename(archive)
     .match(/^box-local-engine-images-(.+)-(?:windows|macos|linux)-(?:amd64|arm64)\.tar(?:\.gz)?$/)
   const imageTag = imageTagMatch
-    ? `${imageTagMatch[1]}-${platform.startsWith('windows') ? 'windows' : 'macos'}-${expectedArchitecture}`
+    ? `${imageTagMatch[1]}-${platform.split('-')[0]}-${expectedArchitecture}`
     : process.env.BOX_IMAGE_TAG
   if (!imageTag) fail('无法从归档名称确定 BOX_IMAGE_TAG，请设置环境变量 BOX_IMAGE_TAG')
 

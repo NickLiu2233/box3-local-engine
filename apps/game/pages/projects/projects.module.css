@@ -1,10 +1,10 @@
 .page { min-height: 100vh; color: #252b3c; background: #f7f7fb; font-family: var(--font-regular), sans-serif; }
-.header { height: 72px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(24px, 5vw, 80px); border-bottom: 1px solid #e9eaf1; background: rgba(255,255,255,.92); }
+.header { height: 64px; display: flex; align-items: center; padding: 0 clamp(24px, 5vw, 80px); border-bottom: 1px solid rgba(255,255,255,.1); background: #262626; }
 .brand { display: inline-flex; align-items: center; gap: 7px; color: #1f2433; font-family: Rubik-700, sans-serif; font-size: 21px; letter-spacing: -.04em; }
 .brand em { padding-left: 2px; color: #8b90a0; font-family: Rubik, sans-serif; font-size: 11px; font-style: normal; font-weight: 700; letter-spacing: .12em; }
 .brandMark { position: relative; display: grid; width: 25px; height: 25px; grid-template-columns: repeat(2, 1fr); gap: 2px; transform: rotate(30deg) skewY(-10deg); }
 .brandMark span { display: block; border-radius: 3px; background: #ff8c21; }.brandMark span:nth-child(2) { background: #ffb324; }.brandMark span:nth-child(3) { grid-column: span 2; background: #ff6f30; }
-.headerActions { display: flex; align-items: center; gap: 18px; }.localBadge { display: inline-flex; align-items: center; gap: 7px; color: #767d8d; font-size: 13px; }.statusDot { width: 7px; height: 7px; border-radius: 50%; background: #43b981; box-shadow: 0 0 0 3px #e5f8ef; }.avatar { width: 32px; height: 32px; border-radius: 50%; color: #fff; background: linear-gradient(145deg,#8a74ef,#5567d9); font-weight: 700; }
+.headerActions { display: flex; align-items: center; gap: 11px; margin-left: auto; }.avatar { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; color: #262626; background: #ffdb00; font-size: 12px; font-weight: 700; }.accountName { color: rgba(255,255,255,.74); font-size: 13px; }
 .content { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 62px 0 48px; }.titleRow { display: flex; align-items: end; justify-content: space-between; gap: 24px; }.eyebrow { margin: 0 0 10px; color: #9b7af0; font-family: Rubik-700, sans-serif; font-size: 11px; letter-spacing: .16em; }.titleRow h1 { margin: 0; color: #202534; font-family: var(--font-bold); font-size: clamp(30px,4vw,40px); line-height: 1.1; white-space: normal; }.subtitle { margin-top: 12px; color: #737b8d; font-size: 15px; }.titleActions { display: flex; gap: 10px; }.guideButton { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; padding: 0 14px; border: 1px solid #e3dff1; border-radius: 10px; color: #675fa1; background: #fff; font-size: 13px; font-weight: 700; transition: transform 160ms cubic-bezier(.23,1,.32,1), background 160ms ease; }.guideButton:hover { background: #f8f6ff; }.guideButton:active { transform: scale(.97); }.createButton,.confirmButton { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 8px; padding: 0 17px; border-radius: 10px; color: #fff; background: #6e5bd8; box-shadow: 0 8px 18px rgba(110,91,216,.19); font-size: 14px; font-weight: 700; transition: transform 160ms cubic-bezier(.23,1,.32,1), background 160ms ease, box-shadow 160ms ease; }.createButton:hover,.confirmButton:hover { background: #5d4bc4; box-shadow: 0 10px 22px rgba(110,91,216,.27); }.createButton:active,.confirmButton:active,.secondaryButton:active,.quickActions button:active { transform: scale(.97); }
 .workCenterTabs { display: flex; width: fit-content; gap: 4px; margin-top: 28px; padding: 4px; border: 1px solid #e8e7ef; border-radius: 12px; background: #efeff4; }
 .workCenterTabs button { display: flex; min-width: 154px; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 9px; color: #858b9a; background: transparent; text-align: left; transition: transform 150ms cubic-bezier(.23,1,.32,1),color 150ms ease,background-color 150ms ease,box-shadow 150ms ease; }
@@ -29,7 +29,7 @@
 @media (prefers-reduced-motion: reduce) { .card,.quickActions,.createButton,.confirmButton,.addCard,.menu,.dialog { animation: none; transition: none; } }
 @media (hover: none), (pointer: coarse) { .quickActions { opacity: 1; transform: none; } }
 @media (max-width: 900px) { .grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
-@media (max-width: 600px) { .header { height: 62px; padding: 0 18px; }.localBadge { display: none; }.content { width: min(100% - 32px,1180px); padding-top: 38px; }.titleRow { align-items: flex-start; flex-direction: column; }.titleActions,.createButton,.guideButton { width: 100%; }.titleActions { flex-direction: column-reverse; }.toolbar { align-items: stretch; flex-wrap: wrap; }.search { width: 100%; min-height: 34px; }.filter { border-top: 1px solid #eeeeF3; border-left: 0; }.count { margin-left: auto; }.grid { grid-template-columns: 1fr; }.addCard { min-height: 190px; } }
+@media (max-width: 600px) { .header { height: 62px; padding: 0 18px; }.accountName { display: none; }.content { width: min(100% - 32px,1180px); padding-top: 38px; }.titleRow { align-items: flex-start; flex-direction: column; }.titleActions,.createButton,.guideButton { width: 100%; }.titleActions { flex-direction: column-reverse; }.toolbar { align-items: stretch; flex-wrap: wrap; }.search { width: 100%; min-height: 34px; }.filter { border-top: 1px solid #eeeeF3; border-left: 0; }.count { margin-left: auto; }.grid { grid-template-columns: 1fr; }.addCard { min-height: 190px; } }
 
 /* Box Web Portal creator-center visual language. */
 .page { color: rgba(255,255,255,.92); background: #262626; }.header { height: 64px; border-color: rgba(255,255,255,.1); background: #262626; }.brand { color: #fff; font-size: 20px; letter-spacing: 0; }.brand em { color: rgba(255,255,255,.45); }.brandMark { transform: none; }.brandMark span { border-radius: 2px; background: #ffdb00; }.brandMark span:nth-child(2) { background: #d9b500; }.brandMark span:nth-child(3) { background: #b38f00; }.localBadge { color: rgba(255,255,255,.6); }.statusDot { background: #78c95d; box-shadow: 0 0 0 3px rgba(120,201,93,.12); }.avatar { color: #262626; background: #ffdb00; }.content { width: min(1136px, calc(100% - 48px)); padding-top: 36px; }.eyebrow { display: none; }.titleRow h1 { color: #fff; font-size: 24px; line-height: 1.3; }.subtitle { color: rgba(255,255,255,.6); font-size: 13px; }.guideButton { border-color: rgba(255,255,255,.18); border-radius: 8px; color: rgba(255,255,255,.8); background: #404040; }.guideButton:hover { color: #fff; background: #4b4b4b; }.createButton,.confirmButton { border-radius: 8px; color: #262626; background: #ffdb00; box-shadow: none; }.createButton:hover,.confirmButton:hover { color: #262626; background: #ffe44d; }.toolbar { margin-top: 28px; padding: 8px 12px; border-color: transparent; border-radius: 8px; background: #404040; }.search { color: rgba(255,255,255,.6); }.search input { color: #fff; }.search input::placeholder { color: rgba(255,255,255,.45); }.filter { border-left-color: rgba(255,255,255,.15); color: rgba(255,255,255,.5); }.filter select { color: #fff; }.count { color: rgba(255,255,255,.5); }.notice { border-color: rgba(255,219,0,.22); border-radius: 8px; color: rgba(255,255,255,.75); background: rgba(255,219,0,.08); }.notice code,.infoNote code { color: #ffdb00; background: rgba(255,219,0,.1); }
@@ -261,6 +261,7 @@
 .workCenterTabs .workCenterTabActive small { color: rgba(255,255,255,.48); }
 
 /* Final work-center shell. Maps and models share this hierarchy and spacing. */
+.header .brand { color: #fff; }.header .brand em { color: rgba(255,255,255,.42); }
 .titleRow { align-items: center; }
 .titleActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .titleActions .importButton { min-height: 38px; border-color: rgba(255,255,255,.12); background: transparent; font-weight: 600; }
@@ -306,4 +307,31 @@
   .toolbar { align-items: stretch; }
   .search { width: 100%; }
   .count { width: 100%; margin-left: 0; }
+}
+
+/* Keep Creator's work center on the same compact BOX3 geometry as Play and
+   player administration. The hierarchy remains in the content, not in large
+   radii or decorative shadows. */
+.card,
+.mapGroup,
+.addCard,
+.emptyState,
+.dialog,
+.exportDialog {
+  border-radius: 8px;
+}
+
+.cover {
+  border-radius: 8px 0 0 8px;
+}
+
+.workCenterTabs,
+.toolbar {
+  border-radius: 6px;
+}
+
+@media (max-width: 600px) {
+  .cover {
+    border-radius: 8px 8px 0 0;
+  }
 }

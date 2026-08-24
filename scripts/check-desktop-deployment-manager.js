@@ -7,7 +7,13 @@ const path = require('node:path')
 const root = path.resolve(__dirname, '..')
 const manager = path.join(root, 'apps/deployment-manager')
 const frontend = fs.readFileSync(path.join(manager, 'src/main.js'), 'utf8')
-const backend = fs.readFileSync(path.join(manager, 'src-tauri/src/lib.rs'), 'utf8')
+const backendSourceDirectory = path.join(manager, 'src-tauri/src')
+const backend = fs
+  .readdirSync(backendSourceDirectory)
+  .filter((file) => file.endsWith('.rs'))
+  .sort()
+  .map((file) => fs.readFileSync(path.join(backendSourceDirectory, file), 'utf8'))
+  .join('\n')
 const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), 'utf8')
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
@@ -34,6 +40,9 @@ for (const file of [
   'src/styles.css',
   'src-tauri/Cargo.toml',
   'src-tauri/tauri.conf.json',
+  'src-tauri/src/config.rs',
+  'src-tauri/src/commands.rs',
+  'src-tauri/src/docker.rs',
   'src-tauri/src/lib.rs',
   'src-tauri/defaults.env',
 ]) {
@@ -80,7 +89,7 @@ assert.match(backend, /"player-service,auth-portal,creator,play,voxa"/)
 assert.doesNotMatch(backend, /"creator,play,voxa"/)
 assert.match(backend, /Applications\/Docker\.app\/Contents\/Resources\/bin\/docker/)
 assert.ok(backend.includes(String.raw`r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"`))
-assert.match(backend, /fn docker_message/)
+assert.match(backend, /fn unavailable_message/)
 assert.match(backend, /fn synchronize_runtime_image_tag/)
 assert.match(backend, /fn runtime_env_path/)
 assert.match(backend, /fn generate_runtime_environment/)
@@ -170,6 +179,8 @@ assert.match(builder, /windows-amd64/)
 assert.match(builder, /windows-arm64/)
 assert.match(builder, /macos-amd64/)
 assert.match(builder, /macos-arm64/)
+assert.match(builder, /linux-amd64/)
+assert.match(builder, /linux-arm64/)
 assert.match(builder, /windows\|macos\|linux/)
 assert.match(builder, /Embed its[\s\S]*image archive/)
 assert.match(builder, /BOX-OFFLINE-IMAGE\.json/)

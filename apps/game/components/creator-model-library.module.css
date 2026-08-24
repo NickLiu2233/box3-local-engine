@@ -80,3 +80,19 @@
 @media (max-width: 680px) { .sectionHeader { min-height: 0; align-items: flex-start; flex-direction: column; padding: 16px 0; } .sectionActions { width: 100%; justify-content: flex-start; } .sectionActions button { flex: 1 1 auto; } .toolbar { align-items: stretch; flex-wrap: wrap; } .search { width: 100%; min-height: 40px; } .count { margin-left: 0; } .servicePanel { align-items: flex-start; flex-wrap: wrap; } .retryButton { width: 100%; } }
 @media (hover: hover) and (pointer: fine) { .card:hover { transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .primaryButton,.secondaryButton,.retryButton,.card { transition: none; } .loadingState svg { animation-duration: 1800ms; } }
+
+/* Match the work-center cards, panels and dialogs used by Creator maps,
+   Play, and player administration. */
+.card,
+.servicePanel,
+.emptyState,
+.loadingState,
+.dialog {
+  border-radius: 8px;
+}
+
+.preview,
+.serviceIcon,
+.dialogIcon {
+  border-radius: 6px;
+}

@@ -316,7 +316,9 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const [activityPage, setActivityPage] = useState(1);
   const [activityTotalPages, setActivityTotalPages] = useState(1);
   const [newPassword, setNewPassword] = useState('');
-  const [theme, setTheme] = useState<ConsoleTheme>('system');
+  // Creator and Play use the charcoal BOX3 surface by default. Keep the same
+  // default here while preserving the user's existing theme selection.
+  const [theme, setTheme] = useState<ConsoleTheme>('dark');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

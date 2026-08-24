@@ -588,7 +588,7 @@ function requireStream () {
 		        this.length = data.byteLength + data.byteOffset;
 		    }
 		}
-		exports$1.MuReadStream = MuReadStream;
+		exports$1.MuReadStream = MuReadStream; 
 	} (stream));
 	return stream;
 }
@@ -3667,7 +3667,7 @@ function require_number () {
 		        };
 		    }
 		}
-		exports$1.MuNumber = MuNumber;
+		exports$1.MuNumber = MuNumber; 
 	} (_number));
 	return _number;
 }
@@ -5630,7 +5630,7 @@ function requireJson () {
 		        };
 		    }
 		}
-		exports$1.MuJSON = MuJSON;
+		exports$1.MuJSON = MuJSON; 
 	} (json));
 	return json;
 }
@@ -21950,7 +21950,7 @@ function requireLogger () {
 		        };
 		    }
 		}
-		exports$1.BufferSink = BufferSink;
+		exports$1.BufferSink = BufferSink; 
 	} (logger));
 	return logger;
 }

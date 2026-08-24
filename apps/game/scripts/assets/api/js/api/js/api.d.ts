@@ -1010,7 +1010,7 @@ declare class GameWorld {
      * 可修改的访问 ID、地图名称或本地工程 ID。默认创建仅被传送玩家可见的独立房间；传入返回的
      * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
      */
-    teleport: TeleportType,
+    teleport: TeleportType, 
     /**
      * 当前服务器id
      */

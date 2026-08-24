@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { GetServerSideProps } from 'next';
+import type { GetServerSideProps, NextApiRequest, NextApiResponse } from 'next';
 import {
   ChevronDown,
   Clock3,
@@ -23,7 +23,7 @@ import {
 
 import styles from './projects.module.css';
 import { CreatorModelLibrary } from '../../components/creator-model-library';
-import { hasAuthenticatedPlayer, playerLoginURL } from '../../server/player-service-client';
+import { playerLoginURL, resolvePlayerServiceIdentity } from '../../server/player-service-client';
 import {
   compatibilityDiagnostics,
   importResponseError,
@@ -137,13 +137,27 @@ type ProjectsPageProps = {
   playerServiceUrl: string;
   voxaUrl: string;
   initialView: WorkCenterView;
+  creator: {
+    displayName: string;
+    username: string;
+  };
 };
 
-export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req, query }) => {
+export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req, res, query }) => {
   if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
     return { notFound: true };
   }
-  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+  let creator: ProjectsPageProps['creator'];
+  try {
+    const { identity } = await resolvePlayerServiceIdentity(
+      req as NextApiRequest,
+      // The response is passed through so the player-service can renew its session cookie.
+      // Next's server-side response implements the same header contract as NextApiResponse.
+      res as NextApiResponse,
+      req.socket.remoteAddress || '',
+    );
+    creator = { displayName: identity.displayName, username: identity.username };
+  } catch {
     return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
   }
   return {
@@ -151,11 +165,12 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
       playerServiceUrl: (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, ''),
       voxaUrl: (process.env.VOXA_URL || '').replace(/\/$/, ''),
       initialView: query.view === 'models' ? 'models' : 'maps',
+      creator,
     },
   };
 };
 
-export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }: ProjectsPageProps) {
+export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, creator }: ProjectsPageProps) {
   const [activeView, setActiveView] = useState<WorkCenterView>(initialView);
   const [projects, setProjects] = useState<LocalProject[]>([]);
   const [query, setQuery] = useState('');
@@ -193,6 +208,8 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
   const [selectedSnapshot, setSelectedSnapshot] = useState('');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
+  const creatorName = creator.displayName || creator.username || '已登录用户';
+  const creatorInitial = Array.from(creatorName)[0]?.toUpperCase() || '用';
 
   const switchView = (view: WorkCenterView) => {
     setActiveView(view);
@@ -909,22 +926,19 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView }:
             <span />
             <span />
           </span>
-          <span>BOX</span>
-          <em>LOCAL</em>
+          <span>BOX3 Engine</span>
+          <em>ARENA</em>
         </a>
         <div className={styles.headerActions}>
-          <span className={styles.localBadge}>
-            <span className={styles.statusDot} />
-            本地模式
-          </span>
-          <button className={styles.avatar} aria-label="本地创作者">L</button>
+          <span className={styles.avatar} aria-hidden="true">{creatorInitial}</span>
+          <span className={styles.accountName}>{creatorName}</span>
         </div>
       </header>
 
       <section className={styles.content} aria-labelledby="page-title">
         <div className={styles.titleRow}>
           <div>
-            <h1 id="page-title">作品中心</h1>
+            <h1 id="page-title">我的创作</h1>
           </div>
           <div className={styles.titleActions}>
             <a className={styles.importButton} href={`${playerServiceUrl}/players?from=creator`}>

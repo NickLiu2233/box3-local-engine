@@ -1,0 +1,130 @@
+name: Release desktop installers
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: 22
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify
+
+  images:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build offline images
+        env:
+          BOX_IMAGE_TAG: ${{ github.ref_name }}-linux-${{ matrix.architecture }}
+          BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
+        run: |
+          docker compose --profile player-service --profile auth-portal --profile creator --profile play --profile voxa build
+          docker image save \
+            box-local-engine-player-service:${BOX_IMAGE_TAG} \
+            box-local-engine-player-auth-portal:${BOX_IMAGE_TAG} \
+            box-local-engine-creator:${BOX_IMAGE_TAG} \
+            box-local-engine-play:${BOX_IMAGE_TAG} \
+            box-local-engine-voxa:${BOX_IMAGE_TAG} | gzip -1 > box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images-${{ matrix.architecture }}
+          path: box-local-engine-images-*.tar.gz
+          if-no-files-found: error
+
+  desktop:
+    needs: images
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-amd64
+            architecture: amd64
+            runner: windows-2022
+          - target: windows-arm64
+            architecture: arm64
+            runner: windows-11-arm
+          - target: macos-amd64
+            architecture: amd64
+            runner: macos-13
+          - target: macos-arm64
+            architecture: arm64
+            runner: macos-14
+          - target: linux-amd64
+            architecture: amd64
+            runner: ubuntu-22.04
+          - target: linux-arm64
+            architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: Install Linux desktop dependencies
+        if: startsWith(matrix.target, 'linux-')
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf zip
+      - uses: actions/download-artifact@v4
+        with:
+          name: images-${{ matrix.architecture }}
+          path: apps/local-engine/dist/images
+      - name: Build installer
+        shell: bash
+        run: |
+          archive=$(find apps/local-engine/dist/images -name 'box-local-engine-images-*.tar.gz' -print -quit)
+          pnpm build:desktop-installer '${{ matrix.target }}' "$archive"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: apps/local-engine/dist/desktop-installers/*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: images-*
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            *.zip
+            *.tar.gz
