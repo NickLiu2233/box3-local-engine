@@ -56,7 +56,7 @@ fs.writeFileSync(
     referencedHashes,
     referencedResources,
     restoreRuntimeBundles,
-    safeScriptLauncherSource,
+    scriptLauncherSource,
     stableStringify,
   } = require(compiledPath)
   const engineApi = require(engineApiCompiledPath)
@@ -192,10 +192,9 @@ fs.writeFileSync(
       },
     },
   )
-  assert.match(safeScriptLauncherSource('index.js'), /require\("\.\/index\.js"\)/)
-  assert.match(safeScriptLauncherSource('index.js'), /catch \(error\)/)
+  assert.equal(scriptLauncherSource('index.js'), 'require("./index.js");\n')
   console.log(
-    'PASS: run mode restores only required runtime bundles and uses a guarded non-empty entry script',
+    'PASS: run mode restores only required runtime bundles and preserves the entry script',
   )
   assert.deepEqual(lightweightAmbientSound({ ambient: { sample: 'audio/music.mp3', gain: 1 } }), {
     ambient: { sample: '', gain: 1 },
@@ -435,8 +434,6 @@ fs.writeFileSync(
   )
   console.log('PASS: audio hashes with filename extensions remain content-store dependencies')
 
-  process.env.BOX_MIGRATOR_CONTENT_API_URL = 'https://api.invalid.test'
-  process.env.BOX_MIGRATOR_CONTENT_URL = 'https://cdn.invalid.test'
   const originalFetch = global.fetch
   let attempts = 0
   global.fetch = async () => {
@@ -445,8 +442,8 @@ fs.writeFileSync(
   }
   await assert.rejects(() => fetchBlob(actualHash, 1024), /无法下载 blob/)
   global.fetch = originalFetch
-  assert.equal(attempts, 2, 'each configured source must be attempted once without retrying')
-  console.log('PASS: failed blobs try each source once without retries')
+  assert.equal(attempts, 1, 'the built-in content source must be attempted once without retrying')
+  console.log('PASS: failed blobs try the built-in content source once without retries')
 
   process.env.BOX_MIGRATOR_OSS_URL = 'https://oss.invalid.test'
   const requestedURLs = []

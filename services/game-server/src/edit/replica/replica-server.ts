@@ -103,6 +103,8 @@ import {
   updateLocalProjectModelMetadata,
 } from '../../project/local-project-state';
 import { mergeExtraProjectInfo } from '../../project/project-extra';
+import { isContentHash } from '../../project/content-hash';
+import { runtimeMeshAssets } from '../../project/runtime-mesh-assets';
 import {
   moveProjectModelToTrash,
   purgeProjectModelFromTrash,
@@ -2092,7 +2094,7 @@ export class EditReplicaServer {
       if (!newName) throw new Error('new model name is required');
       if (extra.meshAssets[nextPath]) throw new Error('model name already exists');
       const hash = String(input.modelFileHash || '').trim();
-      if (!hash) throw new Error('model hash is required');
+      if (!isContentHash(hash)) throw new Error('model hash is invalid');
       extra.meshAssets[nextPath] = {
         modelId: Number(input.modelId),
         hash,
@@ -2124,8 +2126,8 @@ export class EditReplicaServer {
               updatedAt: new Date().toISOString(),
             }
           : asset!;
-      if (!extra.meshAssets[nextPath].hash) {
-        throw new Error('model hash is required');
+      if (!isContentHash(extra.meshAssets[nextPath].hash)) {
+        throw new Error('model hash is invalid');
       }
       updateLocalProjectModelMetadata(({ modelPreviews, modelProjects }) => {
         const previousPreview = modelPreviews[storedName];
@@ -2302,8 +2304,7 @@ export class EditReplicaServer {
       (typeof meshIdSetCache)[number]
     > = {};
     if (!repairStaleLocalPathsOnly) {
-      Object.keys(meshAssets).forEach((path) => {
-        const asset = meshAssets[path];
+      runtimeMeshAssets(meshAssets).forEach(([path, asset]) => {
         const cache = meshIdSetCache[asset.modelId];
         // 如果hash和path都相等，这条缓存不需要拉取新的值修改
         if (cache && cache.hash === asset.hash && cache.path === path) {

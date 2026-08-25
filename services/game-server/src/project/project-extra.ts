@@ -7,6 +7,7 @@ import {
   getMeshPath,
 } from '@box-local/schema/project/hot-schema';
 import { CreativeMode } from '@box-local/apis';
+import { isContentHash } from './content-hash';
 
 export type Mode = 'edit' | 'play';
 
@@ -26,11 +27,17 @@ export function mergeExtraProjectInfo(
   deletedModelPaths: ReadonlySet<string> = new Set(),
 ): ExtraProjectInfo {
   const liveLocalModelIds = new Set(
-    Object.values(localLibrary.meshAssets).map((asset) => asset.modelId),
+    Object.values(localLibrary.meshAssets)
+      .filter((asset) => isContentHash(asset.hash))
+      .map((asset) => asset.modelId),
   );
   const packagedMeshAssets = Object.fromEntries(
     Object.entries(packaged.meshAssets).filter(([path, asset]) => {
       if (deletedModelPaths.has(path)) return false;
+      // Imported legacy data and interrupted project-model saves can contain
+      // an empty hash. Never expose it to the runtime: retrieveContent('')
+      // aborts the whole model preload instead of failing only that asset.
+      if (!isContentHash(asset.hash)) return false;
       // A VOXA rename changes the resource path while preserving modelId.
       // Embedded snapshots may therefore contain the old local path forever.
       // Keep ordinary cloud/project assets (their ids can legitimately collide),
@@ -47,7 +54,8 @@ export function mergeExtraProjectInfo(
       ...packagedMeshAssets,
       ...Object.fromEntries(
         Object.entries(localLibrary.meshAssets).filter(
-          ([path]) => !deletedModelPaths.has(path),
+          ([path, asset]) =>
+            !deletedModelPaths.has(path) && isContentHash(asset.hash),
         ),
       ),
     },
@@ -106,11 +114,12 @@ export async function getLocalExtraProject(
       : [];
     for (const row of rows) {
       const modelId = Number(row.modelId || 0);
+      const hash = String(row.modelFileHash || '').trim();
       const path = getLocalMeshPath(String(row.modelName || ''), modelId);
-      if (!modelId || extra.meshAssets[path]) continue;
+      if (!modelId || !isContentHash(hash) || extra.meshAssets[path]) continue;
       extra.meshAssets[path] = {
         modelId,
-        hash: String(row.modelFileHash || ''),
+        hash,
         modelPreviewHash: String(row.modelPreviewHash || ''),
         animated: Boolean(row.animated),
         updatedAt: String(row.updatedAt || ''),

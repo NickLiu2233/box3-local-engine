@@ -9,6 +9,8 @@ import {
 } from '../src/project/project-extra';
 import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
 
+const validModelHash = 'QmSKfrPgmkCoomW2tbpHkynGL5aCd4qRA2JSBG1QDhRJzJ';
+
 async function checkAllLocalVoxaAssetsAreVisible() {
   const models = [
     {
@@ -16,7 +18,7 @@ async function checkAllLocalVoxaAssetsAreVisible() {
       modelName: 'Private model',
       modelType: 0,
       creativeMode: 1,
-      modelFileHash: 'private-model-hash',
+      modelFileHash: validModelHash,
       modelPreviewHash: 'private-model-preview',
       animated: false,
       updatedAt: '2026-08-18T00:00:00.000Z',
@@ -125,7 +127,7 @@ async function main() {
   const packaged = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
   packaged.meshAssets['mesh/cloud.vb'] = {
     modelId: 1,
-    hash: 'cloud-hash',
+    hash: validModelHash,
     modelPreviewHash: '',
     animated: false,
     updatedAt: '',
@@ -143,14 +145,14 @@ async function main() {
   const shared = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);
   shared.meshAssets['mesh/local.vb'] = {
     modelId: 2,
-    hash: 'local-hash',
+    hash: validModelHash,
     modelPreviewHash: '',
     animated: false,
     updatedAt: '',
   };
   const merged = mergeExtraProjectInfo(packaged, shared);
-  assert.equal(merged.meshAssets['mesh/cloud.vb'].hash, 'cloud-hash');
-  assert.equal(merged.meshAssets['mesh/local.vb'].hash, 'local-hash');
+  assert.equal(merged.meshAssets['mesh/cloud.vb'].hash, validModelHash);
+  assert.equal(merged.meshAssets['mesh/local.vb'].hash, validModelHash);
   assert.equal(merged.scriptAssets.cloud.hash, 'cloud-script');
   shared.scriptAssets.stale = {
     ...packaged.scriptAssets.cloud,
@@ -171,21 +173,21 @@ async function main() {
 
   packaged.meshAssets['mesh/New-model__local_2.vb'] = {
     modelId: 2,
-    hash: 'stale-local-hash',
+    hash: validModelHash,
     modelPreviewHash: '',
     animated: false,
     updatedAt: '',
   };
   packaged.meshAssets['mesh/cloud-id-collision.vb'] = {
     modelId: 2,
-    hash: 'cloud-collision-hash',
+    hash: validModelHash,
     modelPreviewHash: '',
     animated: false,
     updatedAt: '',
   };
   shared.meshAssets['mesh/Renamed__local_2.vb'] = {
     modelId: 2,
-    hash: 'renamed-local-hash',
+    hash: validModelHash,
     modelPreviewHash: '',
     animated: false,
     updatedAt: '',
@@ -198,11 +200,11 @@ async function main() {
   );
   assert.equal(
     renamed.meshAssets['mesh/Renamed__local_2.vb'].hash,
-    'renamed-local-hash',
+    validModelHash,
   );
   assert.equal(
     renamed.meshAssets['mesh/cloud-id-collision.vb'].hash,
-    'cloud-collision-hash',
+    validModelHash,
     'ordinary packaged assets must survive a modelId collision',
   );
   console.log('PASS: VOXA rename removes only stale local aliases');
@@ -220,7 +222,7 @@ async function main() {
   );
   assert.equal(
     afterDeleteRefresh.meshAssets['mesh/cloud-id-collision.vb'].hash,
-    'cloud-collision-hash',
+    validModelHash,
     'a project-model tombstone must only exclude its exact mesh path',
   );
   console.log('PASS: deleted project models stay deleted across VOXA refresh');

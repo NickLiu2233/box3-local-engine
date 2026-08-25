@@ -66,6 +66,7 @@ import {
   findReusableProjectModel,
   projectModelNameFromPath,
 } from './project/project-model-import';
+import { isContentHash } from './project/content-hash';
 
 export type HttpRoutes = {
   [route: string]: (
@@ -690,7 +691,7 @@ export async function createGameServer(spec: {
               String(body.previewHash || ''),
               String(body.projectFileHash || ''),
             ].filter(Boolean);
-            if (!hashes[0]) throw new Error('model hash is required');
+            if (!isContentHash(hashes[0])) throw new Error('model hash is invalid');
             for (const hash of hashes) {
               const blobResponse = await fetch(
                 `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,

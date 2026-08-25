@@ -11,7 +11,7 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版。它将 Creator
 | 地图创作   | 创建、导入、编辑、预览、发布、工程备份与恢复           | Creator 只应在本机或可信局域网使用 |
 | 玩家游玩   | 多地图 Play、发布快照、玩家身份、封禁与会话撤销        | Play 只读取已发布的只读快照        |
 | 模型创作   | VOXA 模型、皮肤、动画和可编辑工程导入导出              | 项目内资源不自动变成全局模型库     |
-| 地图迁移   | 将云端工程和资源导出为本地 `.boxproject`               | 缺失 blob 会明确报告，不能凭空恢复 |
+| 地图迁移   | 将云端工程和资源导出为本地`.boxproject`              | 缺失 blob 会明确报告，不能凭空恢复 |
 | 身份系统   | Player Service API、角色分层、封禁与服主管理           | 认证密钥只能存在于服务端           |
 | 登录门户   | 提供独立参考门户，也支持服主自建                       | Creator/Play 不绑定某个登录前端    |
 | 部署与发行 | Docker Compose、桌面启动器、离线包、GitHub Tag Release | PostgreSQL 由服主提供；Redis 可选  |
@@ -64,15 +64,15 @@ pnpm dev
 
 这会启动 Creator 开发运行时。网页、运行时和项目数据的实际地址由当前本地配置决定；不要手工启动内部编辑/预览端口。常用开发入口与生产容器命令见下表。
 
-| 目标            | 开发 / 构建入口                          | 说明                                         |
-| --------------- | ---------------------------------------- | -------------------------------------------- |
-| Creator / ARENA | `pnpm dev`、`pnpm creator`               | `dev` 用于源码开发；`creator` 构建并启动容器 |
-| Play            | `pnpm play`                              | 启动只读游玩端，不会构建 Creator             |
-| VOXA            | `pnpm voxa:dev`、`pnpm voxa`             | 模型编辑器源码开发或容器部署                 |
-| 玩家服务        | `pnpm player-service`                    | 玩家、权限、会话与服主管理                   |
-| 参考登录门户    | `pnpm player-auth-portal`                | 独立示例服务，可由服主替换                   |
-| 云端迁移器      | `pnpm migrator:dev`、`pnpm migrator`     | 从外部工程导出本地可编辑包                   |
-| 图形化启动器    | `pnpm --dir apps/deployment-manager dev` | 仅启动 Web UI；Tauri 调试见开发者手册        |
+| 目标            | 开发 / 构建入口                            | 说明                                             |
+| --------------- | ------------------------------------------ | ------------------------------------------------ |
+| Creator / ARENA | `pnpm dev`、`pnpm creator`             | `dev` 用于源码开发；`creator` 构建并启动容器 |
+| Play            | `pnpm play`                              | 启动只读游玩端，不会构建 Creator                 |
+| VOXA            | `pnpm voxa:dev`、`pnpm voxa`           | 模型编辑器源码开发或容器部署                     |
+| 玩家服务        | `pnpm player-service`                    | 玩家、权限、会话与服主管理                       |
+| 参考登录门户    | `pnpm player-auth-portal`                | 独立示例服务，可由服主替换                       |
+| 云端迁移器      | `pnpm migrator:dev`、`pnpm migrator`   | 从外部工程导出本地可编辑包                       |
+| 图形化启动器    | `pnpm --dir apps/deployment-manager dev` | 仅启动 Web UI；Tauri 调试见开发者手册            |
 
 ## 快速开始：Docker 部署
 
@@ -95,15 +95,15 @@ cp .env.docker.example .env
 
 ## 仓库地图
 
-| 路径                        | 职责                                                       | 从这里开始的典型需求                 |
-| --------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| 路径                          | 职责                                                       | 从这里开始的典型需求                 |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------------ |
 | `apps/game/`                | Creator / Play 网页、作品中心、客户端引擎                  | 页面、交互、地图/模型卡片、玩家 UI   |
 | `apps/local-engine/src/`    | 项目管理、导入导出、发布、地图组、运行时生命周期、镜像脚本 | 工程、发布包、运行时和本地存储问题   |
 | `services/game-server/src/` | 权威游戏运行时、编辑副本、脚本、会话、权限、存储           | 协议、脚本、地图运行、玩家与数据空间 |
-| `apps/voxa/`                | 本地模型、皮肤、动画编辑器和 `.voxaproject`                | 模型工程、预览、资源导入导出         |
+| `apps/voxa/`                | 本地模型、皮肤、动画编辑器和`.voxaproject`               | 模型工程、预览、资源导入导出         |
 | `apps/migrator/`            | 云端工程迁移与资源抓取                                     | 云端导入、资源缺失、迁移进度和错误   |
 | `apps/deployment-manager/`  | Vite + Tauri 启动器                                        | 配置界面、Docker 控制、备份、离线包  |
-| `packages/`、`internals/`   | 共享协议、schema、构建、脚本 API 和基础模块                | 跨模块能力、外部兼容接口             |
+| `packages/`、`internals/` | 共享协议、schema、构建、脚本 API 和基础模块                | 跨模块能力、外部兼容接口             |
 | `scripts/`                  | 根级回归、离线包与静态检查                                 | 新增跨模块回归或发行校验             |
 | `docs/`                     | 部署、开发、数据、认证与发行说明                           | 更新用户可见行为或协作约定           |
 
@@ -134,8 +134,8 @@ cp .env.docker.example .env
 
 ### 常用命令
 
-| 命令             | 用途                                             |
-| ---------------- | ------------------------------------------------ |
+| 命令               | 用途                                             |
+| ------------------ | ------------------------------------------------ |
 | `pnpm check`     | 本地控制层、地图、VOXA、迁移器、启动器等回归集合 |
 | `pnpm lint`      | JavaScript/TypeScript lint                       |
 | `pnpm typecheck` | 当前可稳定执行的类型检查                         |
@@ -176,16 +176,16 @@ git push origin v0.1.0
 
 ## 文档入口
 
-| 主题                               | 文档                                                                                                            |
-| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 首次部署、配置、数据库、备份与排障 | [安装、部署与使用](docs/installation-and-operations.md)                                                         |
-| 图形化启动器                       | [图形化部署管理器](docs/graphical-deployment-manager.md)                                                        |
-| 环境变量、端口与网络边界           | [配置参考](docs/configuration-reference.md)                                                                     |
-| 项目、发布包与地图组               | [作品与发布包](docs/projects.md)                                                                                |
+| 主题                               | 文档                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 首次部署、配置、数据库、备份与排障 | [安装、部署与使用](docs/installation-and-operations.md)                                                       |
+| 图形化启动器                       | [图形化部署管理器](docs/graphical-deployment-manager.md)                                                      |
+| 环境变量、端口与网络边界           | [配置参考](docs/configuration-reference.md)                                                                   |
+| 项目、发布包与地图组               | [作品与发布包](docs/projects.md)                                                                              |
 | Creator、Play、VOXA 专项部署       | [创作端](docs/creator-deployment.md)、[游玩端](docs/play-deployment.md)、[VOXA](docs/voxa-deployment.md)        |
-| Player Service API 与自建登录      | [认证 API](docs/player-service-api.md)、[自建登录门户](docs/self-hosted-login.md)                               |
+| Player Service API 与自建登录      | [认证 API](docs/player-service-api.md)、[自建登录门户](docs/self-hosted-login.md)                              |
 | 协作、源码入口和兼容边界           | [开发者手册](docs/developer-guide.md)、[系统架构](docs/architecture.md)、[boxes 对齐基线](docs/boxes-parity.md) |
-| 完整索引                           | [文档导航](docs/README.md)                                                                                      |
+| 完整索引                           | [文档导航](docs/README.md)                                                                                    |
 
 ## 许可证与安全
 

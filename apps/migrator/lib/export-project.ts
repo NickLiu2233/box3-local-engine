@@ -26,6 +26,10 @@ const CID_PATTERN = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
 const EXACT_CONTENT_HASH_PATTERN =
   /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}(?:\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|lut))?|[A-Za-z0-9_-]{43})$/i
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+// Cloud content blocks use the same public store for every migration. Keep the
+// endpoint internal to the migrator instead of exposing a low-level IPFS/CDN
+// setting in the deployment configuration.
+const CLOUD_CONTENT_BASE_URL = 'https://static.box3.codemao.cn'
 
 type Limits = { maxBlobs: number; maxTotalBytes: number; maxBlobBytes: number }
 type ExportInput = {
@@ -67,33 +71,11 @@ function limits(): Limits {
 }
 
 function contentUrls(hash: string) {
-  const urls: string[] = []
+  const base = CLOUD_CONTENT_BASE_URL.replace(/\/$/, '')
   const normalizedHash = hash.split('.')[0]
-  const apiBase = process.env.BOX_MIGRATOR_CONTENT_API_URL?.trim()
-  if (apiBase) {
-    urls.push(
-      apiBase.includes('{hash}')
-        ? apiBase.replaceAll('{hash}', encodeURIComponent(normalizedHash))
-        : `${apiBase.replace(/\/$/, '')}/block/get?arg=${encodeURIComponent(normalizedHash)}`,
-    )
-  }
-  const base = process.env.BOX_MIGRATOR_CONTENT_URL?.trim()
-  if (base) {
-    urls.push(
-      base.includes('{hash}')
-        ? base.replaceAll('{hash}', encodeURIComponent(hash))
-        : `${base.replace(/\/$/, '')}/block/${encodeURIComponent(hash)}`,
-    )
-    if (normalizedHash !== hash) {
-      urls.push(
-        base.includes('{hash}')
-          ? base.replaceAll('{hash}', encodeURIComponent(normalizedHash))
-          : `${base.replace(/\/$/, '')}/block/${encodeURIComponent(normalizedHash)}`,
-      )
-    }
-  }
-  if (!urls.length) {
-    throw new Error('迁移器尚未配置 BOX_MIGRATOR_CONTENT_API_URL 或 BOX_MIGRATOR_CONTENT_URL')
+  const urls = [`${base}/block/${encodeURIComponent(hash)}`]
+  if (normalizedHash !== hash) {
+    urls.push(`${base}/block/${encodeURIComponent(normalizedHash)}`)
   }
   return urls
 }
@@ -551,8 +533,8 @@ export function restoreRuntimeBundles(
   return restored
 }
 
-export function safeScriptLauncherSource(originalEntry: string) {
-  return `try {\n  require(${JSON.stringify(`./${originalEntry}`)});\n} catch (error) {\n  console.error('[迁移器] 原入口脚本启动失败：', error);\n}\n`
+export function scriptLauncherSource(originalEntry: string) {
+  return `require(${JSON.stringify(`./${originalEntry}`)});\n`
 }
 
 export function localAudioAssets(value: unknown): Record<string, Record<string, unknown>> {
@@ -1345,7 +1327,7 @@ export async function generateProjectArchive(
     if (originalScriptIndex && originalScriptIndex in verifiedScriptAssets) {
       let launcherName = '_migrated_index.js'
       while (launcherName in verifiedScriptAssets) launcherName = `_${launcherName}`
-      const launcherBytes = Buffer.from(safeScriptLauncherSource(originalScriptIndex))
+      const launcherBytes = Buffer.from(scriptLauncherSource(originalScriptIndex))
       const launcherHash = await storeBlob(blobsRoot, launcherBytes)
       verifiedScriptAssets[launcherName] = {
         animated: false,
