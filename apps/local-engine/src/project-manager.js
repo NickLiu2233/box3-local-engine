@@ -28,6 +28,16 @@ const snapshotLimit = 5
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const publicMapIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+const mapSizePresets = {
+  medium: [128, 128, 128],
+  large: [256, 128, 256],
+  huge: [256, 64, 256],
+}
+const mapTemplatePresets = {
+  blank: 'plane',
+  arena: 'arena',
+  raceway: 'raceway',
+}
 const mapGroupManager = createMapGroupManager(projectsRoot)
 // Cloud runtime assets use both CIDv0 and URL-safe SHA-256 names. Embedded
 // extraProject metadata is binary, so publishing must discover both forms or
@@ -783,6 +793,8 @@ function toProjectSummary(metadata) {
     mapGroupId: metadata.mapGroupId,
     mapRole: metadata.mapRole,
     mainProjectId: metadata.mainProjectId,
+    mapSize: metadata.mapSize || mapSizePresets.medium,
+    templateId: metadata.templateId || 'blank',
   }
 }
 
@@ -856,7 +868,15 @@ function nextPublicMapId(value, excludeProjectId = '') {
   throw new Error('无法生成唯一的地图 ID')
 }
 
-function createProject({ id, name, author = '', description = '' }) {
+function normalizeMapSizePreset(value) {
+  return Object.hasOwn(mapSizePresets, value) ? value : 'medium'
+}
+
+function normalizeMapTemplatePreset(value) {
+  return Object.hasOwn(mapTemplatePresets, value) ? value : 'blank'
+}
+
+function createProject({ id, name, author = '', description = '', mapSize, templateId }) {
   const safeId = assertProjectId(id)
   const root = projectRoot(safeId)
   if (fs.existsSync(root)) throw new Error(`Project already exists: ${safeId}`)
@@ -876,6 +896,9 @@ function createProject({ id, name, author = '', description = '' }) {
   }
   const now = new Date().toISOString()
   const themes = ['sunset', 'ocean', 'forest', 'violet']
+  const normalizedTemplateId = normalizeMapTemplatePreset(templateId)
+  const normalizedMapSize =
+    normalizedTemplateId === 'blank' ? normalizeMapSizePreset(mapSize) : 'medium'
   const metadata = {
     formatVersion: 1,
     id: safeId,
@@ -891,6 +914,12 @@ function createProject({ id, name, author = '', description = '' }) {
     mapGroupId: safeId,
     mapRole: 'main',
     mainProjectId: safeId,
+    // These values are consumed only when the first edit runtime creates its
+    // project state. Afterwards the voxel data in project-state.json is the
+    // authoritative editable map, exactly as it is for imported projects.
+    mapSize: mapSizePresets[normalizedMapSize],
+    templateId: normalizedTemplateId,
+    terrainTheme: mapTemplatePresets[normalizedTemplateId],
   }
   writeJSON(path.join(root, 'project.json'), metadata)
   return toProjectSummary(metadata)
@@ -930,6 +959,8 @@ function createSubmap(mainId, { id, name, description = '' }) {
     name,
     author: main.author || '',
     description,
+    mapSize: 'medium',
+    templateId: 'blank',
   })
   const metadata = getProject(created.id)
   metadata.mapGroupId = identity.mapGroupId
@@ -1848,6 +1879,7 @@ function getLaunchTarget({ project, release }) {
       // must not turn an otherwise healthy map launch into a permanent 500.
       console.warn(`Launch snapshot skipped for ${project}: ${error.message}`)
     }
+    const metadata = getProject(project)
     return {
       kind: 'source',
       id: project,
@@ -1855,6 +1887,11 @@ function getLaunchTarget({ project, release }) {
       statePath: path.join(root, 'source', 'project-state.json'),
       groupStatePath: mapGroupManager.paths(project).statePath,
       groupBlobRoot: mapGroupManager.paths(project).blobRoot,
+      initialMapSize: Array.isArray(metadata.mapSize) ? metadata.mapSize : mapSizePresets.medium,
+      initialTerrainTheme:
+        typeof metadata.terrainTheme === 'string'
+          ? metadata.terrainTheme
+          : mapTemplatePresets[normalizeMapTemplatePreset(metadata.templateId)],
     }
   }
   if (release) {

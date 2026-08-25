@@ -21,6 +21,15 @@ import { BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
 import { storeProject } from '@box-local/build-system/project/project-serialize';
 import { Vec3Schema } from '@box-local/schema/utils/math-schema';
 
+function initialTerrainTheme() {
+  const terrain = String(process.env.BOX_INITIAL_TERRAIN_THEME || '').trim();
+  return terrain === 'arena'
+    ? TerrainTheme.arena
+    : terrain === 'raceway'
+      ? TerrainTheme.raceway
+      : TerrainTheme.plane;
+}
+
 function addDefaultSounds(project: ProjectInfo) {
   Object.keys(DEFAULT_SOUNDS_RES).forEach((sound) => {
     const asset = GroupAssetEntryRDA.stateSchema.clone(
@@ -157,7 +166,7 @@ export async function createDefaultProject(spec: {
 
   // initialize voxels
   const voxels = await initTerrain({
-    theme: TerrainTheme.plane,
+    theme: initialTerrainTheme(),
     baseBlock: blockId('dirt'),
     bottomBlock: blockId('stone'),
     surfaceBlock: blockId('grass'),

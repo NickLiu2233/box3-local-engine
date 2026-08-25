@@ -491,6 +491,13 @@ async function main() {
           BOX_PROJECT_STATE_PATH: projectStatePath,
           BOX_GROUP_PROJECT_STATE_PATH: groupStatePath,
           BOX_GROUP_CONTENT_PATH: groupBlobRoot,
+          // A newly-created project has no project-state.json yet. Pass its
+          // stored creation choices through to createDefaultProject; once the
+          // state exists, these values deliberately no longer alter the map.
+          BOX_INITIAL_MAP_SIZE: Array.isArray(launchTarget?.initialMapSize)
+            ? launchTarget.initialMapSize.join(',')
+            : '',
+          BOX_INITIAL_TERRAIN_THEME: launchTarget?.initialTerrainTheme || '',
           HASH: process.env.BOX_WORLD_HASH || process.env.BOX_PROJECT_HASH || readProjectHash(),
           // `local` only supports an in-process function supplied by tests and
           // silently skips normal map modules. The packaged engine must use

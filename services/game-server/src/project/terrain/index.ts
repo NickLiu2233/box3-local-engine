@@ -5,6 +5,8 @@ import { brokenPlanet } from './broken-planet';
 import { defaultTerrain } from './plane';
 import { volcano } from './volcano';
 import { smallPool } from './small-pool';
+import { arena } from './arena';
+import { raceway } from './raceway';
 import { VoxelView } from '@box-local/utils/voxel';
 
 export enum TerrainTheme {
@@ -15,6 +17,8 @@ export enum TerrainTheme {
   volcano,
   plane,
   smallPool,
+  arena,
+  raceway,
 }
 
 export interface TerrainSpec {
@@ -42,6 +46,10 @@ export function genTerrain(theme: TerrainTheme, spec: TerrainSpec) {
       return volcano(spec);
     case TerrainTheme.smallPool:
       return smallPool(spec);
+    case TerrainTheme.arena:
+      return arena(spec);
+    case TerrainTheme.raceway:
+      return raceway(spec);
     default:
       return defaultTerrain(spec);
   }

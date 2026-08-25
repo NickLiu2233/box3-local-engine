@@ -32,6 +32,8 @@ import {
 } from '../../server/import-diagnostics';
 
 type ProjectStatus = '草稿' | '已发布';
+type MapSizePreset = 'medium' | 'large' | 'huge';
+type MapTemplateId = 'blank' | 'arena' | 'raceway';
 type CompatibilityReport = {
   level: 'compatible' | 'warning' | 'error';
   summary: { warnings: number; errors: number; missingBlobCount: number };
@@ -125,6 +127,38 @@ const snapshotReasonLabels: Record<string, string> = {
   'before-restore': '恢复前备份',
 };
 
+const mapSizeOptions: Array<{ id: MapSizePreset; label: string; dimensions: string }> = [
+  { id: 'medium', label: '中', dimensions: '128×128×128' },
+  { id: 'large', label: '大', dimensions: '256×128×256' },
+  { id: 'huge', label: '超大', dimensions: '256×64×256' },
+];
+
+const mapTemplateOptions: Array<{
+  id: MapTemplateId;
+  name: string;
+  description: string;
+  previewSrc: string;
+}> = [
+  {
+    id: 'blank',
+    name: '空白地图',
+    description: '平坦草地，适合从零开始创作。',
+    previewSrc: '/map-templates/blank-template.png',
+  },
+  {
+    id: 'arena',
+    name: '枪战模板',
+    description: '内置围墙和掩体，可直接开始搭建玩法。',
+    previewSrc: '/map-templates/arena-template.png',
+  },
+  {
+    id: 'raceway',
+    name: '赛车模板',
+    description: '内置环形赛道，适合制作竞速地图。',
+    previewSrc: '/map-templates/raceway-template.png',
+  },
+];
+
 function formatBytes(value: number) {
   if (!value) return '0 B';
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -183,6 +217,8 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   const [projectAuthor, setProjectAuthor] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCover, setProjectCover] = useState('');
+  const [mapSize, setMapSize] = useState<MapSizePreset>('medium');
+  const [templateId, setTemplateId] = useState<MapTemplateId>('blank');
   const [dialogError, setDialogError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
@@ -194,6 +230,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   const [assetConfig, setAssetConfig] = useState<AssetDistributionConfiguration>({
     endpoint: '', bucket: '', region: 'auto', accessKeyId: '', secretAccessKey: '', cdnBaseUrl: '', hasSecretAccessKey: false,
   });
+  const [savingAssetConfig, setSavingAssetConfig] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedProject, setSelectedProject] = useState<LocalProject | null>(
     null,
@@ -286,6 +323,8 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     setProjectAuthor('');
     setProjectDescription('');
     setProjectCover('');
+    setMapSize('medium');
+    setTemplateId('blank');
     setDialogError('');
     setDialog('create');
   };
@@ -298,6 +337,13 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     setProjectDescription('');
     setDialogError('');
     setDialog('submap');
+  };
+
+  const selectMapTemplate = (nextTemplate: MapTemplateId) => {
+    setTemplateId(nextTemplate);
+    // Built-in scenario templates have fixed, tested world dimensions.
+    // Only an empty world can be resized before its initial state exists.
+    if (nextTemplate !== 'blank') setMapSize('medium');
   };
 
   const chooseProjectFile = (file: File) => {
@@ -450,6 +496,37 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     setExportChoiceProject(project);
   };
 
+  const persistAssetConfiguration = async () => {
+    const response = await fetch('/api/local-projects/asset-distribution', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(assetConfig),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || '无法保存 OSS 资源分发设置');
+    }
+    setAssetConfig((current) => ({
+      ...current,
+      ...(data.configuration || {}),
+      secretAccessKey: '',
+    }));
+  };
+
+  const saveAssetConfiguration = async () => {
+    if (savingAssetConfig || submitting) return;
+    setSavingAssetConfig(true);
+    setDialogError('');
+    try {
+      await persistAssetConfiguration();
+      setNotice('OSS 配置已保存到本机；尚未上传任何资源。');
+    } catch (error) {
+      setDialogError(error instanceof Error ? error.message : '无法保存 OSS 资源分发设置');
+    } finally {
+      setSavingAssetConfig(false);
+    }
+  };
+
   const openRecoveryDialog = async (project: LocalProject) => {
     setMenuProject(null);
     setRecoveryProject(project);
@@ -509,15 +586,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       let compatibility: CompatibilityReport | undefined;
       const startedAt = Date.now();
       if (assetMode === 'oss') {
-        const configurationResponse = await fetch('/api/local-projects/asset-distribution', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(assetConfig),
-        });
-        const configurationData = await configurationResponse.json().catch(() => ({}));
-        if (!configurationResponse.ok) {
-          throw new Error(configurationData.message || '无法保存 OSS 资源分发设置');
-        }
+        await persistAssetConfiguration();
       }
       setDialog(null);
       setNotice('');
@@ -693,7 +762,14 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       const response = await fetch('/api/local-projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name, author: projectAuthor, description: projectDescription }),
+        body: JSON.stringify({
+          id,
+          name,
+          author: projectAuthor,
+          description: projectDescription,
+          mapSize,
+          templateId,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || '创建作品失败');
@@ -1170,12 +1246,60 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
             </div>
             {dialog === 'delete' && <p>{selectedProject?.mapRole === 'main' ? `将删除整个地图组“${selectedProject?.name}”及其全部副地图，删除后无法恢复。` : `将删除副地图“${selectedProject?.name}”，删除后无法恢复。`}</p>}
             {(dialog === 'create' || dialog === 'submap' || dialog === 'details') && <>
-              <div className={styles.dialogFields}>
-                <div className={styles.fieldGroup}>
+                <div className={styles.dialogFields}>
+                  <div className={styles.fieldGroup}>
                   <label htmlFor="project-name">作品名称</label>
                   <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
-                </div>
-                {dialog === 'details' && <>
+                  </div>
+                  {dialog === 'create' && <>
+                    <div className={styles.mapTemplateField}>
+                      <div className={styles.mapChoiceLabel}>
+                        <label>地图模板</label>
+                        <span>创建后不可替换</span>
+                      </div>
+                      <div className={styles.mapTemplateOptions} role="radiogroup" aria-label="地图模板">
+                        {mapTemplateOptions.map((template) => (
+                          <button
+                            key={template.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={templateId === template.id}
+                            className={templateId === template.id ? styles.mapChoiceSelected : undefined}
+                            onClick={() => selectMapTemplate(template.id)}
+                          >
+                            <span className={styles.templatePreview} aria-hidden="true">
+                              <img src={template.previewSrc} alt="" />
+                            </span>
+                            <span>
+                              <strong>{template.name}</strong>
+                              <small>{template.description}</small>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {templateId === 'blank' && <div className={styles.mapSizeField}>
+                      <div className={styles.mapChoiceLabel}>
+                        <label>地图尺寸</label>
+                      </div>
+                      <div className={styles.mapSizeOptions} role="radiogroup" aria-label="地图尺寸">
+                        {mapSizeOptions.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={mapSize === option.id}
+                            className={mapSize === option.id ? styles.mapChoiceSelected : undefined}
+                            onClick={() => setMapSize(option.id)}
+                          >
+                            <strong>{option.label}</strong>
+                            <small>{option.dimensions}</small>
+                          </button>
+                        ))}
+                      </div>
+                    </div>}
+                  </>}
+                  {dialog === 'details' && <>
                   <div className={styles.fieldGroup}>
                     <label htmlFor="project-map-uuid">地图 ID</label>
                     <input
@@ -1253,6 +1377,12 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                 </div>
                 <div className={styles.fieldGroup}><label htmlFor="asset-key">Access Key</label><input id="asset-key" value={assetConfig.accessKeyId} onChange={(event) => setAssetConfig((value) => ({ ...value, accessKeyId: event.target.value }))} /></div>
                 <div className={styles.fieldGroup}><label htmlFor="asset-secret">Secret Key</label><input id="asset-secret" type="password" autoComplete="new-password" placeholder={assetConfig.hasSecretAccessKey ? '留空则沿用已保存的密钥' : ''} value={assetConfig.secretAccessKey} onChange={(event) => setAssetConfig((value) => ({ ...value, secretAccessKey: event.target.value }))} /></div>
+                <div className={styles.assetConfigActions}>
+                  <small>保存配置不会上传资源；只有“开始导出”才会上传本次游戏包需要的缺失资源。</small>
+                  <button type="button" className={styles.assetConfigSaveButton} disabled={savingAssetConfig || submitting} onClick={() => void saveAssetConfiguration()}>
+                    {savingAssetConfig ? '正在保存…' : '保存配置'}
+                  </button>
+                </div>
               </div>}
               <ReleaseFlow project={selectedProject} version={releaseVersion || 'v1.0.0'} />
             </>}
