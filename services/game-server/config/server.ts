@@ -35,6 +35,10 @@ export function getEnvironmentConfig(): EnvConfig {
       REDIS_DB: maybeN(process.env.REDIS_DB),
       STORAGE_CACHE_REDIS_DB: maybeN(process.env.STORAGE_CACHE_REDIS_DB),
       STORAGE_CACHE_REDIS_TTL: maybeN(process.env.STORAGE_CACHE_REDIS_TTL),
+      // The launcher raises this per runtime for experimental giant maps.
+      // It overrides the static local config without mutating it, so smaller
+      // concurrent maps can continue using the normal script quota.
+      SCRIPT_MEMORY_LIMIT: maybeN(process.env.SCRIPT_MEMORY_LIMIT),
       INTRANET_STORAGE_BACKEND_SERVER_URL: maybeS(
         process.env.INTRANET_STORAGE_BACKEND_SERVER_URL,
       ),

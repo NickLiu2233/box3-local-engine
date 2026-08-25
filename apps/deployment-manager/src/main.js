@@ -353,7 +353,7 @@ function setup() {
   return `<header><div><h1>数据配置</h1></div></header>
     ${state.busy ? progressPanel() : ''}
     <form id="setup-form" class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
-      <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
+      <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
           <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>必填 · 保存玩家、权限与地图脚本数据</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true)}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
@@ -375,6 +375,30 @@ function setup() {
               'SSL',
               '只有远程 PostgreSQL 要求加密连接时才勾选；不确定时按数据库服务商提供的连接要求填写。',
             ],
+          ])}
+        </section>
+        <section class="setup-panel ${state.setupSection === 'backup' ? 'active' : ''}" data-setup-panel="backup">
+          <div class="config-group">
+            <div class="group-title">
+              <div><h2>自动备份</h2><span>按计划保存本地地图工程，不包含 PostgreSQL 或 Redis 数据</span></div>
+              <label class="backup-switch"><input name="autoBackupEnabled" type="checkbox" ${config.autoBackupEnabled ? 'checked' : ''}/><span aria-hidden="true"></span><strong>启用</strong></label>
+            </div>
+            <div class="form-grid compact three">${input('autoBackupIntervalMinutes', '备份间隔（分钟）', config.autoBackupIntervalMinutes || 60, 'number', '1–10080')}${input('autoBackupRetentionCount', '每张地图保留份数', config.autoBackupRetentionCount || 24, 'number', '1–1000')}${input('autoBackupRetentionDays', '最长保留天数', config.autoBackupRetentionDays || 30, 'number', '1–3650')}</div>
+          </div>
+          ${setupExplanation('配置说明：自动备份会保存什么？', [
+            [
+              '备份范围',
+              '按计划导出每个地图组工程，包含地图、资源库与地图配置；不包含 PostgreSQL、Redis 或用户账号数据。',
+            ],
+            [
+              '保留规则',
+              '每地图保留份数与最长保留天数同时生效，达到任一限制时，最早的自动备份会被清理。',
+            ],
+            [
+              '关闭后的影响',
+              '关闭后停止创建新的自动备份，不会删除已有备份；已有文件可在左侧“数据与备份”中导出、恢复或删除。',
+            ],
+            ['立即备份', '需要在重要修改前手动保存时，请前往“数据与备份”使用右上角的“立即备份”。'],
           ])}
         </section>
         <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3000, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/><div class="creator-network-choice"><button type="button" class="${localSelected ? 'active' : ''}" data-creator-network-host="127.0.0.1">本机</button><button type="button" class="${lanSelected ? 'active' : ''}" data-creator-network-host="${escapeHtml(config.lanIp || '')}" ${config.lanIp ? '' : 'disabled'}>局域网</button></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3002, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3001, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>玩家服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3213, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3214, 'number')}</div></section></div>${setupExplanation(
@@ -813,10 +837,13 @@ function captureSetupForm() {
     if (state.ownerSecretsVisible && values[key] === state.ownerSecrets?.[key]) delete values[key]
   }
   const databaseSsl = form.elements.namedItem('databaseSsl')
+  const autoBackupEnabled = form.elements.namedItem('autoBackupEnabled')
   const next = {
     ...state.config,
     ...values,
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
+    autoBackupEnabled:
+      autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,
   }
   // Password inputs are intentionally blank after rendering. An empty field
   // means “keep the saved/session value”, not “erase it”, unless the user has
@@ -1137,11 +1164,15 @@ async function saveConfiguration(event) {
     }
   }
   config.databaseSsl = form.has('databaseSsl')
+  config.autoBackupEnabled = form.has('autoBackupEnabled')
   config.playRuntimes = Number(config.playRuntimes)
   config.creatorEditRuntimes = Number(config.creatorEditRuntimes)
   config.creatorPlayRuntimes = Number(config.creatorPlayRuntimes)
   config.redisDb = Number(config.redisDb)
   config.storageCacheRedisDb = Number(config.storageCacheRedisDb)
+  config.autoBackupIntervalMinutes = Number(config.autoBackupIntervalMinutes)
+  config.autoBackupRetentionCount = Number(config.autoBackupRetentionCount)
+  config.autoBackupRetentionDays = Number(config.autoBackupRetentionDays)
   config.playPort = Number(config.playPort)
   config.voxaPort = Number(config.voxaPort)
   config.creatorPort = Number(config.creatorPort)

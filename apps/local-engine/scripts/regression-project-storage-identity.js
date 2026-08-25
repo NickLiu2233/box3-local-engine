@@ -16,20 +16,26 @@ try {
     id: 'readable-directory-key',
     name: '主地图',
     mapSize: 'large',
-    templateId: 'blank',
   })
   assert.match(main.mapUuid, uuidPattern)
   assert.deepEqual(main.mapSize, [256, 128, 256])
   assert.equal(main.templateId, 'blank')
 
-  const arena = manager.createProject({
-    id: 'fixed-template-size',
-    name: '枪战模板地图',
-    mapSize: 'huge',
-    templateId: 'arena',
+  const extraLarge = manager.createProject({
+    id: 'extra-large-map',
+    name: '极大地图',
+    mapSize: 'extraLarge',
   })
-  assert.deepEqual(arena.mapSize, [128, 128, 128])
-  assert.equal(arena.templateId, 'arena')
+  assert.deepEqual(extraLarge.mapSize, [512, 256, 512])
+  assert.equal(extraLarge.templateId, 'blank')
+
+  const giant = manager.createProject({
+    id: 'giant-map',
+    name: '巨型地图',
+    mapSize: 'giant',
+  })
+  assert.deepEqual(giant.mapSize, [1024, 256, 1024])
+  assert.equal(giant.templateId, 'blank')
 
   const before = manager.projectStorageIdentity(main.id)
   const launchTarget = manager.getLaunchTarget({ project: main.id })

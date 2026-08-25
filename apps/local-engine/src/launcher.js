@@ -104,6 +104,29 @@ const projectStatePath = launchTarget
   : process.env.BOX_WORLD_STATE_PATH || process.env.BOX_PROJECT_STATE_PATH || ''
 const groupStatePath = launchTarget?.groupStatePath || ''
 const groupBlobRoot = launchTarget?.groupBlobRoot || ''
+const initialMapSize = Array.isArray(launchTarget?.initialMapSize)
+  ? launchTarget.initialMapSize
+  : []
+const initialMapVoxelCount = initialMapSize.reduce((total, value) => total * Number(value), 1)
+// A 1024×256×1024 terrain requires about 512 MiB for the script-side voxel
+// mirror alone. Reserve sufficient isolate headroom automatically so selecting
+// the experimental giant size does not silently inherit the normal 512 MiB
+// quota and fail while loading its initial terrain.
+const requiredScriptMemoryMB = initialMapVoxelCount >= 1024 * 256 * 1024 ? 2048 : 512
+const configuredScriptHeapMB = Number(
+  process.env.BOX_SCRIPT_HEAP_MB || process.env.SCRIPT_HEAP_MB || 512,
+)
+const configuredScriptMemoryMB = Number(
+  process.env.BOX_SCRIPT_MEMORY_MB || process.env.SCRIPT_MEMORY_LIMIT || 512,
+)
+const scriptHeapMB = Math.max(
+  Number.isFinite(configuredScriptHeapMB) ? configuredScriptHeapMB : 512,
+  requiredScriptMemoryMB,
+)
+const scriptMemoryMB = Math.max(
+  Number.isFinite(configuredScriptMemoryMB) ? configuredScriptMemoryMB : 512,
+  requiredScriptMemoryMB,
+)
 const requiredClientAsset = path.join(
   dataRoot,
   'blobs/QmUQg6ayL7bLmdso8b4Hc7nfxBUSJawPsQ7vsSUPhXNdv5',
@@ -432,10 +455,10 @@ async function main() {
     // Keep the local default within that range so opening a project cannot
     // fail during config validation before the runtime starts.
     STORAGE_CACHE_REDIS_TTL: process.env.STORAGE_CACHE_REDIS_TTL || '240',
-    // A 512x256x512 world needs roughly 128 MiB for the script-side voxel
-    // mirror alone. Boxes keeps this mirror in the isolate, so local runtimes
-    // need enough headroom for scripts, entities and protocol snapshots too.
-    SCRIPT_HEAP_MB: process.env.BOX_SCRIPT_HEAP_MB || process.env.SCRIPT_HEAP_MB || '512',
+    // Large maps retain the owner's setting as a minimum; the experimental
+    // 1024-wide map raises it to 2 GiB automatically.
+    SCRIPT_HEAP_MB: String(scriptHeapMB),
+    SCRIPT_MEMORY_LIMIT: String(scriptMemoryMB),
     // Local products create sessions through the web API, which authenticates
     // the internal runtime request and preserves the actual client address.
     BOX_DIRECT_SESSION_API: 'false',

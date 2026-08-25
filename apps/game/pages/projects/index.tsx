@@ -32,8 +32,15 @@ import {
 } from '../../server/import-diagnostics';
 
 type ProjectStatus = '草稿' | '已发布';
-type MapSizePreset = 'medium' | 'large' | 'huge';
-type MapTemplateId = 'blank' | 'arena' | 'raceway';
+type MapSizePreset =
+  | 'tiny'
+  | 'extraSmall'
+  | 'small'
+  | 'medium'
+  | 'large'
+  | 'huge'
+  | 'extraLarge'
+  | 'giant';
 type CompatibilityReport = {
   level: 'compatible' | 'warning' | 'error';
   summary: { warnings: number; errors: number; missingBlobCount: number };
@@ -127,37 +134,20 @@ const snapshotReasonLabels: Record<string, string> = {
   'before-restore': '恢复前备份',
 };
 
-const mapSizeOptions: Array<{ id: MapSizePreset; label: string; dimensions: string }> = [
+const mapSizeOptions: Array<{ id: MapSizePreset; label: string; dimensions: string; hint?: string }> = [
+  { id: 'tiny', label: '极小', dimensions: '32×64×32' },
+  { id: 'extraSmall', label: '超小', dimensions: '64×64×64' },
+  { id: 'small', label: '小', dimensions: '64×128×64' },
   { id: 'medium', label: '中', dimensions: '128×128×128' },
   { id: 'large', label: '大', dimensions: '256×128×256' },
   { id: 'huge', label: '超大', dimensions: '256×64×256' },
+  { id: 'extraLarge', label: '极大', dimensions: '512×256×512' },
+  { id: 'giant', label: '巨型', dimensions: '1024×256×1024', hint: '实验性' },
 ];
 
-const mapTemplateOptions: Array<{
-  id: MapTemplateId;
-  name: string;
-  description: string;
-  previewSrc: string;
-}> = [
-  {
-    id: 'blank',
-    name: '空白地图',
-    description: '平坦草地，适合从零开始创作。',
-    previewSrc: '/map-templates/blank-template.png',
-  },
-  {
-    id: 'arena',
-    name: '枪战模板',
-    description: '内置围墙和掩体，可直接开始搭建玩法。',
-    previewSrc: '/map-templates/arena-template.png',
-  },
-  {
-    id: 'raceway',
-    name: '赛车模板',
-    description: '内置环形赛道，适合制作竞速地图。',
-    previewSrc: '/map-templates/raceway-template.png',
-  },
-];
+function defaultMapCover() {
+  return '/map-templates/blank-template.png';
+}
 
 function formatBytes(value: number) {
   if (!value) return '0 B';
@@ -218,7 +208,6 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCover, setProjectCover] = useState('');
   const [mapSize, setMapSize] = useState<MapSizePreset>('medium');
-  const [templateId, setTemplateId] = useState<MapTemplateId>('blank');
   const [dialogError, setDialogError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
@@ -324,7 +313,6 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     setProjectDescription('');
     setProjectCover('');
     setMapSize('medium');
-    setTemplateId('blank');
     setDialogError('');
     setDialog('create');
   };
@@ -337,13 +325,6 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     setProjectDescription('');
     setDialogError('');
     setDialog('submap');
-  };
-
-  const selectMapTemplate = (nextTemplate: MapTemplateId) => {
-    setTemplateId(nextTemplate);
-    // Built-in scenario templates have fixed, tested world dimensions.
-    // Only an empty world can be resized before its initial state exists.
-    if (nextTemplate !== 'blank') setMapSize('medium');
   };
 
   const chooseProjectFile = (file: File) => {
@@ -768,7 +749,6 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
           author: projectAuthor,
           description: projectDescription,
           mapSize,
-          templateId,
         }),
       });
       const data = await response.json();
@@ -933,7 +913,11 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
         onClick={() => openProjectEditor(project)}
       />
       <div className={`${styles.cover} ${styles[`cover${project.theme}`]}`}>
-        {project.cover && <img src={project.cover} alt="" />}
+        <img
+          className={project.cover ? undefined : styles.templateCover}
+          src={project.cover || defaultMapCover()}
+          alt=""
+        />
       </div>
       <div className={styles.cardBody}>
         <div className={styles.cardHeading}>
@@ -1252,35 +1236,10 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                   <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
                   </div>
                   {dialog === 'create' && <>
-                    <div className={styles.mapTemplateField}>
-                      <div className={styles.mapChoiceLabel}>
-                        <label>地图模板</label>
-                        <span>创建后不可替换</span>
-                      </div>
-                      <div className={styles.mapTemplateOptions} role="radiogroup" aria-label="地图模板">
-                        {mapTemplateOptions.map((template) => (
-                          <button
-                            key={template.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={templateId === template.id}
-                            className={templateId === template.id ? styles.mapChoiceSelected : undefined}
-                            onClick={() => selectMapTemplate(template.id)}
-                          >
-                            <span className={styles.templatePreview} aria-hidden="true">
-                              <img src={template.previewSrc} alt="" />
-                            </span>
-                            <span>
-                              <strong>{template.name}</strong>
-                              <small>{template.description}</small>
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    {templateId === 'blank' && <div className={styles.mapSizeField}>
+                    <div className={styles.mapSizeField}>
                       <div className={styles.mapChoiceLabel}>
                         <label>地图尺寸</label>
+                        <span>宽 × 高 × 长</span>
                       </div>
                       <div className={styles.mapSizeOptions} role="radiogroup" aria-label="地图尺寸">
                         {mapSizeOptions.map((option) => (
@@ -1293,11 +1252,14 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                             onClick={() => setMapSize(option.id)}
                           >
                             <strong>{option.label}</strong>
-                            <small>{option.dimensions}</small>
+                            <small>
+                              {option.dimensions}
+                              {option.hint && <em>{option.hint}</em>}
+                            </small>
                           </button>
                         ))}
                       </div>
-                    </div>}
+                    </div>
                   </>}
                   {dialog === 'details' && <>
                   <div className={styles.fieldGroup}>
@@ -1336,7 +1298,10 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                   <label htmlFor="project-cover">封面</label>
                   <div className={styles.coverPickerRow}>
                     <div className={styles.coverPreview}>
-                      {projectCover ? <img src={projectCover} alt="当前地图封面" /> : <Grid2X2 size={20} aria-hidden="true" />}
+                      <img
+                        src={projectCover || defaultMapCover()}
+                        alt={projectCover ? '当前地图封面' : '默认地图封面'}
+                      />
                     </div>
                     <label className={styles.coverPicker} htmlFor="project-cover">
                       <Upload size={17} aria-hidden="true" />

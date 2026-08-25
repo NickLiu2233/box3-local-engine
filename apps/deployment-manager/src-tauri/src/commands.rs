@@ -152,6 +152,10 @@ struct InstallConfigView {
     has_redis_password: bool,
     redis_db: u8,
     storage_cache_redis_db: u8,
+    auto_backup_enabled: bool,
+    auto_backup_interval_minutes: u32,
+    auto_backup_retention_count: u32,
+    auto_backup_retention_days: u32,
     public_host: String,
     creator_host: String,
     lan_ip: String,
@@ -190,6 +194,10 @@ impl Default for InstallConfigView {
             has_redis_password: false,
             redis_db: 0,
             storage_cache_redis_db: 1,
+            auto_backup_enabled: false,
+            auto_backup_interval_minutes: 60,
+            auto_backup_retention_count: 24,
+            auto_backup_retention_days: 30,
             public_host: "127.0.0.1".into(),
             creator_host: "127.0.0.1".into(),
             lan_ip: detect_lan_ip().unwrap_or_default(),
@@ -236,6 +244,14 @@ struct InstallConfigInput {
     redis_db: u8,
     #[serde(default = "default_storage_cache_redis_db")]
     storage_cache_redis_db: u8,
+    #[serde(default)]
+    auto_backup_enabled: bool,
+    #[serde(default = "default_auto_backup_interval_minutes")]
+    auto_backup_interval_minutes: u32,
+    #[serde(default = "default_auto_backup_retention_count")]
+    auto_backup_retention_count: u32,
+    #[serde(default = "default_auto_backup_retention_days")]
+    auto_backup_retention_days: u32,
     #[serde(default = "default_public_host")]
     public_host: String,
     #[serde(default = "default_creator_host")]
@@ -272,6 +288,15 @@ fn default_redis_port() -> String {
 }
 fn default_storage_cache_redis_db() -> u8 {
     1
+}
+fn default_auto_backup_interval_minutes() -> u32 {
+    60
+}
+fn default_auto_backup_retention_count() -> u32 {
+    24
+}
+fn default_auto_backup_retention_days() -> u32 {
+    30
 }
 fn default_public_host() -> String {
     "127.0.0.1".into()
@@ -811,6 +836,19 @@ fn validate_service_ports(config: &InstallConfigInput) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_auto_backup_config(config: &InstallConfigInput) -> Result<(), String> {
+    if !(1..=10_080).contains(&config.auto_backup_interval_minutes) {
+        return Err("自动备份间隔必须在 1 到 10080 分钟之间".into());
+    }
+    if !(1..=1_000).contains(&config.auto_backup_retention_count) {
+        return Err("每地图备份保留份数必须在 1 到 1000 之间".into());
+    }
+    if !(1..=3_650).contains(&config.auto_backup_retention_days) {
+        return Err("自动备份最长保留天数必须在 1 到 3650 天之间".into());
+    }
+    Ok(())
+}
+
 fn load_existing_env(app: &AppHandle) -> BTreeMap<String, String> {
     env_path(app)
         .ok()
@@ -830,6 +868,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_service_ports(config)?;
+    validate_auto_backup_config(config)?;
     let existing = load_existing_env(app);
     let existing_file = env_path(app)?;
     let source = if existing_file.exists() {
@@ -947,6 +986,30 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &mut content,
         "STORAGE_CACHE_REDIS_DB",
         &config.storage_cache_redis_db.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_AUTO_BACKUP_ENABLED",
+        if config.auto_backup_enabled {
+            "true"
+        } else {
+            "false"
+        },
+    )?;
+    set_env(
+        &mut content,
+        "BOX_AUTO_BACKUP_INTERVAL_MINUTES",
+        &config.auto_backup_interval_minutes.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_AUTO_BACKUP_RETENTION_COUNT",
+        &config.auto_backup_retention_count.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_AUTO_BACKUP_RETENTION_DAYS",
+        &config.auto_backup_retention_days.to_string(),
     )?;
     write_private_file(&existing_file, content, "部署配置")?;
     generate_runtime_environment(app)?;
@@ -1134,6 +1197,12 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .is_some_and(|value| !value.is_empty()),
         redis_db: number_u8("REDIS_DB", 0),
         storage_cache_redis_db: number_u8("STORAGE_CACHE_REDIS_DB", 1),
+        auto_backup_enabled: values
+            .get("BOX_AUTO_BACKUP_ENABLED")
+            .is_some_and(|value| matches!(value.as_str(), "1" | "true" | "yes" | "on")),
+        auto_backup_interval_minutes: number_u32("BOX_AUTO_BACKUP_INTERVAL_MINUTES", 60),
+        auto_backup_retention_count: number_u32("BOX_AUTO_BACKUP_RETENTION_COUNT", 24),
+        auto_backup_retention_days: number_u32("BOX_AUTO_BACKUP_RETENTION_DAYS", 30),
         public_host: values
             .get("BOX_PLAY_PUBLIC_HOST")
             .cloned()
@@ -2456,6 +2525,10 @@ mod tests {
             redis_password: String::new(),
             redis_db: 0,
             storage_cache_redis_db: 1,
+            auto_backup_enabled: false,
+            auto_backup_interval_minutes: 60,
+            auto_backup_retention_count: 24,
+            auto_backup_retention_days: 30,
             public_host: default_public_host(),
             creator_host: default_creator_host(),
             play_port: 3000,
@@ -2470,6 +2543,43 @@ mod tests {
         assert!(validate_service_ports(&config)
             .unwrap_err()
             .contains("不能使用同一个端口"));
+    }
+
+    #[test]
+    fn rejects_invalid_automatic_backup_retention() {
+        let config = InstallConfigInput {
+            database_host: String::new(),
+            database_port: default_database_port(),
+            database_name: default_database_name(),
+            database_user: default_database_user(),
+            database_password: String::new(),
+            database_ssl: false,
+            permission_token_secret: String::new(),
+            player_auth_api_key: String::new(),
+            play_admin_token: String::new(),
+            redis_host: String::new(),
+            redis_port: default_redis_port(),
+            redis_password: String::new(),
+            redis_db: 0,
+            storage_cache_redis_db: 1,
+            auto_backup_enabled: true,
+            auto_backup_interval_minutes: 0,
+            auto_backup_retention_count: 24,
+            auto_backup_retention_days: 30,
+            public_host: default_public_host(),
+            creator_host: default_creator_host(),
+            play_port: 3000,
+            voxa_port: 3001,
+            creator_port: 3002,
+            player_service_port: 3213,
+            auth_portal_port: 3214,
+            play_runtimes: 8,
+            creator_edit_runtimes: 6,
+            creator_play_runtimes: 4,
+        };
+        assert!(validate_auto_backup_config(&config)
+            .unwrap_err()
+            .contains("自动备份间隔"));
     }
 
     #[test]

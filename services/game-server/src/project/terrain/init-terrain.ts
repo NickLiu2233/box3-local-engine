@@ -3,7 +3,16 @@ import { saveVoxelData } from './voxel';
 import { genTerrain, TerrainTheme } from '.';
 import { ContentServer } from '@box-local/content-server';
 
-const allowedSizes = new Set(['64,64,64', '128,128,128', '256,128,256', '256,64,256']);
+const allowedSizes = new Set([
+  '32,64,32',
+  '64,64,64',
+  '64,128,64',
+  '128,128,128',
+  '256,128,256',
+  '256,64,256',
+  '512,256,512',
+  '1024,256,1024',
+]);
 
 function initialMapSize(): [number, number, number] {
   const raw = String(process.env.BOX_INITIAL_MAP_SIZE || '').trim();

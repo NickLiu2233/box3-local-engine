@@ -29,9 +29,14 @@ const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const publicMapIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const mapSizePresets = {
+  tiny: [32, 64, 32],
+  extraSmall: [64, 64, 64],
+  small: [64, 128, 64],
   medium: [128, 128, 128],
   large: [256, 128, 256],
   huge: [256, 64, 256],
+  extraLarge: [512, 256, 512],
+  giant: [1024, 256, 1024],
 }
 const mapTemplatePresets = {
   blank: 'plane',
@@ -876,7 +881,7 @@ function normalizeMapTemplatePreset(value) {
   return Object.hasOwn(mapTemplatePresets, value) ? value : 'blank'
 }
 
-function createProject({ id, name, author = '', description = '', mapSize, templateId }) {
+function createProject({ id, name, author = '', description = '', mapSize }) {
   const safeId = assertProjectId(id)
   const root = projectRoot(safeId)
   if (fs.existsSync(root)) throw new Error(`Project already exists: ${safeId}`)
@@ -896,9 +901,7 @@ function createProject({ id, name, author = '', description = '', mapSize, templ
   }
   const now = new Date().toISOString()
   const themes = ['sunset', 'ocean', 'forest', 'violet']
-  const normalizedTemplateId = normalizeMapTemplatePreset(templateId)
-  const normalizedMapSize =
-    normalizedTemplateId === 'blank' ? normalizeMapSizePreset(mapSize) : 'medium'
+  const normalizedMapSize = normalizeMapSizePreset(mapSize)
   const metadata = {
     formatVersion: 1,
     id: safeId,
@@ -918,8 +921,8 @@ function createProject({ id, name, author = '', description = '', mapSize, templ
     // project state. Afterwards the voxel data in project-state.json is the
     // authoritative editable map, exactly as it is for imported projects.
     mapSize: mapSizePresets[normalizedMapSize],
-    templateId: normalizedTemplateId,
-    terrainTheme: mapTemplatePresets[normalizedTemplateId],
+    templateId: 'blank',
+    terrainTheme: mapTemplatePresets.blank,
   }
   writeJSON(path.join(root, 'project.json'), metadata)
   return toProjectSummary(metadata)
@@ -960,7 +963,6 @@ function createSubmap(mainId, { id, name, description = '' }) {
     author: main.author || '',
     description,
     mapSize: 'medium',
-    templateId: 'blank',
   })
   const metadata = getProject(created.id)
   metadata.mapGroupId = identity.mapGroupId

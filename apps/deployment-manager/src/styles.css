@@ -955,6 +955,74 @@ form.environment-mode {
   background: var(--panel);
 }
 
+.backup-switch {
+  display: inline-flex;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 0 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.backup-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.backup-switch > span {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--panel-soft);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.backup-switch > span::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+  content: '';
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 140ms ease;
+}
+
+.backup-switch input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.backup-switch input:checked + span::after {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+.backup-switch input:focus-visible + span {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.backup-switch strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .config-note {
   margin: 2px 0 0;
   color: var(--muted);
