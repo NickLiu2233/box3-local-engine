@@ -57,7 +57,6 @@ for (const value of [
   '数据配置',
   '性能监控',
   '运行日志',
-  '帮助手册',
   '关于',
   '数据服务',
   '访问设置',
@@ -70,7 +69,6 @@ for (const value of [
 assert.doesNotMatch(frontend, /内置数据库|databaseMode/)
 assert.doesNotMatch(backend, /database_mode|COMPOSE_PROFILES.*infra/)
 assert.doesNotMatch(builder, /选择内置数据库/)
-assert.match(frontend, /PostgreSQL 为必填；Redis 可留空/)
 assert.match(builder, /--norsrc/)
 assert.match(defaults, /^BOX_PLAY_PUBLIC_HOST=127\.0\.0\.1$/m)
 assert.match(defaults, /^BOX_CREATOR_HOST=127\.0\.0\.1$/m)
@@ -128,13 +126,6 @@ assert.match(compose, /BOX_RESOURCE_ALLOWED_ORIGINS: \$\{BOX_RESOURCE_ALLOWED_OR
 assert.match(launcher, /process\.env\.VOXA_URL/)
 assert.match(backend, /只允许打开当前配置中的 BOX 服务地址/)
 assert.doesNotMatch(backend, /只允许打开本机 BOX 服务地址/)
-assert.match(frontend, /认识产品/)
-assert.match(frontend, /快速部署/)
-assert.match(frontend, /服务与端口/)
-assert.match(frontend, /创作与游玩/)
-assert.match(frontend, /玩家与权限/)
-assert.match(frontend, /运维与排障/)
-assert.match(frontend, /data-help-section/)
 assert.match(frontend, /box-manager-theme/)
 assert.match(frontend, /跟随系统/)
 assert.match(frontend, /发行许可/)
@@ -169,7 +160,7 @@ assert.doesNotMatch(creatorWorkCenter, /href="\/system"/)
 assert.doesNotMatch(playWorkCenter, /href="\/play-system"/)
 assert.match(styles, /html,\s*body,\s*#app[\s\S]*overflow: hidden/)
 assert.match(styles, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/)
-assert.match(styles, /\.help-layout/)
+assert.doesNotMatch(styles, /\.help-layout/)
 assert.doesNotMatch(defaults, /^BOX_POSTGRES_/m)
 assert.doesNotMatch(defaults, /^BOX_REDIS_IMAGE=/m)
 assert.match(backend, /REDIS_HOST/)

@@ -42,6 +42,16 @@ export type RuntimeMeshInfo = {
 };
 
 /**
+ * An imported cloud project can contain a dangling model-library entry whose
+ * hash was never saved. Do not pass an empty value into migrateVoxel: there is
+ * no resource to migrate, and failing the complete prebake makes an otherwise
+ * playable map permanently unavailable.
+ */
+export function hasRuntimeAssetHash(hash: unknown): hash is string {
+  return typeof hash === 'string' && hash.trim().length > 0;
+}
+
+/**
  * A local project model and its VOXA source can legitimately have the same
  * numeric model id. The entity path is authoritative in that case. Falling
  * back to model id preserves Boxes' rename/migration behaviour for legacy
@@ -463,14 +473,20 @@ export class ProjectBakeCache {
     syncAssets(
       Object.assign({}, cold.assets, extra.meshAssets),
       (coldItem) => {
-        return (
+        const isMeshAsset =
           !!coldItem.modelId ||
           [
             Cold.AssetType.VOXEL_MODEL,
             Cold.AssetType.IMAGE,
             Cold.AssetType.GLTF_MODEL,
-          ].includes(coldItem.type)
-        );
+          ].includes(coldItem.type);
+        if (isMeshAsset && !hasRuntimeAssetHash(coldItem.hash)) {
+          this.build.logger.warn(
+            'Skipping a model asset with an empty resource hash while baking the map.',
+          );
+          return false;
+        }
+        return isMeshAsset;
       },
       Hot.MeshAssetSchema,
       hp.meshAssets,

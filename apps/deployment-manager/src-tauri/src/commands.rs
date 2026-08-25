@@ -31,6 +31,7 @@ use docker::{
 };
 
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
+const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
 const PROJECT_NAME: &str = "box-local-engine";
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +54,38 @@ struct AboutInfo {
     platform: String,
     architecture: String,
     license: String,
+    service_images: Vec<ServiceImageInfo>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ServiceImageInfo {
+    name: String,
+    image: String,
+    tag: String,
+    platform: String,
+    image_id: String,
+    created_at: String,
+    source_revision: String,
+    build_source: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbeddedImageInfo {
+    images: Vec<EmbeddedServiceImageInfo>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EmbeddedServiceImageInfo {
+    image: String,
+    tag: String,
+    image_id: String,
+    created_at: String,
+    platform: String,
+    source_revision: String,
+    build_source: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1340,6 +1373,53 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
 
 #[tauri::command]
 fn get_about_info() -> AboutInfo {
+    let image_platform = if IMAGE_TAG.ends_with("-arm64") {
+        "linux/arm64"
+    } else if IMAGE_TAG.ends_with("-amd64") {
+        "linux/amd64"
+    } else {
+        "由 Docker 自动选择"
+    };
+    let embedded_images = serde_json::from_str::<EmbeddedImageInfo>(IMAGE_INFO)
+        .unwrap_or(EmbeddedImageInfo { images: vec![] })
+        .images;
+    let service_images = [
+        ("ARENA（创作端）", "box-local-engine-creator"),
+        ("VOXA（模型编辑）", "box-local-engine-voxa"),
+        ("游玩端", "box-local-engine-play"),
+        ("玩家管理", "box-local-engine-player-service"),
+        ("登录门户", "box-local-engine-player-auth-portal"),
+    ]
+    .into_iter()
+    .map(|(name, image)| {
+        let embedded = embedded_images
+            .iter()
+            .find(|candidate| candidate.image == image);
+        ServiceImageInfo {
+            name: name.into(),
+            image: image.into(),
+            tag: embedded
+                .map(|candidate| candidate.tag.clone())
+                .unwrap_or_else(|| IMAGE_TAG.into()),
+            platform: embedded
+                .map(|candidate| candidate.platform.clone())
+                .unwrap_or_else(|| image_platform.into()),
+            image_id: embedded
+                .map(|candidate| candidate.image_id.clone())
+                .unwrap_or_else(|| "unknown".into()),
+            created_at: embedded
+                .map(|candidate| candidate.created_at.clone())
+                .unwrap_or_else(|| "unknown".into()),
+            source_revision: embedded
+                .map(|candidate| candidate.source_revision.clone())
+                .unwrap_or_else(|| "unknown".into()),
+            build_source: embedded
+                .map(|candidate| candidate.build_source.clone())
+                .unwrap_or_else(|| "unknown".into()),
+        }
+    })
+    .collect();
+
     AboutInfo {
         application_version: env!("CARGO_PKG_VERSION").into(),
         image_tag: IMAGE_TAG.into(),
@@ -1349,6 +1429,7 @@ fn get_about_info() -> AboutInfo {
         platform: std::env::consts::OS.into(),
         architecture: std::env::consts::ARCH.into(),
         license: "非商业本地部署许可".into(),
+        service_images,
     }
 }
 

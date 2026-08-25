@@ -271,7 +271,11 @@ main {
   max-width: 1240px;
   margin: 0 auto;
   padding: 32px 40px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent;
+  scrollbar-width: thin;
 }
 
 header {
@@ -1646,6 +1650,98 @@ form.environment-mode {
 
 .about-document-list {
   border-top: 1px solid var(--border);
+}
+
+.about-image-list {
+  border-top: 1px solid var(--border);
+}
+
+.about-image-row {
+  min-height: 88px;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.about-image-row:first-child {
+  border-top: 0;
+}
+
+.about-image-row > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.about-image-row strong {
+  font-size: 13px;
+}
+
+.about-image-row small,
+.about-image-meta {
+  overflow: hidden;
+  color: var(--muted);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-image-meta {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.about-image-meta > div {
+  min-width: 0;
+}
+
+.about-image-meta dt,
+.about-image-meta dd {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-image-meta dt {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.about-image-meta dd {
+  color: var(--text);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+}
+
+.about-image-meta > div:last-child {
+  grid-column: 1 / -1;
+}
+
+.about-image-meta > div:last-child dd {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.about-image-empty {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .about-document-row {

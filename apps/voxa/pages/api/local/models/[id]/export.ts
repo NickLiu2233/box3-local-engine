@@ -1,8 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import JSZip from 'jszip';
+import { getModelMetaData } from '@box-local/voxa-project';
 
 import { getBlob, getModel } from '../../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../../server/local-cors';
+import {
+  buildModelProjectBundle,
+  type ModelProjectBundleResource,
+} from '../../../../../server/local-voxa-project-bundle';
 
 function projectFileName(name: string) {
   const safeName = name
@@ -30,19 +34,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const project = getBlob(model.projectFileHash);
   if (!project) return res.status(404).json({ message: '模型工程文件不存在' });
 
-  const zip = new JSZip();
-  zip.file('manifest.json', JSON.stringify({
-    format: 'box-voxa-project',
-    formatVersion: 1,
-    exportedAt: new Date().toISOString(),
+  const resources: ModelProjectBundleResource[] = [];
+  const modelMetadata = model.modelFileHash ? getBlob(model.modelFileHash) : null;
+  const modelMetaData = modelMetadata
+    ? getModelMetaData(model.modelFileHash, new Uint8Array(modelMetadata.data))
+    : undefined;
+  const modelData = modelMetaData ? getBlob(modelMetaData.dataHash) : null;
+  // A renderable model is a two-blob graph: metadata points to model data.
+  // Include both together so a package can be imported on another server.
+  if (modelMetadata && modelMetaData && modelData) {
+    resources.push(
+      {
+        name: 'model-meta.bin',
+        hash: model.modelFileHash,
+        data: modelMetadata.data,
+        contentType: modelMetadata.contentType,
+      },
+      {
+        name: 'model-data.bin',
+        hash: modelMetaData.dataHash,
+        data: modelData.data,
+        contentType: modelData.contentType,
+      },
+    );
+  }
+  const preview = model.modelPreviewHash ? getBlob(model.modelPreviewHash) : null;
+  if (preview) {
+    resources.push({
+      name: 'preview.bin',
+      hash: model.modelPreviewHash,
+      data: preview.data,
+      contentType: preview.contentType,
+    });
+  }
+  const bundle = await buildModelProjectBundle({
     projectName: model.modelName || '未命名模型',
     editType: model.creativeMode === 2 ? 1 : 0,
-  }, null, 2));
-  zip.file('project.bin', project.data);
-  const bundle = await zip.generateAsync({
-    type: 'nodebuffer',
-    compression: 'DEFLATE',
-    compressionOptions: { level: 6 },
+    projectBytes: project.data,
+    resources,
   });
   const filename = projectFileName(model.modelName);
   res.setHeader('Content-Type', 'application/vnd.box.voxaproject+zip');

@@ -105,6 +105,44 @@ function createZip(packageRoot, destination) {
   if (result.status !== 0) fail(`ZIP 打包失败，退出码 ${result.status}`)
 }
 
+function archiveEntry(archive, entry) {
+  const result = spawnSync('tar', ['-xOf', archive, entry], {
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  })
+  if (result.status !== 0) {
+    throw new Error(`无法从离线镜像归档读取 ${entry}`)
+  }
+  return result.stdout
+}
+
+function imageDetailsFromArchive(archive) {
+  const manifest = JSON.parse(archiveEntry(archive, 'manifest.json'))
+  return manifest.flatMap((entry) => {
+    const image = entry.RepoTags?.[0]
+    const configPath = entry.Config
+    if (!image || !configPath) return []
+    const config = JSON.parse(archiveEntry(archive, configPath))
+    const separator = image.lastIndexOf(':')
+    const imageName = separator > 0 ? image.slice(0, separator) : image
+    const tag = separator > 0 ? image.slice(separator + 1) : 'unknown'
+    const labels = config.config?.Labels || {}
+    const configDigest = configPath.split('/').at(-1) || ''
+    return [
+      {
+        image: imageName,
+        tag,
+        imageId: configDigest ? `sha256:${configDigest}` : 'unknown',
+        createdAt: config.created || 'unknown',
+        platform:
+          config.os && config.architecture ? `${config.os}/${config.architecture}` : 'unknown',
+        sourceRevision: labels['org.opencontainers.image.revision'] || 'unknown',
+        buildSource: labels['org.opencontainers.image.source'] || 'unknown',
+      },
+    ]
+  })
+}
+
 function main() {
   prepareReleaseMetadata()
   const platform = process.argv[2]
@@ -143,6 +181,12 @@ function main() {
     platform: `linux/${expectedArchitecture}`,
   }
   const payloadManifest = path.join(managerRoot, 'src-tauri/payload/BOX-OFFLINE-IMAGE.json')
+  const payloadImageInfo = path.join(managerRoot, 'src-tauri/payload/IMAGE-INFO.json')
+  const originalImageInfo = fs.readFileSync(payloadImageInfo, 'utf8')
+  const imageInfo = {
+    formatVersion: 1,
+    images: imageDetailsFromArchive(archive),
+  }
   // A macOS app is often moved into /Applications after download. Embed its
   // image archive as an application resource so that move cannot break first
   // launch. Windows keeps the archive beside the .exe to avoid making the
@@ -151,6 +195,7 @@ function main() {
     fs.copyFileSync(archive, payloadArchive)
     fs.writeFileSync(payloadManifest, `${JSON.stringify(imageManifest, null, 2)}\n`)
   }
+  fs.writeFileSync(payloadImageInfo, `${JSON.stringify(imageInfo, null, 2)}\n`)
   try {
     const tauriArgs = ['--filter', '@box-local/deployment-manager', 'tauri', 'build']
     if (spec.bundle) tauriArgs.push('--bundles', spec.bundle)
@@ -162,6 +207,7 @@ function main() {
     })
     if (result.status !== 0) fail(`Tauri 构建失败，退出码 ${result.status}`)
   } finally {
+    fs.writeFileSync(payloadImageInfo, originalImageInfo)
     if (spec.bundle) {
       fs.rmSync(payloadArchive, { force: true })
       fs.rmSync(payloadManifest, { force: true })

@@ -34,6 +34,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectBakeCache = void 0;
 exports.copySoundAssets = copySoundAssets;
+exports.hasRuntimeAssetHash = hasRuntimeAssetHash;
 exports.resolveSeedMeshInfo = resolveSeedMeshInfo;
 exports.updateHotProjectAssets = updateHotProjectAssets;
 const Cold = __importStar(require("@box-local/schema/project/project-rda"));
@@ -61,6 +62,15 @@ function copySoundAssets(hp) {
             hp.soundAssets.hashes.push(hash);
         }
     });
+}
+/**
+ * An imported cloud project can contain a dangling model-library entry whose
+ * hash was never saved. Do not pass an empty value into migrateVoxel: there is
+ * no resource to migrate, and failing the complete prebake makes an otherwise
+ * playable map permanently unavailable.
+ */
+function hasRuntimeAssetHash(hash) {
+    return typeof hash === 'string' && hash.trim().length > 0;
 }
 /**
  * A local project model and its VOXA source can legitimately have the same
@@ -398,12 +408,17 @@ class ProjectBakeCache {
                 hp.modules[script.name] = warmItem;
             });
             syncAssets(Object.assign({}, cold.assets, extra.meshAssets), (coldItem) => {
-                return (!!coldItem.modelId ||
+                const isMeshAsset = !!coldItem.modelId ||
                     [
                         Cold.AssetType.VOXEL_MODEL,
                         Cold.AssetType.IMAGE,
                         Cold.AssetType.GLTF_MODEL,
-                    ].includes(coldItem.type));
+                    ].includes(coldItem.type);
+                if (isMeshAsset && !hasRuntimeAssetHash(coldItem.hash)) {
+                    this.build.logger.warn('Skipping a model asset with an empty resource hash while baking the map.');
+                    return false;
+                }
+                return isMeshAsset;
             }, Hot.MeshAssetSchema, hp.meshAssets, (mesh, spec, url) => __awaiter(this, void 0, void 0, function* () {
                 const info = yield this.getMeshInfo(spec.hash, spec.modelId ? Cold.AssetType.VOXEL_MODEL : spec.type);
                 if (spec.modelId) {

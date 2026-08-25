@@ -491,13 +491,31 @@ function about() {
   const legal = state.legal || {}
   const values = [
     ['启动器版本', info.applicationVersion || '读取中'],
-    ['镜像版本', info.imageTag || '读取中'],
-    ['运行平台', [info.platform, info.architecture].filter(Boolean).join(' / ') || '未知'],
     ['构建提交', info.sourceRevision || '未知'],
     ['构建时间', formatBeijingBuildTime(info.buildCreatedAt)],
-    ['构建来源', formatBuildSource(info.buildSource)],
   ]
-  return `<header><div><h1>关于</h1></div></header><section class="about-page"><article class="about-card"><div class="about-card-heading"><h2>版本信息</h2></div><dl class="about-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt>${label === '构建提交' ? `<dd class="about-build-revision" title="${escapeHtml(title || '')}"><code>${escapeHtml(value)}</code><button class="about-copy-button" type="button" data-copy-build-revision="${escapeHtml(value)}" aria-label="复制构建提交" title="复制构建提交">${icon('copy')}</button></dd>` : `<dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd>`}</div>`).join('')}</dl></article><article class="about-card"><div class="about-card-heading"><h2>发行许可</h2></div><div class="about-document-list"><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article></section>`
+  const serviceImages = Array.isArray(info.serviceImages) ? info.serviceImages : []
+  const imageRows = serviceImages.length
+    ? serviceImages
+        .map(
+          (service) => `<article class="about-image-row">
+            <div><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.image)}</small></div>
+            <dl class="about-image-meta">
+              <div><dt>镜像版本</dt><dd>${escapeHtml(service.tag)}</dd></div>
+              <div><dt>镜像平台</dt><dd>${escapeHtml(service.platform)}</dd></div>
+              <div><dt>构建时间</dt><dd>${escapeHtml(formatBeijingBuildTime(service.createdAt))}</dd></div>
+              <div><dt>镜像标识</dt><dd title="${escapeHtml(service.imageId)}">${escapeHtml(service.imageId)}</dd></div>
+            </dl>
+          </article>`,
+        )
+        .join('')
+    : '<div class="about-image-empty">正在读取组件镜像信息…</div>'
+
+  return `<header><div><h1>关于</h1></div></header><section class="about-page">
+    <article class="about-card"><div class="about-card-heading"><h2>启动器信息</h2></div><dl class="about-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt>${label === '构建提交' ? `<dd class="about-build-revision" title="${escapeHtml(title || '')}"><code>${escapeHtml(value)}</code><button class="about-copy-button" type="button" data-copy-build-revision="${escapeHtml(value)}" aria-label="复制构建提交" title="复制构建提交">${icon('copy')}</button></dd>` : `<dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd>`}</div>`).join('')}</dl></article>
+    <article class="about-card"><div class="about-card-heading"><h2>服务镜像</h2></div><div class="about-image-list">${imageRows}</div></article>
+    <article class="about-card"><div class="about-card-heading"><h2>发行与许可</h2></div><div class="about-document-list"><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
+  </section>`
 }
 
 function formatBeijingBuildTime(value) {

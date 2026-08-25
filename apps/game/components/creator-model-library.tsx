@@ -112,7 +112,9 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || '导入模型工程失败');
-      setNotice(`已导入“${data.modelName || file.name}”`);
+      setNotice(data.requiresResourceResave
+        ? `已导入“${data.modelName || file.name}”。此旧工程未包含模型资源，请在 VOXA 中打开并保存一次后再放置。`
+        : `已导入“${data.modelName || file.name}”`);
       await refreshModels(true);
     } catch (error) {
       setNotice((error as Error).message || '导入模型工程失败');

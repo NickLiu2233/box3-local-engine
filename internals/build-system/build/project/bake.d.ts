@@ -12,6 +12,13 @@ export type RuntimeMeshInfo = {
     motionIds: string[];
 };
 /**
+ * An imported cloud project can contain a dangling model-library entry whose
+ * hash was never saved. Do not pass an empty value into migrateVoxel: there is
+ * no resource to migrate, and failing the complete prebake makes an otherwise
+ * playable map permanently unavailable.
+ */
+export declare function hasRuntimeAssetHash(hash: unknown): hash is string;
+/**
  * A local project model and its VOXA source can legitimately have the same
  * numeric model id. The entity path is authoritative in that case. Falling
  * back to model id preserves Boxes' rename/migration behaviour for legacy
