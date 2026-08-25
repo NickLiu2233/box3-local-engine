@@ -108,11 +108,16 @@ const initialMapSize = Array.isArray(launchTarget?.initialMapSize)
   ? launchTarget.initialMapSize
   : []
 const initialMapVoxelCount = initialMapSize.reduce((total, value) => total * Number(value), 1)
-// A 1024×256×1024 terrain requires about 512 MiB for the script-side voxel
-// mirror alone. Reserve sufficient isolate headroom automatically so selecting
-// the experimental giant size does not silently inherit the normal 512 MiB
-// quota and fail while loading its initial terrain.
-const requiredScriptMemoryMB = initialMapVoxelCount >= 1024 * 256 * 1024 ? 2048 : 512
+// A 1024×128×1024 terrain needs roughly 256 MiB for the script-side voxel
+// mirror before its other runtime allocations. Reserve isolate headroom for
+// very large custom maps so they cannot silently inherit the normal 512 MiB
+// quota and fail while creating their initial terrain.
+const requiredScriptMemoryMB =
+  initialMapVoxelCount > 64 * 1024 * 1024
+    ? 2048
+    : initialMapVoxelCount > 16 * 1024 * 1024
+      ? 1024
+      : 512
 const configuredScriptHeapMB = Number(
   process.env.BOX_SCRIPT_HEAP_MB || process.env.SCRIPT_HEAP_MB || 512,
 )

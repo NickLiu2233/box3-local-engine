@@ -20,7 +20,6 @@ const themes = [
 const state = {
   page: 'overview',
   setupSection: 'data',
-  helpSection: 'welcome',
   busy: false,
   status: null,
   config: null,
@@ -64,7 +63,6 @@ const icons = {
     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.33.72.6 1 .3.3.7.44 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"/>',
   logs: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   performance: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V8"/><path d="M2 19h22"/>',
-  help: '<circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.8 1.95c-.94.66-1.5 1.03-1.5 2.05M12 17h.01"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/>',
   archive: '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
   play: '<path d="m8 5 11 7-11 7Z"/>',
@@ -124,7 +122,7 @@ function shell(content) {
   return `<div class="shell">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('logs', 'logs', '运行日志')}${navItem('help', 'help', '帮助手册')}${navItem('about', 'info', '关于')}</nav>
+      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('logs', 'logs', '运行日志')}${navItem('about', 'info', '关于')}</nav>
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
@@ -488,45 +486,6 @@ function backups() {
     <section class="backup-list">${state.backupsLoading ? '<div class="empty-backup"><strong>正在读取备份…</strong></div>' : items || '<div class="empty-backup"><strong>尚无本地备份</strong><span>重要修改前可点击右上角“立即备份”。</span></div>'}</section>`
 }
 
-const helpChapters = [
-  ['welcome', '认识产品'],
-  ['quickstart', '快速部署'],
-  ['services', '服务与端口'],
-  ['configuration', '配置说明'],
-  ['workflow', '创作与游玩'],
-  ['players', '玩家与权限'],
-  ['operations', '运维与排障'],
-]
-
-function helpNav([id, label]) {
-  return `<button class="help-nav-item ${state.helpSection === id ? 'active' : ''}" data-help-section="${id}">${label}</button>`
-}
-
-function helpSection(title, content) {
-  return `<section class="guide-section"><h3>${title}</h3>${content}</section>`
-}
-
-function helpList(items) {
-  return `<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`
-}
-
-function helpContent() {
-  const chapters = {
-    welcome: `<div class="guide-heading"><h2>BOX3 Engine</h2></div><div class="guide-grid">${helpSection('能做什么', helpList(['在本机或服务器运行 Creator 与 Play', '管理地图、地图组、模型和游玩包', '使用 VOXA 编辑本地模型', '按需启用玩家账号、权限与封禁']))}${helpSection('产品定位', '<p>本项目保留 BOX 核心引擎与创作流程，并将平台依赖替换为本地服务。它不是 BOX 云平台的完整复制品，不包含云社区、商业化、平台审核与数据分析。</p>')}${helpSection('部署组成', '<div class="tag-row"><span>Creator</span><span>Play</span><span>玩家服务</span><span>登录门户</span><span>VOXA</span></div>')}${helpSection('数据原则', '<p>地图、模型和运行缓存保存在应用数据目录。配置 PostgreSQL 后，玩家与地图脚本数据写入远程数据库；Redis 仅用于缓存和运行时协调。</p>')}</div>`,
-    quickstart: `<div class="guide-heading"><span>首次使用</span><h2>快速部署</h2><p>准备 Docker Desktop，几步完成本机部署。</p></div><ol class="step-list"><li><b>启动 Docker</b><span>安装 Docker Desktop，并保持 Linux containers 模式。</span></li><li><b>打开管理器</b><span>Windows 运行 EXE，macOS 打开 APP。</span></li><li><b>填写 PostgreSQL</b><span>PostgreSQL 为必填；Redis 可留空。保存配置不会启动容器。</span></li><li><b>选择启动范围</b><span>回到总览，选择全部服务、创作端或游玩端；管理器会导入所需离线镜像并启动对应服务。</span></li><li><b>开始使用</b><span>状态变为“运行正常”后点击对应服务的打开按钮。</span></li></ol><div class="guide-callout"><strong>数据服务要求</strong><span>启动前必须完成 PostgreSQL 配置。Redis 仅用于缓存和运行时协调，未配置时会使用本地回退能力。</span></div>`,
-    services: `<div class="guide-heading"><span>系统组成</span><h2>服务与端口</h2><p>每个模块职责独立，可以从总览直接打开。</p></div><div class="service-table"><div class="table-head"><span>服务</span><span>默认地址</span><span>用途</span></div><div><b>Creator</b><code>:3002</code><span>地图和项目资源创作</span></div><div><b>Play</b><code>:3000</code><span>玩家游玩与作品管理</span></div><div><b>玩家管理</b><code>:3213</code><span>账号、角色、封禁和审计</span></div><div><b>登录门户</b><code>:3214</code><span>示例登录与注册入口</span></div><div><b>VOXA</b><code>:3001</code><span>模型创建和编辑</span></div></div>${helpSection('访问范围', '<p>Play、玩家管理和登录门户可使用本机、局域网或公网地址。Creator 与 VOXA 仅允许本机或局域网私有 IP，启动器会强制阻止公网 IP 和域名。公网游玩建议配置 HTTPS 反向代理、访问权限和防火墙。</p>')}`,
-    configuration: `<div class="guide-heading"><span>数据配置</span><h2>配置说明</h2><p>常用参数分为五个页面，配置保存与服务启动彼此独立。</p></div><div class="guide-grid">${helpSection('PostgreSQL · 必填', helpList(['保存前会检查地址和端口是否可达', '玩家管理、登录门户与地图脚本数据都使用 PostgreSQL', '地址、数据库名、账号与首次密码都必须填写', 'SSL 由数据库服务端要求决定']))}${helpSection('Redis · 选填', helpList(['业务 DB 与缓存 DB 应使用不同编号', '留空时不启用 Redis 缓存', 'Redis 不保存唯一业务数据，可随时重建']))}${helpSection('访问设置', helpList(['127.0.0.1：仅当前电脑访问', 'Play、玩家管理和登录门户可使用局域网或公网 IP', 'Creator 与 VOXA 仅支持本机或局域网私有 IP，不能部署到公网或域名']))}${helpSection('服主与安全', helpList(['可替换服主操作令牌、玩家服务 API Key 和运行时身份密钥', '密钥至少 16 个字符；留空会保留当前值', '修改密钥后旧会话或 API 调用会失效']))}${helpSection('原始 .env', helpList(['显示当前 .env 原文，适合高级配置和排障', '会显示密码与密钥，请勿截图或转发', '保存后不会自动重启服务，需在总览手动启动或重启']))}${helpSection('运行容量', helpList(['游玩运行时：同时活跃的地图/房间', '编辑运行时：同时打开的编辑项目', '创作预览：编辑器内运行实例', '上限越高，占用的内存越多']))}</div>`,
-    workflow: `<div class="guide-heading"><span>日常使用</span><h2>创作与游玩</h2><p>Creator 管理源工程，Play 运行导出的游戏包。</p></div><div class="workflow-columns">${helpSection('Creator', helpList(['新建或导入地图工程', '主地图下可创建共享资源的副地图', '项目模型只属于当前项目，不修改本地模型原件', '共享脚本、图片、音频和角色在地图组内同步', '通过 VOXA 编辑模型后返回项目继续使用', '导出单地图工程、地图组工程或游戏包']))}${helpSection('Play', helpList(['导入 Creator 导出的游戏包', '玩家通过 /p/地图访问 ID 进入作品', '主地图负责地图组入口，副地图通常通过传送进入', '后台预热可降低首位玩家进入等待时间', '游玩包是只读运行快照，不作为源工程编辑']))}</div><div class="guide-callout"><strong>备份建议</strong><span>重要修改前导出地图组工程；游戏包用于部署，不能代替源工程备份。</span></div>`,
-    players: `<div class="guide-heading"><span>需要 PostgreSQL</span><h2>玩家与权限</h2><p>玩家身份由独立玩家服务统一管理。</p></div><div class="guide-grid">${helpSection('账号资料', helpList(['记录用户名、显示名、注册与登录时间', '记录可信代理后的注册 IP、最后登录 IP', '支持绑定兼容用神岛 ID（boxId）', '可查看会话、设备与登录历史']))}${helpSection('权限层级', helpList(['服主：管理权限、管理员及账号删除', '管理员：按服主授予的权限执行管理', '协管员：处理指定范围的玩家事务', '玩家：进入游戏并访问自己的数据']))}${helpSection('安全操作', helpList(['支持临时封禁和永久封禁', '支持账号、IP 与设备维度封禁', '强制下线会撤销会话并通知运行时', '管理 API 必须携带服主配置的密钥']))}${helpSection('登录门户', '<p>内置门户用于快速部署和测试。正式运营时，服主也可以自行开发登录页，通过玩家服务公开 API 完成注册、登录和账号维护。</p>')}</div>`,
-    operations: `<div class="guide-heading"><span>维护指南</span><h2>运维与排障</h2><p>先看状态，再看日志，最后检查外部依赖。</p></div><div class="diagnostic-list"><div><b>服务无法启动</b><span>确认 Docker Desktop 正在运行、PostgreSQL 已配置且可连接、磁盘空间充足，镜像架构与电脑一致。</span></div><div><b>无法进入地图</b><span>查看 Creator/Play 日志，检查运行时上限、地图资源完整性与脚本内存。</span></div><div><b>数据库不可用</b><span>检查安全组、防火墙、5432 端口、账号密码和 SSL 设置；PostgreSQL 为必填，修复后重新保存配置。</span></div><div><b>Redis 不可用</b><span>检查 6379 端口和密码；清空地址会停用 Redis 缓存，不会影响源工程。</span></div><div><b>外部设备打不开</b><span>访问地址填写服务器 IP 或域名，并在防火墙中开放对应端口。</span></div><div><b>升级镜像</b><span>停止服务，备份应用数据目录，替换离线包后重新打开管理器；已有数据不会被程序目录覆盖。</span></div></div><div class="guide-callout"><strong>备份与恢复</strong><span>本地备份包含地图工程、游玩包、VOXA 本地模型与资源；不包含 .env、服主密钥、密码、远程 PostgreSQL 数据和 Redis 缓存。玩家与脚本数据请由数据库服务商或服主自行备份。备份可导出分享，导入后仍需点击“恢复”并确认才会写入本机。</span></div><div class="guide-callout"><strong>日志</strong><span>“运行日志”集中显示最近 500 行容器输出。反馈问题时，请同时提供服务名、发生时间和相关错误段。</span></div>`,
-  }
-  return chapters[state.helpSection] || chapters.welcome
-}
-
-function help() {
-  return `<header><div><h1>帮助手册</h1></div></header><div class="help-layout"><nav class="help-nav">${helpChapters.map(helpNav).join('')}</nav><article class="guide-content">${helpContent()}</article></div>`
-}
-
 function about() {
   const info = state.about || {}
   const legal = state.legal || {}
@@ -582,11 +541,9 @@ function render() {
             ? backups()
             : state.page === 'logs'
               ? logs()
-              : state.page === 'help'
-                ? help()
-                : state.page === 'about'
-                  ? about()
-                  : overview()
+              : state.page === 'about'
+                ? about()
+                : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
   syncPerformancePolling()
@@ -769,12 +726,6 @@ function bindEvents() {
         state.config.publicHost = ''
       }
       state.playAccessMode = mode || ''
-      render()
-    }),
-  )
-  document.querySelectorAll('[data-help-section]').forEach((node) =>
-    node.addEventListener('click', () => {
-      state.helpSection = node.dataset.helpSection
       render()
     }),
   )

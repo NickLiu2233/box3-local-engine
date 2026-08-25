@@ -15,31 +15,61 @@ try {
   const main = manager.createProject({
     id: 'readable-directory-key',
     name: '主地图',
-    mapSize: 'large',
+    mapSize: 'small',
   })
   assert.match(main.mapUuid, uuidPattern)
-  assert.deepEqual(main.mapSize, [256, 128, 256])
+  assert.deepEqual(main.mapSize, [32, 32, 32])
   assert.equal(main.templateId, 'blank')
 
-  const extraLarge = manager.createProject({
-    id: 'extra-large-map',
-    name: '极大地图',
-    mapSize: 'extraLarge',
+  const medium = manager.createProject({
+    id: 'medium-map',
+    name: '中地图',
+    mapSize: 'medium',
   })
-  assert.deepEqual(extraLarge.mapSize, [512, 256, 512])
-  assert.equal(extraLarge.templateId, 'blank')
+  assert.deepEqual(medium.mapSize, [64, 128, 64])
+  assert.equal(medium.templateId, 'blank')
 
-  const giant = manager.createProject({
-    id: 'giant-map',
-    name: '巨型地图',
-    mapSize: 'giant',
+  const large = manager.createProject({
+    id: 'large-map',
+    name: '大地图',
+    mapSize: 'large',
   })
-  assert.deepEqual(giant.mapSize, [1024, 256, 1024])
-  assert.equal(giant.templateId, 'blank')
+  assert.deepEqual(large.mapSize, [128, 128, 128])
+
+  const custom = manager.createProject({
+    id: 'custom-map',
+    name: '自定义地图',
+    mapSize: [48, 96, 48],
+  })
+  assert.deepEqual(custom.mapSize, [48, 96, 48])
+  const maximumCustom = manager.createProject({
+    id: 'maximum-custom-map',
+    name: '最大自定义地图',
+    mapSize: [1024, 128, 1024],
+  })
+  assert.deepEqual(maximumCustom.mapSize, [1024, 128, 1024])
+  assert.throws(
+    () =>
+      manager.createProject({
+        id: 'invalid-custom-map',
+        name: '无效自定义地图',
+        mapSize: [1040, 64, 64],
+      }),
+    /自定义地图尺寸/,
+  )
+  assert.throws(
+    () =>
+      manager.createProject({
+        id: 'oversized-custom-map',
+        name: '超限自定义地图',
+        mapSize: [1024, 144, 1024],
+      }),
+    /自定义地图尺寸/,
+  )
 
   const before = manager.projectStorageIdentity(main.id)
   const launchTarget = manager.getLaunchTarget({ project: main.id })
-  assert.deepEqual(launchTarget.initialMapSize, [256, 128, 256])
+  assert.deepEqual(launchTarget.initialMapSize, [32, 32, 32])
   assert.equal(launchTarget.initialTerrainTheme, 'plane')
   manager.updateProject(main.id, { publicId: 'editable-player-link' })
   const after = manager.projectStorageIdentity(main.id)

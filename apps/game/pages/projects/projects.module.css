@@ -156,6 +156,14 @@
 .mapSizeOptions button small { color: rgba(255,255,255,.42); font-size: 10px; }
 .mapSizeOptions button.mapChoiceSelected { border-color: #ffdb00; background: rgba(255,219,0,.1); box-shadow: inset 0 0 0 1px rgba(255,219,0,.16); }
 .mapSizeOptions button.mapChoiceSelected small { color: rgba(255,219,0,.72); }
+.customMapSize { display: grid; gap: 9px; margin-top: 10px; padding: 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: #333; }
+.customMapSizeGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.customMapSizeGrid label { display: grid; gap: 5px; margin: 0; color: rgba(255,255,255,.58); font-size: 11px; font-weight: 600; }
+.customMapSizeGrid input { height: 34px; padding: 0 8px; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; color: #fff; background: #404040; font-size: 13px; }
+.customMapSizeGrid input:focus { border-color: #ffdb00; box-shadow: 0 0 0 3px rgba(255,219,0,.12); }
+.customMapSizeHint { margin: 0; color: rgba(255,255,255,.52); font-size: 11px; line-height: 1.5; }
+.customMapSizeHintwarning { color: #ffdb00; }
+.customMapSizeHinterror { color: #ff7777; }
 .fieldGroup input[readonly] { color: rgba(255,255,255,.72); background: #353535; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; font-size: 13px; cursor: default; }
 .fieldHint { display: block; margin: 0; color: rgba(255,255,255,.46); font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
 .assetModeOptions { display: grid; gap: 8px; margin-top: 16px; }.assetModeOptions > label { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 11px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; cursor: pointer; background: #333; }.assetModeOptions > label.assetModeSelected { border-color: rgba(255,219,0,.72); background: rgba(255,219,0,.08); }.assetModeOptions input { width: 15px; height: 15px; margin: 2px 0 0; accent-color: #ffdb00; }.assetModeOptions span { display: grid; gap: 3px; }.assetModeOptions strong { color: #fff; font-size: 13px; }.assetModeOptions small { color: rgba(255,255,255,.52); font-size: 11px; line-height: 1.4; }.assetConfigFields { display: grid; gap: 11px; margin-top: 13px; padding: 12px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: #333; }.assetConfigGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

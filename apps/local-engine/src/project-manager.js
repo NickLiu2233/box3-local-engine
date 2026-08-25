@@ -29,14 +29,16 @@ const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const publicMapIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 const mapSizePresets = {
-  tiny: [32, 64, 32],
-  extraSmall: [64, 64, 64],
-  small: [64, 128, 64],
-  medium: [128, 128, 128],
-  large: [256, 128, 256],
+  small: [32, 32, 32],
+  medium: [64, 128, 64],
+  large: [128, 128, 128],
   huge: [256, 64, 256],
-  extraLarge: [512, 256, 512],
-  giant: [1024, 256, 1024],
+}
+const customMapSizeLimits = {
+  minimumAxis: 16,
+  maximumWidthAndLength: 1024,
+  maximumHeight: 128,
+  maximumVoxels: 1024 * 128 * 1024,
 }
 const mapTemplatePresets = {
   blank: 'plane',
@@ -877,12 +879,36 @@ function normalizeMapSizePreset(value) {
   return Object.hasOwn(mapSizePresets, value) ? value : 'medium'
 }
 
+function normalizeMapSize(value) {
+  if (!Array.isArray(value)) return mapSizePresets[normalizeMapSizePreset(value)]
+  if (value.length !== 3) throw new Error('自定义地图尺寸必须包含宽、高、长三个值')
+  const dimensions = value.map((axis) => Number(axis))
+  const [width, height, length] = dimensions
+  if (
+    dimensions.some(
+      (axis) =>
+        !Number.isInteger(axis) || axis < customMapSizeLimits.minimumAxis || axis % 16 !== 0,
+    ) ||
+    width > customMapSizeLimits.maximumWidthAndLength ||
+    height > customMapSizeLimits.maximumHeight ||
+    length > customMapSizeLimits.maximumWidthAndLength
+  ) {
+    throw new Error('自定义地图尺寸：宽、长必须为 16 到 1024，高必须为 16 到 128，且均为 16 的倍数')
+  }
+  const voxelCount = dimensions.reduce((total, axis) => total * axis, 1)
+  if (voxelCount > customMapSizeLimits.maximumVoxels) {
+    throw new Error('自定义地图尺寸过大，体素总数不能超过 134217728')
+  }
+  return dimensions
+}
+
 function normalizeMapTemplatePreset(value) {
   return Object.hasOwn(mapTemplatePresets, value) ? value : 'blank'
 }
 
 function createProject({ id, name, author = '', description = '', mapSize }) {
   const safeId = assertProjectId(id)
+  const normalizedMapSize = normalizeMapSize(mapSize)
   const root = projectRoot(safeId)
   if (fs.existsSync(root)) throw new Error(`Project already exists: ${safeId}`)
   if (publicMapIdExists(safeId)) throw new Error(`地图 ID“${safeId}”已被其他项目使用`)
@@ -901,7 +927,6 @@ function createProject({ id, name, author = '', description = '', mapSize }) {
   }
   const now = new Date().toISOString()
   const themes = ['sunset', 'ocean', 'forest', 'violet']
-  const normalizedMapSize = normalizeMapSizePreset(mapSize)
   const metadata = {
     formatVersion: 1,
     id: safeId,
@@ -920,7 +945,7 @@ function createProject({ id, name, author = '', description = '', mapSize }) {
     // These values are consumed only when the first edit runtime creates its
     // project state. Afterwards the voxel data in project-state.json is the
     // authoritative editable map, exactly as it is for imported projects.
-    mapSize: mapSizePresets[normalizedMapSize],
+    mapSize: normalizedMapSize,
     templateId: 'blank',
     terrainTheme: mapTemplatePresets.blank,
   }

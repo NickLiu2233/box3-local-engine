@@ -32,15 +32,8 @@ import {
 } from '../../server/import-diagnostics';
 
 type ProjectStatus = '草稿' | '已发布';
-type MapSizePreset =
-  | 'tiny'
-  | 'extraSmall'
-  | 'small'
-  | 'medium'
-  | 'large'
-  | 'huge'
-  | 'extraLarge'
-  | 'giant';
+type MapSizePreset = 'small' | 'medium' | 'large' | 'huge';
+type MapSizeChoice = MapSizePreset | 'custom';
 type CompatibilityReport = {
   level: 'compatible' | 'warning' | 'error';
   summary: { warnings: number; errors: number; missingBlobCount: number };
@@ -134,16 +127,41 @@ const snapshotReasonLabels: Record<string, string> = {
   'before-restore': '恢复前备份',
 };
 
-const mapSizeOptions: Array<{ id: MapSizePreset; label: string; dimensions: string; hint?: string }> = [
-  { id: 'tiny', label: '极小', dimensions: '32×64×32' },
-  { id: 'extraSmall', label: '超小', dimensions: '64×64×64' },
-  { id: 'small', label: '小', dimensions: '64×128×64' },
-  { id: 'medium', label: '中', dimensions: '128×128×128' },
-  { id: 'large', label: '大', dimensions: '256×128×256' },
+const mapSizeOptions: Array<{ id: MapSizePreset; label: string; dimensions: string }> = [
+  { id: 'small', label: '小', dimensions: '32×32×32' },
+  { id: 'medium', label: '中', dimensions: '64×128×64' },
+  { id: 'large', label: '大', dimensions: '128×128×128' },
   { id: 'huge', label: '超大', dimensions: '256×64×256' },
-  { id: 'extraLarge', label: '极大', dimensions: '512×256×512' },
-  { id: 'giant', label: '巨型', dimensions: '1024×256×1024', hint: '实验性' },
 ];
+
+function customMapSizeMessage(dimensions: [number, number, number]) {
+  const [width, height, length] = dimensions;
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    !Number.isInteger(length) ||
+    width < 16 ||
+    width > 1024 ||
+    height < 16 ||
+    height > 128 ||
+    length < 16 ||
+    length > 1024 ||
+    dimensions.some((axis) => axis % 16 !== 0)
+  ) {
+    return { level: 'error' as const, text: '宽、长为 16–1024，高为 16–128，且均需是 16 的倍数。' };
+  }
+  const voxels = width * height * length;
+  if (voxels > 1024 * 128 * 1024) {
+    return { level: 'error' as const, text: '地图尺寸超过支持上限。请缩小地图尺寸。' };
+  }
+  if (voxels > 64 * 1024 * 1024) {
+    return { level: 'warning' as const, text: '超大地图：首次创建和打开会很慢，建议使用 16 GB 以上内存。' };
+  }
+  if (voxels > 16 * 1024 * 1024) {
+    return { level: 'warning' as const, text: '此地图较大，加载和编辑会占用更多内存，建议使用 8 GB 以上内存。' };
+  }
+  return { level: 'normal' as const, text: `约 ${(voxels / 1024 / 1024).toFixed(voxels >= 1024 * 1024 ? 1 : 2)} M 体素，适合常规本地编辑。` };
+}
 
 function defaultMapCover() {
   return '/map-templates/blank-template.png';
@@ -207,7 +225,8 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   const [projectAuthor, setProjectAuthor] = useState('');
   const [projectDescription, setProjectDescription] = useState('');
   const [projectCover, setProjectCover] = useState('');
-  const [mapSize, setMapSize] = useState<MapSizePreset>('medium');
+  const [mapSize, setMapSize] = useState<MapSizeChoice>('medium');
+  const [customMapSize, setCustomMapSize] = useState<[number, number, number]>([64, 128, 64]);
   const [dialogError, setDialogError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
@@ -234,6 +253,14 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   const [selectedSnapshot, setSelectedSnapshot] = useState('');
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [recoveryError, setRecoveryError] = useState('');
+  const customSizeFeedback = mapSize === 'custom' ? customMapSizeMessage(customMapSize) : null;
+  const updateCustomMapSize = (index: 0 | 1 | 2, value: string) => {
+    setCustomMapSize((current) => {
+      const next = [...current] as [number, number, number];
+      next[index] = Number(value);
+      return next;
+    });
+  };
   const creatorName = creator.displayName || creator.username || '已登录用户';
   const creatorInitial = Array.from(creatorName)[0]?.toUpperCase() || '用';
 
@@ -313,6 +340,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     setProjectDescription('');
     setProjectCover('');
     setMapSize('medium');
+    setCustomMapSize([64, 128, 64]);
     setDialogError('');
     setDialog('create');
   };
@@ -748,7 +776,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
           name,
           author: projectAuthor,
           description: projectDescription,
-          mapSize,
+          mapSize: mapSize === 'custom' ? customMapSize : mapSize,
         }),
       });
       const data = await response.json();
@@ -1252,13 +1280,39 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                             onClick={() => setMapSize(option.id)}
                           >
                             <strong>{option.label}</strong>
-                            <small>
-                              {option.dimensions}
-                              {option.hint && <em>{option.hint}</em>}
-                            </small>
+                            <small>{option.dimensions}</small>
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={mapSize === 'custom'}
+                          className={mapSize === 'custom' ? styles.mapChoiceSelected : undefined}
+                          onClick={() => setMapSize('custom')}
+                        >
+                          <strong>自定义</strong>
+                          <small>自行设置</small>
+                        </button>
                       </div>
+                      {mapSize === 'custom' && customSizeFeedback && (
+                        <div className={styles.customMapSize}>
+                          <div className={styles.customMapSizeGrid}>
+                            <label>
+                              宽
+                              <input type="number" min={16} max={1024} step={16} value={customMapSize[0]} onChange={(event) => updateCustomMapSize(0, event.target.value)} />
+                            </label>
+                            <label>
+                              高
+                              <input type="number" min={16} max={128} step={16} value={customMapSize[1]} onChange={(event) => updateCustomMapSize(1, event.target.value)} />
+                            </label>
+                            <label>
+                              长
+                              <input type="number" min={16} max={1024} step={16} value={customMapSize[2]} onChange={(event) => updateCustomMapSize(2, event.target.value)} />
+                            </label>
+                          </div>
+                          <p className={`${styles.customMapSizeHint} ${styles[`customMapSizeHint${customSizeFeedback.level}`]}`}>{customSizeFeedback.text}</p>
+                        </div>
+                      )}
                     </div>
                   </>}
                   {dialog === 'details' && <>
