@@ -1,335 +1,194 @@
-# Box Local Engine
+# BOX3 Engine
 
-Box Local Engine 是一个独立、本地优先的体素游戏引擎，提供创作端和游玩端，并附带可独立
-部署的 VOXA 本地模型编辑器。
+BOX3 Engine 是一个本地优先的体素游戏引擎发行版。它将 Creator（ARENA）、Play、VOXA、玩家身份服务、项目管理、离线资源和 Docker 部署整合在同一仓库中，可在不依赖原始云平台的情况下创建、迁移、编辑、发布和运行地图。
 
-交付给其他人安装或部署时，请从
-[安装、部署与使用手册](docs/installation-and-operations.md) 开始。
+本仓库主要面向引擎开发者、部署维护者和发行协作者。若你是首次部署的服主，请从[安装、部署与使用手册](docs/installation-and-operations.md)开始；所有文档入口见[文档导航](docs/README.md)。
 
-维护者构建图形化启动器、离线包和 GitHub Release 时，请参阅
-[桌面启动器打包、分发与 CI 发布手册](docs/release-and-distribution.md)。
+## 能力与边界
 
-参与开发、评审或发布协作时，请从
-[BOX3 Engine 开发者与协作手册](docs/developer-guide.md) 开始。
+| 能力       | 当前支持                                               | 关键边界                           |
+| ---------- | ------------------------------------------------------ | ---------------------------------- |
+| 地图创作   | 创建、导入、编辑、预览、发布、工程备份与恢复           | Creator 只应在本机或可信局域网使用 |
+| 玩家游玩   | 多地图 Play、发布快照、玩家身份、封禁与会话撤销        | Play 只读取已发布的只读快照        |
+| 模型创作   | VOXA 模型、皮肤、动画和可编辑工程导入导出              | 项目内资源不自动变成全局模型库     |
+| 地图迁移   | 将云端工程和资源导出为本地 `.boxproject`               | 缺失 blob 会明确报告，不能凭空恢复 |
+| 身份系统   | Player Service API、角色分层、封禁与服主管理           | 认证密钥只能存在于服务端           |
+| 登录门户   | 提供独立参考门户，也支持服主自建                       | Creator/Play 不绑定某个登录前端    |
+| 部署与发行 | Docker Compose、桌面启动器、离线包、GitHub Tag Release | PostgreSQL 由服主提供；Redis 可选  |
 
-仓库可以独立安装、构建和运行，不依赖原始 `boxes` 工程、私有 npm 仓库、云端 CDN、
-在线账号、Redis 或 BOX 内部服务。地图、默认人物、动画和基础运行资源均从本地
-读取。
+不包含云端工程实时同步、多人协作编辑、第三方 OAuth、公开服务器列表或 Mod 市场。Creator/ARENA 与 VOXA 不得暴露到不可信公网。
 
-## 产品与服务
+## 架构概览
 
-| 产品       | 用途                                   | 一键部署                  | 默认入口                 |
-| ---------- | -------------------------------------- | ------------------------- | ------------------------ |
-| 创作端     | 管理、编辑、预览和发布作品             | `pnpm creator`            | `/`                      |
-| 游玩端     | 从固定目录提供多个只读作品             | `pnpm play`               | `/`                      |
-| 玩家中心   | 创作端与游玩端共用的玩家身份和服主管理 | `pnpm player-service`     | `http://127.0.0.1:3213/` |
-| 登录门户   | 可直接部署的玩家登录与注册页面         | `pnpm player-auth-portal` | `http://127.0.0.1:3214/` |
-| VOXA       | 制作和管理本地体素模型                 | `pnpm voxa`               | `http://127.0.0.1:3001/` |
-| 云端迁移器 | 将云端工程 hash 导出为可编辑本地工程   | `pnpm migrator`           | `http://127.0.0.1:4120/` |
+```mermaid
+flowchart LR
+  Browser["浏览器"] --> Web["apps/game\nCreator / Play 界面"]
+  Web --> Control["apps/local-engine\n项目、发布、运行时编排"]
+  Control --> Runtime["services/game-server\n权威游戏运行时"]
+  Control --> Storage["工程、发布快照与本地 blob"]
+  Voxa["apps/voxa\n模型编辑器"] --> Storage
+  Player["Player Service\n玩家、权限、会话"] --> Postgres["PostgreSQL"]
+  Player -. 可选缓存 .-> Redis["Redis"]
+  Portal["服主登录门户\n可替换"] --> Player
+  Manager["apps/deployment-manager\nTauri 部署管理器"] --> Docker["Docker Compose 与离线镜像"]
+```
 
-每种形态都是一个完整部署。启动器会自动协调网页和所需运行时，使用者只选择创作端或
-游玩端，不再分别构建、启动其他子项目。
+Creator 保存的是可编辑工程；发布会产生不可变快照；Play 只运行快照。这是数据隔离和分发安全的基础，不能用前端隐藏功能替代。
 
-游玩端只使用一个公开网页端口。创作端除网页端口外，还会在宿主机回环地址映射编辑和预览
-运行时端口；这些端口只服务本机编辑器，不应向公网开放。
+更多模块关系、数据模型和源码定位见[系统架构与源码入口](docs/architecture.md)。
 
-游玩端使用真正的 play-only 构建。编辑页面、项目管理接口、管理员实现和 Monaco 不会
-进入玩家网页产物，并且游戏运行时只读取发布数据。它不是在完整创作端上隐藏几个按钮。
+## 快速开始：开发者
 
-## 环境要求
+### 环境要求
 
-- Node.js 20 或更高版本
-- pnpm 10.12.1
-- 或 Docker Engine/Desktop 与 Docker Compose
+- Node.js `22.17.x`（见 `.node-version`）
+- pnpm `10.12.1`（由 Corepack 管理）
+- Docker Desktop 或 Docker Engine + Docker Compose（验证容器与生产部署时需要）
+- Rust stable、平台原生工具链（仅构建 Tauri 桌面启动器时需要）
 
-## 快速开始
-
-克隆仓库后执行：
+首次克隆后执行：
 
 ```bash
 corepack enable
-pnpm install
+pnpm install --frozen-lockfile
 pnpm check
 ```
 
-### 开始创作
+`pnpm check` 是本地功能回归集合；通过后再开始改动，能避免将环境问题误判为代码问题。
 
-开发时使用热更新：
+### 启动一个 Creator 开发环境
 
 ```bash
 pnpm dev
 ```
 
-Docker 生产部署：
+这会启动 Creator 开发运行时。网页、运行时和项目数据的实际地址由当前本地配置决定；不要手工启动内部编辑/预览端口。常用开发入口与生产容器命令见下表。
 
-```bash
-pnpm player-service
-pnpm player-auth-portal
-pnpm creator
-```
+| 目标            | 开发 / 构建入口                          | 说明                                         |
+| --------------- | ---------------------------------------- | -------------------------------------------- |
+| Creator / ARENA | `pnpm dev`、`pnpm creator`               | `dev` 用于源码开发；`creator` 构建并启动容器 |
+| Play            | `pnpm play`                              | 启动只读游玩端，不会构建 Creator             |
+| VOXA            | `pnpm voxa:dev`、`pnpm voxa`             | 模型编辑器源码开发或容器部署                 |
+| 玩家服务        | `pnpm player-service`                    | 玩家、权限、会话与服主管理                   |
+| 参考登录门户    | `pnpm player-auth-portal`                | 独立示例服务，可由服主替换                   |
+| 云端迁移器      | `pnpm migrator:dev`、`pnpm migrator`     | 从外部工程导出本地可编辑包                   |
+| 图形化启动器    | `pnpm --dir apps/deployment-manager dev` | 仅启动 Web UI；Tauri 调试见开发者手册        |
 
-需要制作体素模型时，再独立启动 VOXA：
+## 快速开始：Docker 部署
 
-```bash
-pnpm voxa
-```
-
-打开：
-
-- 创作端：<http://127.0.0.1:3002/>
-- 游玩端：<http://127.0.0.1:3000/>
-- 玩家中心：<http://127.0.0.1:3213/>
-- 登录门户：<http://127.0.0.1:3214/>
-- VOXA：<http://127.0.0.1:3001/>
-- 云端迁移器：<http://127.0.0.1:4120/>
-
-### 迁移云端工程
-
-迁移器是独立镜像，不会读取或写入创作端的项目目录。优先在 `.env` 配置与 `boxes`
-`GoIPFSStore` 一致的内容 API，例如 `BOX_MIGRATOR_CONTENT_API_URL=https://content-api.example.com`
-（自动请求 `/block/get?arg=<hash>`）；也可配置静态地址
-`BOX_MIGRATOR_CONTENT_URL=https://cdn.example.com/block/{hash}`。体素模型会先读取 IPFS，失败后按
-`BOX_MIGRATOR_OSS_URL/engine/m/<hash>` 回退，并继续复制模型元数据引用的 `dataHash`。私有服务可再配置
-`BOX_MIGRATOR_AUTHORIZATION`。运行中的迁移任务不会按结果保留时间过期；完成或失败的状态默认保留
-1 小时。大工程默认使用 512 个引用扫描任务和 32 个实际 HTTP 请求，避免状态页面因上万并发任务
-失去响应。然后启动：
-
-```bash
-pnpm migrator
-```
-
-在网页输入地图工程 hash，下载生成的 `.boxproject`，再从创作端“导入工程”导入。迁移的是当前
-工程及其引用的内容资源，不包括账号、协作关系、评论、统计和发布历史。
-
-每个作品都有独立工程目录。作品管理器负责创建、导入、编辑、发布和导出，不需要手动操作
-工程中的 `source/`、`releases/` 或 blob 文件。选择作品后，管理器会打开对应的
-`/e/<project-id>` 编辑地址或 `/p/<project-id>` 预览地址。
-
-### 部署游玩端
-
-在作品管理器中先发布版本，再选择“导出游玩部署包”。服主进入导出目录后只需执行：
-
-```bash
-docker load -i play-image.tar
-docker compose up -d
-```
-
-`play-image.tar` 只包含游玩端镜像，玩家服务由 `pnpm player-service` 独立生成
-`player-service-image.tar`。游玩部署包已经绑定具体作品版本；
-普通玩家不需要安装引擎，也不会获得可重新导入编辑器的工程包。完整流程参阅
-[本地工程与发布包](docs/projects.md)。
-
-## 一键部署
-
-复制配置模板：
+生产部署前复制配置模板，并填写服主自己的 PostgreSQL 连接信息和随机密钥：
 
 ```bash
 cp .env.docker.example .env
 ```
 
-部署创作端：
+至少应检查：
+
+- `BOX_DATABASE_URL`：Player Service 与持久数据使用的 PostgreSQL；
+- `PERMISSION_TOKEN_SECRET`、`BOX_PLAYER_AUTH_API_KEY`、`BOX_PLAY_ADMIN_TOKEN`：使用不同的随机值；
+- 各服务公开地址与端口：局域网或反向代理部署时必须同步更新；
+- `BOX_PLAYER_LOGIN_URL`：服主自建登录页地址；留空时页面明确显示“未开启登录”。
+
+不要把 `.env`、数据库密码、令牌、用户项目、备份或 Docker 卷提交到仓库。完整的配置、端口、局域网、公网和恢复步骤见[安装、部署与使用手册](docs/installation-and-operations.md)。
+
+桌面启动器和源码 Compose 的配置来源不同：启动器要求远程 PostgreSQL 并自动维护 `.runtime.env`；源码 Compose 可选择仓库内的基础设施容器。变量含义、网络边界和修改配置后的重启规则见[配置参考](docs/configuration-reference.md)。
+
+## 仓库地图
+
+| 路径                        | 职责                                                       | 从这里开始的典型需求                 |
+| --------------------------- | ---------------------------------------------------------- | ------------------------------------ |
+| `apps/game/`                | Creator / Play 网页、作品中心、客户端引擎                  | 页面、交互、地图/模型卡片、玩家 UI   |
+| `apps/local-engine/src/`    | 项目管理、导入导出、发布、地图组、运行时生命周期、镜像脚本 | 工程、发布包、运行时和本地存储问题   |
+| `services/game-server/src/` | 权威游戏运行时、编辑副本、脚本、会话、权限、存储           | 协议、脚本、地图运行、玩家与数据空间 |
+| `apps/voxa/`                | 本地模型、皮肤、动画编辑器和 `.voxaproject`                | 模型工程、预览、资源导入导出         |
+| `apps/migrator/`            | 云端工程迁移与资源抓取                                     | 云端导入、资源缺失、迁移进度和错误   |
+| `apps/deployment-manager/`  | Vite + Tauri 启动器                                        | 配置界面、Docker 控制、备份、离线包  |
+| `packages/`、`internals/`   | 共享协议、schema、构建、脚本 API 和基础模块                | 跨模块能力、外部兼容接口             |
+| `scripts/`                  | 根级回归、离线包与静态检查                                 | 新增跨模块回归或发行校验             |
+| `docs/`                     | 部署、开发、数据、认证与发行说明                           | 更新用户可见行为或协作约定           |
+
+地图 UUID、地图组关系、blob/hash、项目快照、脚本 API 与运行时消息顺序都属于兼容接口。改动前请先阅读[与 boxes 的对齐基线](docs/boxes-parity.md)，并添加针对实际行为的回归测试。
+
+## 关键概念
+
+- **Map UUID**：一张地图永久不变的身份；不能用标题、目录名或玩家访问地址替代。
+- **Map Group**：由一个主地图和零到多个副地图组成，共享权威资源库与组数据空间。
+- **Shared Resource Library**：地图组共享的模型、皮肤、共享脚本、UI、音频和图片，不是每张地图复制一份的目录。
+- **Editable Project**：Creator 可读写的工程；可导出 `.boxproject` 继续编辑。
+- **Published Snapshot**：发布生成的不可变运行版本；Play 只接收它。
+- **Local Model Library**：VOXA 服务器级模型库；仅当显式导入或放置时才进入项目资源范围。
+
+术语、地图组和存储决策的完整定义见[`CONTEXT.md`](CONTEXT.md)与[系统架构](docs/architecture.md)。
+
+## 开发与验证
+
+### 推荐工作流
+
+1. 先执行 `git status --short`，保护同事或使用者的未提交改动。
+2. 根据需求在“仓库地图”中定位模块，阅读附近测试和模块 README。
+3. 明确用户可见的成功/失败行为；涉及迁移、资源、锁或网络问题时先构造可重复的最小复现。
+4. 用最小改动实现，避免顺手重构无关模块。
+5. 新增 bug 回归或接口校验，格式化受影响文件。
+6. 运行对应模块检查，最后运行完整门禁。
+7. 同步更新 `docs/`、配置模板和发行说明。
+
+### 常用命令
+
+| 命令             | 用途                                             |
+| ---------------- | ------------------------------------------------ |
+| `pnpm check`     | 本地控制层、地图、VOXA、迁移器、启动器等回归集合 |
+| `pnpm lint`      | JavaScript/TypeScript lint                       |
+| `pnpm typecheck` | 当前可稳定执行的类型检查                         |
+| `pnpm test`      | workspace 测试与根级检查                         |
+| `pnpm verify`    | 格式、lint、类型检查和全部测试；合并与发布前必跑 |
+| `pnpm format`    | 使用 Prettier 格式化整个仓库                     |
+| `pnpm stop`      | 停止当前 Docker 部署，不删除持久数据             |
+
+改动 Compose、Dockerfile 或环境变量时还应执行：
 
 ```bash
-pnpm creator
+docker compose --env-file .env.docker.example config --quiet
 ```
 
-该命令只构建创作端，不会构建游玩端。
+更多验证矩阵、评审模板和敏感信息规则见[开发者与协作手册](docs/developer-guide.md)。
 
-创作端网页使用 `127.0.0.1:3002`。编辑和本机预览的 WebSocket 分别使用仅绑定本机的
-`127.0.0.1:9967` 与 `127.0.0.1:9966`，不会暴露到局域网或公网。
+## 认证与自建登录门户
 
-游玩端默认使用 `3000`，因此可以和创作端、VOXA 同时运行。
-
-镜像已经构建过，只启动创作端、不重新构建：
-
-```bash
-pnpm creator:up
-```
-
-启动多作品游玩端：
-
-```bash
-pnpm play
-```
-
-该命令只准备并启动游玩端，不会构建创作端。
-
-地图放在 `apps/local-engine/play-worlds/<地图ID>/`，目录内必须包含发布产物的
-`manifest.json` 和 `data/`。例如地图 ID 为 `island` 时，玩家地址是
-`http://127.0.0.1:3000/p/island`。启动后可随时增加地图，不需要重新构建或重启。
-
-例如已经在创作端发布了 `island@v1.0.0`，把整个发布目录复制到地图库：
+Player Service 提供认证和服主管理 API；浏览器前端不能直接持有 `BOX_PLAYER_AUTH_API_KEY` 或 `BOX_PLAY_ADMIN_TOKEN`。服主自建门户必须有服务端代理：
 
 ```text
-apps/local-engine/projects/island/releases/v1.0.0/
-                         ↓ 整体复制
-apps/local-engine/play-worlds/island/
+浏览器 → 服主登录门户后端 → Player Service API → PostgreSQL
 ```
 
-只复制发布目录，不要复制可编辑的 `source/`。地图复制完整后，游玩端通常会在 3 秒内发现；
-游玩端会在后台依次为全部已安装地图生成持久预烘焙缓存；`BOX_PLAY_PREWARM_RUNTIMES` 控制完成后继续常驻的地图数量，新导入地图也会立即开始后台预热。
-预烘焙结果保存在独立运行时缓存中，空闲回收后不会重复烘焙，也不会修改只读发布目录。
+仓库附带的 `player-auth-portal` 是独立参考实现，适合快速测试，不应被视为不可替换的默认登录产品。接入规范、回跳白名单、Cookie 转发与安全检查见[自建登录门户接入指南](docs/self-hosted-login.md)。
 
-### 镜像打包后增加地图
+## 构建与发行
 
-可以。Docker 镜像只包含游玩引擎，地图通过宿主机目录只读挂载，不在镜像内部。即使镜像
-已经构建并分发，也可以继续向宿主机的 `play-worlds/` 加入地图：
-
-```text
-play-worlds/
-  island/
-    manifest.json
-    data/
-  city/
-    manifest.json
-    data/
-```
-
-加入 `city` 后直接访问 `/p/city`，不需要重新构建镜像或重启容器。首页 `/` 会自动显示
-所有有效地图。私服主只有镜像 tar、没有本仓库时，应使用
-[部署与联机指南](docs/deployment.md#只分发镜像的多地图部署)中的 Compose 配置。
-
-需要在网页中管理地图时，可以配置 `BOX_PLAY_ADMIN_TOKEN` 和
-`BOX_PLAY_LIBRARY_READ_ONLY=false`。服主在首页验证后即可用一个 `.boxplay` 导入或导出
-完整地图组（主地图和全部副地图），或删除地图。默认不配置密钥，管理接口不会开放。
-
-停止当前部署：
+推送 `v*` Tag 会触发 GitHub Actions：先执行 `pnpm verify`，再构建 `linux/amd64`、`linux/arm64` 镜像和 Windows、macOS、Linux 桌面包，最后创建 GitHub Release。
 
 ```bash
-pnpm stop
+pnpm verify
+git tag -a v0.1.0 -m "BOX3 Engine v0.1.0"
+git push origin v0.1.0
 ```
 
-同一台电脑上默认不要同时启动两种模式，因为它们通常使用相同的网页端口。创作工程保存在
-宿主机 `apps/local-engine/projects/`；游玩端只读挂载 `apps/local-engine/play-worlds/`，
-不会挂载作品的 `source/` 目录。
+自动 Release 当前适用于内部测试或明确标记为未签名的分发；Windows Authenticode、macOS Developer ID 签名和 notarization 仍需在正式公开发行流程中补充。详细的产物结构、原生构建要求、离线包校验和 CI Runner 条件见[构建、分发与 CI](docs/release-and-distribution.md)。
 
-游玩镜像不会包含本机创作工程、可编辑导出包、环境变量文件、证书、Source Map 或
-TypeScript 源文件。浏览器仍会取得渲染当前游戏所必需的模型、贴图、音频和压缩 JavaScript，
-因此发布隔离不能替代权威运行时中的规则保护。
+## 文档入口
 
-完整配置、局域网连接和 HTTPS/WSS 反向代理说明参阅
-[部署与联机指南](docs/deployment.md)。
+| 主题                               | 文档                                                                                                            |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 首次部署、配置、数据库、备份与排障 | [安装、部署与使用](docs/installation-and-operations.md)                                                         |
+| 图形化启动器                       | [图形化部署管理器](docs/graphical-deployment-manager.md)                                                        |
+| 环境变量、端口与网络边界           | [配置参考](docs/configuration-reference.md)                                                                     |
+| 项目、发布包与地图组               | [作品与发布包](docs/projects.md)                                                                                |
+| Creator、Play、VOXA 专项部署       | [创作端](docs/creator-deployment.md)、[游玩端](docs/play-deployment.md)、[VOXA](docs/voxa-deployment.md)        |
+| Player Service API 与自建登录      | [认证 API](docs/player-service-api.md)、[自建登录门户](docs/self-hosted-login.md)                               |
+| 协作、源码入口和兼容边界           | [开发者手册](docs/developer-guide.md)、[系统架构](docs/architecture.md)、[boxes 对齐基线](docs/boxes-parity.md) |
+| 完整索引                           | [文档导航](docs/README.md)                                                                                      |
 
-VOXA 的独立镜像、数据备份和创作端接入参阅
-[VOXA 本地模型编辑器构建与部署手册](docs/voxa-deployment.md)。
+## 许可证与安全
 
-可选 PostgreSQL、Redis 开发环境及从 boxes 迁移能力的边界参阅
-[本地基础设施与可迁移能力](docs/local-infrastructure.md)。默认模式不依赖这些服务。
+源仓库的 npm 元数据为 `UNLICENSED`，不授予源代码开源许可。面向用户的发行包适用[BOX3 Engine 非商业本地部署最终用户许可协议](distribution/LICENSE.txt)。商业使用、二次开发、再分发或品牌合作必须取得权利人书面授权。
 
-## 常用配置
-
-| 变量                                       | 默认值         | 作用                                                                     |
-| ------------------------------------------ | -------------- | ------------------------------------------------------------------------ |
-| `BOX_PLAY_PORT`                            | `3000`         | 游玩端公开端口                                                           |
-| `BOX_CREATOR_PORT`                         | `3002`         | 创作端本机端口                                                           |
-| `BOX_WORLD_NAME`                           | `BOX 世界`     | 玩家看到的世界名称                                                       |
-| `BOX_LOCAL_PLAYER_LIMIT`                   | `8`            | 最大玩家数                                                               |
-| `PERMISSION_TOKEN_SECRET`                  | 空             | 正式部署使用的稳定随机密钥                                               |
-| `BOX_SERVER_PUBLIC_URL`                    | 空             | 公网反向代理后的完整 HTTPS 地址                                          |
-| `BOX_PLAYER_LOGIN_URL`                     | 空             | 服主自行部署的玩家登录页；留空时显示“未开启登录”                         |
-| `BOX_PLAYER_AUTH_API_KEY`                  | 空             | 玩家认证接口的服务端密钥，至少 16 位，禁止放入浏览器                     |
-| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS`          | 空             | 认证接口允许的 Origin 附加白名单，不代替服务端 Key                       |
-| `BOX_AUTH_PORTAL_PORT`                     | `3214`         | 独立登录门户的宿主机端口                                                 |
-| `BOX_AUTH_PORTAL_PUBLIC_URL`               | 本机 `3214`    | 玩家浏览器访问登录门户的公开地址                                         |
-| `BOX_TRUST_PROXY`                          | `false`        | 仅在可信反向代理后启用转发请求头                                         |
-| `BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS`        | `10`           | 单一来源 IP 在登录窗口内允许的失败次数                                   |
-| `BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS` | `5`            | 单一来源 IP 在注册窗口内允许的注册次数                                   |
-| `BOX_CREATOR_EDIT_MAX_RUNTIMES`            | `6`            | 创作端同时保留的编辑运行时数量                                           |
-| `BOX_CREATOR_PLAY_MAX_RUNTIMES`            | `4`            | 创作端同时保留的预览运行时数量                                           |
-| `BOX_PLAY_MAX_RUNTIMES`                    | `8`            | 游玩端同时保留的地图运行时数量                                           |
-| `BOX_CREATOR_EDIT_PREWARM_RUNTIMES`        | `6`            | Creator 后台预热的最近编辑工程数量，`0` 为关闭                           |
-| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES`        | `0`            | Creator 后台预热的预览工程数量；开启会在无人访问时执行地图脚本           |
-| `BOX_PLAY_PREWARM_RUNTIMES`                | `8`            | 全部地图缓存完成后常驻的主地图优先数量，`0` 为关闭后台预热               |
-| `BOX_RUNTIME_IDLE_TIMEOUT_MS`              | `900000`       | 无活动连接运行时的空闲回收时间                                           |
-| `BOX_RUNTIME_START_TIMEOUT_MS`             | `1800000`      | 大地图迁移/预烘焙的最长启动时间；期间不会因单次健康检查超时而重启        |
-| `BOX_GROUP_STATE_LOCK_TIMEOUT_MS`          | `30000`        | 地图组共享状态写锁的最长等待时间                                         |
-| `BOX_GROUP_STATE_LOCK_STALE_MS`            | `300000`       | 无法确认所有者的旧锁超过该时间后可回收；活跃本机进程不会被抢锁           |
-| `BOX_TELEPORT_MAX_ROOMS`                   | `64`           | 地图组传送可同时保留的私有房间数量；房间运行时仍计入对应的总运行时上限   |
-| `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`        | `900000`       | 私有传送房间无人连接后的回收时间                                         |
-| `BOX_SESSION_TTL_MS`                       | `60000`        | 未连接玩家 Session 的有效时间                                            |
-| `BOX_SCRIPT_MEMORY_MB`                     | `512`          | 单个地图 `ivmp` 脚本隔离环境的内存上限（MiB）；大型体素地图的主要配置    |
-| `BOX_SCRIPT_HEAP_MB`                       | `512`          | 兼容其他脚本执行路径的堆内存上限（MiB），建议与上一项保持一致            |
-| `BOX_PLAYER_REVOCATION_POLL_MS`            | `1000`         | 强制下线事件同步到各地图运行时的间隔（毫秒）                             |
-| `BOX_SESSION_RATE_LIMIT_PER_MINUTE`        | `60`           | 每个 IP 每分钟创建 Session 上限                                          |
-| `BOX_DATABASE_URL`                         | 空             | 服主自己的 PostgreSQL 连接串；填写后自动启用，只进入服务端               |
-| `BOX_IDENTITY_DATABASE_SCHEMA`             | `box_identity` | 玩家账号、会话和审计记录使用的独立 schema                                |
-| `BOX_PLAYER_REGISTRATION_ENABLED`          | `true`         | 是否允许新玩家注册本地账号；关闭不影响已有账号登录                       |
-| `REDIS_HOST`                               | 空             | 可选 Redis；启用跨实例 Session、共享限流和预烘焙构建缓存，并保留本地回退 |
-
-公网部署时把域名反向代理到 `BOX_PLAY_PORT`，允许 WebSocket Upgrade，并填写
-`BOX_SERVER_PUBLIC_URL=https://你的域名`。只有反向代理会覆盖并清洗
-`X-Forwarded-For/Host/Proto` 时才设置 `BOX_TRUST_PROXY=true`。
-
-## 常用命令
-
-| 命令                                    | 作用                                    |
-| --------------------------------------- | --------------------------------------- |
-| `pnpm dev`                              | 启动创作端开发环境                      |
-| `pnpm player-service`                   | 独立构建、打包并部署玩家服务镜像        |
-| `pnpm player-service:up`                | 直接启动已有玩家服务镜像，不重新构建    |
-| `pnpm player-auth-portal`               | 独立构建并部署玩家登录门户镜像          |
-| `pnpm player-auth-portal:up`            | 直接启动已有登录门户镜像，不重新构建    |
-| `pnpm creator`                          | 只构建并部署创作端，不构建玩家服务      |
-| `pnpm creator:up`                       | 直接启动已有创作端镜像，不重新构建      |
-| `pnpm play`                             | 只准备并启动游玩端，不构建玩家服务      |
-| `pnpm infra`                            | 启动可选的本地 PostgreSQL 和 Redis 容器 |
-| `pnpm infra:stop`                       | 停止可选基础设施但保留数据 volume       |
-| `pnpm stop`                             | 停止当前 Docker 部署                    |
-| `pnpm check`                            | 检查独立依赖、离线资源和本地运行约束    |
-| `pnpm check:edit-session`               | 检查本地创作会话                        |
-| `pnpm project:package -- <作品>@<版本>` | 导出不含工程源目录的服主分发包          |
-
-维护者如需只构建或直接运行源码产物，仍可使用
-`build:creator`、`start:creator`、`build:play` 和 `start:play`。这些是内部调试入口，
-普通创作者和服主不需要组合使用。
-
-## 目录结构
-
-```text
-apps/game/             浏览器界面实现
-apps/local-engine/     创作端/游玩端构建、启动和本地数据管理
-services/game-server/  内部权威游戏运行时
-packages/              随仓库分发的引擎模块
-internals/             随仓库分发的内部基础模块
-docs/                  创作、发布与部署文档
-```
-
-所有 `@box-local/*` 依赖都是本仓库内的 workspace 模块。完成安装后，运行游戏不需要连接
-BOX 的服务器或 CDN。
-
-## 当前范围
-
-当前支持：
-
-- 独立本地工程的创建、编辑、导入和导出
-- 将工程发布为不可变的只读游玩快照
-- 创作端本机预览
-- 游玩端多人连接
-- 强制注册/登录的本地玩家账号，未登录时不能进入 Creator 或 Play
-- 服主玩家管理，包括昵称、角色、封禁和会话撤销
-- 默认人物和基础资源本地化
-- 创作端和游玩端的生产构建及 Docker 部署
-
-当前不包含云端工程同步、多人协作编辑、第三方 OAuth/社交账号、服务器列表、精细访问控制、跨地图
-传送或 Mod 市场。创作端没有公网身份验证，不应直接暴露到不可信网络。
-
-## 更多文档
-
-- [创作端构建与部署手册](docs/creator-deployment.md)
-- [BOX3 Engine 开发者与协作手册](docs/developer-guide.md)
-- [游玩端构建、分发与多地图部署手册](docs/play-deployment.md)
-- [部署与联机指南](docs/deployment.md)
-- [作品创建、编辑与发布](docs/projects.md)
-- [本地工程与发布包](docs/projects.md)
-- [Local Engine 启动器](apps/local-engine/README.md)
-- [浏览器界面内部说明](apps/game/README.md)
-- [游戏运行时内部说明](services/game-server/README.md)
-- [PostgreSQL 数据空间部署手册](docs/postgresql-data-storage.md)
-- [本地玩家身份与管理](docs/player-identity.md)
-- [Player Service 对外 API 与自建登录页](docs/player-service-api.md)
-- [与 boxes 的能力边界](docs/boxes-parity.md)
-
-## 许可证
-
-仓库当前标记为 `UNLICENSED`。在正式确定开源许可证和第三方资源授权之前，仅建议用于
-内部演示或受控测试，不建议直接公开分发。
+提交代码前请确认没有加入真实 `.env`、密码、数据库连接串、令牌、Cookie、用户 IP、日志、地图工程、模型数据、备份或 Docker 卷。

@@ -1,6 +1,21 @@
 # BOX3 Engine 开发者与协作手册
 
-本文是本仓库协作者的统一入口：从首次拉取代码，到本地运行、修改、测试、评审和发布。它描述的是 Local Engine 的协作方式；服主部署请看[安装、部署与使用手册](./installation-and-operations.md)。
+本文是本仓库协作者的统一入口：从首次拉取代码，到本地运行、修改、测试、评审和发布。它描述的是 Local Engine 的协作方式；服主部署请看[安装、部署与使用手册](./installation-and-operations.md)。完整文档分类见[文档导航](./README.md)。
+
+## 先用十分钟熟悉项目
+
+1. 阅读[系统架构与源码入口](./architecture.md)，先确认需求属于网页、运行时、项目管理、VOXA、认证、启动器还是发行。
+2. 阅读对应模块的 `README.md` 与附近测试，不要从根目录开始盲目搜索。
+3. 执行 `corepack enable && pnpm install --frozen-lockfile`，再运行 `pnpm check` 验证基础环境。
+4. 先写清楚要保持的用户可见行为和失败提示；涉及地图、blob、协议或 boxes 行为时，先阅读[对齐基线](./boxes-parity.md)。
+
+常见入口：网页在 `apps/game/`；项目和运行时编排在 `apps/local-engine/src/`；权威运行时在 `services/game-server/src/`；模型编辑器在 `apps/voxa/`；图形化启动器在 `apps/deployment-manager/`。
+
+如果需求来自用户截图或日志，先按“用户看到的页面/服务 → 请求 API → 控制层 → 运行时/数据”回溯，不要从 `packages/` 开始泛搜。以下三个问题可以快速缩小范围：
+
+1. 这是一份可编辑工程、已发布快照，还是 Play 安装包？
+2. 这是地图自身数据还是地图组共享资源？
+3. 这是网页显示问题、容器编排问题，还是 game-server 的权威状态问题？
 
 ## 1. 项目定位与协作原则
 
@@ -94,6 +109,8 @@ pnpm --filter @box-local/deployment-manager tauri dev
 4. 增加 Rust 单测或 `scripts/check-desktop-deployment-manager.js` 回归；
 5. 验证亮色、暗色、空状态、加载状态和错误状态。
 
+`src-tauri/src/` 已按职责拆分：`config.rs` 负责应用数据目录、配置解析和原子写入；`docker.rs` 负责 Docker 命令；`commands.rs` 负责 Tauri 命令、配置校验、备份和诊断；`lib.rs` 只组装模块和注册命令。新增功能优先进入对应模块，不要重新把业务逻辑堆回 `lib.rs`。
+
 ## 5. 配置、数据与安全边界
 
 ### 配置文件
@@ -173,6 +190,7 @@ pnpm verify
 | VOXA/模型                   | 本地模型库、项目内模型、皮肤、删除/重命名与发布后资源读取                                                                                       |
 | 启动器                      | `cargo test --manifest-path apps/deployment-manager/src-tauri/Cargo.toml`、`pnpm --dir apps/deployment-manager run build`、macOS/Windows 包校验 |
 | 迁移器                      | 真实小工程与失败资源、超时、取消、重试和错误展示                                                                                                |
+| 云端迁移后的脚本文件树      | `pnpm --filter @box-local/game-server test`；确认普通迁移脚本在共享资源刷新后仍显示、已移除共享脚本会消失                                       |
 
 测试不得连接真实生产 PostgreSQL、Redis 或云端账号。所有临时目录、端口、项目 ID 和资源 hash 应隔离且可重复运行。
 
@@ -212,16 +230,30 @@ docs(release): document unsigned desktop distribution
 
 | 主题                     | 文档                                                                 |
 | ------------------------ | -------------------------------------------------------------------- |
+| 架构、源码入口与模块职责 | [architecture.md](./architecture.md)                                 |
 | 创作、工程、发布与地图组 | [projects.md](./projects.md)                                         |
 | Play 部署与对外访问      | [play-deployment.md](./play-deployment.md)                           |
 | 数据库与表命名空间       | [postgresql-data-storage.md](./postgresql-data-storage.md)           |
 | 玩家服务与自建登录       | [player-service-api.md](./player-service-api.md)                     |
+| 自建登录门户安全接入     | [self-hosted-login.md](./self-hosted-login.md)                       |
 | 启动器使用               | [graphical-deployment-manager.md](./graphical-deployment-manager.md) |
 | 离线包、Release 与 CI    | [release-and-distribution.md](./release-and-distribution.md)         |
 | boxes 兼容边界           | [boxes-parity.md](./boxes-parity.md)                                 |
 | 安全风险与依赖审计       | [security-audit.md](./security-audit.md)                             |
 
 文档写明确命令、适用范围、前置条件、结果与恢复方式。不要在文档中承诺尚未实现的行为；例如未签名包应明确标注为未签名，Creator/VOXA 的公网限制不能描述为可选项。
+
+## 12. 一份改动的最小交付标准
+
+功能完成不等于“页面能打开”。交付前请在 PR/提交说明中留下以下可复核信息：
+
+1. **行为**：用户此前遇到什么，修复后成功与失败分别会看到什么。
+2. **边界**：是否改变工程/发布快照、共享资源、权限、网络、配置或 boxes 兼容接口。
+3. **测试**：执行过哪些命令；如果无法运行，说明原因和替代验证。
+4. **数据安全**：是否会修改、覆盖、迁移或删除用户数据；失败能否恢复。
+5. **文档**：新增变量、端口、操作步骤、发行包或限制是否已经更新到 `docs/`。
+
+对于迁移、导入和资源问题，测试 fixture 必须至少同时包含入口脚本、一个普通地图脚本和一个共享脚本；只测试“能启动”不足以证明编辑器文件树与地图实际运行内容一致。
 
 ## 10. 构建与发行
 

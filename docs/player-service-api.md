@@ -1,9 +1,10 @@
 # Player Service 对外 API
 
-Player Service 是无界面的身份服务。Local Engine 不再内置玩家登录/注册页面；服主可以使用
-任意前端技术实现登录页，通过下列 API 创建 Session。玩家管理后台仍位于 `/players`。
+Player Service 是账号、权限和会话的权威后端。它提供认证 API 与玩家管理后台（`/players`），但
+不要求服主采用某一种登录页面。完整离线包会额外携带 `player-auth-portal` 参考门户，便于快速
+测试；服主也可以用任意技术栈替换它。
 
-仓库提供了一个不进入任何镜像的完整服务端代理示例：
+仓库提供了一个可独立运行、也会打进参考门户镜像的服务端代理示例：
 [独立玩家登录门户](../examples/player-auth-portal/README.md)。它可以直接运行或作为独立镜像部署，也可以作为服主
 自有登录程序的最小参考实现。
 

@@ -550,6 +550,20 @@ export class CodeEditorServerController {
     );
     // 删除后端已经没有了的文件: 1，文件被删除了；2，共享文件被其它图取消贡献了
     currentFiles.map((file) => {
+      // In a local Map Group, ordinary scripts are owned by the map's project
+      // data (`project.scriptAssets` when serialized), not by the shared
+      // resource snapshot. A VOXA/shared-library refresh therefore has no
+      // matching entry for them. Removing every file absent from extraAssets
+      // made imported cloud maps appear to contain only their entry scripts
+      // even though the remaining scripts were still present and runnable.
+      //
+      // Keep ordinary local scripts here; only shared scripts are reconciled
+      // against the authoritative shared-resource snapshot. Treat an
+      // unavailable config as local as well so initialization can never
+      // destructively drop scripts while configuration is still loading.
+      if (getConfigSync()?.method !== 'web' && !file.isShare) {
+        return;
+      }
       if (
         !extraAssets[file.fileId] &&
         !['index.js', 'clientIndex.js'].includes(file.name)

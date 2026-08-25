@@ -21,7 +21,7 @@
 
 Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于同一目录。macOS 解压目录只包含 `.app`；镜像归档、清单、许可证、构建信息与校验文件均嵌入 APP 的 Resources 目录，因此可把 APP 单独移入“应用程序”目录。
 
-目前桌面启动器有四种原生构建目标：
+当前 CI 会构建六种原生桌面目标：
 
 | 发布目标        | 构建机              | Docker 镜像架构 |
 | --------------- | ------------------- | --------------- |
@@ -29,8 +29,10 @@ Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于
 | `windows-arm64` | Windows ARM64       | `linux/arm64`   |
 | `macos-amd64`   | Intel macOS         | `linux/amd64`   |
 | `macos-arm64`   | Apple Silicon macOS | `linux/arm64`   |
+| `linux-amd64`   | Linux x64           | `linux/amd64`   |
+| `linux-arm64`   | Linux ARM64         | `linux/arm64`   |
 
-Linux 服务器使用 Compose 离线包/镜像归档直接部署，不依赖桌面 GUI，也不应把 macOS 或 Windows 程序当作 Linux 服务端安装器。
+无图形界面的 Linux 服务器通常使用 Compose 离线包/镜像归档直接部署，不依赖桌面 GUI；Linux 桌面包用于需要图形化部署管理器的 Linux 工作站。
 
 ## 2. 构建前条件
 
@@ -72,7 +74,9 @@ box-local-engine-player-service:<标签>
 box-local-engine-player-auth-portal:<标签>
 ```
 
-镜像标签必须与目标匹配，例如 `0.1.0-macos-arm64`。不要把 PostgreSQL、Redis、开发镜像、数据库数据卷、`.env`、密钥或任何用户地图打进归档。
+镜像标签必须与桌面程序的目标匹配，例如 `0.1.0-macos-arm64`。离线归档名称、归档内五项镜像 tag、`BOX-OFFLINE-IMAGE.json` 的 `imageTag`、以及启动器编译时的 `BOX_MANAGER_IMAGE_TAG` 必须完全一致。不要把 PostgreSQL、Redis、开发镜像、数据库数据卷、`.env`、密钥或任何用户地图打进归档。
+
+这是离线包最容易被忽略的契约：Docker `load` 不会自动把 `linux-amd64` 标签改成 `windows-amd64` 或 `macos-amd64`。如果要让同一套 Linux 架构镜像服务多个桌面目标，必须在打包前为五项镜像重新 tag 成目标安装器期待的 tag，或调整构建器/启动器使用同一个稳定 tag。只改归档文件名不够。
 
 构建归档后，应在干净 Docker 环境中执行 `docker load -i`，并确认五个镜像均能被 `docker image inspect` 找到、架构为目标 `linux/amd64` 或 `linux/arm64`。
 
@@ -148,44 +152,61 @@ BOX_DESKTOP_REQUIRE_SIGNING=true node scripts/verify-desktop-offline-package.js 
 
 它执行依赖安装、生产依赖 critical 漏洞检查、Compose 模板校验和 `pnpm verify`。此工作流是合并前门禁，不发布任何二进制文件。
 
-桌面 Release 应采用以下触发约定：
+当前仓库已启用 `.github/workflows/release.yml`。向远端推送 `v*` Tag 会触发校验、镜像、桌面包和 GitHub Release 工作流：
 
-| 触发                       | 用途                                  | 允许上传公开 Release |
-| -------------------------- | ------------------------------------- | -------------------- |
-| Pull Request / `main` push | 源码与回归验证                        | 否                   |
-| 手动 `workflow_dispatch`   | 在指定构建机做候选包或排障包          | 否，除非显式审批     |
-| 推送受保护标签 `v*`        | 构建、签名、校验并创建 GitHub Release | 是                   |
+| 触发                       | 用途                                       | 创建 GitHub Release |
+| -------------------------- | ------------------------------------------ | ------------------- |
+| Pull Request / `main` push | 源码、依赖、Compose 与回归验证             | 否                  |
+| 推送标签 `v*`              | 校验、构建镜像、构建桌面 ZIP、创建 Release | 是                  |
 
-Tag 发布工作流尚需在组织配置好原生 Runner 和签名凭据后启用。不要用交叉编译伪造原生桌面包：Windows ARM64 需要 Windows ARM64 Runner；macOS ARM64、macOS Intel、Windows AMD64 也应分别在目标原生 Runner 构建。
+发布 Tag 应与根 `package.json` 版本一致，例如版本为 `0.1.0` 时使用 `v0.1.0`：
 
-建议的 Tag 工作流顺序：
+```bash
+git status --short
+pnpm verify
+git tag -a v0.1.0 -m "BOX3 Engine v0.1.0"
+git push origin v0.1.0
+```
+
+工作流先在 Ubuntu 上通过 QEMU/Buildx 生成 `linux/amd64`、`linux/arm64` 五服务镜像归档，再在对应原生 Runner 上构建 Windows、macOS 和 Linux 桌面包。它依赖 `windows-2022`、`windows-11-arm`、`macos-13`、`macos-14`、`ubuntu-22.04` 与 `ubuntu-24.04-arm` Runner 可用；仓库所在组织若没有某个 Runner 的访问权限，对应矩阵任务会失败，Release 也不会发布。
+
+发布负责人应在首次 Tag 前检查上述镜像 tag 契约。当前工作流以 `vX.Y.Z-linux-amd64` / `vX.Y.Z-linux-arm64` 构建镜像归档，而安装器构建器会按桌面目标推导 `vX.Y.Z-windows-amd64`、`vX.Y.Z-macos-arm64` 等 tag。若不在矩阵任务中重新 tag，桌面程序导入归档后将找不到自己期望的镜像 tag。不要通过文档或手工改文件名掩盖这个问题；应修正工作流并在无镜像 Docker 环境中完成首次启动 smoke test 后再正式发布。
+
+当前工作流**不包含** Windows Authenticode 签名、macOS Developer ID 签名或 notarization。它产出的自动 Release 适用于内部测试或明确标注为未签名的分发；公开正式发行前必须先补充签名和公证步骤，不能把“Tag 构建成功”等同于“可公开正式发布”。
+
+当前 Tag 工作流顺序：
 
 ```text
 vX.Y.Z tag
   → pnpm verify
-  → 各原生 Runner 构建五服务镜像归档
-  → 各原生 Runner 构建桌面 ZIP
-  → 签名 / macOS 公证
+  → Ubuntu 构建 amd64 / arm64 五服务镜像归档
+  → 各原生 Runner 构建六种桌面 ZIP
   → verify-desktop-offline-package
-  → 生成并复核 SHA-256
-  → GitHub Release 上传 ZIP、SHA256、BUILD-INFO、许可证说明
+  → GitHub Release 上传 ZIP 与镜像归档
 ```
 
-Release job 应只接受 `pnpm verify` 通过的同一提交；构建元信息中的 `sourceRevision` 必须等于 Tag 所指向的 commit。上传前需再次拒绝 `source=local-dirty`。
+正式公开发行时，在上述流程后补充：签名 / macOS 公证 → 下载后复核 SHA-256 → 发布签名与校验说明。
+
+Release job 只会使用 Tag 对应提交进行构建。上传前需确认工作流中的 `pnpm verify` 已成功，并检查 Release 产物没有 `source=local-dirty` 标记。
 
 ## 6. GitHub Release 附件约定
 
-每个版本至少上传：
+当前 Tag 工作流会上传：
 
 ```text
 BOX-Local-Engine-<版本>-windows-amd64.zip
 BOX-Local-Engine-<版本>-windows-arm64.zip
 BOX-Local-Engine-<版本>-macos-amd64.zip
 BOX-Local-Engine-<版本>-macos-arm64.zip
-SHA256SUMS.txt
+BOX-Local-Engine-<版本>-linux-amd64.zip
+BOX-Local-Engine-<版本>-linux-arm64.zip
+box-local-engine-images-v<版本>-linux-amd64.tar.gz
+box-local-engine-images-v<版本>-linux-arm64.tar.gz
 ```
 
-Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docker 前置条件、升级注意事项、已知限制、下载文件的 SHA-256，以及 Creator/VOXA 不支持公网暴露的安全边界。
+给 Windows 测试者通常下载 `windows-amd64.zip`；Windows on ARM 才下载 `windows-arm64.zip`。桌面 ZIP 已包含相应镜像归档，无需再向普通测试者单独发送 `.tar.gz`。
+
+Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docker 前置条件、升级注意事项、已知限制、下载文件的 SHA-256、是否已签名，以及 Creator/VOXA 不支持公网暴露的安全边界。
 
 不要上传：Docker Desktop 安装包、PostgreSQL/Redis、用户 `.env`、用户项目、`play-worlds`、VOXA 数据、备份、日志、Docker 卷或任何真实密钥。
 
@@ -195,7 +216,7 @@ Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docke
 - [ ] `pnpm verify` 通过。
 - [ ] 每种 CPU 架构的五服务镜像都通过导入与 inspect。
 - [ ] 每个 ZIP 通过 `verify-desktop-offline-package.js`。
-- [ ] Windows Authenticode 与 macOS Developer ID/notarization 已完成。
+- [ ] 若为公开正式发行：Windows Authenticode 与 macOS Developer ID/notarization 已完成。
 - [ ] SHA-256 已发布且从下载后的文件重新计算过。
 - [ ] 在没有源码、没有既有 Docker 镜像的干净机器上完成启动 smoke test。
 - [ ] Release 不含用户数据、密钥或内部构建凭据。
@@ -208,4 +229,4 @@ Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docke
 | Windows 找不到离线镜像 | EXE、`.tar.gz` 与清单是否仍在同一目录                                                                   |
 | macOS 无法打开         | Developer ID 签名、公证状态、Gatekeeper 提示；不要让用户关闭系统安全策略作为常规方案                    |
 | 保存配置失败           | Docker 是否已启动、数据目录是否可写、端口是否重复；Windows 请使用最新启动器以处理已有 `.env` 的安全替换 |
-| Tag 没有发布包         | 检查 Tag 是否匹配 `v*`、原生 Runner 是否在线、签名 Secret 是否已配置，以及 Release job 是否拒绝了脏构建 |
+| Tag 没有发布包         | 检查 Tag 是否匹配 `v*`、对应原生 Runner 是否可用，以及前置 `verify`、镜像或桌面矩阵任务是否失败         |

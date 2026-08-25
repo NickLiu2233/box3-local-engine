@@ -1,7 +1,7 @@
 # 部署与联机指南
 
-> PostgreSQL、Redis 的可选本地容器和实际接入范围见
-> [本地基础设施与可迁移能力](local-infrastructure.md)。默认部署不依赖它们。
+> PostgreSQL、Redis 的本地容器和接入范围见
+> [本地基础设施与可迁移能力](local-infrastructure.md)。Redis 可选；Player Service 的账号、权限和登录需要 PostgreSQL。图形化部署管理器要求使用远程 PostgreSQL。
 
 需要交付给其他人时，优先使用以下两份独立手册：
 

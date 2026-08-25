@@ -1,8 +1,10 @@
 # 本地基础设施与可迁移能力
 
-本地引擎默认使用零外部依赖模式。不开 PostgreSQL、Redis，也能创建、编辑和运行作品。
-需要长期保存脚本数据或为后续多进程部署准备共享基础设施时，再由部署者通过 `.env`
-显式开启相应服务。
+仓库的源码 Compose 支持把 PostgreSQL 与 Redis 作为可选基础设施：纯本地地图工程可在没有
+Redis 的情况下运行，地图脚本的数据存储仅在配置 PostgreSQL 后启用。Player Service 的账号、
+权限、封禁、登录与持久会话则以 PostgreSQL 为前提，面向真实玩家的部署必须配置 PostgreSQL。
+
+这与图形化部署管理器的产品策略不同：启动器不会安装基础设施，并且要求服主填写远程 PostgreSQL；Redis 仍可选。请根据部署路径选择配置，详见[配置参考](./configuration-reference.md)。
 
 ## 快速启动
 
