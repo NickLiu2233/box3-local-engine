@@ -164,13 +164,16 @@ function main() {
     fail(`镜像归档名称与目标架构 ${expectedArchitecture} 不一致`)
   }
 
-  const imageTagMatch = path
-    .basename(archive)
-    .match(/^box-local-engine-images-(.+)-(?:windows|macos|linux)-(?:amd64|arm64)\.tar(?:\.gz)?$/)
-  const imageTag = imageTagMatch
-    ? `${imageTagMatch[1]}-${platform.split('-')[0]}-${expectedArchitecture}`
-    : process.env.BOX_IMAGE_TAG
-  if (!imageTag) fail('无法从归档名称确定 BOX_IMAGE_TAG，请设置环境变量 BOX_IMAGE_TAG')
+  // The Docker tag belongs to the image archive, not to the native desktop
+  // executable. A linux/arm64 archive can be embedded by Windows on ARM,
+  // macOS on Apple Silicon and Linux ARM64 installers without duplicating the
+  // same five images under three different tags.
+  const imageDetails = imageDetailsFromArchive(archive)
+  const archiveImageTags = [...new Set(imageDetails.map(({ tag }) => tag).filter(Boolean))]
+  const imageTag = archiveImageTags.length === 1 ? archiveImageTags[0] : process.env.BOX_IMAGE_TAG
+  if (!imageTag) {
+    fail('镜像归档包含多个标签，请使用只含一个版本的五服务归档或设置 BOX_IMAGE_TAG')
+  }
 
   const payloadArchive = path.join(managerRoot, 'src-tauri/payload', path.basename(archive))
   const imageManifest = {
@@ -185,7 +188,7 @@ function main() {
   const originalImageInfo = fs.readFileSync(payloadImageInfo, 'utf8')
   const imageInfo = {
     formatVersion: 1,
-    images: imageDetailsFromArchive(archive),
+    images: imageDetails,
   }
   // A macOS app is often moved into /Applications after download. Embed its
   // image archive as an application resource so that move cannot break first

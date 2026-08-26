@@ -172,7 +172,11 @@ assert.match(builder, /macos-amd64/)
 assert.match(builder, /macos-arm64/)
 assert.match(builder, /linux-amd64/)
 assert.match(builder, /linux-arm64/)
-assert.match(builder, /windows\|macos\|linux/)
+assert.match(builder, /platform\.endsWith\('arm64'\) \? 'arm64' : 'amd64'/)
+assert.match(
+  builder,
+  /archiveImageTags\.length === 1 \? archiveImageTags\[0\] : process\.env\.BOX_IMAGE_TAG/,
+)
 assert.match(builder, /Embed its[\s\S]*image archive/)
 assert.match(builder, /BOX-OFFLINE-IMAGE\.json/)
 assert.match(builder, /sha256: sha256\(archive\)/)
