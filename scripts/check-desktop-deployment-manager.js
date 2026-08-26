@@ -17,6 +17,7 @@ const backend = fs
 const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), 'utf8')
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
+const tauriConfiguration = JSON.parse(tauriConfig)
 const compose = fs.readFileSync(path.join(root, 'docker-compose.yml'), 'utf8')
 const launcher = fs.readFileSync(path.join(root, 'apps/local-engine/src/launcher.js'), 'utf8')
 const builder = fs.readFileSync(
@@ -193,6 +194,18 @@ assert.match(packageVerifier, /SHA-256 不匹配/)
 assert.match(packageVerifier, /function findMetadataRoot/)
 assert.match(builder, /if \(!spec\.bundle\) \{[\s\S]*?fs\.copyFileSync\(archive/)
 assert.match(tauriConfig, /"resources": \["payload"\]/)
+assert.deepEqual(tauriConfiguration.bundle.icon, ['icons/icon.ico', 'icons/icon.icns'])
+const windowsIcon = path.join(manager, 'src-tauri/icons/icon.ico')
+assert.ok(fs.statSync(windowsIcon).isFile(), 'missing Windows application icon')
+assert.deepEqual(fs.readFileSync(windowsIcon).subarray(0, 4), Buffer.from([0, 0, 1, 0]))
+assert.ok(
+  fs.statSync(path.join(manager, 'src-tauri/icons/icon.png')).isFile(),
+  'missing Tauri runtime icon',
+)
+assert.ok(
+  fs.statSync(path.join(manager, 'src-tauri/icons/icon.icns')).isFile(),
+  'missing macOS application icon',
+)
 assert.match(builder, /--no-bundle/)
 assert.match(compose, /BOX_BIND_IP:-127\.0\.0\.1/)
 assert.match(compose, /BOX_CREATOR_BIND_IP:-127\.0\.0\.1}:\$\{BOX_CREATOR_PORT/)

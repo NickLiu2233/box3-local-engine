@@ -30,7 +30,7 @@
     "active": true,
     "targets": "all",
     "resources": ["payload"],
-    "icon": ["../../game/public/logo512.png"],
+    "icon": ["icons/icon.ico", "icons/icon.icns"],
     "category": "DeveloperTool",
     "shortDescription": "Install and manage BOX3 Engine",
     "longDescription": "A native graphical installer and operations console for BOX3 Engine.",
