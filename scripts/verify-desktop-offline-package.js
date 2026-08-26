@@ -73,6 +73,18 @@ function verifyMacSignature(packageRoot) {
   const application = findApplication(packageRoot)
   if (!application || process.platform !== 'darwin') return
   const target = path.join(packageRoot, application.name)
+  const resourceSeal = path.join(target, 'Contents', '_CodeSignature', 'CodeResources')
+  // A CI build without a Developer ID produces a bundle whose executable has
+  // macOS's linker ad-hoc signature, but no outer App resource seal. Asking
+  // codesign to strictly verify that unsigned bundle reports the misleading
+  // “code has no resources” error. It is not a damaged signed application.
+  // A signed release always has CodeResources and must pass strict checking.
+  if (!fs.existsSync(resourceSeal)) {
+    if (process.env.BOX_DESKTOP_REQUIRE_SIGNING === 'true') {
+      fail('macOS APP 未使用 Developer ID 签名；正式发布请完成签名与公证')
+    }
+    return
+  }
   const verification = spawnSync('codesign', ['--verify', '--deep', '--strict', target], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
