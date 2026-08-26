@@ -62,36 +62,39 @@
 
 ## 已对齐的本地能力
 
-| 能力                                         | 当前状态                                                                         |
-| -------------------------------------------- | -------------------------------------------------------------------------------- |
-| 地形、实体、脚本、UI、图片、音频、模型和皮肤 | 使用同一工程 schema 和内容 hash                                                  |
-| Creator 与 Play                              | 使用同一浏览器引擎和 game-server 主流程                                          |
-| 多工程 Creator                               | 每个项目独立编辑/预览运行时和项目作用域                                          |
-| 多地图 Play                                  | 按可编辑访问 ID 启动独立运行时，发布数据只读挂载                                 |
-| Project 模型和皮肤                           | 只包含当前工程引用；发布后完全从工程 blob 读取                                   |
-| 默认皮肤                                     | 按项目 `CONTAINER_NAME` 隔离；未设置时不读取其他工程默认值                       |
-| 数据空间                                     | 本地文件和 PostgreSQL 两个 adapter；内部以不可变地图 UUID 建立命名空间           |
-| 玩家身份                                     | 独立 Player Service，同时供 Creator 预览和 Play 使用                             |
-| Redis                                        | 可选 Session/限流/预烘焙热缓存；失败时本地回退                                   |
-| 导入、导出、发布                             | `.boxproject` 与只读游玩产物分离，带完整性校验和进度                             |
-| 快照与备份                                   | 工程快照恢复、定时 `.boxproject` 备份和运行状态聚合                              |
-| 地图组                                       | 一个主地图、多个副地图；地图级状态独立，共享资源使用一个权威根                   |
-| 地图组迁移                                   | `.boxproject` 只存在地图组格式；从任意成员导出完整组，导入后重建成员关系与共享根 |
-| 共享版本发布                                 | 发布清单记录 `mapGroupId`、`mainProjectId` 和 `sharedRevision`                   |
+| 能力                                         | 当前状态                                                                                                   |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 地形、实体、脚本、UI、图片、音频、模型和皮肤 | 使用同一工程 schema 和内容 hash                                                                            |
+| Creator 与 Play                              | 使用同一浏览器引擎和 game-server 主流程                                                                    |
+| 多工程 Creator                               | 每个项目独立编辑/预览运行时和项目作用域                                                                    |
+| 多地图 Play                                  | 按可编辑访问 ID 启动独立运行时，发布数据只读挂载                                                           |
+| Project 模型和皮肤                           | 只包含当前工程引用；发布后完全从工程 blob 读取                                                             |
+| Local / Project 模型边界                     | 新建模型先进入 Local；只有实体实际放入地图后才成为 Project 成员，内部 `__local_` 别名不在 Project 面板显示 |
+| 默认皮肤                                     | 按项目 `CONTAINER_NAME` 隔离；未设置时不读取其他工程默认值                                                 |
+| 数据空间                                     | 本地文件和 PostgreSQL 两个 adapter；内部以不可变地图 UUID 建立命名空间                                     |
+| 玩家身份                                     | 独立 Player Service，同时供 Creator 预览和 Play 使用                                                       |
+| Redis                                        | 可选 Session/限流/预烘焙热缓存；失败时本地回退                                                             |
+| 导入、导出、发布                             | `.boxproject` 与只读游玩产物分离，带完整性校验和进度                                                       |
+| 快照与备份                                   | 工程快照恢复、定时 `.boxproject` 备份和运行状态聚合                                                        |
+| 地图组                                       | 一个主地图、多个副地图；地图级状态独立，共享资源使用一个权威根                                             |
+| 地图组迁移                                   | `.boxproject` 只存在地图组格式；从任意成员导出完整组，导入后重建成员关系与共享根                           |
+| 共享版本发布                                 | 发布清单记录 `mapGroupId`、`mainProjectId` 和 `sharedRevision`                                             |
 
 ## 经回归保护的必要核心差异
 
 以下差异触及上游核心，但都有本地架构原因，不能在同步 `boxes` 时直接覆盖：
 
-| 差异                                        | 原因                                                                       | 默认回归                                       |
-| ------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------- |
-| MuDB 生产本地运行时保持协议校验             | 本地客户端和服务端都是 `method=local`；照搬云端跳过条件会使首包错位并断线  | `scripts/check-engine-wire-protocols.js`       |
-| 玩家 contact 快照可晚于人物快照             | contact 只影响受击动画，不应决定人物和名字是否渲染                         | `player-animation-contact.spec.ts`             |
-| Session 数据晚于 WebSocket join 时暂存 join | 防止冷启动竞态导致偶现没有人物                                             | `regression-pending-player-joins.ts`           |
-| Project 模型按实体路径优先解析              | 本地库与 Project 库可能有相同数字 ID，但两者必须保持独立                   | `regression-project-model-runtime-identity.ts` |
-| 已删除模型不能从历史 mesh 表复活            | mesh 表为了协议 ID 稳定会保留历史项，实际可用性必须以当前 Project 资源为准 | `regression-deleted-project-model.ts`          |
-| 默认皮肤和共享资源按项目/地图组隔离         | 多运行时不能读取上一个工程的本地状态                                       | `regression-default-skin-project-scope.ts`     |
-| PostgreSQL/本地文件替换平台数据空间 adapter | 保持 `getDataStorage` 地图隔离与 `getGroupStorage` 地图组共享语义          | `regression-storage-namespace.ts`              |
+| 差异                                        | 原因                                                                                     | 默认回归                                       |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| MuDB 生产本地运行时保持协议校验             | 本地客户端和服务端都是 `method=local`；照搬云端跳过条件会使首包错位并断线                | `scripts/check-engine-wire-protocols.js`       |
+| 玩家 contact 快照可晚于人物快照             | contact 只影响受击动画，不应决定人物和名字是否渲染                                       | `player-animation-contact.spec.ts`             |
+| Session 数据晚于 WebSocket join 时暂存 join | 防止冷启动竞态导致偶现没有人物                                                           | `regression-pending-player-joins.ts`           |
+| Project 模型按实体路径优先解析              | 本地库与 Project 库可能有相同数字 ID，但两者必须保持独立                                 | `regression-project-model-runtime-identity.ts` |
+| 已删除模型不能从历史 mesh 表复活            | mesh 表为了协议 ID 稳定会保留历史项，实际可用性必须以当前 Project 资源为准               | `regression-deleted-project-model.ts`          |
+| Local 模型内部别名不显示为 Project 模型     | Local 保存可产生 `mesh/<name>__local_<id>.vb` 路径；它不是项目成员，也不能在面板重复展示 | `project-model-membership.test.ts`             |
+| 默认皮肤和共享资源按项目/地图组隔离         | 多运行时不能读取上一个工程的本地状态                                                     | `regression-default-skin-project-scope.ts`     |
+| PostgreSQL/本地文件替换平台数据空间 adapter | 保持 `getDataStorage` 地图隔离与 `getGroupStorage` 地图组共享语义                        | `regression-storage-namespace.ts`              |
+| 新迁移工程直接执行 `index.js`               | 避免额外包装入口污染工程文件树；旧工程的 `_migrated_index.js` 仍兼容解析到原入口         | `regression-migrated-script-entry.ts`          |
 
 上述 game-server 回归已进入 `pnpm --filter @box-local/game-server test`，并由根目录
 `pnpm test` 执行。Creator 的 Play 预览默认不预热（`BOX_CREATOR_PLAY_PREWARM_RUNTIMES=0`），
@@ -143,6 +146,7 @@ docker compose config
 1. 项目 A 设置默认皮肤，项目 B 不设置；B 停止态与运行态外观必须一致；
 2. 两个项目同时打开，模型、皮肤、运行时和数据空间不能串项目；
 3. 保存、刷新、运行、发布后项目模型只出现一次；
+   Local 中尚未放入地图的模型不能提前显示在 Project 面板；
 4. 发布包在没有 Creator 和 VOXA 的 Play 环境中仍能完整显示资源；
 5. 脚本错误显示在控制台，但不应使网页无提示白屏；
 6. Redis 关闭时单机仍可运行，PostgreSQL 关闭时 Player Service 明确报告不健康；

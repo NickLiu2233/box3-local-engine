@@ -243,7 +243,7 @@ docs(release): document unsigned desktop distribution
 
 文档写明确命令、适用范围、前置条件、结果与恢复方式。不要在文档中承诺尚未实现的行为；例如未签名包应明确标注为未签名，Creator/VOXA 的公网限制不能描述为可选项。
 
-## 12. 一份改动的最小交付标准
+## 10. 一份改动的最小交付标准
 
 功能完成不等于“页面能打开”。交付前请在 PR/提交说明中留下以下可复核信息：
 
@@ -255,7 +255,7 @@ docs(release): document unsigned desktop distribution
 
 对于迁移、导入和资源问题，测试 fixture 必须至少同时包含入口脚本、一个普通地图脚本和一个共享脚本；只测试“能启动”不足以证明编辑器文件树与地图实际运行内容一致。
 
-## 10. 构建与发行
+## 11. 构建与发行
 
 桌面启动器、离线镜像、SHA-256、未签名/签名发布、GitHub Tag 工作流的完整说明见[桌面启动器打包、分发与 CI 发布手册](./release-and-distribution.md)。
 
@@ -269,7 +269,7 @@ docs(release): document unsigned desktop distribution
 - 未签名发行包在 Release 说明中明确告知 Windows SmartScreen/macOS Gatekeeper 的首次打开行为；
 - 有签名凭据时，再启用 Windows Authenticode 和 macOS Developer ID/notarization。
 
-## 11. 深入阅读
+## 12. 深入阅读
 
 - [工程开发规范](./engineering.md)：工程门禁、兼容策略、技术债与安全审计重点。
 - [安装、部署与使用手册](./installation-and-operations.md)：服主运维与恢复流程。

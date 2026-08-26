@@ -100,9 +100,11 @@ CI 会对 Critical 生产依赖漏洞和 Creator/Play 两套 Compose 模板执�
 1. `project-manager.js` 已超过 2000 行，应以现有外部接口为 seam，将归档导入导出、快照、项目元数据和地图组编排分别收进深模块；调用方不应学习 tar、目录布局和 ID 规则。
 2. `apps/migrator/lib/export-project.ts` 已超过 1600 行，应把“远端图遍历”“资源下载”“内容重写”“本地包生成”拆成可独立测试的内部阶段，对外仍保留一个迁移任务接口。
 3. `launcher.js` 应将端口分配、子进程生命周期、空闲回收和运行时配置整理到现有 lifecycle seam，避免 Creator/Play/Teleport 各自复制状态判断。
-4. Game 暂存 202 条 ESLint 告警，VOXA 暂存 51 条告警。优先清理 hooks、无障碍和已弃用 React 生命周期，再逐项将规则从 warning 提升为 error。
-5. 为 Game、VOXA 和 game-server 建立窄范围、可稳定通过的 TypeScript 配置，逐步扩大 `pnpm typecheck`；不要直接用当前全量历史错误作为 CI 门禁，也不要通过关闭 strict 来伪造通过。
-6. CI 增加容器构建矩阵、Compose 启动 smoke test、健康端点检查、SBOM/许可证清单生成和镜像 SHA-256 校验。当前 `pnpm verify` 负责源码与行为回归，不替代真实容器验收。
+4. 模型“可在 Local 使用”和“已成为 Project 成员”仍有两个读取面。下一步应以服务端权威查询统一资源可用性、地图实体引用和 Project 成员资格，前端不再同时推断 `extraProjectInfo` 与资源路径。
+5. 启动器、Creator、Play 的状态和日志已经各自可见；下一步增加一键导出**脱敏支持包**（Docker 状态、健康检查、镜像 metadata、近期日志和关联 ID），不包含 `.env`、令牌、Cookie、用户工程或备份。错误 ID 应能关联启动器、控制层和运行时日志。
+6. Game 与 VOXA 的 ESLint 告警需要按 hooks、无障碍和已弃用 React 生命周期分批清理，再逐项将规则从 warning 提升为 error。不要为了门禁通过整体关闭规则。
+7. 为 Game、VOXA 和 game-server 建立窄范围、可稳定通过的 TypeScript 配置，逐步扩大 `pnpm typecheck`；不要直接用当前全量历史错误作为 CI 门禁，也不要通过关闭 strict 来伪造通过。
+8. 发行 CI 已用目标归档标签契约保护桌面离线包；下一步在 nightly 或 release preflight 增加容器 build、独立 volume 启动、健康检查、最小工程导入/发布/游玩 smoke test、SBOM 和镜像 SHA-256 校验。不要把耗时 Docker smoke 加到每一个 PR 门禁。
 
 ### 与 boxes 的有意差异
 

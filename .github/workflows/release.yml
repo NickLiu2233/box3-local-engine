@@ -44,16 +44,29 @@ jobs:
           BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
         run: |
           docker compose --profile player-service --profile auth-portal --profile creator --profile play --profile voxa build
-          docker image save \
-            box-local-engine-player-service:${BOX_IMAGE_TAG} \
-            box-local-engine-player-auth-portal:${BOX_IMAGE_TAG} \
-            box-local-engine-creator:${BOX_IMAGE_TAG} \
-            box-local-engine-play:${BOX_IMAGE_TAG} \
-            box-local-engine-voxa:${BOX_IMAGE_TAG} | gzip -1 > box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz
+          if [ "${{ matrix.architecture }}" = "amd64" ]; then
+            targets="windows-amd64 macos-amd64 linux-amd64"
+          else
+            targets="windows-arm64 macos-arm64 linux-arm64"
+          fi
+          for target in $targets; do
+            target_tag="${{ github.ref_name }}-${target}"
+            for service in player-service player-auth-portal creator play voxa; do
+              docker image tag "box-local-engine-${service}:${BOX_IMAGE_TAG}" \
+                "box-local-engine-${service}:${target_tag}"
+            done
+            docker image save \
+              "box-local-engine-player-service:${target_tag}" \
+              "box-local-engine-player-auth-portal:${target_tag}" \
+              "box-local-engine-creator:${target_tag}" \
+              "box-local-engine-play:${target_tag}" \
+              "box-local-engine-voxa:${target_tag}" \
+              | gzip -1 > "box-local-engine-images-${target_tag}.tar.gz"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: images-${{ matrix.architecture }}
-          path: box-local-engine-images-*.tar.gz
+          path: box-local-engine-images-${{ github.ref_name }}-*.tar.gz
           if-no-files-found: error
 
   desktop:
@@ -102,7 +115,8 @@ jobs:
       - name: Build installer
         shell: bash
         run: |
-          archive=$(find apps/local-engine/dist/images -name 'box-local-engine-images-*.tar.gz' -print -quit)
+          archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+          test -f "$archive"
           pnpm build:desktop-installer '${{ matrix.target }}' "$archive"
       - uses: actions/upload-artifact@v4
         with:

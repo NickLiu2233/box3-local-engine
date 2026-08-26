@@ -58,7 +58,7 @@ pnpm verify
 
 ### 3.1 先生成同版本、同架构的五服务镜像归档
 
-离线安装器不自行构建镜像；它只把已验证的镜像归档封装进桌面包。因此发布任务必须先生成一个名称符合以下规则的归档：
+离线安装器不自行构建镜像；它只把已验证的镜像归档封装进桌面包。因此每个桌面目标都必须先生成一个名称符合以下规则的归档：
 
 ```text
 box-local-engine-images-<版本>-<windows|macos|linux>-<amd64|arm64>.tar.gz
@@ -74,9 +74,9 @@ box-local-engine-player-service:<标签>
 box-local-engine-player-auth-portal:<标签>
 ```
 
-镜像标签必须与桌面程序的目标匹配，例如 `0.1.0-macos-arm64`。离线归档名称、归档内五项镜像 tag、`BOX-OFFLINE-IMAGE.json` 的 `imageTag`、以及启动器编译时的 `BOX_MANAGER_IMAGE_TAG` 必须完全一致。不要把 PostgreSQL、Redis、开发镜像、数据库数据卷、`.env`、密钥或任何用户地图打进归档。
+镜像标签必须与桌面程序的目标匹配，例如 `v0.1.0-macos-arm64`。离线归档名称、归档内五项镜像 tag、`BOX-OFFLINE-IMAGE.json` 的 `imageTag`、以及启动器编译时的 `BOX_MANAGER_IMAGE_TAG` 必须完全一致。不要把 PostgreSQL、Redis、开发镜像、数据库数据卷、`.env`、密钥或任何用户地图打进归档。
 
-这是离线包最容易被忽略的契约：Docker `load` 不会自动把 `linux-amd64` 标签改成 `windows-amd64` 或 `macos-amd64`。如果要让同一套 Linux 架构镜像服务多个桌面目标，必须在打包前为五项镜像重新 tag 成目标安装器期待的 tag，或调整构建器/启动器使用同一个稳定 tag。只改归档文件名不够。
+这是离线包的硬性契约：Docker `load` 不会自动把 `linux-amd64` 标签改成 `windows-amd64` 或 `macos-amd64`。虽然五项服务镜像本身仍是 Linux 镜像，但发布流程会在归档前为每个桌面目标重新 tag；不能只改归档文件名。
 
 构建归档后，应在干净 Docker 环境中执行 `docker load -i`，并确认五个镜像均能被 `docker image inspect` 找到、架构为目标 `linux/amd64` 或 `linux/arm64`。
 
@@ -168,9 +168,9 @@ git tag -a v0.1.0 -m "BOX3 Engine v0.1.0"
 git push origin v0.1.0
 ```
 
-工作流先在 Ubuntu 上通过 QEMU/Buildx 生成 `linux/amd64`、`linux/arm64` 五服务镜像归档，再在对应原生 Runner 上构建 Windows、macOS 和 Linux 桌面包。它依赖 `windows-2022`、`windows-11-arm`、`macos-13`、`macos-14`、`ubuntu-22.04` 与 `ubuntu-24.04-arm` Runner 可用；仓库所在组织若没有某个 Runner 的访问权限，对应矩阵任务会失败，Release 也不会发布。
+工作流先在 Ubuntu 上通过 QEMU/Buildx 构建 `linux/amd64`、`linux/arm64` 五项服务镜像；每项架构随后各自生成目标标签的归档（例如 `vX.Y.Z-windows-amd64`、`vX.Y.Z-macos-amd64`、`vX.Y.Z-linux-amd64`），再由对应原生 Runner 构建 Windows、macOS 和 Linux 桌面包。安装器任务只下载当前目标的确切归档，并在构建前验证文件存在。该标签契约由 `scripts/check-release-workflow.js` 保护。
 
-发布负责人应在首次 Tag 前检查上述镜像 tag 契约。当前工作流以 `vX.Y.Z-linux-amd64` / `vX.Y.Z-linux-arm64` 构建镜像归档，而安装器构建器会按桌面目标推导 `vX.Y.Z-windows-amd64`、`vX.Y.Z-macos-arm64` 等 tag。若不在矩阵任务中重新 tag，桌面程序导入归档后将找不到自己期望的镜像 tag。不要通过文档或手工改文件名掩盖这个问题；应修正工作流并在无镜像 Docker 环境中完成首次启动 smoke test 后再正式发布。
+它依赖 `windows-2022`、`windows-11-arm`、`macos-13`、`macos-14`、`ubuntu-22.04` 与 `ubuntu-24.04-arm` Runner 可用；仓库所在组织若没有某个 Runner 的访问权限，对应矩阵任务会失败，Release 也不会发布。
 
 当前工作流**不包含** Windows Authenticode 签名、macOS Developer ID 签名或 notarization。它产出的自动 Release 适用于内部测试或明确标注为未签名的分发；公开正式发行前必须先补充签名和公证步骤，不能把“Tag 构建成功”等同于“可公开正式发布”。
 
@@ -179,7 +179,7 @@ git push origin v0.1.0
 ```text
 vX.Y.Z tag
   → pnpm verify
-  → Ubuntu 构建 amd64 / arm64 五服务镜像归档
+  → Ubuntu 构建 amd64 / arm64 五服务镜像，并生成六个目标标签归档
   → 各原生 Runner 构建六种桌面 ZIP
   → verify-desktop-offline-package
   → GitHub Release 上传 ZIP 与镜像归档
@@ -200,6 +200,10 @@ BOX-Local-Engine-<版本>-macos-amd64.zip
 BOX-Local-Engine-<版本>-macos-arm64.zip
 BOX-Local-Engine-<版本>-linux-amd64.zip
 BOX-Local-Engine-<版本>-linux-arm64.zip
+box-local-engine-images-v<版本>-windows-amd64.tar.gz
+box-local-engine-images-v<版本>-windows-arm64.tar.gz
+box-local-engine-images-v<版本>-macos-amd64.tar.gz
+box-local-engine-images-v<版本>-macos-arm64.tar.gz
 box-local-engine-images-v<版本>-linux-amd64.tar.gz
 box-local-engine-images-v<版本>-linux-arm64.tar.gz
 ```
