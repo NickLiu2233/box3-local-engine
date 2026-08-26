@@ -22,6 +22,7 @@ import {
   projectModelSource,
 } from './project-model-source';
 import type { ProjectModelScope } from './project-model-source';
+import { modelTypeForNewModel } from './project-model-membership';
 
 /**
  * 从 extraProject 中获取所有项目模型（不分页,且按更新时间倒序排序）
@@ -62,11 +63,11 @@ export const ProjectModelPanel = ({
       setVoxaData({
         isShow: true,
         modelId: 0,
-        modelType: ModelType.Project,
+        modelType: modelTypeForNewModel(source),
         editType: EditType.Normal,
       }),
     );
-  }, [dispatch]);
+  }, [dispatch, source]);
 
   const actionsMenu: MenuItemOptions[] = useMemo(() => {
     const actions = [

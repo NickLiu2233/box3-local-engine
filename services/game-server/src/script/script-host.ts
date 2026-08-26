@@ -106,6 +106,7 @@ import { EntityNameComponentSetSchema } from '@box-local/schema/entity-name/enti
 import { getHashFromContainerName } from '../utils/container-name';
 import { SCRIPT_OSS_CDN_PATH } from '@box-local/content-server/index';
 import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { resolveRuntimeScriptEntry } from './script-entry';
 
 function appendSchema<T, Schema extends MuSchema<T>>(
   schema: Schema,
@@ -689,7 +690,10 @@ export class ScriptHost {
 
           // set script start point
           if (this._state.replica.running) {
-            initPacket.scriptIndex = this._state.project.scriptIndex;
+            initPacket.scriptIndex = resolveRuntimeScriptEntry(
+              this._state.project.scriptIndex,
+              this._state.project.assets,
+            );
           } else {
             initPacket.scriptIndex = '';
           }

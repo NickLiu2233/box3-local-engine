@@ -1,8 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
+import { ModelType } from '@box-local/apis';
 
 import {
   dedupeProjectModelsByContent,
   getProjectModelDisplayName,
+  modelTypeForNewModel,
   projectModelsForPanel,
   shouldUseProjectModelAdapter,
 } from './project-model-membership';
@@ -19,12 +21,33 @@ describe('project model membership', () => {
     expect(shouldUseProjectModelAdapter({ libraryScope: 'project' })).toBe(true);
     expect(shouldUseProjectModelAdapter({ libraryScope: 'local' })).toBe(false);
   });
-  it('keeps a saved project model visible before it is placed in a map', () => {
+
+  it('creates a model from the Local tab in the local VOXA library', () => {
+    expect(modelTypeForNewModel('local')).toBe(ModelType.Private);
+    expect(modelTypeForNewModel('project')).toBe(ModelType.Project);
+  });
+  it('only lists local models in Project after a map has placed them', () => {
     expect(
       projectModelsForPanel(
-        [{ id: 1, meshPath: 'mesh/未放置.vb' }],
+        [
+          { id: 1, meshPath: 'mesh/已放置.vb' },
+          { id: 2, meshPath: 'mesh/未放置.vb' },
+        ],
+        new Set(['mesh/已放置.vb']),
       ),
-    ).toEqual([{ id: 1, meshPath: 'mesh/未放置.vb' }]);
+    ).toEqual([{ id: 1, meshPath: 'mesh/已放置.vb' }]);
+  });
+
+  it('never exposes a local-library mesh alias in Project', () => {
+    expect(
+      projectModelsForPanel(
+        [
+          { id: 1, meshPath: 'mesh/New-model.vb' },
+          { id: 22, meshPath: 'mesh/New-model__local_22.vb' },
+        ],
+        new Set(['mesh/New-model.vb', 'mesh/New-model__local_22.vb']),
+      ),
+    ).toEqual([{ id: 1, meshPath: 'mesh/New-model.vb' }]);
   });
 
   it('does not treat a missing project asset path as a project model', () => {

@@ -52,11 +52,11 @@ fs.writeFileSync(
     localScriptAssets,
     mergeCloudScriptsIntoProject,
     mergeCloudPhotos,
+    migratedScriptEntry,
     parseJSON,
     referencedHashes,
     referencedResources,
     restoreRuntimeBundles,
-    scriptLauncherSource,
     stableStringify,
   } = require(compiledPath)
   const engineApi = require(engineApiCompiledPath)
@@ -192,7 +192,11 @@ fs.writeFileSync(
       },
     },
   )
-  assert.equal(scriptLauncherSource('index.js'), 'require("./index.js");\n')
+  assert.equal(
+    migratedScriptEntry('index.js', { 'index.js': { type: 1, hash: 'index-hash' } }),
+    'index.js',
+    'migration must run the map entry file directly instead of generating a wrapper entry',
+  )
   console.log(
     'PASS: run mode restores only required runtime bundles and preserves the entry script',
   )

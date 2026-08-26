@@ -533,8 +533,16 @@ export function restoreRuntimeBundles(
   return restored
 }
 
-export function scriptLauncherSource(originalEntry: string) {
-  return `require(${JSON.stringify(`./${originalEntry}`)});\n`
+/**
+ * Preserve the map's own entry file during migration. The game server already
+ * executes scriptIndex, so adding a generated wrapper changes the visible
+ * entry point and can break relative module assumptions in imported projects.
+ */
+export function migratedScriptEntry(
+  originalEntry: string,
+  scriptAssets: Record<string, Record<string, unknown>>,
+) {
+  return originalEntry && originalEntry in scriptAssets ? originalEntry : ''
 }
 
 export function localAudioAssets(value: unknown): Record<string, Record<string, unknown>> {
@@ -1323,24 +1331,7 @@ export async function generateProjectArchive(
     }
     const originalScriptIndex =
       typeof projectDocument.scriptIndex === 'string' ? projectDocument.scriptIndex : ''
-    let migratedScriptIndex = ''
-    if (originalScriptIndex && originalScriptIndex in verifiedScriptAssets) {
-      let launcherName = '_migrated_index.js'
-      while (launcherName in verifiedScriptAssets) launcherName = `_${launcherName}`
-      const launcherBytes = Buffer.from(scriptLauncherSource(originalScriptIndex))
-      const launcherHash = await storeBlob(blobsRoot, launcherBytes)
-      verifiedScriptAssets[launcherName] = {
-        animated: false,
-        bounds: [0, 0, 0],
-        contentId: 0,
-        hash: launcherHash,
-        ownerId: 0,
-        previewImage: '',
-        size: launcherBytes.byteLength,
-        type: 1,
-      }
-      migratedScriptIndex = launcherName
-    }
+    const migratedScriptIndex = migratedScriptEntry(originalScriptIndex, verifiedScriptAssets)
 
     const verifiedAudioAssets: Record<string, unknown> = {}
     const candidateAudioAssets = localAudioAssets(audioAssets)
@@ -1425,9 +1416,8 @@ export async function generateProjectArchive(
       player: playerHash,
       prevHash: '',
       scriptAssets: scriptAssetsHash,
-      // Run through a guarded local launcher. The original source remains
-      // editable, while a top-level migration incompatibility is logged
-      // instead of immediately terminating run mode.
+      // Run the imported map's actual entry file. It remains editable and
+      // preserves its original relative-module resolution behaviour.
       scriptIndex: migratedScriptIndex,
       timestamp: new Date(0).toISOString(),
     }

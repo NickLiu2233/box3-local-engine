@@ -1,12 +1,30 @@
+import { ModelType } from '@box-local/apis';
+
+const LOCAL_LIBRARY_MESH_PATH = /__local_\d+\.vb$/;
+
+export function modelTypeForNewModel(scope: 'local' | 'project') {
+  return scope === 'local' ? ModelType.Private : ModelType.Project;
+}
+
 /**
- * Project lists every model stored in the current project's resource library.
- * Entity references only affect map content; they never determine whether a
- * saved model is available in the Project model panel.
+ * The local VOXA library is loaded into the runtime so models can be previewed
+ * before placement. It is not project membership. A local model enters the
+ * Project tab only after a map in the group references its canonical mesh
+ * path; the `__local_<id>` preview aliases are never user-facing assets.
  */
-export function projectModelsForPanel<T extends { meshPath?: string }>(
+export function projectModelsForPanel<T>(
   models: T[],
+  placedMeshPaths?: ReadonlySet<string>,
 ) {
-  return models.filter((model) => Boolean(model.meshPath?.startsWith('mesh/')));
+  return models.filter((model) => {
+    const meshPath = (model as { meshPath?: unknown }).meshPath;
+    return (
+      typeof meshPath === 'string' &&
+      meshPath.startsWith('mesh/') &&
+      !LOCAL_LIBRARY_MESH_PATH.test(meshPath) &&
+      (!placedMeshPaths || placedMeshPaths.has(meshPath))
+    );
+  });
 }
 
 /**
