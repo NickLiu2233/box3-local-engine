@@ -300,12 +300,20 @@ export async function createGameServer(spec: {
       userData.permission |= DB.UserPermission.gameAdmin;
     } else if (serverConfig.method === 'local') {
       const usesPlayerService = Boolean(process.env.BOX_PLAYER_SERVICE_INTERNAL_URL);
+      const requiresPlayerService = Boolean(process.env.BOX_DEPLOYMENT_MODE);
       const runtimeIdentity = usesPlayerService
         ? verifyRuntimePlayerIdentity(
             token,
             process.env.PERMISSION_TOKEN_SECRET || '',
           )
         : null;
+      // A released Creator/Play deployment must never silently replace a
+      // missing login service with the legacy shared local-player account.
+      // That fallback is retained only for direct source-runtime development,
+      // where BOX_DEPLOYMENT_MODE is intentionally absent.
+      if (requiresPlayerService && !usesPlayerService) {
+        throw new Error('Player Service identity is required for deployed local games');
+      }
       if (usesPlayerService && !runtimeIdentity) {
         throw new Error('Invalid or expired local player identity');
       }

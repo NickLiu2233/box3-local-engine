@@ -989,6 +989,12 @@ requirePattern(
   /internal\/save-local-project[\s\S]*?editServer\.replica\.saveProject\(\)/,
 )
 requirePattern(
+  readRequired('services/game-server/src/createServer.ts'),
+  'services/game-server/src/createServer.ts',
+  'deployed runtime fails closed when Player Service is unavailable',
+  /requiresPlayerService[\s\S]*?!usesPlayerService[\s\S]*?Player Service identity is required for deployed local games/,
+)
+requirePattern(
   readRequired('apps/game/pages/api/local-projects/[id]/publish.ts'),
   'apps/game/pages/api/local-projects/[id]/publish.ts',
   'flush every map-group editor before local release creation',
