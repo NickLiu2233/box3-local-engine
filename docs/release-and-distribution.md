@@ -87,6 +87,24 @@ box-local-engine-player-auth-portal:<标签>
 pnpm build:desktop-installer <目标> <五服务镜像归档.tar.gz>
 ```
 
+### 3.3 构建无图形 Linux 游玩服务器包
+
+服务器包不是桌面 ZIP 的替代品，也不包含完整五服务归档。它从同架构完整归档中仅提取以下三个镜像：
+
+```text
+box-local-engine-play:<标签>
+box-local-engine-player-service:<标签>
+box-local-engine-player-auth-portal:<标签>
+```
+
+再与游玩专用 `compose.yml`、`.env.example`、`install.sh`、`status.sh`、`logs.sh`、`stop.sh` 一起压缩成：
+
+```text
+BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip
+```
+
+包内没有 Creator / ARENA、VOXA、迁移器、真实 `.env`、数据库密码、服主密钥、地图、模型、备份或玩家数据。服主在目标服务器首次执行 `./install.sh` 后，复制并编辑自己的 `.env`。CI 会在 Linux Runner 上先导入完整归档，再保存这三个游玩服务的独立归档，避免把创作工具带入服务器包。
+
 示例：
 
 ```powershell
@@ -108,7 +126,7 @@ pnpm build:desktop-installer macos-arm64 /release/box-local-engine-images-v0.1.0
 
 输出目录为 `apps/local-engine/dist/desktop-installers/`。不要重新压缩、改名镜像归档或单独替换 APP/EXE，否则启动器会拒绝加载不匹配的镜像。
 
-### 3.3 发布前独立复核
+### 3.4 发布前独立复核
 
 对每个解压后的包执行：
 
@@ -167,7 +185,7 @@ git tag -a v0.1.0 -m "BOX3 Engine v0.1.0"
 git push origin v0.1.0
 ```
 
-工作流先在原生 Linux x64 与 Linux ARM64 Runner 上各构建一次五项服务镜像；每项架构只生成一份对应的离线归档。每个服务按顺序构建，归档后清理 BuildKit 中间层，避免导出大镜像时耗尽 Docker 磁盘。随后对应原生 Runner 使用匹配 CPU 架构的归档构建 Windows、macOS 和 Linux 桌面包。安装器从归档读取实际 Docker tag，并在构建前验证文件存在。该契约由 `scripts/check-release-workflow.js` 保护。
+工作流先在原生 Linux x64 与 Linux ARM64 Runner 上各构建一次五项服务镜像；每项架构只生成一份对应的完整离线归档。每个服务按顺序构建，归档后清理 BuildKit 中间层，避免导出大镜像时耗尽 Docker 磁盘。随后对应原生 Runner 使用匹配 CPU 架构的完整归档构建 Windows、macOS 和 Linux 桌面包；无图形服务器 job 则从完整归档抽出 Play、Player Service、参考登录门户，生成游玩专用服务器包。安装器从归档读取实际 Docker tag，并在构建前验证文件存在。该契约由 `scripts/check-release-workflow.js` 保护。
 
 镜像任务使用 `ubuntu-latest` 与 `ubuntu-24.04-arm`，桌面任务使用 `windows-2022`、`macos-14` 与 `ubuntu-22.04`。仓库所在组织若没有某个 Runner 的访问权限，对应任务会失败，Release 也不会发布。
 
@@ -178,10 +196,11 @@ git push origin v0.1.0
 ```text
 vX.Y.Z tag
   → pnpm verify
-  → 原生 Linux x64 / ARM64 Runner 分别顺序构建五服务镜像，并生成两个 CPU 架构归档
+  → 原生 Linux x64 / ARM64 Runner 分别顺序构建五服务镜像，并生成两个 CPU 架构完整归档
   → 各原生 Runner 构建三个桌面 ZIP
+  → 从每份完整归档抽出 Play、Player Service、参考登录门户，构建两个无图形 Linux 游玩服务器 ZIP
   → verify-desktop-offline-package
-  → GitHub Release 上传三个 ZIP 与两份 Linux 镜像归档
+  → GitHub Release 上传桌面 ZIP、游玩服务器 ZIP 与两份完整 Linux 镜像归档
 ```
 
 正式公开发行时，在上述流程后补充：签名 / macOS 公证 → 下载后复核 SHA-256 → 发布签名与校验说明。
@@ -217,6 +236,7 @@ Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docke
 - [ ] 工作区干净，Tag 指向已审查的提交。
 - [ ] `pnpm verify` 通过。
 - [ ] 每种 CPU 架构的五服务镜像都通过导入与 inspect。
+- [ ] 每种 CPU 架构的无图形服务器包只包含 Play、Player Service 和参考登录门户，且 `.env.example` 不含 Creator / VOXA 配置。
 - [ ] 每个 ZIP 通过 `verify-desktop-offline-package.js`。
 - [ ] 若为公开正式发行：Windows Authenticode 与 macOS Developer ID/notarization 已完成。
 - [ ] SHA-256 已发布且从下载后的文件重新计算过。

@@ -113,7 +113,7 @@ docker compose --env-file .env.docker.example config --quiet
 
 ## 发行
 
-推送 `v*` Tag 会触发 GitHub Actions：验证源码，构建 `linux/amd64` 与 `linux/arm64` 的五项服务镜像，然后生成 Windows x64、Apple Silicon macOS 和 Linux x64 三个离线 ZIP，并创建 GitHub Release。普通用户只需下载与自己系统对应的一个 ZIP。
+推送 `v*` Tag 会触发 GitHub Actions：验证源码，构建 `linux/amd64` 与 `linux/arm64` 的五项完整服务镜像，然后生成 Windows x64、Apple Silicon macOS 和 Linux x64 三个桌面离线 ZIP；同时生成两份无图形 Linux 游玩服务器包。服务器包只含 Play、Player Service 和参考登录门户，服主可在包内 `.env` 配置端口、访问地址、PostgreSQL、Redis 和密钥；不含 Creator / ARENA 或 VOXA。普通用户只需下载与自己系统对应的一个桌面 ZIP。
 
 ```bash
 pnpm verify

@@ -9,7 +9,7 @@
 | 你要做什么                        | 首先阅读                                              | 然后阅读                                                                                       |
 | --------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | 第一次在桌面电脑部署              | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
-| 在 Linux 服务器部署               | [安装、部署与运维](./installation-and-operations.md)  | [部署与联机](./deployment.md)、[游玩端部署](./play-deployment.md)                              |
+| 在无图形 Linux 服务器部署游玩服   | [安装、部署与运维](./installation-and-operations.md)  | [构建、分发与 CI](./release-and-distribution.md)、[游玩端部署](./play-deployment.md)           |
 | 创建、导入、发布或恢复地图        | [作品、地图组与发布包](./projects.md)                 | [创作端部署](./creator-deployment.md)、[游玩端部署](./play-deployment.md)                      |
 | 使用远程 PostgreSQL 或 Redis      | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
 | 自己制作玩家登录页                | [自建登录门户](./self-hosted-login.md)                | [Player Service API](./player-service-api.md)、[玩家身份与权限](./player-identity.md)          |
@@ -49,7 +49,7 @@ BOX3 Engine 包含 ARENA（Creator）、Play、VOXA、Player Service、参考登
 
 - Creator 保存可编辑工程；发布后生成不可变快照；Play 只运行该快照。
 - Creator 与 VOXA 仅支持本机或可信局域网，不能作为公网服务发布。
-- Play、Player Service 与自建登录门户可按部署配置对外提供服务；公网必须使用 HTTPS、反向代理和防火墙。
+- Play、Player Service 与自建登录门户可按部署配置对外提供服务；公网必须使用 HTTPS、反向代理和防火墙。无图形 Linux 游玩服务器包只包含这三项服务，不包含 Creator / ARENA 或 VOXA。
 - 桌面启动器不安装 PostgreSQL 或 Redis：当前启动器要求服主提供可访问的 PostgreSQL，Redis 可不填。
 - 仓库的 Compose 模板仍可启动内置 PostgreSQL/Redis，适合源码开发或自管部署；这和桌面启动器的“远程数据库”产品策略是两条不同路径。
 

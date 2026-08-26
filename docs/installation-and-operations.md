@@ -62,6 +62,21 @@ Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
 Windows ARM、Intel Mac 和 ARM Linux 当前不在默认 Release 范围内。不要在不匹配的 CPU 架构上强行导入镜像；如确有需求，由维护者在对应原生构建机单独生成测试包。
 
+### 无图形 Linux 游玩服务器
+
+`BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip` 用于没有桌面环境的服务器，不使用 Tauri 启动器。选择与服务器 CPU 一致的包：绝大多数 Intel/AMD 云服务器使用 `amd64`；ARM 服务器使用 `arm64`。
+
+```bash
+unzip BOX3-Engine-Server-<版本>-linux-amd64.zip
+cd BOX3-Engine-Server-<版本>-linux-amd64
+chmod +x *.sh
+./install.sh
+```
+
+首次执行会由 `.env.example` 建立 `.env`，并在有 OpenSSL 时生成密钥。随后服主打开 `.env`，修改地址、端口、PostgreSQL、Redis（可选）和自己的登录门户地址，再执行一次 `./install.sh` 使配置生效。日常操作使用 `./status.sh`、`./logs.sh [play|player-service|player-auth-portal]` 和 `./stop.sh`。
+
+该包的镜像归档与 Compose 配置只含 Play、Player Service 和参考登录门户。Creator / ARENA、VOXA、迁移器、地图编辑工程和模型库均不在其中；服务器仅运行已发布的地图。不要把生成后的 `.env`、`apps/local-engine/play-worlds` 或 PostgreSQL 备份上传到 Release、仓库或聊天工具。
+
 ### 中国大陆网络的镜像源
 
 如果构建日志长时间停在 `docker.io/library/node`，可在 `.env` 中只替换基础镜像来源：
