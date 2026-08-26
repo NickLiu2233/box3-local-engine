@@ -51,7 +51,7 @@ function headlessCompose() {
   const source = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8')
   const playerService = source.slice(0, source.indexOf('  player-auth-portal:'))
   const authPortal = serviceSection(source, '  player-auth-portal:', '  creator:').replace(
-    /^      AUTH_DEMO_CREATOR_URL:.*\n/m,
+    /^ {6}AUTH_DEMO_CREATOR_URL:.*\n/m,
     '',
   )
   const play = serviceSection(source, '  play-storage-init:', '  voxa:')

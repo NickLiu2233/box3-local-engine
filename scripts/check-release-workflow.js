@@ -54,7 +54,7 @@ assert.match(workflow, /box-local-engine-player-service:/)
 assert.match(workflow, /box-local-engine-player-auth-portal:/)
 assert.match(workflow, /box-local-engine-play:/)
 assert.doesNotMatch(
-  workflow.match(/headless-server:[\s\S]*?\n  publish:/)?.[0] || '',
+  workflow.match(/headless-server:[\s\S]*?\n {2}publish:/)?.[0] || '',
   /box-local-engine-(creator|voxa):/,
 )
 for (const requiredTemplateFile of ['README.md', 'install.sh', 'status.sh', 'logs.sh', 'stop.sh']) {
