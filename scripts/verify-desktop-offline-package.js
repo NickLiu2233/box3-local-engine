@@ -36,7 +36,7 @@ function findMetadataRoot(packageRoot) {
   if (fs.existsSync(path.join(packageRoot, 'BUILD-INFO.json'))) return packageRoot
   const application = findApplication(packageRoot)
   if (!application) fail('未找到 Windows 发布信息或 macOS APP')
-  return path.join(packageRoot, application.name, 'Contents/Resources/metadata')
+  return path.join(packageRoot, application.name, 'Contents/Resources/payload/metadata')
 }
 
 function verifyChecksums(metadataRoot) {
@@ -71,8 +71,17 @@ function findImageManifest(packageRoot) {
 
 function verifyMacSignature(packageRoot) {
   const application = findApplication(packageRoot)
-  if (!application || process.env.BOX_DESKTOP_REQUIRE_SIGNING !== 'true') return
+  if (!application || process.platform !== 'darwin') return
   const target = path.join(packageRoot, application.name)
+  const verification = spawnSync('codesign', ['--verify', '--deep', '--strict', target], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  if (verification.status !== 0) {
+    const detail = `${verification.stdout || ''}\n${verification.stderr || ''}`.trim()
+    fail(`macOS APP 签名完整性校验失败${detail ? `：${detail}` : ''}`)
+  }
+  if (process.env.BOX_DESKTOP_REQUIRE_SIGNING !== 'true') return
   const result = spawnSync('codesign', ['-dv', '--verbose=4', target], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],

@@ -113,7 +113,7 @@ docker compose --env-file .env.docker.example config --quiet
 
 ## 发行
 
-推送 `v*` Tag 会触发 GitHub Actions：验证源码，构建 `linux/amd64` 与 `linux/arm64` 的五项服务镜像，为各桌面目标生成匹配标签的离线归档，最后构建 Windows、macOS、Linux 启动器并创建 GitHub Release。
+推送 `v*` Tag 会触发 GitHub Actions：验证源码，构建 `linux/amd64` 与 `linux/arm64` 的五项服务镜像，然后生成 Windows x64、Apple Silicon macOS 和 Linux x64 三个离线 ZIP，并创建 GitHub Release。普通用户只需下载与自己系统对应的一个 ZIP。
 
 ```bash
 pnpm verify

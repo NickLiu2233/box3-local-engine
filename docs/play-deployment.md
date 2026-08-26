@@ -112,7 +112,7 @@ BOX_PLAY_LIBRARY_READ_ONLY=true
 
 - Docker Desktop 或 Docker Engine；
 - Docker Compose v2；
-- Node.js 20 或更高版本；
+- Node.js `22.17.x`；
 - pnpm 10.12.1。
 
 只接收已构建镜像的私服主仅需要 Docker Engine/Desktop 和 Docker Compose v2。

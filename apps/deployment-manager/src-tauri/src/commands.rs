@@ -30,144 +30,14 @@ use docker::{
     unavailable_message as docker_message,
 };
 
+#[path = "models.rs"]
+mod models;
+
+use models::*;
+
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
 const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
 const PROJECT_NAME: &str = "box-local-engine";
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct OfflineImageManifest {
-    format_version: u8,
-    archive: String,
-    sha256: String,
-    image_tag: String,
-    platform: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AboutInfo {
-    application_version: String,
-    image_tag: String,
-    source_revision: String,
-    build_created_at: String,
-    build_source: String,
-    platform: String,
-    architecture: String,
-    license: String,
-    service_images: Vec<ServiceImageInfo>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ServiceImageInfo {
-    name: String,
-    image: String,
-    tag: String,
-    platform: String,
-    image_id: String,
-    created_at: String,
-    source_revision: String,
-    build_source: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct EmbeddedImageInfo {
-    images: Vec<EmbeddedServiceImageInfo>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct EmbeddedServiceImageInfo {
-    image: String,
-    tag: String,
-    image_id: String,
-    created_at: String,
-    platform: String,
-    source_revision: String,
-    build_source: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LegalNotices {
-    license_name: String,
-    license_text: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ServiceStatus {
-    name: String,
-    enabled: bool,
-    running: bool,
-    state: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct SystemStatus {
-    docker_ready: bool,
-    docker_message: String,
-    configured: bool,
-    all_healthy: bool,
-    services: Vec<ServiceStatus>,
-    data_directory: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ServicePerformance {
-    name: String,
-    enabled: bool,
-    running: bool,
-    cpu_percent: f64,
-    memory_usage: String,
-    memory_limit: String,
-    memory_percent: f64,
-    pids: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PerformanceStatus {
-    sampled_at: u128,
-    services: Vec<ServicePerformance>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct BackupInfo {
-    name: String,
-    path: String,
-    size_bytes: u64,
-    modified_at: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct EnvironmentCheck {
-    id: String,
-    label: String,
-    level: String,
-    message: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ConnectionTest {
-    ok: bool,
-    message: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct InstallProgress {
-    stage: String,
-    message: String,
-    percent: u8,
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigView {

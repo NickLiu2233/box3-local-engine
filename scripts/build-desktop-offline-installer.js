@@ -212,6 +212,7 @@ function main() {
   }
   const payloadManifest = path.join(managerRoot, 'src-tauri/payload/BOX-OFFLINE-IMAGE.json')
   const payloadImageInfo = path.join(managerRoot, 'src-tauri/payload/IMAGE-INFO.json')
+  const payloadMetadata = path.join(managerRoot, 'src-tauri/payload/metadata')
   const originalImageInfo = fs.readFileSync(payloadImageInfo, 'utf8')
   const imageInfo = {
     formatVersion: 1,
@@ -224,6 +225,18 @@ function main() {
   if (spec.bundle) {
     fs.copyFileSync(archive, payloadArchive)
     fs.writeFileSync(payloadManifest, `${JSON.stringify(imageManifest, null, 2)}\n`)
+    // Tauri signs the complete .app bundle. Metadata must become a resource
+    // before that step; writing it into Contents/Resources afterwards makes
+    // macOS report the application as damaged.
+    fs.rmSync(payloadMetadata, { recursive: true, force: true })
+    fs.mkdirSync(payloadMetadata, { recursive: true })
+    generateDistributionMetadata(payloadMetadata, {
+      repoRoot,
+      generatedAt: new Date().toISOString(),
+      release: `desktop-${platform}`,
+      platform: `${spec.os}/${spec.arch}`,
+      images: [`${path.basename(archive)} (${imageTag})`],
+    })
   }
   fs.writeFileSync(payloadImageInfo, `${JSON.stringify(imageInfo, null, 2)}\n`)
   try {
@@ -243,6 +256,7 @@ function main() {
     if (spec.bundle) {
       fs.rmSync(payloadArchive, { force: true })
       fs.rmSync(payloadManifest, { force: true })
+      fs.rmSync(payloadMetadata, { recursive: true, force: true })
     }
   }
 
@@ -271,19 +285,21 @@ function main() {
     )
   }
   // Keep the macOS download folder intentionally simple: users only see the
-  // APP. Release metadata remains inside its Resources directory for support
-  // and legal review, while Windows keeps it beside the EXE and image archive.
+  // APP. Its metadata was embedded before signing; Windows keeps metadata
+  // beside the EXE and image archive.
   const metadataRoot = spec.bundle
-    ? path.join(executableDestination, 'Contents/Resources/metadata')
+    ? path.join(executableDestination, 'Contents/Resources/payload/metadata')
     : packageRoot
-  fs.mkdirSync(metadataRoot, { recursive: true })
-  generateDistributionMetadata(metadataRoot, {
-    repoRoot,
-    generatedAt: new Date().toISOString(),
-    release: `desktop-${platform}`,
-    platform: `${spec.os}/${spec.arch}`,
-    images: [`${path.basename(archive)} (${imageTag})`],
-  })
+  if (!spec.bundle) {
+    fs.mkdirSync(metadataRoot, { recursive: true })
+    generateDistributionMetadata(metadataRoot, {
+      repoRoot,
+      generatedAt: new Date().toISOString(),
+      release: `desktop-${platform}`,
+      platform: `${spec.os}/${spec.arch}`,
+      images: [`${path.basename(archive)} (${imageTag})`],
+    })
+  }
   const verification = spawnSync(
     process.execPath,
     [path.join(repoRoot, 'scripts/verify-desktop-offline-package.js'), packageRoot],

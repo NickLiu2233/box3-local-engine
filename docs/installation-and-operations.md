@@ -1,4 +1,4 @@
-# Box Local Engine 安装、部署与使用手册
+# BOX3 Engine 安装、部署与使用手册
 
 本文是交付给创作者、服主和维护者的统一入口。按本文操作即可完成单机创作、模型编辑、
 玩家服务、多地图游玩和公网部署；不需要了解原 `boxes` 在线平台的 Nacos、RabbitMQ 或
@@ -28,7 +28,7 @@ Player Service 的发布镜像会在构建阶段物理移除 Creator、Play、�
 
 - macOS、Linux，或支持 Linux 容器的 Windows；
 - Docker Desktop，或 Docker Engine + Compose v2；
-- Node.js 20 或更高版本；
+- Node.js `22.17.x`；
 - Corepack 和 pnpm 10.12.1；
 - 首次构建建议至少 20 GB 可用空间和 8 GB 内存。
 
@@ -45,26 +45,20 @@ pnpm --version
 Apple Silicon 本机测试可以使用 `linux/arm64`。准备交付给常见 x86_64 Linux 服务器的
 Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
-### Windows AMD64/ARM64 离线包的一键部署
+### 桌面离线包
 
-维护者分别发布 Windows AMD64 与 ARM64 离线包，两者都内含 `ONE-CLICK-DEPLOY.cmd`。
-常见的 Intel/AMD 64 位 Windows 电脑选择 AMD64 包；Windows on ARM 设备选择 ARM64 包，
-不要混用。使用者只需：
+正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的五服务 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。Release 也单独提供 `linux/amd64` 与 `linux/arm64` 两份镜像归档，供无图形界面的 Linux 服务器或手动 Compose 部署使用；选择规则和 `docker load` 用法见[构建、分发与 CI](./release-and-distribution.md)。
 
-1. 完整解压 ZIP，并启动 Docker Desktop 的 Linux containers；
-2. 双击 `ONE-CLICK-DEPLOY.cmd`；
-3. 选择内置 PostgreSQL/Redis，或分别填写已有 PostgreSQL 的地址、端口、数据库名、
-   账号和密码。
+使用者只需：
 
-向导会自动校验离线包、导入五个应用镜像、生成三个独立安全密钥、写入
-`.env`、启动 Compose、检查五个 HTTP 入口，然后打开 Creator。数据库密码隐藏输入，
-向导会自动进行 URL 编码；地图数据表由引擎按 UUID 命名空间自动创建，不要求服主填表名。
-已有 `.env` 和数据不会
-被覆盖；重新运行向导可安全重试。内置数据库模式首次需要 Docker 能获取 PostgreSQL
-和 Redis 镜像；如果环境完全断网，请使用已预装的基础镜像或选择外部 PostgreSQL。
+1. 完整解压 ZIP，并启动 Docker Desktop 或 Docker Engine；
+2. Windows 运行 `box-local-engine-manager.exe`，macOS 运行 `BOX3 Engine.app`，Linux 运行 `box-local-engine-manager`；
+3. 在“数据配置”填写远程 PostgreSQL；Redis 可留空；
+4. 保存配置后回到总览，选择启动全部、创作端或游玩端。
 
-离线包还提供 `start.cmd`、`stop.cmd`、`status.cmd` 和 `logs.cmd`，日常使用不需要手写
-Docker 命令。`.env` 仍然只存在部署者电脑，不应返传或分发。
+启动器会校验并导入离线镜像、生成安全密钥、维护 `.env` 与 `.runtime.env`、控制 Compose 服务，并展示状态、日志、备份和访问地址。它不会安装、启动或删除 PostgreSQL/Redis。配置、项目、模型和备份保存在系统应用数据目录，不在 APP/EXE 内；替换启动器不会覆盖这些数据。
+
+Windows ARM、Intel Mac 和 ARM Linux 当前不在默认 Release 范围内。不要在不匹配的 CPU 架构上强行导入镜像；如确有需求，由维护者在对应原生构建机单独生成测试包。
 
 ### 中国大陆网络的镜像源
 

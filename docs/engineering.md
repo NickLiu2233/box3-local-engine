@@ -50,6 +50,8 @@ pnpm verify
 - `pnpm typecheck`：当前可稳定通过的 Migrator 严格类型检查；
 - `pnpm test`：本地控制层、地图组、存储隔离、分发包、迁移器和 Teleport 回归。
 
+`pnpm check` 内部按 `check:local-control`、`check:engine`、`check:distribution` 与 `check:integration` 分组，方便开发者在修改时获取更快反馈；这些命令必须保持为完整 `pnpm check` 的子集，不能把仅在某个分组执行的关键回归漏出全量门禁。
+
 Game 与 VOXA 的全量 TypeScript 历史基线尚未清零，因此暂不作为发布硬门禁。新增或重构模块应提供自己的窄 `tsconfig`，逐步扩大可稳定通过的类型检查范围，而不是降低根级规则。
 
 涉及容器或发布流程时，还应执行：

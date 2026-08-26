@@ -42,7 +42,7 @@ apps/local-engine/dist/       导出的工程包、部署包和镜像归档
 
 - Docker Desktop 或 Docker Engine；
 - Docker Compose v2；
-- Node.js 20 或更高版本；
+- Node.js `22.17.x`；
 - pnpm 10.12.1；
 - 足够的磁盘空间和内存。
 

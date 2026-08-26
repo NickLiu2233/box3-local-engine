@@ -109,7 +109,7 @@ pnpm --filter @box-local/deployment-manager tauri dev
 4. 增加 Rust 单测或 `scripts/check-desktop-deployment-manager.js` 回归；
 5. 验证亮色、暗色、空状态、加载状态和错误状态。
 
-`src-tauri/src/` 已按职责拆分：`config.rs` 负责应用数据目录、配置解析和原子写入；`docker.rs` 负责 Docker 命令；`commands.rs` 负责 Tauri 命令、配置校验、备份和诊断；`lib.rs` 只组装模块和注册命令。新增功能优先进入对应模块，不要重新把业务逻辑堆回 `lib.rs`。
+`src-tauri/src/` 已按职责拆分：`config.rs` 负责应用数据目录、配置解析和原子写入；`docker.rs` 负责 Docker 命令；`models.rs` 维护前端可见的数据契约；`commands.rs` 负责 Tauri 命令、配置校验、备份和诊断；`lib.rs` 只组装模块和注册命令。新增功能优先进入对应模块，不要重新把业务逻辑堆回 `lib.rs` 或把前端数据结构散落到命令实现中。
 
 ## 5. 配置、数据与安全边界
 
@@ -170,6 +170,17 @@ pnpm format:check
 pnpm lint:control
 pnpm check
 ```
+
+`pnpm check` 保持完整回归顺序；需要定位问题时可运行它的分组命令，分组之间没有不同的通过标准：
+
+| 命令                       | 覆盖范围                                               | 适用场景                                          |
+| -------------------------- | ------------------------------------------------------ | ------------------------------------------------- |
+| `pnpm check:local-control` | 本地控制层、项目存储身份、Play 刷新与独立部署          | 改动 `apps/local-engine/`、Compose 或本地项目流程 |
+| `pnpm check:engine`        | Game、VOXA、game-server、本地平台 API 与引擎消息顺序   | 改动引擎兼容层、模型或协议                        |
+| `pnpm check:distribution`  | Windows 离线包、Tauri 启动器、Release 工作流与文档链接 | 改动启动器、镜像、CI、README 或 `docs/`           |
+| `pnpm check:integration`   | 地图组锁、玩家门户、迁移器与 Teleport                  | 改动跨服务生命周期或迁移流程                      |
+
+分组检查仅用于缩短本地反馈；提交前仍应运行完整 `pnpm check`，发行前运行 `pnpm verify`。
 
 合并前和发行前必须执行：
 

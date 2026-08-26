@@ -19,7 +19,7 @@
 | `LICENSE.txt`、`THIRD-PARTY-NOTICES.json` | 许可证与第三方依赖说明                                  |
 | `SHA256SUMS`                              | 包内文件校验清单                                        |
 
-Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于同一目录。macOS 解压目录只包含 `.app`；镜像归档、清单、许可证、构建信息与校验文件均嵌入 APP 的 Resources 目录，因此可把 APP 单独移入“应用程序”目录。
+Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于同一目录。macOS 解压目录只包含 `.app`；镜像归档、清单、许可证、构建信息与校验文件均在 Tauri 签名前嵌入 APP 的 Resources 目录，因此可把 APP 单独移入“应用程序”目录，不能在构建后再向 APP 内复制文件。
 
 当前 CI 只发布三种面向普通用户的原生桌面目标：
 
@@ -29,7 +29,7 @@ Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于
 | `macos-arm64`   | Apple Silicon macOS | `linux/arm64`   |
 | `linux-amd64`   | Linux x64           | `linux/amd64`   |
 
-业务服务始终以 Linux 容器运行，桌面系统不改变 Docker 镜像。因此一次发行只会在 CI 内部生成两份五服务镜像归档：`linux/amd64` 和 `linux/arm64`。三个桌面启动器各自携带对应 CPU 架构的那一份归档；不会为 Windows、macOS、Linux 重复构建相同镜像，也不会把 `.tar.gz` 额外显示在 GitHub Release 附件中。
+业务服务始终以 Linux 容器运行，桌面系统不改变 Docker 镜像。因此一次发行只生成两份五服务镜像归档：`linux/amd64` 和 `linux/arm64`。三个桌面启动器各自携带对应 CPU 架构的那一份归档；不会为 Windows、macOS、Linux 重复构建相同镜像。两份 `.tar.gz` 也会单独作为 GitHub Release 附件上传，供无图形界面的服务器、手动 Compose 部署和镜像版本管理使用。
 
 Windows ARM、Intel macOS、Linux ARM64 并非当前默认发行目标。如确有需要，维护者仍可在对应原生设备上用 `pnpm build:desktop-installer` 手动构建，不应把这些实验性包混入普通用户下载列表。
 
@@ -169,7 +169,7 @@ git push origin v0.1.0
 
 工作流先在原生 Linux x64 与 Linux ARM64 Runner 上各构建一次五项服务镜像；每项架构只生成一份对应的离线归档。每个服务按顺序构建，归档后清理 BuildKit 中间层，避免导出大镜像时耗尽 Docker 磁盘。随后对应原生 Runner 使用匹配 CPU 架构的归档构建 Windows、macOS 和 Linux 桌面包。安装器从归档读取实际 Docker tag，并在构建前验证文件存在。该契约由 `scripts/check-release-workflow.js` 保护。
 
-它依赖 `windows-2022`、`windows-11-arm`、`macos-13`、`macos-14`、`ubuntu-22.04` 与 `ubuntu-24.04-arm` Runner 可用；仓库所在组织若没有某个 Runner 的访问权限，对应矩阵任务会失败，Release 也不会发布。
+镜像任务使用 `ubuntu-latest` 与 `ubuntu-24.04-arm`，桌面任务使用 `windows-2022`、`macos-14` 与 `ubuntu-22.04`。仓库所在组织若没有某个 Runner 的访问权限，对应任务会失败，Release 也不会发布。
 
 当前工作流**不包含** Windows Authenticode 签名、macOS Developer ID 签名或 notarization。它产出的自动 Release 适用于内部测试或明确标注为未签名的分发；公开正式发行前必须先补充签名和公证步骤，不能把“Tag 构建成功”等同于“可公开正式发布”。
 
@@ -181,7 +181,7 @@ vX.Y.Z tag
   → 原生 Linux x64 / ARM64 Runner 分别顺序构建五服务镜像，并生成两个 CPU 架构归档
   → 各原生 Runner 构建三个桌面 ZIP
   → verify-desktop-offline-package
-  → GitHub Release 上传三个 ZIP
+  → GitHub Release 上传三个 ZIP 与两份 Linux 镜像归档
 ```
 
 正式公开发行时，在上述流程后补充：签名 / macOS 公证 → 下载后复核 SHA-256 → 发布签名与校验说明。
@@ -196,9 +196,13 @@ Release job 只会使用 Tag 对应提交进行构建。上传前需确认工作
 BOX-Local-Engine-<版本>-windows-amd64.zip
 BOX-Local-Engine-<版本>-macos-arm64.zip
 BOX-Local-Engine-<版本>-linux-amd64.zip
+box-local-engine-images-<版本>-linux-amd64.tar.gz
+box-local-engine-images-<版本>-linux-arm64.tar.gz
 ```
 
 普通用户只需按系统下载一个 ZIP：Windows 下载 `windows-amd64.zip`，搭载 Apple 芯片的 Mac 下载 `macos-arm64.zip`，x64 Linux 下载 `linux-amd64.zip`。每个桌面 ZIP 已包含相应镜像归档，无需再下载 `.tar.gz`。
+
+单独的 `.tar.gz` 是给手动 Docker/Compose 部署者使用的：x64 Linux、Windows x64 Docker Desktop 与 Intel Mac 选择 `linux-amd64`；Apple Silicon Mac 和 ARM Linux 选择 `linux-arm64`。它们只包含五项 BOX 服务镜像，不包含启动器、PostgreSQL、Redis、配置或用户数据。导入方式为 `docker load -i <归档文件>`；之后使用仓库的 Compose 模板或服务器部署配置启动服务。
 
 Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docker 前置条件、升级注意事项、已知限制、下载文件的 SHA-256、是否已签名，以及 Creator/VOXA 不支持公网暴露的安全边界。
 

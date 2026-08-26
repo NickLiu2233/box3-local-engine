@@ -5,7 +5,9 @@
 
 ## 审计基线
 
-本次审计使用本地 `boxes` 工作树，对以下真实运行链路逐层比较，而不是按页面数量判断：
+最近一次对齐审计日期为 2026-08-26，固定上游基线为 `boxes` commit `fbb41d82ef624e08eea83d41a72d402823529e57`。审计只以该 commit 的已提交内容为准，不把 `boxes` 工作树中的未提交实验改动当成上游事实。
+
+审计对以下真实运行链路逐层比较，而不是按页面数量判断：
 
 ```text
 工程/发布快照
@@ -25,6 +27,8 @@
 - Creator/Play 的渲染、物理、动画、实体、UI 和脚本主流程保留 `boxes` 实现；
 - game-server 的语义差异集中在本地内容、身份、存储、运行时调度和 VOXA 素材；
 - RabbitMQ、神策、Nacos、CI 镜像注册和云容器回收已从本地发行路径移除。
+
+文件清单复核确认：上游 `internals/build-system` 的有效源码路径均在本仓库存在；`internals/schema` 缺少的是分析协议源码，`packages/script-api` 缺少的是服务端 analytics 模块，均属于明确移除的平台分析能力。大量 `build/`、`dist/`、本地回归和 adapter 是 Local Engine 的生成产物或新增边界，不应反向同步到 `boxes`。
 
 这意味着当前优先工作是守住同源基线和完善 adapter 的回归测试，而不是继续迁入平台模块。
 
@@ -155,9 +159,9 @@ docker compose config
 ## 本轮审计后的剩余差异
 
 地图组的持久化、重新打开同步、整组迁移和发布版本绑定已经本地化。Boxes 在线版还会通过
-`BackendSocket` 在两个同时打开的编辑器之间广播共享资源 action；Local Engine 没有云端
-`ENGINE_CUSTOM` channel，因此当前不会即时热合并另一个编辑器中的 UI、图片、音频或共享
-资源修改。其他成员下次打开时会取得最新共享快照。
+`BackendSocket` 在两个同时打开的编辑器之间广播共享资源 action；Local Engine 保留工程内部的
+`ENGINE_CUSTOM` schema 和地图组 action 处理，但没有云端 BackendSocket 的跨编辑器投递链路，
+因此当前不会即时热合并另一个编辑器中的 UI、图片、音频或共享资源修改。其他成员下次打开时会取得最新共享快照。
 
 不要用文件轮询直接覆盖运行中 RDA store 来伪装实时同步。若以后确有同时编辑同一地图组的
 需求，应在现有地图组 seam 后增加本地事件 adapter，并复用 Boxes 的
