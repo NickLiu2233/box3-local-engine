@@ -33,7 +33,7 @@ Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于
 
 Windows ARM、Intel macOS、Linux ARM64 并非当前默认发行目标。如确有需要，维护者仍可在对应原生设备上用 `pnpm build:desktop-installer` 手动构建，不应把这些实验性包混入普通用户下载列表。
 
-无图形界面的 Linux 服务器不依赖桌面 GUI。Release 同时提供 `BOX3-Engine-Server-<版本>-linux-amd64.zip` 与 `...-linux-arm64.zip`：每包包含五服务镜像、`compose.yml`、可编辑的 `.env.example` 和启停/日志脚本。服主解压后复制并配置 `.env` 即可部署；模板包不含任何真实密钥或用户数据。Linux 桌面包则用于需要图形化部署管理器的 Linux 工作站。
+无图形界面的 Linux 服务器不依赖桌面 GUI。Release 同时提供 `BOX3-Engine-Server-<版本>-linux-amd64.zip` 与 `...-linux-arm64.zip`：每包只包含 Play、Player Service 和参考登录门户镜像，以及 `compose.yml`、可编辑的 `.env.example` 和启停/日志脚本；不含 Creator / ARENA 或 VOXA。服主解压后复制并配置 `.env` 即可部署；模板包不含任何真实密钥或用户数据。Linux 桌面包则用于需要图形化部署管理器的 Linux 工作站。
 
 ## 2. 构建前条件
 
@@ -204,7 +204,7 @@ box-local-engine-images-<版本>-linux-arm64.tar.gz
 
 普通用户只需按系统下载一个 ZIP：Windows 下载 `windows-amd64.zip`，搭载 Apple 芯片的 Mac 下载 `macos-arm64.zip`，x64 Linux 下载 `linux-amd64.zip`。每个桌面 ZIP 已包含相应镜像归档，无需再下载 `.tar.gz`。
 
-无图形 Linux 服务器优先下载对应架构的 `BOX3-Engine-Server` ZIP。它把镜像归档、`compose.yml`、可编辑 `.env.example` 和 `install.sh` 放在同一目录；执行 `chmod +x *.sh && ./install.sh` 后再按需要编辑 `.env`，即可用 `./status.sh`、`./logs.sh` 和 `./stop.sh` 运维。`.env` 由服主创建和保管，Release 不含真实 `.env`、密码、密钥或任何用户数据。
+无图形 Linux 服务器优先下载对应架构的 `BOX3-Engine-Server` ZIP。它把 Play、Player Service、参考登录门户的镜像归档、`compose.yml`、可编辑 `.env.example` 和 `install.sh` 放在同一目录；不包含 Creator / ARENA 或 VOXA。执行 `chmod +x *.sh && ./install.sh` 后再按需要编辑 `.env`，即可用 `./status.sh`、`./logs.sh` 和 `./stop.sh` 运维。`.env` 由服主创建和保管，Release 不含真实 `.env`、密码、密钥或任何用户数据。
 
 单独的 `.tar.gz` 仍供手动 Docker/Compose 部署者使用：x64 Linux、Windows x64 Docker Desktop 与 Intel Mac 选择 `linux-amd64`；Apple Silicon Mac 和 ARM Linux 选择 `linux-arm64`。它们只包含五项 BOX 服务镜像，不包含启动器、PostgreSQL、Redis、配置或用户数据。导入方式为 `docker load -i <归档文件>`；之后使用服务器部署包中的 Compose 模板或仓库 Compose 配置启动服务。
 

@@ -40,6 +40,27 @@ function createZip(packageRoot, destination) {
   if (result.status !== 0) fail(`服务器离线包 ZIP 打包失败，退出码 ${result.status}`)
 }
 
+function serviceSection(source, start, end) {
+  const startIndex = source.indexOf(start)
+  const endIndex = source.indexOf(end, startIndex)
+  if (startIndex < 0 || endIndex < 0) fail(`无法从 Compose 模板提取服务：${start.trim()}`)
+  return source.slice(startIndex, endIndex)
+}
+
+function headlessCompose() {
+  const source = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8')
+  const playerService = source.slice(0, source.indexOf('  player-auth-portal:'))
+  const authPortal = serviceSection(source, '  player-auth-portal:', '  creator:').replace(
+    /^      AUTH_DEMO_CREATOR_URL:.*\n/m,
+    '',
+  )
+  const play = serviceSection(source, '  play-storage-init:', '  voxa:')
+  const volumesIndex = source.indexOf('\nvolumes:\n')
+  const volumes = volumesIndex >= 0 ? source.slice(volumesIndex + 1) : ''
+  if (!playerService || !authPortal || !play || !volumes) fail('无法生成游玩服务器 Compose 配置')
+  return `${playerService}${authPortal}${play}${volumes}`
+}
+
 function main() {
   const architecture = process.argv[2]
   const archive = process.argv[3] ? path.resolve(process.argv[3]) : ''
@@ -61,13 +82,13 @@ function main() {
   fs.mkdirSync(packageRoot, { recursive: true })
 
   fs.cpSync(templateRoot, packageRoot, { recursive: true })
-  fs.copyFileSync(path.join(repoRoot, 'docker-compose.yml'), path.join(packageRoot, 'compose.yml'))
+  fs.writeFileSync(path.join(packageRoot, 'compose.yml'), headlessCompose())
   fs.copyFileSync(archive, path.join(packageRoot, path.basename(archive)))
 
   const envTemplate = fs
-    .readFileSync(path.join(repoRoot, 'distribution/linux-amd64/.env.example'), 'utf8')
-    .replace(/^BOX_IMAGE_TAG=.*$/m, `BOX_IMAGE_TAG=${imageTag}`)
-    .replace(/^BOX_PLAY_PLATFORM=.*$/m, `BOX_PLAY_PLATFORM=linux/${architecture}`)
+    .readFileSync(path.join(templateRoot, '.env.example'), 'utf8')
+    .replaceAll('__BOX_IMAGE_TAG__', imageTag)
+    .replaceAll('__BOX_PLAY_PLATFORM__', `linux/${architecture}`)
   fs.writeFileSync(path.join(packageRoot, '.env.example'), envTemplate)
 
   const installer = fs

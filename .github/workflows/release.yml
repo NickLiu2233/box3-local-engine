@@ -128,9 +128,16 @@ jobs:
           path: apps/local-engine/dist/images
       - name: Build headless Linux server package
         run: |
-          archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
-          test -f "$archive"
-          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$archive"
+          source_archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          server_archive="apps/local-engine/dist/images/box3-engine-play-server-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          test -f "$source_archive"
+          docker load -i "$source_archive"
+          docker image save \
+            "box-local-engine-player-service:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-player-auth-portal:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-play:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
+            | gzip -1 > "$server_archive"
+          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
       - uses: actions/upload-artifact@v4
         with:
           name: headless-server-${{ matrix.architecture }}

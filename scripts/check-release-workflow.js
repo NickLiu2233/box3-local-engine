@@ -45,8 +45,18 @@ assert.match(workflow, /pattern: headless-server-\*/)
 assert.match(workflow, /needs: \[desktop, headless-server\]/)
 assert.match(workflow, /files:\s*\|\s*\*\.zip\s*\*\.tar\.gz/)
 assert.match(serverPackageBuilder, /BOX3-Engine-Server-/)
-assert.match(serverPackageBuilder, /fs\.copyFileSync\(path\.join\(repoRoot, 'docker-compose\.yml'/)
-assert.match(serverPackageBuilder, /distribution\/linux-amd64\/\.env\.example/)
+assert.match(serverPackageBuilder, /function headlessCompose/)
+assert.match(serverPackageBuilder, /player-auth-portal:/)
+assert.match(serverPackageBuilder, /play-storage-init:/)
+assert.match(serverPackageBuilder, /templateRoot, '\.env\.example'/)
+assert.match(workflow, /box3-engine-play-server-images-/)
+assert.match(workflow, /box-local-engine-player-service:/)
+assert.match(workflow, /box-local-engine-player-auth-portal:/)
+assert.match(workflow, /box-local-engine-play:/)
+assert.doesNotMatch(
+  workflow.match(/headless-server:[\s\S]*?\n  publish:/)?.[0] || '',
+  /box-local-engine-(creator|voxa):/,
+)
 for (const requiredTemplateFile of ['README.md', 'install.sh', 'status.sh', 'logs.sh', 'stop.sh']) {
   assert.ok(
     fs.existsSync(path.join(root, 'distribution/server', requiredTemplateFile)),
