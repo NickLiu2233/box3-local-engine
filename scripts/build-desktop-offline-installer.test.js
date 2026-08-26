@@ -66,17 +66,28 @@ function writeFixture() {
   return { archive, root }
 }
 
-test('archive reader explicitly requests gzip extraction for Windows-compatible tar', () => {
+test('archive reader forces a Windows drive-letter archive path to stay local', () => {
   let invocation
-  const result = archiveEntry('images.tar.gz', 'manifest.json', (command, args) => {
-    invocation = { command, args }
-    return { status: 0, stdout: '{}' }
-  })
+  const result = archiveEntry(
+    'D:\\a\\box-local-engine\\images.tar.gz',
+    'manifest.json',
+    (command, args) => {
+      invocation = { command, args }
+      return { status: 0, stdout: '{}' }
+    },
+    'win32',
+  )
 
   assert.equal(result, '{}')
   assert.deepEqual(invocation, {
     command: 'tar',
-    args: ['-xzf', 'images.tar.gz', '-O', 'manifest.json'],
+    args: [
+      '--force-local',
+      '-xzf',
+      'D:\\a\\box-local-engine\\images.tar.gz',
+      '-O',
+      'manifest.json',
+    ],
   })
 })
 

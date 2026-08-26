@@ -105,11 +105,18 @@ function createZip(packageRoot, destination) {
   if (result.status !== 0) fail(`ZIP 打包失败，退出码 ${result.status}`)
 }
 
-function archiveEntry(archive, entry, run = spawnSync) {
+function archiveEntry(archive, entry, run = spawnSync, platform = process.platform) {
   // Windows ships bsdtar, which does not consistently infer gzip compression
   // when extracting one entry. Explicit gzip extraction works with both
   // bsdtar and GNU tar, including the Windows desktop release runners.
-  const result = run('tar', ['-xzf', archive, '-O', entry], {
+  const tarArguments = [
+    ...(platform === 'win32' ? ['--force-local'] : []),
+    '-xzf',
+    archive,
+    '-O',
+    entry,
+  ]
+  const result = run('tar', tarArguments, {
     encoding: 'utf8',
     maxBuffer: 8 * 1024 * 1024,
     stdio: ['ignore', 'pipe', 'pipe'],
