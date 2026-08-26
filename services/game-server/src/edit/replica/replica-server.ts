@@ -104,7 +104,10 @@ import {
 } from '../../project/local-project-state';
 import { mergeExtraProjectInfo } from '../../project/project-extra';
 import { isContentHash } from '../../project/content-hash';
-import { runtimeMeshAssets } from '../../project/runtime-mesh-assets';
+import {
+  resolveRenamedProjectMesh,
+  runtimeMeshAssets,
+} from '../../project/runtime-mesh-assets';
 import {
   moveProjectModelToTrash,
   purgeProjectModelFromTrash,
@@ -2344,19 +2347,20 @@ export class EditReplicaServer {
     const store = replicaState.projectStore;
     const actions: ProjectAction[] = [];
 
-    // A local model rename keeps modelId but changes mesh path. Repair entities
-    // which still point at an alias that no longer exists in extraProject.
+    // A model rename keeps modelId but changes the path derived from its name.
+    // Repair every entity that still points to the old path, regardless of
+    // whether the source is a local VOXA model or a project model.
     Object.values(replicaState.project.entitiesTree).forEach((entityNode) => {
       const entity = entityNode.value;
+      if (!entity) return;
       if (
-        !entity ||
-        !/__local_\d+\.vb$/.test(entity.mesh) ||
-        meshAssets[entity.mesh]
+        resolveRenamedProjectMesh(
+          entity.mesh,
+          entity.meshId,
+          meshAssets,
+          meshIdSetCache,
+        )
       ) {
-        return;
-      }
-      const current = meshIdSetCache[entity.meshId];
-      if (current && meshAssets[current.path] && /__local_\d+\.vb$/.test(current.path)) {
         updateMeshPaths.add(entity.mesh);
       }
     });
@@ -2373,14 +2377,18 @@ export class EditReplicaServer {
       }
       const entity = entityNode.value;
       const hasCurrentPath = Boolean(meshAssets[entity.mesh]);
-      const isStaleLocalPath =
-        !hasCurrentPath && /__local_\d+\.vb$/.test(entity.mesh);
-      if (!updateMeshPaths.has(entity.mesh) && !isStaleLocalPath) {
+      const renamedMesh = resolveRenamedProjectMesh(
+        entity.mesh,
+        entity.meshId,
+        meshAssets,
+        meshIdSetCache,
+      );
+      if (!updateMeshPaths.has(entity.mesh) && !renamedMesh) {
         return;
       }
       const meshInfo = hasCurrentPath
         ? meshInfoByPath[entity.mesh]
-        : meshIdSetCache[entity.meshId];
+        : renamedMesh;
       if (!meshInfo) {
         return;
       }

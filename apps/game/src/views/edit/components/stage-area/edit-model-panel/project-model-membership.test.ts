@@ -3,7 +3,7 @@ import { describe, expect, it } from '@jest/globals';
 import {
   dedupeProjectModelsByContent,
   getProjectModelDisplayName,
-  isProjectModelReferenced,
+  projectModelsForPanel,
   shouldUseProjectModelAdapter,
 } from './project-model-membership';
 
@@ -19,26 +19,16 @@ describe('project model membership', () => {
     expect(shouldUseProjectModelAdapter({ libraryScope: 'project' })).toBe(true);
     expect(shouldUseProjectModelAdapter({ libraryScope: 'local' })).toBe(false);
   });
-  it('does not include an unplaced model', () => {
+  it('keeps a saved project model visible before it is placed in a map', () => {
     expect(
-      isProjectModelReferenced('mesh/未放置.vb', new Set()),
-    ).toBe(false);
+      projectModelsForPanel(
+        [{ id: 1, meshPath: 'mesh/未放置.vb' }],
+      ),
+    ).toEqual([{ id: 1, meshPath: 'mesh/未放置.vb' }]);
   });
 
-  it('includes a project asset only after the map references it', () => {
-    const path = 'mesh/地图模型.vb';
-    expect(isProjectModelReferenced(path, new Set([path]))).toBe(true);
-  });
-
-  it('includes a local model after it is placed in the map', () => {
-    const path = 'mesh/本地模型__local_7.vb';
-    expect(isProjectModelReferenced(path, new Set([path]))).toBe(true);
-  });
-
-  it('does not include a local model that belongs only to the local library', () => {
-    expect(
-      isProjectModelReferenced('mesh/本地模型__local_7.vb', new Set()),
-    ).toBe(false);
+  it('does not treat a missing project asset path as a project model', () => {
+    expect(projectModelsForPanel([{ id: 1 }])).toEqual([]);
   });
 
   it('shows identical edited model content only once', () => {

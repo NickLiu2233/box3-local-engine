@@ -1,13 +1,12 @@
 /**
- * Project is a view of the models referenced by the current map. The model's
- * storage origin (local VOXA or an imported project package) does not affect
- * membership.
+ * Project lists every model stored in the current project's resource library.
+ * Entity references only affect map content; they never determine whether a
+ * saved model is available in the Project model panel.
  */
-export function isProjectModelReferenced(
-  meshPath: string | undefined,
-  referencedMeshPaths: ReadonlySet<string>,
+export function projectModelsForPanel<T extends { meshPath?: string }>(
+  models: T[],
 ) {
-  return Boolean(meshPath && referencedMeshPaths.has(meshPath));
+  return models.filter((model) => Boolean(model.meshPath?.startsWith('mesh/')));
 }
 
 /**

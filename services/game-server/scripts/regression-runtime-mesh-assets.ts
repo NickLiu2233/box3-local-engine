@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 
 import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
-import { runtimeMeshAssets } from '../src/project/runtime-mesh-assets';
+import {
+  resolveRenamedProjectMesh,
+  runtimeMeshAssets,
+} from '../src/project/runtime-mesh-assets';
 
 const validHash = 'QmSKfrPgmkCoomW2tbpHkynGL5aCd4qRA2JSBG1QDhRJzJ';
 const meshAssets = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity).meshAssets;
@@ -26,6 +29,35 @@ assert.deepEqual(
   runtimeMeshAssets(meshAssets).map(([path]) => path),
   ['mesh/valid.vb'],
   'runtime model preparation must discard entries without a usable content hash',
+);
+
+const renamedModelId = 43;
+const oldPath = 'mesh/改名前模型.vb';
+const newPath = 'mesh/改名后模型.vb';
+meshAssets[newPath] = {
+  modelId: renamedModelId,
+  hash: validHash,
+  modelPreviewHash: '',
+  animated: false,
+  updatedAt: '',
+};
+
+assert.deepEqual(
+  resolveRenamedProjectMesh(oldPath, renamedModelId, meshAssets, {
+    [renamedModelId]: {
+      hash: validHash,
+      path: newPath,
+      bounds: [2, 3, 4],
+      motionIds: [],
+    },
+  }),
+  {
+    hash: validHash,
+    path: newPath,
+    bounds: [2, 3, 4],
+    motionIds: [],
+  },
+  'renaming a saved project model must retain every placed entity through its stable model id',
 );
 
 console.log('runtime mesh asset integrity regression passed');
