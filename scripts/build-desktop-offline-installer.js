@@ -77,6 +77,27 @@ function copyDirectory(source, destination) {
   fs.cpSync(source, destination, { recursive: true, force: true })
 }
 
+function macApplicationHasResourceSeal(application) {
+  return fs.existsSync(path.join(application, 'Contents', '_CodeSignature', 'CodeResources'))
+}
+
+function ensureMacApplicationSignature(application) {
+  if (process.platform !== 'darwin' || macApplicationHasResourceSeal(application)) return
+  // Tauri's unsigned CI bundle contains a linker ad-hoc signature on the
+  // executable but no outer app resource seal. Gatekeeper reports that shape
+  // as a damaged application once the offline payload is embedded. Sign the
+  // finished bundle ad-hoc to seal every resource. A Developer ID-signed app
+  // already has CodeResources, so this never replaces a release signature.
+  const result = spawnSync('codesign', ['--force', '--deep', '--sign', '-', application], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  if (result.status !== 0) {
+    const detail = String(result.stderr || result.stdout || '').trim()
+    fail(`无法为 macOS APP 写入资源签名${detail ? `：${detail}` : ''}`)
+  }
+}
+
 function createZip(packageRoot, destination) {
   fs.rmSync(destination, { force: true })
   const parent = path.dirname(packageRoot)
@@ -277,6 +298,7 @@ function main() {
   const executableDestination = path.join(packageRoot, spec.executable)
   if (spec.bundle) copyDirectory(executableSource, executableDestination)
   else fs.copyFileSync(executableSource, executableDestination)
+  if (spec.bundle) ensureMacApplicationSignature(executableDestination)
   if (!spec.bundle) {
     fs.copyFileSync(archive, path.join(packageRoot, path.basename(archive)))
     fs.writeFileSync(
@@ -317,4 +339,11 @@ function main() {
 
 if (require.main === module) main()
 
-module.exports = { archiveEntry, imageDetailsFromArchive, tauriBuildCommand, tauriBuildFailure }
+module.exports = {
+  archiveEntry,
+  imageDetailsFromArchive,
+  tauriBuildCommand,
+  tauriBuildFailure,
+  macApplicationHasResourceSeal,
+  ensureMacApplicationSignature,
+}

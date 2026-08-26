@@ -12,6 +12,8 @@ const {
   imageDetailsFromArchive,
   tauriBuildCommand,
   tauriBuildFailure,
+  macApplicationHasResourceSeal,
+  ensureMacApplicationSignature,
 } = require('./build-desktop-offline-installer.js')
 
 function writeOctal(header, offset, length, value) {
@@ -125,3 +127,28 @@ test('image details are read from a gzip Docker archive', () => {
     fs.rmSync(root, { recursive: true, force: true })
   }
 })
+
+test(
+  'macOS offline app receives an outer ad-hoc resource signature',
+  { skip: process.platform !== 'darwin' },
+  () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-macos-app-'))
+    const app = path.join(root, 'BOX3 Engine.app')
+    try {
+      fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true })
+      fs.mkdirSync(path.join(app, 'Contents', 'Resources'), { recursive: true })
+      fs.copyFileSync('/bin/echo', path.join(app, 'Contents', 'MacOS', 'box-local-engine-manager'))
+      fs.writeFileSync(
+        path.join(app, 'Contents', 'Info.plist'),
+        '<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>box-local-engine-manager</string></dict></plist>',
+      )
+      fs.writeFileSync(path.join(app, 'Contents', 'Resources', 'payload.txt'), 'offline payload')
+
+      assert.equal(macApplicationHasResourceSeal(app), false)
+      ensureMacApplicationSignature(app)
+      assert.equal(macApplicationHasResourceSeal(app), true)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  },
+)
