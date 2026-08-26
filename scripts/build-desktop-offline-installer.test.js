@@ -7,7 +7,12 @@ const path = require('node:path')
 const test = require('node:test')
 const zlib = require('node:zlib')
 
-const { archiveEntry, imageDetailsFromArchive } = require('./build-desktop-offline-installer.js')
+const {
+  archiveEntry,
+  imageDetailsFromArchive,
+  tauriBuildCommand,
+  tauriBuildFailure,
+} = require('./build-desktop-offline-installer.js')
 
 function writeOctal(header, offset, length, value) {
   header.write(`${value.toString(8).padStart(length - 1, '0')}\0`, offset, length, 'ascii')
@@ -89,6 +94,17 @@ test('archive reader forces a Windows drive-letter archive path to stay local', 
       'manifest.json',
     ],
   })
+})
+
+test('Windows starts pnpm through its command shim and reports spawn failures', () => {
+  assert.deepEqual(tauriBuildCommand('win32'), { command: 'pnpm.cmd', shell: true })
+  assert.match(
+    tauriBuildFailure({
+      status: null,
+      error: { code: 'ENOENT', message: 'spawnSync pnpm ENOENT' },
+    }),
+    /无法启动 Tauri 构建命令：ENOENT: spawnSync pnpm ENOENT/,
+  )
 })
 
 test('image details are read from a gzip Docker archive', () => {

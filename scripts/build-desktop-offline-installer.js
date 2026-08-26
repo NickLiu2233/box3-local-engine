@@ -155,6 +155,21 @@ function imageDetailsFromArchive(archive) {
   })
 }
 
+function tauriBuildCommand(platform = process.platform) {
+  return platform === 'win32'
+    ? { command: 'pnpm.cmd', shell: true }
+    : { command: 'pnpm', shell: false }
+}
+
+function tauriBuildFailure(result) {
+  if (result.error) {
+    const code = result.error.code ? `${result.error.code}: ` : ''
+    return `无法启动 Tauri 构建命令：${code}${result.error.message}`
+  }
+  if (result.signal) return `Tauri 构建被系统信号终止：${result.signal}`
+  return `Tauri 构建失败，退出码 ${result.status}`
+}
+
 function main() {
   prepareReleaseMetadata()
   const platform = process.argv[2]
@@ -215,12 +230,14 @@ function main() {
     const tauriArgs = ['--filter', '@box-local/deployment-manager', 'tauri', 'build']
     if (spec.bundle) tauriArgs.push('--bundles', spec.bundle)
     else tauriArgs.push('--no-bundle')
-    const result = spawnSync('pnpm', tauriArgs, {
+    const invocation = tauriBuildCommand()
+    const result = spawnSync(invocation.command, tauriArgs, {
       cwd: repoRoot,
       env: { ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag },
+      shell: invocation.shell,
       stdio: 'inherit',
     })
-    if (result.status !== 0) fail(`Tauri 构建失败，退出码 ${result.status}`)
+    if (result.error || result.status !== 0) fail(tauriBuildFailure(result))
   } finally {
     fs.writeFileSync(payloadImageInfo, originalImageInfo)
     if (spec.bundle) {
@@ -284,4 +301,4 @@ function main() {
 
 if (require.main === module) main()
 
-module.exports = { archiveEntry, imageDetailsFromArchive }
+module.exports = { archiveEntry, imageDetailsFromArchive, tauriBuildCommand, tauriBuildFailure }
