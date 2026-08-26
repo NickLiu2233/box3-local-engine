@@ -11,15 +11,11 @@ const installerBuilder = fs.readFileSync(
   'utf8',
 )
 
-for (const target of [
-  'windows-amd64',
-  'windows-arm64',
-  'macos-amd64',
-  'macos-arm64',
-  'linux-amd64',
-  'linux-arm64',
-]) {
+for (const target of ['windows-amd64', 'macos-arm64', 'linux-amd64']) {
   assert.match(workflow, new RegExp(`(?:targets|target).*${target}`))
+}
+for (const excludedTarget of ['windows-arm64', 'macos-amd64', 'linux-arm64']) {
+  assert.doesNotMatch(workflow, new RegExp(`target: ${excludedTarget}`))
 }
 
 assert.match(workflow, /for service in player-service player-auth-portal creator play voxa/)
@@ -38,5 +34,7 @@ assert.match(workflow, /corepack enable/)
 assert.match(workflow, /pnpm --version/)
 assert.match(installerBuilder, /const archiveImageTags = \[\.\.\.new Set\(imageDetails\.map/)
 assert.match(installerBuilder, /const imageTag = archiveImageTags\.length === 1/)
+assert.doesNotMatch(workflow, /pattern: images-\*/)
+assert.doesNotMatch(workflow, /\*\.tar\.gz/)
 
 console.log('release workflow image-tag contract check passed')

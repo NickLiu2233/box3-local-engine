@@ -21,18 +21,17 @@
 
 Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于同一目录。macOS 解压目录只包含 `.app`；镜像归档、清单、许可证、构建信息与校验文件均嵌入 APP 的 Resources 目录，因此可把 APP 单独移入“应用程序”目录。
 
-当前 CI 会构建六种原生桌面目标：
+当前 CI 只发布三种面向普通用户的原生桌面目标：
 
 | 发布目标        | 构建机              | Docker 镜像架构 |
 | --------------- | ------------------- | --------------- |
 | `windows-amd64` | Windows x64         | `linux/amd64`   |
-| `windows-arm64` | Windows ARM64       | `linux/arm64`   |
-| `macos-amd64`   | Intel macOS         | `linux/amd64`   |
 | `macos-arm64`   | Apple Silicon macOS | `linux/arm64`   |
 | `linux-amd64`   | Linux x64           | `linux/amd64`   |
-| `linux-arm64`   | Linux ARM64         | `linux/arm64`   |
 
-业务服务始终以 Linux 容器运行，桌面系统不改变 Docker 镜像。因此一次发行只会产出两份五服务镜像归档：`linux/amd64` 和 `linux/arm64`。六个桌面启动器各自携带或下载对应 CPU 架构的那一份归档；不会为 Windows、macOS、Linux 重复构建相同镜像。
+业务服务始终以 Linux 容器运行，桌面系统不改变 Docker 镜像。因此一次发行只会在 CI 内部生成两份五服务镜像归档：`linux/amd64` 和 `linux/arm64`。三个桌面启动器各自携带对应 CPU 架构的那一份归档；不会为 Windows、macOS、Linux 重复构建相同镜像，也不会把 `.tar.gz` 额外显示在 GitHub Release 附件中。
+
+Windows ARM、Intel macOS、Linux ARM64 并非当前默认发行目标。如确有需要，维护者仍可在对应原生设备上用 `pnpm build:desktop-installer` 手动构建，不应把这些实验性包混入普通用户下载列表。
 
 无图形界面的 Linux 服务器通常使用 Compose 离线包/镜像归档直接部署，不依赖桌面 GUI；Linux 桌面包用于需要图形化部署管理器的 Linux 工作站。
 
@@ -180,9 +179,9 @@ git push origin v0.1.0
 vX.Y.Z tag
   → pnpm verify
   → 原生 Linux x64 / ARM64 Runner 分别顺序构建五服务镜像，并生成两个 CPU 架构归档
-  → 各原生 Runner 构建六种桌面 ZIP
+  → 各原生 Runner 构建三个桌面 ZIP
   → verify-desktop-offline-package
-  → GitHub Release 上传 ZIP 与镜像归档
+  → GitHub Release 上传三个 ZIP
 ```
 
 正式公开发行时，在上述流程后补充：签名 / macOS 公证 → 下载后复核 SHA-256 → 发布签名与校验说明。
@@ -195,16 +194,11 @@ Release job 只会使用 Tag 对应提交进行构建。上传前需确认工作
 
 ```text
 BOX-Local-Engine-<版本>-windows-amd64.zip
-BOX-Local-Engine-<版本>-windows-arm64.zip
-BOX-Local-Engine-<版本>-macos-amd64.zip
 BOX-Local-Engine-<版本>-macos-arm64.zip
 BOX-Local-Engine-<版本>-linux-amd64.zip
-BOX-Local-Engine-<版本>-linux-arm64.zip
-box-local-engine-images-v<版本>-linux-amd64.tar.gz
-box-local-engine-images-v<版本>-linux-arm64.tar.gz
 ```
 
-给 Windows 测试者通常下载 `windows-amd64.zip`；Windows on ARM 才下载 `windows-arm64.zip`。桌面 ZIP 已包含相应镜像归档，无需再向普通测试者单独发送 `.tar.gz`。
+普通用户只需按系统下载一个 ZIP：Windows 下载 `windows-amd64.zip`，搭载 Apple 芯片的 Mac 下载 `macos-arm64.zip`，x64 Linux 下载 `linux-amd64.zip`。每个桌面 ZIP 已包含相应镜像归档，无需再下载 `.tar.gz`。
 
 Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docker 前置条件、升级注意事项、已知限制、下载文件的 SHA-256、是否已签名，以及 Creator/VOXA 不支持公网暴露的安全边界。
 

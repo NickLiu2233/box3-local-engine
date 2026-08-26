@@ -105,13 +105,18 @@ function createZip(packageRoot, destination) {
   if (result.status !== 0) fail(`ZIP 打包失败，退出码 ${result.status}`)
 }
 
-function archiveEntry(archive, entry) {
-  const result = spawnSync('tar', ['-xOf', archive, entry], {
+function archiveEntry(archive, entry, run = spawnSync) {
+  // Windows ships bsdtar, which does not consistently infer gzip compression
+  // when extracting one entry. Explicit gzip extraction works with both
+  // bsdtar and GNU tar, including the Windows desktop release runners.
+  const result = run('tar', ['-xzf', archive, '-O', entry], {
     encoding: 'utf8',
     maxBuffer: 8 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'pipe'],
   })
-  if (result.status !== 0) {
-    throw new Error(`无法从离线镜像归档读取 ${entry}`)
+  if (result.error || result.status !== 0) {
+    const detail = String(result.stderr || result.error?.message || '').trim()
+    throw new Error(`无法从离线镜像归档读取 ${entry}${detail ? `：${detail}` : ''}`)
   }
   return result.stdout
 }
@@ -270,4 +275,6 @@ function main() {
   console.log(`SHA-256:        ${sha256(zip)}`)
 }
 
-main()
+if (require.main === module) main()
+
+module.exports = { archiveEntry, imageDetailsFromArchive }
