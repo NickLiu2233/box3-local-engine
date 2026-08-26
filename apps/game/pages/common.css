@@ -135,6 +135,30 @@
   --theme-secondary10: #302819;
 }
 
+/* Shared shell for Creator and Play work centers. Player administration and
+ * the desktop launcher use the same charcoal surface scale and yellow action
+ * colour; individual pages only add their domain-specific layouts on top. */
+.boxWorkCenter {
+  --work-canvas: #262626;
+  --work-surface: #333;
+  --work-surface-raised: #404040;
+  --work-surface-hover: #484848;
+  --work-border: rgba(255, 255, 255, 0.1);
+  --work-text: rgba(255, 255, 255, 0.92);
+  --work-text-muted: rgba(255, 255, 255, 0.5);
+  --work-accent: #ffdb00;
+  --work-accent-foreground: #262626;
+  min-height: 100vh;
+  color: var(--work-text);
+  background: var(--work-canvas);
+  font-family: MiSans, Montserrat, "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.boxWorkCenter :where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--work-accent);
+  outline-offset: 2px;
+}
+
 @font-face {
   font-family: noto-sans-sc-v12-latin_chinese-simplified-700;
   font-style: normal;

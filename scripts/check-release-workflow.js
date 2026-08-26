@@ -25,5 +25,9 @@ assert.match(
   /box-local-engine-images-\$\{\{ github\.ref_name \}\}-\$\{\{ matrix\.target \}\}\.tar\.gz/,
 )
 assert.match(workflow, /test -f "\$archive"/)
+assert.doesNotMatch(workflow, /pnpm\/action-setup/)
+assert.match(workflow, /node-version-file: \.node-version/)
+assert.match(workflow, /corepack enable/)
+assert.match(workflow, /pnpm --version/)
 
 console.log('release workflow image-tag contract check passed')

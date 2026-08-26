@@ -406,7 +406,7 @@ export default function HomePage({
       <Head>
         <title>游玩作品中心</title>
       </Head>
-      <main className="page playWorkCenter">
+      <main className="page boxWorkCenter playWorkCenter">
         <header className="siteHeader">
           <Link
             className="siteBrand"
@@ -2076,6 +2076,99 @@ export default function HomePage({
         }
         .playWorkCenter .siteAccount {
           color: rgba(255, 255, 255, 0.88) !important;
+        }
+        /* Creator, Play, player administration and the launcher now share a
+           compact service-console shell. Play keeps player-facing covers, but
+           uses the same surface scale, action colour and feedback states. */
+        .playWorkCenter.page {
+          width: min(1150px, calc(100% - 32px));
+          padding-bottom: 64px;
+        }
+        .playWorkCenter .siteHeader {
+          margin-bottom: 28px;
+          border-color: var(--work-border, rgba(255, 255, 255, 0.1));
+        }
+        .playWorkCenter .header {
+          margin-bottom: 16px;
+        }
+        .playWorkCenter .title h1 {
+          font-size: 22px;
+        }
+        .playWorkCenter .button,
+        .playWorkCenter .groupExport {
+          height: 38px;
+          border-radius: 7px;
+          background: var(--work-surface, #333);
+        }
+        .playWorkCenter .button.primary {
+          color: var(--work-accent-foreground, #262626);
+          background: var(--work-accent, #ffdb00);
+        }
+        .playWorkCenter .collectionNav {
+          gap: 4px;
+          margin-bottom: 20px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid var(--work-border, rgba(255, 255, 255, 0.1));
+        }
+        .playWorkCenter .collectionNav button {
+          border-radius: 6px;
+        }
+        .playWorkCenter .playerGrid {
+          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+          gap: 10px;
+        }
+        .playWorkCenter .playerGrid .card {
+          display: flex;
+          min-height: 116px;
+          border-color: transparent;
+          border-radius: 8px;
+          background: var(--work-surface-raised, #404040);
+        }
+        .playWorkCenter .playerGrid .card:hover {
+          border-color: var(--work-border, rgba(255, 255, 255, 0.1));
+          background: var(--work-surface-hover, #484848);
+        }
+        .playWorkCenter .playerGrid .cover {
+          width: 116px;
+          min-width: 116px;
+          height: auto;
+          min-height: 116px;
+          border-radius: 6px;
+        }
+        .playWorkCenter .playerGrid .info {
+          display: flex;
+          min-width: 0;
+          flex: 1;
+          justify-content: center;
+          flex-direction: column;
+          padding: 14px;
+        }
+        .playWorkCenter .playerGrid .info p {
+          margin-top: 6px;
+        }
+        .playWorkCenter .groups {
+          gap: 12px;
+        }
+        .playWorkCenter .mapGroup {
+          padding: 14px;
+          border-radius: 8px;
+          background: var(--work-surface, #333);
+        }
+        .playWorkCenter .card,
+        .playWorkCenter .empty,
+        .playWorkCenter .dialog,
+        .playWorkCenter .progressDialog {
+          border-radius: 8px;
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .playWorkCenter .playerGrid .card:hover {
+            transform: translateY(-2px);
+          }
+        }
+        @media (hover: none), (pointer: coarse) {
+          .playWorkCenter .playerGrid .card:hover {
+            transform: none;
+          }
         }
         @media (prefers-reduced-motion: reduce) {
           .card,

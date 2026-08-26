@@ -1006,7 +1006,13 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   );
 
   return (
-    <main className={styles.page} onClick={() => { setMenuProject(null); setFilterOpen(false); }}>
+    <main
+      className={`${styles.page} boxWorkCenter creatorWorkCenter`}
+      onClick={() => {
+        setMenuProject(null)
+        setFilterOpen(false)
+      }}
+    >
       <header className={styles.header}>
         <a className={styles.brand} href="/projects" aria-label="BOX Local Engine">
           <span className={styles.brandMark} aria-hidden="true">
