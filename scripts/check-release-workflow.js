@@ -10,6 +10,10 @@ const installerBuilder = fs.readFileSync(
   path.join(root, 'scripts/build-desktop-offline-installer.js'),
   'utf8',
 )
+const serverPackageBuilder = fs.readFileSync(
+  path.join(root, 'scripts/build-headless-server-package.js'),
+  'utf8',
+)
 
 for (const target of ['windows-amd64', 'macos-arm64', 'linux-amd64']) {
   assert.match(workflow, new RegExp(`(?:targets|target).*${target}`))
@@ -35,6 +39,19 @@ assert.match(workflow, /pnpm --version/)
 assert.match(installerBuilder, /const archiveImageTags = \[\.\.\.new Set\(imageDetails\.map/)
 assert.match(installerBuilder, /const imageTag = archiveImageTags\.length === 1/)
 assert.match(workflow, /pattern: images-\*/)
+assert.match(workflow, /headless-server:\s+needs: images/)
+assert.match(workflow, /node scripts\/build-headless-server-package\.js/)
+assert.match(workflow, /pattern: headless-server-\*/)
+assert.match(workflow, /needs: \[desktop, headless-server\]/)
 assert.match(workflow, /files:\s*\|\s*\*\.zip\s*\*\.tar\.gz/)
+assert.match(serverPackageBuilder, /BOX3-Engine-Server-/)
+assert.match(serverPackageBuilder, /fs\.copyFileSync\(path\.join\(repoRoot, 'docker-compose\.yml'/)
+assert.match(serverPackageBuilder, /distribution\/linux-amd64\/\.env\.example/)
+for (const requiredTemplateFile of ['README.md', 'install.sh', 'status.sh', 'logs.sh', 'stop.sh']) {
+  assert.ok(
+    fs.existsSync(path.join(root, 'distribution/server', requiredTemplateFile)),
+    `missing headless server template file: ${requiredTemplateFile}`,
+  )
+}
 
 console.log('release workflow image-tag contract check passed')

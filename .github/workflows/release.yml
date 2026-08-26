@@ -110,8 +110,35 @@ jobs:
           path: apps/local-engine/dist/desktop-installers/*.zip
           if-no-files-found: error
 
+  headless-server:
+    needs: images
+    strategy:
+      fail-fast: false
+      matrix:
+        architecture: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: actions/download-artifact@v4
+        with:
+          name: images-${{ matrix.architecture }}
+          path: apps/local-engine/dist/images
+      - name: Build headless Linux server package
+        run: |
+          archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          test -f "$archive"
+          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$archive"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: headless-server-${{ matrix.architecture }}
+          path: apps/local-engine/dist/server-packages/*.zip
+          if-no-files-found: error
+
   publish:
-    needs: desktop
+    needs: [desktop, headless-server]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -121,6 +148,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: images-*
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: headless-server-*
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:

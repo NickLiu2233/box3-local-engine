@@ -47,7 +47,7 @@ Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
 ### 桌面离线包
 
-正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的五服务 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。Release 也单独提供 `linux/amd64` 与 `linux/arm64` 两份镜像归档，供无图形界面的 Linux 服务器或手动 Compose 部署使用；选择规则和 `docker load` 用法见[构建、分发与 CI](./release-and-distribution.md)。
+正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的五服务 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。无图形 Linux 服务器应下载对应架构的 `BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip`：其中包含镜像、`compose.yml`、可编辑 `.env.example` 与启停脚本，服主自行复制、填写并保管 `.env`。Release 也保留 `linux/amd64` 与 `linux/arm64` 两份纯镜像归档，供已有 Compose 配置的手动部署使用；选择规则见[构建、分发与 CI](./release-and-distribution.md)。
 
 使用者只需：
 
