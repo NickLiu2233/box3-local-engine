@@ -1,7 +1,10 @@
 import { describe, expect, test } from '@jest/globals';
 
 import type { PlayerAccountView } from './local-player-identity';
-import { serializeManagedPlayersCsv } from './local-player-identity';
+import {
+  limitsSessionsToSingleDevice,
+  serializeManagedPlayersCsv,
+} from './local-player-identity';
 
 function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
   return {
@@ -63,5 +66,13 @@ describe('player management CSV export', () => {
 
     expect(csv).toContain('神岛ID');
     expect(csv).toContain('local_player,legacy_box_player');
+  });
+});
+
+describe('player session policy', () => {
+  test('limits ordinary players to one device but leaves management accounts unrestricted', () => {
+    expect(limitsSessionsToSingleDevice('player')).toBe(true);
+    expect(limitsSessionsToSingleDevice('moderator')).toBe(false);
+    expect(limitsSessionsToSingleDevice('admin')).toBe(false);
   });
 });

@@ -154,8 +154,8 @@ registerForm.addEventListener('submit', async (event) => {
     showMessage(message, '两次输入的密码不一致')
     return
   }
-  if (String(values.password || '').length < 8) {
-    showMessage(message, '密码至少需要 8 位')
+  if (String(values.password || '').length < 10) {
+    showMessage(message, '密码至少需要 10 位')
     return
   }
   delete values.confirmPassword

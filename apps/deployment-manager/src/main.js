@@ -248,7 +248,7 @@ function overview() {
     ? `${runningCount} / ${enabledCount} 个服务运行中`
     : '完成配置后即可启动'
   return `<header><div><h1>服务总览</h1></div>
-    <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button><button class="icon-button" id="refresh" title="刷新">${icon('refresh')}</button></div></header>
+    <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button></div></header>
     ${state.busy ? progressPanel() : ''}
     <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
       <div class="hero-actions">${installed ? `${allHealthy ? '' : `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
@@ -489,32 +489,43 @@ function backups() {
 function about() {
   const info = state.about || {}
   const legal = state.legal || {}
+  const configuredServices =
+    state.status?.services?.filter((service) => service.enabled !== false) || []
+  const runningServices = configuredServices.filter((service) => service.running)
+  const creatorHost = state.config?.creatorHost || '127.0.0.1'
+  const creatorAccess = ['127.0.0.1', 'localhost', '::1'].includes(creatorHost)
+    ? '仅本机访问'
+    : '局域网访问'
+  const revision = info.sourceRevision || '未知'
+  const compactRevision = revision.length > 12 ? revision.slice(0, 12) : revision
   const values = [
     ['启动器版本', info.applicationVersion || '读取中'],
-    ['构建提交', info.sourceRevision || '未知'],
+    ['镜像版本', info.imageTag || '读取中'],
     ['构建时间', formatBeijingBuildTime(info.buildCreatedAt)],
+    ['构建来源', formatBuildSource(info.buildSource)],
   ]
   const serviceImages = Array.isArray(info.serviceImages) ? info.serviceImages : []
   const imageRows = serviceImages.length
     ? serviceImages
         .map(
           (service) => `<article class="about-image-row">
-            <div><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.image)}</small></div>
-            <dl class="about-image-meta">
-              <div><dt>镜像版本</dt><dd>${escapeHtml(service.tag)}</dd></div>
-              <div><dt>镜像平台</dt><dd>${escapeHtml(service.platform)}</dd></div>
-              <div><dt>构建时间</dt><dd>${escapeHtml(formatBeijingBuildTime(service.createdAt))}</dd></div>
-              <div><dt>镜像标识</dt><dd title="${escapeHtml(service.imageId)}">${escapeHtml(service.imageId)}</dd></div>
-            </dl>
+            <div class="about-image-summary"><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.tag)} · ${escapeHtml(service.platform)} · ${escapeHtml(formatBeijingBuildTime(service.createdAt))}</small></div>
+            <details class="about-image-details"><summary>技术详情</summary><dl class="about-image-meta">
+              <div><dt>镜像名称</dt><dd>${escapeHtml(service.image)}</dd></div>
+              <div><dt>镜像标识</dt><dd>${escapeHtml(service.imageId)}</dd></div>
+              <div><dt>构建提交</dt><dd>${escapeHtml(service.sourceRevision || '未知')}</dd></div>
+              <div><dt>构建来源</dt><dd>${escapeHtml(formatBuildSource(service.buildSource))}</dd></div>
+            </dl></details>
           </article>`,
         )
         .join('')
     : '<div class="about-image-empty">正在读取组件镜像信息…</div>'
 
   return `<header><div><h1>关于</h1></div></header><section class="about-page">
-    <article class="about-card"><div class="about-card-heading"><h2>启动器信息</h2></div><dl class="about-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt>${label === '构建提交' ? `<dd class="about-build-revision" title="${escapeHtml(title || '')}"><code>${escapeHtml(value)}</code><button class="about-copy-button" type="button" data-copy-build-revision="${escapeHtml(value)}" aria-label="复制构建提交" title="复制构建提交">${icon('copy')}</button></dd>` : `<dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd>`}</div>`).join('')}</dl></article>
-    <article class="about-card"><div class="about-card-heading"><h2>服务镜像</h2></div><div class="about-image-list">${imageRows}</div></article>
-    <article class="about-card"><div class="about-card-heading"><h2>发行与许可</h2></div><div class="about-document-list"><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
+    <article class="about-card"><div class="about-card-heading"><h2>版本与构建</h2></div><dl class="about-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt><dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd></div>`).join('')}<div><dt>构建提交</dt><dd class="about-build-revision" title="${escapeHtml(revision)}"><code>${escapeHtml(compactRevision)}</code><button class="about-copy-button" type="button" data-copy-build-revision="${escapeHtml(revision)}" aria-label="复制完整构建提交" title="复制完整构建提交">${icon('copy')}</button></dd></div></dl></article>
+    <div class="about-summary-grid"><article class="about-card"><div class="about-card-heading"><h2>运行环境</h2></div><dl class="about-facts about-facts-compact"><div><dt>Docker</dt><dd>${state.status?.dockerReady ? '已连接' : '未连接'}</dd></div><div><dt>服务状态</dt><dd>${runningServices.length} / ${configuredServices.length} 运行中</dd></div><div><dt>当前平台</dt><dd>${escapeHtml([info.platform, info.architecture].filter(Boolean).join(' / ') || '读取中')}</dd></div><div><dt>数据目录</dt><dd title="${escapeHtml(state.status?.dataDirectory || '')}">${escapeHtml(state.status?.dataDirectory || '读取中')}</dd></div></dl></article><article class="about-card"><div class="about-card-heading"><h2>安全状态</h2></div><dl class="about-facts about-facts-compact"><div><dt>创作端访问</dt><dd>${creatorAccess}</dd></div><div><dt>玩家会话</dt><dd>普通玩家单设备登录</dd></div><div><dt>诊断导出</dt><dd>敏感信息自动隐藏</dd></div><div><dt>配置写入</dt><dd>由启动器统一管理</dd></div></dl></article></div>
+    <article class="about-card"><div class="about-card-heading"><h2>服务组件</h2></div><div class="about-image-list">${imageRows}</div></article>
+    <article class="about-card"><div class="about-card-heading"><h2>支持与许可</h2></div><div class="about-document-list"><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
   </section>`
 }
 
@@ -564,6 +575,7 @@ function render() {
                 : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
+  syncOverviewPolling()
   syncPerformancePolling()
   syncLogPolling()
 }
@@ -583,7 +595,6 @@ function bindEvents() {
       if (state.page === 'about') loadLegalNotices()
     }),
   )
-  document.querySelector('#refresh')?.addEventListener('click', refreshStatus)
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
   document.querySelector('#refresh-performance')?.addEventListener('click', refreshPerformance)
   document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
@@ -704,6 +715,7 @@ function bindEvents() {
     )
   document.querySelector('#run-environment-checks')?.addEventListener('click', runEnvironmentChecks)
   document.querySelector('#export-diagnostics')?.addEventListener('click', exportDiagnostics)
+  document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
   document.querySelectorAll('[data-log-service]').forEach((node) =>
     node.addEventListener('click', async () => {
       state.logService = node.dataset.logService
@@ -764,8 +776,35 @@ function closeServiceMenuOnOutside(event) {
   render()
 }
 
+let overviewStatusTimer
+let overviewStatusLoading = false
 let performanceTimer
 let logTimer
+
+function syncOverviewPolling() {
+  clearInterval(overviewStatusTimer)
+  overviewStatusTimer = undefined
+  if (state.page !== 'overview') return
+  overviewStatusTimer = window.setInterval(refreshOverviewStatus, 5000)
+}
+
+async function refreshOverviewStatus() {
+  if (overviewStatusLoading || state.page !== 'overview') return
+  overviewStatusLoading = true
+  try {
+    state.status = await invoke('get_system_status')
+  } catch (error) {
+    state.status = {
+      dockerReady: false,
+      dockerMessage: String(error),
+      configured: false,
+      services: [],
+    }
+  } finally {
+    overviewStatusLoading = false
+    if (state.page === 'overview') render()
+  }
+}
 
 function syncPerformancePolling() {
   clearInterval(performanceTimer)

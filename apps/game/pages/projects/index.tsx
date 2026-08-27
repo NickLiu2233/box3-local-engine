@@ -8,7 +8,7 @@ import {
   FolderOpen,
   Grid2X2,
   History,
-  MoreHorizontal,
+  LogOut,
   Pencil,
   Play,
   Plus,
@@ -16,7 +16,6 @@ import {
   RotateCcw,
   Trash2,
   Upload,
-  Users,
   Map as MapIcon,
   Box,
 } from 'lucide-react';
@@ -60,6 +59,87 @@ type LocalProject = {
   mapRole: 'main' | 'submap';
   mainProjectId: string;
 };
+
+// 仅用于 BOX_UI_PREVIEW 的 Creator 首页布局验收，生产环境不会使用。
+const previewProjects: LocalProject[] = [
+  {
+    id: 'preview-creator-arena',
+    mapUuid: 'preview-creator-arena',
+    publicId: 'preview-creator-arena',
+    name: '竞技场：破晓行动',
+    author: '测试创作者',
+    description: '一张用于检查地图卡片、菜单与发布状态的示例地图。',
+    cover: '/map-templates/arena-template.png',
+    updatedAt: '2026-08-27T05:30:00.000Z',
+    status: '已发布',
+    latestRelease: 'v1.2.0',
+    theme: 'sunset',
+    mapGroupId: 'preview-creator-arena',
+    mapRole: 'main',
+    mainProjectId: 'preview-creator-arena',
+  },
+  {
+    id: 'preview-creator-race',
+    mapUuid: 'preview-creator-race',
+    publicId: 'preview-creator-race',
+    name: '极速赛道',
+    author: '测试创作者',
+    description: '用于检查草稿状态、搜索与地图操作入口。',
+    cover: '/map-templates/raceway-template.png',
+    updatedAt: '2026-08-26T03:15:00.000Z',
+    status: '草稿',
+    theme: 'ocean',
+    mapGroupId: 'preview-creator-race',
+    mapRole: 'main',
+    mainProjectId: 'preview-creator-race',
+  },
+  {
+    id: 'preview-creator-arena-lobby',
+    mapUuid: 'preview-creator-arena-lobby',
+    publicId: 'preview-creator-arena-lobby',
+    name: '准备大厅',
+    author: '测试创作者',
+    description: '进入对局前的匹配与队伍准备区域。',
+    cover: '/map-templates/blank-template.png',
+    updatedAt: '2026-08-27T05:20:00.000Z',
+    status: '已发布',
+    latestRelease: 'v1.2.0',
+    theme: 'violet',
+    mapGroupId: 'preview-creator-arena',
+    mapRole: 'submap',
+    mainProjectId: 'preview-creator-arena',
+  },
+  {
+    id: 'preview-creator-arena-training',
+    mapUuid: 'preview-creator-arena-training',
+    publicId: 'preview-creator-arena-training',
+    name: '训练场',
+    author: '测试创作者',
+    description: '用于测试武器、移动和战斗规则。',
+    cover: '/map-templates/arena-template.png',
+    updatedAt: '2026-08-27T05:10:00.000Z',
+    status: '草稿',
+    theme: 'forest',
+    mapGroupId: 'preview-creator-arena',
+    mapRole: 'submap',
+    mainProjectId: 'preview-creator-arena',
+  },
+  {
+    id: 'preview-creator-arena-results',
+    mapUuid: 'preview-creator-arena-results',
+    publicId: 'preview-creator-arena-results',
+    name: '结算大厅',
+    author: '测试创作者',
+    description: '展示对局结果与玩家奖励。',
+    cover: '/map-templates/raceway-template.png',
+    updatedAt: '2026-08-27T05:00:00.000Z',
+    status: '草稿',
+    theme: 'ocean',
+    mapGroupId: 'preview-creator-arena',
+    mapRole: 'submap',
+    mainProjectId: 'preview-creator-arena',
+  },
+];
 
 type ExportProgress = {
   projectId: string;
@@ -174,11 +254,25 @@ function formatBytes(value: number) {
   return `${(value / 1024 ** unit).toFixed(unit ? 1 : 0)} ${units[unit]}`;
 }
 
+function formatProjectUpdatedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '时间未知';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(date);
+}
+
 type WorkCenterView = 'maps' | 'models';
 type ProjectsPageProps = {
-  playerServiceUrl: string;
   voxaUrl: string;
   initialView: WorkCenterView;
+  uiPreview: boolean;
   creator: {
     displayName: string;
     username: string;
@@ -189,36 +283,45 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
   if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
     return { notFound: true };
   }
+  // Preview fixtures are intentionally disabled outside temporary UI work;
+  // configuration alone must never bypass Creator authentication.
+  const uiPreview = false;
   let creator: ProjectsPageProps['creator'];
-  try {
-    const { identity } = await resolvePlayerServiceIdentity(
-      req as NextApiRequest,
-      // The response is passed through so the player-service can renew its session cookie.
-      // Next's server-side response implements the same header contract as NextApiResponse.
-      res as NextApiResponse,
-      req.socket.remoteAddress || '',
-    );
-    creator = { displayName: identity.displayName, username: identity.username };
-  } catch {
-    return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
+  if (uiPreview) {
+    creator = { displayName: '测试创作者', username: 'creator-preview' };
+  } else {
+    try {
+      const { identity } = await resolvePlayerServiceIdentity(
+        req as NextApiRequest,
+        // The response is passed through so the player-service can renew its session cookie.
+        // Next's server-side response implements the same header contract as NextApiResponse.
+        res as NextApiResponse,
+        req.socket.remoteAddress || '',
+      );
+      creator = { displayName: identity.displayName, username: identity.username };
+    } catch {
+      return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
+    }
   }
   return {
     props: {
-      playerServiceUrl: (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, ''),
       voxaUrl: (process.env.VOXA_URL || '').replace(/\/$/, ''),
       initialView: query.view === 'models' ? 'models' : 'maps',
+      uiPreview,
       creator,
     },
   };
 };
 
-export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, creator }: ProjectsPageProps) {
+export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator }: ProjectsPageProps) {
   const [activeView, setActiveView] = useState<WorkCenterView>(initialView);
-  const [projects, setProjects] = useState<LocalProject[]>([]);
+  const [projects, setProjects] = useState<LocalProject[]>(() => uiPreview ? previewProjects : []);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
   const [filterOpen, setFilterOpen] = useState(false);
   const [menuProject, setMenuProject] = useState<string | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [dialog, setDialog] = useState<'create' | 'submap' | 'delete' | 'details' | 'publish' | null>(null);
   const [projectName, setProjectName] = useState('');
   const [projectPublicId, setProjectPublicId] = useState('');
@@ -261,6 +364,27 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       return next;
     });
   };
+
+  const logoutCreator = async () => {
+    setAccountOpen(false);
+    if (uiPreview) {
+      setNotice('预览模式：已模拟退出登录。');
+      return;
+    }
+    setLoggingOut(true);
+    try {
+      const response = await fetch('/api/creator-logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('退出登录失败，请稍后重试');
+      window.location.assign('/projects');
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '退出登录失败，请稍后重试');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
   const creatorName = creator.displayName || creator.username || '已登录用户';
   const creatorInitial = Array.from(creatorName)[0]?.toUpperCase() || '用';
 
@@ -279,11 +403,15 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
   }, []);
 
   const refreshProjects = useCallback(async () => {
+    if (uiPreview) {
+      setProjects(previewProjects);
+      return;
+    }
     const response = await fetch('/api/local-projects');
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || '无法读取本地作品');
     setProjects(data.projects);
-  }, []);
+  }, [uiPreview]);
 
   useEffect(() => {
     refreshProjects().catch((error) => setNotice(error.message));
@@ -310,23 +438,40 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       return (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0);
     });
   }, [projects, query, status]);
-  const visibleProjectGroups = useMemo(() => {
-    const groups = new Map<string, LocalProject[]>();
-    for (const project of visibleProjects) {
-      const groupId = project.mainProjectId || project.id;
-      const members = groups.get(groupId) || [];
-      members.push(project);
-      groups.set(groupId, members);
-    }
-    return Array.from(groups, ([groupId, members]) => ({
-      groupId,
-      members,
-      main:
-        members.find((project) => project.mapRole === 'main') ||
-        projects.find((project) => project.id === groupId),
-    }));
-  }, [projects, visibleProjects]);
   const isFiltering = Boolean(query.trim()) || status !== '全部';
+  const singleMapProjects = useMemo(
+    () =>
+      visibleProjects.filter(
+        (project) =>
+          project.mapRole === 'main' &&
+          !projects.some(
+            (candidate) =>
+              candidate.mapRole === 'submap' && candidate.mainProjectId === project.id,
+          ),
+      ),
+    [projects, visibleProjects],
+  );
+  const multiMapGroups = useMemo(
+    () =>
+      projects
+        .filter(
+          (project) =>
+            project.mapRole === 'main' &&
+            projects.some(
+              (candidate) =>
+                candidate.mapRole === 'submap' && candidate.mainProjectId === project.id,
+            ),
+        )
+        .map((main) => ({
+          main,
+          projects: visibleProjects.filter((project) => project.mainProjectId === main.id),
+          submapCount: projects.filter(
+            (project) => project.mapRole === 'submap' && project.mainProjectId === main.id,
+          ).length,
+        }))
+        .filter((group) => group.projects.length > 0),
+    [projects, visibleProjects],
+  );
   const mainProjects = useMemo(
     () => projects.filter((project) => project.mapRole === 'main'),
     [projects],
@@ -761,7 +906,13 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       const response = await fetch(`/api/local-projects/${selectedProject.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publicId: projectPublicId, name, author: projectAuthor, description: projectDescription, cover: projectCover }),
+        body: JSON.stringify({
+          publicId: projectPublicId,
+          name,
+          author: selectedProject.mapRole === 'submap' ? undefined : projectAuthor,
+          description: projectDescription,
+          cover: projectCover,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || '重命名失败');
@@ -929,9 +1080,12 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
     }
   };
 
-  const renderProjectCard = (project: LocalProject) => (
-    <article
-      className={`${styles.card} ${project.mapRole === 'submap' ? styles.submapCard : styles.mainMapCard}`}
+  const renderProjectCard = (project: LocalProject) => {
+    const mainProject = project.mapRole === 'submap'
+      ? projects.find((entry) => entry.id === project.mainProjectId)
+      : null;
+    return <article
+      className={`${styles.card} ${project.mapRole === 'submap' ? styles.submapCard : styles.mainMapCard} ${menuProject === project.id ? styles.cardMenuOpen : ''}`}
       key={project.id}
     >
       <button
@@ -952,28 +1106,38 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
           <div>
             <div className={styles.projectTitle}>
               <h2>{project.name}</h2>
-              {project.mapRole === 'main' && (
-                <span className={`${styles.projectStatus} ${project.status === '已发布' ? styles.published : ''}`}>{project.status}</span>
-              )}
             </div>
+            {mainProject && <span className={styles.projectParent}>属于 {mainProject.name}</span>}
             <span className={styles.projectAuthor}>作者：{project.author || '未署名'}</span>
-            <span className={styles.projectIdentity}>地图 ID：{project.mapUuid}</span>
             <p>{project.description || '未填写简介'}</p>
           </div>
-          <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
+          <div
+            className={styles.menuWrap}
+            onClick={(event) => event.stopPropagation()}
+          >
             <button
               className={styles.moreButton}
               onClick={() => setMenuProject(menuProject === project.id ? null : project.id)}
               aria-label={`${project.name} 的更多操作`}
               aria-expanded={menuProject === project.id}
+              aria-haspopup="menu"
             >
-              <MoreHorizontal size={20} />
+              <span className={styles.menuDots} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
             </button>
             {menuProject === project.id && (
               <div className={styles.menu} role="menu">
                 <button role="menuitem" onClick={() => openDetailsDialog(project)}>
                   <Pencil size={15} /> 编辑信息
                 </button>
+                {project.mapRole === 'main' && (
+                  <button role="menuitem" onClick={() => openSubmapDialog(project)}>
+                    <Plus size={15} /> 新建副地图
+                  </button>
+                )}
                 <button
                   role="menuitem"
                   disabled={Boolean(exportProgress && exportProgress.phase !== 'done' && exportProgress.phase !== 'error')}
@@ -998,12 +1162,12 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
           </div>
         </div>
         <div className={styles.cardFooter}>
-          <span><Clock3 size={14} /> {project.latestRelease ? `${project.latestRelease}${project.latestReleaseNotes ? ` · ${project.latestReleaseNotes}` : ''}` : project.updatedAt}</span>
+          <span><Clock3 size={14} /> {project.latestRelease ? `${project.latestRelease}${project.latestReleaseNotes ? ` · ${project.latestReleaseNotes}` : ''}` : formatProjectUpdatedAt(project.updatedAt)}</span>
           {project.isEngineWorld && <span className={styles.cardActions}><span className={styles.defaultTag}>默认世界</span></span>}
         </div>
       </div>
-    </article>
-  );
+    </article>;
+  };
 
   return (
     <main
@@ -1011,36 +1175,38 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       onClick={() => {
         setMenuProject(null)
         setFilterOpen(false)
+        setAccountOpen(false)
       }}
     >
       <header className={styles.header}>
         <a className={styles.brand} href="/projects" aria-label="BOX Local Engine">
-          <span className={styles.brandMark} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-          </span>
+          <img className={styles.brandMark} src="/logo512.png" alt="" aria-hidden="true" />
           <span>BOX3 Engine</span>
-          <em>ARENA</em>
         </a>
-        <div className={styles.headerActions}>
-          <span className={styles.avatar} aria-hidden="true">{creatorInitial}</span>
-          <span className={styles.accountName}>{creatorName}</span>
+        <div className={styles.headerActions} onClick={(event) => event.stopPropagation()}>
+          <div className={styles.accountMenuWrap}>
+            <button
+              type="button"
+              className={styles.accountTrigger}
+              onClick={() => setAccountOpen((open) => !open)}
+              aria-expanded={accountOpen}
+              aria-haspopup="menu"
+            >
+              <span className={styles.avatar} aria-hidden="true">{creatorInitial}</span>
+              <span className={styles.accountName}>{creatorName}</span>
+            </button>
+            {accountOpen && (
+              <div className={styles.accountMenu} role="menu">
+                <button type="button" role="menuitem" onClick={() => void logoutCreator()} disabled={loggingOut}>
+                  <LogOut size={15} /> {loggingOut ? '正在退出…' : '退出登录'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      <section className={styles.content} aria-labelledby="page-title">
-        <div className={styles.titleRow}>
-          <div>
-            <h1 id="page-title">我的创作</h1>
-          </div>
-          <div className={styles.titleActions}>
-            <a className={styles.importButton} href={`${playerServiceUrl}/players?from=creator`}>
-              <Users size={16} /> 玩家管理
-            </a>
-          </div>
-        </div>
-
+      <section className={styles.content} aria-label="创作中心">
         <nav className={styles.workCenterTabs} aria-label="作品分类">
           <button
             type="button"
@@ -1110,33 +1276,46 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
               >{option}</button>)}
             </div>}
           </div>
-          <span className={styles.count}>{visibleProjects.length} 个作品</span>
         </div>
         {notice && <div className={styles.notice} role="status">{notice}</div>}
         {visibleProjects.length ? (
-          <div className={styles.grid}>
-            {visibleProjectGroups.map(({ groupId, main, members }) => {
-              const visibleMain = members.find((project) => project.mapRole === 'main');
-              const submaps = members.filter((project) => project.mapRole === 'submap');
-              return <section className={styles.mapGroup} key={groupId} aria-label={`${main?.name || '地图'}地图组`}>
-                <header className={styles.mapGroupHeader}>
-                  <span className={styles.mapGroupSummary}>
-                    <strong>{main?.name || '地图组'}</strong>
-                    <small>{projects.filter((project) => project.mainProjectId === groupId && project.mapRole === 'submap').length} 个副地图</small>
-                  </span>
-                  {main && <button className={styles.addSubmapButton} onClick={() => openSubmapDialog(main)}>
-                    <Plus size={14} /> 新建副地图
-                  </button>}
+          <div className={styles.mapCategories}>
+            {singleMapProjects.length > 0 && (
+              <section className={styles.mapCategory} aria-labelledby="single-maps-title">
+                <header className={styles.mapCategoryHeader}>
+                  <strong id="single-maps-title">单地图</strong>
+                  <span>{singleMapProjects.length} 张地图</span>
                 </header>
-                <div className={styles.mapGroupMain}>
-                  {visibleMain ? renderProjectCard(visibleMain) : <p className={styles.filteredMainHint}>主地图“{main?.name}”未匹配当前筛选</p>}
+                <div className={styles.grid}>{singleMapProjects.map(renderProjectCard)}</div>
+              </section>
+            )}
+            {multiMapGroups.length > 0 && (
+              <section className={styles.mapCategory} aria-labelledby="map-groups-title">
+                <header className={styles.mapCategoryHeader}>
+                  <strong id="map-groups-title">地图组</strong>
+                  <span>{multiMapGroups.length} 个地图组</span>
+                </header>
+                <div className={styles.mapGroupList}>
+                  {multiMapGroups.map((group) => {
+                    const submaps = group.projects.filter((project) => project.mapRole === 'submap');
+                    return (
+                      <section className={styles.mapGroupOverview} key={group.main.id}>
+                        <div className={styles.mapGroupOverviewHead}>
+                          {renderProjectCard(group.main)}
+                          <div className={styles.mapGroupSubmaps}>
+                            <div className={styles.mapGroupSubmapsHeader}>
+                              <strong>副地图</strong>
+                              <span>{group.submapCount} 张</span>
+                            </div>
+                            <div className={styles.mapGroupMiniGrid}>{submaps.map(renderProjectCard)}</div>
+                          </div>
+                        </div>
+                      </section>
+                    );
+                  })}
                 </div>
-                {submaps.length > 0 && <div className={styles.submapSection}>
-                  <div className={styles.submapSectionLabel}>副地图</div>
-                  <div className={styles.submapList}>{submaps.map(renderProjectCard)}</div>
-                </div>}
-              </section>;
-            })}
+              </section>
+            )}
           </div>
         ) : (
           <div className={styles.emptyState}>
@@ -1345,7 +1524,7 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                     <small className={styles.fieldHint}>玩家链接：/p/{projectPublicId || '访问-id'} · 可以修改，全部项目中必须唯一</small>
                   </div>
                 </>}
-                {dialog !== 'submap' && <div className={styles.fieldGroup}>
+                {(dialog === 'create' || (dialog === 'details' && selectedProject?.mapRole !== 'submap')) && <div className={styles.fieldGroup}>
                   <label htmlFor="project-author">作者</label>
                   <input id="project-author" maxLength={80} value={projectAuthor} onChange={(event) => setProjectAuthor(event.target.value)} placeholder="填写地图作者" />
                 </div>}
@@ -1409,7 +1588,6 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
                   </button>
                 </div>
               </div>}
-              <ReleaseFlow project={selectedProject} version={releaseVersion || 'v1.0.0'} />
             </>}
             {dialogError && <p className={styles.dialogError} role="alert">{dialogError}</p>}
             <div className={styles.dialogActions}>
@@ -1608,12 +1786,4 @@ export default function ProjectsPage({ playerServiceUrl, voxaUrl, initialView, c
       )}
     </main>
   );
-}
-
-function ReleaseFlow({ project, version }: { project: LocalProject | null; version: string }) {
-  return <div className={styles.releaseFlow} aria-label="游戏包导出流程">
-    <div className={styles.flowSource}><small>地图组</small><strong>{project?.name || '作品'}</strong></div>
-    <div className={styles.flowArrow}>→</div>
-    <div className={styles.flowRelease}><small>整组游玩包</small><strong>{version}</strong></div>
-  </div>;
 }

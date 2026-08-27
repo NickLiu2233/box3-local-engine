@@ -1,3 +1,8 @@
+import {
+  consumePersistentAuthRateLimit,
+  resetPersistentAuthRateLimit,
+} from './local-player-identity';
+
 export type AuthRateLimitScope = 'login' | 'registration';
 
 type Bucket = { count: number; resetAt: number };
@@ -52,6 +57,24 @@ export function recordAuthRateLimitAttempt(scope: AuthRateLimitScope, address: s
 
 export function resetAuthRateLimit(scope: AuthRateLimitScope, address: string) {
   buckets.delete(key(scope, address));
+}
+
+export async function consumeAuthRateLimit(scope: AuthRateLimitScope, address: string) {
+  const { maximum, windowMs } = policy(scope);
+  const persistent = await consumePersistentAuthRateLimit(scope, address, maximum, windowMs);
+  if (persistent) return persistent;
+
+  const entry = recordAuthRateLimitAttempt(scope, address);
+  if (entry.count <= maximum) return { allowed: true, retryAfterSeconds: 0 };
+  return {
+    allowed: false,
+    retryAfterSeconds: Math.max(1, Math.ceil((entry.resetAt - Date.now()) / 1000)),
+  };
+}
+
+export async function clearAuthRateLimit(scope: AuthRateLimitScope, address: string) {
+  resetAuthRateLimit(scope, address);
+  await resetPersistentAuthRateLimit(scope, address);
 }
 
 export function resetAuthRateLimitsForTests() {

@@ -25,10 +25,19 @@ import { requestClientAddress } from './client-address';
 
 const COOKIE_NAME = 'box_local_player_session';
 const DEVICE_COOKIE_NAME = 'box_local_player_device';
-const SESSION_DAYS = 30;
+const SESSION_IDLE_DAYS = 14;
+const SESSION_ABSOLUTE_DAYS = 30;
 const schemaPattern = /^[a-z_][a-z0-9_]{0,62}$/;
 const usernamePattern = /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
 const displayNamePattern = /^.{1,32}$/;
+
+/**
+ * Player accounts are intentionally limited to one active device. Management
+ * accounts need concurrent access to the player console, so they are exempt.
+ */
+export function limitsSessionsToSingleDevice(role: LocalPlayerRole | null | undefined) {
+  return role === 'player';
+}
 
 type IdentityRow = QueryResultRow & {
   subject_id: string;
@@ -401,6 +410,19 @@ async function initialize() {
         ON ${table('auth_failures')} (created_at DESC)
       `);
       await database.query(`
+        CREATE TABLE IF NOT EXISTS ${table('auth_rate_limits')} (
+          scope TEXT NOT NULL,
+          rate_key TEXT NOT NULL,
+          attempt_count INTEGER NOT NULL DEFAULT 0,
+          reset_at TIMESTAMPTZ NOT NULL,
+          PRIMARY KEY (scope, rate_key)
+        )
+      `);
+      await database.query(`
+        CREATE INDEX IF NOT EXISTS local_auth_rate_limits_reset
+        ON ${table('auth_rate_limits')} (reset_at)
+      `);
+      await database.query(`
         CREATE TABLE IF NOT EXISTS ${table('player_revocations')} (
           id BIGSERIAL PRIMARY KEY,
           subject_id UUID NOT NULL,
@@ -520,7 +542,7 @@ function setSessionCookie(req: NextApiRequest, res: NextApiResponse, token: stri
     ...(process.env.BOX_PLAYER_COOKIE_DOMAIN
       ? { domain: process.env.BOX_PLAYER_COOKIE_DOMAIN.trim() }
       : {}),
-    maxAge: SESSION_DAYS * 24 * 60 * 60,
+    maxAge: SESSION_IDLE_DAYS * 24 * 60 * 60,
   }));
 }
 
@@ -652,10 +674,22 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
     FROM ${table('sessions')} s
     JOIN ${table('principals')} p ON p.id = s.principal_id
     LEFT JOIN ${table('users')} u ON u.principal_id = p.id
-    WHERE s.token_hash = $1 AND s.expires_at > NOW()
+    WHERE s.token_hash = $1
+      AND s.expires_at > NOW()
+      AND s.created_at > NOW() - INTERVAL '${SESSION_ABSOLUTE_DAYS} days'
   `, [tokenHash(token)]);
   const row = result.rows[0];
   if (!row) return null;
+  const currentDevice = deviceToken(req);
+  const currentDeviceHash = currentDevice ? tokenHash(currentDevice) : '';
+  if (
+    row.session_device_hash
+    && currentDeviceHash
+    && !secretsMatch(row.session_device_hash, currentDeviceHash)
+  ) {
+    await database.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(token)]);
+    return null;
+  }
   const storedDeviceBan = await activeIdentityBan(database, 'device', row.session_device_hash || '');
   if (storedDeviceBan) {
     await database.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(token)]);
@@ -663,7 +697,10 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   }
   await database.query(`
     UPDATE ${table('sessions')} SET last_seen_at = NOW(), last_seen_ip = $2,
-      expires_at = NOW() + INTERVAL '${SESSION_DAYS} days'
+      expires_at = LEAST(
+        NOW() + INTERVAL '${SESSION_IDLE_DAYS} days',
+        created_at + INTERVAL '${SESSION_ABSOLUTE_DAYS} days'
+      )
     WHERE token_hash = $1
   `, [tokenHash(token), requestIp(req)]);
   await database.query(`UPDATE ${table('principals')} SET last_seen_at = NOW(), last_seen_ip = $2 WHERE id = $1`, [row.subject_id, requestIp(req)]);
@@ -723,16 +760,80 @@ function validateRegistration(username: unknown, displayName: unknown, password:
   if (!displayNamePattern.test(normalizedDisplayName)) {
     throw new Error('昵称长度必须为 1 到 32 个字符');
   }
-  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-    throw new Error('密码长度必须为 8 到 128 个字符');
+  if (typeof password !== 'string' || password.length < 10 || password.length > 128) {
+    throw new Error('密码长度必须为 10 到 128 个字符');
   }
   return { username: normalizedUsername, displayName: normalizedDisplayName, password };
+}
+
+function validateAvatar(avatar: string) {
+  if (!avatar) return;
+  const embeddedImage = /^data:image\/(png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(avatar);
+  if (embeddedImage) {
+    if (avatar.length > 700_000) throw new Error('头像图片过大，请选择 512 KB 以内的图片');
+    return;
+  }
+  if (avatar.length > 2048) throw new Error('头像地址过长');
+  try {
+    const url = new URL(avatar);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+  } catch {
+    throw new Error('头像必须是图片上传内容或有效的 HTTPS 地址');
+  }
 }
 
 function derivePassword(password: string, salt: string) {
   return new Promise<Buffer>((resolve, reject) => {
     scrypt(password, salt, 64, (error, value) => error ? reject(error) : resolve(value as Buffer));
   });
+}
+
+/**
+ * Persist authentication throttling beside identities so limits are shared by
+ * every Player Service container and survive a process restart.
+ */
+export async function consumePersistentAuthRateLimit(
+  scope: string,
+  rateKey: string,
+  maximum: number,
+  windowMs: number,
+) {
+  const database = getPool();
+  if (!database) return null;
+  await initialize();
+  const result = await database.query<{ attempt_count: number; reset_at: Date }>(`
+    INSERT INTO ${table('auth_rate_limits')} AS limits
+      (scope, rate_key, attempt_count, reset_at)
+    VALUES ($1, $2, 1, NOW() + ($3 * INTERVAL '1 millisecond'))
+    ON CONFLICT (scope, rate_key) DO UPDATE
+    SET attempt_count = CASE
+          WHEN limits.reset_at <= NOW() THEN 1
+          ELSE limits.attempt_count + 1
+        END,
+        reset_at = CASE
+          WHEN limits.reset_at <= NOW() THEN NOW() + ($3 * INTERVAL '1 millisecond')
+          ELSE limits.reset_at
+        END
+    RETURNING attempt_count, reset_at
+  `, [scope, rateKey, windowMs]);
+  const entry = result.rows[0];
+  if (!entry) return null;
+  return {
+    allowed: entry.attempt_count <= maximum,
+    retryAfterSeconds: entry.attempt_count <= maximum
+      ? 0
+      : Math.max(1, Math.ceil((entry.reset_at.getTime() - Date.now()) / 1000)),
+  };
+}
+
+export async function resetPersistentAuthRateLimit(scope: string, rateKey: string) {
+  const database = getPool();
+  if (!database) return;
+  await initialize();
+  await database.query(
+    `DELETE FROM ${table('auth_rate_limits')} WHERE scope = $1 AND rate_key = $2`,
+    [scope, rateKey],
+  );
 }
 
 async function recordAuthFailure(
@@ -794,7 +895,7 @@ export async function registerPlayer(
     await client.query(`
       INSERT INTO ${table('sessions')}
         (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent, device_hash)
-      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4, $5)
+      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_IDLE_DAYS} days', $3, $3, $4, $5)
     `, [tokenHash(token), subjectUUID, ip, userAgent, deviceHash]);
     await client.query(`
       INSERT INTO ${table('login_events')} (principal_id, ip_address, user_agent, device_hash)
@@ -949,13 +1050,20 @@ export async function loginPlayer(
   const client = await database.connect();
   try {
     await client.query('BEGIN');
+    // Serialize concurrent logins for the same account. Without the user-row
+    // lock, two simultaneous logins could both remove the old session and
+    // then create two new active sessions.
+    await client.query(`SELECT 1 FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE`, [row.subject_id]);
     if (oldToken) {
       await client.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(oldToken)]);
+    }
+    if (limitsSessionsToSingleDevice(row.role)) {
+      await client.query(`DELETE FROM ${table('sessions')} WHERE principal_id = $1`, [row.subject_id]);
     }
     await client.query(`
       INSERT INTO ${table('sessions')}
         (token_hash, principal_id, expires_at, created_ip, last_seen_ip, user_agent, device_hash)
-      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_DAYS} days', $3, $3, $4, $5)
+      VALUES ($1, $2, NOW() + INTERVAL '${SESSION_IDLE_DAYS} days', $3, $3, $4, $5)
     `, [tokenHash(token), row.subject_id, ip, userAgent, deviceHash]);
     await client.query(`
       UPDATE ${table('users')} SET last_login_at = NOW(), last_login_ip = $2,
@@ -1032,6 +1140,39 @@ export async function playerMapLibrary(req: NextApiRequest, res: NextApiResponse
     })),
     libraryEnabled: true,
   };
+}
+
+export async function updateCurrentPlayerProfile(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  changes: { displayName?: unknown; avatar?: unknown },
+) {
+  const identity = await resolvePlayerIdentity(req, res);
+  if (!identity.userId) throw new Error('只有已注册账号可以修改资料');
+  const displayName = typeof changes.displayName === 'string' ? changes.displayName.trim() : undefined;
+  const avatar = typeof changes.avatar === 'string' ? changes.avatar.trim() : undefined;
+  if (displayName === undefined && avatar === undefined) throw new Error('没有可更新的资料');
+  if (displayName !== undefined && !displayNamePattern.test(displayName)) {
+    throw new Error('昵称长度必须为 1 到 32 个字符');
+  }
+  if (avatar !== undefined) validateAvatar(avatar);
+
+  const database = getPool();
+  if (!database) throw new Error('PLAYER_DATABASE_NOT_CONFIGURED');
+  await initialize();
+  const result = await database.query<IdentityRow>(`
+    UPDATE ${table('users')} SET
+      display_name = COALESCE($2, display_name),
+      avatar_hash = COALESCE($3, avatar_hash),
+      updated_at = NOW()
+    WHERE principal_id = $1
+    RETURNING principal_id, id AS user_id, username, box_id, display_name, avatar_hash, role, status,
+      created_at, updated_at, registered_at, last_seen_at, first_seen_ip, last_seen_ip,
+      registration_ip, last_login_at, last_login_ip, login_count, active_session_count,
+      admin_note, tags, ban_reason, banned_at, banned_until, admin_permissions
+  `, [identity.subjectId, displayName, avatar]);
+  if (!result.rows[0]) throw new Error('账号资料不存在');
+  return toView(rowToIdentity(result.rows[0]), result.rows[0]);
 }
 
 export async function updatePlayerMapLibrary(req: NextApiRequest, res: NextApiResponse, mapId: string, changes: { favorite?: boolean; played?: boolean }) {
@@ -1727,7 +1868,7 @@ export async function updateManagedPlayer(
   const normalizedBoxId = hasBoxId ? String(changes.boxId).trim() : undefined;
   const boxId = normalizedBoxId === '' ? null : normalizedBoxId;
   if (displayName !== undefined && !displayNamePattern.test(displayName)) throw new Error('昵称长度必须为 1 到 32 个字符');
-  if (avatar !== undefined && avatar.length > 2048) throw new Error('头像地址过长');
+  if (avatar !== undefined) validateAvatar(avatar);
   if (role !== undefined && !['player', 'moderator', 'admin'].includes(role)) throw new Error('角色无效');
   if (status !== undefined && !['active', 'banned'].includes(status)) throw new Error('状态无效');
   if (adminNote !== undefined && adminNote.length > 2000) throw new Error('服主备注不能超过 2000 个字符');
@@ -1855,8 +1996,8 @@ export async function resetManagedPlayerPassword(
   password: unknown,
   context?: AdminActionContext,
 ) {
-  if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
-    throw new Error('新密码长度必须为 8 到 128 个字符');
+  if (typeof password !== 'string' || password.length < 10 || password.length > 128) {
+    throw new Error('新密码长度必须为 10 到 128 个字符');
   }
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');

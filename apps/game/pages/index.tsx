@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings,
   Upload,
+  X,
 } from 'lucide-react'
 import type { PlayWorld } from '../server/play-worlds'
 import { getPlayWorlds } from '../server/play-worlds'
@@ -116,6 +117,7 @@ export default function HomePage({
   mapStats: Record<string, MapDiscoveryStats>
 }) {
   const importInput = useRef<HTMLInputElement>(null)
+  const avatarInput = useRef<HTMLInputElement>(null)
   const [worldList, setWorldList] = useState(worlds)
   const [liveMapStats, setLiveMapStats] = useState(mapStats)
   const [resourceStatuses, setResourceStatuses] = useState<Record<string, MapResourceStatus>>({})
@@ -130,6 +132,10 @@ export default function HomePage({
   const [recentCount, setRecentCount] = useState(0)
   const [libraryEnabled, setLibraryEnabled] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [profileAvatar, setProfileAvatar] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
   const [collectionView, setCollectionView] = useState<'all' | 'recent' | 'favorites'>('all')
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
@@ -245,6 +251,10 @@ export default function HomePage({
   }, [adminEnabled])
 
   useEffect(() => {
+    if (uiPreview) {
+      setLibraryEnabled(true)
+      return
+    }
     fetch('/api/play-library')
       .then(async (response) => {
         if (!response.ok) return
@@ -265,7 +275,7 @@ export default function HomePage({
         setRecentIds(recent.map((entry: { mapId: string }) => entry.mapId))
       })
       .catch(() => undefined)
-  }, [])
+  }, [uiPreview])
 
   useEffect(() => {
     const closeAccountMenu = (event: MouseEvent) => {
@@ -602,6 +612,60 @@ export default function HomePage({
     setRecentCount(0)
   }
 
+  function openProfileEditor() {
+    setAccountOpen(false)
+    setProfileName(playerName)
+    setProfileAvatar(playerAvatar)
+    setProfileOpen(true)
+  }
+
+  function selectProfileAvatar(file?: File) {
+    if (!file) return
+    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
+      setNotice('请上传 PNG、JPEG、WebP 或 GIF 格式的头像')
+      return
+    }
+    if (file.size > 512 * 1024) {
+      setNotice('头像图片不能超过 512 KB')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setProfileAvatar(typeof reader.result === 'string' ? reader.result : '')
+    reader.readAsDataURL(file)
+  }
+
+  async function saveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const displayName = profileName.trim()
+    if (!displayName) {
+      setNotice('请输入昵称')
+      return
+    }
+    setProfileSaving(true)
+    try {
+      if (uiPreview) {
+        setPlayerName(displayName)
+        setPlayerAvatar(profileAvatar)
+      } else {
+        const response = await fetch('/api/play-profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ displayName, avatar: profileAvatar }),
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data.message || '资料保存失败')
+        setPlayerName(data.player?.displayName || displayName)
+        setPlayerAvatar(data.player?.avatar || '')
+      }
+      setProfileOpen(false)
+      setNotice('资料已保存')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : '资料保存失败')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
   return (
     <>
       <Head>
@@ -650,6 +714,9 @@ export default function HomePage({
                     {playerUserId ? <small>账号 ID · {playerUserId}</small> : null}
                     {playerBoxId ? <small>神岛 ID · {playerBoxId}</small> : null}
                   </div>
+                  <button className="accountMenuAction" type="button" onClick={openProfileEditor}>
+                    编辑资料
+                  </button>
                   <button className="accountLogout" type="button" onClick={() => void logoutAccount()}>
                     退出登录
                   </button>
@@ -959,6 +1026,49 @@ export default function HomePage({
                 {busy === 'verify' ? '验证中…' : '验证'}
               </button>
             </div>
+          </form>
+        </div>
+      ) : null}
+
+      {profileOpen ? (
+        <div className="backdrop playWorkOverlay" onMouseDown={() => !profileSaving && setProfileOpen(false)}>
+          <form className="dialog profileDialog" onSubmit={saveProfile} onMouseDown={(event) => event.stopPropagation()}>
+            <header className="profileDialogHeading">
+              <div>
+                <h2>编辑资料</h2>
+                <p>设置在游玩端公开显示的资料</p>
+              </div>
+              <button className="profileClose" type="button" aria-label="关闭编辑资料" disabled={profileSaving} onClick={() => setProfileOpen(false)}><X size={17} /></button>
+            </header>
+            <div className="profileContent">
+              <div className="profileAvatarRow">
+                <div className="profileAvatarPreview" aria-label="头像预览">
+                  {profileAvatar ? <img src={profileAvatar} alt="" /> : <CircleUserRound size={26} />}
+                </div>
+                <div className="profileAvatarCopy"><strong>头像</strong><small>PNG、JPEG、WebP、GIF · 最大 512 KB</small></div>
+                <button className="profileAvatarUpload" type="button" onClick={() => avatarInput.current?.click()}>
+                  更换头像
+                </button>
+              </div>
+              <input
+                ref={avatarInput}
+                className="hidden"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={(event) => {
+                  selectProfileAvatar(event.target.files?.[0])
+                  event.currentTarget.value = ''
+                }}
+              />
+              <label className="profileField" htmlFor="player-profile-name">
+                <span>昵称</span>
+                <input id="player-profile-name" autoFocus maxLength={32} value={profileName} onChange={(event) => setProfileName(event.target.value)} />
+              </label>
+            </div>
+            <footer className="dialogActions">
+              <button className="button" type="button" disabled={profileSaving} onClick={() => setProfileOpen(false)}>取消</button>
+              <button className="button primary" type="submit" disabled={profileSaving || !profileName.trim()}>{profileSaving ? '保存中…' : '保存资料'}</button>
+            </footer>
           </form>
         </div>
       ) : null}
@@ -1904,9 +2014,10 @@ export default function HomePage({
         .playWorkCenter .accountIdentity { display: grid; gap: 4px; }
         .playWorkCenter .accountMenu strong { color: #fff; font-size: 13px; }
         .playWorkCenter .accountMenu small { color: rgba(255, 255, 255, 0.45); font-size: 12px; }
+        .playWorkCenter .accountMenuAction,
         .playWorkCenter .accountLogout {
           width: 100%;
-          margin-top: 12px;
+          margin-top: 11px;
           padding: 0;
           border: 0;
           color: rgba(255, 255, 255, 0.6);
@@ -1916,7 +2027,85 @@ export default function HomePage({
           text-align: left;
           cursor: pointer;
         }
+        .playWorkCenter .accountMenuAction { color: rgba(255, 255, 255, 0.82); }
+        .playWorkCenter .accountMenuAction:hover,
         .playWorkCenter .accountLogout:hover { color: #fff; }
+        .playWorkOverlay .profileDialog {
+          width: min(408px, 100%);
+          padding: 0;
+          overflow: hidden;
+        }
+        .playWorkOverlay .profileDialogHeading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin: 0;
+          padding: 20px 20px 17px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .playWorkOverlay .profileDialogHeading h2 { margin: 0 0 4px; font-size: 18px; }
+        .playWorkOverlay .profileDialogHeading p { margin: 0; font-size: 12px; line-height: 1.45; }
+        .playWorkOverlay .profileClose {
+          width: 30px;
+          height: 30px;
+          display: grid;
+          flex: 0 0 auto;
+          place-items: center;
+          margin: -4px -4px 0 0;
+          padding: 0;
+          border: 0;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.56);
+          background: transparent;
+          cursor: pointer;
+          transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .playWorkOverlay .profileClose:hover { color: #fff; background: #404040; }
+        .playWorkOverlay .profileClose:active { transform: scale(0.96); }
+        .playWorkOverlay .profileContent { display: grid; gap: 18px; padding: 18px 20px 20px; }
+        .playWorkOverlay .profileAvatarRow {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+          min-width: 0;
+        }
+        .playWorkOverlay .profileAvatarPreview {
+          width: 46px;
+          height: 46px;
+          flex: 0 0 auto;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          border-radius: 50%;
+          color: #262626;
+          background: #ffdb00;
+        }
+        .playWorkOverlay .profileAvatarPreview img { width: 100%; height: 100%; object-fit: cover; }
+        .playWorkOverlay .profileAvatarCopy { min-width: 0; display: grid; gap: 3px; flex: 1; }
+        .playWorkOverlay .profileAvatarCopy strong { color: #fff; font-size: 13px; }
+        .playWorkOverlay .profileAvatarCopy small { overflow: hidden; color: rgba(255, 255, 255, 0.43); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+        .playWorkOverlay .profileAvatarUpload {
+          height: 30px;
+          padding: 0 9px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.84);
+          background: #404040;
+          font: inherit;
+          font-size: 12px;
+          cursor: pointer;
+        }
+        .playWorkOverlay .profileAvatarUpload:hover { background: #4a4a4a; }
+        .playWorkOverlay .profileField { display: grid; gap: 7px; margin: 0; }
+        .playWorkOverlay .profileField > span { color: rgba(255, 255, 255, 0.58); font-size: 12px; font-weight: 600; }
+        .playWorkOverlay .profileField input { height: 38px; }
+        .playWorkOverlay .profileDialog .dialogActions {
+          margin: 0;
+          padding: 12px 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          background: #2a2a2a;
+        }
         .playWorkCenter .header { margin-bottom: 16px; }
         .playWorkCenter .title { gap: 10px; }
         .playWorkCenter .title h1 { color: #fff; font-size: 22px; letter-spacing: -0.025em; }

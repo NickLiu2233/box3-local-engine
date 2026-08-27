@@ -873,7 +873,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   async function resetPassword() {
-    if (!selected || !canResetPasswords || newPassword.length < 8) return;
+    if (!selected || !canResetPasswords || newPassword.length < 10) return;
     if (!confirm(`确定重置“${selected.displayName}”的密码并撤销全部会话吗？`)) return;
     setBusy('password');
     try {
@@ -894,7 +894,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   async function submitCreateUser() {
-    if (!canCreatePlayers || busy || createUser.password.length < 8) return;
+    if (!canCreatePlayers || busy || createUser.password.length < 10) return;
     setBusy('create-user');
     setNotice('');
     try {
@@ -1160,7 +1160,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
 
                 {detailTab === 'password' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>设置临时新密码</h3><span>{canResetPasswords ? '已授权' : '无权限'}</span></div>
-                  {canResetPasswords && !selected.guest ? <div className={styles.passwordReset}><div><KeyRound size={17} /><span><strong>重置登录凭据</strong><small>完成后所有设备立即退出，玩家需要使用新密码重新登录。</small></span></div><div><input type="password" minLength={8} maxLength={128} placeholder="8–128 位临时密码" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button className={styles.secondaryButton} disabled={newPassword.length < 8 || Boolean(busy)} onClick={() => void resetPassword()}>重置密码</button></div></div> : <div className={styles.infoNote}>{selected.guest ? '游客没有可重置的账号密码。' : '服主尚未授予当前管理员重置密码权限。'}</div>}
+                  {canResetPasswords && !selected.guest ? <div className={styles.passwordReset}><div><KeyRound size={17} /><span><strong>重置登录凭据</strong><small>完成后所有设备立即退出，玩家需要使用新密码重新登录。</small></span></div><div><input type="password" minLength={10} maxLength={128} placeholder="10–128 位临时密码" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button className={styles.secondaryButton} disabled={newPassword.length < 10 || Boolean(busy)} onClick={() => void resetPassword()}>重置密码</button></div></div> : <div className={styles.infoNote}>{selected.guest ? '游客没有可重置的账号密码。' : '服主尚未授予当前管理员重置密码权限。'}</div>}
                 </section> : null}
 
                 {detailTab === 'related' ? <section className={styles.detailSection}>
@@ -1223,7 +1223,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             <div className={styles.createUserGrid}>
               <label>用户名<input autoFocus required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createUser.username} onChange={(event) => setCreateUser({ ...createUser, username: event.target.value })} placeholder="例如 player_001" /></label>
               <label>昵称<input required maxLength={32} value={createUser.displayName} onChange={(event) => setCreateUser({ ...createUser, displayName: event.target.value })} placeholder="玩家显示名称" /></label>
-              <label>初始密码<input required type="password" minLength={8} maxLength={128} autoComplete="new-password" value={createUser.password} onChange={(event) => setCreateUser({ ...createUser, password: event.target.value })} placeholder="8–128 位" /></label>
+              <label>初始密码<input required type="password" minLength={10} maxLength={128} autoComplete="new-password" value={createUser.password} onChange={(event) => setCreateUser({ ...createUser, password: event.target.value })} placeholder="10–128 位" /></label>
               {ownerAccess ? <label>后台角色<select value={createUser.role} onChange={(event) => setCreateUser({ ...createUser, role: event.target.value as Player['role'] })}><option value="player">玩家</option><option value="moderator">管理员</option><option value="admin">服主</option></select></label> : <label>后台角色<input disabled value="普通玩家" /></label>}
               <label>神岛 ID（可选）<input maxLength={64} value={createUser.boxId} onChange={(event) => setCreateUser({ ...createUser, boxId: event.target.value })} placeholder="未绑定" /></label>
               <label>标签（可选）<input value={createUser.tags} onChange={(event) => setCreateUser({ ...createUser, tags: event.target.value })} placeholder="测试员, 白名单" /></label>
@@ -1232,7 +1232,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
             <footer className={styles.createUserActions}>
               <button className={styles.secondaryButton} type="button" disabled={busy === 'create-user'} onClick={() => setCreateUserOpen(false)}>取消</button>
-              <button className={styles.primaryButton} type="submit" disabled={busy === 'create-user' || createUser.password.length < 8}>{busy === 'create-user' ? '创建中…' : '创建用户'}</button>
+              <button className={styles.primaryButton} type="submit" disabled={busy === 'create-user' || createUser.password.length < 10}>{busy === 'create-user' ? '创建中…' : '创建用户'}</button>
             </footer>
           </form>
         </div>
