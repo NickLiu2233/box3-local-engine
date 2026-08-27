@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-import { deletePlayWorld, updatePlayWorld } from '../../../../server/play-admin';
+import { deletePlayWorld, setPlayWorldGroupAvailability, updatePlayWorld } from '../../../../server/play-admin';
 import { allowPlayLibraryAdmin } from '../../../../server/play-admin-security';
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -11,10 +11,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!allowPlayLibraryAdmin(req, res)) return;
   try {
     if (req.method === 'PATCH') {
+      if (typeof req.body?.playEnabled === 'boolean') {
+        return res.status(200).json({ worlds: setPlayWorldGroupAvailability(String(req.query.id || ''), req.body.playEnabled) });
+      }
       return res.status(200).json({ world: updatePlayWorld(String(req.query.id || ''), req.body || {}) });
     }
-    deletePlayWorld(String(req.query.id || ''));
-    return res.status(204).end();
+    return res.status(200).json({ deletedIds: deletePlayWorld(String(req.query.id || '')) });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }

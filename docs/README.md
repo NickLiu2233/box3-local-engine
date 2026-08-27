@@ -37,7 +37,7 @@
 
 ### 给开发者和发行协作者
 
-- [开发者与协作手册](./developer-guide.md)：从克隆仓库到提交 PR 的实际工作流。
+- [开发者与协作手册](./developer-guide.md)：从克隆仓库到提交 PR 的实际工作流，包含 Play 前端 UI 预览模式。
 - [系统架构与源码入口](./architecture.md)：服务职责、数据流、核心概念和需求定位表。
 - [工程开发规范](./engineering.md)：代码、测试、安全、兼容约束与已登记的工程优化。
 - [构建、分发与 CI](./release-and-distribution.md)：镜像、桌面包、Tag 工作流和发布检查。

@@ -3,7 +3,6 @@ import os from 'os';
 import path from 'path';
 import { createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
-import archiver from 'archiver';
 
 import { getPlayWorlds } from './play-worlds';
 
@@ -372,19 +371,70 @@ export async function importPlayBundle(archivePath: string) {
 
 export function deletePlayWorld(id: string) {
   const safeId = assertWorldId(id);
-  const target = path.join(libraryRoot(), safeId);
-  if (!fs.existsSync(target)) throw new Error('地图不存在');
+  const installed = getPlayWorlds();
+  const target = installed.find((world) => world.id === safeId);
+  if (!target) throw new Error('地图不存在');
+  // 主地图是地图组的入口。删除它时必须一并删除所有副地图，避免留下
+  // 无法正常管理、也无法还原关系的孤立地图。
+  const targets = target.mapRole === 'main'
+    ? installed.filter((world) => (world.mapGroupId || world.mainProjectId || world.id) === (target.mapGroupId || target.id))
+    : [target];
   try {
-    fs.rmSync(target, { recursive: true });
+    for (const world of targets) {
+      fs.rmSync(path.join(libraryRoot(), world.id), { recursive: true });
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
       throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
     }
     throw error;
   }
+  return targets.map((world) => world.id);
+}
+
+export type PlayWorldResourceStatus = {
+  id: string;
+  bytes: number;
+  importedAt: string;
+};
+
+function directoryBytes(root: string) {
+  let total = 0;
+  const pending = [root];
+  while (pending.length) {
+    const current = pending.pop()!;
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const target = path.join(current, entry.name);
+      if (entry.isDirectory()) pending.push(target);
+      else if (entry.isFile()) total += fs.statSync(target).size;
+    }
+  }
+  return total;
+}
+
+/**
+ * 资源统计只供已通过服主验证的管理界面按需读取，不加入 getPlayWorlds，
+ * 避免普通玩家打开首页时遍历大型资源目录。
+ */
+export function getPlayWorldResourceStatuses(): PlayWorldResourceStatus[] {
+  const root = libraryRoot();
+  return getPlayWorlds().map((world) => {
+    const directory = path.join(root, world.id);
+    const manifest = JSON.parse(fs.readFileSync(path.join(directory, 'manifest.json'), 'utf8'));
+    const directoryStat = fs.statSync(directory);
+    return {
+      id: world.id,
+      bytes: directoryBytes(directory),
+      importedAt: String(manifest.installedAt || directoryStat.birthtime.toISOString()),
+    };
+  });
 }
 
 export function updatePlayWorld(id: string, patch: Record<string, unknown>) {
+  const protectedFields = ['name', 'author', 'description', 'cover'];
+  if (protectedFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field))) {
+    throw new Error('游玩端不允许修改地图封面、标题、作者或简介');
+  }
   const safeId = assertWorldId(id);
   const manifestPath = path.join(libraryRoot(), safeId, 'manifest.json');
   if (!fs.existsSync(manifestPath)) throw new Error('地图不存在');
@@ -398,15 +448,6 @@ export function updatePlayWorld(id: string, patch: Record<string, unknown>) {
     throw new Error(`地图 ID“${publicId}”已经被其他地图使用`);
   }
   manifest.publicId = publicId;
-  if (typeof patch.name === 'string' && patch.name.trim()) manifest.projectName = patch.name.trim().slice(0, 40);
-  if (typeof patch.author === 'string') manifest.author = patch.author.trim().slice(0, 80);
-  if (typeof patch.description === 'string') manifest.description = patch.description.trim().slice(0, 300);
-  if (typeof patch.cover === 'string') {
-    if (patch.cover && (!/^data:image\/(png|jpeg|webp);base64,/.test(patch.cover) || Buffer.byteLength(patch.cover, 'utf8') > 2 * 1024 * 1024)) {
-      throw new Error('封面必须是小于 2MB 的 PNG、JPG 或 WebP 图片');
-    }
-    manifest.cover = patch.cover;
-  }
   const temporaryPath = `${manifestPath}.${process.pid}.${Date.now()}.tmp`;
   try {
     fs.writeFileSync(temporaryPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o644 });
@@ -421,49 +462,20 @@ export function updatePlayWorld(id: string, patch: Record<string, unknown>) {
   return getPlayWorlds().find((world) => world.id === safeId);
 }
 
-function safeFilename(value: string) {
-  return value.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 80) || '作品';
-}
-
-export function createPlayBundle(id: string) {
+export function setPlayWorldGroupAvailability(id: string, playEnabled: boolean) {
   const safeId = assertWorldId(id);
   const installed = getPlayWorlds();
-  const world = installed.find((entry) => entry.id === safeId);
-  if (!world) throw new Error('地图不存在或数据不完整');
-  const groupId = world.mapGroupId || world.id;
-  const worlds = installed.filter((entry) => (entry.mapGroupId || entry.id) === groupId);
-  const mainProjectId = world.mainProjectId || world.id;
-  const main = worlds.find((entry) => entry.id === mainProjectId);
-  if (!main) throw new Error('地图组缺少主地图，无法导出完整游玩包');
-  const archive = archiver('tar', { gzip: true, gzipOptions: { level: 6 } });
-  archive.append(JSON.stringify({
-    formatVersion: 1,
-    type: 'map-group-play-bundle',
-    mapGroupId: groupId,
-    mainProjectId,
-    createdAt: new Date().toISOString(),
-    members: worlds.map((entry) => ({
-      id: entry.id,
-      publicId: entry.publicId,
-      name: entry.name,
-      version: entry.version,
-      mapRole: entry.mapRole,
-      mainProjectId: entry.mainProjectId,
-    })),
-  }, null, 2), { name: 'bundle.json' });
-  for (const entry of worlds) {
-    archive.directory(path.join(libraryRoot(), entry.id), `worlds/${entry.id}`, (archiveEntry) => {
-      const segments = archiveEntry.name.split('/');
-      if (segments.some((segment) => segment === '.DS_Store' || segment.startsWith('._'))) {
-        return false;
-      }
-      return archiveEntry;
-    });
+  const target = installed.find((world) => world.id === safeId);
+  if (!target) throw new Error('地图不存在');
+  const groupId = target.mapGroupId || target.mainProjectId || target.id;
+  const members = installed.filter((world) => (world.mapGroupId || world.mainProjectId || world.id) === groupId);
+  for (const world of members) {
+    const manifestPath = path.join(libraryRoot(), world.id, 'manifest.json');
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    manifest.playEnabled = playEnabled;
+    const temporaryPath = `${manifestPath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(temporaryPath, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o644 });
+    fs.renameSync(temporaryPath, manifestPath);
   }
-  return {
-    archive,
-    filename: `${safeFilename(main.name)}_${groupId}_${safeFilename(main.version || 'latest')}.boxplay`,
-    mapCount: worlds.length,
-    mapGroupId: groupId,
-  };
+  return getPlayWorlds().filter((world) => (world.mapGroupId || world.mainProjectId || world.id) === groupId);
 }

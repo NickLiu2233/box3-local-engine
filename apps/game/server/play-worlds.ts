@@ -13,6 +13,7 @@ export type PlayWorld = {
   mapGroupId: string;
   mapRole: 'main' | 'submap';
   mainProjectId: string;
+  playEnabled: boolean;
 };
 
 const idPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -57,6 +58,7 @@ export function getPlayWorlds(): PlayWorld[] {
             mapGroupId: manifest.mapGroupId,
             mapRole: manifest.mapRole,
             mainProjectId: manifest.mainProjectId,
+            playEnabled: manifest.playEnabled !== false,
           }];
         } catch {
           return [];

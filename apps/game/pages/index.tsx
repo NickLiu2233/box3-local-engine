@@ -3,10 +3,17 @@ import Head from 'next/head'
 import Link from 'next/link'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CircleUserRound, LogOut, Settings, Upload } from 'lucide-react'
+import {
+  ArrowUpRight,
+  CircleUserRound,
+  LogOut,
+  Settings,
+  Upload,
+} from 'lucide-react'
 import type { PlayWorld } from '../server/play-worlds'
 import { getPlayWorlds } from '../server/play-worlds'
 import { isPlayAdminEnabled } from '../server/play-admin-security'
+import { getPlayPresenceCounts } from '../server/play-presence'
 import {
   importResponseError,
   type DetailedImportError,
@@ -14,6 +21,50 @@ import {
 } from '../server/import-diagnostics'
 
 const TOKEN_KEY = 'box-play-admin-token'
+
+type MapDiscoveryStats = {
+  onlineCount: number
+}
+
+type MapResourceStatus = {
+  bytes: number
+  importedAt: string
+}
+
+// 仅供 BOX_UI_PREVIEW 开发服务展示首页布局；生产路径不会使用这些数据。
+const previewWorlds: PlayWorld[] = [
+  {
+    id: 'preview-arena', mapUuid: 'preview-arena', publicId: 'preview-arena', name: '竞技场：破晓行动', author: 'BOX3 Studio', description: '在立体竞技场中完成一场快速对战。', cover: '/map-templates/arena-template.png', version: 'v1.2.0', mapGroupId: 'preview-arena', mapRole: 'main', mainProjectId: 'preview-arena', playEnabled: true,
+  },
+  {
+    id: 'preview-race', mapUuid: 'preview-race', publicId: 'preview-race', name: '极速赛道', author: 'BOX3 Studio', description: '穿过弯道与加速带，第一个冲过终点。', cover: '/map-templates/raceway-template.png', version: 'v1.0.4', mapGroupId: 'preview-race', mapRole: 'main', mainProjectId: 'preview-race', playEnabled: true,
+  },
+  {
+    id: 'preview-explore', mapUuid: 'preview-explore', publicId: 'preview-explore', name: '空岛探索', author: 'BOX3 Studio', description: '从一座空岛开始，探索属于你的世界。', cover: '/map-templates/blank-template.png', version: 'v1.0.0', mapGroupId: 'preview-explore', mapRole: 'main', mainProjectId: 'preview-explore', playEnabled: true,
+  },
+  {
+    id: 'preview-build', mapUuid: 'preview-build', publicId: 'preview-build', name: '方块工坊', author: 'BOX3 Studio', description: '自由搭建、分享与协作的创造空间。', cover: '/map-templates/blank-template.png', version: 'v1.1.1', mapGroupId: 'preview-build', mapRole: 'main', mainProjectId: 'preview-build', playEnabled: true,
+  },
+  {
+    id: 'preview-chase', mapUuid: 'preview-chase', publicId: 'preview-chase', name: '追逐时刻', author: 'BOX3 Studio', description: '一场考验反应与路线判断的限时挑战。', cover: '/map-templates/arena-template.png', version: 'v1.0.2', mapGroupId: 'preview-chase', mapRole: 'main', mainProjectId: 'preview-chase', playEnabled: true,
+  },
+]
+
+const previewMapStats: Record<string, MapDiscoveryStats> = {
+  'preview-arena': { onlineCount: 24 },
+  'preview-race': { onlineCount: 12 },
+  'preview-explore': { onlineCount: 8 },
+  'preview-build': { onlineCount: 4 },
+  'preview-chase': { onlineCount: 17 },
+}
+
+const previewResourceStatuses: Record<string, MapResourceStatus> = {
+  'preview-arena': { bytes: 48 * 1024 * 1024, importedAt: '2026-08-27T08:30:00.000Z' },
+  'preview-race': { bytes: 36 * 1024 * 1024, importedAt: '2026-08-26T04:15:00.000Z' },
+  'preview-explore': { bytes: 22 * 1024 * 1024, importedAt: '2026-08-25T11:00:00.000Z' },
+  'preview-build': { bytes: 31 * 1024 * 1024, importedAt: '2026-08-24T06:45:00.000Z' },
+  'preview-chase': { bytes: 27 * 1024 * 1024, importedAt: '2026-08-23T02:20:00.000Z' },
+}
 
 type ImportProgress = {
   filename: string
@@ -28,6 +79,11 @@ type ImportProgress = {
   details?: ImportDiagnostic[]
 }
 
+function isPlayEnabled(world: PlayWorld) {
+  // 老游玩包的 manifest 没有该字段时，保持历史行为：默认允许进入。
+  return world.playEnabled !== false
+}
+
 function formatBytes(value: number) {
   if (!value) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
@@ -35,19 +91,41 @@ function formatBytes(value: number) {
   return `${(value / 1024 ** unit).toFixed(unit ? 1 : 0)} ${units[unit]}`
 }
 
+function formatImportedAt(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '时间未知'
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date)
+}
+
 export default function HomePage({
   worlds,
   adminEnabled,
+  adminToolsVisible,
+  uiPreview,
+  mapStats,
 }: {
   worlds: PlayWorld[]
   adminEnabled: boolean
+  adminToolsVisible: boolean
+  uiPreview: boolean
+  mapStats: Record<string, MapDiscoveryStats>
 }) {
   const importInput = useRef<HTMLInputElement>(null)
   const [worldList, setWorldList] = useState(worlds)
+  const [liveMapStats, setLiveMapStats] = useState(mapStats)
+  const [resourceStatuses, setResourceStatuses] = useState<Record<string, MapResourceStatus>>({})
   const [adminToken, setAdminToken] = useState('')
   const [verified, setVerified] = useState(false)
   const [playerName, setPlayerName] = useState('')
+  const [playerUserId, setPlayerUserId] = useState('')
   const [playerBoxId, setPlayerBoxId] = useState('')
+  const [playerAvatar, setPlayerAvatar] = useState('')
+  const [previewSignedIn, setPreviewSignedIn] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [recentCount, setRecentCount] = useState(0)
   const [libraryEnabled, setLibraryEnabled] = useState(false)
@@ -58,12 +136,9 @@ export default function HomePage({
   const [recentIds, setRecentIds] = useState<string[]>([])
   const [loginOpen, setLoginOpen] = useState(false)
   const [deleteWorld, setDeleteWorld] = useState<PlayWorld | null>(null)
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
   const [editWorld, setEditWorld] = useState<PlayWorld | null>(null)
   const [editPublicId, setEditPublicId] = useState('')
-  const [editName, setEditName] = useState('')
-  const [editAuthor, setEditAuthor] = useState('')
-  const [editDescription, setEditDescription] = useState('')
-  const [editCover, setEditCover] = useState('')
   const [busy, setBusy] = useState('')
   const [notice, setNotice] = useState('')
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
@@ -88,6 +163,58 @@ export default function HomePage({
       }
     })
   }, [worldList])
+
+  useEffect(() => {
+    if (uiPreview) return
+    const mapIds = worldList.map((world) => world.publicId).filter(Boolean)
+    if (!mapIds.length) return
+    let cancelled = false
+    const refresh = () => {
+      fetch(`/api/play-presence?maps=${encodeURIComponent(mapIds.join(','))}`)
+        .then((response) => (response.ok ? response.json() : undefined))
+        .then((data) => {
+          if (!cancelled && data?.maps) setLiveMapStats(data.maps)
+        })
+        .catch(() => undefined)
+    }
+    refresh()
+    const timer = window.setInterval(refresh, 20_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [uiPreview, worldList])
+
+  useEffect(() => {
+    if (!verified) {
+      setResourceStatuses({})
+      return
+    }
+    if (uiPreview) {
+      setResourceStatuses(previewResourceStatuses)
+      return
+    }
+    let cancelled = false
+    fetch('/api/play-admin/worlds/status', {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })
+      .then((response) => (response.ok ? response.json() : undefined))
+      .then((data) => {
+        if (cancelled || !Array.isArray(data?.worlds)) return
+        setResourceStatuses(
+          Object.fromEntries(
+            data.worlds.map((world: { id: string; bytes: number; importedAt: string }) => [
+              world.id,
+              { bytes: world.bytes, importedAt: world.importedAt },
+            ]),
+          ),
+        )
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [adminToken, uiPreview, verified])
 
   async function verifyToken(token: string, quiet = false) {
     const response = await fetch('/api/play-admin/verify', {
@@ -123,7 +250,9 @@ export default function HomePage({
         if (!response.ok) return
         const data = await response.json()
         setPlayerName(data.player?.displayName || data.player?.username || '')
+        setPlayerUserId(data.player?.userId || '')
         setPlayerBoxId(data.player?.boxId || '')
+        setPlayerAvatar(data.player?.avatar || '')
         setLibraryEnabled(data.libraryEnabled !== false)
         const entries = data.entries || []
         const favorites = entries.filter((entry: { favorite: boolean }) => entry.favorite)
@@ -163,14 +292,46 @@ export default function HomePage({
     setRecentIds((current) => [mapId, ...current.filter((value) => value !== mapId)])
     void updateLibrary(mapId, { played: true })
   }
+  // 关闭是面向玩家的下线状态：服主仍能在管理视图看到并重新开启，
+  // 玩家首页、收藏和最近游玩中都不应暴露该地图组。
+  const playableWorldGroups = worldGroups.filter(({ main }) => isPlayEnabled(main))
   const playerGroups =
     collectionView === 'favorites'
-      ? worldGroups.filter(({ main }) => favoriteIds.has(main.publicId))
+      ? playableWorldGroups.filter(({ main }) => favoriteIds.has(main.publicId))
       : collectionView === 'recent'
-        ? [...worldGroups]
+        ? [...playableWorldGroups]
             .sort((a, b) => recentIds.indexOf(a.main.publicId) - recentIds.indexOf(b.main.publicId))
             .filter(({ main }) => recentIds.includes(main.publicId))
-        : worldGroups
+        : playableWorldGroups
+  const libraryGroups = playerGroups
+  const deleteTargets = deleteWorld
+    ? deleteWorld.mapRole === 'main'
+      ? worldList.filter(
+          (world) =>
+            (world.mapGroupId || world.mainProjectId || world.id) ===
+            (deleteWorld.mapGroupId || deleteWorld.mainProjectId || deleteWorld.id),
+        )
+      : [deleteWorld]
+    : []
+
+  const previewSignIn = () => {
+    setPreviewSignedIn(true)
+    setPlayerName('测试玩家')
+    setPlayerUserId('10001')
+    setPlayerBoxId('')
+    setLibraryEnabled(true)
+  }
+
+  const openAdminTools = () => {
+    if (uiPreview) {
+      setVerified(true)
+      setAccountOpen(false)
+      setLoginOpen(false)
+      setNotice('')
+      return
+    }
+    setLoginOpen(true)
+  }
 
   async function importBundle(file: File) {
     if (importProgress && importProgress.phase !== 'done' && importProgress.phase !== 'error')
@@ -297,41 +458,16 @@ export default function HomePage({
     }
   }
 
-  async function exportBundle(world: PlayWorld) {
-    setBusy(`export:${world.id}`)
-    setNotice('')
-    try {
-      const response = await fetch(
-        `/api/play-admin/worlds/${encodeURIComponent(world.id)}/export`,
-        {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        },
-      )
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || '导出失败')
-      }
-      const blob = await response.blob()
-      const disposition = response.headers.get('Content-Disposition') || ''
-      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1]
-      const filename = encodedName
-        ? decodeURIComponent(encodedName)
-        : `${world.name}_${world.id}.boxplay`
-      const url = URL.createObjectURL(blob)
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = filename
-      anchor.click()
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      setNotice((error as Error).message)
-    } finally {
-      setBusy('')
-    }
-  }
-
   async function confirmDelete() {
-    if (!deleteWorld) return
+    if (!deleteWorld || !deleteConfirmed) return
+    if (uiPreview) {
+      const deletedIds = new Set(deleteTargets.map((world) => world.id))
+      setWorldList((current) => current.filter((world) => !deletedIds.has(world.id)))
+      setDeleteConfirmed(false)
+      setDeleteWorld(null)
+      setNotice('')
+      return
+    }
     setBusy(`delete:${deleteWorld.id}`)
     setNotice('')
     try {
@@ -351,19 +487,67 @@ export default function HomePage({
     }
   }
 
+  function requestDelete(world: PlayWorld) {
+    setDeleteConfirmed(false)
+    setDeleteWorld(world)
+  }
+
+  async function toggleWorldAvailability(world: PlayWorld) {
+    if (uiPreview) {
+      const groupId = world.mapGroupId || world.mainProjectId || world.id
+      const playEnabled = !isPlayEnabled(world)
+      setWorldList((current) =>
+        current.map((entry) =>
+          (entry.mapGroupId || entry.mainProjectId || entry.id) === groupId
+            ? { ...entry, playEnabled }
+            : entry,
+        ),
+      )
+      setNotice('')
+      return
+    }
+    setBusy(`availability:${world.id}`)
+    setNotice('')
+    try {
+      const response = await fetch(`/api/play-admin/worlds/${encodeURIComponent(world.id)}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playEnabled: !isPlayEnabled(world) }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || '设置失败')
+      const changed = new Map<string, PlayWorld>(
+        ((data.worlds || []) as PlayWorld[]).map((entry) => [entry.id, entry]),
+      )
+      setWorldList((current) => current.map((entry) => changed.get(entry.id) || entry))
+      setNotice(
+        isPlayEnabled(world) ? '地图组已关闭，玩家暂时无法进入' : '地图组已启动，玩家可以进入',
+      )
+    } catch (error) {
+      setNotice((error as Error).message)
+    } finally {
+      setBusy('')
+    }
+  }
+
   function openWorldEditor(world: PlayWorld) {
     setEditWorld(world)
     setEditPublicId(world.publicId)
-    setEditName(world.name)
-    setEditAuthor(world.author || '')
-    setEditDescription(world.description || '')
-    setEditCover(world.cover || '')
     setNotice('')
   }
 
   async function saveWorld(event: FormEvent) {
     event.preventDefault()
     if (!editWorld) return
+    if (uiPreview) {
+      const publicId = editPublicId.trim()
+      setWorldList((current) =>
+        current.map((world) => (world.id === editWorld.id ? { ...world, publicId } : world)),
+      )
+      setEditWorld(null)
+      setNotice('')
+      return
+    }
     setBusy(`edit:${editWorld.id}`)
     setNotice('')
     try {
@@ -375,10 +559,6 @@ export default function HomePage({
         },
         body: JSON.stringify({
           publicId: editPublicId,
-          name: editName,
-          author: editAuthor,
-          description: editDescription,
-          cover: editCover,
         }),
       })
       const data = await response.json().catch(() => ({}))
@@ -399,6 +579,27 @@ export default function HomePage({
     sessionStorage.removeItem(TOKEN_KEY)
     setAdminToken('')
     setVerified(false)
+  }
+
+  async function logoutAccount() {
+    setAccountOpen(false)
+    if (!uiPreview) {
+      const response = await fetch('/api/play-logout', { method: 'POST', credentials: 'same-origin' })
+      if (!response.ok) {
+        setNotice('退出登录失败，请稍后重试')
+        return
+      }
+    }
+    setPreviewSignedIn(false)
+    setPlayerName('')
+    setPlayerUserId('')
+    setPlayerBoxId('')
+    setPlayerAvatar('')
+    setLibraryEnabled(false)
+    setFavoriteIds(new Set())
+    setRecentIds([])
+    setFavoriteCount(0)
+    setRecentCount(0)
   }
 
   return (
@@ -423,53 +624,64 @@ export default function HomePage({
               whiteSpace: 'nowrap',
             }}
           >
-            <span className="siteMark" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-            </span>
+            <img className="siteMark" src="/logo512.png" alt="" aria-hidden="true" />
             <span className="siteBrandName" style={{ color: '#f5f5f5' }}>
               BOX3 Engine
             </span>
           </Link>
 
-          <div className="accountArea" ref={accountRef}>
-            <button
-              className="siteAccount"
-              type="button"
-              onClick={() => setAccountOpen((value) => !value)}
-              aria-expanded={accountOpen}
-            >
-              <span className="accountAvatar">
-                <CircleUserRound size={18} />
-              </span>
-              <span>{verified ? '服主' : playerName || '账户'}</span>
-            </button>
-            {accountOpen ? (
-              <aside className="accountMenu">
-                <strong>{playerName || '账户'}</strong>
-                {playerBoxId ? <small>神岛 ID · {playerBoxId}</small> : null}
-                {libraryEnabled ? (
-                  <span>
-                    收藏 {favoriteCount} · 最近游玩 {recentCount}
-                  </span>
-                ) : null}
-              </aside>
-            ) : null}
-          </div>
+          {verified ? null : playerName || playerUserId || playerBoxId || previewSignedIn ? (
+            <div className="accountArea" ref={accountRef}>
+              <button
+                className="siteAccount"
+                type="button"
+                onClick={() => setAccountOpen((value) => !value)}
+                aria-expanded={accountOpen}
+              >
+                <span className="accountAvatar">
+                  {playerAvatar && !verified ? <img src={playerAvatar} alt="" /> : <CircleUserRound size={18} />}
+                </span>
+                <span>{verified ? '服主' : playerName}</span>
+              </button>
+              {accountOpen ? (
+                <aside className="accountMenu">
+                  <div className="accountIdentity">
+                    <strong>{verified ? '服主' : playerName}</strong>
+                    {playerUserId ? <small>账号 ID · {playerUserId}</small> : null}
+                    {playerBoxId ? <small>神岛 ID · {playerBoxId}</small> : null}
+                  </div>
+                  <button className="accountLogout" type="button" onClick={() => void logoutAccount()}>
+                    退出登录
+                  </button>
+                </aside>
+              ) : null}
+            </div>
+          ) : (
+            <div className="guestActions" aria-label="账户入口">
+              {uiPreview ? (
+                <button className="guestLogin" type="button" onClick={previewSignIn}>
+                  登录 / 注册
+                </button>
+              ) : (
+                <Link className="guestLogin" href="/login-required?source=play">
+                  登录 / 注册
+                </Link>
+              )}
+            </div>
+          )}
         </header>
 
         <div className="header">
           <div className="title">
-            <h1>作品</h1>
+            <h1>地图</h1>
             <span>
               {verified
                 ? `${worldGroups.length} 个地图组 · ${worldList.length} 张地图`
-                : `${worldGroups.length} 个作品`}
+                : `${worldGroups.length} 个地图`}
             </span>
           </div>
           <div className="headerActions">
-            {adminEnabled ? (
+            {adminToolsVisible ? (
               verified ? (
                 <>
                   <button
@@ -486,7 +698,7 @@ export default function HomePage({
                   </button>
                 </>
               ) : (
-                <button className="button" onClick={() => setLoginOpen(true)}>
+                <button className="button" onClick={openAdminTools}>
                   <Settings size={16} />
                   服主管理
                 </button>
@@ -537,64 +749,64 @@ export default function HomePage({
         ) : null}
 
         {worldList.length && !verified ? (
-          <div className="playerGrid">
-            {playerGroups.map(({ groupId, main }) => (
-              <article className="card" key={groupId}>
-                {libraryEnabled ? (
-                  <button
-                    className="favoriteButton"
-                    aria-label="收藏作品"
-                    onClick={() => toggleFavorite(main.publicId)}
-                  >
-                    {favoriteIds.has(main.publicId) ? '★' : '☆'}
-                  </button>
-                ) : null}
-                <Link
-                  className="cardLink"
-                  href={`/p/${encodeURIComponent(main.publicId)}`}
-                  onClick={() => recordRecent(main.publicId)}
-                >
-                  <div className="cover">
-                    {main.cover ? (
-                      <img src={main.cover} alt="" />
-                    ) : (
-                      <span>{main.name.slice(0, 1)}</span>
-                    )}
-                  </div>
-                  <div className="info">
-                    <strong>{main.name}</strong>
-                    <small>
-                      {main.author || '未署名'} · {main.version}
-                    </small>
-                    {main.description ? <p>{main.description}</p> : null}
-                  </div>
-                </Link>
-              </article>
-            ))}
-          </div>
+          playerGroups.length ? (
+            <div className="playerGrid" aria-label="地图列表">
+              {libraryGroups.map(({ groupId, main }) => (
+                <article className="card" key={groupId}>
+                  {libraryEnabled ? <button className="favoriteButton" aria-label="收藏作品" onClick={() => toggleFavorite(main.publicId)}>{favoriteIds.has(main.publicId) ? '★' : '☆'}</button> : null}
+                  {!isPlayEnabled(main) ? <span className="mapClosed">暂时关闭</span> : null}
+                  <Link className="cardLink" href={`/p/${encodeURIComponent(main.publicId)}`} onClick={(event) => {
+                    if (!isPlayEnabled(main)) {
+                      event.preventDefault()
+                      return
+                    }
+                    recordRecent(main.publicId)
+                  }}>
+                    <div className="cover">{main.cover ? <img src={main.cover} alt="" /> : <span>{main.name.slice(0, 1)}</span>}{liveMapStats[main.publicId] ? <span className="mapOnline">{liveMapStats[main.publicId].onlineCount} 人在线</span> : null}</div>
+                    <div className="info"><strong>{main.name}</strong><small>{main.author || '未署名'} · {main.version}</small>{main.description ? <p>{main.description}</p> : null}<span className="playCta">开始游玩 <ArrowUpRight size={15} aria-hidden="true" /></span></div>
+                  </Link>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty"><strong>没有符合条件的地图</strong><small>试试切换到“全部”或“最近游玩”。</small></div>
+          )
         ) : worldList.length ? (
           <div className="groups">
-            {worldGroups.map(({ groupId, main, submaps }) => (
-              <section className="mapGroup" key={groupId} aria-label={`${main.name}地图组`}>
+            {worldGroups.map(({ groupId, main, submaps }) => {
+              const resources = [main, ...submaps]
+                .map((world) => resourceStatuses[world.id])
+                .filter((status): status is MapResourceStatus => Boolean(status))
+              const totalBytes = resources.reduce((total, status) => total + status.bytes, 0)
+              const importTimes = resources.map((status) => status.importedAt).sort()
+              const latestImport = importTimes[importTimes.length - 1]
+              return (
+                <section className="mapGroup" key={groupId} aria-label={`${main.name}地图组`}>
                 <header className="groupHeader">
                   <div className="groupIdentity">
-                    <span className="groupBadge">地图组</span>
                     <div>
                       <strong>{main.name}</strong>
                       <small>1 张主地图 · {submaps.length} 张副地图</small>
+                      {verified && resources.length ? (
+                        <small className="resourceStatus">
+                          {main.version || '未标记版本'} · {formatBytes(totalBytes)} · 导入于 {formatImportedAt(latestImport || '')}
+                        </small>
+                      ) : null}
                     </div>
                   </div>
                   {verified ? (
-                    <button
-                      className="groupExport"
-                      disabled={Boolean(busy)}
-                      onClick={() => exportBundle(main)}
-                    >
-                      {busy === `export:${main.id}` ? '导出中…' : '导出地图组游玩包'}
-                    </button>
+                    <label className="groupAvailability">
+                      <input
+                        type="checkbox"
+                        checked={isPlayEnabled(main)}
+                        disabled={Boolean(busy)}
+                        onChange={() => void toggleWorldAvailability(main)}
+                        aria-label={isPlayEnabled(main) ? '关闭地图组' : '启动地图组'}
+                      />
+                      <i aria-hidden="true" />
+                    </label>
                   ) : null}
                 </header>
-
                 <div className="mapTree">
                   <div className="mainMap">
                     <span className="roleLabel mainRole">主地图</span>
@@ -613,19 +825,23 @@ export default function HomePage({
                             {main.author || '未署名'} · {main.version}
                           </small>
                           {main.description ? <p>{main.description}</p> : null}
+                          <span className="playCta">
+                            打开地图
+                            <ArrowUpRight size={15} aria-hidden="true" />
+                          </span>
                         </div>
                       </Link>
                       {verified ? (
                         <div className="cardActions">
                           <button disabled={Boolean(busy)} onClick={() => openWorldEditor(main)}>
-                            编辑信息
+                            地图设置
                           </button>
                           <button
                             className="dangerText"
                             disabled={Boolean(busy)}
-                            onClick={() => setDeleteWorld(main)}
+                            onClick={() => requestDelete(main)}
                           >
-                            删除主地图
+                            删除地图组
                           </button>
                         </div>
                       ) : null}
@@ -662,6 +878,10 @@ export default function HomePage({
                                     {world.author || '未署名'} · {world.version}
                                   </small>
                                   {world.description ? <p>{world.description}</p> : null}
+                                  <span className="playCta">
+                                    打开地图
+                                    <ArrowUpRight size={15} aria-hidden="true" />
+                                  </span>
                                 </div>
                               </Link>
                               {verified ? (
@@ -670,12 +890,12 @@ export default function HomePage({
                                     disabled={Boolean(busy)}
                                     onClick={() => openWorldEditor(world)}
                                   >
-                                    编辑信息
+                                    地图设置
                                   </button>
                                   <button
                                     className="dangerText"
                                     disabled={Boolean(busy)}
-                                    onClick={() => setDeleteWorld(world)}
+                                    onClick={() => requestDelete(world)}
                                   >
                                     删除副地图
                                   </button>
@@ -688,12 +908,13 @@ export default function HomePage({
                     </div>
                   ) : null}
                 </div>
-              </section>
-            ))}
+                </section>
+              )
+            })}
           </div>
         ) : (
           <div className="empty">
-            <strong>暂无作品</strong>
+            <strong>暂无地图</strong>
             <small>导入地图后会显示在这里</small>
             {verified ? (
               <button className="button primary" onClick={() => importInput.current?.click()}>
@@ -705,7 +926,7 @@ export default function HomePage({
       </main>
 
       {loginOpen ? (
-        <div className="backdrop" onMouseDown={() => setLoginOpen(false)}>
+        <div className="backdrop playWorkOverlay" onMouseDown={() => setLoginOpen(false)}>
           <form
             className="dialog"
             onMouseDown={(event) => event.stopPropagation()}
@@ -743,20 +964,52 @@ export default function HomePage({
       ) : null}
 
       {deleteWorld ? (
-        <div className="backdrop" onMouseDown={() => setDeleteWorld(null)}>
+        <div
+          className="backdrop playWorkOverlay"
+          onMouseDown={() => {
+            setDeleteConfirmed(false)
+            setDeleteWorld(null)
+          }}
+        >
           <div className="dialog" onMouseDown={(event) => event.stopPropagation()}>
-            <h2>删除地图</h2>
-            <p>确定删除“{deleteWorld.name}”吗？删除后玩家将无法进入该地图。</p>
+            <h2>{deleteTargets.length > 1 ? '删除地图组' : '删除地图'}</h2>
+            <p>
+              {deleteTargets.length > 1
+                ? `将永久删除主地图及 ${deleteTargets.length - 1} 张副地图，玩家将无法再进入这些地图。`
+                : `将永久删除“${deleteWorld.name}”，玩家将无法再进入该地图。`}
+            </p>
+            <ul className="deleteImpactList">
+              {deleteTargets.map((world) => (
+                <li key={world.id}>
+                  <span>{world.mapRole === 'main' ? '主地图' : '副地图'}</span>
+                  {world.name}
+                </li>
+              ))}
+            </ul>
+            <label className="deleteConfirm">
+              <input
+                type="checkbox"
+                checked={deleteConfirmed}
+                onChange={(event) => setDeleteConfirmed(event.target.checked)}
+              />
+              我已确认删除，且无法恢复
+            </label>
             <div className="dialogActions">
-              <button className="button" onClick={() => setDeleteWorld(null)}>
+              <button
+                className="button"
+                onClick={() => {
+                  setDeleteConfirmed(false)
+                  setDeleteWorld(null)
+                }}
+              >
                 取消
               </button>
               <button
                 className="button danger"
-                disabled={busy === `delete:${deleteWorld.id}`}
+                disabled={!deleteConfirmed || busy === `delete:${deleteWorld.id}`}
                 onClick={confirmDelete}
               >
-                {busy === `delete:${deleteWorld.id}` ? '删除中…' : '删除'}
+                {busy === `delete:${deleteWorld.id}` ? '删除中…' : '确认删除'}
               </button>
             </div>
           </div>
@@ -765,7 +1018,7 @@ export default function HomePage({
 
       {editWorld ? (
         <div
-          className="backdrop"
+          className="backdrop playWorkOverlay"
           onMouseDown={() => {
             if (!busy) setEditWorld(null)
           }}
@@ -775,58 +1028,10 @@ export default function HomePage({
             onSubmit={saveWorld}
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <h2>编辑地图信息</h2>
-            <label htmlFor="play-world-name">作品名称</label>
-            <input
-              id="play-world-name"
-              maxLength={40}
-              value={editName}
-              onChange={(event) => setEditName(event.target.value)}
-            />
+            <h2>地图设置</h2>
             <label htmlFor="play-world-id">访问 ID</label>
-            <input
-              id="play-world-id"
-              maxLength={63}
-              spellCheck={false}
-              value={editPublicId}
-              onChange={(event) =>
-                setEditPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))
-              }
-            />
-            <small className="fieldHint">
-              访问链接：/p/{editPublicId || '访问-id'} · 可以修改，当前游玩端中必须唯一
-            </small>
-            <label htmlFor="play-world-author">作者</label>
-            <input
-              id="play-world-author"
-              maxLength={80}
-              value={editAuthor}
-              onChange={(event) => setEditAuthor(event.target.value)}
-            />
-            <label htmlFor="play-world-description">简介</label>
-            <textarea
-              id="play-world-description"
-              maxLength={300}
-              value={editDescription}
-              onChange={(event) => setEditDescription(event.target.value)}
-            />
-            <label htmlFor="play-world-cover">封面</label>
-            <input
-              id="play-world-cover"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (!file) return
-                if (file.size > 1400000) {
-                  setNotice('封面图片不能超过 1.4MB')
-                  return
-                }
-                const reader = new FileReader()
-                reader.onload = () => setEditCover(String(reader.result))
-                reader.readAsDataURL(file)
-              }}
-            />
+            <input id="play-world-id" maxLength={63} spellCheck={false} value={editPublicId} onChange={(event) => setEditPublicId(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} />
+            <small className="fieldHint">访问链接：/p/{editPublicId || '访问-id'} · 当前游玩端中必须唯一</small>
             <div className="dialogActions">
               <button
                 className="button"
@@ -839,7 +1044,7 @@ export default function HomePage({
               <button
                 className="button primary"
                 type="submit"
-                disabled={Boolean(busy) || !editName.trim() || !editPublicId.trim()}
+                disabled={Boolean(busy) || !editPublicId.trim()}
               >
                 {busy === `edit:${editWorld.id}` ? '保存中…' : '保存'}
               </button>
@@ -849,7 +1054,7 @@ export default function HomePage({
       ) : null}
 
       {importProgress ? (
-        <div className="progressBackdrop">
+        <div className="progressBackdrop playWorkOverlay">
           <section
             className="progressDialog"
             role="dialog"
@@ -1152,6 +1357,10 @@ export default function HomePage({
           color: #85888f;
           font-size: 12px;
         }
+        .groupIdentity .resourceStatus {
+          color: #6e737b;
+          font-size: 11px;
+        }
         .groupBadge {
           flex: 0 0 auto;
           padding: 5px 8px;
@@ -1161,27 +1370,49 @@ export default function HomePage({
           font-size: 11px;
           font-weight: 700;
         }
-        .groupExport {
-          height: 34px;
-          padding: 0 12px;
-          border: 1px solid #d9dadd;
-          border-radius: 7px;
-          color: #303238;
-          background: #fff;
+        .groupAvailability {
+          display: inline-flex;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: 9px;
+          color: #62666d;
           font-size: 12px;
+          font-weight: 600;
           cursor: pointer;
+          user-select: none;
         }
-        .groupExport:hover {
-          background: #f3f4f5;
+        .groupAvailability input {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip: rect(0 0 0 0);
         }
-        .groupExport:active {
-          transform: scale(0.97);
+        .groupAvailability i {
+          position: relative;
+          width: 34px;
+          height: 20px;
+          border-radius: 999px;
+          background: #b8bdc4;
+          transition: background-color 150ms ease;
         }
-        .groupExport:disabled {
-          cursor: default;
-          opacity: 0.55;
-          transform: none;
+        .groupAvailability i::after {
+          position: absolute;
+          top: 3px;
+          left: 3px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+          content: '';
+          transition: transform 150ms ease;
         }
+        .groupAvailability input:checked + i { background: #ffdb00; }
+        .groupAvailability input:checked + i::after { transform: translateX(14px); }
+        .groupAvailability input:focus-visible + i { outline: 2px solid #285fe8; outline-offset: 3px; }
+        .groupAvailability input:disabled + i { opacity: 0.55; }
+        .groupAvailability:has(input:disabled) { cursor: default; }
         .mapTree {
           padding-top: 16px;
         }
@@ -1271,6 +1502,7 @@ export default function HomePage({
           text-decoration: none;
         }
         .cover {
+          position: relative;
           aspect-ratio: 16/9;
           background: #eceef1;
           display: flex;
@@ -1352,15 +1584,16 @@ export default function HomePage({
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 20px;
-          background: rgba(20, 22, 25, 0.38);
+          padding: 24px;
+          background: rgba(0, 0, 0, 0.65);
         }
         .dialog {
           width: min(400px, 100%);
-          padding: 22px;
-          background: #fff;
-          border-radius: 10px;
-          box-shadow: 0 18px 55px rgba(0, 0, 0, 0.2);
+          padding: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: #262626;
+          border-radius: 8px;
+          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5);
         }
         .editDialog {
           max-height: min(760px, calc(100vh - 40px));
@@ -1387,7 +1620,7 @@ export default function HomePage({
           width: 100%;
           padding: 0 11px;
           border: 1px solid #d6d8dc;
-          border-radius: 7px;
+          border-radius: 6px;
           outline: none;
           background: #fff;
           color: #303238;
@@ -1438,7 +1671,7 @@ export default function HomePage({
           width: min(100%, 520px);
           padding: 28px;
           border: 1px solid rgba(255, 255, 255, 0.14);
-          border-radius: 16px;
+          border-radius: 8px;
           color: #fff;
           background: #262626;
           box-shadow: 0 22px 70px rgba(0, 0, 0, 0.5);
@@ -1595,264 +1828,37 @@ export default function HomePage({
         .progressClose:hover {
           background: #ffe44d;
         }
-        /* Play management shares Creator and the launcher surface hierarchy:
-           quiet charcoal surfaces, one yellow action colour, and only the
-           borders needed to explain map-group relationships. */
+        /* Shared product shell: one restrained dark palette, compact surfaces,
+           and yellow reserved for the primary action or current selection. */
         :global(body) {
           background: #262626;
-          color: rgba(255, 255, 255, 0.9);
-        }
-        .page {
-          padding-top: 36px;
-          color: rgba(255, 255, 255, 0.9);
-        }
-        .title h1 {
-          color: #fff;
-          letter-spacing: -0.02em;
-        }
-        .title span {
-          color: rgba(255, 255, 255, 0.45);
-        }
-        .button,
-        .groupExport {
-          border-color: rgba(255, 255, 255, 0.14);
-          color: rgba(255, 255, 255, 0.84);
-          background: #404040;
-        }
-        .button:hover,
-        .groupExport:hover {
-          background: #4a4a4a;
-        }
-        .button.primary {
-          border-color: #ffdb00;
-          color: #262626;
-          background: #ffdb00;
-          font-weight: 700;
-        }
-        .button.primary:hover {
-          background: #ffe44d;
-        }
-        .notice {
-          border-color: rgba(246, 82, 82, 0.32);
-          color: #ff9a9a;
-          background: rgba(246, 82, 82, 0.08);
-        }
-        .mapGroup {
-          border-color: rgba(255, 255, 255, 0.09);
-          background: #333;
-        }
-        .groupHeader {
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-        .groupIdentity small,
-        .branchHeading small,
-        .roleLabel {
-          color: rgba(255, 255, 255, 0.44);
-        }
-        .groupBadge {
-          color: #262626;
-          background: #ffdb00;
-        }
-        .mainRole {
-          color: #ffdb00;
-        }
-        .submapBranch,
-        .submapBranch::before,
-        .submapItem::before {
-          border-color: rgba(255, 255, 255, 0.16);
-        }
-        .card,
-        .submapItem .card {
-          border-color: rgba(255, 255, 255, 0.08);
-          background: #404040;
-        }
-        .mainMap .card {
-          border-color: rgba(255, 219, 0, 0.35);
-          box-shadow: none;
-        }
-        .card:hover {
-          border-color: rgba(255, 219, 0, 0.58);
-          box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
-        }
-        .cover {
-          color: rgba(255, 255, 255, 0.32);
-          background: #333;
-        }
-        .info strong {
-          color: #fff;
-        }
-        .info small {
-          color: rgba(255, 255, 255, 0.45);
-        }
-        .info p {
-          color: rgba(255, 255, 255, 0.58);
-        }
-        .cardActions {
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-        .cardActions button {
-          color: rgba(255, 255, 255, 0.68);
-          background: #404040;
-        }
-        .cardActions button + button {
-          border-color: rgba(255, 255, 255, 0.08);
-        }
-        .cardActions button:hover {
-          background: #4a4a4a;
-        }
-        .empty {
-          border-color: rgba(255, 255, 255, 0.13);
-          color: rgba(255, 255, 255, 0.45);
-          background: #333;
-        }
-        .dialog {
-          border: 1px solid rgba(255, 255, 255, 0.13);
-          color: #fff;
-          background: #262626;
-          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
-        }
-        .dialog h2 {
-          color: #fff;
-        }
-        .dialog p,
-        .dialog label {
-          color: rgba(255, 255, 255, 0.62);
-        }
-        .dialog input,
-        .dialog textarea {
-          border-color: rgba(255, 255, 255, 0.18);
-          color: #fff;
-          background: #404040;
-        }
-        .dialog input:focus,
-        .dialog textarea:focus {
-          border-color: #ffdb00;
-          box-shadow: 0 0 0 3px rgba(255, 219, 0, 0.14);
-        }
-        .fieldHint {
-          color: rgba(255, 255, 255, 0.42);
-        }
-        .playWorkCenter .mapGroup,
-        .playWorkCenter .card,
-        .playWorkCenter .empty,
-        .playWorkCenter .dialog,
-        .playWorkCenter .progressDialog {
-          border-radius: 8px;
-        }
-        .playWorkCenter .cover {
-          border-radius: 8px 8px 0 0;
-        }
-        .collectionNav {
-          display: flex;
-          gap: 8px;
-          margin: 0 0 18px;
-        }
-        .collectionNav button {
-          height: 32px;
-          padding: 0 11px;
-          border: 0;
-          border-radius: 6px;
-          color: rgba(255, 255, 255, 0.55);
-          background: #333;
-          font-size: 12px;
-          cursor: pointer;
-        }
-        .collectionNav button.active {
-          color: #262626;
-          background: #ffdb00;
-        }
-        .card {
-          position: relative;
-        }
-        .favoriteButton {
-          position: absolute;
-          z-index: 3;
-          top: 9px;
-          right: 9px;
-          width: 30px;
-          height: 30px;
-          border: 0;
-          border-radius: 50%;
-          color: #ffdb00;
-          background: rgba(38, 38, 38, 0.76);
-          font-size: 18px;
-          cursor: pointer;
-        }
-        .accountMenu {
-          position: absolute;
-          z-index: 8;
-          top: 52px;
-          right: 0;
-          display: grid;
-          gap: 5px;
-          min-width: 185px;
-          padding: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          border-radius: 8px;
-          color: rgba(255, 255, 255, 0.62);
-          background: #333;
-          font-size: 12px;
-        }
-        .accountMenu strong {
-          color: #fff;
-        }
-        .accountMenu small {
-          color: rgba(255, 255, 255, 0.45);
-        }
-        /* Box-web visual language: quiet charcoal layers, dense navigation and
-           rounded content surfaces. The page deliberately avoids dashboard-like
-           empty panels and keeps yellow for a selected or primary action only. */
-        :global(body) {
-          background: #202124;
           color: #f5f5f5;
         }
         .playWorkCenter.page {
-          width: min(1180px, calc(100% - 48px));
-          padding: 0 0 88px;
+          width: min(1150px, calc(100% - 32px));
+          padding: 0 0 64px;
+          color: rgba(255, 255, 255, 0.9);
         }
         .playWorkCenter .siteHeader {
-          height: 64px;
           min-height: 64px;
-          gap: 30px;
-          margin: 0 0 30px;
-          border-color: #383a3d;
+          gap: 18px;
+          margin: 0 0 28px;
+          border-color: rgba(255, 255, 255, 0.1);
         }
         .playWorkCenter .siteBrand {
           gap: 10px;
-          color: #f5f5f5;
+          color: #fff;
           font-size: 16px;
           font-weight: 700;
           letter-spacing: -0.02em;
         }
         .playWorkCenter .siteMark {
-          width: 21px;
-          height: 21px;
-          gap: 3px;
+          display: block;
+          flex: 0 0 auto;
+          width: 26px;
+          height: 26px;
+          object-fit: contain;
           transform: none;
-        }
-        .playWorkCenter .siteMark i {
-          border-radius: 3px;
-          background: #ffd400;
-        }
-        .playWorkCenter .siteMark i:nth-child(2) {
-          background: #ffd400;
-        }
-        .playWorkCenter .siteMark i:nth-child(3) {
-          background: #f5a524;
-        }
-        .playWorkCenter .siteNav {
-          height: 64px;
-          gap: 2px;
-        }
-        .playWorkCenter .siteNav a {
-          height: 64px;
-          padding: 0 8px;
-          color: #9b9da1;
-          font-size: 13px;
-        }
-        .playWorkCenter .siteNav .siteNavCurrent {
-          color: #f5f5f5;
-          box-shadow: inset 0 -2px #ffd400;
         }
         .accountArea {
           position: relative;
@@ -1864,318 +1870,321 @@ export default function HomePage({
           margin: 0;
           padding: 0 8px;
           border: 0;
-          border-radius: 8px;
-          color: #e9eaec;
+          border-radius: 7px;
+          color: rgba(255, 255, 255, 0.86);
           background: transparent;
           cursor: pointer;
-          transition:
-            background-color 140ms ease,
-            transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+          transition: background-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
         }
-        .playWorkCenter .siteAccount:hover {
-          background: #2c2e31;
-        }
-        .playWorkCenter .siteAccount:active {
-          transform: scale(0.97);
-        }
-        .playWorkCenter .accountAvatar {
-          width: 26px;
-          height: 26px;
-          color: #1f2022;
-          background: #ffd400;
-        }
+        .playWorkCenter .siteAccount:hover { background: #404040; }
+        .playWorkCenter .siteAccount:active { transform: scale(0.97); }
+        .playWorkCenter .accountAvatar { width: 26px; height: 26px; color: #262626; background: #ffdb00; }
+        .playWorkCenter .accountAvatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
+        .playWorkCenter .guestActions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+        .playWorkCenter .guestActions :global(.guestLogin) { display: inline-flex; height: 36px; align-items: center; justify-content: center; padding: 0 15px; border-radius: 7px; font-size: 13px; font-weight: 700; line-height: 1; text-decoration: none; transition: background-color 140ms ease, border-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1); }
+        .playWorkCenter .guestActions :global(.guestLogin) { color: #262626 !important; background: #ffdb00 !important; box-shadow: 0 0 0 1px rgba(255, 219, 0, 0.3); }
+        .playWorkCenter .guestActions button:global(.guestLogin) { border: 0; cursor: pointer; }
+        .playWorkCenter .guestActions :global(.guestLogin):hover { background: #ffe44d !important; }
+        .playWorkCenter .guestActions :global(.guestLogin):active { transform: scale(0.97); }
         .playWorkCenter .accountMenu {
-          top: 42px;
+          position: absolute;
+          z-index: 10;
           right: 0;
+          top: 42px;
           min-width: 204px;
           padding: 14px;
-          border-color: #45474b;
-          border-radius: 10px;
-          color: #aeb0b5;
-          background: #2a2c2f;
-          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+          border-color: rgba(255, 255, 255, 0.13);
+          border-radius: 8px;
+          color: rgba(255, 255, 255, 0.64);
+          background: #333;
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
           transform-origin: top right;
           animation: account-menu-in 160ms cubic-bezier(0.23, 1, 0.32, 1);
         }
-        .playWorkCenter .accountMenu strong {
-          font-size: 13px;
+        .playWorkCenter .accountIdentity { display: grid; gap: 4px; }
+        .playWorkCenter .accountMenu strong { color: #fff; font-size: 13px; }
+        .playWorkCenter .accountMenu small { color: rgba(255, 255, 255, 0.45); font-size: 12px; }
+        .playWorkCenter .accountLogout {
+          width: 100%;
+          margin-top: 12px;
+          padding: 0;
+          border: 0;
+          color: rgba(255, 255, 255, 0.6);
+          background: transparent;
+          font: inherit;
+          font-size: 12px;
+          text-align: left;
+          cursor: pointer;
         }
-        .playWorkCenter .accountMenu small {
-          color: #919399;
-        }
-        .playWorkCenter .header {
-          margin-bottom: 18px;
-        }
-        .playWorkCenter .title {
-          gap: 10px;
-        }
-        .playWorkCenter .title h1 {
-          font-size: 20px;
-          font-weight: 700;
-          letter-spacing: -0.025em;
-        }
-        .playWorkCenter .title span {
-          color: #898c91;
-          font-size: 13px;
-        }
+        .playWorkCenter .accountLogout:hover { color: #fff; }
+        .playWorkCenter .header { margin-bottom: 16px; }
+        .playWorkCenter .title { gap: 10px; }
+        .playWorkCenter .title h1 { color: #fff; font-size: 22px; letter-spacing: -0.025em; }
+        .playWorkCenter .title span { color: rgba(255, 255, 255, 0.45); font-size: 13px; }
         .playWorkCenter .button {
-          height: 34px;
-          border-color: #4a4c51;
-          border-radius: 8px;
-          color: #e8e9eb;
-          background: #303236;
-          font-size: 13px;
+          height: 38px;
+          border-color: rgba(255, 255, 255, 0.14);
+          border-radius: 7px;
+          color: rgba(255, 255, 255, 0.84);
+          background: #404040;
         }
-        .playWorkCenter .button:hover {
-          background: #3a3c40;
-        }
+        .playWorkCenter .button:hover { background: #4a4a4a; }
         .playWorkCenter .button.primary {
-          border-color: #ffd400;
-          color: #1e1f20;
-          background: #ffd400;
+          border-color: #ffdb00;
+          color: #262626;
+          background: #ffdb00;
+          font-weight: 700;
         }
+        .playWorkCenter .button.primary:hover { background: #ffe44d; }
+        .playWorkCenter .notice { border-color: rgba(246, 82, 82, 0.32); color: #ff9a9a; background: rgba(246, 82, 82, 0.08); }
         .playWorkCenter .collectionNav {
-          gap: 6px;
-          margin: 0 0 24px;
+          gap: 4px;
+          margin: 0 0 20px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         .playWorkCenter .collectionNav button {
           height: 30px;
           padding: 0 10px;
-          border-radius: 7px;
-          color: #a9abb0;
+          border: 0;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.55);
           background: transparent;
-          transition:
-            color 140ms ease,
-            background-color 140ms ease;
+          font-size: 12px;
+          cursor: pointer;
+          transition: color 140ms ease, background-color 140ms ease;
         }
-        .playWorkCenter .collectionNav button:hover {
-          color: #f5f5f5;
-          background: #303236;
-        }
-        .playWorkCenter .collectionNav button.active {
-          color: #1e1f20;
-          background: #ffd400;
-        }
+        .playWorkCenter .collectionNav button:hover { color: #fff; background: #404040; }
+        .playWorkCenter .collectionNav button.active { color: #262626; background: #ffdb00; }
         .playWorkCenter .playerGrid {
-          grid-template-columns: repeat(auto-fill, minmax(264px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 14px;
+        }
+        .playWorkCenter .groups {
+          grid-template-columns: repeat(auto-fill, minmax(430px, 1fr));
+          align-items: start;
           gap: 12px;
         }
-        .playWorkCenter .card {
-          border-color: #3b3d41;
-          border-radius: 12px;
-          background: #2a2c2f;
-          box-shadow: none;
-          transition:
-            border-color 160ms ease,
-            background-color 160ms ease,
-            transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+        .playWorkCenter .mapGroup {
+          padding: 14px;
+          border-color: rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          background: #333;
         }
-        .playWorkCenter .card:hover {
-          border-color: #686b70;
-          background: #2e3034;
+        .playWorkCenter .groupHeader { border-color: rgba(255, 255, 255, 0.09); }
+        .playWorkCenter .groupIdentity small,
+        .playWorkCenter .branchHeading small,
+        .playWorkCenter .roleLabel { color: rgba(255, 255, 255, 0.44); }
+        .playWorkCenter .groupIdentity .resourceStatus { color: rgba(255, 255, 255, 0.36); }
+        .playWorkCenter .groupBadge { color: #262626; background: #ffdb00; }
+        .playWorkCenter .groupAvailability { color: rgba(255, 255, 255, 0.64); }
+        .playWorkCenter .groupAvailability i { background: #626262; }
+        .playWorkCenter .groupAvailability input:checked + i { background: #ffdb00; }
+        .playWorkCenter .mainRole { color: #ffdb00; }
+        .playWorkCenter .submapBranch,
+        .playWorkCenter .submapBranch::before,
+        .playWorkCenter .submapItem::before { border-color: rgba(255, 255, 255, 0.16); }
+        .playWorkCenter .card {
+          position: relative;
+          border-color: rgba(255, 255, 255, 0.09);
+          border-radius: 8px;
+          background: #404040;
           box-shadow: none;
-          transform: translateY(-2px);
+          transition: border-color 160ms ease, background-color 160ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .playWorkCenter .mainMap .card { border-color: rgba(255, 219, 0, 0.35); }
+        .playWorkCenter .card:hover {
+          border-color: rgba(255, 219, 0, 0.58);
+          background: #484848;
+          box-shadow: none;
         }
         .playWorkCenter .cover {
-          background: #34363a;
+          color: rgba(255, 255, 255, 0.32);
+          background: #333;
         }
-        .playWorkCenter .info {
-          padding: 13px 14px 15px;
+        .playWorkCenter .info strong { color: #fff; }
+        .playWorkCenter .info small { color: rgba(255, 255, 255, 0.45); }
+        .playWorkCenter .info p { color: rgba(255, 255, 255, 0.58); }
+        .playWorkCenter .playerGrid .card { min-height: 0; }
+        .playWorkCenter .playerGrid .cover {
+          aspect-ratio: 16 / 9;
+          border-radius: 7px 7px 0 0;
         }
-        .playWorkCenter .info strong {
-          font-size: 15px;
+        .playWorkCenter .playerGrid .info { min-height: 128px; padding: 14px; }
+        .playWorkCenter .playerGrid .info p { margin-top: 6px; }
+        .playWorkCenter .mapOnline {
+          position: absolute;
+          bottom: 9px;
+          left: 9px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 8px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 999px;
+          color: rgba(255, 255, 255, 0.86);
+          background: rgba(38, 38, 38, 0.76);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+          font-size: 11px;
+          line-height: 1;
         }
-        .playWorkCenter .info small {
-          margin-top: 5px;
-          color: #919399;
+        .playWorkCenter .playCta {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 14px;
+          color: #ffdb00;
+          font-size: 12px;
+          font-weight: 700;
         }
-        .playWorkCenter .info p {
-          color: #afb1b5;
-          font-size: 13px;
-        }
+        .playWorkCenter .card:hover .playCta svg { transform: translate(2px, -2px); }
+        .playWorkCenter .playCta svg { transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1); }
+        .playWorkCenter .cardActions { border-color: rgba(255, 255, 255, 0.08); }
+        .playWorkCenter .cardActions button { color: rgba(255, 255, 255, 0.68); background: #404040; }
+        .playWorkCenter .cardActions button + button { border-color: rgba(255, 255, 255, 0.08); }
+        .playWorkCenter .cardActions button:hover { background: #4a4a4a; }
         .playWorkCenter .favoriteButton {
+          position: absolute;
+          z-index: 2;
           top: 10px;
           right: 10px;
           width: 28px;
           height: 28px;
-          color: #ffd400;
-          background: rgba(26, 27, 29, 0.78);
-          font-size: 17px;
-          transition:
-            transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
-            background-color 140ms ease;
+          border-radius: 50%;
+          color: #ffdb00;
+          background: rgba(38, 38, 38, 0.8);
+          transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1), background-color 140ms ease;
         }
-        .playWorkCenter .favoriteButton:hover {
-          background: #1a1b1d;
-        }
-        .playWorkCenter .favoriteButton:active {
-          transform: scale(0.94);
+        .playWorkCenter .favoriteButton:hover { background: #262626; }
+        .playWorkCenter .favoriteButton:active { transform: scale(0.94); }
+        .playWorkCenter .mapClosed {
+          position: absolute;
+          z-index: 3;
+          top: 10px;
+          left: 10px;
+          padding: 5px 8px;
+          border-radius: 5px;
+          color: rgba(255, 255, 255, 0.84);
+          background: rgba(38, 38, 38, 0.84);
+          font-size: 11px;
         }
         .playWorkCenter .empty {
           min-height: 152px;
           align-items: flex-start;
           gap: 5px;
           padding: 24px;
-          border: 1px dashed #45474b;
-          border-radius: 10px;
+          border: 1px dashed rgba(255, 255, 255, 0.2);
+          border-radius: 8px;
           color: #d9dade;
           background: transparent;
           text-align: left;
         }
-        .playWorkCenter .empty strong {
-          font-size: 15px;
-        }
-        .playWorkCenter .empty small {
-          color: #909298;
-          font-size: 13px;
-        }
-        .playWorkCenter .empty .button {
-          margin-top: 12px;
-        }
-        @keyframes account-menu-in {
-          from {
-            opacity: 0;
-            transform: translateY(-4px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        /* Match the Creator header: the product mark and its text must remain
-           readable above the dark application surface.  These explicit values
-           also win over global game-page styles injected after navigation. */
-        :global(body) {
+        .playWorkCenter .empty small { color: rgba(255, 255, 255, 0.5); }
+        .playWorkCenter .empty .button { margin-top: 12px; }
+        .playWorkOverlay .dialog,
+        .playWorkOverlay .progressDialog {
+          border: 1px solid rgba(255, 255, 255, 0.13);
+          border-radius: 8px;
+          color: #fff;
           background: #262626;
+          box-shadow: 0 22px 70px rgba(0, 0, 0, 0.48);
         }
-        .playWorkCenter .siteHeader {
-          border-color: rgba(255, 255, 255, 0.1);
+        .playWorkOverlay .dialog h2 { color: #fff; }
+        .playWorkOverlay .dialog p,
+        .playWorkOverlay .dialog label { color: rgba(255, 255, 255, 0.62); }
+        .playWorkOverlay .deleteImpactList {
+          display: grid;
+          gap: 6px;
+          max-height: 152px;
+          overflow-y: auto;
+          margin: -7px 0 18px;
+          padding: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 6px;
+          background: #333;
+          list-style: none;
         }
-        .playWorkCenter .siteBrand {
-          align-items: center !important;
-          color: #fff !important;
-          display: inline-flex !important;
-          flex-direction: row !important;
-          flex-wrap: nowrap !important;
-          white-space: nowrap !important;
+        .playWorkOverlay .deleteImpactList li {
+          overflow: hidden;
+          color: rgba(255, 255, 255, 0.74);
+          font-size: 12px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
-        .playWorkCenter .siteBrand .siteMark {
-          display: grid !important;
-          flex: 0 0 auto !important;
+        .playWorkOverlay .deleteImpactList span {
+          display: inline-block;
+          min-width: 42px;
+          margin-right: 8px;
+          color: rgba(255, 219, 0, 0.88);
+          font-size: 10px;
         }
-        .playWorkCenter .siteBrandName {
-          display: block !important;
-          flex: 0 0 auto !important;
-          line-height: 1 !important;
+        .playWorkOverlay .deleteConfirm {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 4px;
+          color: rgba(255, 255, 255, 0.82);
+          font-size: 12px;
+          cursor: pointer;
         }
-        .playWorkCenter .siteNav a {
-          color: rgba(255, 255, 255, 0.62) !important;
+        .playWorkOverlay .deleteConfirm input {
+          width: 15px;
+          height: 15px;
+          accent-color: #ffdb00;
         }
-        .playWorkCenter .siteNav .siteNavCurrent {
-          color: #fff !important;
+        .playWorkOverlay .dialog input,
+        .playWorkOverlay .dialog textarea { border-color: rgba(255, 255, 255, 0.18); color: #fff; background: #404040; }
+        .playWorkOverlay .dialog input:focus,
+        .playWorkOverlay .dialog textarea:focus { border-color: #ffdb00; box-shadow: 0 0 0 3px rgba(255, 219, 0, 0.14); }
+        .playWorkOverlay .fieldHint { color: rgba(255, 255, 255, 0.42); }
+        .playWorkOverlay .editDialog { width: min(420px, 100%); padding: 20px; }
+        .playWorkOverlay .editDialog h2 { margin-bottom: 18px; font-size: 20px; letter-spacing: -0.02em; }
+        .playWorkOverlay .editDialog label { margin-top: 14px; font-weight: 600; }
+        .playWorkOverlay .editDialog .fieldHint { margin-top: 6px; font-size: 10px; }
+        .playWorkOverlay .editDialog input[type='file'] { height: 44px; padding: 5px; cursor: pointer; }
+        .playWorkOverlay .editDialog input[type='file']::file-selector-button {
+          height: 30px;
+          margin-right: 9px;
+          padding: 0 10px;
+          border: 0;
+          border-radius: 5px;
+          color: rgba(255, 255, 255, 0.86);
+          background: #505050;
+          font: inherit;
+          font-size: 12px;
+          cursor: pointer;
         }
-        .playWorkCenter .siteAccount {
-          color: rgba(255, 255, 255, 0.88) !important;
+        .playWorkOverlay .editDialog input[type='file']::file-selector-button:hover { background: #5a5a5a; }
+        .playWorkOverlay .editDialog .dialogActions {
+          margin: 20px -20px -20px;
+          padding: 12px 20px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          background: #2a2a2a;
         }
-        /* Creator, Play, player administration and the launcher now share a
-           compact service-console shell. Play keeps player-facing covers, but
-           uses the same surface scale, action colour and feedback states. */
-        .playWorkCenter.page {
-          width: min(1150px, calc(100% - 32px));
-          padding-bottom: 64px;
-        }
-        .playWorkCenter .siteHeader {
-          margin-bottom: 28px;
-          border-color: var(--work-border, rgba(255, 255, 255, 0.1));
-        }
-        .playWorkCenter .header {
-          margin-bottom: 16px;
-        }
-        .playWorkCenter .title h1 {
-          font-size: 22px;
-        }
-        .playWorkCenter .button,
-        .playWorkCenter .groupExport {
+        .playWorkOverlay .button {
           height: 38px;
+          border-color: rgba(255, 255, 255, 0.14);
           border-radius: 7px;
-          background: var(--work-surface, #333);
+          color: rgba(255, 255, 255, 0.84);
+          background: #404040;
         }
-        .playWorkCenter .button.primary {
-          color: var(--work-accent-foreground, #262626);
-          background: var(--work-accent, #ffdb00);
+        .playWorkOverlay .button:hover { background: #4a4a4a; }
+        .playWorkOverlay .button.primary {
+          border-color: #ffdb00;
+          color: #262626;
+          background: #ffdb00;
+          font-weight: 700;
         }
-        .playWorkCenter .collectionNav {
-          gap: 4px;
-          margin-bottom: 20px;
-          padding-bottom: 8px;
-          border-bottom: 1px solid var(--work-border, rgba(255, 255, 255, 0.1));
+        .playWorkOverlay .button.primary:hover { background: #ffe44d; }
+        .playWorkOverlay .button.danger { border-color: #f65252; color: #fff; background: #d84545; }
+        .playWorkOverlay .button.danger:hover { background: #ee5757; }
+        @keyframes account-menu-in {
+          from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .playWorkCenter .collectionNav button {
-          border-radius: 6px;
-        }
-        .playWorkCenter .playerGrid {
-          grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-          gap: 10px;
-        }
-        .playWorkCenter .playerGrid .card {
-          display: flex;
-          min-height: 116px;
-          border-color: transparent;
-          border-radius: 8px;
-          background: var(--work-surface-raised, #404040);
-        }
-        .playWorkCenter .playerGrid .card:hover {
-          border-color: var(--work-border, rgba(255, 255, 255, 0.1));
-          background: var(--work-surface-hover, #484848);
-        }
-        .playWorkCenter .playerGrid .cover {
-          width: 116px;
-          min-width: 116px;
-          height: auto;
-          min-height: 116px;
-          border-radius: 6px;
-        }
-        .playWorkCenter .playerGrid .info {
-          display: flex;
-          min-width: 0;
-          flex: 1;
-          justify-content: center;
-          flex-direction: column;
-          padding: 14px;
-        }
-        .playWorkCenter .playerGrid .info p {
-          margin-top: 6px;
-        }
-        .playWorkCenter .groups {
-          gap: 12px;
-        }
-        .playWorkCenter .mapGroup {
-          padding: 14px;
-          border-radius: 8px;
-          background: var(--work-surface, #333);
-        }
-        .playWorkCenter .card,
-        .playWorkCenter .empty,
-        .playWorkCenter .dialog,
-        .playWorkCenter .progressDialog {
-          border-radius: 8px;
-        }
-        @media (hover: hover) and (pointer: fine) {
-          .playWorkCenter .playerGrid .card:hover {
-            transform: translateY(-2px);
-          }
-        }
-        @media (hover: none), (pointer: coarse) {
-          .playWorkCenter .playerGrid .card:hover {
-            transform: none;
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .card,
-          .groupExport {
-            transition: none;
-          }
-        }
+        @media (hover: hover) and (pointer: fine) { .playWorkCenter .card:hover { transform: translateY(-2px); } }
+        @media (hover: none), (pointer: coarse) { .playWorkCenter .card:hover { transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .playWorkCenter .card, .groupAvailability i, .groupAvailability i::after { transition: none; } }
         @media (max-width: 640px) {
           .page {
             width: min(100% - 24px, 1120px);
@@ -2199,7 +2208,10 @@ export default function HomePage({
             width: 100%;
             flex-wrap: wrap;
           }
-          .playerGrid {
+          .playWorkCenter .playerGrid {
+            grid-template-columns: 1fr;
+          }
+          .playWorkCenter .groups {
             grid-template-columns: 1fr;
           }
           .mapGroup {
@@ -2208,9 +2220,6 @@ export default function HomePage({
           .groupHeader {
             align-items: flex-start;
             flex-direction: column;
-          }
-          .groupExport {
-            width: 100%;
           }
           .mainMap {
             width: 100%;
@@ -2232,7 +2241,7 @@ export default function HomePage({
   )
 }
 
-export const getServerSideProps: GetServerSideProps = async ({ req }) => {
+export const getServerSideProps: GetServerSideProps = async () => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
     return { redirect: { destination: '/players', permanent: false } }
   }
@@ -2242,22 +2251,16 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   // Only used by the local UI development server. Production play deployments
   // never set this flag, so their player authentication flow is unchanged.
   if (process.env.NODE_ENV === 'development' && process.env.BOX_UI_PREVIEW === 'true') {
+    const worlds = getPlayWorlds()
     return {
       props: {
-        worlds: getPlayWorlds(),
+        worlds: worlds.length ? worlds : previewWorlds,
         adminEnabled: isPlayAdminEnabled(),
+        adminToolsVisible: true,
+        uiPreview: true,
+        mapStats: previewMapStats,
       },
     }
-  }
-  const { hasAuthenticatedPlayer, playerLoginURL } = await import('../server/player-service-client')
-  if (
-    !(await hasAuthenticatedPlayer(
-      req.headers.cookie || '',
-      req.socket.remoteAddress || '',
-      String(req.headers['user-agent'] || ''),
-    ))
-  ) {
-    return { redirect: { destination: playerLoginURL('play'), permanent: false } }
   }
   if (!process.env.BOX_PLAY_LIBRARY_PATH) {
     return {
@@ -2267,10 +2270,17 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
       },
     }
   }
+  const worlds = getPlayWorlds()
+  const groupByMap = Object.fromEntries(
+    worlds.map((world) => [world.publicId, world.mapGroupId || world.mainProjectId || world.id]),
+  )
   return {
     props: {
-      worlds: getPlayWorlds(),
+      worlds,
       adminEnabled: isPlayAdminEnabled(),
+      adminToolsVisible: isPlayAdminEnabled(),
+      uiPreview: false,
+      mapStats: getPlayPresenceCounts(worlds.map((world) => world.publicId), groupByMap),
     },
   }
 }

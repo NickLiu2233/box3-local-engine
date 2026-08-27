@@ -1,6 +1,7 @@
 import { GetServerSideProps } from 'next';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { IntlProvider } from 'react-intl';
 import { LangType } from 'src/apis/createra';
 import { LoadingStage } from 'src/defs/loading-stage';
@@ -65,7 +66,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
       : [process.env.BOX_WORLD_PUBLIC_ID, process.env.BOX_WORLD_ID]
           .filter(Boolean)
           .includes(gameName);
-    if (!exists) return { notFound: true };
+    if (!exists || findPlayWorld(gameName)?.playEnabled === false) return { notFound: true };
   } else {
     try {
       getLocalProjectManager().getProject(gameName);
@@ -123,6 +124,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
 };
 
 function Home(props: SSRProps) {
+  const router = useRouter();
   const [loadingStage, setLoadingStage] = useState(LoadingStage.file);
   const [locale, setLocale] = useState<LangType>(() =>
     props.loadingConfig ? 'en' : props.locale,
@@ -135,6 +137,28 @@ function Home(props: SSRProps) {
       }, 300);
     }
   }, [loadingStage]);
+
+  useEffect(() => {
+    const mapId = typeof router.query.gameName === 'string' ? router.query.gameName : '';
+    if (!mapId || process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'creator') return;
+    const send = (method: 'POST' | 'DELETE', keepalive = false) =>
+      fetch('/api/play-presence', {
+        method,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mapId }),
+        keepalive,
+      }).catch(() => undefined);
+    void send('POST');
+    const timer = window.setInterval(() => void send('POST'), 25_000);
+    const leave = () => void send('DELETE', true);
+    window.addEventListener('pagehide', leave);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pagehide', leave);
+      leave();
+    };
+  }, [router.query.gameName]);
 
   // 如果有异常，去异常页面
   if (props.error) {

@@ -87,6 +87,31 @@ pnpm voxa
 
 Creator 和 Play 的运行方式不同：Creator 读取可编辑工程，Play 只读取已发布的只读游玩包。不要用 Play 修改源工程，也不要把 Creator 的 `source/` 目录直接当成 Play 地图目录。
 
+### Play 前端 UI 预览模式
+
+修改游玩端首页、地图卡片、账户菜单或服主管理界面时，优先启动 UI 预览服务查看效果，不需要重建 Docker 镜像或桌面启动器。该模式只用于前端视觉与交互验收，默认地址为 `http://127.0.0.1:3124/`。
+
+```bash
+cd apps/game
+set -a && . ../../.env && set +a
+BOX_LOCAL_CONFIG_PATH="$PWD/../local-engine/config/local.config.json" \
+BOX_DEPLOYMENT_MODE=play \
+BOX_UI_PREVIEW=true \
+node -r ts-node/register server/dev-server/index.ts --http --port 3124
+```
+
+`BOX_LOCAL_CONFIG_PATH` 不能省略：它提供本地开发所需的基础配置；缺失时 Next 配置可能因服务地址为空而无法启动。端口可替换为未占用端口。若开发缓存损坏并提示缺少 `.next/server/webpack-runtime.js`，先停止该服务，再删除**仅** `apps/game/.next` 并重新执行上述命令。
+
+预览模式的边界：
+
+- 仅在 `NODE_ENV=development` 且 `BOX_UI_PREVIEW=true` 时生效，生产 Compose、镜像和发行包不得设置该变量；
+- 当游玩库为空时，首页会显示内置示例地图与在线人数，用于检查卡片、封面、空状态和窄屏布局；
+- 点击“登录 / 注册”会模拟登录为测试玩家；点击“服主管理”会直接进入管理界面，便于检查账户、资源状态、地图开关和删除确认的视觉状态；
+- 模拟登录不创建真实会话，也不替代 Player Service、服主密钥、导入、删除或其他服务端权限测试。涉及真实数据的行为必须在常规 Play 环境验证；
+- 不要把预览模式专用文案、假数据或绕过校验的逻辑扩散到生产路径。新增预览分支时必须明确以 `uiPreview` 限制，并保持生产路径原有认证与授权检查。
+
+UI 改动完成后至少检查：未登录/已登录/服主三种状态、空状态、加载或进度状态、错误状态、关闭地图不可见状态，以及窄屏布局。然后运行受影响页面的 Prettier、ESLint 和对应接口或服务端回归；确认后再决定是否需要重建镜像或启动器。
+
 ### 图形化启动器
 
 仅调试界面：
@@ -202,6 +227,7 @@ pnpm verify
 | 启动器                      | `cargo test --manifest-path apps/deployment-manager/src-tauri/Cargo.toml`、`pnpm --dir apps/deployment-manager run build`、macOS/Windows 包校验 |
 | 迁移器                      | 真实小工程与失败资源、超时、取消、重试和错误展示                                                                                                |
 | 云端迁移后的脚本文件树      | `pnpm --filter @box-local/game-server test`；确认普通迁移脚本在共享资源刷新后仍显示、已移除共享脚本会消失                                       |
+| Play 页面 UI                | UI 预览模式的未登录/已登录/服主、空/加载/错误、关闭地图与窄屏状态；再用常规 Play 环境验证真实权限与数据操作                                     |
 
 测试不得连接真实生产 PostgreSQL、Redis 或云端账号。所有临时目录、端口、项目 ID 和资源 hash 应隔离且可重复运行。
 
