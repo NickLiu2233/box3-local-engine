@@ -68,6 +68,9 @@ services:
     pids_limit: ${BOX_PLAYER_SERVICE_PIDS_LIMIT:-256}
     environment:
       BOX_DEPLOYMENT_MODE: player-service
+      # Keep the lightweight identity service from competing with Play's map
+      # runtime for heap on small servers. Hosts can raise this in .env.
+      NODE_OPTIONS: --max-old-space-size=${BOX_PLAYER_SERVICE_NODE_HEAP_MB:-384}
       NEXT_PUBLIC_APP_ENV: development
       NEXT_PUBLIC_APP_EDITION: createra
       NEXT_PUBLIC_APP_REGION: cn
@@ -120,6 +123,7 @@ services:
     cpus: ${BOX_AUTH_PORTAL_CPU_LIMIT:-0.5}
     pids_limit: ${BOX_AUTH_PORTAL_PIDS_LIMIT:-64}
     environment:
+      NODE_OPTIONS: --max-old-space-size=${BOX_AUTH_PORTAL_NODE_HEAP_MB:-96}
       AUTH_DEMO_HOST: 0.0.0.0
       AUTH_DEMO_PORT: 3214
       AUTH_DEMO_PLAYER_SERVICE_URL: http://player-service:3213

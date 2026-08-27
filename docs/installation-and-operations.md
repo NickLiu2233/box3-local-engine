@@ -77,6 +77,8 @@ chmod +x *.sh
 
 该包的镜像归档与 Compose 配置只含 Play、Player Service 和参考登录门户。Creator / ARENA、VOXA、迁移器、地图编辑工程和模型库均不在其中；服务器仅运行已发布的地图。不要把生成后的 `.env`、`apps/local-engine/play-worlds` 或 PostgreSQL 备份上传到 Release、仓库或聊天工具。
 
+无图形服务器模板默认将 Player Service 限制为 `256m` 容器内存、`192 MB` Node 堆，将参考登录门户限制为 `64m`、`48 MB` Node 堆；地图运行时的主要内存预算留给 Play。若服务器已有自建登录门户，可在 `.env` 把 `COMPOSE_PROFILES` 改为 `player-service,play`，不启动参考门户。出现登录服务反复重启或内存不足时，再逐步提高对应的 `*_MEMORY_LIMIT` 和 `*_NODE_HEAP_MB`，不要先压缩 Play 的运行时内存。
+
 ### 中国大陆网络的镜像源
 
 如果构建日志长时间停在 `docker.io/library/node`，可在 `.env` 中只替换基础镜像来源：

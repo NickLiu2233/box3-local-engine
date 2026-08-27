@@ -25,3 +25,7 @@
 在 `.env` 中配置访问地址、端口和 `BOX_BIND_IP`。公网仅应开放 Play、Player Service 与服主自建登录门户，并通过 HTTPS 反向代理和防火墙保护。此包不含 Creator / ARENA 或 VOXA，不能用于地图编辑。
 
 详细变量说明与反向代理要求见仓库文档的“配置参考”和“安装、部署与运维”。不要分享最终生成的 `.env`。
+
+## 小内存服务器
+
+默认 `.env.example` 为 Player Service 设置 `256m` 容器内存和 `192 MB` Node 堆，为参考登录门户设置 `64m` 与 `48 MB` Node 堆，把更多资源留给 Play。若服主已有自己的登录页，可从 `COMPOSE_PROFILES` 删除 `auth-portal`，该参考门户不会启动。
