@@ -7,6 +7,7 @@ export type RuntimePlayerIdentity = {
     boxId: string;
     displayName: string;
     avatar: string;
+    avatarSkinId: string;
     role: LocalPlayerRole;
     status: LocalPlayerStatus;
     expiresAt: number;

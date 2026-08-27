@@ -14,6 +14,7 @@ function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
     boxId: '',
     displayName: '玩家四十二',
     avatar: '',
+    avatarSkinId: 'explorer',
     role: 'player',
     status: 'active',
     guest: false,

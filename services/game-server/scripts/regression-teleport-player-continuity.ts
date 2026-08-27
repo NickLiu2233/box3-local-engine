@@ -30,6 +30,7 @@ const account = {
   boxId: 'legacy-box-player',
   displayName: '传送测试玩家',
   avatar: 'avatar-hash',
+  avatarSkinId: 'explorer',
   role: 'player',
   status: 'active',
 } as const;

@@ -40,6 +40,7 @@ import { NetLogServer } from './net-log/server';
 import { startPlayServer } from './play/play-server';
 import type { RuntimeRedisStore } from './redis/runtime-redis';
 import { getFakeUser } from './session/fake';
+import { createBuiltInSkin } from './player/built-in-skins';
 import { startPlayerRevocationPoller } from './player/player-revocation-poller';
 import { GameSession } from './session/server';
 import { ServerSettings } from './settings/server-settings-schema';
@@ -329,6 +330,7 @@ export async function createGameServer(spec: {
         // Keep the local login username separate from this compatibility ID.
         userData.username = runtimeIdentity.boxId;
         userData.avatar_hash = runtimeIdentity.avatar;
+        userData.wearing_skins = createBuiltInSkin(runtimeIdentity.avatarSkinId) || userData.wearing_skins;
         // A registered account editing a local project needs the same engine
         // privileges the old fake-admin shortcut supplied, while retaining
         // its real player id, name and stable user key.

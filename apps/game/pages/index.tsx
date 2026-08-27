@@ -67,6 +67,17 @@ const previewResourceStatuses: Record<string, MapResourceStatus> = {
   'preview-chase': { bytes: 27 * 1024 * 1024, importedAt: '2026-08-23T02:20:00.000Z' },
 }
 
+const builtInSkinOptions = [
+  { id: 'explorer', name: '探险者', preview: '/built-in-skins/explorer.png' },
+  { id: 'pilot', name: '飞行员', preview: '/built-in-skins/pilot.png' },
+  { id: 'cowboy', name: '牛仔', preview: '/built-in-skins/cowboy.png' },
+  { id: 'chinese-doll', name: '中国娃娃', preview: '/built-in-skins/chinese-doll.png' },
+  { id: 'pink-girl', name: '粉红女孩', preview: '/built-in-skins/pink-girl.png' },
+  { id: 'maid', name: '女仆', preview: '/built-in-skins/maid.png' },
+  { id: 'little-prince', name: '小王子', preview: '/built-in-skins/little-prince.png' },
+  { id: 'christmas-girl', name: '圣诞女孩', preview: '/built-in-skins/christmas-girl.png' },
+] as const
+
 type ImportProgress = {
   filename: string
   phase: 'uploading' | 'processing' | 'done' | 'error'
@@ -127,6 +138,7 @@ export default function HomePage({
   const [playerUserId, setPlayerUserId] = useState('')
   const [playerBoxId, setPlayerBoxId] = useState('')
   const [playerAvatar, setPlayerAvatar] = useState('')
+  const [playerSkinId, setPlayerSkinId] = useState('explorer')
   const [previewSignedIn, setPreviewSignedIn] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [recentCount, setRecentCount] = useState(0)
@@ -135,6 +147,7 @@ export default function HomePage({
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileName, setProfileName] = useState('')
   const [profileAvatar, setProfileAvatar] = useState('')
+  const [profileSkinId, setProfileSkinId] = useState('explorer')
   const [profileSaving, setProfileSaving] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
   const [collectionView, setCollectionView] = useState<'all' | 'recent' | 'favorites'>('all')
@@ -263,6 +276,7 @@ export default function HomePage({
         setPlayerUserId(data.player?.userId || '')
         setPlayerBoxId(data.player?.boxId || '')
         setPlayerAvatar(data.player?.avatar || '')
+        setPlayerSkinId(data.player?.avatarSkinId || 'explorer')
         setLibraryEnabled(data.libraryEnabled !== false)
         const entries = data.entries || []
         const favorites = entries.filter((entry: { favorite: boolean }) => entry.favorite)
@@ -605,6 +619,7 @@ export default function HomePage({
     setPlayerUserId('')
     setPlayerBoxId('')
     setPlayerAvatar('')
+    setPlayerSkinId('explorer')
     setLibraryEnabled(false)
     setFavoriteIds(new Set())
     setRecentIds([])
@@ -616,6 +631,7 @@ export default function HomePage({
     setAccountOpen(false)
     setProfileName(playerName)
     setProfileAvatar(playerAvatar)
+    setProfileSkinId(playerSkinId)
     setProfileOpen(true)
   }
 
@@ -646,16 +662,18 @@ export default function HomePage({
       if (uiPreview) {
         setPlayerName(displayName)
         setPlayerAvatar(profileAvatar)
+        setPlayerSkinId(profileSkinId)
       } else {
         const response = await fetch('/api/play-profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName, avatar: profileAvatar }),
+          body: JSON.stringify({ displayName, avatar: profileAvatar, avatarSkinId: profileSkinId }),
         })
         const data = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(data.message || '资料保存失败')
         setPlayerName(data.player?.displayName || displayName)
         setPlayerAvatar(data.player?.avatar || '')
+        setPlayerSkinId(data.player?.avatarSkinId || profileSkinId)
       }
       setProfileOpen(false)
       setNotice('资料已保存')
@@ -1064,6 +1082,23 @@ export default function HomePage({
                 <span>昵称</span>
                 <input id="player-profile-name" autoFocus maxLength={32} value={profileName} onChange={(event) => setProfileName(event.target.value)} />
               </label>
+              <fieldset className="profileSkinField">
+                <legend>游戏角色</legend>
+                <div className="profileSkinOptions">
+                  {builtInSkinOptions.map((skin) => (
+                    <button
+                      key={skin.id}
+                      className={`profileSkinOption${profileSkinId === skin.id ? ' selected' : ''}`}
+                      type="button"
+                      aria-pressed={profileSkinId === skin.id}
+                      onClick={() => setProfileSkinId(skin.id)}
+                    >
+                      <img src={skin.preview} alt="" />
+                      <span>{skin.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
             </div>
             <footer className="dialogActions">
               <button className="button" type="button" disabled={profileSaving} onClick={() => setProfileOpen(false)}>取消</button>
@@ -2100,6 +2135,27 @@ export default function HomePage({
         .playWorkOverlay .profileField { display: grid; gap: 7px; margin: 0; }
         .playWorkOverlay .profileField > span { color: rgba(255, 255, 255, 0.58); font-size: 12px; font-weight: 600; }
         .playWorkOverlay .profileField input { height: 38px; }
+        .playWorkOverlay .profileSkinField { min-width: 0; margin: 0; padding: 0; border: 0; }
+        .playWorkOverlay .profileSkinField legend { margin-bottom: 8px; padding: 0; color: rgba(255, 255, 255, 0.58); font-size: 12px; font-weight: 600; }
+        .playWorkOverlay .profileSkinOptions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .playWorkOverlay .profileSkinOption {
+          display: grid;
+          gap: 5px;
+          min-width: 0;
+          padding: 6px 4px 7px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 7px;
+          color: rgba(255, 255, 255, 0.62);
+          background: #353535;
+          font: inherit;
+          font-size: 10px;
+          cursor: pointer;
+          transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease, transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .playWorkOverlay .profileSkinOption img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: #292929; }
+        .playWorkOverlay .profileSkinOption:hover { border-color: rgba(255, 219, 0, 0.5); color: #fff; }
+        .playWorkOverlay .profileSkinOption.selected { border-color: #ffdb00; color: #ffdb00; background: rgba(255, 219, 0, 0.08); }
+        .playWorkOverlay .profileSkinOption:active { transform: scale(0.97); }
         .playWorkOverlay .profileDialog .dialogActions {
           margin: 0;
           padding: 12px 20px;

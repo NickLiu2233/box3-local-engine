@@ -121,7 +121,9 @@ export class GameSession implements GameSessionInterface {
     data.fingerPrint = fingerPrint;
     data.region = region;
 
-    data.avatarSkin = createDefaultAvatarSkin();
+    data.avatarSkin = userDetail.wearing_skins && Object.values(userDetail.wearing_skins).some(Boolean)
+      ? userDetail.wearing_skins
+      : createDefaultAvatarSkin();
 
     data.ipAddress = ipAddress;
     this.sessionData.set(sessionId, {

@@ -30,6 +30,17 @@ const SESSION_ABSOLUTE_DAYS = 30;
 const schemaPattern = /^[a-z_][a-z0-9_]{0,62}$/;
 const usernamePattern = /^[a-zA-Z][a-zA-Z0-9_]{2,31}$/;
 const displayNamePattern = /^.{1,32}$/;
+const defaultBuiltInSkinId = 'explorer';
+const builtInSkinIds = new Set([
+  defaultBuiltInSkinId,
+  'pilot',
+  'cowboy',
+  'chinese-doll',
+  'pink-girl',
+  'maid',
+  'little-prince',
+  'christmas-girl',
+]);
 
 /**
  * Player accounts are intentionally limited to one active device. Management
@@ -46,6 +57,7 @@ type IdentityRow = QueryResultRow & {
   box_id: string | null;
   display_name: string | null;
   avatar_hash: string | null;
+  avatar_skin_id: string | null;
   role: LocalPlayerRole | null;
   status: LocalPlayerStatus | null;
   created_at?: string | Date;
@@ -74,6 +86,7 @@ export type PlayerAccountView = {
   boxId: string;
   displayName: string;
   avatar: string;
+  avatarSkinId: string;
   role: LocalPlayerRole;
   status: LocalPlayerStatus;
   guest: boolean;
@@ -304,6 +317,7 @@ async function initialize() {
           password_salt TEXT NOT NULL,
           password_hash TEXT NOT NULL,
           avatar_hash TEXT NOT NULL DEFAULT '',
+          avatar_skin_id TEXT NOT NULL DEFAULT 'explorer',
           role TEXT NOT NULL DEFAULT 'player' CHECK (role IN ('player', 'moderator', 'admin')),
           status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'banned')),
           registration_ip TEXT NOT NULL DEFAULT '',
@@ -319,6 +333,9 @@ async function initialize() {
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS last_login_ip TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS login_count BIGINT NOT NULL DEFAULT 0`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS box_id TEXT`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS avatar_skin_id TEXT NOT NULL DEFAULT 'explorer'`);
+      await database.query(`ALTER TABLE ${table('users')} ALTER COLUMN avatar_skin_id SET DEFAULT 'explorer'`);
+      await database.query(`UPDATE ${table('users')} SET avatar_skin_id = $1 WHERE avatar_skin_id IS NULL OR avatar_skin_id <> ALL($2::text[])`, [defaultBuiltInSkinId, [...builtInSkinIds]]);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS admin_note TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'::text[]`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS ban_reason TEXT NOT NULL DEFAULT ''`);
@@ -589,6 +606,7 @@ function rowToIdentity(row: IdentityRow): RuntimePlayerIdentity {
     boxId: row.box_id || '',
     displayName: row.display_name || '',
     avatar: row.avatar_hash || '',
+    avatarSkinId: builtInSkinIds.has(row.avatar_skin_id || '') ? row.avatar_skin_id! : defaultBuiltInSkinId,
     role: row.role || 'player',
     status: row.status || 'active',
     expiresAt: 0,
@@ -604,6 +622,7 @@ function toView(identity: RuntimePlayerIdentity, dates: Partial<IdentityRow> = {
     boxId: identity.boxId,
     displayName: identity.displayName,
     avatar: identity.avatar,
+    avatarSkinId: identity.avatarSkinId,
     role: identity.role,
     status: identity.status,
     guest: !identity.userId,
@@ -668,7 +687,7 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   if (!token || token.startsWith('guest.')) return null;
   const result = await database.query<IdentityRow & { session_device_hash: string }>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, s.device_hash AS session_device_hash
     FROM ${table('sessions')} s
@@ -882,12 +901,12 @@ export async function registerPlayer(
           (principal_id, username, display_name, password_salt, password_hash,
            registration_ip, last_login_at, last_login_ip, login_count)
         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $6, 1)
-        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, role, status,
+        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
           created_at AS registered_at, updated_at, registration_ip,
           last_login_at, last_login_ip, login_count
       )
       SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
         u.registered_at, u.updated_at, u.registration_ip,
         u.last_login_at, u.last_login_ip, u.login_count
       FROM ${table('principals')} p JOIN inserted u ON u.principal_id = p.id
@@ -968,13 +987,13 @@ export async function createManagedPlayer(
           (principal_id, username, display_name, password_salt, password_hash,
            role, box_id, tags, admin_note, registration_ip, admin_permissions, login_count)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)
-        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, role, status,
+        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
           created_at AS registered_at, updated_at, registration_ip,
           last_login_at, last_login_ip, login_count, admin_note, tags,
           ban_reason, banned_at, banned_until, admin_permissions
       )
       SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
         u.registered_at, u.updated_at, u.registration_ip,
         u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
         u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
@@ -1021,7 +1040,7 @@ export async function loginPlayer(
   const password = typeof values.password === 'string' ? values.password : '';
   const result = await database.query<IdentityRow & { password_salt: string; password_hash: string }>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count,
       u.password_salt, u.password_hash
@@ -1145,17 +1164,21 @@ export async function playerMapLibrary(req: NextApiRequest, res: NextApiResponse
 export async function updateCurrentPlayerProfile(
   req: NextApiRequest,
   res: NextApiResponse,
-  changes: { displayName?: unknown; avatar?: unknown },
+  changes: { displayName?: unknown; avatar?: unknown; avatarSkinId?: unknown },
 ) {
   const identity = await resolvePlayerIdentity(req, res);
   if (!identity.userId) throw new Error('只有已注册账号可以修改资料');
   const displayName = typeof changes.displayName === 'string' ? changes.displayName.trim() : undefined;
   const avatar = typeof changes.avatar === 'string' ? changes.avatar.trim() : undefined;
-  if (displayName === undefined && avatar === undefined) throw new Error('没有可更新的资料');
+  const avatarSkinId = typeof changes.avatarSkinId === 'string' ? changes.avatarSkinId.trim() : undefined;
+  if (displayName === undefined && avatar === undefined && avatarSkinId === undefined) throw new Error('没有可更新的资料');
   if (displayName !== undefined && !displayNamePattern.test(displayName)) {
     throw new Error('昵称长度必须为 1 到 32 个字符');
   }
   if (avatar !== undefined) validateAvatar(avatar);
+  if (avatarSkinId !== undefined && !builtInSkinIds.has(avatarSkinId)) {
+    throw new Error('所选角色皮肤不可用');
+  }
 
   const database = getPool();
   if (!database) throw new Error('PLAYER_DATABASE_NOT_CONFIGURED');
@@ -1164,13 +1187,14 @@ export async function updateCurrentPlayerProfile(
     UPDATE ${table('users')} SET
       display_name = COALESCE($2, display_name),
       avatar_hash = COALESCE($3, avatar_hash),
+      avatar_skin_id = COALESCE($4, avatar_skin_id),
       updated_at = NOW()
     WHERE principal_id = $1
-    RETURNING principal_id, id AS user_id, username, box_id, display_name, avatar_hash, role, status,
+    RETURNING principal_id, id AS user_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
       created_at, updated_at, registered_at, last_seen_at, first_seen_ip, last_seen_ip,
       registration_ip, last_login_at, last_login_ip, login_count, active_session_count,
       admin_note, tags, ban_reason, banned_at, banned_until, admin_permissions
-  `, [identity.subjectId, displayName, avatar]);
+  `, [identity.subjectId, displayName, avatar, avatarSkinId]);
   if (!result.rows[0]) throw new Error('账号资料不存在');
   return toView(rowToIdentity(result.rows[0]), result.rows[0]);
 }
@@ -1236,7 +1260,7 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
   values.push(pageSize, (safePage - 1) * pageSize);
   const result = await database.query<IdentityRow>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
       u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
@@ -1436,7 +1460,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   await expireTemporaryBans(database);
   const result = await database.query<IdentityRow>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
       u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,

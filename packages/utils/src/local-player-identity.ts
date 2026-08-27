@@ -11,6 +11,8 @@ export type RuntimePlayerIdentity = {
   boxId: string;
   displayName: string;
   avatar: string;
+  /** Curated in-game 3D skin identifier, separate from the profile avatar image. */
+  avatarSkinId: string;
   role: LocalPlayerRole;
   status: LocalPlayerStatus;
   expiresAt: number;
@@ -50,6 +52,8 @@ function validIdentity(value: RuntimePlayerIdentity) {
     value.displayName.length <= 32 &&
     typeof value.avatar === 'string' &&
     value.avatar.length <= 2048 &&
+    typeof value.avatarSkinId === 'string' &&
+    value.avatarSkinId.length <= 64 &&
     ['player', 'moderator', 'admin'].includes(value.role) &&
     ['active', 'banned'].includes(value.status) &&
     Number.isSafeInteger(value.expiresAt)

@@ -43,6 +43,7 @@ function createLogger(bindings = {}) {
 }
 
 async function main() {
+  await require('./sync-built-in-skins')()
   const logger = createLogger()
   const contentServer = new FileSystemContentServer(blobRoot)
   await contentServer.init()

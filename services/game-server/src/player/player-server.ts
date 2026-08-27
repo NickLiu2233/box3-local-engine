@@ -4,7 +4,6 @@ import { PlayerEventSchema } from '@box-local/schema/events/player-event-schema'
 import { setPlayerAvatarSkin } from './player-server-controller';
 import { GameServerState } from '../game-server-schema';
 import type { ModelServer } from '../mesh/server-model-controller';
-import { createDefaultAvatarSkin } from './default-avatar-skin';
 
 export class PlayerServer {
   public protocol: MuServerProtocol<typeof PlayerProtocolSchema>;
@@ -31,7 +30,7 @@ export class PlayerServer {
             this._modelServer,
             this._state,
             connection.id,
-            createDefaultAvatarSkin(),
+            connection.sessionData.avatarSkin,
           );
         },
       },
