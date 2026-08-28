@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, test } from '@jest/globals';
 
 import type { PlayerAccountView } from './local-player-identity';
@@ -5,6 +7,11 @@ import {
   limitsSessionsToSingleDevice,
   serializeManagedPlayersCsv,
 } from './local-player-identity';
+
+const identitySource = fs.readFileSync(
+  path.resolve(__dirname, 'local-player-identity.ts'),
+  'utf8',
+);
 
 function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
   return {
@@ -75,5 +82,18 @@ describe('player session policy', () => {
     expect(limitsSessionsToSingleDevice('player')).toBe(true);
     expect(limitsSessionsToSingleDevice('moderator')).toBe(false);
     expect(limitsSessionsToSingleDevice('admin')).toBe(false);
+  });
+});
+
+describe('player profile persistence', () => {
+  test('does not return derived identity fields directly from the users table', () => {
+    const profileUpdate = identitySource.slice(
+      identitySource.indexOf('export async function updateCurrentPlayerProfile'),
+      identitySource.indexOf('export async function updatePlayerMapLibrary'),
+    );
+
+    expect(profileUpdate).toContain('created_at AS registered_at');
+    expect(profileUpdate).not.toContain('updated_at, registered_at, last_seen_at');
+    expect(profileUpdate).toContain('JOIN updated u ON u.principal_id = p.id');
   });
 });

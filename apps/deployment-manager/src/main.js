@@ -489,41 +489,30 @@ function backups() {
 function about() {
   const info = state.about || {}
   const legal = state.legal || {}
-  const configuredServices =
-    state.status?.services?.filter((service) => service.enabled !== false) || []
-  const runningServices = configuredServices.filter((service) => service.running)
-  const creatorHost = state.config?.creatorHost || '127.0.0.1'
-  const creatorAccess = ['127.0.0.1', 'localhost', '::1'].includes(creatorHost)
-    ? '仅本机访问'
-    : '局域网访问'
-  const revision = info.sourceRevision || '未知'
-  const compactRevision = revision.length > 12 ? revision.slice(0, 12) : revision
   const values = [
     ['启动器版本', info.applicationVersion || '读取中'],
-    ['镜像版本', info.imageTag || '读取中'],
+    ['引擎开发', '深圳奇梦岛科技有限公司'],
     ['构建时间', formatBeijingBuildTime(info.buildCreatedAt)],
-    ['构建来源', formatBuildSource(info.buildSource)],
   ]
   const serviceImages = Array.isArray(info.serviceImages) ? info.serviceImages : []
   const imageRows = serviceImages.length
     ? serviceImages
         .map(
-          (service) => `<article class="about-image-row">
-            <div class="about-image-summary"><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.tag)} · ${escapeHtml(service.platform)} · ${escapeHtml(formatBeijingBuildTime(service.createdAt))}</small></div>
-            <details class="about-image-details"><summary>技术详情</summary><dl class="about-image-meta">
+          (service) => `<details class="about-image-row">
+            <summary><span class="about-image-summary"><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.tag)} · ${escapeHtml(service.platform)} · ${escapeHtml(formatBeijingBuildTime(service.createdAt))}</small></span><span class="about-image-disclosure">详情</span></summary>
+            <dl class="about-image-meta">
               <div><dt>镜像名称</dt><dd>${escapeHtml(service.image)}</dd></div>
               <div><dt>镜像标识</dt><dd>${escapeHtml(service.imageId)}</dd></div>
               <div><dt>构建提交</dt><dd>${escapeHtml(service.sourceRevision || '未知')}</dd></div>
               <div><dt>构建来源</dt><dd>${escapeHtml(formatBuildSource(service.buildSource))}</dd></div>
-            </dl></details>
-          </article>`,
+            </dl>
+          </details>`,
         )
         .join('')
     : '<div class="about-image-empty">正在读取组件镜像信息…</div>'
 
   return `<header><div><h1>关于</h1></div></header><section class="about-page">
-    <article class="about-card"><div class="about-card-heading"><h2>版本与构建</h2></div><dl class="about-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt><dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd></div>`).join('')}<div><dt>构建提交</dt><dd class="about-build-revision" title="${escapeHtml(revision)}"><code>${escapeHtml(compactRevision)}</code><button class="about-copy-button" type="button" data-copy-build-revision="${escapeHtml(revision)}" aria-label="复制完整构建提交" title="复制完整构建提交">${icon('copy')}</button></dd></div></dl></article>
-    <div class="about-summary-grid"><article class="about-card"><div class="about-card-heading"><h2>运行环境</h2></div><dl class="about-facts about-facts-compact"><div><dt>Docker</dt><dd>${state.status?.dockerReady ? '已连接' : '未连接'}</dd></div><div><dt>服务状态</dt><dd>${runningServices.length} / ${configuredServices.length} 运行中</dd></div><div><dt>当前平台</dt><dd>${escapeHtml([info.platform, info.architecture].filter(Boolean).join(' / ') || '读取中')}</dd></div><div><dt>数据目录</dt><dd title="${escapeHtml(state.status?.dataDirectory || '')}">${escapeHtml(state.status?.dataDirectory || '读取中')}</dd></div></dl></article><article class="about-card"><div class="about-card-heading"><h2>安全状态</h2></div><dl class="about-facts about-facts-compact"><div><dt>创作端访问</dt><dd>${creatorAccess}</dd></div><div><dt>玩家会话</dt><dd>普通玩家单设备登录</dd></div><div><dt>诊断导出</dt><dd>敏感信息自动隐藏</dd></div><div><dt>配置写入</dt><dd>由启动器统一管理</dd></div></dl></article></div>
+    <article class="about-release-card"><dl class="about-release-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt><dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd></div>`).join('')}</dl></article>
     <article class="about-card"><div class="about-card-heading"><h2>服务组件</h2></div><div class="about-image-list">${imageRows}</div></article>
     <article class="about-card"><div class="about-card-heading"><h2>支持与许可</h2></div><div class="about-document-list"><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
   </section>`
@@ -664,17 +653,6 @@ function bindEvents() {
     node.addEventListener('click', async () => {
       await navigator.clipboard.writeText(node.dataset.copyUrl)
       node.title = '已复制'
-    }),
-  )
-  document.querySelectorAll('[data-copy-build-revision]').forEach((node) =>
-    node.addEventListener('click', async () => {
-      try {
-        await navigator.clipboard.writeText(node.dataset.copyBuildRevision)
-        state.notice = '构建提交已复制。'
-      } catch (error) {
-        state.error = `复制构建提交失败：${String(error)}`
-      }
-      render()
     }),
   )
   document.querySelectorAll('[data-service-action]').forEach((node) =>
@@ -975,7 +953,8 @@ async function exportDiagnostics() {
   clearFeedback()
   render()
   try {
-    state.diagnosticPath = await invoke('export_diagnostics')
+    const destination = await invoke('export_diagnostics')
+    if (destination) state.diagnosticPath = destination
   } catch (error) {
     state.error = String(error)
   } finally {

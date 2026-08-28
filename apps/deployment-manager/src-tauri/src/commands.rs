@@ -1002,6 +1002,10 @@ fn synchronize_runtime_image_tag(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn offline_image_digest_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(runtime_root(app)?.join(format!(".offline-image-{IMAGE_TAG}.sha256")))
+}
+
 fn ensure_images(app: &AppHandle) -> Result<(), String> {
     synchronize_runtime_image_tag(app)?;
     let tag = IMAGE_TAG;
@@ -1019,9 +1023,6 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
         };
         docker_output(&["image", "inspect", &format!("{image_name}:{tag}")]).is_err()
     });
-    if !missing {
-        return Ok(());
-    }
     let expected = if cfg!(target_arch = "aarch64") {
         "arm64"
     } else {
@@ -1034,9 +1035,24 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
                 .is_some_and(|name| name.to_string_lossy().contains(expected))
         })
         .ok_or_else(|| format!("未找到 {expected} 离线镜像归档。请重新下载完整离线包。"))?;
-    verify_offline_image_archive(app, &archive)?;
+    let archive_digest = verify_offline_image_archive(app, &archive)?;
+    let digest_path = offline_image_digest_path(app)?;
+    let imported_digest = fs::read_to_string(&digest_path)
+        .ok()
+        .map(|value| value.trim().to_string());
+    // A corrected test build can retain the same release tag. Re-import when
+    // the verified archive digest changes so Docker cannot keep serving an
+    // older layer merely because that tag already exists locally.
+    if !missing && imported_digest.as_deref() == Some(archive_digest.as_str()) {
+        return Ok(());
+    }
     let archive_string = archive.to_string_lossy().to_string();
     docker_output(&["load", "-i", &archive_string])?;
+    write_private_file(
+        &digest_path,
+        format!("{archive_digest}\n"),
+        "离线镜像导入记录",
+    )?;
     Ok(())
 }
 
@@ -1909,6 +1925,19 @@ fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
     dialog_result(command)
 }
 
+#[cfg(target_os = "macos")]
+fn choose_diagnostic_export(name: &str) -> Result<Option<PathBuf>, String> {
+    let safe_name = name.replace('\\', "\\\\").replace('"', "\\\"");
+    let mut command = Command::new("/usr/bin/osascript");
+    command.args([
+        "-e",
+        &format!(
+            "POSIX path of (choose file name with prompt \"导出 BOX3 Engine 脱敏诊断包\" default name \"{safe_name}\")"
+        ),
+    ]);
+    dialog_result(command)
+}
+
 #[cfg(target_os = "windows")]
 fn choose_backup_import() -> Result<Option<PathBuf>, String> {
     let mut command = Command::new("powershell");
@@ -1921,6 +1950,14 @@ fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
     let safe_name = name.replace('\'', "''");
     let mut command = Command::new("powershell");
     command.args(["-NoProfile", "-Command", &format!("Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.SaveFileDialog; $d.Filter='BOX3 Engine backup (*.zip;*.tar;*.gz)|*.zip;*.tar;*.gz'; $d.FileName='{safe_name}'; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){{Write-Output $d.FileName}}")]);
+    dialog_result(command)
+}
+
+#[cfg(target_os = "windows")]
+fn choose_diagnostic_export(name: &str) -> Result<Option<PathBuf>, String> {
+    let safe_name = name.replace('\'', "''");
+    let mut command = Command::new("powershell");
+    command.args(["-NoProfile", "-Command", &format!("Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.SaveFileDialog; $d.Filter='BOX3 Engine diagnostics (*.zip)|*.zip'; $d.FileName='{safe_name}'; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){{Write-Output $d.FileName}}")]);
     dialog_result(command)
 }
 
@@ -1942,6 +1979,20 @@ fn choose_backup_export(name: &str) -> Result<Option<PathBuf>, String> {
         "--file-selection",
         "--save",
         "--confirm-overwrite",
+        "--filename",
+        name,
+    ]);
+    dialog_result(command)
+}
+
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+fn choose_diagnostic_export(name: &str) -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("zenity");
+    command.args([
+        "--file-selection",
+        "--save",
+        "--confirm-overwrite",
+        "--title=导出 BOX3 Engine 脱敏诊断包",
         "--filename",
         name,
     ]);
@@ -2174,8 +2225,16 @@ async fn import_backup(app: AppHandle) -> Result<Option<String>, String> {
 }
 
 #[tauri::command]
-async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
+async fn export_diagnostics(app: AppHandle) -> Result<Option<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let suggested_name = format!("BOX-diagnostic-{timestamp}.zip");
+        let Some(destination) = choose_diagnostic_export(&suggested_name)? else {
+            return Ok(None);
+        };
         let root = runtime_root(&app)?;
         let diagnostic_root = root.join("diagnostics");
         let staging = diagnostic_root.join("current");
@@ -2238,14 +2297,9 @@ async fn export_diagnostics(app: AppHandle) -> Result<String, String> {
             "此诊断包已自动隐藏密码、令牌、API Key 和数据库连接串。发送前仍建议人工检查。\n",
         )
         .map_err(|error| format!("无法写入诊断说明：{error}"))?;
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let destination = diagnostic_root.join(format!("BOX-diagnostic-{timestamp}.zip"));
         create_diagnostic_zip(&staging, &destination)?;
         fs::remove_dir_all(staging).map_err(|error| format!("无法清理诊断临时目录：{error}"))?;
-        Ok(destination.to_string_lossy().to_string())
+        Ok(Some(destination.to_string_lossy().to_string()))
     })
     .await
     .map_err(|error| format!("诊断包任务异常结束：{error}"))?

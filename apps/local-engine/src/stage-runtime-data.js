@@ -18,6 +18,7 @@ const referenceRoots = [
   path.join(repoRoot, 'services/game-server/src/assets'),
   path.join(repoRoot, 'services/game-server/src/player/default-avatar.json'),
 ]
+const builtInSkinSource = path.join(repoRoot, 'services/game-server/src/player/built-in-skins.ts')
 
 const hashes = new Set()
 const cidPattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
@@ -36,7 +37,24 @@ function collectReferences(target) {
   for (const hash of content.match(cidPattern) || []) hashes.add(hash)
 }
 
+function collectBuiltInSkinReferences() {
+  const source = fs.readFileSync(builtInSkinSource, 'utf8')
+  const skinParts = [...source.matchAll(/parts: parts\(\[([\s\S]*?)\]\)/g)]
+  if (skinParts.length === 0) {
+    throw new Error('No built-in player skins were found')
+  }
+
+  for (const [, entries] of skinParts) {
+    const partHashes = [...entries.matchAll(/'([^']+)'/g)].map(([, hash]) => hash)
+    if (partHashes.length !== 18) {
+      throw new Error(`A built-in player skin must contain 18 parts, found ${partHashes.length}`)
+    }
+    for (const hash of partHashes) hashes.add(hash)
+  }
+}
+
 for (const root of referenceRoots) collectReferences(root)
+collectBuiltInSkinReferences()
 
 if (hashes.size === 0) {
   throw new Error('No runtime blob references were found')

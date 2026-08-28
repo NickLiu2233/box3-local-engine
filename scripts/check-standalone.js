@@ -1495,6 +1495,7 @@ function checkPlayerServicePruning() {
       '/api/player-auth/login': 'pages/api/player-auth/login.js',
       '/api/player-auth/login-required': 'pages/api/player-auth/login-required.js',
       '/api/player-internal/map-library': 'pages/api/player-internal/map-library.js',
+      '/api/player-internal/profile': 'pages/api/player-internal/profile.js',
       '/api/play-admin/players': 'pages/api/play-admin/players.js',
       '/projects': 'pages/projects.js',
       '/p/[gameName]': 'pages/p/[gameName].js',
@@ -1531,6 +1532,7 @@ function checkPlayerServicePruning() {
       '/api/player-auth/login',
       '/api/player-auth/login-required',
       '/api/player-internal/map-library',
+      '/api/player-internal/profile',
       '/api/play-admin/players',
     ]) {
       if (!pruned[route]) fail(`player-service pruning removed ${route}`)

@@ -1184,16 +1184,25 @@ export async function updateCurrentPlayerProfile(
   if (!database) throw new Error('PLAYER_DATABASE_NOT_CONFIGURED');
   await initialize();
   const result = await database.query<IdentityRow>(`
-    UPDATE ${table('users')} SET
-      display_name = COALESCE($2, display_name),
-      avatar_hash = COALESCE($3, avatar_hash),
-      avatar_skin_id = COALESCE($4, avatar_skin_id),
-      updated_at = NOW()
-    WHERE principal_id = $1
-    RETURNING principal_id, id AS user_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
-      created_at, updated_at, registered_at, last_seen_at, first_seen_ip, last_seen_ip,
-      registration_ip, last_login_at, last_login_ip, login_count, active_session_count,
-      admin_note, tags, ban_reason, banned_at, banned_until, admin_permissions
+    WITH updated AS (
+      UPDATE ${table('users')} SET
+        display_name = COALESCE($2, display_name),
+        avatar_hash = COALESCE($3, avatar_hash),
+        avatar_skin_id = COALESCE($4, avatar_skin_id),
+        updated_at = NOW()
+      WHERE principal_id = $1
+      RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
+        created_at AS registered_at, updated_at, registration_ip, last_login_at, last_login_ip, login_count,
+        admin_note, tags, ban_reason, banned_at, banned_until, admin_permissions
+    )
+    SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+      u.registered_at, u.updated_at, u.registration_ip, u.last_login_at, u.last_login_ip, u.login_count,
+      u.admin_note, u.tags, u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
+      (SELECT COUNT(*) FROM ${table('sessions')} s WHERE s.principal_id = p.id AND s.expires_at > NOW())
+        AS active_session_count
+    FROM ${table('principals')} p
+    JOIN updated u ON u.principal_id = p.id
   `, [identity.subjectId, displayName, avatar, avatarSkinId]);
   if (!result.rows[0]) throw new Error('账号资料不存在');
   return toView(rowToIdentity(result.rows[0]), result.rows[0]);

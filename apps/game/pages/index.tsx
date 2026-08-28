@@ -827,7 +827,7 @@ export default function HomePage({
         ) : null}
 
         {notice ? (
-          <div className="notice">
+          <div className={`notice${notice === '资料已保存' ? ' success' : ''}`}>
             {notice}
             <button onClick={() => setNotice('')}>×</button>
           </div>
@@ -2182,6 +2182,7 @@ export default function HomePage({
         }
         .playWorkCenter .button.primary:hover { background: #ffe44d; }
         .playWorkCenter .notice { border-color: rgba(246, 82, 82, 0.32); color: #ff9a9a; background: rgba(246, 82, 82, 0.08); }
+        .playWorkCenter .notice.success { border-color: rgba(255, 219, 0, 0.36); color: #ffdb00; background: rgba(255, 219, 0, 0.08); }
         .playWorkCenter .collectionNav {
           gap: 4px;
           margin: 0 0 20px;
