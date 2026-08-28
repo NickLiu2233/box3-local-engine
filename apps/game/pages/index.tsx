@@ -5,7 +5,6 @@ import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowUpRight,
-  CircleUserRound,
   LogOut,
   Settings,
   Upload,
@@ -128,7 +127,6 @@ export default function HomePage({
   mapStats: Record<string, MapDiscoveryStats>
 }) {
   const importInput = useRef<HTMLInputElement>(null)
-  const avatarInput = useRef<HTMLInputElement>(null)
   const [worldList, setWorldList] = useState(worlds)
   const [liveMapStats, setLiveMapStats] = useState(mapStats)
   const [resourceStatuses, setResourceStatuses] = useState<Record<string, MapResourceStatus>>({})
@@ -137,7 +135,6 @@ export default function HomePage({
   const [playerName, setPlayerName] = useState('')
   const [playerUserId, setPlayerUserId] = useState('')
   const [playerBoxId, setPlayerBoxId] = useState('')
-  const [playerAvatar, setPlayerAvatar] = useState('')
   const [playerSkinId, setPlayerSkinId] = useState('explorer')
   const [previewSignedIn, setPreviewSignedIn] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
@@ -146,7 +143,6 @@ export default function HomePage({
   const [accountOpen, setAccountOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileName, setProfileName] = useState('')
-  const [profileAvatar, setProfileAvatar] = useState('')
   const [profileSkinId, setProfileSkinId] = useState('explorer')
   const [profileSaving, setProfileSaving] = useState(false)
   const accountRef = useRef<HTMLDivElement>(null)
@@ -275,8 +271,8 @@ export default function HomePage({
         setPlayerName(data.player?.displayName || data.player?.username || '')
         setPlayerUserId(data.player?.userId || '')
         setPlayerBoxId(data.player?.boxId || '')
-        setPlayerAvatar(data.player?.avatar || '')
-        setPlayerSkinId(data.player?.avatarSkinId || 'explorer')
+        const skinId = data.player?.avatarSkinId || 'explorer'
+        setPlayerSkinId(skinId)
         setLibraryEnabled(data.libraryEnabled !== false)
         const entries = data.entries || []
         const favorites = entries.filter((entry: { favorite: boolean }) => entry.favorite)
@@ -618,7 +614,6 @@ export default function HomePage({
     setPlayerName('')
     setPlayerUserId('')
     setPlayerBoxId('')
-    setPlayerAvatar('')
     setPlayerSkinId('explorer')
     setLibraryEnabled(false)
     setFavoriteIds(new Set())
@@ -630,24 +625,8 @@ export default function HomePage({
   function openProfileEditor() {
     setAccountOpen(false)
     setProfileName(playerName)
-    setProfileAvatar(playerAvatar)
     setProfileSkinId(playerSkinId)
     setProfileOpen(true)
-  }
-
-  function selectProfileAvatar(file?: File) {
-    if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)) {
-      setNotice('请上传 PNG、JPEG、WebP 或 GIF 格式的头像')
-      return
-    }
-    if (file.size > 512 * 1024) {
-      setNotice('头像图片不能超过 512 KB')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => setProfileAvatar(typeof reader.result === 'string' ? reader.result : '')
-    reader.readAsDataURL(file)
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
@@ -661,18 +640,16 @@ export default function HomePage({
     try {
       if (uiPreview) {
         setPlayerName(displayName)
-        setPlayerAvatar(profileAvatar)
         setPlayerSkinId(profileSkinId)
       } else {
         const response = await fetch('/api/play-profile', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName, avatar: profileAvatar, avatarSkinId: profileSkinId }),
+          body: JSON.stringify({ displayName, avatarSkinId: profileSkinId }),
         })
         const data = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(data.message || '资料保存失败')
         setPlayerName(data.player?.displayName || displayName)
-        setPlayerAvatar(data.player?.avatar || '')
         setPlayerSkinId(data.player?.avatarSkinId || profileSkinId)
       }
       setProfileOpen(false)
@@ -720,9 +697,6 @@ export default function HomePage({
                 onClick={() => setAccountOpen((value) => !value)}
                 aria-expanded={accountOpen}
               >
-                <span className="accountAvatar">
-                  {playerAvatar && !verified ? <img src={playerAvatar} alt="" /> : <CircleUserRound size={18} />}
-                </span>
                 <span>{verified ? '服主' : playerName}</span>
               </button>
               {accountOpen ? (
@@ -1059,25 +1033,6 @@ export default function HomePage({
               <button className="profileClose" type="button" aria-label="关闭编辑资料" disabled={profileSaving} onClick={() => setProfileOpen(false)}><X size={17} /></button>
             </header>
             <div className="profileContent">
-              <div className="profileAvatarRow">
-                <div className="profileAvatarPreview" aria-label="头像预览">
-                  {profileAvatar ? <img src={profileAvatar} alt="" /> : <CircleUserRound size={26} />}
-                </div>
-                <div className="profileAvatarCopy"><strong>头像</strong><small>PNG、JPEG、WebP、GIF · 最大 512 KB</small></div>
-                <button className="profileAvatarUpload" type="button" onClick={() => avatarInput.current?.click()}>
-                  更换头像
-                </button>
-              </div>
-              <input
-                ref={avatarInput}
-                className="hidden"
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
-                onChange={(event) => {
-                  selectProfileAvatar(event.target.files?.[0])
-                  event.currentTarget.value = ''
-                }}
-              />
               <label className="profileField" htmlFor="player-profile-name">
                 <span>昵称</span>
                 <input id="player-profile-name" autoFocus maxLength={32} value={profileName} onChange={(event) => setProfileName(event.target.value)} />
@@ -1359,15 +1314,6 @@ export default function HomePage({
           margin-left: auto;
           color: rgba(255, 255, 255, 0.7);
           font-size: 13px;
-        }
-        .accountAvatar {
-          display: grid;
-          width: 29px;
-          height: 29px;
-          place-items: center;
-          border-radius: 50%;
-          color: #262626;
-          background: #ffdb00;
         }
         .header {
           display: flex;
@@ -2023,8 +1969,6 @@ export default function HomePage({
         }
         .playWorkCenter .siteAccount:hover { background: #404040; }
         .playWorkCenter .siteAccount:active { transform: scale(0.97); }
-        .playWorkCenter .accountAvatar { width: 26px; height: 26px; color: #262626; background: #ffdb00; }
-        .playWorkCenter .accountAvatar img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; }
         .playWorkCenter .guestActions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
         .playWorkCenter .guestActions :global(.guestLogin) { display: inline-flex; height: 36px; align-items: center; justify-content: center; padding: 0 15px; border-radius: 7px; font-size: 13px; font-weight: 700; line-height: 1; text-decoration: none; transition: background-color 140ms ease, border-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1); }
         .playWorkCenter .guestActions :global(.guestLogin) { color: #262626 !important; background: #ffdb00 !important; box-shadow: 0 0 0 1px rgba(255, 219, 0, 0.3); }
@@ -2099,39 +2043,6 @@ export default function HomePage({
         .playWorkOverlay .profileClose:hover { color: #fff; background: #404040; }
         .playWorkOverlay .profileClose:active { transform: scale(0.96); }
         .playWorkOverlay .profileContent { display: grid; gap: 18px; padding: 18px 20px 20px; }
-        .playWorkOverlay .profileAvatarRow {
-          display: flex;
-          align-items: center;
-          gap: 11px;
-          min-width: 0;
-        }
-        .playWorkOverlay .profileAvatarPreview {
-          width: 46px;
-          height: 46px;
-          flex: 0 0 auto;
-          display: grid;
-          place-items: center;
-          overflow: hidden;
-          border-radius: 50%;
-          color: #262626;
-          background: #ffdb00;
-        }
-        .playWorkOverlay .profileAvatarPreview img { width: 100%; height: 100%; object-fit: cover; }
-        .playWorkOverlay .profileAvatarCopy { min-width: 0; display: grid; gap: 3px; flex: 1; }
-        .playWorkOverlay .profileAvatarCopy strong { color: #fff; font-size: 13px; }
-        .playWorkOverlay .profileAvatarCopy small { overflow: hidden; color: rgba(255, 255, 255, 0.43); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-        .playWorkOverlay .profileAvatarUpload {
-          height: 30px;
-          padding: 0 9px;
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          border-radius: 6px;
-          color: rgba(255, 255, 255, 0.84);
-          background: #404040;
-          font: inherit;
-          font-size: 12px;
-          cursor: pointer;
-        }
-        .playWorkOverlay .profileAvatarUpload:hover { background: #4a4a4a; }
         .playWorkOverlay .profileField { display: grid; gap: 7px; margin: 0; }
         .playWorkOverlay .profileField > span { color: rgba(255, 255, 255, 0.58); font-size: 12px; font-weight: 600; }
         .playWorkOverlay .profileField input { height: 38px; }

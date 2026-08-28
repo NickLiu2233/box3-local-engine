@@ -32,7 +32,7 @@ function validIdentity(value) {
         value.displayName.length >= 1 &&
         value.displayName.length <= 32 &&
         typeof value.avatar === 'string' &&
-        value.avatar.length <= 2048 &&
+        value.avatar.length <= 700000 &&
         typeof value.avatarSkinId === 'string' &&
         value.avatarSkinId.length <= 64 &&
         ['player', 'moderator', 'admin'].includes(value.role) &&

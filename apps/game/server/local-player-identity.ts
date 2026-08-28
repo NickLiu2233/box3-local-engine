@@ -85,7 +85,6 @@ export type PlayerAccountView = {
   username: string;
   boxId: string;
   displayName: string;
-  avatar: string;
   avatarSkinId: string;
   role: LocalPlayerRole;
   status: LocalPlayerStatus;
@@ -605,7 +604,9 @@ function rowToIdentity(row: IdentityRow): RuntimePlayerIdentity {
     username: row.username || '',
     boxId: row.box_id || '',
     displayName: row.display_name || '',
-    avatar: row.avatar_hash || '',
+    // Profile avatars are represented by the selected built-in skin. Ignore
+    // legacy uploaded values so they cannot bloat runtime identity assertions.
+    avatar: '',
     avatarSkinId: builtInSkinIds.has(row.avatar_skin_id || '') ? row.avatar_skin_id! : defaultBuiltInSkinId,
     role: row.role || 'player',
     status: row.status || 'active',
@@ -621,7 +622,6 @@ function toView(identity: RuntimePlayerIdentity, dates: Partial<IdentityRow> = {
     username: identity.username,
     boxId: identity.boxId,
     displayName: identity.displayName,
-    avatar: identity.avatar,
     avatarSkinId: identity.avatarSkinId,
     role: identity.role,
     status: identity.status,
@@ -1164,18 +1164,16 @@ export async function playerMapLibrary(req: NextApiRequest, res: NextApiResponse
 export async function updateCurrentPlayerProfile(
   req: NextApiRequest,
   res: NextApiResponse,
-  changes: { displayName?: unknown; avatar?: unknown; avatarSkinId?: unknown },
+  changes: { displayName?: unknown; avatarSkinId?: unknown },
 ) {
   const identity = await resolvePlayerIdentity(req, res);
   if (!identity.userId) throw new Error('只有已注册账号可以修改资料');
   const displayName = typeof changes.displayName === 'string' ? changes.displayName.trim() : undefined;
-  const avatar = typeof changes.avatar === 'string' ? changes.avatar.trim() : undefined;
   const avatarSkinId = typeof changes.avatarSkinId === 'string' ? changes.avatarSkinId.trim() : undefined;
-  if (displayName === undefined && avatar === undefined && avatarSkinId === undefined) throw new Error('没有可更新的资料');
+  if (displayName === undefined && avatarSkinId === undefined) throw new Error('没有可更新的资料');
   if (displayName !== undefined && !displayNamePattern.test(displayName)) {
     throw new Error('昵称长度必须为 1 到 32 个字符');
   }
-  if (avatar !== undefined) validateAvatar(avatar);
   if (avatarSkinId !== undefined && !builtInSkinIds.has(avatarSkinId)) {
     throw new Error('所选角色皮肤不可用');
   }
@@ -1187,8 +1185,7 @@ export async function updateCurrentPlayerProfile(
     WITH updated AS (
       UPDATE ${table('users')} SET
         display_name = COALESCE($2, display_name),
-        avatar_hash = COALESCE($3, avatar_hash),
-        avatar_skin_id = COALESCE($4, avatar_skin_id),
+        avatar_skin_id = COALESCE($3, avatar_skin_id),
         updated_at = NOW()
       WHERE principal_id = $1
       RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
@@ -1203,7 +1200,7 @@ export async function updateCurrentPlayerProfile(
         AS active_session_count
     FROM ${table('principals')} p
     JOIN updated u ON u.principal_id = p.id
-  `, [identity.subjectId, displayName, avatar, avatarSkinId]);
+  `, [identity.subjectId, displayName, avatarSkinId]);
   if (!result.rows[0]) throw new Error('账号资料不存在');
   return toView(rowToIdentity(result.rows[0]), result.rows[0]);
 }

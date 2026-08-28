@@ -386,7 +386,6 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
     }
   };
   const creatorName = creator.displayName || creator.username || '已登录用户';
-  const creatorInitial = Array.from(creatorName)[0]?.toUpperCase() || '用';
 
   const switchView = (view: WorkCenterView) => {
     setActiveView(view);
@@ -1192,7 +1191,6 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
               aria-expanded={accountOpen}
               aria-haspopup="menu"
             >
-              <span className={styles.avatar} aria-hidden="true">{creatorInitial}</span>
               <span className={styles.accountName}>{creatorName}</span>
             </button>
             {accountOpen && (

@@ -97,6 +97,11 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain("setNotice(`用户“${data.player.displayName}”已创建");
   });
 
+  test('only shows the current administrator shortcut to owners and admins', () => {
+    expect(pageSource).toContain("const canUseCurrentAccount = actor?.role === 'owner' || actor?.role === 'admin' || actor?.role === 'moderator';");
+    expect(pageSource).toMatch(/canUseCurrentAccount\s*\?\s*<button[^>]*onClick=\{\(\)\s*=>\s*void loginWithCurrentAccount\(\)\}[^>]*>使用当前管理员账号<\/button>/s);
+  });
+
   test('keeps ban errors and confirmation visible inside the player drawer', () => {
     expect(pageSource).toContain('className={styles.drawerNotice}');
     expect(pageSource).toContain("selected.status === 'banned'");

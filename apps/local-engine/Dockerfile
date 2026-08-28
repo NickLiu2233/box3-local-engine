@@ -38,7 +38,9 @@ FROM engine-build-base AS creator-build
 
 RUN pnpm build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
-RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
+RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    npm_config_registry=https://registry.npmmirror.com \
+    npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
     pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
@@ -70,7 +72,9 @@ FROM engine-build-base AS play-build
 
 RUN pnpm build:play
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
-RUN npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
+RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    npm_config_registry=https://registry.npmmirror.com \
+    npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
     pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \

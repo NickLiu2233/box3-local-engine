@@ -51,7 +51,10 @@ function validIdentity(value: RuntimePlayerIdentity) {
     value.displayName.length >= 1 &&
     value.displayName.length <= 32 &&
     typeof value.avatar === 'string' &&
-    value.avatar.length <= 2048 &&
+    // Profile avatars may be persisted as validated data URLs (up to the
+    // 512 KiB upload limit). Keep the signed identity assertion compatible
+    // with that representation so updating an avatar cannot invalidate login.
+    value.avatar.length <= 700_000 &&
     typeof value.avatarSkinId === 'string' &&
     value.avatarSkinId.length <= 64 &&
     ['player', 'moderator', 'admin'].includes(value.role) &&

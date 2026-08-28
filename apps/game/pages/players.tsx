@@ -25,7 +25,6 @@ type Player = {
   username: string;
   boxId: string;
   displayName: string;
-  avatar: string;
   guest: boolean;
   userKey: string;
   role: 'player' | 'moderator' | 'admin';
@@ -510,6 +509,10 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   };
   const displayedPlayers = players;
   const ownerAccess = actor?.role === 'owner' || actor?.role === 'admin';
+  // A signed-in moderator may also have player-management capabilities. The
+  // shortcut is only useful once the current account has passed admin
+  // authorization; ordinary player accounts never receive an actor here.
+  const canUseCurrentAccount = actor?.role === 'owner' || actor?.role === 'admin' || actor?.role === 'moderator';
   const hasCapability = (capability: PlayerAdminCapability) => ownerAccess
     || Boolean(actor?.permissions?.includes(capability));
   const canManageProfiles = hasCapability('players.manage');
@@ -590,7 +593,6 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     if (!selected || !canManageProfiles) return;
     return saveChanges({
       displayName: selected.displayName,
-      avatar: selected.avatar,
       adminNote: selected.adminNote,
       tags: selected.tags,
     }, '玩家资料已保存');
@@ -1086,7 +1088,6 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                   <div className={styles.sectionHeading}><h3>玩家资料</h3><span>可编辑</span></div>
                   {selected.guest ? <div className={styles.infoNote}>游客没有可编辑账号资料。</div> : <div className={styles.formGrid}>
                     <label>昵称<input disabled={!canManageProfiles} value={selected.displayName} onChange={(event) => setSelected({ ...selected, displayName: event.target.value })} /></label>
-                    <label>头像资源或地址<input disabled={!canManageProfiles} value={selected.avatar || ''} onChange={(event) => setSelected({ ...selected, avatar: event.target.value })} placeholder="可留空" /></label>
                     <label className={styles.fullField}>标签（用逗号分隔）<input disabled={!canManageProfiles} value={selected.tags.join(', ')} onChange={(event) => setSelected({ ...selected, tags: event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean) })} placeholder="例如：测试员, 重点关注" /></label>
                     <label className={styles.fullField}>服主备注<textarea disabled={!canManageProfiles} value={selected.adminNote} onChange={(event) => setSelected({ ...selected, adminNote: event.target.value })} placeholder="仅后台可见，不会发送给游戏脚本" /></label>
                   </div>}
@@ -1201,12 +1202,11 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
           <form className={styles.loginDialog} onSubmit={(event) => { event.preventDefault(); void verifyAdmin(); }}>
             <span className={styles.eyebrow}>SERVER OWNER</span>
             <h2>服主验证</h2>
-            <p>输入与创作端、游玩端相同的管理密钥后读取玩家资料。</p>
             <label>管理密钥<input autoFocus type="password" value={adminToken} onChange={(event) => setAdminToken(event.target.value)} /></label>
             {notice ? <div className={styles.loginError}>{notice}</div> : null}
             <div className={styles.loginActions}>
               {returnUrl ? <Link className={styles.secondaryButton} href={returnUrl}>{returnLabel}</Link> : null}
-              <button className={styles.secondaryButton} type="button" onClick={() => void loginWithCurrentAccount()}>使用当前管理员账号</button>
+              {canUseCurrentAccount ? <button className={styles.secondaryButton} type="button" onClick={() => void loginWithCurrentAccount()}>使用当前管理员账号</button> : null}
               <button className={styles.primaryButton} disabled={!adminToken || busy === 'verify'} type="submit">{busy === 'verify' ? '验证中…' : '验证并进入'}</button>
             </div>
           </form>

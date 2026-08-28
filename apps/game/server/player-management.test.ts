@@ -4,6 +4,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import type { PlayerAccountView } from './local-player-identity';
 import {
+  createRuntimeIdentityAssertion,
   limitsSessionsToSingleDevice,
   serializeManagedPlayersCsv,
 } from './local-player-identity';
@@ -20,7 +21,6 @@ function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
     username: 'player_42',
     boxId: '',
     displayName: '玩家四十二',
-    avatar: '',
     avatarSkinId: 'explorer',
     role: 'player',
     status: 'active',
@@ -86,6 +86,27 @@ describe('player session policy', () => {
 });
 
 describe('player profile persistence', () => {
+  test('keeps runtime identity assertions valid after saving an uploaded avatar', () => {
+    const previousSecret = process.env.PERMISSION_TOKEN_SECRET;
+    process.env.PERMISSION_TOKEN_SECRET = 'test-runtime-identity-secret';
+    try {
+      expect(() => createRuntimeIdentityAssertion({
+        subjectId: '0123456789abcdef0123456789abcdef',
+        userId: '42',
+        username: 'player_42',
+        boxId: '',
+        displayName: '玩家四十二',
+        avatar: `data:image/png;base64,${'a'.repeat(3000)}`,
+        avatarSkinId: 'explorer',
+        role: 'player',
+        status: 'active',
+      })).not.toThrow();
+    } finally {
+      if (previousSecret === undefined) delete process.env.PERMISSION_TOKEN_SECRET;
+      else process.env.PERMISSION_TOKEN_SECRET = previousSecret;
+    }
+  });
+
   test('does not return derived identity fields directly from the users table', () => {
     const profileUpdate = identitySource.slice(
       identitySource.indexOf('export async function updateCurrentPlayerProfile'),
