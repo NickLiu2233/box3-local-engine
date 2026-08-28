@@ -66,6 +66,9 @@ jobs:
           name: images-${{ matrix.architecture }}
           path: box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz
           if-no-files-found: error
+          # GitHub only accepts whole days for artifact retention. One day is
+          # the shortest supported value; release assets are published below.
+          retention-days: 1
 
   desktop:
     needs: images
@@ -109,6 +112,7 @@ jobs:
           name: desktop-${{ matrix.target }}
           path: apps/local-engine/dist/desktop-installers/*.zip
           if-no-files-found: error
+          retention-days: 1
 
   headless-server:
     needs: images
@@ -143,6 +147,7 @@ jobs:
           name: headless-server-${{ matrix.architecture }}
           path: apps/local-engine/dist/server-packages/*.zip
           if-no-files-found: error
+          retention-days: 1
 
   publish:
     needs: [desktop, headless-server]
