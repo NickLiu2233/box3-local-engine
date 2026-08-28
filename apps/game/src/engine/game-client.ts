@@ -1338,10 +1338,9 @@ export class GameClient {
       return;
     }
 
-    const requestPointerLock =
-      element.requestPointerLock || element['mozRequestPointerLock'];
-
-    requestPointerLock.call(element);
+    // Keep all pointer-lock requests in InputController so browser cooldowns
+    // and rejected promises are handled consistently.
+    this.input.requestPointerLock();
   };
 
   /**

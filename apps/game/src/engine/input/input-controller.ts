@@ -72,6 +72,14 @@ export class InputController {
 
   private intersectElements: IntersectElementsFun[] = [];
 
+  // Chromium rejects a pointer-lock request made immediately after a lock was
+  // released (even when the call originated from the same click). Keep a
+  // short cooldown and swallow the rejected promise so this browser policy
+  // does not surface as an uncaught game error.
+  private _lastPointerLockExitAt = 0;
+  private _pointerLockRequestPending = false;
+  private _wasPointerLocked = false;
+
   private intersects = (
     out: GameElement[],
     pos: SerializedVec2,
@@ -1012,8 +1020,13 @@ export class InputController {
   }
 
   private _onPointerLockChange = () => {
+    const isLocked = this._hasPointerLock();
+    if (this._wasPointerLocked && !isLocked) {
+      this._lastPointerLockExitAt = Date.now();
+    }
+    this._wasPointerLocked = isLocked;
     this.onPointerLockChange.notify({
-      isLocked: this._hasPointerLock(),
+      isLocked,
     });
   };
 
@@ -1032,7 +1045,11 @@ export class InputController {
   }
 
   public requestPointerLock = () => {
-    if (this._hasPointerLock()) {
+    if (this._hasPointerLock() || this._pointerLockRequestPending) {
+      return;
+    }
+
+    if (Date.now() - this._lastPointerLockExitAt < 250) {
       return;
     }
 
@@ -1048,7 +1065,16 @@ export class InputController {
     const requestPointerLock: Element['requestPointerLock'] =
       element.requestPointerLock || element['mozRequestPointerLock'];
 
-    requestPointerLock.call(element);
+    this._pointerLockRequestPending = true;
+    const result = requestPointerLock.call(element);
+    if (result && typeof (result as Promise<void>).catch === 'function') {
+      (result as Promise<void>).catch(() => undefined);
+    }
+    // The browser reports the actual state through pointerlockchange. This
+    // only prevents duplicate requests while the promise is settling.
+    Promise.resolve().then(() => {
+      this._pointerLockRequestPending = false;
+    });
 
     return;
   };
@@ -1058,6 +1084,7 @@ export class InputController {
       return;
     }
 
+    this._lastPointerLockExitAt = Date.now();
     return exitPointerLock();
   };
 }

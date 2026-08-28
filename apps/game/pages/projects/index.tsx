@@ -495,6 +495,8 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
     setProjectName('');
     setProjectPublicId('');
     setProjectDescription('');
+    setMapSize('medium');
+    setCustomMapSize([64, 128, 64]);
     setDialogError('');
     setDialog('submap');
   };
@@ -896,7 +898,12 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
       const response = await fetch(`/api/local-projects/${encodeURIComponent(selectedProject.mainProjectId)}/maps`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, name, description: projectDescription }),
+        body: JSON.stringify({
+          id,
+          name,
+          description: projectDescription,
+          mapSize: mapSize === 'custom' ? customMapSize : mapSize,
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || '创建副地图失败');
@@ -1446,7 +1453,7 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
                   <label htmlFor="project-name">作品名称</label>
                   <input id="project-name" autoFocus maxLength={40} value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="例如：我的冒险世界" />
                   </div>
-                  {dialog === 'create' && <>
+                  {(dialog === 'create' || dialog === 'submap') && <>
                     <div className={styles.mapSizeField}>
                       <div className={styles.mapChoiceLabel}>
                         <label>地图尺寸</label>

@@ -976,7 +976,7 @@ function listMapGroup(id) {
     })
 }
 
-function createSubmap(mainId, { id, name, description = '' }) {
+function createSubmap(mainId, { id, name, description = '', mapSize }) {
   const main = getProject(mainId)
   const identity = mapGroupIdentity(mainId)
   if (identity.mapRole !== 'main' || identity.mainProjectId !== mainId) {
@@ -987,7 +987,7 @@ function createSubmap(mainId, { id, name, description = '' }) {
     name,
     author: main.author || '',
     description,
-    mapSize: 'medium',
+    mapSize,
   })
   const metadata = getProject(created.id)
   metadata.mapGroupId = identity.mapGroupId
