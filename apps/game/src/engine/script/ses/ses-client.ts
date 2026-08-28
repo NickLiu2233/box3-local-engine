@@ -190,6 +190,9 @@ export class SesContext {
       // 创建 iframe
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
+      // Keep map code in an opaque origin.  It can execute JavaScript but
+      // cannot reach the parent page, cookies, storage, popups or navigation.
+      iframe.setAttribute('sandbox', 'allow-scripts');
       document.body.appendChild(iframe);
       this.iframe = iframe;
       const win = iframe.contentWindow as ScriptWindow | null;
@@ -219,6 +222,7 @@ export class SesContext {
         <!DOCTYPE html>
         <html>
         <head>
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; form-action 'none'; navigate-to 'none';">
           <script>
             try {
               window.history.replaceState(null, '', '${sandboxRoot}');
@@ -245,6 +249,34 @@ export class SesContext {
       const newWin = iframe.contentWindow as ScriptWindow;
       if (!newWin)
         throw new Error('Failed to access iframe window after write');
+
+      // The public client API is injected below. Explicitly remove browser
+      // capabilities that are not part of the generated client DTS surface.
+      // Define these before loading the entry module so user code cannot race
+      // the guard installation.
+      const blocked = [
+        'fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'Worker',
+        'SharedWorker', 'BroadcastChannel', 'MessageChannel', 'Notification',
+      ];
+      for (const name of blocked) {
+        try {
+          Object.defineProperty(newWin, name, {
+            configurable: false,
+            enumerable: false,
+            get: () => undefined,
+            set: () => undefined,
+          });
+        } catch {
+          // Some browser globals are non-configurable; CSP/sandbox still
+          // provides the primary protection for those cases.
+        }
+      }
+      try {
+        Object.defineProperty(newWin, 'open', { value: undefined, configurable: false });
+        Object.defineProperty(newWin, 'postMessage', { value: undefined, configurable: false });
+      } catch {
+        // Ignore non-configurable host properties.
+      }
 
       // 注入全局变量到新窗口
       // 特殊处理 navigator，避免覆盖只读的 window.navigator
@@ -322,7 +354,10 @@ export class SesContext {
 
     for (const [name, code] of Object.entries(this.modules)) {
       // 预处理代码：将相对路径 import 转换为绝对路径
-      const transformedCode = this.transformRelativeImports(code, sandboxRoot);
+      const transformedCode = this.transformRelativeImports(
+        this.restrictModuleGlobals(code),
+        sandboxRoot,
+      );
 
       const blob = new Blob([transformedCode], { type: 'text/javascript' });
       const url = URL.createObjectURL(blob);
@@ -344,6 +379,58 @@ export class SesContext {
     }
 
     return imports;
+  }
+
+  /**
+   * Keep the browser document as an implementation detail of the loader.
+   * Map code is compiled against the client DTS surface and must not be able
+   * to reach DOM, storage, navigation or networking through globalThis.
+   * This mirrors the worker-side restrictions used by boxes' safe-eval.
+   */
+  private restrictModuleGlobals(code: string): string {
+    return `
+      const __clientGlobalThis = Object.freeze({
+        console, Math, Date, FormData,
+        setTimeout, clearTimeout, setInterval, clearInterval,
+        sleep, EventEmitter, Coord2, Vec2, Vec3,
+        InputSystem, input, ClientScreen, screen, screenWidth, screenHeight,
+        ClientWorld, world, http, media, Audio, MediaErrorCode, MediaError,
+        DeviceType, ClientRemoteChannel, remoteChannel, call, callAsync,
+      });
+      const globalThis = __clientGlobalThis;
+      const window = undefined;
+      const self = undefined;
+      const document = undefined;
+      const location = undefined;
+      const history = undefined;
+      const localStorage = undefined;
+      const sessionStorage = undefined;
+      const indexedDB = undefined;
+      const caches = undefined;
+      const crypto = undefined;
+      const performance = undefined;
+      const fetch = undefined;
+      const XMLHttpRequest = undefined;
+      const WebSocket = undefined;
+      const EventSource = undefined;
+      const Worker = undefined;
+      const SharedWorker = undefined;
+      const BroadcastChannel = undefined;
+      const MessageChannel = undefined;
+      const Notification = undefined;
+      const URL = undefined;
+      const Headers = undefined;
+      const Request = undefined;
+      const Response = undefined;
+      const eval = undefined;
+      const Function = undefined;
+      const importScripts = undefined;
+      const atob = undefined;
+      const btoa = undefined;
+      const open = undefined;
+      const postMessage = undefined;
+      ${code}
+    `;
   }
 
   /**
