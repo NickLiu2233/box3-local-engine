@@ -9,14 +9,17 @@ const { execFileSync } = require('child_process')
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
 const stageScript = path.join(packageRoot, 'src/stage-runtime-data.js')
-const syncSkinsScript = path.join(packageRoot, 'src/sync-built-in-skins.js')
+const prepareAssetsScript = path.join(packageRoot, 'src/prepare-assets.js')
 const skinSource = path.join(repoRoot, 'services/game-server/src/player/built-in-skins.ts')
 const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-built-in-skins-'))
 
 try {
   // Skin blobs are committed release inputs. This check deliberately runs
   // without network access so CI catches any accidental cloud dependency.
-  execFileSync(process.execPath, [syncSkinsScript], { stdio: 'pipe' })
+  // Prepare derived runtime resources from tracked source assets first. A
+  // clean CI checkout must not depend on generated blobs left in a developer
+  // machine's ignored data directory.
+  execFileSync(process.execPath, [prepareAssetsScript], { stdio: 'pipe' })
   execFileSync(process.execPath, [stageScript, runtimeRoot], { stdio: 'pipe' })
   const source = fs.readFileSync(skinSource, 'utf8')
   const partHashes = [...source.matchAll(/parts: parts\(\[([\s\S]*?)\]\)/g)].flatMap(
