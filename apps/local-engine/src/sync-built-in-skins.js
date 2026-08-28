@@ -25,14 +25,11 @@ function readSkins() {
   return entries
 }
 
-async function download(url, target) {
-  if (fs.existsSync(target) && fs.statSync(target).size > 0) return false
-  const response = await fetch(url)
-  if (!response.ok) throw new Error(`无法下载 ${url}: HTTP ${response.status}`)
-  const data = new Uint8Array(await response.arrayBuffer())
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  fs.writeFileSync(target, data)
-  return true
+function requireLocalAsset(target, label) {
+  if (!fs.existsSync(target) || fs.statSync(target).size === 0) {
+    throw new Error(`缺少内置皮肤本地资源 ${label}：${target}`)
+  }
+  return false
 }
 
 async function main() {
@@ -40,14 +37,13 @@ async function main() {
   let downloaded = 0
   for (const skin of skins) {
     for (const hash of skin.hashes) {
-      if (await download(`https://assets.box3.fun/avatar/m/${hash}`, path.join(blobRoot, hash)))
-        downloaded += 1
+      downloaded += requireLocalAsset(path.join(blobRoot, hash), hash) ? 1 : 0
     }
     const name = path.basename(skin.preview)
-    if (await download(skin.sourcePreview, path.join(previewRoot, name))) downloaded += 1
+    downloaded += requireLocalAsset(path.join(previewRoot, name), name) ? 1 : 0
   }
   console.log(
-    `Built-in player skins are ready (${skins.length} sets, ${downloaded} files downloaded)`,
+    `Built-in player skins are ready (${skins.length} sets, ${downloaded} files checked offline)`,
   )
 }
 

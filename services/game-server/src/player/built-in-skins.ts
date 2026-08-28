@@ -5,8 +5,8 @@ import {
 
 /**
  * Curated, offline player skins. Every hash is the original 3D body-part
- * resource hash; `sync-built-in-skins.js` downloads the matching blobs into
- * the local content store before a release image is built.
+ * resource hash. The blobs and preview images are checked into the repository
+ * so a release can be built without contacting BOX3 services.
  */
 export type BuiltInSkin = {
   id: string;
@@ -31,7 +31,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'explorer', name: '探险者',
     preview: '/built-in-skins/explorer.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/L_5JaoHHhId9uqIocEBj8hDtHnqEuRzCJyQuEUPGPQo.png',
+    sourcePreview: '/built-in-skins/explorer.png',
     parts: parts([
       'GTuRfQ8lo5UVNwVRkX0pffhoTDLnsj_hdgCl0hFPlxk', 'L97ARUcIR9G1_lSv1c8-d_qhr-qB15A3Ew4UJ1FnhAY', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'XmPKwf7XjsDoYuNkjDQrWPzLIu1aTOYnby2bUmQChE4',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', 'sOgyrN2KX2usg51tbNNxBFrJ9iPPW0CKN91A9za09Tk', '9gtCoNxXqTSG7QKR1FpbpF0ySeNvA-JMrlq17Qm-L2k', 'fFzXwES0_SIA4gtPnY1rAjJRiZ8PnP7WewMOuDzQRiE',
@@ -43,7 +43,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'pilot', name: '飞行员',
     preview: '/built-in-skins/pilot.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/9jzXwUPvWiVu1Ge3Ld47mr62g76lqbCznmQLXe6yikg.png',
+    sourcePreview: '/built-in-skins/pilot.png',
     parts: parts([
       'e1ZzIyGdOZxAsKAHToSr1Rohek9p9knQoE5r6bssVjQ', 'qFAdwDi7V1l1dyrzd38MX7ncFpbDXCPnrp3-ojx7uiw', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'BtoygkjjKTbFkCz-YqoBuYw26F6Bm6ZYGQYe_j9Ll44',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', 'tAHLZ9uvlsTjN5iAeXczO381B2OSNJ69O95M2YYfcN8', 'j_VxLyyA8FBWp7kHniJSaxTb5A1PsoSRCgLG0Qwz6fY', '6Vv-ANt6YO7b-e8gUkS1T4eDXPeMDv3sSS1Fys_h0S8',
@@ -55,7 +55,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'cowboy', name: '牛仔',
     preview: '/built-in-skins/cowboy.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/Efpqx5GR8RBrc8TV1HLa9BZT48DKiHQvm-TOi5y_0WI.png',
+    sourcePreview: '/built-in-skins/cowboy.png',
     parts: parts([
       'xyo3QwTg87Hhx0oWLkGYnrY_gDqFDPgEXhjxweay1-k', 'hH_d1ycJuEOUg5s2e78mRmVfgDMkmwgCljijPPNJWMw', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'zr-Gim06sJj1VyQIdDh1Kp0j8A4gfKoRjsQTHGdgcZQ',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', 'Tm6iY1tjlBCxIFVkH6fQ6WSCGItCwgp1qhnV2MSmDAc', 'rE7gZfK-ViZf-NNWbddA9GiL8jqhZ5BZv5s6PlgoEEc', 'DJB3mDs16RuGcdOKCCjMMXwyI6p5lZrbgPjY_L6Uk7Q',
@@ -67,7 +67,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'chinese-doll', name: '中国娃娃',
     preview: '/built-in-skins/chinese-doll.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/we_4yYv045AaeluR_PEKVtNTySyZwyemVu22MaH6aCM.png',
+    sourcePreview: '/built-in-skins/chinese-doll.png',
     parts: parts([
       '3wkhe7Ans_MZGGPsPTvtS7-q_pZdwHwChZJqcGH2Cr4', 'lTD6g8p4M9v6m8li59Kmmunz2L-57QYc7zPFDZ-W-Es', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', '-PwWZ9AEpzk377FQDI94jsphx1MzasVJd5s4zFZDhcU',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', '3t4Jqs6gaJacqhnYDgqZ2vYS7JaPgRlUHB-By0rvqGI', 'dFZks4pYaRJ6kU-VDzQv6kIsFhOYZ43-wik950M_x1U', 'V5w0v22x0_urNk-w77v-F_CTuT_K8ncnQd45-WM_lWM',
@@ -79,7 +79,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'pink-girl', name: '粉红女孩',
     preview: '/built-in-skins/pink-girl.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/LDxMz3lv_AfRerG-DhCYP2uw6EguxWNEIErwCBehp6c.png',
+    sourcePreview: '/built-in-skins/pink-girl.png',
     parts: parts([
       'fY_KWg63ZqAvBXvX0edrPGD_GevpTGdOeZkcd4ami-8', '4jRcLv0pBJE9AjT8Jc9jZDDeUfc_RHzVfsJZyeMuaok', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'Xr1Okz2DqOdp07Npx5uH0N3LUScFDdF1hGIPsEBQW3g',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', '5cwYkZ2jXAx4nXS0eZ4Rf6pInNuohcrZJzePgx_WkzU', 'rkXRGaG-CfvGeVCpnVMywGTvb-DH8H2YqpVJWSKXhdw', 'jDW1gLMHdMU77AL4Gpu3OFkm4Z5XOGThqoM-NNx12DY',
@@ -91,7 +91,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'maid', name: '女仆',
     preview: '/built-in-skins/maid.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/HxVydNxuOJtlFx95TBoUHQtfdUTpH2oMuGCQ5LP0rPw.png',
+    sourcePreview: '/built-in-skins/maid.png',
     parts: parts([
       'f3VtPxT0ASkPa5x-e-vX_99ONPxvK_TFPCq_uxrrwb8', '17CzAKUuiO68ymvOPlXf7da1QdhU78fcsKHtC6l850k', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'MKXaSqTVklFqaVL1AmWCzzeOsk-pe6Nc4xU8VwH8Zlk',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', 'e4RaMqkk8wRFTc2RbHz6BQkIrjcmYTLnE0IBySs5wFs', 'I4_DYrkbGGvsGQoptmNOn5ZVJ_ShkU-105VIJq2eXrc', 'TygomLARFBxhswYiAEi5onCeMIi6eInfdlt1GTPEzA8',
@@ -103,7 +103,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'little-prince', name: '小王子',
     preview: '/built-in-skins/little-prince.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/uSxzIdoQ2lp3LC1xRjRbn5uzSpEIPhvQAlt5gqzthLA.png',
+    sourcePreview: '/built-in-skins/little-prince.png',
     parts: parts([
       'RfOhWqMStI91CRsJ_fj1tKZVRgIi1xY9Ct35f49VCjI', 'Ze4mssXcrX1e7z185MAXCZRtMAtwB-zLj1GYyRcMU2c', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'vS95Ll6sl63_jDkyvfifk2BTVyB5WOqjStVP_QYb_Go',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', 'aAphssqiPi93r7mAMudYFtFxRuGvLWKyikJifiacQEA', 'T7ltKgCfHRWDh8DvYWwjTLUm_jyyXGIin8YEQYezqRE', 'QkjGc5q5hFFv6nk338copZyNAOkmUxMJoXbOO3o9OFA',
@@ -115,7 +115,7 @@ export const BUILT_IN_SKINS: readonly BuiltInSkin[] = [
   {
     id: 'christmas-girl', name: '圣诞女孩',
     preview: '/built-in-skins/christmas-girl.png',
-    sourcePreview: 'https://assets.box3.fun/avatar/img/xuC3oLYzvbD_0fYckz088N71SLCRJefb66esj5p_gGc.png',
+    sourcePreview: '/built-in-skins/christmas-girl.png',
     parts: parts([
       'MI21yB2DhnLlllbB8CQJtTaH24CL944CDz-RSe05kqA', 'FXWQtkvKoY33JwIpKVbPNlKs542KIEbQ4INP6VknKTE', 'oShx_uIQ-4YZKR6uoZRYHL0lMeSyN1nSJfaAaSP2MiI', 'fz8YT7RQVR-jpW4u1ERGHT2GO0AhgkR7nXfypKDLHKQ',
       'qNXdY_ukcevLHz6PfB4YebcVKm5ymKkc4RmmNACt58U', 'k6DpMny-A1lfQF9IS7s6tr5zdEt1OF8JD_9z-gB8BQk', '57m8K7_P-oRkudRkii4mjK2HgQ1qRL5DSVn1JRHCrUc', 'HdmOGRHGe3rUiEAvtIPlU2-ou76v7FLYGIIKIcu_rOs',

@@ -11,6 +11,9 @@ Local Engine 使用独立、无界面的 `player-service` 镜像管理玩家身�
 
 公开认证接口、跨域配置和自建登录页示例参阅 [Player Service 对外 API](player-service-api.md)。
 
+默认皮肤的模型部件和预览图随仓库一起发布，构建过程不会从 BOX3 云端下载皮肤资源。若本地资源不完整，
+`pnpm prepare:assets` 会直接指出缺失文件并终止，避免生成不完整的离线镜像。
+
 ## 启动
 
 ```bash

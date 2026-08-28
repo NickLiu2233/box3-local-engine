@@ -32,6 +32,10 @@ Player Service 的发布镜像会在构建阶段物理移除 Creator、Play、�
 - Corepack 和 pnpm 10.12.1；
 - 首次构建建议至少 20 GB 可用空间和 8 GB 内存。
 
+仓库已内置运行时所需的资源 Blob（包括 8 套默认玩家皮肤及其预览图）。`pnpm prepare:assets` 只会
+校验并整理这些本地文件，不会访问 `assets.box3.fun` 或其他云端资源地址；因此即使资源服务器关闭，
+从完整 Git 检出仍可以离线构建镜像和桌面包。
+
 检查环境：
 
 ```bash
