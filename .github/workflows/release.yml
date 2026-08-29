@@ -55,12 +55,20 @@ jobs:
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           archive="box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
-          if ossutil stat "oss://$OSS_BUCKET/$OSS_PREFIX/$archive" >/dev/null 2>&1; then
+          object="oss://$OSS_BUCKET/$OSS_PREFIX/$archive"
+          if ossutil stat "$object" >/tmp/oss-stat.txt 2>&1; then
             echo "cache-hit=true" >> "$GITHUB_OUTPUT"
             echo "Found cached image archive: $archive"
+          elif ossutil cp "$object" "$archive" >/tmp/oss-cache-download.txt 2>&1; then
+            # Some RAM policies allow GetObject but not HeadObject (used by
+            # `stat`). A successful download is still a valid cache hit.
+            echo "cache-hit=true" >> "$GITHUB_OUTPUT"
+            echo "Found cached image archive by download: $archive"
           else
             echo "cache-hit=false" >> "$GITHUB_OUTPUT"
             echo "No cached image archive found: $archive"
+            cat /tmp/oss-stat.txt || true
+            cat /tmp/oss-cache-download.txt || true
           fi
       - name: Build offline images
         if: steps.image-cache.outputs.cache-hit != 'true'
