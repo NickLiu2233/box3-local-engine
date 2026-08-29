@@ -1,0 +1,66 @@
+name: Test Windows OSS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
+  OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+  OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
+  OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
+
+jobs:
+  test-windows-oss:
+    name: Windows virtual-hosted OSS test
+    runs-on: windows-2022
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check OSS settings
+        run: |
+          test -n "$OSS_BUCKET" || { echo "Missing secret: ALIYUN_OSS_BUCKET"; exit 1; }
+          test -n "$OSS_ENDPOINT" || { echo "Missing secret: ALIYUN_OSS_ENDPOINT"; exit 1; }
+          test -n "$OSS_ACCESS_KEY_ID" || { echo "Missing secret: ALIYUN_OSS_ACCESS_KEY_ID"; exit 1; }
+          test -n "$OSS_ACCESS_KEY_SECRET" || { echo "Missing secret: ALIYUN_OSS_ACCESS_KEY_SECRET"; exit 1; }
+
+      - name: Configure AWS CLI for Aliyun OSS
+        run: |
+          aws --version
+          aws configure set default.s3.addressing_style virtual
+          export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
+          aws configure set default.region cn-hangzhou
+
+      - name: Upload test object
+        env:
+          TEST_OBJECT: box-local-engine/ci-tests/windows/${{ github.run_id }}.txt
+        run: |
+          set -euo pipefail
+          printf 'Windows virtual-hosted OSS test\nrun=%s\n' "$GITHUB_RUN_ID" > "$RUNNER_TEMP/oss-test.txt"
+          export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
+          aws s3api put-object \
+            --bucket "$OSS_BUCKET" \
+            --key "$TEST_OBJECT" \
+            --body "$RUNNER_TEMP/oss-test.txt" \
+            --endpoint-url "https://$OSS_ENDPOINT"
+          echo "OSS upload succeeded: s3://$OSS_BUCKET/$TEST_OBJECT"
+
+      - name: Read test object
+        env:
+          TEST_OBJECT: box-local-engine/ci-tests/windows/${{ github.run_id }}.txt
+        run: |
+          set -euo pipefail
+          export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
+          aws s3api get-object \
+            --bucket "$OSS_BUCKET" \
+            --key "$TEST_OBJECT" \
+            "$RUNNER_TEMP/oss-test-downloaded.txt" \
+            --endpoint-url "https://$OSS_ENDPOINT"
+          cmp -s "$RUNNER_TEMP/oss-test.txt" "$RUNNER_TEMP/oss-test-downloaded.txt"
+          echo "Downloaded content:"
+          cat "$RUNNER_TEMP/oss-test-downloaded.txt"
+          echo "OSS read and content verification succeeded: s3://$OSS_BUCKET/$TEST_OBJECT"
