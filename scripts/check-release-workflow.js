@@ -38,12 +38,10 @@ assert.match(workflow, /corepack enable/)
 assert.match(workflow, /pnpm --version/)
 assert.match(installerBuilder, /const archiveImageTags = \[\.\.\.new Set\(imageDetails\.map/)
 assert.match(installerBuilder, /const imageTag = archiveImageTags\.length === 1/)
-assert.match(workflow, /pattern: images-\*/)
 assert.match(workflow, /headless-server:\s+needs: images/)
 assert.match(workflow, /node scripts\/build-headless-server-package\.js/)
-assert.match(workflow, /pattern: headless-server-\*/)
 assert.match(workflow, /needs: \[desktop, headless-server\]/)
-assert.match(workflow, /files:\s*\|\s*\*\.zip\s*\*\.tar\.gz/)
+assert.match(workflow, /files:\s*\|[\s\S]*release-files\/\*\.zip[\s\S]*release-files\/\*\.tar\.gz/)
 assert.match(serverPackageBuilder, /BOX3-Engine-Server-/)
 assert.match(serverPackageBuilder, /function headlessCompose/)
 assert.match(serverPackageBuilder, /player-auth-portal:/)
@@ -57,6 +55,34 @@ assert.doesNotMatch(
   workflow.match(/headless-server:[\s\S]*?\n {2}publish:/)?.[0] || '',
   /box-local-engine-(creator|voxa):/,
 )
+
+// Build outputs are exchanged through Aliyun OSS rather than GitHub Actions
+// artifacts. Keep this contract in sync with release.yml so the workflow check
+// catches accidental regressions to the quota-limited artifact service.
+for (const step of [
+  'Upload images to Aliyun OSS',
+  'Download images from Aliyun OSS',
+  'Upload desktop installer to Aliyun OSS',
+  'Upload server package to Aliyun OSS',
+  'Download release files from Aliyun OSS',
+]) {
+  assert.match(workflow, new RegExp(step))
+}
+assert.match(workflow, /ossutil\s+config/)
+assert.match(workflow, /OSS_BUCKET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_BUCKET\s*\}\}/)
+assert.match(workflow, /OSS_ENDPOINT:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ENDPOINT\s*\}\}/)
+assert.match(workflow, /OSS_ACCESS_KEY_ID:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_ID\s*\}\}/)
+assert.match(
+  workflow,
+  /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
+)
+assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
+assert.doesNotMatch(
+  workflow,
+  /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['\"][^$]/i,
+)
+assert.match(workflow, /release-files\/\*\.zip/)
+assert.match(workflow, /release-files\/\*\.tar\.gz/)
 for (const requiredTemplateFile of ['README.md', 'install.sh', 'status.sh', 'logs.sh', 'stop.sh']) {
   assert.ok(
     fs.existsSync(path.join(root, 'distribution/server', requiredTemplateFile)),
