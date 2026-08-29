@@ -32,7 +32,7 @@ jobs:
 
       - name: Upload and read test object
         env:
-          TEST_OBJECT: box-local-engine-ci-tests/${{ github.repository }}/${{ github.run_id }}.txt
+          TEST_OBJECT: box-local-engine/ci-tests/${{ github.repository }}/${{ github.run_id }}.txt
         run: |
           set -euo pipefail
           printf 'box-local-engine OSS connectivity test\nrun=%s\n' "$GITHUB_RUN_ID" > oss-test.txt
@@ -44,6 +44,6 @@ jobs:
       - name: Remove test object
         if: always()
         env:
-          TEST_OBJECT: box-local-engine-ci-tests/${{ github.repository }}/${{ github.run_id }}.txt
+          TEST_OBJECT: box-local-engine/ci-tests/${{ github.repository }}/${{ github.run_id }}.txt
         run: |
           ossutil rm "oss://$OSS_BUCKET/$TEST_OBJECT" || echo "Warning: cleanup failed; remove this test object manually."
