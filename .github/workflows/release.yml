@@ -132,21 +132,29 @@ jobs:
         run: |
           if ! command -v ossutil >/dev/null 2>&1; then
             if [[ "${{ matrix.target }}" == windows-* ]]; then
-              curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil64.exe -o "$RUNNER_TEMP/ossutil.exe"
-              chmod +x "$RUNNER_TEMP/ossutil.exe"
-              echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
-              export PATH="$RUNNER_TEMP:$PATH"
+              aws --version
             elif command -v sudo >/dev/null 2>&1; then
               curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
             else
               curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
             fi
           fi
-          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           version="$(node -p "require('./apps/deployment-manager/package.json').version")"
           installer="BOX-Local-Engine-${version}-${{ matrix.target }}.zip"
           object="oss://$OSS_BUCKET/$OSS_PREFIX/$installer"
-          if ossutil stat "$object" >/tmp/desktop-stat.txt 2>&1; then
+          if [[ "${{ matrix.target }}" == windows-* ]]; then
+            export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
+            if aws s3api head-object --bucket "$OSS_BUCKET" --key "$OSS_PREFIX/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-stat.txt 2>&1; then
+              echo "cache-hit=true" >> "$GITHUB_OUTPUT"
+              echo "Found cached desktop installer: $installer"
+            elif aws s3 cp "s3://$OSS_BUCKET/$OSS_PREFIX/$installer" "$RUNNER_TEMP/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-cache-download.txt 2>&1; then
+              echo "cache-hit=true" >> "$GITHUB_OUTPUT"
+              echo "Found cached desktop installer by download: $installer"
+            else
+              echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+              echo "No cached desktop installer found: $installer"
+            fi
+          elif ossutil stat "$object" >/tmp/desktop-stat.txt 2>&1; then
             echo "cache-hit=true" >> "$GITHUB_OUTPUT"
             echo "Found cached desktop installer: $installer"
           elif ossutil cp "$object" "$RUNNER_TEMP/$installer" >/tmp/desktop-cache-download.txt 2>&1; then
@@ -177,9 +185,15 @@ jobs:
               curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
             fi
           fi
-          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
-            apps/local-engine/dist/images/
+          if [[ "${{ matrix.target }}" == windows-* ]]; then
+            export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
+            aws s3 cp "s3://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+              apps/local-engine/dist/images/ --endpoint-url "https://$OSS_ENDPOINT"
+          else
+            ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+            ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+              apps/local-engine/dist/images/
+          fi
       - name: Build installer
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash
@@ -202,8 +216,13 @@ jobs:
               curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
             fi
           fi
-          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
+          if [[ "${{ matrix.target }}" == windows-* ]]; then
+            export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
+            aws s3 cp apps/local-engine/dist/desktop-installers/ "s3://$OSS_BUCKET/$OSS_PREFIX/" --recursive --endpoint-url "https://$OSS_ENDPOINT"
+          else
+            ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+            ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
+          fi
 
   headless-server:
     needs: images
