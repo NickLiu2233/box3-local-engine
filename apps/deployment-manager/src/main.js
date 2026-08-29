@@ -317,7 +317,8 @@ function setup() {
   const creatorHost = config.creatorHost || '127.0.0.1'
   const localSelected = creatorHost === '127.0.0.1' || creatorHost === 'localhost'
   const lanSelected = Boolean(config.lanIp) && creatorHost === config.lanIp
-  const inferredPlayAccessMode = config.playNetworkMode ||
+  const inferredPlayAccessMode =
+    config.playNetworkMode ||
     (config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
       ? 'local'
       : config.lanIp && config.publicHost === config.lanIp
