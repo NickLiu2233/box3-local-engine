@@ -70,7 +70,7 @@ jobs:
           docker builder prune --all --force
       - name: Upload images to Aliyun OSS
         run: |
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp "box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
             "oss://$OSS_BUCKET/$OSS_PREFIX/" --update
@@ -106,7 +106,11 @@ jobs:
         shell: bash
         run: |
           mkdir -p apps/local-engine/dist/images
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          if command -v sudo >/dev/null 2>&1; then
+            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          else
+            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
             apps/local-engine/dist/images/
@@ -119,7 +123,11 @@ jobs:
       - name: Upload desktop installer to Aliyun OSS
         shell: bash
         run: |
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          if command -v sudo >/dev/null 2>&1; then
+            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          else
+            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
 
@@ -138,7 +146,7 @@ jobs:
       - name: Download images from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
             apps/local-engine/dist/images/
@@ -156,7 +164,7 @@ jobs:
           node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
       - name: Upload server package to Aliyun OSS
         run: |
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp apps/local-engine/dist/server-packages/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
 
@@ -166,7 +174,7 @@ jobs:
     steps:
       - name: Download release files from Aliyun OSS
         run: |
-          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/" ./release-files/ --recursive
       - uses: softprops/action-gh-release@v2
