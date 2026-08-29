@@ -147,7 +147,7 @@ jobs:
             if aws s3api head-object --bucket "$OSS_BUCKET" --key "$OSS_PREFIX/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-stat.txt 2>&1; then
               echo "cache-hit=true" >> "$GITHUB_OUTPUT"
               echo "Found cached desktop installer: $installer"
-            elif aws s3 cp "s3://$OSS_BUCKET/$OSS_PREFIX/$installer" "$RUNNER_TEMP/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-cache-download.txt 2>&1; then
+            elif aws s3api get-object --bucket "$OSS_BUCKET" --key "$OSS_PREFIX/$installer" "$RUNNER_TEMP/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-cache-download.txt 2>&1; then
               echo "cache-hit=true" >> "$GITHUB_OUTPUT"
               echo "Found cached desktop installer by download: $installer"
             else
@@ -185,8 +185,10 @@ jobs:
           fi
           if [[ "${{ matrix.target }}" == windows-* ]]; then
             export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
-            aws s3 cp "s3://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
-              apps/local-engine/dist/images/ --endpoint-url "https://$OSS_ENDPOINT"
+            aws s3api get-object --bucket "$OSS_BUCKET" \
+              --key "$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+              "apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+              --endpoint-url "https://$OSS_ENDPOINT"
           else
             ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
             ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
@@ -214,7 +216,9 @@ jobs:
           fi
           if [[ "${{ matrix.target }}" == windows-* ]]; then
             export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
-            aws s3 cp apps/local-engine/dist/desktop-installers/ "s3://$OSS_BUCKET/$OSS_PREFIX/" --recursive --endpoint-url "https://$OSS_ENDPOINT"
+            for installer in apps/local-engine/dist/desktop-installers/*.zip; do
+              aws s3api put-object --bucket "$OSS_BUCKET" --key "$OSS_PREFIX/$(basename "$installer")" --body "$installer" --endpoint-url "https://$OSS_ENDPOINT"
+            done
           else
             ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
             ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
