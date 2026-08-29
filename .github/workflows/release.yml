@@ -8,6 +8,13 @@ on:
 permissions:
   contents: write
 
+env:
+  OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
+  OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+  OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
+  OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
+  OSS_PREFIX: box-local-engine/${{ github.ref_name }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -61,14 +68,12 @@ jobs:
           # intermediate BuildKit layers. Free them before artifact upload so
           # the ARM worker remains below its Docker storage limit.
           docker builder prune --all --force
-      - uses: actions/upload-artifact@v4
-        with:
-          name: images-${{ matrix.architecture }}
-          path: box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz
-          if-no-files-found: error
-          # GitHub only accepts whole days for artifact retention. One day is
-          # the shortest supported value; release assets are published below.
-          retention-days: 1
+      - name: Upload images to Aliyun OSS
+        run: |
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          ossutil cp "box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+            "oss://$OSS_BUCKET/$OSS_PREFIX/" --update
 
   desktop:
     needs: images
@@ -97,22 +102,26 @@ jobs:
       - name: Install Linux desktop dependencies
         if: startsWith(matrix.target, 'linux-')
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf zip
-      - uses: actions/download-artifact@v4
-        with:
-          name: images-${{ matrix.architecture }}
-          path: apps/local-engine/dist/images
+      - name: Download images from Aliyun OSS
+        shell: bash
+        run: |
+          mkdir -p apps/local-engine/dist/images
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+            apps/local-engine/dist/images/
       - name: Build installer
         shell: bash
         run: |
           archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
           test -f "$archive"
           pnpm build:desktop-installer '${{ matrix.target }}' "$archive"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: desktop-${{ matrix.target }}
-          path: apps/local-engine/dist/desktop-installers/*.zip
-          if-no-files-found: error
-          retention-days: 1
+      - name: Upload desktop installer to Aliyun OSS
+        shell: bash
+        run: |
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
 
   headless-server:
     needs: images
@@ -126,10 +135,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - uses: actions/download-artifact@v4
-        with:
-          name: images-${{ matrix.architecture }}
-          path: apps/local-engine/dist/images
+      - name: Download images from Aliyun OSS
+        run: |
+          mkdir -p apps/local-engine/dist/images
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+            apps/local-engine/dist/images/
       - name: Build headless Linux server package
         run: |
           source_archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
@@ -142,32 +154,24 @@ jobs:
             "box-local-engine-play:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             | gzip -1 > "$server_archive"
           node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: headless-server-${{ matrix.architecture }}
-          path: apps/local-engine/dist/server-packages/*.zip
-          if-no-files-found: error
-          retention-days: 1
+      - name: Upload server package to Aliyun OSS
+        run: |
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          ossutil cp apps/local-engine/dist/server-packages/ "oss://$OSS_BUCKET/$OSS_PREFIX/" --recursive --update
 
   publish:
     needs: [desktop, headless-server]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: desktop-*
-          merge-multiple: true
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: images-*
-          merge-multiple: true
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: headless-server-*
-          merge-multiple: true
+      - name: Download release files from Aliyun OSS
+        run: |
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/" ./release-files/ --recursive
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           files: |
-            *.zip
-            *.tar.gz
+            release-files/*.zip
+            release-files/*.tar.gz

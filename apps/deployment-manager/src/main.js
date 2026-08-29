@@ -317,12 +317,12 @@ function setup() {
   const creatorHost = config.creatorHost || '127.0.0.1'
   const localSelected = creatorHost === '127.0.0.1' || creatorHost === 'localhost'
   const lanSelected = Boolean(config.lanIp) && creatorHost === config.lanIp
-  const inferredPlayAccessMode =
-    config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
+  const inferredPlayAccessMode = config.playNetworkMode ||
+    (config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
       ? 'local'
       : config.lanIp && config.publicHost === config.lanIp
         ? 'lan'
-        : 'public'
+        : 'public')
   const playAccessMode = state.playAccessMode || inferredPlayAccessMode
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
@@ -827,6 +827,7 @@ function captureSetupForm() {
   const next = {
     ...state.config,
     ...values,
+    playNetworkMode: state.playAccessMode || state.config?.playNetworkMode || 'local',
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,

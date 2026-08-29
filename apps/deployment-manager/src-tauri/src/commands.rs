@@ -60,6 +60,7 @@ struct InstallConfigView {
     auto_backup_retention_count: u32,
     auto_backup_retention_days: u32,
     public_host: String,
+    play_network_mode: String,
     creator_host: String,
     lan_ip: String,
     play_port: u16,
@@ -102,6 +103,7 @@ impl Default for InstallConfigView {
             auto_backup_retention_count: 24,
             auto_backup_retention_days: 30,
             public_host: "127.0.0.1".into(),
+            play_network_mode: "local".into(),
             creator_host: "127.0.0.1".into(),
             lan_ip: detect_lan_ip().unwrap_or_default(),
             play_port: 3000,
@@ -157,6 +159,8 @@ struct InstallConfigInput {
     auto_backup_retention_days: u32,
     #[serde(default = "default_public_host")]
     public_host: String,
+    #[serde(default = "default_play_network_mode")]
+    play_network_mode: String,
     #[serde(default = "default_creator_host")]
     creator_host: String,
     #[serde(default = "default_play_port")]
@@ -203,6 +207,9 @@ fn default_auto_backup_retention_days() -> u32 {
 }
 fn default_public_host() -> String {
     "127.0.0.1".into()
+}
+fn default_play_network_mode() -> String {
+    "local".into()
 }
 fn default_creator_host() -> String {
     "127.0.0.1".into()
@@ -557,12 +564,21 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     let owner =
         fs::read_to_string(&owner_path).map_err(|error| format!("无法读取部署配置：{error}"))?;
     let owner_values = parse_env(&owner);
-    let play_host = owner_values
+    let configured_play_host = owner_values
         .get("BOX_PLAY_PUBLIC_HOST")
         .map(String::as_str)
         .map(|host| validate_host(host, "游玩端访问地址"))
         .transpose()?
         .unwrap_or_else(default_public_host);
+    let play_mode = owner_values
+        .get("BOX_PLAY_NETWORK_MODE")
+        .map(String::as_str)
+        .unwrap_or("local");
+    let play_host = if play_mode == "lan" {
+        detect_lan_ip().ok_or("已选择局域网模式，但当前未检测到可用的局域网 IP")?
+    } else {
+        configured_play_host
+    };
     let creator_host = owner_values
         .get("BOX_CREATOR_HOST")
         .map(String::as_str)
@@ -806,6 +822,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     )?;
     set_env(&mut content, "BOX_PLAY_LIBRARY_READ_ONLY", "false")?;
     set_env(&mut content, "BOX_PLAY_PUBLIC_HOST", &public_host)?;
+    set_env(&mut content, "BOX_PLAY_NETWORK_MODE", &config.play_network_mode)?;
     set_env(&mut content, "BOX_CREATOR_HOST", &creator_host)?;
     set_env(&mut content, "BOX_PLAY_PORT", &config.play_port.to_string())?;
     set_env(&mut content, "BOX_VOXA_PORT", &config.voxa_port.to_string())?;
@@ -1126,6 +1143,10 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .get("BOX_PLAY_PUBLIC_HOST")
             .cloned()
             .unwrap_or_else(default_public_host),
+        play_network_mode: values
+            .get("BOX_PLAY_NETWORK_MODE")
+            .cloned()
+            .unwrap_or_else(default_play_network_mode),
         creator_host: values
             .get("BOX_CREATOR_HOST")
             .cloned()
