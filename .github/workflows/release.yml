@@ -13,6 +13,8 @@ env:
   OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
   OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
+  AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
   OSS_PREFIX: box-local-engine/${{ github.ref_name }}
 
 jobs:
@@ -145,6 +147,7 @@ jobs:
           if [[ "${{ matrix.target }}" == windows-* ]]; then
             export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
             aws configure set default.s3.addressing_style virtual
+            aws configure set default.s3.payload_signing_enabled false
             if aws s3api head-object --bucket "$OSS_BUCKET" --key "$OSS_PREFIX/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-stat.txt 2>&1; then
               echo "cache-hit=true" >> "$GITHUB_OUTPUT"
               echo "Found cached desktop installer: $installer"
@@ -187,6 +190,7 @@ jobs:
           if [[ "${{ matrix.target }}" == windows-* ]]; then
             export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
             aws configure set default.s3.addressing_style virtual
+            aws configure set default.s3.payload_signing_enabled false
             aws s3api get-object --bucket "$OSS_BUCKET" \
               --key "$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
               "apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
@@ -219,6 +223,7 @@ jobs:
           if [[ "${{ matrix.target }}" == windows-* ]]; then
             export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
             aws configure set default.s3.addressing_style virtual
+            aws configure set default.s3.payload_signing_enabled false
             for installer in apps/local-engine/dist/desktop-installers/*.zip; do
               aws s3api put-object --bucket "$OSS_BUCKET" --key "$OSS_PREFIX/$(basename "$installer")" --body "$installer" --endpoint-url "https://$OSS_ENDPOINT"
             done
