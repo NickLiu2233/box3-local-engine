@@ -176,9 +176,7 @@ jobs:
           mkdir -p apps/local-engine/dist/images
           if ! command -v ossutil >/dev/null 2>&1; then
             if [[ "${{ matrix.target }}" == windows-* ]]; then
-              curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil64.exe -o "$RUNNER_TEMP/ossutil.exe"
-              chmod +x "$RUNNER_TEMP/ossutil.exe"
-              export PATH="$RUNNER_TEMP:$PATH"
+              aws --version
             elif command -v sudo >/dev/null 2>&1; then
               curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
             else
@@ -207,9 +205,7 @@ jobs:
         run: |
           if ! command -v ossutil >/dev/null 2>&1; then
             if [[ "${{ matrix.target }}" == windows-* ]]; then
-              curl -fsSL https://gosspublic.alicdn.com/ossutil/1.7.19/ossutil64.exe -o "$RUNNER_TEMP/ossutil.exe"
-              chmod +x "$RUNNER_TEMP/ossutil.exe"
-              export PATH="$RUNNER_TEMP:$PATH"
+              aws --version
             elif command -v sudo >/dev/null 2>&1; then
               curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
             else
