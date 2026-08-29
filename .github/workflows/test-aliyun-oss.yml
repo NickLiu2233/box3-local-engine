@@ -30,20 +30,22 @@ jobs:
           curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
 
-      - name: Upload and read test object
+      - name: Upload test object
         env:
           TEST_OBJECT: box-local-engine/ci-tests/${{ github.repository }}/${{ github.run_id }}.txt
         run: |
           set -euo pipefail
           printf 'box-local-engine OSS connectivity test\nrun=%s\n' "$GITHUB_RUN_ID" > oss-test.txt
           ossutil cp oss-test.txt "oss://$OSS_BUCKET/$TEST_OBJECT"
-          ossutil cp "oss://$OSS_BUCKET/$TEST_OBJECT" oss-test-downloaded.txt
-          cmp -s oss-test.txt oss-test-downloaded.txt
-          echo "OSS upload and read test passed: $TEST_OBJECT"
+          echo "OSS upload succeeded: oss://$OSS_BUCKET/$TEST_OBJECT"
 
-      - name: Remove test object
-        if: always()
+      - name: Read test object
         env:
           TEST_OBJECT: box-local-engine/ci-tests/${{ github.repository }}/${{ github.run_id }}.txt
         run: |
-          ossutil rm "oss://$OSS_BUCKET/$TEST_OBJECT" || echo "Warning: cleanup failed; remove this test object manually."
+          set -euo pipefail
+          ossutil cp "oss://$OSS_BUCKET/$TEST_OBJECT" oss-test-downloaded.txt
+          cmp -s oss-test.txt oss-test-downloaded.txt
+          echo "Downloaded content:"
+          cat oss-test-downloaded.txt
+          echo "OSS read and content verification succeeded: oss://$OSS_BUCKET/$TEST_OBJECT"
