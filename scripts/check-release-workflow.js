@@ -77,10 +77,7 @@ assert.match(
   /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
 )
 assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
-assert.doesNotMatch(
-  workflow,
-  /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['\"][^$]/i,
-)
+assert.doesNotMatch(workflow, /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['"][^$]/i)
 assert.match(workflow, /release-files\/\*\.zip/)
 assert.match(workflow, /release-files\/\*\.tar\.gz/)
 for (const requiredTemplateFile of ['README.md', 'install.sh', 'status.sh', 'logs.sh', 'stop.sh']) {
