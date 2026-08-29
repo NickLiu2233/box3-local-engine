@@ -62,6 +62,24 @@ function positiveInteger(name: string, fallback: number) {
   return Number.isSafeInteger(value) && value > 0 ? value : fallback
 }
 
+const RETRYABLE_STATUS_CODES = new Set([408, 425, 429])
+
+function isRetryableDownloadError(error: unknown) {
+  if (error instanceof Error && error.message.includes('超过单文件大小限制')) return false
+  const status = error instanceof Error && 'status' in error ? Number(error.status) : undefined
+  return (
+    status === undefined || RETRYABLE_STATUS_CODES.has(status) || (status >= 500 && status <= 599)
+  )
+}
+
+function retryDelayMs(attempt: number) {
+  return positiveInteger('BOX_MIGRATOR_RETRY_DELAY_MS', 1_000) * 2 ** Math.max(0, attempt - 1)
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms))
+}
+
 function limits(): Limits {
   return {
     maxBlobs: positiveInteger('BOX_MIGRATOR_MAX_BLOBS', 20_000),
@@ -148,7 +166,8 @@ export async function fetchBlob(
   const authorization = process.env.BOX_MIGRATOR_AUTHORIZATION?.trim()
   if (authorization) headers.set('authorization', authorization)
   const errors: string[] = []
-  const timeoutMs = positiveInteger('BOX_MIGRATOR_REQUEST_TIMEOUT_MS', 8_000)
+  const timeoutMs = positiveInteger('BOX_MIGRATOR_REQUEST_TIMEOUT_MS', 15_000)
+  const maxAttempts = positiveInteger('BOX_MIGRATOR_MAX_RETRIES', 3) + 1
   const normalizedHash = hash.split('.')[0]
   const groups =
     sourceKind === 's3-model'
@@ -166,68 +185,85 @@ export async function fetchBlob(
             : [EXACT_CID_PATTERN.test(normalizedHash) ? contentUrls(hash) : ossUrls(hash)]
 
   for (const urls of groups) {
-    const controllers = urls.map(() => new AbortController())
+    const activeControllers = new Set<AbortController>()
     try {
       return await Promise.any(
-        urls.map(async (url, index) => {
+        urls.map(async (url) => {
           let source = url
           try {
             source = new URL(url).hostname
           } catch {}
-          try {
-            return await withRequestSlot(async () => {
-              onAttempt(source, 1)
-              // Some CDN connections return headers but never finish the
-              // response body. Native fetch abort signals are not sufficient
-              // in every Node/undici edge case, so race both fetch and body
-              // consumption against an application-level deadline. This also
-              // guarantees the request-concurrency slot is released.
-              const deadlineController = new AbortController()
-              let deadline: ReturnType<typeof setTimeout> | undefined
-              const timeout = new Promise<never>((_, reject) => {
-                deadline = setTimeout(() => {
-                  const error = new Error(`请求超时（${timeoutMs}ms）`)
-                  deadlineController.abort(error)
-                  controllers[index].abort(error)
-                  reject(error)
-                }, timeoutMs)
-              })
-              try {
-                const response = await Promise.race([
-                  fetch(url, {
-                    headers,
-                    cache: 'no-store',
-                    signal: AbortSignal.any([
-                      controllers[index].signal,
-                      deadlineController.signal,
-                      AbortSignal.timeout(timeoutMs),
-                    ]),
-                  }),
-                  timeout,
-                ])
-                if (!response.ok) {
-                  throw new Error(`HTTP ${response.status}`)
+          let lastError: unknown
+          for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+            try {
+              return await withRequestSlot(async () => {
+                onAttempt(source, attempt)
+                // Some CDN connections return headers but never finish the
+                // response body. Native fetch abort signals are not sufficient
+                // in every Node/undici edge case, so race both fetch and body
+                // consumption against an application-level deadline. This also
+                // guarantees the request-concurrency slot is released.
+                const deadlineController = new AbortController()
+                const controller = new AbortController()
+                activeControllers.add(controller)
+                let deadline: ReturnType<typeof setTimeout> | undefined
+                const timeout = new Promise<never>((_, reject) => {
+                  deadline = setTimeout(() => {
+                    const error = new Error(`请求超时（${timeoutMs}ms）`)
+                    deadlineController.abort(error)
+                    controller.abort(error)
+                    reject(error)
+                  }, timeoutMs)
+                })
+                try {
+                  const response = await Promise.race([
+                    fetch(url, {
+                      headers,
+                      cache: 'no-store',
+                      signal: AbortSignal.any([
+                        controller.signal,
+                        deadlineController.signal,
+                        AbortSignal.timeout(timeoutMs),
+                      ]),
+                    }),
+                    timeout,
+                  ])
+                  if (!response.ok) {
+                    const error = new Error(`HTTP ${response.status}`) as Error & {
+                      status?: number
+                    }
+                    error.status = response.status
+                    throw error
+                  }
+                  const declaredLength = Number(response.headers.get('content-length') || '0')
+                  if (declaredLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
+                  const bytes = new Uint8Array(
+                    await Promise.race([response.arrayBuffer(), timeout]),
+                  )
+                  if (bytes.byteLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
+                  return bytes
+                } finally {
+                  if (deadline) clearTimeout(deadline)
+                  activeControllers.delete(controller)
                 }
-                const declaredLength = Number(response.headers.get('content-length') || '0')
-                if (declaredLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
-                const bytes = new Uint8Array(await Promise.race([response.arrayBuffer(), timeout]))
-                if (bytes.byteLength > cap) throw new Error(`blob ${hash} 超过单文件大小限制`)
-                return bytes
-              } finally {
-                if (deadline) clearTimeout(deadline)
-              }
-            })
-          } catch (error) {
-            errors.push(`${url}: ${error instanceof Error ? error.message : String(error)}`)
-            throw error
+              })
+            } catch (error) {
+              lastError = error
+              errors.push(
+                `${url}（第 ${attempt} 次）: ${error instanceof Error ? error.message : String(error)}`,
+              )
+              if (attempt >= maxAttempts || !isRetryableDownloadError(error)) throw error
+              await wait(retryDelayMs(attempt))
+            }
           }
+          throw lastError
         }),
       )
     } catch {
       // Match boxes' migrateVoxel behavior: only after every configured IPFS
       // endpoint fails do voxel models fall back to OSS /engine/m/.
     } finally {
-      for (const controller of controllers) controller.abort()
+      for (const controller of activeControllers) controller.abort()
     }
   }
   throw new Error(`无法下载 blob ${hash}（${errors.join('；') || 'network error'}）`)
@@ -1123,7 +1159,7 @@ export async function generateProjectArchive(
       }
       report({
         stage: 'downloading',
-        detail: '资源首次下载失败，已跳过并继续迁移。',
+        detail: '资源下载失败，已跳过并继续迁移。',
         currentHash: hash,
         parentHash,
         source: undefined,

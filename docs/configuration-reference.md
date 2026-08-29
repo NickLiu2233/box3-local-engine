@@ -94,6 +94,18 @@ BOX_PLAYER_LOGIN_URL=https://login.example.com/login
 
 Creator/VOXA 局域网部署还需要同步配置 `BOX_CREATOR_PUBLIC_URL`、`BOX_VOXA_PUBLIC_URL`、`BOX_VOXA_ALLOWED_ORIGINS`、`BOX_RESOURCE_ALLOWED_ORIGINS`。图形化启动器会自动派生这些变量；手工 Compose 才需要自己维护。
 
+## 云端迁移下载重试
+
+迁移器下载地图资源时，网络超时、连接中断、HTTP 408/425/429 或 5xx 会自动重试；HTTP 404 等明确不存在的资源不会重复请求。单个资源在重试耗尽后会记录为“已跳过”，不会卡住整个迁移任务。
+
+可按网络情况调整（均为可选）：
+
+| 变量 | 默认值 | 说明 |
+| --- | ---: | --- |
+| `BOX_MIGRATOR_MAX_RETRIES` | `3` | 首次请求失败后的重试次数（默认最多 4 次请求） |
+| `BOX_MIGRATOR_RETRY_DELAY_MS` | `1000` | 首次重试等待毫秒数，之后按 1s、2s、4s 递增 |
+| `BOX_MIGRATOR_REQUEST_TIMEOUT_MS` | `15000` | 单次请求（含响应体读取）超时时间 |
+
 ## 数据服务
 
 ### PostgreSQL

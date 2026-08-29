@@ -15,7 +15,10 @@ env:
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
   AWS_REQUEST_CHECKSUM_CALCULATION: when_required
   AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-  OSS_PREFIX: box-local-engine/${{ github.ref_name }}
+  # Include the commit SHA so a local or older build with the same version can
+  # never be mistaken for the current CI build. Re-runs of the same commit
+  # still reuse the cached images and installers.
+  OSS_PREFIX: box-local-engine/${{ github.ref_name }}/${{ github.sha }}
 
 jobs:
   verify:

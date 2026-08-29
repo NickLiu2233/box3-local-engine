@@ -439,6 +439,10 @@ fs.writeFileSync(
   console.log('PASS: audio hashes with filename extensions remain content-store dependencies')
 
   const originalFetch = global.fetch
+  const originalMaxRetries = process.env.BOX_MIGRATOR_MAX_RETRIES
+  const originalRetryDelay = process.env.BOX_MIGRATOR_RETRY_DELAY_MS
+  process.env.BOX_MIGRATOR_MAX_RETRIES = '3'
+  process.env.BOX_MIGRATOR_RETRY_DELAY_MS = '1'
   let attempts = 0
   global.fetch = async () => {
     attempts += 1
@@ -446,8 +450,16 @@ fs.writeFileSync(
   }
   await assert.rejects(() => fetchBlob(actualHash, 1024), /无法下载 blob/)
   global.fetch = originalFetch
-  assert.equal(attempts, 1, 'the built-in content source must be attempted once without retrying')
-  console.log('PASS: failed blobs try the built-in content source once without retries')
+  assert.equal(
+    attempts,
+    4,
+    'the content source should be retried three times after the first attempt',
+  )
+  console.log('PASS: failed blobs retry transient network errors before being skipped')
+  if (originalMaxRetries === undefined) delete process.env.BOX_MIGRATOR_MAX_RETRIES
+  else process.env.BOX_MIGRATOR_MAX_RETRIES = originalMaxRetries
+  if (originalRetryDelay === undefined) delete process.env.BOX_MIGRATOR_RETRY_DELAY_MS
+  else process.env.BOX_MIGRATOR_RETRY_DELAY_MS = originalRetryDelay
 
   process.env.BOX_MIGRATOR_OSS_URL = 'https://oss.invalid.test'
   const requestedURLs = []
@@ -505,7 +517,11 @@ fs.writeFileSync(
   // body. AbortSignal.timeout() only reaches fetch; keep this regression at
   // the body-read seam so a migration slot cannot remain occupied forever.
   const originalRequestTimeout = process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS
+  const originalBodyMaxRetries = process.env.BOX_MIGRATOR_MAX_RETRIES
+  const originalBodyRetryDelay = process.env.BOX_MIGRATOR_RETRY_DELAY_MS
   process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS = '20'
+  process.env.BOX_MIGRATOR_MAX_RETRIES = '1'
+  process.env.BOX_MIGRATOR_RETRY_DELAY_MS = '1'
   global.fetch = async () => ({
     ok: true,
     headers: new Headers(),
@@ -531,6 +547,10 @@ fs.writeFileSync(
   global.fetch = originalFetch
   if (originalRequestTimeout === undefined) delete process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS
   else process.env.BOX_MIGRATOR_REQUEST_TIMEOUT_MS = originalRequestTimeout
+  if (originalBodyMaxRetries === undefined) delete process.env.BOX_MIGRATOR_MAX_RETRIES
+  else process.env.BOX_MIGRATOR_MAX_RETRIES = originalBodyMaxRetries
+  if (originalBodyRetryDelay === undefined) delete process.env.BOX_MIGRATOR_RETRY_DELAY_MS
+  else process.env.BOX_MIGRATOR_RETRY_DELAY_MS = originalBodyRetryDelay
   console.log('PASS: stalled response bodies respect the migration request timeout')
 
   process.env.BOX_MIGRATOR_ENGINE_API_URL = 'https://engine.invalid.test'

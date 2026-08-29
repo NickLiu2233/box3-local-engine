@@ -29,7 +29,13 @@ async function preloadHashes(content: ContentServer, hashes: string[]) {
   for (let i = 0; i < chunks.length; ++i) {
     const b = await chunks[i];
     if (!b) {
-      throw new Error('error loading hash: ' + hashes[i]);
+      // Imported projects can reference an asset that is no longer present in
+      // the local content store. Keep the chunk slot so voxel indices remain
+      // aligned, but treat the missing chunk as empty instead of aborting the
+      // whole map startup.
+      console.warn(`missing content hash ${hashes[i]}, using an empty chunk`);
+      bytes[i] = new Uint8Array();
+      continue;
     }
     bytes[i] = b;
   }

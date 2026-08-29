@@ -187,6 +187,8 @@ git push origin v0.1.0
 
 工作流先在原生 Linux x64 与 Linux ARM64 Runner 上各构建一次五项服务镜像；每项架构只生成一份对应的完整离线归档。每个服务按顺序构建，归档后清理 BuildKit 中间层，避免导出大镜像时耗尽 Docker 磁盘。随后对应原生 Runner 使用匹配 CPU 架构的完整归档构建 Windows、macOS 和 Linux 桌面包；无图形服务器 job 则从完整归档抽出 Play、Player Service、参考登录门户，生成游玩专用服务器包。安装器从归档读取实际 Docker tag，并在构建前验证文件存在。该契约由 `scripts/check-release-workflow.js` 保护。
 
+构建归档和安装包会缓存到阿里云 OSS 的 `box-local-engine/<tag>/<commit-sha>/` 目录。重跑同一提交时会直接复用缓存；提交 SHA 不同则不会误用旧的本地或其他提交产物。
+
 镜像任务使用 `ubuntu-latest` 与 `ubuntu-24.04-arm`，桌面任务使用 `windows-2022`、`macos-14` 与 `ubuntu-22.04`。仓库所在组织若没有某个 Runner 的访问权限，对应任务会失败，Release 也不会发布。
 
 当前工作流**不包含** Windows Authenticode 签名、macOS Developer ID 签名或 notarization。它产出的自动 Release 适用于内部测试或明确标注为未签名的分发；公开正式发行前必须先补充签名和公证步骤，不能把“Tag 构建成功”等同于“可公开正式发布”。
