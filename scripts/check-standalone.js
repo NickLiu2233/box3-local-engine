@@ -1054,6 +1054,16 @@ for (const [file, label, pattern] of [
     /BOX_PLAY_ADMIN_TOKEN[\s\S]*?mode === 'play'/,
   ],
   ['docker-compose.yml', 'play library write access is opt-in', /BOX_PLAY_LIBRARY_READ_ONLY:-true/],
+  [
+    'docker-compose.yml',
+    'auth portal receives the player registration policy',
+    /AUTH_DEMO_REGISTRATION_ENABLED: \$\{BOX_PLAYER_REGISTRATION_ENABLED:-true\}/,
+  ],
+  [
+    'docker-compose.yml',
+    'play web process receives the library write policy',
+    /BOX_PLAY_LIBRARY_READ_ONLY: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
+  ],
 ]) {
   requirePattern(readRequired(file), file, label, pattern)
 }

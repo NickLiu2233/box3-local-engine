@@ -100,11 +100,11 @@ Creator/VOXA 局域网部署还需要同步配置 `BOX_CREATOR_PUBLIC_URL`、`BO
 
 可按网络情况调整（均为可选）：
 
-| 变量 | 默认值 | 说明 |
-| --- | ---: | --- |
-| `BOX_MIGRATOR_MAX_RETRIES` | `3` | 首次请求失败后的重试次数（默认最多 4 次请求） |
-| `BOX_MIGRATOR_RETRY_DELAY_MS` | `1000` | 首次重试等待毫秒数，之后按 1s、2s、4s 递增 |
-| `BOX_MIGRATOR_REQUEST_TIMEOUT_MS` | `15000` | 单次请求（含响应体读取）超时时间 |
+| 变量                              |  默认值 | 说明                                          |
+| --------------------------------- | ------: | --------------------------------------------- |
+| `BOX_MIGRATOR_MAX_RETRIES`        |     `3` | 首次请求失败后的重试次数（默认最多 4 次请求） |
+| `BOX_MIGRATOR_RETRY_DELAY_MS`     |  `1000` | 首次重试等待毫秒数，之后按 1s、2s、4s 递增    |
+| `BOX_MIGRATOR_REQUEST_TIMEOUT_MS` | `15000` | 单次请求（含响应体读取）超时时间              |
 
 ## 数据服务
 
@@ -124,6 +124,8 @@ BOX_DATABASE_POOL_SIZE=10
 两个 schema 职责不同：`box_identity` 保存账号、会话、封禁和审计；`box_engine` 保存地图脚本的持久数据。不要让两个环境共用同一个 schema，测试环境也不应连接生产数据库。
 
 桌面启动器将连接串拆为 `BOX_DATABASE_HOST`、`BOX_DATABASE_PORT`、`BOX_DATABASE_NAME`、`BOX_DATABASE_USER`、`BOX_DATABASE_PASSWORD`，再写入生成的 `.runtime.env`。这是为了让服主不必手写和转义 URL。
+连接池大小也可在“数据配置 → 数据服务”中调整；它是每个地图运行时的连接上限，不是整台服务器
+共享的总连接数。
 
 ### Redis
 
@@ -148,11 +150,32 @@ STORAGE_CACHE_REDIS_TTL=240
 | `BOX_CREATOR_EDIT_MAX_RUNTIMES`               |       6 | Creator 同时保留的编辑运行时上限                 |
 | `BOX_CREATOR_PLAY_MAX_RUNTIMES`               |       4 | Creator 预览运行时上限                           |
 | `BOX_PLAY_MAX_RUNTIMES`                       |       8 | Play 运行时上限                                  |
+| `BOX_CREATOR_EDIT_PREWARM_RUNTIMES`           |       6 | Creator 提前常驻的编辑运行时数量                 |
+| `BOX_CREATOR_PLAY_PREWARM_RUNTIMES`           |       0 | Creator 提前常驻的预览运行时数量                 |
+| `BOX_PLAY_PREWARM_RUNTIMES`                   |       8 | Play 提前常驻的游玩运行时数量                    |
 | `BOX_RUNTIME_IDLE_TIMEOUT_MS`                 |  900000 | 无连接运行时的回收等待时间（15 分钟）            |
 | `BOX_RUNTIME_START_TIMEOUT_MS`                | 1800000 | 大型地图首次预烘焙/启动的最大等待时间（30 分钟） |
+| `BOX_TELEPORT_MAX_ROOMS`                      |      64 | 可保留的 Teleport 私有房间数量上限               |
+| `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`           |  900000 | 无连接私有房间的回收等待时间（15 分钟）          |
 | `BOX_SCRIPT_HEAP_MB` / `BOX_SCRIPT_MEMORY_MB` |     512 | 单运行时脚本内存限制（MiB）                      |
 
 调整上限前先看 Docker Desktop 或服务器的实际 CPU、内存和地图尺寸。把上限调高不会让单张大地图更快，只会允许更多运行时同时争用资源。
+
+桌面启动器的“数据配置 → 运行容量”可以直接维护玩家上限、运行时与预热数量、脚本内存、启动
+超时、Teleport 房间策略和主要容器的 CPU/内存限制。界面中的时间统一使用分钟、容器内存统一
+使用 MiB，保存时会转换为底层环境变量；高级部署仍可在 `.env` 中直接维护原始值。
+
+### 容器资源限制
+
+| 变量                                      | 默认值     | 含义                        |
+| ----------------------------------------- | ---------- | --------------------------- |
+| `BOX_PLAYER_SERVICE_MEMORY_LIMIT` / `CPU` | 1g / 1     | 玩家服务容器内存和 CPU 上限 |
+| `BOX_AUTH_PORTAL_MEMORY_LIMIT` / `CPU`    | 128m / 0.5 | 登录门户容器内存和 CPU 上限 |
+| `BOX_CREATOR_MEMORY_LIMIT` / `CPU`        | 6g / 4     | Creator 容器内存和 CPU 上限 |
+| `BOX_PLAY_MEMORY_LIMIT` / `CPU`           | 4g / 4     | Play 容器内存和 CPU 上限    |
+
+表中的 `/ CPU` 是对应的 `*_CPU_LIMIT` 变量。容器总内存必须为多个地图脚本运行时和服务本身
+留出空间；不要把容器内存设置成与单运行时脚本内存相同。
 
 ## 地图、Play 与备份
 
@@ -176,6 +199,10 @@ STORAGE_CACHE_REDIS_TTL=240
 | `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 允许调用认证 API 的门户 Origin 白名单，英文逗号分隔，不支持 `*`              |
 | `BOX_PLAYER_COOKIE_DOMAIN`        | 多个 HTTPS 子域共享 Cookie 时设置共同父域，如 `.example.com`；本机/IP 不填写 |
 | `BOX_PLAYER_REGISTRATION_ENABLED` | 是否允许玩家自行注册；不影响服主在后台创建账号                               |
+
+桌面启动器在“数据配置 → 服主与安全”中提供“允许新玩家注册”和“允许网页管理地图包”两个
+高层开关。后者关闭时会写入 `BOX_PLAY_LIBRARY_READ_ONLY=true`，首页仍可展示和启动已有地图，
+但不再显示服主管理入口，也不能导入、覆盖、修改或删除地图包。
 
 参考门户由 `player-auth-portal` 镜像提供，但不是强制产品接口。服主可以自己写门户；详情见[自建登录门户](./self-hosted-login.md)。
 

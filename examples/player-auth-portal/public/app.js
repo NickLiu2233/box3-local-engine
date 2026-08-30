@@ -3,6 +3,7 @@
 const loadingView = document.querySelector('#loading-view')
 const authView = document.querySelector('#auth-view')
 const accountView = document.querySelector('#account-view')
+const authenticationTabs = document.querySelector('#auth-tabs')
 const loginTab = document.querySelector('#login-tab')
 const registerTab = document.querySelector('#register-tab')
 const loginForm = document.querySelector('#login-form')
@@ -77,6 +78,7 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data.message || `请求失败（HTTP ${response.status}）`)
     error.status = response.status
+    error.registrationEnabled = data.registrationEnabled
     throw error
   }
   return data
@@ -99,6 +101,7 @@ function showAuthentication(registrationEnabled = true) {
   loadingView.hidden = true
   accountView.hidden = true
   authView.hidden = false
+  authenticationTabs.hidden = !registrationEnabled
   registerTab.hidden = !registrationEnabled
   if (!registrationEnabled && !registerForm.hidden) setMode('login')
   pageTitle.textContent = '登录玩家账号'
@@ -199,7 +202,7 @@ updateThemeButton()
     else showAuthentication(data.registrationEnabled !== false)
   } catch (error) {
     loadingView.hidden = true
-    showAuthentication(true)
+    showAuthentication(error.registrationEnabled !== false)
     showMessage(message, errorMessage(error))
   }
 })()

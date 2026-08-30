@@ -70,6 +70,7 @@ before(async () => {
     apiKey: 'server-only-test-key',
     requestTimeoutMs: 2_000,
     trustProxy: false,
+    registrationEnabled: true,
   })
   portalURL = await listen(portal)
 })
@@ -87,6 +88,52 @@ test('requires a server-side API key', () => {
       }),
     /at least 16 characters/,
   )
+})
+
+test('reads the owner registration policy from the environment', () => {
+  const config = configFromEnvironment({
+    AUTH_DEMO_PLAYER_SERVICE_URL: 'http://127.0.0.1:3213',
+    AUTH_DEMO_API_KEY: 'server-only-test-key',
+    AUTH_DEMO_REGISTRATION_ENABLED: 'false',
+  })
+  assert.equal(config.registrationEnabled, false)
+})
+
+test('hides and rejects registration when the owner disabled it', async () => {
+  const disabledPortal = createAuthPortalServer({
+    host: '127.0.0.1',
+    port: 0,
+    playerServiceURL: new URL(upstreamURL),
+    publicURL: null,
+    creatorURL: new URL('http://creator.example.test'),
+    playURL: new URL('http://play.example.test'),
+    apiKey: 'server-only-test-key',
+    requestTimeoutMs: 2_000,
+    trustProxy: false,
+    registrationEnabled: false,
+  })
+  const disabledPortalURL = await listen(disabledPortal)
+  try {
+    const sessionResponse = await fetch(`${disabledPortalURL}/api/auth/session`)
+    assert.equal(sessionResponse.status, 200)
+    assert.equal((await sessionResponse.json()).registrationEnabled, false)
+
+    const previousRequest = lastUpstreamRequest
+    const registerResponse = await fetch(`${disabledPortalURL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Origin': disabledPortalURL },
+      body: JSON.stringify({
+        username: 'blocked-user',
+        displayName: 'Blocked User',
+        password: 'password-123',
+      }),
+    })
+    assert.equal(registerResponse.status, 403)
+    assert.equal((await registerResponse.json()).code, 'REGISTRATION_DISABLED')
+    assert.equal(lastUpstreamRequest, previousRequest)
+  } finally {
+    await close(disabledPortal)
+  }
 })
 
 test('health check does not depend on Player Service', async () => {

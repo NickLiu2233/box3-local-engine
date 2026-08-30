@@ -273,8 +273,8 @@ html[data-theme='dark'] .theme-icon-dark {
   background: var(--surface-muted);
 }
 
-.tabs:has(.tab[hidden]) {
-  grid-template-columns: 1fr;
+.tabs[hidden] {
+  display: none;
 }
 
 .tab {

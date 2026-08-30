@@ -34,6 +34,26 @@ const creatorWorkCenter = fs.readFileSync(
   'utf8',
 )
 const playWorkCenter = fs.readFileSync(path.join(root, 'apps/game/pages/index.tsx'), 'utf8')
+const localEngineLauncher = fs.readFileSync(
+  path.join(root, 'apps/local-engine/src/launcher.js'),
+  'utf8',
+)
+const projectManager = fs.readFileSync(
+  path.join(root, 'apps/local-engine/src/project-manager.js'),
+  'utf8',
+)
+const playerIdentity = fs.readFileSync(
+  path.join(root, 'apps/game/server/local-player-identity.ts'),
+  'utf8',
+)
+const playAdminSecurity = fs.readFileSync(
+  path.join(root, 'apps/game/server/play-admin-security.ts'),
+  'utf8',
+)
+const authPortalServer = fs.readFileSync(
+  path.join(root, 'examples/player-auth-portal/server.js'),
+  'utf8',
+)
 
 for (const file of [
   'package.json',
@@ -81,6 +101,213 @@ assert.doesNotMatch(defaults, /^BOX_DATABASE_URL=/m)
 assert.doesNotMatch(defaults, /^BOX_IMAGE_TAG=/m)
 assert.doesNotMatch(defaults, /^BOX_.*PUBLIC_URL=/m)
 assert.match(defaults, /^REDIS_HOST=$/m)
+for (const [name, value] of [
+  ['BOX_LOCAL_PLAYER_LIMIT', '8'],
+  ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '6'],
+  ['BOX_CREATOR_PLAY_PREWARM_RUNTIMES', '0'],
+  ['BOX_PLAY_PREWARM_RUNTIMES', '8'],
+  ['BOX_SCRIPT_HEAP_MB', '512'],
+  ['BOX_SCRIPT_MEMORY_MB', '512'],
+  ['BOX_RUNTIME_IDLE_TIMEOUT_MS', '900000'],
+  ['BOX_RUNTIME_START_TIMEOUT_MS', '1800000'],
+  ['BOX_TELEPORT_MAX_ROOMS', '64'],
+  ['BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS', '900000'],
+  ['BOX_PLAYER_REGISTRATION_ENABLED', 'true'],
+  ['BOX_PLAY_LIBRARY_READ_ONLY', 'false'],
+  ['BOX_PLAYER_SERVICE_MEMORY_LIMIT', '1g'],
+  ['BOX_PLAYER_SERVICE_CPU_LIMIT', '1.0'],
+  ['BOX_AUTH_PORTAL_MEMORY_LIMIT', '128m'],
+  ['BOX_AUTH_PORTAL_CPU_LIMIT', '0.5'],
+  ['BOX_CREATOR_MEMORY_LIMIT', '6g'],
+  ['BOX_CREATOR_CPU_LIMIT', '4.0'],
+  ['BOX_PLAY_MEMORY_LIMIT', '4g'],
+  ['BOX_PLAY_CPU_LIMIT', '4.0'],
+  ['BOX_DATABASE_POOL_SIZE', '10'],
+  ['STORAGE_CACHE_REDIS_TTL', '240'],
+]) {
+  assert.match(defaults, new RegExp(`^${name}=${value}$`, 'm'))
+  assert.match(backend, new RegExp(`"${name}"`))
+}
+
+// A setting appearing in the manager backend is not enough: it must also
+// cross the Compose boundary and reach code that uses it. Keep this table
+// explicit so a newly added UI option cannot silently become a no-op.
+for (const [name, composePattern, consumer, consumerPattern] of [
+  [
+    'BOX_LOCAL_PLAYER_LIMIT',
+    /BOX_LOCAL_PLAYER_LIMIT: \$\{BOX_LOCAL_PLAYER_LIMIT:-8\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_LOCAL_PLAYER_LIMIT/,
+  ],
+  [
+    'BOX_PLAY_MAX_RUNTIMES',
+    /BOX_PLAY_MAX_RUNTIMES: \$\{BOX_PLAY_MAX_RUNTIMES:-8\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_PLAY_MAX_RUNTIMES/,
+  ],
+  [
+    'BOX_CREATOR_EDIT_MAX_RUNTIMES',
+    /BOX_CREATOR_EDIT_MAX_RUNTIMES: \$\{BOX_CREATOR_EDIT_MAX_RUNTIMES:-6\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_CREATOR_EDIT_MAX_RUNTIMES/,
+  ],
+  [
+    'BOX_CREATOR_PLAY_MAX_RUNTIMES',
+    /BOX_CREATOR_PLAY_MAX_RUNTIMES: \$\{BOX_CREATOR_PLAY_MAX_RUNTIMES:-4\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_CREATOR_PLAY_MAX_RUNTIMES/,
+  ],
+  [
+    'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
+    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-6\}/,
+    localEngineLauncher,
+    /['"]BOX_CREATOR_EDIT_PREWARM_RUNTIMES['"]/,
+  ],
+  [
+    'BOX_CREATOR_PLAY_PREWARM_RUNTIMES',
+    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES: \$\{BOX_CREATOR_PLAY_PREWARM_RUNTIMES:-0\}/,
+    localEngineLauncher,
+    /['"]BOX_CREATOR_PLAY_PREWARM_RUNTIMES['"]/,
+  ],
+  [
+    'BOX_PLAY_PREWARM_RUNTIMES',
+    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-8\}/,
+    localEngineLauncher,
+    /['"]BOX_PLAY_PREWARM_RUNTIMES['"]/,
+  ],
+  [
+    'BOX_SCRIPT_HEAP_MB',
+    /BOX_SCRIPT_HEAP_MB: \$\{BOX_SCRIPT_HEAP_MB:-512\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_SCRIPT_HEAP_MB/,
+  ],
+  [
+    'BOX_SCRIPT_MEMORY_MB',
+    /SCRIPT_MEMORY_LIMIT: \$\{BOX_SCRIPT_MEMORY_MB:-512\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_SCRIPT_MEMORY_MB/,
+  ],
+  [
+    'BOX_RUNTIME_IDLE_TIMEOUT_MS',
+    /BOX_RUNTIME_IDLE_TIMEOUT_MS: \$\{BOX_RUNTIME_IDLE_TIMEOUT_MS:-900000\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_RUNTIME_IDLE_TIMEOUT_MS/,
+  ],
+  [
+    'BOX_RUNTIME_START_TIMEOUT_MS',
+    /BOX_RUNTIME_START_TIMEOUT_MS: \$\{BOX_RUNTIME_START_TIMEOUT_MS:-1800000\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_RUNTIME_START_TIMEOUT_MS/,
+  ],
+  [
+    'BOX_TELEPORT_MAX_ROOMS',
+    /BOX_TELEPORT_MAX_ROOMS: \$\{BOX_TELEPORT_MAX_ROOMS:-64\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_TELEPORT_MAX_ROOMS/,
+  ],
+  [
+    'BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS',
+    /BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS: \$\{BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS:-900000\}/,
+    localEngineLauncher,
+    /process\.env\.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS/,
+  ],
+  [
+    'BOX_DATABASE_POOL_SIZE',
+    /BOX_DATABASE_POOL_SIZE: \$\{BOX_DATABASE_POOL_SIZE:-10\}/,
+    playerIdentity,
+    /process\.env\.BOX_DATABASE_POOL_SIZE/,
+  ],
+  [
+    'BOX_AUTO_BACKUP_ENABLED',
+    /BOX_AUTO_BACKUP_ENABLED: \$\{BOX_AUTO_BACKUP_ENABLED:-false\}/,
+    projectManager,
+    /process\.env\.BOX_AUTO_BACKUP_ENABLED/,
+  ],
+  [
+    'BOX_AUTO_BACKUP_INTERVAL_MINUTES',
+    /BOX_AUTO_BACKUP_INTERVAL_MINUTES: \$\{BOX_AUTO_BACKUP_INTERVAL_MINUTES:-60\}/,
+    projectManager,
+    /process\.env\.BOX_AUTO_BACKUP_INTERVAL_MINUTES/,
+  ],
+  [
+    'BOX_AUTO_BACKUP_RETENTION_COUNT',
+    /BOX_AUTO_BACKUP_RETENTION_COUNT: \$\{BOX_AUTO_BACKUP_RETENTION_COUNT:-24\}/,
+    projectManager,
+    /process\.env\.BOX_AUTO_BACKUP_RETENTION_COUNT/,
+  ],
+  [
+    'BOX_AUTO_BACKUP_RETENTION_DAYS',
+    /BOX_AUTO_BACKUP_RETENTION_DAYS: \$\{BOX_AUTO_BACKUP_RETENTION_DAYS:-30\}/,
+    projectManager,
+    /process\.env\.BOX_AUTO_BACKUP_RETENTION_DAYS/,
+  ],
+  [
+    'BOX_PLAYER_REGISTRATION_ENABLED',
+    /BOX_PLAYER_REGISTRATION_ENABLED: \$\{BOX_PLAYER_REGISTRATION_ENABLED:-true\}/,
+    playerIdentity,
+    /process\.env\.BOX_PLAYER_REGISTRATION_ENABLED/,
+  ],
+  [
+    'AUTH_DEMO_REGISTRATION_ENABLED',
+    /AUTH_DEMO_REGISTRATION_ENABLED: \$\{BOX_PLAYER_REGISTRATION_ENABLED:-true\}/,
+    authPortalServer,
+    /AUTH_DEMO_REGISTRATION_ENABLED/,
+  ],
+  [
+    'BOX_PLAY_LIBRARY_READ_ONLY',
+    /BOX_PLAY_LIBRARY_READ_ONLY: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
+    playAdminSecurity,
+    /process\.env\.BOX_PLAY_LIBRARY_READ_ONLY/,
+  ],
+]) {
+  assert.match(compose, composePattern, `${name} is not forwarded by Compose`)
+  assert.match(consumer, consumerPattern, `${name} has no runtime consumer`)
+}
+
+for (const [name, pattern] of [
+  ['BOX_PLAYER_SERVICE_MEMORY_LIMIT', /mem_limit: \$\{BOX_PLAYER_SERVICE_MEMORY_LIMIT:-1g\}/],
+  ['BOX_PLAYER_SERVICE_CPU_LIMIT', /cpus: \$\{BOX_PLAYER_SERVICE_CPU_LIMIT:-1\.0\}/],
+  ['BOX_AUTH_PORTAL_MEMORY_LIMIT', /mem_limit: \$\{BOX_AUTH_PORTAL_MEMORY_LIMIT:-128m\}/],
+  ['BOX_AUTH_PORTAL_CPU_LIMIT', /cpus: \$\{BOX_AUTH_PORTAL_CPU_LIMIT:-0\.5\}/],
+  ['BOX_CREATOR_MEMORY_LIMIT', /mem_limit: \$\{BOX_CREATOR_MEMORY_LIMIT:-6g\}/],
+  ['BOX_CREATOR_CPU_LIMIT', /cpus: \$\{BOX_CREATOR_CPU_LIMIT:-4\.0\}/],
+  ['BOX_PLAY_MEMORY_LIMIT', /mem_limit: \$\{BOX_PLAY_MEMORY_LIMIT:-4g\}/],
+  ['BOX_PLAY_CPU_LIMIT', /cpus: \$\{BOX_PLAY_CPU_LIMIT:-4\.0\}/],
+]) {
+  assert.match(compose, pattern, `${name} does not control a Docker resource limit`)
+}
+for (const field of [
+  'playerLimit',
+  'runtimeIdleMinutes',
+  'runtimeStartTimeoutMinutes',
+  'teleportMaxRooms',
+  'teleportRoomIdleMinutes',
+  'creatorEditPrewarmRuntimes',
+  'creatorPlayPrewarmRuntimes',
+  'playPrewarmRuntimes',
+  'scriptMemoryMb',
+  'databasePoolSize',
+  'storageCacheRedisTtl',
+  'playerServiceMemoryMb',
+  'playerServiceCpuLimit',
+  'authPortalMemoryMb',
+  'authPortalCpuLimit',
+  'creatorMemoryMb',
+  'creatorCpuLimit',
+  'playMemoryMb',
+  'playCpuLimit',
+]) {
+  assert.match(frontend, new RegExp(`input\\('${field}'`))
+}
+assert.match(frontend, /运行时空闲回收（分钟）/)
+assert.match(frontend, /Teleport 私有房间上限/)
+assert.match(backend, /fn validate_runtime_capacity/)
+assert.match(backend, /fn validate_operator_performance/)
+assert.match(backend, /fn minutes_to_milliseconds/)
+assert.match(frontend, /允许新玩家注册/)
+assert.match(frontend, /允许网页管理地图包/)
+assert.match(backend, /if config\.library_management_enabled[\s\S]*?"false"[\s\S]*?"true"/)
+assert.match(backend, /"BOX_SCRIPT_HEAP_MB"[\s\S]*?"BOX_SCRIPT_MEMORY_MB"/)
 assert.match(frontend, /PostgreSQL<\/h2><span>必填/)
 assert.match(backend, /必须配置 PostgreSQL 数据库地址后才能启动服务/)
 assert.match(backend, /check_remote_endpoint\(" PostgreSQL", &database_host, database_port\)/)

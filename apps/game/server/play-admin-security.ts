@@ -6,12 +6,18 @@ const WINDOW_MS = 5 * 60 * 1000;
 const MAX_FAILURES = 10;
 const failures = new Map<string, { count: number; resetAt: number }>();
 
+function environmentFlagEnabled(value: string | undefined) {
+  return value?.trim().toLowerCase() === 'true';
+}
+
 export function isPlayAdminEnabled() {
   const mode = process.env.BOX_DEPLOYMENT_MODE;
-  return (process.env.BOX_PLAY_ADMIN_TOKEN || '').length >= 16 && (
-    mode === 'player-service' ||
-    (mode === 'play' && Boolean(process.env.BOX_PLAY_LIBRARY_PATH))
-  );
+  const ownerTokenEnabled = (process.env.BOX_PLAY_ADMIN_TOKEN || '').length >= 16;
+  const writablePlayLibrary =
+    mode === 'play' &&
+    Boolean(process.env.BOX_PLAY_LIBRARY_PATH) &&
+    !environmentFlagEnabled(process.env.BOX_PLAY_LIBRARY_READ_ONLY);
+  return ownerTokenEnabled && (mode === 'player-service' || writablePlayLibrary);
 }
 
 function bearerToken(req: NextApiRequest) {

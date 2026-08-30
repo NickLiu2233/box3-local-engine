@@ -1027,6 +1027,99 @@ form.environment-mode {
   font-weight: 600;
 }
 
+.setting-toggle-list {
+  display: grid;
+  gap: 8px;
+}
+
+.setting-toggle {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  cursor: pointer;
+}
+
+.setting-toggle > span:first-child,
+.setting-toggle strong,
+.setting-toggle small {
+  display: block;
+}
+
+.setting-toggle strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.setting-toggle small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.config-switch {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.config-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.config-switch i {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--panel);
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+
+.config-switch i::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  content: '';
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 140ms ease;
+}
+
+.config-switch input:checked + i {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.config-switch input:checked + i::after {
+  transform: translateX(14px);
+  background: #fff;
+}
+
+.config-switch input:focus-visible + i {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
 .config-note {
   margin: 2px 0 0;
   color: var(--muted);

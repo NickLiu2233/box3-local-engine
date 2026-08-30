@@ -43,6 +43,11 @@ function integer(value, fallback, minimum, maximum, name) {
   return parsed
 }
 
+function enabled(value, fallback = true) {
+  if (value == null || value === '') return fallback
+  return String(value).trim().toLowerCase() !== 'false'
+}
+
 function configFromEnvironment(environment = process.env) {
   const apiKey = String(environment.AUTH_DEMO_API_KEY || '').trim()
   if (apiKey.length < 16) {
@@ -67,6 +72,7 @@ function configFromEnvironment(environment = process.env) {
       'AUTH_DEMO_REQUEST_TIMEOUT_MS',
     ),
     trustProxy: environment.AUTH_DEMO_TRUST_PROXY === 'true',
+    registrationEnabled: enabled(environment.AUTH_DEMO_REGISTRATION_ENABLED, true),
   }
 }
 
@@ -186,6 +192,9 @@ async function proxyAuthentication(request, response, config, operation) {
     response.setHeader('Allow', operation.method)
     return sendError(response, 405, 'METHOD_NOT_ALLOWED', '请求方法不受支持')
   }
+  if (operation.name === 'register' && config.registrationEnabled === false) {
+    return sendError(response, 403, 'REGISTRATION_DISABLED', '服主已关闭玩家注册')
+  }
   if (operation.method !== 'GET' && !isSameOriginRequest(request, config)) {
     return sendError(response, 403, 'ORIGIN_NOT_ALLOWED', '请求来源不受允许')
   }
@@ -248,6 +257,10 @@ async function proxyAuthentication(request, response, config, operation) {
             code: 'INVALID_UPSTREAM_RESPONSE',
             message: '玩家服务返回了无法解析的响应',
           }
+    if (operation.name === 'session') {
+      data.registrationEnabled =
+        config.registrationEnabled !== false && data.registrationEnabled !== false
+    }
     if (returnUrl) data.returnUrl = returnUrl
     const headers = {}
     const cookies = responseCookies(upstream.headers)
@@ -257,6 +270,13 @@ async function proxyAuthentication(request, response, config, operation) {
     return sendJSON(response, upstream.status, data, headers)
   } catch (error) {
     const timeoutError = error && error.name === 'AbortError'
+    if (operation.name === 'session') {
+      return sendJSON(response, 502, {
+        code: timeoutError ? 'PLAYER_SERVICE_TIMEOUT' : 'PLAYER_SERVICE_UNAVAILABLE',
+        message: timeoutError ? '玩家服务响应超时' : '暂时无法连接玩家服务',
+        registrationEnabled: config.registrationEnabled !== false,
+      })
+    }
     return sendError(
       response,
       502,

@@ -10,6 +10,8 @@ const repositoryRoot = path.resolve(portalRoot, '../..')
 const dockerfile = readFileSync(path.join(portalRoot, 'Dockerfile'), 'utf8')
 const dockerignore = readFileSync(path.join(portalRoot, '.dockerignore'), 'utf8')
 const compose = readFileSync(path.join(repositoryRoot, 'docker-compose.yml'), 'utf8')
+const browserApp = readFileSync(path.join(portalRoot, 'public/app.js'), 'utf8')
+const portalHtml = readFileSync(path.join(portalRoot, 'public/index.html'), 'utf8')
 
 test('container image copies only runtime source and never an env file', () => {
   assert.match(dockerfile, /COPY --chown=node:node server\.js \.\/server\.js/)
@@ -30,4 +32,10 @@ test('Compose keeps the auth key server-side and uses Player Service over its in
   assert.match(service, /AUTH_DEMO_HOST: 0\.0\.0\.0/)
   assert.match(service, /read_only: true/)
   assert.equal((service.match(/BOX_PLAYER_AUTH_API_KEY/g) || []).length, 1)
+})
+
+test('disabled registration removes the redundant authentication tabs', () => {
+  assert.match(portalHtml, /<div id="auth-tabs" class="tabs"/)
+  assert.match(browserApp, /const authenticationTabs = document\.querySelector\('#auth-tabs'\)/)
+  assert.match(browserApp, /authenticationTabs\.hidden = !registrationEnabled/)
 })

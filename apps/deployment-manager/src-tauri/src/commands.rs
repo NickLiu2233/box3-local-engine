@@ -55,6 +55,8 @@ struct InstallConfigView {
     has_redis_password: bool,
     redis_db: u8,
     storage_cache_redis_db: u8,
+    database_pool_size: u32,
+    storage_cache_redis_ttl: u8,
     auto_backup_enabled: bool,
     auto_backup_interval_minutes: u32,
     auto_backup_retention_count: u32,
@@ -71,6 +73,25 @@ struct InstallConfigView {
     play_runtimes: u32,
     creator_edit_runtimes: u32,
     creator_play_runtimes: u32,
+    creator_edit_prewarm_runtimes: u32,
+    creator_play_prewarm_runtimes: u32,
+    play_prewarm_runtimes: u32,
+    player_limit: u32,
+    script_memory_mb: u32,
+    runtime_idle_minutes: u32,
+    runtime_start_timeout_minutes: u32,
+    teleport_max_rooms: u32,
+    teleport_room_idle_minutes: u32,
+    registration_enabled: bool,
+    library_management_enabled: bool,
+    player_service_memory_mb: u32,
+    player_service_cpu_limit: f64,
+    auth_portal_memory_mb: u32,
+    auth_portal_cpu_limit: f64,
+    creator_memory_mb: u32,
+    creator_cpu_limit: f64,
+    play_memory_mb: u32,
+    play_cpu_limit: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -98,6 +119,8 @@ impl Default for InstallConfigView {
             has_redis_password: false,
             redis_db: 0,
             storage_cache_redis_db: 1,
+            database_pool_size: 10,
+            storage_cache_redis_ttl: 240,
             auto_backup_enabled: false,
             auto_backup_interval_minutes: 60,
             auto_backup_retention_count: 24,
@@ -114,6 +137,25 @@ impl Default for InstallConfigView {
             play_runtimes: 8,
             creator_edit_runtimes: 6,
             creator_play_runtimes: 4,
+            creator_edit_prewarm_runtimes: 6,
+            creator_play_prewarm_runtimes: 0,
+            play_prewarm_runtimes: 8,
+            player_limit: 8,
+            script_memory_mb: 512,
+            runtime_idle_minutes: 15,
+            runtime_start_timeout_minutes: 30,
+            teleport_max_rooms: 64,
+            teleport_room_idle_minutes: 15,
+            registration_enabled: true,
+            library_management_enabled: true,
+            player_service_memory_mb: 1024,
+            player_service_cpu_limit: 1.0,
+            auth_portal_memory_mb: 128,
+            auth_portal_cpu_limit: 0.5,
+            creator_memory_mb: 6144,
+            creator_cpu_limit: 4.0,
+            play_memory_mb: 4096,
+            play_cpu_limit: 4.0,
         }
     }
 }
@@ -149,6 +191,10 @@ struct InstallConfigInput {
     redis_db: u8,
     #[serde(default = "default_storage_cache_redis_db")]
     storage_cache_redis_db: u8,
+    #[serde(default = "default_database_pool_size")]
+    database_pool_size: u32,
+    #[serde(default = "default_storage_cache_redis_ttl")]
+    storage_cache_redis_ttl: u8,
     #[serde(default)]
     auto_backup_enabled: bool,
     #[serde(default = "default_auto_backup_interval_minutes")]
@@ -179,6 +225,44 @@ struct InstallConfigInput {
     creator_edit_runtimes: u32,
     #[serde(default = "default_creator_play_runtimes")]
     creator_play_runtimes: u32,
+    #[serde(default = "default_creator_edit_prewarm_runtimes")]
+    creator_edit_prewarm_runtimes: u32,
+    #[serde(default = "default_creator_play_prewarm_runtimes")]
+    creator_play_prewarm_runtimes: u32,
+    #[serde(default = "default_play_prewarm_runtimes")]
+    play_prewarm_runtimes: u32,
+    #[serde(default = "default_player_limit")]
+    player_limit: u32,
+    #[serde(default = "default_script_memory_mb")]
+    script_memory_mb: u32,
+    #[serde(default = "default_runtime_idle_minutes")]
+    runtime_idle_minutes: u32,
+    #[serde(default = "default_runtime_start_timeout_minutes")]
+    runtime_start_timeout_minutes: u32,
+    #[serde(default = "default_teleport_max_rooms")]
+    teleport_max_rooms: u32,
+    #[serde(default = "default_teleport_room_idle_minutes")]
+    teleport_room_idle_minutes: u32,
+    #[serde(default = "default_true")]
+    registration_enabled: bool,
+    #[serde(default = "default_true")]
+    library_management_enabled: bool,
+    #[serde(default = "default_player_service_memory_mb")]
+    player_service_memory_mb: u32,
+    #[serde(default = "default_player_service_cpu_limit")]
+    player_service_cpu_limit: f64,
+    #[serde(default = "default_auth_portal_memory_mb")]
+    auth_portal_memory_mb: u32,
+    #[serde(default = "default_auth_portal_cpu_limit")]
+    auth_portal_cpu_limit: f64,
+    #[serde(default = "default_creator_memory_mb")]
+    creator_memory_mb: u32,
+    #[serde(default = "default_creator_cpu_limit")]
+    creator_cpu_limit: f64,
+    #[serde(default = "default_play_memory_mb")]
+    play_memory_mb: u32,
+    #[serde(default = "default_play_cpu_limit")]
+    play_cpu_limit: f64,
 }
 
 fn default_database_port() -> String {
@@ -195,6 +279,12 @@ fn default_redis_port() -> String {
 }
 fn default_storage_cache_redis_db() -> u8 {
     1
+}
+fn default_database_pool_size() -> u32 {
+    10
+}
+fn default_storage_cache_redis_ttl() -> u8 {
+    240
 }
 fn default_auto_backup_interval_minutes() -> u32 {
     60
@@ -237,6 +327,60 @@ fn default_creator_edit_runtimes() -> u32 {
 }
 fn default_creator_play_runtimes() -> u32 {
     4
+}
+fn default_creator_edit_prewarm_runtimes() -> u32 {
+    6
+}
+fn default_creator_play_prewarm_runtimes() -> u32 {
+    0
+}
+fn default_play_prewarm_runtimes() -> u32 {
+    8
+}
+fn default_player_limit() -> u32 {
+    8
+}
+fn default_script_memory_mb() -> u32 {
+    512
+}
+fn default_runtime_idle_minutes() -> u32 {
+    15
+}
+fn default_runtime_start_timeout_minutes() -> u32 {
+    30
+}
+fn default_teleport_max_rooms() -> u32 {
+    64
+}
+fn default_teleport_room_idle_minutes() -> u32 {
+    15
+}
+fn default_true() -> bool {
+    true
+}
+fn default_player_service_memory_mb() -> u32 {
+    1024
+}
+fn default_player_service_cpu_limit() -> f64 {
+    1.0
+}
+fn default_auth_portal_memory_mb() -> u32 {
+    128
+}
+fn default_auth_portal_cpu_limit() -> f64 {
+    0.5
+}
+fn default_creator_memory_mb() -> u32 {
+    6144
+}
+fn default_creator_cpu_limit() -> f64 {
+    4.0
+}
+fn default_play_memory_mb() -> u32 {
+    4096
+}
+fn default_play_cpu_limit() -> f64 {
+    4.0
 }
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
@@ -768,6 +912,108 @@ fn validate_auto_backup_config(config: &InstallConfigInput) -> Result<(), String
     Ok(())
 }
 
+fn validate_runtime_capacity(config: &InstallConfigInput) -> Result<(), String> {
+    if config.play_runtimes == 0
+        || config.creator_edit_runtimes == 0
+        || config.creator_play_runtimes == 0
+    {
+        return Err("运行时数量必须大于 0".into());
+    }
+    if !(1..=1_000).contains(&config.player_limit) {
+        return Err("单实例玩家上限必须在 1 到 1000 之间".into());
+    }
+    for (label, prewarm, maximum) in [
+        (
+            "Creator 编辑预热数量",
+            config.creator_edit_prewarm_runtimes,
+            config.creator_edit_runtimes,
+        ),
+        (
+            "Creator 预览预热数量",
+            config.creator_play_prewarm_runtimes,
+            config.creator_play_runtimes,
+        ),
+        (
+            "Play 预热数量",
+            config.play_prewarm_runtimes,
+            config.play_runtimes,
+        ),
+    ] {
+        if prewarm > maximum {
+            return Err(format!("{label}不能超过对应的运行时上限 {maximum}"));
+        }
+    }
+    if !(128..=8_192).contains(&config.script_memory_mb) {
+        return Err("单运行时脚本内存必须在 128 到 8192 MiB 之间".into());
+    }
+    if !(1..=10_080).contains(&config.runtime_idle_minutes) {
+        return Err("运行时空闲回收时间必须在 1 到 10080 分钟之间".into());
+    }
+    if !(1..=1_440).contains(&config.runtime_start_timeout_minutes) {
+        return Err("运行时启动超时必须在 1 到 1440 分钟之间".into());
+    }
+    if !(1..=1_024).contains(&config.teleport_max_rooms) {
+        return Err("Teleport 私有房间上限必须在 1 到 1024 之间".into());
+    }
+    if !(1..=10_080).contains(&config.teleport_room_idle_minutes) {
+        return Err("Teleport 房间空闲回收时间必须在 1 到 10080 分钟之间".into());
+    }
+    Ok(())
+}
+
+fn validate_operator_performance(config: &InstallConfigInput) -> Result<(), String> {
+    if !(1..=100).contains(&config.database_pool_size) {
+        return Err("数据库连接池必须在 1 到 100 之间".into());
+    }
+    for (label, memory, minimum) in [
+        ("Player Service", config.player_service_memory_mb, 512),
+        ("登录门户", config.auth_portal_memory_mb, 128),
+        ("Creator", config.creator_memory_mb, 1_024),
+        ("Play", config.play_memory_mb, 1_024),
+    ] {
+        if !(minimum..=262_144).contains(&memory) {
+            return Err(format!(
+                "{label} 容器内存必须在 {minimum} 到 262144 MiB 之间"
+            ));
+        }
+    }
+    for (label, cpu) in [
+        ("Player Service", config.player_service_cpu_limit),
+        ("登录门户", config.auth_portal_cpu_limit),
+        ("Creator", config.creator_cpu_limit),
+        ("Play", config.play_cpu_limit),
+    ] {
+        if !cpu.is_finite() || !(0.1..=256.0).contains(&cpu) {
+            return Err(format!("{label} CPU 限制必须在 0.1 到 256 核之间"));
+        }
+    }
+    Ok(())
+}
+
+fn minutes_to_milliseconds(minutes: u32) -> u64 {
+    u64::from(minutes) * 60_000
+}
+
+fn memory_mebibytes(value: Option<&String>, fallback: u32) -> u32 {
+    let Some(value) = value.map(|value| value.trim().to_ascii_lowercase()) else {
+        return fallback;
+    };
+    let parsed = if let Some(number) = value.strip_suffix('g') {
+        number
+            .parse::<f64>()
+            .ok()
+            .map(|gigabytes| (gigabytes * 1024.0).round() as u32)
+    } else if let Some(number) = value.strip_suffix('m') {
+        number
+            .parse::<f64>()
+            .ok()
+            .map(|megabytes| megabytes.round() as u32)
+    } else {
+        value.parse::<u32>().ok()
+    };
+    parsed.filter(|memory| *memory > 0).unwrap_or(fallback)
+}
+
 fn load_existing_env(app: &AppHandle) -> BTreeMap<String, String> {
     env_path(app)
         .ok()
@@ -778,12 +1024,8 @@ fn load_existing_env(app: &AppHandle) -> BTreeMap<String, String> {
 
 fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<(), String> {
     ensure_runtime_files(app)?;
-    if config.play_runtimes == 0
-        || config.creator_edit_runtimes == 0
-        || config.creator_play_runtimes == 0
-    {
-        return Err("运行时数量必须大于 0".into());
-    }
+    validate_runtime_capacity(config)?;
+    validate_operator_performance(config)?;
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_service_ports(config)?;
@@ -820,9 +1062,30 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_PLAY_ADMIN_TOKEN",
         &resolve_secret("BOX_PLAY_ADMIN_TOKEN", &config.play_admin_token, &existing)?,
     )?;
-    set_env(&mut content, "BOX_PLAY_LIBRARY_READ_ONLY", "false")?;
+    set_env(
+        &mut content,
+        "BOX_PLAY_LIBRARY_READ_ONLY",
+        if config.library_management_enabled {
+            "false"
+        } else {
+            "true"
+        },
+    )?;
+    set_env(
+        &mut content,
+        "BOX_PLAYER_REGISTRATION_ENABLED",
+        if config.registration_enabled {
+            "true"
+        } else {
+            "false"
+        },
+    )?;
     set_env(&mut content, "BOX_PLAY_PUBLIC_HOST", &public_host)?;
-    set_env(&mut content, "BOX_PLAY_NETWORK_MODE", &config.play_network_mode)?;
+    set_env(
+        &mut content,
+        "BOX_PLAY_NETWORK_MODE",
+        &config.play_network_mode,
+    )?;
     set_env(&mut content, "BOX_CREATOR_HOST", &creator_host)?;
     set_env(&mut content, "BOX_PLAY_PORT", &config.play_port.to_string())?;
     set_env(&mut content, "BOX_VOXA_PORT", &config.voxa_port.to_string())?;
@@ -856,6 +1119,89 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_CREATOR_PLAY_MAX_RUNTIMES",
         &config.creator_play_runtimes.to_string(),
     )?;
+    set_env(
+        &mut content,
+        "BOX_CREATOR_EDIT_PREWARM_RUNTIMES",
+        &config.creator_edit_prewarm_runtimes.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_CREATOR_PLAY_PREWARM_RUNTIMES",
+        &config.creator_play_prewarm_runtimes.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_PLAY_PREWARM_RUNTIMES",
+        &config.play_prewarm_runtimes.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_LOCAL_PLAYER_LIMIT",
+        &config.player_limit.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_RUNTIME_IDLE_TIMEOUT_MS",
+        &minutes_to_milliseconds(config.runtime_idle_minutes).to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_RUNTIME_START_TIMEOUT_MS",
+        &minutes_to_milliseconds(config.runtime_start_timeout_minutes).to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_TELEPORT_MAX_ROOMS",
+        &config.teleport_max_rooms.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS",
+        &minutes_to_milliseconds(config.teleport_room_idle_minutes).to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_SCRIPT_HEAP_MB",
+        &config.script_memory_mb.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_SCRIPT_MEMORY_MB",
+        &config.script_memory_mb.to_string(),
+    )?;
+    for (key, value) in [
+        (
+            "BOX_PLAYER_SERVICE_MEMORY_LIMIT",
+            format!("{}m", config.player_service_memory_mb),
+        ),
+        (
+            "BOX_PLAYER_SERVICE_CPU_LIMIT",
+            config.player_service_cpu_limit.to_string(),
+        ),
+        (
+            "BOX_AUTH_PORTAL_MEMORY_LIMIT",
+            format!("{}m", config.auth_portal_memory_mb),
+        ),
+        (
+            "BOX_AUTH_PORTAL_CPU_LIMIT",
+            config.auth_portal_cpu_limit.to_string(),
+        ),
+        (
+            "BOX_CREATOR_MEMORY_LIMIT",
+            format!("{}m", config.creator_memory_mb),
+        ),
+        (
+            "BOX_CREATOR_CPU_LIMIT",
+            config.creator_cpu_limit.to_string(),
+        ),
+        (
+            "BOX_PLAY_MEMORY_LIMIT",
+            format!("{}m", config.play_memory_mb),
+        ),
+        ("BOX_PLAY_CPU_LIMIT", config.play_cpu_limit.to_string()),
+    ] {
+        set_env(&mut content, key, &value)?;
+    }
     let host = validate_host(&config.database_host, "数据库地址")?;
     let port = validate_port(&config.database_port)?;
     let database = config.database_name.trim().to_string();
@@ -906,6 +1252,16 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &mut content,
         "STORAGE_CACHE_REDIS_DB",
         &config.storage_cache_redis_db.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "BOX_DATABASE_POOL_SIZE",
+        &config.database_pool_size.to_string(),
+    )?;
+    set_env(
+        &mut content,
+        "STORAGE_CACHE_REDIS_TTL",
+        &config.storage_cache_redis_ttl.to_string(),
     )?;
     set_env(
         &mut content,
@@ -1094,6 +1450,29 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .and_then(|value| value.parse().ok())
             .unwrap_or(fallback)
     };
+    let number_f64 = |name: &str, fallback| {
+        values
+            .get(name)
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(fallback)
+    };
+    let enabled = |name: &str, fallback| {
+        values
+            .get(name)
+            .map(|value| matches!(value.as_str(), "1" | "true" | "yes" | "on"))
+            .unwrap_or(fallback)
+    };
+    let milliseconds_as_minutes = |name: &str, fallback_minutes: u32| {
+        values
+            .get(name)
+            .and_then(|value| value.parse::<u64>().ok())
+            .and_then(|milliseconds| {
+                let rounded_up = milliseconds.saturating_add(59_999) / 60_000;
+                u32::try_from(rounded_up).ok()
+            })
+            .filter(|minutes| *minutes > 0)
+            .unwrap_or(fallback_minutes)
+    };
     InstallConfigView {
         database_host: values.get("BOX_DATABASE_HOST").cloned().unwrap_or_default(),
         database_port: values
@@ -1133,6 +1512,8 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .is_some_and(|value| !value.is_empty()),
         redis_db: number_u8("REDIS_DB", 0),
         storage_cache_redis_db: number_u8("STORAGE_CACHE_REDIS_DB", 1),
+        database_pool_size: number_u32("BOX_DATABASE_POOL_SIZE", 10),
+        storage_cache_redis_ttl: number_u8("STORAGE_CACHE_REDIS_TTL", 240),
         auto_backup_enabled: values
             .get("BOX_AUTO_BACKUP_ENABLED")
             .is_some_and(|value| matches!(value.as_str(), "1" | "true" | "yes" | "on")),
@@ -1166,6 +1547,31 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         play_runtimes: number_u32("BOX_PLAY_MAX_RUNTIMES", 8),
         creator_edit_runtimes: number_u32("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
+        creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 6),
+        creator_play_prewarm_runtimes: number_u32("BOX_CREATOR_PLAY_PREWARM_RUNTIMES", 0),
+        play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 8),
+        player_limit: number_u32("BOX_LOCAL_PLAYER_LIMIT", 8),
+        script_memory_mb: number_u32("BOX_SCRIPT_MEMORY_MB", 512),
+        runtime_idle_minutes: milliseconds_as_minutes("BOX_RUNTIME_IDLE_TIMEOUT_MS", 15),
+        runtime_start_timeout_minutes: milliseconds_as_minutes("BOX_RUNTIME_START_TIMEOUT_MS", 30),
+        teleport_max_rooms: number_u32("BOX_TELEPORT_MAX_ROOMS", 64),
+        teleport_room_idle_minutes: milliseconds_as_minutes(
+            "BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS",
+            15,
+        ),
+        registration_enabled: enabled("BOX_PLAYER_REGISTRATION_ENABLED", true),
+        library_management_enabled: !enabled("BOX_PLAY_LIBRARY_READ_ONLY", false),
+        player_service_memory_mb: memory_mebibytes(
+            values.get("BOX_PLAYER_SERVICE_MEMORY_LIMIT"),
+            1024,
+        ),
+        player_service_cpu_limit: number_f64("BOX_PLAYER_SERVICE_CPU_LIMIT", 1.0),
+        auth_portal_memory_mb: memory_mebibytes(values.get("BOX_AUTH_PORTAL_MEMORY_LIMIT"), 128),
+        auth_portal_cpu_limit: number_f64("BOX_AUTH_PORTAL_CPU_LIMIT", 0.5),
+        creator_memory_mb: memory_mebibytes(values.get("BOX_CREATOR_MEMORY_LIMIT"), 6144),
+        creator_cpu_limit: number_f64("BOX_CREATOR_CPU_LIMIT", 4.0),
+        play_memory_mb: memory_mebibytes(values.get("BOX_PLAY_MEMORY_LIMIT"), 4096),
+        play_cpu_limit: number_f64("BOX_PLAY_CPU_LIMIT", 4.0),
     }
 }
 
@@ -2513,6 +2919,61 @@ fn verify_archive(app: AppHandle) -> Result<String, String> {
 mod tests {
     use super::*;
 
+    fn test_install_config() -> InstallConfigInput {
+        InstallConfigInput {
+            database_host: String::new(),
+            database_port: default_database_port(),
+            database_name: default_database_name(),
+            database_user: default_database_user(),
+            database_password: String::new(),
+            database_ssl: false,
+            permission_token_secret: String::new(),
+            player_auth_api_key: String::new(),
+            play_admin_token: String::new(),
+            redis_host: String::new(),
+            redis_port: default_redis_port(),
+            redis_password: String::new(),
+            redis_db: 0,
+            storage_cache_redis_db: 1,
+            database_pool_size: default_database_pool_size(),
+            storage_cache_redis_ttl: default_storage_cache_redis_ttl(),
+            auto_backup_enabled: false,
+            auto_backup_interval_minutes: 60,
+            auto_backup_retention_count: 24,
+            auto_backup_retention_days: 30,
+            public_host: default_public_host(),
+            play_network_mode: default_play_network_mode(),
+            creator_host: default_creator_host(),
+            play_port: 3000,
+            voxa_port: 3001,
+            creator_port: 3002,
+            player_service_port: 3213,
+            auth_portal_port: 3214,
+            play_runtimes: default_play_runtimes(),
+            creator_edit_runtimes: default_creator_edit_runtimes(),
+            creator_play_runtimes: default_creator_play_runtimes(),
+            creator_edit_prewarm_runtimes: default_creator_edit_prewarm_runtimes(),
+            creator_play_prewarm_runtimes: default_creator_play_prewarm_runtimes(),
+            play_prewarm_runtimes: default_play_prewarm_runtimes(),
+            player_limit: default_player_limit(),
+            script_memory_mb: default_script_memory_mb(),
+            runtime_idle_minutes: default_runtime_idle_minutes(),
+            runtime_start_timeout_minutes: default_runtime_start_timeout_minutes(),
+            teleport_max_rooms: default_teleport_max_rooms(),
+            teleport_room_idle_minutes: default_teleport_room_idle_minutes(),
+            registration_enabled: true,
+            library_management_enabled: true,
+            player_service_memory_mb: default_player_service_memory_mb(),
+            player_service_cpu_limit: default_player_service_cpu_limit(),
+            auth_portal_memory_mb: default_auth_portal_memory_mb(),
+            auth_portal_cpu_limit: default_auth_portal_cpu_limit(),
+            creator_memory_mb: default_creator_memory_mb(),
+            creator_cpu_limit: default_creator_cpu_limit(),
+            play_memory_mb: default_play_memory_mb(),
+            play_cpu_limit: default_play_cpu_limit(),
+        }
+    }
+
     #[cfg(target_os = "macos")]
     #[test]
     fn resolves_docker_desktop_cli_without_a_shell_path() {
@@ -2536,36 +2997,8 @@ mod tests {
 
     #[test]
     fn rejects_duplicate_service_ports() {
-        let config = InstallConfigInput {
-            database_host: String::new(),
-            database_port: default_database_port(),
-            database_name: default_database_name(),
-            database_user: default_database_user(),
-            database_password: String::new(),
-            database_ssl: false,
-            permission_token_secret: String::new(),
-            player_auth_api_key: String::new(),
-            play_admin_token: String::new(),
-            redis_host: String::new(),
-            redis_port: default_redis_port(),
-            redis_password: String::new(),
-            redis_db: 0,
-            storage_cache_redis_db: 1,
-            auto_backup_enabled: false,
-            auto_backup_interval_minutes: 60,
-            auto_backup_retention_count: 24,
-            auto_backup_retention_days: 30,
-            public_host: default_public_host(),
-            creator_host: default_creator_host(),
-            play_port: 3000,
-            voxa_port: 3000,
-            creator_port: 3002,
-            player_service_port: 3213,
-            auth_portal_port: 3214,
-            play_runtimes: 8,
-            creator_edit_runtimes: 6,
-            creator_play_runtimes: 4,
-        };
+        let mut config = test_install_config();
+        config.voxa_port = config.play_port;
         assert!(validate_service_ports(&config)
             .unwrap_err()
             .contains("不能使用同一个端口"));
@@ -2573,39 +3006,46 @@ mod tests {
 
     #[test]
     fn rejects_invalid_automatic_backup_retention() {
-        let config = InstallConfigInput {
-            database_host: String::new(),
-            database_port: default_database_port(),
-            database_name: default_database_name(),
-            database_user: default_database_user(),
-            database_password: String::new(),
-            database_ssl: false,
-            permission_token_secret: String::new(),
-            player_auth_api_key: String::new(),
-            play_admin_token: String::new(),
-            redis_host: String::new(),
-            redis_port: default_redis_port(),
-            redis_password: String::new(),
-            redis_db: 0,
-            storage_cache_redis_db: 1,
-            auto_backup_enabled: true,
-            auto_backup_interval_minutes: 0,
-            auto_backup_retention_count: 24,
-            auto_backup_retention_days: 30,
-            public_host: default_public_host(),
-            creator_host: default_creator_host(),
-            play_port: 3000,
-            voxa_port: 3001,
-            creator_port: 3002,
-            player_service_port: 3213,
-            auth_portal_port: 3214,
-            play_runtimes: 8,
-            creator_edit_runtimes: 6,
-            creator_play_runtimes: 4,
-        };
+        let mut config = test_install_config();
+        config.auto_backup_enabled = true;
+        config.auto_backup_interval_minutes = 0;
         assert!(validate_auto_backup_config(&config)
             .unwrap_err()
             .contains("自动备份间隔"));
+    }
+
+    #[test]
+    fn validates_runtime_capacity_and_converts_minutes() {
+        let mut config = test_install_config();
+        assert!(validate_runtime_capacity(&config).is_ok());
+        assert_eq!(minutes_to_milliseconds(15), 900_000);
+
+        config.teleport_max_rooms = 1_025;
+        assert!(validate_runtime_capacity(&config)
+            .unwrap_err()
+            .contains("私有房间上限"));
+    }
+
+    #[test]
+    fn rejects_prewarm_above_runtime_limit() {
+        let mut config = test_install_config();
+        config.play_prewarm_runtimes = config.play_runtimes + 1;
+        assert!(validate_runtime_capacity(&config)
+            .unwrap_err()
+            .contains("Play 预热数量"));
+    }
+
+    #[test]
+    fn validates_operator_resources_and_parses_memory_units() {
+        let mut config = test_install_config();
+        assert!(validate_operator_performance(&config).is_ok());
+        assert_eq!(memory_mebibytes(Some(&"1g".to_string()), 128), 1024);
+        assert_eq!(memory_mebibytes(Some(&"512m".to_string()), 128), 512);
+
+        config.auth_portal_cpu_limit = 0.0;
+        assert!(validate_operator_performance(&config)
+            .unwrap_err()
+            .contains("登录门户 CPU"));
     }
 
     #[test]

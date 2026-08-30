@@ -304,8 +304,16 @@ function progressPanel() {
   return `<section class="progress-panel"><div><strong>${escapeHtml(state.progress.message)}</strong><span>${Math.max(0, Math.min(100, state.progress.percent))}%</span></div><div class="progress-track"><i style="width:${state.progress.percent}%"></i></div></section>`
 }
 
-function input(name, label, value = '', type = 'text', hint = '', required = false) {
-  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${type === 'number' ? 'min="0"' : ''} ${required ? 'required' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
+function input(name, label, value = '', type = 'text', hint = '', required = false, limits = {}) {
+  const numberLimits =
+    type === 'number'
+      ? `min="${limits.min ?? 0}"${limits.max === undefined ? '' : ` max="${limits.max}"`} step="${limits.step ?? 1}"`
+      : ''
+  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${numberLimits} ${required ? 'required' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
+}
+
+function settingToggle(name, label, description, checked) {
+  return `<label class="setting-toggle"><span><strong>${label}</strong><small>${description}</small></span><span class="config-switch"><input name="${name}" type="checkbox" ${checked ? 'checked' : ''}/><i aria-hidden="true"></i></span></label>`
 }
 
 function setupExplanation(title, items) {
@@ -355,8 +363,8 @@ function setup() {
       <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
-          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>必填 · 保存玩家、权限与地图脚本数据</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true)}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
-          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>选填 · 留空则不启用缓存服务</span></div><button type="button" class="text-button" data-test-connection="redis">测试连接</button></div><div class="form-grid compact three">${input('redisHost', '地址', config.redisHost, 'text', 'IP 或域名')}${input('redisPort', '端口', config.redisPort || '6379', 'number')}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number')}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number')}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>必填 · 保存玩家、权限与地图脚本数据</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
+          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>选填 · 留空则不启用缓存服务</span></div><button type="button" class="text-button" data-test-connection="redis">测试连接</button></div><div class="form-grid compact three">${input('redisHost', '地址', config.redisHost, 'text', 'IP 或域名')}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', false, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div></div>
           ${setupExplanation('配置说明：这些服务用来做什么？', [
             [
               'PostgreSQL',
@@ -370,6 +378,8 @@ function setup() {
               '业务 DB / 缓存 DB',
               'Redis 中的两个逻辑空间。保持不同编号，避免业务数据和缓存互相影响。',
             ],
+            ['连接池', '每个地图运行时可使用的 PostgreSQL 连接数；地图并发较多时不要盲目调高。'],
+            ['构建缓存', 'Redis 中预烘焙构建结果的缓存秒数；设为 0 可关闭，推荐保持 240。'],
             [
               'SSL',
               '只有远程 PostgreSQL 要求加密连接时才勾选；不确定时按数据库服务商提供的连接要求填写。',
@@ -411,22 +421,39 @@ function setup() {
             ['端口', '每个服务使用独立端口，不能重复；修改后访问链接也会随之改变。'],
           ],
         )}</section>
-        <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity"><div class="config-group"><div class="group-title"><div><h2>运行时上限</h2><span>按服务器内存调整</span></div></div><div class="form-grid three">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number')}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number')}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number')}</div></div>${setupExplanation(
-          '配置说明：运行时上限如何选择？',
-          [
+        <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
+          <div class="config-group"><div class="group-title"><div><h2>实例容量</h2><span>控制同时运行的地图与单实例人数</span></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 8, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>预热策略</h2><span>提前启动常用地图，数量不能超过对应运行时上限</span></div></div><div class="form-grid three">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 8, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 6, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorPlayPrewarmRuntimes', '预览预热', config.creatorPlayPrewarmRuntimes ?? 0, 'number', '默认关闭', false, { min: 0 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>脚本与容器资源</h2><span>内存单位为 MiB；修改后需重新创建对应容器</span></div></div><div class="form-grid three">${input('scriptMemoryMb', '单运行时脚本内存', config.scriptMemoryMb ?? 512, 'number', '128–8192 MiB', false, { min: 128, max: 8192 })}${input('playerServiceMemoryMb', 'Player Service 内存', config.playerServiceMemoryMb ?? 1024, 'number', '推荐 1024 MiB', false, { min: 512, max: 262144 })}${input('playerServiceCpuLimit', 'Player Service CPU', config.playerServiceCpuLimit ?? 1, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('authPortalMemoryMb', '登录门户内存', config.authPortalMemoryMb ?? 128, 'number', '推荐 128 MiB', false, { min: 128, max: 262144 })}${input('authPortalCpuLimit', '登录门户 CPU', config.authPortalCpuLimit ?? 0.5, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('creatorMemoryMb', 'Creator 内存', config.creatorMemoryMb ?? 6144, 'number', '推荐 6144 MiB', false, { min: 1024, max: 262144 })}${input('creatorCpuLimit', 'Creator CPU', config.creatorCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('playMemoryMb', 'Play 内存', config.playMemoryMb ?? 4096, 'number', '推荐 4096 MiB', false, { min: 1024, max: 262144 })}${input('playCpuLimit', 'Play CPU', config.playCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>回收与传送</h2><span>界面使用分钟，保存后自动转换为环境变量</span></div></div><div class="form-grid">${input('runtimeIdleMinutes', '运行时空闲回收（分钟）', config.runtimeIdleMinutes || 15, 'number', '1–10080')}${input('runtimeStartTimeoutMinutes', '运行时启动超时（分钟）', config.runtimeStartTimeoutMinutes || 30, 'number', '1–1440')}${input('teleportMaxRooms', 'Teleport 私有房间上限', config.teleportMaxRooms || 64, 'number', '1–1024')}${input('teleportRoomIdleMinutes', '房间空闲回收（分钟）', config.teleportRoomIdleMinutes || 15, 'number', '1–10080')}</div></div>
+          ${setupExplanation('配置说明：容量和回收策略如何选择？', [
             ['游玩运行时', '同时活跃的游玩地图和传送房间数量。人数、地图数越多，需要的上限越高。'],
+            ['单实例玩家', '一张地图的一个公共或私有运行实例能够同时容纳的玩家数量。'],
             ['编辑运行时', '同时打开进行编辑的地图数量；编辑器关闭后会按空闲策略回收。'],
             ['创作预览', '创作端点击运行时使用的预览实例数。'],
+            [
+              '预热数量',
+              '提前常驻可减少首次访问等待，但会持续占用 CPU 和内存；设为 0 可按需启动。',
+            ],
+            ['脚本内存', '每个地图脚本运行时的独立上限，不是整个 Creator 或 Play 容器的总内存。'],
+            ['运行时回收', '地图无人连接超过该时间后可被停止；再次访问时会自动启动。'],
+            ['启动超时', '大型地图首次迁移和预烘焙允许等待的最长时间。'],
+            ['私有房间', '限制 Teleport 可保留的私有房间数量；每个活跃房间仍占用一个游玩运行时。'],
+            ['房间回收', '私有房间无人连接超过该时间后，房间 ID 与对应运行时都会失效。'],
             [
               '容量建议',
               '上限越高，Docker 可用内存需求越大。首次部署可保持默认，出现排队再逐步提高。',
             ],
-          ],
-        )}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>首次保存配置时会自动生成；无需手动填写，修改后旧会话和旧 API 调用会失效</span></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
+          ])}</section>
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与地图权限</h2><span>关闭注册不影响已有账号登录或服主后台创建账号</span></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录门户不再接受自助注册', config.registrationEnabled !== false)}${settingToggle('libraryManagementEnabled', '允许网页管理地图包', '关闭后 Play 地图库只读，不能通过网页导入或删除地图包', config.libraryManagementEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>首次保存配置时会自动生成；无需手动填写，修改后旧会话和旧 API 调用会失效</span></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
           '配置说明：服主密钥分别做什么？',
           [
             ['自动生成', '首次保存配置时，三个密钥会自动生成；只有需要自定义时才填写新的值。'],
+            ['开放注册', '关闭后新玩家不能自行注册，但已有玩家、服主和后台管理员仍可正常登录。'],
+            [
+              '地图包管理',
+              '关闭后网页仍能展示和启动地图，但不能导入、覆盖或删除服务器上的地图包。',
+            ],
             [
               '查看密钥',
               '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
@@ -825,6 +852,8 @@ function captureSetupForm() {
   }
   const databaseSsl = form.elements.namedItem('databaseSsl')
   const autoBackupEnabled = form.elements.namedItem('autoBackupEnabled')
+  const registrationEnabled = form.elements.namedItem('registrationEnabled')
+  const libraryManagementEnabled = form.elements.namedItem('libraryManagementEnabled')
   const next = {
     ...state.config,
     ...values,
@@ -832,6 +861,12 @@ function captureSetupForm() {
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,
+    registrationEnabled:
+      registrationEnabled instanceof HTMLInputElement ? registrationEnabled.checked : false,
+    libraryManagementEnabled:
+      libraryManagementEnabled instanceof HTMLInputElement
+        ? libraryManagementEnabled.checked
+        : false,
   }
   // Password inputs are intentionally blank after rendering. An empty field
   // means “keep the saved/session value”, not “erase it”, unless the user has
@@ -892,6 +927,25 @@ function normalizedConfig() {
     'playRuntimes',
     'creatorEditRuntimes',
     'creatorPlayRuntimes',
+    'creatorEditPrewarmRuntimes',
+    'creatorPlayPrewarmRuntimes',
+    'playPrewarmRuntimes',
+    'playerLimit',
+    'scriptMemoryMb',
+    'runtimeIdleMinutes',
+    'runtimeStartTimeoutMinutes',
+    'teleportMaxRooms',
+    'teleportRoomIdleMinutes',
+    'databasePoolSize',
+    'storageCacheRedisTtl',
+    'playerServiceMemoryMb',
+    'playerServiceCpuLimit',
+    'authPortalMemoryMb',
+    'authPortalCpuLimit',
+    'creatorMemoryMb',
+    'creatorCpuLimit',
+    'playMemoryMb',
+    'playCpuLimit',
     'redisDb',
     'storageCacheRedisDb',
     'playPort',
@@ -1154,9 +1208,30 @@ async function saveConfiguration(event) {
   }
   config.databaseSsl = form.has('databaseSsl')
   config.autoBackupEnabled = form.has('autoBackupEnabled')
+  config.registrationEnabled = form.has('registrationEnabled')
+  config.libraryManagementEnabled = form.has('libraryManagementEnabled')
   config.playRuntimes = Number(config.playRuntimes)
   config.creatorEditRuntimes = Number(config.creatorEditRuntimes)
   config.creatorPlayRuntimes = Number(config.creatorPlayRuntimes)
+  config.creatorEditPrewarmRuntimes = Number(config.creatorEditPrewarmRuntimes)
+  config.creatorPlayPrewarmRuntimes = Number(config.creatorPlayPrewarmRuntimes)
+  config.playPrewarmRuntimes = Number(config.playPrewarmRuntimes)
+  config.playerLimit = Number(config.playerLimit)
+  config.scriptMemoryMb = Number(config.scriptMemoryMb)
+  config.runtimeIdleMinutes = Number(config.runtimeIdleMinutes)
+  config.runtimeStartTimeoutMinutes = Number(config.runtimeStartTimeoutMinutes)
+  config.teleportMaxRooms = Number(config.teleportMaxRooms)
+  config.teleportRoomIdleMinutes = Number(config.teleportRoomIdleMinutes)
+  config.databasePoolSize = Number(config.databasePoolSize)
+  config.storageCacheRedisTtl = Number(config.storageCacheRedisTtl)
+  config.playerServiceMemoryMb = Number(config.playerServiceMemoryMb)
+  config.playerServiceCpuLimit = Number(config.playerServiceCpuLimit)
+  config.authPortalMemoryMb = Number(config.authPortalMemoryMb)
+  config.authPortalCpuLimit = Number(config.authPortalCpuLimit)
+  config.creatorMemoryMb = Number(config.creatorMemoryMb)
+  config.creatorCpuLimit = Number(config.creatorCpuLimit)
+  config.playMemoryMb = Number(config.playMemoryMb)
+  config.playCpuLimit = Number(config.playCpuLimit)
   config.redisDb = Number(config.redisDb)
   config.storageCacheRedisDb = Number(config.storageCacheRedisDb)
   config.autoBackupIntervalMinutes = Number(config.autoBackupIntervalMinutes)

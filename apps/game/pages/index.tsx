@@ -2409,11 +2409,12 @@ export const getServerSideProps: GetServerSideProps = async () => {
   // never set this flag, so their player authentication flow is unchanged.
   if (process.env.NODE_ENV === 'development' && process.env.BOX_UI_PREVIEW === 'true') {
     const worlds = getPlayWorlds()
+    const adminEnabled = isPlayAdminEnabled()
     return {
       props: {
         worlds: worlds.length ? worlds : previewWorlds,
-        adminEnabled: isPlayAdminEnabled(),
-        adminToolsVisible: true,
+        adminEnabled,
+        adminToolsVisible: adminEnabled,
         uiPreview: true,
         mapStats: previewMapStats,
       },
@@ -2431,11 +2432,12 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const groupByMap = Object.fromEntries(
     worlds.map((world) => [world.publicId, world.mapGroupId || world.mainProjectId || world.id]),
   )
+  const adminEnabled = isPlayAdminEnabled()
   return {
     props: {
       worlds,
-      adminEnabled: isPlayAdminEnabled(),
-      adminToolsVisible: isPlayAdminEnabled(),
+      adminEnabled,
+      adminToolsVisible: adminEnabled,
       uiPreview: false,
       mapStats: getPlayPresenceCounts(worlds.map((world) => world.publicId), groupByMap),
     },
