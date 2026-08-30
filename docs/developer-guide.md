@@ -247,6 +247,14 @@ pnpm verify
 
 测试不得连接真实生产 PostgreSQL、Redis 或云端账号。所有临时目录、端口、项目 ID 和资源 hash 应隔离且可重复运行。
 
+玩家管理接口的输入 Schema 集中在
+`apps/game/server/player-admin-validation.ts`。新增或修改管理字段时，应先更新这一校验模块及其
+测试，再让路由消费归一化后的结果；不要在各路由重复编写正则、默认值、权限列表或批量上限。
+路由仍须先通过 `authorizePlayerAdmin` 完成独立管理会话、同源、CSRF 和权限校验，再解析玩家
+标识与详细请求内容。标准管理接口通过 `server/player-admin-route.ts` 注册允许的方法、权限、
+解析器和执行函数，由该模块统一完成部署模式隐藏、方法响应、授权顺序与错误脱敏。认证和请求
+错误必须使用 `PlayerAdminRequestError` 的结构化状态码与错误码，不要依赖中文错误文本进行分支。
+
 ## 8. Git 协作与评审
 
 建议分支命名：

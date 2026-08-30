@@ -1176,7 +1176,6 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
         headers: adminHeaders(true),
         body: JSON.stringify({
           ...createUser,
-          role: 'player',
           tags: createUser.tags.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
         }),
       });

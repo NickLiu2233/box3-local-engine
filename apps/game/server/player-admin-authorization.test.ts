@@ -6,6 +6,7 @@ import {
   actorHasPlayerAdminPermission,
   roleHasPlayerAdminPermission,
 } from './player-admin-authorization';
+import { parsePlayerItemOperation } from './player-admin-validation';
 
 describe('player administration role policy', () => {
   test('player identity resolution is absent from the authorization seam', () => {
@@ -64,6 +65,10 @@ describe('player administration role policy', () => {
     expect(source).toContain('admin_sessions_identity_check');
     expect(source).toContain('function requireOwnerIdentity');
     expect(source).toContain("actor.credential !== 'owner-session'");
+    expect(source).toContain("playerAdminSessionError('ADMIN_AUTH_REQUIRED')");
+    expect(source).toContain("playerAdminSessionError('ADMIN_SESSION_MISMATCH')");
+    expect(source).toContain("playerAdminSessionError('ADMIN_CSRF_INVALID')");
+    expect(source).not.toContain("throw new Error('ADMIN_");
   });
 
   test('mutations require both same-origin validation and a CSRF token', () => {
@@ -89,8 +94,8 @@ describe('player administration role policy', () => {
       path.resolve(__dirname, '../pages/api/play-admin/permission-groups/[id].ts'),
       'utf8',
     );
-    expect(collectionRoute).toContain("authorizePlayerAdmin(req, res, 'owner')");
-    expect(itemRoute).toContain("authorizePlayerAdmin(req, res, 'owner')");
+    expect(collectionRoute).toContain("requirement: 'owner'");
+    expect(itemRoute).toContain("requirement: 'owner'");
     expect(identitySource).toContain(
       "LEFT JOIN ${table('admin_permission_groups')} g ON g.id = a.permission_group_id",
     );
@@ -104,10 +109,10 @@ describe('player administration role policy', () => {
       '../pages/api/play-admin/permission-groups/index.ts',
       '../pages/api/play-admin/permission-groups/[id].ts',
       '../pages/api/play-admin/maintenance.ts',
-      '../pages/api/play-admin/players/[subjectId].ts',
     ]) {
       const source = fs.readFileSync(path.resolve(__dirname, route), 'utf8');
-      expect(source).toContain("authorizePlayerAdmin(req, res, 'owner')");
+      expect(source).toContain('playerAdminRoute({');
+      expect(source).toContain("requirement: 'owner'");
     }
   });
 
@@ -117,12 +122,16 @@ describe('player administration role policy', () => {
       'utf8',
     );
     const authorization = source.indexOf('await authorizePlayerAdmin(req, res, requirement)');
-    const identityValidation = source.indexOf("if (!/^[0-9a-f]{32}$/i.test(subjectId))");
-    const forbiddenFieldValidation = source.indexOf("Object.prototype.hasOwnProperty.call(body, 'role')");
+    const inputValidation = source.indexOf('parsePlayerItemOperation(');
 
     expect(authorization).toBeGreaterThan(-1);
-    expect(authorization).toBeLessThan(identityValidation);
-    expect(authorization).toBeLessThan(forbiddenFieldValidation);
-    expect(source).toContain("return res.status(400).json({ message: '玩家头像上传功能已停用' });");
+    expect(authorization).toBeLessThan(inputValidation);
+    expect(source).toContain('playerItemRequirement(req.method, req.body)');
+    expect(() => parsePlayerItemOperation('PATCH', 'invalid', { displayName: '玩家' }))
+      .toThrow('玩家身份无效');
+    expect(() => parsePlayerItemOperation('PATCH', '0'.repeat(32), { role: 'admin' }))
+      .toThrow('玩家账号不能授予后台权限');
+    expect(() => parsePlayerItemOperation('PATCH', '0'.repeat(32), { avatar: 'removed' }))
+      .toThrow('玩家头像上传功能已停用');
   });
 });

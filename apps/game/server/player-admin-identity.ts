@@ -16,6 +16,11 @@ import {
   type PlayerAdminRole,
 } from '../shared/player-admin-policy';
 import { requestClientAddress } from './client-address';
+import {
+  PlayerAdminRequestError,
+  playerAdminSessionError,
+  playerAdminRequestError,
+} from './player-admin-errors';
 
 const ADMIN_SESSION_COOKIE = 'box_local_admin_session';
 const ADMIN_CSRF_COOKIE = 'box_local_admin_csrf';
@@ -56,21 +61,7 @@ export type PlayerAdminPermissionGroup = {
   updatedAt?: string;
 };
 
-export class PlayerAdminRequestError extends Error {
-  constructor(
-    message: string,
-    readonly status: 400 | 401 | 403 | 404 | 409 | 429 = 400,
-    readonly code = 'ADMIN_REQUEST_INVALID',
-    readonly retryAfterSeconds?: number,
-  ) {
-    super(message);
-    this.name = 'PlayerAdminRequestError';
-  }
-}
-
-export function playerAdminRequestError(error: unknown) {
-  return error instanceof PlayerAdminRequestError ? error : null;
-}
+export { PlayerAdminRequestError, playerAdminRequestError } from './player-admin-errors';
 
 type AdminRow = QueryResultRow & {
   id: string;
@@ -698,7 +689,7 @@ export async function resolvePlayerAdminSession(
 ) {
   await initialize();
   const token = sessionToken(req);
-  if (!token) throw new Error('ADMIN_AUTH_REQUIRED');
+  if (!token) throw playerAdminSessionError('ADMIN_AUTH_REQUIRED');
   const result = await database().query<
     AdminRow & {
       owner_session: boolean;
@@ -725,23 +716,23 @@ export async function resolvePlayerAdminSession(
       ? Boolean(row.id)
       : !row.id || row.status !== 'active')
   ) {
-    throw new Error('ADMIN_AUTH_REQUIRED');
+    throw playerAdminSessionError('ADMIN_AUTH_REQUIRED');
   }
   if (!secretsMatch(row.user_agent_hash, userAgentHash(req))) {
     await database().query(`DELETE FROM ${table('admin_sessions')} WHERE token_hash = $1`, [
       tokenHash(token),
     ]);
-    throw new Error('ADMIN_SESSION_MISMATCH');
+    throw playerAdminSessionError('ADMIN_SESSION_MISMATCH');
   }
   if (options.requireCsrf) {
     const header = req.headers['x-box-admin-csrf'];
     const provided = String(Array.isArray(header) ? header[0] : header || '');
     const cookie = csrfCookie(req);
     if (!provided || !cookie || !secretsMatch(provided, cookie)) {
-      throw new Error('ADMIN_CSRF_INVALID');
+      throw playerAdminSessionError('ADMIN_CSRF_INVALID');
     }
     if (!secretsMatch(tokenHash(provided), row.csrf_hash)) {
-      throw new Error('ADMIN_CSRF_INVALID');
+      throw playerAdminSessionError('ADMIN_CSRF_INVALID');
     }
   }
   await database().query(`

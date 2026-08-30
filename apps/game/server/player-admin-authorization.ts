@@ -1,10 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { createAdminActionContext, type AdminActionContext } from './local-player-identity';
-import {
-  playerAdminRequestError,
-  resolvePlayerAdminSession,
-} from './player-admin-identity';
+import { resolvePlayerAdminSession } from './player-admin-identity';
+import type { PlayerAdminIdentity } from './player-admin-identity';
+import { playerAdminRequestError } from './player-admin-errors';
 import {
   roleHasPlayerAdminPermission,
   type PlayerAdminCapability,
@@ -123,19 +122,16 @@ export function actorHasPlayerAdminPermission(
   );
 }
 
-function errorStatus(message: string) {
-  if (message === 'ADMIN_AUTH_REQUIRED' || message === 'ADMIN_SESSION_MISMATCH') {
-    return 401;
-  }
-  if (message === 'ADMIN_CSRF_INVALID') return 403;
-  return 503;
-}
-
-function errorMessage(message: string) {
-  if (message === 'ADMIN_AUTH_REQUIRED') return '请登录独立的玩家管理账号';
-  if (message === 'ADMIN_SESSION_MISMATCH') return '管理会话环境已变化，请重新登录';
-  if (message === 'ADMIN_CSRF_INVALID') return '管理会话安全校验失败，请刷新后重试';
-  return '玩家管理服务暂时不可用';
+export function playerAdminIdentity(actor: PlayerAdminActor): PlayerAdminIdentity {
+  return {
+    id: actor.subjectId,
+    username: actor.actor,
+    displayName: actor.actorDisplayName,
+    role: actor.actorRole,
+    permissions: actor.actorPermissions,
+    status: 'active',
+    credential: actor.credential,
+  };
 }
 
 /**
@@ -185,11 +181,7 @@ export async function authorizePlayerAdmin(
       credential: identity.credential,
     };
   } catch (error) {
-    const message = (error as Error).message;
-    if (errorStatus(message) === 503) {
-      console.error('Player admin authorization failed:', message);
-    }
-    res.status(errorStatus(message)).json({ message: errorMessage(message) });
+    sendPlayerAdminApiError(res, error, 'Player admin authorization failed');
     return null;
   }
 }

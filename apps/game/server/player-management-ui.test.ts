@@ -130,6 +130,14 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain("setNotice(`用户“${data.player.displayName}”已创建");
   });
 
+  test('creates players without submitting administrator-only identity fields', () => {
+    const start = pageSource.indexOf('async function submitCreateUser()');
+    const end = pageSource.indexOf('\n  if (!actor) {', start);
+    const submitSource = pageSource.slice(start, end);
+    expect(submitSource).not.toContain("role: 'player'");
+    expect(submitSource).not.toContain('adminPermissions');
+  });
+
   test('edits administrator details deliberately instead of writing on select changes', () => {
     expect(pageSource).toContain("from '@radix-ui/react-dropdown-menu'");
     expect(pageSource).toContain('function openAdminAccount(admin?: AdminAccount)');

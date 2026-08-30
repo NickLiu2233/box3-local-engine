@@ -9,7 +9,13 @@ import {
   revokeIdentityBan,
   updateManagedPlayer,
 } from '../../../../server/local-player-identity';
-import { authorizePlayerAdmin } from '../../../../server/player-admin-authorization';
+import {
+  authorizePlayerAdmin,
+} from '../../../../server/player-admin-authorization';
+import {
+  parsePlayerItemOperation,
+  playerItemRequirement,
+} from '../../../../server/player-admin-validation';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (process.env.BOX_DEPLOYMENT_MODE !== 'player-service') return res.status(404).end();
@@ -18,88 +24,58 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end();
   }
 
-  const body = req.body || {};
-  const patchRequirements = [] as Array<'players.manage' | 'players.ban'>;
-  if (
-    ['status', 'banReason', 'bannedUntil'].some((field) =>
-      Object.prototype.hasOwnProperty.call(body, field))
-  ) {
-    patchRequirements.push('players.ban');
-  }
-  if (
-    ['displayName', 'adminNote', 'tags', 'boxId'].some((field) =>
-      Object.prototype.hasOwnProperty.call(body, field))
-  ) {
-    patchRequirements.push('players.manage');
-  }
-  const requirement = req.method === 'GET'
-    ? 'players.view'
-    : req.method === 'PATCH'
-      ? patchRequirements.length ? patchRequirements : 'players.manage'
-      : body.action === 'reset-password'
-        ? 'passwords.reset'
-        : body.action === 'revoke-sessions' || body.action === 'revoke-session'
-          ? 'sessions.manage'
-          : body.action === 'ban-ip' || body.action === 'ban-device' || body.action === 'unban-source'
-            ? 'identity-bans.manage'
-            : 'players.manage';
-  const context = req.method === 'DELETE'
-    ? await authorizePlayerAdmin(req, res, 'owner')
-    : await authorizePlayerAdmin(req, res, requirement);
+  const requirement = playerItemRequirement(req.method, req.body);
+  const context = await authorizePlayerAdmin(req, res, requirement);
   if (!context) return;
 
-  const subjectId = Array.isArray(req.query.subjectId)
+  const subjectIdValue = Array.isArray(req.query.subjectId)
     ? req.query.subjectId[0]
     : req.query.subjectId || '';
-  if (!/^[0-9a-f]{32}$/i.test(subjectId)) {
-    return res.status(400).json({ message: '玩家身份无效' });
-  }
   try {
-    if (req.method === 'GET') {
-      return res.status(200).json(await getManagedPlayerDetails(subjectId));
+    const operation = parsePlayerItemOperation(
+      req.method,
+      subjectIdValue,
+      req.body,
+    );
+    if (operation.kind === 'get') {
+      return res.status(200).json(await getManagedPlayerDetails(operation.subjectId));
     }
-    if (req.method === 'PATCH') {
-      if (
-        Object.prototype.hasOwnProperty.call(body, 'role') ||
-        Object.prototype.hasOwnProperty.call(body, 'adminPermissions')
-      ) {
-        return res.status(400).json({ message: '玩家账号不能授予后台权限' });
-      }
-      if (Object.prototype.hasOwnProperty.call(body, 'avatar')) {
-        return res.status(400).json({ message: '玩家头像上传功能已停用' });
-      }
-      if (!patchRequirements.length) {
-        return res.status(400).json({ message: '没有可更新的玩家字段' });
-      }
+    if (operation.kind === 'patch') {
       return res.status(200).json({
-        player: await updateManagedPlayer(subjectId, req.body || {}, context),
+        player: await updateManagedPlayer(
+          operation.subjectId,
+          operation.changes,
+          context,
+        ),
       });
     }
-    if (req.method === 'POST') {
-      if (req.body?.action === 'revoke-sessions') {
+    if (operation.kind === 'command') {
+      const { command, subjectId } = operation;
+      if (command.action === 'revoke-sessions') {
         return res.status(200).json(await revokeManagedPlayerSessions(subjectId, context));
       }
-      if (req.body?.action === 'revoke-session') {
-        return res.status(200).json(await revokeManagedPlayerSession(subjectId, String(req.body.sessionId || ''), context));
+      if (command.action === 'revoke-session') {
+        return res.status(200).json(await revokeManagedPlayerSession(subjectId, command.sessionId, context));
       }
-      if (req.body?.action === 'reset-password') {
-        return res.status(200).json(await resetManagedPlayerPassword(subjectId, req.body?.password, context));
+      if (command.action === 'reset-password') {
+        return res.status(200).json(await resetManagedPlayerPassword(subjectId, command.password, context));
       }
-      if (req.body?.action === 'ban-ip' || req.body?.action === 'ban-device') {
+      if (command.action === 'ban-ip' || command.action === 'ban-device') {
         return res.status(200).json(await createIdentityBan(subjectId, {
-          kind: req.body.action === 'ban-ip' ? 'ip' : 'device',
-          value: req.body.value,
-          reason: req.body.reason,
-          bannedUntil: req.body.bannedUntil,
+          kind: command.action === 'ban-ip' ? 'ip' : 'device',
+          value: command.value,
+          reason: command.reason,
+          bannedUntil: command.bannedUntil,
         }, context));
       }
-      if (req.body?.action === 'unban-source') {
-        return res.status(200).json(await revokeIdentityBan(subjectId, req.body.banId, context));
+      if (command.action === 'unban-source') {
+        return res.status(200).json(
+          await revokeIdentityBan(subjectId, command.banId, context),
+        );
       }
-      return res.status(400).json({ message: '不支持的玩家操作' });
     }
-    if (req.method === 'DELETE') {
-      await deleteManagedPlayer(subjectId, context);
+    if (operation.kind === 'delete') {
+      await deleteManagedPlayer(operation.subjectId, context);
       return res.status(200).json({ deleted: true });
     }
   } catch (error) {
