@@ -66,7 +66,9 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       -name '@types+*' -exec rm -rf {} + \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
     && cd /opt/game-server \
-    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)"
+    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
+    && cd /app/services/game-server \
+    && node scripts/compact-runtime-javascript.js /opt/game-server/dist /app/apps/local-engine/src
 
 FROM engine-build-base AS play-build
 
@@ -110,7 +112,9 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       -name '@types+*' -exec rm -rf {} + \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
     && cd /opt/game-server \
-    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)"
+    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
+    && cd /app/services/game-server \
+    && node scripts/compact-runtime-javascript.js /opt/game-server/dist /app/apps/local-engine/src
 
 FROM engine-build-base AS player-service-build
 
@@ -120,7 +124,11 @@ RUN NEXT_PUBLIC_APP_ENV=development \
     pnpm --filter @box-local/game build-next
 RUN node apps/local-engine/src/prune-player-build.js --player-service \
       apps/game/.next \
-      apps/game/.next/standalone/apps/game/.next
+      apps/game/.next/standalone/apps/game/.next \
+    && rm -rf apps/game/.next/standalone/apps/local-engine \
+    && find apps/game/.next/standalone -type f \( \
+      -name '*.test.js' -o -name '*.spec.js' \
+    \) -not -path '*/node_modules/*' -delete
 
 FROM source-base AS voxa-build
 

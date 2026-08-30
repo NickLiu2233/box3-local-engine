@@ -11,6 +11,7 @@ const {
   archiveEntry,
   imageDetailsFromArchive,
   tauriBuildCommand,
+  tauriBuildEnvironment,
   tauriBuildFailure,
   macApplicationHasResourceSeal,
   ensureMacApplicationSignature,
@@ -107,6 +108,29 @@ test('Windows starts pnpm through its command shim and reports spawn failures', 
     }),
     /无法启动 Tauri 构建命令：ENOENT: spawnSync pnpm ENOENT/,
   )
+})
+
+test('Tauri release builds remap repository and home paths without dropping existing flags', () => {
+  const encoded = tauriBuildEnvironment(
+    { CARGO_ENCODED_RUSTFLAGS: '-C\x1ftarget-cpu=native' },
+    { repository: '/private/source/local-engine', home: '/Users/builder' },
+  )
+  assert.equal(
+    encoded.CARGO_ENCODED_RUSTFLAGS,
+    [
+      '-C\x1ftarget-cpu=native',
+      '--remap-path-prefix=/private/source/local-engine=/workspace',
+      '--remap-path-prefix=/Users/builder=/build-home',
+    ].join('\x1f'),
+  )
+
+  const plain = tauriBuildEnvironment(
+    { RUSTFLAGS: '-C debuginfo=0' },
+    { repository: 'D:\\a\\local-engine', home: 'C:\\Users\\runner' },
+  )
+  assert.match(plain.RUSTFLAGS, /-C debuginfo=0/)
+  assert.match(plain.RUSTFLAGS, /--remap-path-prefix=D:\\a\\local-engine=\/workspace/)
+  assert.match(plain.RUSTFLAGS, /--remap-path-prefix=C:\\Users\\runner=\/build-home/)
 })
 
 test('image details are read from a gzip Docker archive', () => {

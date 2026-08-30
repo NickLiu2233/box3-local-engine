@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 const { generateDistributionMetadata } = require('../apps/local-engine/src/distribution-metadata')
@@ -182,6 +183,27 @@ function tauriBuildCommand(platform = process.platform) {
     : { command: 'pnpm', shell: false }
 }
 
+function tauriBuildEnvironment(
+  baseEnvironment = process.env,
+  paths = { repository: repoRoot, home: os.homedir() },
+) {
+  const environment = { ...baseEnvironment }
+  const remapFlags = [
+    `--remap-path-prefix=${paths.repository}=/workspace`,
+    `--remap-path-prefix=${paths.home}=/build-home`,
+  ]
+  if (environment.CARGO_ENCODED_RUSTFLAGS) {
+    environment.CARGO_ENCODED_RUSTFLAGS = [environment.CARGO_ENCODED_RUSTFLAGS, ...remapFlags].join(
+      '\x1f',
+    )
+  } else if (environment.RUSTFLAGS) {
+    environment.RUSTFLAGS = `${environment.RUSTFLAGS} ${remapFlags.join(' ')}`
+  } else {
+    environment.CARGO_ENCODED_RUSTFLAGS = remapFlags.join('\x1f')
+  }
+  return environment
+}
+
 function tauriBuildFailure(result) {
   if (result.error) {
     const code = result.error.code ? `${result.error.code}: ` : ''
@@ -267,7 +289,7 @@ function main() {
     const invocation = tauriBuildCommand()
     const result = spawnSync(invocation.command, tauriArgs, {
       cwd: repoRoot,
-      env: { ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag },
+      env: tauriBuildEnvironment({ ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag }),
       shell: invocation.shell,
       stdio: 'inherit',
     })
@@ -343,6 +365,7 @@ module.exports = {
   archiveEntry,
   imageDetailsFromArchive,
   tauriBuildCommand,
+  tauriBuildEnvironment,
   tauriBuildFailure,
   macApplicationHasResourceSeal,
   ensureMacApplicationSignature,

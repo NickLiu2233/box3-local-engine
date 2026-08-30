@@ -544,6 +544,29 @@ requirePattern(
   /prune-player-build\.js --player-service[\s\S]*?apps\/game\/\.next\/standalone\/apps\/game\/\.next/,
 )
 requirePattern(
+  playerServiceBuildStage,
+  dockerFile,
+  'player service local-engine source purge',
+  /rm -rf apps\/game\/\.next\/standalone\/apps\/local-engine/,
+)
+requirePattern(
+  playerServiceBuildStage,
+  dockerFile,
+  'player service test source purge',
+  /find apps\/game\/\.next\/standalone[\s\S]*?-name '\*\.test\.js'[\s\S]*?-name '\*\.spec\.js'/,
+)
+for (const [name, stage] of [
+  ['creator', getDockerStage(dockerSource, 'creator-build')],
+  ['play', getDockerStage(dockerSource, 'play-build')],
+]) {
+  requirePattern(
+    stage,
+    dockerFile,
+    `${name} first-party runtime JavaScript compaction`,
+    /compact-runtime-javascript\.js \/opt\/game-server\/dist \/app\/apps\/local-engine\/src/,
+  )
+}
+requirePattern(
   playerServiceDockerStage,
   dockerFile,
   'player service standalone server',
@@ -1043,7 +1066,7 @@ for (const filePath of playAdminApiFiles) {
     source,
     file,
     'play admin API guard',
-    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin|allowPlayerAdminRequestOrigin)\(req, res/,
+    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin|allowPlayerAdminRequestOrigin)\(req, res|playerAdminRoute\s*\(/,
   )
 }
 

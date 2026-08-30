@@ -1305,7 +1305,20 @@ fn offline_archive_search_roots(app: Option<&AppHandle>) -> Vec<PathBuf> {
             roots.extend(parent.ancestors().take(5).map(Path::to_path_buf));
         }
     }
-    roots.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("payload"));
+    // Do not compile CARGO_MANIFEST_DIR into release binaries: it exposes the
+    // builder's username and checkout path. These working-directory fallbacks
+    // retain source-development discovery without embedding an absolute path.
+    if let Ok(current_dir) = std::env::current_dir() {
+        roots.push(current_dir.join("payload"));
+        roots.push(current_dir.join("src-tauri").join("payload"));
+        roots.push(
+            current_dir
+                .join("apps")
+                .join("deployment-manager")
+                .join("src-tauri")
+                .join("payload"),
+        );
+    }
     roots.sort();
     roots.dedup();
     roots

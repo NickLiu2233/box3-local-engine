@@ -21,3 +21,6 @@ sha2 = "0.10"
 tauri = { version = "2", features = [] }
 urlencoding = "2"
 
+[profile.release]
+debug = false
+strip = "symbols"

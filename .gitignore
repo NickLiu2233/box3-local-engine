@@ -3,6 +3,7 @@ node_modules/
 .next/
 services/game-server/dist/
 coverage/
+apps/game/html-report/
 *.log
 .DS_Store
 *.tsbuildinfo
