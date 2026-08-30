@@ -5,16 +5,6 @@ export type TeleportType = (mapId: string, players: GameEntity[], serverId?: str
 export type TeleportResult = {
     serverId: string;
 };
-export declare enum SocialType {
-    FOLLOWING = 0,
-    FOLLOWERS = 1,
-    FRIENDS = 2
-}
-export type SocialStatisticType = {
-    followingNum: number;
-    followerNum: number;
-    friendsNum: number;
-};
 export interface GameSoundEffectConfig {
     sample: string;
     radius: number;
@@ -575,12 +565,6 @@ export declare class GameWorld {
     onInteract: GameEventChannel<GameInteractEvent>;
     nextInteract: GameEventFuture<GameInteractEvent>;
     /**
-     * Called when player buy product success
-     * @category player
-     */
-    onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>;
-    nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>;
-    /**
      * Plays a sound at a given location
      */
     sound: (spec: {
@@ -590,6 +574,12 @@ export declare class GameWorld {
         gain?: number;
         pitch?: number;
     } | string) => Sound;
+    /**
+     * 地图组内传送能力。mapId 必须是目标地图不可变的地图 UUID，不能使用
+     * 可修改的访问 ID、地图名称或本地工程 ID。默认创建仅被传送玩家可见的独立房间；传入返回的
+     * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
+     */
+    teleport: TeleportType;
     /**
      * 当前服务器id
      */
@@ -985,11 +975,6 @@ export declare class GameWorld {
      */
     onInteract: GameEventChannel<GameInteractEvent>, nextInteract: GameEventFuture<GameInteractEvent>, 
     /**
-     * Called when player buy product success
-     * @category player
-     */
-    onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>, nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>, 
-    /**
      * Plays a sound at a given location
      */
     sound: (spec: {
@@ -999,6 +984,12 @@ export declare class GameWorld {
         gain?: number;
         pitch?: number;
     } | string) => Sound, 
+    /**
+     * 地图组内传送能力。mapId 必须是目标地图不可变的地图 UUID，不能使用
+     * 可修改的访问 ID、地图名称或本地工程 ID。默认创建仅被传送玩家可见的独立房间；传入返回的
+     * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
+     */
+    teleport: TeleportType,
     /**
      * 当前服务器id
      */
@@ -3523,48 +3514,6 @@ export declare class GameChatEvent {
      * What the entity said in the chat event
      */
     message: string);
-}
-/**
- * Triggered by {@link Game.GameWorld.onPlayerPurchaseSuccess}
- * @category events
- */
-export declare class GamePurchaseSuccessEvent {
-    /**
-     * Time purchase success event occured
-     */
-    tick: number;
-    /**
-     * Entity which trigger purchase event
-     */
-    userId: string;
-    /**
-     * purchase product id
-     */
-    productId: number;
-    /**
-     * purchase success order number
-     */
-    orderId: number;
-    /**
-     * @ignore
-     */
-    constructor(
-    /**
-     * Time purchase success event occured
-     */
-    tick: number, 
-    /**
-     * Entity which trigger purchase event
-     */
-    userId: string, 
-    /**
-     * purchase product id
-     */
-    productId: number, 
-    /**
-     * purchase success order number
-     */
-    orderId: number);
 }
 /**
  * Triggered by {@link Game.GameWorld.onInteract} and {@link Game.GameEntity.onInteract}

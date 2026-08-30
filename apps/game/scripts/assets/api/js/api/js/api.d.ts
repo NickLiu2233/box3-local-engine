@@ -5,16 +5,6 @@ type TeleportType = (mapId: string, players: GameEntity[], serverId?: string) =>
 type TeleportResult = {
     serverId: string;
 };
-declare enum SocialType {
-    FOLLOWING = 0,
-    FOLLOWERS = 1,
-    FRIENDS = 2
-}
-type SocialStatisticType = {
-    followingNum: number;
-    followerNum: number;
-    friendsNum: number;
-};
 interface GameSoundEffectConfig {
     sample: string;
     radius: number;
@@ -575,12 +565,6 @@ declare class GameWorld {
     onInteract: GameEventChannel<GameInteractEvent>;
     nextInteract: GameEventFuture<GameInteractEvent>;
     /**
-     * Called when player buy product success
-     * @category player
-     */
-    onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>;
-    nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>;
-    /**
      * Plays a sound at a given location
      */
     sound: (spec: {
@@ -990,11 +974,6 @@ declare class GameWorld {
      * @category interactive
      */
     onInteract: GameEventChannel<GameInteractEvent>, nextInteract: GameEventFuture<GameInteractEvent>, 
-    /**
-     * Called when player buy product success
-     * @category player
-     */
-    onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>, nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>, 
     /**
      * Plays a sound at a given location
      */
@@ -3535,48 +3514,6 @@ declare class GameChatEvent {
      * What the entity said in the chat event
      */
     message: string);
-}
-/**
- * Triggered by {@link Game.GameWorld.onPlayerPurchaseSuccess}
- * @category events
- */
-declare class GamePurchaseSuccessEvent {
-    /**
-     * Time purchase success event occured
-     */
-    tick: number;
-    /**
-     * Entity which trigger purchase event
-     */
-    userId: string;
-    /**
-     * purchase product id
-     */
-    productId: number;
-    /**
-     * purchase success order number
-     */
-    orderId: number;
-    /**
-     * @ignore
-     */
-    constructor(
-    /**
-     * Time purchase success event occured
-     */
-    tick: number, 
-    /**
-     * Entity which trigger purchase event
-     */
-    userId: string, 
-    /**
-     * purchase product id
-     */
-    productId: number, 
-    /**
-     * purchase success order number
-     */
-    orderId: number);
 }
 /**
  * Triggered by {@link Game.GameWorld.onInteract} and {@link Game.GameEntity.onInteract}

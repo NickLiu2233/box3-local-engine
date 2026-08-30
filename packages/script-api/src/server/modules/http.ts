@@ -13,7 +13,7 @@ export interface GameHttp {
    * const res = await http.fetch('https://your.site');
    * console.log(await res.text())
    * ```
-   * @param url 请求的URL,支持HTTP与HTTPS，仅允许白名单内的域名访问
+   * @param url 请求的 URL，支持任意 HTTP 与 HTTPS 地址，不支持脚本协议等危险 URL
    * @param options 请求的选项
    * @returns 请求的响应，以Promise形式返回
    */

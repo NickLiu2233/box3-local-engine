@@ -34,8 +34,6 @@
     "PAID_ACCESS": false,
     "SWEAR_KEY": "",
     "FEATURE_FLAGS": [],
-    "DOMAIN_WHITELIST": [],
-    "SCRIPT_WHITELIST": [],
     "DIFY_BASE_URL": "",
     "DIFY_API_KEY": "",
     "FAST_GPT_BASE_URL": "",

@@ -2,6 +2,8 @@
 type JSONValue = string | number | boolean | {
     [x: string]: JSONValue;
 } | Array<JSONValue>;
+
+
 // File: api/api/console.d.ts
 declare enum GameLogLevel {
     ERROR = 0,
@@ -39,16 +41,6 @@ type TELEPORT_ERROR_STATUS = 'PLAYER_OFFLINE' | 'ACCESS_DENIED' | 'UNKNOWN';
 type TeleportType = (mapId: string, players: GameEntity[], serverId?: string) => Promise<TeleportResult>;
 type TeleportResult = {
     serverId: string;
-};
-declare enum SocialType {
-    FOLLOWING = 0,
-    FOLLOWERS = 1,
-    FRIENDS = 2
-}
-type SocialStatisticType = {
-    followingNum: number;
-    followerNum: number;
-    friendsNum: number;
 };
 interface GameSoundEffectConfig {
     sample: string;
@@ -311,8 +303,6 @@ declare class GameWorld {
     removeZone: (trigger: GameZone) => void;
     onInteract: GameEventChannel<GameInteractEvent>;
     nextInteract: GameEventFuture<GameInteractEvent>;
-    onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>;
-    nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>;
     sound: (spec: {
         sample: string;
         position?: GameVector3;
@@ -320,6 +310,7 @@ declare class GameWorld {
         gain?: number;
         pitch?: number;
     } | string) => Sound;
+    teleport: TeleportType;
     serverId: string;
     projectName: string;
     currentTick: number;
@@ -363,13 +354,13 @@ declare class GameWorld {
     playerJoinSound: GameSoundEffect;
     playerLeaveSound: GameSoundEffect;
     ambientSound: GameSoundEffect;
-    constructor(url: URL, entityQuota: () => number, onRespawn: GameEventChannel<GameRespawnEvent>, nextRespawn: GameEventFuture<GameRespawnEvent>, createEntity: (config: Partial<GameEntityConfig>) => GameEntity | null, querySelector: (selector: GameSelectorString) => GameEntity | null, querySelectorAll: (selector: GameSelectorString) => GameEntity[], testSelector: (selector: GameSelectorString, entity: GameEntity) => boolean, addCollisionFilter: (aSelector: GameSelectorString, bSelector: GameSelectorString) => void, removeCollisionFilter: (aSelector: GameSelectorString, bSelector: GameSelectorString) => void, clearCollisionFilters: () => void, collisionFilters: () => string[][], raycast: (origin: GameVector3, direction: GameVector3, options?: Partial<GameRaycastOptions>) => GameRaycastResult, searchBox: (bounds: GameBounds3) => GameEntity[], animate: (keyframes: Partial<GameWorldKeyframe>[], playbackInfo?: Partial<GameAnimationPlaybackConfig>) => GameAnimation<GameWorldKeyframe, GameWorld>, getAnimations: () => GameAnimation<GameWorldKeyframe, GameWorld>[], getEntityAnimations: () => GameAnimation<GameEntityKeyframe, GameEntity>[], getPlayerAnimations: () => GameAnimation<GamePlayerKeyframe, GamePlayer>[], onTick: GameEventChannel<GameTickEvent>, nextTick: GameEventFuture<GameTickEvent>, onTakeDamage: GameEventChannel<GameDamageEvent>, nextTakeDamage: GameEventFuture<GameDamageEvent>, onDie: GameEventChannel<GameDieEvent>, nextDie: GameEventFuture<GameDieEvent>, onPlayerJoin: GameEventChannel<GamePlayerEntityEvent>, nextPlayerJoin: GameEventFuture<GamePlayerEntityEvent>, onPlayerLeave: GameEventChannel<GamePlayerEntityEvent>, nextPlayerLeave: GameEventFuture<GamePlayerEntityEvent>, onEntityCreate: GameEventChannel<GameEntityEvent>, nextEntityCreate: GameEventFuture<GameEntityEvent>, onEntityDestroy: GameEventChannel<GameEntityEvent>, nextEntityDestroy: GameEventFuture<GameEntityEvent>, say: (message: string) => void, onChat: GameEventChannel<GameChatEvent>, nextChat: GameEventFuture<GameChatEvent>, onClick: GameEventChannel<GameClickEvent>, nextClick: GameEventFuture<GameClickEvent>, onPress: GameEventChannel<GameInputEvent>, nextPress: GameEventFuture<GameInputEvent>, onRelease: GameEventChannel<GameInputEvent>, nextRelease: GameEventFuture<GameInputEvent>, onEntityContact: GameEventChannel<GameEntityContactEvent>, nextEntityContact: GameEventFuture<GameEntityContactEvent>, onEntitySeparate: GameEventChannel<GameEntityContactEvent>, nextEntitySeparate: GameEventFuture<GameEntityContactEvent>, onVoxelContact: GameEventChannel<GameVoxelContactEvent>, nextVoxelContact: GameEventFuture<GameVoxelContactEvent>, onVoxelSeparate: GameEventChannel<GameVoxelContactEvent>, nextVoxelSeparate: GameEventFuture<GameVoxelContactEvent>, onFluidEnter: GameEventChannel<GameFluidContactEvent>, nextFluidEnter: GameEventFuture<GameFluidContactEvent>, onFluidLeave: GameEventChannel<GameFluidContactEvent>, nextFluidLeave: GameEventFuture<GameFluidContactEvent>, zones: () => GameZone[], addZone: (config: Partial<GameZoneConfig>) => GameZone, removeZone: (trigger: GameZone) => void, onInteract: GameEventChannel<GameInteractEvent>, nextInteract: GameEventFuture<GameInteractEvent>, onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>, nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>, sound: (spec: {
+    constructor(url: URL, entityQuota: () => number, onRespawn: GameEventChannel<GameRespawnEvent>, nextRespawn: GameEventFuture<GameRespawnEvent>, createEntity: (config: Partial<GameEntityConfig>) => GameEntity | null, querySelector: (selector: GameSelectorString) => GameEntity | null, querySelectorAll: (selector: GameSelectorString) => GameEntity[], testSelector: (selector: GameSelectorString, entity: GameEntity) => boolean, addCollisionFilter: (aSelector: GameSelectorString, bSelector: GameSelectorString) => void, removeCollisionFilter: (aSelector: GameSelectorString, bSelector: GameSelectorString) => void, clearCollisionFilters: () => void, collisionFilters: () => string[][], raycast: (origin: GameVector3, direction: GameVector3, options?: Partial<GameRaycastOptions>) => GameRaycastResult, searchBox: (bounds: GameBounds3) => GameEntity[], animate: (keyframes: Partial<GameWorldKeyframe>[], playbackInfo?: Partial<GameAnimationPlaybackConfig>) => GameAnimation<GameWorldKeyframe, GameWorld>, getAnimations: () => GameAnimation<GameWorldKeyframe, GameWorld>[], getEntityAnimations: () => GameAnimation<GameEntityKeyframe, GameEntity>[], getPlayerAnimations: () => GameAnimation<GamePlayerKeyframe, GamePlayer>[], onTick: GameEventChannel<GameTickEvent>, nextTick: GameEventFuture<GameTickEvent>, onTakeDamage: GameEventChannel<GameDamageEvent>, nextTakeDamage: GameEventFuture<GameDamageEvent>, onDie: GameEventChannel<GameDieEvent>, nextDie: GameEventFuture<GameDieEvent>, onPlayerJoin: GameEventChannel<GamePlayerEntityEvent>, nextPlayerJoin: GameEventFuture<GamePlayerEntityEvent>, onPlayerLeave: GameEventChannel<GamePlayerEntityEvent>, nextPlayerLeave: GameEventFuture<GamePlayerEntityEvent>, onEntityCreate: GameEventChannel<GameEntityEvent>, nextEntityCreate: GameEventFuture<GameEntityEvent>, onEntityDestroy: GameEventChannel<GameEntityEvent>, nextEntityDestroy: GameEventFuture<GameEntityEvent>, say: (message: string) => void, onChat: GameEventChannel<GameChatEvent>, nextChat: GameEventFuture<GameChatEvent>, onClick: GameEventChannel<GameClickEvent>, nextClick: GameEventFuture<GameClickEvent>, onPress: GameEventChannel<GameInputEvent>, nextPress: GameEventFuture<GameInputEvent>, onRelease: GameEventChannel<GameInputEvent>, nextRelease: GameEventFuture<GameInputEvent>, onEntityContact: GameEventChannel<GameEntityContactEvent>, nextEntityContact: GameEventFuture<GameEntityContactEvent>, onEntitySeparate: GameEventChannel<GameEntityContactEvent>, nextEntitySeparate: GameEventFuture<GameEntityContactEvent>, onVoxelContact: GameEventChannel<GameVoxelContactEvent>, nextVoxelContact: GameEventFuture<GameVoxelContactEvent>, onVoxelSeparate: GameEventChannel<GameVoxelContactEvent>, nextVoxelSeparate: GameEventFuture<GameVoxelContactEvent>, onFluidEnter: GameEventChannel<GameFluidContactEvent>, nextFluidEnter: GameEventFuture<GameFluidContactEvent>, onFluidLeave: GameEventChannel<GameFluidContactEvent>, nextFluidLeave: GameEventFuture<GameFluidContactEvent>, zones: () => GameZone[], addZone: (config: Partial<GameZoneConfig>) => GameZone, removeZone: (trigger: GameZone) => void, onInteract: GameEventChannel<GameInteractEvent>, nextInteract: GameEventFuture<GameInteractEvent>, sound: (spec: {
         sample: string;
         position?: GameVector3;
         radius?: number;
         gain?: number;
         pitch?: number;
-    } | string) => Sound, serverId: string);
+    } | string) => Sound, teleport: TeleportType, serverId: string);
 }
 declare class GameVoxels {
     shape: GameVector3;
@@ -1076,13 +1067,6 @@ declare class GameChatEvent {
     entity: GameEntity;
     message: string;
     constructor(tick: number, entity: GameEntity, message: string);
-}
-declare class GamePurchaseSuccessEvent {
-    tick: number;
-    userId: string;
-    productId: number;
-    orderId: number;
-    constructor(tick: number, userId: string, productId: number, orderId: number);
 }
 declare class GameInteractEvent {
     tick: number;

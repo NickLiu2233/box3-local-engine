@@ -11,7 +11,7 @@ import {
 } from './schema';
 import { getOSSResourceUrl } from './util';
 import type { GetImageRes } from '../game-ui/nodes/image';
-import { WHITELIST } from '../utils/url-whitelist';
+import { isSafeUrl } from '../utils/safe-url';
 import { GLTFLoader } from '../mesh/gltf/loader';
 
 type Spec = {
@@ -40,7 +40,7 @@ export class ResourceController {
   ): GetImageRes {
     let img = this.resources.images[url];
     if (!img) {
-      if (!WHITELIST.test(url)) {
+      if (!isSafeUrl(url)) {
         return ImageStatus.Error;
       }
       img = this.addNewCache(url);

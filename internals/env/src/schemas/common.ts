@@ -108,8 +108,6 @@ export interface CommonRuntimeConfig {
   SWEAR_KEY: string;
 
   FEATURE_FLAGS?: string[];
-  DOMAIN_WHITELIST: string[];
-  SCRIPT_WHITELIST: string[];
 
   /**
    * 用于配置地形加载xz平面的最大一半尺寸
@@ -178,16 +176,6 @@ export const COMMON_SCHEMA: JTDSchemaType<CommonRuntimeConfig> = {
     PAID_ACCESS: { type: 'boolean' },
     SWEAR_KEY: { type: 'string' },
 
-    DOMAIN_WHITELIST: {
-      elements: {
-        type: 'string',
-      },
-    },
-    SCRIPT_WHITELIST: {
-      elements: {
-        type: 'string',
-      },
-    },
     DIFY_BASE_URL: { type: 'string' },
     DIFY_API_KEY: { type: 'string' },
     FAST_GPT_BASE_URL: { type: 'string' },

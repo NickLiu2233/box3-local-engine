@@ -4,7 +4,7 @@ import { Logger } from '@box-local/utils/logger';
 import { GameServerState } from '../game-server-schema';
 import { HyperlinkProtocol } from './href-protocol';
 import { HyperlinkScriptProtocol } from './href-script-protocol';
-import { isSafeUrl } from './url-whitelist';
+import { isSafeUrl } from './safe-url';
 
 export class HrefServer {
   public netProtocol: MuServerProtocol<typeof HyperlinkProtocol>;

@@ -648,9 +648,6 @@ export class ScriptHost {
             MAX_BODIES - this._state.settings.playerLimit;
           initPacket.config.url = this._state.settings.gameURL;
 
-          // script whiteList
-          initPacket.config.scriptWhiteList = [...config.SCRIPT_WHITELIST];
-
           const { mode, serverId, containerName } = this._state.settings;
           /**
            * 目前edit模式一个地图只有一个服务器，因此edit模式下返回地图哈希而不是服务器Id

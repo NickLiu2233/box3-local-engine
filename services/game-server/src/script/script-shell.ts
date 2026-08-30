@@ -18,7 +18,6 @@ import {
   GameInteractEvent,
   GameKeyBoardEvent,
   GamePlayerEntity,
-  GamePurchaseSuccessEvent,
   GameRaycastResult,
   GameRespawnEvent,
   GameTickEvent,
@@ -670,17 +669,6 @@ export class ScriptShell {
         return true;
       }, ev.tick * MS_PER_TICK);
     });
-    // purchase success event
-    event.purchaseSuccessEvents.forEach((ev) => {
-      const wrapEvent = new GamePurchaseSuccessEvent(
-        this.prevTickEvent.state.tick,
-        ev.userId,
-        parseInt(ev.productId),
-        parseInt(ev.orderId),
-      );
-      this._dispatch(this.world.onPlayerPurchaseSuccess, wrapEvent);
-    });
-
     // remote channel event
     event.remoteChannelEvents.forEach((ev) => {
       const entity = this.world.entity.entityIndex.get(ev.id);
@@ -944,11 +932,7 @@ export class ScriptShell {
     });
     this.navigator = new NavigatorScriptShell(this);
     this.href = new HrefScriptShell(this.client);
-    this.http = new HttpScriptShell(
-      this.client,
-      this.scheduler.schedule,
-      this.config,
-    );
+    this.http = new HttpScriptShell(this.client, this.scheduler.schedule);
     this.rtc = new RTCScriptShell(this);
     this.gui = new GUIScriptShell(this);
     this.teleport = new TeleportScriptShell(

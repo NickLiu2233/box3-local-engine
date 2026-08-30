@@ -26,7 +26,7 @@ export declare const storage: GameStorage;
  */
 export declare const world: GameWorld;
 /**
- * 此模块仅支持调用白名单域名
+ * 此模块支持访问任意 HTTP 与 HTTPS 地址，并拒绝脚本协议等危险 URL
  * @internal
  */
 export declare const http: GameHttp;

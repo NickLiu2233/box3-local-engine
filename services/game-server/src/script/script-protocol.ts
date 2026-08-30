@@ -99,8 +99,6 @@ export const ScriptConfigSchema = new MuStruct({
   animationLimit: new MuFloat64(500),
   keyframeLimit: new MuFloat64(16),
 
-  scriptWhiteList: new MuArray(new MuUTF8(), Infinity),
-
   serverId: new MuUTF8(),
 });
 export type ScriptConfig = typeof ScriptConfigSchema.identity;

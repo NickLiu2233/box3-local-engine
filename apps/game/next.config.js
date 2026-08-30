@@ -216,7 +216,6 @@ const config = {
     ]
   },
   images: {
-    domains: ['static.box.game', 'static.createra.fun'],
     //https://stackoverflow.com/questions/65487914/error-image-optimization-using-next-js-default-loader-is-not-compatible-with-n
     ...(process.env.NEXT_PUBLIC_EXPORT_MODE === 'true' && {
       loader: 'akamai',

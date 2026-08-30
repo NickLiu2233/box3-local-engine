@@ -50,7 +50,6 @@ import {
   GameWorldKeyframe,
   NavigatorEventType,
   Sound,
-  GamePurchaseSuccessEvent,
   TeleportType,
   TeleportResult,
 } from '@box-local/schema/api/js/api';
@@ -136,9 +135,6 @@ export class ScriptWorldSync {
   public onRelease = new ScriptDispatcher<GameInputEvent>();
 
   public onInteract = new ScriptDispatcher<GameInteractEvent>();
-
-  public onPlayerPurchaseSuccess =
-    new ScriptDispatcher<GamePurchaseSuccessEvent>();
 
   public logger: Logger;
 
@@ -540,8 +536,6 @@ export class ScriptWorldSync {
       this.zones.removeZone,
       this.onInteract.channel,
       this.onInteract.future,
-      this.onPlayerPurchaseSuccess.channel,
-      this.onPlayerPurchaseSuccess.future,
       this.playWorldSound,
       this.teleport,
       spec.config.serverId,

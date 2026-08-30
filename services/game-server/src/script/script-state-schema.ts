@@ -17,7 +17,6 @@ import { InteractiveEventSetSchema } from '../interact/interact-server-state';
 import { InteractComponentSetSchema } from '@box-local/schema/interact/interact-protocol';
 import { DialogEventSetSchema } from '../dialog/dialog-server-schema';
 import { ServerSoundStateSchema } from '../sound/server-sound-state';
-import { PurchaseSuccessEventsSchema } from '@box-local/schema/events/market-event-schema';
 import { RemoteChannelEventsSchema } from '@box-local/schema/events/remote-channel-event-schema';
 import { ClientKeyboardEventsSchema } from '@box-local/schema/events/client-keyboard-event-schema';
 import { EntityNameComponentSetSchema } from '@box-local/schema/entity-name/entity-name';
@@ -29,7 +28,6 @@ export const ScriptEventsSchema = new MuStruct({
   respawnEvents: RespawnEventSetSchema,
   interactEvents: InteractiveEventSetSchema,
   dialogEvents: DialogEventSetSchema,
-  purchaseSuccessEvents: PurchaseSuccessEventsSchema,
   remoteChannelEvents: RemoteChannelEventsSchema,
   keyboardEvents: ClientKeyboardEventsSchema,
 });

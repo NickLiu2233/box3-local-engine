@@ -90,8 +90,6 @@ export interface CommonRuntimeConfig {
     PAID_ACCESS: boolean;
     SWEAR_KEY: string;
     FEATURE_FLAGS?: string[];
-    DOMAIN_WHITELIST: string[];
-    SCRIPT_WHITELIST: string[];
     /**
      * 用于配置地形加载xz平面的最大一半尺寸
      * 比如配置3，地形最多会加载人物所在的地形1个chunk和前后左右各3个chunk，总共7 * 7个chunk

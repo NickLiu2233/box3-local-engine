@@ -6,8 +6,7 @@ import {
   GameHttpHandler,
 } from '@box-local/schema/api/js/http';
 import { HttpScriptProtocol } from './http-protocol';
-import { Whitelist } from '@box-local/utils/whitelist';
-import { ScriptConfig } from '../script/script-protocol';
+import { isSafeUrl } from '../href/safe-url';
 
 enum BodyType {
   TEXT = 'text',
@@ -95,8 +94,6 @@ export class FetchWrapper {
 }
 
 export class HttpScriptShell {
-  private scriptConfig: ScriptConfig;
-  private whitelist: Whitelist | null = null;
   public protocol: MuClientProtocol<typeof HttpScriptProtocol>;
   public httpAPI: GameHttpAPI;
   public requests: { [handle: number]: FetchWrapper } = {};
@@ -104,9 +101,7 @@ export class HttpScriptShell {
   constructor(
     client: MuClient,
     private schedule: (event: () => void) => void,
-    config: ScriptConfig,
   ) {
-    this.scriptConfig = config;
     this.protocol = client.protocol(HttpScriptProtocol);
     this.protocol.configure({
       message: {
@@ -153,10 +148,7 @@ export class HttpScriptShell {
     url: string,
     options: GameHttpFetchRequestOptions = {},
   ) => {
-    if (!this.whitelist) {
-      this.whitelist = new Whitelist(this.scriptConfig.scriptWhiteList);
-    }
-    if (!this.whitelist.test(url)) {
+    if (!isSafeUrl(url)) {
       throw new Error(`Blocked url ${url}`);
     }
     const handle = this.requestCounter++;

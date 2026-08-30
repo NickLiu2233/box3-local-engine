@@ -82,7 +82,6 @@ const PROPERTIES_FROM_SERVER = [
   'FEATURE_FLAGS',
   'MAX_HALF_CHUNKS',
   'MAX_Y_HALF_CHUNKS',
-  'SCRIPT_WHITELIST',
 ] as const;
 
 export type ServerConfigForClient = Pick<

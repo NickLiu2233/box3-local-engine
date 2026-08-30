@@ -279,16 +279,6 @@ const axios = GlobalAxios.create();
         SWEAR_KEY: {
             type: 'string'
         },
-        DOMAIN_WHITELIST: {
-            elements: {
-                type: 'string'
-            }
-        },
-        SCRIPT_WHITELIST: {
-            elements: {
-                type: 'string'
-            }
-        },
         DIFY_BASE_URL: {
             type: 'string'
         },

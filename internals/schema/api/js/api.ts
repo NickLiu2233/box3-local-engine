@@ -19,18 +19,6 @@ export type TeleportType = (
 
 export type TeleportResult = { serverId: string };
 
-export enum SocialType {
-  FOLLOWING,
-  FOLLOWERS,
-  FRIENDS,
-}
-
-export type SocialStatisticType = {
-  followingNum: number;
-  followerNum: number;
-  friendsNum: number;
-};
-
 export interface GameSoundEffectConfig {
   sample: string;
   radius: number;
@@ -912,13 +900,6 @@ export class GameWorld {
      */
     public onInteract: GameEventChannel<GameInteractEvent>,
     public nextInteract: GameEventFuture<GameInteractEvent>,
-
-    /**
-     * Called when player buy product success
-     * @category player
-     */
-    public onPlayerPurchaseSuccess: GameEventChannel<GamePurchaseSuccessEvent>,
-    public nextPlayerPurchaseSuccess: GameEventFuture<GamePurchaseSuccessEvent>,
 
     /**
      * Plays a sound at a given location
@@ -3288,34 +3269,6 @@ export class GameChatEvent {
      * What the entity said in the chat event
      */
     public message: string,
-  ) {}
-}
-
-/**
- * Triggered by {@link Game.GameWorld.onPlayerPurchaseSuccess}
- * @category events
- */
-export class GamePurchaseSuccessEvent {
-  /**
-   * @ignore
-   */
-  constructor(
-    /**
-     * Time purchase success event occured
-     */
-    public tick: number,
-    /**
-     * Entity which trigger purchase event
-     */
-    public userId: string,
-    /**
-     * purchase product id
-     */
-    public productId: number,
-    /**
-     * purchase success order number
-     */
-    public orderId: number,
   ) {}
 }
 

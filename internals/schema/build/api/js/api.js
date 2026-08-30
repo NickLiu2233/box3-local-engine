@@ -1,13 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.GameAssetListEntry = exports.GameAssetType = exports.GameResourceSystem = exports.GameAnimationEvent = exports.GameKeyBoardEvent = exports.GameClickEvent = exports.GameInputEvent = exports.GameButtonType = exports.GameInteractEvent = exports.GamePurchaseSuccessEvent = exports.GameChatEvent = exports.GameFluidContactEvent = exports.GameVoxelContactEvent = exports.GameEntityContactEvent = exports.GameRespawnEvent = exports.GameDieEvent = exports.GameDamageEvent = exports.GameTriggerEvent = exports.GameEntityEvent = exports.GameTickEvent = exports.GameEventHandlerToken = exports.GameRaycastResult = exports.PlayerNavigator = exports.GamePlayer = exports.GameInputDirection = exports.GameCameraFreezedAxis = exports.GameCameraMode = exports.GameDialogType = exports.GameWearable = exports.GameBodyPart = exports.GamePlayerWalkState = exports.GamePlayerMoveState = exports.GameFluidContact = exports.GameVoxelContact = exports.GameEntityContact = exports.GameMotionEvent = exports.GameMotionHandler = exports.GameMotionController = exports.GameEntity = exports.GameVoxels = exports.GameWorld = exports.Sound = exports.GameAnimation = exports.GameEasing = exports.GameAnimationDirection = exports.GameAnimationPlaybackState = exports.GameZone = exports.GameSoundEffect = exports.SocialType = void 0;
+exports.GameAssetListEntry = exports.GameAssetType = exports.GameResourceSystem = exports.GameAnimationEvent = exports.GameKeyBoardEvent = exports.GameClickEvent = exports.GameInputEvent = exports.GameButtonType = exports.GameInteractEvent = exports.GameChatEvent = exports.GameFluidContactEvent = exports.GameVoxelContactEvent = exports.GameEntityContactEvent = exports.GameRespawnEvent = exports.GameDieEvent = exports.GameDamageEvent = exports.GameTriggerEvent = exports.GameEntityEvent = exports.GameTickEvent = exports.GameEventHandlerToken = exports.GameRaycastResult = exports.PlayerNavigator = exports.GamePlayer = exports.GameInputDirection = exports.GameCameraFreezedAxis = exports.GameCameraMode = exports.GameDialogType = exports.GameWearable = exports.GameBodyPart = exports.GamePlayerWalkState = exports.GamePlayerMoveState = exports.GameFluidContact = exports.GameVoxelContact = exports.GameEntityContact = exports.GameMotionEvent = exports.GameMotionHandler = exports.GameMotionController = exports.GameEntity = exports.GameVoxels = exports.GameWorld = exports.Sound = exports.GameAnimation = exports.GameEasing = exports.GameAnimationDirection = exports.GameAnimationPlaybackState = exports.GameZone = exports.GameSoundEffect = void 0;
 const math_1 = require("./math");
-var SocialType;
-(function (SocialType) {
-    SocialType[SocialType["FOLLOWING"] = 0] = "FOLLOWING";
-    SocialType[SocialType["FOLLOWERS"] = 1] = "FOLLOWERS";
-    SocialType[SocialType["FRIENDS"] = 2] = "FRIENDS";
-})(SocialType || (exports.SocialType = SocialType = {}));
 /**
  * A single sound effect table
  */
@@ -445,14 +439,15 @@ class GameWorld {
      */
     onInteract, nextInteract, 
     /**
-     * Called when player buy product success
-     * @category player
-     */
-    onPlayerPurchaseSuccess, nextPlayerPurchaseSuccess, 
-    /**
      * Plays a sound at a given location
      */
     sound, 
+    /**
+     * 地图组内传送能力。mapId 必须是目标地图不可变的地图 UUID，不能使用
+     * 可修改的访问 ID、地图名称或本地工程 ID。默认创建仅被传送玩家可见的独立房间；传入返回的
+     * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
+     */
+    teleport,
     /**
      * 当前服务器id
      */
@@ -515,9 +510,8 @@ class GameWorld {
         this.removeZone = removeZone;
         this.onInteract = onInteract;
         this.nextInteract = nextInteract;
-        this.onPlayerPurchaseSuccess = onPlayerPurchaseSuccess;
-        this.nextPlayerPurchaseSuccess = nextPlayerPurchaseSuccess;
         this.sound = sound;
+        this.teleport = teleport;
         this.serverId = serverId;
         /**
          * The name of the project (read only)
@@ -2443,38 +2437,6 @@ class GameChatEvent {
     }
 }
 exports.GameChatEvent = GameChatEvent;
-/**
- * Triggered by {@link Game.GameWorld.onPlayerPurchaseSuccess}
- * @category events
- */
-class GamePurchaseSuccessEvent {
-    /**
-     * @ignore
-     */
-    constructor(
-    /**
-     * Time purchase success event occured
-     */
-    tick, 
-    /**
-     * Entity which trigger purchase event
-     */
-    userId, 
-    /**
-     * purchase product id
-     */
-    productId, 
-    /**
-     * purchase success order number
-     */
-    orderId) {
-        this.tick = tick;
-        this.userId = userId;
-        this.productId = productId;
-        this.orderId = orderId;
-    }
-}
-exports.GamePurchaseSuccessEvent = GamePurchaseSuccessEvent;
 /**
  * Triggered by {@link Game.GameWorld.onInteract} and {@link Game.GameEntity.onInteract}
  * @category events

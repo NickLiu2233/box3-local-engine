@@ -1,7 +1,7 @@
 import { MediaError, MediaErrorCode } from '@box-local/script-api';
 import { toString } from 'ramda';
 import { GameAudioState } from 'src/engine/sound/defs';
-import { WHITELIST } from 'src/engine/utils/url-whitelist';
+import { isSafeUrl } from 'src/engine/utils/safe-url';
 import { ClientScriptContext } from '../context/const';
 import { EventEmitter } from '../events';
 
@@ -120,7 +120,7 @@ export class Audio extends EventEmitter<AudioEventMap> {
       throw this.error;
     }
 
-    if (!WHITELIST.test(this._src)) {
+    if (!isSafeUrl(this._src)) {
       this.error = new MediaError(
         MediaErrorCode.MEDIA_ERR_SRC_NOT_SUPPORTED,
         'Src is not supported',
