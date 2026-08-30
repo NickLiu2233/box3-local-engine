@@ -124,7 +124,7 @@ function startEditLibrary({
       })
       const runtimePort = nextPort++
       const runtime = await startRuntime(project, runtimePort, {
-        serverId: roomId || 'public',
+        serverId: roomId || project.mapUuid,
         privateRoom: Boolean(roomId),
       })
       lifecycle.touch(runtime)

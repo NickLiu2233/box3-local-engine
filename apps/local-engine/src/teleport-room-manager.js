@@ -190,10 +190,10 @@ function createTeleportRoomManager({
     const subjects = normalizedSubjects(subjectIds)
 
     if (mode === 'edit') {
-      return { playHash: targetIdentity.id, serverId: targetIdentity.id }
+      return { playHash: targetIdentity.id, serverId: targetIdentity.mapUuid }
     }
-    if (serverId === 'public') {
-      return { playHash: targetIdentity.id, serverId: 'public' }
+    if (serverId === 'public' || serverId === targetIdentity.mapUuid) {
+      return { playHash: targetIdentity.id, serverId: targetIdentity.mapUuid }
     }
 
     let room

@@ -137,7 +137,11 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
 
   const publicResponse = await request(port, '/sub-map/probe')
   assert.equal(publicResponse.status, 200)
-  assert.equal(publicResponse.body.serverId, 'public')
+  assert.equal(publicResponse.body.serverId, '22222222-2222-4222-8222-222222222222')
+
+  const mutableAccessIdResponse = await request(port, '/dungeon/probe')
+  assert.equal(mutableAccessIdResponse.status, 200)
+  assert.equal(mutableAccessIdResponse.body.serverId, '22222222-2222-4222-8222-222222222222')
 
   const allocation = await request(port, '/__local_teleport/allocate', {
     method: 'POST',
@@ -249,7 +253,10 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
   })
   assert.deepEqual(allocation, {
     status: 200,
-    body: { playHash: 'sub-map', serverId: 'sub-map' },
+    body: {
+      playHash: 'sub-map',
+      serverId: '22222222-2222-4222-8222-222222222222',
+    },
   })
   assert.equal(starts.length, 0)
 })

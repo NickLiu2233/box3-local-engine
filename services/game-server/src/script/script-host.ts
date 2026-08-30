@@ -103,7 +103,6 @@ import { PlayerServer } from '../player/player-server';
 import { TeleportServer } from '../teleport/teleport-server';
 import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
 import { EntityNameComponentSetSchema } from '@box-local/schema/entity-name/entity-name';
-import { getHashFromContainerName } from '../utils/container-name';
 import { SCRIPT_OSS_CDN_PATH } from '@box-local/content-server/index';
 import { Vec3Schema } from '@box-local/schema/utils/math-schema';
 import { resolveRuntimeScriptEntry } from './script-entry';
@@ -648,15 +647,8 @@ export class ScriptHost {
             MAX_BODIES - this._state.settings.playerLimit;
           initPacket.config.url = this._state.settings.gameURL;
 
-          const { mode, serverId, containerName } = this._state.settings;
-          /**
-           * 目前edit模式一个地图只有一个服务器，因此edit模式下返回地图哈希而不是服务器Id
-           * 这样用户可以模拟流程调试
-           */
-          initPacket.config.serverId =
-            mode === 'edit'
-              ? getHashFromContainerName(containerName)
-              : serverId;
+          const { serverId } = this._state.settings;
+          initPacket.config.serverId = serverId;
 
           // copy zones
           ZoneSetRDA.stateSchema.assign(

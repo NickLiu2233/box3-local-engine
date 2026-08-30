@@ -183,7 +183,7 @@ function startPlayLibrary({
       })
       const runtimePort = nextPort++
       const runtime = await startRuntime(world, runtimePort, {
-        serverId: roomId || 'public',
+        serverId: roomId || world.manifest.mapUuid,
         privateRoom: Boolean(roomId),
       })
       lifecycle.touch(runtime)

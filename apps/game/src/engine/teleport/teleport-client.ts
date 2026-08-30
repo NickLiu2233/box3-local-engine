@@ -2,6 +2,7 @@ import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
 import { GameClientState } from '../game-client-schema';
 import { TeleportProtocol } from '@box-local/schema/teleport/teleport-protocol';
 import { messenger } from 'src/messenger';
+import { clientConfig } from 'src/config/client';
 
 export class TeleportClient {
   public protocol: MuClientProtocol<typeof TeleportProtocol>;
@@ -23,12 +24,17 @@ export class TeleportClient {
           }
         },
         editTeleport: (editHash) => {
-          if (editHash) {
-            messenger.emitEvent('hashChange', {
-              hash: editHash,
-              isNewTab: false,
+          if (!editHash) return;
+          if (clientConfig.isLocalGameServer) {
+            messenger.jumpTo({
+              url: `/e/${encodeURIComponent(editHash)}`,
             });
+            return;
           }
+          messenger.emitEvent('hashChange', {
+            hash: editHash,
+            isNewTab: false,
+          });
         },
       },
     });

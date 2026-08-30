@@ -23,7 +23,10 @@ export declare class GameWorld {
     serverId?: string,
   ): Promise<TeleportResult>;
 
-  /** 当前运行实例的 ID。公共实例为 `public`。 */
+  /**
+   * 当前运行实例的稳定 ID。普通实例使用地图永久 UUID，传送创建的
+   * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
+   */
   readonly serverId: string;
 
   /**

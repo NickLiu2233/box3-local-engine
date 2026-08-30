@@ -548,6 +548,14 @@ async function main() {
           // unrelated projects or independently distributed game packages.
           BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
           BOX_SERVER_NAME: process.env.BOX_WORLD_NAME || process.env.BOX_SERVER_NAME || 'BOX 世界',
+          // world.serverId is a runtime identity, not the mutable route used
+          // to open a map. Public/edit runtimes use the immutable Map UUID;
+          // private teleport runtimes keep their generated room ID.
+          SERVER_ID:
+            process.env.SERVER_ID ||
+            localStorageIdentity?.mapUuid ||
+            process.env.BOX_WORLD_MAP_UUID ||
+            '1',
           // Local VOXA defaults are scoped by the editable project. Leaving
           // this empty makes every Creator runtime query the legacy mapId=0
           // default and leaks another project's skin into startProject().
@@ -609,7 +617,7 @@ async function main() {
           }),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
-          SERVER_ID: instance.serverId || 'public',
+          SERVER_ID: instance.serverId || world.manifest.mapUuid || world.id,
           TYPE: instance.privateRoom ? 'teleport' : 'public',
           TELEPORT_ACCESS: 'true',
           // A referenced play package owns its CDN setting. Never use a
@@ -666,7 +674,7 @@ async function main() {
         stdio: 'inherit',
         env: {
           ...process.env,
-          SERVER_ID: instance.serverId || 'public',
+          SERVER_ID: instance.serverId || project.mapUuid || project.id,
           TYPE: instance.privateRoom ? 'teleport' : 'public',
           TELEPORT_ACCESS: 'true',
           BOX_TELEPORT_CONTROL_URL:

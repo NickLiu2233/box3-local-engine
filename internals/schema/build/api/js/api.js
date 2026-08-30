@@ -449,7 +449,8 @@ class GameWorld {
      */
     teleport,
     /**
-     * 当前服务器id
+     * 当前运行实例的稳定 ID。普通实例使用地图永久 UUID，传送创建的
+     * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
      */
     serverId) {
         this.url = url;

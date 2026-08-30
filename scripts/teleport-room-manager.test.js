@@ -167,7 +167,10 @@ test('edit and public teleports do not allocate a private room', async () => {
       subjectIds: ['player-a'],
       mode: 'edit',
     }),
-    { playHash: 'sub-map', serverId: 'sub-map' },
+    {
+      playHash: 'sub-map',
+      serverId: '22222222-2222-4222-8222-222222222222',
+    },
   )
   assert.deepEqual(
     await manager.allocate({
@@ -176,7 +179,22 @@ test('edit and public teleports do not allocate a private room', async () => {
       subjectIds: ['player-a'],
       serverId: 'public',
     }),
-    { playHash: 'sub-map', serverId: 'public' },
+    {
+      playHash: 'sub-map',
+      serverId: '22222222-2222-4222-8222-222222222222',
+    },
+  )
+  assert.deepEqual(
+    await manager.allocate({
+      sourceMapId: '11111111-1111-4111-8111-111111111111',
+      targetMapId: '22222222-2222-4222-8222-222222222222',
+      subjectIds: ['player-a'],
+      serverId: '22222222-2222-4222-8222-222222222222',
+    }),
+    {
+      playHash: 'sub-map',
+      serverId: '22222222-2222-4222-8222-222222222222',
+    },
   )
   assert.deepEqual(starts, [])
 })

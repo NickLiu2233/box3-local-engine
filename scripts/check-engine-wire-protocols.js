@@ -8,6 +8,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 const client = read('apps/game/src/engine/game-client.ts')
 const playClient = read('apps/game/src/client/play/play-client.ts')
 const sharedClient = read('apps/game/src/client/index.ts')
+const teleportClient = read('apps/game/src/engine/teleport/teleport-client.ts')
 const server = read('services/game-server/src/script/script-host.ts')
 const createServer = read('services/game-server/src/createServer.ts')
 const teleportServer = read('services/game-server/src/teleport/teleport-server.ts')
@@ -58,6 +59,21 @@ assert.ok(
 assert.ok(
   launcher.includes('BOX_WORLD_MAP_UUID: world.manifest.mapUuid'),
   'Play runtimes must receive their immutable map UUID',
+)
+assert.ok(
+  server.includes('initPacket.config.serverId = serverId'),
+  'world.serverId must preserve the runtime server ID supplied by the launcher',
+)
+assert.equal(
+  server.includes('getHashFromContainerName(containerName)'),
+  false,
+  'world.serverId must not use the mutable access/container ID in edit mode',
+)
+assert.ok(
+  teleportClient.includes('clientConfig.isLocalGameServer') &&
+    teleportClient.includes('url: `/e/${encodeURIComponent(editHash)}`') &&
+    teleportClient.includes('messenger.jumpTo'),
+  'a successful local edit teleport must navigate directly to the target map',
 )
 
 // MuClient/MuServer's third constructor argument means "skip protocol
