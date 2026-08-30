@@ -126,6 +126,15 @@ RUN node apps/local-engine/src/prune-player-build.js --player-service \
       apps/game/.next \
       apps/game/.next/standalone/apps/game/.next \
     && rm -rf apps/game/.next/standalone/apps/local-engine \
+    && find \
+      apps/game/.next/standalone \
+      apps/game/.next/static \
+      apps/game/public \
+      -type f \( \
+      -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
+      -o -name '*.p12' -o -name '*.pfx' -o -name '*.map' \
+      -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
+    \) -delete \
     && find apps/game/.next/standalone -type f \( \
       -name '*.test.js' -o -name '*.spec.js' \
     \) -not -path '*/node_modules/*' -delete
@@ -285,11 +294,6 @@ ENV BOX_DEPLOYMENT_MODE=player-service \
 COPY --from=player-service-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=player-service-build --chown=node:node /app/apps/game/.next/static /app/apps/game/.next/standalone/apps/game/.next/static
 COPY --from=player-service-build --chown=node:node /app/apps/game/public /app/apps/game/.next/standalone/apps/game/public
-
-RUN find /app/apps/game/.next/standalone -type f \( \
-      -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' \
-      -o -name '*.map' -o -name '*.ts' -o -name '*.tsx' -o -name '*.nft.json' \
-    \) -delete
 
 USER node
 

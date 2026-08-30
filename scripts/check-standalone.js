@@ -549,11 +549,50 @@ requirePattern(
   'player service local-engine source purge',
   /rm -rf apps\/game\/\.next\/standalone\/apps\/local-engine/,
 )
+const playerServiceBuildCleanup =
+  /find\s+([\s\S]*?)\s+-type f \\\(\s*([\s\S]*?)\s*\\\) -delete/.exec(playerServiceBuildStage)
+if (!playerServiceBuildCleanup) {
+  fail(`${dockerFile}: missing player service build-stage standalone cleanup`)
+} else {
+  const cleanupTargets = playerServiceBuildCleanup[1]
+  for (const target of [
+    'apps/game/.next/standalone',
+    'apps/game/.next/static',
+    'apps/game/public',
+  ]) {
+    if (!cleanupTargets.includes(target)) {
+      fail(`${dockerFile}: player service build-stage cleanup is missing ${target}`)
+    }
+  }
+  const cleanupRules = playerServiceBuildCleanup[2]
+  for (const pattern of [
+    "-name '.env'",
+    "-name '.env.*'",
+    "-name '*.pem'",
+    "-name '*.key'",
+    "-name '*.p12'",
+    "-name '*.pfx'",
+    "-name '*.map'",
+    "-name '*.ts'",
+    "-name '*.tsx'",
+    "-name '*.nft.json'",
+  ]) {
+    if (!cleanupRules.includes(pattern)) {
+      fail(`${dockerFile}: player service build-stage cleanup is missing ${pattern}`)
+    }
+  }
+}
 requirePattern(
   playerServiceBuildStage,
   dockerFile,
-  'player service test source purge',
-  /find apps\/game\/\.next\/standalone[\s\S]*?-name '\*\.test\.js'[\s\S]*?-name '\*\.spec\.js'/,
+  'player service first-party test source purge',
+  /find apps\/game\/\.next\/standalone -type f \\\([\s\S]*?-name '\*\.test\.js'[\s\S]*?-name '\*\.spec\.js'[\s\S]*?-not -path '\*\/node_modules\/\*' -delete/,
+)
+forbidPattern(
+  playerServiceDockerStage,
+  dockerFile,
+  'late player service standalone cleanup that leaves recoverable Docker whiteouts',
+  /find \/app\/apps\/game\/\.next\/standalone[\s\S]*?-delete/,
 )
 for (const [name, stage] of [
   ['creator', getDockerStage(dockerSource, 'creator-build')],
