@@ -9,17 +9,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (process.env.BOX_DEPLOYMENT_MODE !== 'player-service') return res.status(404).end();
   try {
     if (req.method === 'POST') {
-      const createsPrivilegedAccount = req.body?.role === 'moderator'
-        || req.body?.role === 'admin'
-        || Object.prototype.hasOwnProperty.call(req.body || {}, 'adminPermissions');
-      const context = await authorizePlayerAdmin(
-        req,
-        res,
-        createsPrivilegedAccount ? 'owner' : 'players.create',
-      );
+      const context = await authorizePlayerAdmin(req, res, 'players.create');
       if (!context) return;
       return res.status(201).json({
-        player: await createManagedPlayer(req.body || {}, context),
+        player: await createManagedPlayer(
+          { ...(req.body || {}), role: 'player', adminPermissions: [] },
+          context,
+        ),
       });
     }
     if (req.method !== 'GET') {
@@ -36,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       page: Number(queryValue('page')) || 1,
       pageSize: Number(queryValue('pageSize')) || 30,
       identity: queryValue('identity') as 'all' | 'user' | 'banned',
-      role: queryValue('role') as 'all' | 'player' | 'moderator' | 'admin',
+      role: 'player',
       online: queryValue('online') as 'all' | 'online' | 'offline',
       sort: queryValue('sort') as 'lastSeen' | 'registered' | 'displayName' | 'loginCount',
     }));

@@ -42,12 +42,9 @@ const builtInSkinIds = new Set([
   'christmas-girl',
 ]);
 
-/**
- * Player accounts are intentionally limited to one active device. Management
- * accounts need concurrent access to the player console, so they are exempt.
- */
-export function limitsSessionsToSingleDevice(role: LocalPlayerRole | null | undefined) {
-  return role === 'player';
+/** Player identities are always single-device; management identities are separate. */
+export function limitsSessionsToSingleDevice(_role: LocalPlayerRole | null | undefined) {
+  return true;
 }
 
 type IdentityRow = QueryResultRow & {
@@ -951,11 +948,17 @@ export async function createManagedPlayer(
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
   const input = validateRegistration(values.username, values.displayName, values.password);
-  const role = (values.role || 'player') as LocalPlayerRole;
-  if (!['player', 'moderator', 'admin'].includes(role)) throw new Error('角色无效');
-  const adminPermissions = role === 'moderator'
-    ? normalizePlayerAdminCapabilities(values.adminPermissions)
-    : [];
+  if (values.role != null && values.role !== 'player') {
+    throw new Error('玩家账号不能授予后台角色');
+  }
+  if (
+    values.adminPermissions != null &&
+    (!Array.isArray(values.adminPermissions) || values.adminPermissions.length > 0)
+  ) {
+    throw new Error('玩家账号不能授予后台权限');
+  }
+  const role: LocalPlayerRole = 'player';
+  const adminPermissions: PlayerAdminCapability[] = [];
   if (values.boxId != null && typeof values.boxId !== 'string') throw new Error('神岛 ID 必须是字符串');
   const normalizedBoxId = typeof values.boxId === 'string' ? values.boxId.trim() : '';
   if (normalizedBoxId.length > 64 || /[\u0000-\u001f\u007f]/.test(normalizedBoxId)) {
@@ -1888,6 +1891,9 @@ export async function updateManagedPlayer(
     : new Date(String(changes.bannedUntil));
   const hasBoxId = Object.prototype.hasOwnProperty.call(changes, 'boxId');
   const hasAdminPermissions = Object.prototype.hasOwnProperty.call(changes, 'adminPermissions');
+  if (role !== undefined || hasAdminPermissions) {
+    throw new Error('玩家角色与后台管理权限已经分离，不能在玩家资料中修改');
+  }
   if (hasAdminPermissions && !Array.isArray(changes.adminPermissions)) {
     throw new Error('管理员权限必须是数组');
   }

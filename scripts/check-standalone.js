@@ -1043,7 +1043,7 @@ for (const filePath of playAdminApiFiles) {
     source,
     file,
     'play admin API guard',
-    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin)\(req, res/,
+    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin|allowPlayerAdminRequestOrigin)\(req, res/,
   )
 }
 
@@ -1504,9 +1504,12 @@ function checkPlayerServicePruning() {
       '/api/health-check': 'pages/api/health-check.js',
       '/api/player-auth/login': 'pages/api/player-auth/login.js',
       '/api/player-auth/login-required': 'pages/api/player-auth/login-required.js',
+      '/api/player-internal/logout': 'pages/api/player-internal/logout.js',
       '/api/player-internal/map-library': 'pages/api/player-internal/map-library.js',
       '/api/player-internal/profile': 'pages/api/player-internal/profile.js',
       '/api/play-admin/players': 'pages/api/play-admin/players.js',
+      '/api/play-admin/permission-groups': 'pages/api/play-admin/permission-groups/index.js',
+      '/api/play-admin/permission-groups/[id]': 'pages/api/play-admin/permission-groups/[id].js',
       '/projects': 'pages/projects.js',
       '/p/[gameName]': 'pages/p/[gameName].js',
       '/api/local-projects': 'pages/api/local-projects.js',
@@ -1541,9 +1544,12 @@ function checkPlayerServicePruning() {
       '/api/health-check',
       '/api/player-auth/login',
       '/api/player-auth/login-required',
+      '/api/player-internal/logout',
       '/api/player-internal/map-library',
       '/api/player-internal/profile',
       '/api/play-admin/players',
+      '/api/play-admin/permission-groups',
+      '/api/play-admin/permission-groups/[id]',
     ]) {
       if (!pruned[route]) fail(`player-service pruning removed ${route}`)
     }

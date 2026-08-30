@@ -112,36 +112,49 @@ response.json(await upstream.json())
 
 ## 服主管理 API
 
-管理 API 支持玩家后台的登录 Session，也支持服务端管理令牌：
+管理 API 只接受独立管理会话，不接受玩家 Session。服主身份不能创建、分配或转让，只能用服主密钥
+兑换一个 HttpOnly 临时服主会话：
 
 ```http
+POST /api/play-admin/owner-session
 Authorization: Bearer <BOX_PLAY_ADMIN_TOKEN>
-Content-Type: application/json
 ```
 
-管理令牌只允许保存在服主后端、命令行或秘密管理系统中。不要从浏览器前端直接调用带管理
-令牌的接口。
+管理令牌只允许保存在服主配置或秘密管理系统中。网页不会把它写入 localStorage、
+sessionStorage 或 Cookie；兑换后仅保存随机管理会话。其他管理写请求还必须携带
+`box_local_admin_csrf` Cookie 对应的 `X-Box-Admin-Csrf` 请求头，并通过同源检查。
 
-| 方法与路径                                  | 权限        | 用途                             |
-| ------------------------------------------- | ----------- | -------------------------------- |
-| `GET /api/play-admin/players`               | 管理员      | 搜索、筛选和分页查询玩家         |
-| `POST /api/play-admin/players`              | 服主        | 创建用户，不创建登录 Session     |
-| `GET /api/play-admin/players/:subjectId`    | 管理员      | 资料、会话、登录历史和审计详情   |
-| `PATCH /api/play-admin/players/:subjectId`  | 管理员/服主 | 修改资料、封禁、角色、神岛 ID 等 |
-| `POST /api/play-admin/players/:subjectId`   | 管理员/服主 | 强制下线、撤销设备、重置密码     |
-| `DELETE /api/play-admin/players/:subjectId` | 服主        | 永久删除身份                     |
+| 方法与路径                                           | 权限         | 用途                             |
+| ---------------------------------------------------- | ------------ | -------------------------------- |
+| `GET /api/play-admin/players`                        | 管理员       | 搜索、筛选和分页查询玩家         |
+| `POST /api/play-admin/players`                       | 已授权管理员 | 创建普通玩家，不创建登录 Session |
+| `GET /api/play-admin/players/:subjectId`             | 管理员       | 资料、会话、登录历史和审计详情   |
+| `PATCH /api/play-admin/players/:subjectId`           | 管理员/服主  | 修改资料、封禁、神岛 ID 等       |
+| `POST /api/play-admin/players/:subjectId`            | 管理员/服主  | 强制下线、撤销设备、重置密码     |
+| `DELETE /api/play-admin/players/:subjectId`          | 服主         | 永久删除身份                     |
+| `POST /api/play-admin/login`                         | 公开同源入口 | 登录独立管理账号                 |
+| `POST /api/play-admin/logout`                        | 管理员       | 注销独立管理会话                 |
+| `GET/POST /api/play-admin/admins`                    | 服主         | 查询或创建独立管理账号           |
+| `PATCH/DELETE /api/play-admin/admins/:id`            | 服主         | 更新或删除独立管理账号           |
+| `GET/POST /api/play-admin/permission-groups`         | 服主         | 查询或创建管理员权限组           |
+| `PATCH/DELETE /api/play-admin/permission-groups/:id` | 服主         | 更新或删除管理员权限组           |
 
-管理员创建用户：
+网页后台会自动处理管理 Cookie 和 CSRF。服务端自动化如需创建用户，应在可信后端完成会话兑换，
+保存返回 Cookie，并带上 CSRF Cookie 的原值：
 
 ```bash
-curl -X POST "$PLAYER_SERVICE/api/play-admin/players" \
-  -H "Authorization: Bearer $BOX_PLAY_ADMIN_TOKEN" \
+curl -c admin.cookies -X POST "$PLAYER_SERVICE/api/play-admin/owner-session" \
+  -H "Authorization: Bearer $BOX_PLAY_ADMIN_TOKEN"
+
+ADMIN_CSRF=$(awk '$6 == "box_local_admin_csrf" { print $7 }' admin.cookies)
+
+curl -b admin.cookies -X POST "$PLAYER_SERVICE/api/play-admin/players" \
+  -H "X-Box-Admin-Csrf: $ADMIN_CSRF" \
   -H "Content-Type: application/json" \
   -d '{
     "username":"player_001",
     "displayName":"玩家一号",
     "password":"change-me-123",
-    "role":"player",
     "boxId":"",
     "tags":["白名单"],
     "adminNote":"由服主创建"

@@ -26,9 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     if (req.method === 'PATCH') {
       const body = req.body || {};
-      const requirements = [] as Array<'owner' | 'players.manage' | 'players.ban'>;
-      if (Object.prototype.hasOwnProperty.call(body, 'role')
-        || Object.prototype.hasOwnProperty.call(body, 'adminPermissions')) requirements.push('owner');
+      const requirements = [] as Array<'players.manage' | 'players.ban'>;
+      if (
+        Object.prototype.hasOwnProperty.call(body, 'role') ||
+        Object.prototype.hasOwnProperty.call(body, 'adminPermissions')
+      ) {
+        return res.status(400).json({ message: '玩家账号不能授予后台权限' });
+      }
       if (['status', 'banReason', 'bannedUntil'].some((field) => Object.prototype.hasOwnProperty.call(body, field))) {
         requirements.push('players.ban');
       }
@@ -38,16 +42,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!requirements.length) return res.status(400).json({ message: '没有可更新的玩家字段' });
       const context = await authorizePlayerAdmin(req, res, requirements);
       if (!context) return;
-      const target = await getManagedPlayerDetails(subjectId);
-      if (context.actorRole === 'moderator' && target.player.role !== 'player') {
-        return res.status(403).json({ message: '管理员不能修改其他管理角色' });
-      }
-      if (context.subjectId === subjectId && req.body?.role && req.body.role !== target.player.role) {
-        return res.status(400).json({ message: '不能修改当前正在操作的服主账号角色' });
-      }
-      if (context.subjectId === subjectId && req.body?.status === 'banned') {
-        return res.status(400).json({ message: '不能封禁当前正在操作的管理员账号' });
-      }
       return res.status(200).json({
         player: await updateManagedPlayer(subjectId, req.body || {}, context),
       });
@@ -60,19 +54,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             : 'players.manage';
       const context = await authorizePlayerAdmin(req, res, requirement);
       if (!context) return;
-      const target = await getManagedPlayerDetails(subjectId);
-      if (context.actorRole === 'moderator' && target.player.role !== 'player') {
-        return res.status(403).json({ message: '管理员不能管理其他管理角色' });
-      }
       if (req.body?.action === 'revoke-sessions') {
-        if (context.subjectId === subjectId) return res.status(400).json({ message: '不能强制当前管理员账号下线' });
         return res.status(200).json(await revokeManagedPlayerSessions(subjectId, context));
       }
       if (req.body?.action === 'revoke-session') {
         return res.status(200).json(await revokeManagedPlayerSession(subjectId, String(req.body.sessionId || ''), context));
       }
       if (req.body?.action === 'reset-password') {
-        if (context.subjectId === subjectId) return res.status(400).json({ message: '请通过账号设置修改自己的密码' });
         return res.status(200).json(await resetManagedPlayerPassword(subjectId, req.body?.password, context));
       }
       if (req.body?.action === 'ban-ip' || req.body?.action === 'ban-device') {
@@ -91,7 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'DELETE') {
       const context = await authorizePlayerAdmin(req, res, 'owner');
       if (!context) return;
-      if (context.subjectId === subjectId) return res.status(400).json({ message: '不能删除当前正在操作的服主账号' });
       await deleteManagedPlayer(subjectId, context);
       return res.status(200).json({ deleted: true });
     }

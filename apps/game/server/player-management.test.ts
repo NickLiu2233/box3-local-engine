@@ -78,10 +78,10 @@ describe('player management CSV export', () => {
 });
 
 describe('player session policy', () => {
-  test('limits ordinary players to one device but leaves management accounts unrestricted', () => {
+  test('limits every legacy player role to one device because management accounts are separate', () => {
     expect(limitsSessionsToSingleDevice('player')).toBe(true);
-    expect(limitsSessionsToSingleDevice('moderator')).toBe(false);
-    expect(limitsSessionsToSingleDevice('admin')).toBe(false);
+    expect(limitsSessionsToSingleDevice('moderator')).toBe(true);
+    expect(limitsSessionsToSingleDevice('admin')).toBe(true);
   });
 });
 

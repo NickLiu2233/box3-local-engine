@@ -1,5 +1,3 @@
-import type { LocalPlayerRole } from '@box-local/utils/local-player-identity';
-
 export const PLAYER_ADMIN_CAPABILITIES = [
   'players.view',
   'players.manage',
@@ -14,6 +12,7 @@ export const PLAYER_ADMIN_CAPABILITIES = [
 
 export type PlayerAdminCapability = typeof PLAYER_ADMIN_CAPABILITIES[number];
 export type PlayerAdminRequirement = PlayerAdminCapability | 'owner';
+export type PlayerAdminRole = 'owner' | 'admin' | 'moderator';
 
 export const PLAYER_ADMIN_GRANTABLE_CAPABILITIES = PLAYER_ADMIN_CAPABILITIES.filter(
   (capability) => capability !== 'players.view',
@@ -41,7 +40,7 @@ export function normalizePlayerAdminCapabilities(value: unknown): PlayerAdminCap
 }
 
 export function effectivePlayerAdminCapabilities(
-  role: LocalPlayerRole | 'owner',
+  role: PlayerAdminRole,
   assigned: readonly string[] = [],
 ): PlayerAdminCapability[] {
   if (role === 'owner' || role === 'admin') return [...PLAYER_ADMIN_CAPABILITIES];
@@ -50,10 +49,12 @@ export function effectivePlayerAdminCapabilities(
 }
 
 export function roleHasPlayerAdminPermission(
-  role: LocalPlayerRole | 'owner',
+  role: PlayerAdminRole,
   requirement: PlayerAdminRequirement,
   assigned: readonly string[] = [],
 ) {
-  if (requirement === 'owner') return role === 'owner' || role === 'admin';
+  // Owner access is never role-grantable. The authorization seam must also
+  // verify that the identity came from a server-owner key session.
+  if (requirement === 'owner') return false;
   return effectivePlayerAdminCapabilities(role, assigned).includes(requirement);
 }

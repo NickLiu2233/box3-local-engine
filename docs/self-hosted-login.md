@@ -64,15 +64,18 @@ Creator/Play 跳转到门户时会附加：
 
 ## 推荐的 API 使用边界
 
-| 场景                             | 使用接口                         | 谁调用                   |
-| -------------------------------- | -------------------------------- | ------------------------ |
-| 玩家注册                         | `POST /api/player-auth/register` | 登录门户后端             |
-| 玩家登录                         | `POST /api/player-auth/login`    | 登录门户后端             |
-| 查询当前会话                     | `GET /api/player-auth/session`   | 登录门户后端             |
-| 玩家退出                         | `POST /api/player-auth/logout`   | 登录门户后端             |
-| 创建用户、封禁、改角色、删除用户 | `/api/play-admin/players*`       | 仅服主后端或服主管理网页 |
+| 场景                     | 使用接口                             | 谁调用           |
+| ------------------------ | ------------------------------------ | ---------------- |
+| 玩家注册                 | `POST /api/player-auth/register`     | 登录门户后端     |
+| 玩家登录                 | `POST /api/player-auth/login`        | 登录门户后端     |
+| 查询当前会话             | `GET /api/player-auth/session`       | 登录门户后端     |
+| 玩家退出                 | `POST /api/player-auth/logout`       | 登录门户后端     |
+| 创建用户、封禁、删除用户 | `/api/play-admin/players*`           | 独立玩家管理账号 |
+| 维护后台管理账号         | `/api/play-admin/admins*`            | 仅服主密钥会话   |
+| 维护管理员权限组         | `/api/play-admin/permission-groups*` | 仅服主密钥会话   |
 
-管理 API 的 `BOX_PLAY_ADMIN_TOKEN` 与认证 API Key 都是高权限秘密。它们不能出现在面向玩家的网页中，也不应通过 URL、浏览器本地存储、日志或截图传递。
+管理 API 不接受普通玩家 Cookie。服主不是可分配的账号角色，`BOX_PLAY_ADMIN_TOKEN` 只兑换短期 HttpOnly 服主会话；认证 API Key
+与服主密钥都不能出现在面向玩家的网页中，也不应通过 URL、浏览器本地存储、日志或截图传递。
 
 ## 自建门户发布前检查
 
