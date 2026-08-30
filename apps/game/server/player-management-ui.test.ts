@@ -57,8 +57,10 @@ describe('player management visual consistency', () => {
     expect(pageSource).not.toContain('className={styles.loginBackdrop}');
   });
 
-  test('reuses one dialog header and preserves readable themed titles', () => {
-    expect(pageSource.match(/<DialogHeader/g)).toHaveLength(3);
+  test('uses Radix dialogs with one shared header and readable themed titles', () => {
+    expect(pageSource).toContain("from '@radix-ui/react-dialog'");
+    expect(pageSource.match(/<Dialog\.Root/g)).toHaveLength(3);
+    expect(pageSource.match(/<AdminDialogHeader/g)).toHaveLength(3);
     expect(pageSource.match(/styles\.modalDialog/g)).toHaveLength(3);
     expect(styleSource).toMatch(/\.dialogHeader h2\s*\{[^}]*color:\s*var\(--text\);/s);
     expect(styleSource).toMatch(/\.modalDialog\s*\{[^}]*color:\s*var\(--text\);/s);
@@ -104,7 +106,7 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain('className={styles.rolesEmpty}');
     expect(pageSource).not.toContain('className={styles.rolesToolbar}');
     expect(pageSource).not.toContain('className={styles.permissionGroupsPanel}');
-    expect(styleSource).toMatch(/\.rolesWorkspace\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.7fr\)[^}]*minmax\(300px,\s*\.72fr\)/s);
+    expect(styleSource).toMatch(/\.rolesWorkspace\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1\.65fr\)[^}]*minmax\(320px,\s*\.75fr\)/s);
     expect(styleSource).toMatch(/\.rolesEmpty\s*\{[^}]*min-height:\s*178px;/s);
   });
 
@@ -123,9 +125,20 @@ describe('player management visual consistency', () => {
   test('provides a permission-gated user creation workflow', () => {
     expect(pageSource).toContain('<UserPlus size={14} />新增用户');
     expect(pageSource).toContain("fetch('/api/play-admin/players'");
-    expect(pageSource).toContain('aria-labelledby="create-user-title"');
+    expect(pageSource).toContain('<AdminDialogHeader title="新增用户"');
     expect(pageSource).toContain('autoComplete="new-password"');
     expect(pageSource).toContain("setNotice(`用户“${data.player.displayName}”已创建");
+  });
+
+  test('edits administrator details deliberately instead of writing on select changes', () => {
+    expect(pageSource).toContain("from '@radix-ui/react-dropdown-menu'");
+    expect(pageSource).toContain('function openAdminAccount(admin?: AdminAccount)');
+    expect(pageSource).toContain("editing ? `/api/play-admin/admins/${editingAdminId}`");
+    expect(pageSource).toContain("method: editing ? 'PATCH' : 'POST'");
+    expect(pageSource).toContain("editingAdminId ? '编辑管理账号' : '新增管理账号'");
+    expect(pageSource).toContain("editingAdminId ? <label>账号状态");
+    expect(pageSource).toContain('id="admin-account-password"');
+    expect(pageSource).not.toContain('async function resetAdminPassword');
   });
 
   test('never reuses a player account or stores the owner key in browser storage', () => {
@@ -141,6 +154,36 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain("selected.status === 'banned'");
     expect(pageSource).toContain('封禁已经生效');
     expect(styleSource).toContain('.drawerNotice');
+  });
+
+  test('keeps authentication, data loading and logout states distinct', () => {
+    const verifiedActor = pageSource.indexOf('setActor(verifiedActor);');
+    const playerDataRequest = pageSource.indexOf('const [playersResponse, overviewResponse] = await Promise.all([');
+    expect(verifiedActor).toBeGreaterThan(-1);
+    expect(verifiedActor).toBeLessThan(playerDataRequest);
+    expect(pageSource).toContain("if (!response.ok && response.status !== 401)");
+    expect(pageSource).toContain("throw new Error(data.message || '退出登录失败，请稍后重试')");
+  });
+
+  test('redirects direct links to owner-only and audit-only sections when access is absent', () => {
+    expect(pageSource).toContain("section === 'roles' && !ownerAccess");
+    expect(pageSource).toContain("section === 'audit' && !canViewAudit");
+    expect(pageSource).toContain("if (forbidden) navigateSection('overview');");
+  });
+
+  test('does not expose dead-end audit and batch controls without matching permissions', () => {
+    expect(pageSource).toContain("canViewAudit ? <button onClick={() => navigateSection('audit')}");
+    expect(pageSource).toContain('const canSelectPlayers = canManageProfiles || canManageBans || canManageSessions;');
+    expect(pageSource).toContain("section === 'players'");
+    expect(pageSource).toContain("section === 'sessions'");
+    expect(pageSource).toContain("section === 'bans' && canManageBans");
+    expect(pageSource).toContain('{canSelectPlayers ? <th className={styles.checkCell}>');
+    expect(pageSource).toContain('{canManageSessions ? <th className={styles.checkCell}>');
+    expect(pageSource).toContain('{canManageBans ? <th className={styles.checkCell}>');
+  });
+
+  test('does not mention the removed player-avatar feature', () => {
+    expect(pageSource).not.toContain('昵称、头像、标签和备注');
   });
 
   test('lets owners reuse permission groups across independent administrators', () => {

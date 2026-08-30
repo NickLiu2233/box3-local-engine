@@ -492,7 +492,14 @@ async function auditAdminAction(
       actor.id,
       action,
       targetId,
-      JSON.stringify(details),
+      JSON.stringify({
+        ...details,
+        outcome: 'success',
+        actorUsername: actor.username,
+        actorDisplayName: actor.displayName,
+        actorRole: actor.role,
+        actorUserAgent: req ? String(req.headers['user-agent'] || '').slice(0, 512) : '',
+      }),
       req ? requestClientAddress(req).slice(0, 128) : '',
     ],
   );
@@ -910,6 +917,18 @@ export async function updatePlayerAdminAccount(
       salt = randomBytes(16).toString('base64url');
       hash = (await derivePassword(password, salt)).toString('base64url');
     }
+    const effectivePermissions = permissionGroupId ? [] : permissions;
+    const unchanged = password === undefined
+      && displayName === row.display_name
+      && role === row.role
+      && status === row.status
+      && permissionGroupId === (row.permission_group_id || null)
+      && JSON.stringify(effectivePermissions) === JSON.stringify(row.permissions || []);
+    if (unchanged) {
+      const identity = toIdentity(await findAdminAccount(client, id));
+      await client.query('COMMIT');
+      return identity;
+    }
     await client.query(`
       UPDATE ${table('admin_accounts')}
       SET display_name = $2, role = $3, permissions = $4,
@@ -920,7 +939,7 @@ export async function updatePlayerAdminAccount(
       id,
       displayName,
       role,
-      permissionGroupId ? [] : permissions,
+      effectivePermissions,
       permissionGroupId,
       status,
       salt,
@@ -937,6 +956,8 @@ export async function updatePlayerAdminAccount(
       'admin.account.update',
       id,
       {
+        username: identity.username,
+        displayName: identity.displayName,
         role: identity.role,
         status: identity.status,
         permissionGroupId: identity.permissionGroupId || null,
@@ -973,15 +994,18 @@ export async function deletePlayerAdminAccount(
     `, [id]);
     const row = current.rows[0];
     if (!row) throw new PlayerAdminRequestError('管理员账号不存在', 404);
+    const deleted = await client.query(`
+      DELETE FROM ${table('admin_accounts')} WHERE id = $1 RETURNING id
+    `, [id]);
+    if (!deleted.rowCount) throw new PlayerAdminRequestError('管理员账号不存在', 404);
     await auditAdminAction(
       client,
       actor,
       'admin.account.delete',
       id,
-      { username: row.username, role: row.role },
+      { username: row.username, displayName: row.display_name, role: row.role },
       req,
     );
-    await client.query(`DELETE FROM ${table('admin_accounts')} WHERE id = $1`, [id]);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -1074,6 +1098,19 @@ export async function updatePlayerAdminPermissionGroup(
       values.permissions === undefined
         ? normalizePlayerAdminCapabilities(row.permissions)
         : normalizePlayerAdminCapabilities(values.permissions);
+    const unchanged = name === row.name
+      && JSON.stringify(permissions) === JSON.stringify(normalizePlayerAdminCapabilities(row.permissions));
+    if (unchanged) {
+      const adminCount = await client
+        .query<{ count: string }>(`
+          SELECT COUNT(*)::text AS count FROM ${table('admin_accounts')}
+          WHERE permission_group_id = $1
+        `, [id])
+        .then((count) => count.rows[0]?.count || '0');
+      const group = toPermissionGroup({ ...row, admin_count: adminCount });
+      await client.query('COMMIT');
+      return group;
+    }
     const result = await client.query<PermissionGroupRow>(`
       UPDATE ${table('admin_permission_groups')}
       SET name = $2, permissions = $3, updated_at = NOW()
@@ -1126,6 +1163,10 @@ export async function deletePlayerAdminPermissionGroup(
     `, [id]);
     const row = current.rows[0];
     if (!row) throw new PlayerAdminRequestError('权限组不存在', 404);
+    const deleted = await client.query(`
+      DELETE FROM ${table('admin_permission_groups')} WHERE id = $1 RETURNING id
+    `, [id]);
+    if (!deleted.rowCount) throw new PlayerAdminRequestError('权限组不存在', 404);
     await auditAdminAction(
       client,
       actor,
@@ -1134,7 +1175,6 @@ export async function deletePlayerAdminPermissionGroup(
       { name: row.name },
       req,
     );
-    await client.query(`DELETE FROM ${table('admin_permission_groups')} WHERE id = $1`, [id]);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

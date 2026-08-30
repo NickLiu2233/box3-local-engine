@@ -9,7 +9,17 @@
   },
   "scripts": {
     "start": "node --env-file=.env server.js",
+    "build": "esbuild src/app.jsx --bundle --minify --jsx=automatic --outfile=public/app.js",
     "test": "node --test test/*.test.js",
-    "check": "node --check server.js && node --check public/theme.js && node --check public/app.js && node --test test/*.test.js"
+    "check": "pnpm build && node --check server.js && node --check public/theme.js && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "lucide-react": "0.553.0",
+    "radix-ui": "~1.4.3",
+    "react": "19.2.1",
+    "react-dom": "19.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
   }
 }

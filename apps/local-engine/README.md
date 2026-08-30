@@ -1,95 +1,77 @@
-# Local Engine 启动器
+# Local Engine 控制层
 
-`apps/local-engine` 负责协调 Box Local Engine 的构建、启动、本地工程和离线资源。所有
-用户命令都应在仓库根目录执行。
+`apps/local-engine` 管理本地地图工程、地图组、发布包、运行时生命周期和离线资源。普通用户优先使用桌面启动器；开发者在仓库根目录运行本页命令。
 
-## 对外运行模式
+## 服务与默认入口
 
-| 模式     | 部署命令       | 包含内容                   |
-| -------- | -------------- | -------------------------- |
-| 创作端   | `pnpm creator` | 作品管理、编辑、预览和发布 |
-| 游玩端   | `pnpm play`    | 玩家网页和多个只读作品     |
-| VOXA     | `pnpm voxa`    | 本地体素模型编辑和模型库   |
-| 开发模式 | `pnpm dev`     | 启用源码编译的创作端       |
+| 服务           | 根目录命令                | 默认入口                 | 用途                             |
+| -------------- | ------------------------- | ------------------------ | -------------------------------- |
+| Creator        | `pnpm creator`            | `http://127.0.0.1:3002/` | 创建、编辑、预览和发布地图       |
+| Play           | `pnpm play`               | `http://127.0.0.1:3000/` | 导入并运行只读 `.boxplay` 地图组 |
+| VOXA           | `pnpm voxa`               | `http://127.0.0.1:3001/` | 模型、皮肤和动画编辑             |
+| Player Service | `pnpm player-service`     | `http://127.0.0.1:3213/` | 玩家身份、后台管理和审计         |
+| 参考登录门户   | `pnpm player-auth-portal` | `http://127.0.0.1:3214/` | 登录/注册参考实现                |
 
-创作者和服主只选择一种产品模式。启动器会协调内部进程，并在任一必要进程异常退出时停止
-整套运行环境。
+这些服务可以按需要同时运行。桌面启动器提供“全部”“创作端”“游玩端”三个启动范围，并负责生成各服务的内部地址、公开地址和端口映射。
 
-两种产品都只公开 `3000`。地图资源、编辑请求与 WebSocket 会通过同源网关转到容器内
-运行时，使用者不需要了解或开放内部端口。
-
-## 常用入口
-
-- 创作端：<http://127.0.0.1:3000/>
-
-具体作品使用 `/e/<project-id>` 和 `/p/<project-id>`。应先从作品管理器启动工程，不要
-手动修改运行时端口或工程状态文件。
-
-## 数据目录
-
-默认离线资源位于：
-
-```text
-apps/local-engine/data/blobs
-```
-
-本地作品位于：
-
-```text
-apps/local-engine/projects/<project-id>
-```
-
-创作端需要对工程目录拥有读写权限。游玩端只应读取发布快照，不能获得或挂载作品的
-`source/` 目录。
-
-Docker 创作端把工程保存到宿主机 `apps/local-engine/projects/`。停止或重建容器不会删除
-该目录；手动清理前先从作品管理器导出可编辑工程。
-
-## Docker
+已有镜像时可用 `:up` 命令跳过构建：
 
 ```bash
-# 创作端
-pnpm creator
-
-# 已有镜像时直接启动，不重新构建
 pnpm creator:up
-
-# VOXA 本地模型编辑器
-pnpm voxa
-
-# 已有 VOXA 镜像时直接启动
+pnpm play:up
 pnpm voxa:up
+pnpm player-service:up
+pnpm player-auth-portal:up
+```
 
-# 游玩端
-pnpm play
+停止本仓库的 Compose 服务：
 
-# 停止当前部署
+```bash
 pnpm stop
 ```
 
-两个命令独立构建：`pnpm creator` 只构建创作端镜像，`pnpm play` 只构建游玩端镜像。
-第一次导出包含 `play-image.tar` 的单作品部署包前，需要先执行一次 `pnpm play` 准备游玩
-镜像，然后执行 `pnpm creator:up` 回到创作端。以后镜像未变化时不需要重复构建。
+## 地图数据与包格式
 
-`pnpm play` 从 `play-worlds/` 自动发现作品。每个作品目录包含 `manifest.json` 和
-`data/`，可在运行期间继续放入新地图，无需重建镜像或重启容器。发布目录应整体复制为：
+Creator 的可编辑工程默认保存在：
 
 ```text
-play-worlds/<manifest 中的作品 ID>/
-  manifest.json
-  data/
+apps/local-engine/projects/<project-id>/
 ```
 
-给其他服主时，可以只分发 `play-image.tar`，并让对方把自己的 `play-worlds/` 只读挂载到
-容器的 `/app/play-worlds`。具体 Compose 配置参阅部署指南。作品管理器原有的“单作品游玩
-部署包”固定绑定一个地图；一台服务器同时放多个地图时使用上述地图库模式。创作端和游玩端
-通常占用相同网页端口，同一台电脑上默认一次只运行一种。
+不要手动修改其中的 `project-state.json`、blob、地图组状态或发布清单。换设备编辑时，从 Creator 导出 `.boxproject`；交付服主时，发布并导出 `.boxplay`。
 
-完整说明：
+| 格式          | 内容                              | 使用者           |
+| ------------- | --------------------------------- | ---------------- |
+| `.boxproject` | 可编辑地图工程或完整地图组        | 作者、可信协作者 |
+| `.boxplay`    | 不含 `source/` 的不可变地图组快照 | Play 服主        |
+
+一个地图组包含一个主地图和零到多个副地图。每张地图的地形和实体相互隔离，组内成员共享地图组资源和组数据空间。Play 导入 `.boxplay` 后只能启动、关闭或删除地图，不能修改封面、标题、简介和作者。
+
+Creator 只导出地图数据。镜像和桌面 App 由发行流水线或维护者构建，二者不会写入 `.boxproject` 或 `.boxplay`。
+
+## 离线资源
+
+引擎 blob 默认位于：
+
+```text
+apps/local-engine/data/blobs/
+```
+
+正常 Creator/Play 构建以及 8 套预置玩家皮肤不依赖 BOX3 云端。若发布 `.boxplay` 时选择“仅引用 OSS”，该地图会依赖发布者自己的对象存储；需要完全离线时必须选择“仅本地资源”。
+
+## 运行与安全边界
+
+- Creator 和 VOXA 只适合本机或可信局域网，不应直接公开到互联网。
+- Play 可通过 HTTPS 反向代理公开，HTTP、资源和 WebSocket 使用同一入口。
+- Player Service 必须配置 PostgreSQL；Redis 可选。
+- Play 只读取已发布快照，不应挂载 Creator 的 `source/` 目录。
+- `.env`、数据库、用户项目、地图包、日志和备份都不是镜像内容，不得提交仓库。
+
+## 延伸阅读
 
 - [项目 README](../../README.md)
-- [创作端构建与部署手册](../../docs/creator-deployment.md)
-- [游玩端构建与部署手册](../../docs/play-deployment.md)
-- [部署与联机指南](../../docs/deployment.md)
-- [VOXA 本地模型编辑器手册](../../docs/voxa-deployment.md)
-- [本地工程与发布包](../../docs/projects.md)
+- [地图作品、地图组与发布包](../../docs/projects.md)
+- [创作端部署](../../docs/creator-deployment.md)
+- [游玩端部署](../../docs/play-deployment.md)
+- [安装、部署与运维](../../docs/installation-and-operations.md)
+- [配置参考](../../docs/configuration-reference.md)

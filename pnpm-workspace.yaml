@@ -4,6 +4,7 @@ packages:
   - apps/local-engine
   - apps/voxa
   - apps/migrator
+  - examples/player-auth-portal
   - services/game-server
   - internals/apis
   - internals/build-system

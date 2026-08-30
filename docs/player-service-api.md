@@ -55,7 +55,7 @@ X-Box-Player-Auth-Key: <BOX_PLAYER_AUTH_API_KEY>
 {
   "username": "player_001",
   "displayName": "玩家一号",
-  "password": "至少八位密码"
+  "password": "至少十位密码"
 }
 ```
 
@@ -67,7 +67,7 @@ X-Box-Player-Auth-Key: <BOX_PLAYER_AUTH_API_KEY>
 `POST /api/player-auth/login`
 
 ```json
-{ "username": "player_001", "password": "至少八位密码" }
+{ "username": "player_001", "password": "至少十位密码" }
 ```
 
 成功返回 HTTP 200 和 `{ "player": Player }`，并写入 Session Cookie。失败返回 401；超过
@@ -163,6 +163,8 @@ curl -b admin.cookies -X POST "$PLAYER_SERVICE/api/play-admin/players" \
 
 `subjectId` 是不可变玩家 UUID（API 使用不带连字符的 32 位形式）。创建接口返回 HTTP 201；
 账号初始 `loginCount=0`、没有有效会话，并写入 `player.create` 审计记录。
+
+玩家资料接口不能把普通玩家升级为后台角色，也不接受 `role`、`adminPermissions` 或上传头像字段。玩家可修改的公开资料仅包括昵称和内置皮肤；服主侧标签、备注、神岛 ID、状态、封禁和密码重置按独立权限检查执行。
 
 修改和管理动作示例：
 

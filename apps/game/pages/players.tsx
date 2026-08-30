@@ -2,11 +2,13 @@ import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
+import * as Dialog from '@radix-ui/react-dialog';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Activity, AlertTriangle, Ban, ChevronRight, CircleUserRound, Clock3, Copy,
   Database, Download, FileClock, KeyRound, Laptop, LayoutDashboard, Link2,
-  LogOut, Monitor, Moon, RefreshCw, Search, ShieldCheck, Sun, Tags, Trash2,
-  UserCog, UserPlus, Users, X,
+  LogOut, Monitor, Moon, MoreHorizontal, Pencil, RefreshCw, Search, ShieldCheck,
+  Sun, Tags, Trash2, UserCog, UserPlus, Users, X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -14,6 +16,7 @@ import {
   PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
   type PlayerAdminCapability,
 } from '../shared/player-admin-policy';
+import { describePlayerAdminAuditAction } from '../shared/player-admin-audit-catalog';
 import styles from './player-management.module.css';
 
 const THEME_KEY = 'box-player-admin-theme';
@@ -161,6 +164,7 @@ const emptyAdminAccount = {
   password: '',
   role: 'moderator' as AdminAccount['role'],
   permissionGroupId: '',
+  status: 'active' as AdminAccount['status'],
 };
 
 const emptyPermissionGroup = {
@@ -244,20 +248,6 @@ function displayIp(value?: string) {
   return value || '历史数据未记录';
 }
 
-function auditLabel(action: string) {
-  if (action === 'login.success') return '账号登录成功';
-  if (action === 'login.failed') return '账号登录失败';
-  if (action === 'player.create') return '创建玩家账号';
-  if (action === 'player.update') return '修改玩家资料';
-  if (action === 'player.box-id.update') return '修改神岛 ID 绑定';
-  if (action === 'player.delete') return '删除玩家身份';
-  if (action === 'player.sessions.revoke') return '强制玩家下线';
-  if (action === 'player.session.revoke') return '撤销单个设备会话';
-  if (action === 'player.password.reset') return '重置玩家密码';
-  if (action === 'system.sessions.cleanup') return '清理过期登录会话';
-  return action;
-}
-
 function cookieValue(name: string) {
   if (typeof document === 'undefined') return '';
   const prefix = `${encodeURIComponent(name)}=`;
@@ -325,23 +315,21 @@ function PlayerAdminBrand() {
   return <div className={styles.brand}><span>BOX</span><div><strong>玩家管理</strong><small>PLAYER SERVICE</small></div></div>;
 }
 
-function DialogHeader({
-  id,
+function AdminDialogHeader({
   title,
   closeLabel,
   disabled,
-  onClose,
 }: {
-  id: string;
   title: string;
   closeLabel: string;
   disabled: boolean;
-  onClose: () => void;
 }) {
   return (
     <header className={styles.dialogHeader}>
-      <h2 id={id}>{title}</h2>
-      <button type="button" className={styles.iconButton} aria-label={closeLabel} disabled={disabled} onClick={onClose}><X size={16} /></button>
+      <Dialog.Title>{title}</Dialog.Title>
+      <Dialog.Close asChild>
+        <button type="button" className={styles.iconButton} aria-label={closeLabel} disabled={disabled}><X size={16} /></button>
+      </Dialog.Close>
     </header>
   );
 }
@@ -370,6 +358,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const [ownerRecoveryOpen, setOwnerRecoveryOpen] = useState(false);
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
   const [createAdmin, setCreateAdmin] = useState(emptyAdminAccount);
+  const [editingAdminId, setEditingAdminId] = useState('');
   const [permissionGroupOpen, setPermissionGroupOpen] = useState(false);
   const [editingPermissionGroupId, setEditingPermissionGroupId] = useState('');
   const [permissionGroupForm, setPermissionGroupForm] = useState(emptyPermissionGroup);
@@ -414,7 +403,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       if (event.key === 'Escape') {
         if (permissionGroupOpen && !busy.startsWith('permission-group')) {
           setPermissionGroupOpen(false);
-        } else if (createAdminOpen && busy !== 'create-admin') {
+        } else if (createAdminOpen && busy !== 'admin-save') {
           setCreateAdminOpen(false);
         } else if (createUserOpen && busy !== 'create-user') {
           setCreateUserOpen(false);
@@ -483,6 +472,9 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       setLoginOpen(true);
       throw new Error(verifyData.message || '请登录独立的玩家管理账号');
     }
+    const verifiedActor = verifyData.actor || null;
+    setActor(verifiedActor);
+    setLoginOpen(false);
     const [playersResponse, overviewResponse] = await Promise.all([
       fetch(`/api/play-admin/players?${new URLSearchParams({
         search: appliedSearch,
@@ -498,15 +490,19 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     const [playersData, overviewData] = await Promise.all([
       playersResponse.json(), overviewResponse.json(),
     ]);
-    if (!playersResponse.ok) throw new Error(playersData.message || '无法读取玩家');
-    if (!overviewResponse.ok) throw new Error(overviewData.message || '无法读取玩家统计');
+    if (!playersResponse.ok || !overviewResponse.ok) {
+      if (playersResponse.status === 401 || overviewResponse.status === 401) {
+        setActor(null);
+        setLoginOpen(true);
+      }
+      if (!playersResponse.ok) throw new Error(playersData.message || '无法读取玩家');
+      throw new Error(overviewData.message || '无法读取玩家统计');
+    }
     setPlayers(playersData.players);
     setTotal(playersData.total || 0);
     setPage(playersData.page || 1);
     setTotalPages(playersData.totalPages || 1);
     setOverview(overviewData);
-    setActor(verifyData.actor || null);
-    setLoginOpen(false);
     setBusy('');
   }, [appliedSearch, identityFilter, onlineFilter, page, roleFilter, sort]);
 
@@ -557,18 +553,25 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
 
   async function logoutAdmin() {
     setBusy('logout');
+    setNotice('');
     try {
-      await fetch('/api/play-admin/logout', {
+      const response = await fetch('/api/play-admin/logout', {
         method: 'POST',
         headers: adminHeaders(true),
         body: '{}',
       });
-    } finally {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok && response.status !== 401) {
+        throw new Error(data.message || '退出登录失败，请稍后重试');
+      }
       setActor(null);
       setAdmins([]);
       setPermissionGroups([]);
-      setBusy('');
       setLoginOpen(true);
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
     }
   }
 
@@ -599,67 +602,68 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     loadAdmins().catch((error) => setNotice(error.message));
   }, [loadAdmins]);
 
-  async function submitCreateAdmin() {
+  function openAdminAccount(admin?: AdminAccount) {
+    setEditingAdminId(admin?.id || '');
+    setCreateAdmin(
+      admin
+        ? {
+            username: admin.username,
+            displayName: admin.displayName,
+            password: '',
+            role: admin.role,
+            permissionGroupId: admin.permissionGroupId || '',
+            status: admin.status,
+          }
+        : emptyAdminAccount,
+    );
+    setNotice('');
+    setCreateAdminOpen(true);
+  }
+
+  async function submitAdminAccount() {
+    const editing = Boolean(editingAdminId);
     if (
       !ownerAccess ||
       busy ||
       !createAdmin.username ||
       !createAdmin.displayName ||
-      createAdmin.password.length < 12
+      (!editing && createAdmin.password.length < 12) ||
+      (editing && createAdmin.password.length > 0 && createAdmin.password.length < 12)
     ) return;
-    setBusy('create-admin');
+    setBusy('admin-save');
     setNotice('');
     try {
-      const response = await fetch('/api/play-admin/admins', {
-        method: 'POST',
+      const payload = editing
+        ? {
+            displayName: createAdmin.displayName,
+            role: createAdmin.role,
+            permissionGroupId: createAdmin.role === 'moderator'
+              ? createAdmin.permissionGroupId
+              : '',
+            status: createAdmin.status,
+            ...(createAdmin.password ? { password: createAdmin.password } : {}),
+          }
+        : createAdmin;
+      const response = await fetch(
+        editing ? `/api/play-admin/admins/${editingAdminId}` : '/api/play-admin/admins',
+        {
+        method: editing ? 'PATCH' : 'POST',
         headers: adminHeaders(true),
-        body: JSON.stringify(createAdmin),
-      });
+        body: JSON.stringify(payload),
+        },
+      );
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '管理账号创建失败');
+      if (!response.ok) throw new Error(data.message || `管理账号${editing ? '更新' : '创建'}失败`);
       setCreateAdminOpen(false);
+      setEditingAdminId('');
       setCreateAdmin(emptyAdminAccount);
       await loadAdmins();
-      setNotice(`管理账号“${data.admin.displayName}”已创建`);
+      setNotice(`管理账号“${data.admin.displayName}”已${editing ? '更新' : '创建'}`);
     } catch (error) {
       setNotice((error as Error).message);
     } finally {
       setBusy('');
     }
-  }
-
-  async function updateAdminAccount(
-    admin: AdminAccount,
-    changes: Partial<AdminAccount> & { password?: string },
-  ) {
-    if (!ownerAccess || busy) return;
-    setBusy(`admin:${admin.id}`);
-    setNotice('');
-    try {
-      const response = await fetch(`/api/play-admin/admins/${admin.id}`, {
-        method: 'PATCH',
-        headers: adminHeaders(true),
-        body: JSON.stringify(changes),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '管理账号更新失败');
-      await loadAdmins();
-      setNotice(`管理账号“${data.admin.displayName}”已更新`);
-    } catch (error) {
-      setNotice((error as Error).message);
-    } finally {
-      setBusy('');
-    }
-  }
-
-  async function resetAdminPassword(admin: AdminAccount) {
-    const password = prompt('请输入 12–128 位新密码');
-    if (!password) return;
-    if (password.length < 12 || password.length > 128) {
-      setNotice('管理员密码长度必须为 12 到 128 个字符');
-      return;
-    }
-    await updateAdminAccount(admin, { password });
   }
 
   function openPermissionGroup(group?: PermissionGroup) {
@@ -786,6 +790,20 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const canExportPlayers = hasCapability('players.export');
   const canResetPasswords = hasCapability('passwords.reset');
   const canViewAudit = hasCapability('audit.view');
+  const canSelectPlayers = canManageProfiles || canManageBans || canManageSessions;
+  const canSelectCurrentSection = section === 'players'
+    ? canSelectPlayers
+    : section === 'sessions'
+      ? canManageSessions
+      : section === 'bans' && canManageBans;
+
+  useEffect(() => {
+    if (!actor) return;
+    const forbidden = (section === 'roles' && !ownerAccess)
+      || (section === 'audit' && !canViewAudit);
+    if (forbidden) navigateSection('overview');
+  }, [actor, canViewAudit, navigateSection, ownerAccess, section]);
+
   const searchPlaceholder = section === 'sessions' ? '搜索在线玩家、设备来源或身份 ID'
     : section === 'bans' ? '搜索被封禁玩家、标签或身份 ID'
       : section === 'roles' ? '搜索用户名、昵称或管理角色'
@@ -1251,7 +1269,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               <article><span><ShieldCheck size={15} />安全状态</span><strong className={stats.banned || stats.failedLoginsLast24Hours ? styles.dangerText : ''}>{stats.banned + stats.failedLoginsLast24Hours}</strong><small>{stats.banned} 个封禁 · {stats.failedLoginsLast24Hours} 次失败登录</small></article>
             </section>
             <div className={styles.dashboardColumns}>
-              <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>最近账号登录</h2><p>服务器最近的成功登录事件</p></div><button onClick={() => navigateSection('audit')}>安全审计 <ChevronRight size={13} /></button></div>
+              <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>最近账号登录</h2><p>服务器最近的成功登录事件</p></div>{canViewAudit ? <button onClick={() => navigateSection('audit')}>安全审计 <ChevronRight size={13} /></button> : null}</div>
                 <div className={styles.activityList}>{overview?.recentLogins.slice(0, 7).map((event, index) => <article key={`${event.subjectId}-${event.createdAt}-${index}`}><span className={styles.avatar}>{event.displayName.slice(0, 1)}</span><div><strong>{event.displayName}</strong><small>{event.username ? `@${event.username}` : event.subjectId}</small></div><div className={styles.activityMeta}><strong>{displayIp(event.ip)}</strong><small>{formatDate(event.createdAt)}</small></div></article>)}</div>
                 {!overview?.recentLogins.length ? <div className={styles.compactEmpty}>目前没有账号登录记录</div> : null}
               </section>
@@ -1282,12 +1300,12 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             {section === 'sessions' && ownerAccess && overview?.security.expiredSessions ? <div className={styles.sectionCallout}><div><Clock3 size={17} /><span><strong>发现 {overview.security.expiredSessions} 条过期会话记录</strong><small>过期记录不会继续授权，但定期清理可以减少数据库体积。</small></span></div><button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={() => void cleanupExpiredSessions()}>清理过期会话</button></div> : null}
             {section === 'roles' ? <div className={styles.rolesWorkspace}>
               <section className={styles.rolesPanel}>
-                <header className={styles.rolesPanelHeader}><div><span className={styles.rolesPanelIcon}><UserCog size={17} /></span><span><strong>管理账号</strong><small>{admins.length} 个账号</small></span></div><button className={styles.primaryButton} onClick={() => setCreateAdminOpen(true)}><UserPlus size={14} />新增账号</button></header>
-                {admins.length ? <div className={styles.rolesTableWrap}><table><thead><tr><th>管理账号</th><th>角色</th><th>权限组</th><th>最近登录</th><th>状态</th><th /></tr></thead><tbody>{admins.map((admin) => <tr key={admin.id}><td><strong>{admin.displayName}</strong><small>@{admin.username}</small></td><td><select className={styles.filterSelect} value={admin.role} disabled={Boolean(busy)} onChange={(event) => void updateAdminAccount(admin, { role: event.target.value as AdminAccount['role'] })}><option value="moderator">管理员</option><option value="admin">高级管理员</option></select></td><td>{admin.role === 'moderator' ? <select className={styles.filterSelect} aria-label={`${admin.displayName} 的权限组`} value={admin.permissionGroupId || ''} disabled={Boolean(busy)} onChange={(event) => void updateAdminAccount(admin, { permissionGroupId: event.target.value })}><option value="">仅查看</option>{permissionGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select> : <strong>全部权限</strong>}</td><td><strong>{formatDate(admin.lastLoginAt)}</strong><small>{admin.loginCount || 0} 次</small></td><td><select className={styles.filterSelect} value={admin.status} disabled={Boolean(busy)} onChange={(event) => void updateAdminAccount(admin, { status: event.target.value as AdminAccount['status'] })}><option value="active">启用</option><option value="disabled">停用</option></select></td><td><span className={styles.sourceActions}><button className={styles.textButton} onClick={() => void resetAdminPassword(admin)}>重置密码</button><button className={styles.textButton} onClick={() => void removeAdminAccount(admin)}>删除</button></span></td></tr>)}</tbody></table></div> : <div className={styles.rolesEmpty}><span><UserCog size={22} /></span><strong>暂无管理账号</strong><button className={styles.textButton} onClick={() => setCreateAdminOpen(true)}>新增第一个账号</button></div>}
+                <header className={styles.rolesPanelHeader}><div><span className={styles.rolesPanelIcon}><UserCog size={17} /></span><span><strong>管理账号</strong><small>{admins.length} 个账号</small></span></div><button className={styles.primaryButton} onClick={() => openAdminAccount()}><UserPlus size={14} />新增账号</button></header>
+                {admins.length ? <div className={styles.rolesTableWrap}><table><thead><tr><th>管理账号</th><th>角色</th><th>权限组</th><th>最近登录</th><th>状态</th><th aria-label="操作" /></tr></thead><tbody>{admins.map((admin) => <tr key={admin.id}><td><strong>{admin.displayName}</strong><small>@{admin.username}</small></td><td><span className={styles.neutralBadge}>{admin.role === 'admin' ? '高级管理员' : '管理员'}</span></td><td><strong>{admin.role === 'admin' ? '全部权限' : admin.permissionGroupName || '仅查看'}</strong><small>{admin.permissions.length} 项权限</small></td><td><strong>{formatDate(admin.lastLoginAt)}</strong><small>{admin.lastLoginIp || `${admin.loginCount || 0} 次登录`}</small></td><td><span className={admin.status === 'active' ? styles.goodStatus : styles.badStatus}>{admin.status === 'active' ? '已启用' : '已停用'}</span></td><td><DropdownMenu.Root><DropdownMenu.Trigger asChild><button className={styles.rowActionButton} aria-label={`管理 ${admin.displayName}`}><MoreHorizontal size={17} /></button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className={styles.actionMenuContent} align="end" sideOffset={6}><DropdownMenu.Item className={styles.actionMenuItem} onSelect={() => openAdminAccount(admin)}><Pencil size={14} />编辑账号</DropdownMenu.Item><DropdownMenu.Separator className={styles.actionMenuSeparator} /><DropdownMenu.Item className={`${styles.actionMenuItem} ${styles.actionMenuDanger}`} onSelect={() => void removeAdminAccount(admin)}><Trash2 size={14} />删除账号</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root></td></tr>)}</tbody></table></div> : <div className={styles.rolesEmpty}><span><UserCog size={22} /></span><strong>暂无管理账号</strong><button className={styles.textButton} onClick={() => openAdminAccount()}>新增第一个账号</button></div>}
               </section>
               <section className={styles.rolesPanel}>
                 <header className={styles.rolesPanelHeader}><div><span className={styles.rolesPanelIcon}><ShieldCheck size={17} /></span><span><strong>权限组</strong><small>{permissionGroups.length} 个分组</small></span></div><button className={styles.secondaryButton} onClick={() => openPermissionGroup()}>新建</button></header>
-                {permissionGroups.length ? <div className={styles.permissionGroupList}>{permissionGroups.map((group) => <article key={group.id}><div><strong>{group.name}</strong><span>{group.permissions.length} 项权限</span></div><em>{group.adminCount} 人</em><div><button className={styles.textButton} onClick={() => openPermissionGroup(group)}>编辑</button><button className={styles.textButton} onClick={() => void removePermissionGroup(group)}>删除</button></div></article>)}</div> : <div className={styles.rolesEmpty}><span><ShieldCheck size={22} /></span><strong>暂无权限组</strong><button className={styles.textButton} onClick={() => openPermissionGroup()}>新建权限组</button></div>}
+                {permissionGroups.length ? <div className={styles.permissionGroupList}>{permissionGroups.map((group) => <article key={group.id}><div><strong>{group.name}</strong><span>{group.permissions.length ? group.permissions.slice(0, 2).map((permission) => PLAYER_ADMIN_CAPABILITY_META[permission].label).join('、') : '仅查看玩家'}{group.permissions.length > 2 ? `等 ${group.permissions.length} 项` : ''}</span></div><em>{group.adminCount} 人</em><DropdownMenu.Root><DropdownMenu.Trigger asChild><button className={styles.rowActionButton} aria-label={`管理权限组 ${group.name}`}><MoreHorizontal size={17} /></button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className={styles.actionMenuContent} align="end" sideOffset={6}><DropdownMenu.Item className={styles.actionMenuItem} onSelect={() => openPermissionGroup(group)}><Pencil size={14} />编辑权限组</DropdownMenu.Item><DropdownMenu.Separator className={styles.actionMenuSeparator} /><DropdownMenu.Item className={`${styles.actionMenuItem} ${styles.actionMenuDanger}`} onSelect={() => void removePermissionGroup(group)}><Trash2 size={14} />删除权限组</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root></article>)}</div> : <div className={styles.rolesEmpty}><span><ShieldCheck size={22} /></span><strong>暂无权限组</strong><button className={styles.textButton} onClick={() => openPermissionGroup()}>新建权限组</button></div>}
               </section>
             </div> : null}
             {section !== 'roles' ? <div className={styles.toolbar}>
@@ -1305,13 +1323,13 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               </div>
               <span>当前显示 {displayedPlayers.length} / {total} 位玩家</span>
             </div> : null}
-            {section !== 'roles' && selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong>{canManageSessions && (section === 'sessions' || section === 'players') ? <button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button> : null}{section === 'players' ? <>{canManageBans ? <><button onClick={() => void batchAction('temporary-ban')}><Ban size={14} />临时封禁</button><button onClick={() => void batchAction('ban')}><Ban size={14} />永久封禁</button></> : null}{canManageProfiles ? <><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button></> : null}</> : null}{section === 'bans' && canManageBans ? <button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解除封禁</button> : null}<button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
+            {section !== 'roles' && canSelectCurrentSection && selectedIds.length ? <div className={styles.batchToolbar}><strong>已选择 {selectedIds.length} 位玩家</strong>{canManageSessions && (section === 'sessions' || section === 'players') ? <button onClick={() => void batchAction('revoke-sessions')}><LogOut size={14} />强制下线</button> : null}{section === 'players' ? <>{canManageBans ? <><button onClick={() => void batchAction('temporary-ban')}><Ban size={14} />临时封禁</button><button onClick={() => void batchAction('ban')}><Ban size={14} />永久封禁</button></> : null}{canManageProfiles ? <><button onClick={() => void batchAction('add-tag')}><Tags size={14} />增加标签</button><button onClick={() => void batchAction('remove-tag')}><Tags size={14} />移除标签</button></> : null}</> : null}{section === 'bans' && canManageBans ? <button onClick={() => void batchAction('unban')}><ShieldCheck size={14} />解除封禁</button> : null}<button className={styles.batchClear} onClick={() => setSelectedIds([])}><X size={14} />清空</button></div> : null}
             {section !== 'roles' ? <section className={styles.tableCard} aria-busy={busy === 'loading'}>
-              {section === 'players' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>玩家</th><th>账号标识</th><th>注册信息</th><th>最后在线</th><th>状态</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'profile')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'profile'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><strong>账号 #{player.userId}</strong><small>{player.boxId ? `神岛 ID：${player.boxId}` : '未绑定神岛 ID'}</small></td><td><strong>{formatDate(player.registeredAt || player.createdAt)}</strong><small>{displayIp(player.registrationIp || player.firstSeenIp)}</small></td><td><strong>{formatDate(player.lastSeenAt)}</strong><small>{player.activeSessionCount ? `${player.activeSessionCount} 个有效会话` : '当前离线'}</small></td><td><StatusBadge player={player} /></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'profile'); }}>管理 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
-              {section === 'sessions' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>在线玩家</th><th>有效会话</th><th>最后登录</th><th>来源地址</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'sessions')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'sessions'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><strong>{player.activeSessionCount} 个设备</strong><small>{player.activeSessionCount ? '登录凭据仍有效' : '没有有效会话'}</small></td><td><strong>{formatDate(player.lastLoginAt)}</strong><small>累计登录 {player.loginCount} 次</small></td><td><strong className={styles.mono}>{displayIp(player.lastLoginIp)}</strong><small>最近在线 {formatDate(player.lastSeenAt)}</small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'sessions'); }}>管理会话 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
-              {section === 'bans' ? <table><thead><tr><th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th><th>被封禁玩家</th><th>处罚类型</th><th>封禁原因</th><th>处理时间</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'ban')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'ban'); }}><td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td><td><PlayerName player={player} /></td><td><StatusBadge player={player} /><small>{player.bannedUntil ? `至 ${formatDate(player.bannedUntil)}` : '不会自动解除'}</small></td><td><strong>{player.banReason || '未填写原因'}</strong><small>由管理后台执行</small></td><td><strong>{formatDate(player.bannedAt)}</strong><small>最后在线 {formatDate(player.lastSeenAt)}</small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'ban'); }}>处理封禁 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
-              {section !== 'roles' && busy === 'loading' && !displayedPlayers.length ? <div className={styles.empty}><RefreshCw className={styles.spinning} size={20} /><strong>正在读取玩家记录</strong><small>正在从 Player Service 获取最新数据…</small></div> : null}
-              {section !== 'roles' && busy !== 'loading' && !displayedPlayers.length ? <div className={styles.empty}><CircleUserRound size={24} /><strong>没有符合条件的玩家</strong><small>尝试清除搜索词或调整上方筛选条件。</small></div> : null}
+              {section === 'players' ? <table><thead><tr>{canSelectPlayers ? <th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th> : null}<th>玩家</th><th>账号标识</th><th>注册信息</th><th>最后在线</th><th>状态</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'profile')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'profile'); }}>{canSelectPlayers ? <td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td> : null}<td><PlayerName player={player} /></td><td><strong>账号 #{player.userId}</strong><small>{player.boxId ? `神岛 ID：${player.boxId}` : '未绑定神岛 ID'}</small></td><td><strong>{formatDate(player.registeredAt || player.createdAt)}</strong><small>{displayIp(player.registrationIp || player.firstSeenIp)}</small></td><td><strong>{formatDate(player.lastSeenAt)}</strong><small>{player.activeSessionCount ? `${player.activeSessionCount} 个有效会话` : '当前离线'}</small></td><td><StatusBadge player={player} /></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'profile'); }}>管理 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
+              {section === 'sessions' ? <table><thead><tr>{canManageSessions ? <th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th> : null}<th>在线玩家</th><th>有效会话</th><th>最后登录</th><th>来源地址</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'sessions')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'sessions'); }}>{canManageSessions ? <td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td> : null}<td><PlayerName player={player} /></td><td><strong>{player.activeSessionCount} 个设备</strong><small>{player.activeSessionCount ? '登录凭据仍有效' : '没有有效会话'}</small></td><td><strong>{formatDate(player.lastLoginAt)}</strong><small>累计登录 {player.loginCount} 次</small></td><td><strong className={styles.mono}>{displayIp(player.lastLoginIp)}</strong><small>最近在线 {formatDate(player.lastSeenAt)}</small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'sessions'); }}>管理会话 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
+              {section === 'bans' ? <table><thead><tr>{canManageBans ? <th className={styles.checkCell}><input type="checkbox" aria-label="选择本页玩家" checked={Boolean(displayedPlayers.length) && displayedPlayers.every((player) => selectedIds.includes(player.subjectId))} onChange={(event) => setSelectedIds(event.target.checked ? [...new Set([...selectedIds, ...displayedPlayers.map((player) => player.subjectId)])] : selectedIds.filter((id) => !displayedPlayers.some((player) => player.subjectId === id)))} /></th> : null}<th>被封禁玩家</th><th>处罚类型</th><th>封禁原因</th><th>处理时间</th><th /></tr></thead><tbody>{displayedPlayers.map((player) => <tr key={player.subjectId} tabIndex={0} onClick={() => openDetails(player, 'ban')} onKeyDown={(event) => { if (event.key === 'Enter') openDetails(player, 'ban'); }}>{canManageBans ? <td className={styles.checkCell} onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`选择 ${player.displayName}`} checked={selectedIds.includes(player.subjectId)} onChange={(event) => setSelectedIds((ids) => event.target.checked ? [...ids, player.subjectId] : ids.filter((id) => id !== player.subjectId))} /></td> : null}<td><PlayerName player={player} /></td><td><StatusBadge player={player} /><small>{player.bannedUntil ? `至 ${formatDate(player.bannedUntil)}` : '不会自动解除'}</small></td><td><strong>{player.banReason || '未填写原因'}</strong><small>由管理后台执行</small></td><td><strong>{formatDate(player.bannedAt)}</strong><small>最后在线 {formatDate(player.lastSeenAt)}</small></td><td><button className={styles.tableAction} onClick={(event) => { event.stopPropagation(); void openDetails(player, 'ban'); }}>处理封禁 <ChevronRight size={13} /></button></td></tr>)}</tbody></table> : null}
+              {busy === 'loading' && !displayedPlayers.length ? <div className={styles.empty}><RefreshCw className={styles.spinning} size={20} /><strong>正在读取玩家记录</strong><small>正在从 Player Service 获取最新数据…</small></div> : null}
+              {busy !== 'loading' && !displayedPlayers.length ? <div className={styles.empty}><CircleUserRound size={24} /><strong>没有符合条件的玩家</strong><small>尝试清除搜索词或调整上方筛选条件。</small></div> : null}
             </section> : null}
             {section !== 'roles' ? <div className={styles.pagination}><span>共 {total} 位玩家 · 第 {page} / {totalPages} 页</span><div><button className={styles.secondaryButton} disabled={page <= 1 || busy === 'loading'} onClick={() => setPage((value) => Math.max(1, value - 1))}>上一页</button><button className={styles.secondaryButton} disabled={page >= totalPages || busy === 'loading'} onClick={() => setPage((value) => Math.min(totalPages, value + 1))}>下一页</button></div></div> : null}
           </> : null}
@@ -1327,7 +1345,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               <div className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>账号关联线索</h2><p>近 30 天被多个账号共同使用的登录 IP，仅作为排查线索</p></div></div><div className={styles.riskList}>{overview?.security.sharedLoginIps.map((entry) => <article key={entry.ip}><strong className={styles.mono}>{entry.ip}</strong><span>{entry.accounts} 个账号</span><time>{formatDate(entry.lastSeenAt)}</time></article>)}{!overview?.security.sharedLoginIps.length ? <div className={styles.compactEmpty}>没有共享登录 IP</div> : null}</div></div>
             </section>
             <div className={styles.activityToolbar}><div className={styles.segmented}><button className={activityKind === 'all' ? styles.segmentActive : ''} onClick={() => { setActivityKind('all'); setActivityPage(1); }}>全部事件</button><button className={activityKind === 'login' ? styles.segmentActive : ''} onClick={() => { setActivityKind('login'); setActivityPage(1); }}>账号登录</button><button className={activityKind === 'admin' ? styles.segmentActive : ''} onClick={() => { setActivityKind('admin'); setActivityPage(1); }}>管理操作</button></div><div className={styles.searchField}><Search size={16} /><input placeholder="搜索动作、操作者、玩家、IP 或身份 ID" value={activitySearch} onChange={(event) => { setActivitySearch(event.target.value); setActivityPage(1); }} /></div></div>
-            <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>完整安全活动</h2><p>账号登录和所有敏感管理操作，按时间统一追溯</p></div><span>{busy === 'activity' ? '读取中…' : `第 ${activityPage} 页`}</span></div><div className={styles.auditTable}>{activity.map((event) => <article key={event.id}><span className={styles.auditIcon}>{event.kind === 'login' ? <Activity size={16} /> : <ShieldCheck size={16} />}</span><div className={styles.auditMain}><strong>{auditLabel(event.action)}</strong><small>目标：{event.displayName || event.username || event.subjectId || '系统'}</small></div><div><strong>{event.actorDisplayName || event.actor}</strong><small>操作者</small></div><div><strong className={styles.mono}>{displayIp(event.ip)}</strong><small>{event.userAgent || '客户端未记录'}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div>{!activity.length && busy !== 'activity' ? <div className={styles.compactEmpty}>暂无符合条件的安全活动</div> : null}</section>
+            <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>完整安全活动</h2><p>账号登录和所有敏感管理操作，按时间统一追溯</p></div><span>{busy === 'activity' ? '读取中…' : `第 ${activityPage} 页`}</span></div><div className={styles.auditTable}>{activity.map((event) => <article key={event.id}><span className={styles.auditIcon}>{event.kind === 'login' ? <Activity size={16} /> : <ShieldCheck size={16} />}</span><div className={styles.auditMain}><strong>{describePlayerAdminAuditAction(event.action).label}</strong><small>目标：{event.displayName || event.username || event.subjectId || '系统'}</small></div><div><strong>{event.actorDisplayName || event.actor}</strong><small>操作者</small></div><div><strong className={styles.mono}>{displayIp(event.ip)}</strong><small>{event.userAgent || '客户端未记录'}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div>{!activity.length && busy !== 'activity' ? <div className={styles.compactEmpty}>暂无符合条件的安全活动</div> : null}</section>
             <div className={styles.pagination}><span>第 {activityPage} / {activityTotalPages} 页</span><div><button className={styles.secondaryButton} disabled={activityPage <= 1} onClick={() => setActivityPage((value) => value - 1)}>上一页</button><button className={styles.secondaryButton} disabled={activityPage >= activityTotalPages} onClick={() => setActivityPage((value) => value + 1)}>下一页</button></div></div>
           </> : null}
         </section>
@@ -1351,7 +1369,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             <div className={styles.detailWorkspace}>
               <nav className={styles.detailTabs} aria-label="玩家详情功能">
                 <span className={styles.detailGroupLabel}>账号资料</span>
-                <button className={detailTab === 'profile' ? styles.detailTabActive : ''} onClick={() => setDetailTab('profile')}><UserCog size={15} /><span><strong>基本资料</strong><small>昵称、头像、标签和备注</small></span></button>
+                <button className={detailTab === 'profile' ? styles.detailTabActive : ''} onClick={() => setDetailTab('profile')}><UserCog size={15} /><span><strong>基本资料</strong><small>昵称、标签和备注</small></span></button>
                 <button className={detailTab === 'identity' ? styles.detailTabActive : ''} onClick={() => setDetailTab('identity')}><ShieldCheck size={15} /><span><strong>身份档案</strong><small>标识、时间和网络记录</small></span></button>
                 <button className={detailTab === 'boxId' ? styles.detailTabActive : ''} onClick={() => setDetailTab('boxId')}><Link2 size={15} /><span><strong>神岛 ID</strong><small>旧平台身份兼容绑定</small></span></button>
                 <span className={styles.detailGroupLabel}>会话与安全</span>
@@ -1441,7 +1459,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
 
                 {detailTab === 'history' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>管理操作时间线</h3><span>{details?.adminHistory.length || 0} 条</span></div>
-                  {details?.adminHistory.length ? <div className={styles.timelineList}>{details.adminHistory.map((event) => <article key={event.id}><span><ShieldCheck size={14} /></span><div><strong>{auditLabel(event.action)}</strong><small>{event.actorDisplayName || event.actor}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div> : <div className={styles.compactEmpty}>尚无针对该玩家的管理操作</div>}
+                  {details?.adminHistory.length ? <div className={styles.timelineList}>{details.adminHistory.map((event) => <article key={event.id}><span><ShieldCheck size={14} /></span><div><strong>{describePlayerAdminAuditAction(event.action).label}</strong><small>{event.actorDisplayName || event.actor}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div> : <div className={styles.compactEmpty}>尚无针对该玩家的管理操作</div>}
                 </section> : null}
 
                 {detailTab === 'danger' ? <section className={`${styles.detailSection} ${styles.dangerSection}`}>
@@ -1466,10 +1484,12 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
         </div>
       ) : null}
 
-      {createUserOpen ? (
-        <div className={styles.createUserBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && busy !== 'create-user') setCreateUserOpen(false); }}>
-          <form className={`${styles.modalDialog} ${styles.createUserDialog}`} role="dialog" aria-modal="true" aria-labelledby="create-user-title" onSubmit={(event) => { event.preventDefault(); void submitCreateUser(); }}>
-            <DialogHeader id="create-user-title" title="新增用户" closeLabel="关闭新增用户" disabled={busy === 'create-user'} onClose={() => setCreateUserOpen(false)} />
+      <Dialog.Root open={createUserOpen} onOpenChange={(open) => { if (busy !== 'create-user') setCreateUserOpen(open); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className={styles.dialogOverlay} />
+          <Dialog.Content className={`${styles.modalDialog} ${styles.createUserDialog}`} aria-describedby={undefined}>
+          <form onSubmit={(event) => { event.preventDefault(); void submitCreateUser(); }}>
+            <AdminDialogHeader title="新增用户" closeLabel="关闭新增用户" disabled={busy === 'create-user'} />
             <div className={styles.createUserGrid}>
               <label>用户名<input autoFocus required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createUser.username} onChange={(event) => setCreateUser({ ...createUser, username: event.target.value })} placeholder="例如 player_001" /></label>
               <label>昵称<input required maxLength={32} value={createUser.displayName} onChange={(event) => setCreateUser({ ...createUser, displayName: event.target.value })} placeholder="玩家显示名称" /></label>
@@ -1481,50 +1501,58 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             </div>
             {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
             <footer className={styles.createUserActions}>
-              <button className={styles.secondaryButton} type="button" disabled={busy === 'create-user'} onClick={() => setCreateUserOpen(false)}>取消</button>
+              <Dialog.Close asChild><button className={styles.secondaryButton} type="button" disabled={busy === 'create-user'}>取消</button></Dialog.Close>
               <button className={styles.primaryButton} type="submit" disabled={busy === 'create-user' || createUser.password.length < 10}>{busy === 'create-user' ? '创建中…' : '创建用户'}</button>
             </footer>
           </form>
-        </div>
-      ) : null}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
-      {createAdminOpen ? (
-        <div className={styles.createUserBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && busy !== 'create-admin') setCreateAdminOpen(false); }}>
-          <form className={`${styles.modalDialog} ${styles.createUserDialog}`} role="dialog" aria-modal="true" aria-labelledby="create-admin-title" onSubmit={(event) => { event.preventDefault(); void submitCreateAdmin(); }}>
-            <DialogHeader id="create-admin-title" title="新增管理账号" closeLabel="关闭新增管理账号" disabled={busy === 'create-admin'} onClose={() => setCreateAdminOpen(false)} />
+      <Dialog.Root open={createAdminOpen} onOpenChange={(open) => { if (busy !== 'admin-save') setCreateAdminOpen(open); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className={styles.dialogOverlay} />
+          <Dialog.Content className={`${styles.modalDialog} ${styles.adminAccountDialog}`} aria-describedby={undefined}>
+          <form onSubmit={(event) => { event.preventDefault(); void submitAdminAccount(); }}>
+            <AdminDialogHeader title={editingAdminId ? '编辑管理账号' : '新增管理账号'} closeLabel="关闭管理账号编辑" disabled={busy === 'admin-save'} />
             <div className={styles.createUserGrid}>
-              <label>管理员用户名<input autoFocus required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createAdmin.username} onChange={(event) => setCreateAdmin({ ...createAdmin, username: event.target.value })} placeholder="例如 ops_admin" /></label>
+              <label>管理员用户名<input autoFocus={!editingAdminId} required disabled={Boolean(editingAdminId)} minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createAdmin.username} onChange={(event) => setCreateAdmin({ ...createAdmin, username: event.target.value })} placeholder="例如 ops_admin" /></label>
               <label>显示名称<input required maxLength={32} value={createAdmin.displayName} onChange={(event) => setCreateAdmin({ ...createAdmin, displayName: event.target.value })} placeholder="后台显示名称" /></label>
-              <label>初始密码<input required type="password" minLength={12} maxLength={128} autoComplete="new-password" value={createAdmin.password} onChange={(event) => setCreateAdmin({ ...createAdmin, password: event.target.value })} placeholder="至少 12 位" /></label>
+              <label>{editingAdminId ? '新密码（可选）' : '初始密码'}<input id="admin-account-password" required={!editingAdminId} type="password" minLength={12} maxLength={128} autoComplete="new-password" value={createAdmin.password} onChange={(event) => setCreateAdmin({ ...createAdmin, password: event.target.value })} placeholder={editingAdminId ? '留空则保持原密码' : '至少 12 位'} /></label>
               <label>管理角色<select value={createAdmin.role} onChange={(event) => setCreateAdmin({ ...createAdmin, role: event.target.value as AdminAccount['role'], permissionGroupId: '' })}><option value="moderator">管理员</option><option value="admin">高级管理员</option></select></label>
               {createAdmin.role === 'moderator' ? <label>权限组<select value={createAdmin.permissionGroupId} onChange={(event) => setCreateAdmin({ ...createAdmin, permissionGroupId: event.target.value })}><option value="">仅查看</option>{permissionGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></label> : null}
+              {editingAdminId ? <label>账号状态<select value={createAdmin.status} onChange={(event) => setCreateAdmin({ ...createAdmin, status: event.target.value as AdminAccount['status'] })}><option value="active">启用</option><option value="disabled">停用</option></select></label> : null}
             </div>
             {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
             <footer className={styles.createUserActions}>
-              <button className={styles.secondaryButton} type="button" disabled={busy === 'create-admin'} onClick={() => setCreateAdminOpen(false)}>取消</button>
-              <button className={styles.primaryButton} type="submit" disabled={busy === 'create-admin' || createAdmin.password.length < 12}>{busy === 'create-admin' ? '创建中…' : '创建管理账号'}</button>
+              <Dialog.Close asChild><button className={styles.secondaryButton} type="button" disabled={busy === 'admin-save'}>取消</button></Dialog.Close>
+              <button className={styles.primaryButton} type="submit" disabled={busy === 'admin-save' || (!editingAdminId && createAdmin.password.length < 12) || (Boolean(editingAdminId) && createAdmin.password.length > 0 && createAdmin.password.length < 12)}>{busy === 'admin-save' ? '保存中…' : editingAdminId ? '保存修改' : '创建管理账号'}</button>
             </footer>
           </form>
-        </div>
-      ) : null}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
-      {permissionGroupOpen ? (
-        <div className={styles.createUserBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy.startsWith('permission-group')) setPermissionGroupOpen(false); }}>
-          <form className={`${styles.modalDialog} ${styles.permissionGroupDialog}`} role="dialog" aria-modal="true" aria-labelledby="permission-group-title" onSubmit={(event) => { event.preventDefault(); void savePermissionGroup(); }}>
-            <DialogHeader id="permission-group-title" title={editingPermissionGroupId ? '编辑权限组' : '新建权限组'} closeLabel="关闭权限组" disabled={busy.startsWith('permission-group')} onClose={() => setPermissionGroupOpen(false)} />
+      <Dialog.Root open={permissionGroupOpen} onOpenChange={(open) => { if (!busy.startsWith('permission-group')) setPermissionGroupOpen(open); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className={styles.dialogOverlay} />
+          <Dialog.Content className={`${styles.modalDialog} ${styles.permissionGroupDialog}`} aria-describedby={undefined}>
+          <form onSubmit={(event) => { event.preventDefault(); void savePermissionGroup(); }}>
+            <AdminDialogHeader title={editingPermissionGroupId ? '编辑权限组' : '新建权限组'} closeLabel="关闭权限组" disabled={busy.startsWith('permission-group')} />
             <label>名称<input autoFocus required maxLength={32} value={permissionGroupForm.name} onChange={(event) => setPermissionGroupForm({ ...permissionGroupForm, name: event.target.value })} placeholder="例如：客服" /></label>
             <div className={styles.permissionGrid}>
-              <article className={styles.permissionLocked}><strong>{PLAYER_ADMIN_CAPABILITY_META['players.view'].label}</strong><em>默认</em></article>
-              {PLAYER_ADMIN_GRANTABLE_CAPABILITIES.map((capability) => <label key={capability}><input type="checkbox" checked={permissionGroupForm.permissions.includes(capability)} onChange={(event) => setPermissionGroupForm({ ...permissionGroupForm, permissions: event.target.checked ? [...permissionGroupForm.permissions, capability] : permissionGroupForm.permissions.filter((value) => value !== capability) })} /><strong>{PLAYER_ADMIN_CAPABILITY_META[capability].label}</strong></label>)}
+              <article className={styles.permissionLocked}><span><strong>{PLAYER_ADMIN_CAPABILITY_META['players.view'].label}</strong><small>{PLAYER_ADMIN_CAPABILITY_META['players.view'].description}</small></span><em>默认</em></article>
+              {PLAYER_ADMIN_GRANTABLE_CAPABILITIES.map((capability) => <label key={capability}><input type="checkbox" checked={permissionGroupForm.permissions.includes(capability)} onChange={(event) => setPermissionGroupForm({ ...permissionGroupForm, permissions: event.target.checked ? [...permissionGroupForm.permissions, capability] : permissionGroupForm.permissions.filter((value) => value !== capability) })} /><span><strong>{PLAYER_ADMIN_CAPABILITY_META[capability].label}</strong><small>{PLAYER_ADMIN_CAPABILITY_META[capability].description}</small></span></label>)}
             </div>
             {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
             <footer className={styles.createUserActions}>
-              <button className={styles.secondaryButton} type="button" disabled={busy.startsWith('permission-group')} onClick={() => setPermissionGroupOpen(false)}>取消</button>
+              <Dialog.Close asChild><button className={styles.secondaryButton} type="button" disabled={busy.startsWith('permission-group')}>取消</button></Dialog.Close>
               <button className={styles.primaryButton} type="submit" disabled={!permissionGroupForm.name.trim() || busy.startsWith('permission-group')}>{busy === 'permission-group-save' ? '保存中…' : '保存'}</button>
             </footer>
           </form>
-        </div>
-      ) : null}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

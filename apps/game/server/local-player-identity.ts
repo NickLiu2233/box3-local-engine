@@ -1617,9 +1617,11 @@ export async function cleanupExpiredPlayerSessions(context?: AdminActionContext)
   try {
     await client.query('BEGIN');
     const result = await client.query(`DELETE FROM ${table('sessions')} WHERE expires_at <= NOW()`);
-    await audit(client, 'system.sessions.cleanup', null, {
-      deleted: result.rowCount || 0,
-    }, context);
+    if (result.rowCount) {
+      await audit(client, 'system.sessions.cleanup', null, {
+        deleted: result.rowCount,
+      }, context);
+    }
     await client.query('COMMIT');
     return { deleted: result.rowCount || 0 };
   } catch (error) {
@@ -1663,12 +1665,33 @@ export async function listPlayerAdminActivity(options: {
       UNION ALL
       SELECT 'admin'::text AS kind, 'audit:' || a.id::text AS id,
         a.action, a.actor, COALESCE(a.details->>'actorDisplayName', a.actor) AS actor_display_name,
-        a.subject_id, COALESCE(u.display_name, '') AS display_name,
-        COALESCE(u.username, '') AS username, COALESCE(a.details->>'actorIp', '') AS ip,
+        a.subject_id, COALESCE(u.display_name, a.details->>'displayName', '') AS display_name,
+        COALESCE(u.username, a.details->>'username', '') AS username,
+        COALESCE(a.details->>'actorIp', '') AS ip,
         COALESCE(a.details->>'actorUserAgent', '') AS user_agent,
         a.details, a.created_at
       FROM ${table('audit_logs')} a
       LEFT JOIN ${table('users')} u ON u.principal_id = a.subject_id
+      UNION ALL
+      SELECT 'login'::text AS kind, 'admin-login:' || al.id::text AS id,
+        CASE WHEN al.success THEN 'admin.login.success' ELSE 'admin.login.failed' END AS action,
+        'admin:' || COALESCE(al.admin_id::text, al.username) AS actor,
+        al.username AS actor_display_name, NULL::uuid AS subject_id,
+        al.username AS display_name, al.username, al.ip_address AS ip,
+        al.user_agent, jsonb_build_object('reason', al.reason) AS details, al.created_at
+      FROM ${table('admin_login_events')} al
+      UNION ALL
+      SELECT 'admin'::text AS kind, 'admin-audit:' || aa.id::text AS id,
+        aa.action, aa.actor_id AS actor,
+        COALESCE(aa.details->>'actorDisplayName', aa.details->>'actorUsername', aa.actor_id)
+          AS actor_display_name,
+        NULL::uuid AS subject_id,
+        COALESCE(aa.details->>'displayName', aa.details->>'name', aa.details->>'username', aa.target_id)
+          AS display_name,
+        COALESCE(aa.details->>'username', aa.target_id) AS username,
+        aa.ip_address AS ip, COALESCE(aa.details->>'actorUserAgent', '') AS user_agent,
+        aa.details, aa.created_at
+      FROM ${table('admin_audit_events')} aa
     )
   `;
   const where = `
@@ -1918,11 +1941,44 @@ export async function updateManagedPlayer(
   const client = await database.connect();
   try {
     await client.query('BEGIN');
-    const previous = await client.query<{ status: LocalPlayerStatus; box_id: string | null }>(`
-      SELECT status, box_id FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE
+    const previous = await client.query<{
+      display_name: string;
+      avatar_hash: string | null;
+      status: LocalPlayerStatus;
+      admin_note: string;
+      tags: string[];
+      ban_reason: string;
+      banned_until: string | Date | null;
+      box_id: string | null;
+    }>(`
+      SELECT display_name, avatar_hash, status, admin_note, tags, ban_reason, banned_until, box_id
+      FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE
     `, [subjectId]);
-    if (!previous.rows[0]) throw new Error('只能修改已经注册的玩家');
-    const result = await client.query<IdentityRow>(`
+    const previousPlayer = previous.rows[0];
+    if (!previousPlayer) throw new Error('只能修改已经注册的玩家');
+    const previousBannedUntil = previousPlayer.banned_until
+      ? new Date(previousPlayer.banned_until).toISOString()
+      : '';
+    const nextBannedUntil = status === 'active'
+      ? ''
+      : status === 'banned'
+        ? bannedUntil?.toISOString() || ''
+        : previousBannedUntil;
+    const nextBanReason = status === 'active'
+      ? ''
+      : banReason === undefined
+        ? previousPlayer.ban_reason
+        : banReason;
+    const changed = (displayName !== undefined && displayName !== previousPlayer.display_name)
+      || (avatar !== undefined && avatar !== (previousPlayer.avatar_hash || ''))
+      || (status !== undefined && status !== previousPlayer.status)
+      || (adminNote !== undefined && adminNote !== previousPlayer.admin_note)
+      || (tags !== undefined && JSON.stringify(tags) !== JSON.stringify(previousPlayer.tags || []))
+      || nextBanReason !== previousPlayer.ban_reason
+      || nextBannedUntil !== previousBannedUntil
+      || (hasBoxId && boxId !== previousPlayer.box_id);
+    if (changed) {
+      const result = await client.query<IdentityRow>(`
       UPDATE ${table('users')} SET
         display_name = COALESCE($2, display_name),
         avatar_hash = COALESCE($3, avatar_hash),
@@ -1942,23 +1998,25 @@ export async function updateManagedPlayer(
         updated_at = NOW()
       WHERE principal_id = $1
       RETURNING principal_id AS subject_id
-    `, [
-      subjectId, displayName, avatar, role, status, adminNote, tags, banReason,
-      bannedUntil, hasBoxId, boxId, hasAdminPermissions, adminPermissions || [],
-    ]);
-    if (!result.rows[0]) throw new Error('只能修改已经注册的玩家');
-    if (status === 'banned' && previous.rows[0].status !== 'banned') {
-      await client.query(`DELETE FROM ${table('sessions')} WHERE principal_id = $1`, [subjectId]);
-      await publishPlayerRevocation(client, subjectId, 'banned');
+      `, [
+        subjectId, displayName, avatar, role, status, adminNote, tags, banReason,
+        bannedUntil, hasBoxId, boxId, hasAdminPermissions, adminPermissions || [],
+      ]);
+      if (!result.rows[0]) throw new Error('只能修改已经注册的玩家');
+      if (status === 'banned' && previousPlayer.status !== 'banned') {
+        await client.query(`DELETE FROM ${table('sessions')} WHERE principal_id = $1`, [subjectId]);
+        await publishPlayerRevocation(client, subjectId, 'banned');
+      }
+      const auditAction = hasBoxId && Object.keys(changes).every((key) => key === 'boxId')
+        ? 'player.box-id.update'
+        : 'player.update';
+      await audit(client, auditAction, subjectId, {
+        displayName, avatar, role, status, adminNote, adminPermissions,
+        tags, banReason, bannedUntil: bannedUntil?.toISOString() || null,
+        ...(hasBoxId ? { previousBoxId: previousPlayer.box_id || '', boxId: boxId || '' } : {}),
+        outcome: 'success',
+      }, context);
     }
-    const auditAction = hasBoxId && Object.keys(changes).every((key) => key === 'boxId')
-      ? 'player.box-id.update'
-      : 'player.update';
-    await audit(client, auditAction, subjectId, {
-      displayName, avatar, role, status, adminNote, adminPermissions,
-      tags, banReason, bannedUntil: bannedUntil?.toISOString() || null,
-      ...(hasBoxId ? { previousBoxId: previous.rows[0].box_id || '', boxId: boxId || '' } : {}),
-    }, context);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -2139,10 +2197,29 @@ export async function deleteManagedPlayer(subjectId: string, context?: AdminActi
   const client = await database.connect();
   try {
     await client.query('BEGIN');
-    await audit(client, 'player.delete', subjectId, {}, context);
-    await publishPlayerRevocation(client, subjectId, 'deleted');
-    const result = await client.query(`DELETE FROM ${table('principals')} WHERE id = $1`, [subjectId]);
+    const target = await client.query<{
+      username: string | null;
+      display_name: string | null;
+      user_id: string | number | null;
+    }>(`
+      SELECT u.username, u.display_name, u.id AS user_id
+      FROM ${table('principals')} p
+      LEFT JOIN ${table('users')} u ON u.principal_id = p.id
+      WHERE p.id = $1
+      FOR UPDATE OF p
+    `, [subjectId]);
+    if (!target.rowCount) throw new Error('玩家不存在');
+    const result = await client.query(`
+      DELETE FROM ${table('principals')} WHERE id = $1 RETURNING id
+    `, [subjectId]);
     if (!result.rowCount) throw new Error('玩家不存在');
+    await publishPlayerRevocation(client, subjectId, 'deleted');
+    await audit(client, 'player.delete', subjectId, {
+      username: target.rows[0]?.username || '',
+      displayName: target.rows[0]?.display_name || '',
+      userId: target.rows[0]?.user_id == null ? '' : String(target.rows[0].user_id),
+      outcome: 'success',
+    }, context);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

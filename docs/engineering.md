@@ -7,7 +7,7 @@
 - Node.js：`22.17.x`，本机可通过 `.node-version` 或 `.nvmrc` 自动选择。
 - pnpm：`10.12.1`，以根目录 `packageManager` 字段为准。
 - 正式数据存储：PostgreSQL；Redis 是可选缓存，不得成为正确性的前提。
-- Docker/Compose：用于 Creator、Play、Player Service、VOXA 和 Migrator 的分发运行。
+- Docker/Compose：用于 Creator、Play、Player Service 和 VOXA 的用户分发运行；Migrator 只用于内部开发。
 
 安装依赖前建议执行：
 

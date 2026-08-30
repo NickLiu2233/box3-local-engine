@@ -25,7 +25,7 @@ BOX3 Engine 是一个本地优先的 BOX 兼容引擎发行版。它保留地图
 
 1. **先保持兼容，再做优化。** 地图 UUID、地图组、资源 hash、脚本 API、引擎消息顺序和表命名都属于外部兼容接口；改动必须有回归测试和迁移说明。
 2. **小接口、深实现。** 将归档、存储、运行时生命周期等复杂细节收敛在模块内；调用方不应依赖目录结构、Docker 命令或 blob 格式。
-3. **默认安全。** Creator/ARENA 与 VOXA 只允许本机或可信局域网；Play 与玩家服务才可以按配置对外开放。
+3. **默认安全。** Creator 与 VOXA 只允许本机或可信局域网；Play 与玩家服务才可以按配置对外开放。
 4. **数据不可猜测。** 生产数据使用 PostgreSQL；Redis 只是可选缓存。任何正确性都不能依赖缓存命中或本机临时文件。
 5. **不覆盖他人改动。** 先查看 `git status` 和相关 diff；只改本任务涉及的文件，不使用会丢失未提交内容的 Git 命令。
 
@@ -56,7 +56,7 @@ pnpm install --frozen-lockfile
 | `apps/game/`               | Creator/Play Web 界面与客户端引擎                        | 与 boxes 行为对齐，避免无目的大范围格式化        |
 | `services/game-server/`    | 引擎服务端、存储、玩家、运行时                           | 协议、存储 namespace、生命周期改动必须回归       |
 | `apps/voxa/`               | 本地模型、皮肤与动画编辑器                               | 注意项目级资源与本地作品库的边界                 |
-| `apps/migrator/`           | 云端工程迁移器                                           | 导入失败必须保留可理解的错误与可恢复状态         |
+| `apps/migrator/`           | 内部云端工程迁移工具，不进入用户发行包                   | 导入失败必须保留可理解的错误与可恢复状态         |
 | `apps/deployment-manager/` | BOX3 Engine 图形化启动器（Vite + Tauri）                 | 用户配置只写 `.env`，派生配置只写 `.runtime.env` |
 | `packages/`、`internals/`  | 共享引擎、协议和构建能力                                 | 视为兼容层，修改前先对照 boxes                   |
 | `scripts/`                 | 根级校验、发行与回归脚本                                 | 新功能应在这里或所属模块增加可自动执行的检查     |
@@ -73,7 +73,7 @@ pnpm install --frozen-lockfile
 # Creator 开发运行时
 pnpm dev
 
-# 独立开发 VOXA 或迁移器
+# 独立开发 VOXA 或内部迁移工具
 pnpm --filter @box-local/voxa dev
 pnpm --filter @box-local/migrator dev
 
@@ -157,7 +157,7 @@ pnpm --filter @box-local/deployment-manager tauri dev
 ### 网络边界
 
 - Play、玩家服务和登录门户可按服主配置本机、局域网或公网访问；公网场景使用 HTTPS 反向代理、访问控制和防火墙。
-- Creator/ARENA 与 VOXA 不得暴露到公网。启动器、Compose 端口绑定和运行时 host 校验应形成多层限制，不能只依赖 UI。
+- Creator 与 VOXA 不得暴露到公网。启动器、Compose 端口绑定和运行时 host 校验应形成多层限制，不能只依赖 UI。
 - 外部 API 必须验证服主 API Key、输入范围、来源与权限，不能仅靠前端隐藏按钮。
 
 ## 6. 开发流程

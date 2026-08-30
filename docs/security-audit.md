@@ -52,8 +52,8 @@ internals/build-system
 
 ## 修复流程
 
-1. 为 Creator、Play、Player Service、VOXA 和 Migrator 镜像生成 SBOM，确认 `static-eval` 是否进入最终运行层，而不只查看 workspace 依赖树。
-2. 执行 `pnpm verify`、Creator/Play/VOXA/Migrator 生产构建、Compose 校验及 amd64/arm64 smoke test。
+1. 为用户发行的 Creator、Play、Player Service、登录门户和 VOXA 镜像生成 SBOM，确认 `static-eval` 是否进入最终运行层，而不只查看 workspace 依赖树；内部 Migrator 单独审计，不混入发行清单。
+2. 执行 `pnpm verify`、Creator/Play/VOXA 生产构建、Compose 校验及 amd64/arm64 smoke test；内部 Migrator 运行自己的测试与构建检查。
 3. 对 `static-eval` 记录可触达性、隔离措施、负责人和复审日期；不能仅以“继承自 boxes”为理由永久忽略。
 4. Dependabot/Renovate 只能提出升级，不允许自动合并 boxes 兼容层的 major 依赖更新。
 5. 每次发布重新运行本命令；审计结果会随 npm 公告变化，本文数字只代表文首日期的锁文件。

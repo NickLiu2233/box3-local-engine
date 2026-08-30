@@ -1,65 +1,69 @@
 # BOX3 Engine 文档中心
 
-本目录是 BOX3 Engine 的专题文档中心。根目录 [README](../README.md) 提供产品概览和最短入口；这里用于按角色找到可执行的细节。它面向服主、接入方和维护代码/镜像/发行包的协作者。
+根目录 [README](../README.md) 说明当前产品、支持平台和最短启动方式。本目录按实际任务拆分专题；部署者不需要从头读完，也不要同时照着多份部署文档执行。
 
-先按目标进入，再沿“接着阅读”深入；同一主题只维护一个主文档，其他文档只补充专项细节。
+## 推荐阅读顺序
 
-## 选择你的入口
+| 目标                   | 主文档                                                | 必要补充                                                                                       |
+| ---------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 桌面启动器首次部署     | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
+| 无图形 Linux 服务器    | [安装、部署与运维](./installation-and-operations.md)  | [游玩端部署](./play-deployment.md)                                                             |
+| 创建和发布地图         | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                          |
+| 部署 Play 或公开服务器 | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                  |
+| 部署 VOXA              | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                            |
+| 接入登录和玩家账号     | [自建登录门户](./self-hosted-login.md)                | [Player Service API](./player-service-api.md)、[玩家身份与权限](./player-identity.md)          |
+| 配置 PostgreSQL/Redis  | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
+| 开发或修复代码         | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                    |
+| 构建镜像和发行包       | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                |
 
-| 你要做什么                        | 首先阅读                                              | 然后阅读                                                                                       |
-| --------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 第一次在桌面电脑部署              | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
-| 在无图形 Linux 服务器部署游玩服   | [安装、部署与运维](./installation-and-operations.md)  | [构建、分发与 CI](./release-and-distribution.md)、[游玩端部署](./play-deployment.md)           |
-| 创建、导入、发布或恢复地图        | [作品、地图组与发布包](./projects.md)                 | [创作端部署](./creator-deployment.md)、[游玩端部署](./play-deployment.md)                      |
-| 使用远程 PostgreSQL 或 Redis      | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
-| 自己制作玩家登录页                | [自建登录门户](./self-hosted-login.md)                | [Player Service API](./player-service-api.md)、[玩家身份与权限](./player-identity.md)          |
-| 修复功能、写测试或改界面          | [开发者与协作手册](./developer-guide.md)              | [系统架构与源码入口](./architecture.md)、[工程开发规范](./engineering.md)                      |
-| 构建镜像、离线包或 GitHub Release | [构建、分发与 CI](./release-and-distribution.md)      | [图形化部署管理器](./graphical-deployment-manager.md)                                          |
-| 对照原始 boxes 行为               | [boxes 对齐基线](./boxes-parity.md)                   | [地图存储 UUID 决策](./adr/0001-stable-map-storage-identity.md)                                |
+## 文档职责
 
-## 文档地图与主责
+### 部署与使用
 
-### 给服主和运营者
+- [安装、部署与运维](./installation-and-operations.md)：硬件/软件要求、桌面包、无图形服务器、备份、升级和排障。
+- [图形化部署管理器](./graphical-deployment-manager.md)：启动器页面、配置保存、启动范围、自动状态、实时日志和离线包结构。
+- [配置参考](./configuration-reference.md)：环境变量来源、端口、数据库、容量、备份、安全项和修改后的生效方式。
+- [部署与联机](./deployment.md)：本机、局域网、公网反向代理和服务暴露边界。
+- [创作端部署](./creator-deployment.md)：Creator 工程目录、镜像、更新和排错。
+- [游玩端部署](./play-deployment.md)：`.boxplay` 导入、地图开关、只读模式、更新和公网部署。
+- [VOXA 部署](./voxa-deployment.md)：模型工程、地图引用和本地数据备份。
+- [地图作品、地图组与发布包](./projects.md)：主地图/副地图、`.boxproject`、`.boxplay` 和共享资源。
 
-| 主文档                                                | 负责回答的问题                                  | 深入专题                                                                                        |
-| ----------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [安装、部署与运维](./installation-and-operations.md)  | 第一次部署、服务器运维、局域网/公网、排障与恢复 | [部署与联机](./deployment.md)、[本地基础设施](./local-infrastructure.md)                        |
-| [图形化部署管理器](./graphical-deployment-manager.md) | 启动器配置、镜像导入、服务控制、备份和数据目录  | [配置参考](./configuration-reference.md)                                                        |
-| [配置参考](./configuration-reference.md)              | 配置来源、优先级、环境变量、安全变量和端口      | [创作端](./creator-deployment.md)、[游玩端](./play-deployment.md)、[VOXA](./voxa-deployment.md) |
-| [作品、地图组与发布包](./projects.md)                 | 工程包、发布快照、游玩包、共享资源和备份边界    | [稳定地图存储 UUID 决策](./adr/0001-stable-map-storage-identity.md)                             |
+### 玩家身份与数据
 
-### 给接入方
+- [玩家身份与权限](./player-identity.md)：玩家账号、预置皮肤、单设备会话、独立管理账号、权限组和服主边界。
+- [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
+- [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。
+- [PostgreSQL 数据空间](./postgresql-data-storage.md)：账号与地图脚本数据的 schema、隔离、权限和备份。
+- [本地基础设施](./local-infrastructure.md)：仓库内 PostgreSQL/Redis profile 与状态检查。
 
-- [Player Service API](./player-service-api.md)：玩家认证和服主管理 API。
-- [自建登录门户](./self-hosted-login.md)：如何安全地替换参考登录页。
-- [玩家身份与权限](./player-identity.md)：角色、封禁、会话撤销和游戏脚本可见字段。
-- [PostgreSQL 数据空间](./postgresql-data-storage.md)：玩家身份和地图脚本数据的 schema、隔离与备份。
+### 开发与兼容
 
-### 给开发者和发行协作者
+- [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
+- [开发者与协作手册](./developer-guide.md)：开发环境、UI 预览、测试和提交要求。
+- [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
+- [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
+- [稳定地图存储 UUID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
+- [构建、分发与 CI](./release-and-distribution.md)：五镜像归档、桌面 App、无图形服务器包和 Tag 流水线。
+- [安全审计](./security-audit.md)：生产依赖审计范围与剩余风险。
 
-- [开发者与协作手册](./developer-guide.md)：从克隆仓库到提交 PR 的实际工作流，包含 Play 前端 UI 预览模式。
-- [系统架构与源码入口](./architecture.md)：服务职责、数据流、核心概念和需求定位表。
-- [工程开发规范](./engineering.md)：代码、测试、安全、兼容约束与已登记的工程优化。
-- [构建、分发与 CI](./release-and-distribution.md)：镜像、桌面包、Tag 工作流和发布检查。
-- [安全审计](./security-audit.md)：依赖审计范围与已知风险。
+## 当前发行边界
 
-## 当前产品边界
+- 桌面离线包包含 Creator、Play、VOXA、Player Service 和参考登录门户五个 Linux 镜像。
+- 无图形 Linux 服务器包只包含 Play、Player Service 和参考登录门户；不包含 Creator 或 VOXA。
+- `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
+- Creator 与 VOXA 只允许本机或可信局域网；公网只应暴露 Play、登录门户，以及受反向代理保护的 Player Service 必要接口。
+- 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
+- 桌面启动器不安装 PostgreSQL 或 Redis。Player Service 必须使用 PostgreSQL；Redis 可选。
+- 当前桌面发行目标为 Windows x64、Apple Silicon macOS 和 Linux x64。Windows ARM、Intel macOS 与 Linux ARM64 桌面 App 不是默认 Release 目标。
 
-BOX3 Engine 包含 ARENA（Creator）、Play、VOXA、Player Service、参考登录门户、云端迁移器和 Tauri 部署管理器。
+## 文档维护规则
 
-- Creator 保存可编辑工程；发布后生成不可变快照；Play 只运行该快照。
-- Creator 与 VOXA 仅支持本机或可信局域网，不能作为公网服务发布。
-- Play、Player Service 与自建登录门户可按部署配置对外提供服务；公网必须使用 HTTPS、反向代理和防火墙。无图形 Linux 游玩服务器包只包含这三项服务，不包含 Creator / ARENA 或 VOXA。
-- 桌面启动器不安装 PostgreSQL 或 Redis：当前启动器要求服主提供可访问的 PostgreSQL，Redis 可不填。
-- 仓库的 Compose 模板仍可启动内置 PostgreSQL/Redis，适合源码开发或自管部署；这和桌面启动器的“远程数据库”产品策略是两条不同路径。
+以下变化必须在同一提交更新文档和示例配置：
 
-## 如何维护本文档
+- 服务、端口、镜像、启动范围、数据目录或 Release 附件；
+- 环境变量、默认值、启动器表单、Compose 传递或网络限制；
+- 地图组、发布包、玩家身份、权限组、Cookie 或 API；
+- 用户可见按钮、操作流程、错误信息和已删除功能。
 
-把文档视为产品接口的一部分。以下任一变化必须在同一提交中更新对应文档：
-
-- 服务、端口、镜像、离线包结构、启动命令或 GitHub Actions；
-- `.env` 变量、默认值、配置来源、数据目录或网络暴露规则；
-- 地图、模型、脚本、发布包、备份、身份、权限或迁移的可见行为；
-- 外部 API、登录回跳、Cookie、安全限制或错误信息。
-
-文档不得包含真实密钥、Cookie、令牌、IP、数据库连接串、用户数据或生产地址；也不要把尚未实现的想法写成当前能力。计划中的优化统一放在[工程开发规范](./engineering.md)的“高优先级工程优化”中，不能混入操作手册。
+文档只描述当前已实现行为。内部工具必须明确标注“内部”，测试预览必须明确标注“仅开发环境”，未来计划只能写入工程规划，不能混入用户操作步骤。文档不得出现真实密钥、Cookie、IP、数据库连接串或用户数据。

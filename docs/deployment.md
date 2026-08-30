@@ -1,268 +1,164 @@
-# 部署与联机指南
+# 部署与联机
 
-> PostgreSQL、Redis 的本地容器和接入范围见
-> [本地基础设施与可迁移能力](local-infrastructure.md)。Redis 可选；Player Service 的账号、权限和登录需要 PostgreSQL。图形化部署管理器要求使用远程 PostgreSQL。
+本文只说明服务如何放在本机、局域网或公网。安装、地图导入和全部环境变量分别见[安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)和[配置参考](./configuration-reference.md)。
 
-需要交付给其他人时，优先使用以下两份独立手册：
+## 服务暴露边界
 
-- [创作端构建与部署手册](creator-deployment.md)：创作者设备、工程持久化、构建、升级和排错；
-- [游玩端构建、分发与多地图部署手册](play-deployment.md)：私服部署、镜像分发、热添加地图和公网接入。
-- [VOXA 本地模型编辑器手册](voxa-deployment.md)：独立模型编辑器镜像、模型持久化、备份和迁移。
-- [PostgreSQL 数据空间部署手册](postgresql-data-storage.md)：由服主配置玩家存档、排行榜等持久化数据。
+| 服务                            | 默认地址         | 本机 | 可信局域网 | 公网               |
+| ------------------------------- | ---------------- | ---- | ---------- | ------------------ |
+| Creator                         | `127.0.0.1:3002` | 是   | 可选       | 不应公开           |
+| VOXA                            | `127.0.0.1:3001` | 是   | 可选       | 不应公开           |
+| Play                            | `127.0.0.1:3000` | 是   | 是         | 经 HTTPS 反向代理  |
+| Player Service                  | `127.0.0.1:3213` | 是   | 受控       | 只公开必要认证 API |
+| 参考登录门户                    | `127.0.0.1:3214` | 是   | 是         | 可公开或替换       |
+| PostgreSQL / Redis / Docker API | 内部地址         | 受控 | 不建议     | 禁止公开           |
 
-本文保留创作端与游玩端的整体关系和联机配置摘要。
+Creator 和 VOXA 含写入、导入与编辑能力，只适合本机或可信局域网。Play 是面向玩家的唯一地图入口；网页、地图资源、会话请求和 WebSocket 都从同一公开地址进入。
 
-Box Local Engine 对外只有两个完整产品：创作端和游玩端。部署者不需要分别管理网页或运行时
-子模块；启动器会自动运行当前产品需要的内部模块。
+## 本机部署
 
-| 产品   | 用途                       | 是否含编辑能力 | 是否适合公开 |
-| ------ | -------------------------- | -------------- | ------------ |
-| 创作端 | 创建、编辑、预览和发布作品 | 是             | 否           |
-| 游玩端 | 托管已发布作品供玩家游玩   | 否             | 是           |
+默认配置绑定回环地址。桌面启动器选择“全部”“创作端”或“游玩端”后会自动启动对应容器并更新状态。
 
-## 本地开发
-
-安装依赖：
+源码运行示例：
 
 ```bash
-corepack enable
-pnpm install
-pnpm check
-```
-
-创作端开发模式：
-
-```bash
-pnpm dev
-```
-
-默认地址分别为：
-
-```text
-游玩端：http://127.0.0.1:3000/
-VOXA：http://127.0.0.1:3001/
-创作端：http://127.0.0.1:3002/
-```
-
-三个产品端口互不冲突，可以同时启动。创作端进入作品管理；游玩端进入可游玩作品列表。
-
-## 部署创作端
-
-```bash
-cp .env.docker.example .env
 pnpm creator
-```
-
-该命令只构建创作端镜像，不会同时构建游玩端。
-
-创作端仍只允许本机访问。`3002` 是默认网页端口；编辑和预览运行时使用回环地址上的 `9967`
-和 `9966` 建立 WebSocket，不会监听外部网卡。
-
-创作端默认只绑定本机。工程保存在宿主机 `apps/local-engine/projects/`，导出文件保存在
-`apps/local-engine/dist/`。升级前仍建议通过作品管理器导出可编辑工程。
-
-创作端没有公网账号与访问控制，不要把它直接暴露给玩家。
-创作管理 API 还会校验同源请求和允许的 Host。使用额外本地域名时，可以在 `.env` 中填写：
-
-```env
-BOX_CREATOR_ALLOWED_HOSTS=creator.local
-```
-
-这不是公网登录系统；创作端仍应绑定 `127.0.0.1`。
-
-## 部署游玩端
-
-启动游玩端：
-
-```bash
 pnpm play
+pnpm voxa
+pnpm player-service
+pnpm player-auth-portal
 ```
 
-该命令只准备并启动游玩端。游玩镜像不存在或格式过旧时会自动构建；已经是当前版本时直接
-启动，不会重新构建。
+这些命令按服务构建；已有镜像时使用对应 `:up`。停止服务执行 `pnpm stop`，不会删除工程、地图或数据库。
 
-游玩端从 `apps/local-engine/play-worlds/` 读取地图。把每个发布版本目录放为一个子目录：
+本机也必须保持公开 URL 与浏览器地址一致。例如浏览器访问 `127.0.0.1` 时，不要把登录回跳配置成 `localhost` 或局域网 IP，否则 Cookie 和同源判断可能导致登录循环。
 
-```text
-apps/local-engine/play-worlds/island/
-  manifest.json
-  data/
-```
+## 局域网部署
 
-目录名必须与 `manifest.json` 中的作品 ID 一致。玩家地址为 `/p/island`。运行期间可以继续
-加入其他地图，不需要重新构建镜像或重启游玩端。默认镜像为 `linux/amd64`；ARM 私服应先
-在 `.env` 中设置 `BOX_PLAY_PLATFORM=linux/arm64`，再重新构建和导出。
-
-地图必须是创作端生成的只读发布版本，不能直接放可编辑工程的 `source/`：
-
-```text
-apps/local-engine/projects/island/releases/v1.0.0/
-  manifest.json
-  data/
-```
-
-将这个目录整体复制为 `apps/local-engine/play-worlds/island/` 即可。添加完成后约 3 秒内会
-出现在首页；玩家第一次进入 `/p/island` 时，系统才会启动该地图的独立运行时。
-
-为了避免复制一半时被扫描到，建议先复制到一个不符合地图 ID 规则的临时目录，确认
-`manifest.json` 和 `data/` 都完整后，再整体改名为最终地图 ID。
-
-## 只分发镜像的多地图部署
-
-镜像构建完成后仍然可以增加地图。镜像只包含游玩引擎，地图保存在宿主机，不需要被重新
-打进镜像。私服主加载镜像后，在同一目录创建 `compose.yml`：
-
-```yaml
-services:
-  play:
-    image: box-local-engine-play:0.1.0
-    restart: unless-stopped
-    environment:
-      BOX_DEPLOYMENT_MODE: play
-      BOX_PLAY_LIBRARY_PATH: /app/play-worlds
-      BOX_LOCAL_PLAYER_LIMIT: 8
-      PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
-    ports:
-      - '${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3000}:3000'
-    volumes:
-      - ./play-worlds:/app/play-worlds:ro
-```
-
-然后执行：
-
-```bash
-docker load -i play-image.tar
-mkdir -p play-worlds
-docker compose up -d
-```
-
-以后只需向 `play-worlds/` 放入新的发布地图：
-
-```text
-play-worlds/island/manifest.json
-play-worlds/island/data/
-play-worlds/city/manifest.json
-play-worlds/city/data/
-```
-
-容器始终只启动一次。新增地图无需执行 `docker compose restart`，也无需重新执行
-`docker build`。访问 `/` 查看地图列表，或直接访问 `/p/island`、`/p/city`。
-
-需要让服主通过网页管理地图时，在 `.env` 中设置：
+需要其他设备访问时，将 Play、Player Service 和登录门户绑定到 `0.0.0.0`，并把公开 URL 写成主机的固定局域网 IP：
 
 ```env
-BOX_PLAY_ADMIN_TOKEN=至少16位的随机密钥
-BOX_PLAY_LIBRARY_READ_ONLY=false
+BOX_PLAY_PUBLIC_URL=http://192.168.1.20:3000
+BOX_PLAYER_SERVICE_PUBLIC_URL=http://192.168.1.20:3213
+BOX_AUTH_PORTAL_PUBLIC_URL=http://192.168.1.20:3214
+BOX_PLAYER_LOGIN_URL=http://192.168.1.20:3214
 ```
 
-重新执行一次 `pnpm play` 后，作品首页会显示“服主管理”。验证成功后可以用一个
-`.boxplay` 导入或导出完整地图组（主地图和全部副地图），以及删除已安装地图。没有配置密钥时管理接口返回 `404`；保持
-`BOX_PLAY_LIBRARY_READ_ONLY=true` 时地图目录仍为只读。
+具体绑定变量由部署模板决定：桌面启动器统一生成，源码 Compose 使用 `BOX_PLAY_HOST_IP` 等服务级变量，无图形服务器包使用 `BOX_BIND_IP`。以所用 `.env.example` 为准，不要同时混用不同模板。
 
-注意：作品管理器导出的“单作品游玩部署包”仍然固定绑定一个 `world/`，适合一服一图。
-需要一服多图时，应使用上面的 `play-worlds/` 挂载方式。
+局域网注意事项：
 
-先在作品管理器中保存并发布版本，然后选择“导出游玩部署包”。部署包会包含
-`play-image.tar`，服主进入导出目录后执行：
+- 给主机分配固定 DHCP 地址或静态 IP。
+- 只开放实际使用的端口。
+- Creator/VOXA 若允许局域网访问，应只对可信网段开放。
+- 修改 IP 后同步修改所有公开 URL、登录回跳和允许 Origin。
+- 从另一台设备分别测试登录、返回 Play、打开地图和 WebSocket，而不只测试首页。
 
-```bash
-docker load -i play-image.tar
-docker compose up -d
-```
+## 公网部署
 
-游玩端只公开一个端口：
-
-```env
-BOX_BIND_IP=0.0.0.0
-BOX_PLAY_PORT=3000
-BOX_LOCAL_PLAYER_LIMIT=8
-PERMISSION_TOKEN_SECRET=
-```
-
-玩家打开：
+公网推荐拓扑：
 
 ```text
-http://服务器地址:3000/
+玩家浏览器
+  → HTTPS 反向代理 / 防火墙
+    → Play
+    → 登录门户
+    → Player Service 必要认证接口
+
+管理页面、Creator、VOXA、PostgreSQL、Redis、Docker API
+  → 仅本机、VPN 或管理网络
 ```
 
-页面、地图资源、会话请求和 WebSocket 都使用这个地址。内部运行时只监听容器回环地址，
-不需要映射或开放任何额外端口。
+建议使用同一主域名的子域：
 
-正式部署建议生成稳定随机密钥：
-
-```bash
-openssl rand -hex 32
+```env
+BOX_PLAY_PUBLIC_URL=https://play.example.com
+BOX_PLAYER_SERVICE_PUBLIC_URL=https://player.example.com
+BOX_PLAYER_LOGIN_URL=https://login.example.com
+BOX_PLAYER_COOKIE_DOMAIN=.example.com
 ```
 
-把结果写入 `PERMISSION_TOKEN_SECRET`，重启容器后生效。
+浏览器不能在完全不同的站点之间可靠共享登录 Cookie。生产环境必须使用 HTTPS；Cookie Domain 只能设为这些服务共同拥有的父域。
 
-## 公网 HTTPS/WSS
+### 反向代理要求
 
-公网只需把域名反向代理到游玩端的 `3000` 端口，并转发 WebSocket Upgrade。示例：
+- 转发 `Host`、客户端协议和 WebSocket Upgrade。
+- 设置合理的上传上限，以便导入 `.boxplay`。
+- 为长连接和大地图首次启动设置足够的超时。
+- 只在代理会覆盖并清洗客户端转发头时启用 `BOX_TRUST_PROXY=true`。
+- 对 Player Service 的 `/players` 和管理 API 增加 VPN、IP 白名单或额外访问控制。
+
+Play 的 Nginx 示例：
 
 ```nginx
-map $http_upgrade $connection_upgrade {
-    default upgrade;
-    '' close;
-}
-
 server {
     listen 443 ssl http2;
-    server_name game.example.com;
+    server_name play.example.com;
 
-    # ssl_certificate 与 ssl_certificate_key 按实际证书配置
+    client_max_body_size 2g;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 3600s;
     }
 }
 ```
 
-玩家访问 `https://game.example.com/` 时，浏览器会自动使用同源 `wss://` 连接。
+证书路径、TLS 策略和安全响应头应按实际域名及运维平台配置，不要直接复制占位值。
 
-## 常用命令
+## 登录链路
 
-```bash
-pnpm creator:up
-docker compose ps
-docker compose logs -f creator
-docker compose logs -f play
-pnpm stop
+未登录玩家访问 Creator 或 Play 时，会跳转到 `BOX_PLAYER_LOGIN_URL`，并携带来源和同源校验后的 `returnUrl`。登录门户通过自己的服务端代理调用 Player Service，浏览器不能获得 `BOX_PLAYER_AUTH_API_KEY`。
+
+```text
+浏览器访问 Play
+  → Play 检查玩家 Session
+  → 跳转登录门户
+  → 门户后端携带 API Key 调用 Player Service
+  → Player Service 写入 HttpOnly Cookie
+  → 返回原 Play URL
 ```
 
-`pnpm creator:up` 只使用本机已有的创作端镜像，不执行构建；如果镜像尚不存在，应先执行
-一次 `pnpm creator`。
+出现“已经登录仍回到登录页”时，依次核对：
 
-只构建或直接启动源码产物的 `build:creator`、`start:creator`、`build:play` 和
-`start:play` 属于维护者命令，不是正常部署流程。
+1. 浏览器实际使用的协议、主机和端口；
+2. `BOX_PLAY_PUBLIC_URL`、`BOX_PLAYER_SERVICE_PUBLIC_URL`、`BOX_PLAYER_LOGIN_URL`；
+3. `BOX_PLAYER_COOKIE_DOMAIN` 和 HTTPS；
+4. Portal 是否转发请求 Cookie 与全部 `Set-Cookie`；
+5. 服务是否在修改 `.env` 后重新创建。
 
-`pnpm stop` 只停止容器，不会删除宿主机工程。不要手动删除
-`apps/local-engine/projects/`，除非已经导出备份。
+不要通过关闭 Cookie 校验或回退游客会话解决登录循环。
 
-## 排查问题
+## 地图交付
 
-页面无法打开时，确认 `BOX_PLAY_PORT` 没有被占用，并查看容器日志。
+Creator 发布一个 `.boxplay`，服主在 Play 管理界面导入。`.boxplay` 是地图组数据，不含镜像；桌面离线包和无图形服务器包提供运行镜像，不含用户地图。
 
-页面能打开但无法进入游戏时，检查：
+Creator 不生成 Docker 镜像。维护者可单独分发镜像归档，但镜像更新和地图更新应彼此独立。
 
-- `http://服务器地址:3000/api/health-check` 是否返回 `status: ok`；
-- `http://服务器地址:3000/api/play-worlds` 是否能列出已安装地图；
-- 反向代理是否使用 HTTP/1.1 并转发 Upgrade/Connection；
-- HTTPS 页面是否由同一个域名提供；
-- 防火墙是否允许 `BOX_PLAY_PORT`。
+## 上线检查
 
-不需要检查或公开其他端口；内部通信由游玩端自行管理。
+- Play 首页、健康检查和 WebSocket 可从外网访问。
+- 未登录访问会跳到正确门户，登录后只返回原服务同源 URL。
+- 关闭注册后，注册 API 被拒绝且参考门户不显示注册入口。
+- `BOX_PLAY_LIBRARY_READ_ONLY=true` 时不显示服主管理入口，写接口也被服务端拒绝。
+- 关闭地图后大厅不显示，直接 URL 也无法进入。
+- Player Service 管理页、数据库、Redis 和 Docker API 无法从公网直接访问。
+- `.env`、密钥、数据库备份、地图工程和日志不在网页静态文件或 Release 中。
+- PostgreSQL、地图目录和关键卷已有可恢复的异机备份。
 
-## 安全边界
+## 快速诊断
 
-- 创作端包含编辑器和本地工程，只用于创作者设备或可信内网。
-- 游玩端只加载发布快照，不包含工程 `source/`、作品管理接口或编辑页面。
-- 环境变量、Token、证书和私钥应在运行时注入，不能写入镜像。
-- 玩家浏览器必然能取得当前场景使用的模型、贴图和音频；重要规则与秘密应留在权威运行时。
-- 普通玩家只需要网址，不需要获得 Docker 镜像或作品部署包。
+```bash
+docker compose ps
+docker compose logs --tail=200 play
+docker compose logs --tail=200 player-service
+curl http://127.0.0.1:3000/api/health-check
+curl http://127.0.0.1:3000/api/play-worlds
+```
+
+如果容器内部健康而外部不可访问，检查宿主机监听地址、防火墙、反向代理和公开 URL。如果容器不断重启，先看第一个错误和依赖服务状态，不要先删除卷或清空数据库。

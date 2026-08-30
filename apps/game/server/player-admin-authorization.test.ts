@@ -110,4 +110,19 @@ describe('player administration role policy', () => {
       expect(source).toContain("authorizePlayerAdmin(req, res, 'owner')");
     }
   });
+
+  test('player item routes authenticate before validating user-controlled identities and fields', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../pages/api/play-admin/players/[subjectId].ts'),
+      'utf8',
+    );
+    const authorization = source.indexOf('await authorizePlayerAdmin(req, res, requirement)');
+    const identityValidation = source.indexOf("if (!/^[0-9a-f]{32}$/i.test(subjectId))");
+    const forbiddenFieldValidation = source.indexOf("Object.prototype.hasOwnProperty.call(body, 'role')");
+
+    expect(authorization).toBeGreaterThan(-1);
+    expect(authorization).toBeLessThan(identityValidation);
+    expect(authorization).toBeLessThan(forbiddenFieldValidation);
+    expect(source).toContain("return res.status(400).json({ message: '玩家头像上传功能已停用' });");
+  });
 });

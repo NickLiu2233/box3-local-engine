@@ -23,7 +23,7 @@ export const PLAYER_ADMIN_CAPABILITY_META: Record<PlayerAdminCapability, {
   description: string;
 }> = {
   'players.view': { label: '查看玩家', description: '进入后台并查看玩家目录、资料和概览' },
-  'players.manage': { label: '维护玩家资料', description: '修改昵称、头像、标签、备注与神岛 ID' },
+  'players.manage': { label: '维护玩家资料', description: '修改昵称、标签、备注与神岛 ID' },
   'players.ban': { label: '账号封禁', description: '临时或永久封禁普通玩家账号并解除处罚' },
   'sessions.manage': { label: '会话管理', description: '撤销登录会话并让普通玩家立即下线' },
   'identity-bans.manage': { label: 'IP 与设备封禁', description: '封禁或解除登录 IP 和设备标识' },

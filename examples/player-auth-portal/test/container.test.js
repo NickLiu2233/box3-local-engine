@@ -11,6 +11,7 @@ const dockerfile = readFileSync(path.join(portalRoot, 'Dockerfile'), 'utf8')
 const dockerignore = readFileSync(path.join(portalRoot, '.dockerignore'), 'utf8')
 const compose = readFileSync(path.join(repositoryRoot, 'docker-compose.yml'), 'utf8')
 const browserApp = readFileSync(path.join(portalRoot, 'public/app.js'), 'utf8')
+const browserSource = readFileSync(path.join(portalRoot, 'src/app.jsx'), 'utf8')
 const portalHtml = readFileSync(path.join(portalRoot, 'public/index.html'), 'utf8')
 
 test('container image copies only runtime source and never an env file', () => {
@@ -35,7 +36,15 @@ test('Compose keeps the auth key server-side and uses Player Service over its in
 })
 
 test('disabled registration removes the redundant authentication tabs', () => {
-  assert.match(portalHtml, /<div id="auth-tabs" class="tabs"/)
-  assert.match(browserApp, /const authenticationTabs = document\.querySelector\('#auth-tabs'\)/)
-  assert.match(browserApp, /authenticationTabs\.hidden = !registrationEnabled/)
+  assert.match(browserSource, /if \(!registrationEnabled\)/)
+  assert.match(browserSource, /<LoginForm busy=\{busy\}/)
+  assert.match(browserSource, /<Tabs\.Root/)
+})
+
+test('browser interface is bundled from React and Radix without a CDN dependency', () => {
+  assert.match(browserSource, /from 'react-dom\/client'/)
+  assert.match(browserSource, /import \{ Tabs \} from 'radix-ui'/)
+  assert.match(portalHtml, /<div id="root"><\/div>/)
+  assert.doesNotMatch(portalHtml, /https?:\/\//)
+  assert.ok(browserApp.length > 0)
 })

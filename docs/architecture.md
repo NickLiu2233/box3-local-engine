@@ -26,15 +26,15 @@ Creator 读取可编辑工程；Play 只读取发布后的只读快照。这条�
 
 ## 服务职责
 
-| 服务            | 对外职责                                  | 主要源码入口                                                            | 关键约束                                      |
-| --------------- | ----------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| ARENA / Creator | 作品中心、地图编辑、预览、发布            | `apps/game/`、`apps/local-engine/src/project-manager.js`                | 只限本机或可信局域网，不可公网暴露            |
-| Play            | 玩家作品中心、运行已发布地图              | `apps/game/`、`apps/local-engine/src/play-library.js`                   | 仅读取发布包，不读取工程源目录                |
-| VOXA            | 模型、皮肤、动画工程编辑                  | `apps/voxa/`                                                            | 项目内资源与全局模型库必须隔离                |
-| Player Service  | 玩家身份、角色、封禁、会话和服主管理      | `apps/local-engine/src/launcher.js`、`services/game-server/src/player/` | PostgreSQL 是正确性来源；管理员和服主权限不同 |
-| 登录门户        | 登录/注册网页与服务端代理                 | `examples/player-auth-portal/`                                          | 可由服主自建；API Key 绝不能进入浏览器        |
-| 云端迁移器      | 将外部工程转为本地可编辑工程              | `apps/migrator/`                                                        | 失败要保留资源缺失的具体上下文                |
-| 部署管理器      | 图形化配置、Docker 控制、备份和离线包导入 | `apps/deployment-manager/`                                              | 服主 `.env` 与自动生成的 `.runtime.env` 分离  |
+| 服务           | 对外职责                                  | 主要源码入口                                                            | 关键约束                                      |
+| -------------- | ----------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
+| Creator        | 作品中心、地图编辑、预览、发布            | `apps/game/`、`apps/local-engine/src/project-manager.js`                | 只限本机或可信局域网，不可公网暴露            |
+| Play           | 玩家作品中心、运行已发布地图              | `apps/game/`、`apps/local-engine/src/play-library.js`                   | 仅读取发布包，不读取工程源目录                |
+| VOXA           | 模型、皮肤、动画工程编辑                  | `apps/voxa/`                                                            | 项目内资源与全局模型库必须隔离                |
+| Player Service | 玩家身份、角色、封禁、会话和服主管理      | `apps/local-engine/src/launcher.js`、`services/game-server/src/player/` | PostgreSQL 是正确性来源；管理员和服主权限不同 |
+| 登录门户       | 登录/注册网页与服务端代理                 | `examples/player-auth-portal/`                                          | 可由服主自建；API Key 绝不能进入浏览器        |
+| 内部迁移工具   | 将外部工程转为本地可编辑工程              | `apps/migrator/`                                                        | 不进入用户发行包；失败要保留资源缺失上下文    |
+| 部署管理器     | 图形化配置、Docker 控制、备份和离线包导入 | `apps/deployment-manager/`                                              | 服主 `.env` 与自动生成的 `.runtime.env` 分离  |
 
 ## 核心数据模型
 

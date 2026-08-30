@@ -15,7 +15,6 @@ Local Engine 保留 `boxes` 的工程 schema、预烘焙、编辑器、浏览器
 | Play 游玩端    | `http://127.0.0.1:3000/` | 只读发布地图和玩家存档     | 可以，经 HTTPS 反向代理 |
 | Player Service | `http://127.0.0.1:3213/` | 玩家身份、账号、会话和审计 | 管理页不应直接公开      |
 | VOXA           | `http://127.0.0.1:3001/` | 本地模型、皮肤和可编辑工程 | 否，仅本机              |
-| Migrator       | `http://127.0.0.1:3212/` | 临时迁移缓存               | 否，仅按需启动          |
 
 这些是独立镜像。Creator 和 Play 共用 Player Service，但 Play 镜像不包含登录、注册或玩家
 后台；VOXA 也不需要与 Play 一起部署。
@@ -51,7 +50,7 @@ Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
 ### 桌面离线包
 
-正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的五服务 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。无图形 Linux 服务器应下载对应架构的 `BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip`：其中只包含 Play、Player Service、参考登录门户的镜像，以及 `compose.yml`、可编辑 `.env.example` 与启停脚本；Creator / ARENA 与 VOXA 不在该包中。服主自行复制、填写并保管 `.env`。Release 也保留 `linux/amd64` 与 `linux/arm64` 两份纯镜像归档，供已有 Compose 配置的手动部署使用；选择规则见[构建、分发与 CI](./release-and-distribution.md)。
+正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的五服务 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。无图形 Linux 服务器应下载对应架构的 `BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip`：其中只包含 Play、Player Service、参考登录门户的镜像，以及 `compose.yml`、可编辑 `.env.example` 与启停脚本；Creator 与 VOXA 不在该包中。服主自行复制、填写并保管 `.env`。Release 也保留 `linux/amd64` 与 `linux/arm64` 两份纯镜像归档，供已有 Compose 配置的手动部署使用；选择规则见[构建、分发与 CI](./release-and-distribution.md)。
 
 使用者只需：
 
@@ -79,7 +78,7 @@ chmod +x *.sh
 
 首次执行会由 `.env.example` 建立 `.env`，并在有 OpenSSL 时生成密钥。随后服主打开 `.env`，修改地址、端口、PostgreSQL、Redis（可选）和自己的登录门户地址，再执行一次 `./install.sh` 使配置生效。日常操作使用 `./status.sh`、`./logs.sh [play|player-service|player-auth-portal]` 和 `./stop.sh`。
 
-该包的镜像归档与 Compose 配置只含 Play、Player Service 和参考登录门户。Creator / ARENA、VOXA、迁移器、地图编辑工程和模型库均不在其中；服务器仅运行已发布的地图。不要把生成后的 `.env`、`apps/local-engine/play-worlds` 或 PostgreSQL 备份上传到 Release、仓库或聊天工具。
+该包的镜像归档与 Compose 配置只含 Play、Player Service 和参考登录门户。Creator、VOXA、内部迁移工具、地图编辑工程和模型库均不在其中；服务器仅运行已发布的地图。不要把生成后的 `.env`、`apps/local-engine/play-worlds` 或 PostgreSQL 备份上传到 Release、仓库或聊天工具。
 
 无图形服务器模板默认将 Player Service 限制为 `256m` 容器内存、`192 MB` Node 堆，将参考登录门户限制为 `64m`、`48 MB` Node 堆；地图运行时的主要内存预算留给 Play。若服务器已有自建登录门户，可在 `.env` 把 `COMPOSE_PROFILES` 改为 `player-service,play`，不启动参考门户。出现登录服务反复重启或内存不足时，再逐步提高对应的 `*_MEMORY_LIMIT` 和 `*_NODE_HEAP_MB`，不要先压缩 Play 的运行时内存。
 
@@ -297,14 +296,14 @@ pnpm stop
 2. 打开编辑器，等待统一加载页进入地图；
 3. 修改地图、脚本、UI 和资源后保存；
 4. 在作品管理器填写版本号并发布；
-5. 导出 `.boxproject` 交给可信创作者，或导出游玩部署包交给服主。
+5. 导出 `.boxproject` 交给可信创作者，或发布并导出 `.boxplay` 交给服主。
 
 两类包不能混用：
 
-| 产物                    | 包含可编辑源工程             | 用途                         |
-| ----------------------- | ---------------------------- | ---------------------------- |
-| `.boxproject`           | 是，包含完整地图组           | 换设备、备份、继续编辑       |
-| `.boxplay` / 游玩部署包 | 否，包含完整地图组的只读版本 | 一次安装到 Play 并提供给玩家 |
+| 产物          | 包含可编辑源工程             | 用途                         |
+| ------------- | ---------------------------- | ---------------------------- |
+| `.boxproject` | 是，包含完整地图组           | 换设备、备份、继续编辑       |
+| `.boxplay`    | 否，包含完整地图组的只读版本 | 一次安装到 Play 并提供给玩家 |
 
 Creator 工程位置：
 
