@@ -5,7 +5,7 @@
 
 ## 审计基线
 
-最近一次对齐审计日期为 2026-08-26，固定上游基线为 `boxes` commit `fbb41d82ef624e08eea83d41a72d402823529e57`。审计只以该 commit 的已提交内容为准，不把 `boxes` 工作树中的未提交实验改动当成上游事实。
+最近一次文档复核日期为 2026-08-30；最近一次完整对齐审计仍固定以上游 `boxes` commit `fbb41d82ef624e08eea83d41a72d402823529e57` 为基线。审计只以该 commit 的已提交内容为准，不把 `boxes` 工作树中的未提交实验改动当成上游事实。
 
 审计对以下真实运行链路逐层比较，而不是按页面数量判断：
 
@@ -20,8 +20,8 @@
 
 对比结论：
 
-- `internals/schema` 的工程、实体、物理和同步 schema 保持同源；脚本公开 API 只移除了商城、
-  社交、临时聊天和分析等平台能力，并为本地 Teleport 明确使用不可变地图 UUID；
+- `internals/schema` 的工程、实体、物理和同步 schema 保持同源；脚本公开 API 移除了商城、
+  支付成功事件、社交/社交统计、临时聊天和分析等平台能力，并为本地 Teleport 明确使用不可变地图 UUID；
 - `internals/build-system` 的迁移、bake、prebake 和资源任务保持同源，仅在实体已有明确
   `mesh` 路径时优先按路径解析 Project 模型，避免本地模型与 Project 模型数字 ID 碰撞；
 - Creator/Play 的渲染、物理、动画、实体、UI 和脚本主流程保留 `boxes` 实现；
@@ -113,6 +113,15 @@
 - 云端协作编辑、平台资产所有权和内容审核；
 - 已停运域名或未知私有接口的运行时回退；
 - 为“未来也许多节点”预先增加的 MQ 或编排层。
+
+当前删除范围包含 `world.onPlayerPurchaseSuccess`、`world.nextPlayerPurchaseSuccess`、
+`GamePurchaseSuccessEvent`、`SocialType` 与 `SocialStatisticType`。这些名称不保留空实现或兼容别名；
+导入包含旧调用的地图时，应由作者修改脚本，不能在本地伪造支付或社交结果。删除范围由
+`scripts/platform-api-removal.test.js` 回归保护。
+
+客户端脚本的执行方式与浏览器引擎保持一致：运行时不以 DTS 作为 API 沙箱。Local Engine 的
+客户端声明在引擎 API 之外包含常用浏览器类型，以便本地开发；这只是编辑体验，不扩大服务端
+权限。服务端 URL 能力删除平台域名白名单后，仍统一拒绝危险协议、控制字符和 URL 凭据。
 
 这些模块即使存在于 `boxes`，也不属于引擎兼容性。迁入会扩大配置面、引入不可满足的线上
 假设，并破坏离线和单机可用性。

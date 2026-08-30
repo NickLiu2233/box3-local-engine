@@ -57,6 +57,13 @@
 - 桌面启动器不安装 PostgreSQL 或 Redis。Player Service 必须使用 PostgreSQL；Redis 可选。
 - 当前桌面发行目标为 Windows x64、Apple Silicon macOS 和 Linux x64。Windows ARM、Intel macOS 与 Linux ARM64 桌面 App 不是默认 Release 目标。
 
+## 当前脚本边界
+
+- 客户端脚本运行在浏览器中，能使用运行环境提供的浏览器能力；编辑器的 DTS 只负责补全，不是安全沙箱。
+- 服务端脚本在 game-server 隔离运行时中执行。账号、密钥、付费、奖励、权限和权威存档逻辑不得交给客户端决定。
+- Local Engine 不使用 BOX 平台资源域名白名单，但仍校验危险 URL 协议，并保留登录 Origin、回跳地址和资源 CORS 等服务边界。
+- 本地脚本 API 已移除在线平台专属的支付成功事件、社交统计、临时聊天、商城和分析能力；兼容范围以[对齐基线](./boxes-parity.md)为准。
+
 ## 文档维护规则
 
 以下变化必须在同一提交更新文档和示例配置：

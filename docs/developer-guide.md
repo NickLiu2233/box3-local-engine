@@ -136,6 +136,22 @@ pnpm --filter @box-local/deployment-manager tauri dev
 
 `src-tauri/src/` 已按职责拆分：`config.rs` 负责应用数据目录、配置解析和原子写入；`docker.rs` 负责 Docker 命令；`models.rs` 维护前端可见的数据契约；`commands.rs` 负责 Tauri 命令、配置校验、备份和诊断；`lib.rs` 只组装模块和注册命令。新增功能优先进入对应模块，不要重新把业务逻辑堆回 `lib.rs` 或把前端数据结构散落到命令实现中。
 
+### 地图脚本 API 与声明
+
+- 客户端声明入口在 `packages/script-api/src/client/`，生成 `client-api-types.dts` 后由 Creator 的 Monaco 注入；常用浏览器类型也在这里维护。
+- 服务端声明由 `packages/script-api/src/server/`、`apps/game/src/resource/api-declarations.dts` 和 schema 共同提供，运行实现位于 `services/game-server/src/script/`。
+- DTS 是编辑器契约，不是运行时权限控制。客户端脚本在浏览器执行；禁止把密码、Cookie、Token、数据库连接、服主密钥或权威判定放入客户端。
+- 删除公开脚本 API 时，必须同时清理 schema、声明、运行绑定、同步事件和生成产物，并更新 `scripts/platform-api-removal.test.js`。不要留下永远不触发的空事件来伪造兼容。
+- URL 能力不使用平台域名白名单，但 `packages/utils/src/safe-url.ts` 与客户端/服务端调用点必须继续拒绝非 HTTP(S) 协议、控制字符和 URL 凭据。Origin/CORS/returnUrl 校验属于服务接口边界，不能随资源白名单一起删除。
+
+修改脚本接口后至少运行：
+
+```bash
+pnpm --filter @box-local/script-api build
+node scripts/platform-api-removal.test.js
+pnpm --filter @box-local/game-server exec tsc --noEmit
+```
+
 ## 5. 配置、数据与安全边界
 
 ### 配置文件

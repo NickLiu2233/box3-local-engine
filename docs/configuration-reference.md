@@ -198,7 +198,7 @@ STORAGE_CACHE_REDIS_TTL=240
 | 变量                              | 作用                                                                         |
 | --------------------------------- | ---------------------------------------------------------------------------- |
 | `BOX_PLAYER_LOGIN_URL`            | 服主登录页地址；留空时 Creator/Play 显示“未开启登录”                         |
-| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 允许调用认证 API 的门户 Origin 白名单，英文逗号分隔，不支持 `*`              |
+| `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` | 允许调用认证 API 的门户 Origin 列表，英文逗号分隔，不支持 `*`                |
 | `BOX_PLAYER_COOKIE_DOMAIN`        | 多个 HTTPS 子域共享 Cookie 时设置共同父域，如 `.example.com`；本机/IP 不填写 |
 | `BOX_PLAYER_REGISTRATION_ENABLED` | 是否允许玩家自行注册；不影响服主在后台创建账号                               |
 
@@ -209,6 +209,13 @@ STORAGE_CACHE_REDIS_TTL=240
 参考门户由 `player-auth-portal` 镜像提供，但不是强制产品接口。服主可以自己写门户；详情见[自建登录门户](./self-hosted-login.md)。
 
 Player Service 会将会话绑定到首次登录的设备 Cookie：仅复制会话 Cookie 不能在另一台设备继续使用。普通玩家每次在新设备成功登录都会使上一台设备下线；服主和玩家管理后台管理员不受单设备限制。会话最长空闲 14 天，创建满 30 天后要求重新登录。公网部署必须使用 HTTPS；否则浏览器无法为会话 Cookie 启用 `Secure` 标记。
+
+## URL、跨域与脚本不是同一个开关
+
+- `BOX_PLAYER_AUTH_ALLOWED_ORIGINS`、`BOX_RESOURCE_ALLOWED_ORIGINS` 和 `BOX_VOXA_ALLOWED_ORIGINS` 控制哪些网页来源可以调用对应服务；它们用于隔离服务，不是地图脚本可访问域名的列表。
+- 地图脚本通过引擎 URL 接口访问外部资源时，不再要求目标域名属于 BOX 平台白名单；目标必须是格式正确的绝对 HTTP(S) URL。
+- `javascript:`、`data:`、`vbscript:`、`file:`、控制字符、URL 用户名/密码和缺少协议的地址仍会被拒绝。这项校验用于阻止协议注入，不能通过关闭 CORS 或修改 Origin 配置绕过。
+- 浏览器自身仍会执行同源策略、目标服务器 CORS、混合内容和 CSP 等平台规则；引擎允许一个 URL 不代表浏览器或目标服务器一定允许请求。
 
 ## 修改配置后的动作
 
