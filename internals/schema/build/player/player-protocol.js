@@ -14,6 +14,7 @@ exports.PlayerProtocolSchema = {
     },
     server: {
         updateAvatarSkin: new schema_1.MuVoid(),
+        selectBuiltInAvatarSkin: new schema_1.MuUTF8(),
     },
 };
 //# sourceMappingURL=player-protocol.js.map

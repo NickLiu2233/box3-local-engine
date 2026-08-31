@@ -13,6 +13,7 @@ import style from './index.module.css';
 import { LangType } from 'src/apis/createra';
 import { hideAdmin, showAdmin, useAdmin } from 'src/entry/admin-ui';
 import { clientConfig } from 'src/config/client';
+import { LocalGameHud } from '../local-game-hud';
 
 export enum DotType {
   MENU = 'menu',
@@ -69,7 +70,6 @@ export const PlayUIComponent = React.memo((props: PlayUIProps) => {
         <GamePlaySettings
           onClose={setSettingsStatus}
           isPortrait={isPortrait}
-          setLocale={props.setLocale}
         />
       </div>
     );
@@ -77,6 +77,7 @@ export const PlayUIComponent = React.memo((props: PlayUIProps) => {
     body = (
       <div style={{ pointerEvents: 'auto' }}>
         <PlayHyperLink />
+        <LocalGameHud />
         {uiConfig.lowFrameRate && <LowFrameRateModal client={player} />}
       </div>
     );

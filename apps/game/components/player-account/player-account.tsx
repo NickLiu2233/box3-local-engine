@@ -21,41 +21,28 @@ type PlayerAccountProps = {
   onLogout: () => Promise<void>;
 };
 
-export function PlayerAccount({ identity, onSave, onLogout }: PlayerAccountProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+export type PlayerProfileDialogProps = {
+  identity: PlayerAccountIdentity;
+  onSave: (changes: PlayerProfileChanges) => Promise<void>;
+  onClose: () => void;
+};
+
+/** Shared profile form for the work center and in-game menu. */
+export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfileDialogProps) {
   const [displayName, setDisplayName] = useState(identity.displayName);
   const [skinId, setSkinId] = useState(identity.avatarSkinId || 'explorer');
   const [saving, setSaving] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!menuOpen) return;
-    const closeMenu = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', closeMenu);
-    return () => document.removeEventListener('mousedown', closeMenu);
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!profileOpen) return;
     setDisplayName(identity.displayName);
     setSkinId(identity.avatarSkinId || 'explorer');
-  }, [identity.avatarSkinId, identity.displayName, profileOpen]);
-
-  const openProfile = () => {
-    setMenuOpen(false);
     setError('');
-    setProfileOpen(true);
-  };
+  }, [identity.avatarSkinId, identity.displayName]);
 
-  const closeProfile = () => {
+  const close = () => {
     if (saving) return;
-    setProfileOpen(false);
-    setError('');
+    onClose();
   };
 
   const saveProfile = async (event: FormEvent<HTMLFormElement>) => {
@@ -69,12 +56,101 @@ export function PlayerAccount({ identity, onSave, onLogout }: PlayerAccountProps
     setError('');
     try {
       await onSave({ displayName: nextDisplayName, avatarSkinId: skinId });
-      setProfileOpen(false);
+      onClose();
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : '资料保存失败');
     } finally {
       setSaving(false);
     }
+  };
+
+  const stopPropagation = (event: ReactMouseEvent) => event.stopPropagation();
+  return (
+    <div className={styles.backdrop} onMouseDown={close}>
+      <form className={styles.dialog} onSubmit={saveProfile} onMouseDown={stopPropagation}>
+        <header className={styles.dialogHeading}>
+          <div>
+            <h2>编辑资料</h2>
+            <p>修改昵称和进入地图时使用的角色</p>
+          </div>
+          <button
+            className={styles.close}
+            type="button"
+            aria-label="关闭编辑资料"
+            disabled={saving}
+            onClick={close}
+          >
+            <X size={17} />
+          </button>
+        </header>
+        <div className={styles.content}>
+          <label className={styles.field}>
+            <span>用户名</span>
+            <input value={identity.username} disabled readOnly />
+            <small>用户名用于登录，不可修改</small>
+          </label>
+          <label className={styles.field} htmlFor="player-profile-name">
+            <span>昵称</span>
+            <input
+              id="player-profile-name"
+              autoFocus
+              maxLength={32}
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+            />
+          </label>
+          <fieldset className={styles.skinField}>
+            <legend>游戏角色</legend>
+            <div className={styles.skinOptions}>
+              {builtInSkinOptions.map((skin) => (
+                <button
+                  key={skin.id}
+                  className={`${styles.skinOption}${skinId === skin.id ? ` ${styles.selected}` : ''}`}
+                  type="button"
+                  aria-pressed={skinId === skin.id}
+                  onClick={() => setSkinId(skin.id)}
+                >
+                  <img src={skin.preview} alt="" />
+                  <span>{skin.name}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          {error ? <p className={styles.error}>{error}</p> : null}
+        </div>
+        <footer className={styles.actions}>
+          <button className={styles.secondaryButton} type="button" disabled={saving} onClick={close}>
+            取消
+          </button>
+          <button className={styles.primaryButton} type="submit" disabled={saving || !displayName.trim()}>
+            {saving ? '保存中…' : '保存资料'}
+          </button>
+        </footer>
+      </form>
+    </div>
+  );
+}
+
+export function PlayerAccount({ identity, onSave, onLogout }: PlayerAccountProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeMenu = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', closeMenu);
+    return () => document.removeEventListener('mousedown', closeMenu);
+  }, [menuOpen]);
+
+  const openProfile = () => {
+    setMenuOpen(false);
+    setError('');
+    setProfileOpen(true);
   };
 
   const logout = async () => {
@@ -130,68 +206,11 @@ export function PlayerAccount({ identity, onSave, onLogout }: PlayerAccountProps
       </div>
 
       {profileOpen ? (
-        <div className={styles.backdrop} onMouseDown={closeProfile}>
-          <form className={styles.dialog} onSubmit={saveProfile} onMouseDown={stopPropagation}>
-            <header className={styles.dialogHeading}>
-              <div>
-                <h2>编辑资料</h2>
-                <p>修改昵称和进入地图时使用的角色</p>
-              </div>
-              <button
-                className={styles.close}
-                type="button"
-                aria-label="关闭编辑资料"
-                disabled={saving}
-                onClick={closeProfile}
-              >
-                <X size={17} />
-              </button>
-            </header>
-            <div className={styles.content}>
-              <label className={styles.field}>
-                <span>用户名</span>
-                <input value={identity.username} disabled readOnly />
-                <small>用户名用于登录，不可修改</small>
-              </label>
-              <label className={styles.field} htmlFor="player-profile-name">
-                <span>昵称</span>
-                <input
-                  id="player-profile-name"
-                  autoFocus
-                  maxLength={32}
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                />
-              </label>
-              <fieldset className={styles.skinField}>
-                <legend>游戏角色</legend>
-                <div className={styles.skinOptions}>
-                  {builtInSkinOptions.map((skin) => (
-                    <button
-                      key={skin.id}
-                      className={`${styles.skinOption}${skinId === skin.id ? ` ${styles.selected}` : ''}`}
-                      type="button"
-                      aria-pressed={skinId === skin.id}
-                      onClick={() => setSkinId(skin.id)}
-                    >
-                      <img src={skin.preview} alt="" />
-                      <span>{skin.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-              {error ? <p className={styles.error}>{error}</p> : null}
-            </div>
-            <footer className={styles.actions}>
-              <button className={styles.secondaryButton} type="button" disabled={saving} onClick={closeProfile}>
-                取消
-              </button>
-              <button className={styles.primaryButton} type="submit" disabled={saving || !displayName.trim()}>
-                {saving ? '保存中…' : '保存资料'}
-              </button>
-            </footer>
-          </form>
-        </div>
+        <PlayerProfileDialog
+          identity={identity}
+          onSave={onSave}
+          onClose={() => { setProfileOpen(false); setError(''); }}
+        />
       ) : null}
     </>
   );

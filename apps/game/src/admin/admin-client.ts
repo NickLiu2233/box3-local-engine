@@ -175,16 +175,6 @@ export class GameAdminClient {
     });
   };
 
-  public muteUser = (userId: number, mute: boolean) => {
-    this._sendCommand({
-      type: 'mute',
-      data: {
-        userId,
-        mute,
-      },
-    });
-  };
-
   public setGhost = (x: boolean) => {
     this._sendCommand({
       type: 'ghost',

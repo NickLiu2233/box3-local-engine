@@ -32,4 +32,8 @@ export class PlayerClient {
   public updateAvatarSkin = () => {
     this.protocol.server.message.updateAvatarSkin();
   };
+
+  public selectBuiltInAvatarSkin = (skinId: string) => {
+    this.protocol.server.message.selectBuiltInAvatarSkin(skinId);
+  };
 }

@@ -17,10 +17,6 @@ export const AdminCommandSchema = new MuUnion({
   // chat policing
   ghost: new MuBoolean(false),
   kick: new MuVarint(),
-  mute: new MuStruct({
-    userId: new MuVarint(),
-    mute: new MuBoolean(true),
-  }),
   ban: new MuVarint(),
   banIp: new MuASCII(),
   redirect: new MuStruct({

@@ -1,12 +1,17 @@
 .wrapper {
-  margin: 12px 0;
+  margin: 0;
+  padding: 17px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
+.wrapper:last-child { border-bottom: 0; }
 .title {
-  font-family: Montserrat-Bold;
-  color: var(--color-white);
-  font-size: var(--text-h2);
-  line-height: var(--text-h2-lineHeight);
-  margin-bottom: 8px;
+  font-family: inherit;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  margin-bottom: 11px;
 }
 .rangeWrapper {
   display: flex;
@@ -14,13 +19,25 @@
 }
 .mute {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  background: var(--color-gray-8);
-  border-radius: 100%;
-  margin-left: 24px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.1);
+  margin-left: 16px;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1), background-color 140ms ease, color 140ms ease;
+}
+
+.mute:hover {
+  color: #262626;
+  background: #ffdb00;
+}
+
+.mute:active {
+  transform: scale(0.96);
 }

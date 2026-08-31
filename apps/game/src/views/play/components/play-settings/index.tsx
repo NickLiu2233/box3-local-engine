@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
+import { X } from 'lucide-react';
 import { GraphSetting } from './graphSettings';
 import { ControlSettings } from './controlSettings/index';
 import { Settings } from 'src/engine/settings/settings-schema';
 import { VolumeController } from './volumeController';
-import { LanguageSettings } from './languageSettings';
 import { usePlayer } from 'src/client/play/play-context';
-import { Icon } from 'src/views/components/basic/icon';
 import { intlMessage } from 'src/utils/i18n';
 import style from './index.module.css';
-import { LangType } from 'src/apis/createra';
 
 export enum SettingType {
   Main,
@@ -16,12 +14,10 @@ export enum SettingType {
   Sound,
   Control,
   Comment,
-  Language,
 }
 type Props = {
   isPortrait: boolean;
   onClose: () => void;
-  setLocale: (locale: LangType) => void;
 };
 
 export const GamePlaySettings = React.memo((props: Props) => {
@@ -47,10 +43,6 @@ export const GamePlaySettings = React.memo((props: Props) => {
       type: SettingType.Control,
       intl: intlMessage('control'),
     },
-    {
-      type: SettingType.Language,
-      intl: intlMessage('language'),
-    },
   ];
   const getContent = () => {
     switch (settingType) {
@@ -63,8 +55,6 @@ export const GamePlaySettings = React.memo((props: Props) => {
           <VolumeController settings={settings} setGameSettings={setSettings} />
         );
 
-      case SettingType.Language:
-        return <LanguageSettings setLocale={props.setLocale} />;
       default:
         return (
           <GraphSetting settings={settings} setGameSettings={setSettings} />
@@ -74,14 +64,24 @@ export const GamePlaySettings = React.memo((props: Props) => {
   return (
     <div className={style.panel_wrapper}>
       <div className={style.nav_wrapper}>
-        <Icon
-          icon="close-createra"
-          className={style.close_btn}
-          onClick={() => props.onClose()}
-        />
+        <div className={style.titleRow}>
+          <div>
+            <strong>{intlMessage('settings')}</strong>
+            <small>{intlMessage('localHud.settingsDescription')}</small>
+          </div>
+          <button
+            className={style.close_btn}
+            type="button"
+            aria-label={intlMessage('localHud.closeSettings')}
+            onClick={props.onClose}
+          >
+            <X />
+          </button>
+        </div>
         <div className={style.nav_bar}>
           {navList.map((item) => (
-            <div
+            <button
+              type="button"
               key={item.type}
               className={`${style.nav_item} ${
                 settingType === item.type && style.nav_active
@@ -89,7 +89,7 @@ export const GamePlaySettings = React.memo((props: Props) => {
               onClick={() => setSettingType(item.type)}
             >
               {item.intl}
-            </div>
+            </button>
           ))}
         </div>
       </div>

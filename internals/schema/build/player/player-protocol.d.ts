@@ -16,6 +16,7 @@ export declare const PlayerProtocolSchema: {
     };
     server: {
         updateAvatarSkin: MuVoid;
+        selectBuiltInAvatarSkin: MuUTF8;
     };
 };
 //# sourceMappingURL=player-protocol.d.ts.map

@@ -3,10 +3,6 @@ export declare const AdminCommandSchema: MuUnion<{
     pollUsers: MuVoid;
     ghost: MuBoolean;
     kick: MuVarint;
-    mute: MuStruct<{
-        userId: MuVarint;
-        mute: MuBoolean;
-    }>;
     ban: MuVarint;
     banIp: MuASCII;
     redirect: MuStruct<{

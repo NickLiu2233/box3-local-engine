@@ -118,7 +118,8 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 
 FROM engine-build-base AS player-service-build
 
-RUN NEXT_PUBLIC_APP_ENV=development \
+RUN NODE_OPTIONS=--max-old-space-size=4096 \
+    NEXT_PUBLIC_APP_ENV=development \
     NEXT_PUBLIC_APP_EDITION=createra \
     NEXT_PUBLIC_APP_REGION=cn \
     pnpm --filter @box-local/game build-next

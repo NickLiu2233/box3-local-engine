@@ -4,6 +4,8 @@ import { PlayerEventSchema } from '@box-local/schema/events/player-event-schema'
 import { setPlayerAvatarSkin } from './player-server-controller';
 import { GameServerState } from '../game-server-schema';
 import type { ModelServer } from '../mesh/server-model-controller';
+import { createBuiltInSkin } from './built-in-skins';
+import { PlayerSkinHashSchema } from '@box-local/schema/player/player-schema';
 
 export class PlayerServer {
   public protocol: MuServerProtocol<typeof PlayerProtocolSchema>;
@@ -26,6 +28,21 @@ export class PlayerServer {
           if (!connection) {
             return;
           }
+          setPlayerAvatarSkin(
+            this._modelServer,
+            this._state,
+            connection.id,
+            connection.sessionData.avatarSkin,
+          );
+        },
+        selectBuiltInAvatarSkin: (client, skinId) => {
+          const connection = this._state.connections[client.sessionId];
+          const avatarSkin = createBuiltInSkin(skinId);
+          if (!connection || !avatarSkin) {
+            return;
+          }
+          PlayerSkinHashSchema.assign(connection.sessionData.avatarSkin, avatarSkin);
+          PlayerSkinHashSchema.free(avatarSkin);
           setPlayerAvatarSkin(
             this._modelServer,
             this._state,

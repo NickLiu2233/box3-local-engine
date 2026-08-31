@@ -9,10 +9,6 @@ exports.AdminCommandSchema = new schema_1.MuUnion({
     // chat policing
     ghost: new schema_1.MuBoolean(false),
     kick: new schema_1.MuVarint(),
-    mute: new schema_1.MuStruct({
-        userId: new schema_1.MuVarint(),
-        mute: new schema_1.MuBoolean(true),
-    }),
     ban: new schema_1.MuVarint(),
     banIp: new schema_1.MuASCII(),
     redirect: new schema_1.MuStruct({

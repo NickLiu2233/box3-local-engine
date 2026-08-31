@@ -12,5 +12,6 @@ export const PlayerProtocolSchema = {
   },
   server: {
     updateAvatarSkin: new MuVoid(),
+    selectBuiltInAvatarSkin: new MuUTF8(),
   },
 };

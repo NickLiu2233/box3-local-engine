@@ -55,7 +55,7 @@ export class Range extends React.Component<RangeProps, RangeState> {
           this.props.vertical ? style.vertical : '',
         ].join(' ')}
         style={{
-          background: `linear-gradient(90deg, #fff ${percent}%, rgba(255, 255, 255, 0.6) ${percent}%)`,
+          background: `linear-gradient(90deg, #ffdb00 ${percent}%, rgba(255, 255, 255, 0.2) ${percent}%)`,
         }}
         onChange={(ev) => {
           this.setState({ tempValue: parseFloat(ev.currentTarget.value) });

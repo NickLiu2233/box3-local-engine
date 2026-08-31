@@ -2596,13 +2596,6 @@ export class GamePlayer {
   public music = new GameSoundEffect();
 
   /**
-   * If true, then player can't chat
-   * @category chat
-   * @deprecated currently not in use
-   */
-  public muted = false;
-
-  /**
    * Skin parts
    * @category display
    */

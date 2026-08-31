@@ -163,10 +163,6 @@ export const SettingsSchema = new MuStruct({
   teenagerAntiAddict: TeenagerAntiAddictSchema,
   guestAntiAddict: GuestAntiAddictSchema,
 
-  // TODO: 禁言逻辑待删
-  // ban spam chat
-  spamLevel: new MuVarint(0),
-  spamUntil: new MuVarint(),
 });
 
 export type Settings = typeof SettingsSchema.identity;

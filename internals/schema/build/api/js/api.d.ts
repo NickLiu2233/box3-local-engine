@@ -990,7 +990,7 @@ export declare class GameWorld {
      * 可修改的访问 ID、地图名称或本地工程 ID。默认创建仅被传送玩家可见的独立房间；传入返回的
      * serverId 可让其他玩家加入同一房间，传入 public 则进入公共实例。
      */
-    teleport: TeleportType,
+    teleport: TeleportType, 
     /**
      * 当前运行实例的稳定 ID。普通实例使用地图永久 UUID，传送创建的
      * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
@@ -2760,12 +2760,6 @@ export declare class GamePlayer {
      * @category sound
      */
     music: GameSoundEffect;
-    /**
-     * If true, then player can't chat
-     * @category chat
-     * @deprecated currently not in use
-     */
-    muted: boolean;
     /**
      * Skin parts
      * @category display

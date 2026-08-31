@@ -74,6 +74,10 @@ export class PlayClient extends EngineClient {
     super('play');
   }
 
+  public selectBuiltInAvatarSkin(skinId: string) {
+    this.game.player.selectBuiltInAvatarSkin(skinId);
+  }
+
   public addMessengerEventListeners = () => {
     messenger.messageTool.eventOn(
       'setSettings',

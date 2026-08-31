@@ -1440,5 +1440,21 @@
   "hierarchy.staticShadowContent": "Set Static Entity",
   "hierarchy.selectAll": "Select All",
   "hierarchy.exitStaticShadowModel": "Discard Changes",
-  "hierarchy.exitStaticShadowModelContent": "Are you sure you want to discard the changes to the 'Static Entity'?"
+  "hierarchy.exitStaticShadowModelContent": "Are you sure you want to discard the changes to the 'Static Entity'?",
+
+  "localHud.profileLoadFailed": "Unable to load your profile",
+  "localHud.profileSaveFailed": "Unable to save your profile",
+  "localHud.closeMenu": "Close menu",
+  "localHud.quickActions": "Game quick actions",
+  "localHud.menu": "Menu",
+  "localHud.gameMenu": "Game menu",
+  "localHud.exitFullscreen": "Exit fullscreen",
+  "localHud.enterFullscreen": "Enter fullscreen",
+  "localHud.editProfile": "Edit profile",
+  "localHud.exitMap": "Exit map",
+  "localHud.exitTitle": "Exit the current map?",
+  "localHud.exitDescription": "You will return to the map library.",
+  "localHud.continuePlaying": "Keep playing",
+  "localHud.settingsDescription": "Graphics, sound and controls",
+  "localHud.closeSettings": "Close settings"
 }

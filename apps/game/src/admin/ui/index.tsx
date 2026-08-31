@@ -14,7 +14,6 @@ interface AdminContainerProps {
   hide: () => void;
   toggleUI: () => void;
   setGhost: (x: boolean) => void;
-  setMute: (userId: number, muted: boolean) => void;
   ban: (userId: number) => void;
   banIp: (ipAddres: string) => void;
   kick: (userId: number) => void;
@@ -267,21 +266,6 @@ export class AdminContainer extends React.Component<
             value="kick"
             onClick={() => this.props.kick(this.state.selectedId)}
           />
-          {/* TODO: 禁言功能暂时无用，未来可期 */}
-          {/* <input
-            style={{ pointerEvents: 'auto' }}
-            disabled={!selectedUser}
-            type="button"
-            value="mute"
-            onClick={() => this.props.setMute(this.state.selectedId, true)}
-          />
-          <input
-            style={{ pointerEvents: 'auto' }}
-            disabled={!selectedUser}
-            type="button"
-            value="unmute"
-            onClick={() => this.props.setMute(this.state.selectedId, false)}
-          /> */}
           <input
             style={{ pointerEvents: 'auto' }}
             disabled={!selectedUser}
@@ -563,7 +547,6 @@ function renderAdmin(client: GameAdminClient) {
       alert={client.alert}
       redirect={client.redirect}
       kick={client.kickUser}
-      setMute={client.muteUser}
       setGhost={client.setGhost}
       users={client.users()}
       stopScripts={client.stopScripts}
