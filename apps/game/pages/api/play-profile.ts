@@ -1,34 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-
-function internalURL() {
-  const value = (process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || '').trim()
-  if (!value) throw new Error('玩家身份服务未配置')
-  return value.replace(/\/$/, '')
-}
+import { proxyPlayerProfile } from '../../server/player-profile-proxy'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader('Cache-Control', 'no-store')
-  if (process.env.BOX_DEPLOYMENT_MODE !== 'play') return res.status(404).end()
-  if (req.method !== 'PATCH') {
-    res.setHeader('Allow', 'PATCH')
-    return res.status(405).end()
-  }
-  try {
-    const response = await fetch(`${internalURL()}/api/player-internal/profile`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
-        Cookie: String(req.headers.cookie || ''),
-        'Content-Type': 'application/json',
-        'X-Box-Player-IP': String(req.socket.remoteAddress || ''),
-        'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
-      },
-      body: JSON.stringify(req.body || {}),
-    })
-    const body = await response.text()
-    res.status(response.status)
-    return body ? res.send(body) : res.end()
-  } catch (error) {
-    return res.status(503).json({ message: (error as Error).message })
-  }
+  return proxyPlayerProfile(req, res, 'play')
 }

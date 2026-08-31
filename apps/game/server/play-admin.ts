@@ -1,6 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { randomBytes } from 'crypto';
 import { createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
 
@@ -23,6 +24,53 @@ const idPattern = /^[a-z0-9][a-z0-9-]{0,62}$/;
 const MAX_EXPANDED_BYTES = 2 * 1024 * 1024 * 1024;
 const MAX_FILES = 200000;
 const DIRECTORY_RETRY_ERRORS = new Set(['EBUSY', 'ENOTEMPTY', 'EPERM']);
+const REVIEW_TTL_MS = 30 * 60 * 1000;
+const MAX_REVIEW_RESOURCE_BYTES = 64 * 1024 * 1024;
+const MAX_REVIEW_CODE_BYTES = 1024 * 1024;
+const MAX_ACTIVE_REVIEWS = 4;
+
+type ValidatedPlayWorld = ReturnType<typeof validateWorld> & { root: string };
+
+export type PlayBundleReviewResource = {
+  id: string;
+  worldId: string;
+  name: string;
+  kind: 'script' | 'image' | 'audio' | 'model' | 'other';
+  scriptTarget?: 'server' | 'client';
+  mimeType: string;
+  bytes: number;
+  previewable: boolean;
+};
+
+export type PlayBundleReview = {
+  id: string;
+  expiresAt: string;
+  mapCount: number;
+  totalBytes: number;
+  blobCount: number;
+  unindexedBlobCount: number;
+  worlds: Array<{
+    id: string;
+    name: string;
+    author: string;
+    description: string;
+    version: string;
+    mapRole: 'main' | 'submap';
+    mainProjectId: string;
+  }>;
+  resources: PlayBundleReviewResource[];
+  warnings: string[];
+};
+
+type ReviewSession = {
+  review: PlayBundleReview;
+  temporaryRoot: string;
+  worlds: ValidatedPlayWorld[];
+  resources: Map<string, { path: string; resource: PlayBundleReviewResource }>;
+  expiresAt: number;
+};
+
+const reviewSessions = new Map<string, ReviewSession>();
 
 function removeDirectoryWithRetry(target: string, retries = 5, retryDelay = 120) {
   let lastError: unknown;
@@ -311,61 +359,345 @@ function validateMapGroupBundle(
   }
 }
 
-export async function importPlayBundle(archivePath: string) {
-  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-import-'));
+function safeBlobFile(root: string, hash: unknown) {
+  const name = String(hash || '').trim();
+  if (!name || name !== path.basename(name) || name.includes('/') || name.includes('\\')) {
+    throw new Error('资源索引包含不安全的内容标识');
+  }
+  const canonicalName = (() => {
+    const match = name.match(
+      /^((?:Qm[1-9A-HJ-NP-Za-km-z]{44})|(?:[A-Za-z0-9_-]{43}))\.(?:png|jpe?g|webp|gif|bmp|avif|mp3|wav|ogg|m4a|aac|flac|lut)$/i,
+    );
+    return match?.[1];
+  })();
+  for (const candidate of canonicalName ? [name, canonicalName] : [name]) {
+    const target = path.join(root, 'data', 'blobs', candidate);
+    if (fs.statSync(target, { throwIfNoEntry: false })?.isFile()) return target;
+  }
+  throw new Error(`资源文件不存在：${name.slice(0, 80)}`);
+}
+
+function resolveReviewResourceFile(
+  root: string,
+  hash: unknown,
+  kind: PlayBundleReviewResource['kind'],
+) {
+  const indexedFiles = new Set<string>();
+  let file = safeBlobFile(root, hash);
+  indexedFiles.add(path.basename(file));
+
+  // Boxes picture assets point at a small JSON descriptor containing the
+  // dimensions and the actual image blob hash. Cloud-migrated projects retain
+  // this layout, so the review endpoint must unwrap it instead of serving the
+  // descriptor itself with an image Content-Type.
+  if (kind === 'image') {
+    const stat = fs.statSync(file);
+    if (stat.size <= 64 * 1024) {
+      try {
+        const descriptor = JSON.parse(fs.readFileSync(file, 'utf8')) as { hash?: unknown };
+        if (typeof descriptor?.hash === 'string' && descriptor.hash) {
+          file = safeBlobFile(root, descriptor.hash);
+          indexedFiles.add(path.basename(file));
+        }
+      } catch {
+        // Direct image blobs are binary and intentionally fail JSON parsing.
+      }
+    }
+  }
+
+  return { file, indexedFiles };
+}
+
+function readReviewJsonBlob(root: string, hash: unknown, label: string) {
+  const target = safeBlobFile(root, hash);
+  const size = fs.statSync(target).size;
+  if (size > 8 * 1024 * 1024) throw new Error(`${label}过大`);
+  try {
+    return JSON.parse(fs.readFileSync(target, 'utf8')) as Record<string, unknown>;
+  } catch {
+    throw new Error(`${label}无法读取`);
+  }
+}
+
+function resourceKind(name: string, fallback: PlayBundleReviewResource['kind']) {
+  const extension = path.extname(name).toLowerCase();
+  if (['.js', '.jsx', '.ts', '.tsx', '.json', '.mjs', '.cjs'].includes(extension)) return 'script';
+  if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.avif'].includes(extension)) return 'image';
+  if (['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac'].includes(extension)) return 'audio';
+  if (['.vb', '.vox', '.glb', '.gltf', '.obj'].includes(extension)) return 'model';
+  return fallback;
+}
+
+function resourceMimeType(name: string, kind: PlayBundleReviewResource['kind']) {
+  const extension = path.extname(name).toLowerCase();
+  const types: Record<string, string> = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.bmp': 'image/bmp',
+    '.avif': 'image/avif',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    '.aac': 'audio/aac',
+    '.flac': 'audio/flac',
+  };
+  return types[extension] || (kind === 'script' ? 'text/plain; charset=utf-8' : 'application/octet-stream');
+}
+
+function collectReviewResources(world: ValidatedPlayWorld, prefix: string) {
+  const resources = new Map<string, { path: string; resource: PlayBundleReviewResource }>();
+  const warnings: string[] = [];
+  const indexedHashes = new Set<string>();
+  let sequence = 0;
+  const addIndex = (
+    index: unknown,
+    fallback: PlayBundleReviewResource['kind'],
+  ) => {
+    if (!index || typeof index !== 'object' || Array.isArray(index)) return;
+    for (const [name, candidate] of Object.entries(index)) {
+      const asset = candidate as { hash?: unknown; type?: unknown; isClient?: unknown };
+      const hash = String(asset?.hash || '').trim();
+      if (!hash) continue;
+      try {
+        const kind = resourceKind(name, fallback);
+        const resolved = resolveReviewResourceFile(world.root, hash, kind);
+        const file = resolved.file;
+        const bytes = fs.statSync(file).size;
+        const id = `${prefix}-${sequence++}`;
+        const resource: PlayBundleReviewResource = {
+          id,
+          worldId: world.id,
+          name: String(name).slice(0, 300),
+          kind,
+          scriptTarget:
+            kind === 'script'
+              ? Number(asset.type) === 7 || asset.isClient === true
+                ? 'client'
+                : 'server'
+              : undefined,
+          mimeType: resourceMimeType(name, kind),
+          bytes,
+          previewable:
+            (kind === 'script' && bytes <= MAX_REVIEW_CODE_BYTES) ||
+            ((kind === 'image' || kind === 'audio') && bytes <= MAX_REVIEW_RESOURCE_BYTES),
+        };
+        indexedHashes.add(hash);
+        for (const indexedHash of resolved.indexedFiles) indexedHashes.add(indexedHash);
+        resources.set(id, { path: file, resource });
+      } catch (error) {
+        warnings.push(`${name}：${(error as Error).message}`);
+      }
+    }
+  };
+
+  try {
+    const state = JSON.parse(
+      fs.readFileSync(path.join(world.root, 'data', 'project-state.json'), 'utf8'),
+    );
+    const permission = readReviewJsonBlob(world.root, state.permissionHash, '权限索引');
+    const versionControl = readReviewJsonBlob(
+      world.root,
+      permission.versionControl,
+      '版本索引',
+    );
+    const branches = versionControl.branches as { master?: { headHash?: unknown } } | undefined;
+    const project = readReviewJsonBlob(
+      world.root,
+      branches?.master?.headHash,
+      '地图资源索引',
+    );
+    for (const [key, fallback] of [
+      ['scriptAssets', 'script'],
+      ['pictureAssets', 'image'],
+      ['audioAssets', 'audio'],
+      ['assets', 'other'],
+    ] as const) {
+      if (!project[key]) continue;
+      addIndex(readReviewJsonBlob(world.root, project[key], `${key} 索引`), fallback);
+    }
+  } catch (error) {
+    warnings.push(`地图“${world.manifest.projectName || world.id}”的资源索引不完整：${(error as Error).message}`);
+  }
+
+  const blobRoot = path.join(world.root, 'data', 'blobs');
+  const blobFiles = fs.readdirSync(blobRoot, { withFileTypes: true }).filter((entry) => entry.isFile());
+  return {
+    resources,
+    warnings,
+    blobCount: blobFiles.length,
+    unindexedBlobCount: Math.max(0, blobFiles.length - indexedHashes.size),
+  };
+}
+
+function validateInstallConflicts(validated: ValidatedPlayWorld[]) {
+  const root = libraryRoot();
+  fs.mkdirSync(root, { recursive: true });
+  const installedReferences = new Set(
+    getPlayWorlds().flatMap((world) => [world.id, world.publicId]),
+  );
+  for (const world of validated) {
+    if (fs.existsSync(path.join(root, world.id))) {
+      throw new Error(`同 ID 地图“${world.manifest.projectName || world.id}”已经存在，请先删除旧地图`);
+    }
+    if (installedReferences.has(world.id) || installedReferences.has(world.publicId)) {
+      throw new Error(`地图 ID“${world.publicId}”已经被其他地图使用`);
+    }
+  }
+  return root;
+}
+
+async function preparePlayBundle(archivePath: string) {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-review-'));
   try {
     await extractArchive(archivePath, temporaryRoot);
     const candidates = findWorldRoots(temporaryRoot);
     if (!candidates.length) throw new Error('游玩包中未找到有效地图');
-    const validated = candidates.map((candidate) => ({
+    const worlds = candidates.map((candidate) => ({
       ...validateWorld(candidate),
       root: candidate,
     }));
-    validateMapGroupBundle(temporaryRoot, validated);
-    const root = libraryRoot();
-    fs.mkdirSync(root, { recursive: true });
-    const installedReferences = new Set(
-      getPlayWorlds().flatMap((world) => [world.id, world.publicId]),
-    );
-    for (const world of validated) {
-      if (fs.existsSync(path.join(root, world.id))) {
-        throw new Error(`同 ID 地图“${world.manifest.projectName || world.id}”已经存在，请先删除旧地图`);
-      }
-      if (installedReferences.has(world.id) || installedReferences.has(world.publicId)) {
-        throw new Error(`地图 ID“${world.publicId}”已经被其他地图使用`);
-      }
-    }
-    const nonce = `${process.pid}-${Date.now()}`;
-    const staging = new Map(
-      validated.map((world) => [world.id, path.join(root, `.${world.id}-importing-${nonce}`)]),
-    );
-    const installed: string[] = [];
-    try {
-      for (const world of validated) {
-        copyReadableDirectory(world.root, staging.get(world.id)!);
-      }
-      for (const world of validated) {
-        fs.renameSync(staging.get(world.id)!, path.join(root, world.id));
-        installed.push(world.id);
-      }
-    } catch (error) {
-      for (const target of staging.values()) cleanupDirectoryQuietly(target);
-      for (const id of installed) cleanupDirectoryQuietly(path.join(root, id));
-      if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
-        throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
-      }
-      throw error;
-    }
-    const installedWorlds = getPlayWorlds().filter((world) => installed.includes(world.id));
-    const mainProjectId = String(validated[0].manifest.mainProjectId || validated[0].id);
-    return {
-      world: installedWorlds.find((world) => world.id === mainProjectId) || installedWorlds[0],
-      worlds: installedWorlds,
-      mapCount: installedWorlds.length,
-      mainProjectId,
-    };
-  } finally {
+    validateMapGroupBundle(temporaryRoot, worlds);
+    validateInstallConflicts(worlds);
+    return { temporaryRoot, worlds };
+  } catch (error) {
     cleanupDirectoryQuietly(temporaryRoot);
+    throw error;
+  }
+}
+
+function installPreparedPlayBundle(validated: ValidatedPlayWorld[]) {
+  const root = validateInstallConflicts(validated);
+  const nonce = `${process.pid}-${Date.now()}`;
+  const staging = new Map(
+    validated.map((world) => [world.id, path.join(root, `.${world.id}-importing-${nonce}`)]),
+  );
+  const installed: string[] = [];
+  try {
+    for (const world of validated) copyReadableDirectory(world.root, staging.get(world.id)!);
+    for (const world of validated) {
+      fs.renameSync(staging.get(world.id)!, path.join(root, world.id));
+      installed.push(world.id);
+    }
+  } catch (error) {
+    for (const target of staging.values()) cleanupDirectoryQuietly(target);
+    for (const id of installed) cleanupDirectoryQuietly(path.join(root, id));
+    if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
+      throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
+    }
+    throw error;
+  }
+  const installedWorlds = getPlayWorlds().filter((world) => installed.includes(world.id));
+  const mainProjectId = String(validated[0].manifest.mainProjectId || validated[0].id);
+  return {
+    world: installedWorlds.find((world) => world.id === mainProjectId) || installedWorlds[0],
+    worlds: installedWorlds,
+    mapCount: installedWorlds.length,
+    mainProjectId,
+  };
+}
+
+function purgeExpiredReviews() {
+  const now = Date.now();
+  for (const [id, session] of reviewSessions) {
+    if (session.expiresAt > now) continue;
+    reviewSessions.delete(id);
+    cleanupDirectoryQuietly(session.temporaryRoot);
+  }
+}
+
+function makeReviewRoom() {
+  purgeExpiredReviews();
+  while (reviewSessions.size >= MAX_ACTIVE_REVIEWS) {
+    const oldest = [...reviewSessions.entries()].sort(
+      ([, left], [, right]) => left.expiresAt - right.expiresAt,
+    )[0];
+    if (!oldest) return;
+    reviewSessions.delete(oldest[0]);
+    cleanupDirectoryQuietly(oldest[1].temporaryRoot);
+  }
+}
+
+function reviewSession(id: string) {
+  purgeExpiredReviews();
+  const session = reviewSessions.get(id);
+  if (!session) throw new Error('游玩包审查会话不存在或已过期，请重新选择文件');
+  return session;
+}
+
+export async function createPlayBundleReview(archivePath: string): Promise<PlayBundleReview> {
+  makeReviewRoom();
+  const prepared = await preparePlayBundle(archivePath);
+  const id = randomBytes(32).toString('base64url');
+  const resources = new Map<string, { path: string; resource: PlayBundleReviewResource }>();
+  const warnings: string[] = [];
+  let blobCount = 0;
+  let unindexedBlobCount = 0;
+  for (const [index, world] of prepared.worlds.entries()) {
+    const collected = collectReviewResources(world, `r${index}`);
+    for (const [resourceId, value] of collected.resources) resources.set(resourceId, value);
+    warnings.push(...collected.warnings);
+    blobCount += collected.blobCount;
+    unindexedBlobCount += collected.unindexedBlobCount;
+  }
+  const expiresAt = Date.now() + REVIEW_TTL_MS;
+  const review: PlayBundleReview = {
+    id,
+    expiresAt: new Date(expiresAt).toISOString(),
+    mapCount: prepared.worlds.length,
+    totalBytes: prepared.worlds.reduce((total, world) => total + directoryBytes(world.root), 0),
+    blobCount,
+    unindexedBlobCount,
+    worlds: prepared.worlds.map((world) => ({
+      id: world.id,
+      name: String(world.manifest.projectName || world.id),
+      author: String(world.manifest.author || ''),
+      description: String(world.manifest.description || ''),
+      version: String(world.manifest.version || ''),
+      mapRole: world.manifest.mapRole === 'submap' ? 'submap' : 'main',
+      mainProjectId: String(world.manifest.mainProjectId || world.id),
+    })),
+    resources: [...resources.values()].map(({ resource }) => resource),
+    warnings: warnings.slice(0, 100),
+  };
+  reviewSessions.set(id, { review, temporaryRoot: prepared.temporaryRoot, worlds: prepared.worlds, resources, expiresAt });
+  return review;
+}
+
+export function getPlayBundleReviewResource(reviewId: string, resourceId: string) {
+  const session = reviewSession(reviewId);
+  const entry = session.resources.get(resourceId);
+  if (!entry) throw new Error('审查资源不存在');
+  if (!entry.resource.previewable) throw new Error('该资源过大或不支持在线预览');
+  return entry;
+}
+
+export function cancelPlayBundleReview(reviewId: string) {
+  const session = reviewSessions.get(reviewId);
+  if (!session) return;
+  reviewSessions.delete(reviewId);
+  cleanupDirectoryQuietly(session.temporaryRoot);
+}
+
+export function confirmPlayBundleReview(reviewId: string) {
+  const session = reviewSession(reviewId);
+  reviewSessions.delete(reviewId);
+  try {
+    return installPreparedPlayBundle(session.worlds);
+  } finally {
+    cleanupDirectoryQuietly(session.temporaryRoot);
+  }
+}
+
+export async function importPlayBundle(archivePath: string) {
+  const prepared = await preparePlayBundle(archivePath);
+  try {
+    return installPreparedPlayBundle(prepared.worlds);
+  } finally {
+    cleanupDirectoryQuietly(prepared.temporaryRoot);
   }
 }
 

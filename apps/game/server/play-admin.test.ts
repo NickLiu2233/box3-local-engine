@@ -5,13 +5,21 @@ import path from 'path';
 
 import { afterEach, describe, expect, test } from '@jest/globals';
 
-import { importPlayBundle, updatePlayWorld } from './play-admin';
+import {
+  cancelPlayBundleReview,
+  confirmPlayBundleReview,
+  createPlayBundleReview,
+  getPlayBundleReviewResource,
+  importPlayBundle,
+  updatePlayWorld,
+} from './play-admin';
 
 const { resolveWorld } = require('../../local-engine/src/play-library') as {
   resolveWorld: (root: string, reference: string) => { id: string } | null;
 };
 
 const temporaryRoots: string[] = [];
+const reviewIds: string[] = [];
 
 function createGroupBundle() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-group-test-'));
@@ -26,6 +34,16 @@ function createGroupBundle() {
   for (const member of members) {
     const worldRoot = path.join(input, 'worlds', member.id);
     const permissionHash = `permission-${member.id}`;
+    const versionControlHash = `version-control-${member.id}`;
+    const projectHash = `project-${member.id}`;
+    const scriptAssetsHash = `script-assets-${member.id}`;
+    const pictureAssetsHash = `picture-assets-${member.id}`;
+    const audioAssetsHash = `audio-assets-${member.id}`;
+    const scriptHash = `script-${member.id}.js`;
+    const clientScriptHash = `client-script-${member.id}.js`;
+    const pictureHash = `picture-${member.id}.json`;
+    const picturePayloadHash = `picture-payload-${member.id}`;
+    const audioHash = `Qm${member.mapRole === 'main' ? 'A'.repeat(44) : 'B'.repeat(44)}`;
     fs.mkdirSync(path.join(worldRoot, 'data', 'blobs'), { recursive: true });
     fs.writeFileSync(path.join(worldRoot, 'manifest.json'), JSON.stringify({
       formatVersion: 1,
@@ -43,6 +61,42 @@ function createGroupBundle() {
       path.join(worldRoot, 'data', 'project-state.json'),
       JSON.stringify({ permissionHash }),
     );
+    const blobs = path.join(worldRoot, 'data', 'blobs');
+    fs.writeFileSync(
+      path.join(blobs, permissionHash),
+      JSON.stringify({ versionControl: versionControlHash }),
+    );
+    fs.writeFileSync(
+      path.join(blobs, versionControlHash),
+      JSON.stringify({ branches: { master: { headHash: projectHash } } }),
+    );
+    fs.writeFileSync(
+      path.join(blobs, projectHash),
+      JSON.stringify({ scriptAssets: scriptAssetsHash, pictureAssets: pictureAssetsHash, audioAssets: audioAssetsHash }),
+    );
+    fs.writeFileSync(
+      path.join(blobs, scriptAssetsHash),
+      JSON.stringify({
+        'index.js': { hash: scriptHash, type: 1 },
+        'clientIndex.js': { hash: clientScriptHash, type: 7 },
+      }),
+    );
+    fs.writeFileSync(
+      path.join(blobs, pictureAssetsHash),
+      JSON.stringify({ '地图封面.png': { hash: pictureHash, type: 2 } }),
+    );
+    fs.writeFileSync(
+      path.join(blobs, audioAssetsHash),
+      JSON.stringify({ '背景音乐.mp3': { hash: `${audioHash}.mp3`, type: 3 } }),
+    );
+    fs.writeFileSync(path.join(blobs, scriptHash), `globalThis.__reviewExecuted = '${member.id}'\n`);
+    fs.writeFileSync(path.join(blobs, clientScriptHash), `globalThis.__clientReviewExecuted = '${member.id}'\n`);
+    fs.writeFileSync(
+      path.join(blobs, pictureHash),
+      JSON.stringify({ hash: picturePayloadHash, width: 64, height: 64 }),
+    );
+    fs.writeFileSync(path.join(blobs, picturePayloadHash), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    fs.writeFileSync(path.join(blobs, audioHash), Buffer.from('ID3'));
   }
   fs.writeFileSync(path.join(input, 'bundle.json'), JSON.stringify({
     formatVersion: 1,
@@ -63,12 +117,74 @@ function createGroupBundle() {
 
 afterEach(() => {
   delete process.env.BOX_PLAY_LIBRARY_PATH;
+  while (reviewIds.length) cancelPlayBundleReview(reviewIds.pop()!);
   while (temporaryRoots.length) {
     fs.rmSync(temporaryRoots.pop()!, { recursive: true, force: true });
   }
 });
 
 describe('map group play bundle import', () => {
+  test('reviews indexed code and media without installing the bundle', async () => {
+    const { root, archivePath } = createGroupBundle();
+    const library = path.join(root, 'library');
+    process.env.BOX_PLAY_LIBRARY_PATH = library;
+
+    const review = await createPlayBundleReview(archivePath);
+    reviewIds.push(review.id);
+
+    expect(review.mapCount).toBe(2);
+    expect(review.worlds.map((world) => world.mapRole).sort()).toEqual(['main', 'submap']);
+    expect(review.resources.filter((resource) => resource.kind === 'script')).toHaveLength(4);
+    expect(review.resources.filter((resource) => resource.scriptTarget === 'server')).toHaveLength(2);
+    expect(review.resources.filter((resource) => resource.scriptTarget === 'client')).toHaveLength(2);
+    expect(review.resources.filter((resource) => resource.kind === 'image')).toHaveLength(2);
+    expect(review.resources.filter((resource) => resource.kind === 'audio')).toHaveLength(2);
+    expect(fs.existsSync(path.join(library, 'group-main'))).toBe(false);
+
+    const script = review.resources.find((resource) => resource.kind === 'script')!;
+    const entry = getPlayBundleReviewResource(review.id, script.id);
+    expect(fs.readFileSync(entry.path, 'utf8')).toContain('globalThis.__reviewExecuted');
+    expect((globalThis as typeof globalThis & { __reviewExecuted?: string }).__reviewExecuted).toBeUndefined();
+
+    const image = review.resources.find((resource) => resource.kind === 'image')!;
+    const imageEntry = getPlayBundleReviewResource(review.id, image.id);
+    expect(image.mimeType).toBe('image/png');
+    expect(image.bytes).toBe(4);
+    expect(fs.readFileSync(imageEntry.path).subarray(0, 4)).toEqual(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+    );
+    const audio = review.resources.find((resource) => resource.kind === 'audio')!;
+    const audioEntry = getPlayBundleReviewResource(review.id, audio.id);
+    expect(fs.readFileSync(audioEntry.path, 'utf8')).toBe('ID3');
+    expect(review.warnings).toEqual([]);
+  });
+
+  test('installs a reviewed bundle only after confirmation', async () => {
+    const { root, archivePath } = createGroupBundle();
+    const library = path.join(root, 'library');
+    process.env.BOX_PLAY_LIBRARY_PATH = library;
+    const review = await createPlayBundleReview(archivePath);
+
+    expect(fs.existsSync(path.join(library, 'group-main'))).toBe(false);
+    const result = confirmPlayBundleReview(review.id);
+
+    expect(result.mapCount).toBe(2);
+    expect(fs.existsSync(path.join(library, 'group-main', 'manifest.json'))).toBe(true);
+    expect(() => confirmPlayBundleReview(review.id)).toThrow('不存在或已过期');
+  });
+
+  test('discards review resources when the owner cancels', async () => {
+    const { root, archivePath } = createGroupBundle();
+    process.env.BOX_PLAY_LIBRARY_PATH = path.join(root, 'library');
+    const review = await createPlayBundleReview(archivePath);
+    const resource = review.resources[0];
+
+    cancelPlayBundleReview(review.id);
+
+    expect(() => getPlayBundleReviewResource(review.id, resource.id)).toThrow('不存在或已过期');
+    expect(() => confirmPlayBundleReview(review.id)).toThrow('不存在或已过期');
+  });
+
   test('installs the main map and all submaps in one operation', async () => {
     const { root, archivePath } = createGroupBundle();
     const library = path.join(root, 'library');

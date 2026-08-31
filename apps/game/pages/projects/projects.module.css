@@ -918,61 +918,6 @@
   border-radius: 8px;
 }
 
-.accountMenuWrap {
-  position: relative;
-}
-
-.accountTrigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  padding: 0;
-  border: 0;
-  color: inherit;
-  background: transparent;
-}
-
-.accountTrigger:hover .accountName {
-  color: #fff;
-}
-
-.accountMenu {
-  position: absolute;
-  z-index: 60;
-  top: calc(100% + 9px);
-  right: 0;
-  width: 124px;
-  padding: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  background: #333;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
-}
-
-.accountMenu button {
-  display: flex;
-  width: 100%;
-  height: 34px;
-  align-items: center;
-  gap: 7px;
-  padding: 0 8px;
-  border-radius: 5px;
-  color: rgba(255, 255, 255, 0.8);
-  background: transparent;
-  font-size: 12px;
-  text-align: left;
-}
-
-.accountMenu button:hover:not(:disabled) {
-  color: #fff;
-  background: #404040;
-}
-
-.accountMenu button:disabled {
-  cursor: wait;
-  opacity: 0.55;
-}
-
 @media (max-width: 640px) {
   .mapGroupOverview {
     padding: 12px;

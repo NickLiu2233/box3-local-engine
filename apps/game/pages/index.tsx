@@ -4,12 +4,22 @@ import Link from 'next/link'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
   ArrowUpRight,
+  Box,
+  FileCode2,
+  Image as ImageIcon,
   LogOut,
+  Music2,
   Settings,
+  ShieldCheck,
   Upload,
   X,
 } from 'lucide-react'
+import {
+  PlayerAccount,
+  type PlayerProfileChanges,
+} from '../components/player-account/player-account'
 import type { PlayWorld } from '../server/play-worlds'
 import { getPlayWorlds } from '../server/play-worlds'
 import { isPlayAdminEnabled } from '../server/play-admin-security'
@@ -66,17 +76,6 @@ const previewResourceStatuses: Record<string, MapResourceStatus> = {
   'preview-chase': { bytes: 27 * 1024 * 1024, importedAt: '2026-08-23T02:20:00.000Z' },
 }
 
-const builtInSkinOptions = [
-  { id: 'explorer', name: '探险者', preview: '/built-in-skins/explorer.png' },
-  { id: 'pilot', name: '飞行员', preview: '/built-in-skins/pilot.png' },
-  { id: 'cowboy', name: '牛仔', preview: '/built-in-skins/cowboy.png' },
-  { id: 'chinese-doll', name: '中国娃娃', preview: '/built-in-skins/chinese-doll.png' },
-  { id: 'pink-girl', name: '粉红女孩', preview: '/built-in-skins/pink-girl.png' },
-  { id: 'maid', name: '女仆', preview: '/built-in-skins/maid.png' },
-  { id: 'little-prince', name: '小王子', preview: '/built-in-skins/little-prince.png' },
-  { id: 'christmas-girl', name: '圣诞女孩', preview: '/built-in-skins/christmas-girl.png' },
-] as const
-
 type ImportProgress = {
   filename: string
   phase: 'uploading' | 'processing' | 'done' | 'error'
@@ -89,6 +88,46 @@ type ImportProgress = {
   message?: string
   details?: ImportDiagnostic[]
 }
+
+type PlayBundleReviewResource = {
+  id: string
+  worldId: string
+  name: string
+  kind: 'script' | 'image' | 'audio' | 'model' | 'other'
+  scriptTarget?: 'server' | 'client'
+  mimeType: string
+  bytes: number
+  previewable: boolean
+}
+
+type PlayBundleReview = {
+  id: string
+  expiresAt: string
+  mapCount: number
+  totalBytes: number
+  blobCount: number
+  unindexedBlobCount: number
+  worlds: Array<{
+    id: string
+    name: string
+    author: string
+    description: string
+    version: string
+    mapRole: 'main' | 'submap'
+    mainProjectId: string
+  }>
+  resources: PlayBundleReviewResource[]
+  warnings: string[]
+}
+
+const reviewCategories = [
+  { kind: 'script', label: '代码', icon: FileCode2 },
+  { kind: 'image', label: '图片', icon: ImageIcon },
+  { kind: 'audio', label: '音频', icon: Music2 },
+] as const
+
+type ReviewCategory = (typeof reviewCategories)[number]['kind']
+type ReviewScriptTarget = 'server' | 'client'
 
 function isPlayEnabled(world: PlayWorld) {
   // 老游玩包的 manifest 没有该字段时，保持历史行为：默认允许进入。
@@ -133,6 +172,7 @@ export default function HomePage({
   const [adminToken, setAdminToken] = useState('')
   const [verified, setVerified] = useState(false)
   const [playerName, setPlayerName] = useState('')
+  const [playerUsername, setPlayerUsername] = useState('')
   const [playerUserId, setPlayerUserId] = useState('')
   const [playerBoxId, setPlayerBoxId] = useState('')
   const [playerSkinId, setPlayerSkinId] = useState('explorer')
@@ -140,12 +180,6 @@ export default function HomePage({
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [recentCount, setRecentCount] = useState(0)
   const [libraryEnabled, setLibraryEnabled] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [profileName, setProfileName] = useState('')
-  const [profileSkinId, setProfileSkinId] = useState('explorer')
-  const [profileSaving, setProfileSaving] = useState(false)
-  const accountRef = useRef<HTMLDivElement>(null)
   const [collectionView, setCollectionView] = useState<'all' | 'recent' | 'favorites'>('all')
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set())
   const [recentIds, setRecentIds] = useState<string[]>([])
@@ -157,6 +191,16 @@ export default function HomePage({
   const [busy, setBusy] = useState('')
   const [notice, setNotice] = useState('')
   const [importProgress, setImportProgress] = useState<ImportProgress | null>(null)
+  const [bundleReview, setBundleReview] = useState<PlayBundleReview | null>(null)
+  const [reviewFilename, setReviewFilename] = useState('')
+  const [reviewWorldId, setReviewWorldId] = useState('')
+  const [reviewCategory, setReviewCategory] = useState<ReviewCategory>('script')
+  const [reviewScriptTarget, setReviewScriptTarget] = useState<ReviewScriptTarget>('server')
+  const [selectedReviewResourceId, setSelectedReviewResourceId] = useState('')
+  const [reviewResourceUrl, setReviewResourceUrl] = useState('')
+  const [reviewText, setReviewText] = useState('')
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [reviewError, setReviewError] = useState('')
   const worldGroups = useMemo(() => {
     const groups = new Map<string, PlayWorld[]>()
     for (const world of worldList) {
@@ -178,6 +222,55 @@ export default function HomePage({
       }
     })
   }, [worldList])
+
+  useEffect(() => {
+    if (!bundleReview || !selectedReviewResourceId) {
+      setReviewText('')
+      setReviewResourceUrl('')
+      setReviewError('')
+      return
+    }
+    const resource = bundleReview.resources.find((item) => item.id === selectedReviewResourceId)
+    setReviewText('')
+    setReviewResourceUrl('')
+    setReviewError('')
+    if (!resource?.previewable) {
+      setReviewLoading(false)
+      return
+    }
+    const controller = new AbortController()
+    let objectUrl = ''
+    setReviewLoading(true)
+    fetch(
+      `/api/play-admin/import-resource?reviewId=${encodeURIComponent(bundleReview.id)}&resourceId=${encodeURIComponent(resource.id)}`,
+      {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        signal: controller.signal,
+      },
+    )
+      .then(async (response) => {
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}))
+          throw new Error(data.message || '资源预览加载失败')
+        }
+        if (resource.kind === 'script') {
+          setReviewText(await response.text())
+          return
+        }
+        objectUrl = URL.createObjectURL(await response.blob())
+        setReviewResourceUrl(objectUrl)
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setReviewError(error instanceof Error ? error.message : '资源预览加载失败')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setReviewLoading(false)
+      })
+    return () => {
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [adminToken, bundleReview, selectedReviewResourceId])
 
   useEffect(() => {
     if (uiPreview) return
@@ -269,6 +362,7 @@ export default function HomePage({
         if (!response.ok) return
         const data = await response.json()
         setPlayerName(data.player?.displayName || data.player?.username || '')
+        setPlayerUsername(data.player?.username || '')
         setPlayerUserId(data.player?.userId || '')
         setPlayerBoxId(data.player?.boxId || '')
         const skinId = data.player?.avatarSkinId || 'explorer'
@@ -286,14 +380,6 @@ export default function HomePage({
       })
       .catch(() => undefined)
   }, [uiPreview])
-
-  useEffect(() => {
-    const closeAccountMenu = (event: MouseEvent) => {
-      if (!accountRef.current?.contains(event.target as Node)) setAccountOpen(false)
-    }
-    document.addEventListener('mousedown', closeAccountMenu)
-    return () => document.removeEventListener('mousedown', closeAccountMenu)
-  }, [])
 
   const updateLibrary = (mapId: string, changes: Record<string, boolean>) =>
     fetch('/api/play-library', {
@@ -337,6 +423,7 @@ export default function HomePage({
   const previewSignIn = () => {
     setPreviewSignedIn(true)
     setPlayerName('测试玩家')
+    setPlayerUsername('player-preview')
     setPlayerUserId('10001')
     setPlayerBoxId('')
     setLibraryEnabled(true)
@@ -345,7 +432,6 @@ export default function HomePage({
   const openAdminTools = () => {
     if (uiPreview) {
       setVerified(true)
-      setAccountOpen(false)
       setLoginOpen(false)
       setNotice('')
       return
@@ -384,14 +470,12 @@ export default function HomePage({
     }, 500)
     try {
       const data = await new Promise<{
-        world?: PlayWorld
-        worlds?: PlayWorld[]
-        mapCount?: number
+        review?: PlayBundleReview
         message?: string
         details?: ImportDiagnostic[]
       }>((resolve, reject) => {
         const request = new XMLHttpRequest()
-        request.open('POST', '/api/play-admin/import')
+        request.open('POST', '/api/play-admin/import?mode=preview')
         request.setRequestHeader('Authorization', `Bearer ${adminToken}`)
         request.setRequestHeader('Content-Type', 'application/octet-stream')
         request.upload.onprogress = (event) => {
@@ -427,9 +511,7 @@ export default function HomePage({
         request.onabort = () => reject(new Error('导入已取消'))
         request.onload = () => {
           let result: {
-            world?: PlayWorld
-            worlds?: PlayWorld[]
-            mapCount?: number
+            review?: PlayBundleReview
             message?: string
             details?: ImportDiagnostic[]
           } = {}
@@ -443,24 +525,38 @@ export default function HomePage({
         }
         request.send(file)
       })
-      const importedWorlds = data.worlds?.length ? data.worlds : data.world ? [data.world] : []
-      if (importedWorlds.length) {
-        const importedIds = new Set(importedWorlds.map((world) => world.id))
-        setWorldList((current) => [
-          ...importedWorlds,
-          ...current.filter((world) => !importedIds.has(world.id)),
-        ])
-      }
-      setImportProgress({
-        filename: file.name,
-        phase: 'done',
-        percent: 100,
-        sent: file.size,
-        total: file.size,
-        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
-        worldName: data.world?.name,
-        mapCount: data.mapCount || importedWorlds.length || 1,
-      })
+      if (!data.review) throw new Error('游玩包审查结果不完整')
+      const initialWorld =
+        data.review.worlds.find((world) => world.mapRole === 'main') || data.review.worlds[0]
+      const initialWorldResources = data.review.resources.filter(
+        (resource) => resource.worldId === initialWorld?.id,
+      )
+      const initialCategory = initialWorldResources.some((resource) => resource.kind === 'script')
+        ? 'script'
+        : initialWorldResources.some((resource) => resource.kind === 'image')
+          ? 'image'
+          : initialWorldResources.some((resource) => resource.kind === 'audio')
+            ? 'audio'
+            : 'script'
+      setBundleReview(data.review)
+      setReviewFilename(file.name)
+      setReviewWorldId(initialWorld?.id || '')
+      setReviewCategory(initialCategory)
+      const initialScriptTarget: ReviewScriptTarget = initialWorldResources.some(
+        (resource) => resource.kind === 'script' && resource.scriptTarget !== 'client',
+      )
+        ? 'server'
+        : 'client'
+      setReviewScriptTarget(initialScriptTarget)
+      setSelectedReviewResourceId(
+        initialWorldResources.find(
+          (resource) =>
+            resource.kind === initialCategory &&
+            (initialCategory !== 'script' ||
+              (resource.scriptTarget || 'server') === initialScriptTarget),
+        )?.id || '',
+      )
+      setImportProgress(null)
     } catch (error) {
       setImportProgress((current) => ({
         filename: file.name,
@@ -474,6 +570,79 @@ export default function HomePage({
       }))
     } finally {
       window.clearInterval(timer)
+      setBusy('')
+    }
+  }
+
+  async function closeBundleReview() {
+    const review = bundleReview
+    setBundleReview(null)
+    setSelectedReviewResourceId('')
+    setReviewWorldId('')
+    setReviewFilename('')
+    if (!review || uiPreview) return
+    await fetch(`/api/play-admin/import?reviewId=${encodeURIComponent(review.id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${adminToken}` },
+    }).catch(() => undefined)
+  }
+
+  async function confirmBundleReview() {
+    if (!bundleReview) return
+    const review = bundleReview
+    const startedAt = Date.now()
+    setBusy('import-confirm')
+    setBundleReview(null)
+    setImportProgress({
+      filename: reviewFilename,
+      phase: 'processing',
+      percent: 82,
+      sent: review.totalBytes,
+      total: review.totalBytes,
+      elapsedSeconds: 0,
+    })
+    try {
+      const response = await fetch(
+        `/api/play-admin/import?mode=confirm&reviewId=${encodeURIComponent(review.id)}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${adminToken}` },
+        },
+      )
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw importResponseError(data, response.status, '导入游玩包失败')
+      const importedWorlds: PlayWorld[] = data.worlds?.length ? data.worlds : data.world ? [data.world] : []
+      if (importedWorlds.length) {
+        const importedIds = new Set(importedWorlds.map((world) => world.id))
+        setWorldList((current) => [
+          ...importedWorlds,
+          ...current.filter((world) => !importedIds.has(world.id)),
+        ])
+      }
+      setImportProgress({
+        filename: reviewFilename,
+        phase: 'done',
+        percent: 100,
+        sent: review.totalBytes,
+        total: review.totalBytes,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        worldName: data.world?.name,
+        mapCount: data.mapCount || importedWorlds.length || review.mapCount,
+      })
+    } catch (error) {
+      setImportProgress({
+        filename: reviewFilename,
+        phase: 'error',
+        percent: 82,
+        sent: review.totalBytes,
+        total: review.totalBytes,
+        elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
+        message: error instanceof Error ? error.message : '导入游玩包失败',
+        details: (error as Partial<DetailedImportError>)?.details || [],
+      })
+    } finally {
+      setSelectedReviewResourceId('')
+      setReviewFilename('')
       setBusy('')
     }
   }
@@ -602,16 +771,13 @@ export default function HomePage({
   }
 
   async function logoutAccount() {
-    setAccountOpen(false)
     if (!uiPreview) {
       const response = await fetch('/api/play-logout', { method: 'POST', credentials: 'same-origin' })
-      if (!response.ok) {
-        setNotice('退出登录失败，请稍后重试')
-        return
-      }
+      if (!response.ok) throw new Error('退出登录失败，请稍后重试')
     }
     setPreviewSignedIn(false)
     setPlayerName('')
+    setPlayerUsername('')
     setPlayerUserId('')
     setPlayerBoxId('')
     setPlayerSkinId('explorer')
@@ -622,43 +788,87 @@ export default function HomePage({
     setRecentCount(0)
   }
 
-  function openProfileEditor() {
-    setAccountOpen(false)
-    setProfileName(playerName)
-    setProfileSkinId(playerSkinId)
-    setProfileOpen(true)
+  async function saveProfile(changes: PlayerProfileChanges) {
+    if (uiPreview) {
+      setPlayerName(changes.displayName)
+      setPlayerSkinId(changes.avatarSkinId)
+    } else {
+      const response = await fetch('/api/play-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changes),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || '资料保存失败')
+      setPlayerName(data.player?.displayName || changes.displayName)
+      setPlayerSkinId(data.player?.avatarSkinId || changes.avatarSkinId)
+    }
+    setNotice('资料已保存')
   }
 
-  async function saveProfile(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const displayName = profileName.trim()
-    if (!displayName) {
-      setNotice('请输入昵称')
-      return
-    }
-    setProfileSaving(true)
-    try {
-      if (uiPreview) {
-        setPlayerName(displayName)
-        setPlayerSkinId(profileSkinId)
-      } else {
-        const response = await fetch('/api/play-profile', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ displayName, avatarSkinId: profileSkinId }),
-        })
-        const data = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(data.message || '资料保存失败')
-        setPlayerName(data.player?.displayName || displayName)
-        setPlayerSkinId(data.player?.avatarSkinId || profileSkinId)
-      }
-      setProfileOpen(false)
-      setNotice('资料已保存')
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : '资料保存失败')
-    } finally {
-      setProfileSaving(false)
-    }
+  const selectedReviewResource = bundleReview?.resources.find(
+    (resource) => resource.id === selectedReviewResourceId,
+  )
+  const selectedReviewWorld = bundleReview?.worlds.find((world) => world.id === reviewWorldId)
+  const visibleReviewResources =
+    bundleReview?.resources.filter(
+      (resource) =>
+        resource.worldId === reviewWorldId &&
+        resource.kind === reviewCategory &&
+        (reviewCategory !== 'script' ||
+          (resource.scriptTarget || 'server') === reviewScriptTarget),
+    ) || []
+
+  const selectReviewScope = (worldId: string, category: ReviewCategory) => {
+    const worldResources =
+      bundleReview?.resources.filter((resource) => resource.worldId === worldId) || []
+    const nextScriptTarget: ReviewScriptTarget = worldResources.some(
+      (resource) =>
+        resource.kind === 'script' &&
+        (resource.scriptTarget || 'server') === reviewScriptTarget,
+    )
+      ? reviewScriptTarget
+      : worldResources.some(
+            (resource) => resource.kind === 'script' && resource.scriptTarget !== 'client',
+          )
+        ? 'server'
+        : 'client'
+    setReviewWorldId(worldId)
+    setReviewCategory(category)
+    setReviewScriptTarget(nextScriptTarget)
+    setSelectedReviewResourceId(
+      worldResources.find(
+        (resource) =>
+          resource.kind === category &&
+          (category !== 'script' ||
+            (resource.scriptTarget || 'server') === nextScriptTarget),
+      )?.id || '',
+    )
+  }
+
+  const selectReviewScriptTarget = (target: ReviewScriptTarget) => {
+    setReviewScriptTarget(target)
+    setSelectedReviewResourceId(
+      bundleReview?.resources.find(
+        (resource) =>
+          resource.worldId === reviewWorldId &&
+          resource.kind === 'script' &&
+          (resource.scriptTarget || 'server') === target,
+      )?.id || '',
+    )
+  }
+
+  const selectReviewWorld = (worldId: string) => {
+    const category = bundleReview?.resources.some(
+      (resource) => resource.worldId === worldId && resource.kind === reviewCategory,
+    )
+      ? reviewCategory
+      : reviewCategories.find(({ kind }) =>
+          bundleReview?.resources.some(
+            (resource) => resource.worldId === worldId && resource.kind === kind,
+          ),
+        )?.kind || 'script'
+    selectReviewScope(worldId, category)
   }
 
   return (
@@ -690,31 +900,17 @@ export default function HomePage({
           </Link>
 
           {verified ? null : playerName || playerUserId || playerBoxId || previewSignedIn ? (
-            <div className="accountArea" ref={accountRef}>
-              <button
-                className="siteAccount"
-                type="button"
-                onClick={() => setAccountOpen((value) => !value)}
-                aria-expanded={accountOpen}
-              >
-                <span>{verified ? '服主' : playerName}</span>
-              </button>
-              {accountOpen ? (
-                <aside className="accountMenu">
-                  <div className="accountIdentity">
-                    <strong>{verified ? '服主' : playerName}</strong>
-                    {playerUserId ? <small>账号 ID · {playerUserId}</small> : null}
-                    {playerBoxId ? <small>神岛 ID · {playerBoxId}</small> : null}
-                  </div>
-                  <button className="accountMenuAction" type="button" onClick={openProfileEditor}>
-                    编辑资料
-                  </button>
-                  <button className="accountLogout" type="button" onClick={() => void logoutAccount()}>
-                    退出登录
-                  </button>
-                </aside>
-              ) : null}
-            </div>
+            <PlayerAccount
+              identity={{
+                displayName: playerName,
+                username: playerUsername,
+                userId: playerUserId,
+                boxId: playerBoxId,
+                avatarSkinId: playerSkinId,
+              }}
+              onSave={saveProfile}
+              onLogout={logoutAccount}
+            />
           ) : (
             <div className="guestActions" aria-label="账户入口">
               {uiPreview ? (
@@ -1022,47 +1218,6 @@ export default function HomePage({
         </div>
       ) : null}
 
-      {profileOpen ? (
-        <div className="backdrop playWorkOverlay" onMouseDown={() => !profileSaving && setProfileOpen(false)}>
-          <form className="dialog profileDialog" onSubmit={saveProfile} onMouseDown={(event) => event.stopPropagation()}>
-            <header className="profileDialogHeading">
-              <div>
-                <h2>编辑资料</h2>
-                <p>设置在游玩端公开显示的资料</p>
-              </div>
-              <button className="profileClose" type="button" aria-label="关闭编辑资料" disabled={profileSaving} onClick={() => setProfileOpen(false)}><X size={17} /></button>
-            </header>
-            <div className="profileContent">
-              <label className="profileField" htmlFor="player-profile-name">
-                <span>昵称</span>
-                <input id="player-profile-name" autoFocus maxLength={32} value={profileName} onChange={(event) => setProfileName(event.target.value)} />
-              </label>
-              <fieldset className="profileSkinField">
-                <legend>游戏角色</legend>
-                <div className="profileSkinOptions">
-                  {builtInSkinOptions.map((skin) => (
-                    <button
-                      key={skin.id}
-                      className={`profileSkinOption${profileSkinId === skin.id ? ' selected' : ''}`}
-                      type="button"
-                      aria-pressed={profileSkinId === skin.id}
-                      onClick={() => setProfileSkinId(skin.id)}
-                    >
-                      <img src={skin.preview} alt="" />
-                      <span>{skin.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-            <footer className="dialogActions">
-              <button className="button" type="button" disabled={profileSaving} onClick={() => setProfileOpen(false)}>取消</button>
-              <button className="button primary" type="submit" disabled={profileSaving || !profileName.trim()}>{profileSaving ? '保存中…' : '保存资料'}</button>
-            </footer>
-          </form>
-        </div>
-      ) : null}
-
       {deleteWorld ? (
         <div
           className="backdrop playWorkOverlay"
@@ -1153,6 +1308,187 @@ export default function HomePage({
         </div>
       ) : null}
 
+      {bundleReview ? (
+        <div className="backdrop playWorkOverlay reviewOverlay">
+          <section
+            className="bundleReviewDialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bundle-review-title"
+          >
+            <header className="bundleReviewHeader">
+              <div className="bundleReviewHeading">
+                <span><ShieldCheck size={21} aria-hidden="true" /></span>
+                <div>
+                  <h2 id="bundle-review-title">检查游玩包</h2>
+                  <p>{reviewFilename} · {bundleReview.mapCount} 张地图 · {formatBytes(bundleReview.totalBytes)}</p>
+                </div>
+              </div>
+              <button className="reviewClose" type="button" aria-label="取消审查" onClick={() => void closeBundleReview()}>
+                <X size={18} aria-hidden="true" />
+              </button>
+            </header>
+
+            <div className="reviewWorkspace">
+              <aside className="reviewMapBrowser" aria-label="地图列表">
+                <header>
+                  <strong>地图</strong>
+                  <span>{bundleReview.worlds.length}</span>
+                </header>
+                <div className="reviewMapList">
+                {bundleReview.worlds.map((world) => (
+                  <button
+                    key={world.id}
+                    className={reviewWorldId === world.id ? 'active' : ''}
+                    type="button"
+                    onClick={() => selectReviewWorld(world.id)}
+                  >
+                    <div>
+                      <strong>{world.name}</strong>
+                      <small>{world.mapRole === 'main' ? '主地图' : '副地图'}{world.version ? ` · ${world.version}` : ''}</small>
+                    </div>
+                    <span>
+                      {bundleReview.resources.filter(
+                        (resource) =>
+                          resource.worldId === world.id &&
+                          ['script', 'image', 'audio'].includes(resource.kind),
+                      ).length}
+                    </span>
+                  </button>
+                ))}
+                </div>
+              </aside>
+
+              <section className="reviewContent">
+                <header className="reviewWorldHeader">
+                  <div>
+                    <span>{selectedReviewWorld?.mapRole === 'submap' ? '副地图' : '主地图'}</span>
+                    <h3>{selectedReviewWorld?.name || '选择地图'}</h3>
+                    {selectedReviewWorld ? (
+                      <p>
+                        {selectedReviewWorld.author || '未署名'}
+                        {selectedReviewWorld.version ? ` · ${selectedReviewWorld.version}` : ''}
+                        {selectedReviewWorld.description ? ` · ${selectedReviewWorld.description}` : ''}
+                      </p>
+                    ) : null}
+                  </div>
+                </header>
+
+                <nav className="reviewTabs" aria-label="资源分类">
+                  {reviewCategories.map(({ kind, label, icon: Icon }) => {
+                    const count = bundleReview.resources.filter(
+                      (resource) => resource.worldId === reviewWorldId && resource.kind === kind,
+                    ).length
+                    return (
+                      <button
+                        key={kind}
+                        className={reviewCategory === kind ? 'active' : ''}
+                        type="button"
+                        onClick={() => selectReviewScope(reviewWorldId, kind)}
+                      >
+                        <Icon size={14} aria-hidden="true" />
+                        {label}<span>{count}</span>
+                      </button>
+                    )
+                  })}
+                </nav>
+
+                <div className="reviewResourceWorkspace">
+                  <aside className="reviewResourceList">
+                    {reviewCategory === 'script' ? (
+                      <div className="reviewScriptFilter" role="tablist" aria-label="代码运行位置">
+                        {(['server', 'client'] as const).map((target) => {
+                          const count = bundleReview.resources.filter(
+                            (resource) =>
+                              resource.worldId === reviewWorldId &&
+                              resource.kind === 'script' &&
+                              (resource.scriptTarget || 'server') === target,
+                          ).length
+                          return (
+                            <button
+                              key={target}
+                              className={reviewScriptTarget === target ? 'active' : ''}
+                              type="button"
+                              role="tab"
+                              aria-selected={reviewScriptTarget === target}
+                              onClick={() => selectReviewScriptTarget(target)}
+                            >
+                              <span>{target === 'server' ? '服务端' : '客户端'}</span>
+                              <small>{count}</small>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                    {visibleReviewResources.length ? visibleReviewResources.map((resource) => (
+                      <button
+                        key={resource.id}
+                        className={selectedReviewResourceId === resource.id ? 'active' : ''}
+                        type="button"
+                        onClick={() => setSelectedReviewResourceId(resource.id)}
+                      >
+                        <span>{resource.name}</span>
+                        <small>{formatBytes(resource.bytes)}{resource.previewable ? '' : ' · 无法预览'}</small>
+                      </button>
+                    )) : <p className="reviewEmpty">这张地图没有{reviewCategories.find((item) => item.kind === reviewCategory)?.label}</p>}
+                  </aside>
+                  <section className="reviewPreview" aria-live="polite">
+                    <header>
+                      <strong>{selectedReviewResource?.name || '未选择文件'}</strong>
+                      {selectedReviewResource ? <span>{formatBytes(selectedReviewResource.bytes)}</span> : null}
+                    </header>
+                    <div
+                      className={`reviewPreviewBody${
+                        selectedReviewResource?.kind === 'script'
+                          ? ' code'
+                          : selectedReviewResource?.kind === 'image'
+                            ? ' image'
+                            : ''
+                      }`}
+                    >
+                      {reviewLoading ? <p>正在读取预览…</p> : null}
+                      {reviewError ? <p className="reviewPreviewError">{reviewError}</p> : null}
+                      {!reviewLoading && !reviewError && selectedReviewResource && !selectedReviewResource.previewable ? (
+                        <p>该文件过大或格式不支持在线预览。</p>
+                      ) : null}
+                      {!reviewLoading && selectedReviewResource?.kind === 'script' && reviewText ? (
+                        <pre><code>{reviewText}</code></pre>
+                      ) : null}
+                      {!reviewLoading && selectedReviewResource?.kind === 'image' && reviewResourceUrl ? (
+                        <img src={reviewResourceUrl} alt={selectedReviewResource.name} />
+                      ) : null}
+                      {!reviewLoading && selectedReviewResource?.kind === 'audio' && reviewResourceUrl ? (
+                        <audio controls preload="metadata" src={reviewResourceUrl} />
+                      ) : null}
+                      {!reviewLoading && !selectedReviewResource ? <p>从文件列表选择内容进行预览</p> : null}
+                    </div>
+                  </section>
+                </div>
+              </section>
+            </div>
+
+            <footer className="bundleReviewFooter">
+              <div className="reviewFooterInfo">
+                {bundleReview.warnings.length ? (
+                  <details className="reviewWarnings">
+                    <summary><AlertTriangle size={14} aria-hidden="true" /> {bundleReview.warnings.length} 项资源提醒</summary>
+                    <div>{bundleReview.warnings.slice(0, 10).map((warning, index) => <p key={index}>{warning}</p>)}</div>
+                  </details>
+                ) : (
+                  <p><ShieldCheck size={14} aria-hidden="true" /> 预览不会执行脚本或启动地图</p>
+                )}
+              </div>
+              <div className="reviewFooterActions">
+                <button className="button" type="button" onClick={() => void closeBundleReview()}>取消</button>
+                <button className="button primary" type="button" disabled={Boolean(busy)} onClick={() => void confirmBundleReview()}>
+                  确认并导入
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
       {importProgress ? (
         <div className="progressBackdrop playWorkOverlay">
           <section
@@ -1170,7 +1506,7 @@ export default function HomePage({
               {importProgress.phase === 'uploading'
                 ? '正在上传游玩包'
                 : importProgress.phase === 'processing'
-                  ? '正在导入地图组作品'
+                  ? '正在检查并导入地图组'
                   : importProgress.phase === 'done'
                     ? '导入完成'
                     : '导入失败'}
@@ -1195,7 +1531,7 @@ export default function HomePage({
                 {importProgress.phase === 'uploading'
                   ? `${formatBytes(importProgress.sent)} / ${formatBytes(importProgress.total)} · ${importProgress.elapsedSeconds}s`
                   : importProgress.phase === 'processing'
-                    ? `正在解压、校验主副关系并原子写入游玩目录 · ${importProgress.elapsedSeconds}s`
+                    ? `正在解压、校验并原子写入游玩目录 · ${importProgress.elapsedSeconds}s`
                     : importProgress.phase === 'done'
                       ? `${formatBytes(importProgress.total)} · 用时 ${importProgress.elapsedSeconds}s`
                       : importProgress.message}
@@ -1758,6 +2094,338 @@ export default function HomePage({
           padding: 24px;
           background: rgba(0, 0, 0, 0.66);
         }
+        .reviewOverlay {
+          z-index: 34;
+          overflow-y: auto;
+          align-items: flex-start;
+        }
+        .bundleReviewDialog {
+          display: grid;
+          width: min(1040px, 100%);
+          height: min(700px, calc(100vh - 48px));
+          height: min(700px, calc(100dvh - 48px));
+          overflow: hidden;
+          margin: auto;
+          grid-template-rows: auto minmax(0, 1fr) auto;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          border-radius: 12px;
+          color: #fff;
+          background: #262626;
+          box-shadow: 0 28px 90px rgba(0, 0, 0, 0.56);
+        }
+        .bundleReviewHeader {
+          display: flex;
+          min-height: 68px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 15px 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .bundleReviewHeading { display: flex; min-width: 0; align-items: center; gap: 12px; }
+        .bundleReviewHeading > span {
+          display: grid;
+          width: 40px;
+          height: 40px;
+          flex: 0 0 auto;
+          place-items: center;
+          border-radius: 8px;
+          color: #262626;
+          background: #ffdb00;
+        }
+        .bundleReviewHeading h2 { margin: 0; color: #fff; font-size: 19px; letter-spacing: -0.02em; }
+        .bundleReviewHeading p {
+          overflow: hidden;
+          margin: 4px 0 0;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 11px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .reviewClose {
+          display: grid;
+          width: 34px;
+          height: 34px;
+          flex: 0 0 auto;
+          place-items: center;
+          border-radius: 7px;
+          color: rgba(255, 255, 255, 0.56);
+          background: transparent;
+        }
+        .reviewClose:hover { color: #fff; background: #404040; }
+        .reviewWorkspace {
+          display: grid;
+          min-height: 0;
+          grid-template-columns: 220px minmax(0, 1fr);
+          background: #202020;
+        }
+        .reviewMapBrowser {
+          min-width: 0;
+          overflow: hidden;
+          border-right: 1px solid rgba(255, 255, 255, 0.09);
+          background: #292929;
+        }
+        .reviewMapBrowser > header {
+          display: flex;
+          height: 48px;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 14px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .reviewMapBrowser > header strong { font-size: 12px; }
+        .reviewMapBrowser > header span { color: rgba(255, 255, 255, 0.36); font-size: 10px; }
+        .reviewMapList { display: grid; gap: 4px; max-height: calc(100% - 48px); overflow-y: auto; padding: 7px; }
+        .reviewMapList > button {
+          display: flex;
+          width: 100%;
+          min-width: 0;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 10px;
+          border: 1px solid transparent;
+          border-radius: 7px;
+          color: rgba(255, 255, 255, 0.7);
+          background: transparent;
+          text-align: left;
+          transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+        }
+        .reviewMapList > button > div { min-width: 0; }
+        .reviewMapList > button strong,
+        .reviewMapList > button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .reviewMapList > button strong { font-size: 11px; }
+        .reviewMapList > button small { margin-top: 4px; color: rgba(255, 255, 255, 0.4); font-size: 9px; }
+        .reviewMapList > button > span { flex: 0 0 auto; color: rgba(255, 255, 255, 0.32); font-size: 9px; }
+        .reviewMapList > button:hover { color: #fff; background: #343434; }
+        .reviewMapList > button.active { border-color: rgba(255, 219, 0, 0.26); color: #fff; background: #363636; }
+        .reviewMapList > button.active > span { color: #ffdb00; }
+        .reviewMapList > button:active { transform: scale(0.98); }
+        .reviewContent { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto auto minmax(0, 1fr); }
+        .reviewWorldHeader {
+          display: flex;
+          min-height: 72px;
+          align-items: center;
+          padding: 12px 16px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: #262626;
+        }
+        .reviewWorldHeader > div { min-width: 0; }
+        .reviewWorldHeader span { color: #ffdb00; font-size: 9px; font-weight: 700; }
+        .reviewWorldHeader h3 { margin: 3px 0 0; color: #fff; font-size: 15px; }
+        .reviewWorldHeader p { overflow: hidden; margin: 5px 0 0; color: rgba(255, 255, 255, 0.42); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+        .reviewTabs {
+          display: flex;
+          gap: 4px;
+          overflow-x: auto;
+          padding: 8px 10px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: #262626;
+        }
+        .reviewTabs button {
+          display: inline-flex;
+          height: 30px;
+          flex: 0 0 auto;
+          align-items: center;
+          gap: 5px;
+          padding: 0 8px;
+          border: 1px solid transparent;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.5);
+          background: transparent;
+          font-size: 10px;
+        }
+        .reviewTabs button span { color: rgba(255, 255, 255, 0.3); }
+        .reviewTabs button:hover { color: #fff; background: #353535; }
+        .reviewTabs button.active { color: #262626; background: #ffdb00; font-weight: 700; }
+        .reviewTabs button.active span { color: rgba(38, 38, 38, 0.55); }
+        .reviewTabs button:active { transform: scale(0.97); }
+        .reviewMapList,
+        .reviewTabs,
+        .reviewResourceList,
+        .reviewPreviewBody,
+        .reviewPreviewBody pre,
+        .reviewWarnings > div {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(255, 255, 255, 0.24) transparent;
+        }
+        .reviewMapList::-webkit-scrollbar,
+        .reviewResourceList::-webkit-scrollbar,
+        .reviewPreviewBody::-webkit-scrollbar,
+        .reviewPreviewBody pre::-webkit-scrollbar,
+        .reviewWarnings > div::-webkit-scrollbar {
+          width: 8px;
+        }
+        .reviewTabs::-webkit-scrollbar,
+        .reviewPreviewBody pre::-webkit-scrollbar {
+          height: 8px;
+        }
+        .reviewMapList::-webkit-scrollbar-track,
+        .reviewTabs::-webkit-scrollbar-track,
+        .reviewResourceList::-webkit-scrollbar-track,
+        .reviewPreviewBody::-webkit-scrollbar-track,
+        .reviewPreviewBody pre::-webkit-scrollbar-track,
+        .reviewWarnings > div::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .reviewMapList::-webkit-scrollbar-thumb,
+        .reviewTabs::-webkit-scrollbar-thumb,
+        .reviewResourceList::-webkit-scrollbar-thumb,
+        .reviewPreviewBody::-webkit-scrollbar-thumb,
+        .reviewPreviewBody pre::-webkit-scrollbar-thumb,
+        .reviewWarnings > div::-webkit-scrollbar-thumb {
+          border: 2px solid transparent;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.24);
+          background-clip: padding-box;
+        }
+        .reviewMapList::-webkit-scrollbar-thumb:hover,
+        .reviewTabs::-webkit-scrollbar-thumb:hover,
+        .reviewResourceList::-webkit-scrollbar-thumb:hover,
+        .reviewPreviewBody::-webkit-scrollbar-thumb:hover,
+        .reviewPreviewBody pre::-webkit-scrollbar-thumb:hover,
+        .reviewWarnings > div::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 219, 0, 0.62);
+          background-clip: padding-box;
+        }
+        .reviewResourceWorkspace { display: grid; min-height: 0; grid-template-columns: 230px minmax(0, 1fr); }
+        .reviewResourceList { min-height: 0; overflow-y: auto; padding: 7px; border-right: 1px solid rgba(255, 255, 255, 0.08); background: #292929; }
+        .reviewScriptFilter {
+          position: sticky;
+          z-index: 2;
+          top: -7px;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 4px;
+          margin: -7px -7px 7px;
+          padding: 7px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          background: #292929;
+        }
+        .reviewScriptFilter > button {
+          display: flex;
+          height: 30px;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.5);
+          background: transparent;
+          font-size: 10px;
+        }
+        .reviewScriptFilter > button:hover { color: #fff; background: #343434; }
+        .reviewScriptFilter > button.active { color: #262626; background: #ffdb00; font-weight: 700; }
+        .reviewScriptFilter > button small { color: inherit; font-size: 9px; opacity: 0.62; }
+        .reviewResourceList > button {
+          display: grid;
+          width: 100%;
+          gap: 3px;
+          padding: 10px;
+          border-radius: 6px;
+          color: rgba(255, 255, 255, 0.72);
+          background: transparent;
+          text-align: left;
+        }
+        .reviewResourceList > button:hover { background: #343434; }
+        .reviewResourceList > button.active { color: #fff; background: #3b3b3b; }
+        .reviewResourceList > button:active { transform: scale(0.98); }
+        .reviewResourceList > button span { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .reviewResourceList > button small { color: rgba(255, 255, 255, 0.34); font-size: 9px; }
+        .reviewEmpty { margin: 28px 10px; color: rgba(255, 255, 255, 0.38); font-size: 11px; text-align: center; }
+        .reviewPreview { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); }
+        .reviewPreview > header {
+          display: flex;
+          min-height: 42px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 0 14px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .reviewPreview > header strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+        .reviewPreview > header span { flex: 0 0 auto; color: rgba(255, 255, 255, 0.34); font-size: 9px; }
+        .reviewPreviewBody {
+          display: grid;
+          min-height: 0;
+          overflow: auto;
+          place-items: center;
+          padding: 16px;
+          color: rgba(255, 255, 255, 0.42);
+          font-size: 11px;
+        }
+        .reviewPreviewBody pre {
+          width: 100%;
+          min-height: 100%;
+          margin: 0;
+          overflow: auto;
+          color: #d7d7d7;
+          font: 11px/1.65 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          white-space: pre;
+          tab-size: 2;
+          user-select: text;
+        }
+        .reviewPreviewBody.code { display: block; overflow: hidden; padding: 0; }
+        .reviewPreviewBody.code pre {
+          box-sizing: border-box;
+          height: 100%;
+          min-height: 0;
+          padding: 16px;
+        }
+        .reviewPreviewBody.image {
+          overflow: hidden;
+        }
+        .reviewPreviewBody img {
+          display: block;
+          width: 100%;
+          height: 100%;
+          min-width: 0;
+          min-height: 0;
+          object-fit: contain;
+          border-radius: 6px;
+        }
+        .reviewPreviewBody audio { width: min(520px, 100%); }
+        .reviewPreviewError { color: #f77b7b; }
+        .bundleReviewFooter {
+          display: flex;
+          min-height: 68px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 13px 20px;
+        }
+        .reviewFooterInfo { min-width: 0; }
+        .reviewFooterInfo > p {
+          display: flex;
+          max-width: 680px;
+          align-items: flex-start;
+          gap: 7px;
+          margin: 0;
+          color: rgba(255, 255, 255, 0.42);
+          font-size: 10px;
+          line-height: 1.5;
+        }
+        .reviewFooterInfo > p svg { flex: 0 0 auto; color: #ffdb00; }
+        .reviewWarnings { position: relative; color: rgba(255, 255, 255, 0.52); font-size: 10px; }
+        .reviewWarnings summary { display: flex; align-items: center; gap: 6px; list-style: none; cursor: pointer; }
+        .reviewWarnings summary::-webkit-details-marker { display: none; }
+        .reviewWarnings summary svg { color: #ffdb00; }
+        .reviewWarnings > div {
+          position: absolute;
+          z-index: 5;
+          bottom: calc(100% + 10px);
+          left: 0;
+          width: min(620px, calc(100vw - 48px));
+          max-height: 180px;
+          overflow-y: auto;
+          padding: 10px 12px;
+          border: 1px solid rgba(255, 219, 0, 0.22);
+          border-radius: 7px;
+          background: #30302a;
+          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+        }
+        .reviewWarnings p { margin: 0 0 5px; color: rgba(255, 255, 255, 0.62); font-size: 10px; line-height: 1.45; }
+        .reviewWarnings p:last-child { margin-bottom: 0; }
+        .reviewFooterActions { display: flex; flex: 0 0 auto; gap: 8px; }
         .progressDialog {
           width: min(100%, 520px);
           padding: 28px;
@@ -1951,128 +2619,12 @@ export default function HomePage({
           object-fit: contain;
           transform: none;
         }
-        .accountArea {
-          position: relative;
-          margin-left: auto;
-        }
-        .playWorkCenter .siteAccount {
-          height: 36px;
-          gap: 7px;
-          margin: 0;
-          padding: 0 8px;
-          border: 0;
-          border-radius: 7px;
-          color: rgba(255, 255, 255, 0.86);
-          background: transparent;
-          cursor: pointer;
-          transition: background-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        .playWorkCenter .siteAccount:hover { background: #404040; }
-        .playWorkCenter .siteAccount:active { transform: scale(0.97); }
         .playWorkCenter .guestActions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
         .playWorkCenter .guestActions :global(.guestLogin) { display: inline-flex; height: 36px; align-items: center; justify-content: center; padding: 0 15px; border-radius: 7px; font-size: 13px; font-weight: 700; line-height: 1; text-decoration: none; transition: background-color 140ms ease, border-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1); }
         .playWorkCenter .guestActions :global(.guestLogin) { color: #262626 !important; background: #ffdb00 !important; box-shadow: 0 0 0 1px rgba(255, 219, 0, 0.3); }
         .playWorkCenter .guestActions button:global(.guestLogin) { border: 0; cursor: pointer; }
         .playWorkCenter .guestActions :global(.guestLogin):hover { background: #ffe44d !important; }
         .playWorkCenter .guestActions :global(.guestLogin):active { transform: scale(0.97); }
-        .playWorkCenter .accountMenu {
-          position: absolute;
-          z-index: 10;
-          right: 0;
-          top: 42px;
-          min-width: 204px;
-          padding: 14px;
-          border-color: rgba(255, 255, 255, 0.13);
-          border-radius: 8px;
-          color: rgba(255, 255, 255, 0.64);
-          background: #333;
-          box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
-          transform-origin: top right;
-          animation: account-menu-in 160ms cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        .playWorkCenter .accountIdentity { display: grid; gap: 4px; }
-        .playWorkCenter .accountMenu strong { color: #fff; font-size: 13px; }
-        .playWorkCenter .accountMenu small { color: rgba(255, 255, 255, 0.45); font-size: 12px; }
-        .playWorkCenter .accountMenuAction,
-        .playWorkCenter .accountLogout {
-          width: 100%;
-          margin-top: 11px;
-          padding: 0;
-          border: 0;
-          color: rgba(255, 255, 255, 0.6);
-          background: transparent;
-          font: inherit;
-          font-size: 12px;
-          text-align: left;
-          cursor: pointer;
-        }
-        .playWorkCenter .accountMenuAction { color: rgba(255, 255, 255, 0.82); }
-        .playWorkCenter .accountMenuAction:hover,
-        .playWorkCenter .accountLogout:hover { color: #fff; }
-        .playWorkOverlay .profileDialog {
-          width: min(408px, 100%);
-          padding: 0;
-          overflow: hidden;
-        }
-        .playWorkOverlay .profileDialogHeading {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 16px;
-          margin: 0;
-          padding: 20px 20px 17px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .playWorkOverlay .profileDialogHeading h2 { margin: 0 0 4px; font-size: 18px; }
-        .playWorkOverlay .profileDialogHeading p { margin: 0; font-size: 12px; line-height: 1.45; }
-        .playWorkOverlay .profileClose {
-          width: 30px;
-          height: 30px;
-          display: grid;
-          flex: 0 0 auto;
-          place-items: center;
-          margin: -4px -4px 0 0;
-          padding: 0;
-          border: 0;
-          border-radius: 6px;
-          color: rgba(255, 255, 255, 0.56);
-          background: transparent;
-          cursor: pointer;
-          transition: color 140ms ease, background-color 140ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        .playWorkOverlay .profileClose:hover { color: #fff; background: #404040; }
-        .playWorkOverlay .profileClose:active { transform: scale(0.96); }
-        .playWorkOverlay .profileContent { display: grid; gap: 18px; padding: 18px 20px 20px; }
-        .playWorkOverlay .profileField { display: grid; gap: 7px; margin: 0; }
-        .playWorkOverlay .profileField > span { color: rgba(255, 255, 255, 0.58); font-size: 12px; font-weight: 600; }
-        .playWorkOverlay .profileField input { height: 38px; }
-        .playWorkOverlay .profileSkinField { min-width: 0; margin: 0; padding: 0; border: 0; }
-        .playWorkOverlay .profileSkinField legend { margin-bottom: 8px; padding: 0; color: rgba(255, 255, 255, 0.58); font-size: 12px; font-weight: 600; }
-        .playWorkOverlay .profileSkinOptions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-        .playWorkOverlay .profileSkinOption {
-          display: grid;
-          gap: 5px;
-          min-width: 0;
-          padding: 6px 4px 7px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 7px;
-          color: rgba(255, 255, 255, 0.62);
-          background: #353535;
-          font: inherit;
-          font-size: 10px;
-          cursor: pointer;
-          transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease, transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        .playWorkOverlay .profileSkinOption img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: #292929; }
-        .playWorkOverlay .profileSkinOption:hover { border-color: rgba(255, 219, 0, 0.5); color: #fff; }
-        .playWorkOverlay .profileSkinOption.selected { border-color: #ffdb00; color: #ffdb00; background: rgba(255, 219, 0, 0.08); }
-        .playWorkOverlay .profileSkinOption:active { transform: scale(0.97); }
-        .playWorkOverlay .profileDialog .dialogActions {
-          margin: 0;
-          padding: 12px 20px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-          background: #2a2a2a;
-        }
         .playWorkCenter .header { margin-bottom: 16px; }
         .playWorkCenter .title { gap: 10px; }
         .playWorkCenter .title h1 { color: #fff; font-size: 22px; letter-spacing: -0.025em; }
@@ -2343,6 +2895,19 @@ export default function HomePage({
         @media (hover: none), (pointer: coarse) { .playWorkCenter .card:hover { transform: none; } }
         @media (prefers-reduced-motion: reduce) { .playWorkCenter .card, .groupAvailability i, .groupAvailability i::after { transition: none; } }
         @media (max-width: 640px) {
+          .reviewOverlay { padding: 12px; }
+          .bundleReviewDialog { height: calc(100vh - 24px); }
+          .reviewWorkspace { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
+          .reviewMapBrowser { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+          .reviewMapBrowser > header { height: 40px; }
+          .reviewMapList { display: flex; max-height: none; overflow-x: auto; padding: 6px; }
+          .reviewMapList > button { width: 180px; flex: 0 0 auto; }
+          .reviewWorldHeader { min-height: 60px; }
+          .reviewResourceWorkspace { grid-template-columns: 1fr; grid-template-rows: 150px minmax(0, 1fr); }
+          .reviewResourceList { border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+          .reviewPreview { min-height: 260px; }
+          .bundleReviewFooter { align-items: stretch; flex-direction: column; }
+          .reviewFooterActions { justify-content: flex-end; }
           .page {
             width: min(100% - 24px, 1120px);
             padding-top: 12px;

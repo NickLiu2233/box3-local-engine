@@ -8,7 +8,6 @@ import {
   FolderOpen,
   Grid2X2,
   History,
-  LogOut,
   Pencil,
   Play,
   Plus,
@@ -22,6 +21,11 @@ import {
 
 import styles from './projects.module.css';
 import { CreatorModelLibrary } from '../../components/creator-model-library';
+import {
+  PlayerAccount,
+  type PlayerAccountIdentity,
+  type PlayerProfileChanges,
+} from '../../components/player-account/player-account';
 import { playerLoginURL, resolvePlayerServiceIdentity } from '../../server/player-service-client';
 import {
   compatibilityDiagnostics,
@@ -276,6 +280,9 @@ type ProjectsPageProps = {
   creator: {
     displayName: string;
     username: string;
+    userId: string;
+    boxId: string;
+    avatarSkinId: string;
   };
 };
 
@@ -288,7 +295,13 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
   const uiPreview = false;
   let creator: ProjectsPageProps['creator'];
   if (uiPreview) {
-    creator = { displayName: '测试创作者', username: 'creator-preview' };
+    creator = {
+      displayName: '测试创作者',
+      username: 'creator-preview',
+      userId: '10001',
+      boxId: '',
+      avatarSkinId: 'explorer',
+    };
   } else {
     try {
       const { identity } = await resolvePlayerServiceIdentity(
@@ -298,7 +311,13 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
         res as NextApiResponse,
         req.socket.remoteAddress || '',
       );
-      creator = { displayName: identity.displayName, username: identity.username };
+      creator = {
+        displayName: identity.displayName,
+        username: identity.username,
+        userId: identity.userId,
+        boxId: identity.boxId,
+        avatarSkinId: identity.avatarSkinId,
+      };
     } catch {
       return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
     }
@@ -320,8 +339,7 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
   const [filterOpen, setFilterOpen] = useState(false);
   const [menuProject, setMenuProject] = useState<string | null>(null);
-  const [accountOpen, setAccountOpen] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const [creatorIdentity, setCreatorIdentity] = useState<PlayerAccountIdentity>(creator);
   const [dialog, setDialog] = useState<'create' | 'submap' | 'delete' | 'details' | 'publish' | null>(null);
   const [projectName, setProjectName] = useState('');
   const [projectPublicId, setProjectPublicId] = useState('');
@@ -366,26 +384,38 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
   };
 
   const logoutCreator = async () => {
-    setAccountOpen(false);
     if (uiPreview) {
       setNotice('预览模式：已模拟退出登录。');
       return;
     }
-    setLoggingOut(true);
-    try {
-      const response = await fetch('/api/creator-logout', {
-        method: 'POST',
-        credentials: 'same-origin',
-      });
-      if (!response.ok) throw new Error('退出登录失败，请稍后重试');
-      window.location.assign('/projects');
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : '退出登录失败，请稍后重试');
-    } finally {
-      setLoggingOut(false);
-    }
+    const response = await fetch('/api/creator-logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    if (!response.ok) throw new Error('退出登录失败，请稍后重试');
+    window.location.assign('/projects');
   };
-  const creatorName = creator.displayName || creator.username || '已登录用户';
+
+  const saveCreatorProfile = async (changes: PlayerProfileChanges) => {
+    if (uiPreview) {
+      setCreatorIdentity((current) => ({ ...current, ...changes }));
+      setNotice('资料已保存');
+      return;
+    }
+    const response = await fetch('/api/creator-profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || '资料保存失败');
+    setCreatorIdentity((current) => ({
+      ...current,
+      displayName: data.player?.displayName || changes.displayName,
+      avatarSkinId: data.player?.avatarSkinId || changes.avatarSkinId,
+    }));
+    setNotice('资料已保存');
+  };
 
   const switchView = (view: WorkCenterView) => {
     setActiveView(view);
@@ -1181,7 +1211,6 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
       onClick={() => {
         setMenuProject(null)
         setFilterOpen(false)
-        setAccountOpen(false)
       }}
     >
       <header className={styles.header}>
@@ -1190,24 +1219,11 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
           <span>BOX3 Engine</span>
         </a>
         <div className={styles.headerActions} onClick={(event) => event.stopPropagation()}>
-          <div className={styles.accountMenuWrap}>
-            <button
-              type="button"
-              className={styles.accountTrigger}
-              onClick={() => setAccountOpen((open) => !open)}
-              aria-expanded={accountOpen}
-              aria-haspopup="menu"
-            >
-              <span className={styles.accountName}>{creatorName}</span>
-            </button>
-            {accountOpen && (
-              <div className={styles.accountMenu} role="menu">
-                <button type="button" role="menuitem" onClick={() => void logoutCreator()} disabled={loggingOut}>
-                  <LogOut size={15} /> {loggingOut ? '正在退出…' : '退出登录'}
-                </button>
-              </div>
-            )}
-          </div>
+          <PlayerAccount
+            identity={creatorIdentity}
+            onSave={saveCreatorProfile}
+            onLogout={logoutCreator}
+          />
         </div>
       </header>
 
