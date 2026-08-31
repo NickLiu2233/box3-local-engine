@@ -83,12 +83,13 @@ jobs:
         run: |
           # Build one service at a time. This keeps the large game/asset build
           # stages from Creator, Play and Player Service off disk concurrently.
-          for service in player-service player-auth-portal creator play voxa; do
+          for service in player-service player-auth-portal server-manager creator play voxa; do
             docker compose build "$service"
           done
           docker image save \
             "box-local-engine-player-service:${BOX_IMAGE_TAG}" \
             "box-local-engine-player-auth-portal:${BOX_IMAGE_TAG}" \
+            "box-local-engine-server-manager:${BOX_IMAGE_TAG}" \
             "box-local-engine-creator:${BOX_IMAGE_TAG}" \
             "box-local-engine-play:${BOX_IMAGE_TAG}" \
             "box-local-engine-voxa:${BOX_IMAGE_TAG}" \
@@ -265,6 +266,7 @@ jobs:
           docker image save \
             "box-local-engine-player-service:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             "box-local-engine-player-auth-portal:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-server-manager:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             "box-local-engine-play:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             | gzip -1 > "$server_archive"
           node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"

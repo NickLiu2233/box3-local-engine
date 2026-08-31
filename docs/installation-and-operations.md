@@ -50,7 +50,7 @@ Play 镜像时使用 `linux/amd64`；架构不同的镜像不能直接混用。
 
 ### 桌面离线包
 
-正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的五服务 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。无图形 Linux 服务器应下载对应架构的 `BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip`：其中只包含 Play、Player Service、参考登录门户的镜像，以及 `compose.yml`、可编辑 `.env.example` 与启停脚本；Creator 与 VOXA 不在该包中。服主自行复制、填写并保管 `.env`。Release 也保留 `linux/amd64` 与 `linux/arm64` 两份纯镜像归档，供已有 Compose 配置的手动部署使用；选择规则见[构建、分发与 CI](./release-and-distribution.md)。
+正式 Release 面向普通用户提供三个 ZIP：Windows x64、Apple Silicon macOS、Linux x64。每个 ZIP 已包含对应架构的离线 Docker 镜像和图形化部署管理器，不需要另外下载镜像归档。无图形 Linux 服务器应下载对应架构的 `BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip`：其中包含 Play、Player Service、参考登录门户和 Linux Web 管理端镜像，以及 `compose.yml`、可编辑 `.env.example` 与恢复脚本；Creator 与 VOXA 不在该包中。Release 也保留两份纯镜像归档，供已有 Compose 配置的手动部署使用；选择规则见[构建、分发与 CI](./release-and-distribution.md)。
 
 使用者只需：
 
@@ -76,9 +76,11 @@ chmod +x *.sh
 ./install.sh
 ```
 
-首次执行会由 `.env.example` 建立 `.env`，并在有 OpenSSL 时生成密钥。随后服主打开 `.env`，修改地址、端口、PostgreSQL、Redis（可选）和自己的登录门户地址，再执行一次 `./install.sh` 使配置生效。日常操作使用 `./status.sh`、`./logs.sh [play|player-service|player-auth-portal]` 和 `./stop.sh`。
+首次执行会由 `.env.example` 建立权限为 `0600` 的 `.env`，并生成业务密钥和独立 Web 管理令牌。管理端默认只监听服务器 `127.0.0.1:3130`。在本机执行 `ssh -L 3130:127.0.0.1:3130 <用户>@<服务器>` 后访问 `http://127.0.0.1:3130`，用 `.env` 中的 `BOX_SERVER_MANAGER_TOKEN` 登录，即可修改常用配置、查看状态/日志并启停服务。详细说明见 [Linux Web 管理端](./linux-web-manager.md)。
 
-该包的镜像归档与 Compose 配置只含 Play、Player Service 和参考登录门户。Creator、VOXA、内部迁移工具、地图编辑工程和模型库均不在其中；服务器仅运行已发布的地图。不要把生成后的 `.env`、`apps/local-engine/play-worlds` 或 PostgreSQL 备份上传到 Release、仓库或聊天工具。
+`./status.sh`、`./logs.sh [play|player-service|player-auth-portal]` 和 `./stop.sh` 保留为管理端不可用时的恢复入口。
+
+该包的镜像归档与 Compose 配置只含 Play、Player Service、参考登录门户和 Linux Web 管理端。Creator、VOXA、内部迁移工具、地图编辑工程和模型库均不在其中；服务器仅运行已发布的地图。不要把生成后的 `.env`、地图库或 PostgreSQL 备份上传到 Release、仓库或聊天工具，也不要把 3130 直接暴露公网。
 
 无图形服务器模板默认将 Player Service 限制为 `256m` 容器内存、`192 MB` Node 堆，将参考登录门户限制为 `64m`、`48 MB` Node 堆；地图运行时的主要内存预算留给 Play。若服务器已有自建登录门户，可在 `.env` 把 `COMPOSE_PROFILES` 改为 `player-service,play`，不启动参考门户。出现登录服务反复重启或内存不足时，再逐步提高对应的 `*_MEMORY_LIMIT` 和 `*_NODE_HEAP_MB`，不要先压缩 Play 的运行时内存。
 

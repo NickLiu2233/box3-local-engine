@@ -1,5 +1,6 @@
 packages:
   - apps/deployment-manager
+  - apps/server-manager
   - apps/game
   - apps/local-engine
   - apps/voxa

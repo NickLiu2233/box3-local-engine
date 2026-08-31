@@ -4,10 +4,11 @@
 
 ## 先理解两种部署路径
 
-| 路径                  | 配置文件                                        | PostgreSQL                            | Redis              | 适用场景                             |
-| --------------------- | ----------------------------------------------- | ------------------------------------- | ------------------ | ------------------------------------ |
-| 图形化部署管理器      | 启动器应用数据目录中的 `.env` 与 `.runtime.env` | 必填，使用远程实例                    | 可选，使用远程实例 | Windows/macOS/Linux 桌面服主         |
-| 源码 / Docker Compose | 仓库根目录 `.env`                               | Player Service 必需；地图脚本数据可选 | 可选               | 开发者、自管服务器、无图形界面 Linux |
+| 路径                  | 配置文件                                        | PostgreSQL                            | Redis              | 适用场景                     |
+| --------------------- | ----------------------------------------------- | ------------------------------------- | ------------------ | ---------------------------- |
+| 图形化部署管理器      | 启动器应用数据目录中的 `.env` 与 `.runtime.env` | 必填，使用远程实例                    | 可选，使用远程实例 | Windows/macOS/Linux 桌面服主 |
+| Linux Web 管理端      | 服务器包目录的 `.env`                           | Player Service 必需                   | 可选               | 无桌面 Linux 服主            |
+| 源码 / Docker Compose | 仓库根目录 `.env`                               | Player Service 必需；地图脚本数据可选 | 可选               | 开发者、自管服务器           |
 
 桌面启动器不会安装或管理 PostgreSQL、Redis。它在“数据配置”中保存 PostgreSQL 主机、端口、数据库、账号和密码，并在每次启动服务前生成运行时连接串。
 
@@ -40,6 +41,10 @@ docker compose --profile <profile> up -d --force-recreate <service>
 ```
 
 只修改网页地址、端口、CORS 或密钥时无需重新构建镜像；修改源码、Dockerfile 或镜像标签才需要重新构建。
+
+### Linux Web 管理端
+
+无图形服务器包的 `install.sh` 从 `.env.example` 创建 `.env` 并生成 `BOX_SERVER_MANAGER_TOKEN`。Web 管理端只编辑白名单中的常用配置，数据库连接串和 Redis 密码只写不回显；不在表单中的高级变量仍可直接编辑服务器 `.env`。管理端默认只监听 `127.0.0.1:3130`，远程访问方式见 [Linux Web 管理端](./linux-web-manager.md)。
 
 ## 最小安全配置
 
@@ -74,6 +79,7 @@ openssl rand -hex 32
 | Creator        |           3002 | `BOX_CREATOR_PORT`        | 不可以 | 仅本机或可信局域网编辑使用                           |
 | Player Service |           3213 | `BOX_PLAYER_SERVICE_PORT` | 可控   | 玩家后台与认证 API；公网建议经反向代理并限制管理入口 |
 | 参考登录门户   |           3214 | `BOX_AUTH_PORTAL_PORT`    | 可以   | 仅为参考实现；服主可改为自建门户                     |
+| Linux Web 管理 |           3130 | `BOX_SERVER_MANAGER_PORT` | 不可以 | 仅 localhost、SSH 隧道或可信 VPN                     |
 | 内部迁移工具   | 4120（宿主机） | `BOX_MIGRATOR_PORT`       | 否     | 仅仓库维护者使用，不进入用户发行包                   |
 
 ### 本机、局域网与公网
@@ -93,6 +99,20 @@ BOX_PLAYER_LOGIN_URL=https://login.example.com/login
 ```
 
 Creator/VOXA 局域网部署还需要同步配置 `BOX_CREATOR_PUBLIC_URL`、`BOX_VOXA_PUBLIC_URL`、`BOX_VOXA_ALLOWED_ORIGINS`、`BOX_RESOURCE_ALLOWED_ORIGINS`。图形化启动器会自动派生这些变量；手工 Compose 才需要自己维护。
+
+Linux Web 管理端相关变量：
+
+| 变量                              | 默认值                          | 说明                                                    |
+| --------------------------------- | ------------------------------- | ------------------------------------------------------- |
+| `BOX_SERVER_MANAGER_BIND_IP`      | `127.0.0.1`                     | 宿主机绑定地址；不建议改为公网地址                      |
+| `BOX_SERVER_MANAGER_PORT`         | `3130`                          | Web 管理端端口                                          |
+| `BOX_SERVER_MANAGER_TOKEN`        | 无                              | 独立管理令牌，至少 32 字符                              |
+| `BOX_SERVER_MANAGER_ROOT`         | `.`                             | 挂载到管理容器 `/workspace` 的部署目录                  |
+| `BOX_SERVER_MANAGER_COMPOSE_FILE` | `/workspace/docker-compose.yml` | 容器内 Compose 路径；服务器离线包使用 `compose.yml`     |
+| `BOX_SERVER_MANAGER_MEMORY_LIMIT` | `128m`                          | 管理容器内存上限                                        |
+| `BOX_SERVER_MANAGER_NODE_HEAP_MB` | `96`                            | Node.js 堆上限（MiB）                                   |
+| `BOX_SERVER_MANAGER_CPU_LIMIT`    | `0.5`                           | 管理容器 CPU 上限                                       |
+| `BOX_DOCKER_CLI_IMAGE`            | `docker:27.5.1-cli`             | 构建管理镜像时提供 Docker CLI 与 Compose 插件的基础镜像 |
 
 ## 内部迁移工具配置
 

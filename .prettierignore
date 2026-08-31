@@ -26,6 +26,8 @@ apps/voxa/assets/
 **/*.frag
 **/*.vert
 **/*.min.js
+# Vendored browser bundle retained by the standalone reference login portal.
+examples/player-auth-portal/public/app.js
 pnpm-lock.yaml
 
 # Compose files are validated as distributable text templates. Keep their

@@ -92,6 +92,10 @@ const requiredFiles = [
   'apps/local-engine/src/runtime-readiness.js',
   'apps/local-engine/src/runtime-storage-namespace.js',
   'apps/local-engine/src/teleport-room-manager.js',
+  'apps/server-manager/Dockerfile',
+  'apps/server-manager/operations.js',
+  'apps/server-manager/server.js',
+  'apps/server-manager/public/index.html',
   'apps/local-engine/src/stage-runtime-data.js',
   'services/game-server/scripts/dev-launch.js',
   'services/game-server/scripts/check-local-derived-content.ts',
@@ -186,6 +190,8 @@ for (const [name, command] of Object.entries({
   'player-service:up': 'node apps/local-engine/src/deploy.js player-service-up',
   'player-auth-portal': 'node apps/local-engine/src/deploy.js player-auth-portal',
   'player-auth-portal:up': 'node apps/local-engine/src/deploy.js player-auth-portal-up',
+  'server-manager': 'docker compose --profile server-manager build server-manager',
+  'server-manager:up': 'docker compose --profile server-manager up -d --no-build server-manager',
   'voxa': 'node apps/local-engine/src/deploy.js voxa',
   'voxa:image': 'docker compose --profile voxa build voxa',
   'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
@@ -648,7 +654,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,player-service,player-auth-portal,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init,migrator'
+  'postgres,redis,player-service,player-auth-portal,server-manager,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init,migrator'
 ) {
   fail(`${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`)
 }
@@ -659,6 +665,7 @@ const playCompose = getComposeService(composeSource, 'play')
 const playStorageInitCompose = getComposeService(composeSource, 'play-storage-init')
 const playerServiceCompose = getComposeService(composeSource, 'player-service')
 const playerAuthPortalCompose = getComposeService(composeSource, 'player-auth-portal')
+const serverManagerCompose = getComposeService(composeSource, 'server-manager')
 const voxaCompose = getComposeService(composeSource, 'voxa')
 const voxaStorageInitCompose = getComposeService(composeSource, 'voxa-storage-init')
 for (const [name, service] of [
@@ -691,6 +698,46 @@ requirePattern(
   composeFile,
   'independent player auth portal profile',
   /profiles: \[auth-portal\]/,
+)
+for (const [label, pattern] of [
+  ['dedicated profile', /profiles: \[server-manager\]/],
+  ['dedicated Dockerfile', /dockerfile: apps\/server-manager\/Dockerfile/],
+  [
+    'loopback-only default port',
+    /\$\{BOX_SERVER_MANAGER_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_SERVER_MANAGER_PORT:-3130\}:3130/,
+  ],
+  ['independent management token', /BOX_SERVER_MANAGER_TOKEN: \$\{BOX_SERVER_MANAGER_TOKEN:-\}/],
+  ['read-only root filesystem', /read_only: true/],
+  ['no-new-privileges', /no-new-privileges:true/],
+  ['all capabilities dropped', /cap_drop:\s*\n\s*- ALL/],
+  ['Docker socket mount', /\/var\/run\/docker\.sock/],
+]) {
+  requirePattern(serverManagerCompose, composeFile, `server manager ${label}`, pattern)
+}
+for (const [name, service] of [
+  ['postgres', getComposeService(composeSource, 'postgres')],
+  ['redis', getComposeService(composeSource, 'redis')],
+  ['player-service', playerServiceCompose],
+  ['player-auth-portal', playerAuthPortalCompose],
+  ['creator', creatorCompose],
+  ['play', playCompose],
+  ['VOXA', voxaCompose],
+]) {
+  forbidPattern(service, composeFile, `${name} Docker socket mount`, /\/var\/run\/docker\.sock/)
+}
+const serverManagerOperationsFile = 'apps/server-manager/operations.js'
+const serverManagerOperations = readRequired(serverManagerOperationsFile)
+requirePattern(
+  serverManagerOperations,
+  serverManagerOperationsFile,
+  'fixed service allowlist',
+  /const services = \['play', 'player-service', 'player-auth-portal'\]/,
+)
+forbidPattern(
+  serverManagerOperations,
+  serverManagerOperationsFile,
+  'Creator or VOXA management',
+  /['"](?:creator|voxa)['"]/i,
 )
 requirePattern(
   playerAuthPortalCompose,

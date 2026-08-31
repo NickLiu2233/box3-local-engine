@@ -544,6 +544,8 @@ importers:
         specifier: 5.6.3
         version: 5.6.3
 
+  apps/server-manager: {}
+
   apps/voxa:
     dependencies:
       '@babel/plugin-transform-typescript':

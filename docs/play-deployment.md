@@ -11,7 +11,7 @@ Play 提供地图大厅、只读地图运行和多人连接。它只运行 Creat
 | 本仓库开发与调试               | `pnpm play`               | 是               |
 | 维护者手动部署预构建镜像       | `distribution/play/` 模板 | 需要取得镜像归档 |
 
-桌面离线包已经包含 Play、Player Service 和参考登录门户镜像，普通用户不需要另行下载镜像。无图形服务器包只包含这三个游玩服务，不包含 Creator、VOXA 或内部迁移器。
+桌面离线包已经包含 Play、Player Service 和参考登录门户镜像，普通用户不需要另行下载镜像。无图形服务器包还包含 Linux Web 管理端，不包含 Creator、VOXA 或内部迁移器。
 
 ## 源码启动
 
@@ -135,9 +135,9 @@ chmod +x *.sh
 ./logs.sh play
 ```
 
-`install.sh` 会导入包内 Play、Player Service、参考登录门户镜像，并在不存在时从 `.env.example` 创建 `.env`。它不会安装 PostgreSQL/Redis，也不会覆盖已有 `.env`。完成数据库、地址和密钥配置后再次运行 `./install.sh`。
+`install.sh` 会导入包内 Play、Player Service、参考登录门户和 Linux Web 管理镜像，并在不存在时从 `.env.example` 创建 `.env`。它不会安装 PostgreSQL/Redis，也不会覆盖已有 `.env`。默认通过 `127.0.0.1:3130` 提供管理端；远程使用请建立 SSH 隧道，详见 [Linux Web 管理端](./linux-web-manager.md)。
 
-日常操作：
+命令行恢复操作：
 
 ```bash
 ./status.sh

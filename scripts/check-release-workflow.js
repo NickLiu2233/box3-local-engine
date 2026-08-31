@@ -14,6 +14,7 @@ const serverPackageBuilder = fs.readFileSync(
   path.join(root, 'scripts/build-headless-server-package.js'),
   'utf8',
 )
+const { headlessCompose } = require('./build-headless-server-package')
 
 for (const target of ['windows-amd64', 'macos-arm64', 'linux-amd64']) {
   assert.match(workflow, new RegExp(`(?:targets|target).*${target}`))
@@ -22,7 +23,10 @@ for (const excludedTarget of ['windows-arm64', 'macos-amd64', 'linux-arm64']) {
   assert.doesNotMatch(workflow, new RegExp(`target: ${excludedTarget}`))
 }
 
-assert.match(workflow, /for service in player-service player-auth-portal creator play voxa/)
+assert.match(
+  workflow,
+  /for service in player-service player-auth-portal server-manager creator play voxa/,
+)
 assert.match(workflow, /architecture: amd64\s+runner: ubuntu-latest/)
 assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/)
 assert.doesNotMatch(workflow, /docker\/setup-qemu-action/)
@@ -45,16 +49,42 @@ assert.match(workflow, /files:\s*\|[\s\S]*release-files\/\*\.zip[\s\S]*release-f
 assert.match(serverPackageBuilder, /BOX3-Engine-Server-/)
 assert.match(serverPackageBuilder, /function headlessCompose/)
 assert.match(serverPackageBuilder, /player-auth-portal:/)
+assert.match(serverPackageBuilder, /server-manager:/)
 assert.match(serverPackageBuilder, /play-storage-init:/)
 assert.match(serverPackageBuilder, /templateRoot, '\.env\.example'/)
 assert.match(workflow, /box3-engine-play-server-images-/)
 assert.match(workflow, /box-local-engine-player-service:/)
 assert.match(workflow, /box-local-engine-player-auth-portal:/)
 assert.match(workflow, /box-local-engine-play:/)
+assert.match(workflow, /box-local-engine-server-manager:/)
 assert.doesNotMatch(
   workflow.match(/headless-server:[\s\S]*?\n {2}publish:/)?.[0] || '',
   /box-local-engine-(creator|voxa):/,
 )
+
+const headlessComposeSource = headlessCompose()
+for (const requiredService of [
+  'player-service',
+  'player-auth-portal',
+  'server-manager',
+  'play-storage-init',
+  'play',
+]) {
+  assert.match(headlessComposeSource, new RegExp(`^  ${requiredService}:`, 'm'))
+}
+for (const forbiddenService of [
+  'postgres',
+  'redis',
+  'creator',
+  'creator-storage-init',
+  'voxa',
+  'voxa-storage-init',
+  'migrator',
+]) {
+  assert.doesNotMatch(headlessComposeSource, new RegExp(`^  ${forbiddenService}:`, 'm'))
+}
+assert.doesNotMatch(headlessComposeSource, /BOX_CREATOR_PUBLIC_URL|AUTH_DEMO_CREATOR_URL/)
+assert.match(headlessComposeSource, /^volumes:\n {2}box-play-storage:\s*$/m)
 
 // Build outputs are exchanged through Aliyun OSS rather than GitHub Actions
 // artifacts. Keep this contract in sync with release.yml so the workflow check
@@ -80,7 +110,14 @@ assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
 assert.doesNotMatch(workflow, /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['"][^$]/i)
 assert.match(workflow, /release-files\/\*\.zip/)
 assert.match(workflow, /release-files\/\*\.tar\.gz/)
-for (const requiredTemplateFile of ['README.md', 'install.sh', 'status.sh', 'logs.sh', 'stop.sh']) {
+for (const requiredTemplateFile of [
+  'README.md',
+  'install.sh',
+  'status.sh',
+  'logs.sh',
+  'stop.sh',
+  'verify.sh',
+]) {
   assert.ok(
     fs.existsSync(path.join(root, 'distribution/server', requiredTemplateFile)),
     `missing headless server template file: ${requiredTemplateFile}`,

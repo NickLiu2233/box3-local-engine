@@ -18,6 +18,13 @@ module.exports = {
   },
   overrides: [
     {
+      files: ['apps/server-manager/public/**/*.js'],
+      env: {
+        browser: true,
+        node: false,
+      },
+    },
+    {
       // Contains an embedded compatibility bootstrap script. Escapes are part
       // of the generated source text rather than the surrounding JavaScript.
       files: ['apps/local-engine/src/project-manager.js'],

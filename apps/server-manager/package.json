@@ -1,0 +1,10 @@
+{
+  "name": "@box-local/server-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Authenticated browser operations console for headless BOX3 Engine servers",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js"
+  }
+}

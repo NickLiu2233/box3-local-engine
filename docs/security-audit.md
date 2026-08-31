@@ -32,6 +32,7 @@ pnpm audit --prod --audit-level high
 | 玩家会话         | 普通玩家单设备有效；Cookie 为 HttpOnly，公网要求 HTTPS；后台管理员使用独立账号与 Cookie |
 | 服主权限         | 只能用 `BOX_PLAY_ADMIN_TOKEN` 兑换短期服主会话，不能分配给玩家或后台管理员账号          |
 | 管理 API         | 服务端强制认证和权限组检查；前端隐藏按钮不作为授权依据                                  |
+| Linux Web 运维   | 默认仅 localhost + 独立 32 字符令牌；只接受固定 Compose 操作，不接受 shell/任意服务名   |
 | 数据正确性       | PostgreSQL 是账号和持久数据来源；Redis 仅缓存，失效不能改变权限或存档结果               |
 
 客户端脚本可以被浏览器扩展、开发者工具或修改后的客户端干预，因此反作弊不能依靠压缩、混淆、
@@ -40,6 +41,8 @@ pnpm audit --prod --audit-level high
 
 登录 Origin、returnUrl 允许列表、Cookie Domain 与资源 CORS 是服务之间的访问边界；它们与
 地图脚本可访问的目标域名不是同一个概念，不能因为取消平台资源域名白名单而放宽。
+
+Linux Web 管理容器需要挂载 Docker Socket。Docker Socket 本身等同宿主机 root 权限；只读根文件系统、capability drop 和固定命令接口用于缩小应用攻击面，但不能改变这一事实。3130 端口默认只绑定 `127.0.0.1`，远程管理应走 SSH 隧道或可信 VPN，不得直接暴露公网。
 
 ## 已完成的主要升级
 

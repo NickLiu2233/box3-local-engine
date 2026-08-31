@@ -9,7 +9,7 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 | 你的目标                                | 文档                                                     |
 | --------------------------------------- | -------------------------------------------------------- |
 | 使用 Windows、macOS 或 Linux 桌面启动器 | [图形化部署管理器](docs/graphical-deployment-manager.md) |
-| 部署无图形 Linux 游玩服务器             | [安装、部署与运维](docs/installation-and-operations.md)  |
+| 部署无图形 Linux 游玩服务器             | [Linux Web 管理端](docs/linux-web-manager.md)            |
 | 创建、导入、编辑和发布地图              | [地图作品、地图组与发布包](docs/projects.md)             |
 | 配置端口、数据库、容量与安全项          | [配置参考](docs/configuration-reference.md)              |
 | 开发或调试本仓库                        | [开发者与协作手册](docs/developer-guide.md)              |
@@ -18,7 +18,7 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 
 ## 当前组成
 
-桌面离线包包含五个 Linux 容器镜像。下表地址同时是当前启动器模板与仓库 Compose 的默认值；
+桌面启动器管理五个 Linux 业务容器。完整镜像归档还携带仅供无图形 Linux 服务器使用的 Web 管理镜像；下表地址同时是当前启动器模板与仓库 Compose 的默认值；
 服主在启动器中修改端口后，应以启动器“服务总览”显示的地址为准。
 
 | 服务               | 职责                           | 默认地址                 | 网络边界                |
@@ -70,6 +70,8 @@ pnpm verify
 | `pnpm voxa`               | 构建/启动 VOXA 容器                 |
 | `pnpm player-service`     | 构建/启动 Player Service            |
 | `pnpm player-auth-portal` | 构建/启动参考登录门户               |
+| `pnpm server-manager`     | 构建 Linux Web 管理镜像             |
+| `pnpm server-manager:up`  | 启动已构建的 Linux Web 管理端       |
 | `pnpm stop`               | 停止本仓库 Compose 服务，不删除数据 |
 | `pnpm verify`             | 运行格式、lint、类型检查和全部回归  |
 
@@ -94,6 +96,7 @@ BOX_DATABASE_URL=
 | `apps/voxa/`                   | 本地模型、皮肤和动画编辑器                   |
 | `examples/player-auth-portal/` | 独立参考登录门户                             |
 | `apps/deployment-manager/`     | Vite + Tauri 图形化启动器                    |
+| `apps/server-manager/`         | Linux 无桌面服务器浏览器管理端               |
 | `apps/migrator/`               | 内部迁移工具，不进入用户发行包               |
 | `scripts/`                     | 回归、发行、离线包和文档检查                 |
 | `distribution/`                | 许可证、无图形服务器和维护者部署模板         |
@@ -102,15 +105,15 @@ BOX_DATABASE_URL=
 
 ## 发行范围
 
-推送 `v*` Tag 会执行 `pnpm verify`，分别构建 `linux/amd64` 与 `linux/arm64` 的五服务镜像，再生成：
+推送 `v*` Tag 会执行 `pnpm verify`，分别构建 `linux/amd64` 与 `linux/arm64` 的五个业务镜像和 Linux Web 管理镜像，再生成：
 
 - Windows x64 桌面离线 ZIP；
 - Apple Silicon macOS 桌面离线 ZIP；
 - Linux x64 桌面离线 ZIP；
 - Linux amd64 / arm64 无图形游玩服务器 ZIP；
-- Linux amd64 / arm64 五服务镜像归档。
+- Linux amd64 / arm64 完整镜像归档。
 
-无图形服务器包只包含 Play、Player Service 和参考登录门户，不包含 Creator、VOXA 或内部迁移器。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；不需要另行下载镜像归档。
+无图形服务器包包含 Play、Player Service、参考登录门户和 Linux Web 管理端，不包含 Creator、VOXA 或内部迁移器。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；不需要另行下载镜像归档。
 
 ## 许可与安全
 

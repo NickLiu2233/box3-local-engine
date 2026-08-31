@@ -15,6 +15,7 @@ flowchart LR
   Player -. 可选缓存 .-> Redis["Redis"]
   Portal["服主登录门户\n可替换的独立服务"] --> Player
   Manager["apps/deployment-manager\nTauri 启动器"] --> Docker["Docker Compose 与离线镜像"]
+  WebManager["apps/server-manager\nLinux Web 管理端"] --> Docker
   Docker --> Game
   Docker --> Player
   Docker --> Voxa
@@ -22,19 +23,20 @@ flowchart LR
 
 Creator 读取可编辑工程；Play 只读取发布后的只读快照。这条边界不能被“隐藏按钮”替代：Play 不能获得 Creator 的工程写入能力或源目录挂载。
 
-桌面启动器不在上述请求链路中。它只在宿主机侧写配置、导入离线镜像并调用 Docker Compose；业务容器不依赖桌面窗口保持打开。
+桌面启动器不在上述请求链路中。它只在宿主机侧写配置、导入离线镜像并调用 Docker Compose；业务容器不依赖桌面窗口保持打开。无桌面 Linux 服务器可运行独立 Web 管理容器，它只允许管理 Play、Player Service 与登录门户。该容器拥有 Docker Socket 的 root-equivalent 权限，因此默认仅监听回环地址，并使用独立管理令牌与固定操作白名单。
 
 ## 服务职责
 
-| 服务           | 对外职责                                  | 主要源码入口                                                            | 关键约束                                      |
-| -------------- | ----------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| Creator        | 作品中心、地图编辑、预览、发布            | `apps/game/`、`apps/local-engine/src/project-manager.js`                | 只限本机或可信局域网，不可公网暴露            |
-| Play           | 玩家作品中心、运行已发布地图              | `apps/game/`、`apps/local-engine/src/play-library.js`                   | 仅读取发布包，不读取工程源目录                |
-| VOXA           | 模型、皮肤、动画工程编辑                  | `apps/voxa/`                                                            | 项目内资源与全局模型库必须隔离                |
-| Player Service | 玩家身份、角色、封禁、会话和服主管理      | `apps/local-engine/src/launcher.js`、`services/game-server/src/player/` | PostgreSQL 是正确性来源；管理员和服主权限不同 |
-| 登录门户       | 登录/注册网页与服务端代理                 | `examples/player-auth-portal/`                                          | 可由服主自建；API Key 绝不能进入浏览器        |
-| 内部迁移工具   | 将外部工程转为本地可编辑工程              | `apps/migrator/`                                                        | 不进入用户发行包；失败要保留资源缺失上下文    |
-| 部署管理器     | 图形化配置、Docker 控制、备份和离线包导入 | `apps/deployment-manager/`                                              | 服主 `.env` 与自动生成的 `.runtime.env` 分离  |
+| 服务             | 对外职责                                  | 主要源码入口                                                            | 关键约束                                      |
+| ---------------- | ----------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
+| Creator          | 作品中心、地图编辑、预览、发布            | `apps/game/`、`apps/local-engine/src/project-manager.js`                | 只限本机或可信局域网，不可公网暴露            |
+| Play             | 玩家作品中心、运行已发布地图              | `apps/game/`、`apps/local-engine/src/play-library.js`                   | 仅读取发布包，不读取工程源目录                |
+| VOXA             | 模型、皮肤、动画工程编辑                  | `apps/voxa/`                                                            | 项目内资源与全局模型库必须隔离                |
+| Player Service   | 玩家身份、角色、封禁、会话和服主管理      | `apps/local-engine/src/launcher.js`、`services/game-server/src/player/` | PostgreSQL 是正确性来源；管理员和服主权限不同 |
+| 登录门户         | 登录/注册网页与服务端代理                 | `examples/player-auth-portal/`                                          | 可由服主自建；API Key 绝不能进入浏览器        |
+| 内部迁移工具     | 将外部工程转为本地可编辑工程              | `apps/migrator/`                                                        | 不进入用户发行包；失败要保留资源缺失上下文    |
+| 部署管理器       | 图形化配置、Docker 控制、备份和离线包导入 | `apps/deployment-manager/`                                              | 服主 `.env` 与自动生成的 `.runtime.env` 分离  |
+| Linux Web 管理端 | 无桌面服务器状态、日志、配置与启停        | `apps/server-manager/`                                                  | 仅三项游玩服务；默认 localhost；固定命令      |
 
 ## 核心数据模型
 
@@ -98,6 +100,7 @@ VOXA 的新 `.voxaproject` 导出包包含工程文件、模型元数据、模�
 | VOXA 模型与工程包                | `apps/voxa/`、`apps/game/components/creator-model-library.tsx`                | 导出、导入、预览、地图内放置                   |
 | Docker、端口和环境变量           | `docker-compose.yml`、`apps/deployment-manager/src-tauri/src/config.rs`       | `docker compose config --quiet`、配置校验      |
 | 图形化启动器                     | `apps/deployment-manager/src/main.js`、`src/styles.css`、`src-tauri/src/`     | Tauri build、桌面管理器检查、亮/暗主题状态     |
+| Linux Web 管理端                 | `apps/server-manager/`、`distribution/server/`                                | 模块测试、Compose 校验、SSH 隧道访问           |
 | 离线包和 CI                      | `scripts/build-desktop-offline-installer.js`、`.github/workflows/release.yml` | `pnpm verify`、离线包验证                      |
 
 ## 一次请求如何流动

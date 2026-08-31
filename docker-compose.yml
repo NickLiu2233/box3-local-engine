@@ -137,6 +137,50 @@ services:
     ports:
       - "${BOX_BIND_IP:-127.0.0.1}:${BOX_AUTH_PORTAL_PORT:-3214}:3214"
 
+  server-manager:
+    profiles: [server-manager]
+    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
+    image: box-local-engine-server-manager:${BOX_IMAGE_TAG:-0.1.0}
+    build:
+      context: .
+      dockerfile: apps/server-manager/Dockerfile
+      args:
+        NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
+        DOCKER_CLI_IMAGE: ${BOX_DOCKER_CLI_IMAGE:-docker:27.5.1-cli}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.1.0}
+        BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
+        BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
+        BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "0:0"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: ${BOX_SERVER_MANAGER_MEMORY_LIMIT:-128m}
+    cpus: ${BOX_SERVER_MANAGER_CPU_LIMIT:-0.5}
+    pids_limit: 64
+    environment:
+      NODE_OPTIONS: --max-old-space-size=${BOX_SERVER_MANAGER_NODE_HEAP_MB:-96}
+      BOX_SERVER_MANAGER_HOST: 0.0.0.0
+      BOX_SERVER_MANAGER_PORT: 3130
+      BOX_SERVER_MANAGER_TOKEN: ${BOX_SERVER_MANAGER_TOKEN:-}
+      BOX_SERVER_MANAGER_ROOT: /workspace
+      BOX_SERVER_MANAGER_COMPOSE_FILE: ${BOX_SERVER_MANAGER_COMPOSE_FILE:-/workspace/docker-compose.yml}
+      BOX_SERVER_MANAGER_ENV_FILE: /workspace/.env
+    ports:
+      - "${BOX_SERVER_MANAGER_BIND_IP:-127.0.0.1}:${BOX_SERVER_MANAGER_PORT:-3130}:3130"
+    volumes:
+      # Docker access is root-equivalent. The browser never receives the
+      # socket; the manager accepts only fixed Compose operations and defaults
+      # to host loopback with an independent 256-bit management token.
+      - ${BOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - ${BOX_SERVER_MANAGER_ROOT:-.}:/workspace
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
   creator:
     profiles: [creator]
     image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}

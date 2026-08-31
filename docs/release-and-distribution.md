@@ -10,14 +10,14 @@
 
 每个桌面离线包由下列内容构成：
 
-| 内容                                      | 用途                                                    |
-| ----------------------------------------- | ------------------------------------------------------- |
-| Windows `.exe` 或 macOS `.app`            | 图形化部署管理器本体                                    |
-| 五服务 Docker 镜像归档                    | Creator、Play、VOXA、Player Service、Player Auth Portal |
-| `BOX-OFFLINE-IMAGE.json`                  | 镜像归档名称、镜像标签、Linux 架构和 SHA-256            |
-| `BUILD-INFO.json`                         | 版本、源提交、构建时间和构建来源                        |
-| `LICENSE.txt`、`THIRD-PARTY-NOTICES.json` | 许可证与第三方依赖说明                                  |
-| `SHA256SUMS`                              | 包内文件校验清单                                        |
+| 内容                                      | 用途                                         |
+| ----------------------------------------- | -------------------------------------------- |
+| Windows `.exe` 或 macOS `.app`            | 图形化部署管理器本体                         |
+| 完整 Docker 镜像归档                      | 五个业务镜像与 Linux Web 管理镜像            |
+| `BOX-OFFLINE-IMAGE.json`                  | 镜像归档名称、镜像标签、Linux 架构和 SHA-256 |
+| `BUILD-INFO.json`                         | 版本、源提交、构建时间和构建来源             |
+| `LICENSE.txt`、`THIRD-PARTY-NOTICES.json` | 许可证与第三方依赖说明                       |
+| `SHA256SUMS`                              | 包内文件校验清单                             |
 
 Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于同一目录。macOS 解压目录只包含 `.app`；镜像归档、清单、许可证、构建信息与校验文件均在 Tauri 签名前嵌入 APP 的 Resources 目录，因此可把 APP 单独移入“应用程序”目录，不能在构建后再向 APP 内复制文件。
 
@@ -29,11 +29,11 @@ Windows 包要求 `.exe`、镜像归档和 `BOX-OFFLINE-IMAGE.json` 始终处于
 | `macos-arm64`   | Apple Silicon macOS | `linux/arm64`   |
 | `linux-amd64`   | Linux x64           | `linux/amd64`   |
 
-业务服务始终以 Linux 容器运行，桌面系统不改变 Docker 镜像。因此一次发行只生成两份五服务镜像归档：`linux/amd64` 和 `linux/arm64`。三个桌面启动器各自携带对应 CPU 架构的那一份归档；不会为 Windows、macOS、Linux 重复构建相同镜像。两份 `.tar.gz` 也会单独作为 GitHub Release 附件上传，供镜像版本管理或手动 Compose 部署使用。
+业务服务始终以 Linux 容器运行，桌面系统不改变 Docker 镜像。因此一次发行只生成两份完整镜像归档：`linux/amd64` 和 `linux/arm64`。归档包含五个业务镜像和 Linux Web 管理镜像；桌面启动器仍只管理五个业务服务，额外镜像供同版本无图形服务器包复用。三个桌面启动器各自携带对应 CPU 架构的归档，不会按桌面系统重复构建。
 
 Windows ARM、Intel macOS、Linux ARM64 并非当前默认发行目标。如确有需要，维护者仍可在对应原生设备上用 `pnpm build:desktop-installer` 手动构建，不应把这些实验性包混入普通用户下载列表。
 
-无图形界面的 Linux 服务器不依赖桌面 GUI。Release 同时提供 `BOX3-Engine-Server-<版本>-linux-amd64.zip` 与 `...-linux-arm64.zip`：每包只包含 Play、Player Service 和参考登录门户镜像，以及 `compose.yml`、可编辑的 `.env.example` 和启停/日志脚本；不含 Creator 或 VOXA。服主解压后复制并配置 `.env` 即可部署；模板包不含任何真实密钥或用户数据。Linux 桌面包则用于需要图形化部署管理器的 Linux 工作站。
+无图形界面的 Linux 服务器不依赖桌面 GUI。Release 同时提供两个架构的服务器 ZIP：每包包含 Play、Player Service、参考登录门户和 Linux Web 管理镜像，以及 `compose.yml`、`.env.example` 和恢复脚本；不含 Creator 或 VOXA。服主通过 SSH 隧道在浏览器管理，Linux 桌面包则继续用于需要本地 Tauri GUI 的工作站。
 
 ## 2. 构建前条件
 
@@ -57,7 +57,7 @@ pnpm verify
 
 ## 3. 构建顺序
 
-### 3.1 先生成同版本、同架构的五服务镜像归档
+### 3.1 先生成同版本、同架构的完整镜像归档
 
 离线安装器不自行构建镜像；它只把已验证的镜像归档封装进桌面包。镜像归档按 **Linux CPU 架构** 生成，而不是按桌面操作系统重复生成：
 
@@ -65,7 +65,7 @@ pnpm verify
 box-local-engine-images-<版本>-linux-<amd64|arm64>.tar.gz
 ```
 
-归档内必须包含且仅使用同一个镜像标签的五个应用镜像：
+归档内必须包含且仅使用同一个镜像标签的六个应用镜像：
 
 ```text
 box-local-engine-creator:<标签>
@@ -73,28 +73,30 @@ box-local-engine-play:<标签>
 box-local-engine-voxa:<标签>
 box-local-engine-player-service:<标签>
 box-local-engine-player-auth-portal:<标签>
+box-local-engine-server-manager:<标签>
 ```
 
-镜像标签必须与归档内五项服务一致，例如 `v0.1.0-linux-arm64`。离线归档名称、归档内五项镜像 tag、`BOX-OFFLINE-IMAGE.json` 的 `imageTag`、以及启动器编译时的 `BOX_MANAGER_IMAGE_TAG` 必须完全一致。启动器会读取归档内的真实镜像标签；Windows on ARM、macOS Apple Silicon 和 Linux ARM64 都可以使用同一份 `linux-arm64` 业务镜像归档。不要把 PostgreSQL、Redis、开发镜像、数据库数据卷、`.env`、密钥或任何用户地图打进归档。
+镜像标签必须与归档内六项服务一致，例如 `v0.1.0-linux-arm64`。离线归档名称、归档内镜像 tag、`BOX-OFFLINE-IMAGE.json` 的 `imageTag`、以及启动器编译时的 `BOX_MANAGER_IMAGE_TAG` 必须完全一致。不要把 PostgreSQL、Redis、开发镜像、数据库数据卷、`.env`、密钥或任何用户地图打进归档。
 
-构建归档后，应在干净 Docker 环境中执行 `docker load -i`，并确认五个镜像均能被 `docker image inspect` 找到、架构为目标 `linux/amd64` 或 `linux/arm64`。
+构建归档后，应在干净 Docker 环境中执行 `docker load -i`，并确认六个镜像均能被 `docker image inspect` 找到、架构为目标 `linux/amd64` 或 `linux/arm64`。
 
 ### 3.2 构建桌面离线包
 
 在**对应原生构建机**执行：
 
 ```bash
-pnpm build:desktop-installer <目标> <五服务镜像归档.tar.gz>
+pnpm build:desktop-installer <目标> <完整镜像归档.tar.gz>
 ```
 
 ### 3.3 构建无图形 Linux 游玩服务器包
 
-服务器包不是桌面 ZIP 的替代品，也不包含完整五服务归档。它从同架构完整归档中仅提取以下三个镜像：
+服务器包不是桌面 ZIP 的替代品。它从同架构完整归档中仅提取以下四个镜像：
 
 ```text
 box-local-engine-play:<标签>
 box-local-engine-player-service:<标签>
 box-local-engine-player-auth-portal:<标签>
+box-local-engine-server-manager:<标签>
 ```
 
 再与游玩专用 `compose.yml`、`.env.example`、`install.sh`、`status.sh`、`logs.sh`、`stop.sh` 一起压缩成：
@@ -103,7 +105,7 @@ box-local-engine-player-auth-portal:<标签>
 BOX3-Engine-Server-<版本>-linux-<amd64|arm64>.zip
 ```
 
-包内没有 Creator、VOXA、内部迁移工具、真实 `.env`、数据库密码、服主密钥、地图、模型、备份或玩家数据。服主在目标服务器首次执行 `./install.sh` 后，复制并编辑自己的 `.env`。CI 会在 Linux Runner 上先导入完整归档，再保存这三个游玩服务的独立归档，避免把创作工具带入服务器包。
+包内没有 Creator、VOXA、内部迁移工具、真实 `.env`、数据库密码、服主密钥、地图、模型、备份或玩家数据。服主首次执行 `./install.sh` 后，通过仅监听 localhost 的 Web 管理端操作。CI 会保存这四个服务器镜像的独立归档，避免把创作工具带入服务器包。
 
 示例：
 
@@ -185,7 +187,7 @@ git tag -a v0.1.0 -m "BOX3 Engine v0.1.0"
 git push origin v0.1.0
 ```
 
-工作流先在原生 Linux x64 与 Linux ARM64 Runner 上各构建一次五项服务镜像；每项架构只生成一份对应的完整离线归档。每个服务按顺序构建，归档后清理 BuildKit 中间层，避免导出大镜像时耗尽 Docker 磁盘。随后对应原生 Runner 使用匹配 CPU 架构的完整归档构建 Windows、macOS 和 Linux 桌面包；无图形服务器 job 则从完整归档抽出 Play、Player Service、参考登录门户，生成游玩专用服务器包。安装器从归档读取实际 Docker tag，并在构建前验证文件存在。该契约由 `scripts/check-release-workflow.js` 保护。
+工作流先在原生 Linux x64 与 Linux ARM64 Runner 上各构建五个业务镜像与 Linux Web 管理镜像；每项架构只生成一份完整离线归档。每个服务按顺序构建，归档后清理 BuildKit 中间层，避免导出大镜像时耗尽 Docker 磁盘。随后对应原生 Runner 使用匹配 CPU 架构的完整归档构建 Windows、macOS 和 Linux 桌面包；无图形服务器 job 则从完整归档抽出四个服务器镜像。该契约由 `scripts/check-release-workflow.js` 保护。
 
 构建归档和安装包会缓存到阿里云 OSS 的 `box-local-engine/<tag>/<commit-sha>/` 目录。重跑同一提交时会直接复用缓存；提交 SHA 不同则不会误用旧的本地或其他提交产物。
 
@@ -198,9 +200,9 @@ git push origin v0.1.0
 ```text
 vX.Y.Z tag
   → pnpm verify
-  → 原生 Linux x64 / ARM64 Runner 分别顺序构建五服务镜像，并生成两个 CPU 架构完整归档
+  → 原生 Linux x64 / ARM64 Runner 分别顺序构建五个业务镜像和 Web 管理镜像，并生成完整归档
   → 各原生 Runner 构建三个桌面 ZIP
-  → 从每份完整归档抽出 Play、Player Service、参考登录门户，构建两个无图形 Linux 游玩服务器 ZIP
+  → 从每份完整归档抽出 Play、Player Service、参考登录门户和 Web 管理端，构建服务器 ZIP
   → verify-desktop-offline-package
   → GitHub Release 上传桌面 ZIP、游玩服务器 ZIP 与两份完整 Linux 镜像归档
 ```
@@ -225,9 +227,9 @@ box-local-engine-images-<版本>-linux-arm64.tar.gz
 
 普通用户只需按系统下载一个 ZIP：Windows 下载 `windows-amd64.zip`，搭载 Apple 芯片的 Mac 下载 `macos-arm64.zip`，x64 Linux 下载 `linux-amd64.zip`。每个桌面 ZIP 已包含相应镜像归档，无需再下载 `.tar.gz`。
 
-无图形 Linux 服务器优先下载对应架构的 `BOX3-Engine-Server` ZIP。它把 Play、Player Service、参考登录门户的镜像归档、`compose.yml`、可编辑 `.env.example` 和 `install.sh` 放在同一目录；不包含 Creator 或 VOXA。执行 `chmod +x *.sh && ./install.sh` 后再按需要编辑 `.env`，即可用 `./status.sh`、`./logs.sh` 和 `./stop.sh` 运维。`.env` 由服主创建和保管，Release 不含真实 `.env`、密码、密钥或任何用户数据。
+无图形 Linux 服务器优先下载对应架构的 `BOX3-Engine-Server` ZIP。它包含 Play、Player Service、参考登录门户、Web 管理端、Compose 模板和恢复脚本；不包含 Creator 或 VOXA。执行 `chmod +x *.sh && ./install.sh` 后，通过 SSH 隧道访问 `127.0.0.1:3130`。`.env` 由服主创建和保管，Release 不含真实密码、密钥或用户数据。
 
-单独的 `.tar.gz` 仍供手动 Docker/Compose 部署者使用：x64 Linux、Windows x64 Docker Desktop 与 Intel Mac 选择 `linux-amd64`；Apple Silicon Mac 和 ARM Linux 选择 `linux-arm64`。它们只包含五项 BOX 服务镜像，不包含启动器、PostgreSQL、Redis、配置或用户数据。导入方式为 `docker load -i <归档文件>`；之后使用服务器部署包中的 Compose 模板或仓库 Compose 配置启动服务。
+单独的 `.tar.gz` 仍供手动 Docker/Compose 部署者使用：x64 Linux、Windows x64 Docker Desktop 与 Intel Mac 选择 `linux-amd64`；Apple Silicon Mac 和 ARM Linux 选择 `linux-arm64`。它们包含五个业务镜像和 Linux Web 管理镜像，不包含启动器、PostgreSQL、Redis、配置或用户数据。导入方式为 `docker load -i <归档文件>`。
 
 Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docker 前置条件、升级注意事项、已知限制、下载文件的 SHA-256、是否已签名，以及 Creator/VOXA 不支持公网暴露的安全边界。
 
@@ -237,8 +239,8 @@ Release 说明中应写明：版本号、提交号、支持的系统/CPU、Docke
 
 - [ ] 工作区干净，Tag 指向已审查的提交。
 - [ ] `pnpm verify` 通过。
-- [ ] 每种 CPU 架构的五服务镜像都通过导入与 inspect。
-- [ ] 每种 CPU 架构的无图形服务器包只包含 Play、Player Service 和参考登录门户，且 `.env.example` 不含 Creator / VOXA 配置。
+- [ ] 每种 CPU 架构的六个发行镜像都通过导入与 inspect。
+- [ ] 每种 CPU 架构的无图形服务器包只包含 Play、Player Service、参考登录门户和 Web 管理端，且 `.env.example` 不含 Creator / VOXA 配置。
 - [ ] 每个 ZIP 通过 `verify-desktop-offline-package.js`。
 - [ ] 若为公开正式发行：Windows Authenticode 与 macOS Developer ID/notarization 已完成。
 - [ ] SHA-256 已发布且从下载后的文件重新计算过。
