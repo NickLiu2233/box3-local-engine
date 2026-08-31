@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import type { FormEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useIntl } from 'react-intl';
 
 import { builtInSkinOptions } from './built-in-skins';
 import styles from './player-account.module.css';
@@ -29,6 +30,8 @@ export type PlayerProfileDialogProps = {
 
 /** Shared profile form for the work center and in-game menu. */
 export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfileDialogProps) {
+  const intl = useIntl();
+  const t = (id: string) => intl.formatMessage({ id });
   const [displayName, setDisplayName] = useState(identity.displayName);
   const [skinId, setSkinId] = useState(identity.avatarSkinId || 'explorer');
   const [saving, setSaving] = useState(false);
@@ -49,7 +52,7 @@ export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfile
     event.preventDefault();
     const nextDisplayName = displayName.trim();
     if (!nextDisplayName) {
-      setError('请输入昵称');
+      setError(t('playerProfile.nameRequired'));
       return;
     }
     setSaving(true);
@@ -58,7 +61,7 @@ export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfile
       await onSave({ displayName: nextDisplayName, avatarSkinId: skinId });
       onClose();
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : '资料保存失败');
+      setError(saveError instanceof Error ? saveError.message : t('playerProfile.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -70,13 +73,13 @@ export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfile
       <form className={styles.dialog} onSubmit={saveProfile} onMouseDown={stopPropagation}>
         <header className={styles.dialogHeading}>
           <div>
-            <h2>编辑资料</h2>
-            <p>修改昵称和进入地图时使用的角色</p>
+            <h2>{t('playerProfile.title')}</h2>
+            <p>{t('playerProfile.description')}</p>
           </div>
           <button
             className={styles.close}
             type="button"
-            aria-label="关闭编辑资料"
+            aria-label={t('playerProfile.close')}
             disabled={saving}
             onClick={close}
           >
@@ -85,12 +88,12 @@ export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfile
         </header>
         <div className={styles.content}>
           <label className={styles.field}>
-            <span>用户名</span>
+            <span>{t('playerProfile.username')}</span>
             <input value={identity.username} disabled readOnly />
-            <small>用户名用于登录，不可修改</small>
+            <small>{t('playerProfile.usernameHint')}</small>
           </label>
           <label className={styles.field} htmlFor="player-profile-name">
-            <span>昵称</span>
+            <span>{t('playerProfile.displayName')}</span>
             <input
               id="player-profile-name"
               autoFocus
@@ -100,7 +103,7 @@ export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfile
             />
           </label>
           <fieldset className={styles.skinField}>
-            <legend>游戏角色</legend>
+            <legend>{t('playerProfile.character')}</legend>
             <div className={styles.skinOptions}>
               {builtInSkinOptions.map((skin) => (
                 <button
@@ -120,10 +123,10 @@ export function PlayerProfileDialog({ identity, onSave, onClose }: PlayerProfile
         </div>
         <footer className={styles.actions}>
           <button className={styles.secondaryButton} type="button" disabled={saving} onClick={close}>
-            取消
+            {t('cancel')}
           </button>
           <button className={styles.primaryButton} type="submit" disabled={saving || !displayName.trim()}>
-            {saving ? '保存中…' : '保存资料'}
+            {saving ? t('playerProfile.saving') : t('playerProfile.save')}
           </button>
         </footer>
       </form>

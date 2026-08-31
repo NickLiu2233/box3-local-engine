@@ -3,6 +3,8 @@ import Head from 'next/head'
 import Link from 'next/link'
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { IntlProvider, useIntl } from 'react-intl'
+import zhMessages from '../i18n/zh.json'
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -121,9 +123,9 @@ type PlayBundleReview = {
 }
 
 const reviewCategories = [
-  { kind: 'script', label: '代码', icon: FileCode2 },
-  { kind: 'image', label: '图片', icon: ImageIcon },
-  { kind: 'audio', label: '音频', icon: Music2 },
+  { kind: 'script', label: 'playHome.reviewCode', icon: FileCode2 },
+  { kind: 'image', label: 'playHome.reviewImages', icon: ImageIcon },
+  { kind: 'audio', label: 'playHome.reviewAudio', icon: Music2 },
 ] as const
 
 type ReviewCategory = (typeof reviewCategories)[number]['kind']
@@ -152,19 +154,32 @@ function formatImportedAt(value: string) {
   }).format(date)
 }
 
-export default function HomePage({
-  worlds,
-  adminEnabled,
-  adminToolsVisible,
-  uiPreview,
-  mapStats,
-}: {
+type HomePageProps = {
   worlds: PlayWorld[]
   adminEnabled: boolean
   adminToolsVisible: boolean
   uiPreview: boolean
   mapStats: Record<string, MapDiscoveryStats>
-}) {
+}
+
+export default function HomePage(props: HomePageProps) {
+  return (
+    <IntlProvider locale="zh-CN" messages={zhMessages}>
+      <HomePageContent {...props} />
+    </IntlProvider>
+  )
+}
+
+function HomePageContent({
+  worlds,
+  adminEnabled,
+  adminToolsVisible,
+  uiPreview,
+  mapStats,
+}: HomePageProps) {
+  const intl = useIntl()
+  const t = (id: string, values?: Record<string, string | number>) =>
+    intl.formatMessage({ id }, values)
   const importInput = useRef<HTMLInputElement>(null)
   const [worldList, setWorldList] = useState(worlds)
   const [liveMapStats, setLiveMapStats] = useState(mapStats)
@@ -928,7 +943,7 @@ export default function HomePage({
 
         <div className="header">
           <div className="title">
-            <h1>地图</h1>
+            <h1>{t('playHome.maps')}</h1>
             <span>
               {verified
                 ? `${worldGroups.length} 个地图组 · ${worldList.length} 张地图`
@@ -945,17 +960,17 @@ export default function HomePage({
                     onClick={() => importInput.current?.click()}
                   >
                     <Upload size={16} />
-                    {busy === 'import' ? '导入中…' : '导入地图组游玩包'}
+                    {busy === 'import' ? t('playHome.importing') : t('playHome.importBundle')}
                   </button>
                   <button className="button" onClick={exitAdmin}>
                     <LogOut size={16} />
-                    退出管理
+                    {t('playHome.exitManagement')}
                   </button>
                 </>
               ) : (
                 <button className="button" onClick={openAdminTools}>
                   <Settings size={16} />
-                  服主管理
+                  {t('playHome.ownerManagement')}
                 </button>
               )
             ) : null}
@@ -979,19 +994,19 @@ export default function HomePage({
               className={collectionView === 'all' ? 'active' : ''}
               onClick={() => setCollectionView('all')}
             >
-              全部
+              {t('playHome.all')}
             </button>
             <button
               className={collectionView === 'recent' ? 'active' : ''}
               onClick={() => setCollectionView('recent')}
             >
-              最近游玩
+              {t('playHome.recent')}
             </button>
             <button
               className={collectionView === 'favorites' ? 'active' : ''}
               onClick={() => setCollectionView('favorites')}
             >
-              收藏
+              {t('playHome.favorites')}
             </button>
           </nav>
         ) : null}
@@ -1005,11 +1020,11 @@ export default function HomePage({
 
         {worldList.length && !verified ? (
           playerGroups.length ? (
-            <div className="playerGrid" aria-label="地图列表">
+            <div className="playerGrid" aria-label={t('playHome.mapList')}>
               {libraryGroups.map(({ groupId, main }) => (
                 <article className="card" key={groupId}>
-                  {libraryEnabled ? <button className="favoriteButton" aria-label="收藏作品" onClick={() => toggleFavorite(main.publicId)}>{favoriteIds.has(main.publicId) ? '★' : '☆'}</button> : null}
-                  {!isPlayEnabled(main) ? <span className="mapClosed">暂时关闭</span> : null}
+                  {libraryEnabled ? <button className="favoriteButton" aria-label={t('playHome.favoriteMap')} onClick={() => toggleFavorite(main.publicId)}>{favoriteIds.has(main.publicId) ? '★' : '☆'}</button> : null}
+                  {!isPlayEnabled(main) ? <span className="mapClosed">{t('playHome.temporarilyClosed')}</span> : null}
                   <Link className="cardLink" href={`/p/${encodeURIComponent(main.publicId)}`} onClick={(event) => {
                     if (!isPlayEnabled(main)) {
                       event.preventDefault()
@@ -1017,14 +1032,14 @@ export default function HomePage({
                     }
                     recordRecent(main.publicId)
                   }}>
-                    <div className="cover">{main.cover ? <img src={main.cover} alt="" /> : <span>{main.name.slice(0, 1)}</span>}{liveMapStats[main.publicId] ? <span className="mapOnline">{liveMapStats[main.publicId].onlineCount} 人在线</span> : null}</div>
-                    <div className="info"><strong>{main.name}</strong><small>{main.author || '未署名'} · {main.version}</small>{main.description ? <p>{main.description}</p> : null}<span className="playCta">开始游玩 <ArrowUpRight size={15} aria-hidden="true" /></span></div>
+                    <div className="cover">{main.cover ? <img src={main.cover} alt="" /> : <span>{main.name.slice(0, 1)}</span>}{liveMapStats[main.publicId] ? <span className="mapOnline">{t('playHome.onlineCount', { count: liveMapStats[main.publicId].onlineCount })}</span> : null}</div>
+                    <div className="info"><strong>{main.name}</strong><small>{main.author || t('playHome.unnamed')} · {main.version}</small>{main.description ? <p>{main.description}</p> : null}<span className="playCta">{t('playHome.playNow')} <ArrowUpRight size={15} aria-hidden="true" /></span></div>
                   </Link>
                 </article>
               ))}
             </div>
           ) : (
-            <div className="empty"><strong>没有符合条件的地图</strong><small>试试切换到“全部”或“最近游玩”。</small></div>
+            <div className="empty"><strong>{t('playHome.noMatchingMaps')}</strong><small>{t('playHome.noMatchingMapsHint')}</small></div>
           )
         ) : worldList.length ? (
           <div className="groups">
@@ -1387,7 +1402,7 @@ export default function HomePage({
                         onClick={() => selectReviewScope(reviewWorldId, kind)}
                       >
                         <Icon size={14} aria-hidden="true" />
-                        {label}<span>{count}</span>
+                        {t(label)}<span>{count}</span>
                       </button>
                     )
                   })}
