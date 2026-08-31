@@ -112,6 +112,15 @@ function configuredVoxaPort() {
   return process.env.BOX_VOXA_PORT || readDotEnvValue('BOX_VOXA_PORT') || '3001'
 }
 
+// The map library is deployment data, not network configuration. Resolve the
+// same .env value for both `pnpm play` and direct Docker Compose usage so a
+// port change can never select a different set of imported maps.
+function configuredPlayLibraryDir() {
+  const configured = process.env.BOX_PLAY_LIBRARY_DIR || readDotEnvValue('BOX_PLAY_LIBRARY_DIR')
+  const directory = configured || path.join(packageRoot, 'play-worlds')
+  return path.isAbsolute(directory) ? directory : path.resolve(repoRoot, directory)
+}
+
 function dockerEnvironment(extra = {}) {
   const config = getPlayImageConfig()
   return {
@@ -119,7 +128,7 @@ function dockerEnvironment(extra = {}) {
     ...automaticBuildMetadata,
     BOX_IMAGE_TAG: config.tag,
     BOX_PLAY_PLATFORM: config.platform,
-    BOX_PLAY_LIBRARY_DIR: process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
+    BOX_PLAY_LIBRARY_DIR: configuredPlayLibraryDir(),
     ...extra,
   }
 }
@@ -250,9 +259,7 @@ function deployPlay({ build }) {
   if (commandArgs.length) throw new Error(`pnpm ${build ? 'play' : 'play:up'} 不接受作品参数`)
   assertRuntimeConfiguration('play')
   assertPlayerServiceHealthy()
-  const libraryRoot = path.resolve(
-    process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
-  )
+  const libraryRoot = configuredPlayLibraryDir()
   fs.mkdirSync(libraryRoot, { recursive: true })
   const playImage = build
     ? ensurePlayImageArchive({

@@ -57,13 +57,19 @@ function getPlayImageConfig() {
   }
 }
 
+function configuredPlayLibraryDir() {
+  const configured = process.env.BOX_PLAY_LIBRARY_DIR || readDotEnvValue('BOX_PLAY_LIBRARY_DIR')
+  const directory = configured || path.join(packageRoot, 'play-worlds')
+  return path.isAbsolute(directory) ? directory : path.resolve(repoRoot, directory)
+}
+
 function dockerEnvironment(config, extra = {}) {
   return {
     ...process.env,
     BOX_IMAGE_TAG: config.tag,
     BOX_PLAY_PLATFORM: config.platform,
     // Compose parses the play volume even for image-only build commands.
-    BOX_PLAY_LIBRARY_DIR: process.env.BOX_PLAY_LIBRARY_DIR || path.join(packageRoot, 'play-worlds'),
+    BOX_PLAY_LIBRARY_DIR: configuredPlayLibraryDir(),
     ...extra,
   }
 }
