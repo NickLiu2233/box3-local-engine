@@ -1486,5 +1486,8 @@
   "playHome.noMatchingMapsHint": "Try switching to All or Recent.",
   "playHome.reviewCode": "Code",
   "playHome.reviewImages": "Images",
-  "playHome.reviewAudio": "Audio"
+  "playHome.reviewAudio": "Audio",
+  "playHome.engineDeveloper": "Engine developed by ",
+  "playHome.engineDeveloperName": "Shenzhen Qimeng Island Technology Co., Ltd.",
+  "playHome.disclaimer": "Local servers are independently operated by their owners, who are responsible for map content, user conduct, and data management."
 }

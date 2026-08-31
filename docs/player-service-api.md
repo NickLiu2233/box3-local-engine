@@ -1,187 +1,176 @@
-# Player Service 对外 API
+# Player Service API
 
-Player Service 是账号、权限和会话的权威后端。它提供认证 API 与玩家管理后台（`/players`），但
-不要求服主采用某一种登录页面。完整离线包会额外携带 `player-auth-portal` 参考门户，便于快速
-测试；服主也可以用任意技术栈替换它。
+默认地址是 `http://127.0.0.1:3213`。响应为 JSON；错误格式为：
 
-仓库提供了一个可独立运行、也会打进参考门户镜像的服务端代理示例：
-[独立玩家登录门户](../examples/player-auth-portal/README.md)。它可以直接运行或作为独立镜像部署，也可以作为服主
-自有登录程序的最小参考实现。
-
-## 部署与跳转
-
-```env
-BOX_PLAYER_SERVICE_PUBLIC_URL=https://player.example.com
-BOX_CREATOR_PUBLIC_URL=https://creator.example.com
-BOX_PLAY_PUBLIC_URL=https://play.example.com
-BOX_PLAYER_LOGIN_URL=https://www.example.com/login
-BOX_PLAYER_AUTH_API_KEY=使用随机生成的至少16位服务端密钥
-BOX_PLAYER_AUTH_ALLOWED_ORIGINS=https://www.example.com
-BOX_PLAYER_COOKIE_DOMAIN=.example.com
+```json
+{ "message": "错误说明" }
 ```
 
-配置 `BOX_PLAYER_LOGIN_URL` 后，未登录访问 Creator 或 Play 时系统会跳转到该地址，并追加：
+外部认证接口必须带服务端请求头 `x-box-player-auth-key: <BOX_PLAYER_AUTH_API_KEY>`。密钥不能进入浏览器；登录门户应在服务端代理请求。接口只接受已配置 Origin，并用 `HttpOnly` Cookie 保存会话。
 
-- `source=creator|play`：访问来源；
-- `returnUrl=<url>`：登录完成后的返回地址，只会是对应 Creator/Play 公网地址的同源 URL。
+## 玩家认证
 
-登录页读取 `returnUrl`，认证成功后使用 `location.assign(returnUrl)` 返回。不要自行接受其他
-回跳地址。认证接口不是浏览器直连接口：登录页必须调用服主自己的登录后端，由登录后端附加
-`X-Box-Player-Auth-Key` 请求头。这个 Key 只配置在 Player Service 和服主登录后端的 `.env`
-中，不能出现在 HTML、JavaScript、移动端包或公开仓库里。建议通过
-`openssl rand -hex 32` 生成，并由秘密管理系统分发。
+### `POST /api/player-auth/register`
 
-`BOX_PLAYER_AUTH_ALLOWED_ORIGINS` 是额外的 Origin 限制，不代替 API Key。多个 Origin 使用
-英文逗号分隔，不支持 `*`。纯服务端请求通常没有 Origin 请求头。
+创建玩家并写入会话。请求：
 
-浏览器不能在完全不同的站点间共享本服务的登录 Cookie。生产环境推荐把登录页、Creator、
-Play 和 Player Service 部署到同一主域名的 HTTPS 子域，并设置共同的
-`BOX_PLAYER_COOKIE_DOMAIN`。管理令牌绝不能放进玩家登录前端。
-
-## 玩家认证 API
-
-所有响应均为 JSON，且禁用缓存。以下示例中的 `PLAYER_SERVICE` 是 Player Service 内网或
-公网地址。四个接口全部要求登录后端携带：
-
-```http
-X-Box-Player-Auth-Key: <BOX_PLAYER_AUTH_API_KEY>
+```json
+{ "username": "player_01", "displayName": "玩家一号", "password": "至少10位密码" }
 ```
 
-### 注册
-
-`POST /api/player-auth/register`
+用户名以字母开头，只能含字母、数字、下划线，长度 3–32；昵称 1–32；密码 10–128。成功返回 `201`：
 
 ```json
 {
-  "username": "player_001",
-  "displayName": "玩家一号",
-  "password": "至少十位密码"
+  "player": {
+    "subjectId": "32位身份ID",
+    "userId": "用户ID",
+    "username": "player_01",
+    "displayName": "玩家一号",
+    "avatarSkinId": "explorer",
+    "role": "player",
+    "status": "active"
+  }
 }
 ```
 
-成功返回 HTTP 201 和 `{ "player": Player }`，并写入 Session Cookie。服主可通过
-`BOX_PLAYER_REGISTRATION_ENABLED=false` 关闭自助注册；后台新增用户不受此开关影响。
+失败：`400` 参数或用户名冲突，`403` 注册关闭或 IP/设备封禁，`429` 注册限流。
 
-### 登录
+### `POST /api/player-auth/login`
 
-`POST /api/player-auth/login`
+请求：
 
 ```json
-{ "username": "player_001", "password": "至少十位密码" }
+{ "username": "player_01", "password": "至少10位密码" }
 ```
 
-成功返回 HTTP 200 和 `{ "player": Player }`，并写入 Session Cookie。失败返回 401；超过
-按 IP 配置的失败次数后返回 429 和 `Retry-After`。
+成功返回 `200` 和同样的 `player` 对象，并写入新会话。每个普通玩家只允许一个设备会话，新登录会撤销旧会话。失败：`401` 用户名或密码错误，`403` IP/设备封禁，`429` 登录限流（带 `Retry-After`）。
 
-### 当前会话
+### `GET /api/player-auth/session`
 
-`GET /api/player-auth/session`
-
-返回 `{ "player": Player | null, "databaseEnabled": boolean, "registrationEnabled": boolean }`。
-
-### 退出登录
-
-`POST /api/player-auth/logout`
-
-删除当前 Session 并清除 Cookie，返回 `{ "loggedOut": true }`。
-
-服主登录后端代理示例（伪代码）：
-
-```js
-// 该代码必须运行在服主后端，不能打包进浏览器。
-const upstream = await fetch(`${process.env.PLAYER_SERVICE}/api/player-auth/login`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Box-Player-Auth-Key': process.env.BOX_PLAYER_AUTH_API_KEY,
-    'Cookie': request.headers.cookie || '',
+```json
+{
+  "player": {
+    "subjectId": "…",
+    "username": "player_01",
+    "displayName": "玩家一号",
+    "avatarSkinId": "explorer",
+    "role": "player",
+    "status": "active"
   },
-  body: JSON.stringify(request.body),
-})
-// 将上游的状态码、JSON 和全部 Set-Cookie 原样转发给浏览器。
-response.status(upstream.status)
-for (const cookie of upstream.headers.getSetCookie?.() || []) {
-  response.appendHeader('Set-Cookie', cookie)
+  "databaseEnabled": true,
+  "registrationEnabled": true
 }
-response.json(await upstream.json())
 ```
 
-浏览器只调用服主自己的代理路由，永远不会获得 API Key。代理登录、注册、Session 查询和
-退出时都应转发浏览器的 `Cookie`；登录、注册和退出还必须把 Player Service 返回的全部
-`Set-Cookie` 原样传回浏览器。
+未登录时 `player` 为 `null`。数据库或认证服务不可用时返回 `503`。
 
-## 服主管理 API
+### `POST /api/player-auth/logout`
 
-管理 API 只接受独立管理会话，不接受玩家 Session。服主身份不能创建、分配或转让，只能用服主密钥
-兑换一个 HttpOnly 临时服主会话：
-
-```http
-POST /api/play-admin/owner-session
-Authorization: Bearer <BOX_PLAY_ADMIN_TOKEN>
-```
-
-管理令牌只允许保存在服主配置或秘密管理系统中。网页不会把它写入 localStorage、
-sessionStorage 或 Cookie；兑换后仅保存随机管理会话。其他管理写请求还必须携带
-`box_local_admin_csrf` Cookie 对应的 `X-Box-Admin-Csrf` 请求头，并通过同源检查。
-
-管理接口使用统一的严格 Schema 校验。请求体中的未知字段会被拒绝，字符串会按字段规则去除
-首尾空白，分页、枚举、UUID、批量数量和权限集合均在进入业务逻辑前完成归一化。服务端权限
-校验先于玩家标识和详细字段校验，避免未授权请求借助错误信息探测玩家数据。已知请求错误按照
-结构化错误状态返回；未识别的数据库或内部异常统一返回不含实现细节的 HTTP 503。
-
-| 方法与路径                                           | 权限         | 用途                             |
-| ---------------------------------------------------- | ------------ | -------------------------------- |
-| `GET /api/play-admin/players`                        | 管理员       | 搜索、筛选和分页查询玩家         |
-| `POST /api/play-admin/players`                       | 已授权管理员 | 创建普通玩家，不创建登录 Session |
-| `GET /api/play-admin/players/:subjectId`             | 管理员       | 资料、会话、登录历史和审计详情   |
-| `PATCH /api/play-admin/players/:subjectId`           | 管理员/服主  | 修改资料、封禁、神岛 ID 等       |
-| `POST /api/play-admin/players/:subjectId`            | 管理员/服主  | 强制下线、撤销设备、重置密码     |
-| `DELETE /api/play-admin/players/:subjectId`          | 服主         | 永久删除身份                     |
-| `POST /api/play-admin/login`                         | 公开同源入口 | 登录独立管理账号                 |
-| `POST /api/play-admin/logout`                        | 管理员       | 注销独立管理会话                 |
-| `GET/POST /api/play-admin/admins`                    | 服主         | 查询或创建独立管理账号           |
-| `PATCH/DELETE /api/play-admin/admins/:id`            | 服主         | 更新或删除独立管理账号           |
-| `GET/POST /api/play-admin/permission-groups`         | 服主         | 查询或创建管理员权限组           |
-| `PATCH/DELETE /api/play-admin/permission-groups/:id` | 服主         | 更新或删除管理员权限组           |
-
-网页后台会自动处理管理 Cookie 和 CSRF。服务端自动化如需创建用户，应在可信后端完成会话兑换，
-保存返回 Cookie，并带上 CSRF Cookie 的原值：
-
-```bash
-curl -c admin.cookies -X POST "$PLAYER_SERVICE/api/play-admin/owner-session" \
-  -H "Authorization: Bearer $BOX_PLAY_ADMIN_TOKEN"
-
-ADMIN_CSRF=$(awk '$6 == "box_local_admin_csrf" { print $7 }' admin.cookies)
-
-curl -b admin.cookies -X POST "$PLAYER_SERVICE/api/play-admin/players" \
-  -H "X-Box-Admin-Csrf: $ADMIN_CSRF" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username":"player_001",
-    "displayName":"玩家一号",
-    "password":"change-me-123",
-    "boxId":"",
-    "tags":["白名单"],
-    "adminNote":"由服主创建"
-  }'
-```
-
-`subjectId` 是不可变玩家 UUID（API 使用不带连字符的 32 位形式）。创建接口返回 HTTP 201；
-账号初始 `loginCount=0`、没有有效会话，并写入 `player.create` 审计记录。
-
-玩家资料接口不能把普通玩家升级为后台角色，也不接受 `role`、`adminPermissions` 或上传头像字段。玩家可修改的公开资料仅包括昵称和内置皮肤；服主侧标签、备注、神岛 ID、状态、封禁和密码重置按独立权限检查执行。
-
-修改和管理动作示例：
+删除当前会话并清除 Cookie，返回：
 
 ```json
-{ "displayName": "新昵称", "tags": ["测试员"], "adminNote": "内部备注" }
-{ "status": "banned", "banReason": "违规", "bannedUntil": "2026-08-20T00:00:00.000Z" }
-{ "action": "revoke-sessions" }
-{ "action": "reset-password", "password": "new-password-123" }
+{ "loggedOut": true }
 ```
 
-认证接口常见错误：`AUTH_API_KEY_NOT_CONFIGURED`（服务端 Key 未配置或不足 16 位）、
-`AUTH_API_KEY_INVALID`（请求 Key 错误）、`AUTH_ORIGIN_NOT_ALLOWED`（Origin 未加入白名单）、
-HTTP 401（玩家凭据错误）、HTTP 429（限流）、HTTP 503（数据库或身份服务不可用）。Creator/Play 在未配置
-`BOX_PLAYER_LOGIN_URL` 时展示“未开启登录”，不会回退到游客或内置账号页；Player Service 的诊断 API
-仍以 `LOGIN_URL_NOT_CONFIGURED` 表示该配置缺失。
+## 玩家资料（内部接口）
+
+### `PATCH /api/player-internal/profile`
+
+仅 Creator、Play 或可信服务端内部调用，需要内部身份鉴权，不对浏览器开放。
+
+```json
+{ "displayName": "新昵称", "avatarSkinId": "pilot" }
+```
+
+至少提供一个字段。皮肤仅支持：`explorer`、`pilot`、`cowboy`、`chinese-doll`、`pink-girl`、`maid`、`little-prince`、`christmas-girl`。成功返回：
+
+```json
+{
+  "player": {
+    "subjectId": "…",
+    "username": "player_01",
+    "displayName": "新昵称",
+    "avatarSkinId": "pilot"
+  }
+}
+```
+
+`role`、`adminPermissions`、`avatar` 等字段会被拒绝。
+
+## 玩家管理 API
+
+以下接口位于 `/api/play-admin/`，使用独立后台 Cookie 或服主临时会话；普通玩家 Cookie 无效。未授权为 `401/403`，参数错误为 `400`。
+
+| 方法                    | 路径                  | 权限             | 用途                        |
+| ----------------------- | --------------------- | ---------------- | --------------------------- |
+| `POST`                  | `/login`              | 无               | 管理员登录，写入后台 Cookie |
+| `POST`                  | `/owner-session`      | 服主密钥         | 创建临时服主会话            |
+| `GET`                   | `/verify`             | `players.view`   | 返回后台身份与权限          |
+| `GET`                   | `/players`            | `players.view`   | 分页查询玩家                |
+| `POST`                  | `/players`            | `players.create` | 新建普通玩家                |
+| `GET/PATCH/POST/DELETE` | `/players/:subjectId` | 见下文           | 玩家详情、维护、命令、删除  |
+| `POST`                  | `/players/batch`      | 对应操作权限     | 批量操作                    |
+| `GET`                   | `/players/overview`   | `players.view`   | 概览与安全指标              |
+| `GET`                   | `/players/export`     | `players.export` | 导出 CSV                    |
+
+### 查询与创建
+
+`GET /players` 查询参数：`search`、`page`、`pageSize`（10–100）、`identity`（`all|user|banned`）、`online`（`all|online|offline`）和 `sort`（`lastSeen|registered|displayName|loginCount`）。返回：
+
+```json
+{
+  "players": [
+    {
+      "subjectId": "…",
+      "username": "player_01",
+      "displayName": "玩家一号",
+      "status": "active",
+      "tags": [],
+      "loginCount": 2
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "pageSize": 30,
+  "totalPages": 1
+}
+```
+
+`POST /players` 请求为 `username`、`displayName`、`password`，可选 `boxId`、`tags`（最多 20 个）和 `adminNote`。只能创建普通玩家。
+
+### 单玩家维护
+
+`PATCH /players/:subjectId` 可修改 `displayName`、`tags`、`adminNote`、`boxId`，以及 `status`、`banReason`、`bannedUntil`。昵称最多 32，备注最多 2000，封禁原因最多 500。
+
+`POST /players/:subjectId` 使用下列请求：
+
+```json
+{ "action": "revoke-sessions" }
+{ "action": "revoke-session", "sessionId": "16位会话ID" }
+{ "action": "reset-password", "password": "至少10位密码" }
+{ "action": "ban-ip", "value": "IP或设备标识", "reason": "可选", "bannedUntil": null }
+{ "action": "unban-source", "banId": "封禁记录ID" }
+```
+
+`DELETE /players/:subjectId` 仅服主可用，成功返回 `{ "deleted": true }`。
+
+### 批量与权限
+
+`POST /players/batch` 的 `subjectIds` 为 1–100 个身份 ID；支持 `revoke-sessions`、`ban`、`unban`、`add-tag`、`remove-tag`。
+
+可分配权限：`players.view`、`players.manage`、`players.ban`、`sessions.manage`、`identity-bans.manage`、`players.create`、`players.export`、`passwords.reset`、`audit.view`。`admin` 拥有全部后台权限；`moderator` 仅拥有分配权限；服主身份不可授予。
+
+## 状态码
+
+| 状态  | 含义                             |
+| ----- | -------------------------------- |
+| `400` | 参数或业务条件无效               |
+| `401` | 认证或会话无效                   |
+| `403` | Origin、权限、注册开关或封禁拒绝 |
+| `404` | 服务模式或路径不可用             |
+| `405` | HTTP 方法不支持                  |
+| `429` | 登录或注册过于频繁               |
+| `503` | 数据库或认证服务未就绪           |
+
+本文以当前路由和 Zod 校验为准；接口变动应同步更新文档和回归测试。

@@ -1485,5 +1485,8 @@
   "playHome.noMatchingMapsHint": "试试切换到“全部”或“最近游玩”。",
   "playHome.reviewCode": "代码",
   "playHome.reviewImages": "图片",
-  "playHome.reviewAudio": "音频"
+  "playHome.reviewAudio": "音频",
+  "playHome.engineDeveloper": "引擎开发：",
+  "playHome.engineDeveloperName": "深圳奇梦岛科技有限公司",
+  "playHome.disclaimer": "本地部署服务由服主独立运营，服主应对地图内容、用户行为与数据管理负责。"
 }

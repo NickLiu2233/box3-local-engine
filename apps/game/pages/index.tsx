@@ -1193,6 +1193,11 @@ function HomePageContent({
             ) : null}
           </div>
         )}
+
+        <footer className="playFooter">
+          <span>{t('playHome.engineDeveloper')} <strong>{t('playHome.engineDeveloperName')}</strong></span>
+          <span>{t('playHome.disclaimer')}</span>
+        </footer>
       </main>
 
       {loginOpen ? (
@@ -2610,7 +2615,10 @@ function HomePageContent({
         }
         .playWorkCenter.page {
           width: min(1150px, calc(100% - 32px));
-          padding: 0 0 64px;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          padding: 0 0 72px;
           color: rgba(255, 255, 255, 0.9);
         }
         .playWorkCenter .siteHeader {
@@ -2805,6 +2813,25 @@ function HomePageContent({
         }
         .playWorkCenter .empty small { color: rgba(255, 255, 255, 0.5); }
         .playWorkCenter .empty .button { margin-top: 12px; }
+        .playWorkCenter .playFooter {
+          position: fixed;
+          z-index: 10;
+          bottom: 0;
+          left: 50%;
+          display: flex;
+          justify-content: space-between;
+          width: min(1150px, calc(100% - 32px));
+          gap: 18px;
+          margin: 0;
+          padding: 14px 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          background: #262626;
+          color: rgba(255, 255, 255, 0.4);
+          font-size: 11px;
+          line-height: 1.65;
+          transform: translateX(-50%);
+        }
+        .playWorkCenter .playFooter strong { color: rgba(255, 255, 255, 0.62); font-weight: 600; }
         .playWorkOverlay .dialog,
         .playWorkOverlay .progressDialog {
           border: 1px solid rgba(255, 255, 255, 0.13);
@@ -2950,6 +2977,12 @@ function HomePageContent({
           }
           .playWorkCenter .groups {
             grid-template-columns: 1fr;
+          }
+          .playWorkCenter .playFooter {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 5px;
+            padding: 10px 0;
           }
           .mapGroup {
             padding: 14px;

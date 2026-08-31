@@ -32,6 +32,10 @@ pnpm stop
 
 ## 地图数据与包格式
 
+### 数据根
+
+端口只影响访问地址。源码/Docker Compose 使用仓库内的 `projects/` 和 `play-worlds/`；桌面启动器使用系统应用数据目录 `runtime/apps/local-engine/` 下的同名目录。两套数据独立，转移作品请使用 `.boxproject`、`.boxplay` 或备份。
+
 Creator 的可编辑工程默认保存在：
 
 ```text
