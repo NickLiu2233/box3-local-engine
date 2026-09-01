@@ -584,8 +584,8 @@ function render() {
           : state.page === 'backups'
             ? backups()
             : state.page === 'about'
-                ? about()
-                : overview()
+              ? about()
+              : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
   syncOverviewPolling()
@@ -708,9 +708,9 @@ function bindEvents() {
   document.querySelector('#run-environment-checks')?.addEventListener('click', runEnvironmentChecks)
   document.querySelector('#export-diagnostics')?.addEventListener('click', exportDiagnostics)
   document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
-  document.querySelector('#open-community-group')?.addEventListener('click', () =>
-    invoke('open_community_group'),
-  )
+  document
+    .querySelector('#open-community-group')
+    ?.addEventListener('click', () => invoke('open_community_group'))
   document.querySelectorAll('[data-setup-section]').forEach((node) =>
     node.addEventListener('click', (event) => {
       // These tabs live in a form. Keep the interaction explicit so a WebView
