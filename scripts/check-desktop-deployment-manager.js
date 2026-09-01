@@ -337,8 +337,16 @@ assert.match(
   /async function saveConfiguration\(event\)[\s\S]*?\n}\n\nasync function saveRawEnvironment\(\)/,
 )
 assert.match(frontend, /function switchSetupSection\(section\)/)
-assert.match(frontend, /data-creator-network-host="127\.0\.0\.1"/)
+for (const mode of ['local', 'lan', 'public']) {
+  assert.match(frontend, new RegExp(`data-creator-network-mode="${mode}"`))
+}
+assert.match(frontend, /name="creatorNetworkMode" type="hidden"/)
 assert.match(frontend, /name="creatorHost" type="hidden"/)
+assert.match(frontend, /if \(mode === 'local'\) state\.config\.creatorHost = '127\.0\.0\.1'/)
+assert.match(
+  frontend,
+  /if \(mode === 'lan' && state\.config\.lanIp\) state\.config\.creatorHost = state\.config\.lanIp/,
+)
 assert.doesNotMatch(frontend, /创作端访问地址/)
 assert.match(frontend, /data-play-network-mode="public"/)
 assert.match(frontend, /const inferredPlayAccessMode/)
@@ -375,7 +383,6 @@ assert.doesNotMatch(styles, /\.embedded-page/)
 assert.match(frontend, /run_environment_checks/)
 assert.match(frontend, /test_remote_connection/)
 assert.match(frontend, /data-service-action/)
-assert.match(frontend, /data-service-logs/)
 assert.match(frontend, /export_diagnostics/)
 assert.match(backend, /fn is_sensitive_env_key/)
 assert.match(backend, /\[REDACTED\]/)
@@ -474,7 +481,8 @@ for (const scope of ['"all"', '"creator"', '"play"']) {
 }
 assert.doesNotMatch(backend, /async fn install_and_start/)
 assert.match(backend, /fn validate_creator_host/)
-assert.match(backend, /禁止公网部署/)
+assert.match(backend, /"local" \| "lan" \| "public" => Ok\(value\)/)
+assert.match(frontend, /不建议直接向公网开放创作端/)
 assert.match(backend, /"BOX_CREATOR_BIND_IP", creator_bind_ip/)
 assert.match(backend, /"BOX_VOXA_BIND_IP", creator_bind_ip/)
 assert.match(backend, /fn enforce_creator_network_policy/)

@@ -15,19 +15,19 @@ BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 
 | 类别     | 变量                                                                                                                     |
 | -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 网络     | `BOX_BIND_IP`、`BOX_PLAY_PORT`、`BOX_CREATOR_PORT`、`BOX_VOXA_PORT`、`BOX_PLAYER_SERVICE_PORT`、`BOX_AUTH_PORTAL_PORT`   |
+| 网络     | `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP`、五个服务端口与对应 `*_PUBLIC_URL`                              |
 | Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_LIBRARY_READ_ONLY`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`             |
 | Teleport | `BOX_TELEPORT_MAX_ROOMS`、`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`                                                            |
 | 数据     | `BOX_DATABASE_URL`、`BOX_DATABASE_SSL`、`REDIS_HOST`、`REDIS_PORT`                                                       |
 | 登录     | `BOX_PLAYER_LOGIN_URL`、`BOX_PLAYER_AUTH_ALLOWED_ORIGINS`、`BOX_PLAYER_REGISTRATION_ENABLED`、`BOX_PLAYER_COOKIE_DOMAIN` |
 
-`BOX_PLAY_LIBRARY_DIR` 是固定的地图数据目录，和 `BOX_PLAY_PORT` 无关。Creator 与 VOXA 只允许本机或可信局域网；公网部署应让 Play 与登录门户走 HTTPS 反向代理。
+`BOX_PLAY_LIBRARY_DIR` 是固定的地图数据目录，和 `BOX_PLAY_PORT` 无关。桌面启动器用 `BOX_PLAY_NETWORK_MODE`、`BOX_CREATOR_NETWORK_MODE` 和 `BOX_CREATOR_HOST` 记录界面选择，再生成实际绑定地址和公开 URL；源码/Compose 部署应直接配置 `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP` 与各服务 `*_PUBLIC_URL`。VOXA 跟随 Creator 的访问范围。
 
 ## 网络与公开地址
 
-默认端口为 Play `3000`、VOXA `3001`、Creator `3002`、Player Service `3213`、登录门户 `3214`。同一台主机上的端口不能重复。`BOX_BIND_IP=127.0.0.1` 仅本机访问；局域网或公网部署需要同时更新公开 URL、登录门户 URL 和反向代理配置。
+默认端口为 Play `3000`、VOXA `3001`、Creator `3002`、Player Service `3213`、登录门户 `3214`。同一台主机上的端口不能重复。本机模式绑定 `127.0.0.1`；局域网模式使用检测到的私网地址；公网模式需要填写 IP 或域名，并同步更新公开 URL、登录门户 URL 和反向代理配置。
 
-Creator 与 VOXA 不应设置为公网地址。Play 公网地址应写入 `BOX_PLAY_PUBLIC_URL` 或对应启动器配置，使用 HTTPS 域名；Cookie 跨子域共享时才设置 `BOX_PLAYER_COOKIE_DOMAIN`。
+Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式风险高，只应在 HTTPS、严格防火墙或 VPN、可信创作者账号及最小权限均已配置时使用。Play 公网地址写入 `BOX_PLAY_PUBLIC_URL` 或对应启动器配置；Cookie 跨子域共享时才设置 `BOX_PLAYER_COOKIE_DOMAIN`。
 
 ## 容量与运行时
 

@@ -61,7 +61,7 @@ for (const [label, snippet] of [
   ['current Creator port', '`http://127.0.0.1:3002/`'],
   ['client script trust boundary', '客户端地图脚本运行在玩家浏览器页面中'],
   ['server script trust boundary', '服务端地图脚本在 game-server 的隔离运行时中执行'],
-  ['headless package boundary', '不包含 Creator、VOXA'],
+  ['headless package boundary', '包含 Creator、VOXA、Play、Player Service'],
 ]) {
   assert.ok(readme.includes(snippet), `README is missing ${label}`)
 }

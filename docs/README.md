@@ -21,7 +21,7 @@
 ### 部署与使用
 
 - [安装、部署与运维](./installation-and-operations.md)：硬件/软件要求、桌面包、无图形服务器、备份、升级和排障。
-- [图形化部署管理器](./graphical-deployment-manager.md)：启动器页面、配置保存、启动范围、自动状态、实时日志和离线包结构。
+- [图形化部署管理器](./graphical-deployment-manager.md)：启动器页面、配置保存、启动范围、自动状态、性能与离线包结构。
 - [Linux Web 管理端](./linux-web-manager.md)：无桌面服务器的浏览器配置、状态、日志、启停和安全访问。
 - [配置参考](./configuration-reference.md)：环境变量来源、端口、数据库、容量、备份、安全项和修改后的生效方式。
 - [部署与联机](./deployment.md)：本机、局域网、公网反向代理和服务暴露边界。
@@ -51,9 +51,9 @@
 ## 当前发行边界
 
 - 桌面启动器管理 Creator、Play、VOXA、Player Service 和参考登录门户五个业务服务。
-- 无图形 Linux 服务器包包含 Play、Player Service、参考登录门户和 Linux Web 管理端；不包含 Creator 或 VOXA。
+- 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Linux Web 管理端；不包含迁移器或内置 PostgreSQL/Redis。
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
-- Creator 与 VOXA 只允许本机或可信局域网；公网只应暴露 Play、登录门户，以及受反向代理保护的 Player Service 必要接口。
+- Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。
 - 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
 - 桌面启动器不安装 PostgreSQL 或 Redis。Player Service 必须使用 PostgreSQL；Redis 可选。
 - 当前桌面发行目标为 Windows x64、Apple Silicon macOS 和 Linux x64。Windows ARM、Intel macOS 与 Linux ARM64 桌面 App 不是默认 Release 目标。

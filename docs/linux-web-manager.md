@@ -1,8 +1,8 @@
 # Linux Web 管理端
 
-Linux Web 管理端用于没有桌面环境的服务器。它在浏览器中提供 Play、Player Service 和参考登录门户的状态、启停、重启、日志与常用配置；Creator、VOXA 和内部迁移器不在管理范围内。Windows、macOS 与 Linux 桌面用户仍可继续使用 Tauri 图形化启动器。
+Linux Web 管理端用于没有桌面环境的服务器。它在浏览器中提供 Creator、VOXA、Play、Player Service 和参考登录门户的状态、启停、重启、日志与常用配置；内部迁移器不在管理范围内。Windows、macOS 与 Linux 桌面用户仍可继续使用 Tauri 图形化启动器。
 
-服务器 ZIP 的业务边界固定为 Play、Player Service、参考登录门户和本管理端四个镜像。包内 Compose 不包含 Creator、VOXA、迁移器或本地 PostgreSQL/Redis 服务；账号数据库由服主提供外部 PostgreSQL，Redis 可选。
+服务器 ZIP 包含上述五个业务镜像和本管理端镜像。包内 Compose 不包含迁移器或本地 PostgreSQL/Redis 服务；账号数据库由服主提供外部 PostgreSQL，Redis 可选。
 
 ## 安装与访问
 
@@ -25,7 +25,7 @@ ssh -L 3130:127.0.0.1:3130 <服务器用户>@<服务器地址>
 
 ## 能做什么
 
-- 查看三个游玩服务的运行状态并自动刷新；
+- 查看五个业务服务的运行状态并自动刷新；
 - 启动、停止或重启单个服务及全部服务；
 - 查看最近 300 行容器日志；
 - 修改端口、公开 URL、注册开关、只读地图库、PostgreSQL、Redis、运行时容量与 Teleport 房间参数；

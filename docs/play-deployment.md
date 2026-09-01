@@ -19,7 +19,7 @@ pnpm play:up
 
 地图库由 `BOX_PLAY_LIBRARY_DIR` 决定，端口只改变访问地址。Teleport、预热和运行时上限使用 `BOX_PLAY_MAX_RUNTIMES`、`BOX_TELEPORT_MAX_ROOMS`、`BOX_RUNTIME_IDLE_TIMEOUT_MS` 等变量配置。
 
-公网仅公开 Play 和登录门户，并用 HTTPS 反向代理。Linux 无图形服务器只部署 Play、Player Service、登录门户和 Web 管理端。
+Play 和登录门户可通过 HTTPS 反向代理面向玩家公开。Linux 无图形服务器同时携带创作端服务，服主可按需启用；不需要远程创作时保持 Creator 与 VOXA 关闭或仅本机监听。
 
 ## 启动与检查
 
@@ -29,4 +29,4 @@ Play 地图目录可持续保存多个主地图和副地图。运行时启动失
 
 ## Linux 服务器
 
-无图形包没有 Creator、VOXA 和迁移器。服主通过 Linux Web 管理端配置 Play、玩家服务和登录门户；管理端拥有 Docker 控制能力，应仅监听回环地址并通过 SSH 隧道或 VPN 访问。
+无图形包包含 Creator、VOXA、Play、玩家服务、登录门户和 Web 管理端，但没有迁移器或内置数据库。管理端拥有 Docker 控制能力，应仅监听回环地址并通过 SSH 隧道或 VPN 访问。

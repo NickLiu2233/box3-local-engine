@@ -1,6 +1,6 @@
 # 安装与运维
 
-BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Linux 桌面；无图形 Linux 服务器使用 Web 管理端。Creator 和 VOXA 仅用于本机或可信局域网；公开服务只开放 Play 及登录门户，并通过 HTTPS 反向代理提供访问。
+BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Linux 桌面；无图形 Linux 服务器使用 Web 管理端。Play 与登录门户可以面向玩家公开；Creator 和 VOXA 默认仅本机访问，远程创作需要额外的 HTTPS、访问控制和权限保护。
 
 ## 最小要求
 
@@ -8,7 +8,7 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 - PostgreSQL：玩家、权限和地图持久数据的必需存储。
 - Redis：可选缓存。
 
-桌面用户解压完整离线包后打开启动器，配置 PostgreSQL 与三个独立随机密钥，再按需启动“创作端”“游玩端”或“全部服务”。Linux 服务器包只包含 Play、玩家服务、登录门户与 Web 管理端，不包含 Creator、VOXA 和迁移器。
+桌面用户解压完整离线包后打开启动器，配置 PostgreSQL 与三个独立随机密钥，再按需启动“创作端”“游玩端”或“全部服务”。Linux 服务器包包含 Creator、VOXA、Play、玩家服务、登录门户与 Web 管理端，不包含迁移器或内置 PostgreSQL/Redis。
 
 ## 日常流程
 
@@ -23,7 +23,7 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 
 - 升级前导出工程、启动器备份和 PostgreSQL 备份。
 - 不要把 `.env`、地图、数据库卷、备份或日志提交仓库或上传 Release。
-- 出现问题先看启动器或 Web 管理端日志；不要通过删除卷、清空数据库或删除地图目录排障。
+- 出现问题先看服务状态和 Docker 容器日志；不要通过删除卷、清空数据库或删除地图目录排障。
 
 详细操作分别见[图形化部署管理器](./graphical-deployment-manager.md)、[Linux Web 管理端](./linux-web-manager.md)、[游玩端部署](./play-deployment.md)和[配置参考](./configuration-reference.md)。
 

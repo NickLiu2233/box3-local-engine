@@ -102,17 +102,23 @@
 
 以下接口位于 `/api/play-admin/`，使用独立后台 Cookie 或服主临时会话；普通玩家 Cookie 无效。未授权为 `401/403`，参数错误为 `400`。
 
-| 方法                    | 路径                  | 权限             | 用途                        |
-| ----------------------- | --------------------- | ---------------- | --------------------------- |
-| `POST`                  | `/login`              | 无               | 管理员登录，写入后台 Cookie |
-| `POST`                  | `/owner-session`      | 服主密钥         | 创建临时服主会话            |
-| `GET`                   | `/verify`             | `players.view`   | 返回后台身份与权限          |
-| `GET`                   | `/players`            | `players.view`   | 分页查询玩家                |
-| `POST`                  | `/players`            | `players.create` | 新建普通玩家                |
-| `GET/PATCH/POST/DELETE` | `/players/:subjectId` | 见下文           | 玩家详情、维护、命令、删除  |
-| `POST`                  | `/players/batch`      | 对应操作权限     | 批量操作                    |
-| `GET`                   | `/players/overview`   | `players.view`   | 概览与安全指标              |
-| `GET`                   | `/players/export`     | `players.export` | 导出 CSV                    |
+| 方法                    | 路径                     | 权限             | 用途                        |
+| ----------------------- | ------------------------ | ---------------- | --------------------------- |
+| `POST`                  | `/login`                 | 无               | 管理员登录，写入后台 Cookie |
+| `POST`                  | `/owner-session`         | 服主密钥         | 创建临时服主会话            |
+| `GET`                   | `/verify`                | `players.view`   | 返回后台身份与权限          |
+| `GET`                   | `/players`               | `players.view`   | 分页查询玩家                |
+| `POST`                  | `/players`               | `players.create` | 新建普通玩家                |
+| `GET/PATCH/POST/DELETE` | `/players/:subjectId`    | 见下文           | 玩家详情、维护、命令、删除  |
+| `POST`                  | `/players/batch`         | 对应操作权限     | 批量操作                    |
+| `GET`                   | `/players/overview`      | `players.view`   | 概览与安全指标              |
+| `GET`                   | `/players/export`        | `players.export` | 导出 CSV                    |
+| `GET`                   | `/activity`              | `audit.view`     | 登录与管理审计分页查询      |
+| `POST`                  | `/maintenance`           | 服主             | 清理已过期会话              |
+| `GET/POST`              | `/admins`                | 服主             | 查询或创建后台管理账号      |
+| `PATCH/DELETE`          | `/admins/:id`            | 服主             | 修改或删除后台管理账号      |
+| `GET/POST`              | `/permission-groups`     | 服主             | 查询或创建权限组            |
+| `PATCH/DELETE`          | `/permission-groups/:id` | 服主             | 修改或删除权限组            |
 
 ### 查询与创建
 
@@ -141,7 +147,7 @@
 
 ### 单玩家维护
 
-`PATCH /players/:subjectId` 可修改 `displayName`、`tags`、`adminNote`、`boxId`，以及 `status`、`banReason`、`bannedUntil`。昵称最多 32，备注最多 2000，封禁原因最多 500。
+`PATCH /players/:subjectId` 可修改 `displayName`、`tags`、`adminNote`、`boxId`，以及 `status`、`banReason`、`bannedUntil`。昵称最多 32，备注最多 2000，封禁原因最多 500。只有服主可以修改 `creatorAccess` 与 `creatorPermissions`。
 
 `POST /players/:subjectId` 使用下列请求：
 
@@ -160,6 +166,45 @@
 `POST /players/batch` 的 `subjectIds` 为 1–100 个身份 ID；支持 `revoke-sessions`、`ban`、`unban`、`add-tag`、`remove-tag`。
 
 可分配权限：`players.view`、`players.manage`、`players.ban`、`sessions.manage`、`identity-bans.manage`、`players.create`、`players.export`、`passwords.reset`、`audit.view`。`admin` 拥有全部后台权限；`moderator` 仅拥有分配权限；服主身份不可授予。
+
+创作者权限与后台权限相互独立：
+
+| 权限              | 用途                         |
+| ----------------- | ---------------------------- |
+| `projects.view`   | 进入创作端并查看地图         |
+| `projects.create` | 创建主地图或副地图           |
+| `projects.edit`   | 编辑地图资料、内容和运行配置 |
+| `projects.delete` | 删除地图或地图组             |
+| `projects.import` | 导入工程或副地图             |
+| `projects.export` | 导出工程或游玩包             |
+| `models.manage`   | 进入 VOXA 并维护模型工程     |
+
+`creatorAccess=false` 会阻止进入 Creator 与 VOXA；仅设置 `models.manage` 时可以管理模型，但不能获得地图编辑权限。创作者授权只能由服主修改。
+
+### 管理账号与权限组
+
+创建后台账号需要 `username`、`displayName`、至少 12 位的 `password`、`role`（`admin|moderator`），可选 `permissions` 和 `permissionGroupId`。管理员账号 ID 和权限组 ID 均为 UUID。更新账号可修改昵称、密码、角色、权限组、直接权限和 `status`（`active|disabled`）。
+
+权限组请求为：
+
+```json
+{
+  "name": "客服组",
+  "permissions": ["players.view", "players.manage", "sessions.manage"]
+}
+```
+
+服主会话来自 `BOX_PLAY_ADMIN_TOKEN`，不是一种可创建或分配的后台账号；维护管理员、权限组和删除玩家均只接受服主会话。
+
+### 审计与维护
+
+`GET /activity` 支持 `kind=all|login|admin`、`search`、`page` 和 `pageSize`。`POST /maintenance` 当前只接受：
+
+```json
+{ "action": "cleanup-expired-sessions" }
+```
+
+审计只在操作实际成功且造成变化后写入；取消界面操作、参数校验失败、删除不存在对象或无变化维护不会产生成功审计。
 
 ## 状态码
 
