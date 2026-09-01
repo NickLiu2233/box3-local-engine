@@ -1,1 +1,1 @@
-export const API_RES:string = `Qmdfmwh25jX4dfADGNazaVKgupFTdmPo6iGf62zpuhKQ13`;
+export const API_RES:string = `QmNjwkaqotMu1BNDtP9gd2qVUFWcNZeCbhiosWFge7UhxY`;

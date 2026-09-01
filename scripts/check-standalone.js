@@ -730,14 +730,34 @@ const serverManagerOperations = readRequired(serverManagerOperationsFile)
 requirePattern(
   serverManagerOperations,
   serverManagerOperationsFile,
-  'fixed service allowlist',
-  /const services = \['play', 'player-service', 'player-auth-portal'\]/,
+  'fixed service allowlist for every managed local service',
+  /const services = \['creator', 'voxa', 'play', 'player-service', 'player-auth-portal'\]/,
 )
+for (const [label, pattern] of [
+  [
+    'fixed service-to-profile mapping',
+    /const serviceProfiles = \{[\s\S]*?'creator': 'creator',[\s\S]*?'voxa': 'voxa',[\s\S]*?'play': 'play',[\s\S]*?'player-service': 'player-service',[\s\S]*?'player-auth-portal': 'auth-portal',[\s\S]*?\}/,
+  ],
+  [
+    'service validation before reading logs',
+    /if \(service && !services\.includes\(service\)\) throw new Error\('服务名称无效'\)/,
+  ],
+  [
+    'operation allowlist',
+    /if \(!\['start', 'stop', 'restart'\]\.includes\(action\)\) throw new Error\('操作名称无效'\)/,
+  ],
+  [
+    'service validation before controlling services',
+    /if \(service !== 'all' && !services\.includes\(service\)\) throw new Error\('服务名称无效'\)/,
+  ],
+]) {
+  requirePattern(serverManagerOperations, serverManagerOperationsFile, label, pattern)
+}
 forbidPattern(
   serverManagerOperations,
   serverManagerOperationsFile,
-  'Creator or VOXA management',
-  /['"](?:creator|voxa)['"]/i,
+  'shell command execution',
+  /(?:exec|spawn)(?:Sync)?\s*\(\s*['"](?:sh|bash|zsh|cmd(?:\.exe)?|powershell)['"]/i,
 )
 requirePattern(
   playerAuthPortalCompose,
@@ -1132,8 +1152,14 @@ for (const filePath of localProjectApiFiles) {
   requirePattern(
     source,
     file,
-    'authenticated creator API guard',
-    /allowAuthenticatedCreatorApi\(req, res\)/,
+    'authenticated creator API guard import',
+    /import\s*\{\s*allowAuthenticatedCreatorApi\s*\}\s*from\s*['"][^'"]*creator-api-security['"];/,
+  )
+  requirePattern(
+    source,
+    file,
+    'awaited authenticated creator API guard',
+    /await\s+allowAuthenticatedCreatorApi\(req, res, /,
   )
 }
 
