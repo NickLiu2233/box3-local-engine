@@ -42,6 +42,26 @@ describe('player administration request validation', () => {
     );
   });
 
+  test('accepts only known creator capabilities', () => {
+    expect(parsePlayerItemOperation('PATCH', subjectId, {
+      creatorAccess: true,
+      creatorPermissions: ['projects.create', 'projects.edit', 'projects.edit', 'projects.delete'],
+    })).toEqual({
+      kind: 'patch',
+      subjectId,
+      changes: {
+        creatorAccess: true,
+        creatorPermissions: ['projects.create', 'projects.edit', 'projects.delete'],
+      },
+    });
+
+    expectRequestError(
+      () => parsePlayerItemOperation('PATCH', subjectId, {
+        creatorPermissions: ['projects.owner'],
+      }),
+    );
+  });
+
   test('never accepts legacy player role, admin permission, or avatar fields', () => {
     for (const body of [
       { role: 'admin' },

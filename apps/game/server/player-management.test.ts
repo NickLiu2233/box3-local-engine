@@ -22,6 +22,8 @@ function player(changes: Partial<PlayerAccountView> = {}): PlayerAccountView {
     boxId: '',
     displayName: '玩家四十二',
     avatarSkinId: 'explorer',
+    creatorAccess: false,
+    creatorPermissions: [],
     role: 'player',
     status: 'active',
     guest: false,
@@ -98,6 +100,8 @@ describe('player profile persistence', () => {
         displayName: '玩家四十二',
         avatar: `data:image/png;base64,${'a'.repeat(3000)}`,
         avatarSkinId: 'explorer',
+        creatorAccess: false,
+        creatorPermissions: [],
         role: 'player',
         status: 'active',
       })).not.toThrow();

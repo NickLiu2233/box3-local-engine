@@ -13,7 +13,7 @@ function fixture() {
   fs.writeFileSync(path.join(root, 'compose.yml'), 'name: box-local-engine\n')
   fs.writeFileSync(
     path.join(root, '.env'),
-    'COMPOSE_PROFILES=player-service,auth-portal,play,server-manager\nBOX_PLAY_PORT=3000\nBOX_DATABASE_URL=postgres://secret\n',
+    'COMPOSE_PROFILES=player-service,auth-portal,creator,play,voxa,server-manager\nBOX_PLAY_PORT=3000\nBOX_DATABASE_URL=postgres://secret\n',
     { mode: 0o600 },
   )
   const calls = []
@@ -23,7 +23,7 @@ function fixture() {
       return {
         status: 0,
         stdout:
-          '{"Service":"play","State":"running","Health":"healthy"}\n{"Service":"player-service","State":"running","Health":"healthy"}\n',
+          '{"Service":"creator","State":"running","Health":"healthy"}\n{"Service":"voxa","State":"running","Health":"healthy"}\n{"Service":"play","State":"running","Health":"healthy"}\n{"Service":"player-service","State":"running","Health":"healthy"}\n',
         stderr: '',
       }
     }
@@ -66,6 +66,8 @@ test('status normalizes JSON-lines output and marks optional portal enabled', as
   const { operations } = fixture()
   const status = await operations.getStatus()
   assert.equal(status.services.find((service) => service.name === 'play').running, true)
+  assert.equal(status.services.find((service) => service.name === 'creator').running, true)
+  assert.equal(status.services.find((service) => service.name === 'voxa').running, true)
   assert.equal(
     status.services.find((service) => service.name === 'player-auth-portal').enabled,
     true,

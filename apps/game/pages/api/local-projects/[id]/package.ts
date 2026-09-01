@@ -12,7 +12,7 @@ export const config = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, 'projects.export')) return;
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end();

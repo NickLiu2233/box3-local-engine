@@ -47,6 +47,24 @@ describe('Creator work center model integration', () => {
     }
   });
 
+  test('allows map editors to read existing models without model-management permission', () => {
+    expect(source('pages/api/creator-models/index.ts')).toContain("['projects.edit', 'models.manage']");
+    expect(source('pages/api/creator-models/blobs/[hash].ts')).toContain("['projects.edit', 'models.manage']");
+  });
+
+  test('requires current edit permission before rendering a map editor', () => {
+    const editorPage = source('app/e/[container]/page.tsx');
+    expect(editorPage).toContain("hasCreatorCapability(identity.creatorPermissions, 'projects.edit')");
+    expect(editorPage).toContain('identity.creatorAccess');
+    expect(editorPage).not.toContain('hasAuthenticatedPlayer(');
+  });
+
+  test('returns an authorized creator from the access-required page to the work center', () => {
+    const page = source('pages/creator-access-required.tsx');
+    expect(page).toContain('if (identity.creatorAccess)');
+    expect(page).toContain("destination: '/projects'");
+  });
+
   test('keeps the VOXA container health check independent from the removed library route', () => {
     const dockerfile = source('../local-engine/Dockerfile');
     const voxaStage = dockerfile.slice(dockerfile.indexOf('FROM runtime-base AS voxa'));

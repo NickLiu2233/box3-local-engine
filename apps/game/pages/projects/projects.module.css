@@ -75,6 +75,7 @@
 
 /* Portal creator-center card proportions. */
 .content { width: min(1150px, calc(100% - 32px)); padding-top: 24px; }
+.creatorFooter { position: fixed; z-index: 10; right: 50%; bottom: 0; left: 50%; display: flex; width: min(1150px, calc(100% - 32px)); justify-content: space-between; gap: 18px; margin: 0; padding: 14px 0; border-top: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.4); background: #262626; font-size: 11px; line-height: 1.65; transform: translateX(-50%); }.creatorFooter strong { color: rgba(255,255,255,.62); font-weight: 600; }
 .toolbar { gap: 16px; margin-top: 20px; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .search { width: 200px; height: 40px; padding: 0 10px; border-radius: 4px; color: rgba(255,255,255,.6); background: rgba(255,255,255,.08); }
 .filterWrap { position: relative; }

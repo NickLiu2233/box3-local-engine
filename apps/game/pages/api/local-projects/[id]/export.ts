@@ -5,7 +5,7 @@ import { getLocalProjectManager } from '../../../../server/local-project-manager
 import { allowAuthenticatedCreatorApi } from '../../../../server/creator-api-security';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, 'projects.export')) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).end();

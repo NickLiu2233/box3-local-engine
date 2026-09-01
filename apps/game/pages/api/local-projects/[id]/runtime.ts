@@ -31,7 +31,7 @@ async function runtimeControl(projectId: string, mode: RuntimeMode, action: 'sta
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, req.method === 'POST' ? 'projects.edit' : 'projects.view')) return;
   if (req.method !== 'POST' && req.method !== 'GET') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).end();

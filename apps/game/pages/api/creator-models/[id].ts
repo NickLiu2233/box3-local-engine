@@ -3,12 +3,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { allowAuthenticatedCreatorApi } from '../../../server/creator-api-security';
 import {
   creatorModelServiceError,
+  creatorModelIdentityHeaders,
   requestCreatorModelService,
   sendCreatorModelServiceError,
 } from '../../../server/creator-model-service';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, 'models.manage')) return;
   if (req.method !== 'PUT' && req.method !== 'DELETE') {
     res.setHeader('Allow', 'PUT, DELETE');
     return res.status(405).end();
@@ -22,7 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const response = await requestCreatorModelService(`/api/local/models/${id}`, {
       method: req.method,
-      headers: req.method === 'PUT' ? { 'Content-Type': 'application/json' } : undefined,
+      headers: {
+        ...creatorModelIdentityHeaders(req),
+        ...(req.method === 'PUT' ? { 'Content-Type': 'application/json' } : {}),
+      },
       body: req.method === 'PUT' ? JSON.stringify(req.body || {}) : undefined,
     });
     if (!response.ok) throw await creatorModelServiceError(response, req.method === 'DELETE' ? '删除模型失败' : '保存模型信息失败');

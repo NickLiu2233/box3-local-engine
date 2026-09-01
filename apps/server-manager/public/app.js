@@ -1,4 +1,6 @@
 const serviceNames = {
+  'creator': ['创作端', '地图创作与工程管理'],
+  'voxa': ['VOXA', '模型编辑与资源库'],
   'play': ['游玩端', '地图浏览与运行'],
   'player-service': ['玩家服务', '账号、权限与会话'],
   'player-auth-portal': ['登录门户', '玩家登录与注册'],
@@ -76,7 +78,7 @@ function overview() {
   const items = state.status?.services || []
   const running = items.filter((item) => item.running).length
   const enabled = items.filter((item) => item.enabled).length
-  return `<section class="summary"><div><span class="dot ${running === enabled && enabled ? 'good' : ''}"></span><div><strong>${running === enabled && enabled ? '游玩服务运行正常' : running ? '部分服务正在运行' : '游玩服务已停止'}</strong><span>${running} / ${enabled} 个已启用服务运行中</span></div></div><div class="actions"><button data-control="start" data-service="all" class="primary">${icon('play')}全部启动</button><button data-control="stop" data-service="all">${icon('stop')}全部停止</button><button data-control="restart" data-service="all">${icon('refresh')}全部重启</button></div></section><div class="section-title"><h2>游玩服务</h2><span>Creator 与 VOXA 不会部署到此服务器</span></div><section class="service-grid">${items.map(serviceCard).join('')}</section>`
+  return `<section class="summary"><div><span class="dot ${running === enabled && enabled ? 'good' : ''}"></span><div><strong>${running === enabled && enabled ? '服务运行正常' : running ? '部分服务正在运行' : '服务已停止'}</strong><span>${running} / ${enabled} 个已启用服务运行中</span></div></div><div class="actions"><button data-control="start" data-service="all" class="primary">${icon('play')}全部启动</button><button data-control="stop" data-service="all">${icon('stop')}全部停止</button><button data-control="restart" data-service="all">${icon('refresh')}全部重启</button></div></section><div class="section-title"><h2>引擎服务</h2><span>Creator 与 VOXA 默认只监听服务器本机</span></div><section class="service-grid">${items.map(serviceCard).join('')}</section>`
 }
 
 function serviceCard(service) {
@@ -108,7 +110,7 @@ function config() {
 }
 
 function logs() {
-  return `<div class="logs-toolbar"><select id="log-service"><option value="">全部游玩服务</option>${Object.entries(
+  return `<div class="logs-toolbar"><select id="log-service"><option value="">全部服务</option>${Object.entries(
     serviceNames,
   )
     .map(

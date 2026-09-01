@@ -13,6 +13,10 @@ export type RuntimePlayerIdentity = {
   avatar: string;
   /** Curated in-game 3D skin identifier, separate from the profile avatar image. */
   avatarSkinId: string;
+  /** Granted by the server owner; required to access the Creator product. */
+  creatorAccess: boolean;
+  /** Server-enforced Creator capabilities. Never trust a browser-provided value. */
+  creatorPermissions: readonly string[];
   role: LocalPlayerRole;
   status: LocalPlayerStatus;
   expiresAt: number;
@@ -57,6 +61,10 @@ function validIdentity(value: RuntimePlayerIdentity) {
     value.avatar.length <= 700_000 &&
     typeof value.avatarSkinId === 'string' &&
     value.avatarSkinId.length <= 64 &&
+    typeof value.creatorAccess === 'boolean' &&
+    Array.isArray(value.creatorPermissions) &&
+    value.creatorPermissions.length <= 32 &&
+    value.creatorPermissions.every((permission) => typeof permission === 'string' && permission.length <= 64) &&
     ['player', 'moderator', 'admin'].includes(value.role) &&
     ['active', 'banned'].includes(value.status) &&
     Number.isSafeInteger(value.expiresAt)

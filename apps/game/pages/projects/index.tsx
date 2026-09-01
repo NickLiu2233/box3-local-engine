@@ -1,6 +1,7 @@
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GetServerSideProps, NextApiRequest, NextApiResponse } from 'next';
+import { IntlProvider } from 'react-intl';
 import {
   ChevronDown,
   Clock3,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 import styles from './projects.module.css';
+import zhMessages from '../../i18n/zh.json';
 import { CreatorModelLibrary } from '../../components/creator-model-library';
 import {
   PlayerAccount,
@@ -283,6 +285,7 @@ type ProjectsPageProps = {
     userId: string;
     boxId: string;
     avatarSkinId: string;
+    creatorPermissions: string[];
   };
 };
 
@@ -301,6 +304,7 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
       userId: '10001',
       boxId: '',
       avatarSkinId: 'explorer',
+      creatorPermissions: ['projects.view', 'models.manage'],
     };
   } else {
     try {
@@ -311,12 +315,16 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
         res as NextApiResponse,
         req.socket.remoteAddress || '',
       );
+      if (!identity.creatorAccess) {
+        return { redirect: { destination: '/creator-access-required', permanent: false } };
+      }
       creator = {
         displayName: identity.displayName,
         username: identity.username,
         userId: identity.userId,
         boxId: identity.boxId,
         avatarSkinId: identity.avatarSkinId,
+        creatorPermissions: [...identity.creatorPermissions],
       };
     } catch {
       return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
@@ -334,6 +342,7 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
 
 export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator }: ProjectsPageProps) {
   const [activeView, setActiveView] = useState<WorkCenterView>(initialView);
+  const [creatorPermissions, setCreatorPermissions] = useState<string[]>(creator.creatorPermissions);
   const [projects, setProjects] = useState<LocalProject[]>(() => uiPreview ? previewProjects : []);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
@@ -417,7 +426,18 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
     setNotice('资料已保存');
   };
 
-  const switchView = (view: WorkCenterView) => {
+  const switchView = async (view: WorkCenterView) => {
+    if (view === 'models' && !uiPreview) {
+      try {
+        const response = await fetch('/api/creator-permissions', { cache: 'no-store', credentials: 'same-origin' });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && Array.isArray(data.creatorPermissions)) {
+          setCreatorPermissions(data.creatorPermissions.map(String));
+        }
+      } catch {
+        // The model API will surface a concrete message if the service is unavailable.
+      }
+    }
     setActiveView(view);
     const url = view === 'models' ? '/projects?view=models' : '/projects';
     window.history.replaceState(window.history.state, '', url);
@@ -1219,11 +1239,13 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
           <span>BOX3 Engine</span>
         </a>
         <div className={styles.headerActions} onClick={(event) => event.stopPropagation()}>
-          <PlayerAccount
-            identity={creatorIdentity}
-            onSave={saveCreatorProfile}
-            onLogout={logoutCreator}
-          />
+          <IntlProvider locale="zh-CN" messages={zhMessages}>
+            <PlayerAccount
+              identity={creatorIdentity}
+              onSave={saveCreatorProfile}
+              onLogout={logoutCreator}
+            />
+          </IntlProvider>
         </div>
       </header>
 
@@ -1233,7 +1255,7 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
             type="button"
             aria-current={activeView === 'maps' ? 'page' : undefined}
             className={activeView === 'maps' ? styles.workCenterTabActive : undefined}
-            onClick={() => switchView('maps')}
+            onClick={() => void switchView('maps')}
           >
             <MapIcon size={17} />
             <strong>地图列表</strong>
@@ -1242,7 +1264,7 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
             type="button"
             aria-current={activeView === 'models' ? 'page' : undefined}
             className={activeView === 'models' ? styles.workCenterTabActive : undefined}
-            onClick={() => switchView('models')}
+            onClick={() => void switchView('models')}
           >
             <Box size={17} />
             <strong>模型列表</strong>
@@ -1347,7 +1369,10 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
             </button>}
           </div>
         )}
-        </> : <CreatorModelLibrary voxaUrl={voxaUrl} />}
+        </> : <CreatorModelLibrary
+          voxaUrl={voxaUrl}
+          canManageModels={creatorPermissions.includes('models.manage')}
+        />}
       </section>
 
       {pendingImportFile && (
@@ -1805,6 +1830,10 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
           </section>
         </div>
       )}
+      <footer className={styles.creatorFooter}>
+        <span>引擎开发：<strong>深圳奇梦岛科技有限公司</strong></span>
+        <span>本地部署服务由服主独立运营，服主应对地图内容、用户行为与数据管理负责。</span>
+      </footer>
     </main>
   );
 }

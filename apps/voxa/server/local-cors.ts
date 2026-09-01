@@ -84,5 +84,6 @@ export function setLocalCors(req: NextApiRequest, res: NextApiResponse) {
   const sameVoxaHost = origin === originForRequestHost(req) && isPrivateOrigin(origin);
   if (!sameVoxaHost && !isAllowedOrigin(origin)) return false;
   res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   return true;
 }

@@ -1416,6 +1416,27 @@ form.environment-mode {
   opacity: 0.5;
 }
 
+.network-warning {
+  display: grid;
+  gap: 4px;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, #d18a12 52%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, #d18a12 9%, var(--panel));
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.network-warning strong {
+  color: color-mix(in srgb, #d18a12 72%, var(--text));
+  font-size: 12px;
+}
+
+.network-warning span {
+  color: var(--muted);
+}
+
 .card-port-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: auto;

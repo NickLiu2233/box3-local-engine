@@ -4,6 +4,7 @@ import {
   PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
   type PlayerAdminRequirement,
 } from '../shared/player-admin-policy';
+import { CREATOR_CAPABILITIES } from '../shared/creator-policy';
 import { PlayerAdminRequestError } from './player-admin-errors';
 
 const subjectIdSchema = z
@@ -83,6 +84,13 @@ const permissionsSchema = z
   .array(permissionSchema)
   .max(PLAYER_ADMIN_GRANTABLE_CAPABILITIES.length)
   .transform((permissions) => [...new Set(permissions)]);
+const creatorPermissionsSchema = z
+  .array(z.enum(CREATOR_CAPABILITIES as [
+    (typeof CREATOR_CAPABILITIES)[number],
+    ...(typeof CREATOR_CAPABILITIES)[number][],
+  ]))
+  .max(CREATOR_CAPABILITIES.length)
+  .transform((permissions) => [...new Set(permissions)]);
 
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -120,6 +128,8 @@ const playerPatchSchema = z
     status: z.enum(['active', 'banned']).optional(),
     banReason: reasonSchema.optional(),
     bannedUntil: optionalFutureDateSchema.optional(),
+    creatorAccess: z.boolean().optional(),
+    creatorPermissions: creatorPermissionsSchema.optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, '没有可更新的玩家字段');
@@ -157,6 +167,9 @@ export function playerItemRequirement(
     }
     if (['displayName', 'adminNote', 'tags', 'boxId'].some((field) => field in body)) {
       requirements.push('players.manage');
+    }
+    if (['creatorAccess', 'creatorPermissions'].some((field) => field in body)) {
+      requirements.push('owner');
     }
     return requirements.length ? requirements : 'players.manage';
   }

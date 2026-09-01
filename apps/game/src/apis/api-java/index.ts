@@ -107,7 +107,7 @@ if (clientConfig.isLocalGameServer) {
     }
     const response = await fetch(
       `${clientConfig.VOXA_URL.replace(/\/$/, '')}/api/local${path}`,
-      init,
+      { ...init, credentials: 'include' },
     );
     if (!response.ok) {
       throw new Error((await response.text()) || '本地 VOXA 请求失败');

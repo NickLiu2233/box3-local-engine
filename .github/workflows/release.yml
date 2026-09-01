@@ -267,7 +267,9 @@ jobs:
             "box-local-engine-player-service:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             "box-local-engine-player-auth-portal:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             "box-local-engine-server-manager:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-creator:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             "box-local-engine-play:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-voxa:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             | gzip -1 > "$server_archive"
           node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
       - name: Upload server package to Aliyun OSS

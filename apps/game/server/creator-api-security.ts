@@ -1,5 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { hasAuthenticatedPlayer } from './player-service-client';
+import type { CreatorCapability } from '../shared/creator-policy';
+import { hasCreatorCapability } from '../shared/creator-policy';
+import {
+  PlayerAuthenticationRequiredError,
+  resolvePlayerServiceIdentity,
+} from './player-service-client';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
 
@@ -12,36 +17,11 @@ function hostnameOf(value: string | undefined) {
   }
 }
 
-function isPrivateOrLoopbackHost(host: string) {
-  const normalized = host.toLowerCase();
-  if (LOOPBACK_HOSTS.has(normalized)) return true;
-
-  const parts = normalized.split('.');
-  if (parts.length === 4 && parts.every((part) => /^\d+$/.test(part))) {
-    const octets = parts.map(Number);
-    if (octets.some((octet) => octet > 255)) return false;
-    return (
-      octets[0] === 10 ||
-      octets[0] === 127 ||
-      (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
-      (octets[0] === 192 && octets[1] === 168) ||
-      (octets[0] === 169 && octets[1] === 254)
-    );
-  }
-
-  // IPv6 loopback, unique-local (fc00::/7), and link-local (fe80::/10).
-  return (
-    normalized === '::1' ||
-    /^f[cd][0-9a-f:]*$/i.test(normalized) ||
-    /^fe[89ab][0-9a-f:]*$/i.test(normalized)
-  );
-}
-
 function allowedCreatorHosts() {
   const configured = (process.env.BOX_CREATOR_ALLOWED_HOSTS || '')
     .split(',')
     .map((host) => hostnameOf(host.trim()))
-    .filter(isPrivateOrLoopbackHost);
+    .filter(Boolean);
   return new Set([...LOOPBACK_HOSTS, ...configured]);
 }
 
@@ -92,15 +72,30 @@ export function allowCreatorApi(
 export async function allowAuthenticatedCreatorApi(
   req: NextApiRequest,
   res: NextApiResponse,
+  capability: CreatorCapability | readonly CreatorCapability[] = 'projects.view',
 ) {
   if (!allowCreatorApi(req, res)) return false;
-  const authenticated = await hasAuthenticatedPlayer(
-    req.headers.cookie || '',
-    req.socket.remoteAddress || '',
-    String(req.headers['user-agent'] || ''),
-  );
-  if (!authenticated) {
-    res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先注册或登录账号' });
+  try {
+    const { identity } = await resolvePlayerServiceIdentity(
+      req,
+      res,
+      req.socket.remoteAddress || '',
+    );
+    if (!identity.creatorAccess) {
+      res.status(403).json({ code: 'CREATOR_ACCESS_REQUIRED', message: '当前账号没有创作权限' });
+      return false;
+    }
+    const requiredCapabilities = Array.isArray(capability) ? capability : [capability];
+    if (!requiredCapabilities.some((item) => hasCreatorCapability(identity.creatorPermissions, item))) {
+      res.status(403).json({ code: 'CREATOR_PERMISSION_DENIED', message: '当前账号没有执行此创作操作的权限' });
+      return false;
+    }
+  } catch (error) {
+    if (error instanceof PlayerAuthenticationRequiredError) {
+      res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先注册或登录账号' });
+      return false;
+    }
+    res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证创作者身份' });
     return false;
   }
   return true;

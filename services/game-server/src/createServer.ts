@@ -750,7 +750,10 @@ export async function createGameServer(spec: {
         }
         const response = await fetch(`${voxaURL}/api/local/models`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
+          },
           body: JSON.stringify({
             modelName: name,
             modelType: ModelType.Project,
@@ -889,7 +892,10 @@ export async function createGameServer(spec: {
           }
           const response = await fetch(`${voxaURL}/api/local/models`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
+            },
             body: JSON.stringify({
               modelName: name,
               modelType: ModelType.ExtensionLib,

@@ -5,7 +5,7 @@ use std::{
     collections::BTreeMap,
     fs,
     io::Read,
-    net::{IpAddr, TcpListener, TcpStream, ToSocketAddrs},
+    net::{TcpListener, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -63,6 +63,7 @@ struct InstallConfigView {
     auto_backup_retention_days: u32,
     public_host: String,
     play_network_mode: String,
+    creator_network_mode: String,
     creator_host: String,
     lan_ip: String,
     play_port: u16,
@@ -127,6 +128,7 @@ impl Default for InstallConfigView {
             auto_backup_retention_days: 30,
             public_host: "127.0.0.1".into(),
             play_network_mode: "local".into(),
+            creator_network_mode: "local".into(),
             creator_host: "127.0.0.1".into(),
             lan_ip: detect_lan_ip().unwrap_or_default(),
             play_port: 3000,
@@ -209,6 +211,8 @@ struct InstallConfigInput {
     play_network_mode: String,
     #[serde(default = "default_creator_host")]
     creator_host: String,
+    #[serde(default = "default_creator_network_mode")]
+    creator_network_mode: String,
     #[serde(default = "default_play_port")]
     play_port: u16,
     #[serde(default = "default_voxa_port")]
@@ -303,6 +307,9 @@ fn default_play_network_mode() -> String {
 }
 fn default_creator_host() -> String {
     "127.0.0.1".into()
+}
+fn default_creator_network_mode() -> String {
+    "local".into()
 }
 fn default_play_port() -> u16 {
     3000
@@ -421,22 +428,16 @@ fn validate_host(value: &str, label: &str) -> Result<String, String> {
 
 fn validate_creator_host(value: &str) -> Result<String, String> {
     let host = validate_host(value, "创作端访问地址")?;
-    if matches!(host.as_str(), "localhost" | "127.0.0.1" | "::1") {
-        return Ok(host);
+    if matches!(host.as_str(), "0.0.0.0" | "::" | "[::]") {
+        return Err("创作端访问地址不能使用监听地址".into());
     }
-    let ip = host
-        .parse::<IpAddr>()
-        .map_err(|_| "创作端只允许填写本机或局域网 IP，不能使用公网 IP 或域名".to_string())?;
-    let private = match ip {
-        IpAddr::V4(ip) => ip.is_private() || ip.is_loopback() || ip.is_link_local(),
-        IpAddr::V6(ip) => {
-            ip.is_loopback() || ip.is_unicast_link_local() || (ip.segments()[0] & 0xfe00) == 0xfc00
-        }
-    };
-    if private {
-        Ok(host)
-    } else {
-        Err("创作端只允许本机或局域网地址，禁止公网部署".into())
+    Ok(host)
+}
+
+fn validate_creator_network_mode(value: &str) -> Result<&str, String> {
+    match value {
+        "local" | "lan" | "public" => Ok(value),
+        _ => Err("创作端访问范围只能是本机、局域网或公网".into()),
     }
 }
 
@@ -565,9 +566,15 @@ fn normalize_owner_environment(content: &str) -> Result<String, String> {
         .or_else(|| values.get("BOX_CREATOR_BIND_IP").cloned())
         .filter(|host| validate_creator_host(host).is_ok())
         .unwrap_or_else(default_creator_host);
+    let creator_network_mode = values
+        .get("BOX_CREATOR_NETWORK_MODE")
+        .map(String::as_str)
+        .filter(|mode| validate_creator_network_mode(mode).is_ok())
+        .unwrap_or("local");
 
     set_env(&mut normalized, "BOX_PLAY_PUBLIC_HOST", &play_host)?;
     set_env(&mut normalized, "BOX_CREATOR_HOST", &creator_host)?;
+    set_env(&mut normalized, "BOX_CREATOR_NETWORK_MODE", creator_network_mode)?;
 
     // Old versions duplicated the database password in five manager-only
     // variables. Move it to the standard database fields once and remove the
@@ -723,12 +730,24 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     } else {
         configured_play_host
     };
-    let creator_host = owner_values
+    let configured_creator_host = owner_values
         .get("BOX_CREATOR_HOST")
         .map(String::as_str)
         .map(validate_creator_host)
         .transpose()?
         .unwrap_or_else(default_creator_host);
+    let creator_mode = owner_values
+        .get("BOX_CREATOR_NETWORK_MODE")
+        .map(String::as_str)
+        .map(validate_creator_network_mode)
+        .transpose()?
+        .unwrap_or("local");
+    let creator_host = match creator_mode {
+        "local" => "127.0.0.1".into(),
+        "lan" => detect_lan_ip().ok_or("已选择创作端局域网模式，但当前未检测到可用的局域网 IP")?,
+        "public" => configured_creator_host,
+        _ => unreachable!(),
+    };
     let play_port = env_port(&owner_values, "BOX_PLAY_PORT", default_play_port());
     let voxa_port = env_port(&owner_values, "BOX_VOXA_PORT", default_voxa_port());
     let creator_port = env_port(&owner_values, "BOX_CREATOR_PORT", default_creator_port());
@@ -747,10 +766,10 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     } else {
         "0.0.0.0"
     };
-    let creator_bind_ip = if matches!(creator_host.as_str(), "127.0.0.1" | "localhost" | "::1") {
+    let creator_bind_ip = if creator_mode == "local" {
         "127.0.0.1"
     } else {
-        creator_host.as_str()
+        "0.0.0.0"
     };
     let play_origin_host = origin_host(&play_host);
     let creator_origin_host = origin_host(&creator_host);
@@ -1028,6 +1047,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     validate_operator_performance(config)?;
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
     let creator_host = validate_creator_host(&config.creator_host)?;
+    validate_creator_network_mode(&config.creator_network_mode)?;
     validate_service_ports(config)?;
     validate_auto_backup_config(config)?;
     let existing = load_existing_env(app);
@@ -1087,6 +1107,11 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &config.play_network_mode,
     )?;
     set_env(&mut content, "BOX_CREATOR_HOST", &creator_host)?;
+    set_env(
+        &mut content,
+        "BOX_CREATOR_NETWORK_MODE",
+        &config.creator_network_mode,
+    )?;
     set_env(&mut content, "BOX_PLAY_PORT", &config.play_port.to_string())?;
     set_env(&mut content, "BOX_VOXA_PORT", &config.voxa_port.to_string())?;
     set_env(
@@ -1541,6 +1566,10 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .get("BOX_PLAY_NETWORK_MODE")
             .cloned()
             .unwrap_or_else(default_play_network_mode),
+        creator_network_mode: values
+            .get("BOX_CREATOR_NETWORK_MODE")
+            .cloned()
+            .unwrap_or_else(default_creator_network_mode),
         creator_host: values
             .get("BOX_CREATOR_HOST")
             .cloned()
@@ -2957,6 +2986,7 @@ mod tests {
             public_host: default_public_host(),
             play_network_mode: default_play_network_mode(),
             creator_host: default_creator_host(),
+            creator_network_mode: default_creator_network_mode(),
             play_port: 3000,
             voxa_port: 3001,
             creator_port: 3002,
@@ -3089,13 +3119,13 @@ mod tests {
     }
 
     #[test]
-    fn creator_network_policy_rejects_public_hosts() {
+    fn creator_network_policy_accepts_valid_public_hosts() {
         assert!(validate_creator_host("127.0.0.1").is_ok());
         assert!(validate_creator_host("192.168.1.10").is_ok());
         assert!(validate_creator_host("10.0.0.10").is_ok());
         assert!(validate_creator_host("0.0.0.0").is_err());
-        assert!(validate_creator_host("203.0.113.20").is_err());
-        assert!(validate_creator_host("arena.example.com").is_err());
+        assert!(validate_creator_host("203.0.113.20").is_ok());
+        assert!(validate_creator_host("arena.example.com").is_ok());
         assert_eq!(
             host_from_http_url("https://[fd00::10]:3002/path"),
             Some("fd00::10".into())

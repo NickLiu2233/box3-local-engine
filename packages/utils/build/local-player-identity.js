@@ -35,6 +35,10 @@ function validIdentity(value) {
         value.avatar.length <= 700000 &&
         typeof value.avatarSkinId === 'string' &&
         value.avatarSkinId.length <= 64 &&
+        typeof value.creatorAccess === 'boolean' &&
+        Array.isArray(value.creatorPermissions) &&
+        value.creatorPermissions.length <= 32 &&
+        value.creatorPermissions.every((permission) => typeof permission === 'string' && permission.length <= 64) &&
         ['player', 'moderator', 'admin'].includes(value.role) &&
         ['active', 'banned'].includes(value.status) &&
         Number.isSafeInteger(value.expiresAt));

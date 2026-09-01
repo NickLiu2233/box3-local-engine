@@ -2761,12 +2761,6 @@ declare class GamePlayer {
      */
     music: GameSoundEffect;
     /**
-     * If true, then player can't chat
-     * @category chat
-     * @deprecated currently not in use
-     */
-    muted: boolean;
-    /**
      * Skin parts
      * @category display
      */

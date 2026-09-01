@@ -31,6 +31,8 @@ const account = {
   displayName: '传送测试玩家',
   avatar: 'avatar-hash',
   avatarSkinId: 'explorer',
+  creatorAccess: false,
+  creatorPermissions: [],
   role: 'player',
   status: 'active',
 } as const;

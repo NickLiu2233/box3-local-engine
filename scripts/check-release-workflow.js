@@ -57,33 +57,28 @@ assert.match(workflow, /box-local-engine-player-service:/)
 assert.match(workflow, /box-local-engine-player-auth-portal:/)
 assert.match(workflow, /box-local-engine-play:/)
 assert.match(workflow, /box-local-engine-server-manager:/)
-assert.doesNotMatch(
-  workflow.match(/headless-server:[\s\S]*?\n {2}publish:/)?.[0] || '',
-  /box-local-engine-(creator|voxa):/,
-)
+assert.match(workflow, /box-local-engine-creator:/)
+assert.match(workflow, /box-local-engine-voxa:/)
 
 const headlessComposeSource = headlessCompose()
 for (const requiredService of [
   'player-service',
   'player-auth-portal',
   'server-manager',
+  'creator',
+  'creator-storage-init',
   'play-storage-init',
   'play',
+  'voxa',
+  'voxa-storage-init',
 ]) {
   assert.match(headlessComposeSource, new RegExp(`^  ${requiredService}:`, 'm'))
 }
-for (const forbiddenService of [
-  'postgres',
-  'redis',
-  'creator',
-  'creator-storage-init',
-  'voxa',
-  'voxa-storage-init',
-  'migrator',
-]) {
+for (const forbiddenService of ['postgres', 'redis', 'migrator']) {
   assert.doesNotMatch(headlessComposeSource, new RegExp(`^  ${forbiddenService}:`, 'm'))
 }
-assert.doesNotMatch(headlessComposeSource, /BOX_CREATOR_PUBLIC_URL|AUTH_DEMO_CREATOR_URL/)
+assert.match(headlessComposeSource, /BOX_CREATOR_PUBLIC_URL/)
+assert.match(headlessComposeSource, /AUTH_DEMO_CREATOR_URL/)
 assert.match(headlessComposeSource, /^volumes:\n {2}box-play-storage:\s*$/m)
 
 // Build outputs are exchanged through Aliyun OSS rather than GitHub Actions

@@ -4,6 +4,7 @@ import { getModelMetaData, migrateProject, projectSchemaToBytes } from '@box-loc
 import { saveModel, storeBlob } from '../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../server/local-cors';
 import { readModelProjectBundle } from '../../../../server/local-voxa-project-bundle';
+import { requireVoxaModelManagement } from '../../../../server/model-management-access';
 
 export const config = { api: { bodyParser: false, responseLimit: false } };
 
@@ -23,9 +24,10 @@ async function readBody(req: NextApiRequest) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!setLocalCors(req, res)) return res.status(403).end('仅允许本机访问');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).end();
+  if (!await requireVoxaModelManagement(req, res)) return;
 
   try {
     const body = await readBody(req);

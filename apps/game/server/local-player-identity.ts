@@ -21,6 +21,9 @@ import {
   normalizePlayerAdminCapabilities,
   type PlayerAdminCapability,
 } from '../shared/player-admin-policy';
+import {
+  normalizeCreatorCapabilities,
+} from '../shared/creator-policy';
 import { requestClientAddress } from './client-address';
 
 const COOKIE_NAME = 'box_local_player_session';
@@ -74,6 +77,8 @@ type IdentityRow = QueryResultRow & {
   banned_at?: string | Date | null;
   banned_until?: string | Date | null;
   admin_permissions?: string[] | null;
+  creator_access?: boolean | null;
+  creator_permissions?: string[] | null;
 };
 
 export type PlayerAccountView = {
@@ -104,6 +109,8 @@ export type PlayerAccountView = {
   bannedAt?: string;
   bannedUntil?: string;
   adminPermissions: PlayerAdminCapability[];
+  creatorAccess: boolean;
+  creatorPermissions: string[];
 };
 
 export type ManagedPlayerListOptions = {
@@ -338,6 +345,8 @@ async function initialize() {
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
       await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS admin_permissions TEXT[] NOT NULL DEFAULT '{}'::text[]`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS creator_access BOOLEAN NOT NULL DEFAULT FALSE`);
+      await database.query(`ALTER TABLE ${table('users')} ADD COLUMN IF NOT EXISTS creator_permissions TEXT[] NOT NULL DEFAULT '{}'::text[]`);
       await database.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS local_users_username_lower
         ON ${table('users')} (LOWER(username))
@@ -605,6 +614,8 @@ function rowToIdentity(row: IdentityRow): RuntimePlayerIdentity {
     // legacy uploaded values so they cannot bloat runtime identity assertions.
     avatar: '',
     avatarSkinId: builtInSkinIds.has(row.avatar_skin_id || '') ? row.avatar_skin_id! : defaultBuiltInSkinId,
+    creatorAccess: row.creator_access === true,
+    creatorPermissions: normalizeCreatorCapabilities(row.creator_permissions),
     role: row.role || 'player',
     status: row.status || 'active',
     expiresAt: 0,
@@ -641,6 +652,8 @@ function toView(identity: RuntimePlayerIdentity, dates: Partial<IdentityRow> = {
     bannedAt: iso(dates.banned_at),
     bannedUntil: iso(dates.banned_until),
     adminPermissions: normalizePlayerAdminCapabilities(dates.admin_permissions),
+    creatorAccess: dates.creator_access === true,
+    creatorPermissions: normalizeCreatorCapabilities(dates.creator_permissions),
   };
 }
 
@@ -684,7 +697,7 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   if (!token || token.startsWith('guest.')) return null;
   const result = await database.query<IdentityRow & { session_device_hash: string }>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, s.device_hash AS session_device_hash
     FROM ${table('sessions')} s
@@ -898,12 +911,13 @@ export async function registerPlayer(
           (principal_id, username, display_name, password_salt, password_hash,
            registration_ip, last_login_at, last_login_ip, login_count)
         VALUES ($1, $2, $3, $4, $5, $6, NOW(), $6, 1)
-        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
+        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id,
+          creator_access, creator_permissions, role, status,
           created_at AS registered_at, updated_at, registration_ip,
           last_login_at, last_login_ip, login_count
       )
       SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
         u.registered_at, u.updated_at, u.registration_ip,
         u.last_login_at, u.last_login_ip, u.login_count
       FROM ${table('principals')} p JOIN inserted u ON u.principal_id = p.id
@@ -990,13 +1004,14 @@ export async function createManagedPlayer(
           (principal_id, username, display_name, password_salt, password_hash,
            role, box_id, tags, admin_note, registration_ip, admin_permissions, login_count)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)
-        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
+        RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id,
+          creator_access, creator_permissions, role, status,
           created_at AS registered_at, updated_at, registration_ip,
           last_login_at, last_login_ip, login_count, admin_note, tags,
           ban_reason, banned_at, banned_until, admin_permissions
       )
       SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+        u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
         u.registered_at, u.updated_at, u.registration_ip,
         u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
         u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
@@ -1043,7 +1058,7 @@ export async function loginPlayer(
   const password = typeof values.password === 'string' ? values.password : '';
   const result = await database.query<IdentityRow & { password_salt: string; password_hash: string }>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count,
       u.password_salt, u.password_hash
@@ -1191,12 +1206,13 @@ export async function updateCurrentPlayerProfile(
         avatar_skin_id = COALESCE($3, avatar_skin_id),
         updated_at = NOW()
       WHERE principal_id = $1
-      RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id, role, status,
+      RETURNING id, principal_id, username, box_id, display_name, avatar_hash, avatar_skin_id,
+        creator_access, creator_permissions, role, status,
         created_at AS registered_at, updated_at, registration_ip, last_login_at, last_login_ip, login_count,
         admin_note, tags, ban_reason, banned_at, banned_until, admin_permissions
     )
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
       u.registered_at, u.updated_at, u.registration_ip, u.last_login_at, u.last_login_ip, u.login_count,
       u.admin_note, u.tags, u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
       (SELECT COUNT(*) FROM ${table('sessions')} s WHERE s.principal_id = p.id AND s.expires_at > NOW())
@@ -1269,7 +1285,7 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
   values.push(pageSize, (safePage - 1) * pageSize);
   const result = await database.query<IdentityRow>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
       u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
@@ -1469,7 +1485,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   await expireTemporaryBans(database);
   const result = await database.query<IdentityRow>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
-      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.role, u.status,
+      u.id AS user_id, u.username, u.box_id, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
       u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
@@ -1893,7 +1909,7 @@ export async function updateManagedPlayer(
   changes: {
     displayName?: unknown; role?: unknown; status?: unknown; avatar?: unknown;
     adminNote?: unknown; tags?: unknown; banReason?: unknown; bannedUntil?: unknown;
-    boxId?: unknown; adminPermissions?: unknown;
+  boxId?: unknown; adminPermissions?: unknown; creatorAccess?: unknown; creatorPermissions?: unknown;
   },
   context?: AdminActionContext,
 ) {
@@ -1914,6 +1930,8 @@ export async function updateManagedPlayer(
     : new Date(String(changes.bannedUntil));
   const hasBoxId = Object.prototype.hasOwnProperty.call(changes, 'boxId');
   const hasAdminPermissions = Object.prototype.hasOwnProperty.call(changes, 'adminPermissions');
+  const hasCreatorAccess = Object.prototype.hasOwnProperty.call(changes, 'creatorAccess');
+  const hasCreatorPermissions = Object.prototype.hasOwnProperty.call(changes, 'creatorPermissions');
   if (role !== undefined || hasAdminPermissions) {
     throw new Error('玩家角色与后台管理权限已经分离，不能在玩家资料中修改');
   }
@@ -1922,6 +1940,16 @@ export async function updateManagedPlayer(
   }
   const adminPermissions = hasAdminPermissions
     ? normalizePlayerAdminCapabilities(changes.adminPermissions)
+    : undefined;
+  if (hasCreatorAccess && typeof changes.creatorAccess !== 'boolean') {
+    throw new Error('创作者授权必须是布尔值');
+  }
+  if (hasCreatorPermissions && !Array.isArray(changes.creatorPermissions)) {
+    throw new Error('创作者权限必须是数组');
+  }
+  const creatorAccess = hasCreatorAccess ? changes.creatorAccess === true : undefined;
+  const creatorPermissions = hasCreatorPermissions
+    ? normalizeCreatorCapabilities(changes.creatorPermissions)
     : undefined;
   if (hasBoxId && typeof changes.boxId !== 'string') throw new Error('神岛 ID 必须是字符串');
   const normalizedBoxId = hasBoxId ? String(changes.boxId).trim() : undefined;
@@ -1950,8 +1978,11 @@ export async function updateManagedPlayer(
       ban_reason: string;
       banned_until: string | Date | null;
       box_id: string | null;
+      creator_access: boolean;
+      creator_permissions: string[];
     }>(`
-      SELECT display_name, avatar_hash, status, admin_note, tags, ban_reason, banned_until, box_id
+      SELECT display_name, avatar_hash, status, admin_note, tags, ban_reason, banned_until, box_id,
+        creator_access, creator_permissions
       FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE
     `, [subjectId]);
     const previousPlayer = previous.rows[0];
@@ -1976,7 +2007,9 @@ export async function updateManagedPlayer(
       || (tags !== undefined && JSON.stringify(tags) !== JSON.stringify(previousPlayer.tags || []))
       || nextBanReason !== previousPlayer.ban_reason
       || nextBannedUntil !== previousBannedUntil
-      || (hasBoxId && boxId !== previousPlayer.box_id);
+      || (hasBoxId && boxId !== previousPlayer.box_id)
+      || (hasCreatorAccess && creatorAccess !== previousPlayer.creator_access)
+      || (hasCreatorPermissions && JSON.stringify(creatorPermissions) !== JSON.stringify(normalizeCreatorCapabilities(previousPlayer.creator_permissions)));
     if (changed) {
       const result = await client.query<IdentityRow>(`
       UPDATE ${table('users')} SET
@@ -1990,9 +2023,11 @@ export async function updateManagedPlayer(
         banned_at = CASE WHEN $5 = 'banned' AND status <> 'banned' THEN NOW() WHEN $5 = 'active' THEN NULL ELSE banned_at END,
         banned_until = CASE WHEN $5 = 'active' THEN NULL WHEN $5 = 'banned' THEN $9 ELSE banned_until END,
         box_id = CASE WHEN $10 THEN $11 ELSE box_id END,
+        creator_access = CASE WHEN $12 THEN $13 ELSE creator_access END,
+        creator_permissions = CASE WHEN $14 THEN $15 ELSE creator_permissions END,
         admin_permissions = CASE
           WHEN COALESCE($4, role) <> 'moderator' THEN '{}'::text[]
-          WHEN $12 THEN $13
+          WHEN $16 THEN $17
           ELSE admin_permissions
         END,
         updated_at = NOW()
@@ -2000,7 +2035,8 @@ export async function updateManagedPlayer(
       RETURNING principal_id AS subject_id
       `, [
         subjectId, displayName, avatar, role, status, adminNote, tags, banReason,
-        bannedUntil, hasBoxId, boxId, hasAdminPermissions, adminPermissions || [],
+        bannedUntil, hasBoxId, boxId, hasCreatorAccess, creatorAccess,
+        hasCreatorPermissions, creatorPermissions || [], hasAdminPermissions, adminPermissions || [],
       ]);
       if (!result.rows[0]) throw new Error('只能修改已经注册的玩家');
       if (status === 'banned' && previousPlayer.status !== 'banned') {
@@ -2011,7 +2047,7 @@ export async function updateManagedPlayer(
         ? 'player.box-id.update'
         : 'player.update';
       await audit(client, auditAction, subjectId, {
-        displayName, avatar, role, status, adminNote, adminPermissions,
+        displayName, avatar, role, status, adminNote, adminPermissions, creatorAccess, creatorPermissions,
         tags, banReason, bannedUntil: bannedUntil?.toISOString() || null,
         ...(hasBoxId ? { previousBoxId: previousPlayer.box_id || '', boxId: boxId || '' } : {}),
         outcome: 'success',

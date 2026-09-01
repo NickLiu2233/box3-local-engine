@@ -38,6 +38,11 @@ try {
     lanResponse.headers.get('Access-Control-Allow-Origin'),
     'http://10.240.28.131:3221',
   );
+  assert.equal(
+    lanResponse.headers.get('Access-Control-Allow-Credentials'),
+    'true',
+    'an allowed Creator origin must be able to send the player session cookie',
+  );
 
   assert.equal(
     setLocalCors(request('https://voxa.example.test') as any, response() as any),

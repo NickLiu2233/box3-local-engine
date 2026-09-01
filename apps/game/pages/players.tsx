@@ -17,6 +17,11 @@ import {
   type PlayerAdminCapability,
 } from '../shared/player-admin-policy';
 import { describePlayerAdminAuditAction } from '../shared/player-admin-audit-catalog';
+import {
+  CREATOR_CAPABILITY_META,
+  CREATOR_CAPABILITIES,
+  type CreatorCapability,
+} from '../shared/creator-policy';
 import styles from './player-management.module.css';
 
 const THEME_KEY = 'box-player-admin-theme';
@@ -48,6 +53,8 @@ type Player = {
   bannedAt?: string;
   bannedUntil?: string;
   adminPermissions: PlayerAdminCapability[];
+  creatorAccess: boolean;
+  creatorPermissions: CreatorCapability[];
 };
 
 type PlayerDetails = {
@@ -875,6 +882,10 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       displayName: selected.displayName,
       adminNote: selected.adminNote,
       tags: selected.tags,
+      ...(ownerAccess ? {
+        creatorAccess: selected.creatorAccess,
+        creatorPermissions: selected.creatorPermissions,
+      } : {}),
     }, '玩家资料已保存');
   }
 
@@ -1392,6 +1403,14 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                     <label>昵称<input disabled={!canManageProfiles} value={selected.displayName} onChange={(event) => setSelected({ ...selected, displayName: event.target.value })} /></label>
                     <label className={styles.fullField}>标签（用逗号分隔）<input disabled={!canManageProfiles} value={selected.tags.join(', ')} onChange={(event) => setSelected({ ...selected, tags: event.target.value.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean) })} placeholder="例如：测试员, 重点关注" /></label>
                     <label className={styles.fullField}>服主备注<textarea disabled={!canManageProfiles} value={selected.adminNote} onChange={(event) => setSelected({ ...selected, adminNote: event.target.value })} placeholder="仅后台可见，不会发送给游戏脚本" /></label>
+                    {ownerAccess ? <section className={`${styles.fullField} ${styles.creatorAccess}`}>
+                      <span className={styles.creatorAccessTitle}>创作者授权</span>
+                      <label className={styles.creatorAccessToggle}>
+                        <input type="checkbox" disabled={selected.guest} checked={selected.creatorAccess} onChange={(event) => setSelected({ ...selected, creatorAccess: event.target.checked, creatorPermissions: event.target.checked ? selected.creatorPermissions : [] })} />
+                        <span><strong>允许进入创作端</strong><small>开启后可继续分配创建、编辑、导入和发布等权限。</small></span>
+                      </label>
+                      {selected.creatorAccess ? <div className={styles.permissionGrid}>{CREATOR_CAPABILITIES.filter((capability) => capability !== 'projects.view').map((capability) => <label key={capability}><input type="checkbox" checked={selected.creatorPermissions.includes(capability)} onChange={(event) => setSelected({ ...selected, creatorPermissions: event.target.checked ? [...new Set([...selected.creatorPermissions, capability])] : selected.creatorPermissions.filter((item) => item !== capability) })} /> <span><strong>{CREATOR_CAPABILITY_META[capability].label}</strong><small>{CREATOR_CAPABILITY_META[capability].description}</small></span></label>)}</div> : null}
+                    </section> : null}
                   </div>}
                 </section> : null}
 

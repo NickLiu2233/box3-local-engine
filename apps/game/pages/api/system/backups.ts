@@ -24,7 +24,7 @@ async function flushOpenProjects() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, req.method === 'GET' ? 'projects.view' : 'projects.edit')) return;
   const manager = getLocalProjectManager();
   if (req.method === 'GET') {
     return res.status(200).json({

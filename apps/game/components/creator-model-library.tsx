@@ -46,7 +46,10 @@ function editorHref(voxaUrl: string, model?: CreatorModel, editType?: 0 | 1) {
   return `${voxaUrl.replace(/\/$/, '')}/?${query}`;
 }
 
-export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
+export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
+  voxaUrl: string;
+  canManageModels: boolean;
+}) {
   const [models, setModels] = useState<CreatorModel[]>([]);
   const [serviceState, setServiceState] = useState<ServiceState>('loading');
   const [serviceMessage, setServiceMessage] = useState('正在连接模型服务…');
@@ -81,11 +84,12 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
   }, []);
 
   useEffect(() => {
+    if (!canManageModels) return;
     void refreshModels();
     const handleFocus = () => void refreshModels(true);
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [refreshModels]);
+  }, [canManageModels, refreshModels]);
 
   const visibleModels = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('zh-CN');
@@ -96,7 +100,7 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
   }, [models, query, type]);
 
   const openEditor = (model?: CreatorModel, editType?: 0 | 1) => {
-    if (serviceState !== 'ready' || !voxaUrl) return;
+    if (!canManageModels || serviceState !== 'ready' || !voxaUrl) return;
     window.open(editorHref(voxaUrl, model, editType), '_blank', 'noopener,noreferrer');
   };
 
@@ -152,7 +156,9 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
       const updated = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(updated.message || '保存模型信息失败');
       setModels((items) => items.map((item) => item.modelId === editingModel.modelId
-        ? { ...item, ...updated }
+        // VOXA's update response contains model metadata but not Creator's
+        // derived preview URL. Keep that local field until the next refresh.
+        ? { ...item, ...updated, modelPreviewUrl: item.modelPreviewUrl }
         : item));
       setEditingModel(null);
       setNotice('模型信息已保存');
@@ -210,6 +216,19 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
     </div>
   </div>;
 
+  if (!canManageModels) {
+    return <section className={styles.library}>
+      <div className={styles.servicePanel} aria-live="polite">
+        <div className={styles.serviceIcon}><ServerOff size={24} /></div>
+        <div className={styles.serviceCopy}>
+          <span className={styles.serviceLabel}>模型管理未授权</span>
+          <h2>当前账号不能管理 VOXA 模型</h2>
+          <p>地图仍可正常使用已有模型；如需导入、编辑或导出模型，请让服主授予“管理模型”权限。</p>
+        </div>
+      </div>
+    </section>;
+  }
+
   if (serviceState === 'unavailable') {
     return <section className={styles.library}>
       {sectionHeader}
@@ -218,7 +237,7 @@ export function CreatorModelLibrary({ voxaUrl }: { voxaUrl: string }) {
         <div className={styles.serviceCopy}>
           <span className={styles.serviceLabel}>模型服务未运行</span>
           <h2>暂时无法读取模型列表</h2>
-          <p>{serviceMessage}。在项目目录运行 <code>pnpm voxa</code>，已有镜像可运行 <code>pnpm voxa:up</code>。</p>
+          <p>{serviceMessage}。</p>
         </div>
         <button className={styles.retryButton} type="button" onClick={() => void refreshModels()}>
           <RefreshCw size={16} />重新检测

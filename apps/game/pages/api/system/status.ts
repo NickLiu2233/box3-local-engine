@@ -4,7 +4,7 @@ import { allowAuthenticatedCreatorApi } from '../../../server/creator-api-securi
 import { getSystemStatus } from '../../../server/system-status';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, 'projects.view')) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).end();

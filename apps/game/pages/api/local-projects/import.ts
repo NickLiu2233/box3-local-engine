@@ -15,7 +15,7 @@ export const config = { api: { bodyParser: false } };
 const MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (!await allowAuthenticatedCreatorApi(req, res)) return;
+  if (!await allowAuthenticatedCreatorApi(req, res, 'projects.import')) return;
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).end();

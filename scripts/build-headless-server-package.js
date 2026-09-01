@@ -51,22 +51,25 @@ function headlessCompose() {
   const source = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8')
   const servicesIndex = source.indexOf('services:\n')
   const header = source.slice(0, servicesIndex + 'services:\n'.length)
-  const playerService = serviceSection(
-    source,
-    '  player-service:',
-    '  player-auth-portal:',
-  ).replace(/^ {6}BOX_CREATOR_PUBLIC_URL:.*\n/m, '')
-  const authPortal = serviceSection(source, '  player-auth-portal:', '  server-manager:').replace(
-    /^ {6}AUTH_DEMO_CREATOR_URL:.*\n/m,
-    '',
-  )
+  const playerService = serviceSection(source, '  player-service:', '  player-auth-portal:')
+  const authPortal = serviceSection(source, '  player-auth-portal:', '  server-manager:')
   const serverManager = serviceSection(source, '  server-manager:', '  creator:')
+  const creator = serviceSection(source, '  creator:', '  play-storage-init:')
   const play = serviceSection(source, '  play-storage-init:', '  voxa:')
+  const voxa = serviceSection(source, '  voxa:', '  migrator:')
   const volumes = 'volumes:\n  box-play-storage:\n'
-  if (servicesIndex < 0 || !playerService || !authPortal || !serverManager || !play) {
-    fail('无法生成游玩服务器 Compose 配置')
+  if (
+    servicesIndex < 0 ||
+    !playerService ||
+    !authPortal ||
+    !serverManager ||
+    !creator ||
+    !play ||
+    !voxa
+  ) {
+    fail('无法生成完整服务器 Compose 配置')
   }
-  return `${header}${playerService}${authPortal}${serverManager}${play}${volumes}`
+  return `${header}${playerService}${authPortal}${serverManager}${creator}${play}${voxa}${volumes}`
 }
 
 function main() {

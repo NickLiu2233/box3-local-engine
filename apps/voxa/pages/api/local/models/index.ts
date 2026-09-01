@@ -2,11 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { listModels, saveModel } from '../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../server/local-cors';
+import { requireVoxaModelManagement } from '../../../../server/model-management-access';
 
 function cors(req: NextApiRequest, res: NextApiResponse) {
   if (!setLocalCors(req, res)) return false;
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   return true;
 }
 
@@ -30,6 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(200).json({ rows, count: rows.length });
   }
   if (req.method === 'POST') {
+    if (!await requireVoxaModelManagement(req, res)) return;
     return res.status(200).json(await saveModel(req.body || {}));
   }
   return res.status(405).end();

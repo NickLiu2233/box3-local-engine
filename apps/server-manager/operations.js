@@ -4,7 +4,14 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execFile } = require('node:child_process')
 
-const services = ['play', 'player-service', 'player-auth-portal']
+const services = ['creator', 'voxa', 'play', 'player-service', 'player-auth-portal']
+const serviceProfiles = {
+  'creator': 'creator',
+  'voxa': 'voxa',
+  'play': 'play',
+  'player-service': 'player-service',
+  'player-auth-portal': 'auth-portal',
+}
 const secretKeys = new Set(['BOX_DATABASE_URL', 'REDIS_PASSWORD'])
 const configuration = [
   {
@@ -23,6 +30,40 @@ const configuration = [
     min: 1,
     max: 65535,
     defaultValue: '3000',
+  },
+  {
+    key: 'BOX_CREATOR_BIND_IP',
+    label: '创作端监听范围',
+    group: 'network',
+    type: 'select',
+    options: ['127.0.0.1', '0.0.0.0'],
+    defaultValue: '127.0.0.1',
+  },
+  {
+    key: 'BOX_CREATOR_PORT',
+    label: 'ARENA 端口',
+    group: 'network',
+    type: 'number',
+    min: 1,
+    max: 65535,
+    defaultValue: '3002',
+  },
+  {
+    key: 'BOX_VOXA_BIND_IP',
+    label: 'VOXA 监听范围',
+    group: 'network',
+    type: 'select',
+    options: ['127.0.0.1', '0.0.0.0'],
+    defaultValue: '127.0.0.1',
+  },
+  {
+    key: 'BOX_VOXA_PORT',
+    label: 'VOXA 端口',
+    group: 'network',
+    type: 'number',
+    min: 1,
+    max: 65535,
+    defaultValue: '3001',
   },
   {
     key: 'BOX_PLAYER_SERVICE_PORT',
@@ -48,6 +89,20 @@ const configuration = [
     group: 'network',
     type: 'url',
     defaultValue: 'http://127.0.0.1:3000',
+  },
+  {
+    key: 'BOX_CREATOR_PUBLIC_URL',
+    label: '创作端公开地址',
+    group: 'network',
+    type: 'url',
+    defaultValue: 'http://127.0.0.1:3002',
+  },
+  {
+    key: 'BOX_VOXA_PUBLIC_URL',
+    label: 'VOXA 公开地址',
+    group: 'network',
+    type: 'url',
+    defaultValue: 'http://127.0.0.1:3001',
   },
   {
     key: 'BOX_PLAYER_SERVICE_PUBLIC_URL',
@@ -285,9 +340,8 @@ function createOperations(options = {}) {
 
   function enabledServices() {
     const profiles = parseEnvironment(readEnvironment()).get('COMPOSE_PROFILES') || ''
-    return services.filter(
-      (service) => service !== 'player-auth-portal' || profiles.split(',').includes('auth-portal'),
-    )
+    const enabledProfiles = new Set(profiles.split(',').map((profile) => profile.trim()))
+    return services.filter((service) => enabledProfiles.has(serviceProfiles[service]))
   }
 
   async function getStatus() {

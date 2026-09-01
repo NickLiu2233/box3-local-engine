@@ -91,6 +91,21 @@ export async function resolvePlayerServiceIdentity(
 }
 
 export async function hasAuthenticatedPlayer(cookie = '', ip = '', userAgent = '') {
+  try {
+    await getAuthenticatedPlayerIdentity(cookie, ip, userAgent);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolves the current player identity for App Router pages, where no mutable
+ * NextApiResponse is available to forward a renewed cookie. The identity is
+ * always read from Player Service, so permission changes take effect on the
+ * very next protected page request.
+ */
+export async function getAuthenticatedPlayerIdentity(cookie = '', ip = '', userAgent = '') {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
@@ -105,9 +120,21 @@ export async function hasAuthenticatedPlayer(cookie = '', ip = '', userAgent = '
       cache: 'no-store',
       signal: controller.signal,
     });
-    return response.ok;
-  } catch {
-    return false;
+    const data = await response.json().catch(() => ({})) as Partial<RuntimeIdentityResponse> & {
+      message?: string;
+    };
+    if (!response.ok || !data.identity || !data.assertion) {
+      if (response.status === 401 || data.message === 'AUTH_REQUIRED') {
+        throw new PlayerAuthenticationRequiredError();
+      }
+      throw new Error(data.message || `玩家身份服务请求失败（HTTP ${response.status}）`);
+    }
+    return { identity: data.identity, assertion: data.assertion };
+  } catch (error) {
+    if ((error as Error).name === 'AbortError') {
+      throw new Error('玩家身份服务响应超时');
+    }
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

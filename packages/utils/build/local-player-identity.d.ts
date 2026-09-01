@@ -8,6 +8,8 @@ export type RuntimePlayerIdentity = {
     displayName: string;
     avatar: string;
     avatarSkinId: string;
+    creatorAccess: boolean;
+    creatorPermissions: readonly string[];
     role: LocalPlayerRole;
     status: LocalPlayerStatus;
     expiresAt: number;

@@ -147,6 +147,10 @@ export const DropDownMenu = (props: DropDownMenuProps) => {
       },
     ];
     return menuItems.filter((item) => {
+      // 本地引擎通过作品中心导出游玩包，不提供云端“发布”流程。
+      if (item.id === menuItemsId.publish && isLocalEngine) {
+        return false;
+      }
       // 非协作者，仅展示设置和返回主页
       if (
         isGuest &&
