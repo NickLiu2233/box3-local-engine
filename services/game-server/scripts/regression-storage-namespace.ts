@@ -22,29 +22,29 @@ assert.equal(resolveGroupStorageNamespace({
 }), 'map-two');
 assert.notEqual(resolveGroupStorageNamespace({}), 'global');
 
-const mainMapUuid = '11111111-1111-4111-8111-111111111111';
-const subMapUuid = '22222222-2222-4222-8222-222222222222';
-const groupUuid = '33333333-3333-4333-8333-333333333333';
+const mainPermanentMapId = '11111111111111111111';
+const subPermanentMapId = '22222222222222222222';
+const permanentGroupId = '33333333333333333333';
 assert.equal(resolveMapRuntimeNamespace({
-  mapUuid: mainMapUuid,
-}), mainMapUuid);
+  permanentMapId: mainPermanentMapId,
+}), mainPermanentMapId);
 assert.equal(resolveMapRuntimeNamespace({
-  mapUuid: subMapUuid,
-}), subMapUuid);
+  permanentMapId: subPermanentMapId,
+}), subPermanentMapId);
 assert.equal(resolveGroupRuntimeNamespace({
-  mapGroupUuid: groupUuid,
-  mapUuid: mainMapUuid,
+  permanentMapGroupId: permanentGroupId,
+  permanentMapId: mainPermanentMapId,
   explicitNamespace: 'global',
-}), groupUuid);
+}), permanentGroupId);
 assert.equal(resolveGroupRuntimeNamespace({
-  mapGroupUuid: groupUuid,
-  mapUuid: subMapUuid,
+  permanentMapGroupId: permanentGroupId,
+  permanentMapId: subPermanentMapId,
   explicitNamespace: 'global',
-}), groupUuid);
+}), permanentGroupId);
 assert.notEqual(resolveGroupRuntimeNamespace({
-  mapGroupUuid: '44444444-4444-4444-8444-444444444444',
-  mapUuid: '55555555-5555-4555-8555-555555555555',
+  permanentMapGroupId: '44444444444444444444',
+  permanentMapId: '55555555555555555555',
   explicitNamespace: 'global',
-}), groupUuid);
+}), permanentGroupId);
 
 console.log('storage namespace regression passed');

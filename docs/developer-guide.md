@@ -31,7 +31,7 @@ Creator 读取可编辑工程，Play 只读取发布快照。不要跨越这条�
 pnpm verify
 ```
 
-修改兼容接口、发布包、地图 UUID、脚本 API 或运行时协议时，先阅读[系统架构](./architecture.md)和[对齐基线](./boxes-parity.md)，并补充回归测试。
+修改兼容接口、发布包、永久地图 ID、脚本 API 或运行时协议时，先阅读[系统架构](./architecture.md)和[对齐基线](./boxes-parity.md)，并补充回归测试。
 
 ## 协作规则
 

@@ -105,7 +105,7 @@ BOX_DATABASE_URL=
 | `scripts/`                     | 回归、发行、离线包和文档检查                 |
 | `distribution/`                | 许可证、无图形服务器和维护者部署模板         |
 
-地图 UUID、地图组关系、资源 hash、脚本 API、发布清单和 MuDB 协议均属于兼容接口。修改相关代码前先阅读[系统架构](docs/architecture.md)和[与 boxes 的核心对齐基线](docs/boxes-parity.md)。
+永久地图 ID、地图组关系、资源 hash、脚本 API、发布清单和 MuDB 协议均属于兼容接口。修改相关代码前先阅读[系统架构](docs/architecture.md)和[与 boxes 的核心对齐基线](docs/boxes-parity.md)。
 
 ## 发行范围
 

@@ -83,30 +83,30 @@ async function main() {
 
   const first = createStorage('world-a');
   const second = createStorage('world-b');
-  const uuidStorage = createStorage('11111111-1111-4111-8111-111111111111');
-  const editUuidStorage = createStorage(
-    '22222222-2222-4222-8222-222222222222',
-    '33333333-3333-4333-8333-333333333333',
+  const permanentIdStorage = createStorage('11111111111111111111');
+  const editPermanentIdStorage = createStorage(
+    '22222222222222222222',
+    '33333333333333333333',
     'edit',
   );
   const longStorageName = 'player_profile_archive';
-  const longProjectTableName = (editUuidStorage as any).tableBaseName(
+  const longProjectTableName = (editPermanentIdStorage as any).tableBaseName(
     'project',
     longStorageName,
   );
-  const longGroupTableName = (editUuidStorage as any).tableBaseName(
+  const longGroupTableName = (editPermanentIdStorage as any).tableBaseName(
     'group',
     longStorageName,
   );
   assert.match(
     longProjectTableName,
-    /^edit_22222222-2222-4222-8222-222222222222_/,
-    'oversized project storage names must still expose the boxes mode and map UUID',
+    /^edit_22222222222222222222_/,
+    'project storage names must expose the mode and permanent map ID',
   );
   assert.match(
     longGroupTableName,
-    /^group_edit_33333333-3333-4333-8333-333333333333_/,
-    'oversized group storage names must still expose the boxes mode and group UUID',
+    /^group_edit_33333333333333333333_/,
+    'group storage names must expose the mode and permanent map group ID',
   );
   assert.ok(
     Buffer.byteLength(`${longProjectTableName}_keys`, 'utf8') <= 63,
@@ -162,20 +162,20 @@ async function main() {
   assert.equal(await second.get('project', 'players', 'alice'), undefined);
 
   const longestValidStorageName = 'a'.repeat(50);
-  await uuidStorage.set('project', longestValidStorageName, 'uuid-player', 1);
+  await permanentIdStorage.set('project', longestValidStorageName, 'map-player', 1);
   assert.equal(
-    (await uuidStorage.get('project', longestValidStorageName, 'uuid-player'))?.value,
+    (await permanentIdStorage.get('project', longestValidStorageName, 'map-player'))?.value,
     1,
-    'UUID namespaces must support the full 50-character storage-space name',
+    'permanent map IDs must support the full 50-character storage-space name',
   );
 
-  await editUuidStorage.set('project', 'player', 'editor', { coins: 1 });
-  await editUuidStorage.set('group', 'player', 'editor', { season: 2 });
+  await editPermanentIdStorage.set('project', 'player', 'editor', { coins: 1 });
+  await editPermanentIdStorage.set('group', 'player', 'editor', { season: 2 });
   await pool.query(
-    `SELECT 1 FROM "box_engine"."edit_22222222-2222-4222-8222-222222222222_player" LIMIT 1`,
+    `SELECT 1 FROM "box_engine"."edit_22222222222222222222_player" LIMIT 1`,
   );
   await pool.query(
-    `SELECT 1 FROM "box_engine"."group_edit_33333333-3333-4333-8333-333333333333_player" LIMIT 1`,
+    `SELECT 1 FROM "box_engine"."group_edit_33333333333333333333_player" LIMIT 1`,
   );
 
   const locked = await first.get('project', 'players', 'alice', undefined, 'ticket-1');

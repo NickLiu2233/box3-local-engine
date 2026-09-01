@@ -18,7 +18,7 @@ Play 运行时 → PostgreSQL + 可选 Redis + 本地运行时缓存
 
 Creator 保存 `.boxproject`，Play 导入 `.boxplay`。主图和副图组成地图组：地图状态独立，资源与组数据可共享。服务端脚本是权威逻辑；客户端脚本不可信，不得保存秘密或执行权威判定。
 
-兼容接口包括地图 UUID、地图组关系、Blob/hash、发布快照、脚本 API 与运行时协议。修改前阅读[对齐基线](./boxes-parity.md)。
+兼容接口包括永久地图 ID、地图组关系、Blob/hash、发布快照、脚本 API 与运行时协议。修改前阅读[对齐基线](./boxes-parity.md)。
 
 ## 关键请求
 

@@ -507,7 +507,7 @@ declare class GameWorld {
      */
     teleport(mapId: string, players: GamePlayerEntity[], serverId?: string): Promise<TeleportResult>;
     /**
-     * 当前运行实例的稳定 ID。普通实例使用地图永久 UUID，传送创建的
+     * 当前运行实例的稳定 ID。普通实例使用20 位永久地图 ID，传送创建的
      * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
      */
     readonly serverId: string;

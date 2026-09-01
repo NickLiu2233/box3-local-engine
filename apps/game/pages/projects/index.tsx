@@ -48,7 +48,7 @@ type CompatibilityReport = {
 
 type LocalProject = {
   id: string;
-  mapUuid: string;
+  permanentMapId: string;
   publicId: string;
   name: string;
   author: string;
@@ -70,7 +70,7 @@ type LocalProject = {
 const previewProjects: LocalProject[] = [
   {
     id: 'preview-creator-arena',
-    mapUuid: 'preview-creator-arena',
+    permanentMapId: '10000000000000000001',
     publicId: 'preview-creator-arena',
     name: '竞技场：破晓行动',
     author: '测试创作者',
@@ -86,7 +86,7 @@ const previewProjects: LocalProject[] = [
   },
   {
     id: 'preview-creator-race',
-    mapUuid: 'preview-creator-race',
+    permanentMapId: '10000000000000000002',
     publicId: 'preview-creator-race',
     name: '极速赛道',
     author: '测试创作者',
@@ -101,7 +101,7 @@ const previewProjects: LocalProject[] = [
   },
   {
     id: 'preview-creator-arena-lobby',
-    mapUuid: 'preview-creator-arena-lobby',
+    permanentMapId: '10000000000000000003',
     publicId: 'preview-creator-arena-lobby',
     name: '准备大厅',
     author: '测试创作者',
@@ -117,7 +117,7 @@ const previewProjects: LocalProject[] = [
   },
   {
     id: 'preview-creator-arena-training',
-    mapUuid: 'preview-creator-arena-training',
+    permanentMapId: '10000000000000000004',
     publicId: 'preview-creator-arena-training',
     name: '训练场',
     author: '测试创作者',
@@ -132,7 +132,7 @@ const previewProjects: LocalProject[] = [
   },
   {
     id: 'preview-creator-arena-results',
-    mapUuid: 'preview-creator-arena-results',
+    permanentMapId: '10000000000000000005',
     publicId: 'preview-creator-arena-results',
     name: '结算大厅',
     author: '测试创作者',
@@ -1548,14 +1548,14 @@ export default function ProjectsPage({ voxaUrl, initialView, uiPreview, creator 
                   </>}
                   {dialog === 'details' && <>
                   <div className={styles.fieldGroup}>
-                    <label htmlFor="project-map-uuid">地图 ID</label>
+                    <label htmlFor="project-permanent-map-id">地图 ID</label>
                     <input
-                      id="project-map-uuid"
-                      value={selectedProject?.mapUuid || ''}
+                      id="project-permanent-map-id"
+                      value={selectedProject?.permanentMapId || ''}
                       readOnly
                       aria-readonly="true"
                     />
-                    <small className={styles.fieldHint}>永久 UUID，用于地图存档隔离，创建后不可修改</small>
+                    <small className={styles.fieldHint}>永久地图 ID，用于地图存档隔离，创建后不可修改</small>
                   </div>
                   <div className={styles.fieldGroup}>
                     <label htmlFor="project-public-id">访问 ID</label>

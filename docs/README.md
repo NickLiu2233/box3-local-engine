@@ -44,7 +44,7 @@
 - [开发者与协作手册](./developer-guide.md)：开发环境、UI 预览、测试和提交要求。
 - [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
 - [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
-- [稳定地图存储 UUID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
+- [稳定地图存储 ID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
 - [构建、分发与 CI](./release-and-distribution.md)：完整镜像归档、桌面 App、无图形服务器包和 Tag 流水线。
 - [安全审计](./security-audit.md)：生产依赖审计范围与剩余风险。
 

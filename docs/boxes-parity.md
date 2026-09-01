@@ -1,6 +1,6 @@
 # 与 boxes 的核心对齐基线
 
-本项目复用地图 schema、Blob/hash、地图 UUID、地图组、脚本 API、运行时协议与 MuDB 兼容边界。修改这些接口前必须有明确回归。
+本项目复用地图 schema、Blob/hash、永久地图 ID、地图组、脚本 API、运行时协议与 MuDB 兼容边界。修改这些接口前必须有明确回归。
 
 Local Engine 自己实现部署、离线镜像、玩家服务、启动器和本地管理能力；这些不需要与 boxes 同源。
 

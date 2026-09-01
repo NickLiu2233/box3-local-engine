@@ -2237,7 +2237,6 @@ class GamePlayer {
         this.startFlySound = new GameSoundEffect();
         this.stopFlySound = new GameSoundEffect();
         this.music = new GameSoundEffect();
-        this.muted = false;
         this.skin = {
             hips: undefined,
             torso: undefined,

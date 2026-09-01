@@ -6,6 +6,7 @@ import { createGunzip } from 'zlib';
 import { pipeline } from 'stream/promises';
 
 import { getPlayWorlds } from './play-worlds';
+import { normalizeMapIdentity } from './map-identity';
 
 const tarStream = require('tar-stream') as {
   extract(): NodeJS.WritableStream & {
@@ -144,12 +145,10 @@ function assertWorldId(id: string) {
   return id;
 }
 
-const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
-
-function assertMapUuid(value: unknown, label = '地图 UUID') {
-  const mapUuid = String(value || '').toLowerCase();
-  if (!mapUuidPattern.test(mapUuid)) throw new Error(`${label}无效`);
-  return mapUuid;
+function assertPermanentMapId(value: unknown, label = '永久地图 ID') {
+  const permanentMapId = normalizeMapIdentity(value);
+  if (!permanentMapId) throw new Error(`${label}无效`);
+  return permanentMapId;
 }
 
 function assertPublicId(value: unknown) {
@@ -271,8 +270,8 @@ function validateWorld(root: string) {
   const state = JSON.parse(fs.readFileSync(path.join(root, 'data', 'project-state.json'), 'utf8'));
   const id = assertWorldId(String(manifest.id || ''));
   const publicId = assertPublicId(manifest.publicId || id);
-  manifest.mapUuid = assertMapUuid(manifest.mapUuid);
-  manifest.mapGroupUuid = assertMapUuid(manifest.mapGroupUuid, '地图组 UUID');
+  manifest.permanentMapId = assertPermanentMapId(manifest.permanentMapId);
+  manifest.permanentMapGroupId = assertPermanentMapId(manifest.permanentMapGroupId, '永久地图组 ID');
   validateAssetDistribution(manifest.assetDistribution);
   if (!manifest.permissionHash || state.permissionHash !== manifest.permissionHash) {
     throw new Error('地图权限数据不完整或不一致');
@@ -313,8 +312,8 @@ function validateMapGroupBundle(
   if (new Set(worlds.map((world) => world.id)).size !== worlds.length) {
     throw new Error('游玩包包含重复地图');
   }
-  if (new Set(worlds.map((world) => world.manifest.mapUuid)).size !== worlds.length) {
-    throw new Error('游玩包包含重复的地图 UUID');
+  if (new Set(worlds.map((world) => world.manifest.permanentMapId)).size !== worlds.length) {
+    throw new Error('游玩包包含重复的永久地图 ID');
   }
   const referenceOwners = new Map<string, string>();
   for (const world of worlds) {
@@ -345,10 +344,10 @@ function validateMapGroupBundle(
   if (
     mainMaps.length !== 1 ||
     mainMaps[0].id !== descriptor.mainProjectId ||
-    descriptor.mapGroupUuid !== mainMaps[0].manifest.mapUuid ||
+    descriptor.permanentMapGroupId !== mainMaps[0].manifest.permanentMapId ||
     worlds.some((world) =>
       world.manifest.mapGroupId !== descriptor.mapGroupId ||
-      world.manifest.mapGroupUuid !== descriptor.mapGroupUuid ||
+      world.manifest.permanentMapGroupId !== descriptor.permanentMapGroupId ||
       world.manifest.mainProjectId !== descriptor.mainProjectId ||
       (world.id === descriptor.mainProjectId
         ? world.manifest.mapRole !== 'main'
@@ -536,15 +535,20 @@ function collectReviewResources(world: ValidatedPlayWorld, prefix: string) {
 function validateInstallConflicts(validated: ValidatedPlayWorld[]) {
   const root = libraryRoot();
   fs.mkdirSync(root, { recursive: true });
+  const installedWorlds = getPlayWorlds();
   const installedReferences = new Set(
-    getPlayWorlds().flatMap((world) => [world.id, world.publicId]),
+    installedWorlds.flatMap((world) => [world.id, world.publicId]),
   );
+  const installedPermanentIds = new Set(installedWorlds.map((world) => world.permanentMapId));
   for (const world of validated) {
     if (fs.existsSync(path.join(root, world.id))) {
       throw new Error(`同 ID 地图“${world.manifest.projectName || world.id}”已经存在，请先删除旧地图`);
     }
     if (installedReferences.has(world.id) || installedReferences.has(world.publicId)) {
       throw new Error(`地图 ID“${world.publicId}”已经被其他地图使用`);
+    }
+    if (installedPermanentIds.has(String(world.manifest.permanentMapId))) {
+      throw new Error(`永久地图 ID“${world.manifest.permanentMapId}”已经被其他地图使用`);
     }
   }
   return root;

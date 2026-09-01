@@ -125,11 +125,11 @@ function saveProject(id, characters) {
     assert.equal(submapManifest.mapRole, 'submap')
     assert.equal(mainManifest.mapGroupId, 'release-main')
     assert.equal(submapManifest.mainProjectId, 'release-main')
-    assert.match(mainManifest.mapUuid, /^[0-9a-f-]{36}$/)
-    assert.match(submapManifest.mapUuid, /^[0-9a-f-]{36}$/)
-    assert.notEqual(submapManifest.mapUuid, mainManifest.mapUuid)
-    assert.equal(mainManifest.mapGroupUuid, mainManifest.mapUuid)
-    assert.equal(submapManifest.mapGroupUuid, mainManifest.mapUuid)
+    assert.match(mainManifest.permanentMapId, /^[0-9a-f]{20}$/)
+    assert.match(submapManifest.permanentMapId, /^[0-9a-f]{20}$/)
+    assert.notEqual(submapManifest.permanentMapId, mainManifest.permanentMapId)
+    assert.equal(mainManifest.permanentMapGroupId, mainManifest.permanentMapId)
+    assert.equal(submapManifest.permanentMapGroupId, mainManifest.permanentMapId)
 
     const distributionPath = path.join(temporaryRoot, 'distribution')
     const packaged = manager.packageProject('release-main@v1', distributionPath, {
@@ -137,8 +137,11 @@ function saveProject(id, characters) {
     })
     assert.equal(packaged.directory, distributionPath)
     const compose = fs.readFileSync(path.join(distributionPath, 'compose.yml'), 'utf8')
-    assert.match(compose, new RegExp(`BOX_WORLD_MAP_UUID: ${mainManifest.mapUuid}`))
-    assert.match(compose, new RegExp(`BOX_WORLD_GROUP_UUID: ${mainManifest.mapUuid}`))
+    assert.match(compose, new RegExp(`BOX_WORLD_PERMANENT_MAP_ID: ${mainManifest.permanentMapId}`))
+    assert.match(
+      compose,
+      new RegExp(`BOX_WORLD_PERMANENT_GROUP_ID: ${mainManifest.permanentMapId}`),
+    )
     assert.match(
       compose,
       /BOX_PLAYER_LOGIN_URL: \$\{BOX_PLAYER_LOGIN_URL:-\}/,

@@ -55,7 +55,7 @@ export class TeleportServer {
           try {
             const data = await this.allocate({
               sourceMapId:
-                process.env.BOX_WORLD_MAP_UUID || state.settings.containerName,
+                process.env.BOX_WORLD_PERMANENT_MAP_ID || state.settings.containerName,
               targetMapId: mapId,
               subjectIds,
               serverId,

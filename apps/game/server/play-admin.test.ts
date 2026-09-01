@@ -27,8 +27,8 @@ function createGroupBundle() {
   const input = path.join(root, 'input');
   const archivePath = path.join(root, 'group.boxplay');
   const members = [
-    { id: 'group-main', mapUuid: '11111111-1111-4111-8111-111111111111', name: '主地图', mapRole: 'main' },
-    { id: 'group-dungeon', mapUuid: '22222222-2222-4222-8222-222222222222', name: '副地图', mapRole: 'submap' },
+    { id: 'group-main', permanentMapId: '11111111111111111111', name: '主地图', mapRole: 'main' },
+    { id: 'group-dungeon', permanentMapId: '22222222222222222222', name: '副地图', mapRole: 'submap' },
   ] as const;
 
   for (const member of members) {
@@ -48,8 +48,8 @@ function createGroupBundle() {
     fs.writeFileSync(path.join(worldRoot, 'manifest.json'), JSON.stringify({
       formatVersion: 1,
       id: member.id,
-      mapUuid: member.mapUuid,
-      mapGroupUuid: members[0].mapUuid,
+      permanentMapId: member.permanentMapId,
+      permanentMapGroupId: members[0].permanentMapId,
       projectName: member.name,
       version: 'v1',
       permissionHash,
@@ -102,11 +102,11 @@ function createGroupBundle() {
     formatVersion: 1,
     type: 'map-group-play-bundle',
     mapGroupId: 'group-main',
-    mapGroupUuid: members[0].mapUuid,
+    permanentMapGroupId: members[0].permanentMapId,
     mainProjectId: 'group-main',
     members: members.map((member) => ({
       id: member.id,
-      mapUuid: member.mapUuid,
+      permanentMapId: member.permanentMapId,
       mapRole: member.mapRole,
       mainProjectId: 'group-main',
     })),
@@ -281,7 +281,7 @@ describe('map group play bundle import', () => {
     const updated = updatePlayWorld('group-main', { publicId: 'my-town' });
 
     expect(updated?.id).toBe('group-main');
-    expect(updated?.mapUuid).toBe('11111111-1111-4111-8111-111111111111');
+    expect(updated?.permanentMapId).toBe('11111111111111111111');
     expect(updated?.publicId).toBe('my-town');
     expect(resolveWorld(process.env.BOX_PLAY_LIBRARY_PATH!, 'my-town')?.id).toBe('group-main');
     expect(() => updatePlayWorld('group-dungeon', { publicId: 'my-town' }))

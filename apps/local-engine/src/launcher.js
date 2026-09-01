@@ -193,7 +193,7 @@ const resourceAllowedOrigins = Array.from(
 
 function dataStorageNamespace(id) {
   return resolveMapRuntimeNamespace({
-    mapUuid: id,
+    permanentMapId: id,
     prefix: process.env.BOX_DATA_STORAGE_NAMESPACE_PREFIX || '',
   })
 }
@@ -216,16 +216,16 @@ function prewarmCount(name, fallback, maximum) {
 function groupStorageNamespace(projectId = '') {
   if (projectId && projectManager) {
     try {
-      return projectManager.projectStorageIdentity(projectId).mapGroupUuid
+      return projectManager.projectStorageIdentity(projectId).permanentMapGroupId
     } catch {
       // Standalone runtime fixtures do not necessarily have project metadata.
     }
   }
   return resolveGroupRuntimeNamespace({
-    mapGroupUuid: process.env.BOX_WORLD_GROUP_UUID,
+    permanentMapGroupId: process.env.BOX_WORLD_PERMANENT_GROUP_ID,
     mapGroupId: process.env.BOX_WORLD_GROUP_ID,
     mainProjectId: process.env.BOX_WORLD_MAIN_PROJECT_ID || projectId,
-    mapUuid: process.env.BOX_WORLD_MAP_UUID,
+    permanentMapId: process.env.BOX_WORLD_PERMANENT_MAP_ID,
     mapId: process.env.BOX_WORLD_ID || process.env.BOX_SERVER_CONTENT_ID,
   })
 }
@@ -508,10 +508,10 @@ async function main() {
             mode === 'play'
               ? derivedRuntimePath(
                   mode,
-                  localStorageIdentity?.mapUuid ||
+                  localStorageIdentity?.permanentMapId ||
                     projectId ||
                     releaseId ||
-                    process.env.BOX_WORLD_MAP_UUID ||
+                    process.env.BOX_WORLD_PERMANENT_MAP_ID ||
                     process.env.BOX_WORLD_ID ||
                     readProjectHash(),
                 )
@@ -537,24 +537,25 @@ async function main() {
             readCloudMapId() ||
             '0',
           BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
-            localStorageIdentity?.mapUuid ||
-              process.env.BOX_WORLD_MAP_UUID ||
+            localStorageIdentity?.permanentMapId ||
+              process.env.BOX_WORLD_PERMANENT_MAP_ID ||
               process.env.BOX_WORLD_ID ||
               process.env.BOX_SERVER_CONTENT_ID ||
               'default',
           ),
-          BOX_WORLD_MAP_UUID: localStorageIdentity?.mapUuid || process.env.BOX_WORLD_MAP_UUID || '',
+          BOX_WORLD_PERMANENT_MAP_ID:
+            localStorageIdentity?.permanentMapId || process.env.BOX_WORLD_PERMANENT_MAP_ID || '',
           // getGroupStorage is shared inside one map group, never across
           // unrelated projects or independently distributed game packages.
           BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
           BOX_SERVER_NAME: process.env.BOX_WORLD_NAME || process.env.BOX_SERVER_NAME || 'BOX 世界',
           // world.serverId is a runtime identity, not the mutable route used
-          // to open a map. Public/edit runtimes use the immutable Map UUID;
+          // to open a map. Public/edit runtimes use the permanent map ID;
           // private teleport runtimes keep their generated room ID.
           SERVER_ID:
             process.env.SERVER_ID ||
-            localStorageIdentity?.mapUuid ||
-            process.env.BOX_WORLD_MAP_UUID ||
+            localStorageIdentity?.permanentMapId ||
+            process.env.BOX_WORLD_PERMANENT_MAP_ID ||
             '1',
           // Local VOXA defaults are scoped by the editable project. Leaving
           // this empty makes every Creator runtime query the legacy mapId=0
@@ -599,25 +600,30 @@ async function main() {
           HOST_IP: '127.0.0.1',
           STORAGE_PATH: world.dataRoot,
           BOX_PROJECT_STATE_PATH: world.statePath,
-          BOX_DERIVED_STORAGE_PATH: derivedRuntimePath('play', world.manifest.mapUuid || world.id),
+          BOX_DERIVED_STORAGE_PATH: derivedRuntimePath(
+            'play',
+            world.manifest.permanentMapId || world.id,
+          ),
           HASH: world.manifest.permissionHash,
           VM: scriptVm,
           CONTENT_ID: world.id,
           // Multi-world play deployments must never collapse all maps into a
           // single data namespace. Server owners can add a prefix, while the
-          // immutable Map UUID always remains part of the namespace.
-          BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(world.manifest.mapUuid || world.id),
-          BOX_WORLD_MAP_UUID: world.manifest.mapUuid || '',
+          // permanent map ID always remains part of the namespace.
+          BOX_DATA_STORAGE_NAMESPACE: dataStorageNamespace(
+            world.manifest.permanentMapId || world.id,
+          ),
+          BOX_WORLD_PERMANENT_MAP_ID: world.manifest.permanentMapId || '',
           BOX_GROUP_STORAGE_NAMESPACE: resolveGroupRuntimeNamespace({
-            mapGroupUuid: world.manifest.mapGroupUuid,
+            permanentMapGroupId: world.manifest.permanentMapGroupId,
             mapGroupId: world.manifest.mapGroupId,
             mainProjectId: world.manifest.mainProjectId,
-            mapUuid: world.manifest.mapUuid,
+            permanentMapId: world.manifest.permanentMapId,
             mapId: world.id,
           }),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
           CONTAINER_NAME: world.id,
-          SERVER_ID: instance.serverId || world.manifest.mapUuid || world.id,
+          SERVER_ID: instance.serverId || world.manifest.permanentMapId || world.id,
           TYPE: instance.privateRoom ? 'teleport' : 'public',
           TELEPORT_ACCESS: 'true',
           // A referenced play package owns its CDN setting. Never use a
@@ -674,7 +680,7 @@ async function main() {
         stdio: 'inherit',
         env: {
           ...process.env,
-          SERVER_ID: instance.serverId || project.mapUuid || project.id,
+          SERVER_ID: instance.serverId || project.permanentMapId || project.id,
           TYPE: instance.privateRoom ? 'teleport' : 'public',
           TELEPORT_ACCESS: 'true',
           BOX_TELEPORT_CONTROL_URL:
@@ -721,7 +727,9 @@ async function main() {
         } catch {
           const summary = projectManager
             .listProjects()
-            .find((project) => project.publicId === reference || project.mapUuid === reference)
+            .find(
+              (project) => project.publicId === reference || project.permanentMapId === reference,
+            )
           if (!summary) return null
           metadata = projectManager.getProject(summary.id)
         }
@@ -729,11 +737,11 @@ async function main() {
         const identity = projectManager.projectStorageIdentity(id)
         return {
           id,
-          mapUuid: identity.mapUuid,
+          permanentMapId: identity.permanentMapId,
           publicId: metadata.publicId || id,
           mapGroupId: metadata.mapGroupId,
           mainProjectId: metadata.mainProjectId,
-          mapGroupUuid: identity.mapGroupUuid,
+          permanentMapGroupId: identity.permanentMapGroupId,
         }
       } catch (error) {
         console.error(`Unable to resolve local project ${reference}: ${error.message}`)

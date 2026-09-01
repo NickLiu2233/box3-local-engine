@@ -235,7 +235,7 @@ async function getSessionData(
         {
           // Teleport allocation returns the target world's local play route
           // as playHash. The internal control service resolves this route and
-          // verifies it against the room's immutable target Map UUID.
+          // verifies it against the room's permanent target map ID.
           targetMapReference: containerName,
           serverId,
           subjectId: authenticatedSubjectId,

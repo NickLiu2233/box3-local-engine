@@ -16,7 +16,7 @@ async function main() {
       id: 'slow-world',
       version: '1',
       permissionHash: 'permission-hash',
-      mapUuid: '29c244e9-3afa-4c9c-886d-b8ea87cd738a',
+      permanentMapId: '29c244e93afa4c9c886d',
     }),
   )
   fs.writeFileSync(

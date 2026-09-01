@@ -75,7 +75,7 @@ function resolveWorld(libraryRoot, reference) {
       const publicId = worldIdPattern.test(String(world.manifest.publicId || ''))
         ? String(world.manifest.publicId)
         : world.id
-      return publicId === reference || world.manifest.mapUuid === reference
+      return publicId === reference || world.manifest.permanentMapId === reference
     }) || null
   )
 }
@@ -183,7 +183,7 @@ function startPlayLibrary({
       })
       const runtimePort = nextPort++
       const runtime = await startRuntime(world, runtimePort, {
-        serverId: roomId || world.manifest.mapUuid,
+        serverId: roomId || world.manifest.permanentMapId,
         privateRoom: Boolean(roomId),
       })
       lifecycle.touch(runtime)
@@ -273,7 +273,7 @@ function startPlayLibrary({
         }
         if (roomId) {
           teleportRooms.resolveRoom({
-            targetMapId: resolvedWorld.manifest.mapUuid,
+            targetMapId: resolvedWorld.manifest.permanentMapId,
             serverId: roomId,
           })
         }
@@ -289,7 +289,7 @@ function startPlayLibrary({
       }
       if (roomId) {
         teleportRooms.resolveRoom({
-          targetMapId: resolvedWorld?.manifest.mapUuid,
+          targetMapId: resolvedWorld?.manifest.permanentMapId,
           serverId: roomId,
         })
       }
@@ -326,7 +326,7 @@ function startPlayLibrary({
       const world = resolveWorld(libraryRoot, reference)
       if (roomId) {
         teleportRooms.resolveRoom({
-          targetMapId: world?.manifest.mapUuid,
+          targetMapId: world?.manifest.permanentMapId,
           serverId: roomId,
         })
       }

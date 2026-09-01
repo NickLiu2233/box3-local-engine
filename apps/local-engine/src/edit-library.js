@@ -124,7 +124,7 @@ function startEditLibrary({
       })
       const runtimePort = nextPort++
       const runtime = await startRuntime(project, runtimePort, {
-        serverId: roomId || project.mapUuid,
+        serverId: roomId || project.permanentMapId,
         privateRoom: Boolean(roomId),
       })
       lifecycle.touch(runtime)
@@ -216,7 +216,7 @@ function startEditLibrary({
         id = project.id
         key = runtimeKey(id, roomId)
         if (roomId) {
-          teleportRooms.resolveRoom({ targetMapId: project.mapUuid, serverId: roomId })
+          teleportRooms.resolveRoom({ targetMapId: project.permanentMapId, serverId: roomId })
         }
         void ensureRuntime(project, roomId).catch(() => undefined)
         res.writeHead(202, { 'content-type': 'application/json; charset=utf-8' })
@@ -245,7 +245,7 @@ function startEditLibrary({
       }
       if (roomId) {
         teleportRooms.resolveRoom({
-          targetMapId: project?.mapUuid,
+          targetMapId: project?.permanentMapId,
           serverId: roomId,
         })
       }
@@ -290,7 +290,7 @@ function startEditLibrary({
       const project = resolveProject(reference)
       if (roomId) {
         teleportRooms.resolveRoom({
-          targetMapId: project?.mapUuid,
+          targetMapId: project?.permanentMapId,
           serverId: roomId,
         })
       }

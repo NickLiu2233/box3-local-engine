@@ -41,17 +41,17 @@ _Avoid_: Local database
 The data storage namespace accessible to every map in the same map group and inaccessible to other groups.
 _Avoid_: Global database, common database
 
-**Map UUID**:
-The permanent UUID identity of one map. It remains unchanged when its name, player-facing route, local directory key, or release version changes.
-_Avoid_: Map ID, project ID, route ID
+**Permanent Map ID**:
+The immutable 20-character lowercase hexadecimal identity of one map. It remains unchanged when its name, player-facing route, local directory key, or release version changes.
+_Avoid_: Project ID, route ID
 
 **Access ID**:
 The unique, editable, human-readable slug used in player-facing map links.
-_Avoid_: Map UUID, internal ID
+_Avoid_: Permanent Map ID, internal ID
 
 **Local Project Key**:
 The local directory and runtime routing key of an editable project. It is an implementation locator, not a persistent game-data identity.
-_Avoid_: Map UUID, Access ID
+_Avoid_: Permanent Map ID, Access ID
 
 ## Architecture Decisions
 

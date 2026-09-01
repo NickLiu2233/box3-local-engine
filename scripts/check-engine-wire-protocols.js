@@ -53,12 +53,12 @@ assert.ok(
   'TeleportServer is missing its engine network protocol registration',
 )
 assert.ok(
-  teleportServer.includes('process.env.BOX_WORLD_MAP_UUID || state.settings.containerName'),
-  'TeleportServer must identify the source map by its immutable map UUID',
+  teleportServer.includes('process.env.BOX_WORLD_PERMANENT_MAP_ID || state.settings.containerName'),
+  'TeleportServer must identify the source map by its permanent map ID',
 )
 assert.ok(
-  launcher.includes('BOX_WORLD_MAP_UUID: world.manifest.mapUuid'),
-  'Play runtimes must receive their immutable map UUID',
+  launcher.includes('BOX_WORLD_PERMANENT_MAP_ID: world.manifest.permanentMapId'),
+  'Play runtimes must receive their permanent map ID',
 )
 assert.ok(
   server.includes('initPacket.config.serverId = serverId'),

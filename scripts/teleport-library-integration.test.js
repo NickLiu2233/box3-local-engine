@@ -81,7 +81,7 @@ async function mockRuntime(project, instance, starts) {
   return runtime
 }
 
-function writeWorld(root, id, publicId, mapUuid, mapGroupUuid) {
+function writeWorld(root, id, publicId, permanentMapId, permanentMapGroupId) {
   const worldRoot = path.join(root, id)
   fs.mkdirSync(path.join(worldRoot, 'data', 'blobs'), { recursive: true })
   fs.writeFileSync(
@@ -91,8 +91,8 @@ function writeWorld(root, id, publicId, mapUuid, mapGroupUuid) {
       publicId,
       version: '1.0.0',
       permissionHash: `permission-${id}`,
-      mapUuid,
-      mapGroupUuid,
+      permanentMapId,
+      permanentMapGroupId,
       mapGroupId: 'main-map',
       mainProjectId: 'main-map',
     }),
@@ -108,20 +108,8 @@ function writeWorld(root, id, publicId, mapUuid, mapGroupUuid) {
 test('play library keeps public and teleported rooms in isolated runtimes', async (t) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-teleport-play-'))
   t.after(() => fs.rmSync(root, { recursive: true, force: true }))
-  writeWorld(
-    root,
-    'main-map',
-    'town',
-    '11111111-1111-4111-8111-111111111111',
-    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  )
-  writeWorld(
-    root,
-    'sub-map',
-    'dungeon',
-    '22222222-2222-4222-8222-222222222222',
-    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-  )
+  writeWorld(root, 'main-map', 'town', '11111111111111111111', 'aaaaaaaaaaaaaaaaaaaa')
+  writeWorld(root, 'sub-map', 'dungeon', '22222222222222222222', 'aaaaaaaaaaaaaaaaaaaa')
   const starts = []
   const library = startPlayLibrary({
     libraryRoot: root,
@@ -137,18 +125,18 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
 
   const publicResponse = await request(port, '/sub-map/probe')
   assert.equal(publicResponse.status, 200)
-  assert.equal(publicResponse.body.serverId, '22222222-2222-4222-8222-222222222222')
+  assert.equal(publicResponse.body.serverId, '22222222222222222222')
 
   const mutableAccessIdResponse = await request(port, '/dungeon/probe')
   assert.equal(mutableAccessIdResponse.status, 200)
-  assert.equal(mutableAccessIdResponse.body.serverId, '22222222-2222-4222-8222-222222222222')
+  assert.equal(mutableAccessIdResponse.body.serverId, '22222222222222222222')
 
   const allocation = await request(port, '/__local_teleport/allocate', {
     method: 'POST',
     token: 'integration-token',
     body: {
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      sourceMapId: '11111111111111111111',
+      targetMapId: '22222222222222222222',
       subjectIds: ['player-a'],
     },
   })
@@ -173,7 +161,7 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
     body: {
       authorized: true,
       serverId: allocation.body.serverId,
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      targetMapId: '22222222222222222222',
     },
   })
 
@@ -185,7 +173,7 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
     method: 'POST',
     token: 'integration-token',
     body: {
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      targetMapId: '22222222222222222222',
       serverId: allocation.body.serverId,
       subjectId: 'player-b',
     },
@@ -197,13 +185,13 @@ test('play library keeps public and teleported rooms in isolated runtimes', asyn
     method: 'POST',
     token: 'integration-token',
     body: {
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
+      sourceMapId: '11111111111111111111',
       targetMapId: 'dungeon',
       subjectIds: ['player-a'],
     },
   })
   assert.equal(mutableId.status, 400)
-  assert.equal(mutableId.body.code, 'MAP_UUID_REQUIRED')
+  assert.equal(mutableId.body.code, 'MAP_ID_REQUIRED')
 })
 
 test('creator edit switches maps without allocating a room runtime', async (t) => {
@@ -211,14 +199,14 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
     {
       id: 'main-map',
       publicId: 'town',
-      mapUuid: '11111111-1111-4111-8111-111111111111',
-      mapGroupUuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      permanentMapId: '11111111111111111111',
+      permanentMapGroupId: 'aaaaaaaaaaaaaaaaaaaa',
     },
     {
       id: 'sub-map',
       publicId: 'dungeon',
-      mapUuid: '22222222-2222-4222-8222-222222222222',
-      mapGroupUuid: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      permanentMapId: '22222222222222222222',
+      permanentMapGroupId: 'aaaaaaaaaaaaaaaaaaaa',
     },
   ]
   const starts = []
@@ -231,7 +219,7 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
         (project) =>
           project.id === reference ||
           project.publicId === reference ||
-          project.mapUuid === reference,
+          project.permanentMapId === reference,
       ) || null,
     teleportInternalToken: 'integration-token',
     startRuntime: (project, _port, instance) => mockRuntime(project, instance, starts),
@@ -245,8 +233,8 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
     method: 'POST',
     token: 'integration-token',
     body: {
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      sourceMapId: '11111111111111111111',
+      targetMapId: '22222222222222222222',
       subjectIds: ['player-a'],
       mode: 'edit',
     },
@@ -255,7 +243,7 @@ test('creator edit switches maps without allocating a room runtime', async (t) =
     status: 200,
     body: {
       playHash: 'sub-map',
-      serverId: '22222222-2222-4222-8222-222222222222',
+      serverId: '22222222222222222222',
     },
   })
   assert.equal(starts.length, 0)

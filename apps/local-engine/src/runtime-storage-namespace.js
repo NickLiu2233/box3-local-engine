@@ -5,17 +5,23 @@ function identityPart(value) {
   return normalized && normalized !== '0' ? normalized : ''
 }
 
-function resolveMapRuntimeNamespace({ mapUuid, mapId, prefix = '' }) {
-  const identity = identityPart(mapUuid) || identityPart(mapId)
+function resolveMapRuntimeNamespace({ permanentMapId, mapId, prefix = '' }) {
+  const identity = identityPart(permanentMapId) || identityPart(mapId)
   return `${prefix}${identity || 'isolated-standalone'}`
 }
 
-function resolveGroupRuntimeNamespace({ mapGroupUuid, mapGroupId, mainProjectId, mapUuid, mapId }) {
+function resolveGroupRuntimeNamespace({
+  permanentMapGroupId,
+  mapGroupId,
+  mainProjectId,
+  permanentMapId,
+  mapId,
+}) {
   return (
-    identityPart(mapGroupUuid) ||
+    identityPart(permanentMapGroupId) ||
     identityPart(mapGroupId) ||
     identityPart(mainProjectId) ||
-    identityPart(mapUuid) ||
+    identityPart(permanentMapId) ||
     identityPart(mapId) ||
     'isolated-standalone'
   )

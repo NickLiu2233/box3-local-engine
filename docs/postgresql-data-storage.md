@@ -10,7 +10,7 @@ PostgreSQL 保存玩家身份与地图服务端持久数据，是生产部署的
 BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 ```
 
-Player Service 默认使用 `box_identity` schema；地图运行时默认使用 `box_engine` schema。地图数据按不可变地图 UUID 隔离，主图与副地图可通过地图组数据空间共享组级数据。
+Player Service 默认使用 `box_identity` schema；地图运行时默认使用 `box_engine` schema。地图数据按不可变永久地图 ID 隔离，主图与副地图可通过地图组数据空间共享组级数据。
 
 ## 运维
 
@@ -22,4 +22,4 @@ Player Service 默认使用 `box_identity` schema；地图运行时默认使用 
 
 ## 备份与恢复
 
-数据库备份至少覆盖 `box_identity` 和 `box_engine`。恢复到新环境后，保持相同的地图 UUID、数据 schema 和密钥配置，先验证 Player Service 登录，再启动 Play。不要把生产数据库连接串写进发布包、地图脚本或浏览器配置。
+数据库备份至少覆盖 `box_identity` 和 `box_engine`。恢复到新环境后，保持相同的永久地图 ID、数据 schema 和密钥配置，先验证 Player Service 登录，再启动 Play。不要把生产数据库连接串写进发布包、地图脚本或浏览器配置。

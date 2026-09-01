@@ -19,9 +19,9 @@ const {
   createTeleportRoomManager,
 } = require('../../../apps/local-engine/src/teleport-room-manager');
 
-const mainMapUuid = '11111111-1111-4111-8111-111111111111';
-const subMapUuid = '22222222-2222-4222-8222-222222222222';
-const mapGroupUuid = '33333333-3333-4333-8333-333333333333';
+const mainPermanentMapId = '11111111111111111111';
+const subPermanentMapId = '22222222222222222222';
+const permanentMapGroupId = '33333333333333333333';
 const identitySecret = 'teleport-continuity-regression-secret';
 const account = {
   subjectId: '0123456789abcdef0123456789abcdef',
@@ -74,23 +74,23 @@ async function main() {
     const maps = [
       {
         id: 'main-map',
-        mapUuid: mainMapUuid,
-        mapGroupUuid,
+        permanentMapId: mainPermanentMapId,
+        permanentMapGroupId,
       },
       {
         id: 'sub-map',
-        mapUuid: subMapUuid,
-        mapGroupUuid,
+        permanentMapId: subPermanentMapId,
+        permanentMapGroupId,
       },
     ];
     const roomManager = createTeleportRoomManager({
       resolveMap: (reference: string) =>
-        maps.find((map) => map.id === reference || map.mapUuid === reference) || null,
+        maps.find((map) => map.id === reference || map.permanentMapId === reference) || null,
       randomRoomId: () => 'continuity-room-123456',
     });
     const room = await roomManager.allocate({
-      sourceMapId: mainMapUuid,
-      targetMapId: subMapUuid,
+      sourceMapId: mainPermanentMapId,
+      targetMapId: subPermanentMapId,
       subjectIds: [sourceIdentity.subjectId],
     });
     assert.equal(
@@ -103,13 +103,13 @@ async function main() {
     );
 
     const groupNamespace = resolveGroupRuntimeNamespace({
-      mapGroupUuid,
-      mapUuid: mainMapUuid,
+      permanentMapGroupId,
+      permanentMapId: mainPermanentMapId,
       mapId: 'main-map',
     });
     const sourceStorage = new LocalDataStorage({
       storagePath: root,
-      projectNamespace: resolveMapRuntimeNamespace({ mapUuid: mainMapUuid }),
+      projectNamespace: resolveMapRuntimeNamespace({ permanentMapId: mainPermanentMapId }),
       groupNamespace,
       mode: 'play',
       lockTimeoutMs: 1_000,
@@ -117,10 +117,10 @@ async function main() {
     });
     const targetStorage = new LocalDataStorage({
       storagePath: root,
-      projectNamespace: resolveMapRuntimeNamespace({ mapUuid: subMapUuid }),
+      projectNamespace: resolveMapRuntimeNamespace({ permanentMapId: subPermanentMapId }),
       groupNamespace: resolveGroupRuntimeNamespace({
-        mapGroupUuid,
-        mapUuid: subMapUuid,
+        permanentMapGroupId,
+        permanentMapId: subPermanentMapId,
         mapId: 'sub-map',
       }),
       mode: 'play',

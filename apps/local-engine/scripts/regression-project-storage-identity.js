@@ -9,7 +9,7 @@ const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-project-identit
 process.env.BOX_LOCAL_PROJECTS_PATH = temporaryRoot
 
 const manager = require('../src/project-manager')
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+const mapIdentityPattern = /^[0-9a-f]{20}$/
 
 try {
   const main = manager.createProject({
@@ -17,7 +17,7 @@ try {
     name: '主地图',
     mapSize: 'small',
   })
-  assert.match(main.mapUuid, uuidPattern)
+  assert.match(main.permanentMapId, mapIdentityPattern)
   assert.deepEqual(main.mapSize, [32, 32, 32])
   assert.equal(main.templateId, 'blank')
 
@@ -80,17 +80,17 @@ try {
     name: '副地图',
   })
   const submapIdentity = manager.projectStorageIdentity(submap.id)
-  assert.match(submapIdentity.mapUuid, uuidPattern)
-  assert.notEqual(submapIdentity.mapUuid, before.mapUuid)
-  assert.equal(submapIdentity.mapGroupUuid, before.mapUuid)
+  assert.match(submapIdentity.permanentMapId, mapIdentityPattern)
+  assert.notEqual(submapIdentity.permanentMapId, before.permanentMapId)
+  assert.equal(submapIdentity.permanentMapGroupId, before.permanentMapId)
 
   const legacyPath = path.join(temporaryRoot, submap.id, 'project.json')
   const legacy = JSON.parse(fs.readFileSync(legacyPath, 'utf8'))
-  delete legacy.mapUuid
+  delete legacy.permanentMapId
   fs.writeFileSync(legacyPath, `${JSON.stringify(legacy, null, 2)}\n`)
   const migrated = manager.getProject(submap.id)
-  assert.match(migrated.mapUuid, uuidPattern)
-  assert.equal(manager.getProject(submap.id).mapUuid, migrated.mapUuid)
+  assert.match(migrated.permanentMapId, mapIdentityPattern)
+  assert.equal(manager.getProject(submap.id).permanentMapId, migrated.permanentMapId)
 
   console.log('project storage identity regression passed')
 } finally {

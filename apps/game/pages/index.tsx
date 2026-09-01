@@ -46,19 +46,19 @@ type MapResourceStatus = {
 // 仅供 BOX_UI_PREVIEW 开发服务展示首页布局；生产路径不会使用这些数据。
 const previewWorlds: PlayWorld[] = [
   {
-    id: 'preview-arena', mapUuid: 'preview-arena', publicId: 'preview-arena', name: '竞技场：破晓行动', author: 'BOX3 Studio', description: '在立体竞技场中完成一场快速对战。', cover: '/map-templates/arena-template.png', version: 'v1.2.0', mapGroupId: 'preview-arena', mapRole: 'main', mainProjectId: 'preview-arena', playEnabled: true,
+    id: 'preview-arena', permanentMapId: '20000000000000000001', publicId: 'preview-arena', name: '竞技场：破晓行动', author: 'BOX3 Studio', description: '在立体竞技场中完成一场快速对战。', cover: '/map-templates/arena-template.png', version: 'v1.2.0', mapGroupId: 'preview-arena', mapRole: 'main', mainProjectId: 'preview-arena', playEnabled: true,
   },
   {
-    id: 'preview-race', mapUuid: 'preview-race', publicId: 'preview-race', name: '极速赛道', author: 'BOX3 Studio', description: '穿过弯道与加速带，第一个冲过终点。', cover: '/map-templates/raceway-template.png', version: 'v1.0.4', mapGroupId: 'preview-race', mapRole: 'main', mainProjectId: 'preview-race', playEnabled: true,
+    id: 'preview-race', permanentMapId: '20000000000000000002', publicId: 'preview-race', name: '极速赛道', author: 'BOX3 Studio', description: '穿过弯道与加速带，第一个冲过终点。', cover: '/map-templates/raceway-template.png', version: 'v1.0.4', mapGroupId: 'preview-race', mapRole: 'main', mainProjectId: 'preview-race', playEnabled: true,
   },
   {
-    id: 'preview-explore', mapUuid: 'preview-explore', publicId: 'preview-explore', name: '空岛探索', author: 'BOX3 Studio', description: '从一座空岛开始，探索属于你的世界。', cover: '/map-templates/blank-template.png', version: 'v1.0.0', mapGroupId: 'preview-explore', mapRole: 'main', mainProjectId: 'preview-explore', playEnabled: true,
+    id: 'preview-explore', permanentMapId: '20000000000000000003', publicId: 'preview-explore', name: '空岛探索', author: 'BOX3 Studio', description: '从一座空岛开始，探索属于你的世界。', cover: '/map-templates/blank-template.png', version: 'v1.0.0', mapGroupId: 'preview-explore', mapRole: 'main', mainProjectId: 'preview-explore', playEnabled: true,
   },
   {
-    id: 'preview-build', mapUuid: 'preview-build', publicId: 'preview-build', name: '方块工坊', author: 'BOX3 Studio', description: '自由搭建、分享与协作的创造空间。', cover: '/map-templates/blank-template.png', version: 'v1.1.1', mapGroupId: 'preview-build', mapRole: 'main', mainProjectId: 'preview-build', playEnabled: true,
+    id: 'preview-build', permanentMapId: '20000000000000000004', publicId: 'preview-build', name: '方块工坊', author: 'BOX3 Studio', description: '自由搭建、分享与协作的创造空间。', cover: '/map-templates/blank-template.png', version: 'v1.1.1', mapGroupId: 'preview-build', mapRole: 'main', mainProjectId: 'preview-build', playEnabled: true,
   },
   {
-    id: 'preview-chase', mapUuid: 'preview-chase', publicId: 'preview-chase', name: '追逐时刻', author: 'BOX3 Studio', description: '一场考验反应与路线判断的限时挑战。', cover: '/map-templates/arena-template.png', version: 'v1.0.2', mapGroupId: 'preview-chase', mapRole: 'main', mainProjectId: 'preview-chase', playEnabled: true,
+    id: 'preview-chase', permanentMapId: '20000000000000000005', publicId: 'preview-chase', name: '追逐时刻', author: 'BOX3 Studio', description: '一场考验反应与路线判断的限时挑战。', cover: '/map-templates/arena-template.png', version: 'v1.0.2', mapGroupId: 'preview-chase', mapRole: 'main', mainProjectId: 'preview-chase', playEnabled: true,
   },
 ]
 

@@ -8,19 +8,19 @@ function fixture() {
     {
       id: 'main-map',
       publicId: 'town',
-      mapUuid: '11111111-1111-4111-8111-111111111111',
+      permanentMapId: '11111111111111111111',
       mapGroupId: 'group-a',
     },
     {
       id: 'sub-map',
       publicId: 'dungeon',
-      mapUuid: '22222222-2222-4222-8222-222222222222',
+      permanentMapId: '22222222222222222222',
       mapGroupId: 'group-a',
     },
     {
       id: 'other-map',
       publicId: 'other',
-      mapUuid: '33333333-3333-4333-8333-333333333333',
+      permanentMapId: '33333333333333333333',
       mapGroupId: 'group-b',
     },
   ]
@@ -30,7 +30,8 @@ function fixture() {
   const manager = createTeleportRoomManager({
     resolveMap: (reference) =>
       maps.find(
-        (map) => map.id === reference || map.publicId === reference || map.mapUuid === reference,
+        (map) =>
+          map.id === reference || map.publicId === reference || map.permanentMapId === reference,
       ) || null,
     ensureRuntime: async (map, roomId) => starts.push([map.id, roomId]),
     stopRuntime: async (roomId) => stops.push(roomId),
@@ -53,8 +54,8 @@ function fixture() {
 test('teleport allocates an unlisted private room inside the same map group', async () => {
   const { manager, starts } = fixture()
   const result = await manager.allocate({
-    sourceMapId: '11111111-1111-4111-8111-111111111111',
-    targetMapId: '22222222-2222-4222-8222-222222222222',
+    sourceMapId: '11111111111111111111',
+    targetMapId: '22222222222222222222',
     subjectIds: ['player-a'],
   })
 
@@ -65,7 +66,7 @@ test('teleport allocates an unlisted private room inside the same map group', as
   assert.deepEqual(starts, [['sub-map', 'private-room-123456']])
   assert.equal(
     manager.authorize({
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      targetMapId: '22222222222222222222',
       serverId: result.serverId,
       subjectId: 'player-a',
     }).id,
@@ -74,7 +75,7 @@ test('teleport allocates an unlisted private room inside the same map group', as
   assert.throws(
     () =>
       manager.authorize({
-        targetMapId: '22222222-2222-4222-8222-222222222222',
+        targetMapId: '22222222222222222222',
         serverId: result.serverId,
         subjectId: 'player-b',
       }),
@@ -86,8 +87,8 @@ test('teleport allocates an unlisted private room inside the same map group', as
 test('private-room authorization accepts the local play route returned after teleport', async () => {
   const { manager } = fixture()
   const result = await manager.allocate({
-    sourceMapId: '11111111-1111-4111-8111-111111111111',
-    targetMapId: '22222222-2222-4222-8222-222222222222',
+    sourceMapId: '11111111111111111111',
+    targetMapId: '22222222222222222222',
     subjectIds: ['player-a'],
   })
 
@@ -116,11 +117,11 @@ test('teleport rejects mutable access IDs and local project keys', async () => {
   for (const targetMapId of ['dungeon', 'sub-map']) {
     await assert.rejects(
       manager.allocate({
-        sourceMapId: '11111111-1111-4111-8111-111111111111',
+        sourceMapId: '11111111111111111111',
         targetMapId,
         subjectIds: ['player-a'],
       }),
-      (error) => error.code === 'MAP_UUID_REQUIRED',
+      (error) => error.code === 'MAP_ID_REQUIRED',
     )
   }
 })
@@ -128,13 +129,13 @@ test('teleport rejects mutable access IDs and local project keys', async () => {
 test('an existing room can admit newly teleported players but not another group', async () => {
   const { manager } = fixture()
   const first = await manager.allocate({
-    sourceMapId: '11111111-1111-4111-8111-111111111111',
-    targetMapId: '22222222-2222-4222-8222-222222222222',
+    sourceMapId: '11111111111111111111',
+    targetMapId: '22222222222222222222',
     subjectIds: ['player-a'],
   })
   const reused = await manager.allocate({
-    sourceMapId: '11111111-1111-4111-8111-111111111111',
-    targetMapId: '22222222-2222-4222-8222-222222222222',
+    sourceMapId: '11111111111111111111',
+    targetMapId: '22222222222222222222',
     subjectIds: ['player-b'],
     serverId: first.serverId,
   })
@@ -142,7 +143,7 @@ test('an existing room can admit newly teleported players but not another group'
   assert.deepEqual(reused, first)
   assert.equal(
     manager.authorize({
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      targetMapId: '22222222222222222222',
       serverId: first.serverId,
       subjectId: 'player-b',
     }).id,
@@ -150,8 +151,8 @@ test('an existing room can admit newly teleported players but not another group'
   )
   await assert.rejects(
     manager.allocate({
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
-      targetMapId: '33333333-3333-4333-8333-333333333333',
+      sourceMapId: '11111111111111111111',
+      targetMapId: '33333333333333333333',
       subjectIds: ['player-a'],
     }),
     (error) => error.code === 'MAP_GROUP_MISMATCH',
@@ -162,38 +163,38 @@ test('edit and public teleports do not allocate a private room', async () => {
   const { manager, starts } = fixture()
   assert.deepEqual(
     await manager.allocate({
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      sourceMapId: '11111111111111111111',
+      targetMapId: '22222222222222222222',
       subjectIds: ['player-a'],
       mode: 'edit',
     }),
     {
       playHash: 'sub-map',
-      serverId: '22222222-2222-4222-8222-222222222222',
+      serverId: '22222222222222222222',
     },
   )
   assert.deepEqual(
     await manager.allocate({
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      sourceMapId: '11111111111111111111',
+      targetMapId: '22222222222222222222',
       subjectIds: ['player-a'],
       serverId: 'public',
     }),
     {
       playHash: 'sub-map',
-      serverId: '22222222-2222-4222-8222-222222222222',
+      serverId: '22222222222222222222',
     },
   )
   assert.deepEqual(
     await manager.allocate({
-      sourceMapId: '11111111-1111-4111-8111-111111111111',
-      targetMapId: '22222222-2222-4222-8222-222222222222',
+      sourceMapId: '11111111111111111111',
+      targetMapId: '22222222222222222222',
       subjectIds: ['player-a'],
-      serverId: '22222222-2222-4222-8222-222222222222',
+      serverId: '22222222222222222222',
     }),
     {
       playHash: 'sub-map',
-      serverId: '22222222-2222-4222-8222-222222222222',
+      serverId: '22222222222222222222',
     },
   )
   assert.deepEqual(starts, [])
@@ -202,8 +203,8 @@ test('edit and public teleports do not allocate a private room', async () => {
 test('idle private rooms are removed and their runtimes are stopped', async () => {
   const { manager, stops, advance } = fixture()
   const room = await manager.allocate({
-    sourceMapId: '11111111-1111-4111-8111-111111111111',
-    targetMapId: '22222222-2222-4222-8222-222222222222',
+    sourceMapId: '11111111111111111111',
+    targetMapId: '22222222222222222222',
     subjectIds: ['player-a'],
   })
   advance(501)
@@ -213,7 +214,7 @@ test('idle private rooms are removed and their runtimes are stopped', async () =
   assert.throws(
     () =>
       manager.authorize({
-        targetMapId: '22222222-2222-4222-8222-222222222222',
+        targetMapId: '22222222222222222222',
         serverId: room.serverId,
         subjectId: 'player-a',
       }),

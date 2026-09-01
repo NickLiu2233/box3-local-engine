@@ -1,9 +1,9 @@
 'use strict'
 
 const crypto = require('crypto')
+const { normalizeMapIdentity } = require('./map-identity')
 
 const roomIdPattern = /^[A-Za-z0-9_-]{16,128}$/
-const mapUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
 function roomError(code, message, statusCode = 400) {
   return Object.assign(new Error(message), { code, statusCode })
@@ -19,8 +19,8 @@ function mapIdentity(map) {
     throw roomError('MAP_NOT_FOUND', '地图不存在', 404)
   }
   const groupId = String(
-    map.mapGroupUuid ||
-      map.manifest?.mapGroupUuid ||
+    map.permanentMapGroupId ||
+      map.manifest?.permanentMapGroupId ||
       map.mapGroupId ||
       map.manifest?.mapGroupId ||
       map.mainProjectId ||
@@ -30,11 +30,11 @@ function mapIdentity(map) {
   if (!groupId) {
     throw roomError('MAP_GROUP_MISSING', '地图缺少地图组身份', 409)
   }
-  const mapUuid = String(map.mapUuid || map.manifest?.mapUuid || '').toLowerCase()
-  if (!mapUuidPattern.test(mapUuid)) {
-    throw roomError('MAP_UUID_MISSING', '地图缺少有效且不可变的地图 UUID', 409)
+  const permanentMapId = normalizeMapIdentity(map.permanentMapId || map.manifest?.permanentMapId)
+  if (!permanentMapId) {
+    throw roomError('MAP_ID_MISSING', '地图缺少有效且不可变的永久地图 ID', 409)
   }
-  return { id: map.id, mapUuid, groupId }
+  return { id: map.id, permanentMapId, groupId }
 }
 
 function normalizedSubjects(subjectIds) {
@@ -136,19 +136,17 @@ function createTeleportRoomManager({
   const maximum = positiveInteger(maxRooms, 64, 1024)
 
   function resolve(reference) {
-    const normalized = String(reference || '')
-      .trim()
-      .toLowerCase()
-    if (!mapUuidPattern.test(normalized)) {
+    const normalized = normalizeMapIdentity(reference)
+    if (!normalized) {
       throw roomError(
-        'MAP_UUID_REQUIRED',
-        'world.teleport() 的 mapId 必须填写目标地图不可变的地图 UUID',
+        'MAP_ID_REQUIRED',
+        'world.teleport() 的 mapId 必须填写目标地图不可变的永久地图 ID',
       )
     }
     const map = resolveMap(normalized)
     const identity = mapIdentity(map)
-    if (identity.mapUuid !== normalized) {
-      throw roomError('MAP_UUID_MISMATCH', '目标地图 UUID 不匹配', 409)
+    if (identity.permanentMapId !== normalized) {
+      throw roomError('MAP_ID_MISMATCH', '永久地图 ID 不匹配', 409)
     }
     return map
   }
@@ -190,10 +188,10 @@ function createTeleportRoomManager({
     const subjects = normalizedSubjects(subjectIds)
 
     if (mode === 'edit') {
-      return { playHash: targetIdentity.id, serverId: targetIdentity.mapUuid }
+      return { playHash: targetIdentity.id, serverId: targetIdentity.permanentMapId }
     }
-    if (serverId === 'public' || serverId === targetIdentity.mapUuid) {
-      return { playHash: targetIdentity.id, serverId: targetIdentity.mapUuid }
+    if (serverId === 'public' || serverId === targetIdentity.permanentMapId) {
+      return { playHash: targetIdentity.id, serverId: targetIdentity.permanentMapId }
     }
 
     let room
@@ -207,7 +205,7 @@ function createTeleportRoomManager({
         throw roomError('ROOM_NOT_FOUND', '传送房间不存在或已回收', 404)
       }
       if (
-        room.targetMapId !== targetIdentity.mapUuid ||
+        room.targetMapId !== targetIdentity.permanentMapId ||
         room.mapGroupId !== targetIdentity.groupId
       ) {
         throw roomError('ROOM_TARGET_MISMATCH', '传送房间与目标地图不匹配', 403)
@@ -223,7 +221,7 @@ function createTeleportRoomManager({
       }
       room = {
         id: roomId,
-        targetMapId: targetIdentity.mapUuid,
+        targetMapId: targetIdentity.permanentMapId,
         mapGroupId: targetIdentity.groupId,
         subjects: new Set(),
         createdAt: now(),
@@ -248,10 +246,10 @@ function createTeleportRoomManager({
     if (!roomIdPattern.test(String(serverId || ''))) {
       throw roomError('INVALID_ROOM_ID', '房间 ID 无效')
     }
-    // world.teleport() remains UUID-only, but after a successful allocation
+    // world.teleport() remains permanent-ID-only, but after a successful allocation
     // the client reconnects with playHash, which is the target world's local
     // runtime route. Only the token-protected internal authorization path may
-    // resolve that route; the room's stored UUID/group checks below still
+    // resolve that route; the room's stored map/group identity checks below still
     // prevent it from authorizing a different map.
     const target = targetMapReference
       ? resolveInternalReference(targetMapReference)
@@ -261,7 +259,10 @@ function createTeleportRoomManager({
     if (!room) {
       throw roomError('ROOM_NOT_FOUND', '传送房间不存在或已回收', 404)
     }
-    if (room.targetMapId !== targetIdentity.mapUuid || room.mapGroupId !== targetIdentity.groupId) {
+    if (
+      room.targetMapId !== targetIdentity.permanentMapId ||
+      room.mapGroupId !== targetIdentity.groupId
+    ) {
       throw roomError('ROOM_TARGET_MISMATCH', '传送房间与目标地图不匹配', 403)
     }
     return { room: shouldTouch ? touch(room) : room, target }
