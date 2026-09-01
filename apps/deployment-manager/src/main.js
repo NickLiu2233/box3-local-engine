@@ -26,9 +26,6 @@ const state = {
   about: null,
   legal: null,
   legalLoading: false,
-  logs: '',
-  logLoading: false,
-  logService: '',
   environmentChecks: [],
   checkingEnvironment: false,
   connectionTests: {},
@@ -61,7 +58,6 @@ const icons = {
   home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10M9 20v-6h6v6"/>',
   settings:
     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.33.72.6 1 .3.3.7.44 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"/>',
-  logs: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
   performance: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V8"/><path d="M2 19h22"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/>',
   archive: '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
@@ -122,7 +118,7 @@ function shell(content) {
   return `<div class="shell">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('logs', 'logs', '运行日志')}${navItem('about', 'info', '关于')}</nav>
+      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('about', 'info', '关于')}</nav>
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
@@ -197,7 +193,7 @@ function backupConfirmDialog() {
 function legalDocumentDialog() {
   const legal = state.legal || {}
   const title = '发行许可证'
-  const meta = legal.licenseName || 'BOX3 Engine 非商业本地部署最终用户许可协议'
+  const meta = legal.licenseName || 'BOX3 Engine 本地部署用户许可协议'
   const document = legal.licenseText || '正在读取许可证全文…'
   return `<div class="dialog-backdrop legal-dialog-backdrop" data-legal-dialog-dismiss><section class="legal-dialog" role="dialog" aria-modal="true" aria-labelledby="legal-dialog-title"><header><div><h2 id="legal-dialog-title">${title}</h2><p>${escapeHtml(meta)}</p></div><button class="dialog-close" id="close-legal-dialog" aria-label="关闭">×</button></header><pre class="legal-document-content">${escapeHtml(document)}</pre></section></div>`
 }
@@ -268,7 +264,7 @@ function serviceCard([id, name, description, portKey, defaultPort, path]) {
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
     state.serviceMenu === id
-      ? `<div class="service-more-menu">${running ? `<button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button>` : ''}<button data-service-logs="${id}">${icon('logs')}查看运行日志</button><button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
+      ? `<div class="service-more-menu">${running ? `<button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button>` : ''}<button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
       : ''
   return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-copy"><h3>${name}</h3><p>${availability}${running ? `<span>· ${escapeHtml(endpoint)}</span>` : ''}</p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands">${running ? `<button class="service-open" data-open="${escapeHtml(url)}">打开</button>` : ''}<button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
 }
@@ -481,12 +477,6 @@ function setup() {
     </form>`
 }
 
-function logs() {
-  const selectedLabel = services.find(([id]) => id === state.logService)?.[1] || '全部服务'
-  return `<section class="logs-page"><header><div><h1>运行日志</h1></div><div class="header-actions"><span class="log-live-status" id="log-live-status"><i></i>实时</span></div></header><div class="log-filters"><button class="${state.logService ? '' : 'active'}" data-log-service="">全部</button>${services.map(([id, name]) => `<button class="${state.logService === id ? 'active' : ''}" data-log-service="${id}">${name}</button>`).join('')}</div>
-    <section class="log-card"><pre id="log-output">${escapeHtml(state.logs || '正在连接日志流…')}</pre></section></section>`
-}
-
 function formatBytes(value) {
   const bytes = Number(value || 0)
   if (bytes < 1024) return `${bytes} B`
@@ -550,7 +540,7 @@ function about() {
   return `<header><div><h1>关于</h1></div></header><section class="about-page">
     <article class="about-release-card"><dl class="about-release-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt><dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd></div>`).join('')}</dl></article>
     <article class="about-card"><div class="about-card-heading"><h2>服务组件</h2></div><div class="about-image-list">${imageRows}</div></article>
-    <article class="about-card"><div class="about-card-heading"><h2>支持与许可</h2></div><div class="about-document-list"><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
+    <article class="about-card"><div class="about-card-heading"><h2>社区与许可</h2></div><div class="about-document-list"><button class="about-document-row" id="open-community-group"><span><strong>服主交流QQ群：1107448537</strong><small>加入交流群，与其他服主交流部署与运营经验。</small></span><em>加入</em>${icon('external')}</button><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
   </section>`
 }
 
@@ -593,16 +583,13 @@ function render() {
           ? performance()
           : state.page === 'backups'
             ? backups()
-            : state.page === 'logs'
-              ? logs()
-              : state.page === 'about'
+            : state.page === 'about'
                 ? about()
                 : overview()
   document.querySelector('#app').innerHTML = shell(content)
   bindEvents()
   syncOverviewPolling()
   syncPerformancePolling()
-  syncLogPolling()
 }
 
 function bindEvents() {
@@ -707,15 +694,6 @@ function bindEvents() {
       render()
     }),
   )
-  document.querySelectorAll('[data-service-logs]').forEach((node) =>
-    node.addEventListener('click', async () => {
-      state.logService = node.dataset.serviceLogs
-      state.page = 'logs'
-      state.logs = ''
-      render()
-      await loadLogs()
-    }),
-  )
   document.querySelector('#setup-form')?.addEventListener('submit', saveConfiguration)
   document
     .querySelector('[data-save-raw-environment]')
@@ -730,13 +708,8 @@ function bindEvents() {
   document.querySelector('#run-environment-checks')?.addEventListener('click', runEnvironmentChecks)
   document.querySelector('#export-diagnostics')?.addEventListener('click', exportDiagnostics)
   document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
-  document.querySelectorAll('[data-log-service]').forEach((node) =>
-    node.addEventListener('click', async () => {
-      state.logService = node.dataset.logService
-      state.logs = ''
-      render()
-      await loadLogs()
-    }),
+  document.querySelector('#open-community-group')?.addEventListener('click', () =>
+    invoke('open_community_group'),
   )
   document.querySelectorAll('[data-setup-section]').forEach((node) =>
     node.addEventListener('click', (event) => {
@@ -800,7 +773,6 @@ function closeServiceMenuOnOutside(event) {
 let overviewStatusTimer
 let overviewStatusLoading = false
 let performanceTimer
-let logTimer
 
 function syncOverviewPolling() {
   clearInterval(overviewStatusTimer)
@@ -833,14 +805,6 @@ function syncPerformancePolling() {
   if (state.page !== 'performance') return
   if (!state.performance && !state.performanceLoading) refreshPerformance()
   performanceTimer = window.setInterval(refreshPerformance, 5000)
-}
-
-function syncLogPolling() {
-  clearInterval(logTimer)
-  logTimer = undefined
-  if (state.page !== 'logs') return
-  if (!state.logs && !state.logLoading) loadLogs({ renderPage: false })
-  logTimer = window.setInterval(() => loadLogs({ renderPage: false }), 1500)
 }
 
 async function refreshPerformance() {
@@ -1319,33 +1283,6 @@ async function reloadRawEnvironment() {
     state.error = String(error)
   }
   render()
-}
-
-async function loadLogs({ renderPage = true } = {}) {
-  if (state.logLoading) return
-  state.logLoading = true
-  const requestedService = state.logService
-  const refreshButton = renderPage ? document.querySelector('#load-logs') : null
-  if (refreshButton) refreshButton.disabled = true
-  try {
-    const nextLogs = requestedService
-      ? await invoke('get_service_logs', { service: requestedService })
-      : await invoke('get_logs')
-    if (state.logService !== requestedService) return
-    state.logs = String(nextLogs)
-  } catch (error) {
-    if (state.logService !== requestedService) return
-    state.logs = String(error)
-  } finally {
-    state.logLoading = false
-    if (refreshButton) refreshButton.disabled = false
-  }
-  const output = document.querySelector('#log-output')
-  if (output) {
-    const followTail = output.scrollHeight - output.scrollTop - output.clientHeight < 48
-    output.textContent = state.logs || '暂无日志输出。'
-    if (followTail) output.scrollTop = output.scrollHeight
-  }
 }
 
 listen('install-progress', ({ payload }) => {

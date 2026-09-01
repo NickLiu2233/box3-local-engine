@@ -78,7 +78,6 @@ for (const value of [
   '总览',
   '数据配置',
   '性能监控',
-  '运行日志',
   '关于',
   '数据服务',
   '访问设置',
@@ -505,10 +504,11 @@ assert.match(frontend, /async function toggleOwnerSecrets\(\)/)
 assert.match(backend, /fn get_owner_secrets\(app: AppHandle\)/)
 assert.match(backend, /OwnerSecretsView/)
 assert.match(frontend, /data-save-raw-environment/)
-assert.match(frontend, /function syncLogPolling\(/)
-assert.match(frontend, /setInterval\(\(\) => loadLogs\(\{ renderPage: false \}\), 1500\)/)
-assert.match(frontend, /正在连接日志流/)
-assert.match(frontend, /followTail/)
+assert.doesNotMatch(frontend, /运行日志|查看运行日志|syncLogPolling|loadLogs/)
+assert.doesNotMatch(backend, /fn get_logs|fn get_service_logs/)
+assert.match(frontend, /服主交流QQ群：1107448537/)
+assert.match(frontend, /open_community_group/)
+assert.match(backend, /fn open_community_group\(\)/)
 assert.match(frontend, /addEventListener\('contextmenu', \(event\) => event\.preventDefault\(\)\)/)
 assert.match(backend, /fn get_raw_environment/)
 assert.match(backend, /fn save_raw_environment/)
@@ -537,9 +537,6 @@ assert.match(frontend, /allHealthy \? '' : `<button class="button primary" id="s
 // The main shell is intentionally fixed-height. The log pane therefore needs
 // to reserve space for the page header and filters, then expose its own
 // vertical scrollbar instead of being clipped below the viewport.
-assert.match(styles, /\.logs-page[\s\S]*grid-template-rows: 56px 40px minmax\(0, 1fr\)/)
-assert.match(styles, /\.log-card[\s\S]*min-height: 0[\s\S]*display: flex/)
-assert.match(styles, /\.log-card pre[\s\S]*overflow: auto/)
-assert.doesNotMatch(styles, /\.log-card pre[\s\S]*scrollbar-width: none/)
+assert.doesNotMatch(styles, /\.logs-page|\.log-card|\.log-live-status/)
 
 console.log('Desktop deployment manager checks passed')

@@ -1574,45 +1574,6 @@ form.environment-mode {
   font-size: 11px;
 }
 
-.logs-page {
-  height: 100%;
-  display: grid;
-  grid-template-rows: 56px 40px minmax(0, 1fr);
-  min-height: 0;
-}
-
-.logs-page > header {
-  margin-bottom: 18px;
-}
-
-.log-card {
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: #16181c;
-}
-
-.log-live-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 2px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.log-live-status i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--success);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 13%, transparent);
-}
-
 .text-button {
   padding: 0;
   border: 0;
@@ -1621,37 +1582,6 @@ form.environment-mode {
   cursor: pointer;
   font-size: 12px;
   font-weight: 620;
-}
-
-.log-card pre {
-  min-height: 0;
-  flex: 1 1 auto;
-  margin: 0;
-  padding: 14px;
-  overflow: auto;
-  color: #d7dae0;
-  font:
-    11px/1.55 'SFMono-Regular',
-    Consolas,
-    monospace;
-  scrollbar-color: #555b67 #1d2026;
-  scrollbar-width: thin;
-  white-space: pre-wrap;
-}
-
-.log-card pre::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.log-card pre::-webkit-scrollbar-thumb {
-  border: 3px solid #1d2026;
-  border-radius: 99px;
-  background: #555b67;
-}
-
-.log-card pre::-webkit-scrollbar-corner {
-  background: #1d2026;
 }
 
 .about-page {

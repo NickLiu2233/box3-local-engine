@@ -1783,7 +1783,7 @@ fn get_about_info() -> AboutInfo {
         build_source: option_env!("BOX_BUILD_SOURCE").unwrap_or("local").into(),
         platform: std::env::consts::OS.into(),
         architecture: std::env::consts::ARCH.into(),
-        license: "非商业本地部署许可".into(),
+        license: "本地部署用户许可协议（非开源、非商业）".into(),
         service_images,
     }
 }
@@ -1791,7 +1791,7 @@ fn get_about_info() -> AboutInfo {
 #[tauri::command]
 fn get_legal_notices() -> LegalNotices {
     LegalNotices {
-        license_name: "BOX3 Engine 非商业本地部署最终用户许可协议".into(),
+        license_name: "BOX3 Engine 本地部署用户许可协议".into(),
         license_text: include_str!("../../../../distribution/LICENSE.txt").into(),
     }
 }
@@ -2106,16 +2106,6 @@ async fn control_service(app: AppHandle, service: String, action: String) -> Res
     })
     .await
     .map_err(|error| format!("服务操作异常结束：{error}"))?
-}
-
-#[tauri::command]
-async fn get_service_logs(app: AppHandle, service: String) -> Result<String, String> {
-    validate_service_name(&service)?;
-    tauri::async_runtime::spawn_blocking(move || {
-        compose_output(&app, &["logs", "--tail", "300", "--no-color", &service])
-    })
-    .await
-    .map_err(|error| format!("日志任务异常结束：{error}"))?
 }
 
 fn is_sensitive_env_key(key: &str) -> bool {
@@ -2859,15 +2849,6 @@ async fn stop_services(app: AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-async fn get_logs(app: AppHandle) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        compose_output(&app, &["logs", "--tail", "500", "--no-color"])
-    })
-    .await
-    .map_err(|error| format!("日志任务异常结束：{error}"))?
-}
-
-#[tauri::command]
 fn open_service(app: AppHandle, url: String) -> Result<(), String> {
     generate_runtime_environment(&app)?;
     let values = runtime_env_path(&app)
@@ -2932,6 +2913,34 @@ fn open_service(app: AppHandle, url: String) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|error| format!("无法打开浏览器：{error}"))
+}
+
+#[tauri::command]
+fn open_community_group() -> Result<(), String> {
+    let url = "https://qm.qq.com/q/oMdzAAN49a";
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = Command::new("cmd");
+        command.args(["/C", "start", "", url]);
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(url);
+        command
+    };
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(url);
+        command
+    };
+    hide_window(&mut command);
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("无法打开交流群：{error}"))
 }
 
 fn file_sha256(path: &Path) -> Result<String, String> {
@@ -3239,10 +3248,9 @@ pub fn run() {
             start_services,
             stop_services,
             control_service,
-            get_logs,
-            get_service_logs,
             export_diagnostics,
             open_service,
+            open_community_group,
             verify_archive,
         ])
         .run(tauri::generate_context!())

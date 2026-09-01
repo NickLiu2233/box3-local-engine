@@ -118,6 +118,6 @@ BOX_DATABASE_URL=
 
 ## 许可与安全
 
-仓库 npm 元数据为 `UNLICENSED`，不授予源代码开源许可。用户发行包适用 [BOX3 Engine 非商业本地部署最终用户许可协议](distribution/LICENSE.txt)。商业使用、二次开发、再分发或品牌合作必须取得权利人书面授权。
+仓库 npm 元数据为 `UNLICENSED`，不授予源代码开源许可。用户发行包适用 [BOX3 Engine 本地部署用户许可协议](distribution/LICENSE.txt)。商业使用、二次开发、再分发或品牌合作必须取得权利人书面授权。
 
 不要提交或分发真实 `.env`、数据库连接串、密码、Cookie、Token、用户 IP、项目、地图包、模型库、备份、日志、Docker 卷或构建缓存。
