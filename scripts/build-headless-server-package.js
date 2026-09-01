@@ -57,7 +57,7 @@ function headlessCompose() {
   const creator = serviceSection(source, '  creator:', '  play-storage-init:')
   const play = serviceSection(source, '  play-storage-init:', '  voxa:')
   const voxa = serviceSection(source, '  voxa:', '  migrator:')
-  const volumes = 'volumes:\n  box-play-storage:\n'
+  const volumes = 'volumes:\n  box-play-runtime-cache:\n'
   if (
     servicesIndex < 0 ||
     !playerService ||

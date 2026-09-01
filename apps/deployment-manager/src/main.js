@@ -10,11 +10,51 @@ const services = [
   ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3214, '/'],
 ]
 
+const managedServices = [
+  ['managed-postgres', 'PostgreSQL', '玩家、权限与地图数据', 'postgresql'],
+  ['managed-redis', 'Redis', '缓存与运行时协调', 'redis'],
+]
+
 const THEME_KEY = 'box-manager-theme'
 const themes = [
   ['system', '跟随系统'],
   ['light', '亮色'],
   ['dark', '暗色'],
+]
+
+const numericConfigFields = [
+  'playRuntimes',
+  'creatorEditRuntimes',
+  'creatorPlayRuntimes',
+  'creatorEditPrewarmRuntimes',
+  'creatorPlayPrewarmRuntimes',
+  'playPrewarmRuntimes',
+  'playerLimit',
+  'scriptMemoryMb',
+  'runtimeIdleMinutes',
+  'runtimeStartTimeoutMinutes',
+  'teleportMaxRooms',
+  'teleportRoomIdleMinutes',
+  'databasePoolSize',
+  'storageCacheRedisTtl',
+  'playerServiceMemoryMb',
+  'playerServiceCpuLimit',
+  'authPortalMemoryMb',
+  'authPortalCpuLimit',
+  'creatorMemoryMb',
+  'creatorCpuLimit',
+  'playMemoryMb',
+  'playCpuLimit',
+  'redisDb',
+  'storageCacheRedisDb',
+  'autoBackupIntervalMinutes',
+  'autoBackupRetentionCount',
+  'autoBackupRetentionDays',
+  'playPort',
+  'voxaPort',
+  'creatorPort',
+  'playerServicePort',
+  'authPortalPort',
 ]
 
 const state = {
@@ -38,6 +78,8 @@ const state = {
   backupsLoading: false,
   backupMessage: '',
   backupDialog: null,
+  managedDatabaseInfo: null,
+  managedRedisInfo: null,
   performance: null,
   performanceLoading: false,
   performanceError: '',
@@ -115,7 +157,7 @@ function themeControl() {
 }
 
 function shell(content) {
-  return `<div class="shell">
+  return `<div class="shell" data-rendered-page="${state.page}">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
       <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('about', 'info', '关于')}</nav>
@@ -243,30 +285,52 @@ function overview() {
   const summaryDetail = installed
     ? `${runningCount} / ${enabledCount} 个服务运行中`
     : '完成配置后即可启动'
+  const infrastructureServices = managedServices.filter(([, , , kind]) => {
+    const info = kind === 'postgresql' ? state.managedDatabaseInfo : state.managedRedisInfo
+    return Boolean(info?.imageAvailable && info?.configured)
+  })
   return `<header><div><h1>服务总览</h1></div>
     <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button></div></header>
     ${state.busy ? progressPanel() : ''}
     <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
       <div class="hero-actions">${installed ? `${allHealthy ? '' : `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
     <div class="section-title"><h2>应用服务</h2></div>
-    <div class="service-grid">${services.map(serviceCard).join('')}</div>`
+    <div class="service-grid">${services.map((service) => serviceCard(service)).join('')}</div>
+    ${
+      infrastructureServices.length
+        ? `<div class="section-title"><h2>基础服务</h2></div><div class="service-grid">${infrastructureServices
+            .map(([id, name, description, kind]) => {
+              const info =
+                kind === 'postgresql' ? state.managedDatabaseInfo : state.managedRedisInfo
+              return serviceCard([id, name, description], {
+                endpoint: `${info.host}:${info.port}`,
+                openable: false,
+              })
+            })
+            .join('')}</div>`
+        : ''
+    }`
 }
 
-function serviceCard([id, name, description, portKey, defaultPort, path]) {
+function serviceCard([id, name, description, portKey, defaultPort], options = {}) {
   const service = state.status?.services?.find((item) => item.name === id)
   const enabled = service?.enabled !== false
   const running = service?.running
-  const url = getServiceUrl(id)
-  const port = Number(state.config?.[portKey]) || defaultPort
-  const host =
-    id === 'creator' || id === 'voxa' ? state.config?.creatorHost : state.config?.publicHost
-  const endpoint = `${host || '127.0.0.1'}:${port}`
+  const openable = options.openable !== false
+  const url = openable ? getServiceUrl(id) : ''
+  const port = portKey ? Number(state.config?.[portKey]) || defaultPort : null
+  const host = portKey
+    ? id === 'creator' || id === 'voxa'
+      ? state.config?.creatorHost
+      : state.config?.publicHost
+    : ''
+  const endpoint = options.endpoint || (port ? `${host || '127.0.0.1'}:${port}` : '')
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
     state.serviceMenu === id
-      ? `<div class="service-more-menu">${running ? `<button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button>` : ''}<button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
+      ? `<div class="service-more-menu">${running && url ? `<button data-copy-url="${escapeHtml(url)}">${icon('copy')}复制访问地址</button>` : ''}<button data-service-action="restart" data-service="${id}" ${!running ? 'disabled' : ''}>${icon('refresh')}重启服务</button></div>`
       : ''
-  return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-copy"><h3>${name}</h3><p>${availability}${running ? `<span>· ${escapeHtml(endpoint)}</span>` : ''}</p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands">${running ? `<button class="service-open" data-open="${escapeHtml(url)}">打开</button>` : ''}<button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
+  return `<article class="service-card ${enabled ? '' : 'disabled'}"><div class="service-copy"><h3>${name}</h3><p>${availability}${running && endpoint ? `<span>· ${escapeHtml(endpoint)}</span>` : ''}</p></div><span class="service-state ${running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : running ? '运行中' : '已停止'}</span><div class="service-commands">${running && openable ? `<button class="service-open" data-open="${escapeHtml(url)}">打开</button>` : ''}<button class="service-action" data-service-action="${running ? 'stop' : 'start'}" data-service="${id}" ${!enabled || state.busy ? 'disabled' : ''}>${running ? '停止' : '启动'}</button><div class="service-more">${moreMenu}<button class="service-more-trigger" data-service-menu="${id}" aria-expanded="${state.serviceMenu === id}" title="更多操作">•••</button></div></div></article>`
 }
 
 function getServiceUrl(serviceId) {
@@ -297,7 +361,9 @@ function diagnostics() {
 }
 
 function progressPanel() {
-  return `<section class="progress-panel"><div><strong>${escapeHtml(state.progress.message)}</strong><span>${Math.max(0, Math.min(100, state.progress.percent))}%</span></div><div class="progress-track"><i style="width:${state.progress.percent}%"></i></div></section>`
+  const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
+  const indeterminate = state.progress.stage.endsWith('-image')
+  return `<section class="progress-panel" aria-live="polite"><div><strong>${escapeHtml(state.progress.message)}</strong><span>${indeterminate ? '下载中' : `${percent}%`}</span></div><div class="progress-track"><i class="${indeterminate ? 'indeterminate' : ''}" ${indeterminate ? '' : `style="width:${percent}%"`}></i></div></section>`
 }
 
 function input(name, label, value = '', type = 'text', hint = '', required = false, limits = {}) {
@@ -318,6 +384,8 @@ function setupExplanation(title, items) {
 
 function setup() {
   const config = state.config || {}
+  const databaseMode = config.databaseMode || 'managed'
+  const redisMode = config.redisMode || 'disabled'
   const creatorHost = config.creatorHost || '127.0.0.1'
   const creatorAccessMode = config.creatorNetworkMode || 'local'
   const creatorPublicHost =
@@ -364,16 +432,16 @@ function setup() {
       <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
-          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>必填 · 保存玩家、权限与地图脚本数据</span></div><button type="button" class="text-button" data-test-connection="postgresql">测试连接</button></div><div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div></div>
-          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>选填 · 留空则不启用缓存服务</span></div><button type="button" class="text-button" data-test-connection="redis">测试连接</button></div><div class="form-grid compact three">${input('redisHost', '地址', config.redisHost, 'text', 'IP 或域名')}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', false, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>保存玩家、权限与地图脚本数据</span></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>推荐，启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
+          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>可选缓存与运行时协调服务</span></div>${redisMode === 'external' ? '<button type="button" class="text-button" data-test-connection="redis">测试连接</button>' : ''}</div><input name="redisMode" type="hidden" value="${redisMode}"/><div class="database-mode-choice redis-mode-choice"><button type="button" class="${redisMode === 'disabled' ? 'active' : ''}" data-redis-mode="disabled"><strong>不启用</strong><span>保持最少依赖</span></button><button type="button" class="${redisMode === 'managed' ? 'active' : ''}" data-redis-mode="managed"><strong>内置 Redis</strong><span>启动器自动维护</span></button><button type="button" class="${redisMode === 'external' ? 'active' : ''}" data-redis-mode="external"><strong>外部 Redis</strong><span>连接已有服务</span></button></div>${redisMode === 'disabled' ? '<div class="managed-service-note"><strong>当前不使用 Redis</strong><span>不会影响玩家账号、权限、地图和模型数据。</span></div>' : redisMode === 'managed' ? managedServicePanel('redis', state.managedRedisInfo) : `<div class="form-grid compact three">${input('redisHost', '地址', config.redisHost === 'managed-redis' ? '' : config.redisHost, 'text', 'IP 或域名', true)}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', true, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '外部 Redis 无密码时可留空')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div>`}</div>
           ${setupExplanation('配置说明：这些服务用来做什么？', [
             [
               'PostgreSQL',
-              '必须配置。用于保存玩家账号、权限和地图脚本等需要长期保留的数据；未完成配置时不能启动服务。',
+              '用于保存玩家账号、权限和地图脚本等长期数据。桌面启动器可自动管理内置数据库，也可连接外部 PostgreSQL。',
             ],
             [
               'Redis',
-              '用于缓存和运行时协调，帮助服务更快响应；它不是主要数据来源，留空不会删除地图或模型。',
+              '用于缓存和运行时协调，可选择不启用、由启动器管理内置 Redis，或连接外部 Redis。它不是主要数据来源。',
             ],
             [
               '业务 DB / 缓存 DB',
@@ -573,7 +641,62 @@ function formatBuildSource(value) {
   return value || '未知'
 }
 
+function managedServicePanel(service, info) {
+  const isDatabase = service === 'postgresql'
+  const label = isDatabase ? 'PostgreSQL 16' : 'Redis 7'
+  if (!info?.imageAvailable) {
+    return `<div class="managed-install-card"><strong>尚未安装 ${label}</strong><button type="button" class="button primary" data-install-managed="${service}" ${state.busy ? 'disabled' : ''}>立即下载</button></div>`
+  }
+  if (!info?.configured) {
+    return `<div class="managed-install-card"><strong>内置 ${label} 已下载</strong><button type="button" class="button primary" data-install-managed="${service}" ${state.busy ? 'disabled' : ''}>启用并启动</button></div>`
+  }
+  const fields = [
+    ['地址', info.host],
+    ['端口', info.port],
+    ...(isDatabase
+      ? [
+          ['数据库', info.database],
+          ['账号', info.user],
+        ]
+      : [
+          ['业务 DB', info.database],
+          ['缓存 DB', '1'],
+        ]),
+    ['密码', info.password],
+  ]
+  return `<div class="managed-connection-card"><div class="managed-connection-heading"><div><span class="managed-state ${info.running ? 'running' : 'stopped'}">${info.running ? '正在运行' : '当前未运行'}</span><strong>本机连接信息</strong><small>仅监听 127.0.0.1，不会暴露到局域网或公网。</small></div>${info.running ? '' : `<button type="button" class="button" data-install-managed="${service}" ${state.busy ? 'disabled' : ''}>启动服务</button>`}</div><dl class="managed-connection-grid">${fields
+    .map(
+      ([name, value]) =>
+        `<div><dt>${name}</dt><dd><code>${escapeHtml(value)}</code><button type="button" class="copy-connection" data-copy-managed="${escapeHtml(value)}" aria-label="复制${name}" title="复制${name}">${icon('copy')}</button></dd></div>`,
+    )
+    .join(
+      '',
+    )}<div class="connection-url"><dt>连接地址</dt><dd><code>${escapeHtml(info.connectionUrl)}</code><button type="button" class="copy-connection" data-copy-managed="${escapeHtml(info.connectionUrl)}" aria-label="复制连接地址" title="复制连接地址">${icon('copy')}</button></dd></div></dl></div>`
+}
+
+function captureScrollPositions() {
+  const shell = document.querySelector('.shell')
+  if (!shell || shell.dataset.renderedPage !== state.page) return null
+  const setupPanel = shell.querySelector('.setup-panel.active')
+  const sameSetupSection = setupPanel?.dataset.setupPanel === state.setupSection
+  return {
+    main: shell.querySelector('main')?.scrollTop || 0,
+    setupPanels: sameSetupSection ? shell.querySelector('.setup-panels')?.scrollTop || 0 : null,
+  }
+}
+
+function restoreScrollPositions(positions) {
+  if (!positions) return
+  const main = document.querySelector('main')
+  const setupPanels = document.querySelector('.setup-panels')
+  if (main) main.scrollTop = positions.main
+  if (setupPanels && positions.setupPanels !== null) {
+    setupPanels.scrollTop = positions.setupPanels
+  }
+}
+
 function render() {
+  const scrollPositions = captureScrollPositions()
   const content =
     state.page === 'setup'
       ? setup()
@@ -587,6 +710,7 @@ function render() {
               ? about()
               : overview()
   document.querySelector('#app').innerHTML = shell(content)
+  restoreScrollPositions(scrollPositions)
   bindEvents()
   syncOverviewPolling()
   syncPerformancePolling()
@@ -605,6 +729,7 @@ function bindEvents() {
       render()
       if (state.page === 'backups') loadBackups()
       if (state.page === 'about') loadLegalNotices()
+      if (state.page === 'setup') refreshManagedServiceInfo()
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
@@ -666,6 +791,18 @@ function bindEvents() {
       runAction('start_services', { scope: node.dataset.startScope })
     }),
   )
+  document
+    .querySelectorAll('[data-install-managed]')
+    .forEach((node) =>
+      node.addEventListener('click', () => installManagedService(node.dataset.installManaged)),
+    )
+  document.querySelectorAll('[data-copy-managed]').forEach((node) =>
+    node.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(node.dataset.copyManaged)
+      node.classList.add('copied')
+      node.title = '已复制'
+    }),
+  )
   document.querySelector('#stop')?.addEventListener('click', () => runAction('stop_services'))
   document
     .querySelectorAll('[data-open]')
@@ -718,6 +855,34 @@ function bindEvents() {
       // values already typed before changing the visible section.
       event.preventDefault()
       switchSetupSection(node.dataset.setupSection)
+    }),
+  )
+  document.querySelectorAll('[data-database-mode]').forEach((node) =>
+    node.addEventListener('click', () => {
+      captureSetupForm()
+      const mode = node.dataset.databaseMode
+      if (!mode) return
+      state.config.databaseMode = mode
+      if (mode === 'external' && state.config.databaseHost === 'managed-postgres') {
+        state.config.databasePassword = ''
+        state.config.hasDatabasePassword = false
+      }
+      clearFeedback()
+      render()
+    }),
+  )
+  document.querySelectorAll('[data-redis-mode]').forEach((node) =>
+    node.addEventListener('click', () => {
+      captureSetupForm()
+      const mode = node.dataset.redisMode
+      if (!mode) return
+      state.config.redisMode = mode
+      if (mode === 'external' && state.config.redisHost === 'managed-redis') {
+        state.config.redisPassword = ''
+        state.config.hasRedisPassword = false
+      }
+      clearFeedback()
+      render()
     }),
   )
   document.querySelectorAll('[data-creator-network-mode]').forEach((node) =>
@@ -785,7 +950,14 @@ async function refreshOverviewStatus() {
   if (overviewStatusLoading || state.page !== 'overview') return
   overviewStatusLoading = true
   try {
-    state.status = await invoke('get_system_status')
+    const [status, managedDatabaseInfo, managedRedisInfo] = await Promise.all([
+      invoke('get_system_status'),
+      invoke('get_managed_service_info', { service: 'postgresql' }),
+      invoke('get_managed_service_info', { service: 'redis' }),
+    ])
+    state.status = status
+    state.managedDatabaseInfo = managedDatabaseInfo
+    state.managedRedisInfo = managedRedisInfo
   } catch (error) {
     state.status = {
       dockerReady: false,
@@ -796,6 +968,22 @@ async function refreshOverviewStatus() {
   } finally {
     overviewStatusLoading = false
     if (state.page === 'overview') render()
+  }
+}
+
+async function refreshManagedServiceInfo() {
+  try {
+    const [managedDatabaseInfo, managedRedisInfo] = await Promise.all([
+      invoke('get_managed_service_info', { service: 'postgresql' }),
+      invoke('get_managed_service_info', { service: 'redis' }),
+    ])
+    if (state.page === 'setup') captureSetupForm()
+    state.managedDatabaseInfo = managedDatabaseInfo
+    state.managedRedisInfo = managedRedisInfo
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    if (state.page === 'setup') render()
   }
 }
 
@@ -902,37 +1090,7 @@ function captureRawEnvironment() {
 
 function normalizedConfig() {
   const config = { ...(state.config || {}) }
-  for (const key of [
-    'playRuntimes',
-    'creatorEditRuntimes',
-    'creatorPlayRuntimes',
-    'creatorEditPrewarmRuntimes',
-    'creatorPlayPrewarmRuntimes',
-    'playPrewarmRuntimes',
-    'playerLimit',
-    'scriptMemoryMb',
-    'runtimeIdleMinutes',
-    'runtimeStartTimeoutMinutes',
-    'teleportMaxRooms',
-    'teleportRoomIdleMinutes',
-    'databasePoolSize',
-    'storageCacheRedisTtl',
-    'playerServiceMemoryMb',
-    'playerServiceCpuLimit',
-    'authPortalMemoryMb',
-    'authPortalCpuLimit',
-    'creatorMemoryMb',
-    'creatorCpuLimit',
-    'playMemoryMb',
-    'playCpuLimit',
-    'redisDb',
-    'storageCacheRedisDb',
-    'playPort',
-    'voxaPort',
-    'creatorPort',
-    'playerServicePort',
-    'authPortalPort',
-  ]) {
+  for (const key of numericConfigFields) {
     config[key] = Number(config[key])
   }
   return config
@@ -1096,9 +1254,18 @@ async function confirmBackupAction() {
 
 async function refreshStatus() {
   try {
-    state.status = await invoke('get_system_status')
-    state.config = await invoke('get_install_config')
-    state.about = await invoke('get_about_info')
+    const [status, config, about, managedDatabaseInfo, managedRedisInfo] = await Promise.all([
+      invoke('get_system_status'),
+      invoke('get_install_config'),
+      invoke('get_about_info'),
+      invoke('get_managed_service_info', { service: 'postgresql' }),
+      invoke('get_managed_service_info', { service: 'redis' }),
+    ])
+    state.status = status
+    state.config = config
+    state.about = about
+    state.managedDatabaseInfo = managedDatabaseInfo
+    state.managedRedisInfo = managedRedisInfo
     state.playAccessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
@@ -1189,38 +1356,7 @@ async function saveConfiguration(event) {
   config.autoBackupEnabled = form.has('autoBackupEnabled')
   config.registrationEnabled = form.has('registrationEnabled')
   config.libraryManagementEnabled = form.has('libraryManagementEnabled')
-  config.playRuntimes = Number(config.playRuntimes)
-  config.creatorEditRuntimes = Number(config.creatorEditRuntimes)
-  config.creatorPlayRuntimes = Number(config.creatorPlayRuntimes)
-  config.creatorEditPrewarmRuntimes = Number(config.creatorEditPrewarmRuntimes)
-  config.creatorPlayPrewarmRuntimes = Number(config.creatorPlayPrewarmRuntimes)
-  config.playPrewarmRuntimes = Number(config.playPrewarmRuntimes)
-  config.playerLimit = Number(config.playerLimit)
-  config.scriptMemoryMb = Number(config.scriptMemoryMb)
-  config.runtimeIdleMinutes = Number(config.runtimeIdleMinutes)
-  config.runtimeStartTimeoutMinutes = Number(config.runtimeStartTimeoutMinutes)
-  config.teleportMaxRooms = Number(config.teleportMaxRooms)
-  config.teleportRoomIdleMinutes = Number(config.teleportRoomIdleMinutes)
-  config.databasePoolSize = Number(config.databasePoolSize)
-  config.storageCacheRedisTtl = Number(config.storageCacheRedisTtl)
-  config.playerServiceMemoryMb = Number(config.playerServiceMemoryMb)
-  config.playerServiceCpuLimit = Number(config.playerServiceCpuLimit)
-  config.authPortalMemoryMb = Number(config.authPortalMemoryMb)
-  config.authPortalCpuLimit = Number(config.authPortalCpuLimit)
-  config.creatorMemoryMb = Number(config.creatorMemoryMb)
-  config.creatorCpuLimit = Number(config.creatorCpuLimit)
-  config.playMemoryMb = Number(config.playMemoryMb)
-  config.playCpuLimit = Number(config.playCpuLimit)
-  config.redisDb = Number(config.redisDb)
-  config.storageCacheRedisDb = Number(config.storageCacheRedisDb)
-  config.autoBackupIntervalMinutes = Number(config.autoBackupIntervalMinutes)
-  config.autoBackupRetentionCount = Number(config.autoBackupRetentionCount)
-  config.autoBackupRetentionDays = Number(config.autoBackupRetentionDays)
-  config.playPort = Number(config.playPort)
-  config.voxaPort = Number(config.voxaPort)
-  config.creatorPort = Number(config.creatorPort)
-  config.playerServicePort = Number(config.playerServicePort)
-  config.authPortalPort = Number(config.authPortalPort)
+  for (const key of numericConfigFields) config[key] = Number(config[key])
   state.config = {
     ...state.config,
     ...config,
@@ -1231,6 +1367,39 @@ async function saveConfiguration(event) {
     hasPlayerAuthApiKey: Boolean(config.playerAuthApiKey) || state.config?.hasPlayerAuthApiKey,
     hasPlayAdminToken: Boolean(config.playAdminToken) || state.config?.hasPlayAdminToken,
   }
+  await persistConfiguration(config)
+}
+
+async function installManagedService(service) {
+  if (state.busy || !['postgresql', 'redis'].includes(service)) return
+  captureSetupForm()
+  const config = normalizedConfig()
+  if (service === 'postgresql') config.databaseMode = 'managed'
+  else config.redisMode = 'managed'
+  state.config = { ...state.config, ...config }
+  state.busy = true
+  clearFeedback()
+  state.progress = {
+    stage: 'managed-preflight',
+    message: `正在检查 Docker 和 ${service === 'postgresql' ? 'PostgreSQL' : 'Redis'} 镜像…`,
+    percent: 5,
+  }
+  render()
+  try {
+    await invoke(service === 'postgresql' ? 'prepare_managed_database' : 'prepare_managed_redis')
+    await invoke('save_configuration_command', { config })
+    await invoke('start_managed_service', { service })
+    state.notice = `${service === 'postgresql' ? 'PostgreSQL' : 'Redis'} 已安装并可供本机程序连接。`
+  } catch (error) {
+    state.progress = { stage: 'error', message: String(error), percent: 100 }
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    await refreshStatus()
+  }
+}
+
+async function persistConfiguration(config) {
   if (state.busy) return
   state.busy = true
   clearFeedback()

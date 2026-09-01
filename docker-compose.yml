@@ -1,9 +1,48 @@
 name: box-local-engine
 
 services:
+  managed-redis:
+    profiles: [desktop-redis]
+    image: ${BOX_REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
+    restart: unless-stopped
+    environment:
+      BOX_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --appendonly yes --requirepass "$$BOX_REDIS_PASSWORD"
+    volumes:
+      - box-managed-redis-data:/data
+    ports:
+      - "127.0.0.1:${BOX_MANAGED_REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$BOX_REDIS_PASSWORD\" ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  managed-postgres:
+    profiles: [desktop-postgres]
+    image: ${BOX_POSTGRES_IMAGE:-docker.m.daocloud.io/library/postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${BOX_DATABASE_NAME:-box}
+      POSTGRES_USER: ${BOX_DATABASE_USER:-box}
+      POSTGRES_PASSWORD: ${BOX_DATABASE_PASSWORD:-}
+    volumes:
+      - box-managed-postgres-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${BOX_MANAGED_POSTGRES_HOST_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   postgres:
     profiles: [infra]
-    image: ${BOX_POSTGRES_IMAGE:-postgres:16-alpine}
+    image: ${BOX_POSTGRES_IMAGE:-docker.m.daocloud.io/library/postgres:16-alpine}
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${BOX_POSTGRES_DB:-box}
@@ -21,7 +60,7 @@ services:
 
   redis:
     profiles: [infra]
-    image: ${BOX_REDIS_IMAGE:-redis:7-alpine}
+    image: ${BOX_REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
     restart: unless-stopped
     environment:
       BOX_REDIS_PASSWORD: ${BOX_REDIS_PASSWORD:-}
@@ -256,7 +295,6 @@ services:
       BOX_AUTO_BACKUP_RETENTION_DAYS: ${BOX_AUTO_BACKUP_RETENTION_DAYS:-30}
       BOX_PROJECT_BACKUP_PATH: ${BOX_PROJECT_BACKUP_PATH:-/app/apps/local-engine/backups}
       BOX_CREATOR_ALLOWED_HOSTS: ${BOX_CREATOR_ALLOWED_HOSTS:-}
-      BOX_DATA_STORAGE_PATH: /app/apps/local-engine/projects/.storage
       BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
       BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
       BOX_DATABASE_POOL_SIZE: ${BOX_DATABASE_POOL_SIZE:-10}
@@ -325,7 +363,7 @@ services:
     command:
       - sh
       - -c
-      - mkdir -p /app/play-storage/runtime-cache && chown -R 1000:1000 /app/play-storage
+      - mkdir -p /app/play-runtime-cache && chown -R 1000:1000 /app/play-runtime-cache
     restart: "no"
     network_mode: none
     read_only: true
@@ -336,7 +374,7 @@ services:
     cap_add:
       - CHOWN
     volumes:
-      - box-play-storage:/app/play-storage
+      - box-play-runtime-cache:/app/play-runtime-cache
 
   play:
     profiles: [play]
@@ -389,8 +427,7 @@ services:
       BOX_RUNTIME_START_TIMEOUT_MS: ${BOX_RUNTIME_START_TIMEOUT_MS:-1800000}
       BOX_TELEPORT_MAX_ROOMS: ${BOX_TELEPORT_MAX_ROOMS:-64}
       BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS: ${BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS:-900000}
-      BOX_RUNTIME_CACHE_PATH: /app/play-storage/runtime-cache
-      BOX_DATA_STORAGE_PATH: /app/play-storage
+      BOX_RUNTIME_CACHE_PATH: /app/play-runtime-cache
       BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
       BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
       BOX_DATABASE_POOL_SIZE: ${BOX_DATABASE_POOL_SIZE:-10}
@@ -413,7 +450,7 @@ services:
         read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
         bind:
           create_host_path: true
-      - box-play-storage:/app/play-storage
+      - box-play-runtime-cache:/app/play-runtime-cache
 
   voxa:
     profiles: [voxa]
@@ -512,6 +549,8 @@ services:
       - ./apps/migrator/cache:/app/cache
 
 volumes:
+  box-managed-redis-data:
+  box-managed-postgres-data:
   box-postgres-data:
   box-redis-data:
-  box-play-storage:
+  box-play-runtime-cache:

@@ -4,7 +4,8 @@
 //! process flags, or how command failures are rendered.
 
 use std::{
-    path::Path,
+    ffi::OsStr,
+    path::{Path, PathBuf},
     process::{Command, Output},
 };
 
@@ -32,10 +33,38 @@ pub(crate) fn run_command(mut command: Command) -> Result<Output, String> {
     }
 }
 
+fn command_with_tool_path(executable: impl AsRef<OsStr>) -> Command {
+    let executable = executable.as_ref();
+    let mut command = Command::new(executable);
+    let mut paths = Vec::<PathBuf>::new();
+    if let Some(parent) = Path::new(executable)
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+    {
+        paths.push(parent.to_path_buf());
+    }
+    #[cfg(target_os = "macos")]
+    paths.extend([
+        PathBuf::from("/Applications/Docker.app/Contents/Resources/bin"),
+        PathBuf::from("/usr/local/bin"),
+        PathBuf::from("/opt/homebrew/bin"),
+        PathBuf::from("/usr/bin"),
+        PathBuf::from("/bin"),
+    ]);
+    if let Some(existing) = std::env::var_os("PATH") {
+        paths.extend(std::env::split_paths(&existing));
+    }
+    paths.dedup();
+    if let Ok(path) = std::env::join_paths(paths) {
+        command.env("PATH", path);
+    }
+    command
+}
+
 pub(crate) fn command() -> Command {
     if let Some(configured) = std::env::var_os("BOX_DOCKER_CLI") {
         if !configured.is_empty() {
-            return Command::new(configured);
+            return command_with_tool_path(configured);
         }
     }
     #[cfg(target_os = "macos")]
@@ -56,9 +85,9 @@ pub(crate) fn command() -> Command {
         "/snap/bin/docker",
     ];
     if let Some(path) = candidates.iter().find(|path| Path::new(path).is_file()) {
-        return Command::new(path);
+        return command_with_tool_path(path);
     }
-    Command::new("docker")
+    command_with_tool_path("docker")
 }
 
 pub(crate) fn output(args: &[&str]) -> Result<String, String> {
@@ -83,5 +112,25 @@ pub(crate) fn unavailable_message(error: String) -> String {
         "Docker 已安装但尚未就绪。请启动 Docker，等待状态变为 Running 后刷新。".into()
     } else {
         format!("Docker 不可用：{error}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn docker_desktop_command_can_resolve_its_credential_helper() {
+        let command = command();
+        let path = command
+            .get_envs()
+            .find(|(key, _)| *key == "PATH")
+            .and_then(|(_, value)| value)
+            .expect("Docker command must set an explicit PATH inside the desktop app");
+        assert!(path
+            .to_string_lossy()
+            .split(':')
+            .any(|entry| entry == "/Applications/Docker.app/Contents/Resources/bin"));
     }
 }

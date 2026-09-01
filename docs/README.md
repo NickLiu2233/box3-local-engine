@@ -36,7 +36,7 @@
 - [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
 - [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。
 - [PostgreSQL 数据空间](./postgresql-data-storage.md)：账号与地图脚本数据的 schema、隔离、权限和备份。
-- [本地基础设施](./local-infrastructure.md)：仓库内 PostgreSQL/Redis profile 与状态检查。
+- [本地基础设施](./local-infrastructure.md)：PostgreSQL、Redis、工程文件和运行时缓存的职责、卷与删除边界。
 
 ### 开发与兼容
 
@@ -55,7 +55,7 @@
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
 - Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。
 - 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
-- 桌面启动器不安装 PostgreSQL 或 Redis。Player Service 必须使用 PostgreSQL；Redis 可选。
+- 桌面启动器可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis；Linux Web 包仍要求外部 PostgreSQL。
 - 当前桌面发行目标为 Windows x64、Apple Silicon macOS 和 Linux x64。Windows ARM、Intel macOS 与 Linux ARM64 桌面 App 不是默认 Release 目标。
 
 ## 当前脚本边界

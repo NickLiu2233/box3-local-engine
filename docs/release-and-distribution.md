@@ -14,7 +14,7 @@ pnpm build:headless-server-package <platform>
 
 桌面离线包包含启动器与所需镜像；Linux 无图形包包含 Creator、VOXA、Play、Player Service、登录门户和 Web 管理端，不包含迁移器或内置 PostgreSQL/Redis。Release 不得包含 `.env`、地图、项目、备份、数据库卷、日志或真实密钥。
 
-发布前应在干净环境解压完整包，导入镜像并完成一次启动、登录、地图进入和停止验证。
+发布前应在干净环境解压完整包，导入镜像并完成数据库初始化、Redis 开关、启动、登录、地图进入、停止和再次启动验证。升级测试还应确认旧 `box-play-storage` 不再被引用，新的 `box-play-runtime-cache` 可以重建。
 
 ## 版本与签名
 

@@ -25,6 +25,10 @@ const builder = fs.readFileSync(
   path.join(root, 'scripts/build-desktop-offline-installer.js'),
   'utf8',
 )
+const headlessBuilder = fs.readFileSync(
+  path.join(root, 'scripts/build-headless-server-package.js'),
+  'utf8',
+)
 const packageVerifier = fs.readFileSync(
   path.join(root, 'scripts/verify-desktop-offline-package.js'),
   'utf8',
@@ -87,19 +91,113 @@ for (const value of [
 ]) {
   assert.ok(frontend.includes(value), `deployment UI is missing ${value}`)
 }
-assert.doesNotMatch(frontend, /内置数据库|databaseMode/)
-assert.doesNotMatch(backend, /database_mode|COMPOSE_PROFILES.*infra/)
-assert.doesNotMatch(builder, /选择内置数据库/)
+assert.match(frontend, /内置数据库/)
+assert.match(frontend, /外部数据库/)
+assert.match(frontend, /databaseMode/)
+assert.match(frontend, /启用并启动/)
+assert.match(frontend, /PostgreSQL 16/)
+assert.match(frontend, /内置 Redis/)
+assert.match(frontend, /外部 Redis/)
+assert.match(frontend, /不启用/)
+assert.match(frontend, /立即下载/)
+const databaseModeHandler = frontend.match(
+  /document\.querySelectorAll\('\[data-database-mode\]'\)[\s\S]*?\n {2}\)\n/,
+)?.[0]
+assert.ok(databaseModeHandler, 'missing database mode switch handler')
+assert.doesNotMatch(databaseModeHandler, /databaseHost\s*=(?!=)/)
+const redisModeHandler = frontend.match(
+  /document\.querySelectorAll\('\[data-redis-mode\]'\)[\s\S]*?\n {2}\)\n/,
+)?.[0]
+assert.ok(redisModeHandler, 'missing Redis mode switch handler')
+assert.doesNotMatch(redisModeHandler, /redisHost\s*=(?!=)/)
+assert.match(
+  styles,
+  /@media \(prefers-color-scheme: dark\) \{\s*:root:not\(\[data-theme='light'\]\):not\(\[data-theme='dark'\]\) \{\s*color-scheme: dark;/,
+)
+assert.match(backend, /database_mode/)
+assert.match(backend, /has_managed_database_image/)
+assert.match(backend, /prepare_managed_database/)
+assert.match(backend, /redis_mode/)
+assert.match(backend, /has_managed_redis_image/)
+assert.match(backend, /prepare_managed_redis/)
+assert.match(frontend, /prepare_managed_redis/)
+assert.match(frontend, /get_managed_service_info/)
+assert.match(frontend, /start_managed_service/)
+assert.match(frontend, /基础服务/)
+assert.match(frontend, /managed-postgres/)
+assert.match(frontend, /managed-redis/)
+assert.match(frontend, /info\?\.imageAvailable && info\?\.configured/)
+assert.match(frontend, /openable: false/)
+assert.match(frontend, /async function refreshManagedServiceInfo\(\)/)
+assert.match(frontend, /if \(state\.page === 'setup'\) refreshManagedServiceInfo\(\)/)
+assert.match(backend, /const MANAGED_SERVICE_NAMES: \[&str; 2\]/)
+assert.match(backend, /MANAGED_SERVICE_NAMES\.contains\(&service\)/)
+assert.match(backend, /managed_service_installed\(app, service\)/)
+assert.match(backend, /fn managed_database_identity\(/)
+assert.match(backend, /format!\("box_db_\{\}", random_hex\(8\)\)/)
+assert.match(backend, /format!\("box_user_\{\}", random_hex\(8\)\)/)
+assert.match(backend, /managed_database_volume_exists\(\)/)
+assert.match(frontend, /stage: 'managed-preflight'/)
+assert.match(frontend, /const indeterminate =/)
+assert.match(styles, /@keyframes managed-download-progress/)
+assert.doesNotMatch(frontend, /managedDatabaseConfigured/)
+assert.doesNotMatch(frontend, /managed-pool-field/)
+assert.match(backend, /if database_mode == "managed" \{\s*10\s*\} else/)
+assert.doesNotMatch(frontend, /managedRedisConfigured/)
+assert.doesNotMatch(frontend, /managed-redis-allocation/)
+assert.match(frontend, /\['业务 DB', info\.database\]/)
+assert.match(frontend, /\['缓存 DB', '1'\]/)
+assert.doesNotMatch(styles, /\.managed-redis-allocation/)
+assert.match(backend, /if redis_mode == "managed" \{\s*\(0, 1, 240\)/)
+const installConfigInput = backend.match(/struct InstallConfigInput \{[\s\S]*?\n\}/)?.[0]
+assert.ok(installConfigInput, 'missing InstallConfigInput contract')
+const normalizedConfigBody = frontend.match(/function normalizedConfig\(\) \{[\s\S]*?\n\}/)?.[0]
+assert.ok(normalizedConfigBody, 'missing normalizedConfig implementation')
+assert.match(normalizedConfigBody, /for \(const key of numericConfigFields\)/)
+const numericConfigFields = frontend.match(/const numericConfigFields = \[[\s\S]*?\n\]/)?.[0]
+assert.ok(numericConfigFields, 'missing numericConfigFields contract')
+const snakeToCamel = (value) => value.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+for (const [, field] of installConfigInput.matchAll(/^\s+(\w+): (?:u8|u16|u32|f64),$/gm)) {
+  const frontendField = snakeToCamel(field)
+  assert.match(
+    numericConfigFields,
+    new RegExp(`['"]${frontendField}['"]`),
+    `normalizedConfig must convert numeric field ${frontendField}`,
+  )
+}
+assert.match(compose, /managed-redis:/)
+assert.match(compose, /profiles: \[desktop-redis\]/)
+assert.match(compose, /docker\.m\.daocloud\.io\/library\/redis:7-alpine/)
+assert.match(backend, /docker\.m\.daocloud\.io\/library\/redis:7-alpine/)
+assert.match(compose, /box-managed-redis-data:\/data/)
+assert.match(
+  compose.match(/ {2}managed-redis:[\s\S]*?\n {2}managed-postgres:/)?.[0] || '',
+  /127\.0\.0\.1:\$\{BOX_MANAGED_REDIS_HOST_PORT:-6379\}:6379/,
+)
+assert.match(compose, /managed-postgres:/)
+assert.match(compose, /profiles: \[desktop-postgres\]/)
+assert.match(compose, /docker\.m\.daocloud\.io\/library\/postgres:16-alpine/)
+assert.match(backend, /docker\.m\.daocloud\.io\/library\/postgres:16-alpine/)
+assert.match(compose, /box-managed-postgres-data:\/var\/lib\/postgresql\/data/)
+assert.match(
+  compose.match(/ {2}managed-postgres:[\s\S]*?\n {2}postgres:/)?.[0] || '',
+  /127\.0\.0\.1:\$\{BOX_MANAGED_POSTGRES_HOST_PORT:-5432\}:5432/,
+)
+assert.doesNotMatch(headlessBuilder, /managed-postgres/)
+assert.doesNotMatch(headlessBuilder, /managed-redis/)
+assert.doesNotMatch(builder, /postgres:16-alpine/)
 assert.match(builder, /--norsrc/)
 assert.match(defaults, /^BOX_PLAY_PUBLIC_HOST=127\.0\.0\.1$/m)
 assert.match(defaults, /^BOX_CREATOR_HOST=127\.0\.0\.1$/m)
 assert.match(defaults, /^BOX_DATABASE_HOST=$/m)
+assert.match(defaults, /^BOX_DATABASE_MODE=managed$/m)
 assert.match(defaults, /^BOX_DATABASE_PASSWORD=$/m)
 assert.doesNotMatch(defaults, /^COMPOSE_PROFILES=/m)
 assert.doesNotMatch(defaults, /^BOX_DATABASE_URL=/m)
 assert.doesNotMatch(defaults, /^BOX_IMAGE_TAG=/m)
 assert.doesNotMatch(defaults, /^BOX_.*PUBLIC_URL=/m)
 assert.match(defaults, /^REDIS_HOST=$/m)
+assert.match(defaults, /^BOX_REDIS_MODE=disabled$/m)
 for (const [name, value] of [
   ['BOX_LOCAL_PLAYER_LIMIT', '8'],
   ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '6'],
@@ -307,11 +405,21 @@ assert.match(frontend, /允许新玩家注册/)
 assert.match(frontend, /允许网页管理地图包/)
 assert.match(backend, /if config\.library_management_enabled[\s\S]*?"false"[\s\S]*?"true"/)
 assert.match(backend, /"BOX_SCRIPT_HEAP_MB"[\s\S]*?"BOX_SCRIPT_MEMORY_MB"/)
-assert.match(frontend, /PostgreSQL<\/h2><span>必填/)
-assert.match(backend, /必须配置 PostgreSQL 数据库地址后才能启动服务/)
-assert.match(backend, /check_remote_endpoint\(" PostgreSQL", &database_host, database_port\)/)
-assert.match(backend, /if !config\.redis_host\.trim\(\)\.is_empty\(\)/)
+assert.match(frontend, /PostgreSQL<\/h2>/)
+assert.match(backend, /外部 PostgreSQL 模式必须配置数据库地址后才能启动服务/)
+assert.match(
+  backend,
+  /if database_mode == "external"[\s\S]*?check_remote_endpoint\(" PostgreSQL", &database_host, database_port\)/,
+)
+assert.match(
+  backend,
+  /if redis_mode == "external"[\s\S]*?check_remote_endpoint\(" Redis", &redis_host, redis_port\)/,
+)
 assert.match(backend, /"player-service,auth-portal,creator,play,voxa"/)
+assert.match(backend, /"desktop-postgres,player-service,auth-portal,creator,play,voxa"/)
+assert.match(backend, /"desktop-redis,player-service,auth-portal,creator,play,voxa"/)
+assert.match(backend, /\["up", "-d", "--wait", "managed-postgres"\]/)
+assert.match(backend, /\["up", "-d", "--wait", "managed-redis"\]/)
 assert.doesNotMatch(backend, /"creator,play,voxa"/)
 assert.match(backend, /Applications\/Docker\.app\/Contents\/Resources\/bin\/docker/)
 assert.ok(backend.includes(String.raw`r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"`))
@@ -460,13 +568,20 @@ assert.match(frontend, /已保存在当前页面，服务不会自动启动/)
 assert.match(frontend, /class="toast success"/)
 assert.doesNotMatch(frontend, /state\.page = 'overview'\s*\n\s*state\.notice/)
 assert.match(frontend, /function getServiceUrl\(/)
+assert.match(frontend, /function captureScrollPositions\(\)/)
+assert.match(frontend, /function restoreScrollPositions\(positions\)/)
+assert.match(frontend, /const scrollPositions = captureScrollPositions\(\)/)
+assert.match(frontend, /restoreScrollPositions\(scrollPositions\)/)
+assert.match(frontend, /data-rendered-page="\$\{state\.page\}"/)
+assert.match(frontend, /shell\.dataset\.renderedPage !== state\.page/)
+assert.match(frontend, /setupPanel\?\.dataset\.setupPanel === state\.setupSection/)
 assert.match(frontend, /function startScopeDialog\(/)
 assert.match(frontend, /class="dialog-backdrop"/)
 assert.match(frontend, /data-start-scope="all"/)
 assert.match(frontend, /data-start-scope="play"/)
 assert.match(frontend, /data-start-scope="creator"/)
 assert.match(frontend, /service-more-menu/)
-assert.match(frontend, /running \? `<button data-copy-url/)
+assert.match(frontend, /running && url \? `<button data-copy-url/)
 assert.match(frontend, /function closeServiceMenuOnOutside\(/)
 assert.match(frontend, /target\.closest\('\.service-more'\)/)
 assert.match(styles, /\.start-dialog/)

@@ -62,6 +62,7 @@ for (const [label, snippet] of [
   ['client script trust boundary', '客户端地图脚本运行在玩家浏览器页面中'],
   ['server script trust boundary', '服务端地图脚本在 game-server 的隔离运行时中执行'],
   ['headless package boundary', '包含 Creator、VOXA、Play、Player Service'],
+  ['runtime cache boundary', '`box-play-runtime-cache` 只保存可再生成的预烘焙和构建产物'],
 ]) {
   assert.ok(readme.includes(snippet), `README is missing ${label}`)
 }
@@ -80,6 +81,17 @@ for (const removedApi of [
 const securityAudit = fs.readFileSync(path.join(docsRoot, 'security-audit.md'), 'utf8')
 for (const boundary of ['DTS 不构成沙箱', '不使用平台域名白名单', '前端隐藏按钮不作为授权依据']) {
   assert.ok(securityAudit.includes(boundary), `security audit is missing boundary: ${boundary}`)
+}
+
+const infrastructure = fs.readFileSync(path.join(docsRoot, 'local-infrastructure.md'), 'utf8')
+for (const boundary of [
+  'PostgreSQL 是必需的永久数据源',
+  'Redis DB 0',
+  'Redis DB 1',
+  '`box-play-runtime-cache`',
+  '`box-local-engine_box-play-storage`',
+]) {
+  assert.ok(infrastructure.includes(boundary), `local infrastructure is missing: ${boundary}`)
 }
 
 console.log(`documentation checks passed: ${files.length} Markdown files`)

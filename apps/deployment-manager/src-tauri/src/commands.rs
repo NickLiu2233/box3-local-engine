@@ -38,9 +38,13 @@ use models::*;
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
 const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
 const PROJECT_NAME: &str = "box-local-engine";
+const MANAGED_DATABASE_IMAGE: &str = "docker.m.daocloud.io/library/postgres:16-alpine";
+const MANAGED_REDIS_IMAGE: &str = "docker.m.daocloud.io/library/redis:7-alpine";
+const MANAGED_SERVICE_NAMES: [&str; 2] = ["managed-postgres", "managed-redis"];
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigView {
+    database_mode: String,
     database_host: String,
     database_port: String,
     database_name: String,
@@ -50,6 +54,7 @@ struct InstallConfigView {
     has_permission_token_secret: bool,
     has_player_auth_api_key: bool,
     has_play_admin_token: bool,
+    redis_mode: String,
     redis_host: String,
     redis_port: String,
     has_redis_password: bool,
@@ -103,9 +108,24 @@ struct OwnerSecretsView {
     play_admin_token: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ManagedServiceInfo {
+    image_available: bool,
+    configured: bool,
+    running: bool,
+    host: String,
+    port: String,
+    database: String,
+    user: String,
+    password: String,
+    connection_url: String,
+}
+
 impl Default for InstallConfigView {
     fn default() -> Self {
         Self {
+            database_mode: default_database_mode(),
             database_host: String::new(),
             database_port: "5432".into(),
             database_name: "box".into(),
@@ -115,6 +135,7 @@ impl Default for InstallConfigView {
             has_permission_token_secret: false,
             has_player_auth_api_key: false,
             has_play_admin_token: false,
+            redis_mode: default_redis_mode(),
             redis_host: String::new(),
             redis_port: "6379".into(),
             has_redis_password: false,
@@ -165,6 +186,8 @@ impl Default for InstallConfigView {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigInput {
+    #[serde(default = "default_database_mode")]
+    database_mode: String,
     #[serde(default)]
     database_host: String,
     #[serde(default = "default_database_port")]
@@ -183,6 +206,8 @@ struct InstallConfigInput {
     player_auth_api_key: String,
     #[serde(default)]
     play_admin_token: String,
+    #[serde(default = "default_redis_mode")]
+    redis_mode: String,
     #[serde(default)]
     redis_host: String,
     #[serde(default = "default_redis_port")]
@@ -269,6 +294,17 @@ struct InstallConfigInput {
     play_cpu_limit: f64,
 }
 
+fn default_database_mode() -> String {
+    "managed".into()
+}
+
+fn validate_database_mode(value: &str) -> Result<&str, String> {
+    match value {
+        "managed" | "external" => Ok(value),
+        _ => Err("PostgreSQL 模式只能是内置数据库或外部数据库".into()),
+    }
+}
+
 fn default_database_port() -> String {
     "5432".into()
 }
@@ -280,6 +316,15 @@ fn default_database_user() -> String {
 }
 fn default_redis_port() -> String {
     "6379".into()
+}
+fn default_redis_mode() -> String {
+    "disabled".into()
+}
+fn validate_redis_mode(value: &str) -> Result<&str, String> {
+    match value {
+        "disabled" | "managed" | "external" => Ok(value),
+        _ => Err("Redis 模式只能是不启用、内置 Redis 或外部 Redis".into()),
+    }
 }
 fn default_storage_cache_redis_db() -> u8 {
     1
@@ -574,7 +619,11 @@ fn normalize_owner_environment(content: &str) -> Result<String, String> {
 
     set_env(&mut normalized, "BOX_PLAY_PUBLIC_HOST", &play_host)?;
     set_env(&mut normalized, "BOX_CREATOR_HOST", &creator_host)?;
-    set_env(&mut normalized, "BOX_CREATOR_NETWORK_MODE", creator_network_mode)?;
+    set_env(
+        &mut normalized,
+        "BOX_CREATOR_NETWORK_MODE",
+        creator_network_mode,
+    )?;
 
     // Old versions duplicated the database password in five manager-only
     // variables. Move it to the standard database fields once and remove the
@@ -617,6 +666,37 @@ fn normalize_owner_environment(content: &str) -> Result<String, String> {
             set_env(&mut normalized, "BOX_DATABASE_PASSWORD", &password)?;
         }
     }
+    let normalized_values = parse_env(&normalized);
+    let database_mode = normalized_values
+        .get("BOX_DATABASE_MODE")
+        .map(String::as_str)
+        .filter(|mode| matches!(*mode, "managed" | "external"))
+        .unwrap_or_else(|| {
+            if normalized_values
+                .get("BOX_DATABASE_HOST")
+                .is_some_and(|host| !host.trim().is_empty())
+            {
+                "external"
+            } else {
+                "managed"
+            }
+        });
+    set_env(&mut normalized, "BOX_DATABASE_MODE", database_mode)?;
+    let redis_mode = normalized_values
+        .get("BOX_REDIS_MODE")
+        .map(String::as_str)
+        .filter(|mode| matches!(*mode, "disabled" | "managed" | "external"))
+        .unwrap_or_else(|| {
+            if normalized_values
+                .get("REDIS_HOST")
+                .is_some_and(|host| !host.trim().is_empty())
+            {
+                "external"
+            } else {
+                "disabled"
+            }
+        });
+    set_env(&mut normalized, "BOX_REDIS_MODE", redis_mode)?;
     for key in GENERATED_ENV_KEYS {
         remove_env(&mut normalized, key);
     }
@@ -661,12 +741,21 @@ fn enforce_creator_network_policy(app: &AppHandle) -> Result<bool, String> {
 }
 
 fn database_url(values: &BTreeMap<String, String>) -> Result<String, String> {
-    let host = values
-        .get("BOX_DATABASE_HOST")
-        .map(|value| value.trim())
-        .unwrap_or_default();
+    let mode = values
+        .get("BOX_DATABASE_MODE")
+        .map(String::as_str)
+        .unwrap_or("external");
+    validate_database_mode(mode)?;
+    let host = if mode == "managed" {
+        "managed-postgres"
+    } else {
+        values
+            .get("BOX_DATABASE_HOST")
+            .map(|value| value.trim())
+            .unwrap_or_default()
+    };
     if host.is_empty() {
-        return Err("必须配置 PostgreSQL 数据库地址后才能启动服务".into());
+        return Err("外部 PostgreSQL 模式必须配置数据库地址后才能启动服务".into());
     }
     let host = validate_host(host, "数据库地址")?;
     let port = validate_port(
@@ -775,11 +864,22 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     let creator_origin_host = origin_host(&creator_host);
     let database_url = database_url(&owner_values)?;
     let mut runtime = owner;
-    set_env(
-        &mut runtime,
-        "COMPOSE_PROFILES",
-        "player-service,auth-portal,creator,play,voxa",
-    )?;
+    let compose_profiles = match (
+        owner_values
+            .get("BOX_DATABASE_MODE")
+            .is_some_and(|mode| mode == "managed"),
+        owner_values
+            .get("BOX_REDIS_MODE")
+            .is_some_and(|mode| mode == "managed"),
+    ) {
+        (true, true) => {
+            "desktop-postgres,desktop-redis,player-service,auth-portal,creator,play,voxa"
+        }
+        (true, false) => "desktop-postgres,player-service,auth-portal,creator,play,voxa",
+        (false, true) => "desktop-redis,player-service,auth-portal,creator,play,voxa",
+        (false, false) => "player-service,auth-portal,creator,play,voxa",
+    };
+    set_env(&mut runtime, "COMPOSE_PROFILES", compose_profiles)?;
     set_env(&mut runtime, "BOX_IMAGE_TAG", IMAGE_TAG)?;
     set_env(
         &mut runtime,
@@ -1043,6 +1143,8 @@ fn load_existing_env(app: &AppHandle) -> BTreeMap<String, String> {
 
 fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<(), String> {
     ensure_runtime_files(app)?;
+    let database_mode = validate_database_mode(&config.database_mode)?;
+    let redis_mode = validate_redis_mode(&config.redis_mode)?;
     validate_runtime_capacity(config)?;
     validate_operator_performance(config)?;
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
@@ -1227,38 +1329,117 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     ] {
         set_env(&mut content, key, &value)?;
     }
-    let host = validate_host(&config.database_host, "数据库地址")?;
-    let port = validate_port(&config.database_port)?;
-    let database = config.database_name.trim().to_string();
-    let user = config.database_user.trim().to_string();
+    let host = if database_mode == "managed" {
+        "managed-postgres".to_string()
+    } else {
+        validate_host(&config.database_host, "数据库地址")?
+    };
+    let port = if database_mode == "managed" {
+        5432
+    } else {
+        validate_port(&config.database_port)?
+    };
+    let existing_database_mode = existing
+        .get("BOX_DATABASE_MODE")
+        .map(String::as_str)
+        .filter(|mode| matches!(*mode, "managed" | "external"))
+        .unwrap_or_else(|| {
+            if existing
+                .get("BOX_DATABASE_HOST")
+                .is_some_and(|host| !host.trim().is_empty())
+            {
+                "external"
+            } else {
+                "managed"
+            }
+        });
+    let (database, user) = if database_mode == "managed" {
+        managed_database_identity(
+            &existing,
+            existing_database_mode == "managed" && managed_database_volume_exists(),
+        )
+    } else {
+        (
+            config.database_name.trim().to_string(),
+            config.database_user.trim().to_string(),
+        )
+    };
     if database.is_empty() || user.is_empty() {
         return Err("PostgreSQL 数据库名和账号不能为空".into());
     }
+    let saved_password = (existing_database_mode == database_mode)
+        .then(|| {
+            existing
+                .get("BOX_DATABASE_PASSWORD")
+                .or_else(|| existing.get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD"))
+                .cloned()
+                .filter(|password| !password.is_empty())
+        })
+        .flatten();
     let password = if config.database_password.is_empty() {
-        existing
-            .get("BOX_DATABASE_PASSWORD")
-            .or_else(|| existing.get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD"))
-            .cloned()
-            .unwrap_or_default()
+        match (database_mode, saved_password) {
+            (_, Some(password)) => password,
+            ("managed", None) => random_hex(32),
+            ("external", None) => String::new(),
+            _ => unreachable!(),
+        }
     } else {
         config.database_password.clone()
     };
     if password.is_empty() {
         return Err("PostgreSQL 数据库密码不能为空".into());
     }
-    let redis_enabled = !config.redis_host.trim().is_empty();
-    let (redis_host, redis_port, redis_password) = if redis_enabled {
-        let host = validate_host(&config.redis_host, "Redis 地址")?;
-        let port = validate_port(&config.redis_port)?;
-        let password = if config.redis_password.is_empty() {
-            existing.get("REDIS_PASSWORD").cloned().unwrap_or_default()
-        } else {
-            config.redis_password.clone()
-        };
-        (host, port.to_string(), password)
-    } else {
-        (String::new(), String::new(), String::new())
+    let existing_redis_mode = existing
+        .get("BOX_REDIS_MODE")
+        .map(String::as_str)
+        .filter(|mode| matches!(*mode, "disabled" | "managed" | "external"))
+        .unwrap_or_else(|| {
+            if existing
+                .get("REDIS_HOST")
+                .is_some_and(|host| !host.trim().is_empty())
+            {
+                "external"
+            } else {
+                "disabled"
+            }
+        });
+    let saved_redis_password = (existing_redis_mode == redis_mode)
+        .then(|| {
+            existing
+                .get("REDIS_PASSWORD")
+                .cloned()
+                .filter(|password| !password.is_empty())
+        })
+        .flatten();
+    let (redis_host, redis_port, redis_password) = match redis_mode {
+        "managed" => (
+            "managed-redis".into(),
+            "6379".into(),
+            saved_redis_password.unwrap_or_else(|| random_hex(32)),
+        ),
+        "external" => {
+            let host = validate_host(&config.redis_host, "Redis 地址")?;
+            let port = validate_port(&config.redis_port)?;
+            let password = if config.redis_password.is_empty() {
+                saved_redis_password.unwrap_or_default()
+            } else {
+                config.redis_password.clone()
+            };
+            (host, port.to_string(), password)
+        }
+        "disabled" => (String::new(), String::new(), String::new()),
+        _ => unreachable!(),
     };
+    let (redis_db, storage_cache_redis_db, storage_cache_redis_ttl) = if redis_mode == "managed" {
+        (0, 1, 240)
+    } else {
+        (
+            config.redis_db,
+            config.storage_cache_redis_db,
+            config.storage_cache_redis_ttl,
+        )
+    };
+    set_env(&mut content, "BOX_DATABASE_MODE", database_mode)?;
     set_env(&mut content, "BOX_DATABASE_HOST", &host)?;
     set_env(&mut content, "BOX_DATABASE_PORT", &port.to_string())?;
     set_env(&mut content, "BOX_DATABASE_NAME", &database)?;
@@ -1267,26 +1448,36 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     set_env(
         &mut content,
         "BOX_DATABASE_SSL",
-        if config.database_ssl { "true" } else { "false" },
+        if database_mode == "external" && config.database_ssl {
+            "true"
+        } else {
+            "false"
+        },
     )?;
+    set_env(&mut content, "BOX_REDIS_MODE", redis_mode)?;
     set_env(&mut content, "REDIS_HOST", &redis_host)?;
     set_env(&mut content, "REDIS_PORT", &redis_port)?;
     set_env(&mut content, "REDIS_PASSWORD", &redis_password)?;
-    set_env(&mut content, "REDIS_DB", &config.redis_db.to_string())?;
+    set_env(&mut content, "REDIS_DB", &redis_db.to_string())?;
     set_env(
         &mut content,
         "STORAGE_CACHE_REDIS_DB",
-        &config.storage_cache_redis_db.to_string(),
+        &storage_cache_redis_db.to_string(),
     )?;
     set_env(
         &mut content,
         "BOX_DATABASE_POOL_SIZE",
-        &config.database_pool_size.to_string(),
+        &(if database_mode == "managed" {
+            10
+        } else {
+            config.database_pool_size
+        })
+        .to_string(),
     )?;
     set_env(
         &mut content,
         "STORAGE_CACHE_REDIS_TTL",
-        &config.storage_cache_redis_ttl.to_string(),
+        &storage_cache_redis_ttl.to_string(),
     )?;
     set_env(
         &mut content,
@@ -1467,6 +1658,305 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn managed_database_image(app: &AppHandle) -> String {
+    load_existing_env(app)
+        .get("BOX_POSTGRES_IMAGE")
+        .cloned()
+        .filter(|image| !image.trim().is_empty())
+        .unwrap_or_else(|| MANAGED_DATABASE_IMAGE.into())
+}
+
+fn managed_database_enabled(app: &AppHandle) -> bool {
+    load_existing_env(app)
+        .get("BOX_DATABASE_MODE")
+        .is_some_and(|mode| mode == "managed")
+}
+
+#[tauri::command]
+fn has_managed_database_image(app: AppHandle) -> Result<bool, String> {
+    docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
+    let image = managed_database_image(&app);
+    Ok(docker_output(&["image", "inspect", &image]).is_ok())
+}
+
+#[tauri::command]
+async fn prepare_managed_database(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        emit_progress(
+            &app,
+            "database-check",
+            "正在检查 Docker 和 PostgreSQL 镜像…",
+            10,
+        );
+        docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
+        let image = managed_database_image(&app);
+        if docker_output(&["image", "inspect", &image]).is_ok() {
+            emit_progress(&app, "database-image-ready", "PostgreSQL 镜像已就绪", 60);
+            return Ok(());
+        }
+        emit_progress(
+            &app,
+            "database-image",
+            "正在从国内镜像源下载 PostgreSQL 16…",
+            20,
+        );
+        docker_output(&["pull", &image])?;
+        emit_progress(&app, "database-image-ready", "PostgreSQL 下载完成", 60);
+        Ok(())
+    })
+    .await
+    .map_err(|error| format!("数据库镜像下载任务异常结束：{error}"))?
+}
+
+fn managed_redis_image(app: &AppHandle) -> String {
+    load_existing_env(app)
+        .get("BOX_REDIS_IMAGE")
+        .cloned()
+        .filter(|image| !image.trim().is_empty())
+        .unwrap_or_else(|| MANAGED_REDIS_IMAGE.into())
+}
+
+fn managed_redis_enabled(app: &AppHandle) -> bool {
+    load_existing_env(app)
+        .get("BOX_REDIS_MODE")
+        .is_some_and(|mode| mode == "managed")
+}
+
+fn managed_service_installed(app: &AppHandle, service: &str) -> bool {
+    let image = match service {
+        "managed-postgres" => managed_database_image(app),
+        "managed-redis" => managed_redis_image(app),
+        _ => return false,
+    };
+    docker_output(&["image", "inspect", &image]).is_ok()
+}
+
+fn managed_service_configured(values: &BTreeMap<String, String>, service: &str) -> bool {
+    match service {
+        "managed-postgres" => {
+            values
+                .get("BOX_DATABASE_MODE")
+                .is_some_and(|mode| mode == "managed")
+                && values
+                    .get("BOX_DATABASE_PASSWORD")
+                    .is_some_and(|password| !password.is_empty())
+        }
+        "managed-redis" => {
+            values
+                .get("BOX_REDIS_MODE")
+                .is_some_and(|mode| mode == "managed")
+                && values
+                    .get("REDIS_PASSWORD")
+                    .is_some_and(|password| !password.is_empty())
+        }
+        _ => false,
+    }
+}
+
+fn managed_database_volume_exists() -> bool {
+    docker_output(&[
+        "volume",
+        "inspect",
+        &format!("{PROJECT_NAME}_box-managed-postgres-data"),
+    ])
+    .is_ok()
+}
+
+fn managed_database_identity(
+    existing: &BTreeMap<String, String>,
+    preserve_existing: bool,
+) -> (String, String) {
+    if preserve_existing {
+        let database = existing
+            .get("BOX_DATABASE_NAME")
+            .cloned()
+            .filter(|value| !value.trim().is_empty());
+        let user = existing
+            .get("BOX_DATABASE_USER")
+            .cloned()
+            .filter(|value| !value.trim().is_empty());
+        if let (Some(database), Some(user)) = (database, user) {
+            return (database, user);
+        }
+    }
+    (
+        format!("box_db_{}", random_hex(8)),
+        format!("box_user_{}", random_hex(8)),
+    )
+}
+
+#[tauri::command]
+fn has_managed_redis_image(app: AppHandle) -> Result<bool, String> {
+    docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
+    let image = managed_redis_image(&app);
+    Ok(docker_output(&["image", "inspect", &image]).is_ok())
+}
+
+#[tauri::command]
+async fn prepare_managed_redis(app: AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        emit_progress(&app, "redis-check", "正在检查 Docker 和 Redis 镜像…", 10);
+        docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
+        let image = managed_redis_image(&app);
+        if docker_output(&["image", "inspect", &image]).is_ok() {
+            emit_progress(&app, "redis-image-ready", "Redis 镜像已就绪", 60);
+            return Ok(());
+        }
+        emit_progress(&app, "redis-image", "正在从国内镜像源下载 Redis 7…", 20);
+        docker_output(&["pull", &image])?;
+        emit_progress(&app, "redis-image-ready", "Redis 下载完成", 60);
+        Ok(())
+    })
+    .await
+    .map_err(|error| format!("Redis 镜像下载任务异常结束：{error}"))?
+}
+
+fn managed_container_connectable(service: &str, host_port: &str) -> bool {
+    docker_output(&[
+        "ps",
+        "--filter",
+        &format!("label=com.docker.compose.project={PROJECT_NAME}"),
+        "--filter",
+        &format!("label=com.docker.compose.service={service}"),
+        "--filter",
+        "status=running",
+        "--format",
+        "{{.Ports}}",
+    ])
+    .is_ok_and(|output| {
+        output
+            .lines()
+            .any(|line| line.contains(&format!("127.0.0.1:{host_port}->")))
+    })
+}
+
+#[tauri::command]
+fn get_managed_service_info(app: AppHandle, service: String) -> Result<ManagedServiceInfo, String> {
+    let values = load_existing_env(&app);
+    let host = "127.0.0.1".to_string();
+    match service.as_str() {
+        "postgresql" => {
+            let image_available =
+                docker_output(&["image", "inspect", &managed_database_image(&app)]).is_ok();
+            let configured =
+                image_available && managed_service_configured(&values, "managed-postgres");
+            let port = values
+                .get("BOX_MANAGED_POSTGRES_HOST_PORT")
+                .cloned()
+                .unwrap_or_else(|| "5432".into());
+            let database = values
+                .get("BOX_DATABASE_NAME")
+                .cloned()
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "box".into());
+            let user = values
+                .get("BOX_DATABASE_USER")
+                .cloned()
+                .filter(|value| !value.is_empty())
+                .unwrap_or_else(|| "box".into());
+            let password = configured
+                .then(|| values.get("BOX_DATABASE_PASSWORD").cloned())
+                .flatten()
+                .unwrap_or_default();
+            let connection_url = if configured {
+                format!(
+                    "postgresql://{}:{}@{}:{}/{}",
+                    urlencoding::encode(&user),
+                    urlencoding::encode(&password),
+                    host,
+                    port,
+                    urlencoding::encode(&database)
+                )
+            } else {
+                String::new()
+            };
+            Ok(ManagedServiceInfo {
+                image_available,
+                configured,
+                running: managed_container_connectable("managed-postgres", &port),
+                host,
+                port,
+                database,
+                user,
+                password,
+                connection_url,
+            })
+        }
+        "redis" => {
+            let image_available =
+                docker_output(&["image", "inspect", &managed_redis_image(&app)]).is_ok();
+            let configured =
+                image_available && managed_service_configured(&values, "managed-redis");
+            let port = values
+                .get("BOX_MANAGED_REDIS_HOST_PORT")
+                .cloned()
+                .unwrap_or_else(|| "6379".into());
+            let database = values
+                .get("REDIS_DB")
+                .cloned()
+                .unwrap_or_else(|| "0".into());
+            let password = configured
+                .then(|| values.get("REDIS_PASSWORD").cloned())
+                .flatten()
+                .unwrap_or_default();
+            let connection_url = if configured {
+                format!(
+                    "redis://:{}@{}:{}/{}",
+                    urlencoding::encode(&password),
+                    host,
+                    port,
+                    database
+                )
+            } else {
+                String::new()
+            };
+            Ok(ManagedServiceInfo {
+                image_available,
+                configured,
+                running: managed_container_connectable("managed-redis", &port),
+                host,
+                port,
+                database,
+                user: String::new(),
+                password,
+                connection_url,
+            })
+        }
+        _ => Err("只支持读取内置 PostgreSQL 或 Redis 信息".into()),
+    }
+}
+
+#[tauri::command]
+async fn start_managed_service(app: AppHandle, service: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (mode_key, compose_service, label) = match service.as_str() {
+            "postgresql" => ("BOX_DATABASE_MODE", "managed-postgres", "PostgreSQL"),
+            "redis" => ("BOX_REDIS_MODE", "managed-redis", "Redis"),
+            _ => return Err("只支持启动内置 PostgreSQL 或 Redis".into()),
+        };
+        let values = load_existing_env(&app);
+        if !values.get(mode_key).is_some_and(|mode| mode == "managed") {
+            return Err(format!("请先保存内置 {label} 配置"));
+        }
+        emit_progress(
+            &app,
+            "managed-service",
+            &format!("正在启动内置 {label}…"),
+            85,
+        );
+        compose_output(&app, &["up", "-d", "--wait", compose_service])?;
+        emit_progress(
+            &app,
+            "managed-service",
+            &format!("内置 {label} 已可连接"),
+            100,
+        );
+        Ok(())
+    })
+    .await
+    .map_err(|error| format!("内置服务启动任务异常结束：{error}"))?
+}
+
 #[tauri::command]
 fn get_install_config(app: AppHandle) -> InstallConfigView {
     // Loading configuration is also a policy boundary: a manually edited
@@ -1512,6 +2002,20 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .unwrap_or(fallback_minutes)
     };
     InstallConfigView {
+        database_mode: values
+            .get("BOX_DATABASE_MODE")
+            .cloned()
+            .filter(|mode| matches!(mode.as_str(), "managed" | "external"))
+            .unwrap_or_else(|| {
+                if values
+                    .get("BOX_DATABASE_HOST")
+                    .is_some_and(|host| !host.trim().is_empty())
+                {
+                    "external".into()
+                } else {
+                    default_database_mode()
+                }
+            }),
         database_host: values.get("BOX_DATABASE_HOST").cloned().unwrap_or_default(),
         database_port: values
             .get("BOX_DATABASE_PORT")
@@ -1540,6 +2044,20 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         has_play_admin_token: values
             .get("BOX_PLAY_ADMIN_TOKEN")
             .is_some_and(|value| value.len() >= 16),
+        redis_mode: values
+            .get("BOX_REDIS_MODE")
+            .cloned()
+            .filter(|mode| matches!(mode.as_str(), "disabled" | "managed" | "external"))
+            .unwrap_or_else(|| {
+                if values
+                    .get("REDIS_HOST")
+                    .is_some_and(|host| !host.trim().is_empty())
+                {
+                    "external".into()
+                } else {
+                    default_redis_mode()
+                }
+            }),
         redis_host: values.get("REDIS_HOST").cloned().unwrap_or_default(),
         redis_port: values
             .get("REDIS_PORT")
@@ -1681,6 +2199,22 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
             state: "stopped".into(),
         })
         .collect();
+    if docker_ready && configured {
+        services.extend(
+            MANAGED_SERVICE_NAMES
+                .iter()
+                .filter(|name| {
+                    managed_service_configured(&environment, name)
+                        && managed_service_installed(&app, name)
+                })
+                .map(|name| ServiceStatus {
+                    name: (*name).into(),
+                    enabled: true,
+                    running: false,
+                    state: "stopped".into(),
+                }),
+        );
+    }
     if docker_ready && configured {
         if let Ok(output) = compose_output(&app, &["ps", "--format", "json"]) {
             let values: Vec<Value> = serde_json::from_str(&output).unwrap_or_else(|_| {
@@ -2003,20 +2537,50 @@ async fn run_environment_checks(
             }),
         }
 
-        for (id, label, host, port) in [
+        for (id, label, mode, host, port) in [
             (
                 "postgresql",
                 "PostgreSQL",
+                config.database_mode.as_str(),
                 config.database_host.as_str(),
                 config.database_port.as_str(),
             ),
             (
                 "redis",
                 "Redis",
+                config.redis_mode.as_str(),
                 config.redis_host.as_str(),
                 config.redis_port.as_str(),
             ),
         ] {
+            if mode == "managed" {
+                let image = if id == "postgresql" {
+                    managed_database_image(&app)
+                } else {
+                    managed_redis_image(&app)
+                };
+                let downloaded = docker_output(&["image", "inspect", &image]).is_ok();
+                checks.push(EnvironmentCheck {
+                    id: id.into(),
+                    label: label.into(),
+                    level: if downloaded { "success" } else { "neutral" }.into(),
+                    message: if downloaded {
+                        "内置镜像已就绪".into()
+                    } else {
+                        "首次保存时会提示下载内置镜像".into()
+                    },
+                });
+                continue;
+            }
+            if mode == "disabled" {
+                checks.push(EnvironmentCheck {
+                    id: id.into(),
+                    label: label.into(),
+                    level: "neutral".into(),
+                    message: "未启用（选填）".into(),
+                });
+                continue;
+            }
             if host.trim().is_empty() {
                 checks.push(EnvironmentCheck {
                     id: id.into(),
@@ -2078,22 +2642,33 @@ async fn test_remote_connection(
     .map_err(|error| format!("连接测试异常结束：{error}"))?
 }
 
-fn validate_service_name(service: &str) -> Result<(), String> {
+fn validate_service_name(app: &AppHandle, service: &str) -> Result<bool, String> {
     if SERVICE_NAMES.contains(&service) {
-        Ok(())
-    } else {
-        Err("未知的 BOX 服务".into())
+        return Ok(false);
     }
+    if !MANAGED_SERVICE_NAMES.contains(&service) {
+        return Err("未知的 BOX 服务".into());
+    }
+    let values = load_existing_env(app);
+    if !managed_service_configured(&values, service) {
+        return Err("该内置基础服务尚未启用".into());
+    }
+    if !managed_service_installed(app, service) {
+        return Err("该内置基础服务尚未安装".into());
+    }
+    Ok(true)
 }
 
 #[tauri::command]
 async fn control_service(app: AppHandle, service: String, action: String) -> Result<(), String> {
-    validate_service_name(&service)?;
+    let managed = validate_service_name(&app, &service)?;
     if !["start", "stop", "restart"].contains(&action.as_str()) {
         return Err("不支持的服务操作".into());
     }
     tauri::async_runtime::spawn_blocking(move || {
-        if action == "start" {
+        if managed && action == "start" {
+            compose_output(&app, &["up", "-d", "--wait", &service])?;
+        } else if action == "start" {
             ensure_images(&app)?;
             // Image archives keep stable release tags.  Without recreation,
             // Compose reuses an existing container and the UI keeps serving its
@@ -2770,11 +3345,15 @@ async fn save_configuration_command(
     config: InstallConfigInput,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        emit_progress(&app, "preflight", "正在检查 PostgreSQL 数据库…", 20);
-        let database_host = validate_host(&config.database_host, "数据库地址")?;
-        let database_port = validate_port(&config.database_port)?;
-        check_remote_endpoint(" PostgreSQL", &database_host, database_port)?;
-        if !config.redis_host.trim().is_empty() {
+        let database_mode = validate_database_mode(&config.database_mode)?;
+        let redis_mode = validate_redis_mode(&config.redis_mode)?;
+        if database_mode == "external" {
+            emit_progress(&app, "preflight", "正在检查 PostgreSQL 数据库…", 20);
+            let database_host = validate_host(&config.database_host, "数据库地址")?;
+            let database_port = validate_port(&config.database_port)?;
+            check_remote_endpoint(" PostgreSQL", &database_host, database_port)?;
+        }
+        if redis_mode == "external" {
             let redis_host = validate_host(&config.redis_host, "Redis 地址")?;
             let redis_port = validate_port(&config.redis_port)?;
             check_remote_endpoint(" Redis", &redis_host, redis_port)?;
@@ -2794,6 +3373,22 @@ async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
         emit_progress(&app, "images", "正在检查离线镜像…", 20);
         ensure_images(&app)?;
+        if managed_database_enabled(&app) {
+            let image = managed_database_image(&app);
+            if docker_output(&["image", "inspect", &image]).is_err() {
+                return Err("尚未下载内置 PostgreSQL，请先在数据配置中保存并确认下载".into());
+            }
+            emit_progress(&app, "database", "正在启动内置 PostgreSQL…", 45);
+            compose_output(&app, &["up", "-d", "--wait", "managed-postgres"])?;
+        }
+        if managed_redis_enabled(&app) {
+            let image = managed_redis_image(&app);
+            if docker_output(&["image", "inspect", &image]).is_err() {
+                return Err("尚未下载内置 Redis，请先在数据配置中保存并确认下载".into());
+            }
+            emit_progress(&app, "redis", "正在启动内置 Redis…", 52);
+            compose_output(&app, &["up", "-d", "--wait", "managed-redis"])?;
+        }
         let label = match scope.as_str() {
             "all" => {
                 emit_progress(&app, "start", "正在启动全部服务…", 65);
@@ -2972,6 +3567,7 @@ mod tests {
 
     fn test_install_config() -> InstallConfigInput {
         InstallConfigInput {
+            database_mode: default_database_mode(),
             database_host: String::new(),
             database_port: default_database_port(),
             database_name: default_database_name(),
@@ -2981,6 +3577,7 @@ mod tests {
             permission_token_secret: String::new(),
             player_auth_api_key: String::new(),
             play_admin_token: String::new(),
+            redis_mode: default_redis_mode(),
             redis_host: String::new(),
             redis_port: default_redis_port(),
             redis_password: String::new(),
@@ -3101,10 +3698,48 @@ mod tests {
     }
 
     #[test]
-    fn requires_postgresql_before_generating_runtime_configuration() {
+    fn external_database_requires_a_host() {
         assert!(database_url(&BTreeMap::new())
             .unwrap_err()
-            .contains("必须配置 PostgreSQL"));
+            .contains("外部 PostgreSQL"));
+    }
+
+    #[test]
+    fn managed_database_uses_the_internal_compose_host() {
+        let values = BTreeMap::from([
+            ("BOX_DATABASE_MODE".into(), "managed".into()),
+            ("BOX_DATABASE_NAME".into(), "box".into()),
+            ("BOX_DATABASE_USER".into(), "box".into()),
+            ("BOX_DATABASE_PASSWORD".into(), "managed-secret".into()),
+        ]);
+        assert_eq!(
+            database_url(&values).unwrap(),
+            "postgresql://box:managed-secret@managed-postgres:5432/box"
+        );
+    }
+
+    #[test]
+    fn managed_database_identity_is_random_for_a_new_volume_and_stable_for_existing_data() {
+        let existing = BTreeMap::from([
+            ("BOX_DATABASE_NAME".into(), "existing_database".into()),
+            ("BOX_DATABASE_USER".into(), "existing_user".into()),
+        ]);
+        assert_eq!(
+            managed_database_identity(&existing, true),
+            ("existing_database".into(), "existing_user".into())
+        );
+
+        let (database, user) = managed_database_identity(&existing, false);
+        assert!(database.starts_with("box_db_"));
+        assert!(user.starts_with("box_user_"));
+        assert_eq!(database.len(), "box_db_".len() + 16);
+        assert_eq!(user.len(), "box_user_".len() + 16);
+        assert!(database["box_db_".len()..]
+            .chars()
+            .all(|character| character.is_ascii_hexdigit()));
+        assert!(user["box_user_".len()..]
+            .chars()
+            .all(|character| character.is_ascii_hexdigit()));
     }
 
     #[test]
@@ -3167,9 +3802,32 @@ mod tests {
         assert_eq!(values.get("BOX_DATABASE_NAME"), Some(&"box data".into()));
         assert_eq!(values.get("BOX_DATABASE_USER"), Some(&"box user".into()));
         assert_eq!(values.get("BOX_DATABASE_PASSWORD"), Some(&"secret!".into()));
+        assert_eq!(values.get("BOX_DATABASE_MODE"), Some(&"external".into()));
         assert!(!values.contains_key("BOX_DATABASE_URL"));
         assert!(!values.contains_key("BOX_TRUST_PROXY"));
         assert!(!values.contains_key("BOX_RUNTIME_IDLE_TIMEOUT_MS"));
+    }
+
+    #[test]
+    fn defaults_an_unconfigured_desktop_database_to_managed_mode() {
+        let normalized = normalize_owner_environment(
+            "BOX_DATABASE_HOST=\nBOX_DATABASE_PORT=5432\nBOX_DATABASE_NAME=box\nBOX_DATABASE_USER=box\n",
+        )
+        .unwrap();
+        let values = parse_env(&normalized);
+        assert_eq!(values.get("BOX_DATABASE_MODE"), Some(&"managed".into()));
+        assert_eq!(values.get("BOX_REDIS_MODE"), Some(&"disabled".into()));
+    }
+
+    #[test]
+    fn migrates_an_existing_redis_host_to_external_mode() {
+        let normalized = normalize_owner_environment(
+            "BOX_DATABASE_MODE=managed\nBOX_DATABASE_HOST=managed-postgres\nREDIS_HOST=cache.example.test\nREDIS_PORT=6379\n",
+        )
+        .unwrap();
+        let values = parse_env(&normalized);
+        assert_eq!(values.get("BOX_REDIS_MODE"), Some(&"external".into()));
+        assert_eq!(values.get("REDIS_HOST"), Some(&"cache.example.test".into()));
     }
 
     #[test]
@@ -3244,6 +3902,12 @@ pub fn run() {
             import_backup,
             run_environment_checks,
             test_remote_connection,
+            has_managed_database_image,
+            prepare_managed_database,
+            has_managed_redis_image,
+            prepare_managed_redis,
+            get_managed_service_info,
+            start_managed_service,
             save_configuration_command,
             start_services,
             stop_services,

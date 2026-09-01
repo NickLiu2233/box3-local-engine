@@ -5,10 +5,10 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 ## 最小要求
 
 - Docker Compose v2；桌面端还需 Docker Desktop。
-- PostgreSQL：玩家、权限和地图持久数据的必需存储。
-- Redis：可选缓存。
+- PostgreSQL：玩家、权限和地图持久数据的必需存储；桌面启动器可自动管理，Linux Web 部署需自行提供。
+- Redis：可选缓存；桌面启动器支持不启用、内置或外部 Redis。
 
-桌面用户解压完整离线包后打开启动器，配置 PostgreSQL 与三个独立随机密钥，再按需启动“创作端”“游玩端”或“全部服务”。Linux 服务器包包含 Creator、VOXA、Play、玩家服务、登录门户与 Web 管理端，不包含迁移器或内置 PostgreSQL/Redis。
+桌面用户解压完整离线包后打开启动器，选择 PostgreSQL 和 Redis 模式，再按需启动“创作端”“游玩端”或“全部服务”。选择内置服务时，首次会确认并联网下载对应镜像；三个独立密钥及内置服务密码由启动器自动生成。Linux 服务器包包含 Creator、VOXA、Play、玩家服务、登录门户与 Web 管理端，不包含迁移器或内置 PostgreSQL/Redis。
 
 ## 日常流程
 
@@ -24,6 +24,13 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 - 升级前导出工程、启动器备份和 PostgreSQL 备份。
 - 不要把 `.env`、地图、数据库卷、备份或日志提交仓库或上传 Release。
 - 出现问题先看服务状态和 Docker 容器日志；不要通过删除卷、清空数据库或删除地图目录排障。
+
+| 需要保护的数据           | 推荐方式                               |
+| ------------------------ | -------------------------------------- |
+| PostgreSQL               | 定期快照或 `pg_dump`，并实际验证恢复   |
+| Creator 工程与 VOXA 工程 | 导出工程包，同时备份启动器运行数据目录 |
+| Play 地图库              | 保留原始 `.boxplay`，并备份地图库目录  |
+| Redis 与运行时缓存       | 无需作为永久备份；故障后允许重新生成   |
 
 详细操作分别见[图形化部署管理器](./graphical-deployment-manager.md)、[Linux Web 管理端](./linux-web-manager.md)、[游玩端部署](./play-deployment.md)和[配置参考](./configuration-reference.md)。
 

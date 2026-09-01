@@ -31,6 +31,8 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 
 Tauri 启动器位于 `apps/deployment-manager/`，负责导入镜像、保存配置、启动/停止容器、显示实时进度与状态，以及管理本地备份。关闭启动器窗口不会停止已经运行的容器；需要完整容器日志时使用 Docker Desktop 或 Docker CLI。
 
+桌面启动器可下载并管理内置 PostgreSQL/Redis，也可连接外部服务；Redis 可以关闭。内置服务默认从 DaoCloud 国内镜像源下载，只监听本机回环地址并自动生成连接身份。Linux Web 服务器包不携带数据库服务，必须连接服主提供的 PostgreSQL，Redis 仍为可选。完整说明见[本地基础设施](docs/local-infrastructure.md)和[配置参考](docs/configuration-reference.md)。
+
 `apps/migrator/` 是仓库内部使用的云端工程迁移工具，不属于桌面离线包、无图形服务器包或普通服主的部署流程。它需要访问迁移来源，不能作为核心引擎“完全离线运行”的依据。
 
 ## 关键数据边界
@@ -39,9 +41,10 @@ Tauri 启动器位于 `apps/deployment-manager/`，负责导入镜像、保存�
 - 地图数据与端口无关：同一部署固定使用同一份地图库。源码/Docker Compose 使用仓库目录，桌面启动器使用系统应用数据目录；两者之间通过项目包、游玩包或备份转移数据。
 - 一个地图组由一个主地图和零到多个副地图组成；成员地形和实体相互独立，共享地图组资源与组数据空间。
 - Play 导入 `.boxplay` 前先提供不执行脚本的地图、代码与媒体资源审查；确认后才安装快照。它不读取 Creator 的 `source/` 工程，也不能修改封面、标题、简介或作者。
-- Player Service 使用 PostgreSQL 保存账号、会话、封禁、后台管理员和审计数据；普通玩家账号与玩家管理后台账号完全分离。
+- PostgreSQL 是账号、会话、权限、审计和地图脚本持久数据的唯一正确性来源。
 - 普通玩家同一时间只保留一个设备会话；后台管理员使用独立会话。服主只能用 `BOX_PLAY_ADMIN_TOKEN` 兑换临时服主会话，不能把服主身份分配给账号。
-- Redis 是可选缓存，不是账号、地图脚本数据或权限状态的正确性来源。
+- Redis 只保存可过期的一次性运行时会话、限流计数、构建结果和构建锁；关闭或清空 Redis 不应丢失永久业务数据。
+- `box-play-runtime-cache` 只保存可再生成的预烘焙和构建产物，不是另一套数据库；Creator 工程和 Play 地图库则是需要单独备份的文件数据。
 
 ## 脚本与安全边界
 
@@ -76,7 +79,7 @@ pnpm verify
 | `pnpm stop`               | 停止本仓库 Compose 服务，不删除数据 |
 | `pnpm verify`             | 运行格式、lint、类型检查和全部回归  |
 
-首次部署至少需要设置三个互不相同的随机密钥，并配置 PostgreSQL：
+源码或 Linux Web 部署至少需要设置三个互不相同的随机密钥，并配置外部 PostgreSQL：
 
 ```env
 PERMISSION_TOKEN_SECRET=
@@ -114,7 +117,7 @@ BOX_DATABASE_URL=
 - Linux amd64 / arm64 无图形游玩服务器 ZIP；
 - Linux amd64 / arm64 完整镜像归档。
 
-无图形服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Linux Web 管理端，不包含内部迁移器或内置 PostgreSQL/Redis。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；不需要另行下载镜像归档。
+无图形服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Linux Web 管理端，不包含内部迁移器或内置 PostgreSQL/Redis。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；业务镜像无需另行下载，选择内置数据库时首次需联网下载 PostgreSQL 镜像。
 
 ## 许可与安全
 

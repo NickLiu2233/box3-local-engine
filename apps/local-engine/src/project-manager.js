@@ -2256,7 +2256,7 @@ function packageProject(reference, outputDirectory, options = {}) {
       )
       .replace(
         '      BOX_DATA_STORAGE_PATH: /app/storage\n',
-        '      BOX_RUNTIME_CACHE_PATH: /app/storage/runtime-cache\n      BOX_DATA_STORAGE_PATH: /app/storage\n',
+        '      BOX_RUNTIME_CACHE_PATH: /app/storage/runtime-cache\n',
       )
     fs.writeFileSync(packagedComposePath, packagedCompose)
     const distributionEnvExample = path.join(repoRoot, 'distribution', 'play', '.env.example')

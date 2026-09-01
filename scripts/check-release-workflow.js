@@ -79,7 +79,8 @@ for (const forbiddenService of ['postgres', 'redis', 'migrator']) {
 }
 assert.match(headlessComposeSource, /BOX_CREATOR_PUBLIC_URL/)
 assert.match(headlessComposeSource, /AUTH_DEMO_CREATOR_URL/)
-assert.match(headlessComposeSource, /^volumes:\n {2}box-play-storage:\s*$/m)
+assert.match(headlessComposeSource, /^volumes:\n {2}box-play-runtime-cache:\s*$/m)
+assert.doesNotMatch(headlessComposeSource, /box-play-storage/)
 
 // Build outputs are exchanged through Aliyun OSS rather than GitHub Actions
 // artifacts. Keep this contract in sync with release.yml so the workflow check

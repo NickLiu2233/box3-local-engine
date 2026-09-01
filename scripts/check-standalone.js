@@ -654,7 +654,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'postgres,redis,player-service,player-auth-portal,server-manager,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init,migrator'
+  'managed-redis,managed-postgres,postgres,redis,player-service,player-auth-portal,server-manager,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init,migrator'
 ) {
   fail(`${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`)
 }
@@ -715,6 +715,8 @@ for (const [label, pattern] of [
   requirePattern(serverManagerCompose, composeFile, `server manager ${label}`, pattern)
 }
 for (const [name, service] of [
+  ['managed-redis', getComposeService(composeSource, 'managed-redis')],
+  ['managed-postgres', getComposeService(composeSource, 'managed-postgres')],
   ['postgres', getComposeService(composeSource, 'postgres')],
   ['redis', getComposeService(composeSource, 'redis')],
   ['player-service', playerServiceCompose],
@@ -792,8 +794,8 @@ forbidPattern(
 requirePattern(
   playStorageInitCompose,
   composeFile,
-  'play storage ownership initialization',
-  /chown -R 1000:1000 \/app\/play-storage/,
+  'play runtime cache ownership initialization',
+  /chown -R 1000:1000 \/app\/play-runtime-cache/,
 )
 requirePattern(
   playStorageInitCompose,
@@ -1384,13 +1386,19 @@ requirePattern(
   readRequired('docker-compose.yml'),
   'docker-compose.yml',
   'persistent creator and play runtime caches',
-  /BOX_RUNTIME_CACHE_PATH: \/app\/apps\/local-engine\/projects\/\.runtime-cache[\s\S]*?BOX_RUNTIME_CACHE_PATH: \/app\/play-storage\/runtime-cache/,
+  /BOX_RUNTIME_CACHE_PATH: \/app\/apps\/local-engine\/projects\/\.runtime-cache[\s\S]*?BOX_RUNTIME_CACHE_PATH: \/app\/play-runtime-cache/,
 )
 requirePattern(
   readRequired('distribution/play/compose.yml'),
   'distribution/play/compose.yml',
   'persistent distributed play runtime cache',
-  /BOX_RUNTIME_CACHE_PATH: \/app\/play-storage\/runtime-cache/,
+  /BOX_RUNTIME_CACHE_PATH: \/app\/play-runtime-cache/,
+)
+forbidPattern(
+  readRequired('docker-compose.yml'),
+  'docker-compose.yml',
+  'obsolete file data storage path in PostgreSQL deployments',
+  /BOX_DATA_STORAGE_PATH:/,
 )
 requirePattern(
   launcherSource,

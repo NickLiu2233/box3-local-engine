@@ -258,8 +258,8 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-life
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
 
-RUN mkdir -p /app/play-storage/runtime-cache \
-    && chown -R node:node /app/play-storage
+RUN mkdir -p /app/play-runtime-cache \
+    && chown -R node:node /app/play-runtime-cache
 
 USER node
 

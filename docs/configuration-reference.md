@@ -4,6 +4,8 @@
 
 ## 最小配置
 
+桌面启动器默认写入 `BOX_DATABASE_MODE=managed`，自动生成数据库密码并连接 Compose 内部的 `managed-postgres:5432`。选择外部数据库时写入 `BOX_DATABASE_MODE=external` 和拆分连接字段。下面的 `BOX_DATABASE_URL` 主要用于源码、Compose 或 Linux Web 部署：
+
 ```env
 PERMISSION_TOKEN_SECRET=<至少 32 位随机值>
 BOX_PLAYER_AUTH_API_KEY=<至少 16 位随机值>
@@ -13,13 +15,13 @@ BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 
 ## 常用变量
 
-| 类别     | 变量                                                                                                                     |
-| -------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 网络     | `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP`、五个服务端口与对应 `*_PUBLIC_URL`                              |
-| Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_LIBRARY_READ_ONLY`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`             |
-| Teleport | `BOX_TELEPORT_MAX_ROOMS`、`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`                                                            |
-| 数据     | `BOX_DATABASE_URL`、`BOX_DATABASE_SSL`、`REDIS_HOST`、`REDIS_PORT`                                                       |
-| 登录     | `BOX_PLAYER_LOGIN_URL`、`BOX_PLAYER_AUTH_ALLOWED_ORIGINS`、`BOX_PLAYER_REGISTRATION_ENABLED`、`BOX_PLAYER_COOKIE_DOMAIN` |
+| 类别     | 变量                                                                                                                                            |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 网络     | `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP`、五个服务端口与对应 `*_PUBLIC_URL`                                                     |
+| Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_LIBRARY_READ_ONLY`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`                                    |
+| Teleport | `BOX_TELEPORT_MAX_ROOMS`、`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`                                                                                   |
+| 数据     | `BOX_DATABASE_MODE`、`BOX_REDIS_MODE`、`BOX_DATABASE_URL`、`BOX_DATABASE_SSL`、`REDIS_HOST`、`REDIS_PORT`、`REDIS_DB`、`STORAGE_CACHE_REDIS_DB` |
+| 登录     | `BOX_PLAYER_LOGIN_URL`、`BOX_PLAYER_AUTH_ALLOWED_ORIGINS`、`BOX_PLAYER_REGISTRATION_ENABLED`、`BOX_PLAYER_COOKIE_DOMAIN`                        |
 
 `BOX_PLAY_LIBRARY_DIR` 是固定的地图数据目录，和 `BOX_PLAY_PORT` 无关。桌面启动器用 `BOX_PLAY_NETWORK_MODE`、`BOX_CREATOR_NETWORK_MODE` 和 `BOX_CREATOR_HOST` 记录界面选择，再生成实际绑定地址和公开 URL；源码/Compose 部署应直接配置 `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP` 与各服务 `*_PUBLIC_URL`。VOXA 跟随 Creator 的访问范围。
 
@@ -45,3 +47,15 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 | 注册开关                       | Player Service 与登录门户      |
 
 启动器保存配置后会重新派生内部 URL；不要手工编辑 `.runtime.env`。源码部署可以编辑 `.env`，但改动后同样需要重新创建容器。
+
+## PostgreSQL、Redis 与运行时缓存
+
+`BOX_DATABASE_MODE` 仅供桌面启动器使用，值为 `managed` 或 `external`。内置模式会启用 `desktop-postgres` Compose profile，数据库身份与连接参数由启动器自动维护，普通用户无需填写；数据库数据保存在 `box-managed-postgres-data`。Linux Web 包不会携带该服务，也不会自动下载数据库镜像。
+
+`BOX_MANAGED_POSTGRES_HOST_PORT` 控制桌面内置 PostgreSQL 映射到本机的端口，默认 `5432`，固定绑定 `127.0.0.1`。
+
+`BOX_REDIS_MODE` 仅供桌面启动器使用，值为 `disabled`、`managed` 或 `external`。内置模式启用 `desktop-redis` profile，固定使用 DB 0 保存一次性运行时会话和会话限流计数，DB 1 保存短期构建结果与并发构建锁，缓存有效期由 `STORAGE_CACHE_REDIS_TTL` 控制，默认 240 秒。启动器只展示“业务 DB 0 / 缓存 DB 1”，不要求普通用户配置。内置 Redis 使用随机密码并将数据保存在 `box-managed-redis-data`；Linux Web 包不携带该服务。
+
+`BOX_MANAGED_REDIS_HOST_PORT` 控制桌面内置 Redis 映射到本机的端口，默认 `6379`，固定绑定 `127.0.0.1`。
+
+`BOX_RUNTIME_CACHE_PATH` 是 Play 的可再生成文件缓存路径。仓库 Compose 将它挂载到 `box-play-runtime-cache`，不是 PostgreSQL 的本地替代存储，也不应放入 Redis。源码或服务器部署通常不需要手工修改该路径。

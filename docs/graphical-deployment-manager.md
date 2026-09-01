@@ -4,14 +4,24 @@
 
 ## 使用步骤
 
-1. 配置 PostgreSQL；Redis 可选。
+1. 选择内置或外部 PostgreSQL；Redis 可选择不启用、内置或外部服务。
 2. 设置访问模式、端口、容量和三个独立密钥。
 3. 启动“创作端”“游玩端”或“全部服务”。
 4. 从服务总览打开已启动的地址并确认健康状态；详细日志使用 Docker Desktop 或 Docker CLI 查看。
 
-启动器和 Linux Web 管理端都可管理 Creator、Play、VOXA、Player Service 和登录门户。运行数据保存在各自部署的数据目录；桌面启动器的数据位于系统应用数据目录的 `runtime/`，升级程序不会删除它。
+启动器和 Linux Web 管理端都可管理 Creator、Play、VOXA、Player Service 和登录门户。桌面启动器的数据位于系统应用数据目录的 `runtime/`；关闭窗口或升级程序不会停止容器，也不会自动删除运行数据。
 
-Creator、VOXA 默认使用本机模式，也可选择局域网或公网；公网创作会显示安全警告，应使用 HTTPS、访问控制和最小创作者权限。备份不包含远程 PostgreSQL，数据库需单独备份。
+Creator、VOXA 默认使用本机模式，也可选择局域网或公网；公网创作会显示安全警告，应使用 HTTPS、访问控制和最小创作者权限。启动器的地图备份不包含 PostgreSQL，数据库需单独备份。
+
+| 模式            | 启动器行为                                                               |
+| --------------- | ------------------------------------------------------------------------ |
+| 内置 PostgreSQL | 从 DaoCloud 下载 PostgreSQL 16，生成随机身份，启动后展示可复制的连接信息 |
+| 外部 PostgreSQL | 保存服主填写的地址、数据库名、账号和 SSL 参数，并提供连接测试            |
+| 内置 Redis      | 从 DaoCloud 下载 Redis 7，生成随机密码，固定展示业务 DB 0 与缓存 DB 1    |
+| 外部 Redis      | 保存地址、端口、密码和 DB 分配；服务不可用时游戏运行时使用安全回退       |
+| 不启用 Redis    | 不启动 Redis；不影响玩家、权限和地图持久数据                             |
+
+内置 PostgreSQL/Redis 只监听 `127.0.0.1`。数据库卷、工程目录、地图库和 `box-play-runtime-cache` 的删除与备份边界见[本地基础设施](./local-infrastructure.md)；镜像源、端口和外部连接变量见[配置参考](./configuration-reference.md)。
 
 ## 页面与数据
 

@@ -34,7 +34,7 @@ docker compose up -d
 docker compose ps
 ```
 
-`play-storage-init` 显示 `Exited (0)` 是正常状态：它只在启动前修复持久卷目录所有权，完成后
+`play-storage-init` 是保留的服务名，实际只初始化运行时缓存卷；显示 `Exited (0)` 是正常状态：它在启动前修复目录所有权，完成后
 立即退出；Play 主容器仍以非 root 的 `node` 用户运行。只有该任务退出码非 `0` 时才需要检查
 volume 权限。
 
@@ -54,7 +54,7 @@ Service 管理页、PostgreSQL 和 Redis 不应直接暴露到互联网。
 
 登录、注册 API 和玩家管理只在玩家服务中提供；Player Service 和 Play 都不内置玩家登录页。
 
-Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到 `box-play-storage` 卷。
+Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到 `box-play-runtime-cache` 卷。该卷只保存可再生成的运行时缓存，不保存玩家账号、权限或地图脚本持久数据。
 使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整缓存完成后继续常驻的地图数量，设为 `0` 可关闭；
 该值不应超过 `BOX_PLAY_MAX_RUNTIMES`。运行时回收或容器重启不会再次完整烘焙未变化的地图。
 

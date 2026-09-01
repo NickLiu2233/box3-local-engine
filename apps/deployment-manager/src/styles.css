@@ -781,6 +781,29 @@ button:disabled {
   transition: width 180ms var(--ease-out);
 }
 
+.progress-track i.indeterminate {
+  width: 34%;
+  animation: managed-download-progress 1.1s linear infinite;
+}
+
+@keyframes managed-download-progress {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(305%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-track i.indeterminate {
+    width: 100%;
+    animation: none;
+    opacity: 0.65;
+  }
+}
+
 .backup-list {
   overflow: hidden;
   margin: 12px 0;
@@ -957,6 +980,275 @@ form.environment-mode {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
+}
+
+.database-mode-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.redis-mode-choice {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.database-mode-choice button {
+  min-height: 58px;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.database-mode-choice button.active {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.database-mode-choice strong,
+.database-mode-choice span,
+.managed-database-summary strong,
+.managed-database-summary span,
+.database-download-note strong,
+.database-download-note span {
+  display: block;
+}
+
+.database-mode-choice strong {
+  font-size: 12px;
+}
+
+.database-mode-choice span,
+.managed-database-summary span,
+.database-download-note span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.managed-database-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.managed-database-summary strong,
+.database-download-note strong {
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.managed-database-summary .field {
+  margin: 0;
+}
+
+.database-download-note {
+  margin-bottom: 18px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-soft);
+}
+
+.managed-service-note {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.managed-service-note strong,
+.managed-service-note span {
+  display: block;
+}
+
+.managed-service-note strong {
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.managed-service-note span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.managed-install-card,
+.managed-connection-card {
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel-soft);
+}
+
+.managed-install-card {
+  min-height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px;
+}
+
+.managed-connection-heading > div {
+  min-width: 0;
+}
+
+.managed-install-card strong,
+.managed-connection-heading strong,
+.managed-connection-heading small {
+  display: block;
+}
+
+.managed-install-card strong {
+  margin: 0;
+  font-size: 13px;
+}
+
+.managed-connection-heading strong {
+  margin: 5px 0 2px;
+  font-size: 13px;
+}
+
+.managed-connection-heading small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.managed-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.managed-state::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.managed-state.running {
+  color: var(--success);
+}
+
+.managed-state.stopped {
+  color: var(--accent-hover);
+}
+
+.managed-connection-heading {
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.managed-connection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.managed-connection-grid > div {
+  min-width: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.managed-connection-grid > div:nth-child(odd):not(.connection-url) {
+  border-right: 1px solid var(--border);
+}
+
+.managed-connection-grid > div.connection-url,
+.managed-connection-grid > div:nth-last-child(1) {
+  border-bottom: 0;
+}
+
+.managed-connection-grid .connection-url {
+  grid-column: 1 / -1;
+}
+
+.managed-connection-grid dt {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.managed-connection-grid dd {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.managed-connection-grid code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font:
+    11px/1.5 'SFMono-Regular',
+    Consolas,
+    monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-connection {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  margin-left: auto;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    transform 140ms var(--ease-out);
+}
+
+.copy-connection svg {
+  width: 14px;
+  height: 14px;
+}
+
+.copy-connection:active {
+  transform: scale(0.94);
+}
+
+.copy-connection.copied {
+  color: var(--success);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .copy-connection:hover {
+    color: var(--text);
+  }
 }
 
 .backup-switch {
@@ -2197,6 +2489,7 @@ details.about-image-row:first-child {
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
+    color-scheme: dark;
     --bg: #0d0d0d;
     --panel: #171717;
     --panel-soft: #242424;
