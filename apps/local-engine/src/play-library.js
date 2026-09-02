@@ -135,6 +135,7 @@ function startPlayLibrary({
           port: runtime.port,
           pid: runtime.pid,
           startedAt: runtime.startedAt,
+          ...(runtime.metrics?.() || {}),
         }
       : {}),
   })

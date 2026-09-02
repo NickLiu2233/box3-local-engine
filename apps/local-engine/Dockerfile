@@ -19,6 +19,8 @@ RUN apt-get update \
     && corepack prepare pnpm@10.12.1 --activate
 
 WORKDIR /app
+ARG BOX_RUNTIME_BUILD_NONCE=source
+RUN test -n "$BOX_RUNTIME_BUILD_NONCE"
 COPY . .
 
 FROM source-base AS engine-build-base

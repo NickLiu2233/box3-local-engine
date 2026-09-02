@@ -69,6 +69,7 @@ export async function getMapContentInfo(
       name: identity?.name || containerName || 'Local World',
       description: identity?.description || '',
       image: identity?.cover || '',
+      permanentMapId: identity?.permanentMapId,
       customizeType: getCustomizeType(containerName),
       backgroundImage: identity?.loadingCover || '',
       combType: mapRoleToCombType(identity?.mapRole),

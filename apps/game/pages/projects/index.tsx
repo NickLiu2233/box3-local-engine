@@ -1782,7 +1782,6 @@ export default function ProjectsPage({
                           ? '删除作品'
                           : '导出游戏包'}
                 </h2>
-                {dialog === 'details' && <p>管理地图资料、玩家访问链接与展示封面</p>}
               </div>
             </div>
             {dialog === 'delete' && (
@@ -1795,6 +1794,7 @@ export default function ProjectsPage({
             {(dialog === 'create' || dialog === 'submap' || dialog === 'details') && (
               <>
                 <div className={styles.dialogFields}>
+                  {dialog === 'details' && <div className={styles.detailsSectionTitle}>基本资料</div>}
                   <div className={styles.fieldGroup}>
                     <label htmlFor="project-name">作品名称</label>
                     <input
@@ -1891,43 +1891,9 @@ export default function ProjectsPage({
                       </div>
                     </>
                   )}
-                  {dialog === 'details' && (
-                    <>
-                      <div className={styles.fieldGroup}>
-                        <label htmlFor="project-permanent-map-id">地图 ID</label>
-                        <input
-                          id="project-permanent-map-id"
-                          value={selectedProject?.permanentMapId || ''}
-                          readOnly
-                          aria-readonly="true"
-                        />
-                        <small className={styles.fieldHint}>
-                          永久地图 ID，用于地图存档隔离，创建后不可修改
-                        </small>
-                      </div>
-                      <div className={styles.fieldGroup}>
-                        <label htmlFor="project-public-id">访问 ID</label>
-                        <input
-                          id="project-public-id"
-                          maxLength={63}
-                          spellCheck={false}
-                          value={projectPublicId}
-                          onChange={(event) =>
-                            setProjectPublicId(
-                              event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
-                            )
-                          }
-                          placeholder="例如：my-adventure"
-                        />
-                        <small className={styles.fieldHint}>
-                          玩家链接：/p/{projectPublicId || '访问-id'} · 可以修改，全部项目中必须唯一
-                        </small>
-                      </div>
-                    </>
-                  )}
                   {(dialog === 'create' ||
                     (dialog === 'details' && selectedProject?.mapRole !== 'submap')) && (
-                    <div className={styles.fieldGroup}>
+                    <div className={`${styles.fieldGroup} ${dialog === 'details' ? styles.detailsAuthorField : ''}`}>
                       <label htmlFor="project-author">作者</label>
                       <input
                         id="project-author"
@@ -1938,7 +1904,7 @@ export default function ProjectsPage({
                       />
                     </div>
                   )}
-                  <div className={styles.fieldGroup}>
+                  <div className={`${styles.fieldGroup} ${dialog === 'details' ? styles.detailsDescriptionField : ''}`}>
                     <label htmlFor="project-description">简介</label>
                     <textarea
                       id="project-description"
@@ -1953,74 +1919,108 @@ export default function ProjectsPage({
                   </div>
                   {dialog === 'details' && (
                     <>
-                      <div className={styles.fieldGroup}>
-                        <label htmlFor="project-cover">作品封面</label>
-                        <div className={`${styles.coverPickerRow} ${styles.coverPickerRowSquare}`}>
-                          <div className={`${styles.coverPreview} ${styles.coverPreviewSquare}`}>
-                            <img
-                              src={projectCover || defaultMapCover()}
-                              alt={projectCover ? '当前作品封面' : '默认作品封面'}
+                      <div className={styles.detailsSection}>
+                        <div className={styles.detailsSectionTitle}>地图标识</div>
+                        <div className={styles.detailsIdentityGrid}>
+                          <div className={styles.fieldGroup}>
+                            <label htmlFor="project-permanent-map-id">地图 ID</label>
+                            <input
+                              id="project-permanent-map-id"
+                              value={selectedProject?.permanentMapId || ''}
+                              readOnly
+                              aria-readonly="true"
                             />
                           </div>
-                          <label className={styles.coverPicker} htmlFor="project-cover">
-                            <Upload size={17} aria-hidden="true" />
-                            <span>
-                              <strong>{projectCover ? '更换作品封面' : '选择作品封面'}</strong>
-                              <small>1:1 · PNG、JPG 或 WebP · 最大 3MB</small>
-                            </span>
-                          </label>
-                          <input
-                            className={styles.coverFileInput}
-                            id="project-cover"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              event.currentTarget.value = '';
-                              if (!file) return;
-                              void readProjectImage(file, '作品封面', 1)
-                                .then((image) => {
-                                  setProjectCover(image);
-                                  setDialogError('');
-                                })
-                                .catch((error) => setDialogError(error.message));
-                            }}
-                          />
+                          <div className={styles.fieldGroup}>
+                            <label htmlFor="project-public-id">访问 ID</label>
+                            <input
+                              id="project-public-id"
+                              maxLength={63}
+                              spellCheck={false}
+                              value={projectPublicId}
+                              onChange={(event) =>
+                                setProjectPublicId(
+                                  event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+                                )
+                              }
+                              placeholder="例如：my-adventure"
+                            />
+                          </div>
                         </div>
                       </div>
-                      <div className={styles.fieldGroup}>
-                        <label htmlFor="project-loading-cover">封面图</label>
-                        <div className={`${styles.coverPickerRow} ${styles.coverPickerRowWide}`}>
-                          <div className={`${styles.coverPreview} ${styles.coverPreviewWide}`}>
-                            <img
-                              src={projectLoadingCover || defaultLoadingCover.src}
-                              alt={projectLoadingCover ? '当前加载封面图' : '默认加载封面图'}
-                            />
+                      <div className={styles.detailsSection}>
+                        <div className={styles.detailsSectionTitle}>展示素材</div>
+                        <div className={styles.detailsCoverGrid}>
+                          <div className={styles.fieldGroup}>
+                            <label htmlFor="project-cover">作品封面</label>
+                            <div className={`${styles.coverPickerRow} ${styles.coverPickerRowSquare}`}>
+                              <div className={`${styles.coverPreview} ${styles.coverPreviewSquare}`}>
+                                <img
+                                  src={projectCover || defaultMapCover()}
+                                  alt={projectCover ? '当前作品封面' : '默认作品封面'}
+                                />
+                              </div>
+                              <label className={styles.coverPicker} htmlFor="project-cover">
+                                <Upload size={17} aria-hidden="true" />
+                                <span>
+                                  <strong>{projectCover ? '更换作品封面' : '选择作品封面'}</strong>
+                                  <small>1:1 · PNG、JPG 或 WebP · 最大 3MB</small>
+                                </span>
+                              </label>
+                              <input
+                                className={styles.coverFileInput}
+                                id="project-cover"
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  event.currentTarget.value = '';
+                                  if (!file) return;
+                                  void readProjectImage(file, '作品封面', 1)
+                                    .then((image) => {
+                                      setProjectCover(image);
+                                      setDialogError('');
+                                    })
+                                    .catch((error) => setDialogError(error.message));
+                                }}
+                              />
+                            </div>
                           </div>
-                          <label className={styles.coverPicker} htmlFor="project-loading-cover">
-                            <Upload size={17} aria-hidden="true" />
-                            <span>
-                              <strong>{projectLoadingCover ? '更换封面图' : '选择封面图'}</strong>
-                              <small>16:9 · 进入地图时展示 · 最大 3MB</small>
-                            </span>
-                          </label>
-                          <input
-                            className={styles.coverFileInput}
-                            id="project-loading-cover"
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              event.currentTarget.value = '';
-                              if (!file) return;
-                              void readProjectImage(file, '封面图', 16 / 9)
-                                .then((image) => {
-                                  setProjectLoadingCover(image);
-                                  setDialogError('');
-                                })
-                                .catch((error) => setDialogError(error.message));
-                            }}
-                          />
+                          <div className={styles.fieldGroup}>
+                            <label htmlFor="project-loading-cover">封面图</label>
+                            <div className={`${styles.coverPickerRow} ${styles.coverPickerRowWide}`}>
+                              <div className={`${styles.coverPreview} ${styles.coverPreviewWide}`}>
+                                <img
+                                  src={projectLoadingCover || defaultLoadingCover.src}
+                                  alt={projectLoadingCover ? '当前加载封面图' : '默认加载封面图'}
+                                />
+                              </div>
+                              <label className={styles.coverPicker} htmlFor="project-loading-cover">
+                                <Upload size={17} aria-hidden="true" />
+                                <span>
+                                  <strong>{projectLoadingCover ? '更换封面图' : '选择封面图'}</strong>
+                                  <small>16:9 · 进入地图时展示 · 最大 3MB</small>
+                                </span>
+                              </label>
+                              <input
+                                className={styles.coverFileInput}
+                                id="project-loading-cover"
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp"
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0];
+                                  event.currentTarget.value = '';
+                                  if (!file) return;
+                                  void readProjectImage(file, '封面图', 16 / 9)
+                                    .then((image) => {
+                                      setProjectLoadingCover(image);
+                                      setDialogError('');
+                                    })
+                                    .catch((error) => setDialogError(error.message));
+                                }}
+                              />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </>

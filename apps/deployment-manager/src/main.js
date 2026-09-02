@@ -27,7 +27,6 @@ const numericConfigFields = [
   'creatorEditRuntimes',
   'creatorPlayRuntimes',
   'creatorEditPrewarmRuntimes',
-  'creatorPlayPrewarmRuntimes',
   'playPrewarmRuntimes',
   'playerLimit',
   'scriptMemoryMb',
@@ -83,6 +82,11 @@ const state = {
   performance: null,
   performanceLoading: false,
   performanceError: '',
+  projectRuntimes: { creator: [], play: [] },
+  projectRuntimesLoading: false,
+  projectRuntimesError: '',
+  runtimeExpandedProjects: new Set(),
+  runtimeCatalogTab: 'creator',
   theme: localStorage.getItem(THEME_KEY) || 'system',
   themeMenuOpen: false,
   startMenuOpen: false,
@@ -160,7 +164,7 @@ function shell(content) {
   return `<div class="shell" data-rendered-page="${state.page}">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('about', 'info', '关于')}</nav>
+      <nav>${navItem('overview', 'home', '服务总览')}${navItem('runtimes', 'play', '工程运行时')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('about', 'info', '关于')}</nav>
       <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
     </aside>
     <main>${content}</main>
@@ -310,6 +314,100 @@ function overview() {
             .join('')}</div>`
         : ''
     }`
+}
+
+function runtimePhase(status = {}) {
+  const phase = status.phase || 'idle'
+  if (phase === 'ready') return ['运行中', 'running']
+  if (phase === 'starting' || phase === 'loading') return ['启动中', 'starting']
+  if (phase === 'error') return ['异常', 'error']
+  if (phase === 'unavailable') return ['未启动', '']
+  return ['空闲', '']
+}
+
+function runtimeCell(status) {
+  const [labelText, stateClass] = runtimePhase(status)
+  const detail =
+    status?.message && status.message !== '运行时未启动'
+      ? status.message
+      : labelText === '未启动'
+        ? ''
+        : '等待运行'
+  const progress = ['starting', 'loading'].includes(status?.phase)
+    ? `<span class="runtime-progress"><i style="width:${Math.max(3, Math.min(100, Number(status?.percent) || 0))}%"></i></span>`
+    : ''
+  const metrics =
+    status?.phase === 'ready' && status?.memoryBytes
+      ? `<p class="runtime-metrics">CPU ${formatRuntimeCpu(status.cpuPercent)} · 内存 ${formatRuntimeMemory(status.memoryBytes)} · ${formatRuntimeUptime(status.uptimeMs)}</p>`
+      : ''
+  return `<div class="runtime-mode"><div><span class="service-state ${stateClass}"><i></i>${labelText}</span></div>${metrics || (detail ? `<p>${escapeHtml(detail)}</p>` : '')}${progress}</div>`
+}
+
+function formatRuntimeCpu(value) {
+  const cpu = Number(value)
+  if (!Number.isFinite(cpu)) return '—'
+  if (cpu <= 0) return '0.0%'
+  return `${cpu.toFixed(cpu >= 10 ? 0 : 1)}%`
+}
+
+function formatRuntimeMemory(value) {
+  const megabytes = Number(value) / 1024 / 1024
+  return `${Math.max(1, Math.round(megabytes))} MB`
+}
+
+function formatRuntimeUptime(value) {
+  const seconds = Math.max(0, Math.floor(Number(value) / 1000))
+  if (seconds < 60) return `已运行 ${seconds} 秒`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `已运行 ${minutes} 分钟`
+  return `已运行 ${Math.floor(minutes / 60)} 小时 ${minutes % 60} 分钟`
+}
+
+function runtimes() {
+  const catalog = state.projectRuntimes || { creator: [], play: [] }
+  const creatorItems = catalog.creator || []
+  const playItems = catalog.play || []
+  const catalogTab = state.runtimeCatalogTab === 'play' ? 'play' : 'creator'
+  const items = catalogTab === 'play' ? playItems : creatorItems
+  const submapsByMain = new Map()
+  const mainMaps = []
+  for (const project of items) {
+    const isSubmap =
+      project.mapRole === 'submap' ||
+      (project.mainProjectId && project.mainProjectId !== project.projectId)
+    if (isSubmap) {
+      const submaps = submapsByMain.get(project.mainProjectId) || []
+      submaps.push(project)
+      submapsByMain.set(project.mainProjectId, submaps)
+    } else {
+      mainMaps.push(project)
+    }
+  }
+  const runtimeCells = (project) =>
+    catalogTab === 'creator' ? runtimeCell(project.edit) : runtimeCell(project.play)
+  const runtimeProject = (project, submaps = []) => {
+    const expansionKey = `${catalogTab}:${project.projectId}`
+    const submapSection = submaps.length
+      ? `<details class="runtime-submaps" data-runtime-submaps="${escapeHtml(expansionKey)}" ${state.runtimeExpandedProjects.has(expansionKey) ? 'open' : ''}><summary><span class="runtime-submaps-title">副地图 <small>共 ${submaps.length} 张</small></span></summary><div class="runtime-submap-list">${submaps
+          .map(
+            (submap) =>
+              `<article class="runtime-submap"><header><div><h3>${escapeHtml(submap.name || submap.projectId)}</h3><p>地图 ID：<code>${escapeHtml(submap.permanentMapId || submap.projectId)}</code></p></div></header><div class="runtime-mode-grid single">${runtimeCells(submap)}</div></article>`,
+          )
+          .join('')}</div></details>`
+      : ''
+    return `<article class="runtime-project"><header><div><h2>${escapeHtml(project.name || project.projectId)}</h2><p>地图 ID：<code>${escapeHtml(project.permanentMapId || project.projectId)}</code></p></div></header><div class="runtime-mode-grid single">${runtimeCells(project)}</div>${submapSection}</article>`
+  }
+  const body =
+    state.projectRuntimesLoading && !items.length
+      ? '<div class="runtime-empty">正在读取工程运行时…</div>'
+      : state.projectRuntimesError
+        ? `<div class="runtime-empty">${escapeHtml(state.projectRuntimesError)}</div>`
+        : !mainMaps.length
+          ? `<div class="runtime-empty">${catalogTab === 'creator' ? '创作端暂无工程。' : '游玩端暂无已导入的作品。'}</div>`
+          : `<div class="runtime-list">${mainMaps
+              .map((project) => runtimeProject(project, submapsByMain.get(project.projectId) || []))
+              .join('')}</div>`
+  return `<header><div><h1>工程运行时</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button></nav>${body}`
 }
 
 function serviceCard([id, name, description, portKey, defaultPort], options = {}) {
@@ -495,7 +593,7 @@ function setup() {
         )}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2><span>控制同时运行的地图与单实例人数</span></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 8, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>
-          <div class="config-group"><div class="group-title"><div><h2>预热策略</h2><span>提前启动常用地图，数量不能超过对应运行时上限</span></div></div><div class="form-grid three">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 8, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 6, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorPlayPrewarmRuntimes', '预览预热', config.creatorPlayPrewarmRuntimes ?? 0, 'number', '默认关闭', false, { min: 0 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>预热策略</h2><span>提前启动常用地图，数量不能超过对应运行时上限</span></div></div><div class="form-grid">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 8, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 6, 'number', '0 表示按需启动', false, { min: 0 })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>脚本与容器资源</h2><span>内存单位为 MiB；修改后需重新创建对应容器</span></div></div><div class="form-grid three">${input('scriptMemoryMb', '单运行时脚本内存', config.scriptMemoryMb ?? 512, 'number', '128–8192 MiB', false, { min: 128, max: 8192 })}${input('playerServiceMemoryMb', 'Player Service 内存', config.playerServiceMemoryMb ?? 1024, 'number', '推荐 1024 MiB', false, { min: 512, max: 262144 })}${input('playerServiceCpuLimit', 'Player Service CPU', config.playerServiceCpuLimit ?? 1, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('authPortalMemoryMb', '登录门户内存', config.authPortalMemoryMb ?? 128, 'number', '推荐 128 MiB', false, { min: 128, max: 262144 })}${input('authPortalCpuLimit', '登录门户 CPU', config.authPortalCpuLimit ?? 0.5, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('creatorMemoryMb', 'Creator 内存', config.creatorMemoryMb ?? 6144, 'number', '推荐 6144 MiB', false, { min: 1024, max: 262144 })}${input('creatorCpuLimit', 'Creator CPU', config.creatorCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('playMemoryMb', 'Play 内存', config.playMemoryMb ?? 4096, 'number', '推荐 4096 MiB', false, { min: 1024, max: 262144 })}${input('playCpuLimit', 'Play CPU', config.playCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>回收与传送</h2><span>界面使用分钟，保存后自动转换为环境变量</span></div></div><div class="form-grid">${input('runtimeIdleMinutes', '运行时空闲回收（分钟）', config.runtimeIdleMinutes || 15, 'number', '1–10080')}${input('runtimeStartTimeoutMinutes', '运行时启动超时（分钟）', config.runtimeStartTimeoutMinutes || 30, 'number', '1–1440')}${input('teleportMaxRooms', 'Teleport 私有房间上限', config.teleportMaxRooms || 64, 'number', '1–1024')}${input('teleportRoomIdleMinutes', '房间空闲回收（分钟）', config.teleportRoomIdleMinutes || 15, 'number', '1–10080')}</div></div>
           ${setupExplanation('配置说明：容量和回收策略如何选择？', [
@@ -700,20 +798,23 @@ function render() {
   const content =
     state.page === 'setup'
       ? setup()
-      : state.page === 'diagnostics'
-        ? diagnostics()
-        : state.page === 'performance'
-          ? performance()
-          : state.page === 'backups'
-            ? backups()
-            : state.page === 'about'
-              ? about()
-              : overview()
+      : state.page === 'runtimes'
+        ? runtimes()
+        : state.page === 'diagnostics'
+          ? diagnostics()
+          : state.page === 'performance'
+            ? performance()
+            : state.page === 'backups'
+              ? backups()
+              : state.page === 'about'
+                ? about()
+                : overview()
   document.querySelector('#app').innerHTML = shell(content)
   restoreScrollPositions(scrollPositions)
   bindEvents()
   syncOverviewPolling()
   syncPerformancePolling()
+  syncProjectRuntimePolling()
 }
 
 function bindEvents() {
@@ -730,9 +831,24 @@ function bindEvents() {
       if (state.page === 'backups') loadBackups()
       if (state.page === 'about') loadLegalNotices()
       if (state.page === 'setup') refreshManagedServiceInfo()
+      if (state.page === 'runtimes') refreshProjectRuntimes()
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
+  document.querySelectorAll('[data-runtime-submaps]').forEach((node) =>
+    node.addEventListener('toggle', () => {
+      const projectId = node.dataset.runtimeSubmaps
+      if (!projectId) return
+      if (node.open) state.runtimeExpandedProjects.add(projectId)
+      else state.runtimeExpandedProjects.delete(projectId)
+    }),
+  )
+  document.querySelectorAll('[data-runtime-catalog]').forEach((node) =>
+    node.addEventListener('click', () => {
+      state.runtimeCatalogTab = node.dataset.runtimeCatalog === 'play' ? 'play' : 'creator'
+      render()
+    }),
+  )
   document.querySelector('#refresh-performance')?.addEventListener('click', refreshPerformance)
   document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
   document.querySelector('#create-backup')?.addEventListener('click', createBackup)
@@ -938,6 +1054,8 @@ function closeServiceMenuOnOutside(event) {
 let overviewStatusTimer
 let overviewStatusLoading = false
 let performanceTimer
+let projectRuntimeTimer
+let projectRuntimeLoading = false
 
 function syncOverviewPolling() {
   clearInterval(overviewStatusTimer)
@@ -1007,6 +1125,37 @@ async function refreshPerformance() {
   } finally {
     state.performanceLoading = false
     if (state.page === 'performance') render()
+  }
+}
+
+function syncProjectRuntimePolling() {
+  clearInterval(projectRuntimeTimer)
+  projectRuntimeTimer = undefined
+  if (state.page !== 'runtimes') return
+  if (
+    !state.projectRuntimes.creator?.length &&
+    !state.projectRuntimes.play?.length &&
+    !projectRuntimeLoading
+  ) {
+    refreshProjectRuntimes()
+  }
+  projectRuntimeTimer = window.setInterval(refreshProjectRuntimes, 1000)
+}
+
+async function refreshProjectRuntimes() {
+  if (projectRuntimeLoading || state.page !== 'runtimes') return
+  projectRuntimeLoading = true
+  state.projectRuntimesLoading = true
+  state.projectRuntimesError = ''
+  render()
+  try {
+    state.projectRuntimes = await invoke('get_project_runtime_status')
+  } catch (error) {
+    state.projectRuntimesError = String(error)
+  } finally {
+    projectRuntimeLoading = false
+    state.projectRuntimesLoading = false
+    if (state.page === 'runtimes') render()
   }
 }
 

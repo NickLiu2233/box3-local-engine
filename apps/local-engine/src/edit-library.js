@@ -71,6 +71,7 @@ function startEditLibrary({
           port: runtime.port,
           pid: runtime.pid,
           startedAt: runtime.startedAt,
+          ...(runtime.metrics?.() || {}),
         }
       : {}),
   })

@@ -8,6 +8,8 @@ export interface MapInfoConfig {
   name: string;
   description: string;
   image: string; // 作品封面
+  /** Stable local map identity. Unlike the access id, this never changes. */
+  permanentMapId?: string;
   customizeType: 'DIGITALBLOCKLAND' | 'Fantour' | '';
   backgroundImage: string; // loading页面的背景图
   combType: number; // 地图类型（0-普通地图，1-扩展主图，2-扩展副图）

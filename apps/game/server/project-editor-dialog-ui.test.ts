@@ -32,7 +32,7 @@ describe('creator project editor dialog', () => {
   test('uses a roomy, viewport-safe details dialog', () => {
     expect(pageSource).toContain("dialog === 'details' ? styles.detailsDialog : ''");
     expect(styleSource).toMatch(
-      /\.detailsDialog\s*\{[^}]*width:\s*min\(100%,\s*560px\);[^}]*max-height:\s*calc\(100(?:dvh|vh)\s*-\s*48px\);[^}]*overflow-y:\s*auto;/s,
+      /\.detailsDialog\s*\{[^}]*width:\s*min\(100%,\s*620px\);[^}]*max-height:\s*calc\(100(?:dvh|vh)\s*-\s*48px\);[^}]*overflow-y:\s*auto;/s,
     );
   });
 

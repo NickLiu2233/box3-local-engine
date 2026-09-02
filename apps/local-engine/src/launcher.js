@@ -344,6 +344,94 @@ async function terminateRuntimeChild(child, runtime, graceMs) {
   })
 }
 
+function readRuntimeProcessStats(pid) {
+  // A map runtime is a launcher process which starts the actual game-server
+  // process. Sample the complete descendant tree so the dashboard represents
+  // the map, rather than its mostly-idle launcher parent.
+  try {
+    const status = fs.readFileSync(`/proc/${pid}/status`, 'utf8')
+    const stat = fs.readFileSync(`/proc/${pid}/stat`, 'utf8')
+    const closingParenthesis = stat.lastIndexOf(')')
+    if (closingParenthesis < 0) return null
+    const fields = stat
+      .slice(closingParenthesis + 2)
+      .trim()
+      .split(/\s+/)
+    const parent = /^PPid:\s+(\d+)$/m.exec(status)
+    const residentMemory = /^VmRSS:\s+(\d+)\s+kB$/m.exec(status)
+    // stat fields start at process state (the original field 3); user and
+    // system CPU ticks are original fields 14 and 15.
+    return {
+      pid,
+      parentPid: Number(parent?.[1] || 0),
+      cpuTicks: Number(fields[11] || 0) + Number(fields[12] || 0),
+      memoryBytes: Number(residentMemory?.[1] || 0) * 1024,
+    }
+  } catch {
+    return null
+  }
+}
+
+function readRuntimeProcessTree(rootPid) {
+  let processIds
+  try {
+    processIds = fs.readdirSync('/proc').filter((entry) => /^\d+$/.test(entry))
+  } catch {
+    return null
+  }
+  const processes = processIds
+    .map((entry) => readRuntimeProcessStats(Number(entry)))
+    .filter(Boolean)
+  if (!processes.some((processInfo) => processInfo.pid === rootPid)) return null
+
+  const descendants = new Set([rootPid])
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const processInfo of processes) {
+      if (!descendants.has(processInfo.pid) && descendants.has(processInfo.parentPid)) {
+        descendants.add(processInfo.pid)
+        changed = true
+      }
+    }
+  }
+  return processes.reduce(
+    (total, processInfo) =>
+      descendants.has(processInfo.pid)
+        ? {
+            cpuTicks: total.cpuTicks + processInfo.cpuTicks,
+            memoryBytes: total.memoryBytes + processInfo.memoryBytes,
+          }
+        : total,
+    { cpuTicks: 0, memoryBytes: 0 },
+  )
+}
+
+function attachRuntimeMetrics(child, runtime) {
+  let previousCpuTicks = 0
+  let previousSampleAt = 0
+
+  runtime.metrics = () => {
+    const sampledAt = Date.now()
+    const processTree = readRuntimeProcessTree(child.pid)
+    if (!processTree) return {}
+    const { cpuTicks, memoryBytes } = processTree
+    const elapsedMs = sampledAt - previousSampleAt
+    const cpuPercent =
+      previousSampleAt && elapsedMs > 0
+        ? Math.max(0, Math.round((((cpuTicks - previousCpuTicks) * 1000) / elapsedMs) * 100) / 100)
+        : 0
+    previousCpuTicks = cpuTicks
+    previousSampleAt = sampledAt
+
+    return {
+      cpuPercent,
+      memoryBytes,
+      uptimeMs: Math.max(0, sampledAt - Date.parse(runtime.startedAt)),
+    }
+  }
+}
+
 function shutdown(code = 0) {
   if (shuttingDown) return
   shuttingDown = true
@@ -651,6 +739,7 @@ async function main() {
         await terminateRuntimeChild(child, runtime, 1500)
       },
     }
+    attachRuntimeMetrics(child, runtime)
     runtime.exitPromise = new Promise((resolve) => {
       runtime.resolveExit = resolve
     })
@@ -706,6 +795,7 @@ async function main() {
         await terminateRuntimeChild(child, runtime, 5000)
       },
     }
+    attachRuntimeMetrics(child, runtime)
     runtime.exitPromise = new Promise((resolve) => {
       runtime.resolveExit = resolve
     })
@@ -918,29 +1008,20 @@ async function main() {
   await waitFor(`http://127.0.0.1:${webPort}/api/health-check`)
 
   // Boxes prepares shared build-cache products before the engine route becomes
-  // interactive. Keep edit runtimes and standalone Play maps warm, but do not
-  // execute Creator preview scripts until a user requests that preview.
+  // interactive. Keep edit runtimes and standalone Play maps warm.
   // Runtime capacity/LRU still owns the hard process bound; evicted runtimes
   // leave their persistent prebake products behind for the next player.
   const prewarmTimer = setTimeout(async () => {
     try {
-      if (creatorMode && editLibrary && creatorPlayLibrary) {
+      if (creatorMode && editLibrary) {
         const projects = projectManager.listProjects()
         const editCount = prewarmCount(
           'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
           process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6,
           process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6,
         )
-        const playCount = prewarmCount(
-          'BOX_CREATOR_PLAY_PREWARM_RUNTIMES',
-          0,
-          process.env.BOX_CREATOR_PLAY_MAX_RUNTIMES || 4,
-        )
         for (const project of projects.slice(0, editCount)) {
           await editLibrary.ensureRuntime(project.id)
-        }
-        for (const project of projects.slice(0, playCount)) {
-          await creatorPlayLibrary.ensureRuntime(project.id)
         }
       } else if (usesPlayLibrary && playLibrary) {
         const worlds = playLibrary.listWorlds().sort((left, right) => {

@@ -88,6 +88,41 @@ pub(crate) struct SystemStatus {
     pub(crate) data_directory: String,
 }
 
+/// Safe per-project runtime data for the desktop UI. This deliberately omits
+/// environment variables, credentials and arbitrary container diagnostics.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProjectRuntimeStatus {
+    pub(crate) project_id: String,
+    pub(crate) permanent_map_id: String,
+    pub(crate) name: String,
+    pub(crate) map_role: String,
+    pub(crate) main_project_id: String,
+    pub(crate) edit: RuntimeEndpointStatus,
+    pub(crate) play: RuntimeEndpointStatus,
+}
+
+/// Runtime inventories are intentionally kept separate because Creator
+/// projects and imported Play worlds are stored in different local libraries.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProjectRuntimeCatalog {
+    pub(crate) creator: Vec<ProjectRuntimeStatus>,
+    pub(crate) play: Vec<ProjectRuntimeStatus>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RuntimeEndpointStatus {
+    pub(crate) phase: String,
+    pub(crate) percent: u8,
+    pub(crate) message: String,
+    pub(crate) updated_at: String,
+    pub(crate) cpu_percent: Option<f64>,
+    pub(crate) memory_bytes: Option<u64>,
+    pub(crate) uptime_ms: Option<u64>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ServicePerformance {

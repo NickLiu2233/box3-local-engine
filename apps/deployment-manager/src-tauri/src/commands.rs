@@ -4,8 +4,8 @@ use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs,
-    io::Read,
-    net::{TcpListener, TcpStream, ToSocketAddrs},
+    io::{Read, Write},
+    net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -80,7 +80,6 @@ struct InstallConfigView {
     creator_edit_runtimes: u32,
     creator_play_runtimes: u32,
     creator_edit_prewarm_runtimes: u32,
-    creator_play_prewarm_runtimes: u32,
     play_prewarm_runtimes: u32,
     player_limit: u32,
     script_memory_mb: u32,
@@ -161,7 +160,6 @@ impl Default for InstallConfigView {
             creator_edit_runtimes: 6,
             creator_play_runtimes: 4,
             creator_edit_prewarm_runtimes: 6,
-            creator_play_prewarm_runtimes: 0,
             play_prewarm_runtimes: 8,
             player_limit: 8,
             script_memory_mb: 512,
@@ -256,8 +254,6 @@ struct InstallConfigInput {
     creator_play_runtimes: u32,
     #[serde(default = "default_creator_edit_prewarm_runtimes")]
     creator_edit_prewarm_runtimes: u32,
-    #[serde(default = "default_creator_play_prewarm_runtimes")]
-    creator_play_prewarm_runtimes: u32,
     #[serde(default = "default_play_prewarm_runtimes")]
     play_prewarm_runtimes: u32,
     #[serde(default = "default_player_limit")]
@@ -382,9 +378,6 @@ fn default_creator_play_runtimes() -> u32 {
 }
 fn default_creator_edit_prewarm_runtimes() -> u32 {
     6
-}
-fn default_creator_play_prewarm_runtimes() -> u32 {
-    0
 }
 fn default_play_prewarm_runtimes() -> u32 {
     8
@@ -1048,11 +1041,6 @@ fn validate_runtime_capacity(config: &InstallConfigInput) -> Result<(), String> 
             config.creator_edit_runtimes,
         ),
         (
-            "Creator 预览预热数量",
-            config.creator_play_prewarm_runtimes,
-            config.creator_play_runtimes,
-        ),
-        (
             "Play 预热数量",
             config.play_prewarm_runtimes,
             config.play_runtimes,
@@ -1251,11 +1239,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_CREATOR_EDIT_PREWARM_RUNTIMES",
         &config.creator_edit_prewarm_runtimes.to_string(),
     )?;
-    set_env(
-        &mut content,
-        "BOX_CREATOR_PLAY_PREWARM_RUNTIMES",
-        &config.creator_play_prewarm_runtimes.to_string(),
-    )?;
+    remove_env(&mut content, "BOX_CREATOR_PLAY_PREWARM_RUNTIMES");
     set_env(
         &mut content,
         "BOX_PLAY_PREWARM_RUNTIMES",
@@ -1354,10 +1338,16 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
             }
         });
     let (database, user) = if database_mode == "managed" {
-        managed_database_identity(
-            &existing,
-            existing_database_mode == "managed" && managed_database_volume_exists(),
-        )
+        if let Some(identity) = managed_database_identity(&existing) {
+            identity
+        } else if managed_database_volume_exists() {
+            return Err("检测到已有内置 PostgreSQL 数据，但缺少其原始连接凭据。为避免覆盖既有数据，已停止切换；请恢复此前的 .env 后重试。".into());
+        } else {
+            (
+                format!("box_db_{}", random_hex(8)),
+                format!("box_user_{}", random_hex(8)),
+            )
+        }
     } else {
         (
             config.database_name.trim().to_string(),
@@ -1367,22 +1357,23 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     if database.is_empty() || user.is_empty() {
         return Err("PostgreSQL 数据库名和账号不能为空".into());
     }
-    let saved_password = (existing_database_mode == database_mode)
-        .then(|| {
-            existing
-                .get("BOX_DATABASE_PASSWORD")
-                .or_else(|| existing.get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD"))
-                .cloned()
-                .filter(|password| !password.is_empty())
-        })
-        .flatten();
-    let password = if config.database_password.is_empty() {
-        match (database_mode, saved_password) {
-            (_, Some(password)) => password,
-            ("managed", None) => random_hex(32),
-            ("external", None) => String::new(),
-            _ => unreachable!(),
-        }
+    let saved_password = if database_mode == "managed" {
+        managed_database_password(&existing)
+    } else {
+        (existing_database_mode == database_mode)
+            .then(|| {
+                existing
+                    .get("BOX_DATABASE_PASSWORD")
+                    .or_else(|| existing.get("BOX_DEPLOYMENT_MANAGER_DATABASE_PASSWORD"))
+                    .cloned()
+                    .filter(|password| !password.is_empty())
+            })
+            .flatten()
+    };
+    let password = if database_mode == "managed" {
+        saved_password.unwrap_or_else(|| random_hex(32))
+    } else if config.database_password.is_empty() {
+        saved_password.unwrap_or_default()
     } else {
         config.database_password.clone()
     };
@@ -1403,20 +1394,29 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
                 "disabled"
             }
         });
-    let saved_redis_password = (existing_redis_mode == redis_mode)
-        .then(|| {
-            existing
-                .get("REDIS_PASSWORD")
-                .cloned()
-                .filter(|password| !password.is_empty())
-        })
-        .flatten();
+    let saved_redis_password = if redis_mode == "managed" {
+        managed_redis_password(&existing)
+    } else {
+        (existing_redis_mode == redis_mode)
+            .then(|| {
+                existing
+                    .get("REDIS_PASSWORD")
+                    .cloned()
+                    .filter(|password| !password.is_empty())
+            })
+            .flatten()
+    };
     let (redis_host, redis_port, redis_password) = match redis_mode {
-        "managed" => (
-            "managed-redis".into(),
-            "6379".into(),
-            saved_redis_password.unwrap_or_else(|| random_hex(32)),
-        ),
+        "managed" => {
+            let password = if let Some(password) = saved_redis_password {
+                password
+            } else if managed_redis_volume_exists() {
+                return Err("检测到已有内置 Redis 数据，但缺少其原始连接凭据。为避免重置现有访问配置，已停止切换；请恢复此前的 .env 后重试。".into());
+            } else {
+                random_hex(32)
+            };
+            ("managed-redis".into(), "6379".into(), password)
+        }
         "external" => {
             let host = validate_host(&config.redis_host, "Redis 地址")?;
             let port = validate_port(&config.redis_port)?;
@@ -1445,6 +1445,11 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     set_env(&mut content, "BOX_DATABASE_NAME", &database)?;
     set_env(&mut content, "BOX_DATABASE_USER", &user)?;
     set_env(&mut content, "BOX_DATABASE_PASSWORD", &password)?;
+    if database_mode == "managed" {
+        set_env(&mut content, "BOX_MANAGED_POSTGRES_DATABASE", &database)?;
+        set_env(&mut content, "BOX_MANAGED_POSTGRES_USER", &user)?;
+        set_env(&mut content, "BOX_MANAGED_POSTGRES_PASSWORD", &password)?;
+    }
     set_env(
         &mut content,
         "BOX_DATABASE_SSL",
@@ -1458,6 +1463,9 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     set_env(&mut content, "REDIS_HOST", &redis_host)?;
     set_env(&mut content, "REDIS_PORT", &redis_port)?;
     set_env(&mut content, "REDIS_PASSWORD", &redis_password)?;
+    if redis_mode == "managed" {
+        set_env(&mut content, "BOX_MANAGED_REDIS_PASSWORD", &redis_password)?;
+    }
     set_env(&mut content, "REDIS_DB", &redis_db.to_string())?;
     set_env(
         &mut content,
@@ -1737,17 +1745,13 @@ fn managed_service_configured(values: &BTreeMap<String, String>, service: &str) 
             values
                 .get("BOX_DATABASE_MODE")
                 .is_some_and(|mode| mode == "managed")
-                && values
-                    .get("BOX_DATABASE_PASSWORD")
-                    .is_some_and(|password| !password.is_empty())
+                && managed_database_password(values).is_some()
         }
         "managed-redis" => {
             values
                 .get("BOX_REDIS_MODE")
                 .is_some_and(|mode| mode == "managed")
-                && values
-                    .get("REDIS_PASSWORD")
-                    .is_some_and(|password| !password.is_empty())
+                && managed_redis_password(values).is_some()
         }
         _ => false,
     }
@@ -1762,27 +1766,58 @@ fn managed_database_volume_exists() -> bool {
     .is_ok()
 }
 
-fn managed_database_identity(
-    existing: &BTreeMap<String, String>,
-    preserve_existing: bool,
-) -> (String, String) {
-    if preserve_existing {
-        let database = existing
-            .get("BOX_DATABASE_NAME")
-            .cloned()
-            .filter(|value| !value.trim().is_empty());
-        let user = existing
-            .get("BOX_DATABASE_USER")
-            .cloned()
-            .filter(|value| !value.trim().is_empty());
-        if let (Some(database), Some(user)) = (database, user) {
-            return (database, user);
-        }
+fn managed_redis_volume_exists() -> bool {
+    docker_output(&[
+        "volume",
+        "inspect",
+        &format!("{PROJECT_NAME}_box-managed-redis-data"),
+    ])
+    .is_ok()
+}
+
+fn managed_value(values: &BTreeMap<String, String>, key: &str) -> Option<String> {
+    values
+        .get(key)
+        .cloned()
+        .filter(|value| !value.trim().is_empty())
+}
+
+fn managed_database_identity(existing: &BTreeMap<String, String>) -> Option<(String, String)> {
+    let database = managed_value(existing, "BOX_MANAGED_POSTGRES_DATABASE");
+    let user = managed_value(existing, "BOX_MANAGED_POSTGRES_USER");
+    if let (Some(database), Some(user)) = (database, user) {
+        return Some((database, user));
     }
-    (
-        format!("box_db_{}", random_hex(8)),
-        format!("box_user_{}", random_hex(8)),
-    )
+    (existing
+        .get("BOX_DATABASE_MODE")
+        .is_some_and(|mode| mode == "managed"))
+    .then(|| {
+        Some((
+            managed_value(existing, "BOX_DATABASE_NAME")?,
+            managed_value(existing, "BOX_DATABASE_USER")?,
+        ))
+    })
+    .flatten()
+}
+
+fn managed_database_password(existing: &BTreeMap<String, String>) -> Option<String> {
+    managed_value(existing, "BOX_MANAGED_POSTGRES_PASSWORD").or_else(|| {
+        (existing
+            .get("BOX_DATABASE_MODE")
+            .is_some_and(|mode| mode == "managed"))
+        .then(|| managed_value(existing, "BOX_DATABASE_PASSWORD"))
+        .flatten()
+    })
+}
+
+fn managed_redis_password(existing: &BTreeMap<String, String>) -> Option<String> {
+    managed_value(existing, "BOX_MANAGED_REDIS_PASSWORD").or_else(|| {
+        (existing
+            .get("BOX_REDIS_MODE")
+            .is_some_and(|mode| mode == "managed"))
+        .then(|| managed_value(existing, "REDIS_PASSWORD"))
+        .flatten()
+    })
 }
 
 #[tauri::command]
@@ -1844,18 +1879,10 @@ fn get_managed_service_info(app: AppHandle, service: String) -> Result<ManagedSe
                 .get("BOX_MANAGED_POSTGRES_HOST_PORT")
                 .cloned()
                 .unwrap_or_else(|| "5432".into());
-            let database = values
-                .get("BOX_DATABASE_NAME")
-                .cloned()
-                .filter(|value| !value.is_empty())
-                .unwrap_or_else(|| "box".into());
-            let user = values
-                .get("BOX_DATABASE_USER")
-                .cloned()
-                .filter(|value| !value.is_empty())
-                .unwrap_or_else(|| "box".into());
+            let (database, user) =
+                managed_database_identity(&values).unwrap_or_else(|| ("box".into(), "box".into()));
             let password = configured
-                .then(|| values.get("BOX_DATABASE_PASSWORD").cloned())
+                .then(|| managed_database_password(&values))
                 .flatten()
                 .unwrap_or_default();
             let connection_url = if configured {
@@ -1896,7 +1923,7 @@ fn get_managed_service_info(app: AppHandle, service: String) -> Result<ManagedSe
                 .cloned()
                 .unwrap_or_else(|| "0".into());
             let password = configured
-                .then(|| values.get("REDIS_PASSWORD").cloned())
+                .then(|| managed_redis_password(&values))
                 .flatten()
                 .unwrap_or_default();
             let connection_url = if configured {
@@ -2108,7 +2135,6 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         creator_edit_runtimes: number_u32("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
         creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 6),
-        creator_play_prewarm_runtimes: number_u32("BOX_CREATOR_PLAY_PREWARM_RUNTIMES", 0),
         play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 8),
         player_limit: number_u32("BOX_LOCAL_PLAYER_LIMIT", 8),
         script_memory_mb: number_u32("BOX_SCRIPT_MEMORY_MB", 512),
@@ -2258,6 +2284,260 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
         services,
         data_directory,
     }
+}
+
+fn unavailable_runtime_status() -> RuntimeEndpointStatus {
+    RuntimeEndpointStatus {
+        phase: "unavailable".into(),
+        percent: 0,
+        message: "运行时未启动".into(),
+        updated_at: String::new(),
+        cpu_percent: None,
+        memory_bytes: None,
+        uptime_ms: None,
+    }
+}
+
+fn decode_chunked_http_body(bytes: &[u8]) -> Option<Vec<u8>> {
+    let mut cursor = 0;
+    let mut body = Vec::new();
+    loop {
+        let line_end = bytes[cursor..]
+            .windows(2)
+            .position(|window| window == b"\r\n")?
+            + cursor;
+        let size = std::str::from_utf8(&bytes[cursor..line_end])
+            .ok()?
+            .split(';')
+            .next()?
+            .trim();
+        let size = usize::from_str_radix(size, 16).ok()?;
+        cursor = line_end + 2;
+        if bytes.len() < cursor + size + 2 || &bytes[cursor + size..cursor + size + 2] != b"\r\n" {
+            return None;
+        }
+        body.extend_from_slice(&bytes[cursor..cursor + size]);
+        cursor += size + 2;
+        if size == 0 {
+            return Some(body);
+        }
+    }
+}
+
+fn try_read_http_response(response: &[u8]) -> Option<(String, String)> {
+    let header_end = response
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")?;
+    let headers = std::str::from_utf8(&response[..header_end])
+        .ok()?
+        .to_string();
+    let payload = &response[header_end + 4..];
+    let body = if headers.lines().any(|line| {
+        line.split_once(':').is_some_and(|(name, value)| {
+            name.eq_ignore_ascii_case("transfer-encoding")
+                && value.trim().eq_ignore_ascii_case("chunked")
+        })
+    }) {
+        decode_chunked_http_body(payload)?
+    } else if let Some(length) = headers.lines().find_map(|line| {
+        line.split_once(':').and_then(|(name, value)| {
+            name.eq_ignore_ascii_case("content-length")
+                .then(|| value.trim().parse::<usize>().ok())
+                .flatten()
+        })
+    }) {
+        (payload.len() >= length).then(|| payload[..length].to_vec())?
+    } else {
+        payload.to_vec()
+    };
+    String::from_utf8(body).ok().map(|body| (headers, body))
+}
+
+fn read_http_response(stream: &mut TcpStream) -> Option<(String, String)> {
+    let mut response = Vec::new();
+    let mut buffer = [0_u8; 4096];
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(0) => return try_read_http_response(&response),
+            Ok(read) => {
+                response.extend_from_slice(&buffer[..read]);
+                if let Some(parsed) = try_read_http_response(&response) {
+                    return Some(parsed);
+                }
+                if response.len() > 128 * 1024 {
+                    return None;
+                }
+            }
+            Err(_) => return None,
+        }
+    }
+}
+
+fn runtime_endpoint_status_at(
+    project_id: &str,
+    address: SocketAddr,
+    route_prefix: &str,
+) -> RuntimeEndpointStatus {
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(800)) else {
+        return unavailable_runtime_status();
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
+    let _ = stream.set_write_timeout(Some(Duration::from_millis(800)));
+    let route_prefix = route_prefix.trim_matches('/');
+    let path = if route_prefix.is_empty() {
+        format!("/{project_id}/__local_runtime/status")
+    } else {
+        format!("/{route_prefix}/{project_id}/__local_runtime/status")
+    };
+    let request = format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n");
+    if stream.write_all(request.as_bytes()).is_err() {
+        return unavailable_runtime_status();
+    }
+    let Some((headers, body)) = read_http_response(&mut stream) else {
+        return unavailable_runtime_status();
+    };
+    if !headers.starts_with("HTTP/1.1 200") && !headers.starts_with("HTTP/1.0 200") {
+        return unavailable_runtime_status();
+    }
+    let Ok(value) = serde_json::from_str::<Value>(&body) else {
+        return unavailable_runtime_status();
+    };
+    let percent = value
+        .get("percent")
+        .and_then(Value::as_u64)
+        .unwrap_or(0)
+        .min(100) as u8;
+    RuntimeEndpointStatus {
+        phase: value
+            .get("phase")
+            .and_then(Value::as_str)
+            .unwrap_or("idle")
+            .into(),
+        percent,
+        message: value
+            .get("message")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .into(),
+        updated_at: value
+            .get("updatedAt")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .into(),
+        cpu_percent: value.get("cpuPercent").and_then(Value::as_f64),
+        memory_bytes: value.get("memoryBytes").and_then(Value::as_u64),
+        uptime_ms: value.get("uptimeMs").and_then(Value::as_u64),
+    }
+}
+
+fn runtime_endpoint_status(project_id: &str, port: u16) -> RuntimeEndpointStatus {
+    let address = format!("127.0.0.1:{port}");
+    let Some(address) = address
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut values| values.next())
+    else {
+        return unavailable_runtime_status();
+    };
+    runtime_endpoint_status_at(project_id, address, "")
+}
+
+fn play_runtime_status(project_id: &str, port: u16) -> RuntimeEndpointStatus {
+    let address = format!("127.0.0.1:{port}");
+    let Some(address) = address
+        .to_socket_addrs()
+        .ok()
+        .and_then(|mut values| values.next())
+    else {
+        return unavailable_runtime_status();
+    };
+    runtime_endpoint_status_at(project_id, address, "p")
+}
+
+#[tauri::command]
+fn get_project_runtime_status(app: AppHandle) -> Result<ProjectRuntimeCatalog, String> {
+    let runtime = runtime_root(&app)?;
+    let play_port = fs::read_to_string(env_path(&app)?)
+        .ok()
+        .map(|content| env_port(&parse_env(&content), "BOX_PLAY_PORT", default_play_port()))
+        .unwrap_or_else(default_play_port);
+    let mut creator = fs::read_dir(runtime.join("apps/local-engine/projects"))
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .filter_map(|entry| {
+            let project_id = entry.file_name().to_string_lossy().to_string();
+            let metadata = fs::read_to_string(entry.path().join("project.json")).ok()?;
+            let project = serde_json::from_str::<Value>(&metadata).ok()?;
+            Some(ProjectRuntimeStatus {
+                name: project
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&project_id)
+                    .into(),
+                permanent_map_id: project
+                    .get("permanentMapId")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&project_id)
+                    .into(),
+                map_role: project
+                    .get("mapRole")
+                    .and_then(Value::as_str)
+                    .unwrap_or("main")
+                    .into(),
+                main_project_id: project
+                    .get("mainProjectId")
+                    .and_then(Value::as_str)
+                    .unwrap_or(&project_id)
+                    .into(),
+                edit: runtime_endpoint_status(&project_id, 9967),
+                play: unavailable_runtime_status(),
+                project_id,
+            })
+        })
+        .collect::<Vec<_>>();
+    let mut play = fs::read_dir(runtime.join("apps/local-engine/play-worlds"))
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .filter_map(|entry| {
+            let project_id = entry.file_name().to_string_lossy().to_string();
+            let metadata = fs::read_to_string(entry.path().join("manifest.json")).ok()?;
+            let world = serde_json::from_str::<Value>(&metadata).ok()?;
+            (world.get("id").and_then(Value::as_str) == Some(project_id.as_str())).then(|| {
+                ProjectRuntimeStatus {
+                    name: world
+                        .get("projectName")
+                        .and_then(Value::as_str)
+                        .unwrap_or(&project_id)
+                        .into(),
+                    permanent_map_id: world
+                        .get("permanentMapId")
+                        .and_then(Value::as_str)
+                        .unwrap_or(&project_id)
+                        .into(),
+                    map_role: world
+                        .get("mapRole")
+                        .and_then(Value::as_str)
+                        .unwrap_or("main")
+                        .into(),
+                    main_project_id: world
+                        .get("mainProjectId")
+                        .and_then(Value::as_str)
+                        .unwrap_or(&project_id)
+                        .into(),
+                    edit: unavailable_runtime_status(),
+                    play: play_runtime_status(&project_id, play_port),
+                    project_id,
+                }
+            })
+        })
+        .collect::<Vec<_>>();
+    creator.sort_by(|left, right| left.name.cmp(&right.name));
+    play.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(ProjectRuntimeCatalog { creator, play })
 }
 
 #[tauri::command]
@@ -3602,7 +3882,6 @@ mod tests {
             creator_edit_runtimes: default_creator_edit_runtimes(),
             creator_play_runtimes: default_creator_play_runtimes(),
             creator_edit_prewarm_runtimes: default_creator_edit_prewarm_runtimes(),
-            creator_play_prewarm_runtimes: default_creator_play_prewarm_runtimes(),
             play_prewarm_runtimes: default_play_prewarm_runtimes(),
             player_limit: default_player_limit(),
             script_memory_mb: default_script_memory_mb(),
@@ -3719,27 +3998,86 @@ mod tests {
     }
 
     #[test]
-    fn managed_database_identity_is_random_for_a_new_volume_and_stable_for_existing_data() {
+    fn runtime_status_reads_a_complete_chunked_response_without_waiting_for_close() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let body = r#"{"phase":"ready","percent":100,"message":"运行时已就绪"}"#;
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nConnection: keep-alive\r\n\r\n{:X}\r\n{}\r\n0\r\n\r\n",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            std::thread::sleep(Duration::from_millis(1500));
+        });
+
+        let status = runtime_endpoint_status_at("project-id", address, "");
+        server.join().unwrap();
+
+        assert_eq!(status.phase, "ready");
+        assert_eq!(status.percent, 100);
+    }
+
+    #[test]
+    fn play_runtime_status_uses_the_public_play_route() {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0_u8; 1024];
+            let read = stream.read(&mut request).unwrap();
+            let body = r#"{"phase":"ready","percent":100}"#;
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            String::from_utf8_lossy(&request[..read]).into_owned()
+        });
+
+        let status = runtime_endpoint_status_at("project-id", address, "p");
+        let request = server.join().unwrap();
+
+        assert_eq!(status.phase, "ready");
+        assert!(request.starts_with("GET /p/project-id/__local_runtime/status HTTP/1.1"));
+    }
+
+    #[test]
+    fn managed_database_identity_keeps_internal_credentials_when_active_mode_changes() {
         let existing = BTreeMap::from([
-            ("BOX_DATABASE_NAME".into(), "existing_database".into()),
-            ("BOX_DATABASE_USER".into(), "existing_user".into()),
+            ("BOX_DATABASE_MODE".into(), "external".into()),
+            ("BOX_DATABASE_NAME".into(), "external_database".into()),
+            ("BOX_DATABASE_USER".into(), "external_user".into()),
+            (
+                "BOX_MANAGED_POSTGRES_DATABASE".into(),
+                "managed_database".into(),
+            ),
+            ("BOX_MANAGED_POSTGRES_USER".into(), "managed_user".into()),
+            (
+                "BOX_MANAGED_POSTGRES_PASSWORD".into(),
+                "managed-password".into(),
+            ),
+            ("REDIS_PASSWORD".into(), "external-redis-password".into()),
+            (
+                "BOX_MANAGED_REDIS_PASSWORD".into(),
+                "managed-redis-password".into(),
+            ),
         ]);
         assert_eq!(
-            managed_database_identity(&existing, true),
-            ("existing_database".into(), "existing_user".into())
+            managed_database_identity(&existing),
+            Some(("managed_database".into(), "managed_user".into()))
         );
-
-        let (database, user) = managed_database_identity(&existing, false);
-        assert!(database.starts_with("box_db_"));
-        assert!(user.starts_with("box_user_"));
-        assert_eq!(database.len(), "box_db_".len() + 16);
-        assert_eq!(user.len(), "box_user_".len() + 16);
-        assert!(database["box_db_".len()..]
-            .chars()
-            .all(|character| character.is_ascii_hexdigit()));
-        assert!(user["box_user_".len()..]
-            .chars()
-            .all(|character| character.is_ascii_hexdigit()));
+        assert_eq!(
+            managed_database_password(&existing).as_deref(),
+            Some("managed-password")
+        );
+        assert_eq!(
+            managed_redis_password(&existing).as_deref(),
+            Some("managed-redis-password")
+        );
     }
 
     #[test]
@@ -3891,6 +4229,7 @@ pub fn run() {
             get_raw_environment,
             save_raw_environment,
             get_system_status,
+            get_project_runtime_status,
             get_about_info,
             get_legal_notices,
             get_performance_status,
