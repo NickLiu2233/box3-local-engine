@@ -7,8 +7,18 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'POST') {
     return res.status(202).json({
       job: startMigration({
+        source:
+          req.body?.source === 'map-hash' ||
+          req.body?.source === 'model-id' ||
+          req.body?.source === 'model-hash'
+            ? req.body.source
+            : 'map-id',
         hash: req.body?.hash ? String(req.body.hash) : undefined,
         mapId: req.body?.mapId ? Number(req.body.mapId) : undefined,
+        modelHash: req.body?.modelHash ? String(req.body.modelHash) : undefined,
+        modelId: req.body?.modelId ? Number(req.body.modelId) : undefined,
+        modelType: req.body?.modelType ? Number(req.body.modelType) : undefined,
+        modelMapId: req.body?.modelMapId ? Number(req.body.modelMapId) : undefined,
         mode: req.body?.mode === 'play' ? 'play' : 'edit',
         projectName: typeof req.body?.projectName === 'string' ? req.body.projectName : undefined,
       }),

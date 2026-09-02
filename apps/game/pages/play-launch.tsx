@@ -23,7 +23,7 @@ export const getServerSideProps: GetServerSideProps<PlayLaunchProps> = async ({ 
   if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
     return { redirect: { destination: playerLoginURL('play'), permanent: false } };
   }
-  return { props: { cover: world?.cover || '', worldName: world?.name || '本地作品' } };
+  return { props: { cover: world?.loadingCover || '', worldName: world?.name || '本地作品' } };
 };
 
 export default function PlayLaunchPage({ cover, worldName }: PlayLaunchProps) {

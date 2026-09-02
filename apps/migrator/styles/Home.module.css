@@ -454,6 +454,184 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus);
 }
+.modelSearchAction,
+.modelResults {
+  grid-column: 1 / -1;
+}
+.modelSearchAction button {
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  background: var(--input);
+  font: inherit;
+}
+.modelSearchAction button {
+  min-height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.modelResults {
+  display: grid;
+  max-height: 360px;
+  gap: 6px;
+  overflow: auto;
+}
+.modelCard {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  min-height: 74px;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--input);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+.modelPreviewButton {
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--border);
+  cursor: pointer;
+}
+.modelPreview,
+.modelPreviewPlaceholder {
+  display: block;
+  width: 58px;
+  height: 58px;
+  border-radius: 4px;
+  background: var(--border);
+  object-fit: cover;
+}
+.modelPreviewPlaceholder {
+  opacity: 0.7;
+}
+.modelPreviewButton:disabled {
+  cursor: default;
+}
+.modelPreviewButton:not(:disabled):hover .modelPreview {
+  transform: scale(1.04);
+}
+.modelPreview {
+  transition: transform 160ms ease;
+}
+.modelSelectButton {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'info id'
+    'info availability';
+  align-items: center;
+  gap: 3px 12px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: var(--text-secondary);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.modelResultInfo {
+  display: grid;
+  grid-area: info;
+  min-width: 0;
+  gap: 3px;
+}
+.modelResults strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modelResults span,
+.modelResults small {
+  color: var(--subtle);
+  font-size: 11px;
+}
+.modelResultInfo small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.modelMeta {
+  grid-area: id;
+  align-self: end;
+  white-space: nowrap;
+}
+.modelAvailability {
+  grid-area: availability;
+  align-self: start;
+  white-space: nowrap;
+}
+.modelCard:hover {
+  border-color: var(--text-secondary);
+  background: var(--surface-hover);
+}
+.modelCard.modelSelected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--focus);
+}
+.previewDialog {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.68);
+}
+.previewDialogContent {
+  position: relative;
+  display: grid;
+  max-width: min(820px, 100%);
+  max-height: calc(100vh - 48px);
+  justify-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.35);
+}
+.previewDialogContent img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 150px);
+  border-radius: 4px;
+  object-fit: contain;
+}
+.previewDialogContent strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.previewCloseButton {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  padding: 6px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  background: var(--surface);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
 .formFooter {
   display: flex;
   align-items: center;
@@ -793,6 +971,9 @@
 .themeButton:focus-visible,
 .primaryButton:focus-visible,
 .download:focus-visible,
+.modelPreviewButton:focus-visible,
+.modelSelectButton:focus-visible,
+.previewCloseButton:focus-visible,
 .form input:focus-visible,
 .form select:focus-visible {
   outline: 3px solid var(--focus);
@@ -832,6 +1013,9 @@
   }
   .formGrid {
     grid-template-columns: 1fr;
+  }
+  .modelResults {
+    max-height: 420px;
   }
   .steps {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -876,6 +1060,37 @@
   }
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .modelCard {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+  .modelPreviewButton,
+  .modelPreview,
+  .modelPreviewPlaceholder {
+    width: 52px;
+    height: 52px;
+  }
+  .modelSelectButton {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'info'
+      'id'
+      'availability';
+    gap: 3px;
+  }
+  .modelMeta,
+  .modelAvailability {
+    justify-self: start;
+  }
+  .previewDialog {
+    padding: 14px;
+  }
+  .previewDialogContent {
+    padding: 10px;
+  }
+  .previewCloseButton {
+    top: 18px;
+    right: 18px;
   }
   .trace div {
     grid-template-columns: 1fr;

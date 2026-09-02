@@ -1,6 +1,7 @@
 const DEFAULT_ENGINE_API_URL = 'https://code-api-pc.dao3.fun'
 
 export type EngineMode = 'edit' | 'play'
+export type ModelLookupInput = { modelType: 1 | 2 | 3; mapId?: number; mode?: EngineMode }
 
 export type EngineScript = {
   hash?: string
@@ -112,6 +113,44 @@ export async function engineApiRequest<T>(
 
 export function resolveMapHash(mapId: number, mode: EngineMode) {
   return engineApiRequest<string>('/engine/map/hash', { mapId, mode })
+}
+
+export async function resolveModel(modelId: number, input: ModelLookupInput) {
+  const pageSize = 100
+  const maxPages = positiveInteger('BOX_MIGRATOR_MODEL_LOOKUP_PAGES', 20)
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await engineApiRequest<EnginePage<EngineModel>>('/engine/models', {
+      modelType: input.modelType,
+      mapId: input.mapId,
+      containerMode: input.mode === 'play' ? 'play' : 'edit',
+      limit: pageSize,
+      offset: page * pageSize,
+    })
+    const model = (result.rows || []).find((entry) => Number(entry.modelId) === modelId)
+    if (model) return model
+    if (
+      (result.rows || []).length < pageSize ||
+      (result.count !== undefined && (page + 1) * pageSize >= result.count)
+    )
+      break
+  }
+  throw new Error('在所选模型库中找不到该模型 ID')
+}
+
+export function searchModels(input: {
+  modelName: string
+  modelType: 1 | 2 | 3
+  mapId?: number
+  mode?: EngineMode
+}) {
+  return engineApiRequest<EnginePage<EngineModel>>('/engine/models', {
+    modelType: input.modelType,
+    modelName: input.modelName,
+    mapId: input.mapId,
+    containerMode: input.mode === 'play' ? 'play' : 'edit',
+    limit: 50,
+    offset: 0,
+  })
 }
 
 export function getMapGroupProject(mapId: number, mode: EngineMode) {

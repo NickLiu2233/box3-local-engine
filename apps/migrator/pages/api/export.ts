@@ -1,6 +1,6 @@
 import fs from 'fs'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { generateProjectArchive } from '../../lib/export-project'
+import { generateModelProjectArchive, generateProjectArchive } from '../../lib/export-project'
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } }
 
@@ -11,13 +11,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
   let archivePath = ''
   try {
-    const result = await generateProjectArchive(req.body || {})
+    const body = req.body || {}
+    const result =
+      body.source === 'model-id' || body.source === 'model-hash'
+        ? await generateModelProjectArchive({
+            modelHash: body.modelHash ? String(body.modelHash) : undefined,
+            modelId: body.modelId ? Number(body.modelId) : undefined,
+            projectName: typeof body.projectName === 'string' ? body.projectName : undefined,
+            modelType: body.modelType ? Number(body.modelType) : undefined,
+            modelMapId: body.modelMapId ? Number(body.modelMapId) : undefined,
+          })
+        : await generateProjectArchive(body)
     archivePath = result.archivePath
     res.status(200)
-    res.setHeader('Content-Type', 'application/gzip')
+    res.setHeader(
+      'Content-Type',
+      result.filename.endsWith('.voxaproject')
+        ? 'application/vnd.box.voxaproject+zip'
+        : 'application/gzip',
+    )
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="project.boxproject"; filename*=UTF-8''${encodeURIComponent(result.filename)}`,
+      `attachment; filename="project${result.filename.endsWith('.voxaproject') ? '.voxaproject' : '.boxproject'}"; filename*=UTF-8''${encodeURIComponent(result.filename)}`,
     )
     res.setHeader('X-Box-Migrator-Blob-Count', String(result.blobCount))
     res.setHeader('X-Box-Migrator-Total-Bytes', String(result.totalBytes))

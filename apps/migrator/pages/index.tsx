@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- 模型预览图来自用户选择的远程模型库地址。 */
 import { FormEvent, useEffect, useState } from 'react'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
@@ -24,6 +25,13 @@ type Job = {
   updatedAt: number
 }
 type Theme = 'system' | 'light' | 'dark'
+type ModelSearchResult = {
+  modelId: number
+  modelName: string
+  modelDescription?: string
+  modelPreviewUrl?: string
+  projectFileHash?: string
+}
 const THEME_KEY = 'box-migrator-theme'
 const formatBytes = (bytes: number) =>
   bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
@@ -42,8 +50,17 @@ const stageRank = (stage: string) =>
   )
 
 export default function Home() {
+  const [source, setSource] = useState<'map-id' | 'map-hash' | 'model-id' | 'model-hash'>('map-id')
   const [hash, setHash] = useState('')
   const [mapId, setMapId] = useState('')
+  const [modelHash, setModelHash] = useState('')
+  const [modelName, setModelName] = useState('')
+  const [modelType, setModelType] = useState<'1' | '2' | '3'>('1')
+  const [modelMapId, setModelMapId] = useState('')
+  const [modelResults, setModelResults] = useState<ModelSearchResult[]>([])
+  const [selectedModel, setSelectedModel] = useState<ModelSearchResult>()
+  const [previewModel, setPreviewModel] = useState<ModelSearchResult>()
+  const [searchingModels, setSearchingModels] = useState(false)
   const [mode, setMode] = useState<'edit' | 'play'>('edit')
   const [projectName, setProjectName] = useState('')
   const [job, setJob] = useState<Job>()
@@ -109,6 +126,31 @@ export default function Home() {
     }
   }, [jobId, jobStatus])
 
+  async function searchModel() {
+    setSearchingModels(true)
+    setSelectedModel(undefined)
+    setModelResults([])
+    try {
+      const response = await fetch('/api/model-search', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          modelName,
+          modelType: Number(modelType),
+          mapId: modelType === '3' ? Number(modelMapId) : undefined,
+          mode,
+        }),
+      })
+      const body = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(body.message || '模型搜索失败')
+      setModelResults(body.rows || [])
+    } catch (error) {
+      setPollWarning((error as Error).message || '模型搜索失败')
+    } finally {
+      setSearchingModels(false)
+    }
+  }
+
   useEffect(() => {
     if (!jobId || jobStatus !== 'running') return
     const timer = window.setInterval(() => setClock(Date.now()), 1000)
@@ -121,10 +163,25 @@ export default function Home() {
     setJob(undefined)
     setPollWarning('')
     try {
+      if (source === 'model-id' && !selectedModel?.projectFileHash) {
+        throw new Error('请先搜索并选择一个可导出的模型')
+      }
       const response = await fetch('/api/migration', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ hash, mapId: Number(mapId), mode, projectName }),
+        body: JSON.stringify({
+          source: source === 'model-id' ? 'model-hash' : source,
+          hash: source === 'map-hash' ? hash : undefined,
+          mapId: source === 'map-id' ? Number(mapId) : undefined,
+          modelHash:
+            source === 'model-hash'
+              ? modelHash
+              : source === 'model-id'
+                ? selectedModel?.projectFileHash
+                : undefined,
+          mode,
+          projectName: projectName || selectedModel?.modelName || undefined,
+        }),
       })
       if (!response.ok) {
         const body = await response.json().catch(() => ({}))
@@ -218,7 +275,7 @@ export default function Home() {
                   <h1>迁移云端工程</h1>
                   <span>离线工程包</span>
                 </div>
-                <p>解析云端地图的当前工程数据，生成可直接导入 Local Engine 的创作工程。</p>
+                <p>导出地图创作工程或 VOXA 模型工程。</p>
               </div>
               <button
                 className={styles.themeButton}
@@ -251,7 +308,7 @@ export default function Home() {
                   <div>
                     <span>迁移设置</span>
                     <h2>工程来源</h2>
-                    <p>填写地图信息后，迁移任务将在后台持续执行。</p>
+                    <p>选择来源并填写 ID 或 Hash，任务将在后台持续执行。</p>
                   </div>
                   <b>01</b>
                 </div>
@@ -259,21 +316,173 @@ export default function Home() {
                   <div className={styles.formGrid}>
                     <label>
                       <span>
-                        云端地图 ID <em>必填</em>
+                        导出类型 <em>必填</em>
                       </span>
-                      <input
-                        value={mapId}
-                        onChange={(event) => setMapId(event.target.value.replace(/\D/g, ''))}
-                        placeholder="例如 50259290"
-                        required
-                        inputMode="numeric"
-                        pattern="[1-9][0-9]*"
-                      />
+                      <select
+                        value={source}
+                        onChange={(event) => setSource(event.target.value as typeof source)}
+                      >
+                        <option value="map-id">地图 ID → .boxproject</option>
+                        <option value="map-hash">地图 Permission Hash → .boxproject</option>
+                        <option value="model-id">模型名称搜索 → .voxaproject</option>
+                        <option value="model-hash">模型工程 Hash → .voxaproject</option>
+                      </select>
                     </label>
+                    {source === 'map-id' && (
+                      <label>
+                        <span>
+                          云端地图 ID <em>必填</em>
+                        </span>
+                        <input
+                          value={mapId}
+                          onChange={(event) => setMapId(event.target.value.replace(/\D/g, ''))}
+                          placeholder="例如 50259290"
+                          required
+                          inputMode="numeric"
+                          pattern="[1-9][0-9]*"
+                        />
+                      </label>
+                    )}
+                    {source === 'map-hash' && (
+                      <label>
+                        <span>
+                          Permission Hash <em>必填</em>
+                        </span>
+                        <input
+                          value={hash}
+                          onChange={(event) => setHash(event.target.value.trim())}
+                          placeholder="Qm…"
+                          required
+                          pattern="Qm[1-9A-HJ-NP-Za-km-z]{44}"
+                        />
+                      </label>
+                    )}
+                    {source === 'model-id' && (
+                      <>
+                        <label>
+                          <span>
+                            模型名称 <em>必填</em>
+                          </span>
+                          <input
+                            value={modelName}
+                            onChange={(event) => setModelName(event.target.value)}
+                            placeholder="例如 王者荣耀"
+                            required
+                          />
+                        </label>
+                        <label>
+                          <span>
+                            模型库 <em>必填</em>
+                          </span>
+                          <select
+                            value={modelType}
+                            onChange={(event) =>
+                              setModelType(event.target.value as typeof modelType)
+                            }
+                          >
+                            <option value="1">公共模型库</option>
+                            <option value="2">项目模型库</option>
+                            <option value="3">共享模型库</option>
+                          </select>
+                        </label>
+                        {modelType === '3' && (
+                          <label>
+                            <span>
+                              地图 ID <em>必填</em>
+                            </span>
+                            <input
+                              value={modelMapId}
+                              onChange={(event) =>
+                                setModelMapId(event.target.value.replace(/\D/g, ''))
+                              }
+                              placeholder="共享模型所在地图 ID"
+                              required
+                              inputMode="numeric"
+                              pattern="[1-9][0-9]*"
+                            />
+                          </label>
+                        )}
+                        <div className={styles.modelSearchAction}>
+                          <button
+                            type="button"
+                            onClick={() => void searchModel()}
+                            disabled={searchingModels}
+                          >
+                            {searchingModels ? '正在搜索…' : '搜索模型'}
+                          </button>
+                        </div>
+                        {modelResults.length > 0 && (
+                          <div className={styles.modelResults}>
+                            {modelResults.map((model) => (
+                              <article
+                                key={model.modelId}
+                                className={`${styles.modelCard} ${
+                                  selectedModel?.modelId === model.modelId
+                                    ? styles.modelSelected
+                                    : ''
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  className={styles.modelPreviewButton}
+                                  disabled={!model.modelPreviewUrl}
+                                  onClick={() => setPreviewModel(model)}
+                                  aria-label={`放大预览 ${model.modelName || '模型'}`}
+                                >
+                                  {model.modelPreviewUrl ? (
+                                    <img
+                                      src={model.modelPreviewUrl}
+                                      alt={`${model.modelName || '模型'}预览图`}
+                                      className={styles.modelPreview}
+                                      onError={(event) => {
+                                        event.currentTarget.style.display = 'none'
+                                      }}
+                                    />
+                                  ) : (
+                                    <i
+                                      className={styles.modelPreviewPlaceholder}
+                                      aria-hidden="true"
+                                    />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.modelSelectButton}
+                                  onClick={() => setSelectedModel(model)}
+                                >
+                                  <span className={styles.modelResultInfo}>
+                                    <strong>{model.modelName || '未命名模型'}</strong>
+                                    <small>{model.modelDescription || '暂无简介'}</small>
+                                  </span>
+                                  <span className={styles.modelMeta}>ID {model.modelId}</span>
+                                  <small className={styles.modelAvailability}>
+                                    {model.projectFileHash ? '可导出工程' : '没有工程数据'}
+                                  </small>
+                                </button>
+                              </article>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {source === 'model-hash' && (
+                      <label>
+                        <span>
+                          模型工程 Hash <em>必填</em>
+                        </span>
+                        <input
+                          value={modelHash}
+                          onChange={(event) => setModelHash(event.target.value.trim())}
+                          placeholder="Qm… 或 43 位资源 Hash"
+                          required
+                        />
+                      </label>
+                    )}
                     <label>
-                      <span>工程模式</span>
+                      <span>{source === 'model-id' ? '容器模式' : '工程模式'}</span>
                       <select
                         value={mode}
+                        disabled={source !== 'map-id' && source !== 'model-id'}
                         onChange={(event) =>
                           setMode(event.target.value === 'play' ? 'play' : 'edit')
                         }
@@ -281,17 +490,6 @@ export default function Home() {
                         <option value="edit">编辑版本（推荐）</option>
                         <option value="play">当前发布版本</option>
                       </select>
-                    </label>
-                    <label>
-                      <span>
-                        Permission Hash <small>可选，用于核对</small>
-                      </span>
-                      <input
-                        value={hash}
-                        onChange={(event) => setHash(event.target.value.trim())}
-                        placeholder="Qm…"
-                        pattern="Qm[1-9A-HJ-NP-Za-km-z]{44}"
-                      />
                     </label>
                     <label>
                       <span>
@@ -311,7 +509,11 @@ export default function Home() {
                       className={styles.primaryButton}
                       disabled={busy || job?.status === 'running'}
                     >
-                      {busy || job?.status === 'running' ? '正在迁移…' : '生成创作工程'}
+                      {busy || job?.status === 'running'
+                        ? '正在迁移…'
+                        : source.startsWith('model')
+                          ? '生成 VOXA 工程'
+                          : '生成创作工程'}
                     </button>
                   </div>
                 </form>
@@ -507,6 +709,33 @@ export default function Home() {
             )}
           </section>
         </main>
+        {previewModel?.modelPreviewUrl && (
+          <div
+            className={styles.previewDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${previewModel.modelName || '模型'}预览`}
+            onClick={() => setPreviewModel(undefined)}
+          >
+            <div
+              className={styles.previewDialogContent}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className={styles.previewCloseButton}
+                onClick={() => setPreviewModel(undefined)}
+              >
+                关闭
+              </button>
+              <img
+                src={previewModel.modelPreviewUrl}
+                alt={`${previewModel.modelName || '模型'}预览图`}
+              />
+              <strong>{previewModel.modelName || '未命名模型'}</strong>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

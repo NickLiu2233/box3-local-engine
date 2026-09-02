@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { allowAuthenticatedCreatorApi } from '../../../server/creator-api-security';
 import {
+  creatorModelIdentityHeaders,
   creatorModelServiceError,
   requestCreatorModelService,
   sendCreatorModelServiceError,
@@ -30,7 +31,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!body.length) return res.status(400).json({ message: '模型工程文件为空' });
     const response = await requestCreatorModelService('/api/local/models/import', {
       method: 'POST',
-      headers: { 'Content-Type': String(req.headers['content-type'] || 'application/octet-stream') },
+      headers: {
+        ...creatorModelIdentityHeaders(req),
+        'Content-Type': String(req.headers['content-type'] || 'application/octet-stream'),
+      },
       body,
     }, 120_000);
     if (!response.ok) throw await creatorModelServiceError(response, '导入模型工程失败');

@@ -44,6 +44,7 @@ fs.writeFileSync(
     drainDynamicQueue,
     emptyEntitiesTree,
     fetchBlob,
+    generateModelProjectArchive,
     lightweightAmbientSound,
     lightweightAssetIndex,
     lightweightEnvironment,
@@ -479,6 +480,24 @@ fs.writeFileSync(
   assert.ok(!requestedURLs.some((url) => url.includes('/avatar/m/')))
   console.log('PASS: boxes-style voxel lookup falls back from IPFS to engine/m only')
 
+  const modelProjectBytes = Buffer.from([1, 2, 3, 4])
+  global.fetch = async (url) => {
+    assert.equal(String(url), `https://oss.invalid.test/engine/m/${modelHash}`)
+    return new Response(modelProjectBytes)
+  }
+  const exportedModel = await generateModelProjectArchive({
+    modelHash,
+    projectName: '迁移模型',
+  })
+  global.fetch = originalFetch
+  const exportedModelBytes = fs.readFileSync(exportedModel.archivePath)
+  assert.match(exportedModel.filename, /^迁移模型_.*\.voxaproject$/)
+  assert.equal(exportedModelBytes.readUInt32LE(0), 0x04034b50)
+  assert.ok(exportedModelBytes.includes(Buffer.from('manifest.json')))
+  assert.ok(exportedModelBytes.includes(Buffer.from('project.bin')))
+  fs.rmSync(exportedModel.archivePath, { force: true })
+  console.log('PASS: model project hashes export portable VOXA project bundles')
+
   const timing = {}
   await drainDynamicQueue(
     [{ id: 'slow' }, { id: 'fast' }],
@@ -566,6 +585,8 @@ fs.writeFileSync(
     else if (parsed.pathname === '/engine/script/list') data = cloudScripts
     else if (parsed.pathname === '/engine/photo/list') data = []
     else if (parsed.pathname === '/engine/model/skin/default') data = null
+    else if (parsed.pathname === '/engine/models' && parsed.searchParams.get('modelType') === '1')
+      data = { count: 1, rows: [{ modelId: 42, modelName: '模型', projectFileHash: modelHash }] }
     else if (parsed.pathname === '/engine/models') data = { count: 0, rows: [] }
     else throw new Error(`unexpected API ${parsed.pathname}`)
     return new Response(JSON.stringify({ code: 200, data, msg: '' }), {
@@ -574,6 +595,15 @@ fs.writeFileSync(
     })
   }
   assert.equal(await engineApi.resolveMapHash(123, 'edit'), actualHash)
+  assert.equal(
+    (await engineApi.resolveModel(42, { modelType: 1, mode: 'edit' })).projectFileHash,
+    modelHash,
+  )
+  assert.equal(
+    (await engineApi.searchModels({ modelName: '模型', modelType: 1, mode: 'edit' })).rows[0]
+      .projectFileHash,
+    modelHash,
+  )
   const engineData = await engineApi.getCloudEngineData(123, 'edit')
   global.fetch = originalFetch
   assert.equal(engineData.groupProject.version, '0.3.31')
@@ -582,6 +612,12 @@ fs.writeFileSync(
       ({ init }) => init.headers.get('request-header-fixed-key') === 'fixed-key',
     ),
   )
+  const modelRequest = engineRequests.find(
+    ({ parsed }) =>
+      parsed.pathname === '/engine/models' && parsed.searchParams.get('modelName') === '模型',
+  )
+  assert.equal(modelRequest.parsed.searchParams.get('containerMode'), 'edit')
+  assert.equal(modelRequest.parsed.searchParams.get('modelName'), '模型')
   assert.ok(
     engineRequests.some(
       ({ parsed }) =>

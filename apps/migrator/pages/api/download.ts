@@ -9,10 +9,15 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const result = takeMigrationArchive(id)
   if (!result) return res.status(404).json({ message: '工程包不存在或迁移尚未完成' })
   res.status(200)
-  res.setHeader('Content-Type', 'application/gzip')
+  res.setHeader(
+    'Content-Type',
+    result.filename.endsWith('.voxaproject')
+      ? 'application/vnd.box.voxaproject+zip'
+      : 'application/gzip',
+  )
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="project.boxproject"; filename*=UTF-8''${encodeURIComponent(result.filename)}`,
+    `attachment; filename="project${result.filename.endsWith('.voxaproject') ? '.voxaproject' : '.boxproject'}"; filename*=UTF-8''${encodeURIComponent(result.filename)}`,
   )
   const stream = fs.createReadStream(result.archivePath)
   stream.on('error', (error) => res.destroy(error))

@@ -70,7 +70,7 @@ export async function getMapContentInfo(
       description: identity?.description || '',
       image: identity?.cover || '',
       customizeType: getCustomizeType(containerName),
-      backgroundImage: identity?.cover || '',
+      backgroundImage: identity?.loadingCover || '',
       combType: mapRoleToCombType(identity?.mapRole),
       mapGroupId: identity?.mapGroupId,
       mapRole: identity?.mapRole,

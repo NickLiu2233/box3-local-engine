@@ -26,6 +26,8 @@ const distributionRoot = path.join(packageRoot, 'dist', 'releases')
 const projectExportRoot = path.join(packageRoot, 'dist', 'projects')
 const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packageRoot, 'backups')
 const snapshotLimit = 5
+const projectImageMaxBytes = 3 * 1024 * 1024
+const projectImageMaxDataUrlBytes = Math.ceil(projectImageMaxBytes / 3) * 4 + 64
 const projectIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const publicMapIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
 const mapSizePresets = {
@@ -794,6 +796,7 @@ function toProjectSummary(metadata) {
     releaseCount: releases.length,
     author: metadata.author || '',
     cover: metadata.cover || '',
+    loadingCover: metadata.loadingCover || '',
     latestRelease: latestRelease ? latestRelease.version : '',
     latestReleaseNotes: latestRelease?.notes || '',
     theme: metadata.theme || 'sunset',
@@ -1017,11 +1020,21 @@ function updateProject(id, patch) {
     if (
       patch.cover &&
       (!/^data:image\/(png|jpeg|webp);base64,/.test(patch.cover) ||
-        Buffer.byteLength(patch.cover, 'utf8') > 2 * 1024 * 1024)
+        Buffer.byteLength(patch.cover, 'utf8') > projectImageMaxDataUrlBytes)
     ) {
-      throw new Error('封面必须是小于 2MB 的 PNG、JPG 或 WebP 图片')
+      throw new Error('封面必须是小于 3MB 的 PNG、JPG 或 WebP 图片')
     }
     metadata.cover = patch.cover
+  }
+  if (typeof patch.loadingCover === 'string') {
+    if (
+      patch.loadingCover &&
+      (!/^data:image\/(png|jpeg|webp);base64,/.test(patch.loadingCover) ||
+        Buffer.byteLength(patch.loadingCover, 'utf8') > projectImageMaxDataUrlBytes)
+    ) {
+      throw new Error('加载封面图必须是小于 3MB 的 PNG、JPG 或 WebP 图片')
+    }
+    metadata.loadingCover = patch.loadingCover
   }
   metadata.updatedAt = new Date().toISOString()
   writeJSON(path.join(projectRoot(id), 'project.json'), metadata)
@@ -1560,6 +1573,7 @@ function importMapGroupAsSubmap(temporaryRoot, descriptor, targetMainProjectId) 
       description: sourceMetadata.description || '',
       author: sourceMetadata.author || targetMain.author || '',
       cover: sourceMetadata.cover || '',
+      loadingCover: sourceMetadata.loadingCover || '',
       theme: sourceMetadata.theme || 'sunset',
       createdAt: now,
       updatedAt: now,
@@ -1692,6 +1706,7 @@ function importMapGroupDirectory(temporaryRoot, options = {}) {
         description: metadata.description || '',
         author: metadata.author || '',
         cover: metadata.cover || '',
+        loadingCover: metadata.loadingCover || '',
         theme: metadata.theme || 'sunset',
         createdAt: now,
         updatedAt: now,
@@ -1793,6 +1808,7 @@ function publishProject(id, requestedVersion, notes = '') {
     author: metadata.author || '',
     description: metadata.description || '',
     cover: metadata.cover || '',
+    loadingCover: metadata.loadingCover || '',
     theme: metadata.theme || 'sunset',
     version,
     createdAt: new Date().toISOString(),
@@ -2204,6 +2220,7 @@ function packageProject(reference, outputDirectory, options = {}) {
       author: manifest.author || '',
       description: manifest.description || '',
       cover: manifest.cover || '',
+      loadingCover: manifest.loadingCover || '',
       version: target.version,
       notes: manifest.notes || '',
       createdAt: generatedAt,

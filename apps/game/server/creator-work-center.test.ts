@@ -47,6 +47,14 @@ describe('Creator work center model integration', () => {
     }
   });
 
+  test('forwards the authenticated creator identity when importing a VOXA project', () => {
+    const endpoint = source('pages/api/creator-models/import.ts');
+    expect(endpoint).toContain('creatorModelIdentityHeaders');
+    expect(endpoint).toMatch(
+      /requestCreatorModelService\([\s\S]*headers:\s*\{[\s\S]*\.\.\.creatorModelIdentityHeaders\(req\)/,
+    );
+  });
+
   test('allows map editors to read existing models without model-management permission', () => {
     expect(source('pages/api/creator-models/index.ts')).toContain("['projects.edit', 'models.manage']");
     expect(source('pages/api/creator-models/blobs/[hash].ts')).toContain("['projects.edit', 'models.manage']");

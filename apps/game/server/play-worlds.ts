@@ -9,6 +9,7 @@ export type PlayWorld = {
   author: string;
   description: string;
   cover: string;
+  loadingCover?: string;
   version: string;
   mapGroupId: string;
   mapRole: 'main' | 'submap';
@@ -54,6 +55,7 @@ export function getPlayWorlds(): PlayWorld[] {
             author: manifest.author || '',
             description: manifest.description || '',
             cover: manifest.cover || '',
+            loadingCover: manifest.loadingCover || '',
             version: manifest.version || '',
             mapGroupId: manifest.mapGroupId,
             mapRole: manifest.mapRole,

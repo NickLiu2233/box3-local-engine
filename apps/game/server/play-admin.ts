@@ -767,7 +767,7 @@ export function getPlayWorldResourceStatuses(): PlayWorldResourceStatus[] {
 }
 
 export function updatePlayWorld(id: string, patch: Record<string, unknown>) {
-  const protectedFields = ['name', 'author', 'description', 'cover'];
+  const protectedFields = ['name', 'author', 'description', 'cover', 'loadingCover'];
   if (protectedFields.some((field) => Object.prototype.hasOwnProperty.call(patch, field))) {
     throw new Error('游玩端不允许修改地图封面、标题、作者或简介');
   }

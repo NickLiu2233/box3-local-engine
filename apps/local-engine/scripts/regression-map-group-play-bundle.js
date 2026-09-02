@@ -73,6 +73,9 @@ function saveProject(id, characters) {
       id: 'release-dungeon',
       name: '发布副地图',
     })
+    const artworkCover = 'data:image/png;base64,YXJ0d29yaw=='
+    const loadingCover = 'data:image/webp;base64,bG9hZGluZw=='
+    manager.updateProject('release-main', { cover: artworkCover, loadingCover })
     saveProject('release-main', '12345')
 
     assert.throws(
@@ -130,6 +133,8 @@ function saveProject(id, characters) {
     assert.notEqual(submapManifest.permanentMapId, mainManifest.permanentMapId)
     assert.equal(mainManifest.permanentMapGroupId, mainManifest.permanentMapId)
     assert.equal(submapManifest.permanentMapGroupId, mainManifest.permanentMapId)
+    assert.equal(mainManifest.cover, artworkCover)
+    assert.equal(mainManifest.loadingCover, loadingCover)
 
     const distributionPath = path.join(temporaryRoot, 'distribution')
     const packaged = manager.packageProject('release-main@v1', distributionPath, {
@@ -212,6 +217,13 @@ function saveProject(id, characters) {
     assert(entries.includes('bundle.json'))
     assert(entries.includes('worlds/release-main/manifest.json'))
     assert(entries.includes('worlds/release-dungeon/manifest.json'))
+    const bundledMainManifest = JSON.parse(
+      execFileSync('tar', ['-xOzf', bundle.archivePath, 'worlds/release-main/manifest.json'], {
+        encoding: 'utf8',
+      }),
+    )
+    assert.equal(bundledMainManifest.cover, artworkCover)
+    assert.equal(bundledMainManifest.loadingCover, loadingCover)
     const descriptor = JSON.parse(
       execFileSync('tar', ['-xOzf', bundle.archivePath, 'bundle.json'], { encoding: 'utf8' }),
     )

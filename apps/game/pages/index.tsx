@@ -33,6 +33,7 @@ import {
 } from '../server/import-diagnostics'
 
 const TOKEN_KEY = 'box-play-admin-token'
+const DEFAULT_MAP_COVER = '/map-templates/blank-template.png'
 
 type MapDiscoveryStats = {
   onlineCount: number
@@ -1032,7 +1033,7 @@ function HomePageContent({
                     }
                     recordRecent(main.publicId)
                   }}>
-                    <div className="cover">{main.cover ? <img src={main.cover} alt="" /> : <span>{main.name.slice(0, 1)}</span>}{liveMapStats[main.publicId] ? <span className="mapOnline">{t('playHome.onlineCount', { count: liveMapStats[main.publicId].onlineCount })}</span> : null}</div>
+                    <div className="cover"><img src={main.cover || DEFAULT_MAP_COVER} alt="" />{liveMapStats[main.publicId] ? <span className="mapOnline">{t('playHome.onlineCount', { count: liveMapStats[main.publicId].onlineCount })}</span> : null}</div>
                     <div className="info"><strong>{main.name}</strong><small>{main.author || t('playHome.unnamed')} · {main.version}</small>{main.description ? <p>{main.description}</p> : null}<span className="playCta">{t('playHome.playNow')} <ArrowUpRight size={15} aria-hidden="true" /></span></div>
                   </Link>
                 </article>
@@ -1083,11 +1084,7 @@ function HomePageContent({
                     <article className="card">
                       <Link className="cardLink" href={`/p/${encodeURIComponent(main.publicId)}`}>
                         <div className="cover">
-                          {main.cover ? (
-                            <img src={main.cover} alt="" />
-                          ) : (
-                            <span>{main.name.slice(0, 1)}</span>
-                          )}
+                          <img src={main.cover || DEFAULT_MAP_COVER} alt="" />
                         </div>
                         <div className="info">
                           <strong>{main.name}</strong>
@@ -1136,11 +1133,7 @@ function HomePageContent({
                                 href={`/p/${encodeURIComponent(world.publicId)}`}
                               >
                                 <div className="cover">
-                                  {world.cover ? (
-                                    <img src={world.cover} alt="" />
-                                  ) : (
-                                    <span>{world.name.slice(0, 1)}</span>
-                                  )}
+                                  <img src={world.cover || DEFAULT_MAP_COVER} alt="" />
                                 </div>
                                 <div className="info">
                                   <strong>{world.name}</strong>
@@ -2739,7 +2732,7 @@ function HomePageContent({
         .playWorkCenter .info p { color: rgba(255, 255, 255, 0.58); }
         .playWorkCenter .playerGrid .card { min-height: 0; }
         .playWorkCenter .playerGrid .cover {
-          aspect-ratio: 16 / 9;
+          aspect-ratio: 1;
           border-radius: 7px 7px 0 0;
         }
         .playWorkCenter .playerGrid .info { min-height: 128px; padding: 14px; }

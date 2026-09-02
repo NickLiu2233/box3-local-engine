@@ -4,6 +4,7 @@ import path from 'path'
 import { randomUUID } from 'crypto'
 import {
   generateProjectArchive,
+  generateModelProjectArchive,
   type GeneratedProject,
   type MigrationProgress,
 } from './export-project'
@@ -140,8 +141,13 @@ function cleanExpiredJobs() {
 }
 
 export function startMigration(input: {
+  source?: 'map-id' | 'map-hash' | 'model-id' | 'model-hash'
   hash?: string
   mapId?: number
+  modelHash?: string
+  modelId?: number
+  modelType?: number
+  modelMapId?: number
   mode?: 'edit' | 'play'
   projectName?: string
 }) {
@@ -168,14 +174,25 @@ export function startMigration(input: {
   }
   jobs.set(id, job)
   persistJob(job)
-  void generateProjectArchive(input, (progress) => {
-    const updatedAt = Date.now()
-    Object.assign(job, progress, {
-      updatedAt,
-      expiresAt: updatedAt + resultRetentionMs(),
-    })
-    persistJob(job)
-  })
+  const generate =
+    input.source === 'model-id' || input.source === 'model-hash'
+      ? generateModelProjectArchive(input, (progress) => {
+          const updatedAt = Date.now()
+          Object.assign(job, progress, {
+            updatedAt,
+            expiresAt: updatedAt + resultRetentionMs(),
+          })
+          persistJob(job)
+        })
+      : generateProjectArchive(input, (progress) => {
+          const updatedAt = Date.now()
+          Object.assign(job, progress, {
+            updatedAt,
+            expiresAt: updatedAt + resultRetentionMs(),
+          })
+          persistJob(job)
+        })
+  void generate
     .then((result) => {
       const updatedAt = Date.now()
       Object.assign(job, {

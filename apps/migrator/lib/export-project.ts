@@ -10,6 +10,7 @@ import {
   getCloudEngineData,
   migrateMapGroupProject,
   migrateProjectModels,
+  resolveModel,
   resolveMapHash,
   type CloudEngineData,
   type EngineMode,
@@ -37,6 +38,14 @@ type ExportInput = {
   mapId?: number
   mode?: EngineMode
   projectName?: string
+}
+type ModelExportInput = {
+  modelHash?: string
+  modelId?: number
+  projectName?: string
+  modelType?: number
+  modelMapId?: number
+  mode?: EngineMode
 }
 export type ResourceSourceKind = 'content' | 'voxel-model' | 's3-model' | 's3-script' | 's3-skin'
 type ReferencedResource = { hash: string; sourceKind: ResourceSourceKind }
@@ -913,12 +922,166 @@ async function runTar(root: string, archive: string) {
   if (code !== 0) throw new Error('无法创建 .boxproject 压缩包')
 }
 
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff
+  for (const byte of bytes) {
+    crc ^= byte
+    for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0)
+  }
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function zipVoxaProject(projectName: string, projectBytes: Uint8Array) {
+  const manifest = Buffer.from(
+    JSON.stringify(
+      {
+        format: 'box-voxa-project',
+        formatVersion: 1,
+        exportedAt: new Date().toISOString(),
+        projectName,
+        editType: 0,
+        resources: [],
+      },
+      null,
+      2,
+    ),
+  )
+  const entries = [
+    { name: Buffer.from('manifest.json'), data: manifest },
+    { name: Buffer.from('project.bin'), data: Buffer.from(projectBytes) },
+  ]
+  const localRecords: Buffer[] = []
+  const centralRecords: Buffer[] = []
+  let offset = 0
+  for (const entry of entries) {
+    const crc = crc32(entry.data)
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(0x04034b50, 0)
+    local.writeUInt16LE(20, 4)
+    local.writeUInt32LE(crc, 14)
+    local.writeUInt32LE(entry.data.length, 18)
+    local.writeUInt32LE(entry.data.length, 22)
+    local.writeUInt16LE(entry.name.length, 26)
+    localRecords.push(local, entry.name, entry.data)
+
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(0x02014b50, 0)
+    central.writeUInt16LE(20, 4)
+    central.writeUInt16LE(20, 6)
+    central.writeUInt32LE(crc, 16)
+    central.writeUInt32LE(entry.data.length, 20)
+    central.writeUInt32LE(entry.data.length, 24)
+    central.writeUInt16LE(entry.name.length, 28)
+    central.writeUInt32LE(offset, 42)
+    centralRecords.push(central, entry.name)
+    offset += local.length + entry.name.length + entry.data.length
+  }
+  const centralSize = centralRecords.reduce((total, record) => total + record.length, 0)
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(0x06054b50, 0)
+  end.writeUInt16LE(entries.length, 8)
+  end.writeUInt16LE(entries.length, 10)
+  end.writeUInt32LE(centralSize, 12)
+  end.writeUInt32LE(offset, 16)
+  return Buffer.concat([...localRecords, ...centralRecords, end])
+}
+
+function modelArchiveFileName(name: string, hash: string) {
+  const safe = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim() || '云端模型'
+  return `${safe.slice(0, 60)}_${hash.slice(-10)}.voxaproject`
+}
+
 export type GeneratedProject = {
   archivePath: string
   filename: string
   blobCount: number
   totalBytes: number
   skippedBlobs: SkippedBlob[]
+}
+
+export async function generateModelProjectArchive(
+  input: ModelExportInput,
+  onProgress: (progress: MigrationProgress) => void = () => undefined,
+): Promise<GeneratedProject> {
+  const requestedHash = String(input.modelHash || '').trim()
+  const modelId = Number(input.modelId || 0)
+  if (!requestedHash && (!Number.isSafeInteger(modelId) || modelId <= 0)) {
+    throw new Error('请输入模型 ID，或提供模型工程 hash')
+  }
+  if (input.modelId !== undefined && (!Number.isSafeInteger(modelId) || modelId <= 0)) {
+    throw new Error('模型 ID 必须是正整数')
+  }
+  let modelHash = requestedHash
+  let modelName = safeProjectName(input.projectName || '云端模型')
+  onProgress({
+    stage: 'validating',
+    blobCount: 0,
+    totalBytes: 0,
+    discoveredCount: 0,
+    traversedCount: 0,
+    skippedCount: 0,
+    skippedBlobs: [],
+    activeDownloadCount: 0,
+    detail: modelHash ? '模型工程 hash 有效，正在读取工程数据…' : '正在通过模型 ID 定位工程数据…',
+  })
+  if (!modelHash) {
+    const modelType = Number(input.modelType || 1)
+    const modelMapId = Number(input.modelMapId || 0)
+    if (modelType !== 1 && modelType !== 2 && modelType !== 3) {
+      throw new Error('请选择公共库、项目库或共享库')
+    }
+    if (modelType === 3 && (!Number.isSafeInteger(modelMapId) || modelMapId <= 0)) {
+      throw new Error('共享库模型需要填写地图 ID')
+    }
+    const model = await resolveModel(modelId, {
+      modelType,
+      mapId: modelType === 3 ? modelMapId : undefined,
+      mode: input.mode,
+    })
+    modelHash = String(model.projectFileHash || '').trim()
+    modelName = safeProjectName(input.projectName || model.modelName || '云端模型')
+    if (!modelHash) throw new Error('该模型没有可导出的工程数据（projectFileHash）')
+  }
+  if (!EXACT_CONTENT_HASH_PATTERN.test(modelHash)) {
+    throw new Error('模型工程 hash 格式无效')
+  }
+  const limit = limits()
+  onProgress({
+    stage: 'downloading',
+    blobCount: 0,
+    totalBytes: 0,
+    discoveredCount: 1,
+    traversedCount: 0,
+    skippedCount: 0,
+    skippedBlobs: [],
+    activeDownloadCount: 1,
+    detail: '正在下载模型工程…',
+    currentHash: modelHash,
+    attempt: 1,
+  })
+  const bytes = await fetchBlob(modelHash, limit.maxBlobBytes, undefined, undefined, 's3-model')
+  if (bytes.byteLength > limit.maxTotalBytes) throw new Error('模型工程超过迁移器大小限制')
+  onProgress({
+    stage: 'packaging',
+    blobCount: 1,
+    totalBytes: bytes.byteLength,
+    discoveredCount: 1,
+    traversedCount: 1,
+    skippedCount: 0,
+    skippedBlobs: [],
+    activeDownloadCount: 0,
+    detail: '正在生成 VOXA 工程包…',
+    currentHash: modelHash,
+  })
+  const archivePath = path.join(os.tmpdir(), `box-migrator-${randomUUID()}.voxaproject`)
+  await fs.writeFile(archivePath, zipVoxaProject(modelName, bytes), { mode: 0o644 })
+  return {
+    archivePath,
+    filename: modelArchiveFileName(modelName, modelHash),
+    blobCount: 1,
+    totalBytes: bytes.byteLength,
+    skippedBlobs: [],
+  }
 }
 
 export async function generateProjectArchive(
