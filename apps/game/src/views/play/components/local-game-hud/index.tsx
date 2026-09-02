@@ -4,7 +4,6 @@ import {
   DoorOpen,
   Expand,
   Info,
-  LogOut,
   Menu,
   Minimize,
   Settings,
@@ -166,7 +165,6 @@ export function LocalGameHud() {
             if (event.target === event.currentTarget) setPanel(null);
           }}>
             <section className={`${style.modal} ${style.confirmModal}`} role="dialog" aria-modal="true" aria-labelledby="exit-title">
-              <div className={style.exitIcon}><LogOut /></div>
               <strong id="exit-title">{intlMessage('localHud.exitTitle')}</strong>
               <p>{intlMessage('localHud.exitDescription')}</p>
               <footer>

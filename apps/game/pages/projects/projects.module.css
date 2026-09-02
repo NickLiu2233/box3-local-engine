@@ -864,6 +864,19 @@
   align-items: flex-start;
 }
 
+/* A description can contain an imported hash or another unbroken string.
+   Let the text column shrink inside the card instead of expanding the grid. */
+.cardHeading > div:first-child {
+  min-width: 0;
+}
+
+.cardHeading p,
+.projectAuthor,
+.projectParent {
+  max-width: 100%;
+  overflow: hidden;
+}
+
 .moreButton {
   align-self: flex-start;
 }

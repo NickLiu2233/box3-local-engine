@@ -145,6 +145,34 @@ forbidPattern(
   /^BOX_WORLD_NAME=/m,
 )
 
+// Local deployments must never inherit the online service's 22:00–08:00
+// anti-addiction gate. Keep both the page-level redirect and the runtime
+// disconnect path out of the distributable sources.
+for (const [file, patterns] of Object.entries({
+  'apps/game/pages/p/[gameName]/index.tsx': [
+    /isWithinPlayTime/,
+    /TimeRestriction/,
+    /time-restriction/,
+  ],
+  'services/game-server/src/play/play-server.ts': [
+    /startTimeRestrictionCheck/,
+    /kickTimeRestrictionUsers/,
+    /TimeRestriction/,
+  ],
+  'apps/game/src/views/components/connect-error/createra.tsx': [
+    /TimeRestriction/,
+    /time-restriction/,
+  ],
+})) {
+  const source = readRequired(file)
+  for (const pattern of patterns) {
+    forbidPattern(source, file, 'retired anti-addiction restriction', pattern)
+  }
+}
+if (fs.existsSync(path.join(root, 'apps/game/pages/time-restriction.tsx'))) {
+  fail('apps/game/pages/time-restriction.tsx: retired anti-addiction page remains')
+}
+
 // Workspace dependencies must stay self-contained and must not point at the
 // old private registry.
 const workspaceText = readRequired('pnpm-workspace.yaml')

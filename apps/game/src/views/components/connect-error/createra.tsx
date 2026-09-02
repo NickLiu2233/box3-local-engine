@@ -1,5 +1,4 @@
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/router';
+import React from 'react';
 
 import { CloseType } from 'src/engine/game-client-schema';
 import { intlMessage } from 'src/utils/i18n';
@@ -46,21 +45,7 @@ export function CreateraConnectError(props: PlayErrorProps) {
     }
   };
 
-  const router = useRouter();
-
   const { title, message } = getErrorTypeTitleAndMessage();
-
-  // 立即跳转，不显示错误页面
-  useEffect(() => {
-    if (props.errorType === CloseType.TimeRestriction) {
-      router.replace('/time-restriction');
-      return;
-    }
-  }, [props.errorType, router]);
-  // 如果是时间限制错误，返回空内容（因为会立即跳转）
-  if (props.errorType === CloseType.TimeRestriction) {
-    return null;
-  }
 
   return (
     <div className={style.errorWrapper}>

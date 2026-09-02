@@ -2,6 +2,8 @@
 
 桌面启动器负责保存 `.env` 并生成内部 `.runtime.env`；源码/Docker Compose 直接使用 `.env`。修改配置后重启受影响服务。
 
+`BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE` 和 `BOX_BUILD_SOURCE` 是发行构建元数据，只由 CI 写入镜像。它们不在启动器表单展示，也不应由服主手工配置。
+
 ## 最小配置
 
 桌面启动器默认写入 `BOX_DATABASE_MODE=managed`，自动生成数据库密码并连接 Compose 内部的 `managed-postgres:5432`。选择外部数据库时写入 `BOX_DATABASE_MODE=external` 和拆分连接字段。下面的 `BOX_DATABASE_URL` 主要用于源码、Compose 或 Linux Web 部署：

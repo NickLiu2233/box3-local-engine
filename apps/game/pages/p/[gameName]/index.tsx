@@ -9,7 +9,6 @@ import { EngineApp, EngineAppProps } from '../../../components/engine-app';
 import { Error, ErrorProps } from '../../../components/error';
 import { PlayLoading } from '../../../components/play-loading';
 import { getArenaServerRenderProps } from '../../../server/server-render';
-import { FeatureFlag } from '@box-local/env/constants';
 import { hashToUrl } from '../../../server/utils/hash';
 import { hasAuthenticatedPlayer, playerLoginURL } from '../../../server/player-service-client';
 import { findPlayWorld } from '../../../server/play-worlds';
@@ -38,17 +37,6 @@ interface LoadingConfigProps {
   error?: never;
   loadingConfig: true;
   userInfo: undefined;
-}
-
-/**
- * 时间检查函数
- * 晚上10点到早上8点不允许游玩，检查是否处于该时间段
- * @returns
- */
-function isWithinPlayTime(): boolean {
-  const now = new Date();
-  const hour = now.getHours();
-  return hour >= 8 && hour < 22;
 }
 
 export const getServerSideProps: GetServerSideProps<SSRProps> = async (
@@ -98,26 +86,6 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
   // 如果 getArenaServerRenderProps 返回错误或加载配置，直接返回
   if ('error' in serverProps.props || 'loadingConfig' in serverProps.props) {
     return serverProps;
-  }
-
-  // 检查时间限制（管理员除外） - 通过 FeatureFlag 控制是否开启
-  if (
-    !isWithinPlayTime() &&
-    serverProps.props.clientConfig.FEATURE_FLAGS?.includes(
-      FeatureFlag.TimeRestriction,
-    )
-  ) {
-    const userInfo = serverProps.props.userInfo;
-
-    if (!userInfo?.isAdmin) {
-      // 非管理员用户重定向到时间限制页面
-      return {
-        redirect: {
-          destination: '/time-restriction',
-          permanent: false,
-        },
-      };
-    }
   }
 
   return serverProps;

@@ -2,7 +2,7 @@
 
 BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图创作、模型编辑、只读地图发布、多人游玩、玩家身份管理和图形化 Docker 部署。运行所需的引擎资源与 8 套预置玩家皮肤均保存在仓库和离线镜像中；正常创作与游玩不依赖 BOX3 云端资源服务。
 
-当前版本为 `0.1.0`，发行包用于内部测试。Windows 与 macOS 构建尚未接入正式代码签名；公开分发前仍需完成 Authenticode、Apple Developer ID 和 macOS 公证。
+当前版本为 `0.1.0`，目前处于发布候选阶段。正式公开分发必须从已标记的提交重新构建，并完成 Windows Authenticode、Apple Developer ID 签名和 macOS 公证。
 
 ## 从这里开始
 
@@ -118,6 +118,8 @@ BOX_DATABASE_URL=
 - Linux amd64 / arm64 完整镜像归档。
 
 无图形服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Linux Web 管理端，不包含内部迁移器或内置 PostgreSQL/Redis。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；业务镜像无需另行下载，选择内置数据库时首次需联网下载 PostgreSQL 镜像。
+
+正式 Tag 构建应向镜像注入版本、提交短号、构建日期和来源等 `BOX_BUILD_*` 元数据；不要在页面、`.env` 或启动器配置中手工填写。
 
 ## 许可与安全
 

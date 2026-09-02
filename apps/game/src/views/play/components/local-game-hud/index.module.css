@@ -123,11 +123,14 @@
 .dangerButton { display: inline-flex; height: 38px; align-items: center; justify-content: center; gap: 7px; padding: 0 15px; border: 0; border-radius: 9px; font-size: 12px; cursor: pointer; }
 .secondaryButton { color: #fff; background: #404040; }
 .dangerButton { color: #fff; background: #d64b4b; }
-.confirmModal { width: min(390px, calc(100vw - 32px)); padding: 26px 24px 10px; text-align: center; }
-.confirmModal > strong { display: block; margin-top: 13px; font-size: 17px; }
-.confirmModal > p { margin: 7px 0 10px; color: rgba(255, 255, 255, 0.6); font-size: 12px; }
-.exitIcon { display: grid; width: 48px; height: 48px; margin: auto; place-items: center; border-radius: 14px; color: #ffb4b4; background: rgba(214, 75, 75, 0.16); }
-.exitIcon svg { width: 22px; height: 22px; }
+.confirmModal { width: min(340px, calc(100vw - 32px)); padding: 20px 20px 8px; }
+.confirmModal > strong { display: block; font-size: 15px; line-height: 1.4; }
+.confirmModal > p { margin: 6px 0 12px; color: rgba(255, 255, 255, 0.6); font-size: 12px; line-height: 1.5; }
+.confirmModal footer { justify-content: flex-end; padding: 10px 0 8px; }
+.confirmModal .secondaryButton,
+.confirmModal .dangerButton { height: 34px; padding: 0 13px; border-radius: 7px; }
+.confirmModal .secondaryButton:active,
+.confirmModal .dangerButton:active { transform: scale(0.97); }
 
 .aboutModal { width: min(460px, calc(100vw - 32px)); }
 .aboutModal header { display: flex; align-items: baseline; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--hud-border); }
