@@ -264,6 +264,12 @@ function defaultMapCover() {
   return '/map-templates/blank-template.png';
 }
 
+function nextReleaseVersion(version?: string) {
+  const match = String(version || '').match(/^v(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return 'v1.0.0';
+  return `v${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
+
 const projectImageMaxBytes = 3 * 1024 * 1024;
 
 function readProjectImage(file: File, label: string, expectedRatio: number): Promise<string> {
@@ -764,8 +770,9 @@ export default function ProjectsPage({
 
   const openPublishDialog = (project: LocalProject) => {
     setMenuProject(null);
-    setSelectedProject(projects.find((entry) => entry.id === project.mainProjectId) || project);
-    setReleaseVersion('v1.0.0');
+    const mainProject = projects.find((entry) => entry.id === project.mainProjectId) || project;
+    setSelectedProject(mainProject);
+    setReleaseVersion(nextReleaseVersion(mainProject.latestRelease));
     setReleaseNotes('');
     setAssetMode('local');
     setDialogError('');
@@ -952,7 +959,7 @@ export default function ProjectsPage({
                 ),
               }
             : undefined;
-        } else if (!String(data.message || '').includes('Release already exists')) {
+        } else {
           throw new Error(data.message || '生成游戏包版本失败');
         }
         setPublishProgress((current) =>
@@ -2026,7 +2033,7 @@ export default function ProjectsPage({
             )}
             {dialog === 'publish' && (
               <>
-                <p>主地图和全部副地图将使用同一版本号，合并为一个可一次导入游玩端的游戏包。</p>
+                <p>主地图和全部副地图将使用同一版本号，合并为一个可一次导入游玩端的游戏包。每次导出会创建不可变版本，请使用新的版本号。</p>
                 <label htmlFor="release-version">版本号</label>
                 <input
                   id="release-version"

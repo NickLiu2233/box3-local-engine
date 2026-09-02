@@ -623,7 +623,7 @@
 }
 
 /* Project discovery should feel like a gallery, not a wide administration
-   table. Use the same image-first card proportion as the player library. */
+   table. The artwork is the project's square 1:1 cover, matching Play. */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -643,7 +643,7 @@
 .coverForest,
 .coverViolet {
   width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1;
   height: auto;
   min-height: 0;
   flex-basis: auto;
@@ -981,7 +981,7 @@
   .coverForest,
   .coverViolet {
     width: 120px;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 1;
     height: auto;
     min-height: 0;
     flex-basis: 120px;

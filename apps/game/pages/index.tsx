@@ -1754,7 +1754,8 @@ function HomePageContent({
         }
         .playerGrid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(208px, 224px));
+          justify-content: start;
           gap: 18px;
         }
         .groups {

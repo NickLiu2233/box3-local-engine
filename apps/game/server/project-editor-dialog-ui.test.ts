@@ -12,6 +12,7 @@ const projectManagerSource = fs.readFileSync(
   path.resolve(__dirname, '../../local-engine/src/project-manager.js'),
   'utf8',
 );
+const playHomeSource = fs.readFileSync(path.resolve(__dirname, '../pages/index.tsx'), 'utf8');
 
 describe('creator project editor dialog', () => {
   test('keeps modal backdrops above the fixed creator footer', () => {
@@ -65,5 +66,28 @@ describe('creator project editor dialog', () => {
     expect(projectApiSource).toMatch(/bodyParser:\s*\{\s*sizeLimit:\s*'10mb'\s*\}/);
     expect(projectManagerSource).toContain('const projectImageMaxBytes = 3 * 1024 * 1024');
     expect(projectManagerSource).toContain('projectImageMaxDataUrlBytes');
+  });
+
+  test('does not export an older release when the requested publish version already exists', () => {
+    expect(pageSource).not.toContain("includes('Release already exists')");
+    expect(pageSource).toContain("throw new Error(data.message || '生成游戏包版本失败')");
+    expect(pageSource).toContain('function nextReleaseVersion(version?: string)');
+    expect(pageSource).toContain('setReleaseVersion(nextReleaseVersion(mainProject.latestRelease));');
+  });
+
+  test('uses compact square artwork cards on the Play home page', () => {
+    expect(playHomeSource).toContain('src={main.cover || DEFAULT_MAP_COVER}');
+    expect(playHomeSource).toMatch(
+      /\.playWorkCenter \.playerGrid \.cover\s*\{[^}]*aspect-ratio:\s*1;/s,
+    );
+    expect(playHomeSource).toMatch(
+      /\.playerGrid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(208px, 224px\)\);[^}]*justify-content:\s*start;/s,
+    );
+  });
+
+  test('uses the same square artwork cover ratio in the Creator gallery', () => {
+    expect(styleSource).toMatch(
+      /\/\* Project discovery[\s\S]*?\.cover,\s*\.coverSunset,[\s\S]*?aspect-ratio:\s*1;/,
+    );
   });
 });
