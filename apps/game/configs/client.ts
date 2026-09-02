@@ -47,6 +47,7 @@ export type FeatureFlags = {
 
 export type LocalRuntimeInfo = {
   productVersion: string;
+  buildCommit: string;
   nodeVersion: string;
   deploymentMode: string;
   dataStorageBackend: 'disabled' | 'postgres';
@@ -108,7 +109,8 @@ export function extractServerConfigForClient(
   ) as ServerConfigForClient;
   const localRuntimeInfo: LocalRuntimeInfo | undefined = serverConfig.isLocalGameServer
     ? {
-        productVersion: process.env.BOX_IMAGE_TAG || '0.1.0',
+      productVersion: process.env.BOX_BUILD_VERSION || process.env.BOX_IMAGE_TAG || '0.1.0',
+        buildCommit: process.env.BOX_BUILD_COMMIT || 'unknown',
         nodeVersion: process.version,
         deploymentMode: process.env.BOX_DEPLOYMENT_MODE || 'local',
         dataStorageBackend: process.env.BOX_DATABASE_URL ? 'postgres' : 'disabled',

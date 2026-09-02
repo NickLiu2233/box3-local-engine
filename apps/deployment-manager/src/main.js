@@ -1139,8 +1139,14 @@ function syncProjectRuntimePolling() {
   ) {
     refreshProjectRuntimes()
   }
-  projectRuntimeTimer = window.setInterval(refreshProjectRuntimes, 1000)
+  projectRuntimeTimer = window.setInterval(refreshProjectRuntimes, document.hidden ? 5000 : 1000)
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (state.page !== 'runtimes') return
+  syncProjectRuntimePolling()
+  if (!document.hidden) refreshProjectRuntimes()
+})
 
 async function refreshProjectRuntimes() {
   if (projectRuntimeLoading || state.page !== 'runtimes') return

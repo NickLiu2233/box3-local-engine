@@ -33,10 +33,10 @@ async function main() {
     /BOX_CREATOR_EDIT_PREWARM_RUNTIMES/,
     'creator edit runtime prewarm must be configurable',
   );
-  assert.match(
+  assert.doesNotMatch(
     launcherSource,
     /BOX_CREATOR_PLAY_PREWARM_RUNTIMES/,
-    'creator preview runtime prewarm must be configurable',
+    'creator preview runtime prewarm must stay removed',
   );
   assert.match(
     launcherSource,
@@ -45,13 +45,13 @@ async function main() {
   );
   assert.match(
     launcherSource,
-    /for \(const world of worlds\) \{\s*await playLibrary\.ensureRuntime\(world\.id\)/,
-    'play must generate a persistent prebake cache for every installed map',
+    /for \(const world of worlds\.slice\(0, count\)\) \{\s*await playLibrary\.ensureRuntime\(world\.id\)/,
+    'play must only prewarm the configured number of installed maps',
   );
   assert.doesNotMatch(
     launcherSource,
     /prewarmCount\([\s\S]{0,120}PREWARM_RUNTIMES[\s\S]{0,80}\n\s*1,\n/,
-    'runtime prewarm must not default to only one map',
+    'runtime prewarm must keep a multi-map default',
   );
 
   const composeSource = fs.readFileSync(
@@ -60,18 +60,18 @@ async function main() {
   );
   assert.match(
     composeSource,
-    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-6\}/,
-    'creator must prewarm its configured edit capacity by default',
+    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-2\}/,
+    'creator must use the lightweight edit prewarm default',
+  );
+  assert.doesNotMatch(
+    composeSource,
+    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES/,
+    'creator preview prewarm configuration must stay removed',
   );
   assert.match(
     composeSource,
-    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES: \$\{BOX_CREATOR_PLAY_PREWARM_RUNTIMES:-0\}/,
-    'creator must not execute play-preview scripts before a user requests them',
-  );
-  assert.match(
-    composeSource,
-    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-8\}/,
-    'play must prewarm its configured runtime capacity by default',
+    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-2\}/,
+    'play must use the lightweight runtime prewarm default',
   );
 
   const envExampleSource = fs.readFileSync(
@@ -80,17 +80,17 @@ async function main() {
   );
   assert.match(
     envExampleSource,
-    /^BOX_CREATOR_EDIT_PREWARM_RUNTIMES=6$/m,
+    /^BOX_CREATOR_EDIT_PREWARM_RUNTIMES=2$/m,
     'the example env must not override creator edit prewarm with an old default',
   );
-  assert.match(
+  assert.doesNotMatch(
     envExampleSource,
-    /^BOX_CREATOR_PLAY_PREWARM_RUNTIMES=0$/m,
-    'the example env must keep unattended creator preview scripts disabled',
+    /^BOX_CREATOR_PLAY_PREWARM_RUNTIMES=/m,
+    'the example env must not expose retired creator preview prewarm settings',
   );
   assert.match(
     envExampleSource,
-    /^BOX_PLAY_PREWARM_RUNTIMES=8$/m,
+    /^BOX_PLAY_PREWARM_RUNTIMES=2$/m,
     'the example env must not override play prewarm with an old default',
   );
 

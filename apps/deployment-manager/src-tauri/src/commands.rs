@@ -698,7 +698,7 @@ fn normalize_owner_environment(content: &str) -> Result<String, String> {
     for (key, default) in [
         ("BOX_DATABASE_SCHEMA", "box_engine"),
         ("BOX_IDENTITY_DATABASE_SCHEMA", "box_identity"),
-        ("BOX_DATABASE_POOL_SIZE", "10"),
+        ("BOX_DATABASE_POOL_SIZE", "4"),
         ("BOX_DATABASE_SSL_REJECT_UNAUTHORIZED", "true"),
         ("STORAGE_CACHE_REDIS_TTL", "240"),
         ("BOX_RUNTIME_IDLE_TIMEOUT_MS", "900000"),
@@ -2095,7 +2095,7 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .is_some_and(|value| !value.is_empty()),
         redis_db: number_u8("REDIS_DB", 0),
         storage_cache_redis_db: number_u8("STORAGE_CACHE_REDIS_DB", 1),
-        database_pool_size: number_u32("BOX_DATABASE_POOL_SIZE", 10),
+        database_pool_size: number_u32("BOX_DATABASE_POOL_SIZE", 4),
         storage_cache_redis_ttl: number_u8("STORAGE_CACHE_REDIS_TTL", 240),
         auto_backup_enabled: values
             .get("BOX_AUTO_BACKUP_ENABLED")
@@ -2134,8 +2134,8 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         play_runtimes: number_u32("BOX_PLAY_MAX_RUNTIMES", 8),
         creator_edit_runtimes: number_u32("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
-        creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 6),
-        play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 8),
+        creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 2),
+        play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 2),
         player_limit: number_u32("BOX_LOCAL_PLAYER_LIMIT", 8),
         script_memory_mb: number_u32("BOX_SCRIPT_MEMORY_MB", 512),
         runtime_idle_minutes: milliseconds_as_minutes("BOX_RUNTIME_IDLE_TIMEOUT_MS", 15),

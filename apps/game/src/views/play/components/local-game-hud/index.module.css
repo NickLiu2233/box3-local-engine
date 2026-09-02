@@ -129,6 +129,20 @@
 .exitIcon { display: grid; width: 48px; height: 48px; margin: auto; place-items: center; border-radius: 14px; color: #ffb4b4; background: rgba(214, 75, 75, 0.16); }
 .exitIcon svg { width: 22px; height: 22px; }
 
+.aboutModal { width: min(460px, calc(100vw - 32px)); }
+.aboutModal header { display: flex; align-items: baseline; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--hud-border); }
+.aboutModal header strong { font-size: 17px; }
+.aboutBody { padding: 10px 20px 14px; }
+.aboutFacts { margin: 0; }
+.aboutFact, .aboutBuild { min-width: 0; display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.aboutFact dt, .aboutBuild dt { color: rgba(255, 255, 255, 0.55); font-size: 11px; }
+.aboutFact dd, .aboutBuild dd { overflow: hidden; margin: 0; color: rgba(255, 255, 255, 0.9); font-size: 12px; font-weight: 600; line-height: 1.5; text-overflow: ellipsis; white-space: nowrap; }
+.aboutBuild dd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; }
+.aboutNotice { padding: 12px 0 0; }
+.aboutNotice strong { display: block; color: rgba(255, 255, 255, 0.62); font-size: 11px; }
+.aboutNotice p { margin: 5px 0 0; color: rgba(255, 255, 255, 0.82); font-size: 12px; line-height: 1.6; }
+.aboutModal footer { justify-content: flex-end; padding: 11px 20px 14px; border-top: 1px solid var(--hud-border); }
+
 @media (max-width: 640px) {
   .nav { top: 12px; right: 12px; }
   .circleButton { width: 28px; height: 28px; }
@@ -139,6 +153,8 @@
   .menuPanel svg { width: 16px; height: 16px; }
   .menuPanel span { font-size: 10px; }
   .modalLayer { padding: 12px; }
+  .aboutFact, .aboutBuild { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+  .aboutFact dd, .aboutBuild dd { white-space: normal; }
 }
 
 @media (prefers-reduced-motion: reduce) {

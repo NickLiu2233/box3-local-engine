@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   DoorOpen,
   Expand,
+  Info,
   LogOut,
   Menu,
   Minimize,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { usePlayer } from 'src/client/play/play-context';
+import { clientConfig } from 'src/config/client';
 import {
   PlayerProfileDialog,
   type PlayerProfileChanges,
@@ -23,7 +25,7 @@ import { InputPauseConsumer } from 'src/views/components/input-lock';
 
 import style from './index.module.css';
 
-type Panel = 'menu' | 'avatar' | 'exit' | null;
+type Panel = 'menu' | 'avatar' | 'about' | 'exit' | null;
 
 type Profile = {
   displayName: string;
@@ -46,6 +48,11 @@ export function LocalGameHud() {
     boxId: '',
     avatarSkinId: 'explorer',
   });
+  const engineVersion = `${(clientConfig.localRuntimeInfo?.productVersion || '0.1.0').replace(/^v/, '')}-local`;
+  const buildCommit = clientConfig.localRuntimeInfo?.buildCommit;
+  const buildVersion = buildCommit && buildCommit !== 'unknown'
+    ? `${engineVersion} · ${buildCommit.slice(0, 7)}`
+    : engineVersion;
 
   const toggleMenu = () => {
     exitPointerLock();
@@ -141,6 +148,10 @@ export function LocalGameHud() {
               <Settings />
               <span>{intlMessage('settings')}</span>
             </button>
+            <button type="button" onClick={() => setPanel('about')}>
+              <Info />
+              <span>{intlMessage('localHud.about')}</span>
+            </button>
             <button type="button" onClick={() => setPanel('exit')}>
               <DoorOpen />
               <span>{intlMessage('localHud.exitMap')}</span>
@@ -161,6 +172,54 @@ export function LocalGameHud() {
               <footer>
                 <button className={style.secondaryButton} onClick={() => setPanel(null)}>{intlMessage('localHud.continuePlaying')}</button>
                 <button className={style.dangerButton} onClick={() => window.location.assign('/')}>{intlMessage('localHud.exitMap')}</button>
+              </footer>
+            </section>
+          </div>
+        </InputPauseConsumer>
+      )}
+
+      {panel === 'about' && (
+        <InputPauseConsumer>
+          <div
+            className={style.modalLayer}
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) setPanel(null);
+            }}
+          >
+            <section
+              className={`${style.modal} ${style.aboutModal}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="about-title"
+            >
+              <header>
+                <strong id="about-title">{intlMessage('localHud.aboutTitle')}</strong>
+              </header>
+              <div className={style.aboutBody}>
+                <dl className={style.aboutFacts}>
+                  <div className={style.aboutBuild}>
+                    <dt>{intlMessage('localHud.buildVersion')}</dt>
+                    <dd>{buildVersion}</dd>
+                  </div>
+                  <div className={style.aboutFact}>
+                    <dt>{intlMessage('aboutEngineDeveloper')}</dt>
+                    <dd>{intlMessage('aboutEngineDeveloperValue')}</dd>
+                  </div>
+                  <div className={style.aboutFact}>
+                    <dt>{intlMessage('aboutCopyright')}</dt>
+                    <dd>{intlMessage('aboutCopyrightValue')}</dd>
+                  </div>
+                </dl>
+                <section className={style.aboutNotice} aria-labelledby="about-notice-title">
+                  <strong id="about-notice-title">{intlMessage('aboutDeclaration')}</strong>
+                  <p>{intlMessage('aboutLocalDeploymentDeclaration')}</p>
+                </section>
+              </div>
+              <footer>
+                <button className={style.secondaryButton} onClick={() => setPanel(null)}>
+                  {intlMessage('localHud.closeAbout')}
+                </button>
               </footer>
             </section>
           </div>

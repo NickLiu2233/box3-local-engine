@@ -13,6 +13,7 @@ const {
 } = require('./teleport-room-manager')
 
 const worldIdPattern = /^[a-z0-9][a-z0-9-]{0,62}$/
+const worldListCache = new Map()
 
 function readWorld(libraryRoot, id) {
   if (!worldIdPattern.test(id || '')) return null
@@ -53,16 +54,26 @@ function readWorld(libraryRoot, id) {
   }
 }
 
-function listWorlds(libraryRoot) {
+function listWorlds(libraryRoot, cacheMaxAgeMs = 0) {
+  const cached = worldListCache.get(libraryRoot)
+  const now = Date.now()
+  if (cached && cacheMaxAgeMs > 0 && now - cached.sampledAt < cacheMaxAgeMs) {
+    return cached.worlds
+  }
   try {
-    return fs
+    const worlds = fs
       .readdirSync(libraryRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => readWorld(libraryRoot, entry.name))
       .filter(Boolean)
       .sort((a, b) => a.id.localeCompare(b.id))
+    worldListCache.set(libraryRoot, { sampledAt: now, worlds })
+    return worlds
   } catch (error) {
-    if (error?.code === 'ENOENT') return []
+    if (error?.code === 'ENOENT') {
+      worldListCache.delete(libraryRoot)
+      return []
+    }
     throw error
   }
 }
@@ -357,7 +368,10 @@ function startPlayLibrary({
   })
 
   const scanTimer = setInterval(() => {
-    const worlds = new Map(listWorlds(libraryRoot).map((world) => [world.id, world]))
+    // Runtime cleanup only needs eventual consistency. Cache the complete
+    // library snapshot here, while request routing keeps its fresh lookup so
+    // a newly imported map remains immediately enterable.
+    const worlds = new Map(listWorlds(libraryRoot, 10_000).map((world) => [world.id, world]))
     for (const [key, runtime] of runtimes) {
       const world = worlds.get(runtime.worldId || key)
       if (!world || world.signature !== runtime.signature) {

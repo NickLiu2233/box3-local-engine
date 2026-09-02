@@ -187,7 +187,7 @@ const configuration = [
     type: 'number',
     min: 0,
     max: 128,
-    defaultValue: '8',
+    defaultValue: '2',
   },
   {
     key: 'BOX_TELEPORT_MAX_ROOMS',

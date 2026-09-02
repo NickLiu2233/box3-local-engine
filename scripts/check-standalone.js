@@ -1161,7 +1161,7 @@ for (const filePath of localProjectApiFiles) {
     source,
     file,
     'awaited authenticated creator API guard',
-    /await\s+allowAuthenticatedCreatorApi\(req, res, /,
+    /await\s+allowAuthenticatedCreatorApi\(\s*req,\s*res,\s*/,
   )
 }
 

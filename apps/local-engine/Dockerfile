@@ -240,6 +240,10 @@ LABEL org.box.local-engine.play-format="7" \
       org.opencontainers.image.licenses="LicenseRef-Proprietary"
 
 ENV BOX_DEPLOYMENT_MODE=play \
+    BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
+    BOX_BUILD_COMMIT=${BOX_BUILD_COMMIT} \
+    BOX_BUILD_DATE=${BOX_BUILD_DATE} \
+    BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE} \
     BOX_WEB_HOST=0.0.0.0 \
     BOX_WEB_PORT=3000 \
     BOX_PLAY_RUNTIME_HOST=127.0.0.1 \

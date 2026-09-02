@@ -33,7 +33,7 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 
 ## 容量与运行时
 
-`BOX_PLAY_MAX_RUNTIMES` 限制同时运行的地图和 Teleport 房间总数；`BOX_PLAY_PREWARM_RUNTIMES` 控制预热数量；`BOX_RUNTIME_IDLE_TIMEOUT_MS` 控制无连接地图的回收时间。低配机器优先降低运行时数量和容器内存上限，再观察启动器性能监控。
+`BOX_PLAY_MAX_RUNTIMES` 限制同时运行的地图和 Teleport 房间总数；`BOX_PLAY_PREWARM_RUNTIMES` 与 `BOX_CREATOR_EDIT_PREWARM_RUNTIMES` 默认均为 `2`，只预热主地图优先的指定数量，不会为了预热遍历整个地图仓库；`BOX_RUNTIME_IDLE_TIMEOUT_MS` 控制无连接地图的回收时间。低配机器可设为 `0`，高配置服主可按实际负载提高，再观察启动器性能监控。
 
 `BOX_PLAY_LIBRARY_READ_ONLY=true` 会关闭网页端导入、删除和服主管理入口；需要服主从网页导入 `.boxplay` 时设为 `false`。地图文件不会因端口或容器重启而丢失，但自定义目录必须在升级后继续挂载。
 
@@ -59,3 +59,5 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 `BOX_MANAGED_REDIS_HOST_PORT` 控制桌面内置 Redis 映射到本机的端口，默认 `6379`，固定绑定 `127.0.0.1`。
 
 `BOX_RUNTIME_CACHE_PATH` 是 Play 的可再生成文件缓存路径。仓库 Compose 将它挂载到 `box-play-runtime-cache`，不是 PostgreSQL 的本地替代存储，也不应放入 Redis。源码或服务器部署通常不需要手工修改该路径。
+
+`BOX_DATABASE_POOL_SIZE` 是每个业务服务或地图运行时的 PostgreSQL 最大连接数，Local Engine 的部署默认值为 `4`。多运行时同时运行时连接数会叠加；只有在 PostgreSQL 的 `max_connections`、内存和实际并发均已评估后才提高此值。

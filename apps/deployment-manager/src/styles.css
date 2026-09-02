@@ -21,6 +21,11 @@
   --success: #62b957;
   --danger: #f65252;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  /* A small, deliberate radius scale. Keep pills and circular indicators as
+     exceptions; every interactive surface should use one of these values. */
+  --radius-control: 6px;
+  --radius-surface: 8px;
+  --radius-panel: 10px;
 }
 
 * {
@@ -2702,9 +2707,70 @@ details.about-image-row:first-child {
 .runtime-empty {
   padding: 48px 20px;
   border: 1px dashed var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   color: var(--muted);
   text-align: center;
+}
+
+/* Shared surface language -------------------------------------------------
+   The launcher has one visual hierarchy: compact controls, grouped surfaces,
+   and page-level panels. These overrides intentionally live together so a
+   future screen cannot drift by introducing a one-off radius. */
+.nav-item,
+.theme-menu button,
+.dialog-close,
+.start-scope-list button,
+.button,
+.icon-button,
+.open-button,
+.service-commands button,
+.service-icon,
+.service-more-menu button,
+.copy-connection,
+.access-choice button,
+.creator-network-choice button,
+.field input,
+.toast button {
+  border-radius: var(--radius-control);
+}
+
+.theme-trigger,
+.theme-menu,
+.progress-panel,
+.summary-bar,
+.backup-dialog-file,
+.service-grid,
+.service-more-menu,
+.backup-list,
+.raw-environment,
+.database-mode-choice button,
+.managed-database-summary,
+.database-download-note,
+.managed-service-note,
+.setting-toggle,
+.network-warning,
+.access-choice,
+.creator-network-choice,
+.about-card,
+.about-image-meta,
+.diagnostic-list > div,
+.runtime-submap,
+.toast {
+  border-radius: var(--radius-surface);
+}
+
+.start-dialog,
+.config-group,
+.network-service-card,
+.managed-install-card,
+.managed-connection-card,
+.check-panel,
+.about-release-card,
+.legal-dialog,
+.metric-grid article,
+.performance-panel,
+.runtime-project {
+  border-radius: var(--radius-panel);
 }
 
 @media (hover: hover) and (pointer: fine) {

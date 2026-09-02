@@ -196,13 +196,17 @@ assert.doesNotMatch(defaults, /^COMPOSE_PROFILES=/m)
 assert.doesNotMatch(defaults, /^BOX_DATABASE_URL=/m)
 assert.doesNotMatch(defaults, /^BOX_IMAGE_TAG=/m)
 assert.doesNotMatch(defaults, /^BOX_.*PUBLIC_URL=/m)
+assert.doesNotMatch(defaults, /^BOX_CREATOR_PLAY_PREWARM_RUNTIMES=/m)
+assert.doesNotMatch(
+  fs.readFileSync(path.join(root, 'distribution/server/.env.example'), 'utf8'),
+  /^BOX_CREATOR_PLAY_PREWARM_RUNTIMES=/m,
+)
 assert.match(defaults, /^REDIS_HOST=$/m)
 assert.match(defaults, /^BOX_REDIS_MODE=disabled$/m)
 for (const [name, value] of [
   ['BOX_LOCAL_PLAYER_LIMIT', '8'],
-  ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '6'],
-  ['BOX_CREATOR_PLAY_PREWARM_RUNTIMES', '0'],
-  ['BOX_PLAY_PREWARM_RUNTIMES', '8'],
+  ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '2'],
+  ['BOX_PLAY_PREWARM_RUNTIMES', '2'],
   ['BOX_SCRIPT_HEAP_MB', '512'],
   ['BOX_SCRIPT_MEMORY_MB', '512'],
   ['BOX_RUNTIME_IDLE_TIMEOUT_MS', '900000'],
@@ -219,7 +223,7 @@ for (const [name, value] of [
   ['BOX_CREATOR_CPU_LIMIT', '4.0'],
   ['BOX_PLAY_MEMORY_LIMIT', '4g'],
   ['BOX_PLAY_CPU_LIMIT', '4.0'],
-  ['BOX_DATABASE_POOL_SIZE', '10'],
+  ['BOX_DATABASE_POOL_SIZE', '4'],
   ['STORAGE_CACHE_REDIS_TTL', '240'],
 ]) {
   assert.match(defaults, new RegExp(`^${name}=${value}$`, 'm'))
@@ -256,19 +260,13 @@ for (const [name, composePattern, consumer, consumerPattern] of [
   ],
   [
     'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
-    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-6\}/,
+    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-2\}/,
     localEngineLauncher,
     /['"]BOX_CREATOR_EDIT_PREWARM_RUNTIMES['"]/,
   ],
   [
-    'BOX_CREATOR_PLAY_PREWARM_RUNTIMES',
-    /BOX_CREATOR_PLAY_PREWARM_RUNTIMES: \$\{BOX_CREATOR_PLAY_PREWARM_RUNTIMES:-0\}/,
-    localEngineLauncher,
-    /['"]BOX_CREATOR_PLAY_PREWARM_RUNTIMES['"]/,
-  ],
-  [
     'BOX_PLAY_PREWARM_RUNTIMES',
-    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-8\}/,
+    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-2\}/,
     localEngineLauncher,
     /['"]BOX_PLAY_PREWARM_RUNTIMES['"]/,
   ],
@@ -310,7 +308,7 @@ for (const [name, composePattern, consumer, consumerPattern] of [
   ],
   [
     'BOX_DATABASE_POOL_SIZE',
-    /BOX_DATABASE_POOL_SIZE: \$\{BOX_DATABASE_POOL_SIZE:-10\}/,
+    /BOX_DATABASE_POOL_SIZE: \$\{BOX_DATABASE_POOL_SIZE:-4\}/,
     playerIdentity,
     /process\.env\.BOX_DATABASE_POOL_SIZE/,
   ],
@@ -380,7 +378,6 @@ for (const field of [
   'teleportMaxRooms',
   'teleportRoomIdleMinutes',
   'creatorEditPrewarmRuntimes',
-  'creatorPlayPrewarmRuntimes',
   'playPrewarmRuntimes',
   'scriptMemoryMb',
   'databasePoolSize',

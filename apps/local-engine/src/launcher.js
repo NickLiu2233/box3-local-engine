@@ -372,7 +372,23 @@ function readRuntimeProcessStats(pid) {
   }
 }
 
-function readRuntimeProcessTree(rootPid) {
+const runtimeProcessSnapshotTtlMs = 250
+let runtimeProcessSnapshot = {
+  sampledAt: 0,
+  processes: null,
+  processesByPid: null,
+  childrenByPid: null,
+}
+
+function readRuntimeProcesses() {
+  const sampledAt = Date.now()
+  if (
+    runtimeProcessSnapshot.processes &&
+    sampledAt - runtimeProcessSnapshot.sampledAt < runtimeProcessSnapshotTtlMs
+  ) {
+    return runtimeProcessSnapshot
+  }
+
   let processIds
   try {
     processIds = fs.readdirSync('/proc').filter((entry) => /^\d+$/.test(entry))
@@ -382,27 +398,42 @@ function readRuntimeProcessTree(rootPid) {
   const processes = processIds
     .map((entry) => readRuntimeProcessStats(Number(entry)))
     .filter(Boolean)
-  if (!processes.some((processInfo) => processInfo.pid === rootPid)) return null
+  const processesByPid = new Map(processes.map((processInfo) => [processInfo.pid, processInfo]))
+  const childrenByPid = new Map()
+  for (const processInfo of processes) {
+    const children = childrenByPid.get(processInfo.parentPid) || []
+    children.push(processInfo.pid)
+    childrenByPid.set(processInfo.parentPid, children)
+  }
+  runtimeProcessSnapshot = { sampledAt, processes, processesByPid, childrenByPid }
+  return runtimeProcessSnapshot
+}
+
+function readRuntimeProcessTree(rootPid) {
+  const snapshot = readRuntimeProcesses()
+  if (!snapshot) return null
+  const { processesByPid, childrenByPid } = snapshot
+  if (!processesByPid?.has(rootPid)) return null
 
   const descendants = new Set([rootPid])
-  let changed = true
-  while (changed) {
-    changed = false
-    for (const processInfo of processes) {
-      if (!descendants.has(processInfo.pid) && descendants.has(processInfo.parentPid)) {
-        descendants.add(processInfo.pid)
-        changed = true
+  const pending = [rootPid]
+  while (pending.length) {
+    const parentPid = pending.pop()
+    for (const childPid of childrenByPid.get(parentPid) || []) {
+      if (!descendants.has(childPid)) {
+        descendants.add(childPid)
+        pending.push(childPid)
       }
     }
   }
-  return processes.reduce(
-    (total, processInfo) =>
-      descendants.has(processInfo.pid)
-        ? {
-            cpuTicks: total.cpuTicks + processInfo.cpuTicks,
-            memoryBytes: total.memoryBytes + processInfo.memoryBytes,
-          }
-        : total,
+  return [...descendants].reduce(
+    (total, pid) => {
+      const processInfo = processesByPid.get(pid)
+      return {
+        cpuTicks: total.cpuTicks + processInfo.cpuTicks,
+        memoryBytes: total.memoryBytes + processInfo.memoryBytes,
+      }
+    },
     { cpuTicks: 0, memoryBytes: 0 },
   )
 }
@@ -1007,17 +1038,16 @@ async function main() {
 
   await waitFor(`http://127.0.0.1:${webPort}/api/health-check`)
 
-  // Boxes prepares shared build-cache products before the engine route becomes
-  // interactive. Keep edit runtimes and standalone Play maps warm.
-  // Runtime capacity/LRU still owns the hard process bound; evicted runtimes
-  // leave their persistent prebake products behind for the next player.
+  // Keep only the requested Creator/Play maps resident. Starting every map in
+  // a large library only to populate a cache makes service startup compete
+  // with the first player for CPU and disk bandwidth.
   const prewarmTimer = setTimeout(async () => {
     try {
       if (creatorMode && editLibrary) {
         const projects = projectManager.listProjects()
         const editCount = prewarmCount(
           'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
-          process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6,
+          2,
           process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6,
         )
         for (const project of projects.slice(0, editCount)) {
@@ -1031,16 +1061,10 @@ async function main() {
         })
         const count = prewarmCount(
           'BOX_PLAY_PREWARM_RUNTIMES',
-          process.env.BOX_PLAY_MAX_RUNTIMES || 8,
+          2,
           process.env.BOX_PLAY_MAX_RUNTIMES || 8,
         )
         if (count > 0) {
-          for (const world of worlds) {
-            await playLibrary.ensureRuntime(world.id)
-          }
-          // The complete library now has a persistent cache. Re-open the
-          // preferred main-map-first set so the configured number also remains
-          // resident for truly immediate player joins.
           for (const world of worlds.slice(0, count)) {
             await playLibrary.ensureRuntime(world.id)
           }
