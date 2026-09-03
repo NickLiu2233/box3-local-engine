@@ -1891,6 +1891,183 @@ form.environment-mode {
   padding-top: 2px;
 }
 
+.license-page {
+  width: min(1040px, 100%);
+}
+
+.license-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.license-panel {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+}
+
+.license-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+}
+
+.license-state {
+  padding: 3px 8px;
+  border-radius: 99px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.license-state.valid {
+  background: color-mix(in srgb, var(--success) 14%, var(--panel));
+  color: var(--success);
+}
+
+.license-header .license-state {
+  flex: 0 0 auto;
+}
+
+.license-status-main {
+  display: grid;
+  gap: 4px;
+}
+
+.license-status-main > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.license-status-main strong {
+  color: var(--text);
+  font-weight: 620;
+}
+
+.license-status-main p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.license-group-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.license-group-link svg {
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+}
+
+.license-group-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.license-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--border);
+}
+
+.license-facts > div {
+  min-width: 0;
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.license-facts > div:nth-child(2n) {
+  border-right: 0;
+}
+
+.license-facts dt,
+.license-facts dd {
+  margin: 0;
+}
+
+.license-facts dt {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.license-facts dd {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.license-section {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.license-device {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.license-device-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.license-device-actions .icon-button {
+  width: 36px;
+  height: 36px;
+}
+
+.license-device > div {
+  min-width: 0;
+}
+
+.license-device span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.license-device code {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.license-device code.revealed {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.license-import {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 .about-card {
   overflow: hidden;
   border: 1px solid var(--border);

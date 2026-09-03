@@ -31,6 +31,8 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 
 Tauri 启动器位于 `apps/deployment-manager/`，负责导入镜像、保存配置、启动/停止容器、显示实时进度与状态，以及管理本地备份。关闭启动器窗口不会停止已经运行的容器；需要完整容器日志时使用 Docker Desktop 或 Docker CLI。
 
+部署和启动业务服务前必须安装有效的个人学习许可证。许可证免费申请、绑定当前启动器设备 ID、默认有效三十日且仅限非商业用途；申请、续期和验证方式见[个人学习许可证](docs/licensing.md)。
+
 桌面启动器可下载并管理内置 PostgreSQL/Redis，也可连接外部服务；Redis 可以关闭。内置服务默认从 DaoCloud 国内镜像源下载，只监听本机回环地址并自动生成连接身份。Linux Web 服务器包不携带数据库服务，必须连接服主提供的 PostgreSQL，Redis 仍为可选。完整说明见[本地基础设施](docs/local-infrastructure.md)和[配置参考](docs/configuration-reference.md)。
 
 `apps/migrator/` 是仓库内部使用的云端工程迁移工具，不属于桌面离线包、无图形服务器包或普通服主的部署流程。它需要访问迁移来源，不能作为核心引擎“完全离线运行”的依据。

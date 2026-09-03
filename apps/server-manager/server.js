@@ -119,6 +119,11 @@ function createServer(options = {}) {
     try {
       if (request.method === 'GET' && url.pathname === '/api/status') {
         json(response, 200, await operations.getStatus())
+      } else if (request.method === 'GET' && url.pathname === '/api/license') {
+        json(response, 200, operations.getLicenseStatus())
+      } else if (request.method === 'PUT' && url.pathname === '/api/license') {
+        const body = await readJson(request)
+        json(response, 200, operations.installLicense(body.token))
       } else if (request.method === 'GET' && url.pathname === '/api/config') {
         json(response, 200, { fields: operations.getConfiguration() })
       } else if (request.method === 'PUT' && url.pathname === '/api/config') {

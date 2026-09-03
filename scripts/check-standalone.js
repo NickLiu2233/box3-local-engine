@@ -425,15 +425,16 @@ for (const [label, pattern] of [
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
   ['play build command', /^RUN pnpm build:play$/m],
   ['clean-checkout runtime asset generation', /^RUN pnpm prepare:assets$/m],
-  ['creator final target', /^FROM runtime-base AS creator$/m],
-  ['play final target', /^FROM runtime-base AS play$/m],
+  ['licensed runtime base', /^FROM runtime-base AS licensed-runtime-base$/m],
+  ['creator final target', /^FROM licensed-runtime-base AS creator$/m],
+  ['play final target', /^FROM licensed-runtime-base AS play$/m],
   ['VOXA build stage', /^FROM source-base AS voxa-build$/m],
   [
     'VOXA filtered dependency install',
     /pnpm install --frozen-lockfile --filter @box-local\/voxa\.\.\./,
   ],
   ['VOXA build command', /^RUN pnpm --filter @box-local\/voxa build$/m],
-  ['VOXA final target', /^FROM runtime-base AS voxa$/m],
+  ['VOXA final target', /^FROM licensed-runtime-base AS voxa$/m],
   ['referenced runtime-blob staging', /stage-runtime-data\.js \/opt\/runtime-data/],
   [
     'play server editor removal',
@@ -792,8 +793,8 @@ forbidPattern(
 requirePattern(
   playerAuthPortalCompose,
   composeFile,
-  'player auth portal standalone build context',
-  /context: \.\/examples\/player-auth-portal[\s\S]*?dockerfile: Dockerfile/,
+  'player auth portal repository build context',
+  /context: \.[\s\S]*?dockerfile: examples\/player-auth-portal\/Dockerfile/,
 )
 requirePattern(
   playerAuthPortalCompose,

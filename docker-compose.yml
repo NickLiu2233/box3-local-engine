@@ -121,6 +121,9 @@ services:
       BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}
       BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}
       BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
+      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
+      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
+      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_PLAYER_AUTH_ALLOWED_ORIGINS: ${BOX_PLAYER_AUTH_ALLOWED_ORIGINS:-}
       BOX_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
       BOX_RUNTIME_IDENTITY_TTL_MS: ${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}
@@ -137,14 +140,17 @@ services:
       BOX_DATABASE_SSL_REJECT_UNAUTHORIZED: ${BOX_DATABASE_SSL_REJECT_UNAUTHORIZED:-true}
     ports:
       - "${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAYER_SERVICE_PORT:-3213}:3213"
+    volumes:
+      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
+      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   player-auth-portal:
     profiles: [auth-portal]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
     image: box-local-engine-player-auth-portal:${BOX_IMAGE_TAG:-0.1.0}
     build:
-      context: ./examples/player-auth-portal
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: examples/player-auth-portal/Dockerfile
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
         BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.1.0}
@@ -154,6 +160,11 @@ services:
     restart: unless-stopped
     init: true
     read_only: true
+    # The license gate persists its signed-time checkpoint before starting the
+    # portal. Keep the root filesystem read-only while giving that checkpoint
+    # a private, writable temporary directory.
+    tmpfs:
+      - /tmp:mode=1777
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -170,11 +181,17 @@ services:
       AUTH_DEMO_CREATOR_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3002}
       AUTH_DEMO_PLAY_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}
       AUTH_DEMO_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
+      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
+      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
+      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       AUTH_DEMO_REGISTRATION_ENABLED: ${BOX_PLAYER_REGISTRATION_ENABLED:-true}
       AUTH_DEMO_REQUEST_TIMEOUT_MS: ${BOX_AUTH_PORTAL_REQUEST_TIMEOUT_MS:-10000}
       AUTH_DEMO_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
     ports:
       - "${BOX_BIND_IP:-127.0.0.1}:${BOX_AUTH_PORTAL_PORT:-3214}:3214"
+    volumes:
+      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
+      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   server-manager:
     profiles: [server-manager]
@@ -185,7 +202,7 @@ services:
       dockerfile: apps/server-manager/Dockerfile
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
-        DOCKER_CLI_IMAGE: ${BOX_DOCKER_CLI_IMAGE:-docker:27.5.1-cli}
+        DOCKER_CLI_IMAGE: ${BOX_DOCKER_CLI_IMAGE:-docker.m.daocloud.io/library/docker:27.5.1-cli}
         BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.1.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
@@ -209,6 +226,7 @@ services:
       BOX_SERVER_MANAGER_ROOT: /workspace
       BOX_SERVER_MANAGER_COMPOSE_FILE: ${BOX_SERVER_MANAGER_COMPOSE_FILE:-/workspace/docker-compose.yml}
       BOX_SERVER_MANAGER_ENV_FILE: /workspace/.env
+      BOX_LICENSE_HARDWARE_ID_FILE: /run/host-machine-id
     ports:
       - "${BOX_SERVER_MANAGER_BIND_IP:-127.0.0.1}:${BOX_SERVER_MANAGER_PORT:-3130}:3130"
     volumes:
@@ -217,6 +235,7 @@ services:
       # to host loopback with an independent 256-bit management token.
       - ${BOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - ${BOX_SERVER_MANAGER_ROOT:-.}:/workspace
+      - /etc/machine-id:/run/host-machine-id:ro
     tmpfs:
       - /tmp:size=16m,mode=1777
 
@@ -293,6 +312,9 @@ services:
       BOX_AUTO_BACKUP_RETENTION_COUNT: ${BOX_AUTO_BACKUP_RETENTION_COUNT:-24}
       BOX_AUTO_BACKUP_RETENTION_DAYS: ${BOX_AUTO_BACKUP_RETENTION_DAYS:-30}
       BOX_PROJECT_BACKUP_PATH: ${BOX_PROJECT_BACKUP_PATH:-/app/apps/local-engine/backups}
+      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
+      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
+      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_CREATOR_ALLOWED_HOSTS: ${BOX_CREATOR_ALLOWED_HOSTS:-}
       BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
       BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
@@ -320,6 +342,8 @@ services:
       - ./apps/local-engine/dist:/app/apps/local-engine/dist
       - ./apps/local-engine/backups:/app/apps/local-engine/backups
       - ./apps/voxa/data:/app/apps/voxa/data:ro
+      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
+      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   # A host bind mount can belong to a different UID than the non-root runtime
   # user, especially on Linux servers and Docker Desktop. Repair ownership
@@ -328,6 +352,7 @@ services:
     profiles: [creator]
     image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.1.0}
     user: "0:0"
+    entrypoint: []
     command:
       - sh
       - -c
@@ -359,6 +384,7 @@ services:
     profiles: [play]
     image: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.0}
     user: "0:0"
+    entrypoint: []
     command:
       - sh
       - -c
@@ -374,6 +400,8 @@ services:
       - CHOWN
     volumes:
       - box-play-runtime-cache:/app/play-runtime-cache
+      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
+      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   play:
     profiles: [play]
@@ -405,6 +433,9 @@ services:
       BOX_PLAY_LIBRARY_PATH: /app/play-worlds
       BOX_PLAY_LIBRARY_READ_ONLY: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
       BOX_PLAY_ADMIN_TOKEN: ${BOX_PLAY_ADMIN_TOKEN:-}
+      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
+      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
+      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-8}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
       BOX_SERVER_PUBLIC_URL: ${BOX_SERVER_PUBLIC_URL:-}
@@ -450,6 +481,8 @@ services:
         bind:
           create_host_path: true
       - box-play-runtime-cache:/app/play-runtime-cache
+      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
+      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   voxa:
     profiles: [voxa]
@@ -482,11 +515,16 @@ services:
       BOX_VOXA_ALLOWED_ORIGINS: ${BOX_VOXA_ALLOWED_ORIGINS:-}
       BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3002}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
+      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
+      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
+      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_PLAYER_SERVICE_INTERNAL_URL: ${BOX_PLAYER_SERVICE_INTERNAL_URL-http://player-service:3213}
     ports:
       - "${BOX_VOXA_BIND_IP:-127.0.0.1}:${BOX_VOXA_PORT:-3001}:3001"
     volumes:
       - ./apps/voxa/data:/app/apps/voxa/data
+      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
+      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   # Keep the model editor itself on the non-root image user while ensuring its
   # host-backed library stays writable on every supported Docker host.
@@ -494,6 +532,7 @@ services:
     profiles: [voxa]
     image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.1.0}
     user: "0:0"
+    entrypoint: []
     command:
       - sh
       - -c

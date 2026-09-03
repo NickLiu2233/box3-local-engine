@@ -160,7 +160,14 @@ RUN apt-get update \
 WORKDIR /app
 ENTRYPOINT ["tini", "--"]
 
-FROM runtime-base AS creator
+FROM runtime-base AS licensed-runtime-base
+
+RUN mkdir -p /app/license && chown node:node /app/license
+COPY --chown=node:node packages/license/index.js packages/license/runtime-gate.js packages/license/process-guard.js packages/license/trusted-time.js /app/license/
+COPY --chown=node:node distribution/license-public-key.pem /app/license/license-public-key.pem
+COPY --chown=node:node distribution/license-time-public-key.pem /app/license/license-time-public-key.pem
+
+FROM licensed-runtime-base AS creator
 
 ARG BOX_BUILD_VERSION
 ARG BOX_BUILD_COMMIT
@@ -185,7 +192,8 @@ ENV BOX_DEPLOYMENT_MODE=creator \
     BOX_EDIT_RUNTIME_HOST=0.0.0.0 \
     BOX_EDIT_RUNTIME_PORT=9967 \
     HOSTNAME=0.0.0.0 \
-    PORT=3000
+    PORT=3000 \
+    BOX_LICENSE_FEATURE=creator
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends tar gzip \
@@ -223,9 +231,10 @@ VOLUME ["/app/apps/local-engine/projects", "/app/apps/local-engine/dist"]
 HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3000/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--creator"]
+ENTRYPOINT ["tini", "--", "node", "/app/license/runtime-gate.js", "creator", "--"]
+CMD ["node", "-r", "/app/license/process-guard.js", "apps/local-engine/src/launcher.js", "--production", "--creator"]
 
-FROM runtime-base AS play
+FROM licensed-runtime-base AS play
 
 ARG BOX_BUILD_VERSION
 ARG BOX_BUILD_COMMIT
@@ -249,7 +258,8 @@ ENV BOX_DEPLOYMENT_MODE=play \
     BOX_PLAY_RUNTIME_HOST=127.0.0.1 \
     BOX_PLAY_RUNTIME_PORT=9966 \
     HOSTNAME=0.0.0.0 \
-    PORT=3000
+    PORT=3000 \
+    BOX_LICENSE_FEATURE=play
 
 COPY --from=play-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=play-build --chown=node:node /opt/game-server /app/services/game-server
@@ -276,9 +286,10 @@ EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=25s --retries=5 \
   CMD node -e "Promise.all([fetch('http://127.0.0.1:3000/api/health-check'),fetch('http://127.0.0.1:3000/api/play-worlds')]).then(rs=>{if(rs.some(r=>!r.ok))process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["node", "apps/local-engine/src/launcher.js", "--production", "--play"]
+ENTRYPOINT ["tini", "--", "node", "/app/license/runtime-gate.js", "play", "--"]
+CMD ["node", "-r", "/app/license/process-guard.js", "apps/local-engine/src/launcher.js", "--production", "--play"]
 
-FROM runtime-base AS player-service
+FROM licensed-runtime-base AS player-service
 
 ARG BOX_BUILD_VERSION
 ARG BOX_BUILD_COMMIT
@@ -298,7 +309,8 @@ ENV BOX_DEPLOYMENT_MODE=player-service \
     NEXT_PUBLIC_APP_EDITION=createra \
     NEXT_PUBLIC_APP_REGION=cn \
     HOSTNAME=0.0.0.0 \
-    PORT=3213
+    PORT=3213 \
+    BOX_LICENSE_FEATURE=player-service
 
 COPY --from=player-service-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=player-service-build --chown=node:node /app/apps/game/.next/static /app/apps/game/.next/standalone/apps/game/.next/static
@@ -311,9 +323,10 @@ EXPOSE 3213
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3213/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["node", "apps/game/.next/standalone/apps/game/server.js"]
+ENTRYPOINT ["tini", "--", "node", "/app/license/runtime-gate.js", "player-service", "--"]
+CMD ["node", "-r", "/app/license/process-guard.js", "apps/game/.next/standalone/apps/game/server.js"]
 
-FROM runtime-base AS voxa
+FROM licensed-runtime-base AS voxa
 
 ARG BOX_BUILD_VERSION
 ARG BOX_BUILD_COMMIT
@@ -332,7 +345,8 @@ ENV BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
     BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE} \
     VOXA_DATA_PATH=/app/apps/voxa/data \
     HOSTNAME=0.0.0.0 \
-    PORT=3001
+    PORT=3001 \
+    BOX_LICENSE_FEATURE=voxa
 
 COPY --from=voxa-build --chown=node:node /app/apps/voxa/.next/standalone /app/apps/voxa/.next/standalone
 COPY --from=voxa-build --chown=node:node /app/apps/voxa/.next/static /app/apps/voxa/.next/standalone/apps/voxa/.next/static
@@ -353,4 +367,5 @@ VOLUME ["/app/apps/voxa/data"]
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3001/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-CMD ["node", "apps/voxa/.next/standalone/apps/voxa/server.js"]
+ENTRYPOINT ["tini", "--", "node", "/app/license/runtime-gate.js", "voxa", "--"]
+CMD ["node", "-r", "/app/license/process-guard.js", "apps/voxa/.next/standalone/apps/voxa/server.js"]

@@ -3,6 +3,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { execFile } = require('node:child_process')
+const { createLicenseManager } = require('./license')
 
 const services = ['creator', 'voxa', 'play', 'player-service', 'player-auth-portal']
 const serviceProfiles = {
@@ -304,6 +305,9 @@ function createOperations(options = {}) {
   )
   const run = options.run || defaultCommandRunner
   const filesystem = options.filesystem || fs
+  const license =
+    options.license ||
+    createLicenseManager({ root, filesystem, publicKeyPath: options.publicKeyPath })
 
   function readEnvironment() {
     return filesystem.readFileSync(environmentFile, 'utf8')
@@ -371,6 +375,7 @@ function createOperations(options = {}) {
   async function control(action, service = 'all') {
     if (!['start', 'stop', 'restart'].includes(action)) throw new Error('操作名称无效')
     if (service !== 'all' && !services.includes(service)) throw new Error('服务名称无效')
+    if (action !== 'stop') license.requireLicense()
     const targets = service === 'all' ? enabledServices() : [service]
     if (action === 'start') {
       await runCompose(['up', '-d', '--no-build', '--remove-orphans', ...targets], 10 * 60 * 1000)
@@ -416,7 +421,15 @@ function createOperations(options = {}) {
     return getConfiguration()
   }
 
-  return { getStatus, getLogs, control, getConfiguration, saveConfiguration }
+  return {
+    getStatus,
+    getLogs,
+    control,
+    getConfiguration,
+    saveConfiguration,
+    getLicenseStatus: license.status,
+    installLicense: license.install,
+  }
 }
 
 module.exports = {

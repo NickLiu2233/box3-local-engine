@@ -653,7 +653,35 @@ const saveConfigurationCommand = backend.match(
 )?.[0]
 assert.ok(saveConfigurationCommand, 'missing save configuration command body')
 assert.doesNotMatch(saveConfigurationCommand, /ensure_images|compose_output/)
-assert.match(frontend, /allHealthy \? '' : `<button class="button primary" id="start"/)
+assert.match(frontend, /state\.license\?\.valid \? `<button class="button primary" id="start"/)
+assert.match(frontend, /data-page="license">安装许可证<\/button>/)
+assert.match(frontend, /invoke\('get_license_status'\)/)
+assert.match(frontend, /invoke\('install_license', \{ token \}\)/)
+assert.match(
+  frontend,
+  /id="license-file" type="file" accept="\.boxlic,\.lic,application\/octet-stream,text\/plain"/,
+)
+assert.match(frontend, /id="select-license-file"/)
+assert.doesNotMatch(frontend, /id="license-token"/)
+assert.doesNotMatch(frontend, /licenseToken/)
+assert.match(backend, /license::require\(&app\)\?;/)
+assert.match(frontend, /const UNLICENSED_PAGES = new Set\(\['license', 'about'\]\)/)
+assert.match(frontend, /if \(!hasValidLicense\(\) && !UNLICENSED_PAGES\.has\(state\.page\)\)/)
+assert.match(frontend, /const licensedNavigation = hasValidLicense\(\)/)
+assert.doesNotMatch(
+  backend.match(
+    /async fn start_managed_service[\s\S]*?(?=\n#\[tauri::command\]\nfn get_install_config)/,
+  )?.[0] ?? '',
+  /license::require\(&app\)\?;/,
+)
+assert.match(
+  backend,
+  /async fn control_service[\s\S]*?if !managed && action != "stop" \{\s*license::require\(&app\)\?;/,
+)
+assert.match(backend, /fn get_license_status\(app: AppHandle\)/)
+assert.match(backend, /fn install_license\(app: AppHandle, token: String\)/)
+assert.match(compose, /BOX_LICENSE_FILE/)
+assert.match(compose, /BOX_LICENSE_DEVICE_FILE/)
 // The main shell is intentionally fixed-height. The log pane therefore needs
 // to reserve space for the page header and filters, then expose its own
 // vertical scrollbar instead of being clipped below the viewport.

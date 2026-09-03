@@ -1,0 +1,10 @@
+{
+  "name": "@box-local/license",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Signed BOX3 Engine license issuing and verification",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

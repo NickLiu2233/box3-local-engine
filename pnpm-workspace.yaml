@@ -3,6 +3,7 @@ packages:
   - apps/server-manager
   - apps/game
   - apps/local-engine
+  - apps/license-server
   - apps/voxa
   - apps/migrator
   - examples/player-auth-portal
@@ -18,6 +19,7 @@ packages:
   - packages/dsbridge
   - packages/icons
   - packages/iframe-event-bus
+  - packages/license
   - packages/mesher
   - packages/mudb
   - packages/regl

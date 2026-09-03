@@ -6,6 +6,7 @@ coverage/
 apps/game/html-report/
 *.log
 .DS_Store
+apps/license-server/.local/
 *.tsbuildinfo
 .env.local
 .env.*.local

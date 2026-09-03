@@ -1,4 +1,4 @@
-ARG DOCKER_CLI_IMAGE=docker:27.5.1-cli
+ARG DOCKER_CLI_IMAGE=docker.m.daocloud.io/library/docker:27.5.1-cli
 ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 
 FROM ${DOCKER_CLI_IMAGE} AS docker-cli
@@ -26,9 +26,11 @@ COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr
 
 WORKDIR /app
 COPY apps/server-manager/package.json ./package.json
-COPY apps/server-manager/server.js apps/server-manager/operations.js ./
+COPY apps/server-manager/server.js apps/server-manager/operations.js apps/server-manager/license.js ./
 COPY apps/server-manager/public ./public
 COPY apps/deployment-manager/public/logo512.png ./public/logo512.png
+COPY packages/license/index.js /packages/license/index.js
+COPY distribution/license-public-key.pem /distribution/license-public-key.pem
 
 EXPOSE 3130
 

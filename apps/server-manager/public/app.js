@@ -17,6 +17,7 @@ const state = {
   token: sessionStorage.getItem('box-server-manager-token') || '',
   page: 'overview',
   status: null,
+  license: null,
   fields: [],
   logs: '',
   logService: '',
@@ -59,6 +60,7 @@ function icon(name) {
     settings:
       '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.5 1a8 8 0 0 0-1.8-1L14.2 3h-4.4l-.4 3a8 8 0 0 0-1.8 1L5 6 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5 5 18l2.6-1a8 8 0 0 0 1.8 1l.4 3h4.4l.4-3a8 8 0 0 0 1.8-1l2.5 1 2.1-3.5-2.1-1.5a7 7 0 0 0 .1-1Z"/>',
     logs: '<path d="M5 4h14v16H5z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    license: '<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/>',
     play: '<path d="m8 5 11 7-11 7Z"/>',
     stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
     refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>',
@@ -71,19 +73,35 @@ function login() {
 }
 
 function shell(content) {
-  return `<div class="shell"><aside><div class="brand"><img src="/logo512.png" alt=""/><div><strong>BOX3 Engine</strong><span>Linux 服务器</span></div></div><nav><button data-page="overview" class="${state.page === 'overview' ? 'active' : ''}">${icon('home')}服务总览</button><button data-page="config" class="${state.page === 'config' ? 'active' : ''}">${icon('settings')}服务器配置</button><button data-page="logs" class="${state.page === 'logs' ? 'active' : ''}">${icon('logs')}运行日志</button></nav><div class="sidebar-foot"><span class="dot good"></span><span>管理通道已认证</span><button id="logout">退出</button></div></aside><main><header><div><span class="eyebrow">HEADLESS OPERATIONS</span><h1>${state.page === 'overview' ? '服务总览' : state.page === 'config' ? '服务器配置' : '运行日志'}</h1></div></header>${state.error ? `<div class="message error">${escapeHtml(state.error)}</div>` : ''}${state.notice ? `<div class="message success">${escapeHtml(state.notice)}</div>` : ''}${content}</main></div>`
+  const titles = {
+    overview: '服务总览',
+    config: '服务器配置',
+    license: '许可证管理',
+    logs: '运行日志',
+  }
+  return `<div class="shell"><aside><div class="brand"><img src="/logo512.png" alt=""/><div><strong>BOX3 Engine</strong><span>Linux 服务器</span></div></div><nav><button data-page="overview" class="${state.page === 'overview' ? 'active' : ''}">${icon('home')}服务总览</button><button data-page="config" class="${state.page === 'config' ? 'active' : ''}">${icon('settings')}服务器配置</button><button data-page="license" class="${state.page === 'license' ? 'active' : ''}">${icon('license')}许可证管理</button><button data-page="logs" class="${state.page === 'logs' ? 'active' : ''}">${icon('logs')}运行日志</button></nav><div class="sidebar-foot"><span class="dot good"></span><span>管理通道已认证</span><button id="logout">退出</button></div></aside><main><header><div><span class="eyebrow">HEADLESS OPERATIONS</span><h1>${titles[state.page] || '服务器管理'}</h1></div></header>${state.error ? `<div class="message error">${escapeHtml(state.error)}</div>` : ''}${state.notice ? `<div class="message success">${escapeHtml(state.notice)}</div>` : ''}${content}</main></div>`
 }
 
 function overview() {
   const items = state.status?.services || []
   const running = items.filter((item) => item.running).length
   const enabled = items.filter((item) => item.enabled).length
-  return `<section class="summary"><div><span class="dot ${running === enabled && enabled ? 'good' : ''}"></span><div><strong>${running === enabled && enabled ? '服务运行正常' : running ? '部分服务正在运行' : '服务已停止'}</strong><span>${running} / ${enabled} 个已启用服务运行中</span></div></div><div class="actions"><button data-control="start" data-service="all" class="primary">${icon('play')}全部启动</button><button data-control="stop" data-service="all">${icon('stop')}全部停止</button><button data-control="restart" data-service="all">${icon('refresh')}全部重启</button></div></section><div class="section-title"><h2>引擎服务</h2><span>Creator 与 VOXA 默认只监听服务器本机</span></div><section class="service-grid">${items.map(serviceCard).join('')}</section>`
+  const startAction = state.license?.valid
+    ? `<button data-control="start" data-service="all" class="primary">${icon('play')}全部启动</button>`
+    : '<button data-page="license" class="primary">安装许可证</button>'
+  const restartAction = state.license?.valid
+    ? `<button data-control="restart" data-service="all">${icon('refresh')}全部重启</button>`
+    : ''
+  return `<section class="summary"><div><span class="dot ${running === enabled && enabled ? 'good' : ''}"></span><div><strong>${running === enabled && enabled ? '服务运行正常' : running ? '部分服务正在运行' : '服务已停止'}</strong><span>${running} / ${enabled} 个已启用服务运行中</span></div></div><div class="actions">${startAction}<button data-control="stop" data-service="all">${icon('stop')}全部停止</button>${restartAction}</div></section><div class="section-title"><h2>引擎服务</h2><span>Creator 与 VOXA 默认只监听服务器本机</span></div><section class="service-grid">${items.map(serviceCard).join('')}</section>`
 }
 
 function serviceCard(service) {
   const [title, description] = serviceNames[service.name] || [service.name, '']
-  return `<article class="service-card ${service.enabled ? '' : 'disabled'}"><div class="service-top"><div><span>${escapeHtml(description)}</span><h3>${escapeHtml(title)}</h3></div><span class="state ${service.running ? 'running' : ''}"><i></i>${!service.enabled ? '未启用' : service.running ? '运行中' : '已停止'}</span></div><div class="service-actions"><button data-page="logs" data-log-service="${service.name}">查看日志</button><button data-control="${service.running ? 'stop' : 'start'}" data-service="${service.name}" ${!service.enabled ? 'disabled' : ''}>${service.running ? '停止' : '启动'}</button></div></article>`
+  const action =
+    service.running || state.license?.valid
+      ? `<button data-control="${service.running ? 'stop' : 'start'}" data-service="${service.name}" ${!service.enabled ? 'disabled' : ''}>${service.running ? '停止' : '启动'}</button>`
+      : '<button data-page="license">安装许可证</button>'
+  return `<article class="service-card ${service.enabled ? '' : 'disabled'}"><div class="service-top"><div><span>${escapeHtml(description)}</span><h3>${escapeHtml(title)}</h3></div><span class="state ${service.running ? 'running' : ''}"><i></i>${!service.enabled ? '未启用' : service.running ? '运行中' : '已停止'}</span></div><div class="service-actions"><button data-page="logs" data-log-service="${service.name}">查看日志</button>${action}</div></article>`
 }
 
 function fieldInput(field) {
@@ -109,6 +127,14 @@ function config() {
     .join('')}</form>`
 }
 
+function license() {
+  const current = state.license || {}
+  const facts = current.valid
+    ? `<div><dt>许可证 ID</dt><dd>${escapeHtml(current.licenseId)}</dd></div><div><dt>到期时间</dt><dd>${escapeHtml(new Date(current.expiresAt).toLocaleString())}</dd></div>`
+    : ''
+  return `<section class="config-section license-section"><div><h2>个人学习许可证</h2><p>${escapeHtml(current.message || '正在读取许可证状态')}</p></div><div class="license-content"><dl><div><dt>状态</dt><dd>${current.valid ? '有效' : '不可用'}</dd></div>${facts}</dl><label class="field"><span>设备 ID</span><div class="inline-field"><input id="device-id" readonly value="${escapeHtml(current.deviceId)}"/><button id="copy-device-id" type="button">复制</button></div></label><form id="license-form"><label class="field"><span>许可证内容</span><textarea name="token" maxlength="16384" required></textarea></label><button class="primary" type="submit">验证并安装</button></form></div></section>`
+}
+
 function logs() {
   return `<div class="logs-toolbar"><select id="log-service"><option value="">全部服务</option>${Object.entries(
     serviceNames,
@@ -124,9 +150,8 @@ function logs() {
 
 function render() {
   const app = document.querySelector('#app')
-  app.innerHTML = state.token
-    ? shell(state.page === 'overview' ? overview() : state.page === 'config' ? config() : logs())
-    : login()
+  const pages = { overview, config, license, logs }
+  app.innerHTML = state.token ? shell((pages[state.page] || overview)()) : login()
   bind()
 }
 
@@ -138,7 +163,12 @@ function feedback(error = '', notice = '') {
 async function loadStatus() {
   if (!state.token) return
   try {
-    state.status = await request('/api/status')
+    const [status, licenseStatus] = await Promise.all([
+      request('/api/status'),
+      request('/api/license'),
+    ])
+    state.status = status
+    state.license = licenseStatus
     feedback()
   } catch (error) {
     feedback(String(error.message || error))
@@ -204,7 +234,10 @@ function bind() {
       if (node.dataset.logService) state.logService = node.dataset.logService
       feedback()
       if (state.page === 'config' && !state.fields.length) await loadConfiguration()
-      else if (state.page === 'logs') await loadLogs()
+      else if (state.page === 'license') {
+        state.license = await request('/api/license')
+        render()
+      } else if (state.page === 'logs') await loadLogs()
       else render()
     }),
   )
@@ -237,6 +270,25 @@ function bind() {
     await loadLogs()
   })
   document.querySelector('#refresh-logs')?.addEventListener('click', loadLogs)
+  document.querySelector('#copy-device-id')?.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(state.license?.deviceId || '')
+    feedback('', '设备 ID 已复制。')
+    render()
+  })
+  document.querySelector('#license-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    try {
+      const token = new FormData(event.currentTarget).get('token').trim()
+      state.license = await request('/api/license', {
+        method: 'PUT',
+        body: JSON.stringify({ token }),
+      })
+      feedback('', '许可证已验证并安装。')
+    } catch (error) {
+      feedback(String(error.message || error))
+    }
+    render()
+  })
 }
 
 render()

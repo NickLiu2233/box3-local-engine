@@ -594,6 +594,13 @@ async function main() {
     NODE_ENV: production ? 'production' : 'development',
   }
 
+  // The entrypoint validates before the launcher starts. Runtime processes are
+  // separate Node children, so preload a second in-process verifier as well.
+  if (production && fs.existsSync('/app/license/process-guard.js')) {
+    sharedEnv.NODE_OPTIONS =
+      `${process.env.NODE_OPTIONS || ''} --require=/app/license/process-guard.js`.trim()
+  }
+
   const localStorageIdentity =
     launchTarget && projectManager ? projectManager.projectStorageIdentity(launchTarget.id) : null
 

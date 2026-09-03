@@ -11,10 +11,11 @@
 3. 执行 `chmod +x *.sh`。
 4. 执行 `./install.sh`。首次执行会由 `.env.example` 创建 `.env`，并自动生成服务密钥与独立的 Web 管理令牌。
 5. 使用 SSH 隧道转发管理端口：`ssh -L 3130:127.0.0.1:3130 user@服务器地址`。
-6. 在自己电脑打开 `http://127.0.0.1:3130`，使用 `.env` 中的 `BOX_SERVER_MANAGER_TOKEN` 登录并填写 PostgreSQL、访问地址、端口及容量配置。
-7. 保存配置后，在 Web 管理控制台重启相应服务。
+6. 在自己电脑打开 `http://127.0.0.1:3130`，使用 `.env` 中的 `BOX_SERVER_MANAGER_TOKEN` 登录。
+7. 在“许可证管理”复制设备 ID，取得并安装有效许可证，再填写 PostgreSQL、访问地址、端口及容量配置。
+8. 保存配置后，在 Web 管理控制台启动相应服务。
 
-`install.sh` 会导入包内完整的六个服务镜像并启动它们，绝不会安装 PostgreSQL 或 Redis，也不会覆盖已经存在的 `.env`。服务器 Compose 不包含迁移器或本地 PostgreSQL/Redis 服务定义。
+`install.sh` 会导入包内完整的六个服务镜像并启动 Web 管理端；业务服务必须在许可证安装后由服主启动。脚本绝不会安装 PostgreSQL 或 Redis，也不会覆盖已经存在的 `.env`。服务器 Compose 不包含迁移器或本地 PostgreSQL/Redis 服务定义。
 
 ## 日常运维
 

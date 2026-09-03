@@ -22,6 +22,8 @@ const themes = [
   ['dark', '暗色'],
 ]
 
+const UNLICENSED_PAGES = new Set(['license', 'about'])
+
 const numericConfigFields = [
   'playRuntimes',
   'creatorEditRuntimes',
@@ -64,6 +66,8 @@ const state = {
   config: null,
   about: null,
   legal: null,
+  license: null,
+  licenseDeviceVisible: false,
   legalLoading: false,
   environmentChecks: [],
   checkingEnvironment: false,
@@ -101,22 +105,28 @@ const state = {
 }
 
 const icons = {
-  home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10M9 20v-6h6v6"/>',
-  settings:
+  'home': '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10M9 20v-6h6v6"/>',
+  'settings':
     '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8.5 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3V9.6h.1A1.7 1.7 0 0 0 4.6 8.5a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.1A1.7 1.7 0 0 0 15.5 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.33.72.6 1 .3.3.7.44 1.1.4h.1v4h-.1A1.7 1.7 0 0 0 19.4 15Z"/>',
-  performance: '<path d="M4 19V9M10 19V5M16 19v-7M22 19V8"/><path d="M2 19h22"/>',
-  info: '<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/>',
-  archive: '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
-  play: '<path d="m8 5 11 7-11 7Z"/>',
-  stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>',
-  refresh: '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
-  external: '<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 13v6H5V6h6"/>',
-  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>',
-  moon: '<path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2Z"/>',
-  device: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
-  chevron: '<path d="m9 7 5 5-5 5"/>',
-  check: '<path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/>',
-  copy: '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+  'performance': '<path d="M4 19V9M10 19V5M16 19v-7M22 19V8"/><path d="M2 19h22"/>',
+  'info': '<circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/>',
+  'archive': '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
+  'play': '<path d="m8 5 11 7-11 7Z"/>',
+  'stop': '<rect x="6" y="6" width="12" height="12" rx="1"/>',
+  'refresh': '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
+  'external': '<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 13v6H5V6h6"/>',
+  'sun':
+    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/>',
+  'moon': '<path d="M20.5 15.2A8.5 8.5 0 0 1 8.8 3.5 8.5 8.5 0 1 0 20.5 15.2Z"/>',
+  'device': '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  'chevron': '<path d="m9 7 5 5-5 5"/>',
+  'check': '<path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/>',
+  'copy':
+    '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+  'eye':
+    '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+  'eye-off':
+    '<path d="m3 3 18 18M10.6 6.2A10.3 10.3 0 0 1 12 6c6 0 9.5 6 9.5 6a17.3 17.3 0 0 1-3 3.7M6.2 6.2A17.2 17.2 0 0 0 2.5 12s3.5 6 9.5 6c1.3 0 2.5-.3 3.5-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
 }
 
 function icon(name) {
@@ -133,6 +143,14 @@ function escapeHtml(value = '') {
 
 function navItem(page, iconName, label) {
   return `<button class="nav-item ${state.page === page ? 'active' : ''}" data-page="${page}">${icon(iconName)}<span>${label}</span></button>`
+}
+
+function hasValidLicense() {
+  return state.license?.valid === true
+}
+
+function normalizeLicensedPage() {
+  if (!hasValidLicense() && !UNLICENSED_PAGES.has(state.page)) state.page = 'license'
 }
 
 function applyTheme(theme) {
@@ -161,11 +179,14 @@ function themeControl() {
 }
 
 function shell(content) {
+  const licensedNavigation = hasValidLicense()
+    ? `${navItem('overview', 'home', '服务总览')}${navItem('runtimes', 'play', '工程运行时')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
+    : ''
   return `<div class="shell" data-rendered-page="${state.page}">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${navItem('overview', 'home', '服务总览')}${navItem('runtimes', 'play', '工程运行时')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}${navItem('about', 'info', '关于')}</nav>
-      <div class="sidebar-bottom">${themeControl()}<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div></div>
+      <nav>${licensedNavigation}${navItem('license', 'device', '许可证管理')}${navItem('about', 'info', '关于')}</nav>
+      <div class="sidebar-bottom">${themeControl()}${hasValidLicense() ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div>` : ''}</div>
     </aside>
     <main>${content}</main>
     ${feedbackToast()}
@@ -297,7 +318,7 @@ function overview() {
     <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button></div></header>
     ${state.busy ? progressPanel() : ''}
     <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
-      <div class="hero-actions">${installed ? `${allHealthy ? '' : `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
+      <div class="hero-actions">${installed ? `${allHealthy ? '' : state.license?.valid ? `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>` : `<button class="button primary" data-page="license">安装许可证</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
     <div class="section-title"><h2>应用服务</h2></div>
     <div class="service-grid">${services.map((service) => serviceCard(service)).join('')}</div>
     ${
@@ -678,6 +699,25 @@ function backups() {
     <section class="backup-list">${state.backupsLoading ? '<div class="empty-backup"><strong>正在读取备份…</strong></div>' : items || '<div class="empty-backup"><strong>尚无本地备份</strong><span>重要修改前可点击右上角“立即备份”。</span></div>'}</section>`
 }
 
+function licenseManagement() {
+  const license = state.license || {}
+  const statusLabel = license.valid ? '有效' : license.installed ? '不可用' : '未安装'
+  const deviceId = license.deviceId || '读取中'
+  const maskedDeviceId =
+    deviceId.length > 18 ? `${deviceId.slice(0, 12)}***${deviceId.slice(-6)}` : deviceId
+  const shownDeviceId = state.licenseDeviceVisible ? deviceId : maskedDeviceId
+  const details = license.valid
+    ? `<dl class="license-facts"><div><dt>许可证</dt><dd>${escapeHtml(license.licenseId)}</dd></div><div><dt>类型</dt><dd>个人学习许可证</dd></div><div><dt>到期时间</dt><dd>${escapeHtml(formatBeijingBuildTime(license.expiresAt))}</dd></div><div><dt>使用范围</dt><dd>仅限个人学习和非商业用途</dd></div></dl>`
+    : ''
+  return `<header class="license-header"><div><h1>许可证管理 <span class="license-state ${license.valid ? 'valid' : ''}">${statusLabel}</span></h1></div></header><section class="license-page">
+    <article class="license-panel">
+      <div class="license-status-row"><div class="license-status-main"><div><strong>个人学习许可证</strong></div><p>仅限个人学习、测试；不可商业使用或二次分发。</p></div><button class="license-group-link" type="button" data-open-community-group>申请个人学习许可证 ${icon('chevron')}</button></div>${details}
+      <section class="license-section"><div class="license-device"><div><span>设备 ID</span><code class="${state.licenseDeviceVisible ? 'revealed' : ''}">${escapeHtml(shownDeviceId)}</code></div><div class="license-device-actions"><button class="icon-button" id="toggle-license-device" aria-label="${state.licenseDeviceVisible ? '隐藏设备 ID' : '显示设备 ID'}" title="${state.licenseDeviceVisible ? '隐藏设备 ID' : '显示设备 ID'}" ${license.deviceId ? '' : 'disabled'}>${icon(state.licenseDeviceVisible ? 'eye-off' : 'eye')}</button><button class="button" id="copy-license-device" ${license.deviceId ? '' : 'disabled'}>${icon('copy')}复制</button></div></div></section>
+      <section class="license-section license-import"><input id="license-file" type="file" accept=".boxlic,.lic,application/octet-stream,text/plain" hidden><button class="button primary" id="select-license-file" ${state.busy ? 'disabled' : ''}>导入 .boxlic 文件</button></section>
+    </article>
+  </section>`
+}
+
 function about() {
   const info = state.about || {}
   const legal = state.legal || {}
@@ -794,6 +834,7 @@ function restoreScrollPositions(positions) {
 }
 
 function render() {
+  normalizeLicensedPage()
   const scrollPositions = captureScrollPositions()
   const content =
     state.page === 'setup'
@@ -806,9 +847,11 @@ function render() {
             ? performance()
             : state.page === 'backups'
               ? backups()
-              : state.page === 'about'
-                ? about()
-                : overview()
+              : state.page === 'license'
+                ? licenseManagement()
+                : state.page === 'about'
+                  ? about()
+                  : overview()
   document.querySelector('#app').innerHTML = shell(content)
   restoreScrollPositions(scrollPositions)
   bindEvents()
@@ -822,6 +865,11 @@ function bindEvents() {
   document.addEventListener('click', closeServiceMenuOnOutside)
   document.querySelectorAll('[data-page]').forEach((node) =>
     node.addEventListener('click', () => {
+      if (!hasValidLicense() && !UNLICENSED_PAGES.has(node.dataset.page)) {
+        state.page = 'license'
+        render()
+        return
+      }
       if (node.dataset.page !== 'setup') {
         state.ownerSecrets = null
         state.ownerSecretsVisible = false
@@ -830,11 +878,26 @@ function bindEvents() {
       render()
       if (state.page === 'backups') loadBackups()
       if (state.page === 'about') loadLegalNotices()
+      if (state.page === 'license') refreshLicenseStatus()
       if (state.page === 'setup') refreshManagedServiceInfo()
       if (state.page === 'runtimes') refreshProjectRuntimes()
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
+  document.querySelector('#select-license-file')?.addEventListener('click', () => {
+    document.querySelector('#license-file')?.click()
+  })
+  document.querySelector('#license-file')?.addEventListener('change', installLicenseFile)
+  document.querySelector('#toggle-license-device')?.addEventListener('click', () => {
+    state.licenseDeviceVisible = !state.licenseDeviceVisible
+    render()
+  })
+  document.querySelector('#copy-license-device')?.addEventListener('click', async () => {
+    if (!state.license?.deviceId) return
+    await navigator.clipboard.writeText(state.license.deviceId)
+    state.notice = '设备 ID 已复制。'
+    render()
+  })
   document.querySelectorAll('[data-runtime-submaps]').forEach((node) =>
     node.addEventListener('toggle', () => {
       const projectId = node.dataset.runtimeSubmaps
@@ -962,8 +1025,8 @@ function bindEvents() {
   document.querySelector('#export-diagnostics')?.addEventListener('click', exportDiagnostics)
   document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
   document
-    .querySelector('#open-community-group')
-    ?.addEventListener('click', () => invoke('open_community_group'))
+    .querySelectorAll('#open-community-group, [data-open-community-group]')
+    .forEach((node) => node.addEventListener('click', () => invoke('open_community_group')))
   document.querySelectorAll('[data-setup-section]').forEach((node) =>
     node.addEventListener('click', (event) => {
       // These tabs live in a form. Keep the interaction explicit so a WebView
@@ -1409,18 +1472,21 @@ async function confirmBackupAction() {
 
 async function refreshStatus() {
   try {
-    const [status, config, about, managedDatabaseInfo, managedRedisInfo] = await Promise.all([
-      invoke('get_system_status'),
-      invoke('get_install_config'),
-      invoke('get_about_info'),
-      invoke('get_managed_service_info', { service: 'postgresql' }),
-      invoke('get_managed_service_info', { service: 'redis' }),
-    ])
+    const [status, config, about, managedDatabaseInfo, managedRedisInfo, license] =
+      await Promise.all([
+        invoke('get_system_status'),
+        invoke('get_install_config'),
+        invoke('get_about_info'),
+        invoke('get_managed_service_info', { service: 'postgresql' }),
+        invoke('get_managed_service_info', { service: 'redis' }),
+        invoke('get_license_status'),
+      ])
     state.status = status
     state.config = config
     state.about = about
     state.managedDatabaseInfo = managedDatabaseInfo
     state.managedRedisInfo = managedRedisInfo
+    state.license = license
     state.playAccessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
@@ -1433,6 +1499,39 @@ async function refreshStatus() {
     }
   }
   render()
+}
+
+async function refreshLicenseStatus() {
+  try {
+    state.license = await invoke('get_license_status')
+  } catch (error) {
+    state.error = String(error)
+  }
+  if (state.page === 'license') render()
+}
+
+async function installLicenseFile(event) {
+  const file = event.currentTarget.files?.[0]
+  if (!file || state.busy) return
+  if (!/\.boxlic$|\.lic$/i.test(file.name)) {
+    state.error = '请选择 .boxlic 许可证文件。'
+    render()
+    return
+  }
+  const token = (await file.text()).trim()
+  if (!token || state.busy) return
+  state.busy = true
+  clearFeedback()
+  render()
+  try {
+    state.license = await invoke('install_license', { token })
+    state.notice = '许可证已验证并安装。'
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    render()
+  }
 }
 
 async function loadLegalNotices() {

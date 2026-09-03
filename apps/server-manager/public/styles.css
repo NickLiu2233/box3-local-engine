@@ -25,7 +25,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -395,6 +396,7 @@ code {
 
 .field input,
 .field select,
+.field textarea,
 .logs-toolbar select {
   width: 100%;
   min-width: 0;
@@ -407,9 +409,56 @@ code {
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: #7173dc;
   box-shadow: 0 0 0 3px #ededff;
+}
+
+.license-content,
+.license-content form {
+  display: grid;
+  gap: 16px;
+}
+
+.license-content dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.license-content dt {
+  margin-bottom: 4px;
+  color: #7a8597;
+  font-size: 11px;
+}
+
+.license-content dd {
+  overflow: hidden;
+  margin: 0;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.license-content textarea {
+  min-height: 150px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.inline-field {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-field input {
+  flex: 1;
+}
+
+.license-content form > button {
+  justify-self: start;
 }
 
 .field small,
@@ -591,7 +640,7 @@ code {
   }
 
   nav {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 
   nav button {
@@ -619,6 +668,10 @@ code {
   }
 
   .field-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .license-content dl {
     grid-template-columns: 1fr;
   }
 }

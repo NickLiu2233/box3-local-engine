@@ -19,6 +19,8 @@ use std::os::unix::fs::PermissionsExt;
 mod config;
 #[path = "docker.rs"]
 mod docker;
+#[path = "license.rs"]
+mod license;
 
 use config::{
     compose_path, detect_lan_ip, ensure_runtime_files, env_path, parse_env, random_hex, remove_env,
@@ -34,6 +36,8 @@ use docker::{
 mod models;
 
 use models::*;
+
+use license::LicenseStatus;
 
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
 const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
@@ -874,6 +878,16 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     };
     set_env(&mut runtime, "COMPOSE_PROFILES", compose_profiles)?;
     set_env(&mut runtime, "BOX_IMAGE_TAG", IMAGE_TAG)?;
+    set_env(
+        &mut runtime,
+        "BOX_LICENSE_FILE",
+        &license::license_path(app)?.to_string_lossy(),
+    )?;
+    set_env(
+        &mut runtime,
+        "BOX_LICENSE_DEVICE_FILE",
+        &license::device_id_path(app)?.to_string_lossy(),
+    )?;
     set_env(
         &mut runtime,
         "BOX_PLAY_PLATFORM",
@@ -2945,6 +2959,9 @@ async fn control_service(app: AppHandle, service: String, action: String) -> Res
     if !["start", "stop", "restart"].contains(&action.as_str()) {
         return Err("不支持的服务操作".into());
     }
+    if !managed && action != "stop" {
+        license::require(&app)?;
+    }
     tauri::async_runtime::spawn_blocking(move || {
         if managed && action == "start" {
             compose_output(&app, &["up", "-d", "--wait", &service])?;
@@ -3650,6 +3667,7 @@ async fn save_configuration_command(
 #[tauri::command]
 async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
+        license::require(&app)?;
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
         emit_progress(&app, "images", "正在检查离线镜像…", 20);
         ensure_images(&app)?;
@@ -3709,6 +3727,16 @@ async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
     })
     .await
     .map_err(|error| format!("启动任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+fn get_license_status(app: AppHandle) -> Result<LicenseStatus, String> {
+    license::status(&app)
+}
+
+#[tauri::command]
+fn install_license(app: AppHandle, token: String) -> Result<LicenseStatus, String> {
+    license::install(&app, &token)
 }
 
 #[tauri::command]
@@ -4232,6 +4260,8 @@ pub fn run() {
             get_project_runtime_status,
             get_about_info,
             get_legal_notices,
+            get_license_status,
+            install_license,
             get_performance_status,
             list_backups,
             create_backup,

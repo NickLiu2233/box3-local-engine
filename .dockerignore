@@ -29,6 +29,12 @@ apps/local-engine/play-worlds/
 # VOXA models and uploaded blobs are creator-owned runtime data. They are
 # mounted into the VOXA container and must never be copied into an image.
 apps/voxa/data/
+# The license issuer is an internal control-plane application. Public engine
+# images only need packages/license and the verification public key; never send
+# the issuer source or its local secrets into their Docker build context.
+# apps/license-server/Dockerfile.dockerignore defines the narrower context used
+# when the internal issuer itself is built.
+apps/license-server/
 
 # Local blobs created by the current workspace are never part of the engine
 # template. The runtime image is additionally assembled from referenced blobs
@@ -39,7 +45,3 @@ apps/local-engine/data/blobs/QmasiQ6eEzBVDjh9F5uaSLhEFwWLS9bXo86o52HrztxmUw
 apps/local-engine/data/blobs/QmcFDasm1RakZvsQ3Xwv7nLnhsbWQHWCvcokAXNbUoana6
 apps/migrator/cache
 apps/migrator/cache/
-
-# Owner-hosted examples are source references and are never shipped inside
-# Creator, Play, Player Service, Migrator, or VOXA images.
-examples/player-auth-portal/

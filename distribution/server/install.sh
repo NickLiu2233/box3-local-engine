@@ -11,6 +11,11 @@ fi
 docker info >/dev/null
 docker compose version >/dev/null
 
+if [ ! -s /etc/machine-id ]; then
+  echo 'Missing /etc/machine-id; a stable Linux machine identity is required for licensing.' >&2
+  exit 1
+fi
+
 random_hex() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 32
@@ -44,7 +49,8 @@ fi
 ./verify.sh
 echo 'Loading offline images…'
 docker load -i "$archive"
-echo 'Starting BOX3 Engine…'
-docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans
+echo 'Starting the Linux Web manager…'
+docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans server-manager
 echo 'Done. Linux Web manager: http://127.0.0.1:3130'
 echo 'Use BOX_SERVER_MANAGER_TOKEN from .env to sign in. Keep this token private.'
+echo 'Install a license in the Web manager, then start the required engine services.'

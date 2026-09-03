@@ -1,0 +1,19 @@
+**
+
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/
+!apps/license-server/
+!apps/license-server/**
+!packages/
+!packages/license/
+!packages/license/**
+
+# Signing material and local configuration must never enter a build context,
+# including the internal issuer image. The private key is mounted read-only at
+# runtime instead.
+apps/license-server/.local/
+apps/license-server/.env
+apps/license-server/.env.*
+!apps/license-server/.env.example
