@@ -41,6 +41,8 @@ const headlessPackageBuilder = fs.readFileSync(
 )
 
 assert.match(runtimeGate, /const licenseTimer = setInterval/)
+assert.match(runtimeGate, /const LICENSE_RECHECK_INTERVAL_MS = 60 \* 60 \* 1000/)
+assert.match(processGuard, /const LICENSE_RECHECK_INTERVAL_MS = 60 \* 60 \* 1000/)
 assert.match(
   runtimeGate,
   /verifyLicenseFiles\(\{ \.\.\.verification, now: clock\.currentTime\(\) \}\)/,

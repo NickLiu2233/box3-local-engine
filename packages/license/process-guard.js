@@ -19,6 +19,7 @@ const verification = {
 const timePublicKeyPath =
   process.env.BOX_LICENSE_TIME_PUBLIC_KEY_PATH || '/app/license/license-time-public-key.pem'
 const timeMode = process.env.BOX_LICENSE_TIME_MODE || 'signed'
+const LICENSE_RECHECK_INTERVAL_MS = 60 * 60 * 1000
 
 let clock
 try {
@@ -53,5 +54,5 @@ const timer = setInterval(async () => {
   } finally {
     checking = false
   }
-}, 60_000)
+}, LICENSE_RECHECK_INTERVAL_MS)
 timer.unref()
