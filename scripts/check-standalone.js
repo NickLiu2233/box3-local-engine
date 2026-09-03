@@ -518,7 +518,7 @@ for (const [name, stage, flag] of [
     dockerFile,
     `${name} launcher command`,
     new RegExp(
-      `CMD \\["node", "apps/local-engine/src/launcher\\.js", "--production", "${flag}"\\]`,
+      `CMD \\["node", "-r", "\\/app\\/license\\/process-guard\\.js", "apps/local-engine/src/launcher\\.js", "--production", "${flag}"\\]`,
     ),
   )
   requirePattern(
@@ -644,7 +644,7 @@ requirePattern(
   playerServiceDockerStage,
   dockerFile,
   'player service standalone server',
-  /CMD \["node", "apps\/game\/\.next\/standalone\/apps\/game\/server\.js"\]/,
+  /CMD \["node", "-r", "\/app\/license\/process-guard\.js", "apps\/game\/\.next\/standalone\/apps\/game\/server\.js"\]/,
 )
 requirePattern(
   voxaDockerStage,
@@ -656,7 +656,7 @@ requirePattern(
   voxaDockerStage,
   dockerFile,
   'VOXA standalone server',
-  /CMD \["node", "apps\/voxa\/\.next\/standalone\/apps\/voxa\/server\.js"\]/,
+  /CMD \["node", "-r", "\/app\/license\/process-guard\.js", "apps\/voxa\/\.next\/standalone\/apps\/voxa\/server\.js"\]/,
 )
 requirePattern(voxaDockerStage, dockerFile, 'VOXA target runs as node', /^USER node$/m)
 requirePattern(
