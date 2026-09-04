@@ -154,15 +154,6 @@ pub(crate) struct BackupInfo {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct EnvironmentCheck {
-    pub(crate) id: String,
-    pub(crate) label: String,
-    pub(crate) level: String,
-    pub(crate) message: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub(crate) struct ConnectionTest {
     pub(crate) ok: bool,
     pub(crate) message: String,

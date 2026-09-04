@@ -1486,79 +1486,6 @@ form.environment-mode {
   line-height: 1.55;
 }
 
-.check-panel {
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
-}
-
-.check-row {
-  min-height: 64px;
-  display: grid;
-  grid-template-columns: 8px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.check-row:last-child {
-  border-bottom: 0;
-}
-
-.check-row > i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #aeb2ba;
-}
-
-.check-row.success > i {
-  background: var(--success);
-}
-
-.check-row.error > i {
-  background: var(--danger);
-}
-
-.check-row strong,
-.check-row span {
-  display: block;
-}
-
-.check-row span {
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.check-row > b {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.check-row.success > b {
-  color: var(--success);
-}
-
-.check-row.error > b {
-  color: var(--danger);
-}
-
-.empty-check {
-  min-height: 230px;
-  display: grid;
-  place-content: center;
-  gap: 6px;
-  text-align: center;
-}
-
-.empty-check span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .toast {
   position: fixed;
   top: 24px;
@@ -2279,6 +2206,76 @@ form.environment-mode {
   border-top: 1px solid var(--border);
 }
 
+.about-changelog-list {
+  border-top: 1px solid var(--border);
+}
+
+details.about-changelog-row {
+  display: block;
+  border-top: 1px solid var(--border);
+}
+
+details.about-changelog-row:first-child {
+  border-top: 0;
+}
+
+.about-changelog-row > summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.about-changelog-row > summary::-webkit-details-marker {
+  display: none;
+}
+
+.about-changelog-row > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.about-changelog-summary {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.about-changelog-summary strong {
+  color: var(--text);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 13px;
+}
+
+.about-changelog-summary small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-changelog-items {
+  display: grid;
+  gap: 8px;
+  margin: 0 16px 16px;
+  padding: 14px 16px 14px 31px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.about-changelog-items li {
+  padding-left: 2px;
+}
+
 details.about-image-row {
   display: block;
   padding: 0;
@@ -2794,8 +2791,8 @@ details.about-image-row:first-child {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 34px;
+  padding: 0 14px;
   color: var(--text);
   cursor: pointer;
   font-size: 12px;
@@ -2829,7 +2826,7 @@ details.about-image-row:first-child {
 .runtime-submaps-title {
   display: inline-flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 0;
 }
 
 .runtime-submaps-title small {
@@ -2841,7 +2838,7 @@ details.about-image-row:first-child {
 .runtime-submap-list {
   display: grid;
   gap: 8px;
-  padding: 0 12px 12px;
+  padding: 0 10px 10px;
 }
 
 .runtime-submap {
@@ -2941,7 +2938,6 @@ details.about-image-row:first-child {
 .network-service-card,
 .managed-install-card,
 .managed-connection-card,
-.check-panel,
 .about-release-card,
 .legal-dialog,
 .metric-grid article,

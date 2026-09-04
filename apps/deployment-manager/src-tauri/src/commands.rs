@@ -5,7 +5,7 @@ use std::{
     collections::BTreeMap,
     fs,
     io::{Read, Write},
-    net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs},
+    net::{SocketAddr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -2746,173 +2746,6 @@ async fn get_performance_status(app: AppHandle) -> Result<PerformanceStatus, Str
 }
 
 #[tauri::command]
-async fn run_environment_checks(
-    app: AppHandle,
-    config: InstallConfigInput,
-) -> Result<Vec<EnvironmentCheck>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let mut checks = Vec::new();
-        match docker_output(&["info", "--format", "{{.ServerVersion}}"]).map_err(docker_message) {
-            Ok(version) => checks.push(EnvironmentCheck {
-                id: "docker".into(),
-                label: "Docker".into(),
-                level: "success".into(),
-                message: format!("已连接，服务端版本 {version}"),
-            }),
-            Err(error) => checks.push(EnvironmentCheck {
-                id: "docker".into(),
-                label: "Docker".into(),
-                level: "error".into(),
-                message: error,
-            }),
-        }
-
-        match runtime_root(&app).and_then(|root| {
-            let probe = root.join(".write-test");
-            fs::write(&probe, b"ok").map_err(|error| format!("无法写入数据目录：{error}"))?;
-            fs::remove_file(probe).map_err(|error| format!("无法清理测试文件：{error}"))?;
-            Ok(root)
-        }) {
-            Ok(root) => checks.push(EnvironmentCheck {
-                id: "storage".into(),
-                label: "数据目录".into(),
-                level: "success".into(),
-                message: format!("可正常读写：{}", root.display()),
-            }),
-            Err(error) => checks.push(EnvironmentCheck {
-                id: "storage".into(),
-                label: "数据目录".into(),
-                level: "error".into(),
-                message: error,
-            }),
-        }
-
-        match validate_service_ports(&config) {
-            Ok(()) => {
-                let running = get_system_status(app.clone())
-                    .services
-                    .into_iter()
-                    .any(|service| service.running);
-                let conflicts: Vec<String> = if running {
-                    Vec::new()
-                } else {
-                    configured_ports(&config)
-                        .into_iter()
-                        .filter_map(|(label, port)| {
-                            TcpListener::bind(("0.0.0.0", port))
-                                .err()
-                                .map(|_| format!("{label} {port}"))
-                        })
-                        .collect()
-                };
-                checks.push(EnvironmentCheck {
-                    id: "ports".into(),
-                    label: "服务端口".into(),
-                    level: if conflicts.is_empty() {
-                        "success"
-                    } else {
-                        "error"
-                    }
-                    .into(),
-                    message: if running {
-                        "服务正在运行，端口由 BOX 容器正常占用".into()
-                    } else if conflicts.is_empty() {
-                        "五个端口均可使用且没有重复".into()
-                    } else {
-                        format!("端口已被占用：{}", conflicts.join("、"))
-                    },
-                });
-            }
-            Err(error) => checks.push(EnvironmentCheck {
-                id: "ports".into(),
-                label: "服务端口".into(),
-                level: "error".into(),
-                message: error,
-            }),
-        }
-
-        for (id, label, mode, host, port) in [
-            (
-                "postgresql",
-                "PostgreSQL",
-                config.database_mode.as_str(),
-                config.database_host.as_str(),
-                config.database_port.as_str(),
-            ),
-            (
-                "redis",
-                "Redis",
-                config.redis_mode.as_str(),
-                config.redis_host.as_str(),
-                config.redis_port.as_str(),
-            ),
-        ] {
-            if mode == "managed" {
-                let image = if id == "postgresql" {
-                    managed_database_image(&app)
-                } else {
-                    managed_redis_image(&app)
-                };
-                let downloaded = docker_output(&["image", "inspect", &image]).is_ok();
-                checks.push(EnvironmentCheck {
-                    id: id.into(),
-                    label: label.into(),
-                    level: if downloaded { "success" } else { "neutral" }.into(),
-                    message: if downloaded {
-                        "内置镜像已就绪".into()
-                    } else {
-                        "首次保存时会提示下载内置镜像".into()
-                    },
-                });
-                continue;
-            }
-            if mode == "disabled" {
-                checks.push(EnvironmentCheck {
-                    id: id.into(),
-                    label: label.into(),
-                    level: "neutral".into(),
-                    message: "未启用（选填）".into(),
-                });
-                continue;
-            }
-            if host.trim().is_empty() {
-                checks.push(EnvironmentCheck {
-                    id: id.into(),
-                    label: label.into(),
-                    level: if id == "postgresql" {
-                        "error"
-                    } else {
-                        "neutral"
-                    }
-                    .into(),
-                    message: if id == "postgresql" {
-                        "必须配置后才能启动服务".into()
-                    } else {
-                        "未配置（选填）".into()
-                    },
-                });
-                continue;
-            }
-            let result = validate_host(host, label).and_then(|host| {
-                let port = validate_port(port)?;
-                check_remote_endpoint(label, &host, port)
-            });
-            checks.push(EnvironmentCheck {
-                id: id.into(),
-                label: label.into(),
-                level: if result.is_ok() { "success" } else { "error" }.into(),
-                message: result
-                    .err()
-                    .unwrap_or_else(|| format!("网络可达：{}:{}", host.trim(), port)),
-            });
-        }
-        Ok(checks)
-    })
-    .await
-    .map_err(|error| format!("环境检查任务异常结束：{error}"))?
-}
-
-#[tauri::command]
 async fn test_remote_connection(
     kind: String,
     host: String,
@@ -3872,6 +3705,7 @@ fn verify_archive(app: AppHandle) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::net::TcpListener;
 
     fn test_install_config() -> InstallConfigInput {
         InstallConfigInput {
@@ -4269,7 +4103,6 @@ pub fn run() {
             delete_backup,
             export_backup,
             import_backup,
-            run_environment_checks,
             test_remote_connection,
             has_managed_database_image,
             prepare_managed_database,

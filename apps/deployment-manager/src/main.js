@@ -69,8 +69,6 @@ const state = {
   license: null,
   licenseDeviceVisible: false,
   legalLoading: false,
-  environmentChecks: [],
-  checkingEnvironment: false,
   connectionTests: {},
   environmentFile: '',
   environmentFileLoaded: false,
@@ -280,7 +278,7 @@ function performance() {
         second: '2-digit',
       })
     : '尚未采样'
-  return `<header><div><h1>性能监控</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="refresh-performance" ${state.performanceLoading ? 'disabled' : ''}>${icon('refresh')}${state.performanceLoading ? '采样中' : '刷新'}</button></div></header>
+  return `<header><div><h1>性能监控</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button></div></header>
     <section class="metric-grid"><article><span>运行服务</span><strong>${running.length} / ${samples.filter((service) => service.enabled).length || 0}</strong><small>已启用服务</small></article><article><span>总 CPU</span><strong>${formatMetric(totalCpu)}</strong><small>当前容器合计</small></article><article><span>内存状态</span><strong>${running.length ? '正常采样' : '—'}</strong><small>${sampledAt}</small></article></section>
     <section class="performance-panel"><div class="performance-head"><span>服务</span><span>CPU</span><span>内存</span><span>占用率</span><span>进程</span><span>状态</span></div>${services
       .map(([id, name]) => {
@@ -289,9 +287,7 @@ function performance() {
         const memoryPercent = Math.min(100, Math.max(0, item?.memoryPercent || 0))
         return `<article class="performance-row ${enabled ? '' : 'disabled'}"><div class="performance-name"><strong>${name}</strong></div><b>${formatMetric(item?.cpuPercent)}</b><div><b>${escapeHtml(item?.memoryUsage || '0 B')}</b><small>/ ${escapeHtml(item?.memoryLimit || '—')}</small></div><div class="memory-meter"><span><i style="width:${memoryPercent}%"></i></span><b>${formatMetric(memoryPercent)}</b></div><b>${item?.pids || 0}</b><span class="service-state ${item?.running ? 'running' : ''}"><i></i>${!enabled ? '未启用' : item?.running ? '运行中' : '已停止'}</span></article>`
       })
-      .join(
-        '',
-      )}</section><p class="performance-note">仅在本页打开时每 5 秒采样一次；离开页面后自动停止。</p>`
+      .join('')}</section>`
 }
 
 function overview() {
@@ -315,7 +311,7 @@ function overview() {
     return Boolean(info?.imageAvailable && info?.configured)
   })
   return `<header><div><h1>服务总览</h1></div>
-    <div class="header-actions"><button class="button" data-page="diagnostics">${icon('check')}环境检查</button><button class="button" data-page="performance">${icon('performance')}性能</button></div></header>
+    <div class="header-actions"><button class="button" data-page="performance">${icon('performance')}性能</button></div></header>
     ${state.busy ? progressPanel() : ''}
     <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
       <div class="hero-actions">${installed ? `${allHealthy ? '' : state.license?.valid ? `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>` : `<button class="button primary" data-page="license">安装许可证</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
@@ -409,7 +405,7 @@ function runtimes() {
   const runtimeProject = (project, submaps = []) => {
     const expansionKey = `${catalogTab}:${project.projectId}`
     const submapSection = submaps.length
-      ? `<details class="runtime-submaps" data-runtime-submaps="${escapeHtml(expansionKey)}" ${state.runtimeExpandedProjects.has(expansionKey) ? 'open' : ''}><summary><span class="runtime-submaps-title">副地图 <small>共 ${submaps.length} 张</small></span></summary><div class="runtime-submap-list">${submaps
+      ? `<details class="runtime-submaps" data-runtime-submaps="${escapeHtml(expansionKey)}" ${state.runtimeExpandedProjects.has(expansionKey) ? 'open' : ''}><summary><span class="runtime-submaps-title"><small>共 ${submaps.length} 张</small></span></summary><div class="runtime-submap-list">${submaps
           .map(
             (submap) =>
               `<article class="runtime-submap"><header><div><h3>${escapeHtml(submap.name || submap.projectId)}</h3><p>地图 ID：<code>${escapeHtml(submap.permanentMapId || submap.projectId)}</code></p></div></header><div class="runtime-mode-grid single">${runtimeCells(submap)}</div></article>`,
@@ -462,21 +458,6 @@ function getServiceUrl(serviceId) {
       : state.config?.publicHost || '127.0.0.1'
   const port = Number(state.config?.[portKey]) || defaultPort
   return `http://${host}:${port}${path}`
-}
-
-function diagnostics() {
-  const checks = state.environmentChecks
-  return `<header><div><h1>环境检查</h1></div><div class="header-actions"><button class="button" data-page="overview">返回总览</button><button class="button" id="export-diagnostics" ${state.busy ? 'disabled' : ''}>${icon('logs')}生成诊断包</button><button class="button primary" id="run-environment-checks" ${state.checkingEnvironment ? 'disabled' : ''}>${icon('check')}${state.checkingEnvironment ? '检查中' : '开始检查'}</button></div></header>
-    <section class="check-panel">${
-      checks.length
-        ? checks
-            .map(
-              (item) =>
-                `<article class="check-row ${item.level}"><i></i><div><strong>${escapeHtml(item.label)}</strong><span>${escapeHtml(item.message)}</span></div><b>${item.level === 'success' ? '正常' : item.level === 'error' ? '需处理' : '未启用'}</b></article>`,
-            )
-            .join('')
-        : '<div class="empty-check"><strong>尚未执行检查</strong><span>点击“开始检查”确认当前配置是否适合启动服务。</span></div>'
-    }</section><p class="performance-note">远程服务检查确认地址和端口可达；账号权限会在正式启动服务时继续验证。</p>`
 }
 
 function progressPanel() {
@@ -707,7 +688,7 @@ function licenseManagement() {
     deviceId.length > 18 ? `${deviceId.slice(0, 12)}***${deviceId.slice(-6)}` : deviceId
   const shownDeviceId = state.licenseDeviceVisible ? deviceId : maskedDeviceId
   const details = license.valid
-    ? `<dl class="license-facts"><div><dt>许可证</dt><dd>${escapeHtml(license.licenseId)}</dd></div><div><dt>类型</dt><dd>个人学习许可证</dd></div><div><dt>到期时间</dt><dd>${escapeHtml(formatBeijingBuildTime(license.expiresAt))}</dd></div><div><dt>使用范围</dt><dd>仅限个人学习和非商业用途</dd></div></dl>`
+    ? `<dl class="license-facts"><div><dt>许可证</dt><dd>${escapeHtml(license.licenseId)}</dd></div><div><dt>起始时间</dt><dd>${escapeHtml(formatBeijingBuildTime(license.issuedAt))}</dd></div><div><dt>到期时间</dt><dd>${escapeHtml(formatBeijingBuildTime(license.expiresAt))}</dd></div><div><dt>使用范围</dt><dd>仅限个人学习和非商业用途</dd></div></dl>`
     : ''
   return `<header class="license-header"><div><h1>许可证管理 <span class="license-state ${license.valid ? 'valid' : ''}">${statusLabel}</span></h1></div></header><section class="license-page">
     <article class="license-panel">
@@ -721,6 +702,23 @@ function licenseManagement() {
 function about() {
   const info = state.about || {}
   const legal = state.legal || {}
+  // Add later releases at the top. The about page deliberately keeps this
+  // public-facing: no internal URLs, credentials, or implementation details.
+  const releaseNotes = [
+    {
+      version: '0.1.0',
+      date: '2026 年 9 月',
+      summary: '本地部署版首次发布',
+      items: [
+        '创作端与游玩端分离部署：创作者编辑工程，玩家只运行已发布的游玩包。',
+        '支持地图工程、游玩包和 VOXA 模型工程的导入、导出与本地备份。',
+        '支持地图组与传送房间；同一作品可由主地图和多个独立副地图组成。',
+        '模型、皮肤和动画可通过 VOXA 本地保存，并在创作和游玩中使用。',
+        '提供玩家服务与 PostgreSQL 数据空间，保存账号、权限、会话和地图脚本持久数据。',
+        '提供桌面启动器与 Linux Web 管理端，集中管理服务、端口、数据和备份。',
+      ],
+    },
+  ]
   const values = [
     ['启动器版本', info.applicationVersion || '读取中'],
     ['引擎开发', '深圳奇梦岛科技有限公司'],
@@ -742,9 +740,21 @@ function about() {
         )
         .join('')
     : '<div class="about-image-empty">正在读取组件镜像信息…</div>'
+  const changelogRows = releaseNotes
+    .map(
+      (release, index) => `<details class="about-changelog-row" ${index === 0 ? 'open' : ''}>
+        <summary>
+          <span class="about-changelog-summary"><strong>v${escapeHtml(release.version)}</strong><small>${escapeHtml(release.date)} · ${escapeHtml(release.summary)}</small></span>
+          <span class="about-image-disclosure">详情</span>
+        </summary>
+        <ul class="about-changelog-items">${release.items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+      </details>`,
+    )
+    .join('')
 
   return `<header><div><h1>关于</h1></div></header><section class="about-page">
     <article class="about-release-card"><dl class="about-release-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt><dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd></div>`).join('')}</dl></article>
+    <article class="about-card"><div class="about-card-heading"><h2>更新日志</h2></div><div class="about-changelog-list">${changelogRows}</div></article>
     <article class="about-card"><div class="about-card-heading"><h2>服务组件</h2></div><div class="about-image-list">${imageRows}</div></article>
     <article class="about-card"><div class="about-card-heading"><h2>社区与许可</h2></div><div class="about-document-list"><button class="about-document-row" id="open-community-group"><span><strong>服主交流QQ群：1107448537</strong><small>加入交流群，与其他服主交流部署与运营经验。</small></span><em>加入</em>${icon('external')}</button><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
   </section>`
@@ -841,17 +851,15 @@ function render() {
       ? setup()
       : state.page === 'runtimes'
         ? runtimes()
-        : state.page === 'diagnostics'
-          ? diagnostics()
-          : state.page === 'performance'
-            ? performance()
-            : state.page === 'backups'
-              ? backups()
-              : state.page === 'license'
-                ? licenseManagement()
-                : state.page === 'about'
-                  ? about()
-                  : overview()
+        : state.page === 'performance'
+          ? performance()
+          : state.page === 'backups'
+            ? backups()
+            : state.page === 'license'
+              ? licenseManagement()
+              : state.page === 'about'
+                ? about()
+                : overview()
   document.querySelector('#app').innerHTML = shell(content)
   restoreScrollPositions(scrollPositions)
   bindEvents()
@@ -912,7 +920,6 @@ function bindEvents() {
       render()
     }),
   )
-  document.querySelector('#refresh-performance')?.addEventListener('click', refreshPerformance)
   document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
   document.querySelector('#create-backup')?.addEventListener('click', createBackup)
   document.querySelector('#import-backup')?.addEventListener('click', importBackup)
@@ -1021,8 +1028,6 @@ function bindEvents() {
     .forEach((node) =>
       node.addEventListener('click', () => testConnection(node.dataset.testConnection)),
     )
-  document.querySelector('#run-environment-checks')?.addEventListener('click', runEnvironmentChecks)
-  document.querySelector('#export-diagnostics')?.addEventListener('click', exportDiagnostics)
   document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
   document
     .querySelectorAll('#open-community-group, [data-open-community-group]')
@@ -1339,23 +1344,6 @@ async function testConnection(kind) {
     state.error = String(error)
   }
   render()
-}
-
-async function runEnvironmentChecks() {
-  if (state.checkingEnvironment) return
-  state.checkingEnvironment = true
-  clearFeedback()
-  render()
-  try {
-    state.environmentChecks = await invoke('run_environment_checks', {
-      config: normalizedConfig(),
-    })
-  } catch (error) {
-    state.error = String(error)
-  } finally {
-    state.checkingEnvironment = false
-    render()
-  }
 }
 
 async function exportDiagnostics() {

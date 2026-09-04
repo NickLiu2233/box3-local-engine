@@ -56,6 +56,7 @@ pub(crate) struct LicenseStatus {
     pub(crate) license_id: String,
     pub(crate) license_type: String,
     pub(crate) holder_id: String,
+    pub(crate) issued_at: String,
     pub(crate) expires_at: String,
     pub(crate) message: String,
 }
@@ -416,6 +417,7 @@ pub(crate) fn status(app: &AppHandle) -> Result<LicenseStatus, String> {
             license_id: String::new(),
             license_type: String::new(),
             holder_id: String::new(),
+            issued_at: String::new(),
             expires_at: String::new(),
             message: "尚未安装个人学习许可证".into(),
         });
@@ -429,6 +431,7 @@ pub(crate) fn status(app: &AppHandle) -> Result<LicenseStatus, String> {
             license_id: payload.license_id,
             license_type: payload.license_type,
             holder_id: payload.holder_id,
+            issued_at: payload.issued_at,
             expires_at: payload.expires_at,
             message: "许可证有效".into(),
         }),
@@ -439,6 +442,7 @@ pub(crate) fn status(app: &AppHandle) -> Result<LicenseStatus, String> {
             license_id: String::new(),
             license_type: String::new(),
             holder_id: String::new(),
+            issued_at: String::new(),
             expires_at: String::new(),
             message,
         }),
