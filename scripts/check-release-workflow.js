@@ -16,11 +16,15 @@ const serverPackageBuilder = fs.readFileSync(
 )
 const { headlessCompose } = require('./build-headless-server-package')
 
-for (const target of ['windows-amd64', 'macos-arm64', 'linux-amd64']) {
+for (const target of [
+  'windows-amd64',
+  'windows-arm64',
+  'macos-amd64',
+  'macos-arm64',
+  'linux-amd64',
+  'linux-arm64',
+]) {
   assert.match(workflow, new RegExp(`(?:targets|target).*${target}`))
-}
-for (const excludedTarget of ['windows-arm64', 'macos-amd64', 'linux-arm64']) {
-  assert.doesNotMatch(workflow, new RegExp(`target: ${excludedTarget}`))
 }
 
 assert.match(
@@ -49,7 +53,8 @@ assert.match(installerBuilder, /const imageTag = archiveImageTags\.length === 1/
 assert.match(workflow, /headless-server:\s+needs: images/)
 assert.match(workflow, /node scripts\/build-headless-server-package\.js/)
 assert.match(workflow, /needs: \[desktop, headless-server\]/)
-assert.match(workflow, /files:\s*\|[\s\S]*release-files\/\*\.zip[\s\S]*release-files\/\*\.tar\.gz/)
+assert.match(workflow, /files:\s*\|[\s\S]*release-files\/BOX-Local-Engine-\*\.zip[\s\S]*release-files\/BOX3-Engine-Server-\*\.zip/)
+assert.doesNotMatch(workflow, /files:\s*\|[\s\S]*release-files\/\*\.tar\.gz/)
 assert.match(serverPackageBuilder, /BOX3-Engine-Server-/)
 assert.match(serverPackageBuilder, /function headlessCompose/)
 assert.match(serverPackageBuilder, /player-auth-portal:/)
@@ -108,8 +113,9 @@ assert.match(
 )
 assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
 assert.doesNotMatch(workflow, /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['"][^$]/i)
-assert.match(workflow, /release-files\/\*\.zip/)
-assert.match(workflow, /release-files\/\*\.tar\.gz/)
+assert.match(workflow, /release-files\/BOX-Local-Engine-\*\.zip/)
+assert.match(workflow, /release-files\/BOX3-Engine-Server-\*\.zip/)
+assert.doesNotMatch(workflow, /release-files\/\*\.tar\.gz/)
 for (const requiredTemplateFile of [
   'README.md',
   'install.sh',

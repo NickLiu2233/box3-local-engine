@@ -125,12 +125,21 @@ jobs:
           - target: windows-amd64
             architecture: amd64
             runner: windows-2022
+          - target: windows-arm64
+            architecture: arm64
+            runner: windows-11-arm
+          - target: macos-amd64
+            architecture: amd64
+            runner: macos-13
           - target: macos-arm64
             architecture: arm64
             runner: macos-14
           - target: linux-amd64
             architecture: amd64
             runner: ubuntu-22.04
+          - target: linux-arm64
+            architecture: arm64
+            runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -303,5 +312,5 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            release-files/*.zip
-            release-files/*.tar.gz
+            release-files/BOX-Local-Engine-*.zip
+            release-files/BOX3-Engine-Server-*.zip
