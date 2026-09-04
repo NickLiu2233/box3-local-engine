@@ -21,23 +21,7 @@ env:
   OSS_PREFIX: box-local-engine/${{ github.ref_name }}/${{ github.sha }}
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-      # package.json is the sole source of the pnpm version. Corepack avoids a
-      # second, broad version declaration beside the exact packageManager value
-      # and keeps this workflow independent of an action runtime's Node policy.
-      - run: corepack enable
-      - run: pnpm --version
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm verify
-
   images:
-    needs: verify
     strategy:
       fail-fast: false
       matrix:

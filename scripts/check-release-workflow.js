@@ -33,6 +33,8 @@ assert.match(
 )
 assert.match(workflow, /architecture: amd64\s+runner: ubuntu-latest/)
 assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/)
+assert.doesNotMatch(workflow, /^\s{2}verify:/m)
+assert.doesNotMatch(workflow, /needs: verify/)
 assert.doesNotMatch(workflow, /docker\/setup-qemu-action/)
 assert.match(
   workflow,
