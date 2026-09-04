@@ -779,7 +779,7 @@ function formatBeijingBuildTime(value) {
       .filter(({ type }) => type !== 'literal')
       .map(({ type, value: part }) => [type, part]),
   )
-  return `${parts.year}年${parts.month}月${parts.day}日 ${parts.hour}:${parts.minute}:${parts.second}（北京时间）`
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
 }
 
 function formatBuildSource(value) {

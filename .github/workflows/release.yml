@@ -81,6 +81,14 @@ jobs:
           BOX_IMAGE_TAG: ${{ github.ref_name }}-linux-${{ matrix.architecture }}
           BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
         run: |
+          # Keep the OCI labels embedded in every image aligned with this
+          # release. The desktop launcher reads these labels after importing
+          # the offline archive; without them it can only report `unknown`
+          # and incorrectly categorises a GitHub build as a local build.
+          export BOX_BUILD_VERSION="${{ github.ref_name }}"
+          export BOX_BUILD_COMMIT="${{ github.sha }}"
+          export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
+          export BOX_BUILD_SOURCE="github-actions"
           # Build one service at a time. This keeps the large game/asset build
           # stages from Creator, Play and Player Service off disk concurrently.
           for service in player-service player-auth-portal server-manager creator play voxa; do

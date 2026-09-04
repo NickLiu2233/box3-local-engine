@@ -35,6 +35,10 @@ assert.match(
   /box-local-engine-images-\$\{\{ github\.ref_name \}\}-linux-\$\{\{ matrix\.architecture \}\}\.tar\.gz/,
 )
 assert.match(workflow, /docker builder prune --all --force/)
+assert.match(workflow, /export BOX_BUILD_VERSION="\$\{\{ github\.ref_name \}\}"/)
+assert.match(workflow, /export BOX_BUILD_COMMIT="\$\{\{ github\.sha \}\}"/)
+assert.match(workflow, /export BOX_BUILD_DATE="\$\(TZ=Asia\/Shanghai date \+'%Y-%m-%dT%H:%M:%S%:z'\)"/)
+assert.match(workflow, /export BOX_BUILD_SOURCE="github-actions"/)
 assert.match(workflow, /test -f "\$archive"/)
 assert.doesNotMatch(workflow, /pnpm\/action-setup/)
 assert.match(workflow, /node-version-file: \.node-version/)
