@@ -11,8 +11,6 @@ beforeEach(resetAuthRateLimitsForTests);
 afterEach(() => {
   delete process.env.BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS;
   delete process.env.BOX_LOGIN_RATE_LIMIT_WINDOW_MS;
-  delete process.env.BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS;
-  delete process.env.BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS;
   resetAuthRateLimitsForTests();
 });
 
@@ -37,12 +35,5 @@ describe('authentication rate limits', () => {
     recordAuthRateLimitAttempt('login', '203.0.113.2', 7_000);
     resetAuthRateLimit('login', '203.0.113.2');
     expect(checkAuthRateLimit('login', '203.0.113.2', 7_000).allowed).toBe(true);
-  });
-
-  test('keeps registration and login counters independent', () => {
-    process.env.BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS = '1';
-    recordAuthRateLimitAttempt('registration', '203.0.113.3', 10_000);
-    expect(checkAuthRateLimit('registration', '203.0.113.3', 10_000).allowed).toBe(false);
-    expect(checkAuthRateLimit('login', '203.0.113.3', 10_000).allowed).toBe(true);
   });
 });

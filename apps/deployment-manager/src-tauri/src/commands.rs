@@ -45,6 +45,7 @@ const PROJECT_NAME: &str = "box-local-engine";
 const MANAGED_DATABASE_IMAGE: &str = "docker.m.daocloud.io/library/postgres:16-alpine";
 const MANAGED_REDIS_IMAGE: &str = "docker.m.daocloud.io/library/redis:7-alpine";
 const MANAGED_SERVICE_NAMES: [&str; 2] = ["managed-postgres", "managed-redis"];
+const ONBOARDING_LOCK_FILE: &str = "onboarding.lock";
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigView {
@@ -2224,10 +2225,15 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
     let data_directory = runtime_root(&app)
         .map(|path| path.to_string_lossy().to_string())
         .unwrap_or_default();
-    let docker = docker_output(&["info", "--format", "{{.ServerVersion}}"]);
-    let docker_ready = docker.is_ok();
-    let docker_message = docker.unwrap_or_else(docker_message);
+    let docker = docker_check();
+    let docker_ready = docker.engine_ready;
+    let docker_cli_available = docker.cli_available;
+    let docker_cli_version = docker.cli_version;
+    let docker_message = docker.message;
     let configured = env_path(&app).is_ok_and(|path| path.exists());
+    let onboarding_completed = runtime_root(&app)
+        .map(|root| root.join(ONBOARDING_LOCK_FILE).is_file())
+        .unwrap_or(false);
     let environment = load_existing_env(&app);
     let enabled = enabled_services(&environment);
     let mut services: Vec<ServiceStatus> = SERVICE_NAMES
@@ -2292,12 +2298,54 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
         .all(|service| service.running);
     SystemStatus {
         docker_ready,
+        docker_cli_available,
+        docker_cli_version,
         docker_message,
         configured,
+        onboarding_completed,
         all_healthy,
         services,
         data_directory,
     }
+}
+
+#[tauri::command]
+fn complete_onboarding(app: AppHandle) -> Result<(), String> {
+    let path = runtime_root(&app)?.join(ONBOARDING_LOCK_FILE);
+    write_private_file(&path, "initialized\n", "初始化锁文件")
+}
+
+fn docker_check() -> DockerCheck {
+    let cli = match docker_output(&["--version"]) {
+        Ok(version) => version,
+        Err(error) => {
+            return DockerCheck {
+                cli_available: false,
+                cli_version: String::new(),
+                engine_ready: false,
+                message: docker_message(error),
+            }
+        }
+    };
+    match docker_output(&["info", "--format", "{{.ServerVersion}}"]) {
+        Ok(_) => DockerCheck {
+            cli_available: true,
+            cli_version: cli,
+            engine_ready: true,
+            message: "Docker Desktop 已连接。".into(),
+        },
+        Err(error) => DockerCheck {
+            cli_available: true,
+            cli_version: cli,
+            engine_ready: false,
+            message: docker_message(error),
+        },
+    }
+}
+
+#[tauri::command]
+fn get_docker_check() -> DockerCheck {
+    docker_check()
 }
 
 fn unavailable_runtime_status() -> RuntimeEndpointStatus {
@@ -3679,6 +3727,70 @@ fn open_community_group() -> Result<(), String> {
         .map_err(|error| format!("无法打开交流群：{error}"))
 }
 
+#[tauri::command]
+fn open_docker_desktop_download() -> Result<(), String> {
+    let url = "https://www.docker.com/products/docker-desktop/";
+    #[cfg(target_os = "windows")]
+    let mut command = {
+        let mut command = Command::new("cmd");
+        command.args(["/C", "start", "", url]);
+        command
+    };
+    #[cfg(target_os = "macos")]
+    let mut command = {
+        let mut command = Command::new("open");
+        command.arg(url);
+        command
+    };
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+    let mut command = {
+        let mut command = Command::new("xdg-open");
+        command.arg(url);
+        command
+    };
+    hide_window(&mut command);
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("无法打开 Docker Desktop 下载页面：{error}"))
+}
+
+#[tauri::command]
+fn start_docker_desktop() -> Result<(), String> {
+    let mut command = if docker_output(&["desktop", "version"]).is_ok() {
+        let mut command = docker_command();
+        command.args(["desktop", "start"]);
+        command
+    } else {
+        #[cfg(target_os = "windows")]
+        {
+            let path = r"C:\Program Files\Docker\Docker\Docker Desktop.exe";
+            if !Path::new(path).is_file() {
+                return Err(
+                    "Docker CLI 已安装，但未找到 Docker Desktop 程序。请手动启动 Docker Desktop。"
+                        .into(),
+                );
+            }
+            let mut command = Command::new("cmd");
+            command.args(["/C", "start", "", path]);
+            command
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let mut command = Command::new("open");
+            command.args(["-a", "Docker"]);
+            command
+        }
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
+        return Err("请手动启动 Docker Desktop，然后重新检测。".into());
+    };
+    hide_window(&mut command);
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("无法启动 Docker Desktop：{error}"))
+}
+
 fn file_sha256(path: &Path) -> Result<String, String> {
     let mut file = fs::File::open(path).map_err(|error| error.to_string())?;
     let mut digest = Sha256::new();
@@ -3782,7 +3894,15 @@ mod tests {
     #[test]
     fn explains_a_docker_daemon_that_is_not_ready() {
         assert!(docker_message("Cannot connect to the Docker daemon".into())
-            .contains("已安装但尚未就绪"));
+            .contains("Docker CLI 已安装"));
+    }
+
+    #[test]
+    fn distinguishes_an_installed_cli_from_a_missing_docker_socket() {
+        assert!(docker_message(
+            "Cannot connect to the Docker daemon at unix:///Users/test/.docker/run/docker.sock. Is the docker daemon running? no such file or directory".into()
+        )
+        .contains("Docker CLI 已安装"));
     }
 
     #[test]
@@ -4117,6 +4237,10 @@ pub fn run() {
             export_diagnostics,
             open_service,
             open_community_group,
+            open_docker_desktop_download,
+            start_docker_desktop,
+            get_docker_check,
+            complete_onboarding,
             verify_archive,
         ])
         .run(tauri::generate_context!())

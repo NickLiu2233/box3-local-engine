@@ -3,7 +3,7 @@ import {
   resetPersistentAuthRateLimit,
 } from './local-player-identity';
 
-export type AuthRateLimitScope = 'login' | 'registration';
+export type AuthRateLimitScope = 'login';
 
 type Bucket = { count: number; resetAt: number };
 const buckets = new Map<string, Bucket>();
@@ -15,16 +15,11 @@ function positiveInteger(value: string | undefined, fallback: number, maximum: n
     : fallback;
 }
 
-function policy(scope: AuthRateLimitScope) {
-  return scope === 'login'
-    ? {
-        maximum: positiveInteger(process.env.BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS, 10, 10_000),
-        windowMs: positiveInteger(process.env.BOX_LOGIN_RATE_LIMIT_WINDOW_MS, 5 * 60_000, 24 * 60 * 60_000),
-      }
-    : {
-        maximum: positiveInteger(process.env.BOX_REGISTRATION_RATE_LIMIT_MAX_ATTEMPTS, 5, 10_000),
-        windowMs: positiveInteger(process.env.BOX_REGISTRATION_RATE_LIMIT_WINDOW_MS, 60 * 60_000, 24 * 60 * 60_000),
-      };
+function policy() {
+  return {
+    maximum: positiveInteger(process.env.BOX_LOGIN_RATE_LIMIT_MAX_ATTEMPTS, 10, 10_000),
+    windowMs: positiveInteger(process.env.BOX_LOGIN_RATE_LIMIT_WINDOW_MS, 5 * 60_000, 24 * 60 * 60_000),
+  };
 }
 
 function key(scope: AuthRateLimitScope, address: string) {
@@ -33,7 +28,7 @@ function key(scope: AuthRateLimitScope, address: string) {
 
 export function checkAuthRateLimit(scope: AuthRateLimitScope, address: string, now = Date.now()) {
   const current = buckets.get(key(scope, address));
-  const { maximum } = policy(scope);
+  const { maximum } = policy();
   if (!current || current.resetAt <= now || current.count < maximum) {
     return { allowed: true, retryAfterSeconds: 0 };
   }
@@ -46,7 +41,7 @@ export function checkAuthRateLimit(scope: AuthRateLimitScope, address: string, n
 export function recordAuthRateLimitAttempt(scope: AuthRateLimitScope, address: string, now = Date.now()) {
   const bucketKey = key(scope, address);
   const current = buckets.get(bucketKey);
-  const { windowMs } = policy(scope);
+  const { windowMs } = policy();
   const active = current && current.resetAt > now
     ? current
     : { count: 0, resetAt: now + windowMs };
@@ -60,7 +55,7 @@ export function resetAuthRateLimit(scope: AuthRateLimitScope, address: string) {
 }
 
 export async function consumeAuthRateLimit(scope: AuthRateLimitScope, address: string) {
-  const { maximum, windowMs } = policy(scope);
+  const { maximum, windowMs } = policy();
   const persistent = await consumePersistentAuthRateLimit(scope, address, maximum, windowMs);
   if (persistent) return persistent;
 

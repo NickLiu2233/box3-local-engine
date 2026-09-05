@@ -99,17 +99,18 @@ pub(crate) fn output(args: &[&str]) -> Result<String, String> {
 
 pub(crate) fn unavailable_message(error: String) -> String {
     let normalized = error.to_lowercase();
-    if normalized.contains("no such file")
-        || normalized.contains("not found")
-        || normalized.contains("找不到")
-    {
-        "未找到 Docker。请先安装并启动 Docker，然后重新打开本程序。".into()
-    } else if normalized.contains("cannot connect")
+    if normalized.contains("cannot connect")
         || normalized.contains("docker daemon")
         || normalized.contains("dockerdesktoplinuxengine")
         || normalized.contains("_ping")
+        || normalized.contains("is the docker daemon running")
     {
-        "Docker 已安装但尚未就绪。请启动 Docker，等待状态变为 Running 后刷新。".into()
+        "Docker CLI 已安装，但 Docker Desktop 尚未启动或仍在初始化。请启动 Docker Desktop，等待状态变为 Running 后重新检测。".into()
+    } else if normalized.contains("no such file")
+        || normalized.contains("not found")
+        || normalized.contains("找不到")
+    {
+        "未找到 Docker CLI。请安装 Docker Desktop 后重新检测。".into()
     } else {
         format!("Docker 不可用：{error}")
     }

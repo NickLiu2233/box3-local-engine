@@ -81,11 +81,23 @@ pub(crate) struct ServiceStatus {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SystemStatus {
     pub(crate) docker_ready: bool,
+    pub(crate) docker_cli_available: bool,
+    pub(crate) docker_cli_version: String,
     pub(crate) docker_message: String,
     pub(crate) configured: bool,
+    pub(crate) onboarding_completed: bool,
     pub(crate) all_healthy: bool,
     pub(crate) services: Vec<ServiceStatus>,
     pub(crate) data_directory: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DockerCheck {
+    pub(crate) cli_available: bool,
+    pub(crate) cli_version: String,
+    pub(crate) engine_ready: bool,
+    pub(crate) message: String,
 }
 
 /// Safe per-project runtime data for the desktop UI. This deliberately omits

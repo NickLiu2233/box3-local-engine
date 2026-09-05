@@ -155,6 +155,239 @@ nav {
   transform: scale(0.97);
 }
 
+.onboarding-shell {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.onboarding-main {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: grid;
+  place-items: center;
+  padding: 32px 40px;
+  overflow: auto;
+}
+
+.onboarding-page {
+  width: min(100%, 680px);
+  display: grid;
+  gap: 18px;
+}
+
+.onboarding-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+}
+
+.onboarding-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14px;
+}
+
+.onboarding-brand span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.onboarding-brand img {
+  width: 26px;
+  height: 26px;
+}
+
+.onboarding-exit {
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.onboarding-progress i {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--border);
+}
+
+.onboarding-progress b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--text);
+  transition: width 180ms var(--ease-out);
+}
+
+.onboarding-card {
+  padding: 26px 0 28px;
+}
+
+.onboarding-card h1 {
+  max-width: 560px;
+  margin: 0 0 18px;
+  font-size: 27px;
+  letter-spacing: -0.03em;
+}
+
+.onboarding-content {
+  max-width: 560px;
+}
+
+.onboarding-content p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.onboarding-license-summary {
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.onboarding-license-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.onboarding-license-summary-header strong {
+  font-size: 14px;
+}
+
+.onboarding-license-summary dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 14px 0 0;
+}
+
+.onboarding-license-summary dl > div {
+  min-width: 0;
+}
+
+.onboarding-license-summary dt {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.onboarding-license-summary dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.onboarding-license-summary dd:first-of-type {
+  min-width: 0;
+}
+
+.onboarding-license-summary code {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  vertical-align: middle;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onboarding-license-summary code.revealed {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-license-summary dd:has(code) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-license-device-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.onboarding-license-device-actions .icon-button {
+  width: 30px;
+  height: 30px;
+}
+
+.onboarding-license-device-actions .button {
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.onboarding-content > .button {
+  margin-top: 16px;
+}
+
+.onboarding-card .button.primary {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+.onboarding-card .button.primary:hover {
+  background: var(--text);
+}
+
+.onboarding-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 22px 0 0;
+}
+
+.onboarding-links div {
+  min-width: 0;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.onboarding-links dt {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.onboarding-links dd {
+  overflow: hidden;
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-bottom {
   margin-top: auto;
 }
