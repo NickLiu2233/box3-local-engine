@@ -46,6 +46,10 @@ function quoteIdentifier(value: string) {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
+function quoteLiteral(value: string) {
+  return `'${value.replace(/'/g, "''")}'`;
+}
+
 function requireNamespace(value: string, label: string) {
   const normalized = value.trim();
   if (!normalized || normalized.length > 160) {
@@ -238,6 +242,8 @@ export class PostgresDataStorage implements CommonGameDataServer {
     try {
       await this.pool.query(`SELECT 1 FROM ${canonical.data} LIMIT 0`);
       await this.pool.query(`SELECT 1 FROM ${canonical.keys} LIMIT 0`);
+      await this.upgradeLegacyTables(canonical);
+      await this.ensureIndexes(canonical);
       return canonical;
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -251,32 +257,41 @@ export class PostgresDataStorage implements CommonGameDataServer {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${tables.data} (
         "objectId" TEXT PRIMARY KEY,
-        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        "_rperm" TEXT,
-        "_wperm" TEXT,
-        "metadata" TEXT NOT NULL DEFAULT '{}',
-        "value" TEXT NOT NULL,
-        "key" TEXT NOT NULL,
-        "version" TEXT NOT NULL
+        "key" TEXT,
+        "value" JSONB,
+        "version" TEXT,
+        "metadata" JSONB,
+        "createdAt" TIMESTAMPTZ,
+        "updatedAt" TIMESTAMPTZ,
+        "_rperm" TEXT[],
+        "_wperm" TEXT[]
       )
     `);
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${tables.keys} (
         "objectId" TEXT PRIMARY KEY,
-        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        "_rperm" TEXT,
-        "_wperm" TEXT,
-        "key" TEXT NOT NULL,
-        "isDelete" BOOLEAN NOT NULL DEFAULT FALSE,
-        "record" TEXT
+        "key" TEXT,
+        "record" TEXT,
+        "isDelete" BOOLEAN,
+        "createdAt" TIMESTAMPTZ,
+        "updatedAt" TIMESTAMPTZ,
+        "_rperm" TEXT[],
+        "_wperm" TEXT[]
       )
     `);
-    const indexStem = createHash('sha256')
+    await this.ensureIndexes(tables);
+    return tables;
+  }
+
+  private indexStem(tables: StorageTables) {
+    return createHash('sha256')
       .update(`${this.options.schema}.${tables.baseName}`)
       .digest('hex')
       .slice(0, 16);
+  }
+
+  private async ensureIndexes(tables: StorageTables) {
+    const indexStem = this.indexStem(tables);
     await this.pool.query(`
       CREATE INDEX IF NOT EXISTS ${quoteIdentifier(`storage_data_${indexStem}`)}
       ON ${tables.data} ("key", "updatedAt" DESC)
@@ -285,7 +300,105 @@ export class PostgresDataStorage implements CommonGameDataServer {
       CREATE INDEX IF NOT EXISTS ${quoteIdentifier(`storage_keys_${indexStem}`)}
       ON ${tables.keys} ("key", "isDelete", "updatedAt" DESC)
     `);
-    return tables;
+  }
+
+  private async upgradeLegacyTables(tables: StorageTables) {
+    const dataName = tables.baseName;
+    const keysName = `${tables.baseName}_keys`;
+    const columns = await this.pool.query<{
+      table_name: string;
+      column_name: string;
+      data_type: string;
+    }>(
+      `SELECT table_name, column_name, data_type
+       FROM information_schema.columns
+       WHERE table_schema = ${quoteLiteral(this.options.schema)}
+         AND table_name IN (${quoteLiteral(dataName)}, ${quoteLiteral(keysName)})`,
+    );
+    // pg-mem deliberately does not populate information_schema.columns. The
+    // in-memory regression suite already creates current-format tables, so it
+    // cannot exercise a metadata-driven production migration.
+    if (!columns.rows.length) return;
+    const types = new Map(
+      columns.rows.map((row) => [`${row.table_name}\u0000${row.column_name}`, row.data_type]),
+    );
+    const typeOf = (tableName: string, columnName: string) =>
+      types.get(`${tableName}\u0000${columnName}`);
+    const dataChanges: string[] = [];
+    const keyChanges: string[] = [];
+    const addIfDifferent = (
+      changes: string[],
+      tableName: string,
+      columnName: string,
+      expectedType: string,
+      expression: string,
+    ) => {
+      if (typeOf(tableName, columnName) !== expectedType) changes.push(expression);
+    };
+
+    addIfDifferent(dataChanges, dataName, 'objectId', 'text', 'ALTER COLUMN "objectId" TYPE TEXT USING "objectId"::text');
+    addIfDifferent(dataChanges, dataName, 'key', 'text', 'ALTER COLUMN "key" TYPE TEXT USING "key"::text');
+    addIfDifferent(dataChanges, dataName, 'value', 'jsonb', 'ALTER COLUMN "value" TYPE JSONB USING "value"::jsonb');
+    addIfDifferent(
+      dataChanges,
+      dataName,
+      'metadata',
+      'jsonb',
+      `ALTER COLUMN "metadata" TYPE JSONB USING
+        CASE WHEN "metadata" IS NULL OR BTRIM("metadata") = '' THEN '{}'::jsonb
+             ELSE "metadata"::jsonb END`,
+    );
+    addIfDifferent(dataChanges, dataName, 'createdAt', 'timestamp with time zone', 'ALTER COLUMN "createdAt" TYPE TIMESTAMPTZ USING "createdAt"::timestamptz');
+    addIfDifferent(dataChanges, dataName, 'updatedAt', 'timestamp with time zone', 'ALTER COLUMN "updatedAt" TYPE TIMESTAMPTZ USING "updatedAt"::timestamptz');
+    addIfDifferent(dataChanges, dataName, '_rperm', 'ARRAY', 'ALTER COLUMN "_rperm" TYPE TEXT[] USING CASE WHEN "_rperm" IS NULL THEN NULL ELSE ARRAY["_rperm"] END');
+    addIfDifferent(dataChanges, dataName, '_wperm', 'ARRAY', 'ALTER COLUMN "_wperm" TYPE TEXT[] USING CASE WHEN "_wperm" IS NULL THEN NULL ELSE ARRAY["_wperm"] END');
+
+    addIfDifferent(keyChanges, keysName, 'objectId', 'text', 'ALTER COLUMN "objectId" TYPE TEXT USING "objectId"::text');
+    addIfDifferent(keyChanges, keysName, 'key', 'text', 'ALTER COLUMN "key" TYPE TEXT USING "key"::text');
+    addIfDifferent(keyChanges, keysName, 'record', 'text', 'ALTER COLUMN "record" TYPE TEXT USING "record"::text');
+    addIfDifferent(
+      keyChanges,
+      keysName,
+      'isDelete',
+      'boolean',
+      `ALTER COLUMN "isDelete" TYPE BOOLEAN USING
+        CASE WHEN LOWER(BTRIM(COALESCE("isDelete", 'false'))) IN ('1', 'true', 't', 'yes', 'y')
+          THEN TRUE ELSE FALSE END`,
+    );
+    addIfDifferent(keyChanges, keysName, 'createdAt', 'timestamp with time zone', 'ALTER COLUMN "createdAt" TYPE TIMESTAMPTZ USING "createdAt"::timestamptz');
+    addIfDifferent(keyChanges, keysName, 'updatedAt', 'timestamp with time zone', 'ALTER COLUMN "updatedAt" TYPE TIMESTAMPTZ USING "updatedAt"::timestamptz');
+    addIfDifferent(keyChanges, keysName, '_rperm', 'ARRAY', 'ALTER COLUMN "_rperm" TYPE TEXT[] USING CASE WHEN "_rperm" IS NULL THEN NULL ELSE ARRAY["_rperm"] END');
+    addIfDifferent(keyChanges, keysName, '_wperm', 'ARRAY', 'ALTER COLUMN "_wperm" TYPE TEXT[] USING CASE WHEN "_wperm" IS NULL THEN NULL ELSE ARRAY["_wperm"] END');
+    if (!dataChanges.length && !keyChanges.length) return;
+
+    const client = await this.pool.connect();
+    let completed = false;
+    try {
+      await client.query('BEGIN');
+      if (dataChanges.length) await client.query(`ALTER TABLE ${tables.data} ${dataChanges.join(', ')}`);
+      if (keyChanges.length) await client.query(`ALTER TABLE ${tables.keys} ${keyChanges.join(', ')}`);
+      const primaryKeys = await client.query<{ table_name: string }>(
+        `SELECT table_name
+         FROM information_schema.table_constraints
+         WHERE table_schema = ${quoteLiteral(this.options.schema)}
+           AND table_name IN (${quoteLiteral(dataName)}, ${quoteLiteral(keysName)})
+           AND constraint_type = 'PRIMARY KEY'`,
+      );
+      const primaryKeyTables = new Set(primaryKeys.rows.map((row) => row.table_name));
+      const stem = this.indexStem(tables);
+      if (!primaryKeyTables.has(dataName)) {
+        await client.query(`ALTER TABLE ${tables.data} ADD CONSTRAINT ${quoteIdentifier(`storage_data_pk_${stem}`)} PRIMARY KEY ("objectId")`);
+      }
+      if (!primaryKeyTables.has(keysName)) {
+        await client.query(`ALTER TABLE ${tables.keys} ADD CONSTRAINT ${quoteIdentifier(`storage_keys_pk_${stem}`)} PRIMARY KEY ("objectId")`);
+      }
+      await client.query('COMMIT');
+      completed = true;
+      this.options.logger.log(`Upgraded legacy PostgreSQL storage tables: ${tables.baseName}`);
+    } finally {
+      if (!completed) await client.query('ROLLBACK').catch(() => undefined);
+      client.release();
+    }
   }
 
   public async connect() {
@@ -567,6 +680,9 @@ export class PostgresDataStorage implements CommonGameDataServer {
     const limitIndex = params.length - 1;
     const offsetIndex = params.length;
     const direction = options.ascending === false ? 'DESC' : 'ASC';
+    const orderBy = path.length || typeof options.min === 'number' || typeof options.max === 'number'
+      ? `${numericTarget} ${direction} NULLS LAST, k."key" ${direction}`
+      : `k."key" ${direction}`;
     const result = await this.pool.query(
       `SELECT
          d."key" AS key,
@@ -578,7 +694,7 @@ export class PostgresDataStorage implements CommonGameDataServer {
        JOIN ${tables.data} d
          ON d."objectId"::text = k."record"::text
        WHERE ${clauses.join(' AND ')}
-       ORDER BY ${numericTarget} ${direction} NULLS LAST, k."key" ${direction}
+       ORDER BY ${orderBy}
        LIMIT $${limitIndex} OFFSET $${offsetIndex}`,
       params,
     );

@@ -1,6 +1,6 @@
 {
   "name": "@box-local/server-manager",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Authenticated browser operations console for headless BOX3 Engine servers",
   "scripts": {

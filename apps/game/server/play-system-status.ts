@@ -52,7 +52,7 @@ export async function getPlaySystemStatus() {
     checkedAt: new Date().toISOString(),
     host: {
       detail: '游玩端管理服务正常',
-      version: process.env.BOX_IMAGE_TAG || '0.1.0',
+      version: process.env.BOX_IMAGE_TAG || '0.1.1',
       nodeVersion: process.version,
       pid: process.pid,
       uptimeSeconds: Math.floor(process.uptime()),

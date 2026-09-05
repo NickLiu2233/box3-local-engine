@@ -1,6 +1,6 @@
 [package]
 name = "box-local-engine-manager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Native deployment manager for BOX Local Engine"
 authors = ["BOX Local Engine contributors"]
 edition = "2021"

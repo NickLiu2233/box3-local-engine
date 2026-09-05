@@ -706,8 +706,18 @@ function about() {
   // public-facing: no internal URLs, credentials, or implementation details.
   const releaseNotes = [
     {
-      version: '0.1.0',
+      version: '0.1.1',
       date: '2026 年 9 月',
+      summary: '数据库数据空间兼容更新',
+      items: [
+        '新建地图数据空间统一使用 BOXES 兼容的 PostgreSQL 表结构。',
+        '首次访问旧版或导入的数据表时，自动检测并在事务中迁移字段类型、主键和查询索引。',
+        '优化历史数据分页查询，避免大量 JSON 数据排序导致读取超时。',
+      ],
+    },
+    {
+      version: '0.1.0',
+      date: '2026 年 9 月 4 日',
       summary: '本地部署版首次发布',
       items: [
         '创作端与游玩端分离部署：创作者编辑工程，玩家只运行已发布的游玩包。',

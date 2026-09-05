@@ -19,7 +19,7 @@ use std::os::unix::fs::PermissionsExt;
 const COMPOSE_TEMPLATE: &str = include_str!("../../../../docker-compose.yml");
 pub(crate) const IMAGE_TAG: &str = match option_env!("BOX_MANAGER_IMAGE_TAG") {
     Some(value) => value,
-    None => "0.1.0",
+    None => "0.1.1",
 };
 pub(crate) const SERVICE_NAMES: [&str; 5] = [
     "creator",

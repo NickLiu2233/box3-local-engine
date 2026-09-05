@@ -28,7 +28,7 @@ function readDotEnvValue(name) {
 }
 
 function getPlayImageConfig() {
-  const tag = process.env.BOX_IMAGE_TAG || readDotEnvValue('BOX_IMAGE_TAG') || '0.1.0'
+  const tag = process.env.BOX_IMAGE_TAG || readDotEnvValue('BOX_IMAGE_TAG') || '0.1.1'
   const platform =
     process.env.BOX_PLAY_PLATFORM || readDotEnvValue('BOX_PLAY_PLATFORM') || 'linux/amd64'
   if (!supportedPlatforms.has(platform)) {

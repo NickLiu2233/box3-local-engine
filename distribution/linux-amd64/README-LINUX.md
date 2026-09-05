@@ -1,4 +1,4 @@
-# BOX Local Engine 0.1.0 — Linux AMD64 offline package
+# BOX Local Engine 0.1.1 — Linux AMD64 offline package
 
 This package is for Intel/AMD 64-bit Linux servers (`x86_64`, `linux/amd64`).
 It contains Creator, Play, Player Service, Player Auth Portal and VOXA images.

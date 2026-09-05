@@ -1,6 +1,6 @@
 # 构建与分发
 
-当前 `0.1.0` 为发布候选版本。公开分发前需要 Windows Authenticode 签名，以及 Apple Developer ID 签名和 macOS 公证。
+当前 `0.1.1` 为发布候选版本。公开分发前需要 Windows Authenticode 签名，以及 Apple Developer ID 签名和 macOS 公证。
 
 ## 发布流程
 

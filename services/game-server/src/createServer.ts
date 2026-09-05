@@ -958,7 +958,7 @@ export async function createGameServer(spec: {
       res.end(
         JSON.stringify({
           name: process.env.BOX_SERVER_NAME || 'BOX 世界',
-          engineVersion: process.env.BOX_ENGINE_VERSION || '0.1.0',
+          engineVersion: process.env.BOX_ENGINE_VERSION || '0.1.1',
           protocolVersion: 1,
           contentId: serverConfig.contentId,
           maxPlayers: serverConfig.playerLimit,

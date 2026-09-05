@@ -254,7 +254,7 @@ export async function getSystemStatus() {
     creator: {
       state: 'healthy' as const,
       detail: '创作端状态接口正常',
-      version: process.env.BOX_IMAGE_TAG || '0.1.0',
+      version: process.env.BOX_IMAGE_TAG || '0.1.1',
       deploymentMode: process.env.BOX_DEPLOYMENT_MODE || 'local',
       nodeVersion: process.version,
       pid: process.pid,

@@ -3,7 +3,7 @@
   "images": [
     {
       "image": "box-local-engine-player-auth-portal",
-      "tag": "0.1.0",
+      "tag": "0.1.1",
       "imageId": "sha256:0df322e74a96624fe430e74b127cb860b4f7926c3498019cfe572b3de47933b8",
       "createdAt": "2026-08-31T12:11:25.413556753Z",
       "platform": "linux/arm64",
@@ -12,7 +12,7 @@
     },
     {
       "image": "box-local-engine-server-manager",
-      "tag": "0.1.0",
+      "tag": "0.1.1",
       "imageId": "sha256:7f707d1be8327ea2b9ea06ee2bdaff73e1f9dfe2d66eaeebdef20fbd3ea93312",
       "createdAt": "2026-09-01T03:22:39.484060216Z",
       "platform": "linux/arm64",
@@ -21,7 +21,7 @@
     },
     {
       "image": "box-local-engine-creator",
-      "tag": "0.1.0",
+      "tag": "0.1.1",
       "imageId": "sha256:95b8cdca6e98f03469c6241966e30959c035c69645f57ec44fd8219995cedf86",
       "createdAt": "2026-09-02T03:39:20.282626302Z",
       "platform": "linux/arm64",
@@ -30,7 +30,7 @@
     },
     {
       "image": "box-local-engine-play",
-      "tag": "0.1.0",
+      "tag": "0.1.1",
       "imageId": "sha256:17149db80e83ada340cd1e4256e74dc1b500341a50bc7aaf61214d9dcc14fd04",
       "createdAt": "2026-09-02T05:48:39.280453625Z",
       "platform": "linux/arm64",
@@ -39,7 +39,7 @@
     },
     {
       "image": "box-local-engine-voxa",
-      "tag": "0.1.0",
+      "tag": "0.1.1",
       "imageId": "sha256:cdf366483bc03e6f1e35f35ad31c370ebbca1c2d2cb1ce84c3571b3ca550d775",
       "createdAt": "2026-09-02T03:08:34.167573212Z",
       "platform": "linux/arm64",
@@ -48,7 +48,7 @@
     },
     {
       "image": "box-local-engine-player-service",
-      "tag": "0.1.0",
+      "tag": "0.1.1",
       "imageId": "sha256:891e558f9966438e60c45abbab5f0eb958411a11879371b01f1cccb3170f4188",
       "createdAt": "2026-09-02T03:18:02.49164021Z",
       "platform": "linux/arm64",

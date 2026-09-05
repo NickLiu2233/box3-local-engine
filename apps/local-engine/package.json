@@ -1,6 +1,6 @@
 {
   "name": "@box-local/local-engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Offline-first local runner for the Box engine",
   "scripts": {

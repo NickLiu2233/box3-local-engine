@@ -1,6 +1,6 @@
 {
   "name": "box-player-auth-portal-example",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Standalone owner-hosted login and registration example for BOX Local Engine",
   "license": "UNLICENSED",
