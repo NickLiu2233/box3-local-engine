@@ -86,6 +86,7 @@ const state = {
   performanceError: '',
   projectRuntimes: { creator: [], play: [] },
   projectRuntimesLoading: false,
+  projectRuntimesLoaded: false,
   projectRuntimesError: '',
   runtimeExpandedProjects: new Set(),
   runtimeCatalogTab: 'creator',
@@ -758,6 +759,7 @@ function about() {
       items: [
         '新增首次安装向导，集中完成 Docker、许可证与数据服务配置。',
         '取消玩家注册次数限制，保留登录失败保护。',
+        '修复无作品时打开工程运行时导致启动器卡死的问题。',
         '数据空间兼容 BOXES PostgreSQL 表结构并优化历史数据读取。',
       ],
     },
@@ -1307,12 +1309,10 @@ function syncProjectRuntimePolling() {
   clearInterval(projectRuntimeTimer)
   projectRuntimeTimer = undefined
   if (state.page !== 'runtimes') return
-  if (
-    !state.projectRuntimes.creator?.length &&
-    !state.projectRuntimes.play?.length &&
-    !projectRuntimeLoading
-  ) {
-    refreshProjectRuntimes()
+  const hasProjects = state.projectRuntimes.creator?.length || state.projectRuntimes.play?.length
+  if (!hasProjects) {
+    if (!state.projectRuntimesLoaded && !projectRuntimeLoading) refreshProjectRuntimes()
+    return
   }
   projectRuntimeTimer = window.setInterval(refreshProjectRuntimes, document.hidden ? 5000 : 1000)
 }
@@ -1336,6 +1336,7 @@ async function refreshProjectRuntimes() {
   } finally {
     projectRuntimeLoading = false
     state.projectRuntimesLoading = false
+    state.projectRuntimesLoaded = true
     if (state.page === 'runtimes') render()
   }
 }
