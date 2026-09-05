@@ -157,6 +157,14 @@ describe('player management visual consistency', () => {
     expect(pageSource).toContain("fetch('/api/play-admin/owner-session'");
   });
 
+  test('separates administrator and owner sign-in without calling the owner key a recovery key', () => {
+    expect(pageSource).toContain("useState<'admin' | 'owner'>('admin')");
+    expect(pageSource).toContain('管理员登录');
+    expect(pageSource).toContain('服主登录');
+    expect(pageSource).toContain('服主密钥');
+    expect(pageSource).not.toContain('服主恢复密钥');
+  });
+
   test('keeps ban errors and confirmation visible inside the player drawer', () => {
     expect(pageSource).toContain('className={styles.drawerNotice}');
     expect(pageSource).toContain("selected.status === 'banned'");

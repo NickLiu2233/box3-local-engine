@@ -54,6 +54,7 @@ fs.writeFileSync(
     mergeCloudScriptsIntoProject,
     mergeCloudPhotos,
     migratedScriptEntry,
+    normalizeMigratedPermission,
     parseJSON,
     referencedHashes,
     referencedResources,
@@ -62,6 +63,18 @@ fs.writeFileSync(
   } = require(compiledPath)
   const engineApi = require(engineApiCompiledPath)
   const actualHash = 'QmS1jvj2GQDwwJpSbpxAJSLbmWvncTQ3Xc69md4KxXhSUf'
+
+  assert.equal(
+    normalizeMigratedPermission({ type: 'permission', owner: '0' }).version,
+    '0.1.8',
+    'legacy permissions without a schema version must be made directly runnable locally',
+  )
+  assert.equal(
+    normalizeMigratedPermission({ type: 'permission', version: '0.1.7' }).version,
+    '0.1.7',
+    'known source versions must remain available for the engine migration path',
+  )
+  console.log('PASS: migrated legacy permissions receive a runnable schema version')
   const previewName = 'QmZc3bR7rJHXuYBtSe2VZoS5EYZ7m5kHzpK2cJ1hPzb3QU.jpeg'
   const extensionlessPreview = 'QmUkQqR3S7vT7yswnuFkQzYEu8c1WVL8HbcCoV2mmYfHXv'
   const document = parseJSON(

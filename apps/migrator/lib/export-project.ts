@@ -31,6 +31,11 @@ const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvw
 // endpoint internal to the migrator instead of exposing a low-level IPFS/CDN
 // setting in the deployment configuration.
 const CLOUD_CONTENT_BASE_URL = 'https://static.box3.codemao.cn'
+// Legacy island projects may predate the permission schema's explicit
+// version field. The local build system cannot migrate from `undefined`, so
+// exports must declare the schema that their normalized permission payload
+// already follows.
+const LOCAL_PERMISSION_VERSION = '0.1.8'
 
 type Limits = { maxBlobs: number; maxTotalBytes: number; maxBlobBytes: number }
 type ExportInput = {
@@ -127,6 +132,11 @@ function ossUrls(hash: string) {
 function safeProjectName(value: unknown) {
   const name = typeof value === 'string' ? value.trim() : ''
   return (name || '云端迁移地图').slice(0, 80)
+}
+
+export function normalizeMigratedPermission(permission: Record<string, unknown>) {
+  const version = typeof permission.version === 'string' ? permission.version.trim() : ''
+  return version ? permission : { ...permission, version: LOCAL_PERMISSION_VERSION }
 }
 
 function blobFileName(hash: string) {
@@ -1376,37 +1386,60 @@ export async function generateProjectArchive(
       detail: '正在读取权限入口并验证工程 hash…',
       currentHash: rootHash,
     })
-    const permissionDocument = parseJSON((await retrieve(rootHash))!)
-    if (
-      !isRecord(permissionDocument) ||
-      !(permissionDocument.type === 'permission' || permissionDocument.type === 'permissions')
-    ) {
-      throw new Error('该 hash 不是地图权限版本。请从云端地图当前编辑版本获取 permission hash。')
+    const rootDocument = parseJSON((await retrieve(rootHash))!)
+    if (!isRecord(rootDocument)) {
+      throw new Error('地图工程根数据格式无效')
     }
-    const permission = permissionDocument
-    const versionControlHash = permission.versionControl
-    if (typeof versionControlHash !== 'string' || !EXACT_CID_PATTERN.test(versionControlHash)) {
-      throw new Error('权限版本缺少 versionControl，无法定位当前地图工程')
-    }
-    report({
-      stage: 'resolving',
-      detail: '权限入口有效，正在定位 master 分支…',
-      currentHash: versionControlHash,
-      parentHash: rootHash,
-    })
-    const versionControlDocument = parseJSON(await retrieve(versionControlHash, rootHash))
-    const versionControl = isRecord(versionControlDocument) ? versionControlDocument : undefined
-    const branches = versionControl?.branches as Record<string, { headHash?: unknown }> | undefined
-    const projectHash = branches?.master?.headHash
-    if (typeof projectHash !== 'string' || !EXACT_CID_PATTERN.test(projectHash)) {
-      throw new Error('权限版本没有可迁移的 master 地图工程')
-    }
-    // The permission, version-control and current master documents are the
-    // minimum viable project. Keep them fatal; only descendant assets may be
-    // skipped after three failed requests.
-    const projectDocument = parseJSON(await retrieve(projectHash, versionControlHash))
-    if (!isRecord(projectDocument)) {
-      throw new Error('master 地图工程格式无效')
+    const isLegacyProjectRoot = rootDocument.type === 'project'
+    let permission: Record<string, unknown>
+    let versionControlHash: string
+    let projectHash: string
+    let projectDocument: Record<string, unknown>
+    if (rootDocument.type === 'permission' || rootDocument.type === 'permissions') {
+      permission = rootDocument
+      const sourceVersionControlHash = permission.versionControl
+      if (
+        typeof sourceVersionControlHash !== 'string' ||
+        !EXACT_CID_PATTERN.test(sourceVersionControlHash)
+      ) {
+        throw new Error('权限版本缺少 versionControl，无法定位当前地图工程')
+      }
+      versionControlHash = sourceVersionControlHash
+      report({
+        stage: 'resolving',
+        detail: '权限入口有效，正在定位 master 分支…',
+        currentHash: versionControlHash,
+        parentHash: rootHash,
+      })
+      const versionControlDocument = parseJSON(await retrieve(versionControlHash, rootHash))
+      const versionControl = isRecord(versionControlDocument) ? versionControlDocument : undefined
+      const branches = versionControl?.branches as
+        | Record<string, { headHash?: unknown }>
+        | undefined
+      const sourceProjectHash = branches?.master?.headHash
+      if (typeof sourceProjectHash !== 'string' || !EXACT_CID_PATTERN.test(sourceProjectHash)) {
+        throw new Error('权限版本没有可迁移的 master 地图工程')
+      }
+      projectHash = sourceProjectHash
+      const sourceProjectDocument = parseJSON(await retrieve(projectHash, versionControlHash))
+      if (!isRecord(sourceProjectDocument)) throw new Error('master 地图工程格式无效')
+      projectDocument = sourceProjectDocument
+    } else if (isLegacyProjectRoot) {
+      // BOX 0.3.x maps were exported as the project document itself, before
+      // permission/version-control roots were introduced. Rebuild those roots
+      // locally after retaining the original project graph.
+      permission = { type: 'permission' }
+      versionControlHash = ''
+      projectHash = rootHash
+      projectDocument = rootDocument
+      report({
+        stage: 'resolving',
+        detail: '检测到旧版工程根，正在转换为本地工程格式…',
+        currentHash: projectHash,
+        parentHash: undefined,
+      })
+    } else {
+      throw new Error('该 hash 不是可迁移的地图权限版本或旧版工程根。')
     }
     report({
       stage: 'resolving',
@@ -1416,6 +1449,10 @@ export async function generateProjectArchive(
       currentHash: projectHash,
       parentHash: versionControlHash,
     })
+    const retrieveOptionalJSON = async (hash: unknown, parentHash: string, label: string) =>
+      typeof hash === 'string' && EXACT_CID_PATTERN.test(hash)
+        ? retrieveJSON(hash, parentHash, label)
+        : {}
     const [
       assets,
       scriptAssets,
@@ -1430,9 +1467,9 @@ export async function generateProjectArchive(
       retrieveJSON(projectDocument.assets, projectHash, '工程资源索引'),
       retrieveJSON(projectDocument.scriptAssets, projectHash, '工程脚本索引'),
       retrieveJSON(projectDocument.deleteAssets, projectHash, '工程删除资源索引'),
-      retrieveJSON(projectDocument.audioAssets, projectHash, '工程音频索引'),
-      retrieveJSON(projectDocument.entitiesTree, projectHash, '工程实体树'),
-      retrieveJSON(projectDocument.pictureAssets, projectHash, '工程图片索引'),
+      retrieveOptionalJSON(projectDocument.audioAssets, projectHash, '工程音频索引'),
+      retrieveOptionalJSON(projectDocument.entitiesTree, projectHash, '工程实体树'),
+      retrieveOptionalJSON(projectDocument.pictureAssets, projectHash, '工程图片索引'),
       retrieveJSON(projectDocument.environment, projectHash, '工程环境配置'),
       retrieveJSON(projectDocument.player, projectHash, '工程玩家配置'),
       retrieveJSON(projectDocument.ambientSound, projectHash, '工程环境音配置'),
@@ -1632,7 +1669,7 @@ export async function generateProjectArchive(
       storeJSONBlob(blobsRoot, []),
     ])
     const migratedPermissionHash = await storeJSONBlob(blobsRoot, {
-      ...permission,
+      ...normalizeMigratedPermission(permission),
       accessLevel: 1,
       banned: bannedHash,
       collaborators: collaboratorsHash,
@@ -1693,7 +1730,7 @@ export async function generateProjectArchive(
     // do not leak unreachable private blobs into the exported package.
     const obsoleteHashes = new Set<string>([
       rootHash,
-      String(versionControlHash),
+      ...(versionControlHash ? [versionControlHash] : []),
       projectHash,
       ...['groups', 'users', 'banned', 'collaborators']
         .map((key) => permission[key])

@@ -362,7 +362,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [ownerToken, setOwnerToken] = useState('');
-  const [ownerRecoveryOpen, setOwnerRecoveryOpen] = useState(false);
+  const [loginMode, setLoginMode] = useState<'admin' | 'owner'>('admin');
   const [createAdminOpen, setCreateAdminOpen] = useState(false);
   const [createAdmin, setCreateAdmin] = useState(emptyAdminAccount);
   const [editingAdminId, setEditingAdminId] = useState('');
@@ -548,7 +548,6 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || '服主密钥验证失败');
       setOwnerToken('');
-      setOwnerRecoveryOpen(false);
       setLoginOpen(false);
       await load();
     } catch (error) {
@@ -1212,20 +1211,23 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
           <section className={styles.signedOutPanel}>
             <PlayerAdminBrand />
             {loginOpen ? (
-              <form className={styles.loginDialog} onSubmit={(event) => { event.preventDefault(); void loginAdmin(); }}>
+              <form className={styles.loginDialog} onSubmit={(event) => { event.preventDefault(); void (loginMode === 'admin' ? loginAdmin() : exchangeOwnerSession()); }}>
                 <div className={styles.loginHeading}>
-                  <h1>登录玩家管理</h1>
-                  <p>使用独立的管理账号进入后台。</p>
+                  <h1>{loginMode === 'admin' ? '管理员登录' : '服主登录'}</h1>
                 </div>
-                <label>管理员用户名<input autoFocus autoComplete="username" value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} /></label>
-                <label>管理员密码<input type="password" autoComplete="current-password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} /></label>
+                <div className={styles.loginTabs} role="tablist" aria-label="登录方式">
+                  <button className={loginMode === 'admin' ? styles.loginTabActive : styles.loginTab} type="button" role="tab" aria-selected={loginMode === 'admin'} onClick={() => { setLoginMode('admin'); setNotice(''); }}>管理员登录</button>
+                  <button className={loginMode === 'owner' ? styles.loginTabActive : styles.loginTab} type="button" role="tab" aria-selected={loginMode === 'owner'} onClick={() => { setLoginMode('owner'); setNotice(''); }}>服主登录</button>
+                </div>
+                {loginMode === 'admin' ? <>
+                  <label>管理员用户名<input autoFocus autoComplete="username" value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} /></label>
+                  <label>管理员密码<input type="password" autoComplete="current-password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} /></label>
+                </> : <label>服主密钥<input autoFocus type="password" autoComplete="off" value={ownerToken} onChange={(event) => setOwnerToken(event.target.value)} /></label>}
                 {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
                 <div className={styles.loginActions}>
                   {returnUrl ? <Link className={styles.secondaryButton} href={returnUrl}>{returnLabel}</Link> : null}
-                  <button className={styles.secondaryButton} type="button" onClick={() => setOwnerRecoveryOpen((value) => !value)}>服主恢复密钥</button>
-                  <button className={styles.primaryButton} disabled={!adminUsername || !adminPassword || busy === 'verify'} type="submit">{busy === 'verify' ? '登录中…' : '登录后台'}</button>
+                  <button className={styles.primaryButton} disabled={(loginMode === 'admin' ? !adminUsername || !adminPassword : !ownerToken) || busy === 'verify'} type="submit">{busy === 'verify' ? '登录中…' : '登录后台'}</button>
                 </div>
-                {ownerRecoveryOpen ? <div className={styles.ownerRecovery}><label>服主恢复密钥<input type="password" autoComplete="off" value={ownerToken} onChange={(event) => setOwnerToken(event.target.value)} /></label><button className={styles.secondaryButton} type="button" disabled={!ownerToken || busy === 'verify'} onClick={() => void exchangeOwnerSession()}>使用恢复密钥</button></div> : null}
               </form>
             ) : (
               <div className={styles.authChecking} role="status"><RefreshCw className={styles.spinning} size={18} /><span><strong>正在验证管理会话</strong><small>请稍候…</small></span></div>

@@ -323,7 +323,7 @@ export default function Home() {
                         onChange={(event) => setSource(event.target.value as typeof source)}
                       >
                         <option value="map-id">地图 ID → .boxproject</option>
-                        <option value="map-hash">地图 Permission Hash → .boxproject</option>
+                        <option value="map-hash">地图工程 Hash → .boxproject</option>
                         <option value="model-id">模型名称搜索 → .voxaproject</option>
                         <option value="model-hash">模型工程 Hash → .voxaproject</option>
                       </select>
@@ -346,7 +346,7 @@ export default function Home() {
                     {source === 'map-hash' && (
                       <label>
                         <span>
-                          Permission Hash <em>必填</em>
+                          地图工程 Hash <em>必填</em>
                         </span>
                         <input
                           value={hash}
