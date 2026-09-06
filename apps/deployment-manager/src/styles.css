@@ -595,6 +595,57 @@ button:disabled {
   font-size: 12px;
 }
 
+.progress-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 56%);
+  backdrop-filter: blur(2px);
+}
+
+.progress-dialog {
+  width: min(360px, calc(100vw - 48px));
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 28px 24px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 35%);
+  text-align: center;
+}
+
+.progress-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid color-mix(in srgb, var(--muted) 28%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: progress-spin 800ms linear infinite;
+}
+
+.progress-dialog strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+
+.progress-dialog p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@keyframes progress-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .summary-bar {
   min-height: 76px;
   display: flex;
@@ -631,6 +682,191 @@ button:disabled {
 .hero-actions {
   display: flex;
   gap: 8px;
+}
+
+.overview-simple {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 22px;
+  min-height: calc(100% - 60px);
+  padding-top: 8px;
+}
+
+.overview-status {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 30px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overview-status strong {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.overview-start-options {
+  width: min(100%, 640px);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.overview-start-option {
+  min-width: 0;
+  min-height: 82px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 9px;
+  row-gap: 2px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 140ms ease, background-color 140ms ease;
+}
+
+.overview-start-option > span {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: var(--panel-soft);
+  color: var(--muted);
+}
+
+.overview-start-option svg {
+  width: 13px;
+  height: 13px;
+}
+
+.overview-start-option strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.overview-start-option small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-start-option:hover:not(:disabled),
+.overview-start-option:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+  background: var(--panel-soft);
+  outline: none;
+}
+
+.overview-start-option.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.overview-start-option.selected > span {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.overview-confirm-start {
+  justify-self: center;
+  min-width: 132px;
+}
+
+.overview-stop {
+  justify-self: center;
+  min-width: 132px;
+  margin-top: 2px;
+}
+
+.overview-required {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  width: min(100%, 640px);
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overview-required strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.overview-required span {
+  display: block;
+}
+
+.running-services {
+  width: min(100%, 640px);
+  display: grid;
+  gap: 8px;
+}
+
+.running-services h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.running-service-list {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-surface);
+  overflow: hidden;
+}
+
+.running-service-row {
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.running-service-row:last-child {
+  border-bottom: 0;
+}
+
+.running-service-row strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.running-service-row code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.running-service-row .button {
+  min-height: 28px;
+  padding: 0 9px;
+  font-size: 11px;
 }
 
 .dialog-backdrop {
@@ -1725,9 +1961,10 @@ form.environment-mode {
   right: 24px;
   z-index: 20;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 20px;
-  align-items: center;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 4px 8px;
   width: min(440px, calc(100vw - 48px));
   min-height: 38px;
   padding: 10px 8px 10px 12px;
@@ -1739,6 +1976,8 @@ form.environment-mode {
 }
 
 .toast span {
+  grid-column: 1;
+  grid-row: 1;
   color: var(--success);
   font-weight: 650;
 }
@@ -1752,12 +1991,16 @@ form.environment-mode {
 }
 
 .toast small {
+  grid-column: 1;
+  grid-row: 2;
   color: var(--muted);
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
 .toast button {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   width: 20px;
   height: 20px;
   border: 0;
@@ -3249,6 +3492,27 @@ details.about-image-row:first-child {
   .runtime-mode + .runtime-mode {
     border-top: 1px solid var(--border);
     border-left: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .overview-start-options {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-required {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .running-service-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .running-service-row code {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 

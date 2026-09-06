@@ -15,6 +15,13 @@ const managedServices = [
   ['managed-redis', 'Redis', '缓存与运行时协调', 'redis'],
 ]
 
+const startPrompts = [
+  '开始你的创作了吗？',
+  '准备好让别人来游玩了吗？',
+  '选择一个端，开始今天的工作吧。',
+  '地图和作品，等你启动。',
+]
+
 const THEME_KEY = 'box-manager-theme'
 const themes = [
   ['system', '跟随系统'],
@@ -93,6 +100,8 @@ const state = {
   theme: localStorage.getItem(THEME_KEY) || 'system',
   themeMenuOpen: false,
   startMenuOpen: false,
+  startScopes: new Set(),
+  startPrompt: '',
   serviceMenu: '',
   legalDialog: '',
   playAccessMode: '',
@@ -338,6 +347,8 @@ function performance() {
 }
 
 function overview() {
+  // 基础服务（managed-postgres / managed-redis）仍由数据配置页管理；总览只提供业务级启动入口，不再渲染单服务卡片。
+  const dockerReady = state.status?.dockerReady === true
   const installed = state.status?.configured
   const allHealthy = Boolean(state.status?.allHealthy)
   const enabledCount =
@@ -346,38 +357,69 @@ function overview() {
   const summaryLabel = allHealthy
     ? '运行正常'
     : installed && runningCount
-      ? '部分服务运行'
+      ? `${runningCount} 个服务正在运行中`
       : installed
-        ? '等待启动'
+        ? '未启动'
         : '尚未配置'
   const summaryDetail = installed
-    ? `${runningCount} / ${enabledCount} 个服务运行中`
-    : '完成配置后即可启动'
-  const infrastructureServices = managedServices.filter(([, , , kind]) => {
-    const info = kind === 'postgresql' ? state.managedDatabaseInfo : state.managedRedisInfo
-    return Boolean(info?.imageAvailable && info?.configured)
-  })
-  return `<header><div><h1>服务总览</h1></div>
-    <div class="header-actions"><button class="button" data-page="performance">${icon('performance')}性能</button></div></header>
-    ${state.busy ? progressPanel() : ''}
-    <section class="summary-bar"><div><span class="status-dot ${allHealthy ? 'good' : ''}"></span><div><strong>${summaryLabel}</strong><span>${summaryDetail}</span></div></div>
-      <div class="hero-actions">${installed ? `${allHealthy ? '' : state.license?.valid ? `<button class="button primary" id="start" ${state.busy ? 'disabled' : ''}>${icon('play')}启动</button>` : `<button class="button primary" data-page="license">安装许可证</button>`}${runningCount ? `<button class="button" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止</button>` : ''}` : `<button class="button primary" data-page="setup">配置</button>`}</div></section>
-    <div class="section-title"><h2>应用服务</h2></div>
-    <div class="service-grid">${services.map((service) => serviceCard(service)).join('')}</div>
-    ${
-      infrastructureServices.length
-        ? `<div class="section-title"><h2>基础服务</h2></div><div class="service-grid">${infrastructureServices
-            .map(([id, name, description, kind]) => {
-              const info =
-                kind === 'postgresql' ? state.managedDatabaseInfo : state.managedRedisInfo
-              return serviceCard([id, name, description], {
-                endpoint: `${info.host}:${info.port}`,
-                openable: false,
-              })
-            })
-            .join('')}</div>`
+    ? runningCount
+      ? allHealthy
+        ? `${runningCount} / ${enabledCount} 个服务运行中`
         : ''
-    }`
+      : state.startPrompt || (state.startPrompt = startPrompts[Math.floor(Math.random() * startPrompts.length)])
+    : '完成配置后即可启动'
+  const databaseReady =
+    state.config?.databaseMode === 'external'
+      ? Boolean(state.config.databaseHost)
+      : Boolean(state.managedDatabaseInfo?.configured)
+  const canStart = Boolean(installed && state.license?.valid && databaseReady && !state.busy)
+  const action = (scope, label, detail) =>
+    `<button type="button" class="overview-start-option ${state.startScopes.has(scope) ? 'selected' : ''}" data-start-scope="${scope}" aria-pressed="${state.startScopes.has(scope)}" ${canStart ? '' : 'disabled'}><span>${icon('play')}</span><strong>${label}</strong><small>${detail}</small></button>`
+  const actions = !dockerReady
+    ? `<div class="overview-required docker-required"><strong>Docker 服务未连接</strong><span>请先启动 Docker Desktop，连接成功后才能配置和启动服务。</span><button type="button" class="button primary" id="start-docker-desktop" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在启动…' : '启动 Docker 服务'}</button></div>`
+    : installed
+      ? !databaseReady
+      ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
+      : state.license?.valid
+        ? `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
+        : `<button type="button" class="button primary" data-page="license">安装许可证后启动</button>`
+      : `<button type="button" class="button primary" data-page="setup">开始配置</button>`
+  const idle = Boolean(installed && !runningCount && databaseReady)
+  const idlePrompt = idle
+    ? state.startPrompt || (state.startPrompt = startPrompts[Math.floor(Math.random() * startPrompts.length)])
+    : ''
+  const displayLabel = installed && !databaseReady ? '需要配置' : idle ? idlePrompt : summaryLabel
+  const displayDetail = installed && !databaseReady ? 'PostgreSQL 未配置' : idle ? '' : summaryDetail
+  const needsDatabase = Boolean(dockerReady && installed && !databaseReady)
+  const dockerUnavailable = state.status && !dockerReady
+  const overviewStatus = needsDatabase
+    ? ''
+    : dockerUnavailable
+      ? ''
+    : idle
+      ? `<strong>${displayLabel}</strong>`
+      : `<span class="status-dot ${allHealthy ? 'good' : ''}"></span><strong>${displayLabel}</strong>${displayDetail ? `<span>${displayDetail}</span>` : ''}`
+  const statusMarkup = overviewStatus ? `<div class="overview-status">${overviewStatus}</div>` : ''
+  const runningServices = (state.status?.services || []).filter((service) => service.running)
+  const runningServiceRows = runningServices
+    .map((service) => {
+      const definition = services.find(([id]) => id === service.name)
+      if (!definition) return ''
+      const [, name] = definition
+      const url = getServiceUrl(service.name)
+      return `<div class="running-service-row"><strong>${name}</strong><code>${escapeHtml(url)}</code><button type="button" class="button" data-open="${escapeHtml(url)}">打开</button></div>`
+    })
+    .join('')
+  const runningServiceList = runningServiceRows
+    ? `<section class="running-services"><h2>运行中服务</h2><div class="running-service-list">${runningServiceRows}</div></section>`
+    : ''
+  const performanceAction = runningCount
+    ? `<button class="button" data-page="performance">${icon('performance')}性能</button>`
+    : ''
+  return `<header><div><h1>服务总览</h1></div>
+    <div class="header-actions">${performanceAction}</div></header>
+    ${state.busy ? progressPanel() : ''}
+    <section class="overview-simple">${statusMarkup}${actions}${runningServiceList}</section>`
 }
 
 function runtimePhase(status = {}) {
@@ -508,9 +550,7 @@ function getServiceUrl(serviceId) {
 }
 
 function progressPanel() {
-  const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
-  const indeterminate = state.progress.stage.endsWith('-image')
-  return `<section class="progress-panel" aria-live="polite"><div><strong>${escapeHtml(state.progress.message)}</strong><span>${indeterminate ? '下载中' : `${percent}%`}</span></div><div class="progress-track"><i class="${indeterminate ? 'indeterminate' : ''}" ${indeterminate ? '' : `style="width:${percent}%"`}></i></div></section>`
+  return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在处理</strong><p>这可能需要几分钟，请耐心等待…</p></section></div>`
 }
 
 function input(name, label, value = '', type = 'text', hint = '', required = false, limits = {}) {
@@ -580,7 +620,7 @@ function setup() {
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
           <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>保存玩家、权限与地图脚本数据</span></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>推荐，启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
-          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>可选缓存与运行时协调服务</span></div>${redisMode === 'external' ? '<button type="button" class="text-button" data-test-connection="redis">测试连接</button>' : ''}</div><input name="redisMode" type="hidden" value="${redisMode}"/><div class="database-mode-choice redis-mode-choice"><button type="button" class="${redisMode === 'disabled' ? 'active' : ''}" data-redis-mode="disabled"><strong>不启用</strong><span>保持最少依赖</span></button><button type="button" class="${redisMode === 'managed' ? 'active' : ''}" data-redis-mode="managed"><strong>内置 Redis</strong><span>启动器自动维护</span></button><button type="button" class="${redisMode === 'external' ? 'active' : ''}" data-redis-mode="external"><strong>外部 Redis</strong><span>连接已有服务</span></button></div>${redisMode === 'disabled' ? '<div class="managed-service-note"><strong>当前不使用 Redis</strong><span>不会影响玩家账号、权限、地图和模型数据。</span></div>' : redisMode === 'managed' ? managedServicePanel('redis', state.managedRedisInfo) : `<div class="form-grid compact three">${input('redisHost', '地址', config.redisHost === 'managed-redis' ? '' : config.redisHost, 'text', 'IP 或域名', true)}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', true, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '外部 Redis 无密码时可留空')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div>`}</div>
+          <div class="config-group"><div class="group-title"><div><h2>Redis</h2><span>可选缓存与运行时协调服务</span></div>${redisMode === 'external' ? '<button type="button" class="text-button" data-test-connection="redis">测试连接</button>' : ''}</div><input name="redisMode" type="hidden" value="${redisMode}"/><div class="database-mode-choice redis-mode-choice"><button type="button" class="${redisMode === 'disabled' ? 'active' : ''}" data-redis-mode="disabled"><strong>不启用</strong><span>保持最少依赖</span></button><button type="button" class="${redisMode === 'managed' ? 'active' : ''}" data-redis-mode="managed"><strong>内置 Redis</strong><span>启动器自动维护</span></button><button type="button" class="${redisMode === 'external' ? 'active' : ''}" data-redis-mode="external"><strong>外部 Redis</strong><span>连接已有服务</span></button></div>${redisMode === 'managed' ? managedServicePanel('redis', state.managedRedisInfo) : redisMode === 'external' ? `<div class="form-grid compact three">${input('redisHost', '地址', config.redisHost === 'managed-redis' ? '' : config.redisHost, 'text', 'IP 或域名', true)}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', true, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '外部 Redis 无密码时可留空')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div>` : ''}</div>
           ${setupExplanation('配置说明：这些服务用来做什么？', [
             [
               'PostgreSQL',
@@ -1074,10 +1114,19 @@ function bindEvents() {
   })
   document.querySelectorAll('[data-start-scope]').forEach((node) =>
     node.addEventListener('click', () => {
-      state.startMenuOpen = false
-      runAction('start_services', { scope: node.dataset.startScope })
+      const scope = node.dataset.startScope
+      if (!scope || !['play', 'creator'].includes(scope)) return
+      if (state.startScopes.has(scope)) state.startScopes.delete(scope)
+      else state.startScopes.add(scope)
+      render()
     }),
   )
+  document.querySelector('#confirm-start-scopes')?.addEventListener('click', () => {
+    const selected = [...state.startScopes]
+    if (!selected.length) return
+    state.startScopes.clear()
+    runAction('start_services', { scope: selected.length === 2 ? 'all' : selected[0] })
+  })
   document
     .querySelectorAll('[data-install-managed]')
     .forEach((node) =>
@@ -1695,7 +1744,7 @@ async function completeOnboarding() {
 
 function scheduleDockerStartupCheck() {
   clearTimeout(dockerStartupPollTimer)
-  if (state.page !== 'onboarding' || state.status?.dockerReady) return
+  if (!['onboarding', 'overview'].includes(state.page) || state.status?.dockerReady) return
   dockerStartupPollTimer = window.setTimeout(async () => {
     await recheckDocker()
     if (!state.status?.dockerReady) scheduleDockerStartupCheck()
