@@ -202,7 +202,7 @@
 .exportIcon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 9px; color: #262626; background: #ffdb00; }
 .exportIconDone { color: #fff; background: #78c95d; }
 .exportIconError { color: #fff; background: #f65252; }
-.exportDialog h2 { margin: 18px 0 6px; font-size: 20px; }
+.exportDialog h2 { margin: 18px 0 6px; color: #fff; font-size: 20px; font-weight: 700; line-height: 1.35; text-shadow: 0 1px 1px rgba(0,0,0,.22); }
 .exportProjectName { overflow: hidden; margin: 0; color: rgba(255,255,255,.58); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .exportProgressTrack { overflow: hidden; height: 8px; margin-top: 24px; border-radius: 999px; background: rgba(255,255,255,.12); }
 .exportProgressTrack span { display: block; height: 100%; border-radius: inherit; background: #ffdb00; transition: width 260ms ease; }
