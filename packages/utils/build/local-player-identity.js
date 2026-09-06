@@ -28,6 +28,9 @@ function validIdentity(value) {
         usernamePattern.test(value.username) &&
         typeof value.boxId === 'string' &&
         value.boxId.length <= 64 &&
+        (value.userKey == null || (typeof value.userKey === 'string' &&
+            value.userKey.length <= 128 &&
+            /^[\x20-\x7e]*$/.test(value.userKey))) &&
         typeof value.displayName === 'string' &&
         value.displayName.length >= 1 &&
         value.displayName.length <= 32 &&
@@ -46,7 +49,7 @@ function validIdentity(value) {
 function signRuntimePlayerIdentity(identity, secret, ttlMs = 60000) {
     if (!secret)
         throw new Error('player identity secret is not configured');
-    const value = Object.assign(Object.assign({}, identity), { expiresAt: Date.now() + Math.max(5000, Math.min(ttlMs, 5 * 60000)) });
+    const value = Object.assign(Object.assign({}, identity), { userKey: identity.userKey || '', expiresAt: Date.now() + Math.max(5000, Math.min(ttlMs, 5 * 60000)) });
     if (!validIdentity(value))
         throw new Error('invalid runtime player identity');
     const payload = encodeBase64URL(JSON.stringify(value));

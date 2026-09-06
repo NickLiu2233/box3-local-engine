@@ -401,7 +401,7 @@ export function handleServerPlayerConnections(
     serverPlayer.userId = connection.sessionData.user.id || '';
     serverPlayer.boxId = connection.sessionData.user.username;
     serverPlayer.avatar = connection.sessionData.user.avatar_hash;
-    serverPlayer.userKey = createPlayerUserKey(
+    serverPlayer.userKey = connection.sessionData.user.userKey || createPlayerUserKey(
       connection.sessionData.fingerPrint,
       process.env.PERMISSION_TOKEN_SECRET || '',
     ) || (connection.sessionData.user.id

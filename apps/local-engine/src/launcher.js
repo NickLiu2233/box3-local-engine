@@ -579,6 +579,13 @@ async function main() {
     // Keep the local default within that range so opening a project cannot
     // fail during config validation before the runtime starts.
     STORAGE_CACHE_REDIS_TTL: process.env.STORAGE_CACHE_REDIS_TTL || '240',
+    // Local Creator/Play runtimes must use the Player Service identity path as
+    // well. Without this default, source launches silently fall back to the
+    // legacy generated userKey and ignore bindings made in player management.
+    // Container deployments pass the service name explicitly and keep it.
+    BOX_PLAYER_SERVICE_INTERNAL_URL:
+      process.env.BOX_PLAYER_SERVICE_INTERNAL_URL ||
+      `http://127.0.0.1:${process.env.BOX_PLAYER_SERVICE_PORT || '3213'}`,
     // Large maps retain the owner's setting as a minimum; the experimental
     // 1024-wide map raises it to 2 GiB automatically.
     SCRIPT_HEAP_MB: String(scriptHeapMB),

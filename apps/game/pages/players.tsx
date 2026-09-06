@@ -116,7 +116,7 @@ type AdminOverview = {
 };
 
 type AdminSection = 'overview' | 'players' | 'sessions' | 'bans' | 'roles' | 'audit';
-type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'sessions' | 'logins' | 'ban' | 'password' | 'related' | 'history' | 'danger';
+type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'userKey' | 'sessions' | 'logins' | 'ban' | 'password' | 'related' | 'history' | 'danger';
 type ConsoleTheme = 'system' | 'light' | 'dark';
 type AdminActor = {
   displayName: string;
@@ -156,6 +156,7 @@ type CreateUserForm = {
   displayName: string;
   password: string;
   boxId: string;
+  userKey: string;
   tags: string;
   adminNote: string;
 };
@@ -163,6 +164,7 @@ type CreateUserForm = {
 const emptyCreateUser: CreateUserForm = {
   username: '', displayName: '', password: '',
   boxId: '', tags: '', adminNote: '',
+  userKey: '',
 };
 
 const emptyAdminAccount = {
@@ -198,6 +200,7 @@ const detailTabMeta: Record<PlayerDetailTab, { title: string }> = {
   profile: { title: '基本资料' },
   identity: { title: '身份档案' },
   boxId: { title: '神岛 ID' },
+  userKey: { title: '用户 Key' },
   sessions: { title: '会话设备' },
   logins: { title: '登录记录' },
   ban: { title: '封禁管理' },
@@ -837,7 +840,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   }
 
   function closeDetails() {
-    if (busy === 'save' || busy === 'boxId' || busy === 'delete') return;
+    if (busy === 'save' || busy === 'boxId' || busy === 'userKey' || busy === 'delete') return;
     setSelected(null);
     setDetails(null);
   }
@@ -915,6 +918,28 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       setDetails((current) => current ? { ...current, player: data.player } : current);
       await load();
       setNotice(data.player.boxId ? '神岛 ID 已绑定' : '神岛 ID 绑定已清除');
+    } catch (error) {
+      setNotice((error as Error).message);
+    } finally {
+      setBusy('');
+    }
+  }
+
+  async function saveUserKey() {
+    if (!selected || !canManageProfiles) return;
+    setBusy('userKey');
+    setNotice('');
+    try {
+      const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
+        method: 'PATCH', headers: adminHeaders(true),
+        body: JSON.stringify({ userKey: selected.userKey }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || '用户 Key 绑定失败');
+      setSelected(data.player);
+      setDetails((current) => current ? { ...current, player: data.player } : current);
+      await load();
+      setNotice(data.player.userKey ? '用户 Key 已绑定' : '用户 Key 绑定已清除');
     } catch (error) {
       setNotice((error as Error).message);
     } finally {
@@ -1384,6 +1409,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                 <button className={detailTab === 'profile' ? styles.detailTabActive : ''} onClick={() => setDetailTab('profile')}><UserCog size={15} /><span><strong>基本资料</strong><small>昵称、标签和备注</small></span></button>
                 <button className={detailTab === 'identity' ? styles.detailTabActive : ''} onClick={() => setDetailTab('identity')}><ShieldCheck size={15} /><span><strong>身份档案</strong><small>标识、时间和网络记录</small></span></button>
                 <button className={detailTab === 'boxId' ? styles.detailTabActive : ''} onClick={() => setDetailTab('boxId')}><Link2 size={15} /><span><strong>神岛 ID</strong><small>旧平台身份兼容绑定</small></span></button>
+                <button className={detailTab === 'userKey' ? styles.detailTabActive : ''} onClick={() => setDetailTab('userKey')}><KeyRound size={15} /><span><strong>用户 Key</strong><small>存档身份绑定</small></span></button>
                 <span className={styles.detailGroupLabel}>会话与安全</span>
                 <button className={detailTab === 'sessions' ? styles.detailTabActive : ''} onClick={() => setDetailTab('sessions')}><Monitor size={15} /><span><strong>会话设备</strong><small>当前登录设备与下线</small></span></button>
                 <button className={detailTab === 'logins' ? styles.detailTabActive : ''} onClick={() => setDetailTab('logins')}><Activity size={15} /><span><strong>登录记录</strong><small>登录时间、设备和地址</small></span></button>
@@ -1444,6 +1470,14 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                   </div> : <div className={styles.infoNote}>未注册身份不能绑定神岛 ID。</div>}
                 </section> : null}
 
+                {detailTab === 'userKey' ? <section className={styles.detailSection}>
+                  <div className={styles.sectionHeading}><h3>用户 Key 绑定</h3><span>{selected.userKey ? '已绑定' : '自动生成'}</span></div>
+                  {!selected.guest ? <div className={styles.singleField}>
+                    <label>用户 Key<input disabled={!canManageProfiles} maxLength={128} value={selected.userKey} onChange={(event) => setSelected({ ...selected, userKey: event.target.value })} placeholder="留空则使用系统自动生成值" /></label>
+                    <p>用于兼容旧地图存档中的 entity.player.userKey。清空并保存后恢复系统自动生成值；修改后玩家需重新登录。</p>
+                  </div> : <div className={styles.infoNote}>未注册身份不能绑定用户 Key。</div>}
+                </section> : null}
+
                 {detailTab === 'sessions' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>当前有效会话</h3><span>{details?.sessions.length || 0} 条</span></div>
                   {details?.sessions.length ? <div className={styles.recordList}>{details.sessions.map((session, index) => <article key={`${session.createdAt}-${index}`}><div><strong>{deviceLabel(session.userAgent)}</strong><span>{formatDate(session.lastSeenAt)}</span></div><small className={styles.recordIp}>{displayIp(session.lastSeenIp || session.createdIp)} · 设备 {session.deviceId || '旧会话未识别'}</small><p>{session.userAgent || '未记录客户端信息'}</p><div className={styles.sessionFooter}><small>创建 {formatDate(session.createdAt)} · 到期 {formatDate(session.expiresAt)}</small><span className={styles.sourceActions}>{canManageIdentityBans ? <><button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void banSource('ip', session.lastSeenIp || session.createdIp, 'IP')}>封禁 IP</button>{session.deviceHash ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void banSource('device', session.deviceHash, '设备')}>封禁设备</button> : null}</> : null}{canManageSessions ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => revokeSession(session.sessionId)}>{busy === `session:${session.sessionId}` ? '撤销中…' : '撤销会话'}</button> : null}</span></div></article>)}</div> : <div className={styles.compactEmpty}>没有有效登录会话</div>}
@@ -1498,6 +1532,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               <button className={styles.secondaryButton} disabled={Boolean(busy)} onClick={closeDetails}>关闭</button>
               {detailTab === 'profile' && canManageProfiles && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={() => void saveProfile()}>{busy === 'save' ? '保存中…' : '保存资料'}</button> : null}
               {detailTab === 'boxId' && canManageProfiles && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={saveBoxId}>{busy === 'boxId' ? '保存中…' : selected.boxId ? '保存绑定' : '清除绑定'}</button> : null}
+              {detailTab === 'userKey' && canManageProfiles && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={saveUserKey}>{busy === 'userKey' ? '保存中…' : selected.userKey ? '保存绑定' : '清除绑定'}</button> : null}
               {detailTab === 'ban' && canManageBans ? <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={() => void saveBan()}>{busy === 'save' ? '保存中…' : '保存封禁状态'}</button> : null}
             </footer>
           </section>
@@ -1516,6 +1551,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               <label>初始密码<input required type="password" minLength={10} maxLength={128} autoComplete="new-password" value={createUser.password} onChange={(event) => setCreateUser({ ...createUser, password: event.target.value })} placeholder="10–128 位" /></label>
               <label>账号类型<input disabled value="普通玩家" /></label>
               <label>神岛 ID（可选）<input maxLength={64} value={createUser.boxId} onChange={(event) => setCreateUser({ ...createUser, boxId: event.target.value })} placeholder="未绑定" /></label>
+              <label>用户 Key（可选）<input maxLength={128} value={createUser.userKey} onChange={(event) => setCreateUser({ ...createUser, userKey: event.target.value })} placeholder="留空自动生成" /></label>
               <label>标签（可选）<input value={createUser.tags} onChange={(event) => setCreateUser({ ...createUser, tags: event.target.value })} placeholder="测试员, 白名单" /></label>
               <label className={styles.fullField}>内部备注（可选）<textarea maxLength={2000} value={createUser.adminNote} onChange={(event) => setCreateUser({ ...createUser, adminNote: event.target.value })} placeholder="仅玩家管理后台可见" /></label>
             </div>

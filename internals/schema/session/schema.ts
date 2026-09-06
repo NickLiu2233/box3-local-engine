@@ -22,6 +22,8 @@ export const UserDetailSchema = new MuStruct({
   id: UserIdSchema,
   displayname: new MuUTF8(),
   username: new MuUTF8(),
+  // Stable save identity override configured by the server owner.
+  userKey: new MuASCII(''),
   // 也支持 URL
   avatar_hash: new MuUTF8(),
   avatar_status: <MuSchema<DB.AvatarStatus>>new MuVarint(),

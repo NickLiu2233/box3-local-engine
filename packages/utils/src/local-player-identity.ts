@@ -9,6 +9,8 @@ export type RuntimePlayerIdentity = {
   username: string;
   /** Optional legacy Box/神岛 account identifier. Empty when not bound. */
   boxId: string;
+  /** Optional userKey override used to keep old platform save identities. */
+  userKey: string;
   displayName: string;
   avatar: string;
   /** Curated in-game 3D skin identifier, separate from the profile avatar image. */
@@ -51,6 +53,11 @@ function validIdentity(value: RuntimePlayerIdentity) {
     usernamePattern.test(value.username) &&
     typeof value.boxId === 'string' &&
     value.boxId.length <= 64 &&
+    (value.userKey == null || (
+      typeof value.userKey === 'string' &&
+      value.userKey.length <= 128 &&
+      /^[\x20-\x7e]*$/.test(value.userKey)
+    )) &&
     typeof value.displayName === 'string' &&
     value.displayName.length >= 1 &&
     value.displayName.length <= 32 &&
@@ -72,13 +79,14 @@ function validIdentity(value: RuntimePlayerIdentity) {
 }
 
 export function signRuntimePlayerIdentity(
-  identity: Omit<RuntimePlayerIdentity, 'expiresAt'>,
+  identity: Omit<RuntimePlayerIdentity, 'expiresAt' | 'userKey'> & Partial<Pick<RuntimePlayerIdentity, 'userKey'>>,
   secret: string,
   ttlMs = 60_000,
 ) {
   if (!secret) throw new Error('player identity secret is not configured');
   const value: RuntimePlayerIdentity = {
     ...identity,
+    userKey: identity.userKey || '',
     expiresAt: Date.now() + Math.max(5_000, Math.min(ttlMs, 5 * 60_000)),
   };
   if (!validIdentity(value)) throw new Error('invalid runtime player identity');

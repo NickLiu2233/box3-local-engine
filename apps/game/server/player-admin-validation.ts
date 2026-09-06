@@ -70,6 +70,13 @@ const boxIdSchema = z
   .refine((value) => !/[\u0000-\u001f\u007f]/.test(value), {
     message: '神岛 ID 不能超过 64 个字符或包含控制字符',
   });
+const userKeySchema = z
+  .string()
+  .trim()
+  .max(128, '用户 Key 不能超过 128 个字符')
+  .refine((value) => /^[\x20-\x7e]*$/.test(value), {
+    message: '用户 Key 只能包含可打印 ASCII 字符',
+  });
 const reasonSchema = z
   .string()
   .trim()
@@ -125,6 +132,7 @@ const playerPatchSchema = z
     adminNote: z.string().trim().max(2000, '服主备注不能超过 2000 个字符').optional(),
     tags: tagsSchema.optional(),
     boxId: boxIdSchema.optional(),
+    userKey: userKeySchema.optional(),
     status: z.enum(['active', 'banned']).optional(),
     banReason: reasonSchema.optional(),
     bannedUntil: optionalFutureDateSchema.optional(),
@@ -165,7 +173,7 @@ export function playerItemRequirement(
     if (['status', 'banReason', 'bannedUntil'].some((field) => field in body)) {
       requirements.push('players.ban');
     }
-    if (['displayName', 'adminNote', 'tags', 'boxId'].some((field) => field in body)) {
+    if (['displayName', 'adminNote', 'tags', 'boxId', 'userKey'].some((field) => field in body)) {
       requirements.push('players.manage');
     }
     if (['creatorAccess', 'creatorPermissions'].some((field) => field in body)) {
@@ -291,6 +299,7 @@ const createManagedPlayerSchema = z.object({
   displayName: displayNameSchema,
   password: z.string().min(10, '密码长度必须为 10 到 128 个字符').max(128, '密码长度必须为 10 到 128 个字符'),
   boxId: boxIdSchema.optional().default(''),
+  userKey: userKeySchema.optional().default(''),
   tags: tagsSchema.optional().default([]),
   adminNote: z.string().trim().max(2000, '服主备注不能超过 2000 个字符').optional().default(''),
 }).strict();

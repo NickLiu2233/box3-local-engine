@@ -8,6 +8,7 @@ export declare const UserDetailSchema: MuStruct<{
     id: MuUTF8;
     displayname: MuUTF8;
     username: MuUTF8;
+    userKey: MuASCII;
     avatar_hash: MuUTF8;
     avatar_status: MuSchema<DB.AvatarStatus>;
     gender: MuSchema<DB.Gender>;
@@ -43,6 +44,7 @@ export declare const GameSessionDataSchema: MuStruct<{
         id: MuUTF8;
         displayname: MuUTF8;
         username: MuUTF8;
+        userKey: MuASCII;
         avatar_hash: MuUTF8;
         avatar_status: MuSchema<DB.AvatarStatus>;
         gender: MuSchema<DB.Gender>;

@@ -10,6 +10,8 @@ exports.UserDetailSchema = new schema_1.MuStruct({
     id: permission_rda_1.UserIdSchema,
     displayname: new schema_1.MuUTF8(),
     username: new schema_1.MuUTF8(),
+    // Stable save identity override configured by the server owner.
+    userKey: new schema_1.MuASCII(''),
     // 也支持 URL
     avatar_hash: new schema_1.MuUTF8(),
     avatar_status: new schema_1.MuVarint(),

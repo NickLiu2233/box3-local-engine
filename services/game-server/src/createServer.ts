@@ -329,6 +329,7 @@ export async function createGameServer(spec: {
         // user's username field, which is then bound to entity.player.boxId.
         // Keep the local login username separate from this compatibility ID.
         userData.username = runtimeIdentity.boxId;
+        userData.userKey = runtimeIdentity.userKey;
         userData.avatar_hash = runtimeIdentity.avatar;
         userData.wearing_skins = createBuiltInSkin(runtimeIdentity.avatarSkinId) || userData.wearing_skins;
         // A registered account editing a local project needs the same engine
