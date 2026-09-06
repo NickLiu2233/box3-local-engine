@@ -38,7 +38,7 @@ docker compose ps
 立即退出；Play 主容器仍以非 root 的 `node` 用户运行。只有该任务退出码非 `0` 时才需要检查
 volume 权限。
 
-默认只允许本机访问 `http://127.0.0.1:3000/`。直接通过服务器 IP 访问时，将
+默认只允许本机访问 `http://127.0.0.1:3121/`。直接通过服务器 IP 访问时，将
 `BOX_PLAY_HOST_IP` 改为 `0.0.0.0` 并配置服务器防火墙。正式公网环境推荐使用 HTTPS
 反向代理。
 
@@ -47,7 +47,7 @@ volume 权限。
 Service 管理页、PostgreSQL 和 Redis 不应直接暴露到互联网。
 
 两个镜像归档相互独立，更新玩家服务不需要重新分发游玩镜像。玩家管理后台默认是
-`http://127.0.0.1:3213/players`。玩家登录页由服主自行部署；配置
+`http://127.0.0.1:3124/players`。玩家登录页由服主自行部署；配置
 `BOX_PLAYER_LOGIN_URL` 后，未登录玩家会跳转到该地址，留空则显示“未开启登录”。认证接口仍必须配置
 至少 16 位的 `BOX_PLAYER_AUTH_API_KEY`。Key 只能配置在服主登录
 后端与 Player Service，不能放进浏览器；Origin 限制可通过 `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` 配置。

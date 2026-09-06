@@ -3,11 +3,11 @@ import { listen } from '@tauri-apps/api/event'
 import './styles.css'
 
 const services = [
-  ['creator', 'ARENA', '地图编辑服务', 'creatorPort', 3002, '/'],
-  ['voxa', 'VOXA', '模型编辑服务', 'voxaPort', 3001, '/'],
-  ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3000, '/'],
-  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3213, '/players'],
-  ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3214, '/'],
+  ['creator', 'ARENA', '地图编辑服务', 'creatorPort', 3127, '/'],
+  ['voxa', 'VOXA', '模型编辑服务', 'voxaPort', 3123, '/'],
+  ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3121, '/'],
+  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/players'],
+  ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3125, '/'],
 ]
 
 const managedServices = [
@@ -171,10 +171,10 @@ function onboarding() {
   const dockerCliAvailable = state.dockerCheck?.cliAvailable === true
   const playHost = state.config?.publicHost || '127.0.0.1'
   const creatorHost = state.config?.creatorHost || '127.0.0.1'
-  const playPort = state.config?.playPort || 3000
-  const creatorPort = state.config?.creatorPort || 3002
-  const playerServicePort = state.config?.playerServicePort || 3213
-  const authPortalPort = state.config?.authPortalPort || 3214
+  const playPort = state.config?.playPort || 3121
+  const creatorPort = state.config?.creatorPort || 3127
+  const playerServicePort = state.config?.playerServicePort || 3124
+  const authPortalPort = state.config?.authPortalPort || 3125
   if (dockerReady && state.onboardingStep === 1) state.onboardingStep = 2
   const availableStep = !dockerCliAvailable ? 1 : !licenseReady ? 2 : !configured ? 3 : 5
   const currentStep = Math.max(1, Math.min(state.onboardingStep, availableStep))
@@ -626,7 +626,7 @@ function setup() {
             ['立即备份', '需要在重要修改前手动保存时，请前往“数据与备份”使用右上角的“立即备份”。'],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3000, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网 IP', creatorPublicHost)}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3002, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3001, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>玩家服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3213, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3214, 'number')}</div></section></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网 IP', creatorPublicHost)}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>玩家服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
           '配置说明：访问地址和端口有什么影响？',
           [
             [

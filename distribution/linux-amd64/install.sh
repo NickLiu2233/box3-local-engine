@@ -37,4 +37,4 @@ echo 'Loading offline images…'
 docker load -i "$archive"
 echo 'Starting BOX Local Engine…'
 docker compose --env-file .env up -d --no-build --remove-orphans
-echo 'Done. Creator: http://127.0.0.1:3002/  Play: http://127.0.0.1:3000/'
+echo 'Done. Creator: http://127.0.0.1:3127/  Play: http://127.0.0.1:3121/'

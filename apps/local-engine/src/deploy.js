@@ -87,7 +87,7 @@ function assertRuntimeConfiguration(product) {
 }
 
 function configuredCreatorPort() {
-  return process.env.BOX_CREATOR_PORT || readDotEnvValue('BOX_CREATOR_PORT') || '3002'
+  return process.env.BOX_CREATOR_PORT || readDotEnvValue('BOX_CREATOR_PORT') || '3127'
 }
 
 function configuredPlayPort() {
@@ -96,20 +96,20 @@ function configuredPlayPort() {
     readDotEnvValue('BOX_PLAY_PORT') ||
     process.env.BOX_PORT ||
     readDotEnvValue('BOX_PORT') ||
-    '3000'
+    '3121'
   )
 }
 
 function configuredPlayerServicePort() {
-  return process.env.BOX_PLAYER_SERVICE_PORT || readDotEnvValue('BOX_PLAYER_SERVICE_PORT') || '3213'
+  return process.env.BOX_PLAYER_SERVICE_PORT || readDotEnvValue('BOX_PLAYER_SERVICE_PORT') || '3124'
 }
 
 function configuredAuthPortalPort() {
-  return process.env.BOX_AUTH_PORTAL_PORT || readDotEnvValue('BOX_AUTH_PORTAL_PORT') || '3214'
+  return process.env.BOX_AUTH_PORTAL_PORT || readDotEnvValue('BOX_AUTH_PORTAL_PORT') || '3125'
 }
 
 function configuredVoxaPort() {
-  return process.env.BOX_VOXA_PORT || readDotEnvValue('BOX_VOXA_PORT') || '3001'
+  return process.env.BOX_VOXA_PORT || readDotEnvValue('BOX_VOXA_PORT') || '3123'
 }
 
 // The map library is deployment data, not network configuration. Resolve the
@@ -295,7 +295,7 @@ function startVoxa({ build }) {
   stopProduct('voxa')
   runDocker(['compose', '--profile', 'voxa', 'up', '-d', '--no-build', '--force-recreate', 'voxa'])
   console.log('\nVOXA 已启动：http://127.0.0.1:' + configuredVoxaPort())
-  console.log('模型列表已整合到创作端作品中心：http://127.0.0.1:3002/projects?view=models')
+  console.log('模型列表已整合到创作端作品中心：http://127.0.0.1:3127/projects?view=models')
   console.log(`数据目录：${dataRoot}\n`)
 }
 

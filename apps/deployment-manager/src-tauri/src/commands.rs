@@ -156,11 +156,11 @@ impl Default for InstallConfigView {
             creator_network_mode: "local".into(),
             creator_host: "127.0.0.1".into(),
             lan_ip: detect_lan_ip().unwrap_or_default(),
-            play_port: 3000,
-            voxa_port: 3001,
-            creator_port: 3002,
-            player_service_port: 3213,
-            auth_portal_port: 3214,
+            play_port: 3121,
+            voxa_port: 3123,
+            creator_port: 3127,
+            player_service_port: 3124,
+            auth_portal_port: 3125,
             play_runtimes: 8,
             creator_edit_runtimes: 6,
             creator_play_runtimes: 4,
@@ -358,19 +358,19 @@ fn default_creator_network_mode() -> String {
     "local".into()
 }
 fn default_play_port() -> u16 {
-    3000
+    3121
 }
 fn default_voxa_port() -> u16 {
-    3001
+    3123
 }
 fn default_creator_port() -> u16 {
-    3002
+    3127
 }
 fn default_player_service_port() -> u16 {
-    3213
+    3124
 }
 fn default_auth_portal_port() -> u16 {
-    3214
+    3125
 }
 fn default_play_runtimes() -> u32 {
     8
@@ -2135,17 +2135,17 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             .cloned()
             .unwrap_or_else(default_creator_host),
         lan_ip: detect_lan_ip().unwrap_or_default(),
-        play_port: number_u32("BOX_PLAY_PORT", 3000).try_into().unwrap_or(3000),
-        voxa_port: number_u32("BOX_VOXA_PORT", 3001).try_into().unwrap_or(3001),
-        creator_port: number_u32("BOX_CREATOR_PORT", 3002)
+        play_port: number_u32("BOX_PLAY_PORT", 3121).try_into().unwrap_or(3121),
+        voxa_port: number_u32("BOX_VOXA_PORT", 3123).try_into().unwrap_or(3123),
+        creator_port: number_u32("BOX_CREATOR_PORT", 3127)
             .try_into()
-            .unwrap_or(3002),
-        player_service_port: number_u32("BOX_PLAYER_SERVICE_PORT", 3213)
+            .unwrap_or(3127),
+        player_service_port: number_u32("BOX_PLAYER_SERVICE_PORT", 3124)
             .try_into()
-            .unwrap_or(3213),
-        auth_portal_port: number_u32("BOX_AUTH_PORTAL_PORT", 3214)
+            .unwrap_or(3124),
+        auth_portal_port: number_u32("BOX_AUTH_PORTAL_PORT", 3125)
             .try_into()
-            .unwrap_or(3214),
+            .unwrap_or(3125),
         play_runtimes: number_u32("BOX_PLAY_MAX_RUNTIMES", 8),
         creator_edit_runtimes: number_u32("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
@@ -3652,23 +3652,23 @@ fn open_service(app: AppHandle, url: String) -> Result<(), String> {
     let allowed = [
         format!(
             "{}/",
-            configured_url("BOX_CREATOR_PUBLIC_URL", "http://127.0.0.1:3002")
+            configured_url("BOX_CREATOR_PUBLIC_URL", "http://127.0.0.1:3127")
         ),
         format!(
             "{}/",
-            configured_url("BOX_PLAY_PUBLIC_URL", "http://127.0.0.1:3000")
+            configured_url("BOX_PLAY_PUBLIC_URL", "http://127.0.0.1:3121")
         ),
         format!(
             "{}/players",
-            configured_url("BOX_PLAYER_SERVICE_PUBLIC_URL", "http://127.0.0.1:3213")
+            configured_url("BOX_PLAYER_SERVICE_PUBLIC_URL", "http://127.0.0.1:3124")
         ),
         format!(
             "{}/",
-            configured_url("BOX_AUTH_PORTAL_PUBLIC_URL", "http://127.0.0.1:3214")
+            configured_url("BOX_AUTH_PORTAL_PUBLIC_URL", "http://127.0.0.1:3125")
         ),
         format!(
             "{}/",
-            configured_url("BOX_VOXA_PUBLIC_URL", "http://127.0.0.1:3001")
+            configured_url("BOX_VOXA_PUBLIC_URL", "http://127.0.0.1:3123")
         ),
     ];
     if !allowed.contains(&url) {
@@ -3847,11 +3847,11 @@ mod tests {
             play_network_mode: default_play_network_mode(),
             creator_host: default_creator_host(),
             creator_network_mode: default_creator_network_mode(),
-            play_port: 3000,
-            voxa_port: 3001,
-            creator_port: 3002,
-            player_service_port: 3213,
-            auth_portal_port: 3214,
+            play_port: 3121,
+            voxa_port: 3123,
+            creator_port: 3127,
+            player_service_port: 3124,
+            auth_portal_port: 3125,
             play_runtimes: default_play_runtimes(),
             creator_edit_runtimes: default_creator_edit_runtimes(),
             creator_play_runtimes: default_creator_play_runtimes(),

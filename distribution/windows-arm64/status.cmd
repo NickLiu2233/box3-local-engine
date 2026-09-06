@@ -9,8 +9,8 @@ if not exist ".env" (
 )
 docker compose --env-file .env -f docker-compose.yml ps
 echo.
-echo Creator:       http://127.0.0.1:3002/
-echo Play:          http://127.0.0.1:3000/
-echo Player Admin:  http://127.0.0.1:3213/players
-echo Login Portal:  http://127.0.0.1:3214/
+echo Creator:       http://127.0.0.1:3127/
+echo Play:          http://127.0.0.1:3121/
+echo Player Admin:  http://127.0.0.1:3124/players
+echo Login Portal:  http://127.0.0.1:3125/
 pause

@@ -57,8 +57,8 @@ for (const supportedTarget of ['Windows x64', 'Apple Silicon macOS', 'Linux x64'
 }
 
 for (const [label, snippet] of [
-  ['current Play port', '`http://127.0.0.1:3000/`'],
-  ['current Creator port', '`http://127.0.0.1:3002/`'],
+  ['current Play port', '`http://127.0.0.1:3121/`'],
+  ['current Creator port', '`http://127.0.0.1:3127/`'],
   ['client script trust boundary', '客户端地图脚本运行在玩家浏览器页面中'],
   ['server script trust boundary', '服务端地图脚本在 game-server 的隔离运行时中执行'],
   ['headless package boundary', '包含 Creator、VOXA、Play、Player Service'],

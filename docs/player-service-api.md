@@ -1,6 +1,6 @@
 # Player Service API
 
-默认地址是 `http://127.0.0.1:3213`。响应为 JSON；错误格式为：
+默认地址是 `http://127.0.0.1:3124`。响应为 JSON；错误格式为：
 
 ```json
 { "message": "错误说明" }

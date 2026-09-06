@@ -480,7 +480,7 @@ function shutdown(code = 0) {
 
 async function main() {
   const webPort = Number(
-    process.env.BOX_WEB_PORT || process.env.BOX_CLIENT_PORT || (playMode ? 3000 : 3002),
+    process.env.BOX_WEB_PORT || process.env.BOX_CLIENT_PORT || (playMode ? 3121 : 3127),
   )
   const webHost = process.env.BOX_WEB_HOST || process.env.BOX_CLIENT_HOST || '127.0.0.1'
   const playRuntimeHost =
@@ -585,7 +585,7 @@ async function main() {
     // Container deployments pass the service name explicitly and keep it.
     BOX_PLAYER_SERVICE_INTERNAL_URL:
       process.env.BOX_PLAYER_SERVICE_INTERNAL_URL ||
-      `http://127.0.0.1:${process.env.BOX_PLAYER_SERVICE_PORT || '3213'}`,
+      `http://127.0.0.1:${process.env.BOX_PLAYER_SERVICE_PORT || '3124'}`,
     // Large maps retain the owner's setting as a minimum; the experimental
     // 1024-wide map raises it to 2 GiB automatically.
     SCRIPT_HEAP_MB: String(scriptHeapMB),

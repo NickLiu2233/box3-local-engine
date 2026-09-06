@@ -144,7 +144,7 @@ function publicApplicationURL(from: 'creator' | 'play') {
   const configured = from === 'creator'
     ? process.env.BOX_CREATOR_PUBLIC_URL
     : process.env.BOX_PLAY_PUBLIC_URL;
-  const fallback = from === 'creator' ? 'http://127.0.0.1:3002' : 'http://127.0.0.1:3000';
+  const fallback = from === 'creator' ? 'http://127.0.0.1:3127' : 'http://127.0.0.1:3121';
   return new URL((configured || fallback).trim());
 }
 

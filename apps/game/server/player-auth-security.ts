@@ -18,7 +18,7 @@ function allowedOrigins() {
     .map(normalizedOrigin)
     .filter(Boolean);
   const serviceOrigin = normalizedOrigin(
-    process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213',
+    process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3124',
   );
   return new Set([...configured, serviceOrigin].filter(Boolean));
 }

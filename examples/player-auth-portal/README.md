@@ -19,17 +19,17 @@ cp .env.example .env
 编辑 `.env`：
 
 ```env
-AUTH_DEMO_PLAYER_SERVICE_URL=http://127.0.0.1:3213
+AUTH_DEMO_PLAYER_SERVICE_URL=http://127.0.0.1:3124
 AUTH_DEMO_API_KEY=与Player-Service的BOX_PLAYER_AUTH_API_KEY完全相同
-AUTH_DEMO_CREATOR_URL=http://127.0.0.1:3002
-AUTH_DEMO_PLAY_URL=http://127.0.0.1:3000
+AUTH_DEMO_CREATOR_URL=http://127.0.0.1:3127
+AUTH_DEMO_PLAY_URL=http://127.0.0.1:3121
 ```
 
 Player Service 使用相同密钥，并把未登录用户引导到该程序：
 
 ```env
 BOX_PLAYER_AUTH_API_KEY=与AUTH_DEMO_API_KEY完全相同
-BOX_PLAYER_LOGIN_URL=http://127.0.0.1:3214
+BOX_PLAYER_LOGIN_URL=http://127.0.0.1:3125
 ```
 
 启动：
@@ -38,7 +38,7 @@ BOX_PLAYER_LOGIN_URL=http://127.0.0.1:3214
 npm start
 ```
 
-访问 [http://127.0.0.1:3214](http://127.0.0.1:3214)。Creator/Play 跳转过来时会携带
+访问 [http://127.0.0.1:3125](http://127.0.0.1:3125)。Creator/Play 跳转过来时会携带
 `source` 和 `returnUrl`，登录成功后程序只允许返回已配置 Creator/Play 同源地址，防止开放
 重定向。
 
@@ -67,8 +67,8 @@ openssl rand -hex 32
 把生成的随机值写入 `.env` 的 `BOX_PLAYER_AUTH_API_KEY`，并设置：
 
 ```env
-BOX_PLAYER_LOGIN_URL=http://127.0.0.1:3214
-BOX_AUTH_PORTAL_PUBLIC_URL=http://127.0.0.1:3214
+BOX_PLAYER_LOGIN_URL=http://127.0.0.1:3125
+BOX_AUTH_PORTAL_PUBLIC_URL=http://127.0.0.1:3125
 ```
 
 首次部署：
@@ -78,7 +78,7 @@ pnpm player-service
 pnpm player-auth-portal
 ```
 
-访问 [http://127.0.0.1:3214](http://127.0.0.1:3214)。代码或基础镜像没有变化时，可直接
+访问 [http://127.0.0.1:3125](http://127.0.0.1:3125)。代码或基础镜像没有变化时，可直接
 启动已有镜像：
 
 ```bash
@@ -86,7 +86,7 @@ pnpm player-auth-portal:up
 ```
 
 门户容器固定通过 Compose 内网地址 `http://player-service:3213` 访问玩家服务。浏览器不会拿到
-`BOX_PLAYER_AUTH_API_KEY`。容器默认仅绑定宿主机 `127.0.0.1:3214`、以非 root 用户运行，启用
+`BOX_PLAYER_AUTH_API_KEY`。容器默认仅绑定宿主机 `127.0.0.1:3125`、以非 root 用户运行，启用
 只读根文件系统、能力删除和健康检查。
 
 只使用 Docker Compose 时也可执行：
@@ -99,7 +99,7 @@ docker compose --profile player-service --profile auth-portal up -d --build \
 健康检查：
 
 ```bash
-curl http://127.0.0.1:3214/api/health-check
+curl http://127.0.0.1:3125/api/health-check
 ```
 
 该接口只检查门户自身，不依赖 Player Service，避免上游短暂不可用时反复重启门户。

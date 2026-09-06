@@ -120,8 +120,8 @@ function Initialize-Configuration {
   $content = Set-EnvValue $content 'BOX_PLAYER_AUTH_API_KEY' $authKey
   $content = Set-EnvValue $content 'BOX_PLAY_ADMIN_TOKEN' $adminToken
   $content = Set-EnvValue $content 'BOX_PLAY_LIBRARY_READ_ONLY' 'false'
-  $content = Set-EnvValue $content 'BOX_PLAYER_LOGIN_URL' 'http://127.0.0.1:3214'
-  $content = Set-EnvValue $content 'BOX_PLAYER_AUTH_ALLOWED_ORIGINS' 'http://127.0.0.1:3000,http://127.0.0.1:3002,http://127.0.0.1:3214'
+  $content = Set-EnvValue $content 'BOX_PLAYER_LOGIN_URL' 'http://127.0.0.1:3125'
+  $content = Set-EnvValue $content 'BOX_PLAYER_AUTH_ALLOWED_ORIGINS' 'http://127.0.0.1:3121,http://127.0.0.1:3127,http://127.0.0.1:3125'
 
   if ($mode -eq '1') {
     $databasePassword = Get-EnvValue $content 'BOX_POSTGRES_PASSWORD'
@@ -360,11 +360,11 @@ try {
 
   Write-Step '检查服务状态'
   $checks = @(
-    (Wait-Endpoint 'Player Service' 'http://127.0.0.1:3213/api/health-check')
-    (Wait-Endpoint 'Login Portal' 'http://127.0.0.1:3214/api/health-check')
-    (Wait-Endpoint 'Creator' 'http://127.0.0.1:3002/api/health-check')
-    (Wait-Endpoint 'Play' 'http://127.0.0.1:3000/api/health-check')
-    (Wait-Endpoint 'VOXA' 'http://127.0.0.1:3001/')
+    (Wait-Endpoint 'Player Service' 'http://127.0.0.1:3124/api/health-check')
+    (Wait-Endpoint 'Login Portal' 'http://127.0.0.1:3125/api/health-check')
+    (Wait-Endpoint 'Creator' 'http://127.0.0.1:3127/api/health-check')
+    (Wait-Endpoint 'Play' 'http://127.0.0.1:3121/api/health-check')
+    (Wait-Endpoint 'VOXA' 'http://127.0.0.1:3123/')
   )
   if ($checks -contains $false) {
     Write-Host "`n部分服务未就绪，当前容器状态：" -ForegroundColor Yellow
@@ -374,11 +374,11 @@ try {
   }
 
   Write-Host "`n部署完成：" -ForegroundColor Green
-  Write-Host '  Creator       http://127.0.0.1:3002/'
-  Write-Host '  Play          http://127.0.0.1:3000/'
-  Write-Host '  Player Admin  http://127.0.0.1:3213/players'
-  Write-Host '  Login Portal  http://127.0.0.1:3214/'
-  if (-not $NoOpen) { Start-Process 'http://127.0.0.1:3002/' }
+  Write-Host '  Creator       http://127.0.0.1:3127/'
+  Write-Host '  Play          http://127.0.0.1:3121/'
+  Write-Host '  Player Admin  http://127.0.0.1:3124/players'
+  Write-Host '  Login Portal  http://127.0.0.1:3125/'
+  if (-not $NoOpen) { Start-Process 'http://127.0.0.1:3127/' }
   exit 0
 } catch {
   Write-Host "`n[ERROR] $($_.Exception.Message)" -ForegroundColor Red

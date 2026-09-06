@@ -230,7 +230,7 @@ export const getServerSideProps: GetServerSideProps<PlayersPageProps> = async ({
   const mode = process.env.BOX_DEPLOYMENT_MODE;
   if (mode !== 'player-service') {
     if (mode === 'play') return { notFound: true };
-    const base = (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3213').replace(/\/$/, '');
+    const base = (process.env.BOX_PLAYER_SERVICE_PUBLIC_URL || 'http://127.0.0.1:3124').replace(/\/$/, '');
     return { redirect: { destination: `${base}/players?from=creator`, permanent: false } };
   }
   const from = Array.isArray(query.from) ? query.from[0] : query.from;
@@ -238,7 +238,7 @@ export const getServerSideProps: GetServerSideProps<PlayersPageProps> = async ({
   return {
     props: {
       returnUrl: creator
-        ? process.env.BOX_CREATOR_PUBLIC_URL || 'http://127.0.0.1:3002'
+        ? process.env.BOX_CREATOR_PUBLIC_URL || 'http://127.0.0.1:3127'
         : '',
       returnLabel: creator ? '返回创作端' : '',
       initialSection: parseSection(query.view),

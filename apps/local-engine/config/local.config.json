@@ -17,10 +17,10 @@
     "INTRANET_BOX_API_URL": "http://127.0.0.1:9966",
     "BACKEND_AUTH_CODE": "local-engine",
     "BUILD_SERVER_URL": "",
-    "WEBSITE_URL": "http://127.0.0.1:3002",
-    "HOME_URL": "http://127.0.0.1:3002",
-    "ARENA_URL": "http://127.0.0.1:3002",
-    "VOXA_URL": "http://127.0.0.1:3001",
+    "WEBSITE_URL": "http://127.0.0.1:3127",
+    "HOME_URL": "http://127.0.0.1:3127",
+    "ARENA_URL": "http://127.0.0.1:3127",
+    "VOXA_URL": "http://127.0.0.1:3123",
     "ENGINE_APIS_URL": "http://127.0.0.1:9966",
     "LOG_LEVEL": 2,
     "CONTENT_SERVER_URL": "",
@@ -43,7 +43,7 @@
     "WEBSITE_PLAY_ROUTE": "/p",
     "THIRD_PARTY_URL": "",
     "CONTAINER_SCALING_FRAMESKIPS_THRESHOLD": 65535,
-    "PLATFORM_URL": "http://127.0.0.1:3002"
+    "PLATFORM_URL": "http://127.0.0.1:3127"
   },
   "game-server": {
     "AGORA_APP_ID": "",
