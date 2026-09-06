@@ -376,9 +376,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     initialSection === 'bans' ? 'banned' : ['sessions', 'roles'].includes(initialSection) ? 'user' : 'all',
   );
   const [roleFilter, setRoleFilter] = useState<'all' | Player['role']>('all');
-  const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>(
-    initialSection === 'sessions' ? 'online' : 'all',
-  );
+  const [onlineFilter, setOnlineFilter] = useState<'all' | 'online' | 'offline'>('all');
   const [sort, setSort] = useState<'lastSeen' | 'registered' | 'displayName' | 'loginCount'>('lastSeen');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -444,7 +442,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     } else if (next === 'sessions') {
       setIdentityFilter('user');
       setRoleFilter('all');
-      setOnlineFilter('online');
+      setOnlineFilter('all');
     } else if (next === 'bans') {
       setIdentityFilter('banned');
       setRoleFilter('all');
@@ -468,7 +466,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     setPage(1);
     setSelectedIds([]);
     setIdentityFilter(next === 'bans' ? 'banned' : ['sessions', 'roles'].includes(next) ? 'user' : 'all');
-    setOnlineFilter(next === 'sessions' ? 'online' : 'all');
+    setOnlineFilter('all');
     setRoleFilter('all');
   }, [router.isReady, router.query.view, section]);
 
@@ -647,12 +645,20 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             displayName: createAdmin.displayName,
             role: createAdmin.role,
             permissionGroupId: createAdmin.role === 'moderator'
-              ? createAdmin.permissionGroupId
-              : '',
+              ? (createAdmin.permissionGroupId || null)
+              : null,
             status: createAdmin.status,
             ...(createAdmin.password ? { password: createAdmin.password } : {}),
           }
-        : createAdmin;
+        : {
+            username: createAdmin.username,
+            displayName: createAdmin.displayName,
+            password: createAdmin.password,
+            role: createAdmin.role,
+            permissionGroupId: createAdmin.role === 'moderator'
+              ? (createAdmin.permissionGroupId || null)
+              : null,
+          };
       const response = await fetch(
         editing ? `/api/play-admin/admins/${editingAdminId}` : '/api/play-admin/admins',
         {
@@ -1248,7 +1254,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                   <label>管理员用户名<input autoFocus autoComplete="username" value={adminUsername} onChange={(event) => setAdminUsername(event.target.value)} /></label>
                   <label>管理员密码<input type="password" autoComplete="current-password" value={adminPassword} onChange={(event) => setAdminPassword(event.target.value)} /></label>
                 </> : <label>服主密钥<input autoFocus type="password" autoComplete="off" value={ownerToken} onChange={(event) => setOwnerToken(event.target.value)} /></label>}
-                {notice ? <div className={styles.loginError} role="alert">{notice}</div> : null}
+                {notice && notice !== '请登录独立的玩家管理账号' ? <div className={styles.loginError} role="alert">{notice}</div> : null}
                 <div className={styles.loginActions}>
                   {returnUrl ? <Link className={styles.secondaryButton} href={returnUrl}>{returnLabel}</Link> : null}
                   <button className={styles.primaryButton} disabled={(loginMode === 'admin' ? !adminUsername || !adminPassword : !ownerToken) || busy === 'verify'} type="submit">{busy === 'verify' ? '登录中…' : '登录后台'}</button>
@@ -1353,9 +1359,6 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
             </div> : null}
             {section !== 'roles' ? <div className={styles.filterBar}>
               <div className={styles.filterGroup}>
-                <select className={styles.filterSelect} aria-label="角色筛选" value={roleFilter} onChange={(event) => { setRoleFilter(event.target.value as typeof roleFilter); setPage(1); }}><option value="all">全部角色</option><option value="player">普通玩家</option><option value="moderator">管理员</option><option value="admin">服主</option></select>
-                {section === 'players' || section === 'sessions' ? <select className={styles.filterSelect} aria-label="在线筛选" value={onlineFilter} onChange={(event) => { setOnlineFilter(event.target.value as typeof onlineFilter); setPage(1); }}><option value="all">全部在线状态</option><option value="online">当前在线</option><option value="offline">当前离线</option></select> : null}
-                <select className={styles.filterSelect} aria-label="排序方式" value={sort} onChange={(event) => { setSort(event.target.value as typeof sort); setPage(1); }}><option value="lastSeen">最近在线优先</option><option value="registered">最近注册优先</option><option value="displayName">按昵称排序</option><option value="loginCount">登录次数最多</option></select>
                 {search || appliedSearch ? <button className={styles.textButton} onClick={() => { setSearch(''); setAppliedSearch(''); setPage(1); }}>清除搜索</button> : null}
               </div>
               <span>当前显示 {displayedPlayers.length} / {total} 位玩家</span>
@@ -1434,7 +1437,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                     {ownerAccess ? <section className={`${styles.fullField} ${styles.creatorAccess}`}>
                       <span className={styles.creatorAccessTitle}>创作者授权</span>
                       <label className={styles.creatorAccessToggle}>
-                        <input type="checkbox" disabled={selected.guest} checked={selected.creatorAccess} onChange={(event) => setSelected({ ...selected, creatorAccess: event.target.checked, creatorPermissions: event.target.checked ? selected.creatorPermissions : [] })} />
+                        <input type="checkbox" disabled={selected.guest} checked={selected.creatorAccess} onChange={(event) => setSelected({ ...selected, creatorAccess: event.target.checked, creatorPermissions: event.target.checked ? CREATOR_CAPABILITIES.filter((capability) => capability !== 'projects.view') : [] })} />
                         <span><strong>允许进入创作端</strong><small>开启后可继续分配创建、编辑、导入和发布等权限。</small></span>
                       </label>
                       {selected.creatorAccess ? <div className={styles.permissionGrid}>{CREATOR_CAPABILITIES.filter((capability) => capability !== 'projects.view').map((capability) => <label key={capability}><input type="checkbox" checked={selected.creatorPermissions.includes(capability)} onChange={(event) => setSelected({ ...selected, creatorPermissions: event.target.checked ? [...new Set([...selected.creatorPermissions, capability])] : selected.creatorPermissions.filter((item) => item !== capability) })} /> <span><strong>{CREATOR_CAPABILITY_META[capability].label}</strong><small>{CREATOR_CAPABILITY_META[capability].description}</small></span></label>)}</div> : null}

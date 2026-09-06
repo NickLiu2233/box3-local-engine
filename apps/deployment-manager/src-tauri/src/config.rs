@@ -145,22 +145,24 @@ pub(crate) fn write_private_file(
     #[cfg(unix)]
     fs::set_permissions(&temporary, fs::Permissions::from_mode(0o600))
         .map_err(|error| format!("无法保护 {label} 权限：{error}"))?;
-    if let Err(error) = fs::rename(&temporary, path) {
-        #[cfg(windows)]
-        {
-            fs::remove_file(path).map_err(|remove_error| {
+    if let Err(rename_error) = fs::rename(&temporary, path) {
+        // `rename` is atomic only when both paths are on the same file
+        // system. This can legitimately fail with EXDEV when the app data
+        // directory is a symlink or resides on a mounted volume. Copying the
+        // already-written private file is the safe fallback here; importantly
+        // it also avoids reporting a misleading second error when there is no
+        // old file to remove.
+        let copy_result = fs::copy(&temporary, path);
+        match copy_result {
+            Ok(_) => {
                 let _ = fs::remove_file(&temporary);
-                format!("无法替换 {label}：{error}；无法移除旧文件：{remove_error}")
-            })?;
-            fs::rename(&temporary, path).map_err(|rename_error| {
+            }
+            Err(copy_error) => {
                 let _ = fs::remove_file(&temporary);
-                format!("无法替换 {label}：{rename_error}")
-            })?;
-        }
-        #[cfg(not(windows))]
-        {
-            let _ = fs::remove_file(&temporary);
-            return Err(format!("无法替换 {label}：{error}"));
+                return Err(format!(
+                    "无法替换 {label}：{rename_error}；跨文件系统复制也失败：{copy_error}"
+                ));
+            }
         }
     }
     #[cfg(unix)]

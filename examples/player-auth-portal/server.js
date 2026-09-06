@@ -102,9 +102,19 @@ function requestProtocol(request, config) {
 }
 
 function requestOrigin(request, config) {
-  if (config.publicURL) return config.publicURL.origin
-  const host = String(request.headers.host || '').trim()
-  return host ? `${requestProtocol(request, config)}://${host}` : ''
+  // `publicURL` is the canonical address used for redirects and deployment
+  // documentation. It must not be used for same-origin validation: a portal
+  // configured as 127.0.0.1 is still legitimately reachable through a LAN IP
+  // or a reverse-proxy hostname. Validate against the address the browser
+  // actually used instead.
+  const forwardedHost = config.trustProxy
+    ? String(request.headers['x-forwarded-host'] || '')
+        .split(',')[0]
+        .trim()
+    : ''
+  const host = forwardedHost || String(request.headers.host || '').trim()
+  if (host) return `${requestProtocol(request, config)}://${host}`
+  return config.publicURL ? config.publicURL.origin : ''
 }
 
 function isSameOriginRequest(request, config) {

@@ -810,6 +810,7 @@
 .permissionLocked strong { font-size: 12px; }
 .permissionGrid small,
 .permissionLocked small { font-size: 10px; }
+.formGrid .permissionGrid label { display: flex; align-items: flex-start; gap: 9px; }
 .banPresets { font-size: 12px; }
 .banPresets button { min-height: 32px; font-size: 11px; }
 .passwordReset strong { font-size: 12px; }

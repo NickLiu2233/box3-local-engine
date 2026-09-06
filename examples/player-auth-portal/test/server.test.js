@@ -199,6 +199,35 @@ test('login is proxied without exposing the API key to the browser', async () =>
   assert.equal(JSON.stringify(data).includes('server-only-test-key'), false)
 })
 
+test('configured public URL does not reject a request made through another host', async () => {
+  const fixedURLPortal = createAuthPortalServer({
+    host: '127.0.0.1',
+    port: 0,
+    playerServiceURL: new URL(upstreamURL),
+    publicURL: new URL('http://127.0.0.1:3214'),
+    creatorURL: new URL('http://creator.example.test'),
+    playURL: new URL('http://play.example.test'),
+    apiKey: 'server-only-test-key',
+    requestTimeoutMs: 2_000,
+    trustProxy: false,
+    registrationEnabled: true,
+  })
+  const fixedURL = await listen(fixedURLPortal)
+  try {
+    const response = await fetch(`${fixedURL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: fixedURL,
+      },
+      body: JSON.stringify({ username: 'tester', password: 'password-123' }),
+    })
+    assert.equal(response.status, 200)
+  } finally {
+    await close(fixedURLPortal)
+  }
+})
+
 test('cross-origin browser posts are rejected before reaching Player Service', async () => {
   const previousRequest = lastUpstreamRequest
   const response = await fetch(`${portalURL}/api/auth/logout`, {

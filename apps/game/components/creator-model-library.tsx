@@ -307,9 +307,11 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     </div>}
 
     {editingModel && <div className={styles.dialogBackdrop} onMouseDown={() => !submitting && setEditingModel(null)}>
-      <form className={styles.dialog} onSubmit={saveModelInfo} onMouseDown={(event) => event.stopPropagation()}>
-        <span className={styles.dialogIcon}><Pencil size={20} /></span>
-        <h2>修改模型信息</h2>
+      <form className={`${styles.dialog} ${styles.editDialog}`} onSubmit={saveModelInfo} onMouseDown={(event) => event.stopPropagation()}>
+        <div className={styles.dialogHeading}>
+          <span className={styles.dialogIcon}><Pencil size={20} /></span>
+          <h2>修改模型信息</h2>
+        </div>
         <label htmlFor="creator-model-name">模型名称</label>
         <input id="creator-model-name" autoFocus maxLength={100} value={modelName} onChange={(event) => setModelName(event.target.value)} />
         <label htmlFor="creator-model-description">模型简介</label>
