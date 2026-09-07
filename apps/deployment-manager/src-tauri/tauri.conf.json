@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "BOX3 Engine",
+  "productName": "BOX3 Engine Launcher",
   "version": "0.1.1",
   "identifier": "com.box.engine.manager",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "BOX3 Engine",
+        "title": "BOX3 Engine Launcher",
         "width": 1180,
         "height": 760,
         "minWidth": 940,
@@ -32,8 +32,8 @@
     "resources": ["payload"],
     "icon": ["icons/icon.ico", "icons/icon.icns"],
     "category": "DeveloperTool",
-    "shortDescription": "Install and manage BOX3 Engine",
-    "longDescription": "A native graphical installer and operations console for BOX3 Engine.",
+    "shortDescription": "Install and manage BOX3 Engine Launcher",
+    "longDescription": "A native graphical installer and operations console for BOX3 Engine Launcher.",
     "windows": {
       "nsis": {
         "installMode": "currentUser"
