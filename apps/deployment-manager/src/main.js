@@ -6,7 +6,7 @@ const services = [
   ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
   ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
   ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3121, '/'],
-  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/players'],
+  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
   ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3125, '/'],
 ]
 
@@ -474,11 +474,7 @@ function runtimePhase(status = {}) {
 function runtimeCell(status) {
   const [labelText, stateClass] = runtimePhase(status)
   const detail =
-    status?.message && status.message !== '运行时未启动'
-      ? status.message
-      : labelText === '未启动'
-        ? ''
-        : '等待运行'
+    status?.message && !['运行时未启动', '等待启动'].includes(status.message) ? status.message : ''
   const progress = ['starting', 'loading'].includes(status?.phase)
     ? `<span class="runtime-progress"><i style="width:${Math.max(3, Math.min(100, Number(status?.percent) || 0))}%"></i></span>`
     : ''
@@ -1181,11 +1177,16 @@ function bindEvents() {
     }),
   )
   document.querySelector('#stop')?.addEventListener('click', () => runAction('stop_services'))
-  document
-    .querySelectorAll('[data-open]')
-    .forEach((node) =>
-      node.addEventListener('click', () => invoke('open_service', { url: node.dataset.open })),
-    )
+  document.querySelectorAll('[data-open]').forEach((node) =>
+    node.addEventListener('click', async () => {
+      try {
+        await invoke('open_service', { url: node.dataset.open })
+      } catch (error) {
+        state.error = String(error)
+        render()
+      }
+    }),
+  )
   document.querySelectorAll('[data-copy-url]').forEach((node) =>
     node.addEventListener('click', async () => {
       await navigator.clipboard.writeText(node.dataset.copyUrl)

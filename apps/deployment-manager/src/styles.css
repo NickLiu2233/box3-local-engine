@@ -3148,11 +3148,8 @@ details.about-image-row:first-child {
 }
 
 .runtime-list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  grid-auto-rows: max-content;
-  gap: 12px;
+  column-count: 2;
+  column-gap: 12px;
 }
 
 .runtime-catalog-tabs {
@@ -3190,7 +3187,10 @@ details.about-image-row:first-child {
 }
 
 .runtime-project {
-  align-self: start;
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 12px;
+  break-inside: avoid;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -3509,7 +3509,7 @@ details.about-image-row:first-child {
   }
 
   .runtime-list {
-    grid-template-columns: 1fr;
+    column-count: 1;
   }
 
   .runtime-mode + .runtime-mode {
