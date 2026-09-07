@@ -1522,19 +1522,28 @@ async function testConnection(kind) {
   captureSetupForm()
   clearFeedback()
   const config = state.config || {}
-  const host = kind === 'postgresql' ? config.databaseHost : config.redisHost
-  const port = kind === 'postgresql' ? config.databasePort : config.redisPort
+  const isPostgresql = kind === 'postgresql'
+  const host = isPostgresql ? config.databaseHost : config.redisHost
+  const port = isPostgresql ? config.databasePort : config.redisPort
   if (!host) {
     state.error = `请先填写 ${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 地址。`
     render()
     return
   }
-  state.notice = `正在测试 ${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 连接…`
+  state.notice = `正在验证 ${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 服务连接…`
   render()
   try {
-    state.connectionTests[kind] = await invoke('test_remote_connection', { kind, host, port })
+    state.connectionTests[kind] = await invoke('test_remote_connection', {
+      kind,
+      host,
+      port,
+      database: isPostgresql ? config.databaseName : '',
+      user: isPostgresql ? config.databaseUser : '',
+      password: isPostgresql ? config.databasePassword || '' : config.redisPassword || '',
+      redisDb: isPostgresql ? 0 : Number(config.redisDb || 0),
+    })
     if (state.connectionTests[kind].ok) {
-      state.notice = `${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 连接正常。`
+      state.notice = `${kind === 'postgresql' ? 'PostgreSQL' : 'Redis'} 服务连接并认证成功。`
     } else {
       state.error = state.connectionTests[kind].message
     }

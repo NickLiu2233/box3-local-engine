@@ -1,3 +1,4 @@
+use postgres::NoTls;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -2795,9 +2796,14 @@ async fn get_performance_status(app: AppHandle) -> Result<PerformanceStatus, Str
 
 #[tauri::command]
 async fn test_remote_connection(
+    app: AppHandle,
     kind: String,
     host: String,
     port: String,
+    database: String,
+    user: String,
+    password: String,
+    redis_db: u8,
 ) -> Result<ConnectionTest, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let label = match kind.as_str() {
@@ -2807,10 +2813,68 @@ async fn test_remote_connection(
         };
         let host = validate_host(&host, label)?;
         let port = validate_port(&port)?;
-        check_remote_endpoint(label, &host, port)?;
+        let stored = load_existing_env(&app);
+        if kind == "postgresql" {
+            let database = if database.trim().is_empty() {
+                stored.get("BOX_DATABASE_NAME").cloned().unwrap_or_default()
+            } else {
+                database.trim().into()
+            };
+            let user = if user.trim().is_empty() {
+                stored.get("BOX_DATABASE_USER").cloned().unwrap_or_default()
+            } else {
+                user.trim().into()
+            };
+            let password = if password.is_empty() {
+                stored
+                    .get("BOX_DATABASE_PASSWORD")
+                    .cloned()
+                    .unwrap_or_default()
+            } else {
+                password
+            };
+            if database.is_empty() || user.is_empty() || password.is_empty() {
+                return Err("请填写 PostgreSQL 数据库名、账号和密码后再测试".into());
+            }
+            let mut config = postgres::Config::new();
+            config
+                .host(&host)
+                .port(port)
+                .dbname(&database)
+                .user(&user)
+                .password(&password)
+                .connect_timeout(Duration::from_secs(5));
+            config
+                .connect(NoTls)
+                .map_err(|error| format!("PostgreSQL 连接失败：{error}"))?;
+        } else {
+            let password = if password.is_empty() {
+                stored.get("REDIS_PASSWORD").cloned().unwrap_or_default()
+            } else {
+                password
+            };
+            let client = redis::Client::open(format!("redis://{host}:{port}/"))
+                .map_err(|error| format!("Redis 客户端初始化失败：{error}"))?;
+            let mut connection = client
+                .get_connection()
+                .map_err(|error| format!("Redis 连接失败：{error}"))?;
+            if !password.is_empty() {
+                redis::cmd("AUTH")
+                    .arg(&password)
+                    .query::<()>(&mut connection)
+                    .map_err(|error| format!("Redis 认证失败：{error}"))?;
+            }
+            redis::cmd("SELECT")
+                .arg(redis_db)
+                .query::<()>(&mut connection)
+                .map_err(|error| format!("Redis 数据库选择失败：{error}"))?;
+            redis::cmd("PING")
+                .query::<String>(&mut connection)
+                .map_err(|error| format!("Redis 协议检查失败：{error}"))?;
+        }
         Ok(ConnectionTest {
             ok: true,
-            message: format!("已连接到 {host}:{port}"),
+            message: format!("{label} 服务连接并认证成功：{host}:{port}"),
         })
     })
     .await
