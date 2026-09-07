@@ -2615,8 +2615,8 @@ fn get_about_info() -> AboutInfo {
         .unwrap_or(EmbeddedImageInfo { images: vec![] })
         .images;
     let service_images = [
-        ("ARENA（创作端）", "box-local-engine-creator"),
-        ("VOXA（模型编辑）", "box-local-engine-voxa"),
+        ("地图创作工具 / 创作作品管理", "box-local-engine-creator"),
+        ("模型创作工具", "box-local-engine-voxa"),
         ("游玩端", "box-local-engine-play"),
         ("玩家管理", "box-local-engine-player-service"),
         ("登录门户", "box-local-engine-player-auth-portal"),
@@ -3659,7 +3659,7 @@ fn open_service(app: AppHandle, url: String) -> Result<(), String> {
             configured_url("BOX_PLAY_PUBLIC_URL", "http://127.0.0.1:3121")
         ),
         format!(
-            "{}/players",
+            "{}/",
             configured_url("BOX_PLAYER_SERVICE_PUBLIC_URL", "http://127.0.0.1:3124")
         ),
         format!(

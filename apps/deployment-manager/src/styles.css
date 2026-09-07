@@ -731,7 +731,9 @@ button:disabled {
   color: var(--text);
   cursor: pointer;
   text-align: left;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
 .overview-start-option > span {
@@ -813,10 +815,27 @@ button:disabled {
   display: block;
 }
 
-.running-services {
+.overview-support-groups {
   width: min(100%, 640px);
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+}
+
+.running-services {
+  width: min(100%, 640px);
+  min-width: 0;
+  display: grid;
   gap: 8px;
+}
+
+.overview-support-groups .running-services {
+  width: 100%;
+}
+
+.overview-support-groups.single {
+  grid-template-columns: 1fr;
 }
 
 .running-services h2 {
@@ -837,7 +856,7 @@ button:disabled {
 .running-service-row {
   min-height: 46px;
   display: grid;
-  grid-template-columns: 110px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 7px 10px;
@@ -849,8 +868,12 @@ button:disabled {
 }
 
 .running-service-row strong {
+  min-width: 0;
+  overflow: hidden;
   font-size: 12px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .running-service-row code {
@@ -3496,7 +3519,8 @@ details.about-image-row:first-child {
 }
 
 @media (max-width: 760px) {
-  .overview-start-options {
+  .overview-start-options,
+  .overview-support-groups {
     grid-template-columns: 1fr;
   }
 
@@ -3507,7 +3531,7 @@ details.about-image-row:first-child {
   }
 
   .running-service-row {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 
   .running-service-row code {

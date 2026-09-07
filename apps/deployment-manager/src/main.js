@@ -3,8 +3,8 @@ import { listen } from '@tauri-apps/api/event'
 import './styles.css'
 
 const services = [
-  ['creator', 'ARENA', '地图编辑服务', 'creatorPort', 3127, '/'],
-  ['voxa', 'VOXA', '模型编辑服务', 'voxaPort', 3123, '/'],
+  ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
+  ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
   ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3121, '/'],
   ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/players'],
   ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3125, '/'],
@@ -19,7 +19,7 @@ const startPrompts = [
   '开始你的创作了吗？',
   '准备好让别人来游玩了吗？',
   '选择一个端，开始今天的工作吧。',
-  '地图和作品，等你启动。',
+  '地图和模型，等你启动。',
 ]
 
 const THEME_KEY = 'box-manager-theme'
@@ -297,7 +297,7 @@ function clearFeedback() {
 }
 
 function startScopeDialog() {
-  return `<div class="dialog-backdrop" data-start-dialog-dismiss><section class="start-dialog" role="dialog" aria-modal="true" aria-labelledby="start-dialog-title"><header><div><h2 id="start-dialog-title">启动服务</h2><p>选择本次需要运行的服务。</p></div><button class="dialog-close" id="cancel-start" aria-label="取消">×</button></header><div class="start-scope-list"><button data-start-scope="all"><strong>全部服务</strong><span>创作端、游玩与已配置的附属服务</span></button><button data-start-scope="play"><strong>游玩端</strong><span>Play 与游玩所需服务</span></button><button data-start-scope="creator"><strong>创作端</strong><span>ARENA、VOXA 与创作所需服务</span></button></div></section></div>`
+  return `<div class="dialog-backdrop" data-start-dialog-dismiss><section class="start-dialog" role="dialog" aria-modal="true" aria-labelledby="start-dialog-title"><header><div><h2 id="start-dialog-title">启动服务</h2><p>选择本次需要运行的服务。</p></div><button class="dialog-close" id="cancel-start" aria-label="取消">×</button></header><div class="start-scope-list"><button data-start-scope="all"><strong>全部服务</strong><span>创作端、游玩与已配置的附属服务</span></button><button data-start-scope="play"><strong>游玩端</strong><span>Play 与游玩所需服务</span></button><button data-start-scope="creator"><strong>创作端</strong><span>地图创作工具及作品管理、模型创作工具与创作所需服务</span></button></div></section></div>`
 }
 
 function backupConfirmDialog() {
@@ -347,12 +347,10 @@ function performance() {
 }
 
 function overview() {
-  // 基础服务（managed-postgres / managed-redis）仍由数据配置页管理；总览只提供业务级启动入口，不再渲染单服务卡片。
+  // 总览提供业务级启动入口，并将运行中的用户数据服务与本地基础设施分组展示。
   const dockerReady = state.status?.dockerReady === true
   const installed = state.status?.configured
   const allHealthy = Boolean(state.status?.allHealthy)
-  const enabledCount =
-    state.status?.services?.filter((service) => service.enabled !== false).length || 0
   const runningCount = state.status?.services?.filter((service) => service.running).length || 0
   const summaryLabel = allHealthy
     ? '运行正常'
@@ -361,65 +359,107 @@ function overview() {
       : installed
         ? '未启动'
         : '尚未配置'
-  const summaryDetail = installed
-    ? runningCount
-      ? allHealthy
-        ? `${runningCount} / ${enabledCount} 个服务运行中`
-        : ''
-      : state.startPrompt || (state.startPrompt = startPrompts[Math.floor(Math.random() * startPrompts.length)])
-    : '完成配置后即可启动'
   const databaseReady =
     state.config?.databaseMode === 'external'
       ? Boolean(state.config.databaseHost)
       : Boolean(state.managedDatabaseInfo?.configured)
   const canStart = Boolean(installed && state.license?.valid && databaseReady && !state.busy)
+  const runningServices = (state.status?.services || []).filter((service) => service.running)
+  const environmentServiceIds = new Set(['creator', 'voxa', 'play'])
+  const environmentRunning = runningServices.some((service) =>
+    environmentServiceIds.has(service.name),
+  )
   const action = (scope, label, detail) =>
     `<button type="button" class="overview-start-option ${state.startScopes.has(scope) ? 'selected' : ''}" data-start-scope="${scope}" aria-pressed="${state.startScopes.has(scope)}" ${canStart ? '' : 'disabled'}><span>${icon('play')}</span><strong>${label}</strong><small>${detail}</small></button>`
   const actions = !dockerReady
     ? `<div class="overview-required docker-required"><strong>Docker 服务未连接</strong><span>请先启动 Docker Desktop，连接成功后才能配置和启动服务。</span><button type="button" class="button primary" id="start-docker-desktop" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在启动…' : '启动 Docker 服务'}</button></div>`
     : installed
       ? !databaseReady
-      ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
-      : state.license?.valid
-        ? `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
-        : `<button type="button" class="button primary" data-page="license">安装许可证后启动</button>`
+        ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
+        : state.license?.valid
+          ? `${environmentRunning ? '' : `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>`}${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
+          : `<button type="button" class="button primary" data-page="license">安装许可证后启动</button>`
       : `<button type="button" class="button primary" data-page="setup">开始配置</button>`
   const idle = Boolean(installed && !runningCount && databaseReady)
   const idlePrompt = idle
-    ? state.startPrompt || (state.startPrompt = startPrompts[Math.floor(Math.random() * startPrompts.length)])
+    ? state.startPrompt ||
+      (state.startPrompt = startPrompts[Math.floor(Math.random() * startPrompts.length)])
     : ''
   const displayLabel = installed && !databaseReady ? '需要配置' : idle ? idlePrompt : summaryLabel
-  const displayDetail = installed && !databaseReady ? 'PostgreSQL 未配置' : idle ? '' : summaryDetail
   const needsDatabase = Boolean(dockerReady && installed && !databaseReady)
   const dockerUnavailable = state.status && !dockerReady
   const overviewStatus = needsDatabase
     ? ''
     : dockerUnavailable
       ? ''
-    : idle
-      ? `<strong>${displayLabel}</strong>`
-      : `<span class="status-dot ${allHealthy ? 'good' : ''}"></span><strong>${displayLabel}</strong>${displayDetail ? `<span>${displayDetail}</span>` : ''}`
+      : idle
+        ? `<strong>${displayLabel}</strong>`
+        : `<span class="status-dot ${allHealthy ? 'good' : ''}"></span><strong>${displayLabel}</strong>`
   const statusMarkup = overviewStatus ? `<div class="overview-status">${overviewStatus}</div>` : ''
-  const runningServices = (state.status?.services || []).filter((service) => service.running)
-  const runningServiceRows = runningServices
-    .map((service) => {
-      const definition = services.find(([id]) => id === service.name)
-      if (!definition) return ''
-      const [, name] = definition
-      const url = getServiceUrl(service.name)
-      return `<div class="running-service-row"><strong>${name}</strong><code>${escapeHtml(url)}</code><button type="button" class="button" data-open="${escapeHtml(url)}">打开</button></div>`
-    })
-    .join('')
-  const runningServiceList = runningServiceRows
-    ? `<section class="running-services"><h2>运行中服务</h2><div class="running-service-list">${runningServiceRows}</div></section>`
+  const userDataServiceIds = new Set(['player-service', 'player-auth-portal'])
+  const infrastructureServiceIds = new Set(['managed-postgres', 'managed-redis'])
+  const serviceNames = new Map(services.map(([id, name]) => [id, name]))
+  serviceNames.set('managed-postgres', 'PostgreSQL')
+  serviceNames.set('managed-redis', 'Redis')
+  const serviceRows = (items, { openable = true, detail = '' } = {}) =>
+    items
+      .map((service) => {
+        const name = serviceNames.get(service.name)
+        if (!name) return ''
+        const url = openable ? getServiceUrl(service.name) : ''
+        const detailText = typeof detail === 'function' ? detail(service) : detail
+        const detailMarkup = detailText
+          ? `<code>${escapeHtml(detailText)}</code>`
+          : '<span class="running-service-spacer" aria-hidden="true"></span>'
+        return `<div class="running-service-row"><strong>${name}</strong>${detailMarkup}${url ? `<button type="button" class="button" data-open="${escapeHtml(url)}">打开</button>` : ''}</div>`
+      })
+      .join('')
+  const environmentOrder = ['creator', 'voxa', 'play']
+  const runningEnvironmentRows = serviceRows(
+    environmentOrder
+      .map((id) => runningServices.find((service) => service.name === id))
+      .filter(Boolean),
+  )
+  const userDataRows = serviceRows(
+    runningServices.filter((service) => userDataServiceIds.has(service.name)),
+  )
+  const configuredInfrastructureServices = runningServices.filter((service) => {
+    if (service.name === 'managed-postgres') return state.config?.databaseMode === 'managed'
+    if (service.name === 'managed-redis') return state.config?.redisMode === 'managed'
+    return infrastructureServiceIds.has(service.name)
+  })
+  const externalInfrastructureServices = [
+    state.config?.databaseMode === 'external' ? { name: 'managed-postgres', external: true } : null,
+    state.config?.redisMode === 'external' ? { name: 'managed-redis', external: true } : null,
+  ].filter(Boolean)
+  const infrastructureRows = serviceRows(
+    [...configuredInfrastructureServices, ...externalInfrastructureServices],
+    {
+      openable: false,
+      detail: (service) => (service.external ? '外部服务' : '本机 Docker 服务'),
+    },
+  )
+  const runningEnvironmentList = runningEnvironmentRows
+    ? `<section class="running-services"><h2>运行中服务</h2><div class="running-service-list">${runningEnvironmentRows}</div></section>`
     : ''
+  const userDataList = userDataRows
+    ? `<section class="running-services"><h2>用户数据</h2><div class="running-service-list">${userDataRows}</div></section>`
+    : ''
+  const infrastructureList =
+    infrastructureRows && runningCount
+      ? `<section class="running-services infrastructure-services"><h2>基础设施</h2><div class="running-service-list">${infrastructureRows}</div></section>`
+      : ''
+  const supportLists =
+    userDataList || infrastructureList
+      ? `<div class="overview-support-groups ${userDataList && infrastructureList ? '' : 'single'}">${userDataList}${infrastructureList}</div>`
+      : ''
   const performanceAction = runningCount
     ? `<button class="button" data-page="performance">${icon('performance')}性能</button>`
     : ''
   return `<header><div><h1>服务总览</h1></div>
     <div class="header-actions">${performanceAction}</div></header>
     ${state.busy ? progressPanel() : ''}
-    <section class="overview-simple">${statusMarkup}${actions}${runningServiceList}</section>`
+    <section class="overview-simple">${statusMarkup}${actions}${runningEnvironmentList}${supportLists}</section>`
 }
 
 function runtimePhase(status = {}) {
