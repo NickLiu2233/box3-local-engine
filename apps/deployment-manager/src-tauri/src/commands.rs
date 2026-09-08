@@ -46,7 +46,6 @@ const PROJECT_NAME: &str = "box-local-engine";
 const MANAGED_DATABASE_IMAGE: &str = "docker.m.daocloud.io/library/postgres:16-alpine";
 const MANAGED_REDIS_IMAGE: &str = "docker.m.daocloud.io/library/redis:7-alpine";
 const MANAGED_SERVICE_NAMES: [&str; 2] = ["managed-postgres", "managed-redis"];
-const ONBOARDING_LOCK_FILE: &str = "onboarding.lock";
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigView {
@@ -2232,9 +2231,6 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
     let docker_cli_version = docker.cli_version;
     let docker_message = docker.message;
     let configured = env_path(&app).is_ok_and(|path| path.exists());
-    let onboarding_completed = runtime_root(&app)
-        .map(|root| root.join(ONBOARDING_LOCK_FILE).is_file())
-        .unwrap_or(false);
     let environment = load_existing_env(&app);
     let enabled = enabled_services(&environment);
     let mut services: Vec<ServiceStatus> = SERVICE_NAMES
@@ -2303,17 +2299,10 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
         docker_cli_version,
         docker_message,
         configured,
-        onboarding_completed,
         all_healthy,
         services,
         data_directory,
     }
-}
-
-#[tauri::command]
-fn complete_onboarding(app: AppHandle) -> Result<(), String> {
-    let path = runtime_root(&app)?.join(ONBOARDING_LOCK_FILE);
-    write_private_file(&path, "initialized\n", "初始化锁文件")
 }
 
 fn docker_check() -> DockerCheck {
@@ -4304,7 +4293,6 @@ pub fn run() {
             open_docker_desktop_download,
             start_docker_desktop,
             get_docker_check,
-            complete_onboarding,
             verify_archive,
         ])
         .run(tauri::generate_context!())

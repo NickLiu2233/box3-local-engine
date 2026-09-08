@@ -29,7 +29,7 @@ const themes = [
   ['dark', '暗色'],
 ]
 
-const UNLICENSED_PAGES = new Set(['license', 'about', 'onboarding'])
+const UNLICENSED_PAGES = new Set(['license', 'about'])
 
 const numericConfigFields = [
   'playRuntimes',
@@ -109,7 +109,6 @@ const state = {
   ownerSecretsVisible: false,
   error: '',
   notice: '',
-  onboardingStep: 1,
   dockerCheck: null,
   progress: { stage: 'idle', message: '等待操作', percent: 0 },
 }
@@ -163,47 +162,6 @@ function normalizeLicensedPage() {
   if (!hasValidLicense() && !UNLICENSED_PAGES.has(state.page)) state.page = 'license'
 }
 
-function onboardingLicenseSummary() {
-  const license = state.license || {}
-  const deviceId = license.deviceId || '正在读取设备 ID'
-  const maskedDeviceId =
-    deviceId.length > 18 ? `${deviceId.slice(0, 12)}***${deviceId.slice(-6)}` : deviceId
-  const shownDeviceId = state.licenseDeviceVisible ? deviceId : maskedDeviceId
-  const status = license.valid ? '有效' : license.installed ? '不可用' : '未安装'
-  return `<section class="onboarding-license-summary"><div class="onboarding-license-summary-header"><strong>个人学习许可证</strong><span class="license-state ${license.valid ? 'valid' : ''}">${status}</span></div><dl><div><dt>设备 ID</dt><dd><code class="${state.licenseDeviceVisible ? 'revealed' : ''}">${escapeHtml(shownDeviceId)}</code><div class="onboarding-license-device-actions"><button class="icon-button" id="toggle-onboarding-license-device" aria-label="${state.licenseDeviceVisible ? '隐藏设备 ID' : '显示设备 ID'}" title="${state.licenseDeviceVisible ? '隐藏设备 ID' : '显示设备 ID'}" ${license.deviceId ? '' : 'disabled'}>${icon(state.licenseDeviceVisible ? 'eye-off' : 'eye')}</button><button class="button" id="copy-onboarding-license-device" ${license.deviceId ? '' : 'disabled'}>${icon('copy')}复制</button></div></dd></div></dl></section>`
-}
-
-function onboarding() {
-  const dockerReady = state.status?.dockerReady === true
-  const licenseReady = hasValidLicense()
-  const configured = state.status?.configured === true
-  const dockerCliAvailable = state.dockerCheck?.cliAvailable === true
-  const playHost = state.config?.publicHost || '127.0.0.1'
-  const creatorHost = state.config?.creatorHost || '127.0.0.1'
-  const playPort = state.config?.playPort || 3121
-  const creatorPort = state.config?.creatorPort || 3127
-  const playerServicePort = state.config?.playerServicePort || 3124
-  const authPortalPort = state.config?.authPortalPort || 3125
-  if (dockerReady && state.onboardingStep === 1) state.onboardingStep = 2
-  const availableStep = !dockerCliAvailable ? 1 : !licenseReady ? 2 : !configured ? 3 : 5
-  const currentStep = Math.max(1, Math.min(state.onboardingStep, availableStep))
-  const content = {
-    1: dockerCliAvailable
-      ? `<p>已检测到 ${escapeHtml(state.dockerCheck?.cliVersion)}。${dockerReady ? 'Docker Desktop 已连接并正常运行，正在继续。' : 'Docker Desktop 当前未启动。启动后会自动检测并继续下一步。'}</p>${dockerReady ? '' : `<button class="button primary" id="start-docker-desktop" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在启动…' : '启动 Docker Desktop'}</button>`}`
-      : '<p>未检测到 Docker CLI。请安装 Docker Desktop；Windows 请启用 WSL 2 后端。安装并启动后，重新打开启动器即可继续。</p><button class="button" id="open-docker-download">前往 Docker 官网</button>',
-    2: licenseReady
-      ? `${onboardingLicenseSummary()}<button class="button primary" id="onboarding-next">下一步</button>`
-      : `${onboardingLicenseSummary()}<input id="onboarding-license-file" type="file" accept=".boxlic,.lic,application/octet-stream,text/plain" hidden><div class="onboarding-actions"><button class="button" id="open-onboarding-community-group">申请许可证</button><button class="button primary" id="select-onboarding-license-file" ${state.busy ? 'disabled' : ''}>导入 .boxlic 文件</button></div>`,
-    3: configured
-      ? '<p>数据服务配置已保存。地图工程可在“数据与备份”开启自动备份；数据库和 Redis 请按你的部署方案自行备份。</p><button class="button primary" id="onboarding-next">下一步</button>'
-      : `<p>可选使用内置 PostgreSQL 和 Redis。启动器会下载镜像、生成账号并仅绑定本机地址；也可以跳过并连接已有服务。</p><p>地图工程可在“数据与备份”开启自动备份；数据库和 Redis 请按你的部署方案自行备份。</p><div class="onboarding-actions"><button class="button primary" id="onboarding-managed-services" ${state.busy ? 'disabled' : ''}>使用内置服务</button><button class="button" id="onboarding-external-services" ${state.busy ? 'disabled' : ''}>使用外部服务</button></div>`,
-    4: '<p>服主操作令牌、玩家服务 API Key 和运行时身份密钥已自动生成。它们用于保护服主管理操作、登录接口与运行时身份；请勿泄露。</p><p>可在“数据配置 → 服主与安全”查看或轮换。轮换后，使用旧密钥的管理请求会立即失效。</p><button class="button primary" id="onboarding-next">继续</button>',
-    5: `<p>配置已经就绪。接下来在服务总览启动 Creator、Play 和其他所需服务；首次启动可能需要一点时间准备运行时。</p><dl class="onboarding-links"><div><dt>游玩端</dt><dd>http://${escapeHtml(playHost)}:${playPort}</dd></div><div><dt>创作端</dt><dd>http://${escapeHtml(creatorHost)}:${creatorPort}</dd></div><div><dt>玩家管理</dt><dd>http://${escapeHtml(playHost)}:${playerServicePort}/players</dd></div><div><dt>登录门户</dt><dd>http://${escapeHtml(playHost)}:${authPortalPort}</dd></div></dl><div class="onboarding-actions"><button class="button primary" id="finish-onboarding">前往服务总览</button></div>`,
-  }[currentStep]
-  const titles = ['检查 Docker Desktop', '检查许可证', '配置数据服务', '服主密钥', '开始使用']
-  return `<section class="onboarding-page"><div class="onboarding-topbar"><div class="onboarding-brand"><img src="/logo512.png" alt=""/><strong>BOX3 Engine</strong><span>本地部署</span></div>${configured && dockerCliAvailable ? '<button class="onboarding-exit" id="exit-onboarding">退出向导</button>' : ''}</div><div class="onboarding-progress"><span>${currentStep} / 5</span><i><b style="width:${currentStep * 20}%"></b></i></div><article class="onboarding-card"><h1>${titles[currentStep - 1]}</h1><div class="onboarding-content">${content}</div></article></section>`
-}
-
 function applyTheme(theme) {
   state.theme = themes.some(([id]) => id === theme) ? theme : 'system'
   if (state.theme === 'system') document.documentElement.removeAttribute('data-theme')
@@ -230,9 +188,6 @@ function themeControl() {
 }
 
 function shell(content) {
-  if (state.page === 'onboarding') {
-    return `<div class="onboarding-shell" data-rendered-page="${state.page}"><main class="onboarding-main">${content}</main>${feedbackToast()}</div>`
-  }
   const licensedNavigation = hasValidLicense()
     ? `${navItem('overview', 'home', '服务总览')}${navItem('runtimes', 'play', '工程运行时')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
     : ''
@@ -984,21 +939,19 @@ function render() {
   normalizeLicensedPage()
   const scrollPositions = captureScrollPositions()
   const content =
-    state.page === 'onboarding'
-      ? onboarding()
-      : state.page === 'setup'
-        ? setup()
-        : state.page === 'runtimes'
-          ? runtimes()
-          : state.page === 'performance'
-            ? performance()
-            : state.page === 'backups'
-              ? backups()
-              : state.page === 'license'
-                ? licenseManagement()
-                : state.page === 'about'
-                  ? about()
-                  : overview()
+    state.page === 'setup'
+      ? setup()
+      : state.page === 'runtimes'
+        ? runtimes()
+        : state.page === 'performance'
+          ? performance()
+          : state.page === 'backups'
+            ? backups()
+            : state.page === 'license'
+              ? licenseManagement()
+              : state.page === 'about'
+                ? about()
+                : overview()
   document.querySelector('#app').innerHTML = shell(content)
   restoreScrollPositions(scrollPositions)
   bindEvents()
@@ -1021,7 +974,6 @@ function bindEvents() {
         state.ownerSecrets = null
         state.ownerSecretsVisible = false
       }
-      if (node.dataset.page === 'onboarding') state.onboardingStep = 1
       state.page = node.dataset.page
       render()
       if (state.page === 'backups') loadBackups()
@@ -1036,44 +988,10 @@ function bindEvents() {
   document
     .querySelector('#open-docker-download')
     ?.addEventListener('click', () => invoke('open_docker_desktop_download'))
-  document
-    .querySelector('#onboarding-managed-services')
-    ?.addEventListener('click', installOnboardingManagedServices)
-  document.querySelector('#onboarding-external-services')?.addEventListener('click', () => {
-    state.page = 'setup'
-    state.setupSection = 'data'
-    render()
-  })
-  document.querySelector('#onboarding-next')?.addEventListener('click', () => {
-    state.onboardingStep = Math.min(5, state.onboardingStep + 1)
-    render()
-  })
-  document.querySelector('#exit-onboarding')?.addEventListener('click', () => {
-    state.page = 'overview'
-    render()
-  })
-  document.querySelector('#finish-onboarding')?.addEventListener('click', completeOnboarding)
   document.querySelector('#select-license-file')?.addEventListener('click', () => {
     document.querySelector('#license-file')?.click()
   })
   document.querySelector('#license-file')?.addEventListener('change', installLicenseFile)
-  document.querySelector('#select-onboarding-license-file')?.addEventListener('click', () => {
-    document.querySelector('#onboarding-license-file')?.click()
-  })
-  document.querySelector('#onboarding-license-file')?.addEventListener('change', installLicenseFile)
-  document
-    .querySelector('#open-onboarding-community-group')
-    ?.addEventListener('click', () => invoke('open_community_group'))
-  document.querySelector('#toggle-onboarding-license-device')?.addEventListener('click', () => {
-    state.licenseDeviceVisible = !state.licenseDeviceVisible
-    render()
-  })
-  document.querySelector('#copy-onboarding-license-device')?.addEventListener('click', async () => {
-    if (!state.license?.deviceId) return
-    await navigator.clipboard.writeText(state.license.deviceId)
-    state.notice = '设备 ID 已复制。'
-    render()
-  })
   document.querySelector('#toggle-license-device')?.addEventListener('click', () => {
     state.licenseDeviceVisible = !state.licenseDeviceVisible
     render()
@@ -1694,12 +1612,6 @@ async function refreshStatus() {
     state.playAccessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
-    if (status.dockerReady && state.page === 'onboarding' && state.onboardingStep === 1) {
-      state.onboardingStep = 2
-    }
-    if (!status.onboardingCompleted && state.page !== 'license') {
-      state.page = 'onboarding'
-    }
   } catch (error) {
     state.status = {
       dockerReady: false,
@@ -1739,7 +1651,6 @@ async function recheckDocker() {
     if (check.engineReady) {
       state.notice = 'Docker Desktop 已连接。'
       state.progress = { stage: 'docker-ready', message: 'Docker Desktop 已就绪', percent: 100 }
-      if (state.page === 'onboarding' && state.onboardingStep === 1) state.onboardingStep = 2
     } else if (check.cliAvailable) {
       state.notice = 'Docker CLI 已检测到；Docker Desktop 尚未启动。'
       state.progress = { stage: 'docker-waiting', message: check.message, percent: 100 }
@@ -1776,26 +1687,9 @@ async function startDockerDesktop() {
   }
 }
 
-async function completeOnboarding() {
-  if (state.busy) return
-  state.busy = true
-  clearFeedback()
-  render()
-  try {
-    await invoke('complete_onboarding')
-    state.status = { ...(state.status || {}), onboardingCompleted: true }
-    state.page = 'overview'
-  } catch (error) {
-    state.error = String(error)
-  } finally {
-    state.busy = false
-    render()
-  }
-}
-
 function scheduleDockerStartupCheck() {
   clearTimeout(dockerStartupPollTimer)
-  if (!['onboarding', 'overview'].includes(state.page) || state.status?.dockerReady) return
+  if (state.page !== 'overview' || state.status?.dockerReady) return
   dockerStartupPollTimer = window.setTimeout(async () => {
     await recheckDocker()
     if (!state.status?.dockerReady) scheduleDockerStartupCheck()
@@ -1827,10 +1721,7 @@ async function installLicenseFile(event) {
   try {
     state.license = await invoke('install_license', { token })
     state.notice = '许可证已验证并安装。'
-    if (!state.status?.onboardingCompleted) {
-      state.onboardingStep = 3
-      state.page = 'onboarding'
-    }
+    state.page = 'overview'
   } catch (error) {
     state.error = String(error)
   } finally {
@@ -1876,10 +1767,7 @@ async function runAction(command, payload = {}) {
   if (startsDockerWork && !state.status?.dockerReady) {
     state.error = 'Docker Desktop 尚未启动。请先启动 Docker Desktop，待其就绪后再启动服务。'
     state.progress = { stage: 'docker-required', message: state.error, percent: 100 }
-    if (!state.status?.onboardingCompleted) {
-      state.onboardingStep = 1
-      state.page = 'onboarding'
-    }
+    state.page = 'overview'
     render()
     return
   }
@@ -1971,39 +1859,6 @@ async function installManagedService(service) {
   }
 }
 
-async function installOnboardingManagedServices() {
-  if (state.busy) return
-  if (!state.status?.dockerReady) {
-    state.error = '使用内置服务前，请先启动 Docker Desktop。'
-    render()
-    return
-  }
-  const config = { ...(state.config || {}), databaseMode: 'managed', redisMode: 'managed' }
-  state.busy = true
-  clearFeedback()
-  state.progress = {
-    stage: 'managed-install',
-    message: '正在准备内置 PostgreSQL 和 Redis…',
-    percent: 5,
-  }
-  render()
-  try {
-    await invoke('prepare_managed_database')
-    await invoke('prepare_managed_redis')
-    await invoke('save_configuration_command', { config })
-    await invoke('start_managed_service', { service: 'postgresql' })
-    await invoke('start_managed_service', { service: 'redis' })
-    state.notice = '内置 PostgreSQL 和 Redis 已就绪。现在可以启动引擎。'
-    state.onboardingStep = 4
-    state.page = 'onboarding'
-  } catch (error) {
-    state.error = String(error)
-  } finally {
-    state.busy = false
-    await refreshStatus()
-  }
-}
-
 async function persistConfiguration(config) {
   if (state.busy) return
   state.busy = true
@@ -2013,7 +1868,6 @@ async function persistConfiguration(config) {
     await invoke('save_configuration_command', { config })
     state.notice = '已保存在当前页面，服务不会自动启动。'
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
-    if (!state.status?.onboardingCompleted) state.onboardingStep = 4
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
     state.error = String(error)

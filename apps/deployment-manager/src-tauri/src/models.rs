@@ -85,7 +85,6 @@ pub(crate) struct SystemStatus {
     pub(crate) docker_cli_version: String,
     pub(crate) docker_message: String,
     pub(crate) configured: bool,
-    pub(crate) onboarding_completed: bool,
     pub(crate) all_healthy: bool,
     pub(crate) services: Vec<ServiceStatus>,
     pub(crate) data_directory: String,
