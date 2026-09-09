@@ -3272,6 +3272,10 @@ details.about-image-row:first-child {
 }
 
 .runtime-mode {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 12px;
   min-height: 0;
   padding: 10px 14px 11px;
 }
@@ -3283,8 +3287,10 @@ details.about-image-row:first-child {
 .runtime-mode-head {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+}
+
+.runtime-mode-info {
+  min-width: 0;
 }
 
 .runtime-mode > div > strong {
@@ -3295,13 +3301,13 @@ details.about-image-row:first-child {
   flex: 0 0 auto;
 }
 
-.runtime-mode-head > .runtime-destroy {
+.runtime-mode > .runtime-destroy {
   min-height: 32px;
   height: 32px;
   gap: 5px;
   padding: 0 10px;
   font-size: 12px;
-  align-self: flex-start;
+  align-self: center;
 }
 
 .runtime-destroy:hover {
@@ -3630,6 +3636,17 @@ details.about-image-row:first-child {
   .runtime-mode + .runtime-mode {
     border-top: 1px solid var(--border);
     border-left: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .runtime-mode {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .runtime-mode > .runtime-destroy {
+    justify-self: start;
   }
 }
 

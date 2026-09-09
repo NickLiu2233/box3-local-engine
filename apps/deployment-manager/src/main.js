@@ -467,7 +467,7 @@ function runtimeCell(status, projectId, mode) {
     status?.phase === 'ready'
       ? `<button type="button" class="button danger runtime-destroy" data-runtime-destroy="${escapeHtml(projectId)}" data-runtime-mode="${mode}">${icon('stop')}销毁</button>`
       : ''
-  return `<div class="runtime-mode"><div class="runtime-mode-head"><span class="service-state ${stateClass}"><i></i>${labelText}</span>${destroy}</div>${metrics || (detail ? `<p>${escapeHtml(detail)}</p>` : '')}${roomList}${progress}</div>`
+  return `<div class="runtime-mode"><div class="runtime-mode-info"><div class="runtime-mode-head"><span class="service-state ${stateClass}"><i></i>${labelText}</span></div>${metrics || (detail ? `<p>${escapeHtml(detail)}</p>` : '')}${roomList}${progress}</div>${destroy}</div>`
 }
 
 function formatRuntimeCpu(status = {}) {
