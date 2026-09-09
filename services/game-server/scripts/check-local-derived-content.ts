@@ -60,7 +60,7 @@ async function main() {
   );
   assert.match(
     composeSource,
-    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-2\}/,
+    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-0\}/,
     'creator must use the lightweight edit prewarm default',
   );
   assert.doesNotMatch(
@@ -70,7 +70,7 @@ async function main() {
   );
   assert.match(
     composeSource,
-    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-2\}/,
+    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-0\}/,
     'play must use the lightweight runtime prewarm default',
   );
 
@@ -80,7 +80,7 @@ async function main() {
   );
   assert.match(
     envExampleSource,
-    /^BOX_CREATOR_EDIT_PREWARM_RUNTIMES=2$/m,
+    /^BOX_CREATOR_EDIT_PREWARM_RUNTIMES=0$/m,
     'the example env must not override creator edit prewarm with an old default',
   );
   assert.doesNotMatch(
@@ -90,7 +90,7 @@ async function main() {
   );
   assert.match(
     envExampleSource,
-    /^BOX_PLAY_PREWARM_RUNTIMES=2$/m,
+    /^BOX_PLAY_PREWARM_RUNTIMES=0$/m,
     'the example env must not override play prewarm with an old default',
   );
 

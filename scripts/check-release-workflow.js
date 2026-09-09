@@ -43,7 +43,10 @@ assert.match(
 assert.match(workflow, /docker builder prune --all --force/)
 assert.match(workflow, /export BOX_BUILD_VERSION="\$\{\{ github\.ref_name \}\}"/)
 assert.match(workflow, /export BOX_BUILD_COMMIT="\$\{\{ github\.sha \}\}"/)
-assert.match(workflow, /export BOX_BUILD_DATE="\$\(TZ=Asia\/Shanghai date \+'%Y-%m-%dT%H:%M:%S%:z'\)"/)
+assert.match(
+  workflow,
+  /export BOX_BUILD_DATE="\$\(TZ=Asia\/Shanghai date \+'%Y-%m-%dT%H:%M:%S%:z'\)"/,
+)
 assert.match(workflow, /export BOX_BUILD_SOURCE="github-actions"/)
 assert.match(workflow, /test -f "\$archive"/)
 assert.doesNotMatch(workflow, /pnpm\/action-setup/)
@@ -55,7 +58,10 @@ assert.match(installerBuilder, /const imageTag = archiveImageTags\.length === 1/
 assert.match(workflow, /headless-server:\s+needs: images/)
 assert.match(workflow, /node scripts\/build-headless-server-package\.js/)
 assert.match(workflow, /needs: \[desktop, headless-server\]/)
-assert.match(workflow, /files:\s*\|[\s\S]*release-files\/BOX-Local-Engine-\*\.zip[\s\S]*release-files\/BOX3-Engine-Server-\*\.zip/)
+assert.match(
+  workflow,
+  /files:\s*\|[\s\S]*release-files\/BOX-Local-Engine-\*\.zip[\s\S]*release-files\/BOX3-Engine-Server-\*\.zip/,
+)
 assert.doesNotMatch(workflow, /files:\s*\|[\s\S]*release-files\/\*\.tar\.gz/)
 assert.match(serverPackageBuilder, /BOX3-Engine-Server-/)
 assert.match(serverPackageBuilder, /function headlessCompose/)

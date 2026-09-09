@@ -10,7 +10,7 @@ type RuntimeHttpClient = {
   post: (
     url: string,
     data?: unknown,
-    config?: { timeout?: number },
+    config?: { timeout?: number; headers?: Record<string, string> },
   ) => Promise<{ status: number; data: unknown }>;
   get: (
     url: string,
@@ -48,10 +48,12 @@ function runtimeStatus(value: unknown): LocalRuntimeStatus {
 export async function prepareLocalRuntimeSession(
   runtimeURL: string,
   client: RuntimeHttpClient = axios,
+  allowRuntimeRestart = false,
 ): Promise<{ ready: boolean; status: LocalRuntimeStatus }> {
   const baseURL = runtimeURL.replace(/\/$/, '');
   await client.post(`${baseURL}/__local_runtime/start`, undefined, {
     timeout: CONTROL_REQUEST_TIMEOUT_MS,
+    ...(allowRuntimeRestart ? { headers: { 'x-box-runtime-restart': '1' } } : {}),
   });
   const response = await client.get(`${baseURL}/__local_runtime/status`, {
     timeout: CONTROL_REQUEST_TIMEOUT_MS,

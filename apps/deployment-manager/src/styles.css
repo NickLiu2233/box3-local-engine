@@ -916,6 +916,10 @@ button:disabled {
   animation: modal-panel-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.runtime-destroy-dialog {
+  width: min(100%, 410px);
+}
+
 @keyframes modal-scrim-in {
   from {
     opacity: 0;
@@ -2489,9 +2493,45 @@ form.environment-mode {
 }
 
 .license-import {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
+  display: grid;
+  gap: 8px;
+}
+
+.license-token-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.license-token-input {
+  width: 100%;
+  min-height: 104px;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--panel-soft);
+  color: var(--text);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  outline: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.license-token-input::placeholder {
+  color: var(--muted);
+  font-family: inherit;
+}
+
+.license-token-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.license-import .button {
+  justify-self: end;
 }
 
 .about-card {
@@ -3240,15 +3280,37 @@ details.about-image-row:first-child {
   border-left: 1px solid var(--border);
 }
 
-.runtime-mode > div {
+.runtime-mode-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
 .runtime-mode > div > strong {
   font-size: 12px;
+}
+
+.runtime-destroy {
+  flex: 0 0 auto;
+}
+
+.runtime-mode-head > .runtime-destroy {
+  min-height: 32px;
+  height: 32px;
+  gap: 5px;
+  padding: 0 10px;
+  font-size: 12px;
+  align-self: flex-start;
+}
+
+.runtime-destroy:hover {
+  background: color-mix(in srgb, var(--danger) 10%, var(--panel));
+}
+
+.runtime-destroy svg {
+  width: 13px;
+  height: 13px;
 }
 
 .runtime-mode p {
@@ -3263,6 +3325,59 @@ details.about-image-row:first-child {
 .runtime-mode .runtime-metrics {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.runtime-rooms {
+  margin-top: 9px;
+}
+
+.runtime-rooms > strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.runtime-rooms > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.runtime-room {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 120px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}
+
+.runtime-room i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.runtime-room.active {
+  color: var(--text);
+}
+
+.runtime-room.active i {
+  background: var(--success, #45b36b);
+}
+
+.runtime-destroy.room {
+  width: 24px;
+  height: 24px;
+  padding: 1px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--danger);
 }
 
 .runtime-progress {

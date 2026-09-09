@@ -268,6 +268,25 @@ function createTeleportRoomManager({
     return { room: shouldTouch ? touch(room) : room, target }
   }
 
+  function listRooms(targetMapId) {
+    return [...rooms.values()]
+      .filter((room) => room.targetMapId === targetMapId)
+      .map((room) => ({
+        roomId: room.id,
+        active: isRoomActive(room.id),
+        createdAt: room.createdAt,
+        lastAccessAt: room.lastAccessAt,
+      }))
+  }
+
+  async function destroyRoom(roomId) {
+    const room = rooms.get(roomId)
+    if (!room) return false
+    rooms.delete(roomId)
+    await stopRuntime(roomId)
+    return true
+  }
+
   function authorize({ targetMapId, targetMapReference, serverId, subjectId }) {
     const { room } = resolveRoom({ targetMapId, targetMapReference, serverId }, false)
     const subject = String(subjectId || '').trim()
@@ -281,6 +300,8 @@ function createTeleportRoomManager({
     allocate,
     authorize,
     resolveRoom,
+    listRooms,
+    destroyRoom,
     collectIdle,
     maximum,
     idleAfter,

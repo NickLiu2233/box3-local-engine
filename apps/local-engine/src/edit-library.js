@@ -54,6 +54,7 @@ function startEditLibrary({
 }) {
   const runtimes = new Map()
   const starts = new Map()
+  const destroyed = new Set()
   const statuses = new Map()
   let nextPort = runtimePortStart
   let closed = false
@@ -64,8 +65,9 @@ function startEditLibrary({
     return next
   }
 
-  const runtimeStatus = (id, runtime, fallback) => ({
+  const runtimeStatus = (id, runtime, fallback, details = {}) => ({
     ...(statuses.get(id) || fallback),
+    ...details,
     ...(runtime && !runtime.exited
       ? {
           port: runtime.port,
@@ -105,6 +107,9 @@ function startEditLibrary({
       throw Object.assign(new Error('工程不存在'), { statusCode: 404 })
     }
     const key = runtimeKey(id, roomId)
+    if (destroyed.has(key)) {
+      throw Object.assign(new Error('运行时已销毁，请刷新页面或点击重新链接'), { statusCode: 409 })
+    }
     // A child is inserted into `runtimes` before its health check completes.
     // Concurrent block/createSession requests must join that same startup
     // promise instead of proxying early to a port that is not ready yet.
@@ -118,6 +123,11 @@ function startEditLibrary({
 
     const promise = (async () => {
       await lifecycle.ensureCapacity(key)
+      if (destroyed.has(key)) {
+        throw Object.assign(new Error('运行时已销毁，请刷新页面或点击重新链接'), {
+          statusCode: 409,
+        })
+      }
       setStatus(key, {
         phase: 'starting',
         percent: 18,
@@ -128,6 +138,12 @@ function startEditLibrary({
         serverId: roomId || project.permanentMapId,
         privateRoom: Boolean(roomId),
       })
+      if (destroyed.has(key)) {
+        await runtime.stop()
+        throw Object.assign(new Error('运行时已销毁，请刷新页面或点击重新链接'), {
+          statusCode: 409,
+        })
+      }
       lifecycle.touch(runtime)
       runtime.projectId = id
       runtime.roomId = roomId
@@ -148,10 +164,21 @@ function startEditLibrary({
             })
           },
         })
+        if (destroyed.has(key)) {
+          runtimes.delete(key)
+          if (!runtime.exited) await runtime.stop()
+          throw Object.assign(new Error('运行时已销毁，请刷新页面或点击重新链接'), {
+            statusCode: 409,
+          })
+        }
       } catch (error) {
         runtimes.delete(key)
-        setStatus(key, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
-        await runtime.stop()
+        if (destroyed.has(key)) {
+          setStatus(key, { phase: 'idle', percent: 0, message: '运行时已销毁' })
+        } else {
+          setStatus(key, { phase: 'error', percent: 0, message: error.message || '运行时启动失败' })
+        }
+        if (!runtime.exited) await runtime.stop()
         throw error
       }
       setStatus(key, { phase: 'ready', percent: 100, message: '运行时已就绪' })
@@ -202,9 +229,21 @@ function startEditLibrary({
           runtime && !runtime.exited
             ? { phase: 'ready', percent: 100, message: '运行时已就绪' }
             : { phase: 'idle', percent: 0, message: '等待启动', updatedAt: '' },
+          { rooms: teleportRooms.listRooms(resolveProject(id)?.permanentMapId || id) },
         )
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         res.end(JSON.stringify(status))
+        return
+      }
+      if (forwardedPath === '/__local_runtime/destroy' && req.method === 'POST') {
+        destroyed.add(key)
+        if (roomId) await teleportRooms.destroyRoom(roomId)
+        else {
+          await stopRuntime(id)
+          setStatus(key, { phase: 'idle', percent: 0, message: '运行时已销毁' })
+        }
+        res.writeHead(204)
+        res.end()
         return
       }
       if (forwardedPath === '/__local_runtime/start' && req.method === 'POST') {
@@ -216,6 +255,12 @@ function startEditLibrary({
         }
         id = project.id
         key = runtimeKey(id, roomId)
+        if (req.headers['x-box-runtime-restart'] === '1') destroyed.delete(key)
+        if (destroyed.has(key)) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ message: '运行时已销毁，请刷新页面或点击重新链接' }))
+          return
+        }
         if (roomId) {
           teleportRooms.resolveRoom({ targetMapId: project.permanentMapId, serverId: roomId })
         }

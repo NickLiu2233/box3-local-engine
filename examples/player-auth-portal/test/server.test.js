@@ -218,7 +218,7 @@ test('configured public URL does not reject a request made through another host'
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Origin: fixedURL,
+        'Origin': fixedURL,
       },
       body: JSON.stringify({ username: 'tester', password: 'password-123' }),
     })

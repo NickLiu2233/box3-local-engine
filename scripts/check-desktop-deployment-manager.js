@@ -203,8 +203,8 @@ assert.match(defaults, /^REDIS_HOST=$/m)
 assert.match(defaults, /^BOX_REDIS_MODE=disabled$/m)
 for (const [name, value] of [
   ['BOX_LOCAL_PLAYER_LIMIT', '8'],
-  ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '2'],
-  ['BOX_PLAY_PREWARM_RUNTIMES', '2'],
+  ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '0'],
+  ['BOX_PLAY_PREWARM_RUNTIMES', '0'],
   ['BOX_SCRIPT_HEAP_MB', '512'],
   ['BOX_SCRIPT_MEMORY_MB', '512'],
   ['BOX_RUNTIME_IDLE_TIMEOUT_MS', '900000'],
@@ -258,13 +258,13 @@ for (const [name, composePattern, consumer, consumerPattern] of [
   ],
   [
     'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
-    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-2\}/,
+    /BOX_CREATOR_EDIT_PREWARM_RUNTIMES: \$\{BOX_CREATOR_EDIT_PREWARM_RUNTIMES:-0\}/,
     localEngineLauncher,
     /['"]BOX_CREATOR_EDIT_PREWARM_RUNTIMES['"]/,
   ],
   [
     'BOX_PLAY_PREWARM_RUNTIMES',
-    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-2\}/,
+    /BOX_PLAY_PREWARM_RUNTIMES: \$\{BOX_PLAY_PREWARM_RUNTIMES:-0\}/,
     localEngineLauncher,
     /['"]BOX_PLAY_PREWARM_RUNTIMES['"]/,
   ],
@@ -660,12 +660,10 @@ assert.match(frontend, /data-start-scope="creator"/)
 assert.match(frontend, /数据库还没有配置/)
 assert.match(frontend, /invoke\('get_license_status'\)/)
 assert.match(frontend, /invoke\('install_license', \{ token \}\)/)
-assert.match(
-  frontend,
-  /id="license-file" type="file" accept="\.boxlic,\.lic,application\/octet-stream,text\/plain"/,
-)
-assert.match(frontend, /id="select-license-file"/)
-assert.doesNotMatch(frontend, /id="license-token"/)
+assert.match(frontend, /id="license-token" class="license-token-input"/)
+assert.match(frontend, /id="install-license"/)
+assert.match(frontend, /async function installLicenseToken\(\)/)
+assert.doesNotMatch(frontend, /id="license-file"/)
 assert.doesNotMatch(frontend, /licenseToken/)
 assert.match(backend, /license::require\(&app\)\?;/)
 assert.match(frontend, /const UNLICENSED_PAGES = new Set\(\['license', 'about'\]\)/)
@@ -691,7 +689,7 @@ assert.match(
 )
 assert.match(
   frontend,
-  /if \(!hasProjects\) \{\n    if \(!state\.projectRuntimesLoaded && !projectRuntimeLoading\) refreshProjectRuntimes\(\)\n    return/,
+  /if \(!hasProjects\) \{\n\x20{4}if \(!state\.projectRuntimesLoaded && !projectRuntimeLoading\) refreshProjectRuntimes\(\)\n\x20{4}return/,
 )
 assert.match(frontend, /state\.projectRuntimesLoaded = true/)
 assert.match(backend, /fn open_docker_desktop_download\(\)/)

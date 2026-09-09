@@ -132,6 +132,17 @@ pub(crate) struct RuntimeEndpointStatus {
     pub(crate) cpu_percent: Option<f64>,
     pub(crate) memory_bytes: Option<u64>,
     pub(crate) uptime_ms: Option<u64>,
+    pub(crate) process_count: u32,
+    pub(crate) rooms: Vec<RuntimeRoomStatus>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RuntimeRoomStatus {
+    pub(crate) room_id: String,
+    pub(crate) active: bool,
+    pub(crate) created_at: u64,
+    pub(crate) last_access_at: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]

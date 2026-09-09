@@ -49,7 +49,7 @@ export default function PlayLaunchPage({ cover, worldName }: PlayLaunchProps) {
     let cancelled = false;
     let timer: number | undefined;
     const request = async (action: 'start' | 'status') => {
-      const response = await fetch(`/p/${encodeURIComponent(world)}/__local_runtime/${action}`, { method: action === 'start' ? 'POST' : 'GET' });
+      const response = await fetch(`/p/${encodeURIComponent(world)}/__local_runtime/${action}`, { method: action === 'start' ? 'POST' : 'GET', headers: action === 'start' ? { 'x-box-runtime-restart': '1' } : undefined });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || `启动失败（HTTP ${response.status}）`);
       return data as RuntimeStatus;

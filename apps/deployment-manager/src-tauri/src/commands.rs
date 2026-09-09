@@ -164,8 +164,8 @@ impl Default for InstallConfigView {
             play_runtimes: 8,
             creator_edit_runtimes: 6,
             creator_play_runtimes: 4,
-            creator_edit_prewarm_runtimes: 6,
-            play_prewarm_runtimes: 8,
+            creator_edit_prewarm_runtimes: 0,
+            play_prewarm_runtimes: 0,
             player_limit: 8,
             script_memory_mb: 512,
             runtime_idle_minutes: 15,
@@ -382,10 +382,10 @@ fn default_creator_play_runtimes() -> u32 {
     4
 }
 fn default_creator_edit_prewarm_runtimes() -> u32 {
-    6
+    0
 }
 fn default_play_prewarm_runtimes() -> u32 {
-    8
+    0
 }
 fn default_player_limit() -> u32 {
     8
@@ -1002,8 +1002,8 @@ fn configured_ports(config: &InstallConfigInput) -> [(String, u16); 5] {
         ("Play".into(), config.play_port),
         ("VOXA".into(), config.voxa_port),
         ("Creator".into(), config.creator_port),
-        ("玩家管理".into(), config.player_service_port),
-        ("登录门户".into(), config.auth_portal_port),
+        ("账号服务".into(), config.player_service_port),
+        ("登录页面".into(), config.auth_portal_port),
     ]
 }
 
@@ -1088,8 +1088,8 @@ fn validate_operator_performance(config: &InstallConfigInput) -> Result<(), Stri
         return Err("数据库连接池必须在 1 到 100 之间".into());
     }
     for (label, memory, minimum) in [
-        ("Player Service", config.player_service_memory_mb, 512),
-        ("登录门户", config.auth_portal_memory_mb, 128),
+        ("账号服务", config.player_service_memory_mb, 512),
+        ("登录页面", config.auth_portal_memory_mb, 128),
         ("Creator", config.creator_memory_mb, 1_024),
         ("Play", config.play_memory_mb, 1_024),
     ] {
@@ -1100,8 +1100,8 @@ fn validate_operator_performance(config: &InstallConfigInput) -> Result<(), Stri
         }
     }
     for (label, cpu) in [
-        ("Player Service", config.player_service_cpu_limit),
-        ("登录门户", config.auth_portal_cpu_limit),
+        ("账号服务", config.player_service_cpu_limit),
+        ("登录页面", config.auth_portal_cpu_limit),
         ("Creator", config.creator_cpu_limit),
         ("Play", config.play_cpu_limit),
     ] {
@@ -1569,7 +1569,8 @@ fn archive_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
         if let Ok(entries) = fs::read_dir(root) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with("box-local-engine-images-")
+                if (name.starts_with("box-local-engine-images-")
+                    || name.starts_with("box3-images-"))
                     && (name.ends_with(".tar.gz") || name.ends_with(".tar"))
                 {
                     archives.push(entry.path());
@@ -2149,8 +2150,8 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         play_runtimes: number_u32("BOX_PLAY_MAX_RUNTIMES", 8),
         creator_edit_runtimes: number_u32("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
-        creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 2),
-        play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 2),
+        creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 0),
+        play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 0),
         player_limit: number_u32("BOX_LOCAL_PLAYER_LIMIT", 8),
         script_memory_mb: number_u32("BOX_SCRIPT_MEMORY_MB", 512),
         runtime_idle_minutes: milliseconds_as_minutes("BOX_RUNTIME_IDLE_TIMEOUT_MS", 15),
@@ -2347,6 +2348,8 @@ fn unavailable_runtime_status() -> RuntimeEndpointStatus {
         cpu_percent: None,
         memory_bytes: None,
         uptime_ms: None,
+        process_count: 0,
+        rooms: Vec::new(),
     }
 }
 
@@ -2479,6 +2482,31 @@ fn runtime_endpoint_status_at(
         cpu_percent: value.get("cpuPercent").and_then(Value::as_f64),
         memory_bytes: value.get("memoryBytes").and_then(Value::as_u64),
         uptime_ms: value.get("uptimeMs").and_then(Value::as_u64),
+        process_count: value
+            .get("processCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+            .min(u32::MAX as u64) as u32,
+        rooms: value
+            .get("rooms")
+            .and_then(Value::as_array)
+            .map(|rooms| {
+                rooms
+                    .iter()
+                    .filter_map(|room| {
+                        Some(RuntimeRoomStatus {
+                            room_id: room.get("roomId")?.as_str()?.into(),
+                            active: room.get("active").and_then(Value::as_bool).unwrap_or(false),
+                            created_at: room.get("createdAt").and_then(Value::as_u64).unwrap_or(0),
+                            last_access_at: room
+                                .get("lastAccessAt")
+                                .and_then(Value::as_u64)
+                                .unwrap_or(0),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
     }
 }
 
@@ -2504,6 +2532,92 @@ fn play_runtime_status(project_id: &str, port: u16) -> RuntimeEndpointStatus {
         return unavailable_runtime_status();
     };
     runtime_endpoint_status_at(project_id, address, "p")
+}
+
+fn destroy_runtime_at(
+    project_id: &str,
+    address: SocketAddr,
+    route_prefix: &str,
+    room_id: Option<&str>,
+) -> Result<(), String> {
+    let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2))
+        .map_err(|error| format!("无法连接运行时：{error}"))?;
+    let prefix = route_prefix.trim_matches('/');
+    let path = match room_id {
+        Some(room_id) if prefix.is_empty() => {
+            format!("/{project_id}/__room/{room_id}/__local_runtime/destroy")
+        }
+        Some(room_id) => {
+            format!("/{prefix}/{project_id}/__room/{room_id}/__local_runtime/destroy")
+        }
+        None if prefix.is_empty() => format!("/{project_id}/__local_runtime/destroy"),
+        None => format!("/{prefix}/{project_id}/__local_runtime/destroy"),
+    };
+    let request = format!(
+        "POST {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    stream
+        .write_all(request.as_bytes())
+        .map_err(|error| format!("无法发送销毁请求：{error}"))?;
+    let Some((headers, _)) = read_http_response(&mut stream) else {
+        return Err("运行时没有返回销毁结果".into());
+    };
+    if headers.starts_with("HTTP/1.1 204") || headers.starts_with("HTTP/1.0 204") {
+        Ok(())
+    } else {
+        Err(format!(
+            "运行时拒绝销毁请求：{}",
+            headers.lines().next().unwrap_or("未知错误")
+        ))
+    }
+}
+
+#[tauri::command]
+async fn destroy_project_runtime(
+    app: AppHandle,
+    project_id: String,
+    mode: String,
+    room_id: Option<String>,
+) -> Result<(), String> {
+    if !project_id
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || character == '-')
+        || project_id.is_empty()
+    {
+        return Err("作品 ID 无效".into());
+    }
+    if let Some(room) = room_id.as_deref() {
+        if room.is_empty()
+            || !room.chars().all(|character| {
+                character.is_ascii_alphanumeric() || character == '_' || character == '-'
+            })
+        {
+            return Err("房间 ID 无效".into());
+        }
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let (port, route_prefix) = match mode.as_str() {
+            "creator" => (9967, ""),
+            "play" => {
+                let port = fs::read_to_string(env_path(&app)?)
+                    .ok()
+                    .map(|content| {
+                        env_port(&parse_env(&content), "BOX_PLAY_PORT", default_play_port())
+                    })
+                    .unwrap_or_else(default_play_port);
+                (port, "p")
+            }
+            _ => return Err("运行端类型无效".into()),
+        };
+        let address = format!("127.0.0.1:{port}")
+            .to_socket_addrs()
+            .ok()
+            .and_then(|mut values| values.next())
+            .ok_or("运行时地址无效")?;
+        destroy_runtime_at(&project_id, address, route_prefix, room_id.as_deref())
+    })
+    .await
+    .map_err(|error| format!("销毁运行时异常结束：{error}"))?
 }
 
 #[tauri::command]
@@ -2608,8 +2722,8 @@ fn get_about_info() -> AboutInfo {
         ("地图创作工具 / 创作作品管理", "box-local-engine-creator"),
         ("模型创作工具", "box-local-engine-voxa"),
         ("游玩端", "box-local-engine-play"),
-        ("玩家管理", "box-local-engine-player-service"),
-        ("登录门户", "box-local-engine-player-auth-portal"),
+        ("账号服务", "box-local-engine-player-service"),
+        ("登录页面", "box-local-engine-player-auth-portal"),
     ]
     .into_iter()
     .map(|(name, image)| {
@@ -4008,7 +4122,7 @@ mod tests {
         config.auth_portal_cpu_limit = 0.0;
         assert!(validate_operator_performance(&config)
             .unwrap_err()
-            .contains("登录门户 CPU"));
+            .contains("登录页面 CPU"));
     }
 
     #[test]
@@ -4265,6 +4379,7 @@ pub fn run() {
             save_raw_environment,
             get_system_status,
             get_project_runtime_status,
+            destroy_project_runtime,
             get_about_info,
             get_legal_notices,
             get_license_status,

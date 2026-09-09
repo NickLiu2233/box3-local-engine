@@ -24,7 +24,7 @@ async function get(port, path) {
   })
 }
 
-async function post(port, path) {
+async function post(port, path, headers = {}) {
   return new Promise((resolve, reject) => {
     const request = http.request(
       {
@@ -32,6 +32,7 @@ async function post(port, path) {
         port,
         path,
         method: 'POST',
+        headers,
       },
       (response) => {
         const chunks = []
@@ -194,9 +195,59 @@ async function main() {
     }
   }
 
+  async function verifyDestroyBlocksAutomaticRestart() {
+    let startCalls = 0
+    let releaseHealthCheck
+    const healthCheckReady = new Promise((resolve) => {
+      releaseHealthCheck = resolve
+    })
+    const library = startEditLibrary({
+      host: '127.0.0.1',
+      port: 0,
+      runtimePortStart: 19180,
+      resolveProject: (id) => ({ id }),
+      startRuntime: async (_project, port) => {
+        startCalls += 1
+        const runtime = {
+          port,
+          exited: false,
+          async stop() {
+            runtime.exited = true
+          },
+        }
+        return runtime
+      },
+      waitForRuntime: async () => healthCheckReady,
+    })
+    await library.ready
+    const address = library.server.address()
+    assert(address && typeof address !== 'string')
+    try {
+      const startup = library.ensureRuntime('destroy-race').catch((error) => error)
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(
+        (await post(address.port, '/destroy-race/__local_runtime/destroy')).statusCode,
+        204,
+      )
+      releaseHealthCheck()
+      assert.equal((await startup).statusCode, 409)
+      assert.match(await get(address.port, '/destroy-race/api/health-check'), /运行时已销毁/)
+      assert.equal(startCalls, 1)
+      await post(address.port, '/destroy-race/__local_runtime/start', {
+        'x-box-runtime-restart': '1',
+      })
+      await new Promise((resolve) => setImmediate(resolve))
+      assert.equal(startCalls, 2)
+      console.log('PASS: destroyed runtime only restarts after an explicit relink')
+    } finally {
+      await library.stop()
+    }
+  }
+
   await verifyMode('edit', 0, 19120)
   await verifyMode('play', 0, 19140)
   await verifySlowStartupSurvivesHealthCheckWindow()
+  await verifyDestroyBlocksAutomaticRestart()
 }
 
 main().catch((error) => {

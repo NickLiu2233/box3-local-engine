@@ -6,8 +6,8 @@ const services = [
   ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
   ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
   ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3121, '/'],
-  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
-  ['player-auth-portal', '登录门户', '玩家登录与注册', 'authPortalPort', 3125, '/'],
+  ['player-service', '账号服务', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
+  ['player-auth-portal', '登录页面', '玩家登录与注册', 'authPortalPort', 3125, '/'],
 ]
 
 const managedServices = [
@@ -86,6 +86,7 @@ const state = {
   backupsLoading: false,
   backupMessage: '',
   backupDialog: null,
+  runtimeDestroyDialog: null,
   managedDatabaseInfo: null,
   managedRedisInfo: null,
   performance: null,
@@ -160,6 +161,15 @@ function hasValidLicense() {
 
 function normalizeLicensedPage() {
   if (!hasValidLicense() && !UNLICENSED_PAGES.has(state.page)) state.page = 'license'
+  if (state.page === 'runtimes' && state.status && !runtimeServiceRunning()) state.page = 'overview'
+}
+
+function runtimeServiceRunning() {
+  return Boolean(
+    state.status?.services?.some(
+      (service) => ['creator', 'play'].includes(service.name) && service.running,
+    ),
+  )
 }
 
 function applyTheme(theme) {
@@ -189,7 +199,7 @@ function themeControl() {
 
 function shell(content) {
   const licensedNavigation = hasValidLicense()
-    ? `${navItem('overview', 'home', '服务总览')}${navItem('runtimes', 'play', '工程运行时')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
+    ? `${navItem('overview', 'home', '服务总览')}${runtimeServiceRunning() ? navItem('runtimes', 'play', '地图容器管理') : ''}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
     : ''
   return `<div class="shell" data-rendered-page="${state.page}">
     <aside>
@@ -201,6 +211,7 @@ function shell(content) {
     ${feedbackToast()}
     ${state.startMenuOpen ? startScopeDialog() : ''}
     ${state.backupDialog ? backupConfirmDialog() : ''}
+    ${state.runtimeDestroyDialog ? runtimeDestroyDialog() : ''}
     ${state.legalDialog ? legalDocumentDialog() : ''}
   </div>`
 }
@@ -263,7 +274,13 @@ function backupConfirmDialog() {
     ? '恢复会停止全部服务，并替换当前地图、游玩包和 VOXA 本地资源。当前未备份的修改将丢失。'
     : '删除后无法恢复此备份文件。'
   const confirmLabel = restoring ? '确认恢复' : '确认删除'
-  return `<div class="dialog-backdrop" data-backup-dialog-dismiss><section class="start-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-dialog-title"><header><div><h2 id="backup-dialog-title">${title}</h2><p>${description}</p></div><button class="dialog-close" id="cancel-backup-action" aria-label="取消">×</button></header><div class="backup-dialog-file"><span>备份文件</span><strong>${escapeHtml(dialog.name)}</strong></div><div class="dialog-actions"><button class="button" id="cancel-backup-action-secondary">取消</button><button class="button ${restoring ? 'primary' : 'danger'}" id="confirm-backup-action">${confirmLabel}</button></div></section></div>`
+  return `<div class="dialog-backdrop" data-backup-dialog-dismiss><section class="start-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-dialog-title"><header><div><h2 id="backup-dialog-title">${title}</h2><p>${description}</p></div></header><div class="backup-dialog-file"><span>备份文件</span><strong>${escapeHtml(dialog.name)}</strong></div><div class="dialog-actions"><button class="button" id="cancel-backup-action-secondary">取消</button><button class="button ${restoring ? 'primary' : 'danger'}" id="confirm-backup-action">${confirmLabel}</button></div></section></div>`
+}
+
+function runtimeDestroyDialog() {
+  const dialog = state.runtimeDestroyDialog
+  const target = dialog.roomId ? `房间 ${dialog.roomId}` : '这个作品的运行实例'
+  return `<div class="dialog-backdrop runtime-destroy-backdrop" data-runtime-destroy-dialog-dismiss><section class="start-dialog runtime-destroy-dialog" role="dialog" aria-modal="true" aria-labelledby="runtime-destroy-title"><header><div><h2 id="runtime-destroy-title">销毁运行实例？</h2><p>将销毁${escapeHtml(target)}，不会删除作品数据。</p></div></header><div class="dialog-actions"><button class="button" id="cancel-runtime-destroy-secondary">取消</button><button class="button danger" id="confirm-runtime-destroy">确认销毁</button></div></section></div>`
 }
 
 function legalDocumentDialog() {
@@ -426,7 +443,7 @@ function runtimePhase(status = {}) {
   return ['空闲', '']
 }
 
-function runtimeCell(status) {
+function runtimeCell(status, projectId, mode) {
   const [labelText, stateClass] = runtimePhase(status)
   const detail =
     status?.message && !['运行时未启动', '等待启动'].includes(status.message) ? status.message : ''
@@ -434,17 +451,37 @@ function runtimeCell(status) {
     ? `<span class="runtime-progress"><i style="width:${Math.max(3, Math.min(100, Number(status?.percent) || 0))}%"></i></span>`
     : ''
   const metrics =
-    status?.phase === 'ready' && status?.memoryBytes
-      ? `<p class="runtime-metrics">CPU ${formatRuntimeCpu(status.cpuPercent)} · 内存 ${formatRuntimeMemory(status.memoryBytes)} · ${formatRuntimeUptime(status.uptimeMs)}</p>`
+    status?.phase === 'ready'
+      ? `<p class="runtime-metrics">CPU ${formatRuntimeCpu(status)} · 内存 ${status.memoryBytes ? formatRuntimeMemory(status.memoryBytes) : '—'} · ${formatRuntimeUptime(status.uptimeMs)}</p>`
       : ''
-  return `<div class="runtime-mode"><div><span class="service-state ${stateClass}"><i></i>${labelText}</span></div>${metrics || (detail ? `<p>${escapeHtml(detail)}</p>` : '')}${progress}</div>`
+  const rooms = Array.isArray(status?.rooms) ? status.rooms : []
+  const roomList = rooms.length
+    ? `<div class="runtime-rooms"><strong>房间 ${rooms.length}</strong><div>${rooms
+        .map(
+          (room) =>
+            `<span class="runtime-room ${room.active ? 'active' : ''}" title="${escapeHtml(room.roomId)}"><i></i>${escapeHtml(room.roomId.slice(0, 10))}<button type="button" class="icon-button runtime-destroy room" data-runtime-destroy="${escapeHtml(projectId)}" data-runtime-mode="${mode}" data-runtime-room="${escapeHtml(room.roomId)}" aria-label="销毁房间" title="销毁房间">${icon('stop')}</button></span>`,
+        )
+        .join('')}</div></div>`
+    : ''
+  const destroy =
+    status?.phase === 'ready'
+      ? `<button type="button" class="button danger runtime-destroy" data-runtime-destroy="${escapeHtml(projectId)}" data-runtime-mode="${mode}">${icon('stop')}销毁</button>`
+      : ''
+  return `<div class="runtime-mode"><div class="runtime-mode-head"><span class="service-state ${stateClass}"><i></i>${labelText}</span>${destroy}</div>${metrics || (detail ? `<p>${escapeHtml(detail)}</p>` : '')}${roomList}${progress}</div>`
 }
 
-function formatRuntimeCpu(value) {
-  const cpu = Number(value)
-  if (!Number.isFinite(cpu)) return '—'
-  if (cpu <= 0) return '0.0%'
-  return `${cpu.toFixed(cpu >= 10 ? 0 : 1)}%`
+function formatRuntimeCpu(status = {}) {
+  const cpuPercent = Number(status.cpuPercent)
+  if (!Number.isFinite(cpuPercent)) return '—'
+  const usedCores = Math.max(0, cpuPercent / 100)
+  const availableCores = Math.max(
+    1,
+    Number(status.cpuCapacityCores) || Number(globalThis.navigator?.hardwareConcurrency) || 1,
+  )
+  const machinePercent = (usedCores / availableCores) * 100
+  const usedText = usedCores >= 10 ? usedCores.toFixed(1) : usedCores.toFixed(2)
+  const machineText = machinePercent >= 10 ? machinePercent.toFixed(0) : machinePercent.toFixed(1)
+  return `${usedText} 核（${machineText}%）`
 }
 
 function formatRuntimeMemory(value) {
@@ -462,17 +499,18 @@ function formatRuntimeUptime(value) {
 
 function runtimes() {
   const catalog = state.projectRuntimes || { creator: [], play: [] }
-  const creatorItems = catalog.creator || []
-  const playItems = catalog.play || []
+  const creatorItems = (catalog.creator || []).filter((project) => project.edit?.phase === 'ready')
+  const playItems = (catalog.play || []).filter((project) => project.play?.phase === 'ready')
   const catalogTab = state.runtimeCatalogTab === 'play' ? 'play' : 'creator'
   const items = catalogTab === 'play' ? playItems : creatorItems
   const submapsByMain = new Map()
   const mainMaps = []
+  const activeProjectIds = new Set(items.map((project) => project.projectId))
   for (const project of items) {
     const isSubmap =
       project.mapRole === 'submap' ||
       (project.mainProjectId && project.mainProjectId !== project.projectId)
-    if (isSubmap) {
+    if (isSubmap && activeProjectIds.has(project.mainProjectId)) {
       const submaps = submapsByMain.get(project.mainProjectId) || []
       submaps.push(project)
       submapsByMain.set(project.mainProjectId, submaps)
@@ -481,7 +519,9 @@ function runtimes() {
     }
   }
   const runtimeCells = (project) =>
-    catalogTab === 'creator' ? runtimeCell(project.edit) : runtimeCell(project.play)
+    catalogTab === 'creator'
+      ? runtimeCell(project.edit, project.projectId, 'creator')
+      : runtimeCell(project.play, project.projectId, 'play')
   const runtimeProject = (project, submaps = []) => {
     const expansionKey = `${catalogTab}:${project.projectId}`
     const submapSection = submaps.length
@@ -496,15 +536,15 @@ function runtimes() {
   }
   const body =
     state.projectRuntimesLoading && !items.length
-      ? '<div class="runtime-empty">正在读取工程运行时…</div>'
+      ? '<div class="runtime-empty">正在读取地图容器管理…</div>'
       : state.projectRuntimesError
         ? `<div class="runtime-empty">${escapeHtml(state.projectRuntimesError)}</div>`
         : !mainMaps.length
-          ? `<div class="runtime-empty">${catalogTab === 'creator' ? '创作端暂无工程。' : '游玩端暂无已导入的作品。'}</div>`
+          ? `<div class="runtime-empty">${catalogTab === 'creator' ? '创作端当前没有地图容器管理。' : '游玩端当前没有地图容器管理。'}</div>`
           : `<div class="runtime-list">${mainMaps
               .map((project) => runtimeProject(project, submapsByMain.get(project.projectId) || []))
               .join('')}</div>`
-  return `<header><div><h1>工程运行时</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button></nav>${body}`
+  return `<header><div><h1>地图容器管理</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button></nav>${body}`
 }
 
 function serviceCard([id, name, description, portKey, defaultPort], options = {}) {
@@ -657,7 +697,7 @@ function setup() {
             ['立即备份', '需要在重要修改前手动保存时，请前往“数据与备份”使用右上角的“立即备份”。'],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网 IP', creatorPublicHost)}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>玩家服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录门户', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网 IP', creatorPublicHost)}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '账号服务', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
           '配置说明：访问地址和端口有什么影响？',
           [
             [
@@ -666,15 +706,15 @@ function setup() {
             ],
             [
               '游玩访问',
-              'Play、玩家管理和登录门户可填写公网 IP 或域名；生产环境建议使用 HTTPS 反向代理。',
+              'Play、账号服务和登录页面可填写公网 IP 或域名；生产环境建议使用 HTTPS 反向代理。',
             ],
             ['端口', '每个服务使用独立端口，不能重复；修改后访问链接也会随之改变。'],
           ],
         )}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2><span>控制同时运行的地图与单实例人数</span></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 8, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>
-          <div class="config-group"><div class="group-title"><div><h2>预热策略</h2><span>提前启动常用地图，数量不能超过对应运行时上限</span></div></div><div class="form-grid">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 8, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 6, 'number', '0 表示按需启动', false, { min: 0 })}</div></div>
-          <div class="config-group"><div class="group-title"><div><h2>脚本与容器资源</h2><span>内存单位为 MiB；修改后需重新创建对应容器</span></div></div><div class="form-grid three">${input('scriptMemoryMb', '单运行时脚本内存', config.scriptMemoryMb ?? 512, 'number', '128–8192 MiB', false, { min: 128, max: 8192 })}${input('playerServiceMemoryMb', 'Player Service 内存', config.playerServiceMemoryMb ?? 1024, 'number', '推荐 1024 MiB', false, { min: 512, max: 262144 })}${input('playerServiceCpuLimit', 'Player Service CPU', config.playerServiceCpuLimit ?? 1, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('authPortalMemoryMb', '登录门户内存', config.authPortalMemoryMb ?? 128, 'number', '推荐 128 MiB', false, { min: 128, max: 262144 })}${input('authPortalCpuLimit', '登录门户 CPU', config.authPortalCpuLimit ?? 0.5, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('creatorMemoryMb', 'Creator 内存', config.creatorMemoryMb ?? 6144, 'number', '推荐 6144 MiB', false, { min: 1024, max: 262144 })}${input('creatorCpuLimit', 'Creator CPU', config.creatorCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('playMemoryMb', 'Play 内存', config.playMemoryMb ?? 4096, 'number', '推荐 4096 MiB', false, { min: 1024, max: 262144 })}${input('playCpuLimit', 'Play CPU', config.playCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>预热策略</h2><span>提前启动常用地图，数量不能超过对应运行时上限</span></div></div><div class="form-grid">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>脚本与容器资源</h2><span>内存单位为 MiB；修改后需重新创建对应容器</span></div></div><div class="form-grid three">${input('scriptMemoryMb', '单运行时脚本内存', config.scriptMemoryMb ?? 512, 'number', '128–8192 MiB', false, { min: 128, max: 8192 })}${input('playerServiceMemoryMb', '账号服务内存', config.playerServiceMemoryMb ?? 1024, 'number', '推荐 1024 MiB', false, { min: 512, max: 262144 })}${input('playerServiceCpuLimit', '账号服务 CPU', config.playerServiceCpuLimit ?? 1, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('authPortalMemoryMb', '登录页面内存', config.authPortalMemoryMb ?? 128, 'number', '推荐 128 MiB', false, { min: 128, max: 262144 })}${input('authPortalCpuLimit', '登录页面 CPU', config.authPortalCpuLimit ?? 0.5, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('creatorMemoryMb', 'Creator 内存', config.creatorMemoryMb ?? 6144, 'number', '推荐 6144 MiB', false, { min: 1024, max: 262144 })}${input('creatorCpuLimit', 'Creator CPU', config.creatorCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('playMemoryMb', 'Play 内存', config.playMemoryMb ?? 4096, 'number', '推荐 4096 MiB', false, { min: 1024, max: 262144 })}${input('playCpuLimit', 'Play CPU', config.playCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>回收与传送</h2><span>界面使用分钟，保存后自动转换为环境变量</span></div></div><div class="form-grid">${input('runtimeIdleMinutes', '运行时空闲回收（分钟）', config.runtimeIdleMinutes || 15, 'number', '1–10080')}${input('runtimeStartTimeoutMinutes', '运行时启动超时（分钟）', config.runtimeStartTimeoutMinutes || 30, 'number', '1–1440')}${input('teleportMaxRooms', 'Teleport 私有房间上限', config.teleportMaxRooms || 64, 'number', '1–1024')}${input('teleportRoomIdleMinutes', '房间空闲回收（分钟）', config.teleportRoomIdleMinutes || 15, 'number', '1–10080')}</div></div>
           ${setupExplanation('配置说明：容量和回收策略如何选择？', [
             ['游玩运行时', '同时活跃的游玩地图和传送房间数量。人数、地图数越多，需要的上限越高。'],
@@ -695,7 +735,7 @@ function setup() {
               '上限越高，Docker 可用内存需求越大。首次部署可保持默认，出现排队再逐步提高。',
             ],
           ])}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与地图权限</h2><span>关闭注册不影响已有账号登录或服主后台创建账号</span></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录门户不再接受自助注册', config.registrationEnabled !== false)}${settingToggle('libraryManagementEnabled', '允许网页管理地图包', '关闭后 Play 地图库只读，不能通过网页导入或删除地图包', config.libraryManagementEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>首次保存配置时会自动生成；无需手动填写，修改后旧会话和旧 API 调用会失效</span></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '玩家服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与地图权限</h2><span>关闭注册不影响已有账号登录或服主后台创建账号</span></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}${settingToggle('libraryManagementEnabled', '允许网页管理地图包', '关闭后 Play 地图库只读，不能通过网页导入或删除地图包', config.libraryManagementEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2><span>首次保存配置时会自动生成；无需手动填写，修改后旧会话和旧 API 调用会失效</span></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
           '配置说明：服主密钥分别做什么？',
           [
             ['自动生成', '首次保存配置时，三个密钥会自动生成；只有需要自定义时才填写新的值。'],
@@ -709,7 +749,7 @@ function setup() {
               '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
             ],
             ['服主操作令牌', '保护 Play 端的服主操作接口。'],
-            ['玩家服务 API Key', '供服主自建登录、注册或用户接入程序调用玩家服务。'],
+            ['账号服务 API Key', '供服主自建登录、注册或用户接入程序调用账号服务。'],
             ['运行时身份密钥', '用于 Creator 和 Play 之间签发、校验运行时身份。'],
             [
               '修改影响',
@@ -772,7 +812,7 @@ function licenseManagement() {
     <article class="license-panel">
       <div class="license-status-row"><div class="license-status-main"><div><strong>个人学习许可证</strong></div><p>仅限个人学习、测试；不可商业使用或二次分发。</p></div><button class="license-group-link" type="button" data-open-community-group>申请个人学习许可证 ${icon('chevron')}</button></div>${details}
       <section class="license-section"><div class="license-device"><div><span>设备 ID</span><code class="${state.licenseDeviceVisible ? 'revealed' : ''}">${escapeHtml(shownDeviceId)}</code></div><div class="license-device-actions"><button class="icon-button" id="toggle-license-device" aria-label="${state.licenseDeviceVisible ? '隐藏设备 ID' : '显示设备 ID'}" title="${state.licenseDeviceVisible ? '隐藏设备 ID' : '显示设备 ID'}" ${license.deviceId ? '' : 'disabled'}>${icon(state.licenseDeviceVisible ? 'eye-off' : 'eye')}</button><button class="button" id="copy-license-device" ${license.deviceId ? '' : 'disabled'}>${icon('copy')}复制</button></div></div></section>
-      <section class="license-section license-import"><input id="license-file" type="file" accept=".boxlic,.lic,application/octet-stream,text/plain" hidden><button class="button primary" id="select-license-file" ${state.busy ? 'disabled' : ''}>导入 .boxlic 文件</button></section>
+      <section class="license-section license-import"><label class="license-token-label" for="license-token">许可证密钥</label><textarea id="license-token" class="license-token-input" rows="5" placeholder="请粘贴许可证密钥" spellcheck="false"></textarea><button class="button primary" id="install-license" ${state.busy ? 'disabled' : ''}>验证并激活</button></section>
     </article>
   </section>`
 }
@@ -794,7 +834,7 @@ function about() {
         '修复无作品时打开工程运行时导致启动器卡死的问题。',
         '数据空间兼容 BOXES PostgreSQL 表结构并优化历史数据读取。',
         '新增用户 Key 绑定同步，并修复本地运行时身份与导出弹框标题显示问题。',
-        '修复登录门户通过服务器 IP、局域网地址或域名访问时误报请求来源的问题。',
+        '修复登录页面通过服务器 IP、局域网地址或域名访问时误报请求来源的问题。',
       ],
     },
     {
@@ -806,7 +846,7 @@ function about() {
         '支持地图工程、游玩包和 VOXA 模型工程的导入、导出与本地备份。',
         '支持地图组与传送房间；同一作品可由主地图和多个独立副地图组成。',
         '模型、皮肤和动画可通过 VOXA 本地保存，并在创作和游玩中使用。',
-        '提供玩家服务与 PostgreSQL 数据空间，保存账号、权限、会话和地图脚本持久数据。',
+        '提供账号服务与 PostgreSQL 数据空间，保存账号、权限、会话和地图脚本持久数据。',
         '提供桌面启动器与 Linux Web 管理端，集中管理服务、端口、数据和备份。',
       ],
     },
@@ -988,10 +1028,7 @@ function bindEvents() {
   document
     .querySelector('#open-docker-download')
     ?.addEventListener('click', () => invoke('open_docker_desktop_download'))
-  document.querySelector('#select-license-file')?.addEventListener('click', () => {
-    document.querySelector('#license-file')?.click()
-  })
-  document.querySelector('#license-file')?.addEventListener('change', installLicenseFile)
+  document.querySelector('#install-license')?.addEventListener('click', () => installLicenseToken())
   document.querySelector('#toggle-license-device')?.addEventListener('click', () => {
     state.licenseDeviceVisible = !state.licenseDeviceVisible
     render()
@@ -1010,6 +1047,32 @@ function bindEvents() {
       else state.runtimeExpandedProjects.delete(projectId)
     }),
   )
+  document.querySelectorAll('[data-runtime-destroy]').forEach((node) =>
+    node.addEventListener('click', () => {
+      const projectId = node.dataset.runtimeDestroy
+      const mode = node.dataset.runtimeMode
+      const roomId = node.dataset.runtimeRoom || undefined
+      if (!projectId || !mode) return
+      state.runtimeDestroyDialog = { projectId, mode, roomId }
+      render()
+    }),
+  )
+  document
+    .querySelector('[data-runtime-destroy-dialog-dismiss]')
+    ?.addEventListener('click', (event) => {
+      if (event.target !== event.currentTarget) return
+      state.runtimeDestroyDialog = null
+      render()
+    })
+  document.querySelector('#cancel-runtime-destroy-secondary')?.addEventListener('click', () => {
+    state.runtimeDestroyDialog = null
+    render()
+  })
+  document.querySelector('#confirm-runtime-destroy')?.addEventListener('click', () => {
+    const dialog = state.runtimeDestroyDialog
+    state.runtimeDestroyDialog = null
+    if (dialog) void destroyProjectRuntime(dialog.projectId, dialog.mode, dialog.roomId)
+  })
   document.querySelectorAll('[data-runtime-catalog]').forEach((node) =>
     node.addEventListener('click', () => {
       state.runtimeCatalogTab = node.dataset.runtimeCatalog === 'play' ? 'play' : 'creator'
@@ -1034,9 +1097,9 @@ function bindEvents() {
     .forEach((node) =>
       node.addEventListener('click', () => exportBackup(node.dataset.exportBackup)),
     )
-  for (const selector of ['#cancel-backup-action', '#cancel-backup-action-secondary']) {
-    document.querySelector(selector)?.addEventListener('click', closeBackupDialog)
-  }
+  document
+    .querySelector('#cancel-backup-action-secondary')
+    ?.addEventListener('click', closeBackupDialog)
   document.querySelector('[data-backup-dialog-dismiss]')?.addEventListener('click', (event) => {
     if (event.target === event.currentTarget) closeBackupDialog()
   })
@@ -1339,7 +1402,7 @@ async function refreshProjectRuntimes() {
   projectRuntimeLoading = true
   state.projectRuntimesLoading = true
   state.projectRuntimesError = ''
-  render()
+  if (!state.projectRuntimesLoaded && !state.runtimeDestroyDialog) render()
   try {
     state.projectRuntimes = await invoke('get_project_runtime_status')
   } catch (error) {
@@ -1348,6 +1411,24 @@ async function refreshProjectRuntimes() {
     projectRuntimeLoading = false
     state.projectRuntimesLoading = false
     state.projectRuntimesLoaded = true
+    if (state.page === 'runtimes' && !state.runtimeDestroyDialog) render()
+  }
+}
+
+async function destroyProjectRuntime(projectId, mode, roomId) {
+  if (state.busy) return
+  state.busy = true
+  clearFeedback()
+  render()
+  try {
+    await invoke('destroy_project_runtime', { projectId, mode, roomId })
+    state.notice = roomId ? '房间已销毁。' : '运行实例已销毁。'
+    state.projectRuntimesLoaded = false
+    await refreshProjectRuntimes()
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
     if (state.page === 'runtimes') render()
   }
 }
@@ -1705,16 +1786,14 @@ async function refreshLicenseStatus() {
   if (state.page === 'license') render()
 }
 
-async function installLicenseFile(event) {
-  const file = event.currentTarget.files?.[0]
-  if (!file || state.busy) return
-  if (!/\.boxlic$|\.lic$/i.test(file.name)) {
-    state.error = '请选择 .boxlic 许可证文件。'
+async function installLicenseToken() {
+  const tokenInput = document.querySelector('#license-token')
+  const token = tokenInput?.value.trim()
+  if (!token || state.busy) {
+    state.error = '请先粘贴许可证密钥。'
     render()
     return
   }
-  const token = (await file.text()).trim()
-  if (!token || state.busy) return
   state.busy = true
   clearFeedback()
   render()

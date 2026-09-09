@@ -9,6 +9,8 @@ import { getToken } from 'src/utils/token';
 import type { GameSession } from '/pages/api/createSession';
 import type { GameServerTarget } from './remote-game-server';
 
+let allowRuntimeRestartForPage = true;
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -94,6 +96,8 @@ export async function connectGameServer(
   while (!config) {
     controller.startTask('loadingStart', TaskTypeEnum.Normal);
     try {
+      const allowRuntimeRestart = allowRuntimeRestartForPage;
+      allowRuntimeRestartForPage = false;
       const response = await axios.post(
         target.sessionURL,
         {
@@ -106,6 +110,9 @@ export async function connectGameServer(
         {
           headers: {
             auth: getToken(),
+            ...(allowRuntimeRestart
+              ? { 'x-box-runtime-restart': '1' }
+              : {}),
           },
           timeout,
         },

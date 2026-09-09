@@ -263,7 +263,11 @@ async function getSessionData(
       process.env.BOX_DEPLOYMENT_MODE === 'creator' ||
       (mode === 'play' && process.env.BOX_PLAY_LIBRARY_PATH)
     ) {
-      const runtime = await prepareLocalRuntimeSession(httpServerUrl);
+      const runtime = await prepareLocalRuntimeSession(
+        httpServerUrl,
+        undefined,
+        req.headers['x-box-runtime-restart'] === '1',
+      );
       if (!runtime.ready) return undefined;
     }
     // 本地就直接把 http server url 处理成 socket server url

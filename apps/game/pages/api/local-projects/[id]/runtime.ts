@@ -20,6 +20,7 @@ async function runtimeControl(projectId: string, mode: RuntimeMode, action: 'sta
     `http://127.0.0.1:${runtimePort(mode)}/${encodeURIComponent(projectId)}/__local_runtime/${action}`,
     {
       method: action === 'start' ? 'POST' : 'GET',
+      ...(action === 'start' ? { headers: { 'x-box-runtime-restart': '1' } } : {}),
       signal: AbortSignal.timeout(10_000),
     },
   );

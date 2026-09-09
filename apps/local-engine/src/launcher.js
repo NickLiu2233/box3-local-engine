@@ -432,9 +432,10 @@ function readRuntimeProcessTree(rootPid) {
       return {
         cpuTicks: total.cpuTicks + processInfo.cpuTicks,
         memoryBytes: total.memoryBytes + processInfo.memoryBytes,
+        processCount: total.processCount + 1,
       }
     },
-    { cpuTicks: 0, memoryBytes: 0 },
+    { cpuTicks: 0, memoryBytes: 0, processCount: 0 },
   )
 }
 
@@ -458,6 +459,7 @@ function attachRuntimeMetrics(child, runtime) {
     return {
       cpuPercent,
       memoryBytes,
+      processCount: processTree.processCount,
       uptimeMs: Math.max(0, sampledAt - Date.parse(runtime.startedAt)),
     }
   }
@@ -1061,7 +1063,7 @@ async function main() {
         const projects = projectManager.listProjects()
         const editCount = prewarmCount(
           'BOX_CREATOR_EDIT_PREWARM_RUNTIMES',
-          2,
+          0,
           process.env.BOX_CREATOR_EDIT_MAX_RUNTIMES || 6,
         )
         for (const project of projects.slice(0, editCount)) {
@@ -1075,7 +1077,7 @@ async function main() {
         })
         const count = prewarmCount(
           'BOX_PLAY_PREWARM_RUNTIMES',
-          2,
+          0,
           process.env.BOX_PLAY_MAX_RUNTIMES || 8,
         )
         if (count > 0) {
