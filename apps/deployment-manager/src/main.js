@@ -23,6 +23,8 @@ const startPrompts = [
 ]
 
 const THEME_KEY = 'box-manager-theme'
+const PROJECT_RUNTIME_POLL_MS = 3000
+const PROJECT_RUNTIME_HIDDEN_POLL_MS = 10000
 const themes = [
   ['system', '跟随系统'],
   ['light', '亮色'],
@@ -1015,12 +1017,15 @@ function bindEvents() {
         state.ownerSecretsVisible = false
       }
       state.page = node.dataset.page
+      if (state.page === 'runtimes' && !state.projectRuntimesLoaded) {
+        state.projectRuntimesLoading = true
+      }
       render()
       if (state.page === 'backups') loadBackups()
       if (state.page === 'about') loadLegalNotices()
       if (state.page === 'license') refreshLicenseStatus()
       if (state.page === 'setup') refreshManagedServiceInfo()
-      if (state.page === 'runtimes') refreshProjectRuntimes()
+      if (state.page === 'runtimes') scheduleProjectRuntimeRefresh()
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
@@ -1298,11 +1303,17 @@ let dockerStartupPollTimer
 let performanceTimer
 let projectRuntimeTimer
 let projectRuntimeLoading = false
+let projectRuntimeRefreshTimer
+let progressRenderTimer
 
 function syncOverviewPolling() {
   clearInterval(overviewStatusTimer)
   overviewStatusTimer = undefined
-  if (state.page !== 'overview') return
+  if (state.page !== 'overview') {
+    clearTimeout(dockerStartupPollTimer)
+    dockerStartupPollTimer = undefined
+    return
+  }
   overviewStatusTimer = window.setInterval(refreshOverviewStatus, 5000)
 }
 
@@ -1382,27 +1393,44 @@ async function refreshPerformance() {
 function syncProjectRuntimePolling() {
   clearInterval(projectRuntimeTimer)
   projectRuntimeTimer = undefined
-  if (state.page !== 'runtimes') return
-  const hasProjects = state.projectRuntimes.creator?.length || state.projectRuntimes.play?.length
-  if (!hasProjects) {
-    if (!state.projectRuntimesLoaded && !projectRuntimeLoading) refreshProjectRuntimes()
+  if (state.page !== 'runtimes') {
+    clearTimeout(projectRuntimeRefreshTimer)
+    projectRuntimeRefreshTimer = undefined
     return
   }
-  projectRuntimeTimer = window.setInterval(refreshProjectRuntimes, document.hidden ? 5000 : 1000)
+  const hasProjects = state.projectRuntimes.creator?.length || state.projectRuntimes.play?.length
+  if (!hasProjects) {
+    if (!state.projectRuntimesLoaded && !projectRuntimeLoading) scheduleProjectRuntimeRefresh()
+    return
+  }
+  projectRuntimeTimer = window.setInterval(
+    refreshProjectRuntimes,
+    document.hidden ? PROJECT_RUNTIME_HIDDEN_POLL_MS : PROJECT_RUNTIME_POLL_MS,
+  )
+}
+
+function scheduleProjectRuntimeRefresh() {
+  if (projectRuntimeRefreshTimer || projectRuntimeLoading || state.page !== 'runtimes') return
+  projectRuntimeRefreshTimer = window.setTimeout(() => {
+    projectRuntimeRefreshTimer = undefined
+    refreshProjectRuntimes()
+  }, 0)
 }
 
 document.addEventListener('visibilitychange', () => {
   if (state.page !== 'runtimes') return
   syncProjectRuntimePolling()
-  if (!document.hidden) refreshProjectRuntimes()
+  if (!document.hidden) scheduleProjectRuntimeRefresh()
 })
 
 async function refreshProjectRuntimes() {
   if (projectRuntimeLoading || state.page !== 'runtimes') return
   projectRuntimeLoading = true
+  const previousRuntimes = JSON.stringify(state.projectRuntimes)
+  const wasLoaded = state.projectRuntimesLoaded
+  const previousError = state.projectRuntimesError
   state.projectRuntimesLoading = true
   state.projectRuntimesError = ''
-  if (!state.projectRuntimesLoaded && !state.runtimeDestroyDialog) render()
   try {
     state.projectRuntimes = await invoke('get_project_runtime_status')
   } catch (error) {
@@ -1411,7 +1439,15 @@ async function refreshProjectRuntimes() {
     projectRuntimeLoading = false
     state.projectRuntimesLoading = false
     state.projectRuntimesLoaded = true
-    if (state.page === 'runtimes' && !state.runtimeDestroyDialog) render()
+    const runtimesChanged = previousRuntimes !== JSON.stringify(state.projectRuntimes)
+    const errorChanged = previousError !== state.projectRuntimesError
+    if (
+      state.page === 'runtimes' &&
+      !state.runtimeDestroyDialog &&
+      (!wasLoaded || runtimesChanged || errorChanged)
+    ) {
+      render()
+    }
   }
 }
 
@@ -1993,9 +2029,17 @@ async function reloadRawEnvironment() {
   render()
 }
 
+function scheduleProgressRender() {
+  if (progressRenderTimer || !state.busy) return
+  progressRenderTimer = window.setTimeout(() => {
+    progressRenderTimer = undefined
+    if (state.busy) render()
+  }, 50)
+}
+
 listen('install-progress', ({ payload }) => {
   state.progress = payload
-  if (state.busy) render()
+  scheduleProgressRender()
 })
 
 document.addEventListener('contextmenu', (event) => event.preventDefault())

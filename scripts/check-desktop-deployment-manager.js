@@ -689,8 +689,14 @@ assert.match(
 )
 assert.match(
   frontend,
-  /if \(!hasProjects\) \{\n\x20{4}if \(!state\.projectRuntimesLoaded && !projectRuntimeLoading\) refreshProjectRuntimes\(\)\n\x20{4}return/,
+  /if \(!hasProjects\) \{\n\x20{4}if \(!state\.projectRuntimesLoaded && !projectRuntimeLoading\) scheduleProjectRuntimeRefresh\(\)\n\x20{4}return/,
 )
+assert.match(frontend, /const PROJECT_RUNTIME_POLL_MS = 3000/)
+assert.match(frontend, /const PROJECT_RUNTIME_HIDDEN_POLL_MS = 10000/)
+assert.match(frontend, /function scheduleProjectRuntimeRefresh\(\)/)
+assert.match(frontend, /clearTimeout\(projectRuntimeRefreshTimer\)/)
+assert.match(frontend, /previousRuntimes !== JSON\.stringify\(state\.projectRuntimes\)/)
+assert.match(frontend, /function scheduleProgressRender\(\)/)
 assert.match(frontend, /state\.projectRuntimesLoaded = true/)
 assert.match(backend, /fn open_docker_desktop_download\(\)/)
 assert.match(backend, /open_docker_desktop_download,/)
