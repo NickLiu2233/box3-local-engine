@@ -1135,21 +1135,6 @@ function bindEvents() {
     state.startMenuOpen = false
     render()
   })
-  document.querySelectorAll('[data-start-scope]').forEach((node) =>
-    node.addEventListener('click', () => {
-      const scope = node.dataset.startScope
-      if (!scope || !['play', 'creator'].includes(scope)) return
-      if (state.startScopes.has(scope)) state.startScopes.delete(scope)
-      else state.startScopes.add(scope)
-      render()
-    }),
-  )
-  document.querySelector('#confirm-start-scopes')?.addEventListener('click', () => {
-    const selected = [...state.startScopes]
-    if (!selected.length) return
-    state.startScopes.clear()
-    runAction('start_services', { scope: selected.length === 2 ? 'all' : selected[0] })
-  })
   document
     .querySelectorAll('[data-install-managed]')
     .forEach((node) =>

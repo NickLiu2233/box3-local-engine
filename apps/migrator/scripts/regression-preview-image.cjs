@@ -413,7 +413,7 @@ fs.writeFileSync(
     ]),
     [
       { hash: modelHash, sourceKind: 'voxel-model' },
-      { hash: `${actualHash}.jpeg`, sourceKind: 's3-model' },
+      { hash: `${actualHash}.jpeg`, sourceKind: 'content' },
     ],
   )
   console.log('PASS: voxel assets retain model metadata and preview dependencies')

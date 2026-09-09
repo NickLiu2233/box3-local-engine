@@ -6,6 +6,8 @@ import { spawn } from 'child_process'
 import { once } from 'events'
 import { MuWriteStream } from '@box-local/mudb/stream'
 import { ExtraProjectInfoSchema, getMeshPath } from '@box-local/schema/project/hot-schema'
+import { parseVbFile, type VbFileData } from '@box-local/vb-parser'
+import { getModelMetaData, migrateModel, modelSchemaToBytes } from '@box-local/voxa-project'
 import {
   getCloudEngineData,
   migrateMapGroupProject,
@@ -425,7 +427,9 @@ export function referencedResources(
     if (assetType === 8 || assetType === 9) assetSourceKind = 's3-model'
     if (assetHash && assetSourceKind) add(assetHash, assetSourceKind)
     if (previewImage && (assetType === 2 || assetType === 8 || assetType === 9)) {
-      add(previewImage, 's3-model')
+      // Legacy VD previews are content blocks, even though the catalog entry
+      // itself is a type-2 asset.
+      add(previewImage, assetType === 2 ? 'content' : 's3-model')
     }
 
     for (const [key, child] of Object.entries(node)) {
@@ -476,6 +480,138 @@ export function emptyEntitiesTree() {
       type: 0,
     },
   }
+}
+
+function legacyEntitiesTree(entities: unknown, folders: unknown) {
+  const tree: Record<string, unknown> = {
+    ROOT_ID: {
+      childrenIds: [],
+      id: 'ROOT_ID',
+      name: 'Root',
+      parentId: '',
+      type: 0,
+    },
+  }
+  const folderRows = isRecord(folders) ? folders : {}
+  for (const [folderId, rawFolder] of Object.entries(folderRows)) {
+    if (!isRecord(rawFolder)) continue
+    const id = `legacy-folder-${folderId}`
+    tree[id] = {
+      childrenIds: Array.isArray(rawFolder.children)
+        ? rawFolder.children
+            .filter((child) => isRecord(child) && typeof child.id === 'string')
+            .map((child) => `legacy-entity-${child.id}`)
+        : [],
+      id,
+      name: typeof rawFolder.name === 'string' ? rawFolder.name : id,
+      parentId:
+        typeof rawFolder.parentId === 'string' && rawFolder.parentId
+          ? `legacy-folder-${rawFolder.parentId}`
+          : 'ROOT_ID',
+      type: 2,
+    }
+  }
+  const entityRows = isRecord(entities) ? entities : {}
+  for (const [entityId, rawEntity] of Object.entries(entityRows)) {
+    if (!isRecord(rawEntity)) continue
+    const value = (
+      isRecord(rawEntity.value) ? cloneJSON(rawEntity.value) : cloneJSON(rawEntity)
+    ) as Record<string, unknown>
+    if ('mesh' in value) {
+      value.defaultMotionId = typeof value.defaultMotionId === 'string' ? value.defaultMotionId : ''
+      value.meshId = Number.isSafeInteger(value.meshId) ? value.meshId : 0
+      value.editLock = Boolean(value.editLock)
+    }
+    const id = `legacy-entity-${entityId}`
+    const folderId = typeof rawEntity.folderId === 'string' ? rawEntity.folderId : ''
+    const rawParentId = typeof rawEntity.parentId === 'string' ? rawEntity.parentId : ''
+    tree[id] = {
+      childrenIds: [],
+      id,
+      name: typeof rawEntity.name === 'string' ? rawEntity.name : entityId,
+      parentId: rawParentId
+        ? `legacy-entity-${rawParentId}`
+        : folderId && tree[`legacy-folder-${folderId}`]
+          ? `legacy-folder-${folderId}`
+          : 'ROOT_ID',
+      type: 1,
+      value,
+    }
+  }
+  for (const node of Object.values(tree)) {
+    if (!isRecord(node) || typeof node.id !== 'string') continue
+    const parent = typeof node.parentId === 'string' ? tree[node.parentId] : undefined
+    if (
+      isRecord(parent) &&
+      Array.isArray(parent.childrenIds) &&
+      !parent.childrenIds.includes(node.id)
+    ) {
+      parent.childrenIds.push(node.id)
+    }
+  }
+  return tree
+}
+
+/** Convert legacy type-2 VD blobs into the embedded VOXA project library. */
+async function normalizeLegacyVoxelModels(
+  assets: unknown,
+  entitiesTree: unknown,
+  retrieveSource: (hash: string) => Promise<Uint8Array>,
+  blobsRoot: string,
+  localHashes: ReadonlyMap<string, string>,
+) {
+  const nextAssets = isRecord(assets) ? (cloneJSON(assets) as Record<string, unknown>) : {}
+  const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity)
+  const modelIds = new Map<string, number>()
+  const usedIds = new Set<number>()
+  let nextId = 1
+  for (const [assetPath, rawAsset] of Object.entries(nextAssets)) {
+    if (!isRecord(rawAsset) || rawAsset.type !== 2 || typeof rawAsset.hash !== 'string') continue
+    try {
+      const source = await retrieveSource(rawAsset.hash)
+      const parsed = JSON.parse(Buffer.from(source).toString('utf8')) as VbFileData
+      const modelBytes = Buffer.from(stableStringify(parseVbFile(parsed).model), 'utf8')
+      const metadata = getModelMetaData(rawAsset.hash, modelBytes)
+      const latest = await migrateModel(modelBytes)
+      if (!metadata || !latest) continue
+      const dataHash = await storeBlob(blobsRoot, modelSchemaToBytes(latest))
+      const metadataHash = await storeJSONBlob(blobsRoot, {
+        ...metadata,
+        version: latest.version,
+        dataHash,
+      })
+      let modelId = Number(rawAsset.contentId)
+      if (!Number.isSafeInteger(modelId) || modelId <= 0 || usedIds.has(modelId)) {
+        while (usedIds.has(nextId)) nextId += 1
+        modelId = nextId++
+      }
+      usedIds.add(modelId)
+      modelIds.set(assetPath, modelId)
+      const meshPath = assetPath.replace(/\.vd$/i, '.vb')
+      extra.meshAssets[meshPath] = {
+        modelId,
+        hash: metadataHash,
+        modelPreviewHash:
+          typeof rawAsset.previewImage === 'string'
+            ? localHashes.get(rawAsset.previewImage) || ''
+            : '',
+        animated: Boolean(rawAsset.animated),
+        updatedAt: typeof rawAsset.updatedAt === 'string' ? rawAsset.updatedAt : '',
+      }
+      delete nextAssets[assetPath]
+    } catch {
+      // Keep an unrecognized model in the legacy index for the runtime fallback.
+    }
+  }
+  const nextTree = cloneJSON(entitiesTree ?? {})
+  if (isRecord(nextTree)) {
+    for (const node of Object.values(nextTree)) {
+      if (!isRecord(node) || !isRecord(node.value) || typeof node.value.mesh !== 'string') continue
+      const modelId = modelIds.get(node.value.mesh)
+      if (modelId) node.value.meshId = modelId
+    }
+  }
+  return { assets: nextAssets, entitiesTree: nextTree, extra }
 }
 
 function cloneJSON<T>(value: T): T {
@@ -1459,6 +1595,8 @@ export async function generateProjectArchive(
       deleteAssets,
       audioAssets,
       entitiesTree,
+      legacyEntities,
+      folders,
       pictureAssets,
       environment,
       player,
@@ -1469,6 +1607,8 @@ export async function generateProjectArchive(
       retrieveJSON(projectDocument.deleteAssets, projectHash, '工程删除资源索引'),
       retrieveOptionalJSON(projectDocument.audioAssets, projectHash, '工程音频索引'),
       retrieveOptionalJSON(projectDocument.entitiesTree, projectHash, '工程实体树'),
+      retrieveOptionalJSON(projectDocument.entities, projectHash, '旧版工程实体索引'),
+      retrieveOptionalJSON(projectDocument.folders, projectHash, '旧版工程分组索引'),
       retrieveOptionalJSON(projectDocument.pictureAssets, projectHash, '工程图片索引'),
       retrieveJSON(projectDocument.environment, projectHash, '工程环境配置'),
       retrieveJSON(projectDocument.player, projectHash, '工程玩家配置'),
@@ -1569,6 +1709,27 @@ export async function generateProjectArchive(
       typeof projectDocument.scriptIndex === 'string' ? projectDocument.scriptIndex : ''
     const migratedScriptIndex = migratedScriptEntry(originalScriptIndex, verifiedScriptAssets)
 
+    // Hash-only imports of BOX 0.3.x maps use entities/folders instead of an
+    // entitiesTree. Build the modern tree before assigning generated mesh IDs.
+    const normalizedEntitiesTree =
+      isRecord(entitiesTree) && Object.keys(entitiesTree).length > 1
+        ? entitiesTree
+        : legacyEntitiesTree(legacyEntities, folders)
+    const hasLegacyModels =
+      isRecord(assets) && Object.values(assets).some((asset) => isRecord(asset) && asset.type === 2)
+    const legacyModels = hasLegacyModels
+      ? await normalizeLegacyVoxelModels(
+          assets,
+          normalizedEntitiesTree,
+          (hash) => retrieve(hash, projectHash, 'voxel-model'),
+          blobsRoot,
+          localContentHashes,
+        )
+      : undefined
+    const packagedAssets =
+      legacyModels?.assets || (cloudData ? assets : lightweightAssetIndex(assets))
+    const packagedEntitiesTree = legacyModels?.entitiesTree || normalizedEntitiesTree
+
     const verifiedAudioAssets: Record<string, unknown> = {}
     const candidateAudioAssets = localAudioAssets(audioAssets)
     await Promise.all(
@@ -1622,11 +1783,13 @@ export async function generateProjectArchive(
       playerHash,
       ambientSoundHash,
     ] = await Promise.all([
-      storeJSONBlob(blobsRoot, cloudData ? assets : lightweightAssetIndex(assets)),
+      storeJSONBlob(blobsRoot, packagedAssets),
       storeJSONBlob(blobsRoot, verifiedScriptAssets),
       storeJSONBlob(
         blobsRoot,
-        cloudData ? applyCloudModelIds(entitiesTree, cloudData.models) : emptyEntitiesTree(),
+        cloudData
+          ? applyCloudModelIds(packagedEntitiesTree, cloudData.models)
+          : packagedEntitiesTree,
       ),
       storeJSONBlob(blobsRoot, verifiedAudioAssets),
       storeJSONBlob(blobsRoot, []),
@@ -1680,18 +1843,30 @@ export async function generateProjectArchive(
       users: usersHash,
       versionControl: migratedVersionControlHash,
     })
-    const extraProjectHash = cloudData
-      ? await storeBlob(
-          blobsRoot,
-          encodeCloudExtraProject({
-            ...cloudData,
-            // Scripts have been localized into project.scriptAssets above. Do not
-            // retain a second cloud-shared copy: Boxes would give that copy
-            // precedence during bake, making later local edits appear to revert.
-            scripts: { clientScripts: [], serverScripts: [] },
-          }),
-        )
-      : ''
+    const extraProjectHash =
+      cloudData || legacyModels
+        ? await storeBlob(
+            blobsRoot,
+            (() => {
+              const extra = cloudData
+                ? cloudExtraProject(cloudData.models, cloudData.skins, cloudData.defaultSkin, {
+                    clientScripts: [],
+                    serverScripts: [],
+                  })
+                : ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity)
+              if (legacyModels) {
+                for (const [meshPath, asset] of Object.entries(legacyModels.extra.meshAssets)) {
+                  if (!extra.meshAssets[meshPath]) extra.meshAssets[meshPath] = asset
+                }
+              }
+              const stream = new MuWriteStream(1)
+              ExtraProjectInfoSchema.diff(ExtraProjectInfoSchema.identity, extra, stream)
+              const bytes = new Uint8Array(stream.bytes())
+              stream.destroy()
+              return bytes
+            })(),
+          )
+        : ''
     const groupProjectVersion = cloudData?.groupProject.version
     const groupProjectMetaData =
       cloudData && groupProjectVersion
