@@ -7,7 +7,13 @@ import { once } from 'events'
 import { MuWriteStream } from '@box-local/mudb/stream'
 import { ExtraProjectInfoSchema, getMeshPath } from '@box-local/schema/project/hot-schema'
 import { parseVbFile, type VbFileData } from '@box-local/vb-parser'
-import { getModelMetaData, migrateModel, modelSchemaToBytes } from '@box-local/voxa-project'
+import {
+  getModelMetaData,
+  migrateModel,
+  migrateProject,
+  modelSchemaToBytes,
+  projectSchemaToBytes,
+} from '@box-local/voxa-project'
 import {
   getCloudEngineData,
   migrateMapGroupProject,
@@ -556,21 +562,27 @@ function legacyEntitiesTree(entities: unknown, folders: unknown) {
 async function normalizeLegacyVoxelModels(
   assets: unknown,
   entitiesTree: unknown,
-  retrieveSource: (hash: string) => Promise<Uint8Array>,
+  retrieveSource: (
+    hash: string,
+    sourceKind?: ResourceSourceKind,
+  ) => Promise<Uint8Array>,
   blobsRoot: string,
   localHashes: ReadonlyMap<string, string>,
 ) {
   const nextAssets = isRecord(assets) ? (cloneJSON(assets) as Record<string, unknown>) : {}
   const extra = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity)
   const modelIds = new Map<string, number>()
+  const modelPreviews: Record<string, string> = {}
+  const modelProjects: Record<string, string> = {}
   const usedIds = new Set<number>()
   let nextId = 1
   for (const [assetPath, rawAsset] of Object.entries(nextAssets)) {
     if (!isRecord(rawAsset) || rawAsset.type !== 2 || typeof rawAsset.hash !== 'string') continue
     try {
-      const source = await retrieveSource(rawAsset.hash)
+      const source = await retrieveSource(rawAsset.hash, 'voxel-model')
       const parsed = JSON.parse(Buffer.from(source).toString('utf8')) as VbFileData
-      const modelBytes = Buffer.from(stableStringify(parseVbFile(parsed).model), 'utf8')
+      const converted = parseVbFile(parsed)
+      const modelBytes = Buffer.from(stableStringify(converted.model), 'utf8')
       const metadata = getModelMetaData(rawAsset.hash, modelBytes)
       const latest = await migrateModel(modelBytes)
       if (!metadata || !latest) continue
@@ -580,6 +592,11 @@ async function normalizeLegacyVoxelModels(
         version: latest.version,
         dataHash,
       })
+      const project = await migrateProject(
+        Buffer.from(stableStringify(converted.project), 'utf8'),
+      )
+      if (!project) continue
+      const projectHash = await storeBlob(blobsRoot, projectSchemaToBytes(project))
       let modelId = Number(rawAsset.contentId)
       if (!Number.isSafeInteger(modelId) || modelId <= 0 || usedIds.has(modelId)) {
         while (usedIds.has(nextId)) nextId += 1
@@ -587,14 +604,18 @@ async function normalizeLegacyVoxelModels(
       }
       usedIds.add(modelId)
       modelIds.set(assetPath, modelId)
+      const modelName = assetPath.replace(/^mesh\//, '').replace(/\.vb$/i, '')
+      modelProjects[modelName] = projectHash
+      if (typeof rawAsset.previewImage === 'string' && rawAsset.previewImage) {
+        await retrieveSource(rawAsset.previewImage, 'content')
+        const previewHash = localHashes.get(rawAsset.previewImage) || ''
+        if (previewHash) modelPreviews[modelName] = previewHash
+      }
       const meshPath = assetPath.replace(/\.vd$/i, '.vb')
       extra.meshAssets[meshPath] = {
         modelId,
         hash: metadataHash,
-        modelPreviewHash:
-          typeof rawAsset.previewImage === 'string'
-            ? localHashes.get(rawAsset.previewImage) || ''
-            : '',
+        modelPreviewHash: modelPreviews[modelName] || '',
         animated: Boolean(rawAsset.animated),
         updatedAt: typeof rawAsset.updatedAt === 'string' ? rawAsset.updatedAt : '',
       }
@@ -611,7 +632,7 @@ async function normalizeLegacyVoxelModels(
       if (modelId) node.value.meshId = modelId
     }
   }
-  return { assets: nextAssets, entitiesTree: nextTree, extra }
+  return { assets: nextAssets, entitiesTree: nextTree, extra, modelPreviews, modelProjects }
 }
 
 function cloneJSON<T>(value: T): T {
@@ -1721,7 +1742,7 @@ export async function generateProjectArchive(
       ? await normalizeLegacyVoxelModels(
           assets,
           normalizedEntitiesTree,
-          (hash) => retrieve(hash, projectHash, 'voxel-model'),
+          (hash, sourceKind = 'voxel-model') => retrieve(hash, projectHash, sourceKind),
           blobsRoot,
           localContentHashes,
         )
@@ -1729,6 +1750,14 @@ export async function generateProjectArchive(
     const packagedAssets =
       legacyModels?.assets || (cloudData ? assets : lightweightAssetIndex(assets))
     const packagedEntitiesTree = legacyModels?.entitiesTree || normalizedEntitiesTree
+    const migratedModelPreviews = {
+      ...(cloudData ? cloudModelPreviews(cloudData.models, skippedHashes) : {}),
+      ...(legacyModels?.modelPreviews || {}),
+    }
+    const migratedModelProjects = {
+      ...(cloudData ? cloudModelProjects(cloudData.models, skippedHashes) : {}),
+      ...(legacyModels?.modelProjects || {}),
+    }
 
     const verifiedAudioAssets: Record<string, unknown> = {}
     const candidateAudioAssets = localAudioAssets(audioAssets)
@@ -1984,10 +2013,14 @@ export async function generateProjectArchive(
           permissionHash: migratedPermissionHash,
           extraProjectHash,
           extraProjectMode: extraProjectHash ? 'embedded' : '',
+          ...(Object.keys(migratedModelPreviews).length || Object.keys(migratedModelProjects).length
+            ? {
+                modelPreviews: migratedModelPreviews,
+                modelProjects: migratedModelProjects,
+              }
+            : {}),
           ...(cloudData
             ? {
-                modelPreviews: cloudModelPreviews(cloudData.models, skippedHashes),
-                modelProjects: cloudModelProjects(cloudData.models, skippedHashes),
                 skinPreviews: cloudSkinPreviews(
                   cloudData.skins,
                   cloudData.defaultSkin,
@@ -2017,10 +2050,14 @@ export async function generateProjectArchive(
           revision: 1,
           extraProjectHash,
           extraProjectMode: extraProjectHash ? 'embedded' : '',
+          ...(Object.keys(migratedModelPreviews).length || Object.keys(migratedModelProjects).length
+            ? {
+                modelPreviews: migratedModelPreviews,
+                modelProjects: migratedModelProjects,
+              }
+            : {}),
           ...(cloudData
             ? {
-                modelPreviews: cloudModelPreviews(cloudData.models, skippedHashes),
-                modelProjects: cloudModelProjects(cloudData.models, skippedHashes),
                 skinPreviews: cloudSkinPreviews(
                   cloudData.skins,
                   cloudData.defaultSkin,
