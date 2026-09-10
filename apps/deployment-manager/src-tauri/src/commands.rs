@@ -44,7 +44,12 @@ use license::LicenseStatus;
 
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
 const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
-const PROJECT_NAME: &str = "box-local-engine";
+// Keep the desktop launcher's containers and named volumes separate from a
+// source checkout or a headless server installed on the same machine. Both
+// products generate their managed database credentials independently; sharing
+// `box-local-engine_*` volumes makes PostgreSQL retain the other product's
+// password and causes Player Service authentication to fail.
+const PROJECT_NAME: &str = "box-local-engine-desktop";
 const MANAGED_DATABASE_IMAGE: &str = "docker.m.daocloud.io/library/postgres:16-alpine";
 const MANAGED_REDIS_IMAGE: &str = "docker.m.daocloud.io/library/redis:7-alpine";
 use box_manager_core::services::{
@@ -428,7 +433,7 @@ fn default_play_cpu_limit() -> f64 {
 }
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
-    if let Some(result) = services::control_existing(args, docker_output) {
+    if let Some(result) = services::control_existing(args, PROJECT_NAME, docker_output) {
         return result;
     }
     ensure_runtime_files(app)?;

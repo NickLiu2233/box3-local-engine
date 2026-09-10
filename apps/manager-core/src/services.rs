@@ -291,6 +291,7 @@ mod status_tests {
 /// The manager container is excluded from both the inventory and stop targets.
 pub fn control_existing(
     args: &[&str],
+    project_name: &str,
     docker: impl Fn(&[&str]) -> Result<String, String>,
 ) -> Option<Result<String, String>> {
     if !matches!(args.first(), Some(&"ps") | Some(&"stop")) {
@@ -301,7 +302,7 @@ pub fn control_existing(
             "ps",
             "--all",
             "--filter",
-            "label=com.docker.compose.project=box-local-engine",
+            &format!("label=com.docker.compose.project={project_name}"),
             "--format",
             "{{json .}}",
         ])?;
@@ -353,7 +354,7 @@ mod existing_tests {
     #[test]
     fn invalid_configuration_cannot_prevent_stop_or_include_the_manager() {
         let calls = RefCell::new(Vec::new());
-        let result = control_existing(&["stop", "creator", "play"], |args| {
+        let result = control_existing(&["stop", "creator", "play"], "box-local-engine", |args| {
             calls.borrow_mut().push(args.iter().map(|s|s.to_string()).collect::<Vec<_>>());
             if args[0]=="ps" { Ok(concat!(
                 "{\"ID\":\"creator-id\",\"State\":\"running\",\"Labels\":\"com.docker.compose.service=creator\"}\n",
@@ -366,7 +367,7 @@ mod existing_tests {
     #[test]
     fn inspection_errors_are_not_empty_inventories() {
         assert_eq!(
-            control_existing(&["ps"], |_| Err("daemon unavailable".into()))
+            control_existing(&["ps"], "box-local-engine", |_| Err("daemon unavailable".into()))
                 .unwrap()
                 .unwrap_err(),
             "daemon unavailable"

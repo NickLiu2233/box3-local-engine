@@ -45,6 +45,8 @@
     "build:voxa": "pnpm --filter @box-local/voxa build",
     "build:desktop-installer": "node scripts/build-desktop-offline-installer.js",
     "build:headless-server-package": "node scripts/build-headless-server-package.js",
+    "package:desktop": "node scripts/build-desktop-offline-installer.js",
+    "package:web": "node scripts/build-headless-server-package.js",
     "start:creator": "node apps/local-engine/src/launcher.js --production --creator",
     "start:play": "node apps/local-engine/src/launcher.js --production --play",
     "prepare:assets": "pnpm --dir apps/local-engine run prepare-assets",

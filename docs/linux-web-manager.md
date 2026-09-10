@@ -1,6 +1,6 @@
-# 从纯 Linux 系统部署 BOX3 Engine
+# 从 Linux 系统部署 BOX3 Engine
 
-本文是无图形 Linux 服务器的完整部署入口。服务器只需要 Linux、Docker Engine 和 Docker Compose v2；运行发行包不需要安装 Node.js、pnpm、Rust、桌面环境或源码仓库。
+本文是无图形 Linux 服务器的完整部署入口。服务器只需要 Linux、Docker Engine 和 Docker Compose v2；
 
 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Web 管理端六个镜像。内置 PostgreSQL 与 Redis 镜像不在离线包中：选择内置模式时服务器需要联网拉取，也可以填写已有的外部 PostgreSQL，并关闭 Redis 或连接外部 Redis。
 
@@ -11,7 +11,7 @@
 | `x86_64`          | `linux-amd64.zip` |
 | `aarch64`/`arm64` | `linux-arm64.zip` |
 
-推荐 Linux 使用仍在安全支持期内的 Ubuntu 24.04 LTS 或 Debian 12。`/etc/machine-id` 必须存在且保持稳定，许可证设备 ID 会用到它。
+推荐 Linux 使用仍在安全支持期内的 Ubuntu LTS 或 Debian 。
 
 | 使用范围                      | CPU      | 内存       | 可用磁盘 |
 | ----------------------------- | -------- | ---------- | -------- |
@@ -30,7 +30,7 @@ df -h /
 
 ## 2. 安装 Docker
 
-Ubuntu 24.04 可以直接安装发行版软件包：
+Ubuntu 可以直接安装发行版软件包：
 
 ```bash
 sudo apt update
@@ -193,6 +193,3 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 配置字段详解见[配置参考](./configuration-reference.md)，数据边界见[本地基础设施](./local-infrastructure.md)，许可证规则见[个人学习许可证](./licensing.md)。
 
-## 安全边界
-
-管理容器通过 `/var/run/docker.sock` 控制本机 Docker，访问该 Socket 等同于拥有宿主机 root 级控制能力。只运行可信发行镜像，保护 `.env` 和管理令牌，不要把 Docker Socket 交给其他容器。只读根文件系统、`no-new-privileges` 和 capability drop 能缩小容器攻击面，但不能降低 Docker Socket 自身的权限等级。

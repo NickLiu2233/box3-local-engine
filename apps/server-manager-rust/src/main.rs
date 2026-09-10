@@ -257,7 +257,7 @@ fn mapped_host_root(root: &FsPath, mounts: &Value) -> Result<PathBuf, String> {
         })
 }
 fn compose(app: &App, args: &[&str]) -> Result<String, String> {
-    if let Some(result) = services::control_existing(args, docker) {
+    if let Some(result) = services::control_existing(args, "box-local-engine", docker) {
         return result;
     }
     let environment = generate_runtime_environment(app)?;
