@@ -924,7 +924,10 @@ fn device(app: &App) -> Result<String, String> {
             private(&secret, &v).unwrap();
             v
         });
-    let hw = fs::read_to_string("/run/host-machine-id")
+    let hw_path =
+        env::var("BOX_LICENSE_HARDWARE_ID_FILE").unwrap_or_else(|_| "/run/host-machine-id".into());
+    let hw = fs::read_to_string(&hw_path)
+        .or_else(|_| fs::read_to_string("/run/host-machine-id"))
         .or_else(|_| fs::read_to_string("/etc/machine-id"))
         .map_err(|_| "无法读取 Linux 设备标识")?;
     let mut h = Sha256::new();
