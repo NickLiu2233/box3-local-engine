@@ -106,6 +106,7 @@ const state = {
   runtimeDestroyDialog: null,
   managedDatabaseInfo: null,
   managedRedisInfo: null,
+  dataStorage: null,
   performance: null,
   performanceLoading: false,
   performanceError: '',
@@ -672,10 +673,23 @@ function setup() {
       ['安全提醒', '这里会显示数据库密码和密钥，不要截图、提交到仓库或发送给其他人。'],
     ],
   )}</section>`
+  const dataStoragePanel = isWebManager()
+    ? ''
+    : `<section class="setup-panel storage-panel ${state.setupSection === 'storage' ? 'active' : ''}" data-setup-panel="storage">
+        <section class="config-group data-storage-group" aria-label="数据存储位置">
+          <div class="group-title"><div><h2>数据目录</h2><span>地图、模型、构建产物和备份</span></div><button type="button" class="text-button" id="choose-data-storage" ${state.busy || !state.dataStorage ? 'disabled' : ''}>更改位置</button></div>
+          <code class="storage-path">${escapeHtml(state.dataStorage?.path || '正在读取…')}</code>
+        </section>
+        ${setupExplanation('配置说明：数据目录如何迁移？', [
+          ['迁移内容', '地图、模型、构建产物、备份和本机配置会一并迁移。'],
+          ['开始前', '请先停止全部服务；迁移完成后从服务总览重新启动。'],
+          ['Docker 数据库', '内置 PostgreSQL 和 Redis 使用 Docker Desktop 数据卷，不随此操作迁移。'],
+        ])}
+      </section>`
   return `<header><div><h1>数据配置</h1></div></header>
     ${state.busy ? progressPanel() : ''}
     <form id="setup-form" novalidate class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
-      <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
+      <div class="setup-tabs">${tab('data', '数据服务')}${!isWebManager() ? tab('storage', '数据存储') : ''}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
           <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>保存玩家、权限与地图脚本数据</span></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
@@ -701,6 +715,7 @@ function setup() {
             ],
           ])}
         </section>
+        ${dataStoragePanel}
         <section class="setup-panel ${state.setupSection === 'backup' ? 'active' : ''}" data-setup-panel="backup">
           <div class="config-group">
             <div class="group-title">
@@ -864,6 +879,7 @@ function about() {
         '数据空间兼容 BOXES PostgreSQL 表结构并优化历史数据读取。',
         '新增用户 Key 绑定同步，并修复本地运行时身份与导出弹框标题显示问题。',
         '修复登录页面通过服务器 IP、局域网地址或域名访问时误报请求来源的问题。',
+        '桌面启动器支持将地图、模型与备份数据迁移到自定义目录。',
       ],
     },
     {
@@ -1288,6 +1304,7 @@ function bindEvents() {
     ?.addEventListener('click', saveRawEnvironment)
   document.querySelector('#reload-raw-environment')?.addEventListener('click', reloadRawEnvironment)
   document.querySelector('#toggle-owner-secrets')?.addEventListener('click', toggleOwnerSecrets)
+  document.querySelector('#choose-data-storage')?.addEventListener('click', relocateDataStorage)
   document
     .querySelectorAll('[data-test-connection]')
     .forEach((node) =>
@@ -1832,7 +1849,7 @@ async function confirmBackupAction() {
 
 async function refreshStatus() {
   try {
-    const [status, config, about, managedDatabaseInfo, managedRedisInfo, license] =
+    const [status, config, about, managedDatabaseInfo, managedRedisInfo, license, dataStorage] =
       await Promise.all([
         invoke('get_system_status'),
         invoke('get_install_config'),
@@ -1840,6 +1857,7 @@ async function refreshStatus() {
         invoke('get_managed_service_info', { service: 'postgresql' }),
         invoke('get_managed_service_info', { service: 'redis' }),
         invoke('get_license_status'),
+        isWebManager() ? Promise.resolve(null) : invoke('get_data_storage_info'),
       ])
     state.status = status
     state.dockerCheck = {
@@ -1853,6 +1871,7 @@ async function refreshStatus() {
     state.managedDatabaseInfo = managedDatabaseInfo
     state.managedRedisInfo = managedRedisInfo
     state.license = license
+    state.dataStorage = dataStorage
     state.playAccessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
@@ -1868,6 +1887,31 @@ async function refreshStatus() {
     state.dockerCheck = null
   }
   render()
+}
+
+async function relocateDataStorage() {
+  if (state.busy) return
+  clearFeedback()
+  try {
+    const directory = await invoke('choose_data_storage_directory')
+    if (!directory) return
+    state.busy = true
+    state.progress = {
+      stage: 'data-preflight',
+      message: '正在检查数据目录和服务状态…',
+      percent: 5,
+    }
+    render()
+    state.dataStorage = await invoke('relocate_data_storage', { directory })
+    state.notice = '数据目录已迁移，请从服务总览重新启动服务。'
+    state.progress = { stage: 'complete', message: '数据目录已迁移', percent: 100 }
+  } catch (error) {
+    state.progress = { stage: 'error', message: String(error), percent: 100 }
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    render()
+  }
 }
 
 async function recheckDocker() {

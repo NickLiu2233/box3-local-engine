@@ -33,13 +33,48 @@ pub(crate) fn detect_lan_ip() -> Option<String> {
 }
 
 pub(crate) fn runtime_root(app: &AppHandle) -> Result<PathBuf, String> {
-    let root = app
+    let app_data = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("无法确定应用数据目录：{error}"))?;
+    let default_root = app_data.join("runtime");
+    let location_file = app_data.join("runtime-location");
+    let root = match fs::read_to_string(&location_file) {
+        Ok(value) if !value.trim().is_empty() => {
+            let configured = PathBuf::from(value.trim());
+            if !configured.is_absolute() {
+                return Err("数据目录配置无效，请在数据存储页面重新选择目录".into());
+            }
+            if !configured.exists() {
+                return Err(format!(
+                    "数据目录不可用：{}。请连接原来的磁盘后重试。",
+                    configured.display()
+                ));
+            }
+            configured
+        }
+        Ok(_) => default_root,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => default_root,
+        Err(error) => return Err(format!("无法读取数据目录配置：{error}")),
+    };
+    fs::create_dir_all(&root).map_err(|error| format!("无法创建应用数据目录：{error}"))?;
+    Ok(root)
+}
+
+pub(crate) fn runtime_location_file(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
         .path()
         .app_data_dir()
         .map_err(|error| format!("无法确定应用数据目录：{error}"))?
-        .join("runtime");
-    fs::create_dir_all(&root).map_err(|error| format!("无法创建应用数据目录：{error}"))?;
-    Ok(root)
+        .join("runtime-location"))
+}
+
+pub(crate) fn default_runtime_root(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("无法确定应用数据目录：{error}"))?
+        .join("runtime"))
 }
 
 pub(crate) fn env_path(app: &AppHandle) -> Result<PathBuf, String> {

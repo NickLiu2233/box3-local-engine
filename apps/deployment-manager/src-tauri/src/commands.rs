@@ -26,9 +26,9 @@ mod docker;
 mod license;
 
 use config::{
-    compose_path, detect_lan_ip, ensure_runtime_files, env_path, parse_env, random_hex, remove_env,
-    resolve_secret, runtime_env_path, runtime_root, set_env, validate_raw_environment,
-    write_private_file, IMAGE_TAG, SERVICE_NAMES,
+    compose_path, default_runtime_root, detect_lan_ip, ensure_runtime_files, env_path, parse_env,
+    random_hex, remove_env, resolve_secret, runtime_env_path, runtime_location_file, runtime_root,
+    set_env, validate_raw_environment, write_private_file, IMAGE_TAG, SERVICE_NAMES,
 };
 use docker::{
     command as docker_command, hide_window, output as docker_output, run_command,
@@ -133,6 +133,13 @@ struct ManagedServiceInfo {
     user: String,
     password: String,
     connection_url: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DataStorageInfo {
+    path: String,
+    using_default: bool,
 }
 
 impl Default for InstallConfigView {
@@ -2711,6 +2718,123 @@ fn backup_directory(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join("apps/local-engine/backups"))
 }
 
+fn data_storage_info(app: &AppHandle) -> Result<DataStorageInfo, String> {
+    let path = runtime_root(app)?;
+    Ok(DataStorageInfo {
+        using_default: path == default_runtime_root(app)?,
+        path: path.to_string_lossy().into_owned(),
+    })
+}
+
+fn has_running_desktop_services() -> Result<bool, String> {
+    let output = docker_output(&[
+        "ps",
+        "--filter",
+        &format!("label=com.docker.compose.project={PROJECT_NAME}"),
+        "--filter",
+        "status=running",
+        "--format",
+        "{{.ID}}",
+    ])?;
+    Ok(output.lines().any(|line| !line.trim().is_empty()))
+}
+
+fn copy_directory(source: &Path, destination: &Path) -> Result<(), String> {
+    fs::create_dir_all(destination).map_err(|error| format!("无法创建目标数据目录：{error}"))?;
+    for entry in fs::read_dir(source).map_err(|error| format!("无法读取数据目录：{error}"))?
+    {
+        let entry = entry.map_err(|error| format!("无法读取数据文件：{error}"))?;
+        let source_path = entry.path();
+        let destination_path = destination.join(entry.file_name());
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("无法读取数据文件类型：{error}"))?;
+        if file_type.is_dir() {
+            copy_directory(&source_path, &destination_path)?;
+        } else if file_type.is_file() {
+            fs::copy(&source_path, &destination_path)
+                .map_err(|error| format!("无法复制 {}：{error}", source_path.display()))?;
+        } else {
+            return Err(format!(
+                "数据目录包含不支持迁移的特殊文件：{}",
+                source_path.display()
+            ));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_data_storage_info(app: AppHandle) -> Result<DataStorageInfo, String> {
+    data_storage_info(&app)
+}
+
+#[tauri::command]
+fn choose_data_storage_directory() -> Result<Option<String>, String> {
+    Ok(choose_data_storage_directory_native()?.map(|path| path.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+async fn relocate_data_storage(
+    app: AppHandle,
+    directory: String,
+) -> Result<DataStorageInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        let source = runtime_root(&app)?;
+        let parent = PathBuf::from(directory.trim());
+        if !parent.is_absolute() {
+            return Err("请选择一个本机磁盘上的绝对路径".into());
+        }
+        if !parent.exists() || !parent.is_dir() {
+            return Err("所选数据目录不存在或不可用".into());
+        }
+        let destination = parent.join("box3-engine-data");
+        if destination.exists() {
+            return Err(format!(
+                "目标目录已存在：{}。请选择一个新的空目录。",
+                destination.display()
+            ));
+        }
+        let source_canonical = source
+            .canonicalize()
+            .map_err(|error| format!("无法确认当前数据目录：{error}"))?;
+        let parent_canonical = parent
+            .canonicalize()
+            .map_err(|error| format!("无法确认目标目录：{error}"))?;
+        if parent_canonical.starts_with(&source_canonical) {
+            return Err("不能将数据迁移到当前数据目录的内部".into());
+        }
+        if has_running_desktop_services()? {
+            return Err("请先在服务总览停止全部服务，再迁移数据目录".into());
+        }
+        emit_progress(&app, "data-copy", "正在复制地图、模型、备份与配置…", 25);
+        copy_directory(&source, &destination)?;
+        emit_progress(&app, "data-switch", "正在切换到新的数据目录…", 80);
+        write_private_file(
+            &runtime_location_file(&app)?,
+            format!("{}\n", destination.display()),
+            "数据目录配置",
+        )?;
+        if let Err(error) = fs::remove_dir_all(&source) {
+            return Err(format!(
+                "数据已迁移到 {}，但无法删除旧目录 {}：{error}",
+                destination.display(),
+                source.display()
+            ));
+        }
+        emit_progress(
+            &app,
+            "complete",
+            "数据目录已迁移，请从服务总览重新启动服务",
+            100,
+        );
+        data_storage_info(&app)
+    })
+    .await
+    .map_err(|error| format!("数据迁移任务异常结束：{error}"))?
+}
+
 fn dialog_result(mut command: Command) -> Result<Option<PathBuf>, String> {
     let output = command
         .output()
@@ -2728,6 +2852,34 @@ fn dialog_result(mut command: Command) -> Result<Option<PathBuf>, String> {
     }
     let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
     Ok((!path.is_empty()).then(|| PathBuf::from(path)))
+}
+
+#[cfg(target_os = "macos")]
+fn choose_data_storage_directory_native() -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("/usr/bin/osascript");
+    command.args([
+        "-e",
+        "POSIX path of (choose folder with prompt \"选择 BOX3 Engine 数据所在目录\")",
+    ]);
+    dialog_result(command)
+}
+
+#[cfg(target_os = "windows")]
+fn choose_data_storage_directory_native() -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("powershell");
+    command.args(["-NoProfile", "-Command", "Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description='选择 BOX3 Engine 数据所在目录'; if($d.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){Write-Output $d.SelectedPath}"]);
+    dialog_result(command)
+}
+
+#[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+fn choose_data_storage_directory_native() -> Result<Option<PathBuf>, String> {
+    let mut command = Command::new("zenity");
+    command.args([
+        "--file-selection",
+        "--directory",
+        "--title=选择 BOX3 Engine 数据所在目录",
+    ]);
+    dialog_result(command)
 }
 
 #[cfg(target_os = "macos")]
@@ -3662,6 +3814,9 @@ pub fn run() {
             get_license_status,
             install_license,
             get_performance_status,
+            get_data_storage_info,
+            choose_data_storage_directory,
+            relocate_data_storage,
             list_backups,
             create_backup,
             restore_backup,

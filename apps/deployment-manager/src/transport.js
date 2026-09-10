@@ -70,6 +70,7 @@ const PROGRESS_COMMANDS = new Set([
   'restore_backup',
   'export_diagnostics',
   'destroy_project_runtime',
+  'relocate_data_storage',
 ])
 
 const progressHandlers = new Set()

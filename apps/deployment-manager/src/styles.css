@@ -1478,6 +1478,24 @@ button:disabled {
   display: grid;
 }
 
+.storage-panel {
+  align-content: start;
+  gap: 10px;
+}
+
+.storage-path {
+  display: block;
+  margin: 0;
+  padding: 10px 11px;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .environment-panel {
   min-height: 0;
   grid-template-rows: minmax(250px, 1fr) auto;
