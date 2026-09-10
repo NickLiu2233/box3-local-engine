@@ -759,6 +759,89 @@ fn destroy_runtime(project_id: &str, mode: &str, room_id: Option<&str>) -> Resul
         ))
     }
 }
+fn service_images() -> Vec<Value> {
+    let tag = env::var("BOX_IMAGE_TAG").unwrap_or_default();
+    let platform = match env::consts::ARCH {
+        "x86_64" => "linux/amd64",
+        "aarch64" | "arm64" => "linux/arm64",
+        _ => "linux",
+    };
+    let image_tag = if tag.is_empty() { "0.1.1".into() } else { tag };
+    [
+        ("地图创作工具 / 创作作品管理", "box-local-engine-creator"),
+        ("模型创作工具", "box-local-engine-voxa"),
+        ("游玩端", "box-local-engine-play"),
+        ("账号服务", "box-local-engine-player-service"),
+        ("登录页面", "box-local-engine-player-auth-portal"),
+    ]
+    .into_iter()
+    .map(|(name, image)| {
+        let full = format!("{image}:{image_tag}");
+        let inspect = docker(&["image", "inspect", &full]);
+        let (image_id, created_at, source_revision, build_source) = inspect
+            .ok()
+            .and_then(|text| serde_json::from_str::<Vec<Value>>(&text).ok())
+            .and_then(|mut list| list.pop())
+            .map(|value| {
+                let image_id = value
+                    .get("Id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+                    .to_string();
+                let created_at = value
+                    .get("Created")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+                    .to_string();
+                let labels = value.get("Config").and_then(|c| c.get("Labels")).cloned();
+                let source_revision = labels
+                    .as_ref()
+                    .and_then(|l| l.get("org.opencontainers.image.revision"))
+                    .and_then(Value::as_str)
+                    .map(String::from)
+                    .unwrap_or_else(|| {
+                        option_env!("BOX_BUILD_COMMIT")
+                            .unwrap_or("unknown")
+                            .to_string()
+                    });
+                let build_source = labels
+                    .as_ref()
+                    .and_then(|l| l.get("org.opencontainers.image.source"))
+                    .and_then(Value::as_str)
+                    .map(String::from)
+                    .unwrap_or_else(|| {
+                        option_env!("BOX_BUILD_SOURCE")
+                            .unwrap_or("local")
+                            .to_string()
+                    });
+                (image_id, created_at, source_revision, build_source)
+            })
+            .unwrap_or_else(|| {
+                (
+                    "unknown".into(),
+                    "unknown".into(),
+                    option_env!("BOX_BUILD_COMMIT")
+                        .unwrap_or("unknown")
+                        .to_string(),
+                    option_env!("BOX_BUILD_SOURCE")
+                        .unwrap_or("local")
+                        .to_string(),
+                )
+            });
+        json!({
+            "name": name,
+            "image": image,
+            "tag": image_tag,
+            "platform": platform,
+            "imageId": image_id,
+            "createdAt": created_at,
+            "sourceRevision": source_revision,
+            "buildSource": build_source,
+        })
+    })
+    .collect()
+}
+
 fn export_diagnostics(app: &App) -> Result<String, String> {
     let directory = app.root.join("diagnostics");
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
@@ -1695,8 +1778,8 @@ async fn command(
                 "buildSource": option_env!("BOX_BUILD_SOURCE").unwrap_or("local"),
                 "platform": "linux",
                 "architecture": env::consts::ARCH,
-                "license": "UNLICENSED",
-                "serviceImages": SERVICES.iter().map(|service| format!("box-local-engine-{service}:{}", env::var("BOX_IMAGE_TAG").unwrap_or_default())).collect::<Vec<_>>()
+                "license": "本地部署用户许可协议（非开源、非商业）",
+                "serviceImages": service_images()
             })),
             _ => Err(format!("暂不支持命令 {name}")),
         }
