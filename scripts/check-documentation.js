@@ -94,4 +94,17 @@ for (const boundary of [
   assert.ok(infrastructure.includes(boundary), `local infrastructure is missing: ${boundary}`)
 }
 
+const linuxGuide = fs.readFileSync(path.join(docsRoot, 'linux-web-manager.md'), 'utf8')
+for (const required of [
+  '从纯 Linux 系统部署 BOX3 Engine',
+  'docker-compose-v2',
+  './verify.sh',
+  './install.sh',
+  'ssh -L 3130:127.0.0.1:3130',
+  '不要手工修改 `.runtime.env`',
+  '不要用删除数据库卷的方式处理凭据问题',
+]) {
+  assert.ok(linuxGuide.includes(required), `Linux deployment guide is missing: ${required}`)
+}
+
 console.log(`documentation checks passed: ${files.length} Markdown files`)

@@ -328,6 +328,72 @@ fn random_hex(bytes: usize) -> String {
     OsRng.fill_bytes(&mut value);
     value.iter().map(|byte| format!("{byte:02x}")).collect()
 }
+fn managed_value(values: &BTreeMap<String, String>, key: &str) -> Option<String> {
+    values
+        .get(key)
+        .cloned()
+        .filter(|value| !value.trim().is_empty())
+}
+fn managed_database_identity(existing: &BTreeMap<String, String>) -> Option<(String, String)> {
+    let database = managed_value(existing, "BOX_MANAGED_POSTGRES_DATABASE");
+    let user = managed_value(existing, "BOX_MANAGED_POSTGRES_USER");
+    if let (Some(database), Some(user)) = (database, user) {
+        return Some((database, user));
+    }
+    existing
+        .get("BOX_DATABASE_MODE")
+        .is_some_and(|mode| mode == "managed")
+        .then(|| {
+            Some((
+                managed_value(existing, "BOX_DATABASE_NAME")?,
+                managed_value(existing, "BOX_DATABASE_USER")?,
+            ))
+        })
+        .flatten()
+}
+fn managed_database_password(existing: &BTreeMap<String, String>) -> Option<String> {
+    managed_value(existing, "BOX_MANAGED_POSTGRES_PASSWORD").or_else(|| {
+        existing
+            .get("BOX_DATABASE_MODE")
+            .is_some_and(|mode| mode == "managed")
+            .then(|| managed_value(existing, "BOX_DATABASE_PASSWORD"))
+            .flatten()
+    })
+}
+fn managed_redis_password(existing: &BTreeMap<String, String>) -> Option<String> {
+    managed_value(existing, "BOX_MANAGED_REDIS_PASSWORD").or_else(|| {
+        existing
+            .get("BOX_REDIS_MODE")
+            .is_some_and(|mode| mode == "managed")
+            .then(|| managed_value(existing, "REDIS_PASSWORD"))
+            .flatten()
+    })
+}
+fn managed_volume_exists(name: &str) -> bool {
+    docker(&["volume", "inspect", name]).is_ok()
+}
+fn guard_managed_storage_credentials(
+    content: &str,
+    config: &serde_json::Map<String, Value>,
+    postgres_volume_exists: bool,
+    redis_volume_exists: bool,
+) -> Result<(), String> {
+    let existing = parse_env(&migrate_document(content)?);
+    if config.get("databaseMode").and_then(Value::as_str) == Some("managed")
+        && postgres_volume_exists
+        && (managed_database_identity(&existing).is_none()
+            || managed_database_password(&existing).is_none())
+    {
+        return Err("检测到已有内置 PostgreSQL 数据，但缺少其原始连接凭据。为避免生成不匹配的新账号，已停止保存；请恢复此前的 .env 后重试。".into());
+    }
+    if config.get("redisMode").and_then(Value::as_str) == Some("managed")
+        && redis_volume_exists
+        && managed_redis_password(&existing).is_none()
+    {
+        return Err("检测到已有内置 Redis 数据，但缺少其原始连接凭据。为避免生成不匹配的新密码，已停止保存；请恢复此前的 .env 后重试。".into());
+    }
+    Ok(())
+}
 
 /// The Web console no longer runs on the server's own network namespace, so a
 /// container-local probe would return the Docker bridge address (for example
@@ -582,19 +648,13 @@ fn configuration_document_for_save(
         }
     }
     if database_mode == "managed" {
-        let database = existing
-            .get("BOX_MANAGED_POSTGRES_DATABASE")
-            .cloned()
-            .unwrap_or_else(|| format!("box_db_{}", random_hex(8)));
-        let user = existing
-            .get("BOX_MANAGED_POSTGRES_USER")
-            .cloned()
-            .unwrap_or_else(|| format!("box_user_{}", random_hex(8)));
-        let password = existing
-            .get("BOX_MANAGED_POSTGRES_PASSWORD")
-            .cloned()
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| random_hex(32));
+        let (database, user) = managed_database_identity(&existing).unwrap_or_else(|| {
+            (
+                format!("box_db_{}", random_hex(8)),
+                format!("box_user_{}", random_hex(8)),
+            )
+        });
+        let password = managed_database_password(&existing).unwrap_or_else(|| random_hex(32));
         source = set_env(source, "BOX_DATABASE_HOST", "managed-postgres")?;
         source = set_env(source, "BOX_DATABASE_PORT", "5432")?;
         source = set_env(source, "BOX_DATABASE_NAME", &database)?;
@@ -670,11 +730,7 @@ fn configuration_document_for_save(
         }
     }
     if redis_mode == "managed" {
-        let password = existing
-            .get("BOX_MANAGED_REDIS_PASSWORD")
-            .cloned()
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| random_hex(32));
+        let password = managed_redis_password(&existing).unwrap_or_else(|| random_hex(32));
         source = set_env(source, "REDIS_HOST", "managed-redis")?;
         source = set_env(source, "REDIS_PORT", "6379")?;
         source = set_env(source, "REDIS_PASSWORD", &password)?;
@@ -1093,34 +1149,66 @@ fn test_connection(app: &App, body: &BTreeMap<String, Value>) -> Result<Value, S
 fn unavailable_runtime() -> Value {
     json!({"phase":"stopped","percent":0,"message":"运行时未连接","updatedAt":"","cpuPercent":null,"memoryBytes":null,"uptimeMs":null,"processCount":0,"rooms":[]})
 }
+fn decode_chunked_body(mut body: &[u8]) -> Option<Vec<u8>> {
+    let mut decoded = Vec::new();
+    loop {
+        let line_end = body.windows(2).position(|window| window == b"\r\n")?;
+        let length = std::str::from_utf8(&body[..line_end])
+            .ok()?
+            .split(';')
+            .next()?
+            .trim();
+        let length = usize::from_str_radix(length, 16).ok()?;
+        body = &body[line_end + 2..];
+        if length == 0 {
+            return Some(decoded);
+        }
+        if body.len() < length + 2 || &body[length..length + 2] != b"\r\n" {
+            return None;
+        }
+        decoded.extend_from_slice(&body[..length]);
+        body = &body[length + 2..];
+    }
+}
 fn runtime_status(host: &str, port: u16, project_id: &str, prefix: &str) -> Value {
-    let Ok(mut stream) = TcpStream::connect((host, port)) else {
-        return unavailable_runtime();
-    };
+    let Ok(mut stream) = TcpStream::connect((host, port)) else { return unavailable_runtime() };
     let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
     let path = if prefix.is_empty() {
         format!("/{project_id}/__local_runtime/status")
     } else {
         format!("/{prefix}/{project_id}/__local_runtime/status")
     };
-    if stream
-        .write_all(
-            format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n").as_bytes(),
-        )
-        .is_err()
-    {
+    if stream.write_all(
+        format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n").as_bytes(),
+    ).is_err() {
         return unavailable_runtime();
     }
-    let mut response = String::new();
-    if stream.read_to_string(&mut response).is_err()
-        || !(response.starts_with("HTTP/1.1 200") || response.starts_with("HTTP/1.0 200"))
-    {
+    // Node's proxy uses chunked transfer encoding for this tiny document and
+    // may keep the socket alive.  Read complete HTTP framing rather than
+    // waiting for EOF or treating chunk markers as JSON.
+    let mut raw = Vec::with_capacity(1024);
+    let mut chunk = [0_u8; 4096];
+    while raw.len() < 16 * 1024 {
+        let length = match stream.read(&mut chunk) { Ok(length) if length > 0 => length, _ => break };
+        raw.extend_from_slice(&chunk[..length]);
+        if let Some(header_end) = raw.windows(4).position(|window| window == b"\r\n\r\n") {
+            let headers = String::from_utf8_lossy(&raw[..header_end]).to_ascii_lowercase();
+            let body = &raw[header_end + 4..];
+            if headers.contains("transfer-encoding: chunked") {
+                if body.windows(5).any(|window| window == b"0\r\n\r\n") { break; }
+            } else if let Some(length) = headers.lines().find_map(|line| line.strip_prefix("content-length:")?.trim().parse::<usize>().ok()) {
+                if body.len() >= length { break; }
+            } else { break; }
+        }
+    }
+    let response = String::from_utf8_lossy(&raw);
+    if !(response.starts_with("HTTP/1.1 200") || response.starts_with("HTTP/1.0 200")) {
         return unavailable_runtime();
     }
-    response
-        .split_once("\r\n\r\n")
-        .and_then(|(_, body)| serde_json::from_str(body).ok())
-        .unwrap_or_else(unavailable_runtime)
+    let Some((headers, body)) = raw.windows(4).position(|window| window == b"\r\n\r\n").map(|index| (&raw[..index], &raw[index + 4..])) else { return unavailable_runtime() };
+    let chunked = String::from_utf8_lossy(headers).to_ascii_lowercase().contains("transfer-encoding: chunked");
+    let body = if chunked { decode_chunked_body(body) } else { Some(body.to_vec()) };
+    body.and_then(|body| serde_json::from_slice(&body).ok()).unwrap_or_else(unavailable_runtime)
 }
 fn runtime_catalog(app: &App) -> Value {
     let projects = |relative: &str, metadata: &str, is_creator: bool| {
@@ -1415,8 +1503,28 @@ fn device(app: &App) -> Result<String, String> {
         .or_else(|_| fs::read_to_string("/etc/machine-id"))
         .map_err(|_| "无法读取 Linux 设备标识")?;
     let id = shared_license::derive_web_device_id(&hw, &value);
-    private(&dir.join("device-id"), &id)?;
+    let path = dir.join("device-id");
+    remove_empty_file_placeholder(&path)?;
+    // This path is bind-mounted as a single file into every business
+    // container. Replacing an existing file (even atomically) can briefly
+    // make it disappear to Docker's file mount and races child runtime
+    // startup. Its contents are deterministic, so a matching file is already
+    // the correct durable identity and must retain its inode.
+    if fs::read_to_string(&path)
+        .ok()
+        .is_some_and(|existing| existing.trim() == id)
+    {
+        return Ok(id);
+    }
+    private(&path, &id)?;
     Ok(id)
+}
+/// Create the bind-mounted device file before any Compose operation can create
+/// a business container. Docker preserves a missing-file bind mount as a
+/// directory/inode in an already-created container, so creating it later is
+/// too late for that container.
+fn initialize_license_storage(app: &App) -> Result<(), String> {
+    device(app).map(|_| ())
 }
 fn license(app: &App, install: Option<&str>) -> Result<Value, String> {
     let id = device(app)?;
@@ -1457,6 +1565,35 @@ fn license(app: &App, install: Option<&str>) -> Result<Value, String> {
 }
 async fn health() -> Json<Value> {
     Json(json!({"ok":true}))
+}
+fn manager_port() -> u16 {
+    env::var("BOX_SERVER_MANAGER_PORT")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(3130)
+}
+fn run_healthcheck() -> Result<(), String> {
+    let address = SocketAddr::from(([127, 0, 0, 1], manager_port()));
+    let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2))
+        .map_err(|error| format!("管理服务不可达：{error}"))?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .map_err(|error| error.to_string())?;
+    stream
+        .set_write_timeout(Some(Duration::from_secs(2)))
+        .map_err(|error| error.to_string())?;
+    stream
+        .write_all(b"GET /api/health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+        .map_err(|error| format!("无法发送健康检查：{error}"))?;
+    let mut response = [0_u8; 64];
+    let length = stream
+        .read(&mut response)
+        .map_err(|error| format!("无法读取健康检查：{error}"))?;
+    if response[..length].starts_with(b"HTTP/1.1 200") {
+        Ok(())
+    } else {
+        Err("管理服务健康检查返回异常状态".into())
+    }
 }
 fn public_directory() -> PathBuf {
     env::var("BOX_SERVER_MANAGER_PUBLIC_DIR")
@@ -1894,6 +2031,12 @@ async fn command(
                     }
                 }
                 let content = fs::read_to_string(env_path(&app)).map_err(|error| error.to_string())?;
+                guard_managed_storage_credentials(
+                    &content,
+                    config,
+                    managed_volume_exists("box-local-engine_box-managed-postgres-data"),
+                    managed_volume_exists("box-local-engine_box-managed-redis-data"),
+                )?;
                 let source = configuration_document_for_save(&content, config)?;
                 private(&env_path(&app), &source)?;
                 generate_runtime_environment(&app)?;
@@ -1955,8 +2098,15 @@ async fn command(
         Err(e) => fail(e),
     }
 }
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
+    if env::args().nth(1).as_deref() == Some("--healthcheck") {
+        if let Err(error) = run_healthcheck() {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+        return;
+    }
     let root = env::var("BOX_SERVER_MANAGER_ROOT").unwrap_or_else(|_| "/workspace".into());
     let root_path = PathBuf::from(&root);
     let token = env::var("BOX_SERVER_MANAGER_TOKEN").expect("BOX_SERVER_MANAGER_TOKEN is required");
@@ -1976,6 +2126,8 @@ async fn main() {
             .map(PathBuf::from)
             .unwrap_or_else(|_| root_path.join(".env")),
     });
+    initialize_license_storage(&app)
+        .expect("unable to initialize the license device file before serving requests");
     let router = Router::new()
         .route("/", get(index))
         .route("/api/health", get(health))
@@ -1995,10 +2147,7 @@ async fn main() {
         .unwrap_or_else(|_| "0.0.0.0".into())
         .parse()
         .expect("BOX_SERVER_MANAGER_HOST must be an IP address");
-    let port = env::var("BOX_SERVER_MANAGER_PORT")
-        .ok()
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(3130);
+    let port = manager_port();
     let addr = SocketAddr::new(host, port);
     println!("BOX3 Rust server manager listening on {addr}");
     axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), router)
@@ -2133,6 +2282,44 @@ mod tests {
         assert!(!values.contains_key("BOX_DATABASE_QUERY"));
         assert!(!database_url(&values).unwrap().contains('?'));
         assert!(!parse_env(&migrate_document(&source).unwrap()).contains_key("BOX_DATABASE_QUERY"));
+    }
+
+    #[test]
+    fn web_form_preserves_legacy_managed_storage_credentials() {
+        let owner = "BOX_DATABASE_MODE=managed\nBOX_DATABASE_NAME=existing_db\nBOX_DATABASE_USER=existing_user\nBOX_DATABASE_PASSWORD=existing_password\nBOX_REDIS_MODE=managed\nREDIS_PASSWORD=existing_redis_password\n";
+        let form = json!({"databaseMode":"managed", "redisMode":"managed"});
+        let source = configuration_document_for_save(owner, form.as_object().unwrap()).unwrap();
+        let values = parse_env(&source);
+        assert_eq!(values["BOX_MANAGED_POSTGRES_DATABASE"], "existing_db");
+        assert_eq!(values["BOX_MANAGED_POSTGRES_USER"], "existing_user");
+        assert_eq!(values["BOX_MANAGED_POSTGRES_PASSWORD"], "existing_password");
+        assert_eq!(
+            values["BOX_MANAGED_REDIS_PASSWORD"],
+            "existing_redis_password"
+        );
+    }
+
+    #[test]
+    fn existing_managed_volumes_reject_missing_original_credentials() {
+        let postgres = json!({"databaseMode":"managed"});
+        let postgres_error = guard_managed_storage_credentials(
+            "BOX_DATABASE_MODE=managed\n",
+            postgres.as_object().unwrap(),
+            true,
+            false,
+        )
+        .unwrap_err();
+        assert!(postgres_error.contains("已有内置 PostgreSQL 数据"));
+
+        let redis = json!({"redisMode":"managed"});
+        let redis_error = guard_managed_storage_credentials(
+            "BOX_REDIS_MODE=managed\n",
+            redis.as_object().unwrap(),
+            false,
+            true,
+        )
+        .unwrap_err();
+        assert!(redis_error.contains("已有内置 Redis 数据"));
     }
 
     struct MigrationFixture(App);
@@ -2309,6 +2496,42 @@ mod tests {
     }
 
     #[test]
+    fn startup_initialization_creates_the_device_file_before_containers_start() {
+        let root = std::env::temp_dir().join(format!(
+            "box-startup-license-device-{}-{}",
+            std::process::id(),
+            random_hex(6)
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let app = App {
+            root: root.clone(),
+            token: "fixture-token-with-at-least-32-chars".into(),
+            compose_file: root.join("compose.yml"),
+            environment_file: root.join(".env"),
+            operations: Arc::new(Operations::default()),
+            operation_id: None,
+        };
+        let hardware = root.join("machine-id");
+        fs::write(&hardware, "fixture-machine-id\n").unwrap();
+        std::env::set_var("BOX_LICENSE_HARDWARE_ID_FILE", &hardware);
+        initialize_license_storage(&app).unwrap();
+        std::env::remove_var("BOX_LICENSE_HARDWARE_ID_FILE");
+        let device = root.join("license/device-id");
+        assert!(device.is_file());
+        assert!(fs::read_to_string(&device).unwrap().starts_with("dev_"));
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            let inode = fs::metadata(&device).unwrap().ino();
+            std::env::set_var("BOX_LICENSE_HARDWARE_ID_FILE", &hardware);
+            initialize_license_storage(&app).unwrap();
+            std::env::remove_var("BOX_LICENSE_HARDWARE_ID_FILE");
+            assert_eq!(fs::metadata(&device).unwrap().ino(), inode);
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn database_url_prefers_fields_and_falls_back_to_stored_url() {
         let mut managed = BTreeMap::new();
         managed.insert("BOX_DATABASE_MODE".to_string(), "managed".to_string());
@@ -2345,5 +2568,33 @@ mod tests {
         };
         assert_eq!(runtime_catalog(&app), json!({"creator":[],"play":[]}));
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn runtime_status_does_not_wait_for_a_keep_alive_socket_to_close() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0_u8; 1024];
+            let _ = stream.read(&mut request).unwrap();
+            stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\n{\"phase\":\"ready\"}",
+                )
+                .unwrap();
+            std::thread::sleep(Duration::from_millis(1500));
+        });
+        let status = runtime_status("127.0.0.1", port, "project-id", "");
+        assert_eq!(status["phase"], "ready");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn chunked_runtime_status_body_decodes_before_json_parsing() {
+        assert_eq!(
+            decode_chunked_body(b"11\r\n{\"phase\":\"ready\"}\r\n0\r\n\r\n"),
+            Some(b"{\"phase\":\"ready\"}".to_vec())
+        );
     }
 }

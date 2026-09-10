@@ -35,6 +35,7 @@ const startPrompts = [
 const THEME_KEY = 'box-manager-theme'
 const PROJECT_RUNTIME_POLL_MS = 3000
 const PROJECT_RUNTIME_HIDDEN_POLL_MS = 10000
+const PROJECT_RUNTIME_EMPTY_POLL_MS = 10000
 const themes = [
   ['system', '跟随系统'],
   ['light', '亮色'],
@@ -1485,11 +1486,14 @@ function syncProjectRuntimePolling() {
   const hasProjects = state.projectRuntimes.creator?.length || state.projectRuntimes.play?.length
   if (!hasProjects) {
     if (!state.projectRuntimesLoaded && !projectRuntimeLoading) scheduleProjectRuntimeRefresh()
-    return
   }
   projectRuntimeTimer = window.setInterval(
     refreshProjectRuntimes,
-    document.hidden ? PROJECT_RUNTIME_HIDDEN_POLL_MS : PROJECT_RUNTIME_POLL_MS,
+    hasProjects
+      ? document.hidden
+        ? PROJECT_RUNTIME_HIDDEN_POLL_MS
+        : PROJECT_RUNTIME_POLL_MS
+      : PROJECT_RUNTIME_EMPTY_POLL_MS,
   )
 }
 

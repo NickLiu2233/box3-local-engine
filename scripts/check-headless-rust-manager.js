@@ -26,6 +26,14 @@ assert.match(dockerfile, /FROM \$\{RUST_IMAGE\} AS rust-build/)
 assert.match(dockerfile, /COPY --from=rust-build \/server-manager \/app\/server-manager/)
 assert.match(dockerfile, /CMD \["\/app\/server-manager"\]/)
 assert.doesNotMatch(dockerfile, /CMD \["node", "server\.js"\]/)
+assert.match(dockerfile, /CMD \["\/app\/server-manager", "--healthcheck"\]/)
+assert.doesNotMatch(dockerfile, /apt-get|\bcurl\b/)
+assert.equal(
+  (dockerfile.match(/COPY --from=docker-cli .*docker-compose/g) || []).length,
+  1,
+  'the Compose plugin must not be duplicated in the runtime image',
+)
+assert.match(adapter, /#\[tokio::main\(flavor = "current_thread"\)\]/)
 assert.match(transport, /\/api\/commands\/\$\{encodeURIComponent\(command\)\}/)
 assert.match(transport, /\/api\/backups\/upload/)
 assert.match(transport, /\/api\/diagnostics\/\$\{encodeURIComponent\(archive\)\}\/download/)
@@ -38,6 +46,11 @@ assert.match(
 )
 assert.match(consoleSource, /managementAvailable \? '社区与许可' : '许可证'/)
 assert.match(adapter, /if name != "get_legal_notices"/)
+assert.match(
+  adapter,
+  /initialize_license_storage\(&app\)[\s\S]*?before serving requests/,
+  'the manager must create the device bind-mount file before business containers can start',
+)
 assert.match(transport, /command === 'get_legal_notices' \? publicFetch : authenticatedFetch/)
 assert.match(
   consoleSource,
@@ -130,6 +143,11 @@ assert.match(service, /许可证与当前设备不匹配/)
 assert.match(serverEnvExample, /^BOX_LICENSE_INSTALL_SECRET=/m)
 assert.match(serverInstall, /BOX_LICENSE_INSTALL_SECRET=\$license_secret\//)
 assert.match(compose, /BOX_LICENSE_INSTALL_SECRET: \$\{BOX_LICENSE_INSTALL_SECRET:-\}/)
+assert.match(serverInstall, /--remove-orphans --wait server-manager/)
+assert.match(serverEnvExample, /^BOX_DOCKER_SOCKET=\/var\/run\/docker\.sock$/m)
+assert.match(serverEnvExample, /^BOX_MANAGED_POSTGRES_MEMORY_LIMIT=512m$/m)
+assert.match(serverEnvExample, /^BOX_MANAGED_REDIS_MEMORY_LIMIT=256m$/m)
+assert.match(serverEnvExample, /^BOX_VOXA_MEMORY_LIMIT=1g$/m)
 
 // Check production adapter wiring separately from the aggregated feature text.
 // Test fixtures/comments must not make a disconnected core implementation pass.

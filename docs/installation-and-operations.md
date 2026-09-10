@@ -4,7 +4,7 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 
 ## 最小要求
 
-- Docker Compose v2；桌面端还需 Docker Desktop。
+- Linux 无图形服务器只需 Docker Engine 与 Docker Compose v2，不需要 Node.js、Rust 或桌面环境；桌面端使用 Docker Desktop。
 - PostgreSQL：玩家、权限和地图持久数据的必需存储；桌面启动器和 Linux Web 管理端都可自动管理，也可连接外部服务。
 - Redis：可选缓存；桌面启动器支持不启用、内置或外部 Redis。
 
@@ -32,7 +32,7 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 | Play 地图库              | 保留原始 `.boxplay`，并备份地图库目录  |
 | Redis 与运行时缓存       | 无需作为永久备份；故障后允许重新生成   |
 
-详细操作分别见[图形化部署管理器](./graphical-deployment-manager.md)、[Linux Web 管理端](./linux-web-manager.md)、[游玩端部署](./play-deployment.md)和[配置参考](./configuration-reference.md)。
+从空白 Linux 服务器开始时，直接按照[从纯 Linux 系统部署 BOX3 Engine](./linux-web-manager.md)执行。桌面端操作见[图形化部署管理器](./graphical-deployment-manager.md)，公网服务见[游玩端部署](./play-deployment.md)，所有变量见[配置参考](./configuration-reference.md)。
 
 ## 健康检查
 

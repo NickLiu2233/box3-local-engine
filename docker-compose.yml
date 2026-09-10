@@ -5,6 +5,9 @@ services:
     profiles: [desktop-redis]
     image: ${BOX_REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
     restart: unless-stopped
+    mem_limit: ${BOX_MANAGED_REDIS_MEMORY_LIMIT:-256m}
+    cpus: ${BOX_MANAGED_REDIS_CPU_LIMIT:-0.5}
+    pids_limit: ${BOX_MANAGED_REDIS_PIDS_LIMIT:-128}
     environment:
       BOX_REDIS_PASSWORD: ${BOX_MANAGED_REDIS_PASSWORD:-${REDIS_PASSWORD:-}}
     command:
@@ -26,6 +29,9 @@ services:
     profiles: [desktop-postgres]
     image: ${BOX_POSTGRES_IMAGE:-docker.m.daocloud.io/library/postgres:16-alpine}
     restart: unless-stopped
+    mem_limit: ${BOX_MANAGED_POSTGRES_MEMORY_LIMIT:-512m}
+    cpus: ${BOX_MANAGED_POSTGRES_CPU_LIMIT:-1.0}
+    pids_limit: ${BOX_MANAGED_POSTGRES_PIDS_LIMIT:-256}
     environment:
       POSTGRES_DB: ${BOX_MANAGED_POSTGRES_DATABASE:-${BOX_DATABASE_NAME:-box}}
       POSTGRES_USER: ${BOX_MANAGED_POSTGRES_USER:-${BOX_DATABASE_USER:-box}}
@@ -35,7 +41,11 @@ services:
     ports:
       - "127.0.0.1:${BOX_MANAGED_POSTGRES_HOST_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\" -Atqc 'SELECT 1' | grep -qx 1",
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -505,6 +515,9 @@ services:
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
     restart: unless-stopped
+    mem_limit: ${BOX_VOXA_MEMORY_LIMIT:-1g}
+    cpus: ${BOX_VOXA_CPU_LIMIT:-1.0}
+    pids_limit: ${BOX_VOXA_PIDS_LIMIT:-256}
     security_opt:
       - no-new-privileges:true
     cap_drop:

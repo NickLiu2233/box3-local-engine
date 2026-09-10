@@ -1,6 +1,6 @@
 # 配置参考
 
-桌面启动器负责保存 `.env` 并生成内部 `.runtime.env`；源码/Docker Compose 直接使用 `.env`。修改配置后重启受影响服务。
+桌面启动器和 Linux Web 管理端都负责保存 `.env`，并在保存配置或启动服务时生成内部 `.runtime.env`。`.env` 是持久配置来源，`.runtime.env` 是可覆盖的派生文件，不应手工编辑。源码开发环境可以直接使用 `.env`；修改配置后重启受影响服务。
 
 `BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE` 和 `BOX_BUILD_SOURCE` 是发行构建元数据，只由 CI 写入镜像。它们不在启动器表单展示，也不应由服主手工配置。
 

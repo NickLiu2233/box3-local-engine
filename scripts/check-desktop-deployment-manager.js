@@ -181,6 +181,7 @@ assert.match(
   compose.match(/ {2}managed-redis:[\s\S]*?\n {2}managed-postgres:/)?.[0] || '',
   /127\.0\.0\.1:\$\{BOX_MANAGED_REDIS_HOST_PORT:-6379\}:6379/,
 )
+assert.match(compose, /BOX_MANAGED_REDIS_MEMORY_LIMIT:-256m/)
 assert.match(compose, /managed-postgres:/)
 assert.match(compose, /profiles: \[desktop-postgres\]/)
 assert.match(compose, /docker\.m\.daocloud\.io\/library\/postgres:16-alpine/)
@@ -190,6 +191,9 @@ assert.match(
   compose.match(/ {2}managed-postgres:[\s\S]*?\n {2}postgres:/)?.[0] || '',
   /127\.0\.0\.1:\$\{BOX_MANAGED_POSTGRES_HOST_PORT:-5432\}:5432/,
 )
+assert.match(compose, /BOX_MANAGED_POSTGRES_MEMORY_LIMIT:-512m/)
+assert.match(compose, /PGPASSWORD=.*psql .*SELECT 1/)
+assert.match(compose, /BOX_VOXA_MEMORY_LIMIT:-1g/)
 // The headless package builder extracts the managed services from the shared
 // docker-compose.yml, so its source legitimately references those section names.
 assert.match(headlessBuilder, /function serviceSection\(source, start, end\)/)

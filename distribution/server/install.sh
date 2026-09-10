@@ -8,8 +8,14 @@ if ! command -v docker >/dev/null 2>&1; then
   echo 'Docker Engine and Docker Compose v2 are required.' >&2
   exit 1
 fi
-docker info >/dev/null
-docker compose version >/dev/null
+if ! docker info >/dev/null 2>&1; then
+  echo 'Docker Engine is not running or the current user cannot access it. Start Docker and re-login after joining the docker group.' >&2
+  exit 1
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  echo 'Docker Compose v2 plugin is required. The old docker-compose command is not supported.' >&2
+  exit 1
+fi
 
 if [ ! -s /etc/machine-id ]; then
   echo 'Missing /etc/machine-id; a stable Linux machine identity is required for licensing.' >&2
@@ -81,7 +87,7 @@ for service in player-service player-auth-portal server-manager creator play vox
   fi
 done
 echo 'Starting the Linux Web manager…'
-docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans server-manager
+docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait server-manager
 echo 'Done. Linux Web manager: http://127.0.0.1:3130'
 echo 'Use BOX_SERVER_MANAGER_TOKEN from .env to sign in. Keep this token private.'
 echo 'Install a license in the Web manager, then start the required engine services.'
