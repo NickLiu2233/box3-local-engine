@@ -225,8 +225,14 @@ services:
       BOX_SERVER_MANAGER_TOKEN: ${BOX_SERVER_MANAGER_TOKEN:-}
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.1}
       BOX_SERVER_MANAGER_ROOT: /workspace
+      BOX_SERVER_MANAGER_HOST_ROOT: ${BOX_SERVER_MANAGER_HOST_ROOT:-}
       BOX_SERVER_MANAGER_COMPOSE_FILE: ${BOX_SERVER_MANAGER_COMPOSE_FILE:-/workspace/docker-compose.yml}
       BOX_SERVER_MANAGER_ENV_FILE: /workspace/.env
+      # Set by install.sh from the host address. The container cannot detect
+      # the host LAN IP itself, so the Web console reads it from here.
+      BOX_LAN_IP: ${BOX_LAN_IP:-}
+      # Keeps the license device identity stable across package upgrades.
+      BOX_LICENSE_INSTALL_SECRET: ${BOX_LICENSE_INSTALL_SECRET:-}
       BOX_LICENSE_HARDWARE_ID_FILE: /run/host-machine-id
     ports:
       - "${BOX_SERVER_MANAGER_BIND_IP:-127.0.0.1}:${BOX_SERVER_MANAGER_PORT:-3130}:3130"

@@ -27,58 +27,210 @@ export function setWebManagerToken(token) {
   else sessionStorage.removeItem(WEB_TOKEN_KEY)
 }
 
-export async function invoke(command, payload = {}) {
-  if (isTauri()) return tauriInvoke(command, payload)
-
-  const token = webToken()
-  if (!token) throw new Error('请先输入 Linux Web 管理令牌')
-  const response = await fetch(`/api/commands/${encodeURIComponent(command)}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-    credentials: 'same-origin',
-  })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    if (response.status === 401) setWebManagerToken('')
-    throw new Error(body.message || `请求失败：${response.status}`)
-  }
-  return body.result
+export function hasWebManagerToken() {
+  return Boolean(webToken())
 }
 
-// Long-running desktop commands emit progress events. The HTTP API returns
-// only after the command completes; callers can still render their existing
-// busy state, so a no-op unlisten keeps the UI contract identical.
+async function authenticatedFetch(path, options = {}) {
+  const token = webToken()
+  if (!token) throw new Error('请先输入 Linux Web 管理令牌')
+  const response = await fetch(path, {
+    ...options,
+    headers: { ...options.headers, Authorization: `Bearer ${token}` },
+    credentials: 'same-origin',
+  })
+  if (!response.ok) {
+    if (response.status === 401 && webToken() === token) setWebManagerToken('')
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.message || `请求失败：${response.status}`)
+  }
+  return response
+}
+
+async function publicFetch(path, options = {}) {
+  const response = await fetch(path, { ...options, credentials: 'same-origin' })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new Error(body.message || `请求失败：${response.status}`)
+  }
+  return response
+}
+
+// Explicit opt-in: background reads must never publish into the active task's progress.
+const PROGRESS_COMMANDS = new Set([
+  'start_services',
+  'stop_services',
+  'control_service',
+  'prepare_managed_database',
+  'prepare_managed_redis',
+  'start_managed_service',
+  'save_configuration_command',
+  'save_raw_environment',
+  'create_backup',
+  'restore_backup',
+  'export_diagnostics',
+  'destroy_project_runtime',
+])
+
+const progressHandlers = new Set()
+const operations = new Set()
+
+// getRandomValues also works on HTTP LAN origins where randomUUID is unavailable.
+function operationId() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 15) | 64
+  bytes[8] = (bytes[8] & 63) | 128
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
+}
+
+function trackProgress(id) {
+  let stopped = false
+  let timer
+  let controller
+  const stop = () => {
+    stopped = true
+    clearTimeout(timer)
+    controller?.abort()
+    operations.delete(stop)
+  }
+  const poll = async () => {
+    if (stopped || !progressHandlers.size || !hasWebManagerToken()) return stop()
+    controller = new AbortController()
+    try {
+      const response = await authenticatedFetch(`/api/operations/${id}`, {
+        method: 'GET',
+        signal: controller.signal,
+      })
+      const progress = await response.json()
+      if (!stopped) {
+        for (const handler of [...progressHandlers]) {
+          if (stopped || !progressHandlers.has(handler)) continue
+          try {
+            handler({ payload: progress })
+          } catch {
+            /* Observers cannot fail commands. */
+          }
+        }
+      }
+    } catch {
+      /* Progress is best effort, including 404 before the operation exists. */
+    }
+    if (!stopped && hasWebManagerToken()) timer = setTimeout(poll, 750)
+    else stop()
+  }
+  operations.add(stop)
+  timer = setTimeout(poll, 750)
+  return stop
+}
+
+export async function invoke(command, payload = {}) {
+  if (isTauri()) return tauriInvoke(command, payload)
+  const id = PROGRESS_COMMANDS.has(command) ? operationId() : null
+  const stop = id && progressHandlers.size && hasWebManagerToken() ? trackProgress(id) : () => {}
+  try {
+    const request = command === 'get_legal_notices' ? publicFetch : authenticatedFetch
+    const response = await request(`/api/commands/${encodeURIComponent(command)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(id ? { 'X-Operation-Id': id } : {}) },
+      body: JSON.stringify(payload),
+    })
+    const body = await response.json()
+    return body.result
+  } finally {
+    stop()
+  }
+}
+
 export async function listen(event, handler) {
   if (isTauri()) return tauriListen(event, handler)
-  return () => {}
+  if (event !== 'install-progress') return () => {}
+  // Each subscription has an independent lifetime, even for the same callback.
+  const subscription = (value) => handler(value)
+  progressHandlers.add(subscription)
+  return () => {
+    progressHandlers.delete(subscription)
+    if (!progressHandlers.size) for (const stop of operations) stop()
+  }
+}
+
+export function dockerPlatform() {
+  return isWebManager()
+    ? {
+        name: '服务器 Docker',
+        hint: '请在服务器上启动 Docker 服务，然后重试。',
+        action: '重试连接',
+        busy: '正在检测…',
+        canStart: false,
+      }
+    : {
+        name: 'Docker Desktop',
+        hint: '请先启动 Docker Desktop，连接成功后才能配置和启动服务。',
+        action: '启动 Docker 服务',
+        busy: '正在启动…',
+        canStart: true,
+      }
+}
+
+export async function openExternal(url, nativeCommand = 'open_service') {
+  if (isTauri()) return invoke(nativeCommand, nativeCommand === 'open_service' ? { url } : {})
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+export async function selectBackup() {
+  if (isTauri()) return invoke('import_backup')
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.zip,.tar,.tar.gz,application/zip,application/gzip'
+  input.hidden = true
+  document.body.append(input)
+  const file = await new Promise((resolve) => {
+    const finish = (file) => {
+      input.removeEventListener('change', change)
+      input.removeEventListener('cancel', cancel)
+      input.remove()
+      resolve(file)
+    }
+    const change = () => finish(input.files?.[0] || null)
+    const cancel = () => finish(null)
+    input.addEventListener('change', change)
+    input.addEventListener('cancel', cancel)
+    input.click()
+  })
+  return file ? uploadBackup(file) : null
+}
+
+export async function exportBackupFile(archive) {
+  if (isTauri()) {
+    const path = await invoke('export_backup', { archive })
+    return path ? `备份已导出：${path}` : ''
+  }
+  await downloadBackup(archive)
+  return '备份下载已开始。'
+}
+
+export async function exportDiagnosticsFile() {
+  const destination = await invoke('export_diagnostics')
+  if (!destination || isTauri()) return destination
+  await downloadDiagnostics(destination)
+  return '诊断文件下载已开始。'
 }
 
 export async function uploadBackup(file) {
   if (!isWebManager()) throw new Error('此操作仅用于 Linux Web 管理端')
-  const response = await fetch('/api/backups/upload', {
+  const response = await authenticatedFetch('/api/backups/upload', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${webToken()}`, 'X-Backup-Name': encodeURIComponent(file.name) },
+    headers: {
+      'X-Backup-Name': encodeURIComponent(file.name),
+    },
     body: file,
-    credentials: 'same-origin',
   })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.message || `上传失败：${response.status}`)
+  const body = await response.json()
   return body.path
 }
 
 async function downloadAuthenticated(path, filename) {
-  const response = await fetch(path, {
-    headers: { Authorization: `Bearer ${webToken()}` },
-    credentials: 'same-origin',
-  })
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
-    throw new Error(body.message || `下载失败：${response.status}`)
-  }
+  const response = await authenticatedFetch(path)
   const link = document.createElement('a')
   link.href = URL.createObjectURL(await response.blob())
   link.download = filename

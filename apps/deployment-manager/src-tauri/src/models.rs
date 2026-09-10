@@ -68,14 +68,7 @@ pub(crate) struct LegalNotices {
     pub(crate) license_text: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct ServiceStatus {
-    pub(crate) name: String,
-    pub(crate) enabled: bool,
-    pub(crate) running: bool,
-    pub(crate) state: String,
-}
+pub(crate) use box_manager_core::services::ServiceStatus;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,14 +158,7 @@ pub(crate) struct PerformanceStatus {
     pub(crate) services: Vec<ServicePerformance>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct BackupInfo {
-    pub(crate) name: String,
-    pub(crate) path: String,
-    pub(crate) size_bytes: u64,
-    pub(crate) modified_at: u64,
-}
+pub(crate) use box_manager_core::backup_store::BackupInfo;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -181,10 +167,4 @@ pub(crate) struct ConnectionTest {
     pub(crate) message: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct InstallProgress {
-    pub(crate) stage: String,
-    pub(crate) message: String,
-    pub(crate) percent: u8,
-}
+pub(crate) use box_manager_core::services::InstallProgress;

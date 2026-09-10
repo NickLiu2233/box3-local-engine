@@ -42,3 +42,5 @@ apps/deployment-manager/src-tauri/target/
 
 # Rust headless server manager build output.
 apps/server-manager-rust/target/
+
+apps/manager-core/target/

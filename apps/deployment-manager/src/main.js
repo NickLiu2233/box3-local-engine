@@ -1,10 +1,13 @@
 import {
-  downloadBackup,
-  downloadDiagnostics,
+  dockerPlatform,
+  openExternal,
+  selectBackup,
+  exportBackupFile,
+  exportDiagnosticsFile,
+  hasWebManagerToken,
   invoke,
   isWebManager,
   setWebManagerToken,
-  uploadBackup,
 } from './transport.js'
 import { listen } from './transport.js'
 import './styles.css'
@@ -38,7 +41,7 @@ const themes = [
   ['dark', '暗色'],
 ]
 
-const UNLICENSED_PAGES = new Set(['license', 'about'])
+const UNLICENSED_PAGES = new Set(['license', 'about', 'web-login'])
 
 const numericConfigFields = [
   'playRuntimes',
@@ -146,6 +149,7 @@ const icons = {
     '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
   'eye-off':
     '<path d="m3 3 18 18M10.6 6.2A10.3 10.3 0 0 1 12 6c6 0 9.5 6 9.5 6a17.3 17.3 0 0 1-3 3.7M6.2 6.2A17.2 17.2 0 0 0 2.5 12s3.5 6 9.5 6c1.3 0 2.5-.3 3.5-.7"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  'logout': '<path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/>',
 }
 
 function icon(name) {
@@ -169,6 +173,12 @@ function hasValidLicense() {
 }
 
 function normalizeLicensedPage() {
+  if (isWebManager() && !hasWebManagerToken()) {
+    if (!['web-login', 'about'].includes(state.page)) state.page = 'web-login'
+    state.ownerSecrets = null
+    state.ownerSecretsVisible = false
+    return
+  }
   if (!hasValidLicense() && !UNLICENSED_PAGES.has(state.page)) state.page = 'license'
   if (state.page === 'runtimes' && state.status && !runtimeServiceRunning()) state.page = 'overview'
 }
@@ -207,14 +217,18 @@ function themeControl() {
 }
 
 function shell(content) {
+  const webLoginRequired = isWebManager() && !hasWebManagerToken()
   const licensedNavigation = hasValidLicense()
     ? `${navItem('overview', 'home', '服务总览')}${runtimeServiceRunning() ? navItem('runtimes', 'play', '地图容器管理') : ''}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
     : ''
+  const primaryNavigation = webLoginRequired
+    ? navItem('web-login', 'device', '管理登录')
+    : `${licensedNavigation}${navItem('license', 'device', '许可证管理')}`
   return `<div class="shell" data-rendered-page="${state.page}">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
-      <nav>${licensedNavigation}${navItem('license', 'device', '许可证管理')}${navItem('about', 'info', '关于')}</nav>
-      <div class="sidebar-bottom">${themeControl()}${hasValidLicense() ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div>` : ''}</div>
+      <nav>${primaryNavigation}${navItem('about', 'info', '关于')}</nav>
+      <div class="sidebar-bottom">${isWebManager() && hasWebManagerToken() ? `<button class="web-logout" id="web-logout">${icon('logout')}<span>退出管理</span></button>` : ''}${themeControl()}${hasValidLicense() ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div>` : ''}</div>
     </aside>
     <main>${content}</main>
     ${feedbackToast()}
@@ -353,7 +367,7 @@ function overview() {
   const action = (scope, label, detail) =>
     `<button type="button" class="overview-start-option ${state.startScopes.has(scope) ? 'selected' : ''}" data-start-scope="${scope}" aria-pressed="${state.startScopes.has(scope)}" ${canStart ? '' : 'disabled'}><span>${icon('play')}</span><strong>${label}</strong><small>${detail}</small></button>`
   const actions = !dockerReady
-    ? `<div class="overview-required docker-required"><strong>Docker 服务未连接</strong><span>请先启动 Docker Desktop，连接成功后才能配置和启动服务。</span><button type="button" class="button primary" id="start-docker-desktop" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在启动…' : '启动 Docker 服务'}</button></div>`
+    ? `<div class="overview-required docker-required"><strong>Docker 服务未连接</strong><span>${dockerPlatform().hint}</span><button type="button" class="button primary" id="connect-docker" ${state.busy ? 'disabled' : ''}>${state.busy ? dockerPlatform().busy : dockerPlatform().action}</button></div>`
     : installed
       ? !databaseReady
         ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
@@ -655,7 +669,7 @@ function setup() {
   )}</section>`
   return `<header><div><h1>数据配置</h1></div></header>
     ${state.busy ? progressPanel() : ''}
-    <form id="setup-form" class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
+    <form id="setup-form" novalidate class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
       <div class="setup-tabs">${tab('data', '数据服务')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
@@ -723,7 +737,7 @@ function setup() {
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2><span>控制同时运行的地图与单实例人数</span></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 8, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>预热策略</h2><span>提前启动常用地图，数量不能超过对应运行时上限</span></div></div><div class="form-grid">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}</div></div>
-          <div class="config-group"><div class="group-title"><div><h2>脚本与容器资源</h2><span>内存单位为 MiB；修改后需重新创建对应容器</span></div></div><div class="form-grid three">${input('scriptMemoryMb', '单运行时脚本内存', config.scriptMemoryMb ?? 512, 'number', '128–8192 MiB', false, { min: 128, max: 8192 })}${input('playerServiceMemoryMb', '账号服务内存', config.playerServiceMemoryMb ?? 1024, 'number', '推荐 1024 MiB', false, { min: 512, max: 262144 })}${input('playerServiceCpuLimit', '账号服务 CPU', config.playerServiceCpuLimit ?? 1, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('authPortalMemoryMb', '登录页面内存', config.authPortalMemoryMb ?? 128, 'number', '推荐 128 MiB', false, { min: 128, max: 262144 })}${input('authPortalCpuLimit', '登录页面 CPU', config.authPortalCpuLimit ?? 0.5, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('creatorMemoryMb', 'Creator 内存', config.creatorMemoryMb ?? 6144, 'number', '推荐 6144 MiB', false, { min: 1024, max: 262144 })}${input('creatorCpuLimit', 'Creator CPU', config.creatorCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}${input('playMemoryMb', 'Play 内存', config.playMemoryMb ?? 4096, 'number', '推荐 4096 MiB', false, { min: 1024, max: 262144 })}${input('playCpuLimit', 'Play CPU', config.playCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 0.1 })}</div></div>
+          <div class="config-group"><div class="group-title"><div><h2>脚本与容器资源</h2><span>内存单位为 MiB；修改后需重新创建对应容器</span></div></div><div class="form-grid three">${input('scriptMemoryMb', '单运行时脚本内存', config.scriptMemoryMb ?? 512, 'number', '128–8192 MiB', false, { min: 128, max: 8192 })}${input('playerServiceMemoryMb', '账号服务内存', config.playerServiceMemoryMb ?? 1024, 'number', '推荐 1024 MiB', false, { min: 128, max: 262144 })}${input('playerServiceCpuLimit', '账号服务 CPU', config.playerServiceCpuLimit ?? 1, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 'any' })}${input('authPortalMemoryMb', '登录页面内存', config.authPortalMemoryMb ?? 128, 'number', '推荐 128 MiB', false, { min: 64, max: 262144 })}${input('authPortalCpuLimit', '登录页面 CPU', config.authPortalCpuLimit ?? 0.5, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 'any' })}${input('creatorMemoryMb', 'Creator 内存', config.creatorMemoryMb ?? 6144, 'number', '推荐 6144 MiB', false, { min: 512, max: 262144 })}${input('creatorCpuLimit', 'Creator CPU', config.creatorCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 'any' })}${input('playMemoryMb', 'Play 内存', config.playMemoryMb ?? 4096, 'number', '推荐 4096 MiB', false, { min: 512, max: 262144 })}${input('playCpuLimit', 'Play CPU', config.playCpuLimit ?? 4, 'number', '0.1–256 核', false, { min: 0.1, max: 256, step: 'any' })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>回收与传送</h2><span>界面使用分钟，保存后自动转换为环境变量</span></div></div><div class="form-grid">${input('runtimeIdleMinutes', '运行时空闲回收（分钟）', config.runtimeIdleMinutes || 15, 'number', '1–10080')}${input('runtimeStartTimeoutMinutes', '运行时启动超时（分钟）', config.runtimeStartTimeoutMinutes || 30, 'number', '1–1440')}${input('teleportMaxRooms', 'Teleport 私有房间上限', config.teleportMaxRooms || 64, 'number', '1–1024')}${input('teleportRoomIdleMinutes', '房间空闲回收（分钟）', config.teleportRoomIdleMinutes || 15, 'number', '1–10080')}</div></div>
           ${setupExplanation('配置说明：容量和回收策略如何选择？', [
             ['游玩运行时', '同时活跃的游玩地图和传送房间数量。人数、地图数越多，需要的上限越高。'],
@@ -829,6 +843,7 @@ function licenseManagement() {
 function about() {
   const info = state.about || {}
   const legal = state.legal || {}
+  const managementAvailable = !isWebManager() || hasWebManagerToken()
   // Add later releases at the top. The about page deliberately keeps this
   // public-facing: no internal URLs, credentials, or implementation details.
   const releaseNotes = [
@@ -861,7 +876,7 @@ function about() {
     },
   ]
   const values = [
-    ['启动器版本', info.applicationVersion || '读取中'],
+    ['启动器版本', info.applicationVersion || (managementAvailable ? '读取中' : '登录后查看')],
     ['引擎开发', '深圳奇梦岛科技有限公司'],
     ['构建时间', formatBeijingBuildTime(info.buildCreatedAt)],
   ]
@@ -880,7 +895,7 @@ function about() {
           </details>`,
         )
         .join('')
-    : '<div class="about-image-empty">正在读取组件镜像信息…</div>'
+    : `<div class="about-image-empty">${managementAvailable ? '正在读取组件镜像信息…' : '登录管理平台后可查看组件镜像信息。'}</div>`
   const changelogRows = releaseNotes
     .map(
       (release, index) => `<details class="about-changelog-row" ${index === 0 ? 'open' : ''}>
@@ -893,11 +908,15 @@ function about() {
     )
     .join('')
 
+  const protectedDocuments = managementAvailable
+    ? `<button class="about-document-row" id="open-community-group"><span><strong>服主交流QQ群：1107448537</strong><small>加入交流群，与其他服主交流部署与运营经验。</small></span><em>加入</em>${icon('external')}</button><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button>`
+    : ''
+  const licenseDocument = `<button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button>`
   return `<header><div><h1>关于</h1></div></header><section class="about-page">
     <article class="about-release-card"><dl class="about-release-facts">${values.map(([label, value, title = value]) => `<div><dt>${label}</dt><dd title="${escapeHtml(title || '')}">${escapeHtml(value)}</dd></div>`).join('')}</dl></article>
-    <article class="about-card"><div class="about-card-heading"><h2>更新日志</h2></div><div class="about-changelog-list">${changelogRows}</div></article>
-    <article class="about-card"><div class="about-card-heading"><h2>服务组件</h2></div><div class="about-image-list">${imageRows}</div></article>
-    <article class="about-card"><div class="about-card-heading"><h2>社区与许可</h2></div><div class="about-document-list"><button class="about-document-row" id="open-community-group"><span><strong>服主交流QQ群：1107448537</strong><small>加入交流群，与其他服主交流部署与运营经验。</small></span><em>加入</em>${icon('external')}</button><button class="about-document-row" id="export-about-diagnostics" ${state.busy ? 'disabled' : ''}><span><strong>导出脱敏诊断包</strong><small>包含服务状态与日志，不包含密码、密钥或 API Key。</small></span><em>导出</em>${icon('archive')}</button><button class="about-document-row" data-open-legal-document="license"><span><strong>发行许可证</strong><small>${escapeHtml(legal.licenseName || '正在读取许可证信息')}</small></span><em>查看全文</em>${icon('chevron')}</button></div></article>
+    ${managementAvailable ? `<article class="about-card"><div class="about-card-heading"><h2>更新日志</h2></div><div class="about-changelog-list">${changelogRows}</div></article>` : ''}
+    ${managementAvailable ? `<article class="about-card"><div class="about-card-heading"><h2>服务组件</h2></div><div class="about-image-list">${imageRows}</div></article>` : ''}
+    <article class="about-card"><div class="about-card-heading"><h2>${managementAvailable ? '社区与许可' : '许可证'}</h2></div><div class="about-document-list">${protectedDocuments}${licenseDocument}</div></article>
   </section>`
 }
 
@@ -984,23 +1003,50 @@ function restoreScrollPositions(positions) {
   }
 }
 
+function webLogin() {
+  return `<section class="manager-login-page"><article class="manager-login-card">
+    <div class="manager-login-heading"><span class="manager-login-kicker">BOX3 ENGINE</span><h1>Box Engine 管理界面</h1></div>
+    <form id="web-login-form" class="manager-login-form"><label class="field"><span>服主管理密钥</span><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="请输入管理密钥" required/><small>密钥仅保存在当前标签页；关闭标签页或退出管理后需要重新输入。</small></label><p id="web-login-error"></p><button class="button primary" type="submit">进入管理平台</button></form>
+  </article></section>`
+}
+
+async function submitWebManagerToken(event) {
+  event.preventDefault()
+  const token = String(new FormData(event.currentTarget).get('token') || '').trim()
+  const error = document.querySelector('#web-login-error')
+  if (error) error.textContent = ''
+  setWebManagerToken(token)
+  try {
+    await invoke('get_system_status')
+    // Leave the gate before refreshing; otherwise render() keeps drawing the
+    // login panel even though the console is already authenticated.
+    state.page = 'overview'
+    await refreshStatus()
+  } catch (failure) {
+    setWebManagerToken('')
+    if (error) error.textContent = String(failure.message || failure)
+  }
+}
+
 function render() {
   normalizeLicensedPage()
   const scrollPositions = captureScrollPositions()
   const content =
-    state.page === 'setup'
-      ? setup()
-      : state.page === 'runtimes'
-        ? runtimes()
-        : state.page === 'performance'
-          ? performance()
-          : state.page === 'backups'
-            ? backups()
-            : state.page === 'license'
-              ? licenseManagement()
-              : state.page === 'about'
-                ? about()
-                : overview()
+    state.page === 'web-login'
+      ? webLogin()
+      : state.page === 'setup'
+        ? setup()
+        : state.page === 'runtimes'
+          ? runtimes()
+          : state.page === 'performance'
+            ? performance()
+            : state.page === 'backups'
+              ? backups()
+              : state.page === 'license'
+                ? licenseManagement()
+                : state.page === 'about'
+                  ? about()
+                  : overview()
   document.querySelector('#app').innerHTML = shell(content)
   restoreScrollPositions(scrollPositions)
   bindEvents()
@@ -1014,6 +1060,15 @@ function bindEvents() {
   document.addEventListener('click', closeServiceMenuOnOutside)
   document.querySelectorAll('[data-page]').forEach((node) =>
     node.addEventListener('click', () => {
+      if (
+        isWebManager() &&
+        !hasWebManagerToken() &&
+        !['web-login', 'about'].includes(node.dataset.page)
+      ) {
+        state.page = 'web-login'
+        render()
+        return
+      }
       if (!hasValidLicense() && !UNLICENSED_PAGES.has(node.dataset.page)) {
         state.page = 'license'
         render()
@@ -1036,18 +1091,28 @@ function bindEvents() {
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
-  document.querySelector('#start-docker-desktop')?.addEventListener('click', () => {
-    if (isWebManager()) {
-      state.error = 'Linux Web 管理端无法直接启动服务器上的 Docker，请在服务器侧启动 Docker 服务。'
-      render()
-      return
-    }
-    void startDockerDesktop()
+  document.querySelector('#web-logout')?.addEventListener('click', () => {
+    setWebManagerToken('')
+    state.page = 'web-login'
+    state.status = null
+    state.config = null
+    state.about = null
+    state.legal = null
+    state.license = null
+    state.environmentFile = ''
+    state.environmentFileLoaded = false
+    state.ownerSecrets = null
+    state.ownerSecretsVisible = false
+    state.backups = []
+    state.performance = null
+    state.projectRuntimes = { creator: [], play: [] }
+    state.projectRuntimesLoaded = false
+    state.error = ''
+    state.notice = ''
+    render()
   })
-  document.querySelector('#open-docker-download')?.addEventListener('click', () => {
-    const url = 'https://www.docker.com/products/docker-desktop'
-    if (isWebManager()) window.open(url, '_blank', 'noopener,noreferrer')
-    else invoke('open_docker_desktop_download')
+  document.querySelector('#connect-docker')?.addEventListener('click', () => {
+    void (dockerPlatform().canStart ? startDockerDesktop() : recheckDocker())
   })
   document.querySelector('#install-license')?.addEventListener('click', () => installLicenseToken())
   document.querySelector('#toggle-license-device')?.addEventListener('click', () => {
@@ -1181,8 +1246,7 @@ function bindEvents() {
   document.querySelectorAll('[data-open]').forEach((node) =>
     node.addEventListener('click', async () => {
       try {
-        if (isWebManager()) window.open(node.dataset.open, '_blank', 'noopener,noreferrer')
-        else await invoke('open_service', { url: node.dataset.open })
+        await openExternal(node.dataset.open)
       } catch (error) {
         state.error = String(error)
         render()
@@ -1212,6 +1276,8 @@ function bindEvents() {
     }),
   )
   document.querySelector('#setup-form')?.addEventListener('submit', saveConfiguration)
+  document.querySelector('#web-login-form')?.addEventListener('submit', submitWebManagerToken)
+  document.querySelector('#web-login-form input')?.focus()
   document
     .querySelector('[data-save-raw-environment]')
     ?.addEventListener('click', saveRawEnvironment)
@@ -1223,14 +1289,11 @@ function bindEvents() {
       node.addEventListener('click', () => testConnection(node.dataset.testConnection)),
     )
   document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
-  document
-    .querySelectorAll('#open-community-group, [data-open-community-group]')
-    .forEach((node) =>
-      node.addEventListener('click', () => {
-        if (isWebManager()) window.open('https://qm.qq.com/q/oMdzAAN49a', '_blank', 'noopener,noreferrer')
-        else invoke('open_community_group')
-      }),
-    )
+  document.querySelectorAll('#open-community-group, [data-open-community-group]').forEach((node) =>
+    node.addEventListener('click', () => {
+      openExternal('https://qm.qq.com/q/oMdzAAN49a', 'open_community_group')
+    }),
+  )
   document.querySelectorAll('[data-setup-section]').forEach((node) =>
     node.addEventListener('click', (event) => {
       // These tabs live in a form. Keep the interaction explicit so a WebView
@@ -1532,6 +1595,37 @@ function captureSetupForm() {
   state.config = next
 }
 
+function revealInvalidSetupField(form) {
+  const invalid = form.querySelector(':invalid')
+  if (!invalid) return false
+  const panel = invalid.closest('[data-setup-panel]')
+  const label = invalid.closest('label')?.querySelector('span')?.textContent?.trim()
+  captureRawEnvironment()
+  captureSetupForm()
+  if (panel?.dataset.setupPanel) state.setupSection = panel.dataset.setupPanel
+  const range = [
+    invalid.min !== '' ? `最小 ${invalid.min}` : '',
+    invalid.max !== '' ? `最大 ${invalid.max}` : '',
+  ]
+    .filter(Boolean)
+    .join('，')
+  const reason = invalid.validity.valueMissing
+    ? '请填写'
+    : range
+      ? `取值范围 ${range}`
+      : '请检查填写的值'
+  state.error = `${label || invalid.name || '配置项'}：${reason}`
+  render()
+  const target = invalid.name
+    ? document.querySelector(`#setup-form [name="${CSS.escape(invalid.name)}"]`)
+    : null
+  if (target) {
+    target.focus()
+    target.reportValidity()
+  }
+  return true
+}
+
 function switchSetupSection(section) {
   if (!section || section === state.setupSection) return
   captureRawEnvironment()
@@ -1618,11 +1712,7 @@ async function exportDiagnostics() {
   clearFeedback()
   render()
   try {
-    const destination = await invoke('export_diagnostics')
-    if (destination && isWebManager()) {
-      await downloadDiagnostics(destination)
-      state.diagnosticPath = '诊断文件下载已开始。'
-    } else if (destination) state.diagnosticPath = destination
+    state.diagnosticPath = (await exportDiagnosticsFile()) || ''
   } catch (error) {
     state.error = String(error)
   } finally {
@@ -1668,24 +1758,7 @@ async function importBackup() {
   clearFeedback()
   render()
   try {
-    let path
-    if (isWebManager()) {
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.accept = '.tar.gz,application/gzip'
-      path = await new Promise((resolve) => {
-        input.hidden = true
-        document.body.append(input)
-        const finish = (value) => {
-          input.remove()
-          resolve(value)
-        }
-        input.addEventListener('change', () => finish(input.files?.[0] ? uploadBackup(input.files[0]) : null), { once: true })
-        input.addEventListener('cancel', () => finish(null), { once: true })
-        input.click()
-      })
-      if (path instanceof Promise) path = await path
-    } else path = await invoke('import_backup')
+    const path = await selectBackup()
     if (path) {
       state.backupMessage = `备份已导入：${path}`
       await loadBackups()
@@ -1704,13 +1777,7 @@ async function exportBackup(archive) {
   clearFeedback()
   render()
   try {
-    if (isWebManager()) {
-      await downloadBackup(archive)
-      state.backupMessage = '备份下载已开始。'
-    } else {
-      const path = await invoke('export_backup', { archive })
-      if (path) state.backupMessage = `备份已导出：${path}`
-    }
+    state.backupMessage = await exportBackupFile(archive)
   } catch (error) {
     state.error = String(error)
   } finally {
@@ -1737,8 +1804,9 @@ async function confirmBackupAction() {
       state.backupMessage = '备份已删除。'
       await loadBackups()
     } else {
-      await invoke('restore_backup', { archive: dialog.archive })
-      state.backupMessage = '恢复完成。服务已停止，请在服务总览按需重新启动。'
+      const cleanupWarning = await invoke('restore_backup', { archive: dialog.archive })
+      state.backupMessage = '恢复完成，请在服务总览检查并按需启动服务。'
+      if (cleanupWarning) state.backupMessage += ` 清理提示：${cleanupWarning}`
       await refreshStatus()
     }
   } catch (error) {
@@ -1793,12 +1861,16 @@ async function recheckDocker() {
   if (state.busy) return
   state.busy = true
   clearFeedback()
-  state.progress = { stage: 'docker-check', message: '正在检测 Docker Desktop…', percent: 20 }
+  state.progress = {
+    stage: 'docker-check',
+    message: `正在检测 ${dockerPlatform().name}…`,
+    percent: 20,
+  }
   render()
   try {
     const timeout = new Promise((_, reject) => {
       window.setTimeout(
-        () => reject(new Error('Docker Desktop 未在 8 秒内响应。请确认它已启动后重试。')),
+        () => reject(new Error(`${dockerPlatform().name} 未在 8 秒内响应。请确认它已启动后重试。`)),
         8000,
       )
     })
@@ -1812,13 +1884,17 @@ async function recheckDocker() {
       dockerMessage: check.message,
     }
     if (check.engineReady) {
-      state.notice = 'Docker Desktop 已连接。'
-      state.progress = { stage: 'docker-ready', message: 'Docker Desktop 已就绪', percent: 100 }
+      state.notice = `${dockerPlatform().name} 已连接。`
+      state.progress = {
+        stage: 'docker-ready',
+        message: `${dockerPlatform().name} 已就绪`,
+        percent: 100,
+      }
     } else if (check.cliAvailable) {
-      state.notice = 'Docker CLI 已检测到；Docker Desktop 尚未启动。'
+      state.notice = `Docker CLI 已检测到；${dockerPlatform().name} 尚未启动。${dockerPlatform().hint}`
       state.progress = { stage: 'docker-waiting', message: check.message, percent: 100 }
     } else {
-      state.error = check.message || '未检测到可用的 Docker Desktop。'
+      state.error = check.message || `未检测到可用的 ${dockerPlatform().name}。`
       state.progress = { stage: 'docker-unavailable', message: state.error, percent: 100 }
     }
   } catch (error) {
@@ -1926,7 +2002,7 @@ async function runAction(command, payload = {}) {
     command === 'start_services' ||
     (command === 'control_service' && ['start', 'restart'].includes(payload.action))
   if (startsDockerWork && !state.status?.dockerReady) {
-    state.error = 'Docker Desktop 尚未启动。请先启动 Docker Desktop，待其就绪后再启动服务。'
+    state.error = dockerPlatform().hint
     state.progress = { stage: 'docker-required', message: state.error, percent: 100 }
     state.page = 'overview'
     render()
@@ -1954,6 +2030,12 @@ async function runAction(command, payload = {}) {
 
 async function saveConfiguration(event) {
   event.preventDefault()
+  // The panel that holds an out-of-range field is often hidden, and the browser
+  // then refuses to submit with "invalid form control is not focusable". Detect
+  // it ourselves so the offending section is revealed with a real message.
+  if (!event.currentTarget.checkValidity() && revealInvalidSetupField(event.currentTarget)) {
+    return
+  }
   const form = new FormData(event.currentTarget)
   const submitted = Object.fromEntries(form.entries())
   // Password fields deliberately render empty after every UI refresh. Keep a
@@ -2093,24 +2175,20 @@ document.addEventListener('contextmenu', (event) => event.preventDefault())
 applyTheme(state.theme)
 
 function startWebManager() {
-  const app = document.querySelector('#app')
-  const boot = () => refreshStatus()
-  if (sessionStorage.getItem('box-server-manager-token')) return boot()
-  app.innerHTML = `<main class="web-login"><section><img src="/logo512.png" alt="BOX3 Engine"/><span>HEADLESS OPERATIONS</span><h1>连接 Linux 管理端</h1><form id="web-login-form"><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="管理令牌" required autofocus/><p id="web-login-error" class="web-login-error"></p><button class="button primary" type="submit">进入管理平台</button></form></section></main>`
-  document.querySelector('#web-login-form').addEventListener('submit', async (event) => {
-    event.preventDefault()
-    const token = new FormData(event.currentTarget).get('token')
-    setWebManagerToken(String(token || '').trim())
-    const errorEl = document.querySelector('#web-login-error')
-    if (errorEl) errorEl.textContent = ''
-    try {
-      await invoke('get_system_status')
-      await boot()
-    } catch (error) {
+  if (!hasWebManagerToken()) {
+    state.page = 'web-login'
+    render()
+    return
+  }
+  // A rotated or expired token must return to the gate. Without this check the
+  // console renders as if Docker were unreachable, which hides the real cause.
+  invoke('get_system_status')
+    .then(() => refreshStatus())
+    .catch(() => {
       setWebManagerToken('')
-      if (errorEl) errorEl.textContent = String(error.message || error)
-    }
-  })
+      state.page = 'web-login'
+      render()
+    })
 }
 
 if (isWebManager()) startWebManager()

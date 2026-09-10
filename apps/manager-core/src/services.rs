@@ -1,0 +1,375 @@
+//! Service policy and sequencing. Hosts supply Docker, image acquisition and
+//! license storage; neither transport owns a second startup workflow.
+use serde::Serialize;
+
+pub const APPLICATION_SERVICES: [&str; 5] = [
+    "creator",
+    "voxa",
+    "play",
+    "player-service",
+    "player-auth-portal",
+];
+pub const MANAGED_SERVICES: [&str; 2] = ["managed-postgres", "managed-redis"];
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstallProgress {
+    pub stage: String,
+    pub message: String,
+    pub percent: u8,
+}
+
+pub trait Runtime {
+    fn require_license(&self) -> Result<(), String>;
+    fn prepare_images(&self) -> Result<(), String>;
+    fn managed_enabled(&self, service: &str) -> bool;
+    fn check_managed(&self, service: &str) -> Result<(), String>;
+    fn compose(&self, args: &[&str]) -> Result<(), String>;
+    fn progress(&self, stage: &str, message: &str, percent: u8);
+}
+
+pub fn scope_services(scope: &str) -> Result<&'static [&'static str], String> {
+    match scope {
+        "all" => Ok(&APPLICATION_SERVICES),
+        "creator" => Ok(&["creator", "voxa", "player-service", "player-auth-portal"]),
+        "play" => Ok(&["play", "player-service", "player-auth-portal"]),
+        _ => Err("未知启动范围，只能选择全部服务、创作端或游玩端".into()),
+    }
+}
+
+pub fn start(runtime: &impl Runtime, scope: &str) -> Result<(), String> {
+    // Validate before touching licenses, images or containers.
+    let targets = scope_services(scope)?;
+    runtime.require_license()?;
+    runtime.progress("images", "正在检查运行镜像…", 20);
+    runtime.prepare_images()?;
+    for (service, stage, label, percent) in [
+        (
+            "managed-postgres",
+            "database",
+            "正在启动内置 PostgreSQL…",
+            45,
+        ),
+        ("managed-redis", "redis", "正在启动内置 Redis…", 52),
+    ] {
+        if runtime.managed_enabled(service) {
+            runtime.check_managed(service)?;
+            runtime.progress(stage, label, percent);
+            runtime.compose(&["up", "-d", "--no-build", "--wait", service])?;
+        }
+    }
+    runtime.progress("start", "正在启动服务…", 65);
+    let mut args = vec!["up", "-d", "--no-build", "--force-recreate"];
+    if scope == "all" {
+        args.push("--remove-orphans");
+    }
+    args.extend_from_slice(targets);
+    runtime.compose(&args)?;
+    runtime.progress("complete", "服务已启动", 100);
+    Ok(())
+}
+
+pub fn control(runtime: &impl Runtime, service: &str, action: &str) -> Result<(), String> {
+    let managed = MANAGED_SERVICES.contains(&service);
+    if (!APPLICATION_SERVICES.contains(&service) && !managed)
+        || !["start", "stop", "restart"].contains(&action)
+    {
+        return Err("操作名称或服务名称无效".into());
+    }
+    if managed {
+        runtime.check_managed(service)?;
+    } else if action != "stop" {
+        runtime.require_license()?;
+    }
+    if action == "start" {
+        if managed {
+            runtime.compose(&["up", "-d", "--no-build", "--wait", service])?;
+        } else {
+            runtime.prepare_images()?;
+            runtime.compose(&["up", "-d", "--no-build", "--force-recreate", service])?;
+        }
+    } else {
+        runtime.compose(&[action, service])?;
+    }
+    runtime.progress("complete", "服务操作已完成", 100);
+    Ok(())
+}
+
+pub fn stop(runtime: &impl Runtime) -> Result<(), String> {
+    let mut args = vec!["stop"];
+    args.extend_from_slice(&APPLICATION_SERVICES);
+    args.extend_from_slice(&MANAGED_SERVICES);
+    runtime.compose(&args)?;
+    runtime.progress("complete", "服务已停止", 100);
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+    #[derive(Default)]
+    struct Fake {
+        calls: RefCell<Vec<Vec<String>>>,
+        licensed: bool,
+        dependency_fails: bool,
+    }
+    impl Runtime for Fake {
+        fn require_license(&self) -> Result<(), String> {
+            if self.licensed {
+                Ok(())
+            } else {
+                Err("unlicensed".into())
+            }
+        }
+        fn prepare_images(&self) -> Result<(), String> {
+            self.calls.borrow_mut().push(vec!["images".into()]);
+            Ok(())
+        }
+        fn managed_enabled(&self, _: &str) -> bool {
+            true
+        }
+        fn check_managed(&self, _: &str) -> Result<(), String> {
+            Ok(())
+        }
+        fn compose(&self, args: &[&str]) -> Result<(), String> {
+            self.calls
+                .borrow_mut()
+                .push(args.iter().map(|s| s.to_string()).collect());
+            if self.dependency_fails && args.contains(&"managed-postgres") {
+                Err("database not ready".into())
+            } else {
+                Ok(())
+            }
+        }
+        fn progress(&self, _: &str, _: &str, _: u8) {}
+    }
+    #[test]
+    fn invalid_scope_and_missing_license_have_no_side_effects() {
+        let host = Fake::default();
+        assert!(start(&host, "invalid").is_err());
+        assert!(start(&host, "all").is_err());
+        assert!(control(&host, "creator", "restart").is_err());
+        assert!(host.calls.borrow().is_empty());
+    }
+    #[test]
+    fn dependencies_are_ready_before_selected_apps_are_recreated() {
+        let host = Fake {
+            licensed: true,
+            ..Fake::default()
+        };
+        start(&host, "play").unwrap();
+        let calls = host.calls.borrow();
+        assert_eq!(
+            calls[1],
+            ["up", "-d", "--no-build", "--wait", "managed-postgres"]
+        );
+        assert_eq!(calls[2].last().unwrap(), "managed-redis");
+        assert_eq!(
+            calls[3],
+            [
+                "up",
+                "-d",
+                "--no-build",
+                "--force-recreate",
+                "play",
+                "player-service",
+                "player-auth-portal"
+            ]
+        );
+    }
+    #[test]
+    fn failed_dependency_never_starts_applications() {
+        let host = Fake {
+            licensed: true,
+            dependency_fails: true,
+            ..Fake::default()
+        };
+        assert!(start(&host, "all").is_err());
+        assert_eq!(host.calls.borrow().len(), 2);
+    }
+    #[test]
+    fn stop_does_not_require_a_license_or_stop_the_manager() {
+        let host = Fake::default();
+        stop(&host).unwrap();
+        let calls = host.calls.borrow();
+        assert_eq!(calls[0].len(), 8);
+        assert!(!calls[0].iter().any(|name| name == "server-manager"));
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ServiceStatus {
+    pub name: String,
+    pub enabled: bool,
+    pub running: bool,
+    pub state: String,
+}
+
+pub fn enabled(service: &str, values: &std::collections::BTreeMap<String, String>) -> bool {
+    match service {
+        "managed-postgres" => values
+            .get("BOX_DATABASE_MODE")
+            .is_some_and(|mode| mode == "managed"),
+        "managed-redis" => values
+            .get("BOX_REDIS_MODE")
+            .is_some_and(|mode| mode == "managed"),
+        name => APPLICATION_SERVICES.contains(&name),
+    }
+}
+
+pub fn compose_rows(output: &str) -> Vec<serde_json::Value> {
+    serde_json::from_str::<Vec<serde_json::Value>>(output).unwrap_or_else(|_| {
+        output
+            .lines()
+            .filter_map(|line| serde_json::from_str(line).ok())
+            .collect()
+    })
+}
+
+pub fn statuses(
+    output: &str,
+    values: &std::collections::BTreeMap<String, String>,
+) -> Vec<ServiceStatus> {
+    let rows = compose_rows(output);
+    APPLICATION_SERVICES
+        .iter()
+        .chain(MANAGED_SERVICES.iter())
+        .map(|name| {
+            let row = rows.iter().find(|row| {
+                row.get("Service")
+                    .or_else(|| row.get("service"))
+                    .and_then(serde_json::Value::as_str)
+                    == Some(name)
+            });
+            let state = row
+                .and_then(|row| row.get("State").or_else(|| row.get("state")))
+                .and_then(serde_json::Value::as_str)
+                .filter(|s| !s.is_empty())
+                .unwrap_or("stopped")
+                .to_ascii_lowercase();
+            ServiceStatus {
+                name: (*name).into(),
+                enabled: enabled(name, values),
+                running: state == "running",
+                state,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod status_tests {
+    use super::*;
+    use std::collections::BTreeMap;
+    #[test]
+    fn array_and_json_lines_report_identical_services_without_raw_profiles() {
+        let mut env = BTreeMap::new();
+        env.insert("BOX_DATABASE_MODE".into(), "managed".into());
+        let array = r#"[{"Service":"creator","State":"running"},{"service":"managed-postgres","state":"RUNNING"}]"#;
+        let lines = "{\"Service\":\"creator\",\"State\":\"running\"}\n{\"service\":\"managed-postgres\",\"state\":\"RUNNING\"}";
+        let a = statuses(array, &env);
+        assert_eq!(
+            serde_json::to_value(&a).unwrap(),
+            serde_json::to_value(statuses(lines, &env)).unwrap()
+        );
+        assert!(a.iter().find(|s| s.name == "creator").unwrap().running);
+        assert!(a.iter().find(|s| s.name == "play").unwrap().enabled);
+        assert!(
+            !a.iter()
+                .find(|s| s.name == "managed-redis")
+                .unwrap()
+                .enabled
+        );
+        assert_eq!(a.len(), 7);
+    }
+}
+
+/// Inspection and stopping must work even when owner configuration is invalid.
+/// Select already-created containers by Compose labels, never by an env file.
+/// The manager container is excluded from both the inventory and stop targets.
+pub fn control_existing(
+    args: &[&str],
+    docker: impl Fn(&[&str]) -> Result<String, String>,
+) -> Option<Result<String, String>> {
+    if !matches!(args.first(), Some(&"ps") | Some(&"stop")) {
+        return None;
+    }
+    Some((|| {
+        let output = docker(&[
+            "ps",
+            "--all",
+            "--filter",
+            "label=com.docker.compose.project=box-local-engine",
+            "--format",
+            "{{json .}}",
+        ])?;
+        let mut rows = Vec::new();
+        for mut row in compose_rows(&output) {
+            let service = row
+                .get("Labels")
+                .and_then(serde_json::Value::as_str)
+                .and_then(|labels| {
+                    labels
+                        .split(',')
+                        .find_map(|item| item.strip_prefix("com.docker.compose.service="))
+                })
+                .map(str::to_string);
+            if let Some(service) = service.filter(|s| {
+                APPLICATION_SERVICES.contains(&s.as_str()) || MANAGED_SERVICES.contains(&s.as_str())
+            }) {
+                row["Service"] = serde_json::Value::String(service);
+                rows.push(row);
+            }
+        }
+        if args[0] == "ps" {
+            return serde_json::to_string(&rows).map_err(|e| e.to_string());
+        }
+        let ids = rows
+            .iter()
+            .filter(|row| {
+                args.len() == 1
+                    || row
+                        .get("Service")
+                        .and_then(serde_json::Value::as_str)
+                        .is_some_and(|s| args[1..].contains(&s))
+            })
+            .filter_map(|row| row.get("ID").and_then(serde_json::Value::as_str))
+            .collect::<Vec<_>>();
+        if ids.is_empty() {
+            return Ok(String::new());
+        }
+        let mut stop = vec!["stop"];
+        stop.extend(ids);
+        docker(&stop)
+    })())
+}
+
+#[cfg(test)]
+mod existing_tests {
+    use super::*;
+    use std::cell::RefCell;
+    #[test]
+    fn invalid_configuration_cannot_prevent_stop_or_include_the_manager() {
+        let calls = RefCell::new(Vec::new());
+        let result = control_existing(&["stop", "creator", "play"], |args| {
+            calls.borrow_mut().push(args.iter().map(|s|s.to_string()).collect::<Vec<_>>());
+            if args[0]=="ps" { Ok(concat!(
+                "{\"ID\":\"creator-id\",\"State\":\"running\",\"Labels\":\"com.docker.compose.service=creator\"}\n",
+                "{\"ID\":\"manager-id\",\"State\":\"running\",\"Labels\":\"com.docker.compose.service=server-manager\"}").into()) }
+            else { Ok(String::new()) }
+        }).unwrap();
+        assert!(result.is_ok());
+        assert_eq!(calls.borrow()[1], ["stop", "creator-id"]);
+    }
+    #[test]
+    fn inspection_errors_are_not_empty_inventories() {
+        assert_eq!(
+            control_existing(&["ps"], |_| Err("daemon unavailable".into()))
+                .unwrap()
+                .unwrap_err(),
+            "daemon unavailable"
+        );
+    }
+}

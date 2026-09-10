@@ -138,7 +138,10 @@ function main() {
     .readFileSync(path.join(packageRoot, 'install.sh'), 'utf8')
     .replaceAll('__IMAGE_ARCHIVE__', path.basename(archive))
   fs.writeFileSync(path.join(packageRoot, 'install.sh'), installer, { mode: 0o755 })
-  for (const file of ['status.sh', 'logs.sh', 'stop.sh', 'verify.sh']) {
+  // The template copies keep their committed mode (0644), and writeFileSync
+  // only applies `mode` when it creates the file. Set the executable bit
+  // explicitly so the unpacked ZIP can run ./install.sh directly.
+  for (const file of ['install.sh', 'status.sh', 'logs.sh', 'stop.sh', 'verify.sh']) {
     fs.chmodSync(path.join(packageRoot, file), 0o755)
   }
 

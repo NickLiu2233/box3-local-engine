@@ -52,11 +52,11 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 
 ## PostgreSQL、Redis 与运行时缓存
 
-`BOX_DATABASE_MODE` 仅供桌面启动器使用，值为 `managed` 或 `external`。内置模式会启用 `desktop-postgres` Compose profile，数据库身份与连接参数由启动器自动维护，普通用户无需填写；数据库数据保存在 `box-managed-postgres-data`。Linux Web 包不会携带该服务，也不会自动下载数据库镜像。
+`BOX_DATABASE_MODE` 供桌面启动器和 Linux Web 管理端使用，值为 `managed` 或 `external`。内置模式会启用 `desktop-postgres` Compose profile，数据库身份与连接参数由管理端自动维护，普通用户无需填写；数据库数据保存在 `box-managed-postgres-data`。Linux Web 包不携带 PostgreSQL 镜像，选择内置模式时会联网下载。
 
 `BOX_MANAGED_POSTGRES_HOST_PORT` 控制桌面内置 PostgreSQL 映射到本机的端口，默认 `5432`，固定绑定 `127.0.0.1`。
 
-`BOX_REDIS_MODE` 仅供桌面启动器使用，值为 `disabled`、`managed` 或 `external`。内置模式启用 `desktop-redis` profile，固定使用 DB 0 保存一次性运行时会话和会话限流计数，DB 1 保存短期构建结果与并发构建锁，缓存有效期由 `STORAGE_CACHE_REDIS_TTL` 控制，默认 240 秒。启动器只展示“业务 DB 0 / 缓存 DB 1”，不要求普通用户配置。内置 Redis 使用随机密码并将数据保存在 `box-managed-redis-data`；Linux Web 包不携带该服务。
+`BOX_REDIS_MODE` 供桌面启动器和 Linux Web 管理端使用，值为 `disabled`、`managed` 或 `external`。内置模式启用 `desktop-redis` profile，固定使用 DB 0 保存一次性运行时会话和会话限流计数，DB 1 保存短期构建结果与并发构建锁，缓存有效期由 `STORAGE_CACHE_REDIS_TTL` 控制，默认 240 秒。管理页面只展示“业务 DB 0 / 缓存 DB 1”，不要求普通用户配置。内置 Redis 使用随机密码并将数据保存在 `box-managed-redis-data`；Linux Web 包不携带 Redis 镜像，选择内置模式时会联网下载。
 
 `BOX_MANAGED_REDIS_HOST_PORT` 控制桌面内置 Redis 映射到本机的端口，默认 `6379`，固定绑定 `127.0.0.1`。
 

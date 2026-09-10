@@ -5,10 +5,10 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 ## 最小要求
 
 - Docker Compose v2；桌面端还需 Docker Desktop。
-- PostgreSQL：玩家、权限和地图持久数据的必需存储；桌面启动器可自动管理，Linux Web 部署需自行提供。
+- PostgreSQL：玩家、权限和地图持久数据的必需存储；桌面启动器和 Linux Web 管理端都可自动管理，也可连接外部服务。
 - Redis：可选缓存；桌面启动器支持不启用、内置或外部 Redis。
 
-桌面用户解压完整离线包后打开启动器，选择 PostgreSQL 和 Redis 模式，再按需启动“创作端”“游玩端”或“全部服务”。选择内置服务时，首次会确认并联网下载对应镜像；三个独立密钥及内置服务密码由启动器自动生成。Linux 服务器包包含 Creator、VOXA、Play、玩家服务、登录门户与 Web 管理端，不包含迁移器或内置 PostgreSQL/Redis。
+桌面用户解压完整离线包后打开启动器，选择 PostgreSQL 和 Redis 模式，再按需启动“创作端”“游玩端”或“全部服务”。选择内置服务时，首次会确认并联网下载对应镜像；三个独立密钥及内置服务密码由启动器自动生成。Linux 服务器包包含 Creator、VOXA、Play、玩家服务、登录门户与 Web 管理端，不包含迁移器或 PostgreSQL/Redis 镜像；Web 管理端可按需下载并维护内置基础服务。
 
 ## 日常流程
 

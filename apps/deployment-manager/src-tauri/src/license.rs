@@ -1,65 +1,19 @@
 //! Local license installation and verification.
 //!
 //! The interface is intentionally small: callers can inspect, install, or
-//! require a license. Token parsing, signature checks, dates, device binding,
-//! and private file handling remain inside this module.
+//! require a license. Shared rules live in manager-core; hardware identity,
+//! installation secrets, paths and private file handling stay in this adapter.
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use chrono::{DateTime, Utc};
-use ed25519_dalek::{pkcs8::DecodePublicKey, Signature, VerifyingKey};
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::{fs, path::PathBuf, process::Command};
 use tauri::AppHandle;
 
 use super::config::{random_hex, runtime_root, write_private_file};
 
-const TOKEN_PREFIX: &str = "box3l1";
-const LICENSE_FILE_NAME: &str = "box3-license.boxlic";
+pub(crate) use box_manager_core::license::LicenseStatus;
+use box_manager_core::license::{self as shared, derive_device_id, LICENSE_FILE_NAME};
+
 const PUBLIC_KEY: &str = include_str!("../../../../distribution/license-public-key.pem");
-const FEATURES: [&str; 5] = [
-    "creator",
-    "play",
-    "voxa",
-    "player-service",
-    "player-auth-portal",
-];
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct LicensePayload {
-    format_version: u8,
-    license_id: String,
-    #[serde(rename = "type")]
-    license_type: String,
-    holder_id: String,
-    device_id: String,
-    issued_at: String,
-    expires_at: String,
-    features: Vec<String>,
-    commercial_use: bool,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct TimeCheckpoint {
-    last_seen_ms: i64,
-    signature: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct LicenseStatus {
-    pub(crate) installed: bool,
-    pub(crate) valid: bool,
-    pub(crate) device_id: String,
-    pub(crate) license_id: String,
-    pub(crate) license_type: String,
-    pub(crate) holder_id: String,
-    pub(crate) issued_at: String,
-    pub(crate) expires_at: String,
-    pub(crate) message: String,
-}
 
 fn license_directory(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join("license"))
@@ -290,54 +244,13 @@ fn hardware_identity() -> Result<String, String> {
     Err("当前操作系统不支持设备绑定".into())
 }
 
-fn derive_device_id(hardware: &str, secret: &str) -> String {
-    let mut digest = Sha256::new();
-    digest.update(b"box3-engine-device-v2\0");
-    digest.update(hardware.trim().to_ascii_lowercase().as_bytes());
-    digest.update(b"\0");
-    digest.update(secret.as_bytes());
-    format!("dev_{:x}", digest.finalize())
-}
-
-fn checkpoint_signature(secret: &str, timestamp_ms: i64) -> String {
-    let mut digest = Sha256::new();
-    digest.update(b"box3-engine-trusted-time-v1\0");
-    digest.update(secret.as_bytes());
-    digest.update(b"\0");
-    digest.update(timestamp_ms.to_le_bytes());
-    format!("{:x}", digest.finalize())
-}
-
 fn trusted_now(app: &AppHandle) -> Result<DateTime<Utc>, String> {
-    const ROLLBACK_TOLERANCE_MS: i64 = 5 * 60 * 1000;
-    let secret = install_secret(app)?;
-    let now = Utc::now();
-    let now_ms = now.timestamp_millis();
-    let path = time_checkpoint_path(app)?;
-    let previous = fs::read_to_string(&path)
-        .ok()
-        .map(|value| serde_json::from_str::<TimeCheckpoint>(&value))
-        .transpose()
-        .map_err(|_| "可信时间缓存无效".to_string())?;
-    if let Some(previous) = previous {
-        if previous.signature != checkpoint_signature(&secret, previous.last_seen_ms) {
-            return Err("可信时间缓存完整性校验失败".into());
-        }
-        if now_ms + ROLLBACK_TOLERANCE_MS < previous.last_seen_ms {
-            return Err("检测到系统时间回拨，请恢复正确时间后重试".into());
-        }
-        if now_ms <= previous.last_seen_ms {
-            return Ok(DateTime::from_timestamp_millis(previous.last_seen_ms).unwrap_or(now));
-        }
-    }
-    let checkpoint = TimeCheckpoint {
-        last_seen_ms: now_ms,
-        signature: checkpoint_signature(&secret, now_ms),
-    };
-    let content = serde_json::to_string(&checkpoint)
-        .map_err(|error| format!("无法序列化可信时间缓存：{error}"))?;
-    write_private_file(&path, format!("{content}\n"), "可信时间缓存")?;
-    Ok(now)
+    shared::trusted_now(
+        &time_checkpoint_path(app)?,
+        &install_secret(app)?,
+        Utc::now(),
+        |path, content| write_private_file(path, content, "可信时间缓存"),
+    )
 }
 
 pub(crate) fn device_id(app: &AppHandle) -> Result<String, String> {
@@ -353,100 +266,24 @@ pub(crate) fn device_id(app: &AppHandle) -> Result<String, String> {
     Ok(value)
 }
 
-fn decode(value: &str, label: &str) -> Result<Vec<u8>, String> {
-    URL_SAFE_NO_PAD
-        .decode(value)
-        .map_err(|_| format!("许可证{label}编码无效"))
-}
-
-fn verify_token(
-    token: &str,
-    expected_device: &str,
-    current_time: DateTime<Utc>,
-) -> Result<LicensePayload, String> {
-    let parts = token.trim().split('.').collect::<Vec<_>>();
-    if parts.len() != 3 || parts[0] != TOKEN_PREFIX {
-        return Err("许可证格式无效".into());
-    }
-    let key = VerifyingKey::from_public_key_pem(PUBLIC_KEY)
-        .map_err(|_| "内置许可证公钥无效".to_string())?;
-    let signature = Signature::from_slice(&decode(parts[2], "签名")?)
-        .map_err(|_| "许可证签名格式无效".to_string())?;
-    key.verify_strict(parts[1].as_bytes(), &signature)
-        .map_err(|_| "许可证签名无效".to_string())?;
-    let payload: LicensePayload = serde_json::from_slice(&decode(parts[1], "内容")?)
-        .map_err(|_| "许可证内容无法解析".to_string())?;
-    if payload.format_version != 1
-        || payload.license_type != "personal-learning"
-        || payload.commercial_use
-        || payload.license_id.is_empty()
-        || payload.holder_id.is_empty()
-    {
-        return Err("许可证类型或内容无效".into());
-    }
-    if payload.device_id != expected_device {
-        return Err("许可证与当前设备不匹配".into());
-    }
-    if FEATURES
-        .iter()
-        .any(|required| !payload.features.iter().any(|feature| feature == required))
-    {
-        return Err("许可证未包含完整的个人学习功能".into());
-    }
-    let issued_at = DateTime::parse_from_rfc3339(&payload.issued_at)
-        .map_err(|_| "许可证生效时间无效".to_string())?;
-    let expires_at = DateTime::parse_from_rfc3339(&payload.expires_at)
-        .map_err(|_| "许可证到期时间无效".to_string())?;
-    if issued_at > current_time + chrono::Duration::minutes(5) {
-        return Err("许可证尚未生效".into());
-    }
-    if expires_at <= current_time {
-        return Err("许可证已到期，请续期后再使用".into());
-    }
-    Ok(payload)
-}
-
 pub(crate) fn status(app: &AppHandle) -> Result<LicenseStatus, String> {
     let device = device_id(app)?;
-    let path = license_path(app)?;
-    let Ok(token) = fs::read_to_string(&path) else {
-        return Ok(LicenseStatus {
-            installed: false,
-            valid: false,
-            device_id: device,
-            license_id: String::new(),
-            license_type: String::new(),
-            holder_id: String::new(),
-            issued_at: String::new(),
-            expires_at: String::new(),
-            message: "尚未安装个人学习许可证".into(),
-        });
+    let token = match fs::read_to_string(license_path(app)?) {
+        Ok(token) => Some(token),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => return Err(format!("无法读取许可证：{error}")),
     };
-    let current_time = trusted_now(app)?;
-    match verify_token(&token, &device, current_time) {
-        Ok(payload) => Ok(LicenseStatus {
-            installed: true,
-            valid: true,
-            device_id: device,
-            license_id: payload.license_id,
-            license_type: payload.license_type,
-            holder_id: payload.holder_id,
-            issued_at: payload.issued_at,
-            expires_at: payload.expires_at,
-            message: "许可证有效".into(),
-        }),
-        Err(message) => Ok(LicenseStatus {
-            installed: true,
-            valid: false,
-            device_id: device,
-            license_id: String::new(),
-            license_type: String::new(),
-            holder_id: String::new(),
-            issued_at: String::new(),
-            expires_at: String::new(),
-            message,
-        }),
-    }
+    let now = if token.is_some() {
+        trusted_now(app)?
+    } else {
+        Utc::now()
+    };
+    Ok(shared::status_from_token(
+        token.as_deref(),
+        PUBLIC_KEY,
+        &device,
+        now,
+    ))
 }
 
 pub(crate) fn install(app: &AppHandle, token: &str) -> Result<LicenseStatus, String> {
@@ -454,7 +291,7 @@ pub(crate) fn install(app: &AppHandle, token: &str) -> Result<LicenseStatus, Str
         return Err("许可证内容过大".into());
     }
     let device = device_id(app)?;
-    verify_token(token, &device, trusted_now(app)?)?;
+    shared::verify_token(token, PUBLIC_KEY, &device, trusted_now(app)?)?;
     write_private_file(
         &license_path(app)?,
         format!("{}\n", token.trim()),
@@ -475,35 +312,6 @@ pub(crate) fn require(app: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn malformed_token_is_rejected_before_parsing() {
-        assert_eq!(
-            verify_token("not-a-license", "dev_test", Utc::now()).unwrap_err(),
-            "许可证格式无效"
-        );
-    }
-
-    #[test]
-    fn device_id_changes_with_hardware_or_installation_secret() {
-        let original = derive_device_id("machine-a", &"a".repeat(64));
-        assert_eq!(original.len(), 68);
-        assert!(original.starts_with("dev_"));
-        assert_ne!(original, derive_device_id("machine-b", &"a".repeat(64)));
-        assert_ne!(original, derive_device_id("machine-a", &"b".repeat(64)));
-    }
-
-    #[test]
-    fn time_checkpoint_signature_is_bound_to_the_installation_secret() {
-        assert_ne!(
-            checkpoint_signature("a", 1_000),
-            checkpoint_signature("b", 1_000)
-        );
-        assert_ne!(
-            checkpoint_signature("a", 1_000),
-            checkpoint_signature("a", 1_001)
-        );
-    }
 
     #[test]
     fn boxlic_can_be_written_when_a_legacy_lic_path_is_a_directory() {

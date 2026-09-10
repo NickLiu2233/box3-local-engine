@@ -46,6 +46,7 @@
 - [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
 - [开发者与协作手册](./developer-guide.md)：开发环境、UI 预览、测试和提交要求。
 - [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
+- [图形化与 Web 启动器统一记录](./launcher-parity-audit.md)：共用 Rust 核心、平台适配、修复与验证范围。
 - [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
 - [稳定地图存储 ID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
 - [业务方案对比](./business-comparison.md)：面向管理层的本地部署、在线平台、Unity 与 Minecraft 对比。
@@ -55,12 +56,12 @@
 ## 当前发行边界
 
 - 桌面启动器管理 Creator、Play、VOXA、Player Service 和参考登录门户五个业务服务。
-- 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Linux Web 管理端；不包含迁移器或内置 PostgreSQL/Redis。
+- 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
 - `apps/license-server/` 是不连接数据库的内部本机签发器，不进入启动器、Linux Web 部署包、业务镜像或公开 Release；发行物只包含验签公钥和许可证校验能力。
 - Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。
 - 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
-- 桌面启动器可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis；Linux Web 包仍要求外部 PostgreSQL。
+- 桌面启动器和 Linux Web 管理端都可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis。
 - 构建版本、提交短号、构建日期和来源来自镜像 `BOX_BUILD_*` 元数据；正式 Tag 构建应注入这些值，服主无需配置。
 - 当前桌面发行目标为 Windows x64、Apple Silicon macOS 和 Linux x64。Windows ARM、Intel macOS 与 Linux ARM64 桌面 App 不是默认 Release 目标。
 

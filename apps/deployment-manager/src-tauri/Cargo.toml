@@ -14,9 +14,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-base64 = "0.22"
+box-manager-core = { path = "../../manager-core" }
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-ed25519-dalek = { version = "2", features = ["pem", "pkcs8"] }
 postgres = "0.19.14"
 rand = "0.8"
 redis = "1.7.0"

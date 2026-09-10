@@ -33,7 +33,7 @@ Tauri 启动器位于 `apps/deployment-manager/`，负责导入镜像、保存�
 
 部署和启动业务服务前必须安装有效的个人学习许可证。许可证免费申请、绑定当前启动器设备 ID、默认有效三十日且仅限非商业用途；申请、续期和验证方式见[个人学习许可证](docs/licensing.md)。
 
-桌面启动器可下载并管理内置 PostgreSQL/Redis，也可连接外部服务；Redis 可以关闭。内置服务默认从 DaoCloud 国内镜像源下载，只监听本机回环地址并自动生成连接身份。Linux Web 服务器包不携带数据库服务，必须连接服主提供的 PostgreSQL，Redis 仍为可选。完整说明见[本地基础设施](docs/local-infrastructure.md)和[配置参考](docs/configuration-reference.md)。
+桌面启动器和 Linux Web 管理端都可下载并管理内置 PostgreSQL/Redis，也可连接外部服务；Redis 可以关闭。服务器离线包不携带基础服务镜像，选择内置模式时会从配置的镜像源下载。内置服务只监听本机回环地址并自动生成连接身份。完整说明见[本地基础设施](docs/local-infrastructure.md)和[配置参考](docs/configuration-reference.md)。
 
 `apps/migrator/` 是仓库内部使用的云端工程迁移工具，不属于桌面离线包、无图形服务器包或普通服主的部署流程。它需要访问迁移来源，不能作为核心引擎“完全离线运行”的依据。
 
@@ -81,12 +81,13 @@ pnpm verify
 | `pnpm stop`               | 停止本仓库 Compose 服务，不删除数据 |
 | `pnpm verify`             | 运行格式、lint、类型检查和全部回归  |
 
-源码或 Linux Web 部署至少需要设置三个互不相同的随机密钥，并配置外部 PostgreSQL：
+源码部署至少需要设置三个互不相同的随机业务密钥，并配置 PostgreSQL；Web 管理端还需要独立的 32 字节随机管理令牌。服务器离线包的 `install.sh` 会自动生成这些密钥：
 
 ```env
 PERMISSION_TOKEN_SECRET=
 BOX_PLAYER_AUTH_API_KEY=
 BOX_PLAY_ADMIN_TOKEN=
+BOX_SERVER_MANAGER_TOKEN=
 BOX_DATABASE_URL=
 ```
 
@@ -120,7 +121,7 @@ BOX_DATABASE_URL=
 - Linux amd64 / arm64 无图形游玩服务器 ZIP；
 - Linux amd64 / arm64 完整镜像归档。
 
-无图形服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Linux Web 管理端，不包含内部迁移器或内置 PostgreSQL/Redis。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；业务镜像无需另行下载，选择内置数据库时首次需联网下载 PostgreSQL 镜像。
+无图形服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Linux Web 管理端，不包含内部迁移器或 PostgreSQL/Redis 镜像。普通桌面用户只需下载与操作系统和 CPU 匹配的一个 ZIP；业务镜像无需另行下载，选择内置基础服务时首次需要联网拉取对应镜像。
 
 正式 Tag 构建应向镜像注入版本、提交短号、构建日期和来源等 `BOX_BUILD_*` 元数据；不要在页面、`.env` 或启动器配置中手工填写。
 

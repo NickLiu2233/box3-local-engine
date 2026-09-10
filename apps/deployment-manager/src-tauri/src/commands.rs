@@ -1,3 +1,8 @@
+use box_manager_core::configuration as shared_config;
+use box_manager_core::configuration_migration::{
+    clear_overrides_on_configuration_change, migrate_document,
+};
+use box_manager_core::{backup, backup_store};
 use postgres::NoTls;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -12,9 +17,6 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, Manager};
-
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
 
 #[path = "config.rs"]
 mod config;
@@ -45,7 +47,9 @@ const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
 const PROJECT_NAME: &str = "box-local-engine";
 const MANAGED_DATABASE_IMAGE: &str = "docker.m.daocloud.io/library/postgres:16-alpine";
 const MANAGED_REDIS_IMAGE: &str = "docker.m.daocloud.io/library/redis:7-alpine";
-const MANAGED_SERVICE_NAMES: [&str; 2] = ["managed-postgres", "managed-redis"];
+use box_manager_core::services::{
+    self, Runtime as ServiceRuntime, MANAGED_SERVICES as MANAGED_SERVICE_NAMES,
+};
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigView {
@@ -186,7 +190,7 @@ impl Default for InstallConfigView {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigInput {
     #[serde(default = "default_database_mode")]
@@ -299,12 +303,7 @@ fn default_database_mode() -> String {
     "managed".into()
 }
 
-fn validate_database_mode(value: &str) -> Result<&str, String> {
-    match value {
-        "managed" | "external" => Ok(value),
-        _ => Err("PostgreSQL 模式只能是内置数据库或外部数据库".into()),
-    }
-}
+use shared_config::validate_database_mode;
 
 fn default_database_port() -> String {
     "5432".into()
@@ -321,12 +320,7 @@ fn default_redis_port() -> String {
 fn default_redis_mode() -> String {
     "disabled".into()
 }
-fn validate_redis_mode(value: &str) -> Result<&str, String> {
-    match value {
-        "disabled" | "managed" | "external" => Ok(value),
-        _ => Err("Redis 模式只能是不启用、内置 Redis 或外部 Redis".into()),
-    }
-}
+use shared_config::validate_redis_mode;
 fn default_storage_cache_redis_db() -> u8 {
     1
 }
@@ -434,6 +428,9 @@ fn default_play_cpu_limit() -> f64 {
 }
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
+    if let Some(result) = services::control_existing(args, docker_output) {
+        return result;
+    }
     ensure_runtime_files(app)?;
     let root = runtime_root(app)?;
     // Regenerate on every invocation. The owner can edit .env directly, but
@@ -445,6 +442,9 @@ fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
     command
         .current_dir(&root)
         .args(["compose", "--project-name", PROJECT_NAME, "--env-file"]);
+    for key in parse_env(&fs::read_to_string(&env).map_err(|error| error.to_string())?).keys() {
+        command.env_remove(key);
+    }
     command.arg(env).arg("-f").arg(compose).args(args);
     let output = run_command(command)?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
@@ -461,66 +461,17 @@ fn emit_progress(app: &AppHandle, stage: &str, message: &str, percent: u8) {
     );
 }
 
-fn validate_host(value: &str, label: &str) -> Result<String, String> {
-    let value = value.trim().trim_end_matches('/');
-    if value.is_empty() || value.contains(['/', '@', ' ', '\\']) || value.starts_with("http") {
-        return Err(format!("{label}无效，请只填写 IP 或域名"));
-    }
-    Ok(value.into())
-}
+use shared_config::validate_host;
 
-fn validate_creator_host(value: &str) -> Result<String, String> {
-    let host = validate_host(value, "创作端访问地址")?;
-    if matches!(host.as_str(), "0.0.0.0" | "::" | "[::]") {
-        return Err("创作端访问地址不能使用监听地址".into());
-    }
-    Ok(host)
-}
+use shared_config::validate_creator_host;
 
-fn validate_creator_network_mode(value: &str) -> Result<&str, String> {
-    match value {
-        "local" | "lan" | "public" => Ok(value),
-        _ => Err("创作端访问范围只能是本机、局域网或公网".into()),
-    }
-}
+use shared_config::validate_network_mode as validate_creator_network_mode;
 
-fn host_from_http_url(value: &str) -> Option<String> {
-    let authority = value
-        .trim()
-        .strip_prefix("http://")
-        .or_else(|| value.trim().strip_prefix("https://"))?
-        .split('/')
-        .next()?;
-    if authority.is_empty() || authority.contains('@') {
-        return None;
-    }
-    if let Some(bracketed) = authority.strip_prefix('[') {
-        return bracketed
-            .split_once(']')
-            .map(|(host, _)| host.to_string())
-            .filter(|host| !host.is_empty());
-    }
-    match authority.rsplit_once(':') {
-        Some((host, port)) if port.parse::<u16>().is_ok() => Some(host.to_string()),
-        Some(_) => None,
-        None => Some(authority.to_string()),
-    }
-}
+use shared_config::host_from_http_url;
 
-fn origin_host(host: &str) -> String {
-    if host.contains(':') {
-        format!("[{host}]")
-    } else {
-        host.to_string()
-    }
-}
-
+// Display-only fallback; the shared runtime derivation rejects invalid ports.
 fn env_port(values: &BTreeMap<String, String>, key: &str, fallback: u16) -> u16 {
-    values
-        .get(key)
-        .and_then(|value| value.parse::<u16>().ok())
-        .filter(|port| *port != 0)
-        .unwrap_or(fallback)
+    shared_config::env_port(values, key, fallback).unwrap_or(fallback)
 }
 
 const GENERATED_ENV_KEYS: [&str; 16] = [
@@ -542,41 +493,17 @@ const GENERATED_ENV_KEYS: [&str; 16] = [
     "BOX_RESOURCE_ALLOWED_ORIGINS",
 ];
 
-fn decode_database_url_component(value: &str) -> Option<String> {
-    urlencoding::decode(value)
-        .ok()
-        .map(|value| value.into_owned())
-}
-
 /// Best-effort support for a pre-manager installation that only has the
 /// standard DATABASE_URL. The manager itself always writes the clearer split
 /// fields, but this prevents an upgrade from silently disabling accounts.
 fn legacy_database_url_fields(value: &str) -> Option<(String, String, String, String, String)> {
-    let value = value
-        .trim()
-        .strip_prefix("postgresql://")
-        .or_else(|| value.trim().strip_prefix("postgres://"))?;
-    let (credentials, authority_and_database) = value.rsplit_once('@')?;
-    let (user, password) = credentials.split_once(':')?;
-    let authority_and_database = authority_and_database
-        .split_once('?')
-        .map_or(authority_and_database, |(authority_and_database, _)| {
-            authority_and_database
-        });
-    let (authority, database) = authority_and_database.split_once('/')?;
-    let (host, port) = if let Some(bracketed) = authority.strip_prefix('[') {
-        let (host, rest) = bracketed.split_once(']')?;
-        (host, rest.strip_prefix(':')?)
-    } else {
-        authority.rsplit_once(':')?
-    };
-    port.parse::<u16>().ok().filter(|port| *port > 0)?;
+    let fields = shared_config::parse_database_url(value).ok()?;
     Some((
-        host.to_string(),
-        port.to_string(),
-        decode_database_url_component(database)?,
-        decode_database_url_component(user)?,
-        decode_database_url_component(password)?,
+        fields.host,
+        fields.port.to_string(),
+        fields.database,
+        fields.user,
+        fields.password,
     ))
 }
 
@@ -584,8 +511,8 @@ fn legacy_database_url_fields(value: &str) -> Option<(String, String, String, St
 /// operator configuration. Derived fields are discarded; they are recreated
 /// in .runtime.env every time Docker Compose is invoked.
 fn normalize_owner_environment(content: &str) -> Result<String, String> {
-    let mut normalized = content.to_string();
-    let values = parse_env(content);
+    let mut normalized = migrate_document(content)?;
+    let values = parse_env(&normalized);
 
     let play_host = values
         .get("BOX_PLAY_PUBLIC_HOST")
@@ -680,6 +607,9 @@ fn normalize_owner_environment(content: &str) -> Result<String, String> {
             }
         });
     set_env(&mut normalized, "BOX_DATABASE_MODE", database_mode)?;
+    if database_mode == "managed" {
+        remove_env(&mut normalized, "BOX_DATABASE_QUERY");
+    }
     let redis_mode = normalized_values
         .get("BOX_REDIS_MODE")
         .map(String::as_str)
@@ -738,241 +668,42 @@ fn enforce_creator_network_policy(app: &AppHandle) -> Result<bool, String> {
     Ok(false)
 }
 
-fn database_url(values: &BTreeMap<String, String>) -> Result<String, String> {
-    let mode = values
-        .get("BOX_DATABASE_MODE")
-        .map(String::as_str)
-        .unwrap_or("external");
-    validate_database_mode(mode)?;
-    let host = if mode == "managed" {
-        "managed-postgres"
-    } else {
-        values
-            .get("BOX_DATABASE_HOST")
-            .map(|value| value.trim())
-            .unwrap_or_default()
-    };
-    if host.is_empty() {
-        return Err("外部 PostgreSQL 模式必须配置数据库地址后才能启动服务".into());
-    }
-    let host = validate_host(host, "数据库地址")?;
-    let port = validate_port(
-        values
-            .get("BOX_DATABASE_PORT")
-            .map(String::as_str)
-            .unwrap_or("5432"),
-    )?;
-    let database = values
-        .get("BOX_DATABASE_NAME")
-        .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-        .ok_or("启用 PostgreSQL 时，数据库名不能为空")?;
-    let user = values
-        .get("BOX_DATABASE_USER")
-        .map(|value| value.trim())
-        .filter(|value| !value.is_empty())
-        .ok_or("启用 PostgreSQL 时，数据库账号不能为空")?;
-    let password = values
-        .get("BOX_DATABASE_PASSWORD")
-        .map(String::as_str)
-        .filter(|value| !value.is_empty())
-        .ok_or("启用 PostgreSQL 时，数据库密码不能为空")?;
-    let host = if host.contains(':') && !host.starts_with('[') {
-        format!("[{host}]")
-    } else {
-        host
-    };
-    Ok(format!(
-        "postgresql://{}:{}@{}:{}/{}",
-        urlencoding::encode(user),
-        urlencoding::encode(password),
-        host,
-        port,
-        urlencoding::encode(database)
-    ))
-}
+use shared_config::database_url;
 
 fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, String>, String> {
     ensure_runtime_files(app)?;
     enforce_creator_network_policy(app)?;
-    let owner_path = env_path(app)?;
-    if !owner_path.exists() {
-        return Err("尚未完成安装配置".into());
-    }
     let owner =
-        fs::read_to_string(&owner_path).map_err(|error| format!("无法读取部署配置：{error}"))?;
-    let owner_values = parse_env(&owner);
-    let configured_play_host = owner_values
-        .get("BOX_PLAY_PUBLIC_HOST")
-        .map(String::as_str)
-        .map(|host| validate_host(host, "游玩端访问地址"))
-        .transpose()?
-        .unwrap_or_else(default_public_host);
-    let play_mode = owner_values
-        .get("BOX_PLAY_NETWORK_MODE")
-        .map(String::as_str)
-        .unwrap_or("local");
-    let play_host = if play_mode == "lan" {
-        detect_lan_ip().ok_or("已选择局域网模式，但当前未检测到可用的局域网 IP")?
-    } else {
-        configured_play_host
-    };
-    let configured_creator_host = owner_values
-        .get("BOX_CREATOR_HOST")
-        .map(String::as_str)
-        .map(validate_creator_host)
-        .transpose()?
-        .unwrap_or_else(default_creator_host);
-    let creator_mode = owner_values
-        .get("BOX_CREATOR_NETWORK_MODE")
-        .map(String::as_str)
-        .map(validate_creator_network_mode)
-        .transpose()?
-        .unwrap_or("local");
-    let creator_host = match creator_mode {
-        "local" => "127.0.0.1".into(),
-        "lan" => detect_lan_ip().ok_or("已选择创作端局域网模式，但当前未检测到可用的局域网 IP")?,
-        "public" => configured_creator_host,
-        _ => unreachable!(),
-    };
-    let play_port = env_port(&owner_values, "BOX_PLAY_PORT", default_play_port());
-    let voxa_port = env_port(&owner_values, "BOX_VOXA_PORT", default_voxa_port());
-    let creator_port = env_port(&owner_values, "BOX_CREATOR_PORT", default_creator_port());
-    let player_service_port = env_port(
-        &owner_values,
-        "BOX_PLAYER_SERVICE_PORT",
-        default_player_service_port(),
-    );
-    let auth_portal_port = env_port(
-        &owner_values,
-        "BOX_AUTH_PORTAL_PORT",
-        default_auth_portal_port(),
-    );
-    let play_bind_ip = if matches!(play_host.as_str(), "127.0.0.1" | "localhost" | "::1") {
-        "127.0.0.1"
-    } else {
-        "0.0.0.0"
-    };
-    let creator_bind_ip = if creator_mode == "local" {
-        "127.0.0.1"
-    } else {
-        "0.0.0.0"
-    };
-    let play_origin_host = origin_host(&play_host);
-    let creator_origin_host = origin_host(&creator_host);
-    let database_url = database_url(&owner_values)?;
-    let mut runtime = owner;
-    let compose_profiles = match (
-        owner_values
-            .get("BOX_DATABASE_MODE")
-            .is_some_and(|mode| mode == "managed"),
-        owner_values
-            .get("BOX_REDIS_MODE")
-            .is_some_and(|mode| mode == "managed"),
-    ) {
-        (true, true) => {
-            "desktop-postgres,desktop-redis,player-service,auth-portal,creator,play,voxa"
-        }
-        (true, false) => "desktop-postgres,player-service,auth-portal,creator,play,voxa",
-        (false, true) => "desktop-redis,player-service,auth-portal,creator,play,voxa",
-        (false, false) => "player-service,auth-portal,creator,play,voxa",
-    };
-    set_env(&mut runtime, "COMPOSE_PROFILES", compose_profiles)?;
-    set_env(&mut runtime, "BOX_IMAGE_TAG", IMAGE_TAG)?;
-    set_env(
-        &mut runtime,
-        "BOX_LICENSE_FILE",
-        &license::license_path(app)?.to_string_lossy(),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_LICENSE_DEVICE_FILE",
-        &license::device_id_path(app)?.to_string_lossy(),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_PLAY_PLATFORM",
-        if cfg!(target_arch = "aarch64") {
-            "linux/arm64"
-        } else {
-            "linux/amd64"
+        fs::read_to_string(env_path(app)?).map_err(|error| format!("无法读取部署配置：{error}"))?;
+    let values = parse_env(&owner);
+    let lan_ip = detect_lan_ip();
+    let license_file = license::license_path(app)?.to_string_lossy().into_owned();
+    let device_file = license::device_id_path(app)?.to_string_lossy().into_owned();
+    let derived = shared_config::runtime_environment(
+        &values,
+        &shared_config::RuntimeInputs {
+            lan_ip: lan_ip.as_deref(),
+            image_tag: IMAGE_TAG,
+            platform: if cfg!(target_arch = "aarch64") {
+                "linux/arm64"
+            } else {
+                "linux/amd64"
+            },
+            license_file: &license_file,
+            license_device_file: &device_file,
+            database_required: false,
+            web_manager: false,
         },
     )?;
-    set_env(&mut runtime, "BOX_BIND_IP", play_bind_ip)?;
-    set_env(&mut runtime, "BOX_CREATOR_BIND_IP", creator_bind_ip)?;
-    set_env(&mut runtime, "BOX_VOXA_BIND_IP", creator_bind_ip)?;
-    set_env(&mut runtime, "BOX_PLAY_PORT", &play_port.to_string())?;
-    set_env(&mut runtime, "BOX_VOXA_PORT", &voxa_port.to_string())?;
-    set_env(&mut runtime, "BOX_CREATOR_PORT", &creator_port.to_string())?;
-    set_env(
-        &mut runtime,
-        "BOX_PLAYER_SERVICE_PORT",
-        &player_service_port.to_string(),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_AUTH_PORTAL_PORT",
-        &auth_portal_port.to_string(),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_PLAY_PUBLIC_URL",
-        &format!("http://{play_origin_host}:{play_port}"),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_VOXA_PUBLIC_URL",
-        &format!("http://{creator_origin_host}:{voxa_port}"),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_CREATOR_PUBLIC_URL",
-        &format!("http://{creator_origin_host}:{creator_port}"),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_PLAYER_SERVICE_PUBLIC_URL",
-        &format!("http://{play_origin_host}:{player_service_port}"),
-    )?;
-    set_env(
-        &mut runtime,
-        "BOX_AUTH_PORTAL_PUBLIC_URL",
-        &format!("http://{play_origin_host}:{auth_portal_port}"),
-    )?;
-    let login_url = format!("http://{play_origin_host}:{auth_portal_port}");
-    set_env(&mut runtime, "BOX_PLAYER_LOGIN_URL", &login_url)?;
-    let creator_origins = format!(
-        "http://{creator_origin_host}:{voxa_port},http://{creator_origin_host}:{creator_port}"
-    );
-    set_env(&mut runtime, "BOX_VOXA_ALLOWED_ORIGINS", &creator_origins)?;
-    set_env(
-        &mut runtime,
-        "BOX_RESOURCE_ALLOWED_ORIGINS",
-        &creator_origins,
-    )?;
-    set_env(&mut runtime, "BOX_CREATOR_ALLOWED_HOSTS", &creator_host)?;
-    set_env(
-        &mut runtime,
-        "BOX_PLAYER_AUTH_ALLOWED_ORIGINS",
-        &format!(
-            "http://{play_origin_host}:{play_port},http://{creator_origin_host}:{creator_port},http://{play_origin_host}:{auth_portal_port}"
-        ),
-    )?;
-    set_env(&mut runtime, "BOX_DATABASE_URL", &database_url)?;
-    set_env(
-        &mut runtime,
-        "BOX_PLAYER_SERVICE_INTERNAL_URL",
-        "http://player-service:3213",
-    )?;
+    let mut runtime = owner;
+    for (key, value) in derived {
+        set_env(&mut runtime, &key, &value)?;
+    }
     write_private_file(&runtime_env_path(app)?, runtime, "运行时配置")?;
-    Ok(owner_values)
+    Ok(values)
 }
 
-fn validate_port(value: &str) -> Result<u16, String> {
-    value
-        .parse::<u16>()
-        .map_err(|_| "数据库端口必须是 1-65535 之间的整数".into())
-}
+use shared_config::validate_port;
 
 fn enabled_services(_values: &BTreeMap<String, String>) -> Vec<&str> {
     SERVICE_NAMES.to_vec()
@@ -995,121 +726,6 @@ fn check_remote_endpoint(label: &str, host: &str, port: u16) -> Result<(), Strin
             .map(|error| error.to_string())
             .unwrap_or_else(|| "没有可用地址".into())
     ))
-}
-
-fn configured_ports(config: &InstallConfigInput) -> [(String, u16); 5] {
-    [
-        ("Play".into(), config.play_port),
-        ("VOXA".into(), config.voxa_port),
-        ("Creator".into(), config.creator_port),
-        ("账号服务".into(), config.player_service_port),
-        ("登录页面".into(), config.auth_portal_port),
-    ]
-}
-
-fn validate_service_ports(config: &InstallConfigInput) -> Result<(), String> {
-    let ports = configured_ports(config);
-    if let Some((label, _)) = ports.iter().find(|(_, port)| *port == 0) {
-        return Err(format!("{label} 端口必须在 1 到 65535 之间"));
-    }
-    for (index, (label, port)) in ports.iter().enumerate() {
-        if let Some((other_label, _)) = ports
-            .iter()
-            .skip(index + 1)
-            .find(|(_, other)| other == port)
-        {
-            return Err(format!(
-                "{label} 与 {other_label} 不能使用同一个端口 {port}"
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn validate_auto_backup_config(config: &InstallConfigInput) -> Result<(), String> {
-    if !(1..=10_080).contains(&config.auto_backup_interval_minutes) {
-        return Err("自动备份间隔必须在 1 到 10080 分钟之间".into());
-    }
-    if !(1..=1_000).contains(&config.auto_backup_retention_count) {
-        return Err("每地图备份保留份数必须在 1 到 1000 之间".into());
-    }
-    if !(1..=3_650).contains(&config.auto_backup_retention_days) {
-        return Err("自动备份最长保留天数必须在 1 到 3650 天之间".into());
-    }
-    Ok(())
-}
-
-fn validate_runtime_capacity(config: &InstallConfigInput) -> Result<(), String> {
-    if config.play_runtimes == 0
-        || config.creator_edit_runtimes == 0
-        || config.creator_play_runtimes == 0
-    {
-        return Err("运行时数量必须大于 0".into());
-    }
-    if !(1..=1_000).contains(&config.player_limit) {
-        return Err("单实例玩家上限必须在 1 到 1000 之间".into());
-    }
-    for (label, prewarm, maximum) in [
-        (
-            "Creator 编辑预热数量",
-            config.creator_edit_prewarm_runtimes,
-            config.creator_edit_runtimes,
-        ),
-        (
-            "Play 预热数量",
-            config.play_prewarm_runtimes,
-            config.play_runtimes,
-        ),
-    ] {
-        if prewarm > maximum {
-            return Err(format!("{label}不能超过对应的运行时上限 {maximum}"));
-        }
-    }
-    if !(128..=8_192).contains(&config.script_memory_mb) {
-        return Err("单运行时脚本内存必须在 128 到 8192 MiB 之间".into());
-    }
-    if !(1..=10_080).contains(&config.runtime_idle_minutes) {
-        return Err("运行时空闲回收时间必须在 1 到 10080 分钟之间".into());
-    }
-    if !(1..=1_440).contains(&config.runtime_start_timeout_minutes) {
-        return Err("运行时启动超时必须在 1 到 1440 分钟之间".into());
-    }
-    if !(1..=1_024).contains(&config.teleport_max_rooms) {
-        return Err("Teleport 私有房间上限必须在 1 到 1024 之间".into());
-    }
-    if !(1..=10_080).contains(&config.teleport_room_idle_minutes) {
-        return Err("Teleport 房间空闲回收时间必须在 1 到 10080 分钟之间".into());
-    }
-    Ok(())
-}
-
-fn validate_operator_performance(config: &InstallConfigInput) -> Result<(), String> {
-    if !(1..=100).contains(&config.database_pool_size) {
-        return Err("数据库连接池必须在 1 到 100 之间".into());
-    }
-    for (label, memory, minimum) in [
-        ("账号服务", config.player_service_memory_mb, 512),
-        ("登录页面", config.auth_portal_memory_mb, 128),
-        ("Creator", config.creator_memory_mb, 1_024),
-        ("Play", config.play_memory_mb, 1_024),
-    ] {
-        if !(minimum..=262_144).contains(&memory) {
-            return Err(format!(
-                "{label} 容器内存必须在 {minimum} 到 262144 MiB 之间"
-            ));
-        }
-    }
-    for (label, cpu) in [
-        ("账号服务", config.player_service_cpu_limit),
-        ("登录页面", config.auth_portal_cpu_limit),
-        ("Creator", config.creator_cpu_limit),
-        ("Play", config.play_cpu_limit),
-    ] {
-        if !cpu.is_finite() || !(0.1..=256.0).contains(&cpu) {
-            return Err(format!("{label} CPU 限制必须在 0.1 到 256 核之间"));
-        }
-    }
-    Ok(())
 }
 
 fn minutes_to_milliseconds(minutes: u32) -> u64 {
@@ -1144,25 +760,42 @@ fn load_existing_env(app: &AppHandle) -> BTreeMap<String, String> {
         .unwrap_or_default()
 }
 
+fn validate_install_configuration(config: &InstallConfigInput) -> Result<(), String> {
+    let value = serde_json::to_value(config).map_err(|error| error.to_string())?;
+    shared_config::validate_configuration(value.as_object().ok_or("配置格式无效")?)
+}
+
+/// Compare the migrated owner values before the submitted fields overwrite them.
+fn configuration_document_for_save(
+    source: &str,
+    config: &InstallConfigInput,
+) -> Result<String, String> {
+    let mut content = normalize_owner_environment(source)?;
+    let submitted = serde_json::to_value(config).map_err(|error| error.to_string())?;
+    clear_overrides_on_configuration_change(
+        &mut content,
+        submitted.as_object().ok_or("配置格式无效")?,
+    )?;
+    Ok(content)
+}
+
 fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<(), String> {
     ensure_runtime_files(app)?;
     let database_mode = validate_database_mode(&config.database_mode)?;
     let redis_mode = validate_redis_mode(&config.redis_mode)?;
-    validate_runtime_capacity(config)?;
-    validate_operator_performance(config)?;
+    validate_install_configuration(config)?;
     let public_host = validate_host(&config.public_host, "公开访问地址")?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_creator_network_mode(&config.creator_network_mode)?;
-    validate_service_ports(config)?;
-    validate_auto_backup_config(config)?;
-    let existing = load_existing_env(app);
+
     let existing_file = env_path(app)?;
     let source = if existing_file.exists() {
         fs::read_to_string(&existing_file).map_err(|error| format!("无法读取现有配置：{error}"))?
     } else {
         ENV_TEMPLATE.to_string()
     };
-    let mut content = normalize_owner_environment(&source)?;
+    let mut content = configuration_document_for_save(&source, config)?;
+    let existing = parse_env(&content);
 
     set_env(
         &mut content,
@@ -1526,6 +1159,10 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_AUTO_BACKUP_RETENTION_DAYS",
         &config.auto_backup_retention_days.to_string(),
     )?;
+    // The submitted mode is now authoritative, including external -> managed.
+    if database_mode == "managed" {
+        remove_env(&mut content, "BOX_DATABASE_QUERY");
+    }
     write_private_file(&existing_file, content, "部署配置")?;
     generate_runtime_environment(app)?;
     Ok(())
@@ -1706,6 +1343,7 @@ fn has_managed_database_image(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 async fn prepare_managed_database(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
+        let _operation = box_manager_core::operation::mutation_guard()?;
         emit_progress(
             &app,
             "database-check",
@@ -1846,6 +1484,7 @@ fn has_managed_redis_image(app: AppHandle) -> Result<bool, String> {
 #[tauri::command]
 async fn prepare_managed_redis(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
+        let _operation = box_manager_core::operation::mutation_guard()?;
         emit_progress(&app, "redis-check", "正在检查 Docker 和 Redis 镜像…", 10);
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
         let image = managed_redis_image(&app);
@@ -1972,6 +1611,7 @@ fn get_managed_service_info(app: AppHandle, service: String) -> Result<ManagedSe
 #[tauri::command]
 async fn start_managed_service(app: AppHandle, service: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
+        let _operation = box_manager_core::operation::mutation_guard()?;
         let (mode_key, compose_service, label) = match service.as_str() {
             "postgresql" => ("BOX_DATABASE_MODE", "managed-postgres", "PostgreSQL"),
             "redis" => ("BOX_REDIS_MODE", "managed-redis", "Redis"),
@@ -2208,6 +1848,7 @@ fn get_raw_environment(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 fn save_raw_environment(app: AppHandle, content: String) -> Result<bool, String> {
+    let _operation = box_manager_core::operation::mutation_guard()?;
     validate_raw_environment(&content)?;
     ensure_runtime_files(&app)?;
     write_private_file(
@@ -2227,67 +1868,28 @@ fn get_system_status(app: AppHandle) -> SystemStatus {
         .map(|path| path.to_string_lossy().to_string())
         .unwrap_or_default();
     let docker = docker_check();
-    let docker_ready = docker.engine_ready;
+    let mut docker_ready = docker.engine_ready;
     let docker_cli_available = docker.cli_available;
     let docker_cli_version = docker.cli_version;
-    let docker_message = docker.message;
+    let mut docker_message = docker.message;
     let configured = env_path(&app).is_ok_and(|path| path.exists());
     let environment = load_existing_env(&app);
-    let enabled = enabled_services(&environment);
-    let mut services: Vec<ServiceStatus> = SERVICE_NAMES
-        .iter()
-        .map(|name| ServiceStatus {
-            name: (*name).into(),
-            enabled: enabled.contains(name),
-            running: false,
-            state: "stopped".into(),
-        })
-        .collect();
-    if docker_ready && configured {
-        services.extend(
-            MANAGED_SERVICE_NAMES
-                .iter()
-                .filter(|name| {
-                    managed_service_configured(&environment, name)
-                        && managed_service_installed(&app, name)
-                })
-                .map(|name| ServiceStatus {
-                    name: (*name).into(),
-                    enabled: true,
-                    running: false,
-                    state: "stopped".into(),
-                }),
-        );
-    }
-    if docker_ready && configured {
-        if let Ok(output) = compose_output(&app, &["ps", "--format", "json"]) {
-            let values: Vec<Value> = serde_json::from_str(&output).unwrap_or_else(|_| {
-                output
-                    .lines()
-                    .filter_map(|line| serde_json::from_str(line).ok())
-                    .collect()
-            });
-            for value in values {
-                let name = value
-                    .get("Service")
-                    .or_else(|| value.get("service"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default();
-                let state = value
-                    .get("State")
-                    .or_else(|| value.get("state"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_lowercase();
-                if let Some(service) = services.iter_mut().find(|service| service.name == name) {
-                    service.running = state == "running";
-                    service.state = if state.is_empty() {
-                        "stopped".into()
-                    } else {
-                        state
-                    };
-                }
+    let output = if docker_ready && configured {
+        match compose_output(&app, &["ps", "--all", "--format", "json"]) {
+            Ok(output) => output,
+            Err(error) => {
+                docker_ready = false;
+                docker_message = format!("无法读取服务状态：{error}");
+                String::new()
             }
+        }
+    } else {
+        String::new()
+    };
+    let mut services = services::statuses(&output, &environment);
+    if !docker_ready {
+        for service in &mut services {
+            service.state = "unknown".into();
         }
     }
     let all_healthy = services
@@ -2596,6 +2198,7 @@ async fn destroy_project_runtime(
         }
     }
     tauri::async_runtime::spawn_blocking(move || {
+        let _operation = box_manager_core::operation::mutation_guard()?;
         let (port, route_prefix) = match mode.as_str() {
             "creator" => (9967, ""),
             "play" => {
@@ -3001,28 +2604,39 @@ fn validate_service_name(app: &AppHandle, service: &str) -> Result<bool, String>
     Ok(true)
 }
 
+struct DesktopRuntime<'a>(&'a AppHandle);
+impl ServiceRuntime for DesktopRuntime<'_> {
+    fn require_license(&self) -> Result<(), String> {
+        license::require(self.0)
+    }
+    fn prepare_images(&self) -> Result<(), String> {
+        database_url(&generate_runtime_environment(self.0)?)?;
+        docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
+        ensure_images(self.0)
+    }
+    fn managed_enabled(&self, service: &str) -> bool {
+        match service {
+            "managed-postgres" => managed_database_enabled(self.0),
+            "managed-redis" => managed_redis_enabled(self.0),
+            _ => false,
+        }
+    }
+    fn check_managed(&self, service: &str) -> Result<(), String> {
+        validate_service_name(self.0, service).map(|_| ())
+    }
+    fn compose(&self, args: &[&str]) -> Result<(), String> {
+        compose_output(self.0, args).map(|_| ())
+    }
+    fn progress(&self, stage: &str, message: &str, percent: u8) {
+        emit_progress(self.0, stage, message, percent);
+    }
+}
+
 #[tauri::command]
 async fn control_service(app: AppHandle, service: String, action: String) -> Result<(), String> {
-    let managed = validate_service_name(&app, &service)?;
-    if !["start", "stop", "restart"].contains(&action.as_str()) {
-        return Err("不支持的服务操作".into());
-    }
-    if !managed && action != "stop" {
-        license::require(&app)?;
-    }
     tauri::async_runtime::spawn_blocking(move || {
-        if managed && action == "start" {
-            compose_output(&app, &["up", "-d", "--wait", &service])?;
-        } else if action == "start" {
-            ensure_images(&app)?;
-            // Image archives keep stable release tags.  Without recreation,
-            // Compose reuses an existing container and the UI keeps serving its
-            // old application layer even after a newer archive was imported.
-            compose_output(&app, &["up", "-d", "--force-recreate", &service])?;
-        } else {
-            compose_output(&app, &[&action, &service])?;
-        }
-        Ok(())
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        services::control(&DesktopRuntime(&app), &service, &action)
     })
     .await
     .map_err(|error| format!("服务操作异常结束：{error}"))?
@@ -3085,181 +2699,8 @@ fn create_diagnostic_zip(source: &Path, destination: &Path) -> Result<(), String
     Ok(())
 }
 
-fn copy_directory_contents(source: &Path, destination: &Path) -> Result<(), String> {
-    fs::create_dir_all(destination).map_err(|error| format!("无法创建备份目录：{error}"))?;
-    for entry in fs::read_dir(source).map_err(|error| format!("无法读取数据目录：{error}"))?
-    {
-        let entry = entry.map_err(|error| format!("无法读取数据目录项：{error}"))?;
-        let from = entry.path();
-        let to = destination.join(entry.file_name());
-        if from.is_dir() {
-            copy_directory_contents(&from, &to)?;
-        } else {
-            copy_file_for_backup(&from, &to)?;
-        }
-    }
-    Ok(())
-}
-
-fn copy_file_for_backup(source: &Path, destination: &Path) -> Result<(), String> {
-    match fs::copy(source, destination) {
-        Ok(_) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-            #[cfg(unix)]
-            {
-                // Files created through a bind-mounted container can retain
-                // owner-write-only permissions on macOS. The desktop app owns
-                // the file but cannot read it until the read bit is restored.
-                let original = fs::metadata(source)
-                    .map_err(|metadata_error| {
-                        format!("无法读取 {}：{metadata_error}", source.display())
-                    })?
-                    .permissions();
-                let mut readable = original.clone();
-                readable.set_mode(readable.mode() | 0o400);
-                fs::set_permissions(source, readable).map_err(|permission_error| {
-                    format!("无法读取 {}：{permission_error}", source.display())
-                })?;
-                let copied = fs::copy(source, destination)
-                    .map(|_| ())
-                    .map_err(|copy_error| format!("无法备份 {}：{copy_error}", source.display()));
-                fs::set_permissions(source, original).map_err(|restore_error| {
-                    format!("无法恢复 {} 的原始权限：{restore_error}", source.display())
-                })?;
-                copied
-            }
-            #[cfg(not(unix))]
-            {
-                Err(format!("无法备份 {}：{error}", source.display()))
-            }
-        }
-        Err(error) => Err(format!("无法备份 {}：{error}", source.display())),
-    }
-}
-
-fn create_backup_archive(source: &Path, destination: &Path) -> Result<(), String> {
-    if destination.exists() {
-        fs::remove_file(destination).map_err(|error| format!("无法覆盖旧备份：{error}"))?;
-    }
-    #[cfg(target_os = "windows")]
-    let command = {
-        let mut command = Command::new("powershell");
-        let source = source.to_string_lossy().replace('\'', "''");
-        let destination = destination.to_string_lossy().replace('\'', "''");
-        command.args([
-            "-NoProfile",
-            "-Command",
-            &format!(
-                "Compress-Archive -Path '{source}\\*' -DestinationPath '{destination}' -Force"
-            ),
-        ]);
-        command
-    };
-    #[cfg(target_os = "macos")]
-    let command = {
-        let mut command = Command::new("/usr/bin/ditto");
-        command.args(["-c", "-k", "--norsrc"]);
-        command.arg(source).arg(destination);
-        command
-    };
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-    let command = {
-        let mut command = Command::new("tar");
-        command.args(["-czf"]);
-        command.arg(destination).arg("-C").arg(source).arg(".");
-        command
-    };
-    run_command(command)?;
-    Ok(())
-}
-
-fn extract_backup_archive(archive: &Path, destination: &Path) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    let command = {
-        let mut command = Command::new("powershell");
-        let archive = archive.to_string_lossy().replace('\'', "''");
-        let destination = destination.to_string_lossy().replace('\'', "''");
-        command.args([
-            "-NoProfile",
-            "-Command",
-            &format!(
-                "Expand-Archive -LiteralPath '{archive}' -DestinationPath '{destination}' -Force"
-            ),
-        ]);
-        command
-    };
-    #[cfg(target_os = "macos")]
-    let command = {
-        let mut command = Command::new("/usr/bin/ditto");
-        command.args(["-x", "-k"]);
-        command.arg(archive).arg(destination);
-        command
-    };
-    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
-    let command = {
-        let mut command = Command::new("tar");
-        command.args(["-xzf"]);
-        command.arg(archive).arg("-C").arg(destination);
-        command
-    };
-    run_command(command)?;
-    Ok(())
-}
-
 fn backup_directory(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join("apps/local-engine/backups"))
-}
-
-fn is_backup_archive(path: &Path) -> bool {
-    matches!(
-        path.extension().and_then(|value| value.to_str()),
-        Some("zip" | "gz" | "tar")
-    )
-}
-
-fn validate_backup_archive(archive: &Path, staging: &Path) -> Result<(), String> {
-    if !archive.is_file() || !is_backup_archive(archive) {
-        return Err("请选择 BOX3 Engine 备份包（.zip、.tar 或 .tar.gz）".into());
-    }
-    if staging.exists() {
-        fs::remove_dir_all(staging).map_err(|error| format!("无法清理导入校验目录：{error}"))?;
-    }
-    fs::create_dir_all(staging).map_err(|error| format!("无法创建导入校验目录：{error}"))?;
-    let extracted = extract_backup_archive(archive, staging);
-    let valid = extracted.is_ok()
-        && staging.join("BACKUP-README.txt").is_file()
-        && [
-            "apps/local-engine/projects",
-            "apps/local-engine/dist",
-            "apps/local-engine/play-worlds",
-            "apps/voxa/data",
-        ]
-        .iter()
-        .any(|relative| staging.join(relative).exists());
-    let cleanup =
-        fs::remove_dir_all(staging).map_err(|error| format!("无法清理导入校验目录：{error}"));
-    extracted?;
-    cleanup?;
-    if !valid {
-        return Err("该文件不是有效的 BOX3 Engine 数据备份包".into());
-    }
-    Ok(())
-}
-
-fn unique_backup_path(directory: &Path, original_name: &str) -> PathBuf {
-    let candidate = directory.join(original_name);
-    if !candidate.exists() {
-        return candidate;
-    }
-    let name = Path::new(original_name)
-        .file_stem()
-        .unwrap_or_default()
-        .to_string_lossy();
-    let extension = Path::new(original_name)
-        .extension()
-        .and_then(|value| value.to_str())
-        .unwrap_or("zip");
-    directory.join(format!("{name}-import-{}.{}", random_hex(6), extension))
 }
 
 fn dialog_result(mut command: Command) -> Result<Option<PathBuf>, String> {
@@ -3380,142 +2821,40 @@ fn choose_diagnostic_export(name: &str) -> Result<Option<PathBuf>, String> {
 
 #[tauri::command]
 async fn list_backups(app: AppHandle) -> Result<Vec<BackupInfo>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let directory = backup_directory(&app)?;
-        fs::create_dir_all(&directory).map_err(|error| format!("无法创建备份目录：{error}"))?;
-        let mut backups = Vec::new();
-        for entry in
-            fs::read_dir(directory).map_err(|error| format!("无法读取备份目录：{error}"))?
-        {
-            let entry = entry.map_err(|error| format!("无法读取备份项：{error}"))?;
-            let path = entry.path();
-            let extension = path
-                .extension()
-                .and_then(|value| value.to_str())
-                .unwrap_or_default();
-            if !path.is_file() || !matches!(extension, "zip" | "gz" | "tar") {
-                continue;
-            }
-            let metadata =
-                fs::metadata(&path).map_err(|error| format!("无法读取备份信息：{error}"))?;
-            let modified_at = metadata
-                .modified()
-                .ok()
-                .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-                .map(|value| value.as_secs())
-                .unwrap_or_default();
-            backups.push(BackupInfo {
-                name: path
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .to_string(),
-                path: path.to_string_lossy().to_string(),
-                size_bytes: metadata.len(),
-                modified_at,
-            });
-        }
-        backups.sort_by(|left, right| right.modified_at.cmp(&left.modified_at));
-        Ok(backups)
-    })
-    .await
-    .map_err(|error| format!("备份列表任务异常结束：{error}"))?
+    tauri::async_runtime::spawn_blocking(move || backup_store::list(&backup_directory(&app)?))
+        .await
+        .map_err(|error| format!("备份列表任务异常结束：{error}"))?
 }
 
 #[tauri::command]
 async fn create_backup(app: AppHandle) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let root = runtime_root(&app)?;
-        let backups = backup_directory(&app)?;
-        fs::create_dir_all(&backups).map_err(|error| format!("无法创建备份目录：{error}"))?;
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let staging = backups.join(format!(".staging-{timestamp}"));
-        if staging.exists() {
-            fs::remove_dir_all(&staging).map_err(|error| format!("无法清理临时备份：{error}"))?;
-        }
-        fs::create_dir_all(&staging).map_err(|error| format!("无法创建临时备份：{error}"))?;
-        for relative in [
-            "apps/local-engine/projects",
-            "apps/local-engine/dist",
-            "apps/local-engine/play-worlds",
-            "apps/voxa/data",
-        ] {
-            let source = root.join(relative);
-            if source.exists() {
-                copy_directory_contents(&source, &staging.join(relative))?;
-            }
-        }
-        fs::write(
-            staging.join("BACKUP-README.txt"),
-            "BOX3 Engine 数据备份。此文件不包含 .env、密码或密钥。\n",
-        )
-        .map_err(|error| format!("无法写入备份说明：{error}"))?;
-        let archive = backups.join(format!(
-            "BOX-backup-{timestamp}.{}",
-            if cfg!(target_os = "windows") || cfg!(target_os = "macos") {
-                "zip"
-            } else {
-                "tar.gz"
-            }
-        ));
-        create_backup_archive(&staging, &archive)?;
-        fs::remove_dir_all(staging).map_err(|error| format!("无法清理临时备份：{error}"))?;
-        Ok(archive.to_string_lossy().to_string())
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        emit_progress(&app, "backup", "正在创建数据备份…", 20);
+        backup_store::create(&runtime_root(&app)?, &backup_directory(&app)?)
     })
     .await
     .map_err(|error| format!("备份任务异常结束：{error}"))?
 }
 
 #[tauri::command]
-async fn restore_backup(app: AppHandle, archive: String) -> Result<(), String> {
+async fn restore_backup(app: AppHandle, archive: String) -> Result<Option<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let backups = backup_directory(&app)?;
-        let requested = PathBuf::from(&archive);
-        let canonical_directory =
-            fs::canonicalize(&backups).map_err(|error| format!("无法定位备份目录：{error}"))?;
-        let canonical_archive =
-            fs::canonicalize(&requested).map_err(|error| format!("找不到备份文件：{error}"))?;
-        if canonical_archive.parent() != Some(canonical_directory.as_path())
-            || !canonical_archive.is_file()
-        {
-            return Err("只能恢复应用备份目录中的文件".into());
-        }
-        // A restore replaces bind-mounted source data. Stop containers first
-        // so a running Creator/VOXA process cannot write a newer state while
-        // files are being replaced.
-        if env_path(&app).is_ok_and(|path| path.exists()) {
-            compose_output(&app, &["stop"])?;
-        }
-        let root = runtime_root(&app)?;
-        let staging = backups.join(".restore-staging");
-        if staging.exists() {
-            fs::remove_dir_all(&staging)
-                .map_err(|error| format!("无法清理恢复临时目录：{error}"))?;
-        }
-        fs::create_dir_all(&staging).map_err(|error| format!("无法创建恢复临时目录：{error}"))?;
-        extract_backup_archive(&canonical_archive, &staging)?;
-        for relative in [
-            "apps/local-engine/projects",
-            "apps/local-engine/dist",
-            "apps/local-engine/play-worlds",
-            "apps/voxa/data",
-        ] {
-            let source = staging.join(relative);
-            if !source.exists() {
-                continue;
-            }
-            let destination = root.join(relative);
-            if destination.exists() {
-                fs::remove_dir_all(&destination)
-                    .map_err(|error| format!("无法替换 {}：{error}", destination.display()))?;
-            }
-            copy_directory_contents(&source, &destination)?;
-        }
-        fs::remove_dir_all(staging).map_err(|error| format!("无法清理恢复临时目录：{error}"))?;
-        Ok(())
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        let archive = backup_store::resolve(&backup_directory(&app)?, &archive)?;
+        emit_progress(&app, "restore-validate", "正在校验备份…", 10);
+        let report = backup::restore_archive(
+            &runtime_root(&app)?,
+            &archive,
+            backup::Limits::default(),
+            |_| {
+                services::stop(&DesktopRuntime(&app))?;
+                emit_progress(&app, "restore", "正在恢复数据…", 50);
+                Ok(())
+            },
+        )?;
+        emit_progress(&app, "complete", "恢复完成", 100);
+        Ok(report.cleanup_warning)
     })
     .await
     .map_err(|error| format!("恢复任务异常结束：{error}"))?
@@ -3524,24 +2863,9 @@ async fn restore_backup(app: AppHandle, archive: String) -> Result<(), String> {
 #[tauri::command]
 async fn delete_backup(app: AppHandle, archive: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let backups = backup_directory(&app)?;
-        let requested = PathBuf::from(&archive);
-        let canonical_directory =
-            fs::canonicalize(&backups).map_err(|error| format!("无法定位备份目录：{error}"))?;
-        let canonical_archive =
-            fs::canonicalize(&requested).map_err(|error| format!("找不到备份文件：{error}"))?;
-        let extension = canonical_archive
-            .extension()
-            .and_then(|value| value.to_str())
-            .unwrap_or_default();
-        if canonical_archive.parent() != Some(canonical_directory.as_path())
-            || !canonical_archive.is_file()
-            || !matches!(extension, "zip" | "gz" | "tar")
-        {
-            return Err("只能删除应用备份目录中的备份文件".into());
-        }
-        fs::remove_file(&canonical_archive)
-            .map_err(|error| format!("无法删除备份 {}：{error}", canonical_archive.display()))
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        let archive = backup_store::resolve(&backup_directory(&app)?, &archive)?;
+        fs::remove_file(archive).map_err(|error| format!("无法删除备份：{error}"))
     })
     .await
     .map_err(|error| format!("删除备份任务异常结束：{error}"))?
@@ -3550,17 +2874,7 @@ async fn delete_backup(app: AppHandle, archive: String) -> Result<(), String> {
 #[tauri::command]
 async fn export_backup(app: AppHandle, archive: String) -> Result<Option<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let backups = backup_directory(&app)?;
-        let canonical_directory =
-            fs::canonicalize(&backups).map_err(|error| format!("无法定位备份目录：{error}"))?;
-        let canonical_archive = fs::canonicalize(PathBuf::from(&archive))
-            .map_err(|error| format!("找不到备份文件：{error}"))?;
-        if canonical_archive.parent() != Some(canonical_directory.as_path())
-            || !canonical_archive.is_file()
-            || !is_backup_archive(&canonical_archive)
-        {
-            return Err("只能导出应用备份目录中的备份文件".into());
-        }
+        let canonical_archive = backup_store::resolve(&backup_directory(&app)?, &archive)?;
         let suggested_name = canonical_archive
             .file_name()
             .unwrap_or_default()
@@ -3586,18 +2900,8 @@ async fn import_backup(app: AppHandle) -> Result<Option<String>, String> {
         let Some(source) = choose_backup_import()? else {
             return Ok(None);
         };
-        let source =
-            fs::canonicalize(source).map_err(|error| format!("无法读取备份文件：{error}"))?;
-        let backups = backup_directory(&app)?;
-        fs::create_dir_all(&backups).map_err(|error| format!("无法创建备份目录：{error}"))?;
-        let validation = backups.join(format!(".import-check-{}", random_hex(8)));
-        validate_backup_archive(&source, &validation)?;
-        let destination = unique_backup_path(
-            &backups,
-            &source.file_name().unwrap_or_default().to_string_lossy(),
-        );
-        fs::copy(&source, &destination).map_err(|error| format!("无法导入备份：{error}"))?;
-        Ok(Some(destination.to_string_lossy().to_string()))
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        backup_store::import_file(&backup_directory(&app)?, &source).map(Some)
     })
     .await
     .map_err(|error| format!("导入备份任务异常结束：{error}"))?
@@ -3690,6 +2994,7 @@ async fn save_configuration_command(
     config: InstallConfigInput,
 ) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
+        let _operation = box_manager_core::operation::mutation_guard()?;
         let database_mode = validate_database_mode(&config.database_mode)?;
         let redis_mode = validate_redis_mode(&config.redis_mode)?;
         if database_mode == "external" {
@@ -3715,63 +3020,8 @@ async fn save_configuration_command(
 #[tauri::command]
 async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        license::require(&app)?;
-        docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
-        emit_progress(&app, "images", "正在检查离线镜像…", 20);
-        ensure_images(&app)?;
-        if managed_database_enabled(&app) {
-            let image = managed_database_image(&app);
-            if docker_output(&["image", "inspect", &image]).is_err() {
-                return Err("尚未下载内置 PostgreSQL，请先在数据配置中保存并确认下载".into());
-            }
-            emit_progress(&app, "database", "正在启动内置 PostgreSQL…", 45);
-            compose_output(&app, &["up", "-d", "--wait", "managed-postgres"])?;
-        }
-        if managed_redis_enabled(&app) {
-            let image = managed_redis_image(&app);
-            if docker_output(&["image", "inspect", &image]).is_err() {
-                return Err("尚未下载内置 Redis，请先在数据配置中保存并确认下载".into());
-            }
-            emit_progress(&app, "redis", "正在启动内置 Redis…", 52);
-            compose_output(&app, &["up", "-d", "--wait", "managed-redis"])?;
-        }
-        let label = match scope.as_str() {
-            "all" => {
-                emit_progress(&app, "start", "正在启动全部服务…", 65);
-                compose_output(&app, &["up", "-d", "--force-recreate", "--remove-orphans"])?;
-                "全部服务"
-            }
-            "creator" => {
-                emit_progress(&app, "start", "正在启动创作端…", 65);
-                let args = vec![
-                    "up",
-                    "-d",
-                    "--force-recreate",
-                    "creator",
-                    "voxa",
-                    "player-service",
-                    "player-auth-portal",
-                ];
-                compose_output(&app, &args)?;
-                "创作端"
-            }
-            "play" => {
-                emit_progress(&app, "start", "正在启动游玩端…", 65);
-                let args = vec![
-                    "up",
-                    "-d",
-                    "--force-recreate",
-                    "play",
-                    "player-service",
-                    "player-auth-portal",
-                ];
-                compose_output(&app, &args)?;
-                "游玩端"
-            }
-            _ => return Err("未知启动范围，只能选择全部服务、创作端或游玩端".into()),
-        };
-        emit_progress(&app, "complete", &format!("{label}已启动"), 100);
-        Ok(())
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        services::start(&DesktopRuntime(&app), &scope)
     })
     .await
     .map_err(|error| format!("启动任务异常结束：{error}"))?
@@ -3784,16 +3034,15 @@ fn get_license_status(app: AppHandle) -> Result<LicenseStatus, String> {
 
 #[tauri::command]
 fn install_license(app: AppHandle, token: String) -> Result<LicenseStatus, String> {
+    let _operation = box_manager_core::operation::mutation_guard()?;
     license::install(&app, &token)
 }
 
 #[tauri::command]
 async fn stop_services(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
-        emit_progress(&app, "stop", "正在停止全部服务…", 35);
-        compose_output(&app, &["stop"])?;
-        emit_progress(&app, "complete", "全部服务已停止", 100);
-        Ok(())
+        let _operation = box_manager_core::operation::mutation_guard()?;
+        services::stop(&DesktopRuntime(&app))
     })
     .await
     .map_err(|error| format!("停止任务异常结束：{error}"))?
@@ -4076,7 +3325,7 @@ mod tests {
     fn rejects_duplicate_service_ports() {
         let mut config = test_install_config();
         config.voxa_port = config.play_port;
-        assert!(validate_service_ports(&config)
+        assert!(validate_install_configuration(&config)
             .unwrap_err()
             .contains("不能使用同一个端口"));
     }
@@ -4086,7 +3335,7 @@ mod tests {
         let mut config = test_install_config();
         config.auto_backup_enabled = true;
         config.auto_backup_interval_minutes = 0;
-        assert!(validate_auto_backup_config(&config)
+        assert!(validate_install_configuration(&config)
             .unwrap_err()
             .contains("自动备份间隔"));
     }
@@ -4094,11 +3343,11 @@ mod tests {
     #[test]
     fn validates_runtime_capacity_and_converts_minutes() {
         let mut config = test_install_config();
-        assert!(validate_runtime_capacity(&config).is_ok());
+        assert!(validate_install_configuration(&config).is_ok());
         assert_eq!(minutes_to_milliseconds(15), 900_000);
 
         config.teleport_max_rooms = 1_025;
-        assert!(validate_runtime_capacity(&config)
+        assert!(validate_install_configuration(&config)
             .unwrap_err()
             .contains("私有房间上限"));
     }
@@ -4107,7 +3356,7 @@ mod tests {
     fn rejects_prewarm_above_runtime_limit() {
         let mut config = test_install_config();
         config.play_prewarm_runtimes = config.play_runtimes + 1;
-        assert!(validate_runtime_capacity(&config)
+        assert!(validate_install_configuration(&config)
             .unwrap_err()
             .contains("Play 预热数量"));
     }
@@ -4115,12 +3364,12 @@ mod tests {
     #[test]
     fn validates_operator_resources_and_parses_memory_units() {
         let mut config = test_install_config();
-        assert!(validate_operator_performance(&config).is_ok());
+        assert!(validate_install_configuration(&config).is_ok());
         assert_eq!(memory_mebibytes(Some(&"1g".to_string()), 128), 1024);
         assert_eq!(memory_mebibytes(Some(&"512m".to_string()), 128), 512);
 
         config.auth_portal_cpu_limit = 0.0;
-        assert!(validate_operator_performance(&config)
+        assert!(validate_install_configuration(&config)
             .unwrap_err()
             .contains("登录页面 CPU"));
     }
@@ -4275,6 +3524,77 @@ mod tests {
     }
 
     #[test]
+    fn owner_normalization_preserves_legacy_urls_before_removing_derived_keys() {
+        let source = "# owner comment\nBOX_PLAY_PUBLIC_URL=https://play.example/worlds\nBOX_CREATOR_PUBLIC_URL=https://create.example/editor\nBOX_AUTH_PORTAL_PUBLIC_URL=https://auth.example/\nBOX_PLAYER_LOGIN_URL=https://login.example/custom\nBOX_DATABASE_URL=postgres://u:p@db/box?sslmode=require\n";
+        let normalized = normalize_owner_environment(source).unwrap();
+        let values = parse_env(&normalized);
+        assert_eq!(
+            values["BOX_PLAY_PUBLIC_URL_OVERRIDE"],
+            "https://play.example/worlds"
+        );
+        assert_eq!(
+            values["BOX_CREATOR_PUBLIC_URL_OVERRIDE"],
+            "https://create.example/editor"
+        );
+        assert_eq!(
+            values["BOX_PLAYER_LOGIN_URL_OVERRIDE"],
+            "https://login.example/custom"
+        );
+        assert_eq!(values["BOX_PLAY_NETWORK_MODE"], "public");
+        assert_eq!(values["BOX_CREATOR_NETWORK_MODE"], "public");
+        assert_eq!(values["BOX_DATABASE_QUERY"], "sslmode=require");
+        assert!(!values.contains_key("BOX_PLAY_PUBLIC_URL"));
+        assert!(!values.contains_key("BOX_DATABASE_URL"));
+        assert!(normalized.contains("# owner comment"));
+        assert_eq!(
+            normalize_owner_environment(&normalized).unwrap(),
+            normalized
+        );
+    }
+
+    #[test]
+    fn owner_normalization_keeps_explicit_query_and_cleans_managed_query() {
+        let source = "BOX_DATABASE_URL=postgres://u:p@db/box?sslmode=require\nBOX_DATABASE_QUERY=sslmode=verify-full\n";
+        let external = normalize_owner_environment(source).unwrap();
+        assert_eq!(
+            parse_env(&external)["BOX_DATABASE_QUERY"],
+            "sslmode=verify-full"
+        );
+        let mut managed = external;
+        set_env(&mut managed, "BOX_DATABASE_MODE", "managed").unwrap();
+        assert!(!parse_env(&normalize_owner_environment(&managed).unwrap())
+            .contains_key("BOX_DATABASE_QUERY"));
+    }
+
+    #[test]
+    fn desktop_form_compares_migrated_hosts_and_ports_before_field_updates() {
+        let source = "BOX_PLAY_PUBLIC_URL=https://play.example/worlds\nBOX_CREATOR_PUBLIC_URL=https://create.example/editor\nBOX_AUTH_PORTAL_PUBLIC_URL=https://auth.example/\nBOX_PLAYER_LOGIN_URL=https://login.example/custom\nBOX_DATABASE_URL=postgres://owner:fixture@db/box?sslmode=require\n";
+        let mut config = test_install_config();
+        config.public_host = "play.example".into();
+        config.play_network_mode = "public".into();
+        config.creator_host = "create.example".into();
+        config.creator_network_mode = "public".into();
+        let unchanged = configuration_document_for_save(source, &config).unwrap();
+        let values = parse_env(&unchanged);
+        assert!(values.contains_key("BOX_PLAY_PUBLIC_URL_OVERRIDE"));
+        assert!(values.contains_key("BOX_CREATOR_PUBLIC_URL_OVERRIDE"));
+        // Blank submitted passwords can now retain migrated legacy credentials.
+        assert_eq!(values["BOX_DATABASE_PASSWORD"], "fixture");
+        config.play_port = 4000;
+        let port_changed = parse_env(&configuration_document_for_save(source, &config).unwrap());
+        assert!(!port_changed.contains_key("BOX_PLAY_PUBLIC_URL_OVERRIDE"));
+        assert!(port_changed.contains_key("BOX_AUTH_PORTAL_PUBLIC_URL_OVERRIDE"));
+        config.public_host = "new.example".into();
+        let host_changed = parse_env(&configuration_document_for_save(source, &config).unwrap());
+        assert!(!host_changed.contains_key("BOX_AUTH_PORTAL_PUBLIC_URL_OVERRIDE"));
+        assert!(host_changed.contains_key("BOX_CREATOR_PUBLIC_URL_OVERRIDE"));
+        assert_eq!(
+            host_changed["BOX_PLAYER_LOGIN_URL_OVERRIDE"],
+            "https://login.example/custom"
+        );
+    }
+
+    #[test]
     fn migrates_a_legacy_database_url_without_retaining_it() {
         let normalized = normalize_owner_environment(
             "BOX_DATABASE_URL=postgresql://box%20user:secret%21@db.example.test:5432/box%20data\nBOX_TRUST_PROXY=false\nBOX_RUNTIME_IDLE_TIMEOUT_MS=900000\n",
@@ -4315,57 +3635,6 @@ mod tests {
         let values = parse_env(&normalized);
         assert_eq!(values.get("BOX_REDIS_MODE"), Some(&"external".into()));
         assert_eq!(values.get("REDIS_HOST"), Some(&"cache.example.test".into()));
-    }
-
-    #[test]
-    fn backup_archive_round_trip_preserves_file_tree() {
-        let root = std::env::temp_dir().join(format!("box-manager-backup-{}", random_hex(8)));
-        let source = root.join("source");
-        let nested = source.join("apps/local-engine/projects");
-        fs::create_dir_all(&nested).unwrap();
-        fs::write(nested.join("world.json"), "world-data").unwrap();
-        fs::write(source.join("BACKUP-README.txt"), "BOX3 Engine 数据备份。\n").unwrap();
-        let archive = root.join(
-            if cfg!(target_os = "windows") || cfg!(target_os = "macos") {
-                "snapshot.zip"
-            } else {
-                "snapshot.tar.gz"
-            },
-        );
-        create_backup_archive(&source, &archive).unwrap();
-        let validation = root.join("validation");
-        validate_backup_archive(&archive, &validation).unwrap();
-        assert!(!validation.exists());
-        let restored = root.join("restored");
-        fs::create_dir_all(&restored).unwrap();
-        extract_backup_archive(&archive, &restored).unwrap();
-        assert_eq!(
-            fs::read_to_string(restored.join("apps/local-engine/projects/world.json")).unwrap(),
-            "world-data"
-        );
-        fs::remove_dir_all(root).unwrap();
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn backup_copy_temporarily_reads_owner_write_only_files() {
-        let root =
-            std::env::temp_dir().join(format!("box-manager-backup-permission-{}", random_hex(8)));
-        let source = root.join("source.bin");
-        let destination = root.join("backup.bin");
-        fs::create_dir_all(&root).unwrap();
-        fs::write(&source, "backup-data").unwrap();
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o200)).unwrap();
-
-        copy_file_for_backup(&source, &destination).unwrap();
-
-        assert_eq!(fs::read_to_string(&destination).unwrap(), "backup-data");
-        assert_eq!(
-            fs::metadata(&source).unwrap().permissions().mode() & 0o777,
-            0o200
-        );
-        fs::set_permissions(&source, fs::Permissions::from_mode(0o600)).unwrap();
-        fs::remove_dir_all(root).unwrap();
     }
 }
 

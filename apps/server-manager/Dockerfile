@@ -24,6 +24,7 @@ ENV BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
     BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE}
 WORKDIR /source
 COPY apps/server-manager-rust ./apps/server-manager-rust
+COPY apps/manager-core ./apps/manager-core
 COPY distribution/license-public-key.pem distribution/LICENSE.txt ./distribution/
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/source/apps/server-manager-rust/target \

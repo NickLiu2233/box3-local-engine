@@ -21,13 +21,7 @@ pub(crate) const IMAGE_TAG: &str = match option_env!("BOX_MANAGER_IMAGE_TAG") {
     Some(value) => value,
     None => "0.1.1",
 };
-pub(crate) const SERVICE_NAMES: [&str; 5] = [
-    "creator",
-    "play",
-    "player-service",
-    "player-auth-portal",
-    "voxa",
-];
+pub(crate) use box_manager_core::services::APPLICATION_SERVICES as SERVICE_NAMES;
 
 pub(crate) fn detect_lan_ip() -> Option<String> {
     // UDP connect only asks the OS to choose an outbound interface; it does
@@ -80,52 +74,7 @@ pub(crate) fn ensure_runtime_files(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn parse_env(content: &str) -> BTreeMap<String, String> {
-    content
-        .lines()
-        .filter_map(|line| {
-            let line = line.trim();
-            if line.is_empty() || line.starts_with('#') {
-                return None;
-            }
-            let (key, value) = line.split_once('=')?;
-            Some((key.trim().to_string(), value.trim().to_string()))
-        })
-        .collect()
-}
-
-pub(crate) fn set_env(content: &mut String, key: &str, value: &str) -> Result<(), String> {
-    if value.contains(['\r', '\n']) {
-        return Err(format!("配置项 {key} 不能包含换行符"));
-    }
-    let replacement = format!("{key}={value}");
-    let mut found = false;
-    let mut lines = Vec::new();
-    for line in content.lines() {
-        if line.trim_start().starts_with(&format!("{key}=")) {
-            lines.push(replacement.clone());
-            found = true;
-        } else {
-            lines.push(line.to_string());
-        }
-    }
-    if !found {
-        lines.push(replacement);
-    }
-    *content = format!("{}\n", lines.join("\n"));
-    Ok(())
-}
-
-pub(crate) fn remove_env(content: &mut String, key: &str) {
-    *content = format!(
-        "{}\n",
-        content
-            .lines()
-            .filter(|line| !line.trim_start().starts_with(&format!("{key}=")))
-            .collect::<Vec<_>>()
-            .join("\n")
-    );
-}
+pub(crate) use box_manager_core::environment::{parse_env, remove_env, set_env};
 
 pub(crate) fn write_private_file(
     path: &Path,
@@ -196,29 +145,4 @@ pub(crate) fn resolve_secret(
         .unwrap_or_else(|| random_hex(32)))
 }
 
-pub(crate) fn validate_raw_environment(content: &str) -> Result<(), String> {
-    if content.len() > 512 * 1024 {
-        return Err(".env 内容不能超过 512 KB".into());
-    }
-    if content.contains('\0') {
-        return Err(".env 不能包含空字符".into());
-    }
-    for (index, line) in content.lines().enumerate() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let Some((key, _)) = line.split_once('=') else {
-            return Err(format!(".env 第 {} 行必须使用 KEY=VALUE 格式", index + 1));
-        };
-        let valid_key = key.chars().enumerate().all(|(index, character)| {
-            character == '_'
-                || character.is_ascii_uppercase()
-                || (index > 0 && character.is_ascii_digit())
-        });
-        if key.is_empty() || !valid_key {
-            return Err(format!(".env 第 {} 行的变量名无效", index + 1));
-        }
-    }
-    Ok(())
-}
+pub(crate) use box_manager_core::configuration::validate_raw_environment;

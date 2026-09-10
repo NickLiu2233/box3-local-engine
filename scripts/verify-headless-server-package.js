@@ -58,6 +58,13 @@ function main() {
     assert.ok(fs.existsSync(path.join(packageRoot, file)), `package file missing: ${file}`)
   }
 
+  // The README asks the operator to run ./install.sh, so the packaged script
+  // must already carry the executable bit.
+  for (const file of ['install.sh', 'status.sh', 'logs.sh', 'stop.sh', 'verify.sh']) {
+    const mode = fs.statSync(path.join(packageRoot, file)).mode
+    assert.ok((mode & 0o111) !== 0, `package script is not executable: ${file}`)
+  }
+
   const compose = fs.readFileSync(path.join(packageRoot, 'compose.yml'), 'utf8')
   for (const service of [
     'managed-postgres',

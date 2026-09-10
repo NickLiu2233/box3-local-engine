@@ -6,14 +6,24 @@ const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
 const manager = path.join(root, 'apps/deployment-manager')
-const frontend = fs.readFileSync(path.join(manager, 'src/main.js'), 'utf8')
+const frontend = ['main.js', 'transport.js']
+  .map((file) => fs.readFileSync(path.join(manager, 'src', file), 'utf8'))
+  .join('\n')
 const backendSourceDirectory = path.join(manager, 'src-tauri/src')
-const backend = fs
+const desktopBackend = fs
   .readdirSync(backendSourceDirectory)
   .filter((file) => file.endsWith('.rs'))
   .sort()
   .map((file) => fs.readFileSync(path.join(backendSourceDirectory, file), 'utf8'))
   .join('\n')
+const sharedDirectory = path.join(root, 'apps/manager-core/src')
+const sharedBackend = fs
+  .readdirSync(sharedDirectory)
+  .filter((file) => file.endsWith('.rs'))
+  .sort()
+  .map((file) => fs.readFileSync(path.join(sharedDirectory, file), 'utf8'))
+  .join('\n')
+const backend = desktopBackend + '\n' + sharedBackend
 const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), 'utf8')
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
@@ -127,7 +137,6 @@ assert.match(frontend, /managed-postgres/)
 assert.match(frontend, /managed-redis/)
 assert.match(frontend, /async function refreshManagedServiceInfo\(\)/)
 assert.match(frontend, /if \(state\.page === 'setup'\) refreshManagedServiceInfo\(\)/)
-assert.match(backend, /const MANAGED_SERVICE_NAMES: \[&str; 2\]/)
 assert.match(backend, /MANAGED_SERVICE_NAMES\.contains\(&service\)/)
 assert.match(backend, /managed_service_installed\(app, service\)/)
 assert.match(backend, /fn managed_database_identity\(/)
@@ -147,7 +156,7 @@ assert.match(frontend, /\['业务 DB', info\.database\]/)
 assert.match(frontend, /\['缓存 DB', '1'\]/)
 assert.doesNotMatch(styles, /\.managed-redis-allocation/)
 assert.match(backend, /if redis_mode == "managed" \{\s*\(0, 1, 240\)/)
-const installConfigInput = backend.match(/struct InstallConfigInput \{[\s\S]*?\n\}/)?.[0]
+const installConfigInput = desktopBackend.match(/struct InstallConfigInput \{[\s\S]*?\n\}/)?.[0]
 assert.ok(installConfigInput, 'missing InstallConfigInput contract')
 const normalizedConfigBody = frontend.match(/function normalizedConfig\(\) \{[\s\S]*?\n\}/)?.[0]
 assert.ok(normalizedConfigBody, 'missing normalizedConfig implementation')
@@ -184,7 +193,10 @@ assert.match(
 // The headless package builder extracts the managed services from the shared
 // docker-compose.yml, so its source legitimately references those section names.
 assert.match(headlessBuilder, /function serviceSection\(source, start, end\)/)
-assert.match(headlessBuilder, /const source = fs\.readFileSync\(path\.join\(repoRoot, 'docker-compose\.yml'\), 'utf8'\)/)
+assert.match(
+  headlessBuilder,
+  /const source = fs\.readFileSync\(path\.join\(repoRoot, 'docker-compose\.yml'\), 'utf8'\)/,
+)
 assert.doesNotMatch(builder, /postgres:16-alpine/)
 assert.match(builder, /--norsrc/)
 assert.match(defaults, /^BOX_PLAY_PUBLIC_HOST=127\.0\.0\.1$/m)
@@ -395,8 +407,6 @@ for (const field of [
 }
 assert.match(frontend, /运行时空闲回收（分钟）/)
 assert.match(frontend, /Teleport 私有房间上限/)
-assert.match(backend, /fn validate_runtime_capacity/)
-assert.match(backend, /fn validate_operator_performance/)
 assert.match(backend, /fn minutes_to_milliseconds/)
 assert.match(frontend, /允许新玩家注册/)
 assert.match(frontend, /允许网页管理地图包/)
@@ -412,12 +422,6 @@ assert.match(
   backend,
   /if redis_mode == "external"[\s\S]*?check_remote_endpoint\(" Redis", &redis_host, redis_port\)/,
 )
-assert.match(backend, /"player-service,auth-portal,creator,play,voxa"/)
-assert.match(backend, /"desktop-postgres,player-service,auth-portal,creator,play,voxa"/)
-assert.match(backend, /"desktop-redis,player-service,auth-portal,creator,play,voxa"/)
-assert.match(backend, /\["up", "-d", "--wait", "managed-postgres"\]/)
-assert.match(backend, /\["up", "-d", "--wait", "managed-redis"\]/)
-assert.doesNotMatch(backend, /"creator,play,voxa"/)
 assert.match(backend, /Applications\/Docker\.app\/Contents\/Resources\/bin\/docker/)
 assert.ok(backend.includes(String.raw`r"C:\Program Files\Docker\Docker\resources\bin\docker.exe"`))
 assert.match(backend, /fn unavailable_message/)
@@ -425,7 +429,6 @@ assert.match(backend, /fn synchronize_runtime_image_tag/)
 assert.match(backend, /fn runtime_env_path/)
 assert.match(backend, /fn generate_runtime_environment/)
 assert.match(backend, /runtime_env_path\(app\)/)
-assert.match(backend, /set_env\(&mut runtime, "BOX_IMAGE_TAG", IMAGE_TAG\)/)
 assert.match(backend, /synchronize_runtime_image_tag\(app\)\?;/)
 assert.doesNotMatch(
   backend,
@@ -593,20 +596,11 @@ for (const scope of ['"all"', '"creator"', '"play"']) {
 }
 assert.doesNotMatch(backend, /async fn install_and_start/)
 assert.match(backend, /fn validate_creator_host/)
-assert.match(backend, /"local" \| "lan" \| "public" => Ok\(value\)/)
 assert.match(frontend, /不建议直接向公网开放创作端/)
-assert.match(backend, /"BOX_CREATOR_BIND_IP", creator_bind_ip/)
-assert.match(backend, /"BOX_VOXA_BIND_IP", creator_bind_ip/)
 assert.match(backend, /fn enforce_creator_network_policy/)
 assert.match(backend, /enforce_creator_network_policy\(app\)\?;/)
 assert.match(backend, /BOX_CREATOR_PUBLIC_URL/)
 assert.match(backend, /BOX_VOXA_ALLOWED_ORIGINS/)
-assert.match(backend, /"BOX_CREATOR_ALLOWED_HOSTS", &creator_host/)
-assert.match(
-  backend,
-  /"BOX_RESOURCE_ALLOWED_ORIGINS",\s*&creator_origins/,
-  'the generated runtime config must allow the embedded VOXA origin to read Creator runtime blobs',
-)
 assert.match(
   compose,
   /VOXA_URL: \$\{BOX_VOXA_PUBLIC_URL[^\n]*\n\s*BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL/,
@@ -648,7 +642,7 @@ assert.match(backend, /imported_digest\.as_deref\(\) == Some\(archive_digest\.as
 assert.match(backend, /write_private_file\(\s*&digest_path,\s*format!\("\{archive_digest\}\\n"\)/)
 assert.match(backend, /SHA-256 校验失败/)
 assert.match(backend, /BOX-OFFLINE-IMAGE\.json/)
-const saveConfigurationCommand = backend.match(
+const saveConfigurationCommand = desktopBackend.match(
   /async fn save_configuration_command[\s\S]*?(?=\n#\[tauri::command\]\nasync fn start_services)/,
 )?.[0]
 assert.ok(saveConfigurationCommand, 'missing save configuration command body')
@@ -667,23 +661,56 @@ assert.match(frontend, /id="install-license"/)
 assert.match(frontend, /async function installLicenseToken\(\)/)
 assert.doesNotMatch(frontend, /id="license-file"/)
 assert.doesNotMatch(frontend, /licenseToken/)
-assert.match(backend, /license::require\(&app\)\?;/)
-assert.match(frontend, /const UNLICENSED_PAGES = new Set\(\['license', 'about'\]\)/)
+assert.match(frontend, /const UNLICENSED_PAGES = new Set\(\['license', 'about', 'web-login'\]\)/)
 assert.match(frontend, /if \(!hasValidLicense\(\) && !UNLICENSED_PAGES\.has\(state\.page\)\)/)
+// The Web manager gate must reuse the launcher shell and panels. A bespoke
+// full-screen form (and its undefined CSS variables) made the headless console
+// look like a different product.
+assert.match(frontend, /function webLogin\(\)/)
+assert.match(frontend, /state\.page === 'web-login'/)
+// A stale Web token must fall back to the gate instead of an empty console.
+assert.match(frontend, /setWebManagerToken\(''\)\s*\n\s*state\.page = 'web-login'/)
+assert.match(frontend, /<form id="web-login-form" class="manager-login-form">/)
+assert.match(frontend, /<h1>Box Engine 管理界面<\/h1>/)
+assert.match(frontend, /navItem\('web-login', 'device', '管理登录'\)/)
+assert.match(frontend, /!\['web-login', 'about'\]\.includes\(state\.page\)/)
+assert.doesNotMatch(frontend, /HEADLESS OPERATIONS/)
+assert.doesNotMatch(frontend, /class="web-login"/)
+assert.doesNotMatch(styles, /\.web-login\b/)
+assert.match(styles, /#web-login-error/)
+// The setup form must accept everything the backends accept. A hidden panel
+// holding an out-of-range default made the browser block saving with an
+// unfocusable "invalid form control" warning.
+assert.match(
+  frontend,
+  /'账号服务内存', config\.playerServiceMemoryMb \?\? 1024, 'number', '推荐 1024 MiB', false, \{ min: 128, max: 262144 \}/,
+)
+assert.match(
+  frontend,
+  /'登录页面内存', config\.authPortalMemoryMb \?\? 128, 'number', '推荐 128 MiB', false, \{ min: 64, max: 262144 \}/,
+)
+assert.match(
+  frontend,
+  /'Creator 内存', config\.creatorMemoryMb \?\? 6144, 'number', '推荐 6144 MiB', false, \{ min: 512, max: 262144 \}/,
+)
+assert.doesNotMatch(frontend, /step: 0\.1 \}/)
+assert.match(frontend, /<form id="setup-form" novalidate/)
+assert.match(frontend, /function revealInvalidSetupField\(form\)/)
+assert.match(frontend, /state\.page = 'overview'\s*\n\s*await refreshStatus\(\)/)
 assert.doesNotMatch(frontend, /onboardingStep|onboarding-shell|onboarding-next/)
 assert.match(frontend, /async function recheckDocker\(\)/)
-assert.match(frontend, /正在检测 Docker Desktop…/)
+assert.match(frontend, /正在检测 \$\{dockerPlatform\(\)\.name\}/)
 assert.match(frontend, /Promise\.race\(\[invoke\('get_docker_check'\), timeout\]\)/)
-assert.match(frontend, /Docker Desktop 未在 8 秒内响应/)
+assert.match(frontend, /dockerPlatform\(\)\.name\} 未在 8 秒内响应/)
 assert.doesNotMatch(frontend, /id="recheck-docker"/)
 assert.match(frontend, /const startsDockerWork =/)
-assert.match(frontend, /Docker Desktop 尚未启动。请先启动 Docker Desktop/)
-assert.match(frontend, /id="start-docker-desktop"/)
+assert.match(frontend, /state\.error = dockerPlatform\(\)\.hint/)
+assert.match(frontend, /id="connect-docker"/)
 assert.match(frontend, /async function startDockerDesktop\(\)/)
 assert.match(frontend, /invoke\('start_docker_desktop'\)/)
 assert.match(frontend, /function scheduleDockerStartupCheck\(\)/)
 assert.match(frontend, /window\.setTimeout\(async \(\) => \{/)
-assert.match(frontend, /id="start-docker-desktop"/)
+assert.match(frontend, /id="connect-docker"/)
 assert.match(frontend, /projectRuntimesLoaded: false/)
 assert.match(
   frontend,
@@ -714,10 +741,6 @@ assert.doesNotMatch(
   )?.[0] ?? '',
   /license::require\(&app\)\?;/,
 )
-assert.match(
-  backend,
-  /async fn control_service[\s\S]*?if !managed && action != "stop" \{\s*license::require\(&app\)\?;/,
-)
 assert.match(backend, /fn get_license_status\(app: AppHandle\)/)
 assert.match(backend, /fn install_license\(app: AppHandle, token: String\)/)
 assert.match(compose, /BOX_LICENSE_FILE/)
@@ -726,5 +749,209 @@ assert.match(compose, /BOX_LICENSE_DEVICE_FILE/)
 // to reserve space for the page header and filters, then expose its own
 // vertical scrollbar instead of being clipped below the viewport.
 assert.doesNotMatch(styles, /\.logs-page|\.log-card|\.log-live-status/)
+
+// Check production adapter wiring separately from the aggregated feature text.
+// Test fixtures/comments must not make a disconnected core implementation pass.
+const productionRust = (source) =>
+  source
+    // Top-level test modules end at an unindented brace in these Rust files.
+    // Remove the whole module, preserving production items declared after it.
+    .replace(/^#\[cfg\(test\)\]\s*mod \w+\s*\{[\s\S]*?^\}/gm, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+const core = Object.fromEntries(
+  ['lib', 'configuration', 'license', 'services', 'backup'].map((name) => [
+    name,
+    productionRust(fs.readFileSync(path.join(sharedDirectory, `${name}.rs`), 'utf8')),
+  ]),
+)
+for (const module of ['configuration', 'license', 'services']) {
+  assert.ok(core.lib.includes(`pub mod ${module};`), `core must export ${module}`)
+}
+// Core owns policies; native filesystem/network/UI adapters must stay outside
+// configuration. License time/checkpoint I/O and backup filesystem I/O are valid.
+assert.doesNotMatch(core.configuration, /\b(?:tauri|axum)::/)
+assert.doesNotMatch(core.configuration, /\b(?:std::env|env)::(?:var|var_os)\(/)
+for (const name of [
+  'validate_raw_environment',
+  'validate_configuration',
+  'runtime_environment',
+  'database_url',
+]) {
+  assert.ok(
+    core.configuration.includes(`pub fn ${name}(`),
+    `missing shared configuration API ${name}`,
+  )
+}
+for (const key of [
+  'BOX_CREATOR_ALLOWED_HOSTS',
+  'BOX_RESOURCE_ALLOWED_ORIGINS',
+  'BOX_VOXA_ALLOWED_ORIGINS',
+  'BOX_PLAYER_AUTH_ALLOWED_ORIGINS',
+  'BOX_PLAYER_LOGIN_URL',
+  'BOX_PLAYER_SERVICE_INTERNAL_URL',
+  'BOX_DATABASE_QUERY',
+]) {
+  assert.ok(core.configuration.includes(`"${key}"`), `shared runtime must derive/preserve ${key}`)
+}
+// The camelCase signed-token contract is now public and owned by core.
+assert.match(
+  core.license,
+  /#\[serde\(rename_all = "camelCase"\)\]\s*pub struct LicensePayload\s*\{/,
+)
+assert.match(
+  core.license,
+  /\.verify_strict\(/,
+  'signed licenses must use strict signature verification',
+)
+assert.match(
+  core.license,
+  /payload\.device_id != expected_device/,
+  'licenses must bind to the device',
+)
+for (const name of ['verify_token', 'status_from_token', 'trusted_now']) {
+  assert.ok(core.license.includes(`pub fn ${name}(`), `missing shared license API ${name}`)
+}
+assert.match(core.services, /pub const MANAGED_SERVICES:/)
+for (const serviceName of [
+  'managed-postgres',
+  'managed-redis',
+  'creator',
+  'play',
+  'voxa',
+  'player-service',
+  'player-auth-portal',
+]) {
+  assert.ok(
+    core.services.includes(`"${serviceName}"`),
+    `core service catalog is missing ${serviceName}`,
+  )
+}
+for (const name of ['start', 'control', 'stop', 'statuses', 'compose_rows', 'enabled']) {
+  assert.ok(core.services.includes(`pub fn ${name}(`), `missing shared service operation ${name}`)
+}
+// Keep the license guard as a security invariant, but leave scope selection,
+// dependency order and exact Compose argv to the shared runtime behavior tests.
+assert.match(core.services, /runtime\.require_license\(\)\?;/)
+assert.match(core.services, /--force-recreate/)
+assert.doesNotMatch(
+  core.services,
+  /COMPOSE_PROFILES/,
+  'service enablement must not depend on stale owner profiles',
+)
+
+// Backup migration is staged: until lib.rs exports backup, check the new core
+// contract without requiring desktop's soon-to-be-deleted ZIP/tar helpers.
+// Once exported, adapters must use backup_store for creation/import validation
+// and backup for restoration; check both links in that shared call chain.
+assert.match(core.backup, /pub fn create_archive\(/)
+assert.match(core.backup, /pub fn validate_archive\(/)
+assert.match(core.backup, /pub fn restore_archive\b/)
+assert.match(core.backup, /pub const DATA_DIRECTORIES:/)
+assert.ok(core.backup.includes('".tar.gz"'), 'new backups must use .tar.gz')
+assert.ok(
+  core.backup.includes('"BACKUP-README.txt"'),
+  'empty installations must have a valid README-only backup',
+)
+// Rejecting traversal/links, validating before stopping writers, ZIP/TAR legacy
+// import and rollback belong in the core backup behavior suite.
+// No check here requires an archive shell command or a particular parser.
+
+const desktopCommands = productionRust(
+  fs.readFileSync(path.join(backendSourceDirectory, 'commands.rs'), 'utf8'),
+)
+const desktopConfig = productionRust(
+  fs.readFileSync(path.join(backendSourceDirectory, 'config.rs'), 'utf8'),
+)
+const desktopLicense = productionRust(
+  fs.readFileSync(path.join(backendSourceDirectory, 'license.rs'), 'utf8'),
+)
+assert.match(desktopCommands, /use box_manager_core::configuration as shared_config;/)
+assert.match(desktopCommands, /shared_config::runtime_environment\(/)
+assert.match(desktopCommands, /shared_config::validate_configuration\(/)
+assert.match(desktopCommands, /validate_install_configuration\(config\)\?;/)
+assert.match(desktopConfig, /use box_manager_core::configuration::validate_raw_environment;/)
+assert.match(desktopCommands, /validate_raw_environment\(&content\)\?;/)
+assert.match(desktopCommands, /web_manager:\s*false/)
+assert.match(
+  desktopCommands,
+  /write_private_file\(&runtime_env_path\(app\)\?/,
+  'derived environment must be written privately',
+)
+assert.match(desktopCommands, /use box_manager_core::services::\{/)
+assert.match(desktopCommands, /MANAGED_SERVICES as MANAGED_SERVICE_NAMES/)
+assert.match(desktopCommands, /impl ServiceRuntime for DesktopRuntime/)
+assert.match(desktopCommands, /services::statuses\(/)
+const desktopModels = productionRust(
+  fs.readFileSync(path.join(backendSourceDirectory, 'models.rs'), 'utf8'),
+)
+for (const model of ['ServiceStatus', 'InstallProgress']) {
+  assert.ok(
+    desktopModels.includes(`use box_manager_core::services::${model};`),
+    `desktop must re-export shared ${model}`,
+  )
+  assert.ok(!desktopModels.includes(`struct ${model} {`), `desktop must not duplicate ${model}`)
+}
+for (const operation of ['start', 'control', 'stop']) {
+  assert.ok(
+    desktopCommands.includes(`services::${operation}(&DesktopRuntime(`),
+    `desktop must delegate ${operation} to core services`,
+  )
+}
+assert.match(
+  desktopCommands,
+  /license::require\(self\.0\)/,
+  'desktop runtime must supply the license gate',
+)
+assert.match(desktopLicense, /use box_manager_core::license::\{self as shared,/)
+for (const operation of ['trusted_now', 'verify_token', 'status_from_token']) {
+  assert.ok(
+    desktopLicense.includes(`shared::${operation}(`),
+    `desktop must use shared license ${operation}`,
+  )
+}
+if (core.lib.includes('pub mod backup;')) {
+  // Accept direct and flat grouped imports, including module aliases. Match
+  // complete members so backup_store alone cannot satisfy the backup import.
+  const coreImports = new Map()
+  for (const [, name, alias] of desktopCommands.matchAll(
+    /use\s+box_manager_core::(\w+)(?:\s+as\s+(\w+))?\s*;/g,
+  )) {
+    coreImports.set(name, alias || name)
+  }
+  for (const [, members] of desktopCommands.matchAll(/use\s+box_manager_core::\{([^{}]+)\}\s*;/g)) {
+    for (const member of members.split(',')) {
+      const binding = member.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/)
+      if (binding) coreImports.set(binding[1], binding[2] || binding[1])
+    }
+  }
+  for (const module of ['backup', 'backup_store']) {
+    assert.ok(coreImports.has(module), 'desktop must import core ' + module)
+    assert.ok(core.lib.includes(`pub mod ${module};`), `core must export ${module}`)
+  }
+  const backupName = coreImports.get('backup')
+  const storeName = coreImports.get('backup_store')
+  assert.ok(
+    desktopCommands.includes(`${backupName}::restore_archive(`),
+    'desktop must use shared backup restore_archive',
+  )
+  for (const operation of ['list', 'resolve', 'create', 'import_file']) {
+    assert.ok(
+      desktopCommands.includes(`${storeName}::${operation}(`),
+      `desktop must use shared backup_store ${operation}`,
+    )
+  }
+  const backupStore = productionRust(
+    fs.readFileSync(path.join(sharedDirectory, 'backup_store.rs'), 'utf8'),
+  )
+  assert.match(backupStore, /use crate::backup::\{self, Limits\};/)
+  for (const operation of ['create_archive', 'validate_archive']) {
+    assert.ok(
+      backupStore.includes(`backup::${operation}(`),
+      `backup_store must delegate ${operation} to shared backup`,
+    )
+  }
+} else {
+  console.log('Desktop backup: core contract checked; adapter integration pending pub mod backup')
+}
 
 console.log('Desktop deployment manager checks passed')

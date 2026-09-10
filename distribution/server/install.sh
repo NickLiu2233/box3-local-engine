@@ -30,11 +30,25 @@ if [ ! -f .env ]; then
   auth_secret=$(random_hex)
   admin_secret=$(random_hex)
   manager_secret=$(random_hex)
+  # Bind the license device identity to the operator's .env so unpacking a new
+  # package version does not silently invalidate an installed license.
+  license_secret=$(random_hex)
+  # The Web manager runs inside a container, so it cannot discover the host LAN
+  # address itself. Record it now, while we are still on the host.
+  lan_ip=''
+  if command -v ip >/dev/null 2>&1; then
+    lan_ip=$(ip route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") print $(i+1)}' | head -n 1)
+  fi
+  if [ -z "$lan_ip" ] && command -v hostname >/dev/null 2>&1; then
+    lan_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+  fi
   sed -i.bak \
     -e "s/CHANGE_ME_PERMISSION_TOKEN_SECRET/$permission_secret/" \
     -e "s/CHANGE_ME_PLAYER_AUTH_API_KEY/$auth_secret/" \
     -e "s/CHANGE_ME_PLAY_ADMIN_TOKEN/$admin_secret/" \
-    -e "s/CHANGE_ME_SERVER_MANAGER_TOKEN/$manager_secret/" .env
+    -e "s/CHANGE_ME_SERVER_MANAGER_TOKEN/$manager_secret/" \
+    -e "s/^BOX_LICENSE_INSTALL_SECRET=.*/BOX_LICENSE_INSTALL_SECRET=$license_secret/" \
+    -e "s/^BOX_LAN_IP=.*/BOX_LAN_IP=$lan_ip/" .env
   rm -f .env.bak
   chmod 600 .env
   echo 'Created .env. Review it before exposing any service to a LAN or the internet.'

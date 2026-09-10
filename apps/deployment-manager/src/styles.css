@@ -28,23 +28,13 @@
   --radius-panel: 10px;
 }
 
-.web-login {
-  display: grid;
-  min-height: 100vh;
-  place-items: center;
-  padding: 24px;
-  background: var(--canvas);
+#web-login-error:empty {
+  display: none;
 }
-
-.web-login section { width: min(100%, 420px); padding: 40px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
-.web-login img { width: 56px; height: 56px; border-radius: 14px; }
-.web-login span { display: block; margin-top: 20px; color: var(--muted); font-size: 11px; letter-spacing: .12em; }
-.web-login h1 { margin: 8px 0; }
-.web-login p { color: var(--muted); line-height: 1.6; }
-#web-login-error:empty { display: none; }
-#web-login-error:not(:empty) { color: var(--danger); font-size: 12px; }
-.web-login form { display: grid; gap: 12px; margin-top: 24px; }
-.web-login input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--canvas); color: inherit; }
+#web-login-error:not(:empty) {
+  color: var(--danger);
+  font-size: 12px;
+}
 
 * {
   box-sizing: border-box;
@@ -408,6 +398,33 @@ nav {
 
 .sidebar-bottom {
   margin-top: auto;
+}
+
+.web-logout {
+  width: 100%;
+  height: 36px;
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.web-logout:hover {
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+  color: var(--danger);
+}
+
+.web-logout svg {
+  width: 17px;
+  height: 17px;
 }
 
 .theme-picker {
@@ -1389,14 +1406,14 @@ button:disabled {
   font-size: 12px;
 }
 
-form {
+#setup-form {
   height: calc(100% - 56px);
   display: grid;
   grid-template-rows: 38px minmax(0, 1fr) 46px;
   overflow: hidden;
 }
 
-form.environment-mode {
+#setup-form.environment-mode {
   grid-template-rows: 38px minmax(0, 1fr) 46px;
 }
 
@@ -2340,7 +2357,68 @@ form.environment-mode {
 }
 
 .license-page {
-  width: min(1040px, 100%);
+  width: 100%;
+}
+
+.manager-login-page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 28px 0 10vh;
+}
+
+.manager-login-card {
+  width: min(520px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--panel);
+}
+
+.manager-login-heading {
+  padding: 26px 26px 22px;
+}
+
+.manager-login-kicker {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+}
+
+.manager-login-heading h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.manager-login-form {
+  display: grid;
+  gap: 16px;
+  padding: 22px 26px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.manager-login-form .field {
+  gap: 6px;
+  grid-template-rows: auto 34px auto;
+}
+
+.manager-login-form .field small {
+  min-height: 0;
+  overflow: visible;
+  line-height: 1.5;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.manager-login-form .button {
+  width: 100%;
+  min-height: 40px;
+  justify-self: stretch;
+  margin-top: 2px;
 }
 
 .license-header h1 {

@@ -9,18 +9,15 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use chrono::{DateTime, Utc};
-use ed25519_dalek::{pkcs8::DecodePublicKey, Signature, VerifyingKey};
+use chrono::Utc;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     env, fs,
     io::{Read, Write},
-    net::{SocketAddr, TcpStream},
+    net::{SocketAddr, TcpStream, ToSocketAddrs},
     path::{Path as FsPath, PathBuf},
     process::Command,
     sync::Arc,
@@ -28,13 +25,17 @@ use std::{
 };
 use tower_http::services::ServeDir;
 
-const SERVICES: [&str; 5] = [
-    "creator",
-    "voxa",
-    "play",
-    "player-service",
-    "player-auth-portal",
-];
+mod operations;
+use box_manager_core::configuration as shared_config;
+use box_manager_core::configuration_migration::{
+    clear_overrides_on_configuration_change, migrate_document,
+};
+use box_manager_core::services::{
+    self, Runtime as ServiceRuntime, APPLICATION_SERVICES as SERVICES,
+};
+use box_manager_core::{backup, backup_store};
+use operations::Operations;
+
 const KEY: &str = include_str!("../../../distribution/license-public-key.pem");
 const LEGAL_NOTICE: &str = include_str!("../../../distribution/LICENSE.txt");
 
@@ -44,25 +45,80 @@ struct App {
     token: String,
     compose_file: PathBuf,
     environment_file: PathBuf,
+    operations: Arc<Operations>,
+    operation_id: Option<String>,
 }
+impl App {
+    fn progress(&self, stage: &str, message: &str, percent: u8) {
+        if let Some(id) = &self.operation_id {
+            self.operations.update(id, stage, message, percent, false);
+        }
+    }
+}
+struct WebRuntime<'a>(&'a App);
+impl ServiceRuntime for WebRuntime<'_> {
+    fn require_license(&self) -> Result<(), String> {
+        if license(self.0, None)?
+            .get("valid")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            Ok(())
+        } else {
+            Err("请先安装有效许可证".into())
+        }
+    }
+    fn prepare_images(&self) -> Result<(), String> {
+        generate_runtime_environment(self.0)?;
+        database_url(&parse_env(
+            &fs::read_to_string(env_path(self.0)).map_err(|e| e.to_string())?,
+        ))?;
+        docker(&["info", "--format", "{{.ServerVersion}}"])?;
+        Ok(())
+    }
+    fn managed_enabled(&self, service: &str) -> bool {
+        let key = match service {
+            "managed-postgres" => "BOX_DATABASE_MODE",
+            "managed-redis" => "BOX_REDIS_MODE",
+            _ => return false,
+        };
+        parse_env(&fs::read_to_string(env_path(self.0)).unwrap_or_default())
+            .get(key)
+            .is_some_and(|mode| mode == "managed")
+    }
+    fn check_managed(&self, service: &str) -> Result<(), String> {
+        if !self.managed_enabled(service) {
+            return Err("该内置基础服务尚未启用".into());
+        }
+        let values = parse_env(&fs::read_to_string(env_path(self.0)).map_err(|e| e.to_string())?);
+        let image = managed_image(
+            &values,
+            if service == "managed-postgres" {
+                "postgresql"
+            } else {
+                "redis"
+            },
+        )?;
+        docker(&["image", "inspect", &image])
+            .map_err(|_| "该内置基础服务尚未安装，请先在数据配置中下载镜像".to_string())?;
+        Ok(())
+    }
+    fn compose(&self, args: &[&str]) -> Result<(), String> {
+        compose(self.0, args).map(|_| ())
+    }
+    fn progress(&self, stage: &str, message: &str, percent: u8) {
+        self.0.progress(stage, message, percent);
+    }
+}
+
 #[derive(Deserialize)]
 struct Request {
     #[serde(flatten)]
     body: BTreeMap<String, Value>,
 }
-#[derive(Deserialize)]
-struct LicensePayload {
-    format_version: u8,
-    license_id: String,
-    #[serde(rename = "type")]
-    license_type: String,
-    holder_id: String,
-    device_id: String,
-    issued_at: String,
-    expires_at: String,
-    features: Vec<String>,
-    commercial_use: bool,
-}
+use box_manager_core::license as shared_license;
+#[cfg(test)]
+use shared_license::LicensePayload;
 #[derive(Serialize)]
 struct Error {
     message: String,
@@ -80,33 +136,11 @@ fn fail(message: impl Into<String>) -> Response {
 fn env_path(app: &App) -> PathBuf {
     app.environment_file.clone()
 }
-fn parse_env(s: &str) -> BTreeMap<String, String> {
-    s.lines()
-        .filter_map(|l| {
-            l.trim()
-                .split_once('=')
-                .map(|(k, v)| (k.trim().into(), v.trim().into()))
-        })
-        .collect()
-}
-fn set_env(mut source: String, key: &str, value: &str) -> String {
-    let mut found = false;
-    source = source
-        .lines()
-        .map(|line| {
-            if line.trim_start().starts_with(&format!("{key}=")) {
-                found = true;
-                format!("{key}={value}")
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    if !found {
-        source.push_str(&format!("\n{key}={value}"));
-    }
-    format!("{}\n", source.trim_end())
+use box_manager_core::environment::parse_env;
+
+fn set_env(mut source: String, key: &str, value: &str) -> Result<String, String> {
+    box_manager_core::environment::set_env(&mut source, key, value)?;
+    Ok(source)
 }
 fn json_value(value: &Value) -> Result<String, String> {
     let rendered = match value {
@@ -175,19 +209,83 @@ fn auth(headers: &HeaderMap, app: &App) -> Result<(), Response> {
             .into_response())
     }
 }
+fn host_project_root(app: &App) -> Result<PathBuf, String> {
+    if let Some(root) = env::var("BOX_SERVER_MANAGER_HOST_ROOT")
+        .ok()
+        .filter(|root| !root.trim().is_empty())
+    {
+        let root = PathBuf::from(root);
+        if root.is_absolute() {
+            return Ok(root);
+        }
+        return Err("BOX_SERVER_MANAGER_HOST_ROOT 必须是宿主机绝对路径".into());
+    }
+    if !in_container() {
+        return Ok(app.root.clone());
+    }
+    let container = env::var("HOSTNAME")
+        .map_err(|_| "无法定位管理容器，请配置 BOX_SERVER_MANAGER_HOST_ROOT")?;
+    let mounts: Value = serde_json::from_str(&docker(&[
+        "inspect",
+        "--format",
+        "{{json .Mounts}}",
+        &container,
+    ])?)
+    .map_err(|e| e.to_string())?;
+    mapped_host_root(&app.root, &mounts)
+}
+fn mapped_host_root(root: &FsPath, mounts: &Value) -> Result<PathBuf, String> {
+    mounts
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|mount| {
+            if mount.get("Type")?.as_str()? != "bind" {
+                return None;
+            }
+            let destination = PathBuf::from(mount.get("Destination")?.as_str()?);
+            let relative = root.strip_prefix(&destination).ok()?;
+            let source = PathBuf::from(mount.get("Source")?.as_str()?);
+            source
+                .is_absolute()
+                .then(|| (destination.components().count(), source.join(relative)))
+        })
+        .max_by_key(|(depth, _)| *depth)
+        .map(|(_, root)| root)
+        .ok_or_else(|| {
+            "无法定位部署目录的宿主机挂载路径，请配置 BOX_SERVER_MANAGER_HOST_ROOT".into()
+        })
+}
 fn compose(app: &App, args: &[&str]) -> Result<String, String> {
-    let output = Command::new("docker")
+    if let Some(result) = services::control_existing(args, docker) {
+        return result;
+    }
+    let environment = generate_runtime_environment(app)?;
+    let mut command = Command::new("docker");
+    command
         .args([
             "compose",
             "--project-name",
             "box-local-engine",
-            "--env-file",
-            env_path(app).to_str().unwrap(),
-            "-f",
-            app.compose_file.to_str().unwrap(),
+            "--project-directory",
         ])
+        .arg(host_project_root(app)?)
+        .arg("--env-file")
+        .arg(&environment)
+        .arg("-f")
+        .arg(&app.compose_file)
         .args(args)
-        .current_dir(&app.root)
+        .current_dir(&app.root);
+    for key in
+        parse_env(&fs::read_to_string(&environment).map_err(|error| error.to_string())?).keys()
+    {
+        command.env_remove(key);
+    }
+    // These variables configure the manager process, not host-side bind paths.
+    command
+        .env_remove("BOX_SERVER_MANAGER_ROOT")
+        .env_remove("BOX_SERVER_MANAGER_COMPOSE_FILE");
+    let output = command
         .output()
         .map_err(|e| format!("无法运行 Docker：{e}"))?;
     if output.status.success() {
@@ -230,6 +328,431 @@ fn random_hex(bytes: usize) -> String {
     OsRng.fill_bytes(&mut value);
     value.iter().map(|byte| format!("{byte:02x}")).collect()
 }
+
+/// The Web console no longer runs on the server's own network namespace, so a
+/// container-local probe would return the Docker bridge address (for example
+/// 172.18.0.2) instead of the address players actually use. Prefer the value
+/// install.sh detected on the host and never fall back to a probe inside a
+/// container.
+fn configured_lan_ip() -> Option<String> {
+    let value = env::var("BOX_LAN_IP").ok()?;
+    let value = value.trim();
+    (!value.is_empty() && validate_host(value, "局域网地址").is_ok()).then(|| value.to_string())
+}
+fn in_container() -> bool {
+    FsPath::new("/.dockerenv").exists() || FsPath::new("/run/.containerenv").exists()
+}
+/// Ask the OS which outbound interface it would use. No traffic is sent to the
+/// documentation-only probe address; this only reveals the LAN address.
+fn detect_lan_ip() -> Option<String> {
+    if let Some(value) = configured_lan_ip() {
+        return Some(value);
+    }
+    if in_container() {
+        return None;
+    }
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("192.0.2.1:80").ok()?;
+    let address = socket.local_addr().ok()?.ip();
+    (!address.is_loopback() && !address.is_unspecified()).then(|| address.to_string())
+}
+use shared_config::validate_host;
+
+fn runtime_env_path(app: &App) -> PathBuf {
+    app.root.join(".runtime.env")
+}
+
+/// Same limits the desktop launcher enforces, so the Web form cannot persist a
+/// configuration the launcher would reject.
+use shared_config::validate_configuration;
+use shared_config::validate_raw_environment;
+fn check_remote_endpoint(label: &str, host: &str, port: u16) -> Result<(), String> {
+    let addresses = (host, port)
+        .to_socket_addrs()
+        .map_err(|error| format!("无法解析{label}地址 {host}:{port}：{error}"))?;
+    let mut last_error = None;
+    for address in addresses {
+        match TcpStream::connect_timeout(&address, Duration::from_secs(5)) {
+            Ok(_) => return Ok(()),
+            Err(error) => last_error = Some(error),
+        }
+    }
+    Err(format!(
+        "无法连接{label} {host}:{port}：{}。请检查云安全组、防火墙和监听地址。",
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "没有可用地址".into())
+    ))
+}
+/// The five business containers plus the Web manager itself. Managed
+/// PostgreSQL/Redis only join the profile set when the operator selects them,
+/// otherwise `--remove-orphans` would treat their running containers as
+/// orphans and delete them on the next start.
+use shared_config::database_url;
+/// Docker only ever consumes this derived file. `.env` stays the single source
+/// of truth that the operator edits, while hostnames, origins and public URLs
+/// are recomputed from the access modes on every compose call so the Web console
+/// and the desktop launcher behave identically.
+fn generate_runtime_environment(app: &App) -> Result<PathBuf, String> {
+    let owner =
+        fs::read_to_string(env_path(app)).map_err(|error| format!("无法读取部署配置：{error}"))?;
+    let migrated_owner = migrate_document(&owner)?;
+    let values = parse_env(&migrated_owner);
+    let lan_ip = detect_lan_ip();
+    let image_tag = values
+        .get("BOX_IMAGE_TAG")
+        .cloned()
+        .or_else(|| env::var("BOX_IMAGE_TAG").ok())
+        .unwrap_or_else(|| env!("CARGO_PKG_VERSION").into());
+    let derived = shared_config::runtime_environment(
+        &values,
+        &shared_config::RuntimeInputs {
+            lan_ip: lan_ip.as_deref(),
+            image_tag: &image_tag,
+            platform: if cfg!(target_arch = "aarch64") {
+                "linux/arm64"
+            } else {
+                "linux/amd64"
+            },
+            license_file: values
+                .get("BOX_LICENSE_FILE")
+                .map(String::as_str)
+                .unwrap_or("./license/box3-license.boxlic"),
+            license_device_file: values
+                .get("BOX_LICENSE_DEVICE_FILE")
+                .map(String::as_str)
+                .unwrap_or("./license/device-id"),
+            database_required: false,
+            web_manager: true,
+        },
+    )?;
+    let mut runtime = migrated_owner.clone();
+    for (key, value) in derived {
+        runtime = set_env(runtime, &key, &value)?;
+    }
+    let path = runtime_env_path(app);
+    private(&path, &runtime)?;
+    // Persist migration markers only after all derivation and runtime writing
+    // succeed, so a rejected configuration does not silently change the owner.
+    if migrated_owner != owner {
+        private(&env_path(app), &migrated_owner)?;
+    }
+    Ok(path)
+}
+/// Pure form-to-owner transformation, shared by the HTTP save path and fixtures.
+fn configuration_document_for_save(
+    content: &str,
+    config: &serde_json::Map<String, Value>,
+) -> Result<String, String> {
+    let mut source = migrate_document(content)?;
+    clear_overrides_on_configuration_change(&mut source, config)?;
+    let existing = parse_env(&source);
+    let database_mode = config
+        .get("databaseMode")
+        .and_then(Value::as_str)
+        .unwrap_or("external");
+    let redis_mode = config
+        .get("redisMode")
+        .and_then(Value::as_str)
+        .unwrap_or("disabled");
+    if !["managed", "external"].contains(&database_mode) {
+        return Err("数据库模式无效".into());
+    }
+    if !["disabled", "managed", "external"].contains(&redis_mode) {
+        return Err("Redis 模式无效".into());
+    }
+    source = set_env(source, "BOX_DATABASE_MODE", database_mode)?;
+    source = set_env(source, "BOX_REDIS_MODE", redis_mode)?;
+    for (input, key) in [
+        ("playPort", "BOX_PLAY_PORT"),
+        ("creatorPort", "BOX_CREATOR_PORT"),
+        ("voxaPort", "BOX_VOXA_PORT"),
+        ("playerServicePort", "BOX_PLAYER_SERVICE_PORT"),
+        ("authPortalPort", "BOX_AUTH_PORTAL_PORT"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &port(value, input)?)?;
+        }
+    }
+    for (input, key) in [
+        ("redisHost", "REDIS_HOST"),
+        ("redisPort", "REDIS_PORT"),
+        ("redisDb", "REDIS_DB"),
+        ("storageCacheRedisDb", "STORAGE_CACHE_REDIS_DB"),
+        ("storageCacheRedisTtl", "STORAGE_CACHE_REDIS_TTL"),
+        ("databasePoolSize", "BOX_DATABASE_POOL_SIZE"),
+        ("publicHost", "BOX_PLAY_PUBLIC_HOST"),
+        ("playNetworkMode", "BOX_PLAY_NETWORK_MODE"),
+        ("creatorHost", "BOX_CREATOR_HOST"),
+        ("creatorNetworkMode", "BOX_CREATOR_NETWORK_MODE"),
+        ("creatorEditRuntimes", "BOX_CREATOR_EDIT_MAX_RUNTIMES"),
+        ("creatorPlayRuntimes", "BOX_CREATOR_PLAY_MAX_RUNTIMES"),
+        (
+            "creatorEditPrewarmRuntimes",
+            "BOX_CREATOR_EDIT_PREWARM_RUNTIMES",
+        ),
+        ("playRuntimes", "BOX_PLAY_MAX_RUNTIMES"),
+        ("playPrewarmRuntimes", "BOX_PLAY_PREWARM_RUNTIMES"),
+        ("playerLimit", "BOX_LOCAL_PLAYER_LIMIT"),
+        ("teleportMaxRooms", "BOX_TELEPORT_MAX_ROOMS"),
+        ("scriptMemoryMb", "BOX_SCRIPT_MEMORY_MB"),
+        (
+            "autoBackupIntervalMinutes",
+            "BOX_AUTO_BACKUP_INTERVAL_MINUTES",
+        ),
+        (
+            "autoBackupRetentionCount",
+            "BOX_AUTO_BACKUP_RETENTION_COUNT",
+        ),
+        ("autoBackupRetentionDays", "BOX_AUTO_BACKUP_RETENTION_DAYS"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &json_value(value)?)?;
+        }
+    }
+    for (input, key) in [
+        ("runtimeIdleMinutes", "BOX_RUNTIME_IDLE_TIMEOUT_MS"),
+        ("runtimeStartTimeoutMinutes", "BOX_RUNTIME_START_TIMEOUT_MS"),
+        (
+            "teleportRoomIdleMinutes",
+            "BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS",
+        ),
+    ] {
+        if let Some(value) = config.get(input) {
+            let minutes = json_value(value)?
+                .parse::<u64>()
+                .map_err(|_| format!("{input} 必须是有效分钟数"))?;
+            if minutes == 0 {
+                return Err(format!("{input} 必须大于 0"));
+            }
+            source = set_env(source, key, &minutes.saturating_mul(60_000).to_string())?;
+        }
+    }
+    for (input, key) in [
+        ("playerServiceMemoryMb", "BOX_PLAYER_SERVICE_MEMORY_LIMIT"),
+        ("authPortalMemoryMb", "BOX_AUTH_PORTAL_MEMORY_LIMIT"),
+        ("creatorMemoryMb", "BOX_CREATOR_MEMORY_LIMIT"),
+        ("playMemoryMb", "BOX_PLAY_MEMORY_LIMIT"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &format!("{}m", json_value(value)?))?;
+        }
+    }
+    for (input, key) in [
+        ("playerServiceCpuLimit", "BOX_PLAYER_SERVICE_CPU_LIMIT"),
+        ("authPortalCpuLimit", "BOX_AUTH_PORTAL_CPU_LIMIT"),
+        ("creatorCpuLimit", "BOX_CREATOR_CPU_LIMIT"),
+        ("playCpuLimit", "BOX_PLAY_CPU_LIMIT"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &json_value(value)?)?;
+        }
+    }
+    for (input, key, inverted) in [
+        ("databaseSsl", "BOX_DATABASE_SSL", false),
+        ("autoBackupEnabled", "BOX_AUTO_BACKUP_ENABLED", false),
+        (
+            "registrationEnabled",
+            "BOX_PLAYER_REGISTRATION_ENABLED",
+            false,
+        ),
+        (
+            "libraryManagementEnabled",
+            "BOX_PLAY_LIBRARY_READ_ONLY",
+            true,
+        ),
+    ] {
+        if let Some(value) = config.get(input).and_then(Value::as_bool) {
+            source = set_env(source, key, if value ^ inverted { "true" } else { "false" })?;
+        }
+    }
+    for (input, key) in [
+        ("databasePassword", "BOX_DATABASE_PASSWORD"),
+        ("redisPassword", "REDIS_PASSWORD"),
+        ("permissionTokenSecret", "PERMISSION_TOKEN_SECRET"),
+        ("playerAuthApiKey", "BOX_PLAYER_AUTH_API_KEY"),
+        ("playAdminToken", "BOX_PLAY_ADMIN_TOKEN"),
+    ] {
+        if let Some(value) = config
+            .get(input)
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+        {
+            source = set_env(source, key, value)?;
+        }
+    }
+    if database_mode == "managed" {
+        let database = existing
+            .get("BOX_MANAGED_POSTGRES_DATABASE")
+            .cloned()
+            .unwrap_or_else(|| format!("box_db_{}", random_hex(8)));
+        let user = existing
+            .get("BOX_MANAGED_POSTGRES_USER")
+            .cloned()
+            .unwrap_or_else(|| format!("box_user_{}", random_hex(8)));
+        let password = existing
+            .get("BOX_MANAGED_POSTGRES_PASSWORD")
+            .cloned()
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| random_hex(32));
+        source = set_env(source, "BOX_DATABASE_HOST", "managed-postgres")?;
+        source = set_env(source, "BOX_DATABASE_PORT", "5432")?;
+        source = set_env(source, "BOX_DATABASE_NAME", &database)?;
+        source = set_env(source, "BOX_DATABASE_USER", &user)?;
+        source = set_env(source, "BOX_DATABASE_PASSWORD", &password)?;
+        source = set_env(source, "BOX_MANAGED_POSTGRES_DATABASE", &database)?;
+        source = set_env(source, "BOX_MANAGED_POSTGRES_USER", &user)?;
+        source = set_env(source, "BOX_MANAGED_POSTGRES_PASSWORD", &password)?;
+        source = set_env(
+            source,
+            "BOX_DATABASE_URL",
+            &format!(
+                "postgres://{}:{}@managed-postgres:5432/{}",
+                urlencoding::encode(&user),
+                urlencoding::encode(&password),
+                urlencoding::encode(&database)
+            ),
+        )?;
+        source = set_env(source, "BOX_DATABASE_SSL", "false")?;
+    } else if let Some(host) = config.get("databaseHost") {
+        let host = json_value(host)?;
+        if host.is_empty() {
+            source = set_env(source, "BOX_DATABASE_URL", "")?;
+        } else {
+            let existing = parse_env(&source);
+            let (_, old_port, old_name, old_user, old_password) =
+                database_fields(existing.get("BOX_DATABASE_URL"));
+            let database_port = config
+                .get("databasePort")
+                .map(|value| port(value, "数据库端口"))
+                .transpose()?
+                .unwrap_or(old_port);
+            let database_name = config
+                .get("databaseName")
+                .map(json_value)
+                .transpose()?
+                .unwrap_or(old_name);
+            let database_user = config
+                .get("databaseUser")
+                .map(json_value)
+                .transpose()?
+                .unwrap_or(old_user);
+            let database_password = config
+                .get("databasePassword")
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .or_else(|| existing.get("BOX_DATABASE_PASSWORD").cloned())
+                .unwrap_or(old_password);
+            let authority = if database_user.is_empty() {
+                host.clone()
+            } else {
+                format!(
+                    "{}:{}@{}",
+                    urlencoding::encode(&database_user),
+                    urlencoding::encode(&database_password),
+                    host
+                )
+            };
+            source = set_env(source, "BOX_DATABASE_HOST", &host)?;
+            source = set_env(source, "BOX_DATABASE_PORT", &database_port)?;
+            source = set_env(source, "BOX_DATABASE_NAME", &database_name)?;
+            source = set_env(source, "BOX_DATABASE_USER", &database_user)?;
+            source = set_env(source, "BOX_DATABASE_PASSWORD", &database_password)?;
+            source = set_env(
+                source,
+                "BOX_DATABASE_URL",
+                &format!(
+                    "postgres://{authority}:{database_port}/{}",
+                    urlencoding::encode(&database_name)
+                ),
+            )?;
+        }
+    }
+    if redis_mode == "managed" {
+        let password = existing
+            .get("BOX_MANAGED_REDIS_PASSWORD")
+            .cloned()
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| random_hex(32));
+        source = set_env(source, "REDIS_HOST", "managed-redis")?;
+        source = set_env(source, "REDIS_PORT", "6379")?;
+        source = set_env(source, "REDIS_PASSWORD", &password)?;
+        source = set_env(source, "BOX_MANAGED_REDIS_PASSWORD", &password)?;
+        source = set_env(source, "REDIS_DB", "0")?;
+        source = set_env(source, "STORAGE_CACHE_REDIS_DB", "1")?;
+        source = set_env(source, "STORAGE_CACHE_REDIS_TTL", "240")?;
+    } else if redis_mode == "disabled" {
+        source = set_env(source, "REDIS_HOST", "")?;
+        source = set_env(source, "REDIS_PASSWORD", "")?;
+    }
+    if let Some(host) = config.get("publicHost") {
+        let host = json_value(host)?;
+        let port = config
+            .get("playPort")
+            .map(|value| port(value, "Play 端口"))
+            .transpose()?
+            .unwrap_or_else(|| "3121".into());
+        source = set_env(
+            source,
+            "BOX_PLAY_PUBLIC_URL",
+            &format!("http://{host}:{port}"),
+        )?;
+        let bind = if config.get("playNetworkMode").and_then(Value::as_str) == Some("local") {
+            "127.0.0.1"
+        } else {
+            "0.0.0.0"
+        };
+        source = set_env(source, "BOX_BIND_IP", bind)?;
+    }
+    if let Some(host) = config.get("creatorHost") {
+        let host = json_value(host)?;
+        let port = config
+            .get("creatorPort")
+            .map(|value| port(value, "Creator 端口"))
+            .transpose()?
+            .unwrap_or_else(|| "3127".into());
+        source = set_env(
+            source,
+            "BOX_CREATOR_PUBLIC_URL",
+            &format!("http://{host}:{port}"),
+        )?;
+        let bind = if config.get("creatorNetworkMode").and_then(Value::as_str) == Some("local") {
+            "127.0.0.1"
+        } else {
+            "0.0.0.0"
+        };
+        source = set_env(source, "BOX_CREATOR_BIND_IP", bind)?;
+        source = set_env(source, "BOX_VOXA_BIND_IP", bind)?;
+    }
+    if let Some(value) = config.get("registrationEnabled").and_then(Value::as_bool) {
+        source = set_env(
+            source,
+            "BOX_PLAYER_REGISTRATION_ENABLED",
+            if value { "true" } else { "false" },
+        )?;
+    }
+    if let Some(value) = config
+        .get("libraryManagementEnabled")
+        .and_then(Value::as_bool)
+    {
+        source = set_env(
+            source,
+            "BOX_PLAY_LIBRARY_READ_ONLY",
+            if value { "false" } else { "true" },
+        )?;
+    }
+    // The desktop launcher keeps the script heap limit in step with
+    // the memory limit; the runtime reads BOX_SCRIPT_HEAP_MB.
+    if let Some(value) = config.get("scriptMemoryMb") {
+        source = set_env(source, "BOX_SCRIPT_HEAP_MB", &json_value(value)?)?;
+    }
+    if database_mode == "managed" {
+        box_manager_core::environment::remove_env(&mut source, "BOX_DATABASE_QUERY");
+    }
+    Ok(source)
+}
+
 fn managed_image(values: &BTreeMap<String, String>, service: &str) -> Result<String, String> {
     match service {
         "postgresql" => Ok(values
@@ -341,10 +864,12 @@ fn managed_service_info(app: &App, service: &str) -> Result<Value, String> {
     }
 }
 fn prepare_managed_service(app: &App, service: &str) -> Result<(), String> {
+    app.progress("managed-check", "正在检查内置服务镜像…", 10);
     let values = parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default());
     let image = managed_image(&values, service)?;
     docker(&["info", "--format", "{{.ServerVersion}}"])?;
     if docker(&["image", "inspect", &image]).is_err() {
+        app.progress("managed-image", "正在下载内置服务镜像…", 20);
         docker(&["pull", &image])?;
     }
     Ok(())
@@ -365,9 +890,13 @@ fn start_managed_service(app: &App, service: &str) -> Result<(), String> {
 }
 fn private(path: &FsPath, value: &str) -> Result<(), String> {
     fs::create_dir_all(path.parent().ok_or("无效路径")?).map_err(|e| e.to_string())?;
+    remove_empty_file_placeholder(path)?;
     let tmp = path.with_extension(format!("{}.{}.tmp", std::process::id(), random_hex(8)));
     fs::write(&tmp, value).map_err(|e| e.to_string())?;
-    fs::rename(tmp, path).map_err(|e| e.to_string())?;
+    if let Err(error) = fs::rename(&tmp, path) {
+        let _ = fs::remove_file(tmp);
+        return Err(error.to_string());
+    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -375,136 +904,48 @@ fn private(path: &FsPath, value: &str) -> Result<(), String> {
     }
     Ok(())
 }
-fn private_bytes(path: &FsPath, value: &[u8]) -> Result<(), String> {
-    fs::create_dir_all(path.parent().ok_or("无效路径")?).map_err(|error| error.to_string())?;
-    let temporary = path.with_extension(format!("{}.{}.tmp", std::process::id(), random_hex(8)));
-    fs::write(&temporary, value).map_err(|error| error.to_string())?;
-    fs::rename(temporary, path).map_err(|error| error.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
-            .map_err(|error| error.to_string())?;
+
+/// Docker creates a directory when a configured bind-mounted file does not
+/// exist yet. Treat only an empty real directory as that placeholder; links or
+/// directories containing data remain hard errors.
+fn remove_empty_file_placeholder(path: &FsPath) -> Result<(), String> {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    };
+    if !metadata.file_type().is_dir() {
+        return Ok(());
     }
-    Ok(())
+    let mut entries = fs::read_dir(path).map_err(|error| error.to_string())?;
+    if entries.next().is_some() {
+        return Err(format!("{} 应为文件，但当前是非空目录", path.display()));
+    }
+    fs::remove_dir(path).map_err(|error| error.to_string())
 }
+
 fn backup_dir(app: &App) -> PathBuf {
     app.root.join("apps/local-engine/backups")
 }
 fn backup_file(app: &App, value: &str) -> Result<PathBuf, String> {
-    let name = FsPath::new(value)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or("备份文件名无效")?;
-    if !name.ends_with(".tar.gz") {
-        return Err("仅允许 BOX3 备份归档".into());
-    }
-    Ok(backup_dir(app).join(name))
+    backup_store::resolve(&backup_dir(app), value)
 }
 fn list_backups(app: &App) -> Result<Value, String> {
-    let directory = backup_dir(app);
-    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    let mut items = fs::read_dir(directory).map_err(|error| error.to_string())?.filter_map(Result::ok).filter_map(|entry| {
-        let path=entry.path(); let name=path.file_name()?.to_str()?.to_string();
-        (name.ends_with(".tar.gz") && path.is_file()).then(|| { let meta=entry.metadata().ok()?; Some(json!({"name":name,"path":name,"sizeBytes":meta.len(),"modifiedAt":meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?.as_secs()})) }).flatten()
-    }).collect::<Vec<_>>();
-    items.sort_by(|left, right| {
-        right
-            .get("modifiedAt")
-            .and_then(Value::as_u64)
-            .cmp(&left.get("modifiedAt").and_then(Value::as_u64))
-    });
-    Ok(json!(items))
+    serde_json::to_value(backup_store::list(&backup_dir(app))?).map_err(|error| error.to_string())
 }
 fn create_backup(app: &App) -> Result<String, String> {
-    let directory = backup_dir(app);
-    fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|error| error.to_string())?
-        .as_secs();
-    let name = format!("box3-backup-{stamp}.tar.gz");
-    let destination = directory.join(&name);
-    let paths = [
-        "apps/local-engine/projects",
-        "apps/local-engine/dist",
-        "apps/local-engine/play-worlds",
-        "apps/voxa/data",
-    ]
-    .into_iter()
-    .filter(|path| app.root.join(path).exists())
-    .collect::<Vec<_>>();
-    if paths.is_empty() {
-        return Err("没有可备份的数据目录".into());
-    }
-    let status = Command::new("tar")
-        .args(["-czf", destination.to_str().ok_or("备份路径无效")?])
-        .args(&paths)
-        .current_dir(&app.root)
-        .status()
-        .map_err(|error| format!("无法创建备份：{error}"))?;
-    if !status.success() {
-        let _ = fs::remove_file(&destination);
-        return Err("创建备份失败".into());
-    }
-    Ok(name)
+    app.progress("backup", "正在创建数据备份…", 20);
+    backup_store::create(&app.root, &backup_dir(app))
 }
-fn restore_backup(app: &App, value: &str) -> Result<(), String> {
+fn restore_backup(app: &App, value: &str) -> Result<Option<String>, String> {
     let archive = backup_file(app, value)?;
-    if !archive.is_file() {
-        return Err("备份不存在".into());
-    }
-    let list = Command::new("tar")
-        .args(["-tzf", archive.to_str().ok_or("备份路径无效")?])
-        .output()
-        .map_err(|error| format!("无法验证备份：{error}"))?;
-    if !list.status.success()
-        || String::from_utf8_lossy(&list.stdout)
-            .lines()
-            .any(|line| line.starts_with('/') || line.split('/').any(|part| part == ".."))
-    {
-        return Err("备份内容无效".into());
-    }
-    let verbose = Command::new("tar")
-        .args(["-tvzf", archive.to_str().ok_or("备份路径无效")?])
-        .output()
-        .map_err(|error| format!("无法验证备份类型：{error}"))?;
-    if !verbose.status.success()
-        || String::from_utf8_lossy(&verbose.stdout)
-            .lines()
-            .any(|line| line.starts_with('l') || line.starts_with('h'))
-    {
-        return Err("备份不能包含符号链接或硬链接".into());
-    }
-    compose(
-        app,
-        &[
-            "stop",
-            "creator",
-            "voxa",
-            "play",
-            "player-service",
-            "player-auth-portal",
-            "managed-postgres",
-            "managed-redis",
-        ],
-    )?;
-    let status = Command::new("tar")
-        .args([
-            "-xzf",
-            archive.to_str().ok_or("备份路径无效")?,
-            "--no-same-owner",
-            "--no-same-permissions",
-            "-C",
-            app.root.to_str().ok_or("部署目录无效")?,
-        ])
-        .status()
-        .map_err(|error| format!("无法恢复备份：{error}"))?;
-    if status.success() {
+    app.progress("restore-validate", "正在校验备份…", 10);
+    let report = backup::restore_archive(&app.root, &archive, backup::Limits::default(), |_| {
+        services::stop(&WebRuntime(app))?;
+        app.progress("restore", "正在恢复数据…", 50);
         Ok(())
-    } else {
-        Err("恢复备份失败".into())
-    }
+    })?;
+    Ok(report.cleanup_warning)
 }
 fn performance(app: &App) -> Result<Value, String> {
     let output = Command::new("docker")
@@ -541,24 +982,7 @@ fn performance(app: &App) -> Result<Value, String> {
                 .and_then(Value::as_str)
                 .unwrap_or("0B / 0B");
             let mut parts = memory.split('/').map(str::trim);
-            let enabled = match *service {
-                "managed-postgres" => environment
-                    .get("BOX_DATABASE_MODE")
-                    .is_some_and(|mode| mode == "managed"),
-                "managed-redis" => environment
-                    .get("BOX_REDIS_MODE")
-                    .is_some_and(|mode| mode == "managed"),
-                name => environment.get("COMPOSE_PROFILES").is_some_and(|profiles| {
-                    profiles.split(',').any(|profile| {
-                        profile
-                            == if name == "player-auth-portal" {
-                                "auth-portal"
-                            } else {
-                                name
-                            }
-                    })
-                }),
-            };
+            let enabled = services::enabled(service, &environment);
             json!({
                 "name": service,
                 "enabled": enabled,
@@ -842,6 +1266,24 @@ fn service_images() -> Vec<Value> {
     .collect()
 }
 
+fn is_sensitive_env_key(key: &str) -> bool {
+    let key = key.to_ascii_uppercase();
+    key.contains("PASSWORD")
+        || key.contains("SECRET")
+        || key.contains("TOKEN")
+        || key.contains("API_KEY")
+        || key == "BOX_DATABASE_URL"
+}
+fn redact_text(text: String, values: &BTreeMap<String, String>) -> String {
+    let mut redacted = text;
+    for (key, value) in values {
+        if !is_sensitive_env_key(key) || value.len() < 4 {
+            continue;
+        }
+        redacted = redacted.replace(value.as_str(), "[REDACTED]");
+    }
+    redacted
+}
 fn export_diagnostics(app: &App) -> Result<String, String> {
     let directory = app.root.join("diagnostics");
     fs::create_dir_all(&directory).map_err(|error| error.to_string())?;
@@ -850,12 +1292,57 @@ fn export_diagnostics(app: &App) -> Result<String, String> {
         .unwrap_or_default()
         .as_secs();
     let text = directory.join(format!("BOX-diagnostic-{stamp}.txt"));
-    let docker = compose(app, &["ps", "--all", "--format", "json"])
-        .unwrap_or_else(|error| format!("Docker 状态读取失败：{error}"));
+    // The Web console offers this as the diagnostic download, so it carries
+    // the same redacted configuration, status and logs the launcher exports.
+    let environment = parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default());
+    let runtime_environment =
+        parse_env(&fs::read_to_string(runtime_env_path(app)).unwrap_or_default());
+    let safe_environment = environment
+        .iter()
+        .map(|(key, value)| {
+            (
+                key.clone(),
+                if is_sensitive_env_key(key) {
+                    "[REDACTED]".to_string()
+                } else {
+                    value.clone()
+                },
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    let docker_info = docker(&["info", "--format", "{{json .}}"])
+        .unwrap_or_else(|error| format!("Docker info unavailable: {error}"));
+    let compose_state = redact_text(
+        compose(app, &["ps", "--all", "--format", "json"])
+            .unwrap_or_else(|error| format!("Compose state unavailable: {error}")),
+        &runtime_environment,
+    );
+    let logs = redact_text(
+        redact_text(
+            compose(app, &["logs", "--tail", "500", "--no-color"])
+                .unwrap_or_else(|error| format!("Logs unavailable: {error}")),
+            &runtime_environment,
+        ),
+        &environment,
+    );
+    let report = json!({
+        "formatVersion": 1,
+        "generatedAt": stamp,
+        "applicationVersion": option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+        "platform": "linux",
+        "architecture": env::consts::ARCH,
+        "configuration": safe_environment,
+        "dockerInfo": docker_info,
+        "composeState": compose_state,
+    });
     private(
         &text,
         &format!(
-            "BOX3 Engine Linux diagnostic\ncreatedAt={stamp}\n\nDocker Compose status:\n{docker}\n"
+            "BOX3 Engine Linux diagnostic\ncreatedAt={stamp}\n此诊断文件已自动隐藏密码、令牌、API Key 和数据库连接串。发送前仍建议人工检查。\n\n== 配置 ==\n{}\n\n== Docker 信息 ==\n{}\n\n== Compose 状态 ==\n{}\n\n== 服务日志（最近 500 行） ==\n{}\n",
+            serde_json::to_string_pretty(&report).map_err(|error| error.to_string())?,
+            report.get("dockerInfo").and_then(Value::as_str).unwrap_or(""),
+            report.get("composeState").and_then(Value::as_str).unwrap_or(""),
+            logs,
         ),
     )?;
     Ok(text
@@ -865,148 +1352,119 @@ fn export_diagnostics(app: &App) -> Result<String, String> {
         .to_string())
 }
 fn database_fields(value: Option<&String>) -> (String, String, String, String, String) {
-    let Some(value) = value else {
-        return (
-            String::new(),
-            "5432".into(),
-            "box".into(),
-            "".into(),
-            String::new(),
-        );
-    };
-    let value = value
-        .strip_prefix("postgres://")
-        .or_else(|| value.strip_prefix("postgresql://"))
-        .unwrap_or(value);
-    let (credentials, rest) = value.rsplit_once('@').unwrap_or(("", value));
-    let (user, password) = credentials
-        .split_once(':')
-        .map(|(user, password)| {
+    value
+        .and_then(|url| shared_config::parse_database_url(url).ok())
+        .map(|fields| {
             (
-                urlencoding::decode(user).unwrap_or_default().into_owned(),
-                urlencoding::decode(password)
-                    .unwrap_or_default()
-                    .into_owned(),
+                fields.host,
+                fields.port.to_string(),
+                fields.database,
+                fields.user,
+                fields.password,
             )
         })
-        .unwrap_or_default();
-    let (server, database) = rest.split_once('/').unwrap_or((rest, "box"));
-    let (host, port) = server
-        .rsplit_once(':')
-        .map(|(host, port)| (host.to_string(), port.to_string()))
-        .unwrap_or((server.to_string(), "5432".into()));
-    (
-        host,
-        port,
-        database.split('?').next().unwrap_or("box").to_string(),
-        user,
-        password,
-    )
+        .unwrap_or_else(|| {
+            (
+                String::new(),
+                "5432".into(),
+                "box".into(),
+                String::new(),
+                String::new(),
+            )
+        })
 }
 fn url_host(value: Option<&String>, fallback: &str) -> String {
     value
-        .and_then(|value| value.split("://").nth(1))
-        .and_then(|value| value.split('/').next())
-        .map(|value| value.split(':').next().unwrap_or(value).to_string())
-        .filter(|value| !value.is_empty())
+        .and_then(|url| shared_config::host_from_http_url(url))
         .unwrap_or_else(|| fallback.into())
+}
+fn is_hex_secret(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+/// The installation secret must survive a package upgrade. Keeping it in the
+/// unpacked directory meant that replacing the ZIP silently produced a new
+/// device identity and invalidated an installed license, so the operator's
+/// `.env` is now authoritative and the old file is only a migration fallback.
+fn install_secret(app: &App) -> Result<String, String> {
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = LOCK.lock().map_err(|_| "设备密钥锁不可用")?;
+    if let Ok(value) = env::var("BOX_LICENSE_INSTALL_SECRET") {
+        let value = value.trim().to_ascii_lowercase();
+        if is_hex_secret(&value) {
+            return Ok(value);
+        }
+    }
+    let path = app.root.join("license/install-secret");
+    if let Ok(value) = fs::read_to_string(&path) {
+        let value = value.trim().to_ascii_lowercase();
+        if is_hex_secret(&value) {
+            return Ok(value);
+        }
+    }
+    let value = random_hex(32);
+    private(&path, &value)?;
+    Ok(value)
 }
 fn device(app: &App) -> Result<String, String> {
     let dir = app.root.join("license");
-    let secret = dir.join("install-secret");
-    let value = fs::read_to_string(&secret)
-        .ok()
-        .filter(|v| v.trim().len() == 64)
-        .unwrap_or_else(|| {
-            let mut b = [0u8; 32];
-            OsRng.fill_bytes(&mut b);
-            let v = b.iter().map(|b| format!("{b:02x}")).collect::<String>();
-            private(&secret, &v).unwrap();
-            v
-        });
+    let value = install_secret(app)?;
     let hw_path =
         env::var("BOX_LICENSE_HARDWARE_ID_FILE").unwrap_or_else(|_| "/run/host-machine-id".into());
     let hw = fs::read_to_string(&hw_path)
         .or_else(|_| fs::read_to_string("/run/host-machine-id"))
         .or_else(|_| fs::read_to_string("/etc/machine-id"))
         .map_err(|_| "无法读取 Linux 设备标识")?;
-    let mut h = Sha256::new();
-    h.update(b"box3-engine-device-v2\0");
-    h.update(hw.trim().to_lowercase());
-    h.update(b"\0");
-    h.update(value.trim());
-    let id = format!("dev_{:x}", h.finalize());
+    let id = shared_license::derive_web_device_id(&hw, &value);
     private(&dir.join("device-id"), &id)?;
     Ok(id)
 }
 fn license(app: &App, install: Option<&str>) -> Result<Value, String> {
     let id = device(app)?;
-    let path = app.root.join("license/box3-license.boxlic");
-
-    let verify = |token: &str| -> Result<LicensePayload, String> {
-        let parts: Vec<_> = token.trim().split('.').collect();
-        if parts.len() != 3 || parts[0] != "box3l1" {
-            return Err("许可证格式无效".into());
-        }
-        let key = VerifyingKey::from_public_key_pem(KEY).map_err(|_| "内置许可证公钥无效")?;
-        let sig = Signature::from_slice(
-            &URL_SAFE_NO_PAD
-                .decode(parts[2])
-                .map_err(|_| "许可证签名编码无效")?,
-        )
-        .map_err(|_| "许可证签名无效")?;
-        if key.verify_strict(parts[1].as_bytes(), &sig).is_err() {
-            return Err("许可证签名无效".into());
-        }
-        let p: LicensePayload = serde_json::from_slice(
-            &URL_SAFE_NO_PAD
-                .decode(parts[1])
-                .map_err(|_| "许可证内容无效")?,
-        )
-        .map_err(|_| "许可证内容无效")?;
-        let expires = DateTime::parse_from_rfc3339(&p.expires_at)
-            .map_err(|_| "许可证到期时间无效")?
-            .with_timezone(&Utc);
-        if p.format_version != 1
-            || p.license_type != "personal-learning"
-            || p.commercial_use
-            || p.device_id != id
-            || expires <= Utc::now()
-            || SERVICES.iter().any(|s| !p.features.iter().any(|f| f == s))
-        {
-            return Err("许可证无效、已到期或与当前设备不匹配".into());
-        }
-        Ok(p)
+    let path = app
+        .root
+        .join("license")
+        .join(shared_license::LICENSE_FILE_NAME);
+    remove_empty_file_placeholder(&path)?;
+    let token = match install {
+        Some(token) => Some(token.to_string()),
+        None => match fs::read_to_string(&path) {
+            Ok(token) => Some(token),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(format!("无法读取许可证：{error}")),
+        },
     };
-
+    let now = if token.is_some() {
+        shared_license::trusted_now(
+            &app.root.join("license/trusted-time.json"),
+            &install_secret(app)?,
+            Utc::now(),
+            private,
+        )?
+    } else {
+        Utc::now()
+    };
     if let Some(token) = install {
-        let payload = verify(token)?;
-        private(&path, token)?;
-        return Ok(
-            json!({"installed":true,"valid":true,"deviceId":id,"licenseId":payload.license_id,"holderId":payload.holder_id,"issuedAt":payload.issued_at,"expiresAt":payload.expires_at,"message":"许可证有效"}),
-        );
+        shared_license::verify_token(token, KEY, &id, now)?;
+        private(&path, &format!("{}\n", token.trim()))?;
     }
-
-    let token = match fs::read_to_string(&path) {
-        Ok(v) => v,
-        Err(_) => {
-            return Ok(
-                json!({"installed":false,"valid":false,"deviceId":id,"message":"尚未安装个人学习许可证"}),
-            )
-        }
-    };
-    match verify(&token) {
-        Ok(payload) => Ok(
-            json!({"installed":true,"valid":true,"deviceId":id,"licenseId":payload.license_id,"holderId":payload.holder_id,"issuedAt":payload.issued_at,"expiresAt":payload.expires_at,"message":"许可证有效"}),
-        ),
-        Err(message) => Ok(json!({"installed":true,"valid":false,"deviceId":id,"message":message})),
-    }
+    serde_json::to_value(shared_license::status_from_token(
+        token.as_deref(),
+        KEY,
+        &id,
+        now,
+    ))
+    .map_err(|error| error.to_string())
 }
 async fn health() -> Json<Value> {
     Json(json!({"ok":true}))
 }
+fn public_directory() -> PathBuf {
+    env::var("BOX_SERVER_MANAGER_PUBLIC_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/app/public"))
+}
 async fn index() -> Result<Html<String>, StatusCode> {
-    fs::read_to_string("/app/public/index.html")
+    fs::read_to_string(public_directory().join("index.html"))
         .map(Html)
         .map_err(|_| StatusCode::NOT_FOUND)
 }
@@ -1022,14 +1480,26 @@ async fn download_backup(
         let path = backup_file(&app, &archive)?;
         let bytes = fs::read(path).map_err(|_| "备份不存在")?;
         let mut response = Response::new(bytes.into());
-        response
-            .headers_mut()
-            .insert(header::CONTENT_TYPE, "application/gzip".parse().unwrap());
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            if archive.to_ascii_lowercase().ends_with(".zip") {
+                "application/zip"
+            } else if archive.to_ascii_lowercase().ends_with(".tar") {
+                "application/x-tar"
+            } else {
+                "application/gzip"
+            }
+            .parse()
+            .unwrap(),
+        );
         response.headers_mut().insert(
             header::CONTENT_DISPOSITION,
-            format!("attachment; filename=\"{}\"", archive)
-                .parse()
-                .map_err(|_| "备份文件名无效")?,
+            format!(
+                "attachment; filename*=UTF-8''{}",
+                urlencoding::encode(&archive)
+            )
+            .parse()
+            .map_err(|_| "备份文件名无效")?,
         );
         Ok(response)
     })();
@@ -1072,27 +1542,40 @@ async fn upload_backup(State(app): State<Arc<App>>, headers: HeaderMap, body: By
     if let Err(response) = auth(&headers, &app) {
         return response;
     }
-    let result = (|| -> Result<Value, String> {
+    let result = tokio::task::spawn_blocking(move || -> Result<Value, String> {
+        let _operation = box_manager_core::operation::mutation_guard()?;
         if body.len() > 512 * 1024 * 1024 {
             return Err("备份文件不能超过 512 MB".into());
-        };
+        }
         let encoded = headers
             .get("x-backup-name")
-            .and_then(|value| value.to_str().ok())
+            .and_then(|v| v.to_str().ok())
             .ok_or("缺少备份文件名")?;
         let name = urlencoding::decode(encoded).map_err(|_| "备份文件名无效")?;
-        let path = backup_file(&app, &name)?;
-        if !body.starts_with(&[0x1f, 0x8b]) {
-            return Err("只接受 gzip 备份归档".into());
-        };
-        private_bytes(&path, &body)?;
+        let name = backup_store::import_bytes(&backup_dir(&app), &name, &body)?;
         Ok(json!({"path":name}))
-    })();
+    })
+    .await
+    .unwrap_or_else(|error| Err(format!("上传任务异常结束：{error}")));
     match result {
         Ok(value) => Json(value).into_response(),
         Err(error) => fail(error),
     }
 }
+async fn operation_progress(
+    State(app): State<Arc<App>>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+) -> Response {
+    if let Err(response) = auth(&headers, &app) {
+        return response;
+    }
+    match app.operations.get(&id) {
+        Some(progress) => Json(progress).into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
 async fn security(request: axum::extract::Request, next: Next) -> Response {
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
@@ -1108,10 +1591,28 @@ async fn command(
     headers: HeaderMap,
     Json(req): Json<Request>,
 ) -> Response {
-    if let Err(r) = auth(&headers, &app) {
-        return r;
+    if name != "get_legal_notices" {
+        if let Err(r) = auth(&headers, &app) {
+            return r;
+        }
     }
+    let operation_id = headers
+        .get("x-operation-id")
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+    if let Some(id) = &operation_id {
+        if let Err(error) = app.operations.begin(id) {
+            return fail(error);
+        }
+    }
+    let operations = app.operations.clone();
+    let mut request_app = (*app).clone();
+    request_app.operation_id = operation_id.clone();
+    let app = request_app;
     let answer = tokio::task::spawn_blocking(move || -> Result<Value, String> {
+        let _operation = if box_manager_core::operation::mutates_runtime(&name) {
+            Some(box_manager_core::operation::mutation_guard()?)
+        } else { None };
         match name.as_str() {
             "get_license_status" => license(&app, None),
             "install_license" => license(
@@ -1132,10 +1633,9 @@ async fn command(
                     .get("content")
                     .and_then(Value::as_str)
                     .ok_or("配置内容无效")?;
-                if s.len() > 524288 || s.contains('\0') {
-                    return Err("配置内容无效".into());
-                }
+                validate_raw_environment(s)?;
                 private(&env_path(&app), s)?;
+                generate_runtime_environment(&app)?;
                 Ok(json!(false))
             }
             "get_install_config" => {
@@ -1217,7 +1717,7 @@ async fn command(
                     "playNetworkMode": values.get("BOX_PLAY_NETWORK_MODE").cloned().unwrap_or_else(|| "local".into()),
                     "creatorNetworkMode": values.get("BOX_CREATOR_NETWORK_MODE").cloned().unwrap_or_else(|| "local".into()),
                     "creatorHost": values.get("BOX_CREATOR_HOST").cloned().unwrap_or_else(|| url_host(values.get("BOX_CREATOR_PUBLIC_URL"), "127.0.0.1")),
-                    "lanIp": "",
+                    "lanIp": detect_lan_ip().unwrap_or_default(),
                     "playPort": number("BOX_PLAY_PORT", 3121),
                     "voxaPort": number("BOX_VOXA_PORT", 3123),
                     "creatorPort": number("BOX_CREATOR_PORT", 3127),
@@ -1349,13 +1849,8 @@ async fn command(
                 Ok(Value::Null)
             }
             "restore_backup" => {
-                let archive = req
-                    .body
-                    .get("archive")
-                    .and_then(Value::as_str)
-                    .ok_or("备份文件名无效")?;
-                restore_backup(&app, archive)?;
-                Ok(Value::Null)
+                let archive = req.body.get("archive").and_then(Value::as_str).ok_or("备份名称无效")?;
+                Ok(json!(restore_backup(&app, archive)?))
             }
             "save_configuration_command" => {
                 let config = req
@@ -1363,428 +1858,76 @@ async fn command(
                     .get("config")
                     .and_then(Value::as_object)
                     .ok_or("配置格式无效")?;
-                let mut source =
-                    fs::read_to_string(env_path(&app)).map_err(|error| error.to_string())?;
-                let existing = parse_env(&source);
-                let database_mode = config
-                    .get("databaseMode")
-                    .and_then(Value::as_str)
-                    .unwrap_or("external");
-                let redis_mode = config
-                    .get("redisMode")
-                    .and_then(Value::as_str)
-                    .unwrap_or("disabled");
-                if !["managed", "external"].contains(&database_mode) {
-                    return Err("数据库模式无效".into());
-                }
-                if !["disabled", "managed", "external"].contains(&redis_mode) {
-                    return Err("Redis 模式无效".into());
-                }
-                source = set_env(source, "BOX_DATABASE_MODE", database_mode);
-                source = set_env(source, "BOX_REDIS_MODE", redis_mode);
-                for (input, key) in [
-                    ("playPort", "BOX_PLAY_PORT"),
-                    ("creatorPort", "BOX_CREATOR_PORT"),
-                    ("voxaPort", "BOX_VOXA_PORT"),
-                    ("playerServicePort", "BOX_PLAYER_SERVICE_PORT"),
-                    ("authPortalPort", "BOX_AUTH_PORTAL_PORT"),
-                ] {
-                    if let Some(value) = config.get(input) {
-                        source = set_env(source, key, &port(value, input)?);
-                    }
-                }
-                for (input, key) in [
-                    ("redisHost", "REDIS_HOST"),
-                    ("redisPort", "REDIS_PORT"),
-                    ("redisDb", "REDIS_DB"),
-                    ("storageCacheRedisDb", "STORAGE_CACHE_REDIS_DB"),
-                    ("storageCacheRedisTtl", "STORAGE_CACHE_REDIS_TTL"),
-                    ("databasePoolSize", "BOX_DATABASE_POOL_SIZE"),
-                    ("publicHost", "BOX_PLAY_PUBLIC_HOST"),
-                    ("playNetworkMode", "BOX_PLAY_NETWORK_MODE"),
-                    ("creatorHost", "BOX_CREATOR_HOST"),
-                    ("creatorNetworkMode", "BOX_CREATOR_NETWORK_MODE"),
-                    ("creatorEditRuntimes", "BOX_CREATOR_EDIT_MAX_RUNTIMES"),
-                    ("creatorPlayRuntimes", "BOX_CREATOR_PLAY_MAX_RUNTIMES"),
-                    (
-                        "creatorEditPrewarmRuntimes",
-                        "BOX_CREATOR_EDIT_PREWARM_RUNTIMES",
-                    ),
-                    ("playRuntimes", "BOX_PLAY_MAX_RUNTIMES"),
-                    ("playPrewarmRuntimes", "BOX_PLAY_PREWARM_RUNTIMES"),
-                    ("playerLimit", "BOX_LOCAL_PLAYER_LIMIT"),
-                    ("teleportMaxRooms", "BOX_TELEPORT_MAX_ROOMS"),
-                    ("scriptMemoryMb", "BOX_SCRIPT_MEMORY_MB"),
-                    (
-                        "autoBackupIntervalMinutes",
-                        "BOX_AUTO_BACKUP_INTERVAL_MINUTES",
-                    ),
-                    (
-                        "autoBackupRetentionCount",
-                        "BOX_AUTO_BACKUP_RETENTION_COUNT",
-                    ),
-                    ("autoBackupRetentionDays", "BOX_AUTO_BACKUP_RETENTION_DAYS"),
-                ] {
-                    if let Some(value) = config.get(input) {
-                        source = set_env(source, key, &json_value(value)?);
-                    }
-                }
-                for (input, key) in [
-                    ("runtimeIdleMinutes", "BOX_RUNTIME_IDLE_TIMEOUT_MS"),
-                    ("runtimeStartTimeoutMinutes", "BOX_RUNTIME_START_TIMEOUT_MS"),
-                    (
-                        "teleportRoomIdleMinutes",
-                        "BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS",
-                    ),
-                ] {
-                    if let Some(value) = config.get(input) {
-                        let minutes = json_value(value)?
-                            .parse::<u64>()
-                            .map_err(|_| format!("{input} 必须是有效分钟数"))?;
-                        if minutes == 0 {
-                            return Err(format!("{input} 必须大于 0"));
-                        }
-                        source = set_env(source, key, &minutes.saturating_mul(60_000).to_string());
-                    }
-                }
-                for (input, key) in [
-                    ("playerServiceMemoryMb", "BOX_PLAYER_SERVICE_MEMORY_LIMIT"),
-                    ("authPortalMemoryMb", "BOX_AUTH_PORTAL_MEMORY_LIMIT"),
-                    ("creatorMemoryMb", "BOX_CREATOR_MEMORY_LIMIT"),
-                    ("playMemoryMb", "BOX_PLAY_MEMORY_LIMIT"),
-                ] {
-                    if let Some(value) = config.get(input) {
-                        source = set_env(source, key, &format!("{}m", json_value(value)?));
-                    }
-                }
-                for (input, key) in [
-                    ("playerServiceCpuLimit", "BOX_PLAYER_SERVICE_CPU_LIMIT"),
-                    ("authPortalCpuLimit", "BOX_AUTH_PORTAL_CPU_LIMIT"),
-                    ("creatorCpuLimit", "BOX_CREATOR_CPU_LIMIT"),
-                    ("playCpuLimit", "BOX_PLAY_CPU_LIMIT"),
-                ] {
-                    if let Some(value) = config.get(input) {
-                        source = set_env(source, key, &json_value(value)?);
-                    }
-                }
-                for (input, key, inverted) in [
-                    ("databaseSsl", "BOX_DATABASE_SSL", false),
-                    ("autoBackupEnabled", "BOX_AUTO_BACKUP_ENABLED", false),
-                    (
-                        "registrationEnabled",
-                        "BOX_PLAYER_REGISTRATION_ENABLED",
-                        false,
-                    ),
-                    (
-                        "libraryManagementEnabled",
-                        "BOX_PLAY_LIBRARY_READ_ONLY",
-                        true,
-                    ),
-                ] {
-                    if let Some(value) = config.get(input).and_then(Value::as_bool) {
-                        source =
-                            set_env(source, key, if value ^ inverted { "true" } else { "false" });
-                    }
-                }
-                for (input, key) in [
-                    ("databasePassword", "BOX_DATABASE_PASSWORD"),
-                    ("redisPassword", "REDIS_PASSWORD"),
-                    ("permissionTokenSecret", "PERMISSION_TOKEN_SECRET"),
-                    ("playerAuthApiKey", "BOX_PLAYER_AUTH_API_KEY"),
-                    ("playAdminToken", "BOX_PLAY_ADMIN_TOKEN"),
-                ] {
-                    if let Some(value) = config
-                        .get(input)
+                validate_configuration(config)?;
+                if config.get("databaseMode").and_then(Value::as_str) == Some("external") {
+                    let host = config
+                        .get("databaseHost")
                         .and_then(Value::as_str)
-                        .filter(|value| !value.is_empty())
-                    {
-                        source = set_env(source, key, value);
-                    }
-                }
-                if database_mode == "managed" {
-                    let database = existing
-                        .get("BOX_MANAGED_POSTGRES_DATABASE")
-                        .cloned()
-                        .unwrap_or_else(|| format!("box_db_{}", random_hex(8)));
-                    let user = existing
-                        .get("BOX_MANAGED_POSTGRES_USER")
-                        .cloned()
-                        .unwrap_or_else(|| format!("box_user_{}", random_hex(8)));
-                    let password = existing
-                        .get("BOX_MANAGED_POSTGRES_PASSWORD")
-                        .cloned()
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or_else(|| random_hex(32));
-                    source = set_env(source, "BOX_DATABASE_HOST", "managed-postgres");
-                    source = set_env(source, "BOX_DATABASE_PORT", "5432");
-                    source = set_env(source, "BOX_DATABASE_NAME", &database);
-                    source = set_env(source, "BOX_DATABASE_USER", &user);
-                    source = set_env(source, "BOX_DATABASE_PASSWORD", &password);
-                    source = set_env(source, "BOX_MANAGED_POSTGRES_DATABASE", &database);
-                    source = set_env(source, "BOX_MANAGED_POSTGRES_USER", &user);
-                    source = set_env(source, "BOX_MANAGED_POSTGRES_PASSWORD", &password);
-                    source = set_env(
-                        source,
-                        "BOX_DATABASE_URL",
-                        &format!(
-                            "postgres://{}:{}@managed-postgres:5432/{}",
-                            urlencoding::encode(&user),
-                            urlencoding::encode(&password),
-                            urlencoding::encode(&database)
-                        ),
-                    );
-                    source = set_env(source, "BOX_DATABASE_SSL", "false");
-                } else if let Some(host) = config.get("databaseHost") {
-                    let host = json_value(host)?;
-                    if host.is_empty() {
-                        source = set_env(source, "BOX_DATABASE_URL", "");
-                    } else {
-                        let existing = parse_env(&source);
-                        let (_, old_port, old_name, old_user, old_password) =
-                            database_fields(existing.get("BOX_DATABASE_URL"));
+                        .map(str::trim)
+                        .unwrap_or_default();
+                    if !host.is_empty() {
+                        let host = validate_host(host, "数据库地址")?;
                         let database_port = config
                             .get("databasePort")
                             .map(|value| port(value, "数据库端口"))
                             .transpose()?
-                            .unwrap_or(old_port);
-                        let database_name = config
-                            .get("databaseName")
-                            .map(json_value)
-                            .transpose()?
-                            .unwrap_or(old_name);
-                        let database_user = config
-                            .get("databaseUser")
-                            .map(json_value)
-                            .transpose()?
-                            .unwrap_or(old_user);
-                        let database_password = config
-                            .get("databasePassword")
-                            .and_then(Value::as_str)
-                            .filter(|value| !value.is_empty())
-                            .map(str::to_string)
-                            .or_else(|| existing.get("BOX_DATABASE_PASSWORD").cloned())
-                            .unwrap_or(old_password);
-                        let authority = if database_user.is_empty() {
-                            host.clone()
-                        } else {
-                            format!(
-                                "{}:{}@{}",
-                                urlencoding::encode(&database_user),
-                                urlencoding::encode(&database_password),
-                                host
-                            )
-                        };
-                        source = set_env(source, "BOX_DATABASE_HOST", &host);
-                        source = set_env(source, "BOX_DATABASE_PORT", &database_port);
-                        source = set_env(source, "BOX_DATABASE_NAME", &database_name);
-                        source = set_env(source, "BOX_DATABASE_USER", &database_user);
-                        source = set_env(source, "BOX_DATABASE_PASSWORD", &database_password);
-                        source = set_env(
-                            source,
-                            "BOX_DATABASE_URL",
-                            &format!(
-                                "postgres://{authority}:{database_port}/{}",
-                                urlencoding::encode(&database_name)
-                            ),
-                        );
+                            .map(|value| value.parse::<u16>().unwrap_or(5432))
+                            .unwrap_or(5432);
+                        check_remote_endpoint(" PostgreSQL", &host, database_port)?;
                     }
                 }
-                if redis_mode == "managed" {
-                    let password = existing
-                        .get("BOX_MANAGED_REDIS_PASSWORD")
-                        .cloned()
-                        .filter(|value| !value.is_empty())
-                        .unwrap_or_else(|| random_hex(32));
-                    source = set_env(source, "REDIS_HOST", "managed-redis");
-                    source = set_env(source, "REDIS_PORT", "6379");
-                    source = set_env(source, "REDIS_PASSWORD", &password);
-                    source = set_env(source, "BOX_MANAGED_REDIS_PASSWORD", &password);
-                    source = set_env(source, "REDIS_DB", "0");
-                    source = set_env(source, "STORAGE_CACHE_REDIS_DB", "1");
-                    source = set_env(source, "STORAGE_CACHE_REDIS_TTL", "240");
-                } else if redis_mode == "disabled" {
-                    source = set_env(source, "REDIS_HOST", "");
-                    source = set_env(source, "REDIS_PASSWORD", "");
+                if config.get("redisMode").and_then(Value::as_str) == Some("external") {
+                    let host = config
+                        .get("redisHost")
+                        .and_then(Value::as_str)
+                        .map(str::trim)
+                        .unwrap_or_default();
+                    if !host.is_empty() {
+                        let host = validate_host(host, "Redis 地址")?;
+                        let redis_port = config
+                            .get("redisPort")
+                            .map(|value| port(value, "Redis 端口"))
+                            .transpose()?
+                            .map(|value| value.parse::<u16>().unwrap_or(6379))
+                            .unwrap_or(6379);
+                        check_remote_endpoint(" Redis", &host, redis_port)?;
+                    }
                 }
-                if let Some(host) = config.get("publicHost") {
-                    let host = json_value(host)?;
-                    let port = config
-                        .get("playPort")
-                        .map(|value| port(value, "Play 端口"))
-                        .transpose()?
-                        .unwrap_or_else(|| "3121".into());
-                    source = set_env(
-                        source,
-                        "BOX_PLAY_PUBLIC_URL",
-                        &format!("http://{host}:{port}"),
-                    );
-                    let bind =
-                        if config.get("playNetworkMode").and_then(Value::as_str) == Some("local") {
-                            "127.0.0.1"
-                        } else {
-                            "0.0.0.0"
-                        };
-                    source = set_env(source, "BOX_BIND_IP", bind);
-                }
-                if let Some(host) = config.get("creatorHost") {
-                    let host = json_value(host)?;
-                    let port = config
-                        .get("creatorPort")
-                        .map(|value| port(value, "Creator 端口"))
-                        .transpose()?
-                        .unwrap_or_else(|| "3127".into());
-                    source = set_env(
-                        source,
-                        "BOX_CREATOR_PUBLIC_URL",
-                        &format!("http://{host}:{port}"),
-                    );
-                    let bind = if config.get("creatorNetworkMode").and_then(Value::as_str)
-                        == Some("local")
-                    {
-                        "127.0.0.1"
-                    } else {
-                        "0.0.0.0"
-                    };
-                    source = set_env(source, "BOX_CREATOR_BIND_IP", bind);
-                    source = set_env(source, "BOX_VOXA_BIND_IP", bind);
-                }
-                if let Some(value) = config.get("registrationEnabled").and_then(Value::as_bool) {
-                    source = set_env(
-                        source,
-                        "BOX_PLAYER_REGISTRATION_ENABLED",
-                        if value { "true" } else { "false" },
-                    );
-                }
-                if let Some(value) = config
-                    .get("libraryManagementEnabled")
-                    .and_then(Value::as_bool)
-                {
-                    source = set_env(
-                        source,
-                        "BOX_PLAY_LIBRARY_READ_ONLY",
-                        if value { "false" } else { "true" },
-                    );
-                }
+                let content = fs::read_to_string(env_path(&app)).map_err(|error| error.to_string())?;
+                let source = configuration_document_for_save(&content, config)?;
                 private(&env_path(&app), &source)?;
+                generate_runtime_environment(&app)?;
                 Ok(Value::Null)
             }
             "start_services" => {
-                if !license(&app, None)?
-                    .get("valid")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false)
-                {
-                    return Err("请先安装有效许可证".into());
-                }
-                let values = parse_env(&fs::read_to_string(env_path(&app)).unwrap_or_default());
-                if values
-                    .get("BOX_DATABASE_MODE")
-                    .is_some_and(|mode| mode == "managed")
-                {
-                    start_managed_service(&app, "postgresql")?;
-                }
-                if values
-                    .get("BOX_REDIS_MODE")
-                    .is_some_and(|mode| mode == "managed")
-                {
-                    start_managed_service(&app, "redis")?;
-                }
-                let scope = req
-                    .body
-                    .get("scope")
-                    .and_then(Value::as_str)
-                    .ok_or("启动范围无效")?;
-                let targets: &[&str] = match scope {
-                    "all" => &SERVICES,
-                    "creator" => &["creator", "voxa", "player-service", "player-auth-portal"],
-                    "play" => &["play", "player-service", "player-auth-portal"],
-                    _ => return Err("启动范围无效".into()),
-                };
-                let mut arguments = vec!["up", "-d", "--no-build", "--remove-orphans"];
-                arguments.extend_from_slice(targets);
-                compose(&app, &arguments)?;
+                let scope = req.body.get("scope").and_then(Value::as_str).ok_or("启动范围无效")?;
+                services::start(&WebRuntime(&app), scope)?;
                 Ok(Value::Null)
             }
             "get_system_status" => {
                 let env = parse_env(&fs::read_to_string(env_path(&app)).unwrap_or_default());
-                let (docker_ready, docker_version, docker_message) = docker_check();
+                let (mut docker_ready, docker_version, mut docker_message) = docker_check();
                 let text = if docker_ready {
-                    compose(&app, &["ps", "--all", "--format", "json"]).unwrap_or_default()
+                    match compose(&app, &["ps", "--all", "--format", "json"]) {
+                        Ok(output) => output,
+                        Err(error) => { docker_ready = false; docker_message = format!("无法读取服务状态：{error}"); String::new() }
+                    }
                 } else {
                     String::new()
                 };
-                let rows: Vec<Value> = text
-                    .lines()
-                    .filter_map(|l| serde_json::from_str(l).ok())
-                    .collect();
-                let mut services=SERVICES.iter().map(|name|{let row=rows.iter().find(|row|row.get("Service").and_then(Value::as_str)==Some(name));let state=row.and_then(|row|row.get("State")).and_then(Value::as_str).unwrap_or("stopped").to_lowercase();json!({"name":name,"enabled":env.get("COMPOSE_PROFILES").map(|profiles|profiles.split(',').any(|profile|profile==if *name=="player-auth-portal"{"auth-portal"}else{name})).unwrap_or(false),"running":state=="running","state":state})}).collect::<Vec<_>>();
-                for (name, mode_key) in [
-                    ("managed-postgres", "BOX_DATABASE_MODE"),
-                    ("managed-redis", "BOX_REDIS_MODE"),
-                ] {
-                    let row = rows
-                        .iter()
-                        .find(|row| row.get("Service").and_then(Value::as_str) == Some(name));
-                    let state = row
-                        .and_then(|row| row.get("State"))
-                        .and_then(Value::as_str)
-                        .unwrap_or("stopped")
-                        .to_lowercase();
-                    services.push(json!({"name":name,"enabled":env.get(mode_key).is_some_and(|mode|mode=="managed"),"running":state=="running","state":state}));
-                }
+                let mut services = services::statuses(&text, &env);
+                if !docker_ready { for service in &mut services { service.state = "unknown".into(); } }
                 Ok(
-                    json!({"dockerReady":docker_ready,"dockerCliAvailable":docker_ready || !docker_message.contains("无法运行 Docker"),"dockerCliVersion":docker_version,"dockerMessage":docker_message,"configured":env_path(&app).is_file(),"allHealthy":services.iter().filter(|service|service.get("enabled").and_then(Value::as_bool).unwrap_or(false)).all(|service|service.get("running").and_then(Value::as_bool).unwrap_or(false)),"services":services,"dataDirectory":app.root}),
+                    json!({"dockerReady":docker_ready,"dockerCliAvailable":docker_ready || !docker_message.contains("无法运行 Docker"),"dockerCliVersion":docker_version,"dockerMessage":docker_message,"configured":env_path(&app).is_file(),"allHealthy":services.iter().filter(|service|service.enabled).all(|service|service.running),"services":services,"dataDirectory":app.root}),
                 )
             }
             "control_service" => {
-                let a = req
-                    .body
-                    .get("action")
-                    .and_then(Value::as_str)
-                    .ok_or("操作名称无效")?;
-                let s = req
-                    .body
-                    .get("service")
-                    .and_then(Value::as_str)
-                    .ok_or("服务名称无效")?;
-                let managed = ["managed-postgres", "managed-redis"].contains(&s);
-                if (!SERVICES.contains(&s) && !managed)
-                    || !["start", "stop", "restart"].contains(&a)
-                {
-                    return Err("操作名称或服务名称无效".into());
-                }
-                if !managed
-                    && a != "stop"
-                    && !license(&app, None)?
-                        .get("valid")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false)
-                {
-                    return Err("请先安装有效许可证".into());
-                }
-                if a == "start" {
-                    compose(&app, &["up", "-d", "--wait", s])?;
-                } else {
-                    compose(&app, &[a, s])?;
-                }
+                let action = req.body.get("action").and_then(Value::as_str).ok_or("操作名称无效")?;
+                let service = req.body.get("service").and_then(Value::as_str).ok_or("服务名称无效")?;
+                services::control(&WebRuntime(&app), service, action)?;
                 Ok(Value::Null)
             }
-            "stop_services" => {
-                compose(
-                    &app,
-                    &[
-                        "stop",
-                        "creator",
-                        "voxa",
-                        "play",
-                        "player-service",
-                        "player-auth-portal",
-                        "managed-postgres",
-                        "managed-redis",
-                    ],
-                )?;
-                Ok(Value::Null)
-            }
+            "stop_services" => { services::stop(&WebRuntime(&app))?; Ok(Value::Null) }
             "get_about_info" => Ok(json!({
                 "applicationVersion": option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
                 "imageTag": env::var("BOX_IMAGE_TAG").unwrap_or_default(),
@@ -1801,6 +1944,12 @@ async fn command(
     })
     .await
     .unwrap_or_else(|error| Err(format!("管理命令异常结束：{error}")));
+    if let Some(id) = operation_id {
+        match &answer {
+            Ok(_) => operations.update(&id, "complete", "操作已完成", 100, true),
+            Err(error) => operations.update(&id, "error", error, 100, true),
+        }
+    }
     match answer {
         Ok(result) => Json(json!({"result":result})).into_response(),
         Err(e) => fail(e),
@@ -1821,6 +1970,8 @@ async fn main() {
         compose_file: env::var("BOX_SERVER_MANAGER_COMPOSE_FILE")
             .map(PathBuf::from)
             .unwrap_or_else(|_| root_path.join("compose.yml")),
+        operations: Arc::new(Operations::default()),
+        operation_id: None,
         environment_file: env::var("BOX_SERVER_MANAGER_ENV_FILE")
             .map(PathBuf::from)
             .unwrap_or_else(|_| root_path.join(".env")),
@@ -1835,8 +1986,9 @@ async fn main() {
             get(download_diagnostics),
         )
         .route("/api/commands/{name}", post(command))
+        .route("/api/operations/{id}", get(operation_progress))
         .layer(DefaultBodyLimit::max(512 * 1024 * 1024))
-        .fallback_service(ServeDir::new("/app/public").append_index_html_on_directories(true))
+        .fallback_service(ServeDir::new(public_directory()).append_index_html_on_directories(true))
         .layer(middleware::from_fn(security))
         .with_state(app);
     let host = env::var("BOX_SERVER_MANAGER_HOST")
@@ -1858,33 +2010,231 @@ async fn main() {
 mod tests {
     use super::*;
 
+    #[tokio::test]
+    async fn http_command_progress_has_the_same_shape_and_requires_authentication() {
+        let app = Arc::new(App {
+            root: PathBuf::from("/unused-test-root"),
+            token: "fixture-token-with-at-least-32-chars".into(),
+            compose_file: PathBuf::from("/unused-test-root/compose.yml"),
+            environment_file: PathBuf::from("/unused-test-root/.env"),
+            operations: Arc::new(Operations::default()),
+            operation_id: None,
+        });
+        let id = "fixture-operation-0001";
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::AUTHORIZATION,
+            format!("Bearer {}", app.token).parse().unwrap(),
+        );
+        headers.insert("x-operation-id", id.parse().unwrap());
+        let public_notice = command(
+            State(app.clone()),
+            Path("get_legal_notices".into()),
+            HeaderMap::new(),
+            Json(Request {
+                body: BTreeMap::new(),
+            }),
+        )
+        .await;
+        assert_eq!(public_notice.status(), StatusCode::OK);
+        let protected_about = command(
+            State(app.clone()),
+            Path("get_about_info".into()),
+            HeaderMap::new(),
+            Json(Request {
+                body: BTreeMap::new(),
+            }),
+        )
+        .await;
+        assert_eq!(protected_about.status(), StatusCode::UNAUTHORIZED);
+        let response = command(
+            State(app.clone()),
+            Path("get_legal_notices".into()),
+            headers.clone(),
+            Json(Request {
+                body: BTreeMap::new(),
+            }),
+        )
+        .await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let response = operation_progress(State(app.clone()), Path(id.into()), headers).await;
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .unwrap();
+        let progress: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            progress,
+            json!({"stage":"complete","message":"操作已完成","percent":100})
+        );
+        let denied = operation_progress(State(app), Path(id.into()), HeaderMap::new()).await;
+        assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    const MIGRATION_OWNER: &str = "# owner comment\nBOX_PLAY_PUBLIC_URL=https://play.example/worlds\nBOX_CREATOR_PUBLIC_URL=https://create.example/editor\nBOX_AUTH_PORTAL_PUBLIC_URL=https://auth.example/\nBOX_PLAYER_LOGIN_URL=https://login.example/custom\nBOX_DATABASE_URL=postgres://owner:fixture@db/box?sslmode=require\n";
+
+    #[test]
+    fn web_form_preserves_unchanged_migrated_urls_and_external_query() {
+        let form = json!({"databaseMode":"external", "publicHost":"play.example", "playNetworkMode":"public",
+            "creatorHost":"create.example", "creatorNetworkMode":"public", "playPort":3121,
+            "databaseHost":"db", "databasePort":"5432", "databaseName":"box", "databaseUser":"owner", "databasePassword":""});
+        let source =
+            configuration_document_for_save(MIGRATION_OWNER, form.as_object().unwrap()).unwrap();
+        let values = parse_env(&source);
+        assert_eq!(
+            values["BOX_PLAY_PUBLIC_URL_OVERRIDE"],
+            "https://play.example/worlds"
+        );
+        assert_eq!(
+            values["BOX_CREATOR_PUBLIC_URL_OVERRIDE"],
+            "https://create.example/editor"
+        );
+        assert_eq!(values["BOX_DATABASE_QUERY"], "sslmode=require");
+        assert_eq!(values["BOX_DATABASE_PASSWORD"], "fixture");
+        assert_eq!(
+            database_url(&values).unwrap(),
+            "postgresql://owner:fixture@db:5432/box?sslmode=require"
+        );
+        assert!(source.contains("# owner comment"));
+    }
+
+    #[test]
+    fn web_form_changes_clear_only_affected_overrides_without_recreating_them() {
+        for (form, clear_auth) in [
+            (
+                json!({"publicHost":"new.example", "playNetworkMode":"public", "playPort":4000}),
+                true,
+            ),
+            (json!({"playPort":4000}), false),
+        ] {
+            let source =
+                configuration_document_for_save(MIGRATION_OWNER, form.as_object().unwrap())
+                    .unwrap();
+            let values = parse_env(&migrate_document(&source).unwrap());
+            assert!(!values.contains_key("BOX_PLAY_PUBLIC_URL_OVERRIDE"));
+            assert_eq!(
+                values.contains_key("BOX_AUTH_PORTAL_PUBLIC_URL_OVERRIDE"),
+                !clear_auth
+            );
+            assert!(values.contains_key("BOX_CREATOR_PUBLIC_URL_OVERRIDE"));
+            assert_eq!(
+                values["BOX_PLAYER_LOGIN_URL_OVERRIDE"],
+                "https://login.example/custom"
+            );
+        }
+    }
+
+    #[test]
+    fn web_form_clears_external_query_after_switching_to_managed() {
+        let form = json!({"databaseMode":"managed"});
+        let source =
+            configuration_document_for_save(MIGRATION_OWNER, form.as_object().unwrap()).unwrap();
+        let values = parse_env(&source);
+        assert_eq!(values["BOX_DATABASE_MODE"], "managed");
+        assert!(!values.contains_key("BOX_DATABASE_QUERY"));
+        assert!(!database_url(&values).unwrap().contains('?'));
+        assert!(!parse_env(&migrate_document(&source).unwrap()).contains_key("BOX_DATABASE_QUERY"));
+    }
+
+    struct MigrationFixture(App);
+    impl MigrationFixture {
+        fn new(source: &str) -> Self {
+            let root = std::env::temp_dir().join(format!("box-web-migration-{}", random_hex(12)));
+            fs::create_dir(&root).unwrap();
+            fs::write(root.join(".env"), source).unwrap();
+            Self(App {
+                environment_file: root.join(".env"),
+                compose_file: root.join("compose.yml"),
+                root,
+                token: "fixture-token-not-used-for-network".into(),
+                operations: Arc::new(Operations::default()),
+                operation_id: None,
+            })
+        }
+    }
+    impl Drop for MigrationFixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0.root);
+        }
+    }
+
+    #[test]
+    fn web_runtime_persists_migration_after_successful_derivation() {
+        let fixture = MigrationFixture::new(MIGRATION_OWNER);
+        let path = generate_runtime_environment(&fixture.0).unwrap();
+        let owner = fs::read_to_string(env_path(&fixture.0)).unwrap();
+        assert_eq!(owner, migrate_document(MIGRATION_OWNER).unwrap());
+        let runtime = parse_env(&fs::read_to_string(path).unwrap());
+        assert_eq!(
+            runtime["BOX_PLAY_PUBLIC_URL"],
+            "https://play.example/worlds"
+        );
+        assert_eq!(runtime["BOX_CREATOR_BIND_IP"], "0.0.0.0");
+        assert_eq!(
+            runtime["BOX_PLAYER_LOGIN_URL"],
+            "https://login.example/custom"
+        );
+        assert_eq!(
+            runtime["BOX_DATABASE_URL"],
+            "postgresql://owner:fixture@db:5432/box?sslmode=require"
+        );
+        generate_runtime_environment(&fixture.0).unwrap();
+        assert_eq!(fs::read_to_string(env_path(&fixture.0)).unwrap(), owner);
+    }
+
+    #[test]
+    fn web_runtime_failure_leaves_unmigrated_owner_untouched() {
+        let invalid = format!("{MIGRATION_OWNER}BOX_PLAY_PORT=3123\n");
+        let fixture = MigrationFixture::new(&invalid);
+        assert!(generate_runtime_environment(&fixture.0).is_err());
+        assert_eq!(fs::read_to_string(env_path(&fixture.0)).unwrap(), invalid);
+        assert!(!runtime_env_path(&fixture.0).exists());
+        let fixture = MigrationFixture::new(MIGRATION_OWNER);
+        fs::create_dir(runtime_env_path(&fixture.0)).unwrap();
+        fs::write(runtime_env_path(&fixture.0).join("owner-data"), "keep").unwrap();
+        assert!(generate_runtime_environment(&fixture.0).is_err());
+        assert_eq!(
+            fs::read_to_string(env_path(&fixture.0)).unwrap(),
+            MIGRATION_OWNER
+        );
+    }
+
+    #[test]
+    fn compose_uses_host_bind_paths_instead_of_container_workspace_paths() {
+        let mounts = json!([
+            {"Type":"bind","Source":"/opt/box","Destination":"/workspace"},
+            {"Type":"bind","Source":"/other","Destination":"/unrelated"}
+        ]);
+        assert_eq!(
+            mapped_host_root(FsPath::new("/workspace"), &mounts).unwrap(),
+            PathBuf::from("/opt/box")
+        );
+        assert_eq!(
+            mapped_host_root(FsPath::new("/workspace/sub"), &mounts).unwrap(),
+            PathBuf::from("/opt/box/sub")
+        );
+        assert!(mapped_host_root(FsPath::new("/missing"), &mounts).is_err());
+    }
+
+    #[test]
+    fn environment_ignores_comments_and_updates_spaced_keys() {
+        let source = "# EXAMPLE=value\nBOX_PLAY_PORT = 3121\n";
+        assert!(!parse_env(source).contains_key("# EXAMPLE"));
+        let updated = set_env(source.into(), "BOX_PLAY_PORT", "4000").unwrap();
+        assert_eq!(updated, "# EXAMPLE=value\nBOX_PLAY_PORT=4000\n");
+    }
+
     #[test]
     fn environment_replacement_is_key_scoped_and_keeps_a_final_newline() {
         let output = set_env(
             "BOX_PLAY_PORT=3121\nOTHER=value\n".into(),
             "BOX_PLAY_PORT",
             "4000",
-        );
+        )
+        .unwrap();
         assert_eq!(output, "BOX_PLAY_PORT=4000\nOTHER=value\n");
         assert_eq!(
-            set_env(output, "NEW_VALUE", "yes"),
+            set_env(output, "NEW_VALUE", "yes").unwrap(),
             "BOX_PLAY_PORT=4000\nOTHER=value\nNEW_VALUE=yes\n"
-        );
-    }
-
-    #[test]
-    fn backup_file_rejects_paths_and_non_archives() {
-        let app = App {
-            root: PathBuf::from("/workspace"),
-            token: "x".repeat(32),
-            compose_file: PathBuf::from("/workspace/compose.yml"),
-            environment_file: PathBuf::from("/workspace/.env"),
-        };
-        assert!(backup_file(&app, "../../.env").is_err());
-        assert!(backup_file(&app, "backup.zip").is_err());
-        assert_eq!(
-            backup_file(&app, "backup.tar.gz").unwrap(),
-            PathBuf::from("/workspace/apps/local-engine/backups/backup.tar.gz")
         );
     }
 
@@ -1917,6 +2267,71 @@ mod tests {
     }
 
     #[test]
+    fn license_payload_parses_camel_case_tokens() {
+        // Regression: without #[serde(rename_all = "camelCase")] every signed
+        // license failed to deserialize and the Web console reported it invalid.
+        let payload = br#"{"formatVersion":1,"licenseId":"lic_a","type":"personal-learning",
+            "holderId":"device_a","deviceId":"dev_a","issuedAt":"2026-09-10T07:36:54.957Z",
+            "expiresAt":"2026-10-10T06:50:00.000Z",
+            "features":["creator","play","voxa","player-service","player-auth-portal"],
+            "commercialUse":false,"version":1}"#;
+        let parsed: LicensePayload = serde_json::from_slice(payload).unwrap();
+        assert_eq!(parsed.format_version, 1);
+        assert_eq!(parsed.license_id, "lic_a");
+        assert_eq!(parsed.license_type, "personal-learning");
+        assert_eq!(parsed.device_id, "dev_a");
+        assert!(!parsed.commercial_use);
+        assert_eq!(parsed.features.len(), 5);
+    }
+
+    #[test]
+    fn private_file_replaces_only_empty_docker_directory_placeholders() {
+        let root = std::env::temp_dir().join(format!(
+            "box-private-placeholder-{}-{}",
+            std::process::id(),
+            random_hex(6)
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let empty = root.join("device-id");
+        fs::create_dir(&empty).unwrap();
+        private(&empty, "device").unwrap();
+        assert_eq!(fs::read_to_string(&empty).unwrap(), "device");
+
+        let nonempty = root.join("license.boxlic");
+        fs::create_dir(&nonempty).unwrap();
+        fs::write(nonempty.join("keep"), "owner data").unwrap();
+        assert!(private(&nonempty, "license").is_err());
+        assert_eq!(
+            fs::read_to_string(nonempty.join("keep")).unwrap(),
+            "owner data"
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn database_url_prefers_fields_and_falls_back_to_stored_url() {
+        let mut managed = BTreeMap::new();
+        managed.insert("BOX_DATABASE_MODE".to_string(), "managed".to_string());
+        managed.insert("BOX_DATABASE_NAME".to_string(), "box".to_string());
+        managed.insert("BOX_DATABASE_USER".to_string(), "box".to_string());
+        managed.insert("BOX_DATABASE_PASSWORD".to_string(), "secret".to_string());
+        assert_eq!(
+            database_url(&managed).unwrap(),
+            "postgresql://box:secret@managed-postgres:5432/box"
+        );
+        let mut external = BTreeMap::new();
+        external.insert(
+            "BOX_DATABASE_URL".to_string(),
+            "postgresql://box:pw@db.example:5432/box".to_string(),
+        );
+        assert_eq!(
+            database_url(&external).unwrap(),
+            "postgresql://box:pw@db.example:5432/box"
+        );
+        assert!(database_url(&BTreeMap::new()).is_err());
+    }
+
+    #[test]
     fn runtime_catalog_returns_empty_collections_for_empty_deployment_data() {
         let root = std::env::temp_dir().join(format!("box-runtime-catalog-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
@@ -1924,6 +2339,8 @@ mod tests {
             root: root.clone(),
             token: "x".repeat(32),
             compose_file: root.join("compose.yml"),
+            operations: Arc::new(Operations::default()),
+            operation_id: None,
             environment_file: root.join(".env"),
         };
         assert_eq!(runtime_catalog(&app), json!({"creator":[],"play":[]}));
