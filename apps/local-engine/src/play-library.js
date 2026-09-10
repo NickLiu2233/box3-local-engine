@@ -378,6 +378,10 @@ function startPlayLibrary({
       })
       req.pipe(proxy)
     } catch (error) {
+      if (res.headersSent) {
+        res.destroy()
+        return
+      }
       res.writeHead(error.statusCode || 500, { 'content-type': 'application/json; charset=utf-8' })
       res.end(JSON.stringify({ message: error.message }))
     }

@@ -323,6 +323,10 @@ function startEditLibrary({
       })
       req.pipe(proxy)
     } catch (error) {
+      if (res.headersSent) {
+        res.destroy()
+        return
+      }
       res.writeHead(error.statusCode || 500, {
         'content-type': 'application/json; charset=utf-8',
       })
