@@ -704,7 +704,10 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     for (key, value) in derived {
         set_env(&mut runtime, &key, &value)?;
     }
-    write_private_file(&runtime_env_path(app)?, runtime, "运行时配置")?;
+    let runtime_path = runtime_env_path(app)?;
+    if fs::read_to_string(&runtime_path).ok().as_deref() != Some(runtime.as_str()) {
+        write_private_file(&runtime_path, runtime, "运行时配置")?;
+    }
     Ok(values)
 }
 

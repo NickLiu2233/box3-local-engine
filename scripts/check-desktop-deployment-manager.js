@@ -499,7 +499,10 @@ assert.match(frontend, /export_diagnostics/)
 assert.match(backend, /fn is_sensitive_env_key/)
 assert.match(backend, /\[REDACTED\]/)
 assert.match(backend, /async fn control_service/)
-assert.match(frontend, /setInterval\(refreshPerformance, 5000\)/)
+assert.match(frontend, /OVERVIEW_POLL_MS = 10000/)
+assert.match(frontend, /OVERVIEW_HIDDEN_POLL_MS = 60000/)
+assert.match(frontend, /PERFORMANCE_POLL_MS = 5000/)
+assert.match(frontend, /PERFORMANCE_HIDDEN_POLL_MS = 30000/)
 assert.match(backend, /"stats",\s*"--no-stream"/)
 assert.match(styles, /:root\[data-theme='light'\]/)
 assert.match(styles, /:root\[data-theme='dark'\]/)
@@ -722,7 +725,7 @@ assert.match(
 )
 assert.match(
   frontend,
-  /if \(!hasProjects\) \{\n\x20{4}if \(!state\.projectRuntimesLoaded && !projectRuntimeLoading\) scheduleProjectRuntimeRefresh\(\)\n\x20{4}return/,
+  /if \(!hasProjects\) \{\n\x20{4}if \(!state\.projectRuntimesLoaded && !projectRuntimeLoading\) scheduleProjectRuntimeRefresh\(\)/,
 )
 assert.match(frontend, /const PROJECT_RUNTIME_POLL_MS = 3000/)
 assert.match(frontend, /const PROJECT_RUNTIME_HIDDEN_POLL_MS = 10000/)
@@ -878,7 +881,7 @@ assert.match(desktopCommands, /validate_raw_environment\(&content\)\?;/)
 assert.match(desktopCommands, /web_manager:\s*false/)
 assert.match(
   desktopCommands,
-  /write_private_file\(&runtime_env_path\(app\)\?/,
+  /write_private_file\(&runtime_path, runtime, "运行时配置"\)\?/,
   'derived environment must be written privately',
 )
 assert.match(desktopCommands, /use box_manager_core::services::\{/)

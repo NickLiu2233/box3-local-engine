@@ -33,6 +33,10 @@ const startPrompts = [
 ]
 
 const THEME_KEY = 'box-manager-theme'
+const OVERVIEW_POLL_MS = 10000
+const OVERVIEW_HIDDEN_POLL_MS = 60000
+const PERFORMANCE_POLL_MS = 5000
+const PERFORMANCE_HIDDEN_POLL_MS = 30000
 const PROJECT_RUNTIME_POLL_MS = 3000
 const PROJECT_RUNTIME_HIDDEN_POLL_MS = 10000
 const PROJECT_RUNTIME_EMPTY_POLL_MS = 10000
@@ -1399,18 +1403,17 @@ function syncOverviewPolling() {
     dockerStartupPollTimer = undefined
     return
   }
-  overviewStatusTimer = window.setInterval(refreshOverviewStatus, 5000)
+  overviewStatusTimer = window.setInterval(
+    refreshOverviewStatus,
+    document.hidden ? OVERVIEW_HIDDEN_POLL_MS : OVERVIEW_POLL_MS,
+  )
 }
 
 async function refreshOverviewStatus() {
   if (overviewStatusLoading || state.page !== 'overview') return
   overviewStatusLoading = true
   try {
-    const [status, managedDatabaseInfo, managedRedisInfo] = await Promise.all([
-      invoke('get_system_status'),
-      invoke('get_managed_service_info', { service: 'postgresql' }),
-      invoke('get_managed_service_info', { service: 'redis' }),
-    ])
+    const status = await invoke('get_system_status')
     state.status = status
     state.dockerCheck = {
       cliAvailable: status.dockerCliAvailable,
@@ -1418,8 +1421,6 @@ async function refreshOverviewStatus() {
       engineReady: status.dockerReady,
       message: status.dockerMessage,
     }
-    state.managedDatabaseInfo = managedDatabaseInfo
-    state.managedRedisInfo = managedRedisInfo
   } catch (error) {
     state.status = {
       dockerReady: false,
@@ -1457,7 +1458,10 @@ function syncPerformancePolling() {
   performanceTimer = undefined
   if (state.page !== 'performance') return
   if (!state.performance && !state.performanceLoading) refreshPerformance()
-  performanceTimer = window.setInterval(refreshPerformance, 5000)
+  performanceTimer = window.setInterval(
+    refreshPerformance,
+    document.hidden ? PERFORMANCE_HIDDEN_POLL_MS : PERFORMANCE_POLL_MS,
+  )
 }
 
 async function refreshPerformance() {
@@ -1506,9 +1510,14 @@ function scheduleProjectRuntimeRefresh() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (state.page !== 'runtimes') return
+  syncOverviewPolling()
+  syncPerformancePolling()
   syncProjectRuntimePolling()
-  if (!document.hidden) scheduleProjectRuntimeRefresh()
+  if (!document.hidden) {
+    if (state.page === 'overview') refreshOverviewStatus()
+    if (state.page === 'performance') refreshPerformance()
+    scheduleProjectRuntimeRefresh()
+  }
 })
 
 async function refreshProjectRuntimes() {
