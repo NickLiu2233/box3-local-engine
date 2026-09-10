@@ -1,5 +1,12 @@
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import {
+  downloadBackup,
+  downloadDiagnostics,
+  invoke,
+  isWebManager,
+  setWebManagerToken,
+  uploadBackup,
+} from './transport.js'
+import { listen } from './transport.js'
 import './styles.css'
 
 const services = [
@@ -1029,10 +1036,19 @@ function bindEvents() {
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
-  document.querySelector('#start-docker-desktop')?.addEventListener('click', startDockerDesktop)
-  document
-    .querySelector('#open-docker-download')
-    ?.addEventListener('click', () => invoke('open_docker_desktop_download'))
+  document.querySelector('#start-docker-desktop')?.addEventListener('click', () => {
+    if (isWebManager()) {
+      state.error = 'Linux Web 管理端无法直接启动服务器上的 Docker，请在服务器侧启动 Docker 服务。'
+      render()
+      return
+    }
+    void startDockerDesktop()
+  })
+  document.querySelector('#open-docker-download')?.addEventListener('click', () => {
+    const url = 'https://www.docker.com/products/docker-desktop'
+    if (isWebManager()) window.open(url, '_blank', 'noopener,noreferrer')
+    else invoke('open_docker_desktop_download')
+  })
   document.querySelector('#install-license')?.addEventListener('click', () => installLicenseToken())
   document.querySelector('#toggle-license-device')?.addEventListener('click', () => {
     state.licenseDeviceVisible = !state.licenseDeviceVisible
@@ -1165,7 +1181,8 @@ function bindEvents() {
   document.querySelectorAll('[data-open]').forEach((node) =>
     node.addEventListener('click', async () => {
       try {
-        await invoke('open_service', { url: node.dataset.open })
+        if (isWebManager()) window.open(node.dataset.open, '_blank', 'noopener,noreferrer')
+        else await invoke('open_service', { url: node.dataset.open })
       } catch (error) {
         state.error = String(error)
         render()
@@ -1208,7 +1225,12 @@ function bindEvents() {
   document.querySelector('#export-about-diagnostics')?.addEventListener('click', exportDiagnostics)
   document
     .querySelectorAll('#open-community-group, [data-open-community-group]')
-    .forEach((node) => node.addEventListener('click', () => invoke('open_community_group')))
+    .forEach((node) =>
+      node.addEventListener('click', () => {
+        if (isWebManager()) window.open('https://qm.qq.com/q/oMdzAAN49a', '_blank', 'noopener,noreferrer')
+        else invoke('open_community_group')
+      }),
+    )
   document.querySelectorAll('[data-setup-section]').forEach((node) =>
     node.addEventListener('click', (event) => {
       // These tabs live in a form. Keep the interaction explicit so a WebView
@@ -1597,7 +1619,10 @@ async function exportDiagnostics() {
   render()
   try {
     const destination = await invoke('export_diagnostics')
-    if (destination) state.diagnosticPath = destination
+    if (destination && isWebManager()) {
+      await downloadDiagnostics(destination)
+      state.diagnosticPath = '诊断文件下载已开始。'
+    } else if (destination) state.diagnosticPath = destination
   } catch (error) {
     state.error = String(error)
   } finally {
@@ -1643,7 +1668,24 @@ async function importBackup() {
   clearFeedback()
   render()
   try {
-    const path = await invoke('import_backup')
+    let path
+    if (isWebManager()) {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.tar.gz,application/gzip'
+      path = await new Promise((resolve) => {
+        input.hidden = true
+        document.body.append(input)
+        const finish = (value) => {
+          input.remove()
+          resolve(value)
+        }
+        input.addEventListener('change', () => finish(input.files?.[0] ? uploadBackup(input.files[0]) : null), { once: true })
+        input.addEventListener('cancel', () => finish(null), { once: true })
+        input.click()
+      })
+      if (path instanceof Promise) path = await path
+    } else path = await invoke('import_backup')
     if (path) {
       state.backupMessage = `备份已导入：${path}`
       await loadBackups()
@@ -1662,8 +1704,13 @@ async function exportBackup(archive) {
   clearFeedback()
   render()
   try {
-    const path = await invoke('export_backup', { archive })
-    if (path) state.backupMessage = `备份已导出：${path}`
+    if (isWebManager()) {
+      await downloadBackup(archive)
+      state.backupMessage = '备份下载已开始。'
+    } else {
+      const path = await invoke('export_backup', { archive })
+      if (path) state.backupMessage = `备份已导出：${path}`
+    }
   } catch (error) {
     state.error = String(error)
   } finally {
@@ -2044,4 +2091,25 @@ listen('install-progress', ({ payload }) => {
 document.addEventListener('contextmenu', (event) => event.preventDefault())
 
 applyTheme(state.theme)
-refreshStatus()
+
+function startWebManager() {
+  const app = document.querySelector('#app')
+  const boot = () => refreshStatus()
+  if (sessionStorage.getItem('box-server-manager-token')) return boot()
+  app.innerHTML = `<main class="web-login"><section><img src="/logo512.png" alt="BOX3 Engine"/><span>HEADLESS OPERATIONS</span><h1>连接 Linux 管理端</h1><p>输入服务器 <code>.env</code> 中的 <code>BOX_SERVER_MANAGER_TOKEN</code>。</p><form id="web-login-form"><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="管理令牌" required autofocus/><button class="button primary" type="submit">进入管理平台</button></form></section></main>`
+  document.querySelector('#web-login-form').addEventListener('submit', async (event) => {
+    event.preventDefault()
+    const token = new FormData(event.currentTarget).get('token')
+    setWebManagerToken(String(token || '').trim())
+    try {
+      await invoke('get_system_status')
+      boot()
+    } catch (error) {
+      setWebManagerToken('')
+      app.querySelector('p').textContent = String(error.message || error)
+    }
+  })
+}
+
+if (isWebManager()) startWebManager()
+else refreshStatus()

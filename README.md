@@ -18,7 +18,7 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 
 ## 当前组成
 
-桌面启动器管理五个 Linux 业务容器。完整镜像归档还携带仅供无图形 Linux 服务器使用的 Web 管理镜像；下表地址同时是当前启动器模板与仓库 Compose 的默认值；
+桌面启动器管理五个 Linux 业务容器。完整镜像归档还携带仅供无图形 Linux 服务器使用的 Rust Web 管理镜像；它构建并提供与桌面启动器相同的管理前端，通过 HTTP 适配同名管理命令。下表地址同时是当前启动器模板与仓库 Compose 的默认值；
 服主在启动器中修改端口后，应以启动器“服务总览”显示的地址为准。
 
 | 服务               | 职责                           | 默认地址                 | 网络边界                 |
@@ -76,7 +76,7 @@ pnpm verify
 | `pnpm voxa`               | 构建/启动 VOXA 容器                 |
 | `pnpm player-service`     | 构建/启动 Player Service            |
 | `pnpm player-auth-portal` | 构建/启动参考登录门户               |
-| `pnpm server-manager`     | 构建 Linux Web 管理镜像             |
+| `pnpm server-manager`     | 构建 Rust Linux Web 管理镜像        |
 | `pnpm server-manager:up`  | 启动已构建的 Linux Web 管理端       |
 | `pnpm stop`               | 停止本仓库 Compose 服务，不删除数据 |
 | `pnpm verify`             | 运行格式、lint、类型检查和全部回归  |
@@ -102,7 +102,8 @@ BOX_DATABASE_URL=
 | `apps/voxa/`                   | 本地模型、皮肤和动画编辑器                   |
 | `examples/player-auth-portal/` | 独立参考登录门户                             |
 | `apps/deployment-manager/`     | Vite + Tauri 图形化启动器                    |
-| `apps/server-manager/`         | Linux 无桌面服务器浏览器管理端               |
+| `apps/server-manager/`         | Linux Web 镜像构建定义（共享启动器前端）     |
+| `apps/server-manager-rust/`    | Linux 无桌面 Rust HTTP 管理服务              |
 | `apps/migrator/`               | 内部迁移工具，不进入用户发行包               |
 | `scripts/`                     | 回归、发行、离线包和文档检查                 |
 | `distribution/`                | 许可证、无图形服务器和维护者部署模板         |

@@ -181,8 +181,10 @@ assert.match(
   compose.match(/ {2}managed-postgres:[\s\S]*?\n {2}postgres:/)?.[0] || '',
   /127\.0\.0\.1:\$\{BOX_MANAGED_POSTGRES_HOST_PORT:-5432\}:5432/,
 )
-assert.doesNotMatch(headlessBuilder, /managed-postgres/)
-assert.doesNotMatch(headlessBuilder, /managed-redis/)
+// The headless package builder extracts the managed services from the shared
+// docker-compose.yml, so its source legitimately references those section names.
+assert.match(headlessBuilder, /function serviceSection\(source, start, end\)/)
+assert.match(headlessBuilder, /const source = fs\.readFileSync\(path\.join\(repoRoot, 'docker-compose\.yml'\), 'utf8'\)/)
 assert.doesNotMatch(builder, /postgres:16-alpine/)
 assert.match(builder, /--norsrc/)
 assert.match(defaults, /^BOX_PLAY_PUBLIC_HOST=127\.0\.0\.1$/m)

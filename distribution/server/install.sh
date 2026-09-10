@@ -49,6 +49,23 @@ fi
 ./verify.sh
 echo 'Loading offline images…'
 docker load -i "$archive"
+image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' .env | tail -n 1)
+case "$image_tag" in
+  ''|*[!A-Za-z0-9._-]*) echo 'Invalid BOX_IMAGE_TAG in .env' >&2; exit 1 ;;
+esac
+case "$(uname -m)" in
+  x86_64) expected_arch=amd64 ;;
+  aarch64|arm64) expected_arch=arm64 ;;
+  *) echo "Unsupported CPU architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+for service in player-service player-auth-portal server-manager creator play voxa; do
+  image="box-local-engine-$service:$image_tag"
+  actual_arch=$(docker image inspect "$image" --format '{{.Architecture}}')
+  if [ "$actual_arch" != "$expected_arch" ]; then
+    echo "Image architecture mismatch for $image: expected $expected_arch, got $actual_arch" >&2
+    exit 1
+  fi
+done
 echo 'Starting the Linux Web manager…'
 docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans server-manager
 echo 'Done. Linux Web manager: http://127.0.0.1:3130'

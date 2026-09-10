@@ -21,7 +21,7 @@ pnpm verify
 | 项目、发布包、运行时  | `apps/local-engine/src/`                           |
 | 权威游戏与脚本运行时  | `services/game-server/src/`                        |
 | 模型编辑              | `apps/voxa/`                                       |
-| 启动器与 Linux 管理端 | `apps/deployment-manager/`、`apps/server-manager/` |
+| 启动器与 Linux 管理端 | `apps/deployment-manager/`、`apps/server-manager-rust/`（镜像定义在 `apps/server-manager/`） |
 
 Creator 读取可编辑工程，Play 只读取发布快照。不要跨越这条边界，也不要把密钥、数据库凭据或权威规则放进客户端脚本。
 

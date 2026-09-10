@@ -1,9 +1,36 @@
 ARG DOCKER_CLI_IMAGE=docker.m.daocloud.io/library/docker:27.5.1-cli
 ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
+ARG RUST_IMAGE=docker.m.daocloud.io/library/rust:1.93-bookworm
 
 FROM ${DOCKER_CLI_IMAGE} AS docker-cli
 
-FROM ${NODE_IMAGE}
+FROM ${NODE_IMAGE} AS console-build
+ENV CI=true PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+WORKDIR /source
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/deployment-manager ./apps/deployment-manager
+RUN corepack enable && corepack prepare pnpm@10.12.1 --activate \
+    && pnpm install --frozen-lockfile --filter @box-local/deployment-manager... \
+    && pnpm --filter @box-local/deployment-manager build
+
+FROM ${RUST_IMAGE} AS rust-build
+ARG BOX_BUILD_VERSION=0.1.1
+ARG BOX_BUILD_COMMIT=unknown
+ARG BOX_BUILD_DATE=unknown
+ARG BOX_BUILD_SOURCE=local
+ENV BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
+    BOX_BUILD_COMMIT=${BOX_BUILD_COMMIT} \
+    BOX_BUILD_DATE=${BOX_BUILD_DATE} \
+    BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE}
+WORKDIR /source
+COPY apps/server-manager-rust ./apps/server-manager-rust
+COPY distribution/license-public-key.pem distribution/LICENSE.txt ./distribution/
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/source/apps/server-manager-rust/target \
+    cargo build --manifest-path apps/server-manager-rust/Cargo.toml --release \
+    && cp apps/server-manager-rust/target/release/box-local-engine-server-manager /server-manager
+
+FROM debian:bookworm-slim
 
 ARG BOX_BUILD_VERSION=0.1.1
 ARG BOX_BUILD_COMMIT=unknown
@@ -17,24 +44,19 @@ LABEL org.opencontainers.image.title="BOX Local Engine Server Manager" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
       org.opencontainers.image.licenses="LicenseRef-Proprietary"
 
-ENV NODE_ENV=production \
-    BOX_SERVER_MANAGER_HOST=0.0.0.0 \
-    BOX_SERVER_MANAGER_PORT=3130
-
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+ENV BOX_SERVER_MANAGER_HOST=0.0.0.0 BOX_SERVER_MANAGER_PORT=3130
+WORKDIR /app
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/libexec/docker/cli-plugins/docker-compose
+COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 
-WORKDIR /app
-COPY apps/server-manager/package.json ./package.json
-COPY apps/server-manager/server.js apps/server-manager/operations.js apps/server-manager/license.js ./
-COPY apps/server-manager/public ./public
-COPY apps/deployment-manager/public/logo512.png ./public/logo512.png
-COPY packages/license/index.js /packages/license/index.js
-COPY distribution/license-public-key.pem /distribution/license-public-key.pem
+COPY --from=console-build /source/apps/deployment-manager/dist ./public
+COPY --from=rust-build /server-manager /app/server-manager
 
 EXPOSE 3130
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
-  CMD node -e "fetch('http://127.0.0.1:3130/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+  CMD curl --fail --silent http://127.0.0.1:3130/api/health >/dev/null
 
-CMD ["node", "server.js"]
+CMD ["/app/server-manager"]

@@ -93,9 +93,8 @@ const requiredFiles = [
   'apps/local-engine/src/runtime-storage-namespace.js',
   'apps/local-engine/src/teleport-room-manager.js',
   'apps/server-manager/Dockerfile',
-  'apps/server-manager/operations.js',
-  'apps/server-manager/server.js',
-  'apps/server-manager/public/index.html',
+  'apps/server-manager-rust/Cargo.toml',
+  'apps/server-manager-rust/src/main.rs',
   'apps/local-engine/src/stage-runtime-data.js',
   'services/game-server/scripts/dev-launch.js',
   'services/game-server/scripts/check-local-derived-content.ts',
@@ -756,40 +755,12 @@ for (const [name, service] of [
 ]) {
   forbidPattern(service, composeFile, `${name} Docker socket mount`, /\/var\/run\/docker\.sock/)
 }
-const serverManagerOperationsFile = 'apps/server-manager/operations.js'
-const serverManagerOperations = readRequired(serverManagerOperationsFile)
-requirePattern(
-  serverManagerOperations,
-  serverManagerOperationsFile,
-  'fixed service allowlist for every managed local service',
-  /const services = \['creator', 'voxa', 'play', 'player-service', 'player-auth-portal'\]/,
-)
-for (const [label, pattern] of [
-  [
-    'fixed service-to-profile mapping',
-    /const serviceProfiles = \{[\s\S]*?'creator': 'creator',[\s\S]*?'voxa': 'voxa',[\s\S]*?'play': 'play',[\s\S]*?'player-service': 'player-service',[\s\S]*?'player-auth-portal': 'auth-portal',[\s\S]*?\}/,
-  ],
-  [
-    'service validation before reading logs',
-    /if \(service && !services\.includes\(service\)\) throw new Error\('服务名称无效'\)/,
-  ],
-  [
-    'operation allowlist',
-    /if \(!\['start', 'stop', 'restart'\]\.includes\(action\)\) throw new Error\('操作名称无效'\)/,
-  ],
-  [
-    'service validation before controlling services',
-    /if \(service !== 'all' && !services\.includes\(service\)\) throw new Error\('服务名称无效'\)/,
-  ],
-]) {
-  requirePattern(serverManagerOperations, serverManagerOperationsFile, label, pattern)
-}
-forbidPattern(
-  serverManagerOperations,
-  serverManagerOperationsFile,
-  'shell command execution',
-  /(?:exec|spawn)(?:Sync)?\s*\(\s*['"](?:sh|bash|zsh|cmd(?:\.exe)?|powershell)['"]/i,
-)
+const serverManagerRustFile = 'apps/server-manager-rust/src/main.rs'
+const serverManagerRust = readRequired(serverManagerRustFile)
+requirePattern(serverManagerRust, serverManagerRustFile, 'fixed service allowlist', /const SERVICES: \[&str; 5\]/)
+requirePattern(serverManagerRust, serverManagerRustFile, 'fixed service validation', /SERVICES\.contains\(&s\)/)
+requirePattern(serverManagerRust, serverManagerRustFile, 'operation allowlist', /\["start", "stop", "restart"\]/)
+requirePattern(serverManagerRust, serverManagerRustFile, 'authenticated HTTP command route', /\/api\/commands\/\{name\}/)
 requirePattern(
   playerAuthPortalCompose,
   composeFile,
@@ -863,7 +834,7 @@ requirePattern(
   voxaCompose,
   composeFile,
   'configurable private VOXA port with a safe loopback default',
-  /\$\{BOX_VOXA_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_VOXA_PORT:-3001\}:3001/,
+  /\$\{BOX_VOXA_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_VOXA_PORT:-3123\}:3001/,
 )
 requirePattern(
   voxaCompose,
@@ -881,7 +852,7 @@ requirePattern(
   voxaCompose,
   composeFile,
   'VOXA configured public origin for LAN API writes',
-  /BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL:-http:\/\/127\.0\.0\.1:3001\}/,
+  /BOX_VOXA_PUBLIC_URL: \$\{BOX_VOXA_PUBLIC_URL:-http:\/\/127\.0\.0\.1:3123\}/,
 )
 requirePattern(
   voxaCompose,
@@ -922,7 +893,7 @@ requirePattern(
   creatorCompose,
   composeFile,
   'single configurable private creator port with a safe loopback default',
-  /ports:\s*\n\s*- "\$\{BOX_CREATOR_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_CREATOR_PORT:-3002\}:3000"/,
+  /ports:\s*\n\s*- "\$\{BOX_CREATOR_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_CREATOR_PORT:-3127\}:3000"/,
 )
 requirePattern(
   creatorCompose,
@@ -941,7 +912,7 @@ requirePattern(
   playCompose,
   composeFile,
   'single configurable play port with safe loopback default',
-  /ports:\s*\n\s*- "\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_PLAY_PORT:-3000\}:3000"/,
+  /ports:\s*\n\s*- "\$\{BOX_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_PLAY_PORT:-3121\}:3000"/,
 )
 requirePattern(
   playCompose,

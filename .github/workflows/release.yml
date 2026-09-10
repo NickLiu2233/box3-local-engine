@@ -242,8 +242,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        architecture: [amd64, arm64]
-    runs-on: ubuntu-latest
+        include:
+          - architecture: amd64
+            runner: ubuntu-latest
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -258,6 +262,8 @@ jobs:
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp "oss://$OSS_BUCKET/$OSS_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
             apps/local-engine/dist/images/
+      - name: Install headless package tools
+        run: sudo apt-get update && sudo apt-get install -y zip
       - name: Build headless Linux server package
         run: |
           source_archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
@@ -273,6 +279,9 @@ jobs:
             "box-local-engine-voxa:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
             | gzip -1 > "$server_archive"
           node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
+          version=$(node -p "require('./package.json').version")
+          node scripts/verify-headless-server-package.js \
+            "apps/local-engine/dist/server-packages/BOX3-Engine-Server-${version}-linux-${{ matrix.architecture }}"
       - name: Upload server package to Aliyun OSS
         run: |
           if ! command -v ossutil >/dev/null 2>&1; then

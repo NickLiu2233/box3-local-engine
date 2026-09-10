@@ -51,15 +51,20 @@ function headlessCompose() {
   const source = fs.readFileSync(path.join(repoRoot, 'docker-compose.yml'), 'utf8')
   const servicesIndex = source.indexOf('services:\n')
   const header = source.slice(0, servicesIndex + 'services:\n'.length)
+  const managedRedis = serviceSection(source, '  managed-redis:', '  managed-postgres:')
+  const managedPostgres = serviceSection(source, '  managed-postgres:', '  postgres:')
   const playerService = serviceSection(source, '  player-service:', '  player-auth-portal:')
   const authPortal = serviceSection(source, '  player-auth-portal:', '  server-manager:')
   const serverManager = serviceSection(source, '  server-manager:', '  creator:')
   const creator = serviceSection(source, '  creator:', '  play-storage-init:')
   const play = serviceSection(source, '  play-storage-init:', '  voxa:')
   const voxa = serviceSection(source, '  voxa:', '  migrator:')
-  const volumes = 'volumes:\n  box-play-runtime-cache:\n'
+  const volumes =
+    'volumes:\n  box-managed-redis-data:\n  box-managed-postgres-data:\n  box-play-runtime-cache:\n'
   if (
     servicesIndex < 0 ||
+    !managedRedis ||
+    !managedPostgres ||
     !playerService ||
     !authPortal ||
     !serverManager ||
@@ -69,7 +74,7 @@ function headlessCompose() {
   ) {
     fail('无法生成完整服务器 Compose 配置')
   }
-  return `${header}${playerService}${authPortal}${serverManager}${creator}${play}${voxa}${volumes}`
+  return `${header}${managedRedis}${managedPostgres}${playerService}${authPortal}${serverManager}${creator}${play}${voxa}${volumes}`
 }
 
 function main() {
@@ -101,6 +106,33 @@ function main() {
     .replaceAll('__BOX_IMAGE_TAG__', imageTag)
     .replaceAll('__BOX_PLAY_PLATFORM__', `linux/${architecture}`)
   fs.writeFileSync(path.join(packageRoot, '.env.example'), envTemplate)
+  const imageNames = [
+    'player-service',
+    'player-auth-portal',
+    'server-manager',
+    'creator',
+    'play',
+    'voxa',
+  ].map((service) => `box-local-engine-${service}:${imageTag}`)
+  fs.writeFileSync(
+    path.join(packageRoot, 'BOX3-OFFLINE-IMAGE.json'),
+    `${JSON.stringify(
+      {
+        formatVersion: 1,
+        version,
+        platform: `linux/${architecture}`,
+        imageTag,
+        archive: path.basename(archive),
+        archiveSha256: sha256(archive),
+        images: imageNames,
+        sourceRevision: process.env.BOX_BUILD_COMMIT || 'unknown',
+        buildCreatedAt: process.env.BOX_BUILD_DATE || new Date().toISOString(),
+        buildSource: process.env.BOX_BUILD_SOURCE || 'local',
+      },
+      null,
+      2,
+    )}\n`,
+  )
 
   const installer = fs
     .readFileSync(path.join(packageRoot, 'install.sh'), 'utf8')

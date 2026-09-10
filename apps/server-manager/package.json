@@ -2,9 +2,8 @@
   "name": "@box-local/server-manager",
   "version": "0.1.1",
   "private": true,
-  "description": "Authenticated browser operations console for headless BOX3 Engine servers",
+  "description": "Container build definition for the Rust BOX3 Engine headless manager",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test test/*.test.js"
+    "build": "docker compose build server-manager"
   }
 }

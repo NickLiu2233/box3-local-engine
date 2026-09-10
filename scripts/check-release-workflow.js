@@ -14,6 +14,10 @@ const serverPackageBuilder = fs.readFileSync(
   path.join(root, 'scripts/build-headless-server-package.js'),
   'utf8',
 )
+const headlessVerifier = fs.readFileSync(
+  path.join(root, 'scripts/verify-headless-server-package.js'),
+  'utf8',
+)
 const { headlessCompose } = require('./build-headless-server-package')
 
 for (const target of [
@@ -69,6 +73,10 @@ assert.match(serverPackageBuilder, /player-auth-portal:/)
 assert.match(serverPackageBuilder, /server-manager:/)
 assert.match(serverPackageBuilder, /play-storage-init:/)
 assert.match(serverPackageBuilder, /templateRoot, '\.env\.example'/)
+assert.match(serverPackageBuilder, /BOX3-OFFLINE-IMAGE\.json/)
+assert.match(headlessVerifier, /archiveSha256/)
+assert.match(headlessVerifier, /Docker archive missing/)
+assert.match(workflow, /verify-headless-server-package\.js/)
 assert.match(workflow, /box3-engine-play-server-images-/)
 assert.match(workflow, /box-local-engine-player-service:/)
 assert.match(workflow, /box-local-engine-player-auth-portal:/)
@@ -79,6 +87,8 @@ assert.match(workflow, /box-local-engine-voxa:/)
 
 const headlessComposeSource = headlessCompose()
 for (const requiredService of [
+  'managed-postgres',
+  'managed-redis',
   'player-service',
   'player-auth-portal',
   'server-manager',
@@ -96,7 +106,9 @@ for (const forbiddenService of ['postgres', 'redis', 'migrator']) {
 }
 assert.match(headlessComposeSource, /BOX_CREATOR_PUBLIC_URL/)
 assert.match(headlessComposeSource, /AUTH_DEMO_CREATOR_URL/)
-assert.match(headlessComposeSource, /^volumes:\n {2}box-play-runtime-cache:\s*$/m)
+assert.match(headlessComposeSource, /^ {2}box-managed-postgres-data:\s*$/m)
+assert.match(headlessComposeSource, /^ {2}box-managed-redis-data:\s*$/m)
+assert.match(headlessComposeSource, /^ {2}box-play-runtime-cache:\s*$/m)
 assert.doesNotMatch(headlessComposeSource, /box-play-storage/)
 
 // Build outputs are exchanged through Aliyun OSS rather than GitHub Actions

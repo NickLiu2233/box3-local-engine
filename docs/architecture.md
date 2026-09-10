@@ -5,7 +5,7 @@ Creator / Play 浏览器 → apps/game → apps/local-engine → game-server
 VOXA → 本地模型工程
 Player Service → PostgreSQL
 Play 运行时 → PostgreSQL + 可选 Redis + 本地运行时缓存
-启动器 / Linux Web 管理端 → Docker Compose
+桌面启动器（Tauri）/ Linux Web 管理端（Rust HTTP） → Docker Compose
 ```
 
 | 服务           | 核心职责                         |

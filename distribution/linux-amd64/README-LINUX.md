@@ -1,4 +1,6 @@
-# BOX Local Engine 0.1.1 — Linux AMD64 offline package
+# Deprecated Linux AMD64 package template
+
+This legacy template is retained only for historical compatibility. New headless packages are generated from `distribution/server/` and include the shared graphical Web manager backed by Rust. Do not distribute this directory directly.
 
 This package is for Intel/AMD 64-bit Linux servers (`x86_64`, `linux/amd64`).
 It contains Creator, Play, Player Service, Player Auth Portal and VOXA images.

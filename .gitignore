@@ -39,3 +39,6 @@ apps/migrator/cache/
 apps/deployment-manager/dist/
 apps/deployment-manager/src-tauri/gen/
 apps/deployment-manager/src-tauri/target/
+
+# Rust headless server manager build output.
+apps/server-manager-rust/target/

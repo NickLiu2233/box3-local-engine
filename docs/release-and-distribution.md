@@ -8,12 +8,12 @@
 pnpm verify
 pnpm audit --prod --audit-level=high
 pnpm build:desktop-installer <target> <image-archive>
-pnpm build:headless-server-package <platform>
+pnpm build:headless-server-package <amd64|arm64> <image-archive.tar.gz>
 ```
 
 公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
 
-桌面离线包包含启动器与所需镜像；Linux 无图形包包含 Creator、VOXA、Play、Player Service、登录门户和 Web 管理端，不包含迁移器或内置 PostgreSQL/Redis。Release 不得包含 `.env`、地图、项目、备份、数据库卷、日志或真实密钥。
+桌面离线包包含启动器与所需镜像；Linux 无图形包包含 Creator、VOXA、Play、Player Service、登录门户和 Rust Web 管理端，不包含迁移器。Web 管理端可以按需拉取并维护内置 PostgreSQL/Redis，也可以连接服主提供的外部服务；两种内置基础服务镜像不包含在离线归档中。Release 不得包含 `.env`、地图、项目、备份、数据库卷、日志或真实密钥。
 
 发布前应在干净环境解压完整包，导入镜像并完成以下验收：
 
