@@ -41,6 +41,8 @@
 .web-login span { display: block; margin-top: 20px; color: var(--muted); font-size: 11px; letter-spacing: .12em; }
 .web-login h1 { margin: 8px 0; }
 .web-login p { color: var(--muted); line-height: 1.6; }
+#web-login-error:empty { display: none; }
+#web-login-error:not(:empty) { color: var(--danger); font-size: 12px; }
 .web-login form { display: grid; gap: 12px; margin-top: 24px; }
 .web-login input { width: 100%; box-sizing: border-box; padding: 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--canvas); color: inherit; }
 

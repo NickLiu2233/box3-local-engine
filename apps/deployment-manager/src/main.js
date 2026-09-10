@@ -2096,17 +2096,19 @@ function startWebManager() {
   const app = document.querySelector('#app')
   const boot = () => refreshStatus()
   if (sessionStorage.getItem('box-server-manager-token')) return boot()
-  app.innerHTML = `<main class="web-login"><section><img src="/logo512.png" alt="BOX3 Engine"/><span>HEADLESS OPERATIONS</span><h1>连接 Linux 管理端</h1><p>输入服务器 <code>.env</code> 中的 <code>BOX_SERVER_MANAGER_TOKEN</code>。</p><form id="web-login-form"><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="管理令牌" required autofocus/><button class="button primary" type="submit">进入管理平台</button></form></section></main>`
+  app.innerHTML = `<main class="web-login"><section><img src="/logo512.png" alt="BOX3 Engine"/><span>HEADLESS OPERATIONS</span><h1>连接 Linux 管理端</h1><form id="web-login-form"><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="管理令牌" required autofocus/><p id="web-login-error" class="web-login-error"></p><button class="button primary" type="submit">进入管理平台</button></form></section></main>`
   document.querySelector('#web-login-form').addEventListener('submit', async (event) => {
     event.preventDefault()
     const token = new FormData(event.currentTarget).get('token')
     setWebManagerToken(String(token || '').trim())
+    const errorEl = document.querySelector('#web-login-error')
+    if (errorEl) errorEl.textContent = ''
     try {
       await invoke('get_system_status')
-      boot()
+      await boot()
     } catch (error) {
       setWebManagerToken('')
-      app.querySelector('p').textContent = String(error.message || error)
+      if (errorEl) errorEl.textContent = String(error.message || error)
     }
   })
 }
