@@ -942,9 +942,51 @@ fn device(app: &App) -> Result<String, String> {
 fn license(app: &App, install: Option<&str>) -> Result<Value, String> {
     let id = device(app)?;
     let path = app.root.join("license/box3-license.boxlic");
+
+    let verify = |token: &str| -> Result<LicensePayload, String> {
+        let parts: Vec<_> = token.trim().split('.').collect();
+        if parts.len() != 3 || parts[0] != "box3l1" {
+            return Err("许可证格式无效".into());
+        }
+        let key = VerifyingKey::from_public_key_pem(KEY).map_err(|_| "内置许可证公钥无效")?;
+        let sig = Signature::from_slice(
+            &URL_SAFE_NO_PAD
+                .decode(parts[2])
+                .map_err(|_| "许可证签名编码无效")?,
+        )
+        .map_err(|_| "许可证签名无效")?;
+        if key.verify_strict(parts[1].as_bytes(), &sig).is_err() {
+            return Err("许可证签名无效".into());
+        }
+        let p: LicensePayload = serde_json::from_slice(
+            &URL_SAFE_NO_PAD
+                .decode(parts[1])
+                .map_err(|_| "许可证内容无效")?,
+        )
+        .map_err(|_| "许可证内容无效")?;
+        let expires = DateTime::parse_from_rfc3339(&p.expires_at)
+            .map_err(|_| "许可证到期时间无效")?
+            .with_timezone(&Utc);
+        if p.format_version != 1
+            || p.license_type != "personal-learning"
+            || p.commercial_use
+            || p.device_id != id
+            || expires <= Utc::now()
+            || SERVICES.iter().any(|s| !p.features.iter().any(|f| f == s))
+        {
+            return Err("许可证无效、已到期或与当前设备不匹配".into());
+        }
+        Ok(p)
+    };
+
     if let Some(token) = install {
+        let payload = verify(token)?;
         private(&path, token)?;
+        return Ok(
+            json!({"installed":true,"valid":true,"deviceId":id,"licenseId":payload.license_id,"holderId":payload.holder_id,"issuedAt":payload.issued_at,"expiresAt":payload.expires_at,"message":"许可证有效"}),
+        );
     }
+
     let token = match fs::read_to_string(&path) {
         Ok(v) => v,
         Err(_) => {
@@ -953,42 +995,12 @@ fn license(app: &App, install: Option<&str>) -> Result<Value, String> {
             )
         }
     };
-    let parts: Vec<_> = token.trim().split('.').collect();
-    let invalid = |m: &str| Ok(json!({"installed":true,"valid":false,"deviceId":id,"message":m}));
-    if parts.len() != 3 || parts[0] != "box3l1" {
-        return invalid("许可证格式无效");
+    match verify(&token) {
+        Ok(payload) => Ok(
+            json!({"installed":true,"valid":true,"deviceId":id,"licenseId":payload.license_id,"holderId":payload.holder_id,"issuedAt":payload.issued_at,"expiresAt":payload.expires_at,"message":"许可证有效"}),
+        ),
+        Err(message) => Ok(json!({"installed":true,"valid":false,"deviceId":id,"message":message})),
     }
-    let key = VerifyingKey::from_public_key_pem(KEY).map_err(|_| "内置许可证公钥无效")?;
-    let sig = Signature::from_slice(
-        &URL_SAFE_NO_PAD
-            .decode(parts[2])
-            .map_err(|_| "许可证签名编码无效")?,
-    )
-    .map_err(|_| "许可证签名无效")?;
-    if key.verify_strict(parts[1].as_bytes(), &sig).is_err() {
-        return invalid("许可证签名无效");
-    }
-    let p: LicensePayload = serde_json::from_slice(
-        &URL_SAFE_NO_PAD
-            .decode(parts[1])
-            .map_err(|_| "许可证内容无效")?,
-    )
-    .map_err(|_| "许可证内容无效")?;
-    let expires = DateTime::parse_from_rfc3339(&p.expires_at)
-        .map_err(|_| "许可证到期时间无效")?
-        .with_timezone(&Utc);
-    if p.format_version != 1
-        || p.license_type != "personal-learning"
-        || p.commercial_use
-        || p.device_id != id
-        || expires <= Utc::now()
-        || SERVICES.iter().any(|s| !p.features.iter().any(|f| f == s))
-    {
-        return invalid("许可证无效、已到期或与当前设备不匹配");
-    }
-    Ok(
-        json!({"installed":true,"valid":true,"deviceId":id,"licenseId":p.license_id,"holderId":p.holder_id,"issuedAt":p.issued_at,"expiresAt":p.expires_at,"message":"许可证有效"}),
-    )
 }
 async fn health() -> Json<Value> {
     Json(json!({"ok":true}))
