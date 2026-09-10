@@ -1126,6 +1126,20 @@ function bindEvents() {
     state.startMenuOpen = true
     render()
   })
+  document.querySelectorAll('[data-start-scope]').forEach((node) =>
+    node.addEventListener('click', () => {
+      const scope = node.dataset.startScope
+      if (!scope) return
+      if (state.startScopes.has(scope)) state.startScopes.delete(scope)
+      else state.startScopes.add(scope)
+      render()
+    }),
+  )
+  document.querySelector('#confirm-start-scopes')?.addEventListener('click', () => {
+    const scope = state.startScopes.size > 1 ? 'all' : [...state.startScopes][0]
+    if (!scope) return
+    void runAction('start_services', { scope })
+  })
   document.querySelector('#cancel-start')?.addEventListener('click', () => {
     state.startMenuOpen = false
     render()

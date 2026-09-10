@@ -110,6 +110,11 @@ enum TabList {
   Recycle = 10,
 }
 
+// The file manager represents the map's project files. Models imported only
+// into the local VOXA library use generated `__local_<id>.vb` paths and belong
+// to the model library panel, not this project asset list.
+const LOCAL_LIBRARY_MODEL_PATH = /__local_\d+\.vb$/;
+
 enum TableHead {
   Name,
   // LastModified,
@@ -1730,7 +1735,9 @@ class FileSystemContainer extends React.Component<Props, State> {
         processData = this.processData(deleteAssets);
       } else if (tabItem === TabList.Model) {
         processData = this.processData(
-          Object.entries(meshAssets).map(([key, meshAsset]) => ({
+          Object.entries(meshAssets)
+            .filter(([key]) => !LOCAL_LIBRARY_MODEL_PATH.test(key))
+            .map(([key, meshAsset]) => ({
             key,
             value: {
               previewImage: meshAsset.modelPreviewHash,
@@ -1742,7 +1749,7 @@ class FileSystemContainer extends React.Component<Props, State> {
               bounds: [0, 0, 0],
               animated: meshAsset.animated,
             },
-          })),
+            })),
           tabItem,
         );
       } else if (tabItem === TabList.Picture) {
