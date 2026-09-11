@@ -682,7 +682,12 @@ function setup() {
       ${setupExplanation('配置说明：数据目录如何迁移？', [
         ['迁移内容', '地图、模型、构建产物和备份会一并迁移。'],
         ['开始前', '请先停止全部服务；迁移完成后从服务总览重新启动。'],
-        ['目录格式', isWebManager() ? '填写 Linux 服务器绝对路径，例如 /data/BoxEngineData。' : '请选择目标磁盘中的一个目录。'],
+        [
+          '目录格式',
+          isWebManager()
+            ? '填写 Linux 服务器绝对路径，例如 /data/BoxEngineData。'
+            : '请选择目标磁盘中的一个目录。',
+        ],
       ])}
     </section>`
   return `<header><div><h1>数据配置</h1></div></header>
@@ -739,7 +744,7 @@ function setup() {
             ['立即备份', '需要在重要修改前手动保存时，请前往“数据与备份”使用右上角的“立即备份”。'],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网 IP', config.publicHost) : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网 IP', creatorPublicHost)}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '账号服务', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网地址（IP 或域名）', config.publicHost, 'text', '例如 play.example.com；不填写协议') : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网地址（IP 或域名）', creatorPublicHost, 'text', '例如 create.example.com；不填写协议')}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '账号服务', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
           '配置说明：访问地址和端口有什么影响？',
           [
             [
@@ -868,27 +873,57 @@ function about() {
   const releaseNotes = [
     {
       version: '0.1.1',
-      date: '2026 年 9 月',
-      summary: '部署与数据兼容更新',
-      items: [
-        '优化服务总览分组展示，支持外部数据服务状态显示并验证数据库连接。',
-        '修复无作品时打开工程运行时导致启动器卡死的问题。',
-        '数据空间兼容 BOXES PostgreSQL 表结构并优化历史数据读取。',
-        '新增用户 Key 绑定同步，并修复本地运行时身份与导出弹框标题显示问题。',
-        '修复登录页面通过服务器 IP、局域网地址或域名访问时误报请求来源的问题。',
+      date: '2026 年 9 月 11 日',
+      summary: '渲染 API 与本地部署体验更新',
+      sections: [
+        {
+          title: 'API',
+          items: [
+            '服务端脚本新增 world.globalLight，用于调节整体场景光照强度。',
+            '服务端脚本新增 world.gamma，用于调节最终画面显示曲线。',
+          ],
+        },
+        {
+          title: '功能',
+          items: [
+            '优化服务总览分组展示，支持外部数据服务状态显示并验证数据库连接。',
+            '数据空间兼容 BOXES PostgreSQL 表结构并优化历史数据读取。',
+            '新增用户 Key 绑定同步，并优化本地运行时身份与导出弹框标题显示。',
+          ],
+        },
+        {
+          title: '修复',
+          items: [
+            '修复无作品时打开工程运行时导致启动器卡死的问题。',
+            '修复登录页面通过服务器 IP、局域网地址或域名访问时误报请求来源的问题。',
+          ],
+        },
       ],
     },
     {
       version: '0.1.0',
       date: '2026 年 9 月 4 日',
       summary: '本地部署版首次发布',
-      items: [
-        '创作端与游玩端分离部署：创作者编辑工程，玩家只运行已发布的游玩包。',
-        '支持地图工程、游玩包和 VOXA 模型工程的导入、导出与本地备份。',
-        '支持地图组与传送房间；同一作品可由主地图和多个独立副地图组成。',
-        '模型、皮肤和动画可通过 VOXA 本地保存，并在创作和游玩中使用。',
-        '提供账号服务与 PostgreSQL 数据空间，保存账号、权限、会话和地图脚本持久数据。',
-        '提供桌面启动器与 Linux Web 管理端，集中管理服务、端口、数据和备份。',
+      sections: [
+        {
+          title: '工程与发布',
+          items: [
+            '创作端与游玩端分离部署：创作者编辑工程，玩家只运行已发布的游玩包。',
+            '支持地图工程、游玩包和 VOXA 模型工程的导入、导出与本地备份。',
+            '支持地图组与传送房间；同一作品可由主地图和多个独立副地图组成。',
+          ],
+        },
+        {
+          title: '内容创作',
+          items: ['模型、皮肤和动画可通过 VOXA 本地保存，并在创作和游玩中使用。'],
+        },
+        {
+          title: '部署与数据',
+          items: [
+            '提供账号服务与 PostgreSQL 数据空间，保存账号、权限、会话和地图脚本持久数据。',
+            '提供桌面启动器与 Linux Web 管理端，集中管理服务、端口、数据和备份。',
+          ],
+        },
       ],
     },
   ]
@@ -920,7 +955,14 @@ function about() {
           <span class="about-changelog-summary"><strong>v${escapeHtml(release.version)}</strong><small>${escapeHtml(release.date)} · ${escapeHtml(release.summary)}</small></span>
           <span class="about-image-disclosure">详情</span>
         </summary>
-        <ul class="about-changelog-items">${release.items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+        <div class="about-changelog-sections">${release.sections
+          .map(
+            (section) => `<section class="about-changelog-section">
+              <h3>${escapeHtml(section.title)}</h3>
+              <ol>${section.items.map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ol>
+            </section>`,
+          )
+          .join('')}</div>
       </details>`,
     )
     .join('')
