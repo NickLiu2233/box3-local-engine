@@ -1,11 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
-  clearAuthRateLimit,
-  consumeAuthRateLimit,
+  clearSuccessfulPlayerLoginRateLimits,
+  consumePlayerLoginRateLimit,
 } from '../../../server/auth-rate-limit';
-import { requestClientAddress } from '../../../server/client-address';
 import { loginPlayer, PlayerBannedError } from '../../../server/local-player-identity';
-import { authorizePlayerAuthRequest } from '../../../server/player-auth-security';
+import {
+  authorizePlayerAuthRequest,
+  playerAuthClientAddress,
+} from '../../../server/player-auth-security';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
@@ -15,15 +17,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', 'POST, OPTIONS');
     return res.status(405).end();
   }
-  const address = requestClientAddress(req);
-  const limit = await consumeAuthRateLimit('login', address);
+  const address = playerAuthClientAddress(req);
+  const username = typeof req.body?.username === 'string' ? req.body.username : '';
+  const limit = await consumePlayerLoginRateLimit(address, username);
   if (!limit.allowed) {
     res.setHeader('Retry-After', String(limit.retryAfterSeconds));
     return res.status(429).json({ message: '登录失败次数过多，请稍后再试' });
   }
   try {
     const player = await loginPlayer(req, res, req.body || {});
-    await clearAuthRateLimit('login', address);
+    await clearSuccessfulPlayerLoginRateLimits(address, username);
     return res.status(200).json({ player });
   } catch (error) {
     if (error instanceof PlayerBannedError) {

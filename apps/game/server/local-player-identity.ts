@@ -555,6 +555,15 @@ function tokenHash(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }
 
+export function sessionDeviceBindingMatches(
+  storedDeviceHash: string,
+  currentDeviceToken: string,
+) {
+  if (!storedDeviceHash) return true;
+  if (!currentDeviceToken) return false;
+  return secretsMatch(storedDeviceHash, tokenHash(currentDeviceToken));
+}
+
 function appendCookie(res: NextApiResponse, value: string) {
   const current = res.getHeader('Set-Cookie');
   const values = !current ? [] : Array.isArray(current) ? current.map(String) : [String(current)];
@@ -730,12 +739,7 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   const row = result.rows[0];
   if (!row) return null;
   const currentDevice = deviceToken(req);
-  const currentDeviceHash = currentDevice ? tokenHash(currentDevice) : '';
-  if (
-    row.session_device_hash
-    && currentDeviceHash
-    && !secretsMatch(row.session_device_hash, currentDeviceHash)
-  ) {
+  if (!sessionDeviceBindingMatches(row.session_device_hash, currentDevice)) {
     await database.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(token)]);
     return null;
   }
@@ -883,6 +887,22 @@ export async function resetPersistentAuthRateLimit(scope: string, rateKey: strin
     `DELETE FROM ${table('auth_rate_limits')} WHERE scope = $1 AND rate_key = $2`,
     [scope, rateKey],
   );
+}
+
+export async function releasePersistentAuthRateLimitAttempt(scope: string, rateKey: string) {
+  const database = getPool();
+  if (!database) return;
+  await initialize();
+  await database.query(`
+    UPDATE ${table('auth_rate_limits')}
+    SET attempt_count = GREATEST(attempt_count - 1, 0)
+    WHERE scope = $1 AND rate_key = $2 AND reset_at > NOW()
+  `, [scope, rateKey]);
+  await database.query(`
+    DELETE FROM ${table('auth_rate_limits')}
+    WHERE scope = $1 AND rate_key = $2
+      AND (attempt_count <= 0 OR reset_at <= NOW())
+  `, [scope, rateKey]);
 }
 
 async function recordAuthFailure(

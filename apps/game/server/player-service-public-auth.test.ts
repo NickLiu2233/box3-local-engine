@@ -1,4 +1,7 @@
-import { authorizePlayerAuthRequest } from './player-auth-security';
+import {
+  authorizePlayerAuthRequest,
+  playerAuthClientAddress,
+} from './player-auth-security';
 import {
   PlayerLoginURLNotConfiguredError,
   playerLoginURL,
@@ -113,5 +116,26 @@ describe('public player authentication boundary', () => {
     } as never, invalid as never)).toBe(false);
     expect(invalid.statusCode).toBe(401);
     expect(invalid.body).toEqual(expect.objectContaining({ code: 'AUTH_API_KEY_INVALID' }));
+  });
+
+  test('uses a forwarded player address only for the authenticated login portal', () => {
+    process.env.BOX_PLAYER_AUTH_API_KEY = 'test-player-auth-key-123';
+    const forwarded = {
+      headers: {
+        'x-box-player-auth-key': 'test-player-auth-key-123',
+        'x-forwarded-for': '203.0.113.20, 172.18.0.3',
+      },
+      socket: { remoteAddress: '172.18.0.3' },
+    } as never;
+    expect(playerAuthClientAddress(forwarded)).toBe('203.0.113.20');
+
+    const forged = {
+      headers: {
+        'x-box-player-auth-key': 'wrong-key',
+        'x-forwarded-for': '203.0.113.21',
+      },
+      socket: { remoteAddress: '172.18.0.4' },
+    } as never;
+    expect(playerAuthClientAddress(forged)).toBe('172.18.0.4');
   });
 });

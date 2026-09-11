@@ -1,6 +1,8 @@
 import { createHash, timingSafeEqual } from 'crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+import { requestClientAddress } from './client-address';
+
 export const PLAYER_AUTH_API_KEY_HEADER = 'x-box-player-auth-key';
 
 function normalizedOrigin(value: string) {
@@ -40,6 +42,10 @@ export function hasTrustedPlayerAuthKey(req: NextApiRequest) {
   const header = req.headers[PLAYER_AUTH_API_KEY_HEADER];
   const provided = String(Array.isArray(header) ? header[0] : header || '');
   return Boolean(provided) && secretsMatch(provided, expected);
+}
+
+export function playerAuthClientAddress(req: NextApiRequest) {
+  return requestClientAddress(req, hasTrustedPlayerAuthKey(req));
 }
 
 function applyCredentialedCors(req: NextApiRequest, res: NextApiResponse) {

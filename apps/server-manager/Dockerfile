@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/deployment-manager ./apps/deployment-manager
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate \
     && pnpm install --frozen-lockfile --filter @box-local/deployment-manager... \
-    && pnpm --filter @box-local/deployment-manager build
+    && pnpm --dir apps/deployment-manager exec vite build
 
 FROM ${RUST_IMAGE} AS rust-build
 ARG BOX_BUILD_VERSION=0.1.1
