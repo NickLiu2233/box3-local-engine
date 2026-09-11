@@ -309,6 +309,52 @@ function playerStatusLabel(player: Player) {
   return player.bannedUntil ? `临时封禁` : '永久封禁';
 }
 
+function auditText(details: Record<string, unknown>, key: string) {
+  const value = details[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function auditNumber(details: Record<string, unknown>, key: string) {
+  const value = details[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function formatAuditDetails(action: string, details: Record<string, unknown>) {
+  const reason = auditText(details, 'banReason') || auditText(details, 'reason');
+  const bannedUntil = auditText(details, 'bannedUntil');
+  const expiry = bannedUntil ? `至 ${formatDate(bannedUntil)}` : '永久';
+  if (action === 'player.update' && details.status === 'banned') {
+    return `已封禁 · 原因：${reason || '未填写'} · 期限：${expiry}`;
+  }
+  if (action === 'player.update' && details.status === 'active' && !reason) {
+    return '已解除封禁或恢复正常状态';
+  }
+  if (action.endsWith('.ban')) {
+    const source = auditText(details, 'displayValue');
+    const affected = auditNumber(details, 'affectedPlayers');
+    return `${source ? `来源：${source} · ` : ''}原因：${reason || '未填写'} · 期限：${expiry}${affected ? ` · 影响 ${affected} 位玩家` : ''}`;
+  }
+  if (action.endsWith('.unban')) {
+    const source = auditText(details, 'displayValue');
+    return source ? `已解除来源封禁：${source}` : '已解除封禁';
+  }
+  if (action === 'player.sessions.revoke' || action === 'player.session.revoke') {
+    const count = auditNumber(details, 'revoked');
+    return count ? `已撤销 ${count} 个会话` : '已撤销登录会话';
+  }
+  if (action === 'player.password.reset') {
+    const count = auditNumber(details, 'revoked');
+    return `已重置密码${count ? `，并撤销 ${count} 个会话` : ''}`;
+  }
+  if (action === 'player.box-id.update') {
+    return `神岛 ID：${auditText(details, 'previousBoxId') || '未绑定'} → ${auditText(details, 'boxId') || '未绑定'}`;
+  }
+  if (action === 'player.user-key.update') {
+    return '已更新用户 Key，并撤销旧会话';
+  }
+  return '';
+}
+
 function PlayerAvatar({ player, large = false }: { player: Player; large?: boolean }) {
   return <span className={large ? styles.largeAvatar : styles.avatar}>{player.displayName.slice(0, 1).toUpperCase()}</span>;
 }
@@ -1385,7 +1431,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
               <div className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>账号关联线索</h2><p>近 30 天被多个账号共同使用的登录 IP，仅作为排查线索</p></div></div><div className={styles.riskList}>{overview?.security.sharedLoginIps.map((entry) => <article key={entry.ip}><strong className={styles.mono}>{entry.ip}</strong><span>{entry.accounts} 个账号</span><time>{formatDate(entry.lastSeenAt)}</time></article>)}{!overview?.security.sharedLoginIps.length ? <div className={styles.compactEmpty}>没有共享登录 IP</div> : null}</div></div>
             </section>
             <div className={styles.activityToolbar}><div className={styles.segmented}><button className={activityKind === 'all' ? styles.segmentActive : ''} onClick={() => { setActivityKind('all'); setActivityPage(1); }}>全部事件</button><button className={activityKind === 'login' ? styles.segmentActive : ''} onClick={() => { setActivityKind('login'); setActivityPage(1); }}>账号登录</button><button className={activityKind === 'admin' ? styles.segmentActive : ''} onClick={() => { setActivityKind('admin'); setActivityPage(1); }}>管理操作</button></div><div className={styles.searchField}><Search size={16} /><input placeholder="搜索动作、操作者、玩家、IP 或身份 ID" value={activitySearch} onChange={(event) => { setActivitySearch(event.target.value); setActivityPage(1); }} /></div></div>
-            <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>完整安全活动</h2><p>账号登录和所有敏感管理操作，按时间统一追溯</p></div><span>{busy === 'activity' ? '读取中…' : `第 ${activityPage} 页`}</span></div><div className={styles.auditTable}>{activity.map((event) => <article key={event.id}><span className={styles.auditIcon}>{event.kind === 'login' ? <Activity size={16} /> : <ShieldCheck size={16} />}</span><div className={styles.auditMain}><strong>{describePlayerAdminAuditAction(event.action).label}</strong><small>目标：{event.displayName || event.username || event.subjectId || '系统'}</small></div><div><strong>{event.actorDisplayName || event.actor}</strong><small>操作者</small></div><div><strong className={styles.mono}>{displayIp(event.ip)}</strong><small>{event.userAgent || '客户端未记录'}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div>{!activity.length && busy !== 'activity' ? <div className={styles.compactEmpty}>暂无符合条件的安全活动</div> : null}</section>
+            <section className={styles.dataPanel}><div className={styles.panelHeading}><div><h2>完整安全活动</h2><p>账号登录和所有敏感管理操作，按时间统一追溯</p></div><span>{busy === 'activity' ? '读取中…' : `第 ${activityPage} 页`}</span></div><div className={styles.auditTable}>{activity.map((event) => <article key={event.id}><span className={styles.auditIcon}>{event.kind === 'login' ? <Activity size={16} /> : <ShieldCheck size={16} />}</span><div className={styles.auditMain}><strong>{describePlayerAdminAuditAction(event.action).label}</strong><small>目标：{event.displayName || event.username || event.subjectId || '系统'}</small>{formatAuditDetails(event.action, event.details) ? <small>{formatAuditDetails(event.action, event.details)}</small> : null}</div><div><strong>{event.actorDisplayName || event.actor}</strong><small>操作者</small></div><div><strong className={styles.mono}>{displayIp(event.ip)}</strong><small>{event.userAgent || '客户端未记录'}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div>{!activity.length && busy !== 'activity' ? <div className={styles.compactEmpty}>暂无符合条件的安全活动</div> : null}</section>
             <div className={styles.pagination}><span>第 {activityPage} / {activityTotalPages} 页</span><div><button className={styles.secondaryButton} disabled={activityPage <= 1} onClick={() => setActivityPage((value) => value - 1)}>上一页</button><button className={styles.secondaryButton} disabled={activityPage >= activityTotalPages} onClick={() => setActivityPage((value) => value + 1)}>下一页</button></div></div>
           </> : null}
         </section>
@@ -1516,7 +1562,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
 
                 {detailTab === 'history' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>管理操作时间线</h3><span>{details?.adminHistory.length || 0} 条</span></div>
-                  {details?.adminHistory.length ? <div className={styles.timelineList}>{details.adminHistory.map((event) => <article key={event.id}><span><ShieldCheck size={14} /></span><div><strong>{describePlayerAdminAuditAction(event.action).label}</strong><small>{event.actorDisplayName || event.actor}</small></div><time>{formatDate(event.createdAt)}</time></article>)}</div> : <div className={styles.compactEmpty}>尚无针对该玩家的管理操作</div>}
+                  {details?.adminHistory.length ? <div className={styles.timelineList}>{details.adminHistory.map((event) => <article key={event.id}><span><ShieldCheck size={14} /></span><div><strong>{describePlayerAdminAuditAction(event.action).label}</strong><small>{event.actorDisplayName || event.actor}</small>{formatAuditDetails(event.action, event.details) ? <small>{formatAuditDetails(event.action, event.details)}</small> : null}</div><time>{formatDate(event.createdAt)}</time></article>)}</div> : <div className={styles.compactEmpty}>尚无针对该玩家的管理操作</div>}
                 </section> : null}
 
                 {detailTab === 'danger' ? <section className={`${styles.detailSection} ${styles.dangerSection}`}>

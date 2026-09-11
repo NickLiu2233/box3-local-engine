@@ -31,6 +31,12 @@ const navigation = {
 }
 
 function errorMessage(error) {
+  if (error instanceof Error && error.banReason) {
+    const deadline = error.bannedUntil
+      ? new Date(error.bannedUntil).toLocaleString('zh-CN')
+      : '永久'
+    return `该玩家已被封禁\n封禁原因：${error.banReason}\n封禁期限：${deadline}`
+  }
   return error instanceof Error ? error.message : '请求失败，请稍后重试'
 }
 
@@ -44,6 +50,8 @@ async function api(path, options = {}) {
   if (!response.ok) {
     const error = new Error(data.message || `请求失败（HTTP ${response.status}）`)
     error.registrationEnabled = data.registrationEnabled
+    error.banReason = data.banReason
+    error.bannedUntil = data.bannedUntil
     throw error
   }
   return data

@@ -405,6 +405,7 @@ input {
   background: var(--danger-bg);
   font-size: 10px;
   line-height: 1.55;
+  white-space: pre-line;
 }
 
 .state-view {

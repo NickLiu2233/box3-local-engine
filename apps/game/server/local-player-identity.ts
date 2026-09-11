@@ -25,6 +25,7 @@ import {
   normalizeCreatorCapabilities,
 } from '../shared/creator-policy';
 import { requestClientAddress } from './client-address';
+import { hasTrustedPlayerAuthKey } from './player-auth-security';
 
 const COOKIE_NAME = 'box_local_player_session';
 const DEVICE_COOKIE_NAME = 'box_local_player_device';
@@ -246,6 +247,18 @@ export type PlayerAdminOverview = {
     expiredSessions: number;
   };
 };
+
+export class PlayerBannedError extends Error {
+  readonly reason: string;
+  readonly bannedUntil: string | null;
+
+  constructor(reason: string, bannedUntil: string | Date | null | undefined) {
+    super('PLAYER_BANNED');
+    this.name = 'PlayerBannedError';
+    this.reason = reason.trim() || '未说明';
+    this.bannedUntil = bannedUntil ? new Date(bannedUntil).toISOString() : null;
+  }
+}
 
 let pool: Pool | null = null;
 let initialized: Promise<void> | null = null;
@@ -521,7 +534,7 @@ function requestIp(req: NextApiRequest) {
     const value = Array.isArray(internal) ? internal[0] : internal;
     if (value) return value.slice(0, 128);
   }
-  return requestClientAddress(req).slice(0, 128);
+  return requestClientAddress(req, hasTrustedPlayerAuthKey(req)).slice(0, 128);
 }
 
 function requestUserAgent(req: NextApiRequest) {
@@ -1074,7 +1087,7 @@ export async function loginPlayer(
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
       u.id AS user_id, u.username, u.box_id, u.user_key, u.display_name, u.avatar_hash, u.avatar_skin_id, u.creator_access, u.creator_permissions, u.role, u.status,
       u.created_at AS registered_at, u.updated_at, u.registration_ip,
-      u.last_login_at, u.last_login_ip, u.login_count,
+      u.last_login_at, u.last_login_ip, u.login_count, u.ban_reason, u.banned_until,
       u.password_salt, u.password_hash
     FROM ${table('users')} u JOIN ${table('principals')} p ON p.id = u.principal_id
     WHERE LOWER(u.username) = LOWER($1)
@@ -1092,7 +1105,7 @@ export async function loginPlayer(
   }
   if (row.status === 'banned') {
     await recordAuthFailure(database, req, username, 'banned');
-    throw new Error('该玩家已被封禁');
+    throw new PlayerBannedError(row.ban_reason || '', row.banned_until);
   }
   const oldToken = sessionToken(req);
   const token = randomBytes(32).toString('base64url');

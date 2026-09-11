@@ -29,6 +29,19 @@ function secretsMatch(provided: string, expected: string) {
   return timingSafeEqual(providedDigest, expectedDigest);
 }
 
+/**
+ * The owner-hosted login portal is a server-to-server caller. Only a request
+ * that proves possession of its configured API key may supply a forwarded
+ * player address while BOX_TRUST_PROXY remains false for direct browsers.
+ */
+export function hasTrustedPlayerAuthKey(req: NextApiRequest) {
+  const expected = (process.env.BOX_PLAYER_AUTH_API_KEY || '').trim();
+  if (expected.length < 16) return false;
+  const header = req.headers[PLAYER_AUTH_API_KEY_HEADER];
+  const provided = String(Array.isArray(header) ? header[0] : header || '');
+  return Boolean(provided) && secretsMatch(provided, expected);
+}
+
 function applyCredentialedCors(req: NextApiRequest, res: NextApiResponse) {
   const header = req.headers.origin;
   const origin = Array.isArray(header) ? header[0] : header;
@@ -74,9 +87,7 @@ export function authorizePlayerAuthRequest(
     });
     return false;
   }
-  const header = req.headers[PLAYER_AUTH_API_KEY_HEADER];
-  const provided = String(Array.isArray(header) ? header[0] : header || '');
-  if (!provided || !secretsMatch(provided, expected)) {
+  if (!hasTrustedPlayerAuthKey(req)) {
     res.status(401).json({
       code: 'AUTH_API_KEY_INVALID',
       message: '玩家认证服务密钥无效',

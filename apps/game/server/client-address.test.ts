@@ -28,6 +28,12 @@ describe('request client address', () => {
     }))).toBe('203.0.113.9');
   });
 
+  test('allows a server-authenticated proxy to opt into its forwarded address', () => {
+    expect(requestClientAddress(request('172.18.0.4', {
+      'x-forwarded-for': '203.0.113.88, 172.18.0.1',
+    }), true)).toBe('203.0.113.88');
+  });
+
   test('falls back to x-real-ip and normalizes mapped IPv4', () => {
     process.env.BOX_TRUST_PROXY = 'true';
     expect(requestClientAddress(request('10.0.0.8', {

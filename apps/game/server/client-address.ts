@@ -16,8 +16,8 @@ function firstHeader(req: NextApiRequest, name: string) {
  * BOX_TRUST_PROXY=true, so clients cannot spoof their rate-limit identity when
  * the service is exposed directly.
  */
-export function requestClientAddress(req: NextApiRequest) {
-  if (process.env.BOX_TRUST_PROXY === 'true') {
+export function requestClientAddress(req: NextApiRequest, trustedForwarding = false) {
+  if (trustedForwarding || process.env.BOX_TRUST_PROXY === 'true') {
     const forwarded = firstHeader(req, 'x-forwarded-for')
       .split(',')
       .map(normalizeAddress)
