@@ -66,14 +66,25 @@ describe('player management visual consistency', () => {
     expect(styleSource).toMatch(/\.modalDialog\s*\{[^}]*color:\s*var\(--text\);/s);
   });
 
+  test('keeps permission cards as aligned rows instead of inline checkbox content', () => {
+    expect(styleSource).toMatch(
+      /\.permissionGrid label,\s*\.permissionLocked\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;/s,
+    );
+  });
+
+  test('uses compact branded checkboxes and a complete selected permission card', () => {
+    expect(styleSource).toMatch(/\.permissionGrid input\[type='checkbox'\]\s*\{[^}]*appearance:\s*none;/s);
+    expect(styleSource).toMatch(/\.permissionGrid label:has\(input:checked\)\s*\{[^}]*border-color:/s);
+  });
+
   test('constrains the workspace before wide tables can overflow on narrow screens', () => {
     expect(styleSource).toMatch(/@media\s*\(max-width:\s*820px\)[\s\S]*\.workspace\s*\{[^}]*width:\s*100%;[^}]*max-width:\s*100vw;/);
     expect(styleSource).toMatch(/@media\s*\(max-width:\s*1100px\)[\s\S]*\.tableCard\s*\{[^}]*overflow-x:\s*auto;/);
   });
 
   test('gives every player detail screen one focused responsibility', () => {
-    expect(pageSource).toContain("type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'sessions' | 'logins' | 'ban' | 'password' | 'related' | 'history' | 'danger';");
-    for (const label of ['基本资料', '身份档案', '神岛 ID', '会话设备', '登录记录', '封禁管理', '密码重置', '关联线索', '管理记录', '删除身份']) {
+    expect(pageSource).toContain("type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'userKey' | 'sessions' | 'logins' | 'ban' | 'password' | 'related' | 'history' | 'danger';");
+    for (const label of ['基本资料', '身份档案', '神岛 ID', '用户 Key', '会话设备', '登录记录', '封禁管理', '密码重置', '关联线索', '管理记录', '删除身份']) {
       expect(pageSource).toContain(`<strong>${label}</strong>`);
     }
     expect(pageSource).not.toContain('>资料与权限</button>');

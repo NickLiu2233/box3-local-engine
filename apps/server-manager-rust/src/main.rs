@@ -1951,7 +1951,7 @@ async fn command(
                     "creatorPlayRuntimes": number("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
                     "creatorEditPrewarmRuntimes": number("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 0),
                     "playPrewarmRuntimes": number("BOX_PLAY_PREWARM_RUNTIMES", 0),
-                    "playerLimit": number("BOX_LOCAL_PLAYER_LIMIT", 8),
+                    "playerLimit": number("BOX_LOCAL_PLAYER_LIMIT", 70),
                     "scriptMemoryMb": number("BOX_SCRIPT_MEMORY_MB", 512),
                     "runtimeIdleMinutes": number("BOX_RUNTIME_IDLE_TIMEOUT_MS", 900000) / 60000,
                     "runtimeStartTimeoutMinutes": number("BOX_RUNTIME_START_TIMEOUT_MS", 1800000) / 60000,

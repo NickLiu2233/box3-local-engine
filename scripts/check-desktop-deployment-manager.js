@@ -220,7 +220,7 @@ assert.doesNotMatch(
 assert.match(defaults, /^REDIS_HOST=$/m)
 assert.match(defaults, /^BOX_REDIS_MODE=disabled$/m)
 for (const [name, value] of [
-  ['BOX_LOCAL_PLAYER_LIMIT', '8'],
+  ['BOX_LOCAL_PLAYER_LIMIT', '70'],
   ['BOX_CREATOR_EDIT_PREWARM_RUNTIMES', '0'],
   ['BOX_PLAY_PREWARM_RUNTIMES', '0'],
   ['BOX_SCRIPT_HEAP_MB', '512'],
@@ -252,7 +252,7 @@ for (const [name, value] of [
 for (const [name, composePattern, consumer, consumerPattern] of [
   [
     'BOX_LOCAL_PLAYER_LIMIT',
-    /BOX_LOCAL_PLAYER_LIMIT: \$\{BOX_LOCAL_PLAYER_LIMIT:-8\}/,
+    /BOX_LOCAL_PLAYER_LIMIT: \$\{BOX_LOCAL_PLAYER_LIMIT:-70\}/,
     localEngineLauncher,
     /process\.env\.BOX_LOCAL_PLAYER_LIMIT/,
   ],

@@ -703,7 +703,7 @@ async function main() {
             process.env.BOX_WORLD_ID ||
             process.env.BOX_SERVER_CONTENT_ID ||
             '',
-          PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
+          PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '70',
           MAX_ZERO_PLAYER_TIME: '2147483647',
         },
       },
@@ -774,7 +774,7 @@ async function main() {
               }
             : {}),
           BOX_TELEPORT_CONTROL_URL: playTeleportControlURL,
-          PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '8',
+          PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '70',
           MAX_ZERO_PLAYER_TIME: '2147483647',
         },
       },

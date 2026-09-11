@@ -7,6 +7,7 @@ const { spawn, spawnSync } = require('node:child_process')
 const root = path.resolve(__dirname, '..')
 const architectureByNode = { x64: 'amd64', arm64: 'arm64' }
 const architecture = process.argv[2] || architectureByNode[process.arch]
+const selectedService = process.argv[3] || ''
 const supportedArchitectures = new Set(['amd64', 'arm64'])
 const services = [
   'player-service',
@@ -23,13 +24,20 @@ function fail(message) {
 }
 
 if (!supportedArchitectures.has(architecture)) {
-  fail('用法: pnpm package:images [amd64|arm64]')
+  fail('用法: pnpm package:images [amd64|arm64] [服务名]')
+}
+if (selectedService && !services.includes(selectedService)) {
+  fail(`未知服务：${selectedService}；可选值：${services.join('、')}`)
 }
 
 const version = require(path.join(root, 'package.json')).version
 const tag = `v${version}-linux-${architecture}`
 const outputDirectory = path.join(root, 'apps/local-engine/dist/images')
-const output = path.join(outputDirectory, `box-local-engine-images-${tag}.tar.gz`)
+const packagedServices = selectedService ? [selectedService] : services
+const output = path.join(
+  outputDirectory,
+  `box-local-engine-images-${tag}${selectedService ? `-${selectedService}` : ''}.tar.gz`,
+)
 const environment = {
   ...process.env,
   BOX_IMAGE_TAG: tag,
@@ -40,7 +48,7 @@ const environment = {
   BOX_BUILD_SOURCE: process.env.BOX_BUILD_SOURCE || 'local',
 }
 
-for (const service of services) {
+for (const service of packagedServices) {
   const result = spawnSync('docker', ['compose', 'build', service], {
     cwd: root,
     env: environment,
@@ -53,7 +61,7 @@ fs.mkdirSync(outputDirectory, { recursive: true })
 fs.rmSync(output, { force: true })
 const save = spawn(
   'docker',
-  ['image', 'save', ...services.map((service) => `box-local-engine-${service}:${tag}`)],
+  ['image', 'save', ...packagedServices.map((service) => `box-local-engine-${service}:${tag}`)],
   {
     cwd: root,
     env: environment,

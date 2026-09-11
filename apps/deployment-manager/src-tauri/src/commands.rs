@@ -182,7 +182,7 @@ impl Default for InstallConfigView {
             creator_play_runtimes: 4,
             creator_edit_prewarm_runtimes: 0,
             play_prewarm_runtimes: 0,
-            player_limit: 8,
+            player_limit: 70,
             script_memory_mb: 512,
             runtime_idle_minutes: 15,
             runtime_start_timeout_minutes: 30,
@@ -394,7 +394,7 @@ fn default_play_prewarm_runtimes() -> u32 {
     0
 }
 fn default_player_limit() -> u32 {
-    8
+    70
 }
 fn default_script_memory_mb() -> u32 {
     512
@@ -1807,7 +1807,7 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
         creator_edit_prewarm_runtimes: number_u32("BOX_CREATOR_EDIT_PREWARM_RUNTIMES", 0),
         play_prewarm_runtimes: number_u32("BOX_PLAY_PREWARM_RUNTIMES", 0),
-        player_limit: number_u32("BOX_LOCAL_PLAYER_LIMIT", 8),
+        player_limit: number_u32("BOX_LOCAL_PLAYER_LIMIT", 70),
         script_memory_mb: number_u32("BOX_SCRIPT_MEMORY_MB", 512),
         runtime_idle_minutes: milliseconds_as_minutes("BOX_RUNTIME_IDLE_TIMEOUT_MS", 15),
         runtime_start_timeout_minutes: milliseconds_as_minutes("BOX_RUNTIME_START_TIMEOUT_MS", 30),

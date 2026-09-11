@@ -2244,6 +2244,7 @@ function packageProject(reference, outputDirectory, options = {}) {
     const packagedComposePath = path.join(temporaryBundleRoot, 'compose.yml')
     const packagedCompose = fs
       .readFileSync(packagedComposePath, 'utf8')
+      .replace('BOX_LOCAL_PLAYER_LIMIT:-8', 'BOX_LOCAL_PLAYER_LIMIT:-70')
       .replace(
         '      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_TRUST_PROXY:',
         '      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}\n      BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:?请在 .env 中设置 BOX_PLAYER_AUTH_API_KEY}\n      BOX_PLAYER_AUTH_ALLOWED_ORIGINS: ${BOX_PLAYER_AUTH_ALLOWED_ORIGINS:-}\n      BOX_TRUST_PROXY:',
