@@ -68,13 +68,27 @@ describe('player management visual consistency', () => {
 
   test('keeps permission cards as aligned rows instead of inline checkbox content', () => {
     expect(styleSource).toMatch(
-      /\.permissionGrid label,\s*\.permissionLocked\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;/s,
+      /\.permissionGrid label:not\(\.creatorAccessToggle\),\s*\.permissionLocked\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*flex-start;/s,
     );
   });
 
-  test('uses compact branded checkboxes and a complete selected permission card', () => {
-    expect(styleSource).toMatch(/\.permissionGrid input\[type='checkbox'\]\s*\{[^}]*appearance:\s*none;/s);
-    expect(styleSource).toMatch(/\.permissionGrid label:has\(input:checked\)\s*\{[^}]*border-color:/s);
+  test('uses compact branded checkboxes without changing permission card colors', () => {
+    expect(styleSource).toMatch(/\.permissionGrid label:not\(\.creatorAccessToggle\) input\[type='checkbox'\]\s*\{[^}]*appearance:\s*none;/s);
+    expect(styleSource).not.toContain('.permissionGrid label:has(input:checked)');
+  });
+
+  test('uses the standard compact dialog width and option-card spacing for permission groups', () => {
+    expect(styleSource).toMatch(/\.permissionGroupDialog\s*\{\s*max-width:\s*560px;/s);
+    expect(styleSource).toMatch(
+      /\.permissionGrid label:not\(\.creatorAccessToggle\),\s*\.permissionLocked\s*\{[^}]*gap:\s*10px;[^}]*padding:\s*10px;/s,
+    );
+  });
+
+  test('reuses the creator access card for every creator sub-permission', () => {
+    expect(styleSource).toMatch(/\.creatorPermissionList\s*\{\s*gap:\s*6px;\s*padding:\s*10px;/s);
+    expect(styleSource).toMatch(/\.permissionGrid label:not\(\.creatorAccessToggle\)/);
+    expect(pageSource).toContain('styles.creatorPermissionList');
+    expect(pageSource).toContain('className={styles.creatorAccessToggle}');
   });
 
   test('constrains the workspace before wide tables can overflow on narrow screens', () => {

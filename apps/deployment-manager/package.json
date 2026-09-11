@@ -4,9 +4,9 @@
   "private": true,
   "description": "Native installer and operations console for BOX3 Engine",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "check": "vite build",
+    "dev": "node ../../scripts/sync-root-version.js && vite",
+    "build": "node ../../scripts/sync-root-version.js && vite build",
+    "check": "node ../../scripts/sync-root-version.js --check && vite build",
     "tauri": "tauri"
   },
   "dependencies": {

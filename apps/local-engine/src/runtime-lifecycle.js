@@ -31,15 +31,16 @@ function createRuntimeLifecycle({
     return runtime
   }
 
-  function acquire(runtime) {
-    touch(runtime)
+  function acquire(runtime, { touchAccess = true } = {}) {
+    if (touchAccess) touch(runtime)
+    else runtime.activeConnections ||= 0
     runtime.activeConnections += 1
     let released = false
     return () => {
       if (released) return
       released = true
       runtime.activeConnections = Math.max(0, runtime.activeConnections - 1)
-      touch(runtime)
+      if (touchAccess) touch(runtime)
     }
   }
 

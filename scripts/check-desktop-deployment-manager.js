@@ -5,6 +5,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
+const rootVersion = require(path.join(root, 'package.json')).version
 const manager = path.join(root, 'apps/deployment-manager')
 const frontend = ['main.js', 'transport.js']
   .map((file) => fs.readFileSync(path.join(manager, 'src', file), 'utf8'))
@@ -28,6 +29,7 @@ const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), '
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
 const tauriEntry = fs.readFileSync(path.join(manager, 'src-tauri/src/main.rs'), 'utf8')
+const tauriBuild = fs.readFileSync(path.join(manager, 'src-tauri/build.rs'), 'utf8')
 const tauriConfiguration = JSON.parse(tauriConfig)
 const compose = fs.readFileSync(path.join(root, 'docker-compose.yml'), 'utf8')
 const launcher = fs.readFileSync(path.join(root, 'apps/local-engine/src/launcher.js'), 'utf8')
@@ -80,6 +82,7 @@ for (const file of [
   'src-tauri/src/commands.rs',
   'src-tauri/src/docker.rs',
   'src-tauri/src/lib.rs',
+  'src-tauri/build.rs',
   'src-tauri/defaults.env',
 ]) {
   assert.ok(
@@ -87,6 +90,10 @@ for (const file of [
     `missing deployment manager file: ${file}`,
   )
 }
+
+assert.match(tauriBuild, /BOX_ROOT_VERSION/)
+assert.match(desktopBackend, /BOX3 Engine Launcher v\{ROOT_VERSION\}/)
+assert.equal(tauriConfiguration.version, rootVersion)
 
 for (const value of [
   '总览',

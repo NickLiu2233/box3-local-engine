@@ -300,7 +300,12 @@ function startEditLibrary({
         : existingRuntime && !existingRuntime.exited
           ? existingRuntime
           : await ensureRuntime(project || reference, roomId)
-      const releaseConnection = lifecycle.acquire(runtime)
+      // Automatic backup saves must keep the child alive while the request is
+      // in flight, but they are maintenance rather than editor activity and
+      // must not postpone idle recycling forever.
+      const releaseConnection = lifecycle.acquire(runtime, {
+        touchAccess: forwardedPath !== '/internal/save-local-project',
+      })
       res.once('close', releaseConnection)
       const proxy = http.request(
         {

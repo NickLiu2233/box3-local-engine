@@ -28,7 +28,7 @@ mod license;
 use config::{
     compose_path, default_runtime_root, detect_lan_ip, ensure_runtime_files, env_path, parse_env,
     random_hex, remove_env, resolve_secret, runtime_env_path, runtime_location_file, runtime_root,
-    set_env, validate_raw_environment, write_private_file, IMAGE_TAG, SERVICE_NAMES,
+    set_env, validate_raw_environment, write_private_file, IMAGE_TAG, ROOT_VERSION, SERVICE_NAMES,
 };
 use docker::{
     command as docker_command, hide_window, output as docker_output, run_command,
@@ -2374,7 +2374,7 @@ fn get_about_info() -> AboutInfo {
     .collect();
 
     AboutInfo {
-        application_version: env!("CARGO_PKG_VERSION").into(),
+        application_version: ROOT_VERSION.into(),
         image_tag: IMAGE_TAG.into(),
         source_revision: option_env!("BOX_BUILD_COMMIT").unwrap_or("unknown").into(),
         build_created_at: option_env!("BOX_BUILD_DATE").unwrap_or("unknown").into(),
@@ -3116,7 +3116,7 @@ async fn export_diagnostics(app: AppHandle) -> Result<Option<String>, String> {
         let report = serde_json::json!({
             "formatVersion": 1,
             "generatedAtMs": SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis(),
-            "applicationVersion": env!("CARGO_PKG_VERSION"),
+            "applicationVersion": ROOT_VERSION,
             "imageTag": IMAGE_TAG,
             "platform": std::env::consts::OS,
             "architecture": std::env::consts::ARCH,
@@ -3801,6 +3801,12 @@ mod tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_title(&format!("BOX3 Engine Launcher v{ROOT_VERSION}"))?;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_install_config,
             get_owner_secrets,

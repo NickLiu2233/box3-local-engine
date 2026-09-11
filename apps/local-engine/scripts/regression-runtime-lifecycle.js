@@ -30,6 +30,21 @@ async function main() {
   release()
   assert.equal(runtimes.get('new').activeConnections, 0, 'connection release must be idempotent')
 
+  const maintenance = { lastAccessAt: 1000, activeConnections: 0 }
+  runtimes.set('maintenance', maintenance)
+  const releaseMaintenance = lifecycle.acquire(maintenance, { touchAccess: false })
+  releaseMaintenance()
+  assert.equal(
+    maintenance.lastAccessAt,
+    1000,
+    'maintenance requests must not renew an idle runtime lease',
+  )
+  assert.deepEqual(
+    await lifecycle.collectIdle(2000),
+    ['maintenance'],
+    'an idle runtime must be recycled even after an automatic maintenance request',
+  )
+
   runtimes.set('busy-a', { lastAccessAt: 1000, activeConnections: 1 })
   starts.set('starting-b', Promise.resolve())
   runtimes.get('new').activeConnections = 1

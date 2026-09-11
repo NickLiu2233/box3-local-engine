@@ -17,9 +17,13 @@ use tauri::{AppHandle, Manager};
 use std::os::unix::fs::PermissionsExt;
 
 const COMPOSE_TEMPLATE: &str = include_str!("../../../../docker-compose.yml");
+pub(crate) const ROOT_VERSION: &str = match option_env!("BOX_ROOT_VERSION") {
+    Some(value) => value,
+    None => env!("CARGO_PKG_VERSION"),
+};
 pub(crate) const IMAGE_TAG: &str = match option_env!("BOX_MANAGER_IMAGE_TAG") {
     Some(value) => value,
-    None => "0.1.1",
+    None => ROOT_VERSION,
 };
 pub(crate) use box_manager_core::services::APPLICATION_SERVICES as SERVICE_NAMES;
 

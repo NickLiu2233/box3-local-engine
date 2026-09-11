@@ -212,9 +212,11 @@ for (const { directory, manifest } of packages.values()) {
 const rootManifest = JSON.parse(readRequired('package.json'))
 for (const [name, command] of Object.entries({
   'dev': 'node apps/local-engine/src/launcher.js --creator',
-  'package:images': 'node scripts/package-offline-images.js',
-  'package:desktop': 'node scripts/build-desktop-offline-installer.js',
-  'package:web': 'node scripts/build-headless-server-package.js',
+  'package:images': 'node scripts/sync-root-version.js && node scripts/package-offline-images.js',
+  'package:desktop':
+    'node scripts/sync-root-version.js && node scripts/build-desktop-offline-installer.js',
+  'package:web':
+    'node scripts/sync-root-version.js && node scripts/build-headless-server-package.js',
 })) {
   requireScript(rootManifest, 'package.json', name, command)
 }
