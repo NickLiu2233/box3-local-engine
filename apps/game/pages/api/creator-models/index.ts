@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { allowAuthenticatedCreatorApi } from '../../../server/creator-api-security';
 import {
+  creatorModelIdentityHeaders,
   creatorModelServiceError,
   requestCreatorModelService,
   sendCreatorModelServiceError,
@@ -33,7 +34,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (value !== undefined) query.set(key, String(Array.isArray(value) ? value[0] : value));
     }
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    const response = await requestCreatorModelService(`/api/local/models${suffix}`);
+    const response = await requestCreatorModelService(`/api/local/models${suffix}`, {
+      headers: creatorModelIdentityHeaders(req),
+    });
     if (!response.ok) throw await creatorModelServiceError(response, '无法读取模型列表');
     const data = await response.json() as { rows?: ModelRow[]; count?: number };
     const rows = (data.rows || []).map((model) => ({

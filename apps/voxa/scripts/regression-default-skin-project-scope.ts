@@ -7,6 +7,15 @@ const dataRoot = fs.mkdtempSync(
   path.join(os.tmpdir(), 'box-local-default-skin-scope-'),
 );
 process.env.VOXA_DATA_PATH = dataRoot;
+const previousPermissionSecret = process.env.PERMISSION_TOKEN_SECRET;
+process.env.PERMISSION_TOKEN_SECRET = 'default-skin-regression-secret';
+
+function requestHeaders() {
+  return {
+    host: '127.0.0.1:3001',
+    authorization: 'Bearer default-skin-regression-secret',
+  };
+}
 
 type MockResponse = {
   statusCode: number;
@@ -53,7 +62,7 @@ async function main() {
       method: 'PUT',
       query: { projectKey: 'project-a' },
       body: { projectKey: 'project-a', skinId: skin.modelId },
-      headers: { host: '127.0.0.1:3001' },
+      headers: requestHeaders(),
       socket: { remoteAddress: '127.0.0.1' },
     } as any,
     putResponse as any,
@@ -65,7 +74,7 @@ async function main() {
     {
       method: 'GET',
       query: { projectKey: 'project-a' },
-      headers: { host: '127.0.0.1:3001' },
+      headers: requestHeaders(),
       socket: { remoteAddress: '127.0.0.1' },
     } as any,
     projectAResponse as any,
@@ -77,7 +86,7 @@ async function main() {
     {
       method: 'GET',
       query: { projectKey: 'project-b' },
-      headers: { host: '127.0.0.1:3001' },
+      headers: requestHeaders(),
       socket: { remoteAddress: '127.0.0.1' },
     } as any,
     projectBResponse as any,
@@ -87,4 +96,8 @@ async function main() {
 
 main()
   .then(() => console.log('default skin project scope regression passed'))
-  .finally(() => fs.rmSync(dataRoot, { recursive: true, force: true }));
+  .finally(() => {
+    fs.rmSync(dataRoot, { recursive: true, force: true });
+    if (previousPermissionSecret === undefined) delete process.env.PERMISSION_TOKEN_SECRET;
+    else process.env.PERMISSION_TOKEN_SECRET = previousPermissionSecret;
+  });

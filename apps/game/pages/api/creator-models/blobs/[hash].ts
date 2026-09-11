@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { allowAuthenticatedCreatorApi } from '../../../../server/creator-api-security';
 import {
+  creatorModelIdentityHeaders,
   creatorModelServiceError,
   requestCreatorModelService,
   sendCreatorModelBinaryResponse,
@@ -16,7 +17,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ message: '资源哈希无效' });
   }
   try {
-    const response = await requestCreatorModelService(`/api/local/blobs/${encodeURIComponent(hash)}`);
+    const response = await requestCreatorModelService(`/api/local/blobs/${encodeURIComponent(hash)}`, {
+      headers: creatorModelIdentityHeaders(req),
+    });
     if (!response.ok) throw await creatorModelServiceError(response, '模型预览不存在');
     return await sendCreatorModelBinaryResponse(res, response);
   } catch (error) {

@@ -3,6 +3,7 @@ import { getModelMetaData } from '@box-local/voxa-project';
 
 import { getBlob, getModel } from '../../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../../server/local-cors';
+import { requireVoxaModelManagement } from '../../../../../server/model-management-access';
 import {
   buildModelProjectBundle,
   type ModelProjectBundleResource,
@@ -21,6 +22,7 @@ function projectFileName(name: string) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!setLocalCors(req, res)) return res.status(403).end('仅允许本机访问');
   if (req.method !== 'GET') return res.status(405).end();
+  if (!await requireVoxaModelManagement(req, res)) return;
 
   const rawId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   const id = Number(rawId);

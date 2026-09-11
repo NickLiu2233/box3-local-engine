@@ -6,7 +6,10 @@ import {
   updateModelInfo,
 } from '../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../server/local-cors';
-import { requireVoxaModelManagement } from '../../../../server/model-management-access';
+import {
+  requireVoxaModelAccess,
+  requireVoxaModelManagement,
+} from '../../../../server/model-management-access';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!setLocalCors(req, res)) return res.status(403).end('仅允许本机访问');
@@ -17,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).end();
   if (req.method === 'GET') {
+    if (!await requireVoxaModelAccess(req, res, ['projects.edit', 'models.manage'])) return;
     const model = getModel(id);
     return model ? res.status(200).json(model) : res.status(404).end();
   }

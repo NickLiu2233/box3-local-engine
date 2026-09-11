@@ -54,6 +54,20 @@ describe('Creator work center model integration', () => {
     );
   });
 
+  test('forwards creator identity when proxying protected VOXA reads', () => {
+    for (const endpoint of [
+      'pages/api/creator-models/index.ts',
+      'pages/api/creator-models/[id]/export.ts',
+      'pages/api/creator-models/blobs/[hash].ts',
+    ]) {
+      const contents = source(endpoint);
+      expect(contents).toContain('creatorModelIdentityHeaders');
+      expect(contents).toMatch(
+        /requestCreatorModelService\([\s\S]*headers:\s*creatorModelIdentityHeaders\(req\)/,
+      );
+    }
+  });
+
   test('allows map editors to read existing models without model-management permission', () => {
     expect(source('pages/api/creator-models/index.ts')).toContain("['projects.edit', 'models.manage']");
     expect(source('pages/api/creator-models/blobs/[hash].ts')).toContain("['projects.edit', 'models.manage']");

@@ -7,6 +7,8 @@ type RuntimeIdentity = {
   creatorPermissions?: unknown;
 };
 
+export type VoxaCreatorCapability = 'projects.edit' | 'models.manage';
+
 type RuntimeIdentityResponse = {
   identity?: RuntimeIdentity;
 };
@@ -41,9 +43,18 @@ function copySessionCookies(response: Response, res: NextApiResponse) {
 }
 
 export function canManageVoxaModels(identity: RuntimeIdentity) {
+  return canAccessVoxaModels(identity, 'models.manage');
+}
+
+export function canAccessVoxaModels(
+  identity: RuntimeIdentity,
+  capability: VoxaCreatorCapability | readonly VoxaCreatorCapability[],
+) {
+  const required = Array.isArray(capability) ? capability : [capability];
+  const permissions = identity.creatorPermissions;
   return identity.creatorAccess === true
-    && Array.isArray(identity.creatorPermissions)
-    && identity.creatorPermissions.includes('models.manage');
+    && Array.isArray(permissions)
+    && required.some((item) => permissions.includes(item));
 }
 
 /**
@@ -61,9 +72,10 @@ export function isTrustedVoxaInternalRequest(req: NextApiRequest) {
 
 export type VoxaModelManagementAccess = 'allowed' | 'unauthenticated' | 'denied' | 'unavailable';
 
-export async function resolveVoxaModelManagement(
+export async function resolveVoxaModelAccess(
   req: NextApiRequest,
   res: NextApiResponse,
+  capability: VoxaCreatorCapability | readonly VoxaCreatorCapability[],
 ) : Promise<VoxaModelManagementAccess> {
   if (isTrustedVoxaInternalRequest(req)) return 'allowed';
 
@@ -94,24 +106,39 @@ export async function resolveVoxaModelManagement(
     if (!response.ok) {
       return 'unavailable';
     }
-    return canManageVoxaModels(data.identity || {}) ? 'allowed' : 'denied';
+    return canAccessVoxaModels(data.identity || {}, capability) ? 'allowed' : 'denied';
   } catch {
     return 'unavailable';
   }
+}
+
+export function resolveVoxaModelManagement(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  return resolveVoxaModelAccess(req, res, 'models.manage');
+}
+
+export async function requireVoxaModelAccess(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  capability: VoxaCreatorCapability | readonly VoxaCreatorCapability[],
+) {
+  const access = await resolveVoxaModelAccess(req, res, capability);
+  if (access === 'allowed') return true;
+  if (access === 'unauthenticated') {
+    res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先登录后再访问 VOXA 资源' });
+  } else if (access === 'denied') {
+    res.status(403).json({ code: 'CREATOR_PERMISSION_DENIED', message: '当前账号没有访问此 VOXA 资源的创作权限' });
+  } else {
+    res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证 VOXA 资源访问权限' });
+  }
+  return false;
 }
 
 export async function requireVoxaModelManagement(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  const access = await resolveVoxaModelManagement(req, res);
-  if (access === 'allowed') return true;
-  if (access === 'unauthenticated') {
-    res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先登录后再使用 VOXA' });
-  } else if (access === 'denied') {
-    res.status(403).json({ code: 'CREATOR_PERMISSION_DENIED', message: '当前账号没有管理模型的权限' });
-  } else {
-    res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证模型管理权限' });
-  }
-  return false;
+  return requireVoxaModelAccess(req, res, 'models.manage');
 }
