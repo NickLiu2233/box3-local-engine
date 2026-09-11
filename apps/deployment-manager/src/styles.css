@@ -1485,6 +1485,8 @@ button:disabled {
 
 .storage-path {
   display: block;
+  width: 100%;
+  box-sizing: border-box;
   margin: 0;
   padding: 10px 11px;
   overflow-wrap: anywhere;
@@ -1494,6 +1496,10 @@ button:disabled {
   color: var(--text);
   font-size: 12px;
   line-height: 1.55;
+}
+
+input.storage-path {
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
 }
 
 .environment-panel {

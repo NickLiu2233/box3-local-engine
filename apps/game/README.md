@@ -6,7 +6,7 @@
 ## 创作端
 
 ```bash
-pnpm creator
+node apps/local-engine/src/deploy.js creator
 ```
 
 创作端包含：
@@ -22,13 +22,13 @@ pnpm creator
 ## 游玩端
 
 ```bash
-pnpm play
+node apps/local-engine/src/deploy.js play
 ```
 
 游玩端是专门生成的 play-only 构建。构建期间会将编辑入口、管理员实现和管理员界面
 替换为轻量适配器，不复制 Monaco 编辑器资源，也不提供本地项目管理接口。
 
-`pnpm play` 会生成 play-only 构建，避免把完整创作构建误当成游玩端启动。反过来，
+源码部署命令会生成 play-only 构建，避免把完整创作构建误当成游玩端启动。反过来，
 创作端也会拒绝使用 play-only 产物。
 
 玩家只需访问部署者给出的游玩地址。游戏会连接同一套游玩部署内部的只读运行时，请求
@@ -37,9 +37,9 @@ pnpm play
 ## Docker
 
 ```bash
-pnpm creator
-pnpm play
-pnpm stop
+node apps/local-engine/src/deploy.js creator
+node apps/local-engine/src/deploy.js play
+node apps/local-engine/src/deploy.js stop
 ```
 
 具体作品由作品管理器导出的部署包绑定版本并启动。

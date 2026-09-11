@@ -113,7 +113,7 @@ function configuredVoxaPort() {
 }
 
 // The map library is deployment data, not network configuration. Resolve the
-// same .env value for both `pnpm play` and direct Docker Compose usage so a
+// same .env value for direct source deployment and Docker Compose usage so a
 // port change can never select a different set of imported maps.
 function configuredPlayLibraryDir() {
   const configured = process.env.BOX_PLAY_LIBRARY_DIR || readDotEnvValue('BOX_PLAY_LIBRARY_DIR')
@@ -163,7 +163,7 @@ function assertPlayerServiceHealthy() {
   )
   const containerId = String(container.stdout || '').trim()
   if (container.status !== 0 || !containerId) {
-    throw new Error('Player Service 尚未启动。请先执行 pnpm player-service')
+    throw new Error('Player Service 尚未启动。请先启动玩家服务')
   }
   const result = runDocker(
     [
@@ -176,9 +176,7 @@ function assertPlayerServiceHealthy() {
   )
   const status = String(result.stdout || '').trim()
   if (result.status !== 0 || status !== 'healthy') {
-    throw new Error(
-      `Player Service 尚未健康（当前：${status || '未启动'}）。请先执行 pnpm player-service`,
-    )
+    throw new Error(`Player Service 尚未健康（当前：${status || '未启动'}）。请先启动玩家服务`)
   }
 }
 
@@ -308,7 +306,7 @@ function startExistingVoxa() {
 }
 
 function stopAll() {
-  if (commandArgs.length) throw new Error('pnpm stop 不接受参数')
+  if (commandArgs.length) throw new Error('stop 不接受参数')
   runDocker([
     'compose',
     '--profile',

@@ -34,11 +34,11 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 # Generated content-addressed runtime resources are intentionally excluded
 # from Git. Rebuild them inside the shared build stage so clean CI checkouts
 # and local Docker builds produce the same Creator/Play runtime data.
-RUN pnpm prepare:assets
+RUN pnpm --dir apps/local-engine run prepare-assets
 
 FROM engine-build-base AS creator-build
 
-RUN pnpm build:creator
+RUN pnpm --dir apps/local-engine run build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
@@ -74,7 +74,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 
 FROM engine-build-base AS play-build
 
-RUN pnpm build:play
+RUN pnpm --dir apps/local-engine run build:play
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \

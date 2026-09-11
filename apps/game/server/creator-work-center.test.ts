@@ -31,7 +31,6 @@ describe('Creator work center model integration', () => {
   test('shows a recovery message when VOXA is unavailable', () => {
     const library = source('components/creator-model-library.tsx');
     expect(library).toContain('模型服务未运行');
-    expect(library).toContain('pnpm voxa');
     expect(library).toContain('重新检测');
   });
 

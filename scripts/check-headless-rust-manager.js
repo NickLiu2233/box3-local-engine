@@ -85,6 +85,7 @@ const browserHandledCommands = new Set([
   'open_community_group',
   'open_docker_desktop_download',
   'start_docker_desktop',
+  'choose_data_storage_directory',
   'import_backup',
   'export_backup',
 ])

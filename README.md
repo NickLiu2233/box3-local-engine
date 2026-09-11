@@ -68,18 +68,15 @@ pnpm verify
 
 常用命令：
 
-| 命令                      | 作用                                |
-| ------------------------- | ----------------------------------- |
-| `pnpm dev`                | 启动 Creator 源码开发运行时         |
-| `pnpm creator`            | 构建/启动 Creator 容器              |
-| `pnpm play`               | 构建/启动 Play 容器                 |
-| `pnpm voxa`               | 构建/启动 VOXA 容器                 |
-| `pnpm player-service`     | 构建/启动 Player Service            |
-| `pnpm player-auth-portal` | 构建/启动参考登录门户               |
-| `pnpm server-manager`     | 构建 Rust Linux Web 管理镜像        |
-| `pnpm server-manager:up`  | 启动已构建的 Linux Web 管理端       |
-| `pnpm stop`               | 停止本仓库 Compose 服务，不删除数据 |
-| `pnpm verify`             | 运行格式、lint、类型检查和全部回归  |
+| 命令                   | 作用                               |
+| ---------------------- | ---------------------------------- |
+| `pnpm dev`             | 启动 Creator 源码开发运行时        |
+| `pnpm package:images`  | 构建当前 Linux 架构的完整离线镜像  |
+| `pnpm package:desktop` | 由镜像归档生成桌面离线包           |
+| `pnpm package:web`     | 由镜像归档生成 Linux Web 服务器包  |
+| `pnpm verify`          | 运行格式、lint、类型检查和全部回归 |
+
+桌面和 Linux 服务器的业务部署由对应管理端完成。服务级源码命令、许可证签发器和内部迁移工具只保留在各自项目目录，避免把运维细节混入仓库入口。
 
 源码部署至少需要设置三个互不相同的随机业务密钥，并配置 PostgreSQL；Web 管理端还需要独立的 32 字节随机管理令牌。服务器离线包的 `install.sh` 会自动生成这些密钥：
 

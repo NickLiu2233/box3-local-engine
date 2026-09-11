@@ -1,33 +1,33 @@
 # Local Engine 控制层
 
-`apps/local-engine` 管理本地地图工程、地图组、发布包、运行时生命周期和离线资源。普通用户优先使用桌面启动器；开发者在仓库根目录运行本页命令。
+`apps/local-engine` 管理本地地图工程、地图组、发布包、运行时生命周期和离线资源。普通用户优先使用桌面启动器；以下命令仅供源码开发者直接调试。
 
 ## 服务与默认入口
 
-| 服务           | 根目录命令                | 默认入口                 | 用途                             |
-| -------------- | ------------------------- | ------------------------ | -------------------------------- |
-| Creator        | `pnpm creator`            | `http://127.0.0.1:3127/` | 创建、编辑、预览和发布地图       |
-| Play           | `pnpm play`               | `http://127.0.0.1:3121/` | 导入并运行只读 `.boxplay` 地图组 |
-| VOXA           | `pnpm voxa`               | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑             |
-| Player Service | `pnpm player-service`     | `http://127.0.0.1:3124/` | 玩家身份、后台管理和审计         |
-| 参考登录门户   | `pnpm player-auth-portal` | `http://127.0.0.1:3125/` | 登录/注册参考实现                |
+| 服务           | 源码命令                                | 默认入口                 | 用途                             |
+| -------------- | --------------------------------------- | ------------------------ | -------------------------------- |
+| Creator        | `node src/deploy.js creator`            | `http://127.0.0.1:3127/` | 创建、编辑、预览和发布地图       |
+| Play           | `node src/deploy.js play`               | `http://127.0.0.1:3121/` | 导入并运行只读 `.boxplay` 地图组 |
+| VOXA           | `node src/deploy.js voxa`               | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑             |
+| Player Service | `node src/deploy.js player-service`     | `http://127.0.0.1:3124/` | 玩家身份、后台管理和审计         |
+| 参考登录门户   | `node src/deploy.js player-auth-portal` | `http://127.0.0.1:3125/` | 登录/注册参考实现                |
 
 这些服务可以按需要同时运行。桌面启动器提供“全部”“创作端”“游玩端”三个启动范围，并负责生成各服务的内部地址、公开地址和端口映射。
 
 已有镜像时可用 `:up` 命令跳过构建：
 
 ```bash
-pnpm creator:up
-pnpm play:up
-pnpm voxa:up
-pnpm player-service:up
-pnpm player-auth-portal:up
+node src/deploy.js creator-up
+node src/deploy.js play-up
+node src/deploy.js voxa-up
+node src/deploy.js player-service-up
+node src/deploy.js player-auth-portal-up
 ```
 
 停止本仓库的 Compose 服务：
 
 ```bash
-pnpm stop
+node src/deploy.js stop
 ```
 
 ## 地图数据与包格式

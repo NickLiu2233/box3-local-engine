@@ -14,7 +14,10 @@ const compose = fs.readFileSync(path.join(root, 'docker-compose.yml'), 'utf8')
 const runtimeGate = fs.readFileSync(path.join(root, 'packages/license/runtime-gate.js'), 'utf8')
 const processGuard = fs.readFileSync(path.join(root, 'packages/license/process-guard.js'), 'utf8')
 const trustedTime = fs.readFileSync(path.join(root, 'packages/license/trusted-time.js'), 'utf8')
-const serverManager = fs.readFileSync(path.join(root, 'apps/server-manager-rust/src/main.rs'), 'utf8')
+const serverManager = fs.readFileSync(
+  path.join(root, 'apps/server-manager-rust/src/main.rs'),
+  'utf8',
+)
 const serverManagerTransport = fs.readFileSync(
   path.join(root, 'apps/deployment-manager/src/transport.js'),
   'utf8',
@@ -59,7 +62,7 @@ assert.match(serverManager, /"get_license_status" => license/)
 assert.match(serverManager, /"install_license" => license/)
 assert.match(serverManager, /请先安装有效许可证/)
 assert.match(serverManagerTransport, /\/api\/commands\/\$\{encodeURIComponent\(command\)\}/)
-assert.match(headlessInstaller, /up -d --no-build --remove-orphans server-manager/)
+assert.match(headlessInstaller, /up -d --no-build --remove-orphans(?: --wait)? server-manager/)
 assert.match(headlessInstaller, /\/etc\/machine-id/)
 assert.doesNotMatch(headlessInstaller, /up -d --no-build --remove-orphans\s*$/m)
 assert.match(compose, /\/etc\/machine-id:\/run\/host-machine-id:ro/)

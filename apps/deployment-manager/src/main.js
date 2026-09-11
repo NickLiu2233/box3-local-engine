@@ -673,23 +673,22 @@ function setup() {
       ['安全提醒', '这里会显示数据库密码和密钥，不要截图、提交到仓库或发送给其他人。'],
     ],
   )}</section>`
-  const dataStoragePanel = isWebManager()
-    ? ''
-    : `<section class="setup-panel storage-panel ${state.setupSection === 'storage' ? 'active' : ''}" data-setup-panel="storage">
-        <section class="config-group data-storage-group" aria-label="数据存储位置">
-          <div class="group-title"><div><h2>数据目录</h2><span>地图、模型、构建产物和备份</span></div><button type="button" class="text-button" id="choose-data-storage" ${state.busy || !state.dataStorage ? 'disabled' : ''}>更改位置</button></div>
-          <code class="storage-path">${escapeHtml(state.dataStorage?.path || '正在读取…')}</code>
-        </section>
-        ${setupExplanation('配置说明：数据目录如何迁移？', [
-          ['迁移内容', '地图、模型、构建产物、备份和本机配置会一并迁移。'],
-          ['开始前', '请先停止全部服务；迁移完成后从服务总览重新启动。'],
-          ['Docker 数据库', '内置 PostgreSQL 和 Redis 使用 Docker Desktop 数据卷，不随此操作迁移。'],
-        ])}
-      </section>`
+  const storagePath = state.dataStorage?.path || ''
+  const dataStoragePanel = `<section class="setup-panel storage-panel ${state.setupSection === 'storage' ? 'active' : ''}" data-setup-panel="storage">
+      <section class="config-group data-storage-group" aria-label="数据存储位置">
+        <div class="group-title"><div><h2>${isWebManager() ? 'Linux 数据目录' : '数据目录'}</h2><span>地图、模型、构建产物和备份</span></div><button type="button" class="text-button" id="choose-data-storage" ${state.busy || !state.dataStorage ? 'disabled' : ''}>${isWebManager() ? '迁移到此目录' : '更改位置'}</button></div>
+        ${isWebManager() ? `<input id="linux-data-directory" class="storage-path" type="text" value="${escapeHtml(storagePath)}" placeholder="/data/BoxEngineData" spellcheck="false"/>` : `<code class="storage-path">${escapeHtml(storagePath || '正在读取…')}</code>`}
+      </section>
+      ${setupExplanation('配置说明：数据目录如何迁移？', [
+        ['迁移内容', '地图、模型、构建产物和备份会一并迁移。'],
+        ['开始前', '请先停止全部服务；迁移完成后从服务总览重新启动。'],
+        ['目录格式', isWebManager() ? '填写 Linux 服务器绝对路径，例如 /data/BoxEngineData。' : '请选择目标磁盘中的一个目录。'],
+      ])}
+    </section>`
   return `<header><div><h1>数据配置</h1></div></header>
     ${state.busy ? progressPanel() : ''}
     <form id="setup-form" novalidate class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
-      <div class="setup-tabs">${tab('data', '数据服务')}${!isWebManager() ? tab('storage', '数据存储') : ''}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
+      <div class="setup-tabs">${tab('data', '数据服务')}${tab('storage', '数据存储')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
           <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2><span>保存玩家、权限与地图脚本数据</span></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
@@ -1857,7 +1856,7 @@ async function refreshStatus() {
         invoke('get_managed_service_info', { service: 'postgresql' }),
         invoke('get_managed_service_info', { service: 'redis' }),
         invoke('get_license_status'),
-        isWebManager() ? Promise.resolve(null) : invoke('get_data_storage_info'),
+        invoke('get_data_storage_info'),
       ])
     state.status = status
     state.dockerCheck = {
@@ -1893,7 +1892,9 @@ async function relocateDataStorage() {
   if (state.busy) return
   clearFeedback()
   try {
-    const directory = await invoke('choose_data_storage_directory')
+    const directory = isWebManager()
+      ? document.querySelector('#linux-data-directory')?.value.trim()
+      : await invoke('choose_data_storage_directory')
     if (!directory) return
     state.busy = true
     state.progress = {

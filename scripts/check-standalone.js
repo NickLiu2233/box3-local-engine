@@ -207,48 +207,68 @@ for (const { directory, manifest } of packages.values()) {
   }
 }
 
-// Creator/play are the complete public product interface. Deployment must not
-// expose the old client/server split as separate commands.
+// The root manifest is intentionally small: product deployment belongs to
+// the desktop/Web managers, while component commands live with their project.
 const rootManifest = JSON.parse(readRequired('package.json'))
 for (const [name, command] of Object.entries({
-  'creator': 'node apps/local-engine/src/deploy.js creator',
-  'creator:up': 'node apps/local-engine/src/deploy.js creator-up',
-  'player-service': 'node apps/local-engine/src/deploy.js player-service',
-  'player-service:up': 'node apps/local-engine/src/deploy.js player-service-up',
-  'player-auth-portal': 'node apps/local-engine/src/deploy.js player-auth-portal',
-  'player-auth-portal:up': 'node apps/local-engine/src/deploy.js player-auth-portal-up',
-  'server-manager': 'docker compose --profile server-manager build server-manager',
-  'server-manager:up': 'docker compose --profile server-manager up -d --no-build server-manager',
-  'voxa': 'node apps/local-engine/src/deploy.js voxa',
-  'voxa:image': 'docker compose --profile voxa build voxa',
-  'voxa:up': 'node apps/local-engine/src/deploy.js voxa-up',
-  'voxa:dev': 'pnpm --filter @box-local/voxa dev',
-  'infra': 'docker compose --profile infra up -d postgres redis',
-  'infra:stop': 'docker compose --profile infra stop postgres redis',
-  'play': 'node apps/local-engine/src/deploy.js play',
-  'play:up': 'node apps/local-engine/src/deploy.js play-up',
-  'stop': 'node apps/local-engine/src/deploy.js stop',
   'dev': 'node apps/local-engine/src/launcher.js --creator',
-  'build:creator': 'node apps/local-engine/src/build.js --creator',
-  'start:creator': 'node apps/local-engine/src/launcher.js --production --creator',
-  'build:play': 'node apps/local-engine/src/build.js --play',
-  'build:voxa': 'pnpm --filter @box-local/voxa build',
-  'start:play': 'node apps/local-engine/src/launcher.js --production --play',
+  'package:images': 'node scripts/package-offline-images.js',
+  'package:desktop': 'node scripts/build-desktop-offline-installer.js',
+  'package:web': 'node scripts/build-headless-server-package.js',
 })) {
   requireScript(rootManifest, 'package.json', name, command)
 }
 for (const name of [
-  'build',
-  'start',
-  'build:client',
-  'build:server',
-  'start:client',
-  'start:server',
-  'docker:creator',
-  'docker:play',
-  'docker:stop',
-  'project:serve',
-  'project:edit',
+  'creator',
+  'creator:up',
+  'play',
+  'play:up',
+  'voxa',
+  'voxa:up',
+  'player-service',
+  'player-service:up',
+  'player-auth-portal',
+  'player-auth-portal:up',
+  'server-manager',
+  'server-manager:up',
+  'infra',
+  'infra:stop',
+  'stop',
+  'build:creator',
+  'build:play',
+  'build:voxa',
+  'build:desktop-installer',
+  'build:headless-server-package',
+  'prepare:assets',
+  'sync:avatar',
+  'license-server',
+  'license-server:build',
+  'license-server:up',
+  'license-server:dev',
+  'license-server:status',
+  'license-server:logs',
+  'license-server:stop',
+  'license-server:down',
+  'license:keygen',
+  'license:time-keygen',
+  'migrator',
+  'migrator:up',
+  'migrator:dev',
+  'project:list',
+  'project:create',
+  'project:publish',
+  'project:package',
+  'check:local-control',
+  'check:engine',
+  'check:distribution',
+  'check:integration',
+  'check:license',
+  'check:voxa-map-link',
+  'check:voxa-extra-project',
+  'check:voxa-render',
+  'check:edit-session',
+  'check:project-identity',
+  'lint:control',
 ]) {
   if (rootManifest.scripts?.[name]) {
     fail(`package.json: legacy public script must be removed: ${name}`)
@@ -420,10 +440,13 @@ for (const [label, pattern] of [
 }
 for (const [label, pattern] of [
   ['creator build stage', /^FROM engine-build-base AS creator-build$/m],
-  ['creator build command', /^RUN pnpm build:creator$/m],
+  ['creator build command', /^RUN pnpm --dir apps\/local-engine run build:creator$/m],
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
-  ['play build command', /^RUN pnpm build:play$/m],
-  ['clean-checkout runtime asset generation', /^RUN pnpm prepare:assets$/m],
+  ['play build command', /^RUN pnpm --dir apps\/local-engine run build:play$/m],
+  [
+    'clean-checkout runtime asset generation',
+    /^RUN pnpm --dir apps\/local-engine run prepare-assets$/m,
+  ],
   ['licensed runtime base', /^FROM runtime-base AS licensed-runtime-base$/m],
   ['creator final target', /^FROM licensed-runtime-base AS creator$/m],
   ['play final target', /^FROM licensed-runtime-base AS play$/m],
@@ -757,10 +780,31 @@ for (const [name, service] of [
 }
 const serverManagerRustFile = 'apps/server-manager-rust/src/main.rs'
 const serverManagerRust = readRequired(serverManagerRustFile)
-requirePattern(serverManagerRust, serverManagerRustFile, 'fixed service allowlist', /const SERVICES: \[&str; 5\]/)
-requirePattern(serverManagerRust, serverManagerRustFile, 'fixed service validation', /SERVICES\.contains\(&s\)/)
-requirePattern(serverManagerRust, serverManagerRustFile, 'operation allowlist', /\["start", "stop", "restart"\]/)
-requirePattern(serverManagerRust, serverManagerRustFile, 'authenticated HTTP command route', /\/api\/commands\/\{name\}/)
+const managerCoreServices = readRequired('apps/manager-core/src/services.rs')
+requirePattern(
+  serverManagerRust,
+  serverManagerRustFile,
+  'fixed service allowlist import',
+  /APPLICATION_SERVICES as SERVICES/,
+)
+requirePattern(
+  serverManagerRust,
+  serverManagerRustFile,
+  'fixed service validation',
+  /SERVICES\.contains\(&service\.trim\(\)\)/,
+)
+requirePattern(
+  managerCoreServices,
+  'apps/manager-core/src/services.rs',
+  'operation allowlist',
+  /\["start", "stop", "restart"\]/,
+)
+requirePattern(
+  serverManagerRust,
+  serverManagerRustFile,
+  'authenticated HTTP command route',
+  /\/api\/commands\/\{name\}/,
+)
 requirePattern(
   playerAuthPortalCompose,
   composeFile,
@@ -840,7 +884,7 @@ requirePattern(
   voxaCompose,
   composeFile,
   'host-backed VOXA data',
-  /\.\/apps\/voxa\/data:.*\/app\/apps\/voxa\/data/,
+  /\$\{BOX_DATA_DIRECTORY:-\.\}\/apps\/voxa\/data:.*\/app\/apps\/voxa\/data/,
 )
 requirePattern(
   voxaCompose,
@@ -899,7 +943,7 @@ requirePattern(
   creatorCompose,
   composeFile,
   'host-backed creator projects',
-  /\.\/apps\/local-engine\/projects:.*\/app\/apps\/local-engine\/projects/,
+  /\$\{BOX_DATA_DIRECTORY:-\.\}\/apps\/local-engine\/projects:.*\/app\/apps\/local-engine\/projects/,
 )
 forbidPattern(composeSource, composeFile, 'legacy creator project volume', /box-creator-projects/)
 requirePattern(
@@ -924,7 +968,7 @@ requirePattern(
   playCompose,
   composeFile,
   'external read-only play library mount',
-  /BOX_PLAY_LIBRARY_PATH: \/app\/play-worlds[\s\S]*?source: "\$\{BOX_PLAY_LIBRARY_DIR:-[^"]+\}"[\s\S]*?read_only: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
+  /BOX_PLAY_LIBRARY_PATH: \/app\/play-worlds[\s\S]*?source: "\$\{BOX_DATA_DIRECTORY:-\.\}\/apps\/local-engine\/play-worlds"[\s\S]*?read_only: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
 )
 forbidPattern(
   playCompose,

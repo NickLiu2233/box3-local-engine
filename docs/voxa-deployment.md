@@ -5,8 +5,8 @@ VOXA 用于编辑本地模型、皮肤和动画工程，默认在本机使用，
 ## 启动
 
 ```bash
-pnpm voxa
-pnpm voxa:up
+node apps/local-engine/src/deploy.js voxa
+node apps/local-engine/src/deploy.js voxa-up
 ```
 
 桌面用户可从启动器启动 VOXA。Creator 与 VOXA 应使用同一部署的数据根；端口变化不迁移模型或工程。

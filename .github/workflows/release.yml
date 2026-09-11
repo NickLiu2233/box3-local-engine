@@ -211,7 +211,7 @@ jobs:
         run: |
           archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
           test -f "$archive"
-          pnpm build:desktop-installer '${{ matrix.target }}' "$archive"
+          pnpm package:desktop '${{ matrix.target }}' "$archive"
       - name: Upload desktop installer to Aliyun OSS
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash

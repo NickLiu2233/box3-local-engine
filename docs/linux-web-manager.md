@@ -1,4 +1,4 @@
-# 从 Linux 系统部署 BOX3 Engine
+# 从纯 Linux 系统部署 BOX3 Engine
 
 本文是无图形 Linux 服务器的完整部署入口。服务器只需要 Linux、Docker Engine 和 Docker Compose v2；
 
@@ -167,6 +167,10 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 ## 10. 备份和升级
 
+### Linux 数据目录
+
+首次部署后，可在 Web 管理端的“数据配置 → 数据存储”填写 Linux 绝对路径，例如 `/data/BoxEngineData`。迁移会在该路径保存 Creator 工程、Play 地图、VOXA 模型、构建产物和备份；开始前必须停止全部业务服务。内置 PostgreSQL 与 Redis 使用 Docker 数据卷，不随此操作迁移。
+
 升级前保存：
 
 - `.env` 和 `license/`；
@@ -192,4 +196,3 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 | 容器被 OOM 终止             | 查看日志，按实际负载提高对应的 `*_MEMORY_LIMIT`                 |
 
 配置字段详解见[配置参考](./configuration-reference.md)，数据边界见[本地基础设施](./local-infrastructure.md)，许可证规则见[个人学习许可证](./licensing.md)。
-

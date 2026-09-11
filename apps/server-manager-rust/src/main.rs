@@ -305,6 +305,92 @@ fn docker(args: &[&str]) -> Result<String, String> {
         Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
     }
 }
+
+fn linux_data_directory(value: &str) -> Result<PathBuf, String> {
+    let path = value.trim();
+    if path.is_empty() || !path.starts_with('/') {
+        return Err("数据目录必须是 Linux 服务器上的绝对路径".into());
+    }
+    if path.len() > 512
+        || !path
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'/' | b'.' | b'_' | b'-'))
+    {
+        return Err("数据目录只能包含字母、数字、/、.、_ 和 -".into());
+    }
+    Ok(PathBuf::from(path))
+}
+
+fn configured_data_directory(app: &App) -> Result<PathBuf, String> {
+    let values = parse_env(&fs::read_to_string(env_path(app)).map_err(|error| error.to_string())?);
+    values
+        .get("BOX_DATA_DIRECTORY")
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| linux_data_directory(value))
+        .transpose()?
+        .map(Ok)
+        .unwrap_or_else(|| host_project_root(app))
+}
+
+fn has_running_application_services() -> Result<bool, String> {
+    let output = docker(&[
+        "ps",
+        "--filter",
+        "label=com.docker.compose.project=box-local-engine",
+        "--filter",
+        "status=running",
+        "--format",
+        "{{.Label \"com.docker.compose.service\"}}",
+    ])?;
+    Ok(output.lines().any(|service| {
+        SERVICES.contains(&service.trim())
+            || matches!(service.trim(), "managed-postgres" | "managed-redis")
+    }))
+}
+
+fn data_image_tag(app: &App) -> String {
+    parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default())
+        .get("BOX_IMAGE_TAG")
+        .cloned()
+        .or_else(|| env::var("BOX_IMAGE_TAG").ok())
+        .unwrap_or_else(|| env!("CARGO_PKG_VERSION").into())
+}
+
+fn migrate_data_directory(app: &App, requested: &str) -> Result<Value, String> {
+    let source = configured_data_directory(app)?;
+    let destination = linux_data_directory(requested)?;
+    if source == destination {
+        return Ok(json!({"path": destination, "usingDefault": false}));
+    }
+    if has_running_application_services()? {
+        return Err("请先在服务总览停止全部服务，再迁移数据目录".into());
+    }
+    let image = format!("box-local-engine-server-manager:{}", data_image_tag(app));
+    let source_mount = format!("{}:/source", source.display());
+    let destination_mount = format!("{}:/target", destination.display());
+    app.progress("data-copy", "正在迁移地图、模型与备份…", 25);
+    docker(&[
+        "run", "--rm", "-v", &source_mount, "-v", &destination_mount, "--entrypoint", "/bin/sh",
+        &image, "-c",
+        "set -eu; test -z \"$(ls -A /target)\"; for path in apps/local-engine/projects apps/local-engine/dist apps/local-engine/backups apps/local-engine/play-worlds apps/voxa/data; do if [ -e /source/$path ]; then mkdir -p /target/$(dirname $path); cp -a /source/$path /target/$path; fi; done",
+    ])?;
+    let content = fs::read_to_string(env_path(app)).map_err(|error| error.to_string())?;
+    let content = set_env(
+        content,
+        "BOX_DATA_DIRECTORY",
+        &destination.to_string_lossy(),
+    )?;
+    private(&env_path(app), &content)?;
+    generate_runtime_environment(app)?;
+    app.progress("data-switch", "正在切换数据目录…", 80);
+    docker(&[
+        "run", "--rm", "-v", &source_mount, "-v", &destination_mount, "--entrypoint", "/bin/sh",
+        &image, "-c",
+        "set -eu; for path in apps/local-engine/projects apps/local-engine/dist apps/local-engine/backups apps/local-engine/play-worlds apps/voxa/data; do rm -rf /source/$path; mkdir -p /source/$(dirname $path); ln -s /target/$path /source/$path; done",
+    ])?;
+    app.progress("complete", "数据目录已迁移，请从服务总览重新启动服务", 100);
+    Ok(json!({"path": destination, "usingDefault": false}))
+}
 fn docker_check() -> (bool, String, String) {
     match Command::new("docker")
         .args(["info", "--format", "{{.ServerVersion}}"])
@@ -1950,6 +2036,24 @@ async fn command(
                     "playerAuthApiKey": secret("BOX_PLAYER_AUTH_API_KEY")?,
                     "playAdminToken": secret("BOX_PLAY_ADMIN_TOKEN")?
                 }))
+            }
+            "get_data_storage_info" => {
+                let values = parse_env(&fs::read_to_string(env_path(&app)).unwrap_or_default());
+                let using_default = values
+                    .get("BOX_DATA_DIRECTORY")
+                    .is_none_or(|value| value.trim().is_empty());
+                Ok(json!({
+                    "path": configured_data_directory(&app)?,
+                    "usingDefault": using_default
+                }))
+            }
+            "relocate_data_storage" => {
+                let directory = req
+                    .body
+                    .get("directory")
+                    .and_then(Value::as_str)
+                    .ok_or("数据目录无效")?;
+                migrate_data_directory(&app, directory)
             }
             "get_project_runtime_status" => Ok(runtime_catalog(&app)),
             "destroy_project_runtime" => {

@@ -527,20 +527,22 @@ async function main() {
       fs.existsSync(playBuildMarker) || fs.existsSync(standalonePlayBuildMarker)
     if (startsWeb && !hasWebBuild) {
       throw new Error(
-        `Web build is missing. Run \`pnpm ${usesPlayerWeb ? 'build:play' : 'build:creator'}\` before starting it.`,
+        `Web build is missing. Run \`pnpm --dir apps/local-engine run ${usesPlayerWeb ? 'build:play' : 'build:creator'}\` before starting it.`,
       )
     }
     if (usesPlayerWeb && !hasPlayBuildMarker) {
-      throw new Error('Play build is missing. Run `pnpm build:play` before starting it.')
+      throw new Error(
+        'Play build is missing. Run `pnpm --dir apps/local-engine run build:play` before starting it.',
+      )
     }
     if (startsWeb && !usesPlayerWeb && hasPlayBuildMarker) {
       throw new Error(
-        'The current web build is play-only. Run `pnpm build:creator` before starting the creator.',
+        'The current web build is play-only. Run `pnpm --dir apps/local-engine run build:creator` before starting the creator.',
       )
     }
     if (requiresServerBuild && !fs.existsSync(compiledGameServer)) {
       throw new Error(
-        `Game runtime build is missing. Run \`pnpm ${playMode ? 'build:play' : 'build:creator'}\` before starting it.`,
+        `Game runtime build is missing. Run \`pnpm --dir apps/local-engine run ${playMode ? 'build:play' : 'build:creator'}\` before starting it.`,
       )
     }
   }

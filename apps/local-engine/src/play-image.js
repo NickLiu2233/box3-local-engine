@@ -213,9 +213,7 @@ function ensurePlayImageArchive({ forceBuild = false, buildMetadata = {} } = {})
     return config
   }
   if (!forceBuild && process.env.BOX_DEPLOYMENT_MODE === 'creator') {
-    throw new Error(
-      '游玩镜像尚未准备。请在宿主机执行一次 pnpm play，再用 pnpm creator:up 返回创作端',
-    )
+    throw new Error('游玩镜像尚未准备。请先通过启动器启动游玩端，再返回创作端')
   }
 
   const localPlatform = inspectLocalImagePlatform(config)

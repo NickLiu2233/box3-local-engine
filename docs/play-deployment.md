@@ -3,8 +3,8 @@
 Play 运行已发布的 `.boxplay`，不读取 Creator 源工程。桌面用户用启动器启动；源码环境使用：
 
 ```bash
-pnpm play
-pnpm play:up
+node apps/local-engine/src/deploy.js play
+node apps/local-engine/src/deploy.js play-up
 ```
 
 ## 必需条件

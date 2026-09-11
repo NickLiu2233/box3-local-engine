@@ -7,9 +7,12 @@
 ```bash
 pnpm verify
 pnpm audit --prod --audit-level=high
+pnpm package:images <amd64|arm64>
 pnpm package:desktop <target> <image-archive>
 pnpm package:web <amd64|arm64> <image-archive.tar.gz>
 ```
+
+`package:images` 会顺序构建 Creator、Play、VOXA、玩家服务、登录门户和 Linux Web 管理端，并在 `apps/local-engine/dist/images/` 输出当前架构的镜像归档。后两个命令以该归档作为输入；桌面包必须在目标系统和 CPU 架构的原生构建机生成。
 
 公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
 

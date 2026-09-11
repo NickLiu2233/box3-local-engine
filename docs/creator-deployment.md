@@ -7,9 +7,9 @@ Creator 用于创建、编辑、预览、导入和发布地图，默认仅本机
 桌面用户在启动器中选择“创作端”。源码环境使用：
 
 ```bash
-pnpm creator
-pnpm creator:up
-pnpm stop
+node apps/local-engine/src/deploy.js creator
+node apps/local-engine/src/deploy.js creator-up
+node apps/local-engine/src/deploy.js stop
 ```
 
 Creator 依赖 Player Service；首次启动前应配置 PostgreSQL、`PERMISSION_TOKEN_SECRET` 和玩家服务 API Key。

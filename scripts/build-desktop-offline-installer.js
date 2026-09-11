@@ -226,7 +226,7 @@ function main() {
   const spec = supported.get(platform)
   if (!spec) {
     fail(
-      `用法: pnpm build:desktop-installer <${[...supported.keys()].join('|')}> <镜像归档.tar.gz>`,
+      `用法: pnpm package:desktop <${[...supported.keys()].join('|')}> <镜像归档.tar.gz>`,
     )
   }
   if (process.platform !== spec.os || process.arch !== spec.arch) {

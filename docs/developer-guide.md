@@ -11,16 +11,16 @@ cp .env.docker.example .env
 pnpm verify
 ```
 
-常用入口：`pnpm dev`（Creator 开发）、`pnpm creator`、`pnpm play`、`pnpm voxa`、`pnpm player-service`。桌面启动器位于 `apps/deployment-manager/`。
+常用入口：`pnpm dev`（Creator 开发）、`pnpm package:images`（离线镜像）、`pnpm package:desktop` 和 `pnpm package:web`（发行包）。桌面启动器位于 `apps/deployment-manager/`；服务级源码调试命令位于对应子项目中。
 
 ## 代码边界
 
-| 需求                  | 位置                                               |
-| --------------------- | -------------------------------------------------- |
-| Creator / Play 页面   | `apps/game/`                                       |
-| 项目、发布包、运行时  | `apps/local-engine/src/`                           |
-| 权威游戏与脚本运行时  | `services/game-server/src/`                        |
-| 模型编辑              | `apps/voxa/`                                       |
+| 需求                  | 位置                                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| Creator / Play 页面   | `apps/game/`                                                                                 |
+| 项目、发布包、运行时  | `apps/local-engine/src/`                                                                     |
+| 权威游戏与脚本运行时  | `services/game-server/src/`                                                                  |
+| 模型编辑              | `apps/voxa/`                                                                                 |
 | 启动器与 Linux 管理端 | `apps/deployment-manager/`、`apps/server-manager-rust/`（镜像定义在 `apps/server-manager/`） |
 
 Creator 读取可编辑工程，Play 只读取发布快照。不要跨越这条边界，也不要把密钥、数据库凭据或权威规则放进客户端脚本。

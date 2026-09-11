@@ -2789,7 +2789,7 @@ async fn relocate_data_storage(
         if !parent.exists() || !parent.is_dir() {
             return Err("所选数据目录不存在或不可用".into());
         }
-        let destination = parent.join("box3-engine-data");
+        let destination = parent.join("BoxEngineData");
         if destination.exists() {
             return Err(format!(
                 "目标目录已存在：{}。请选择一个新的空目录。",

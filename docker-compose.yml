@@ -355,10 +355,10 @@ services:
       - "127.0.0.1:9966:9966"
       - "127.0.0.1:9967:9967"
     volumes:
-      - ./apps/local-engine/projects:/app/apps/local-engine/projects
-      - ./apps/local-engine/dist:/app/apps/local-engine/dist
-      - ./apps/local-engine/backups:/app/apps/local-engine/backups
-      - ./apps/voxa/data:/app/apps/voxa/data:ro
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/dist:/app/apps/local-engine/dist"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/backups:/app/apps/local-engine/backups"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data:ro"
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
@@ -393,9 +393,9 @@ services:
       - CHOWN
       - DAC_OVERRIDE
     volumes:
-      - ./apps/local-engine/projects:/app/apps/local-engine/projects
-      - ./apps/local-engine/dist:/app/apps/local-engine/dist
-      - ./apps/local-engine/backups:/app/apps/local-engine/backups
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/dist:/app/apps/local-engine/dist"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/backups:/app/apps/local-engine/backups"
 
   play-storage-init:
     profiles: [play]
@@ -492,7 +492,7 @@ services:
       - "${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAY_PORT:-3121}:3000"
     volumes:
       - type: bind
-        source: "${BOX_PLAY_LIBRARY_DIR:-./apps/local-engine/play-worlds}"
+        source: "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/play-worlds"
         target: /app/play-worlds
         read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
         bind:
@@ -542,7 +542,7 @@ services:
     ports:
       - "${BOX_VOXA_BIND_IP:-127.0.0.1}:${BOX_VOXA_PORT:-3123}:3001"
     volumes:
-      - ./apps/voxa/data:/app/apps/voxa/data
+      - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data"
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
@@ -568,7 +568,7 @@ services:
       - CHOWN
       - DAC_OVERRIDE
     volumes:
-      - ./apps/voxa/data:/app/apps/voxa/data
+      - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data"
 
   migrator:
     profiles: [migrator]
