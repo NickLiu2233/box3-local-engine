@@ -4,14 +4,14 @@
 
 ## 共用实现与平台适配
 
-| 层 | 共用实现 | 平台适配 |
-| --- | --- | --- |
-| 页面、主题和交互 | `apps/deployment-manager/src`，两端构建同一前端 | Tauri 通信 / HTTP，系统对话框 / 浏览器上传下载 |
-| 配置 | `manager-core/environment`、`configuration`、`configuration_migration` | 路径、局域网发现、配置持久化 |
-| 许可证 | `manager-core/license`：签名、状态、设备摘要、可信时间 | 系统密钥存储、硬件标识及文件位置 |
-| 服务控制 | `manager-core/services`：服务集合、启动顺序、依赖检查、状态和停止 | 桌面离线镜像和 Docker Desktop / 服务器 Docker |
-| 备份恢复 | `manager-core/backup`、`backup_store`：归档、清单、校验、恢复与回滚 | 原生选择器 / HTTP 上传下载 |
-| 并发与进度 | 共用变更互斥、进度结构 | Tauri 事件 / HTTP 操作记录轮询 |
+| 层               | 共用实现                                                               | 平台适配                                       |
+| ---------------- | ---------------------------------------------------------------------- | ---------------------------------------------- |
+| 页面、主题和交互 | `apps/deployment-manager/src`，两端构建同一前端                        | Tauri 通信 / HTTP，系统对话框 / 浏览器上传下载 |
+| 配置             | `manager-core/environment`、`configuration`、`configuration_migration` | 路径、局域网发现、配置持久化                   |
+| 许可证           | `manager-core/license`：签名、状态、设备摘要、可信时间                 | 系统密钥存储、硬件标识及文件位置               |
+| 服务控制         | `manager-core/services`：服务集合、启动顺序、依赖检查、状态和停止      | 桌面离线镜像和 Docker Desktop / 服务器 Docker  |
+| 备份恢复         | `manager-core/backup`、`backup_store`：归档、清单、校验、恢复与回滚    | 原生选择器 / HTTP 上传下载                     |
+| 并发与进度       | 共用变更互斥、进度结构                                                 | Tauri 事件 / HTTP 操作记录轮询                 |
 
 ## 修复的行为差异
 

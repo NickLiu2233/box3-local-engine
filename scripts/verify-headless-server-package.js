@@ -24,7 +24,10 @@ function sha256(file) {
 
 function main() {
   const packageRoot = path.resolve(process.argv[2] || '')
-  assert.ok(fs.statSync(packageRoot, { throwIfNoEntry: false })?.isDirectory(), 'package directory missing')
+  assert.ok(
+    fs.statSync(packageRoot, { throwIfNoEntry: false })?.isDirectory(),
+    'package directory missing',
+  )
 
   const manifestPath = path.join(packageRoot, 'BOX3-OFFLINE-IMAGE.json')
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))

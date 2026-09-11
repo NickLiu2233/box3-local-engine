@@ -15,20 +15,20 @@
 
 本轮以本机实际运行的 ARM64 容器为目标，采用无凭据请求、伪造 Host/Origin、伪造内部密钥和越权能力组合进行非破坏性测试。测试不猜测真实密码、不读取密钥内容，也不修改现有玩家、地图或模型数据。
 
-| 边界 | 模拟攻击 | 安全预期 | 结果 |
-| --- | --- | --- | --- |
-| Creator 项目 API | 匿名读取项目列表 | `401` | 通过 |
-| Creator 请求来源 | 跨站 Origin、`Sec-Fetch-Site: cross-site` | `403` | 通过 |
-| Creator 主机限制 | 伪造不在白名单中的 Host | `403` | 通过 |
-| VOXA 模型库 | 匿名读取清单、详情、Blob、快照和工程导出 | `401` | 修复后通过 |
-| VOXA 写接口 | 匿名修改默认皮肤 | `401`，数据不变化 | 修复后通过 |
-| VOXA 请求来源 | 非允许来源直接访问 | `403` | 通过 |
-| Player Service 内部 API | 伪造 `PERMISSION_TOKEN_SECRET` | `401` | 通过 |
-| 玩家管理后台 | 跨站访问管理员 API | `403` | 通过 |
-| Play 服主管理 | 不携带 Bearer 服主密钥 | `401` | 通过 |
-| 权限提升 | 只有 `projects.edit` 时尝试管理 VOXA 模型 | `403` | 通过 |
-| 权限撤销 | `creatorAccess=false` 但保留能力字符串 | `403` | 通过 |
-| 网络暴露 | 检查 Creator、Play、VOXA、Player Service、PostgreSQL、Redis 监听 | 默认仅 `127.0.0.1` | 通过 |
+| 边界                    | 模拟攻击                                                         | 安全预期           | 结果       |
+| ----------------------- | ---------------------------------------------------------------- | ------------------ | ---------- |
+| Creator 项目 API        | 匿名读取项目列表                                                 | `401`              | 通过       |
+| Creator 请求来源        | 跨站 Origin、`Sec-Fetch-Site: cross-site`                        | `403`              | 通过       |
+| Creator 主机限制        | 伪造不在白名单中的 Host                                          | `403`              | 通过       |
+| VOXA 模型库             | 匿名读取清单、详情、Blob、快照和工程导出                         | `401`              | 修复后通过 |
+| VOXA 写接口             | 匿名修改默认皮肤                                                 | `401`，数据不变化  | 修复后通过 |
+| VOXA 请求来源           | 非允许来源直接访问                                               | `403`              | 通过       |
+| Player Service 内部 API | 伪造 `PERMISSION_TOKEN_SECRET`                                   | `401`              | 通过       |
+| 玩家管理后台            | 跨站访问管理员 API                                               | `403`              | 通过       |
+| Play 服主管理           | 不携带 Bearer 服主密钥                                           | `401`              | 通过       |
+| 权限提升                | 只有 `projects.edit` 时尝试管理 VOXA 模型                        | `403`              | 通过       |
+| 权限撤销                | `creatorAccess=false` 但保留能力字符串                           | `403`              | 通过       |
+| 网络暴露                | 检查 Creator、Play、VOXA、Player Service、PostgreSQL、Redis 监听 | 默认仅 `127.0.0.1` | 通过       |
 
 ### 已修复发现：VOXA 匿名资产访问
 

@@ -562,10 +562,7 @@ function legacyEntitiesTree(entities: unknown, folders: unknown) {
 async function normalizeLegacyVoxelModels(
   assets: unknown,
   entitiesTree: unknown,
-  retrieveSource: (
-    hash: string,
-    sourceKind?: ResourceSourceKind,
-  ) => Promise<Uint8Array>,
+  retrieveSource: (hash: string, sourceKind?: ResourceSourceKind) => Promise<Uint8Array>,
   blobsRoot: string,
   localHashes: ReadonlyMap<string, string>,
 ) {
@@ -592,9 +589,7 @@ async function normalizeLegacyVoxelModels(
         version: latest.version,
         dataHash,
       })
-      const project = await migrateProject(
-        Buffer.from(stableStringify(converted.project), 'utf8'),
-      )
+      const project = await migrateProject(Buffer.from(stableStringify(converted.project), 'utf8'))
       if (!project) continue
       const projectHash = await storeBlob(blobsRoot, projectSchemaToBytes(project))
       let modelId = Number(rawAsset.contentId)

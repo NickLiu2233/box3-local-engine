@@ -225,9 +225,7 @@ function main() {
   const archive = process.argv[3] ? path.resolve(process.argv[3]) : ''
   const spec = supported.get(platform)
   if (!spec) {
-    fail(
-      `用法: pnpm package:desktop <${[...supported.keys()].join('|')}> <镜像归档.tar.gz>`,
-    )
+    fail(`用法: pnpm package:desktop <${[...supported.keys()].join('|')}> <镜像归档.tar.gz>`)
   }
   if (process.platform !== spec.os || process.arch !== spec.arch) {
     fail(`${platform} 原生安装器必须在对应的 ${spec.os}/${spec.arch} 构建机上生成`)

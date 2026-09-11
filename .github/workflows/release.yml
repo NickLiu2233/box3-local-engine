@@ -112,9 +112,6 @@ jobs:
           - target: windows-arm64
             architecture: arm64
             runner: windows-11-arm
-          - target: macos-amd64
-            architecture: amd64
-            runner: macos-13
           - target: macos-arm64
             architecture: arm64
             runner: macos-14

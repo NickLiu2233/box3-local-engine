@@ -23,13 +23,13 @@ const { headlessCompose } = require('./build-headless-server-package')
 for (const target of [
   'windows-amd64',
   'windows-arm64',
-  'macos-amd64',
   'macos-arm64',
   'linux-amd64',
   'linux-arm64',
 ]) {
   assert.match(workflow, new RegExp(`(?:targets|target).*${target}`))
 }
+assert.doesNotMatch(workflow, /target:\s*macos-amd64/)
 
 assert.match(
   workflow,
