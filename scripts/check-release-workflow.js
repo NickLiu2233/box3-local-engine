@@ -131,6 +131,11 @@ assert.match(
   workflow,
   /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
 )
+assert.match(
+  workflow,
+  /OSS_PREFIX: box-local-engine\/\$\{\{ github\.ref_name \}\}\/e407586a7d349bd29f83c134b758d6797c4466cb/,
+)
+assert.doesNotMatch(workflow, /OSS_PREFIX:.*github\.sha/)
 assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
 assert.doesNotMatch(workflow, /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['"][^$]/i)
 assert.match(workflow, /release-files\/BOX-Local-Engine-\*\.zip/)
