@@ -29,9 +29,55 @@ function architectureForDesktopTarget(target) {
 
 function usage(kind) {
   if (kind === 'desktop') {
-    return '用法: pnpm package:desktop <windows-amd64|windows-arm64|macos-amd64|macos-arm64|linux-amd64|linux-arm64>'
+    return '用法: pnpm package:desktop <windows-amd64|windows-arm64|macos-amd64|macos-arm64|linux-amd64|linux-arm64> [镜像归档.tar.gz]'
   }
-  return '用法: pnpm package:web <amd64|arm64>'
+  return '用法: pnpm package:web <amd64|arm64> [镜像归档.tar.gz]'
+}
+
+function createReleasePlan(kind, target, archiveArgument, version) {
+  const architecture =
+    kind === 'desktop' ? architectureForDesktopTarget(target || '') : target || ''
+  const suppliedArchive = String(archiveArgument || '').trim()
+  return {
+    architecture,
+    archive: suppliedArchive
+      ? path.resolve(root, suppliedArchive)
+      : path.join(
+          outputDirectory,
+          `box-local-engine-images-v${version}-linux-${architecture}.tar.gz`,
+        ),
+    buildImages: suppliedArchive.length === 0,
+  }
+}
+
+function executeReleasePlan(
+  kind,
+  target,
+  plan,
+  execute = run,
+  archiveExists = (archive) => fs.statSync(archive, { throwIfNoEntry: false })?.isFile() === true,
+) {
+  if (plan.buildImages) {
+    execute(process.execPath, [
+      path.join('scripts', 'package-offline-images.js'),
+      plan.architecture,
+    ])
+  }
+
+  if (!archiveExists(plan.archive)) {
+    fail(`镜像归档未生成：${plan.archive}`)
+  }
+
+  execute(process.execPath, [
+    path.join(
+      'scripts',
+      kind === 'desktop'
+        ? 'build-desktop-offline-installer.js'
+        : 'build-headless-server-package.js',
+    ),
+    kind === 'desktop' ? target : plan.architecture,
+    plan.archive,
+  ])
 }
 
 function main() {
@@ -48,34 +94,16 @@ function main() {
   }
 
   // Build every offline service and export exactly one versioned archive before
-  // invoking the platform-specific packager. package-offline-images derives
-  // the image tag and archive name from the current root package version.
+  // invoking the platform-specific packager. CI passes the archive produced by
+  // its Linux image job, so desktop runners must package that artifact instead
+  // of trying to build Linux containers themselves.
   run(process.execPath, [path.join('scripts', 'sync-root-version.js')])
-  run(process.execPath, [path.join('scripts', 'package-offline-images.js'), architecture])
 
   const version = require(path.join(root, 'package.json')).version
-
-  const archive = path.join(
-    outputDirectory,
-    `box-local-engine-images-v${version}-linux-${architecture}.tar.gz`,
-  )
-  if (!fs.statSync(archive, { throwIfNoEntry: false })?.isFile()) {
-    fail(`镜像归档未生成：${archive}`)
-  }
-
-  if (kind === 'desktop') {
-    run(process.execPath, [
-      path.join('scripts', 'build-desktop-offline-installer.js'),
-      target,
-      archive,
-    ])
-  } else {
-    run(process.execPath, [
-      path.join('scripts', 'build-headless-server-package.js'),
-      architecture,
-      archive,
-    ])
-  }
+  const plan = createReleasePlan(kind, target, process.argv[4], version)
+  executeReleasePlan(kind, target, plan)
 }
 
 if (require.main === module) main()
+
+module.exports = { architectureForDesktopTarget, createReleasePlan, executeReleasePlan }
