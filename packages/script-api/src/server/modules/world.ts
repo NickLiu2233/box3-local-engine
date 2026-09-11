@@ -30,6 +30,26 @@ export declare class GameWorld {
   readonly serverId: string;
 
   /**
+   * Shared scene-light intensity. This updates the existing renderer uniform
+   * for every player; valid values are from `0` (dark) through `0.6`.
+   *
+   * @example
+   * world.globalLight = 0.12;
+   * @category rendering
+   */
+  globalLight: number;
+
+  /**
+   * Gamma used by the final render pass. This changes the displayed image
+   * without recompiling shaders; valid values are from `0.1` through `3`.
+   *
+   * @example
+   * world.gamma = 1.8;
+   * @category rendering
+   */
+  gamma: number;
+
+  /**
    
    * The entities in game can be searched using a jQuery selector-like syntax.
    * For more examples see {@link GameSelectorString}

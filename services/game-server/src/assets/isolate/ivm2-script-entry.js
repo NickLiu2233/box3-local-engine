@@ -1822,6 +1822,7 @@ class GameWorld {
         this.projectName = 'Project';
         this.currentTick = 0;
         this.lightMode = 'natural';
+        this.globalLight = 0.3;
         this.sunPhase = 0;
         this.sunFrequency = 0;
         this.lunarPhase = 0;
@@ -1833,6 +1834,7 @@ class GameWorld {
         this.skyTopLight = new GameRGBColor(0, 0, 0);
         this.skyFrontLight = new GameRGBColor(0, 0, 0);
         this.skyBackLight = new GameRGBColor(0, 0, 0);
+        this.gamma = 1.3;
         this.fogColor = new GameRGBColor(1, 1, 1);
         this.fogStartDistance = 0;
         this.fogHeightOffset = 0;
@@ -31362,6 +31364,8 @@ const WorldPhysicsBinding = new ScriptSynchronizer('physics', PhysicsRDA.stateSc
 ], null, null);
 const bindSky = new BindingFactory();
 const WorldSkyBinding = new ScriptSynchronizer('sky', SkyRDA.stateSchema, [
+    bindSky.num('globalLight', 'globalLight', 0, 0.6),
+    bindSky.num('gamma', 'gamma', 0.1, 3),
     bindSky.num('sunPhase', 'sunPhase', 0, 1),
     bindSky.num('sunFrequency', 'sunFrequency'),
     bindSky.num('lunarPhase', 'lunarPhase', 0, 1),

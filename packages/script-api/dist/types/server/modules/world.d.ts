@@ -15,8 +15,29 @@ export declare class GameWorld {
      * 上一次返回的 serverId 可加入同一房间，传入 `public` 则进入公共实例。
      */
     teleport(mapId: string, players: GamePlayerEntity[], serverId?: string): Promise<TeleportResult>;
-    /** 当前运行实例的 ID。公共实例为 `public`。 */
+    /**
+     * 当前运行实例的稳定 ID。普通实例使用20 位永久地图 ID，传送创建的
+     * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
+     */
     readonly serverId: string;
+    /**
+     * Shared scene-light intensity. This updates the existing renderer uniform
+     * for every player; valid values are from `0` (dark) through `0.6`.
+     *
+     * @example
+     * world.globalLight = 0.12;
+     * @category rendering
+     */
+    globalLight: number;
+    /**
+     * Gamma used by the final render pass. This changes the displayed image
+     * without recompiling shaders; valid values are from `0.1` through `3`.
+     *
+     * @example
+     * world.gamma = 1.8;
+     * @category rendering
+     */
+    gamma: number;
     /**
      
      * The entities in game can be searched using a jQuery selector-like syntax.

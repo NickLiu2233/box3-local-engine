@@ -214,9 +214,9 @@ for (const [name, command] of Object.entries({
   'dev': 'node apps/local-engine/src/launcher.js --creator',
   'package:images': 'node scripts/sync-root-version.js && node scripts/package-offline-images.js',
   'package:desktop':
-    'node scripts/sync-root-version.js && node scripts/build-desktop-offline-installer.js',
+    'node scripts/package-release.js desktop',
   'package:web':
-    'node scripts/sync-root-version.js && node scripts/build-headless-server-package.js',
+    'node scripts/package-release.js web',
 })) {
   requireScript(rootManifest, 'package.json', name, command)
 }

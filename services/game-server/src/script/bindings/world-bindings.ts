@@ -40,6 +40,10 @@ export const WorldSkyBinding = new ScriptSynchronizer<
   'sky',
   SkyRDA.stateSchema,
   [
+    // Render-safe shader parameters. These update existing global uniforms;
+    // map scripts never receive shader source or pipeline access.
+    bindSky.num('globalLight', 'globalLight', 0, 0.6),
+    bindSky.num('gamma', 'gamma', 0.1, 3),
     bindSky.num('sunPhase', 'sunPhase', 0, 1),
     bindSky.num('sunFrequency', 'sunFrequency'),
     bindSky.num('lunarPhase', 'lunarPhase', 0, 1),
