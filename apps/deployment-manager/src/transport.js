@@ -159,8 +159,8 @@ export function dockerPlatform() {
   return isWebManager()
     ? {
         name: '服务器 Docker',
-        hint: '请在服务器上启动 Docker 服务，然后重试。',
-        action: '重试连接',
+        hint: 'Docker 服务未连接。此管理页运行在 Docker 内；请通过 SSH 执行 `sudo systemctl start docker`，然后重新检测。',
+        action: '重新检测 Docker',
         busy: '正在检测…',
         canStart: false,
       }

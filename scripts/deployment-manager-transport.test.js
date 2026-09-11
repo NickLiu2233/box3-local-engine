@@ -242,6 +242,8 @@ test('Web local adapters choose files, clean listeners and download authenticate
   api.setWebManagerToken('token')
   assert.equal(api.dockerPlatform().canStart, false)
   assert.doesNotMatch(JSON.stringify(api.dockerPlatform()), /Desktop/)
+  assert.equal(api.dockerPlatform().action, '重新检测 Docker')
+  assert.match(api.dockerPlatform().hint, /sudo systemctl start docker/)
   globalThis.window.open = (...args) =>
     assert.deepEqual(args, ['https://example.com', '_blank', 'noopener,noreferrer'])
   await api.openExternal('https://example.com')
