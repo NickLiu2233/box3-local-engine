@@ -1,13 +1,11 @@
 import { ModelType } from '@box-local/apis';
 
 import type { EditClient } from 'src/client/edit/edit-client';
-import { clientConfig, getConfig } from 'src/config/client';
+import { clientConfig } from 'src/config/client';
 import { convertTimeStrToTimestamp } from 'src/utils/date';
-import { resolveRuntimeURL } from 'src/utils/runtime-url';
 
 import { fetchModelList, ModelAction, type ModelData } from '.';
 import {
-  dedupeProjectModelsByContent,
   getProjectModelDisplayName,
   projectModelsForPanel,
 } from './project-model-membership';
@@ -67,44 +65,6 @@ function loadProjectAssets(editor: EditClient) {
   );
 }
 
-function placedMeshPathsFromCurrentMap(editor: EditClient) {
-  const paths = new Set<string>();
-  Object.values(editor.state.replica.project.entitiesTree).forEach((node) => {
-    const meshPath = node.value?.mesh;
-    if (typeof meshPath === 'string' && meshPath.startsWith('mesh/')) {
-      paths.add(meshPath);
-    }
-  });
-  return paths;
-}
-
-async function loadLocalProjectModelPaths(editor: EditClient) {
-  const runtimeURL = String(getConfig().BACKEND_SERVER_URL || '').trim();
-  if (!runtimeURL) return placedMeshPathsFromCurrentMap(editor);
-  try {
-    const response = await fetch(
-      resolveRuntimeURL(runtimeURL, 'api/project-models'),
-      { cache: 'no-store' },
-    );
-    if (!response.ok) throw new Error('unable to load project model paths');
-    const data = await response.json();
-    const paths: unknown[] = Array.isArray(data?.projectModelPaths)
-      ? data.projectModelPaths
-      : [];
-    return new Set<string>(
-      paths.filter(
-        (path): path is string =>
-          typeof path === 'string' && path.startsWith('mesh/'),
-      ),
-    );
-  } catch {
-    // Do not expose the entire Local library just because the membership
-    // endpoint is temporarily unavailable. The current map is a safe,
-    // immediately available fallback until the next list refresh.
-    return placedMeshPathsFromCurrentMap(editor);
-  }
-}
-
 const boxesProjectModelSource: ProjectModelSource = {
   async load(editor, _scope, searchName) {
     return sortAndFilter(loadProjectAssets(editor), searchName);
@@ -153,15 +113,8 @@ const localProjectModelSource: ProjectModelSource = {
       return sortAndFilter(localModels, searchName);
     }
 
-    const placedMeshPaths = await loadLocalProjectModelPaths(editor);
-    const projectModels = projectModelsForPanel(
-      loadProjectAssets(editor),
-      placedMeshPaths,
-    );
-    return sortAndFilter(
-      dedupeProjectModelsByContent(projectModels),
-      searchName,
-    );
+    const projectModels = projectModelsForPanel(loadProjectAssets(editor));
+    return sortAndFilter(projectModels, searchName);
   },
 
   subscribe(editor, scope, listener) {

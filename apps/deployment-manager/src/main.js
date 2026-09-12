@@ -744,7 +744,7 @@ function setup() {
             ['立即备份', '需要在重要修改前手动保存时，请前往“数据与备份”使用右上角的“立即备份”。'],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网地址（IP 或域名）', config.publicHost, 'text', '例如 play.example.com；不填写协议') : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网地址（IP 或域名）', creatorPublicHost, 'text', '例如 create.example.com；不填写协议')}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '账号服务', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><input name="playNetworkMode" type="hidden" value="${playAccessMode}"/><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网地址（IP 或域名）', config.publicHost, 'text', '例如 play.example.com；不填写协议') : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网地址（IP 或域名）', creatorPublicHost, 'text', '例如 create.example.com；不填写协议')}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '账号服务', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
           '配置说明：访问地址和端口有什么影响？',
           [
             [
@@ -1412,6 +1412,8 @@ function bindEvents() {
     node.addEventListener('click', () => {
       captureSetupForm()
       const mode = node.dataset.playNetworkMode
+      if (!mode) return
+      state.config.playNetworkMode = mode
       if (mode === 'local') state.config.publicHost = '127.0.0.1'
       if (mode === 'lan' && state.config.lanIp) state.config.publicHost = state.config.lanIp
       if (
@@ -1420,7 +1422,7 @@ function bindEvents() {
       ) {
         state.config.publicHost = ''
       }
-      state.playAccessMode = mode || ''
+      state.playAccessMode = mode
       render()
     }),
   )
@@ -1660,7 +1662,7 @@ function captureSetupForm() {
       next[key] = state.config[key]
     }
   }
-  state.config = next
+  state.config = normalizeInactiveServicePorts(next)
 }
 
 function revealInvalidSetupField(form) {
@@ -1730,8 +1732,15 @@ function captureRawEnvironment() {
   if (textarea) state.environmentFile = textarea.value
 }
 
+function normalizeInactiveServicePorts(config) {
+  if (config.databaseMode !== 'external') config.databasePort = '5432'
+  if (config.redisMode !== 'external') config.redisPort = '6379'
+  return config
+}
+
 function normalizedConfig() {
   const config = { ...(state.config || {}) }
+  normalizeInactiveServicePorts(config)
   for (const key of numericConfigFields) {
     config[key] = Number(config[key])
   }
@@ -2152,6 +2161,7 @@ async function saveConfiguration(event) {
       config[key] = state.config[key]
     }
   }
+  normalizeInactiveServicePorts(config)
   config.databaseSsl = form.has('databaseSsl')
   config.autoBackupEnabled = form.has('autoBackupEnabled')
   config.registrationEnabled = form.has('registrationEnabled')

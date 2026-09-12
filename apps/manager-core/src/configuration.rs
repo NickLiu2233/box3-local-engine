@@ -581,8 +581,21 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                 "publicHost" | "creatorHost" => {
                     validate_creator_host(value)?;
                 }
-                "databasePort" | "redisPort" => {
-                    validate_port(value)?;
+                "databasePort" => {
+                    let required =
+                        config.get("databaseMode").and_then(Value::as_str) == Some("external");
+                    if required || !value.trim().is_empty() {
+                        validate_port(value)
+                            .map_err(|_| "PostgreSQL 端口必须是 1-65535 之间的整数".to_string())?;
+                    }
+                }
+                "redisPort" => {
+                    let required =
+                        config.get("redisMode").and_then(Value::as_str) == Some("external");
+                    if required || !value.trim().is_empty() {
+                        validate_port(value)
+                            .map_err(|_| "Redis 端口必须是 1-65535 之间的整数".to_string())?;
+                    }
                 }
                 _ if !value.trim().is_empty() => {
                     validate_host(value, key)?;
@@ -969,6 +982,10 @@ mod tests {
             "playPrewarmRuntimes":1,"creatorCpuLimit":0.5}))
             .is_ok()
         );
+        assert!(
+            validate(json!({"redisMode":"disabled","redisHost":"","redisPort":""})).is_ok(),
+            "disabled Redis must not require a hidden port"
+        );
         for bad in [
             json!({"playPort":0}),
             json!({"playPort":65536}),
@@ -990,5 +1007,18 @@ mod tests {
         ] {
             assert!(validate(bad.clone()).is_err(), "{bad}");
         }
+        assert_eq!(
+            validate(json!({"databaseMode":"external","databasePort":""})).unwrap_err(),
+            "PostgreSQL 端口必须是 1-65535 之间的整数"
+        );
+        assert!(validate(json!({"databaseMode":"managed","databasePort":""})).is_ok());
+        assert_eq!(
+            validate(json!({"redisMode":"external","redisPort":""})).unwrap_err(),
+            "Redis 端口必须是 1-65535 之间的整数"
+        );
+        assert_eq!(
+            validate(json!({"redisPort":"bad"})).unwrap_err(),
+            "Redis 端口必须是 1-65535 之间的整数"
+        );
     }
 }

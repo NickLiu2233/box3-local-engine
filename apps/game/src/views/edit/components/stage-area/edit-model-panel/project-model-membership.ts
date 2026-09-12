@@ -7,22 +7,17 @@ export function modelTypeForNewModel(scope: 'local' | 'project') {
 }
 
 /**
- * The local VOXA library is loaded into the runtime so models can be previewed
- * before placement. It is not project membership. A local model enters the
- * Project tab only after a map in the group references its canonical mesh
- * path; the `__local_<id>` preview aliases are never user-facing assets.
+ * Project contains every model asset recorded by extraProjectInfo. Local VOXA
+ * preview aliases are runtime-only resources and must never appear as project
+ * assets. Scene placement is deliberately not part of project membership.
  */
-export function projectModelsForPanel<T>(
-  models: T[],
-  placedMeshPaths?: ReadonlySet<string>,
-) {
+export function projectModelsForPanel<T>(models: T[]) {
   return models.filter((model) => {
     const meshPath = (model as { meshPath?: unknown }).meshPath;
     return (
       typeof meshPath === 'string' &&
       meshPath.startsWith('mesh/') &&
-      !LOCAL_LIBRARY_MESH_PATH.test(meshPath) &&
-      (!placedMeshPaths || placedMeshPaths.has(meshPath))
+      !LOCAL_LIBRARY_MESH_PATH.test(meshPath)
     );
   });
 }
@@ -42,21 +37,4 @@ export function shouldUseProjectModelAdapter(model: {
   libraryScope?: 'local' | 'project';
 }) {
   return model.libraryScope === 'project';
-}
-
-/**
- * Editing can temporarily expose the same model under more than one mesh path.
- * Project presents model content, so identical hashes are shown once.
- */
-export function dedupeProjectModelsByContent<
-  T extends { modelFileHash?: string },
->(models: T[]) {
-  const seenHashes = new Set<string>();
-  return models.filter((model) => {
-    const hash = model.modelFileHash?.trim();
-    if (!hash) return true;
-    if (seenHashes.has(hash)) return false;
-    seenHashes.add(hash);
-    return true;
-  });
 }

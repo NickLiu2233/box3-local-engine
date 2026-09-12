@@ -2,7 +2,6 @@ import { describe, expect, it } from '@jest/globals';
 import { ModelType } from '@box-local/apis';
 
 import {
-  dedupeProjectModelsByContent,
   getProjectModelDisplayName,
   modelTypeForNewModel,
   projectModelsForPanel,
@@ -26,16 +25,18 @@ describe('project model membership', () => {
     expect(modelTypeForNewModel('local')).toBe(ModelType.Private);
     expect(modelTypeForNewModel('project')).toBe(ModelType.Project);
   });
-  it('only lists local models in Project after a map has placed them', () => {
+  it('lists every project model whether or not a map has placed it', () => {
     expect(
       projectModelsForPanel(
         [
           { id: 1, meshPath: 'mesh/已放置.vb' },
           { id: 2, meshPath: 'mesh/未放置.vb' },
         ],
-        new Set(['mesh/已放置.vb']),
       ),
-    ).toEqual([{ id: 1, meshPath: 'mesh/已放置.vb' }]);
+    ).toEqual([
+      { id: 1, meshPath: 'mesh/已放置.vb' },
+      { id: 2, meshPath: 'mesh/未放置.vb' },
+    ]);
   });
 
   it('never exposes a local-library mesh alias in Project', () => {
@@ -45,7 +46,6 @@ describe('project model membership', () => {
           { id: 1, meshPath: 'mesh/New-model.vb' },
           { id: 22, meshPath: 'mesh/New-model__local_22.vb' },
         ],
-        new Set(['mesh/New-model.vb', 'mesh/New-model__local_22.vb']),
       ),
     ).toEqual([{ id: 1, meshPath: 'mesh/New-model.vb' }]);
   });
@@ -54,23 +54,12 @@ describe('project model membership', () => {
     expect(projectModelsForPanel([{ id: 1 }])).toEqual([]);
   });
 
-  it('shows identical edited model content only once', () => {
+  it('keeps separately named project files even when their content hashes match', () => {
     const hash = 'QmEditedModel';
-    const result = dedupeProjectModelsByContent([
+    const result = projectModelsForPanel([
       { id: 1, modelFileHash: hash, meshPath: 'mesh/模型.vb' },
       { id: 2, modelFileHash: hash, meshPath: 'mesh/模型副本.vb' },
     ]);
-    expect(result).toEqual([
-      { id: 1, modelFileHash: hash, meshPath: 'mesh/模型.vb' },
-    ]);
-  });
-
-  it('does not collapse different model content', () => {
-    expect(
-      dedupeProjectModelsByContent([
-        { id: 1, modelFileHash: 'QmFirst' },
-        { id: 2, modelFileHash: 'QmSecond' },
-      ]),
-    ).toHaveLength(2);
+    expect(result).toHaveLength(2);
   });
 });

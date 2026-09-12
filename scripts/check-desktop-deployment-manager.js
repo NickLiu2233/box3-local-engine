@@ -168,6 +168,15 @@ assert.ok(installConfigInput, 'missing InstallConfigInput contract')
 const normalizedConfigBody = frontend.match(/function normalizedConfig\(\) \{[\s\S]*?\n\}/)?.[0]
 assert.ok(normalizedConfigBody, 'missing normalizedConfig implementation')
 assert.match(normalizedConfigBody, /for \(const key of numericConfigFields\)/)
+assert.match(frontend, /function normalizeInactiveServicePorts\(config\)/)
+assert.match(frontend, /if \(config\.databaseMode !== 'external'\) config\.databasePort = '5432'/)
+assert.match(frontend, /if \(config\.redisMode !== 'external'\) config\.redisPort = '6379'/)
+assert.match(normalizedConfigBody, /normalizeInactiveServicePorts\(config\)/)
+const saveConfigurationBody = frontend.match(
+  /async function saveConfiguration\(event\) \{[\s\S]*?\n\}/,
+)?.[0]
+assert.ok(saveConfigurationBody, 'missing saveConfiguration implementation')
+assert.match(saveConfigurationBody, /normalizeInactiveServicePorts\(config\)/)
 const numericConfigFields = frontend.match(/const numericConfigFields = \[[\s\S]*?\n\]/)?.[0]
 assert.ok(numericConfigFields, 'missing numericConfigFields contract')
 const snakeToCamel = (value) => value.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
@@ -468,6 +477,11 @@ assert.match(
 )
 assert.doesNotMatch(frontend, /创作端访问地址/)
 assert.match(frontend, /data-play-network-mode="public"/)
+// The selected Play access mode must be part of FormData. Otherwise choosing
+// local only changes the host field while save_configuration_command keeps the
+// previously persisted `lan` mode and resolves it back to the LAN address.
+assert.match(frontend, /name="playNetworkMode" type="hidden" value="\$\{playAccessMode\}"/)
+assert.match(frontend, /state\.config\.playNetworkMode = mode/)
 assert.match(frontend, /const inferredPlayAccessMode/)
 assert.match(backend, /fn detect_lan_ip/)
 for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 'authPortalPort']) {
