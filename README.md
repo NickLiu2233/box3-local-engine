@@ -70,7 +70,8 @@ pnpm verify
 
 | 命令                            | 作用                                                |
 | ------------------------------- | --------------------------------------------------- |
-| `pnpm dev`                      | 启动 Creator 源码开发运行时                         |
+| `pnpm dev`                      | 启动完整源码开发栈（Creator、Play、VOXA、玩家服务、登录门户） |
+| `pnpm dev:creator`              | 仅启动 Creator 源码开发运行时                      |
 | `pnpm package:images`           | 构建当前 Linux 架构的完整离线镜像                   |
 | `pnpm package:desktop <target>` | 先构建并导出当前版本镜像，再生成桌面离线包          |
 | `pnpm package:web <arch>`       | 先构建并导出当前版本镜像，再生成 Linux Web 服务器包 |

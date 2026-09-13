@@ -16,7 +16,11 @@ const nextConfig = {
     '@box-local/vb',
     '@box-local/schema',
   ],
-  reactStrictMode: true,
+  // VOXA owns long-lived WebGL/regl resources. React Strict Mode intentionally
+  // remounts effects in development, which can destroy a buffer while the
+  // renderer's frame loop still holds it and produces `Vertex buffer is null`.
+  // Keep the production safety check while avoiding the dev-only double mount.
+  reactStrictMode: process.env.NODE_ENV === 'production',
   headers() {
     return [
       {

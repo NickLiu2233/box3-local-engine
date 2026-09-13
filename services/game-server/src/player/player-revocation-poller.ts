@@ -23,7 +23,7 @@ export function startPlayerRevocationPoller(game: GameServer, logger: Logger) {
   const configuredInterval = Number(process.env.BOX_PLAYER_REVOCATION_POLL_MS);
   const intervalMs = Number.isFinite(configuredInterval)
     ? Math.max(250, Math.min(30_000, configuredInterval))
-    : 1_000;
+    : 10_000;
   const configuredIdentityTtl = Number(process.env.BOX_RUNTIME_IDENTITY_TTL_MS);
   const identityTtlMs = Number.isFinite(configuredIdentityTtl) && configuredIdentityTtl >= 5_000
     ? configuredIdentityTtl

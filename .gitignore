@@ -1,6 +1,8 @@
 node_modules/
 .pnpm-store/
 .next/
+apps/game/.next-*/
+apps/game/.tsconfig.dev-*.json
 services/game-server/dist/
 coverage/
 apps/game/html-report/

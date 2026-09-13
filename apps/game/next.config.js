@@ -35,6 +35,13 @@ const config = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
   output: 'standalone',
+  // The source dev stack runs Creator, Play, and Player Service concurrently.
+  // Keep their Next build outputs separate so hot reloads cannot overwrite one
+  // another. Production keeps the normal `.next` directory.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  // Next may add its generated types/include entries to this file on first
+  // start. The dev orchestrator gives each concurrent app instance its own
+  // copy so Player Service, Creator, and Play cannot race on one tsconfig.
   outputFileTracingRoot: path.join(__dirname, '../..'),
   // Runtime-owned content must never be captured in the standalone server or
   // Docker image. These directories are mounted by the host after deployment.
@@ -232,6 +239,7 @@ const config = {
 
   typescript: {
     ignoreBuildErrors: true,
+    tsconfigPath: process.env.NEXT_TSCONFIG_PATH || 'tsconfig.json',
   },
 
   // TODO GameClient 通过 useEffect 初始化但没有提供 unmount，这里不能打开
