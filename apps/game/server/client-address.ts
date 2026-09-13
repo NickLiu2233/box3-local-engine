@@ -6,7 +6,7 @@ function normalizeAddress(value: string) {
   return isIP(address) ? address : '';
 }
 
-function firstHeader(req: NextApiRequest, name: string) {
+function firstHeader(req: Pick<NextApiRequest, 'headers'>, name: string) {
   const raw = req.headers[name];
   return Array.isArray(raw) ? raw[0] : raw || '';
 }
@@ -16,7 +16,10 @@ function firstHeader(req: NextApiRequest, name: string) {
  * BOX_TRUST_PROXY=true, so clients cannot spoof their rate-limit identity when
  * the service is exposed directly.
  */
-export function requestClientAddress(req: NextApiRequest, trustedForwarding = false) {
+export function requestClientAddress(
+  req: Pick<NextApiRequest, 'headers' | 'socket'>,
+  trustedForwarding = false,
+) {
   if (trustedForwarding || process.env.BOX_TRUST_PROXY === 'true') {
     const forwarded = firstHeader(req, 'x-forwarded-for')
       .split(',')

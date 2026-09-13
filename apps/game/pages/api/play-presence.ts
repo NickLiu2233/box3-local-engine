@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { findPlayWorld, getPlayWorlds } from '../../server/play-worlds'
 import { getPlayPresenceCounts, removePlayPresence, touchPlayPresence } from '../../server/play-presence'
-import { resolvePlayerServiceIdentity } from '../../server/player-service-client'
+import { requestPlayerServiceIp, resolvePlayerServiceIdentity } from '../../server/player-service-client'
 
 function mapReference(value: unknown) {
   return typeof value === 'string' && /^[a-z0-9][a-z0-9-]{0,62}$/.test(value) ? value : ''
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const world = reference ? findPlayWorld(reference) : undefined
   if (!world) return res.status(404).json({ message: '地图不存在' })
   try {
-    const { identity } = await resolvePlayerServiceIdentity(req, res, String(req.socket.remoteAddress || ''))
+    const { identity } = await resolvePlayerServiceIdentity(req, res, requestPlayerServiceIp(req))
     if (req.method === 'DELETE') removePlayPresence(world.publicId, identity.subjectId)
     else touchPlayPresence(world.publicId, identity.subjectId)
     return res.status(204).end()

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { RuntimePlayerIdentity } from '@box-local/utils/local-player-identity';
+import { requestClientAddress } from './client-address';
 
 type RuntimeIdentityResponse = {
   identity: RuntimePlayerIdentity;
@@ -34,7 +35,12 @@ function internalSecret() {
   return value;
 }
 
-function requestProtocol(req: NextApiRequest) {
+/** Always preserve the same canonical address when forwarding player requests. */
+export function requestPlayerServiceIp(req: Pick<NextApiRequest, 'headers' | 'socket'>) {
+  return requestClientAddress(req).slice(0, 128);
+}
+
+function requestProtocol(req: Pick<NextApiRequest, 'headers'>) {
   if (process.env.BOX_TRUST_PROXY === 'true') {
     const forwarded = req.headers['x-forwarded-proto'];
     return (Array.isArray(forwarded) ? forwarded[0] : forwarded) || 'http';
@@ -43,8 +49,8 @@ function requestProtocol(req: NextApiRequest) {
 }
 
 export async function resolvePlayerServiceIdentity(
-  req: NextApiRequest,
-  res: NextApiResponse,
+  req: Pick<NextApiRequest, 'headers'>,
+  res: Pick<NextApiResponse, 'setHeader'>,
   ip: string,
 ): Promise<RuntimeIdentityResponse> {
   const controller = new AbortController();

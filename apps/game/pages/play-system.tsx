@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import { isPlayAdminEnabled } from '../server/play-admin-security';
+import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../server/player-service-client';
 import styles from './play-system.module.css';
 
 const TOKEN_KEY = 'box-play-admin-token';
@@ -130,8 +131,8 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play' || !process.env.BOX_PLAY_LIBRARY_PATH || !isPlayAdminEnabled()) {
     return { notFound: true };
   }
-  const { hasAuthenticatedPlayer, playerLoginURL } = await import('../server/player-service-client');
-  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+  const { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } = await import('../server/player-service-client');
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', requestPlayerServiceIp(req), String(req.headers['user-agent'] || ''))) {
     return { redirect: { destination: playerLoginURL('play'), permanent: false } };
   }
   return { props: {} };

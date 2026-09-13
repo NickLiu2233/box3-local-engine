@@ -3,6 +3,7 @@ import type { CreatorCapability } from '../shared/creator-policy';
 import { hasCreatorCapability } from '../shared/creator-policy';
 import {
   PlayerAuthenticationRequiredError,
+  requestPlayerServiceIp,
   resolvePlayerServiceIdentity,
 } from './player-service-client';
 
@@ -79,7 +80,7 @@ export async function allowAuthenticatedCreatorApi(
     const { identity } = await resolvePlayerServiceIdentity(
       req,
       res,
-      req.socket.remoteAddress || '',
+      requestPlayerServiceIp(req),
     );
     if (!identity.creatorAccess) {
       res.status(403).json({ code: 'CREATOR_ACCESS_REQUIRED', message: '当前账号没有创作权限' });

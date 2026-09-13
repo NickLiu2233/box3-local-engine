@@ -29,7 +29,7 @@ import {
   type PlayerAccountIdentity,
   type PlayerProfileChanges,
 } from '../../components/player-account/player-account';
-import { playerLoginURL, resolvePlayerServiceIdentity } from '../../server/player-service-client';
+import { playerLoginURL, requestPlayerServiceIp, resolvePlayerServiceIdentity } from '../../server/player-service-client';
 import {
   compatibilityDiagnostics,
   importResponseError,
@@ -361,7 +361,7 @@ export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async (
         // The response is passed through so the player-service can renew its session cookie.
         // Next's server-side response implements the same header contract as NextApiResponse.
         res as NextApiResponse,
-        req.socket.remoteAddress || '',
+        requestPlayerServiceIp(req as NextApiRequest),
       );
       if (!identity.creatorAccess) {
         return { redirect: { destination: '/creator-access-required', permanent: false } };

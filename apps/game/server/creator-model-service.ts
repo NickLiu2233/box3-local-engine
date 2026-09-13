@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { requestPlayerServiceIp } from './player-service-client';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 
@@ -33,13 +34,10 @@ export function creatorModelEditorURL() {
  * an anonymous request.
  */
 export function creatorModelIdentityHeaders(req: NextApiRequest) {
-  const forwardedFor = req.headers['x-forwarded-for'];
   const forwardedProto = req.headers['x-forwarded-proto'];
   return {
     Cookie: String(req.headers.cookie || ''),
-    'X-Box-Player-IP': String(
-      Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor || req.socket.remoteAddress || '',
-    ).split(',')[0].trim(),
+    'X-Box-Player-IP': requestPlayerServiceIp(req),
     'X-Box-Player-Proto': String(
       Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto || 'http',
     ).split(',')[0].trim(),

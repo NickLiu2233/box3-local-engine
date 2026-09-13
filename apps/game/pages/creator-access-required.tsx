@@ -1,7 +1,7 @@
 import type { GetServerSideProps } from 'next';
 import Head from 'next/head';
 
-import { playerLoginURL, resolvePlayerServiceIdentity } from '../server/player-service-client';
+import { playerLoginURL, requestPlayerServiceIp, resolvePlayerServiceIdentity } from '../server/player-service-client';
 
 type CreatorAccessRequiredProps = {
   account: { displayName: string; username: string; userId: string } | null;
@@ -10,7 +10,7 @@ type CreatorAccessRequiredProps = {
 
 export const getServerSideProps: GetServerSideProps<CreatorAccessRequiredProps> = async ({ req, res }) => {
   try {
-    const { identity } = await resolvePlayerServiceIdentity(req, res, req.socket.remoteAddress || '');
+    const { identity } = await resolvePlayerServiceIdentity(req, res as unknown as import('next').NextApiResponse, requestPlayerServiceIp(req));
     if (identity.creatorAccess) {
       return { redirect: { destination: '/projects', permanent: false } };
     }

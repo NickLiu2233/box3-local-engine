@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ArenaBg } from '../../components/loading/arena';
-import { hasAuthenticatedPlayer, playerLoginURL } from '../../server/player-service-client';
+import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../server/player-service-client';
 import { getLocalProjectManager } from '../../server/local-project-manager';
 
 
@@ -22,7 +22,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
   } catch {
     return { notFound: true };
   }
-  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', req.socket.remoteAddress || '', String(req.headers['user-agent'] || ''))) {
+  if (!await hasAuthenticatedPlayer(req.headers.cookie || '', requestPlayerServiceIp(req), String(req.headers['user-agent'] || ''))) {
     return { redirect: { destination: playerLoginURL('creator'), permanent: false } };
   }
   return { props: {} };

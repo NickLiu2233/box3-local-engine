@@ -10,7 +10,7 @@ import { Error, ErrorProps } from '../../../components/error';
 import { PlayLoading } from '../../../components/play-loading';
 import { getArenaServerRenderProps } from '../../../server/server-render';
 import { hashToUrl } from '../../../server/utils/hash';
-import { hasAuthenticatedPlayer, playerLoginURL } from '../../../server/player-service-client';
+import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../../server/player-service-client';
 import { findPlayWorld } from '../../../server/play-worlds';
 import { getLocalProjectManager } from '../../../server/local-project-manager';
 
@@ -65,7 +65,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
   const from = process.env.BOX_DEPLOYMENT_MODE === 'creator' ? 'creator' : 'play';
   if (!await hasAuthenticatedPlayer(
     context.req.headers.cookie || '',
-    context.req.socket.remoteAddress || '',
+    requestPlayerServiceIp(context.req),
     String(context.req.headers['user-agent'] || ''),
   )) {
     return { redirect: { destination: playerLoginURL(from), permanent: false } };

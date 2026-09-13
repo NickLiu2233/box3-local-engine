@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { requestPlayerServiceIp } from './player-service-client';
 
 function internalURL() {
   const value = (process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || '').trim();
@@ -24,7 +25,7 @@ export async function proxyPlayerProfile(
         Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
         Cookie: String(req.headers.cookie || ''),
         'Content-Type': 'application/json',
-        'X-Box-Player-IP': String(req.socket.remoteAddress || ''),
+        'X-Box-Player-IP': requestPlayerServiceIp(req),
         'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
       },
       body: JSON.stringify(req.body || {}),

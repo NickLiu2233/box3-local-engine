@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { requestPlayerServiceIp } from '../../server/player-service-client';
 
 function internalURL() {
   const value = (process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || '').trim();
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
         Cookie: String(req.headers.cookie || ''),
         'Content-Type': 'application/json',
-        'X-Box-Player-IP': String(req.socket.remoteAddress || ''),
+        'X-Box-Player-IP': requestPlayerServiceIp(req),
         'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
       },
       body: req.method === 'PATCH' ? JSON.stringify(req.body || {}) : undefined,

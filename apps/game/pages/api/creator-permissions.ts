@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { allowCreatorApi } from '../../server/creator-api-security';
 import {
   PlayerAuthenticationRequiredError,
+  requestPlayerServiceIp,
   resolvePlayerServiceIdentity,
 } from '../../server/player-service-client';
 
@@ -15,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).end();
   }
   try {
-    const { identity } = await resolvePlayerServiceIdentity(req, res, req.socket.remoteAddress || '');
+    const { identity } = await resolvePlayerServiceIdentity(req, res, requestPlayerServiceIp(req));
     if (!identity.creatorAccess) {
       return res.status(403).json({ code: 'CREATOR_ACCESS_REQUIRED', message: '当前账号没有创作权限' });
     }
