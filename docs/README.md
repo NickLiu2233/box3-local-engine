@@ -8,6 +8,7 @@
 | ---------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | 桌面启动器首次部署     | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
 | 无图形 Linux 服务器    | [Linux Web 管理端](./linux-web-manager.md)            | [安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)       |
+| 云服务器快速安装       | [云服务器快速部署](./cloud-server-quickstart.md)      | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                      |
 | 创建和发布地图         | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                          |
 | 部署 Play 或公开服务器 | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                  |
 | 部署 VOXA              | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                            |
