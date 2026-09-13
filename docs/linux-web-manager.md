@@ -152,6 +152,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 ```bash
 ./status.sh
+./start.sh
 ./logs.sh player-service
 ./logs.sh managed-postgres
 ./stop.sh
@@ -159,11 +160,28 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 ```
 
 - `status.sh` 查看服务状态；
+- `start.sh` 读取已有 `.env`，按 `COMPOSE_PROFILES` 启动服务；
 - `logs.sh [服务名]` 跟踪最近 300 行日志；
 - `stop.sh` 停止服务，但不删除工程、地图、许可证、备份或 Docker 数据卷；
 - `install.sh` 可重新校验镜像并恢复 Web 管理端，已有配置不会被覆盖。
 
 容器使用 `restart: unless-stopped`，服务器重启后会恢复此前运行的服务。Web 页面只能管理固定白名单内的业务服务与内置数据库。
+
+纯命令行启动的等价命令为：
+
+```bash
+docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait
+```
+
+该命令不会创建或覆盖 `.env`。如需 systemd 显式拉起，可将 `ExecStart` 指向包目录中的 `start.sh`；不建议用 cron 反复执行。
+
+只启动 Play 及其玩家依赖（不启动 Creator/VOXA）时，可使用一次性 profile 覆盖：
+
+```bash
+BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh
+```
+
+其中 `auth-portal` 是参考登录门户，`server-manager` 是 Web 管理端；如果使用自建登录页或不需要 Web 管理，可分别从列表中删除。该覆盖只对本次命令生效，不会修改 `.env`。
 
 ## 10. 备份和升级
 

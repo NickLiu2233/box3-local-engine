@@ -141,7 +141,7 @@ function main() {
   // The template copies keep their committed mode (0644), and writeFileSync
   // only applies `mode` when it creates the file. Set the executable bit
   // explicitly so the unpacked ZIP can run ./install.sh directly.
-  for (const file of ['install.sh', 'status.sh', 'logs.sh', 'stop.sh', 'verify.sh']) {
+  for (const file of ['install.sh', 'start.sh', 'status.sh', 'logs.sh', 'stop.sh', 'verify.sh']) {
     fs.chmodSync(path.join(packageRoot, file), 0o755)
   }
 

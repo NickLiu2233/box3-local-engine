@@ -107,6 +107,7 @@ Rust 管理端默认限制为 128 MB、0.5 CPU，实际空闲内存仅为数 MiB
 
 ```bash
 ./status.sh
+./start.sh
 ./logs.sh server-manager
 ./logs.sh player-service
 ./logs.sh managed-postgres
@@ -115,6 +116,8 @@ Rust 管理端默认限制为 128 MB、0.5 CPU，实际空闲内存仅为数 MiB
 ```
 
 - `status.sh`：查看服务状态；
+- `start.sh`：读取已有 `.env`，按 `COMPOSE_PROFILES` 启动服务；
+- 只启动 Play 相关服务：`BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh`（一次性覆盖，不修改 `.env`）；
 - `logs.sh [服务名]`：查看并跟踪最近 300 行日志；
 - `stop.sh`：停止服务，不删除数据卷、工程、许可证或备份；
 - `install.sh`：重新校验镜像并恢复管理端，不覆盖已有配置。
