@@ -4,20 +4,21 @@
 
 ## 推荐阅读顺序
 
-| 目标                   | 主文档                                                | 必要补充                                                                                       |
-| ---------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 桌面启动器首次部署     | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
-| 无图形 Linux 服务器    | [Linux Web 管理端](./linux-web-manager.md)            | [安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)       |
-| 云服务器快速安装       | [云服务器快速部署](./cloud-server-quickstart.md)      | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                      |
-| 创建和发布地图         | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                          |
-| 部署 Play 或公开服务器 | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                  |
-| 部署 VOXA              | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                            |
-| 接入登录和玩家账号     | [自建登录门户](./self-hosted-login.md)                | [Player Service API](./player-service-api.md)、[玩家身份与权限](./player-identity.md)          |
-| 配置 PostgreSQL/Redis  | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
-| 开发或修复代码         | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                    |
-| 构建镜像和发行包       | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                |
-| 会议或业务介绍         | [业务方案对比](./business-comparison.md)              | [系统架构](./architecture.md)                                                                  |
-| 申请个人学习许可证     | [个人学习许可证](./licensing.md)                      | [构建、分发与 CI](./release-and-distribution.md)                                               |
+| 目标                       | 主文档                                                | 必要补充                                                                                       |
+| -------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 桌面启动器首次部署         | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
+| 无图形 Linux 服务器        | [Linux Web 管理端](./linux-web-manager.md)            | [安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)       |
+| 云服务器快速安装           | [云服务器快速部署](./cloud-server-quickstart.md)      | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                      |
+| 创建和发布地图             | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                          |
+| 部署 Play 或公开服务器     | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                  |
+| 部署 VOXA                  | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                            |
+| 接入登录和玩家账号         | [自建登录门户](./self-hosted-login.md)                | [Player Service API](./player-service-api.md)、[玩家身份与权限](./player-identity.md)          |
+| 配置 PostgreSQL/Redis      | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
+| 开发或修复代码             | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                    |
+| Fork、提交 PR 和构建贡献包 | [贡献者指南](../CONTRIBUTING.md)                      | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)     |
+| 构建镜像和发行包           | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                |
+| 会议或业务介绍             | [业务方案对比](./business-comparison.md)              | [系统架构](./architecture.md)                                                                  |
+| 申请个人学习许可证         | [个人学习许可证](./licensing.md)                      | [构建、分发与 CI](./release-and-distribution.md)                                               |
 
 ## 文档职责
 
@@ -46,6 +47,7 @@
 
 - [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
 - [开发者与协作手册](./developer-guide.md)：开发环境、UI 预览、测试和提交要求。
+- [贡献者指南](../CONTRIBUTING.md)：从 fork、分支、源码开发到测试、镜像和桌面 App 构建的完整流程。
 - [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
 - [图形化与 Web 启动器统一记录](./launcher-parity-audit.md)：共用 Rust 核心、平台适配、修复与验证范围。
 - [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
@@ -57,6 +59,7 @@
 ## 当前发行边界
 
 - 桌面启动器管理 Creator、Play、VOXA、Player Service 和参考登录门户五个业务服务。
+- Apple Silicon 本地桌面构建产物位于 `apps/local-engine/dist/desktop-installers/`，文件名为 `BOX-Local-Engine-<version>-macos-arm64.zip`；解压后包含 `BOX3 Engine Launcher.app`。
 - 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
 - `apps/license-server/` 是不连接数据库的内部本机签发器，不进入启动器、Linux Web 部署包、业务镜像或公开 Release；发行物只包含验签公钥和许可证校验能力。

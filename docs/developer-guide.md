@@ -11,9 +11,13 @@ cp .env.docker.example .env
 pnpm verify
 ```
 
+完整的 fork、分支、提交、测试、镜像和桌面包流程见根目录[贡献者指南](../CONTRIBUTING.md)。本文件聚焦源码开发和调试。
+
 常用入口：`pnpm dev`（完整源码开发栈）、`pnpm dev:creator`（仅 Creator）、`pnpm package:images`（离线镜像）、`pnpm package:desktop` 和 `pnpm package:web`（发行包）。桌面启动器位于 `apps/deployment-manager/`；服务级源码调试命令位于对应子项目中。
 
 `pnpm dev` 默认不启动 Docker 容器，而是直接以源码热更新模式启动 Creator、Play、Player Service、VOXA 和参考登录门户，并使用 `.env` 中已有的 PostgreSQL/Redis。默认地址为 Creator `3127`、Play `3121`、VOXA `3123`、Player Service `3124`、登录门户 `3125`；运行时端口为 Creator `9966/9967`、Play `9971`。它会为每个 Next 实例使用独立的 `.next-*` 和临时 tsconfig，避免多个开发服务互相覆盖构建输出。如果没有可用的基础服务，可明确执行 `pnpm dev --infra` 启动仓库内 Docker PostgreSQL/Redis；这会占用宿主机的 5432/6379 端口。
+
+`pnpm dev` 直接运行源码，不使用业务镜像。它只在显式传入 `--infra` 时启动仓库内 PostgreSQL/Redis；默认使用 `.env` 中的数据库和 Redis。三个 Game Next 实例使用独立 `.next-*` 和临时 tsconfig，避免互相覆盖构建输出。`apps/local-engine` 和 `services/game-server` 的运行时子进程修改后通常需要重启开发栈。
 
 ## 代码边界
 
@@ -31,6 +35,17 @@ Creator 读取可编辑工程，Play 只读取发布快照。不要跨越这条�
 
 ```bash
 pnpm verify
+```
+
+快速反馈也可以使用：
+
+```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm --filter @box-local/voxa build
+pnpm --filter @box-local/game-server test
+pnpm --filter @box-local/local-engine test
 ```
 
 修改兼容接口、发布包、永久地图 ID、脚本 API 或运行时协议时，先阅读[系统架构](./architecture.md)和[对齐基线](./boxes-parity.md)，并补充回归测试。

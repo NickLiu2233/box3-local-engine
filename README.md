@@ -13,6 +13,7 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 | 创建、导入、编辑和发布地图              | [地图作品、地图组与发布包](docs/projects.md)             |
 | 配置端口、数据库、容量与安全项          | [配置参考](docs/configuration-reference.md)              |
 | 开发或调试本仓库                        | [开发者与协作手册](docs/developer-guide.md)              |
+| Fork、提交 PR 和贡献代码                | [贡献者指南](CONTRIBUTING.md)                            |
 | 构建镜像、App 或 GitHub Release         | [构建、分发与 CI](docs/release-and-distribution.md)      |
 | 浏览全部专题                            | [文档中心](docs/README.md)                               |
 
@@ -61,21 +62,63 @@ Tauri 启动器位于 `apps/deployment-manager/`，负责导入镜像、保存�
 
 ```bash
 corepack enable
+corepack prepare pnpm@10.12.1 --activate
 pnpm install --frozen-lockfile
 cp .env.docker.example .env
-pnpm verify
+```
+
+启动完整源码开发栈：
+
+```bash
+pnpm dev
+```
+
+它直接运行源码并启动 Creator、Play、VOXA、Player Service 和登录门户：
+
+| 服务           | 地址                     |
+| -------------- | ------------------------ |
+| Creator        | `http://127.0.0.1:3127/` |
+| Play           | `http://127.0.0.1:3121/` |
+| VOXA           | `http://127.0.0.1:3123/` |
+| Player Service | `http://127.0.0.1:3124/` |
+| 登录门户       | `http://127.0.0.1:3125/` |
+
+`pnpm dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会自动启动 Docker 基础容器。没有可用基础服务时才执行：
+
+```bash
+pnpm dev --infra
+```
+
+只启动 Creator：
+
+```bash
+pnpm dev:creator
 ```
 
 常用命令：
 
-| 命令                            | 作用                                                |
-| ------------------------------- | --------------------------------------------------- |
-| `pnpm dev`                      | 启动完整源码开发栈（Creator、Play、VOXA、玩家服务、登录门户） |
-| `pnpm dev:creator`              | 仅启动 Creator 源码开发运行时                      |
-| `pnpm package:images`           | 构建当前 Linux 架构的完整离线镜像                   |
-| `pnpm package:desktop <target>` | 先构建并导出当前版本镜像，再生成桌面离线包          |
-| `pnpm package:web <arch>`       | 先构建并导出当前版本镜像，再生成 Linux Web 服务器包 |
-| `pnpm verify`                   | 运行格式、lint、类型检查和全部回归                  |
+| 命令                            | 作用                               |
+| ------------------------------- | ---------------------------------- |
+| `pnpm dev`                      | 启动完整源码开发栈                 |
+| `pnpm dev:creator`              | 仅启动 Creator 源码运行时          |
+| `pnpm package:images <arch>`    | 构建并导出完整 Linux 镜像归档      |
+| `pnpm package:desktop <target>` | 构建桌面离线包                     |
+| `pnpm package:web <arch>`       | 构建 Linux Web 服务器包            |
+| `pnpm verify`                   | 运行格式、lint、类型检查和全部回归 |
+
+构建 Apple Silicon macOS 桌面包：
+
+```bash
+pnpm package:desktop macos-arm64
+```
+
+输出位于：
+
+```text
+apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.1.1-macos-arm64.zip
+```
+
+解压后包含 `BOX3 Engine Launcher.app`。完整开发、测试、发布和 PR 要求见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 桌面和 Linux 服务器的业务部署由对应管理端完成。服务级源码命令、许可证签发器和内部迁移工具只保留在各自项目目录，避免把运维细节混入仓库入口。
 

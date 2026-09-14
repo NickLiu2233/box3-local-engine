@@ -8,11 +8,32 @@
 pnpm verify
 pnpm audit --prod --audit-level=high
 pnpm package:images <amd64|arm64>
-pnpm package:desktop <target>
-pnpm package:web <amd64|arm64>
+pnpm package:desktop <target> [镜像归档.tar.gz]
+pnpm package:web <amd64|arm64> [镜像归档.tar.gz]
 ```
 
 `package:desktop` 和 `package:web` 会先顺序构建 Creator、Play、VOXA、玩家服务、登录门户和 Linux Web 管理端，并通过 `docker image save` 导出当前 `package.json` 版本对应的完整镜像归档，再生成目标发行包。桌面命令的目标格式为 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 或 `linux-arm64`；Web 命令的架构为 `amd64` 或 `arm64`。开发时可附加服务名执行 `pnpm package:images arm64 player-service`，只构建并导出单个镜像；桌面包必须在目标系统和 CPU 架构的原生构建机生成。
+
+默认输出位置：
+
+- 镜像归档：`apps/local-engine/dist/images/box-local-engine-images-v<version>-linux-<arch>.tar.gz`
+- macOS 桌面包：`apps/local-engine/dist/desktop-installers/BOX-Local-Engine-<version>-macos-arm64.zip`
+- Linux Web 包：`apps/local-engine/dist/server-packages/BOX3-Engine-Server-<version>-linux-<arch>.zip`
+
+Apple Silicon 本地构建：
+
+```bash
+pnpm package:desktop macos-arm64
+```
+
+已有匹配版本和架构的镜像归档时，可以跳过镜像重建：
+
+```bash
+pnpm package:desktop macos-arm64 \
+  apps/local-engine/dist/images/box-local-engine-images-v0.1.1-linux-arm64.tar.gz
+```
+
+解压后启动器位于 `BOX-Local-Engine-<version>-macos-arm64/BOX3 Engine Launcher.app`。VOXA standalone 输出不是桌面 App。
 
 公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
 
