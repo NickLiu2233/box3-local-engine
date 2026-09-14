@@ -33,6 +33,7 @@
 - [游玩端部署](./play-deployment.md)：`.boxplay` 导入、地图开关、只读模式、更新和公网部署。
 - [VOXA 部署](./voxa-deployment.md)：模型工程、地图引用和本地数据备份。
 - [地图作品、地图组与发布包](./projects.md)：主地图/副地图、`.boxproject`、`.boxplay` 和共享资源。
+- [ArenaPro CLI 接入 BOX Creator 设计](./arenapro-cli-creator-adapter.md)：复用 `apc`、多服务器 Profile、Creator API、权限认证和分阶段适配。
 
 ### 玩家身份与数据
 

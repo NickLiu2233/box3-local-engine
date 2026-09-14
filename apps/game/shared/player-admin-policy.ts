@@ -7,6 +7,7 @@ export const PLAYER_ADMIN_CAPABILITIES = [
   'players.create',
   'players.export',
   'passwords.reset',
+  'creator-tokens.manage',
   'audit.view',
 ] as const;
 
@@ -30,6 +31,7 @@ export const PLAYER_ADMIN_CAPABILITY_META: Record<PlayerAdminCapability, {
   'players.create': { label: '新增普通玩家', description: '创建普通玩家账号，不能创建管理员或服主' },
   'players.export': { label: '导出玩家数据', description: '导出玩家目录 CSV' },
   'passwords.reset': { label: '重置玩家密码', description: '为普通玩家设置临时密码并撤销旧会话' },
+  'creator-tokens.manage': { label: '管理 Creator CLI Token', description: '为已获创作权限的玩家签发或撤销 CLI Token，不会提升其创作权限' },
   'audit.view': { label: '查看安全审计', description: '查看登录风险、关联线索和管理操作记录' },
 };
 

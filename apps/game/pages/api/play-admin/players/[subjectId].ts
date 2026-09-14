@@ -1,12 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   createIdentityBan,
+  createCreatorCliToken,
   deleteManagedPlayer,
   getManagedPlayerDetails,
   resetManagedPlayerPassword,
   revokeManagedPlayerSessions,
   revokeManagedPlayerSession,
   revokeIdentityBan,
+  revokeCreatorCliToken,
   updateManagedPlayer,
 } from '../../../../server/local-player-identity';
 import {
@@ -59,6 +61,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       if (command.action === 'reset-password') {
         return res.status(200).json(await resetManagedPlayerPassword(subjectId, command.password, context));
+      }
+      if (command.action === 'create-cli-token') {
+        return res.status(201).json(await createCreatorCliToken(subjectId, command, context));
+      }
+      if (command.action === 'revoke-cli-token') {
+        return res.status(200).json(await revokeCreatorCliToken(subjectId, command.tokenId, context));
       }
       if (command.action === 'ban-ip' || command.action === 'ban-device') {
         return res.status(200).json(await createIdentityBan(subjectId, {

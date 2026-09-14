@@ -23,6 +23,7 @@ import {
 } from '../shared/player-admin-policy';
 import {
   normalizeCreatorCapabilities,
+  type CreatorCapability,
 } from '../shared/creator-policy';
 import { requestClientAddress } from './client-address';
 import { hasTrustedPlayerAuthKey } from './player-auth-security';
@@ -167,6 +168,7 @@ export type PlayerAdminActivity = {
 
 export type ManagedPlayerDetails = {
   player: PlayerAccountView;
+  cliTokens: CreatorCliTokenView[];
   sessions: Array<{
     sessionId: string;
     createdAt: string;
@@ -393,6 +395,25 @@ async function initialize() {
       await database.query(`
         CREATE INDEX IF NOT EXISTS local_sessions_principal
         ON ${table('sessions')} (principal_id)
+      `);
+      await database.query(`
+        CREATE TABLE IF NOT EXISTS ${table('creator_cli_tokens')} (
+          id TEXT PRIMARY KEY,
+          principal_id UUID NOT NULL REFERENCES ${table('principals')}(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          scopes TEXT[] NOT NULL DEFAULT '{}'::text[],
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          created_by TEXT NOT NULL DEFAULT '',
+          last_used_at TIMESTAMPTZ,
+          last_used_ip TEXT NOT NULL DEFAULT '',
+          revoked_at TIMESTAMPTZ,
+          revoked_by TEXT NOT NULL DEFAULT ''
+        )
+      `);
+      await database.query(`
+        CREATE INDEX IF NOT EXISTS local_creator_cli_tokens_principal
+        ON ${table('creator_cli_tokens')} (principal_id, created_at DESC)
       `);
       await database.query(`
         CREATE TABLE IF NOT EXISTS ${table('player_map_library')} (
@@ -791,6 +812,33 @@ export async function resolvePlayerIdentity(req: NextApiRequest, res: NextApiRes
   const row = await findSession(database, sessionToken(req), req);
   if (!row?.user_id) throw new Error('AUTH_REQUIRED');
   await database.query(`UPDATE ${table('sessions')} SET device_hash = $2 WHERE token_hash = $1 AND device_hash = ''`, [tokenHash(sessionToken(req)), currentDeviceHash]);
+  return rowToIdentity(row);
+}
+
+/** Resolves a long-lived CLI token issued from player management. The raw token is never stored. */
+export async function resolveCreatorCliTokenIdentity(token: string, req: NextApiRequest) {
+  if (!/^bxc_[a-f0-9]{18}_[A-Za-z0-9_-]{32,}$/i.test(token)) throw new Error('AUTH_REQUIRED');
+  const database = getPool();
+  if (!database) throw new Error('玩家身份服务需要配置 PostgreSQL');
+  await initialize();
+  const ipBan = await activeIdentityBan(database, 'ip', requestIp(req));
+  if (ipBan) throw new Error('IP_BANNED');
+  const hash = createHmac('sha256', identitySecret()).update(token).digest('hex');
+  const result = await database.query<IdentityRow & { scopes: string[] }>(`
+    SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
+      u.id AS user_id, u.username, u.box_id, u.user_key, u.display_name, u.avatar_hash, u.avatar_skin_id,
+      u.creator_access, u.creator_permissions, u.role, u.status, t.scopes
+    FROM ${table('creator_cli_tokens')} t
+    JOIN ${table('principals')} p ON p.id = t.principal_id
+    JOIN ${table('users')} u ON u.principal_id = p.id
+    WHERE t.token_hash = $1 AND t.revoked_at IS NULL
+  `, [hash]);
+  const row = result.rows[0];
+  if (!row?.user_id || row.status !== 'active' || !row.creator_access) throw new Error('AUTH_REQUIRED');
+  const allowed = new Set(normalizeCreatorCapabilities(row.creator_permissions));
+  row.creator_permissions = normalizeCreatorCapabilities(row.scopes)
+    .filter((scope) => scope === 'projects.view' || allowed.has(scope));
+  await database.query(`UPDATE ${table('creator_cli_tokens')} SET last_used_at = NOW(), last_used_ip = $2 WHERE token_hash = $1`, [hash, requestIp(req)]);
   return rowToIdentity(row);
 }
 
@@ -1544,7 +1592,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   `, [subjectId]);
   const row = result.rows[0];
   if (!row) throw new Error('玩家不存在');
-  const [sessions, history, adminHistory, relatedAccounts, identityBans] = await Promise.all([
+  const [sessions, history, adminHistory, relatedAccounts, identityBans, cliTokens] = await Promise.all([
     database.query<{
       session_id: string; created_at: string | Date; last_seen_at: string | Date;
       expires_at: string | Date; created_ip: string; last_seen_ip: string; user_agent: string;
@@ -1557,6 +1605,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       ORDER BY last_seen_at DESC
       LIMIT 20
     `, [subjectId]),
+    listCreatorCliTokens(subjectId),
     database.query<{
       created_at: string | Date; ip_address: string; user_agent: string; device_hash: string;
     }>(`
@@ -1609,6 +1658,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   ]);
   return {
     player: toView(rowToIdentity(row), row),
+    cliTokens,
     sessions: sessions.rows.map((session) => ({
       sessionId: session.session_id,
       createdAt: new Date(session.created_at).toISOString(),
@@ -1651,6 +1701,79 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
       bannedUntil: ban.banned_until ? new Date(ban.banned_until).toISOString() : undefined,
     })),
   };
+}
+
+export type CreatorCliTokenView = {
+  id: string;
+  name: string;
+  scopes: CreatorCapability[];
+  createdAt: string;
+  createdBy: string;
+  lastUsedAt?: string;
+  lastUsedIp: string;
+  revokedAt?: string;
+};
+
+export async function listCreatorCliTokens(subjectId: string): Promise<CreatorCliTokenView[]> {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const result = await database.query<{
+    id: string; name: string; scopes: string[]; created_at: string | Date; created_by: string;
+    last_used_at: string | Date | null; last_used_ip: string; revoked_at: string | Date | null;
+  }>(`SELECT id, name, scopes, created_at, created_by, last_used_at, last_used_ip, revoked_at
+      FROM ${table('creator_cli_tokens')} WHERE principal_id = $1 ORDER BY created_at DESC`, [subjectId]);
+  return result.rows.map((row) => ({
+    id: row.id, name: row.name, scopes: normalizeCreatorCapabilities(row.scopes),
+    createdAt: new Date(row.created_at).toISOString(), createdBy: row.created_by || '',
+    lastUsedAt: row.last_used_at ? new Date(row.last_used_at).toISOString() : undefined,
+    lastUsedIp: row.last_used_ip || '',
+    revokedAt: row.revoked_at ? new Date(row.revoked_at).toISOString() : undefined,
+  }));
+}
+
+export async function createCreatorCliToken(
+  subjectId: string,
+  values: { name: string; scopes: unknown },
+  context?: AdminActionContext,
+) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const name = values.name.trim();
+  if (!name || name.length > 80) throw new Error('Token 名称无效');
+  const requested = normalizeCreatorCapabilities(values.scopes);
+  const target = await database.query<{ creator_access: boolean; creator_permissions: string[]; status: string }>(
+    `SELECT creator_access, creator_permissions, status FROM ${table('users')} WHERE principal_id = $1`, [subjectId],
+  );
+  const user = target.rows[0];
+  if (!user || !user.creator_access || user.status !== 'active') throw new Error('目标玩家没有有效的创作权限');
+  const granted = new Set(normalizeCreatorCapabilities(user.creator_permissions));
+  if (requested.some((scope) => scope !== 'projects.view' && !granted.has(scope))) {
+    throw new Error('CLI Token 不能授予玩家尚未拥有的创作权限');
+  }
+  const id = randomBytes(9).toString('hex');
+  const token = `bxc_${id}_${randomBytes(32).toString('base64url')}`;
+  const tokenHash = createHmac('sha256', identitySecret()).update(token).digest('hex');
+  await database.query(`INSERT INTO ${table('creator_cli_tokens')}
+      (id, principal_id, name, token_hash, scopes, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)`,
+    [id, subjectId, name, tokenHash, requested, context?.actor || 'server-owner']);
+  await audit(database, 'creator.cli-token.create', subjectId, { tokenId: id, name, scopes: requested }, context);
+  return { id, name, scopes: requested, token };
+}
+
+export async function revokeCreatorCliToken(subjectId: string, tokenId: string, context?: AdminActionContext) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const result = await database.query(`UPDATE ${table('creator_cli_tokens')}
+      SET revoked_at = NOW(), revoked_by = $3
+      WHERE id = $1 AND principal_id = $2 AND revoked_at IS NULL RETURNING name`,
+    [tokenId, subjectId, context?.actor || 'server-owner']);
+  if (!result.rowCount) throw new Error('CLI Token 不存在或已撤销');
+  await audit(database, 'creator.cli-token.revoke', subjectId, { tokenId, name: result.rows[0].name }, context);
+  return { revoked: true };
 }
 
 async function audit(

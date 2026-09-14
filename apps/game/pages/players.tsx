@@ -59,6 +59,7 @@ type Player = {
 
 type PlayerDetails = {
   player: Player;
+  cliTokens: Array<{ id: string; name: string; scopes: CreatorCapability[]; createdAt: string; createdBy: string; lastUsedAt?: string; lastUsedIp: string; revokedAt?: string }>;
   sessions: Array<{
     sessionId: string;
     createdAt: string;
@@ -116,7 +117,7 @@ type AdminOverview = {
 };
 
 type AdminSection = 'overview' | 'players' | 'sessions' | 'bans' | 'roles' | 'audit';
-type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'userKey' | 'sessions' | 'logins' | 'ban' | 'password' | 'related' | 'history' | 'danger';
+type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'userKey' | 'sessions' | 'logins' | 'ban' | 'password' | 'cliTokens' | 'related' | 'history' | 'danger';
 type ConsoleTheme = 'system' | 'light' | 'dark';
 type AdminActor = {
   displayName: string;
@@ -205,6 +206,7 @@ const detailTabMeta: Record<PlayerDetailTab, { title: string }> = {
   logins: { title: '登录记录' },
   ban: { title: '封禁管理' },
   password: { title: '密码重置' },
+  cliTokens: { title: 'Creator CLI Token' },
   related: { title: '关联线索' },
   history: { title: '管理记录' },
   danger: { title: '删除身份' },
@@ -434,6 +436,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const [activityPage, setActivityPage] = useState(1);
   const [activityTotalPages, setActivityTotalPages] = useState(1);
   const [newPassword, setNewPassword] = useState('');
+  const [issuedCliToken, setIssuedCliToken] = useState('');
   // Creator and Play use the charcoal BOX3 surface by default. Keep the same
   // default here while preserving the user's existing theme selection.
   const [theme, setTheme] = useState<ConsoleTheme>('dark');
@@ -850,6 +853,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const canCreatePlayers = hasCapability('players.create');
   const canExportPlayers = hasCapability('players.export');
   const canResetPasswords = hasCapability('passwords.reset');
+  const canManageCreatorTokens = hasCapability('creator-tokens.manage');
   const canViewAudit = hasCapability('audit.view');
   const canSelectPlayers = canManageProfiles || canManageBans || canManageSessions;
   const canSelectCurrentSection = section === 'players'
@@ -1253,6 +1257,38 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     }
   }
 
+  async function createCliToken() {
+    if (!selected || !canManageCreatorTokens || selected.guest) return;
+    const name = prompt('CLI Token 名称（例如：开发机或 CI）')?.trim();
+    if (!name) return;
+    setBusy('cli-token');
+    try {
+      const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
+        method: 'POST', headers: adminHeaders(true),
+        body: JSON.stringify({ action: 'create-cli-token', name, scopes: selected.creatorPermissions }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'CLI Token 创建失败');
+      setIssuedCliToken(data.token || '');
+      await openDetails(selected, 'cliTokens');
+      setNotice('CLI Token 已创建；请立即复制，关闭后不会再次显示。');
+    } catch (error) { setNotice((error as Error).message); } finally { setBusy(''); }
+  }
+
+  async function revokeCliToken(tokenId: string, name: string) {
+    if (!selected || !canManageCreatorTokens || !confirm(`确定撤销 CLI Token “${name}”吗？`)) return;
+    setBusy('cli-token');
+    try {
+      const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
+        method: 'POST', headers: adminHeaders(true), body: JSON.stringify({ action: 'revoke-cli-token', tokenId }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'CLI Token 撤销失败');
+      await openDetails(selected, 'cliTokens');
+      setNotice('CLI Token 已撤销。');
+    } catch (error) { setNotice((error as Error).message); } finally { setBusy(''); }
+  }
+
   async function submitCreateUser() {
     if (!canCreatePlayers || busy || createUser.password.length < 10) return;
     setBusy('create-user');
@@ -1464,6 +1500,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                 <button className={detailTab === 'logins' ? styles.detailTabActive : ''} onClick={() => setDetailTab('logins')}><Activity size={15} /><span><strong>登录记录</strong><small>登录时间、设备和地址</small></span></button>
                 <button className={detailTab === 'ban' ? styles.detailTabActive : ''} onClick={() => setDetailTab('ban')}><Ban size={15} /><span><strong>封禁管理</strong><small>临时、永久与解封</small></span></button>
                 <button className={detailTab === 'password' ? styles.detailTabActive : ''} onClick={() => setDetailTab('password')}><KeyRound size={15} /><span><strong>密码重置</strong><small>设置临时登录密码</small></span></button>
+                <button className={detailTab === 'cliTokens' ? styles.detailTabActive : ''} onClick={() => setDetailTab('cliTokens')}><KeyRound size={15} /><span><strong>Creator CLI Token</strong><small>签发与撤销命令行凭据</small></span></button>
                 <span className={styles.detailGroupLabel}>审计调查</span>
                 <button className={detailTab === 'related' ? styles.detailTabActive : ''} onClick={() => setDetailTab('related')}><Users size={15} /><span><strong>关联线索</strong><small>共享登录 IP 排查</small></span></button>
                 <button className={detailTab === 'history' ? styles.detailTabActive : ''} onClick={() => setDetailTab('history')}><FileClock size={15} /><span><strong>管理记录</strong><small>敏感操作审计时间线</small></span></button>
@@ -1553,6 +1590,13 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                 {detailTab === 'password' ? <section className={styles.detailSection}>
                   <div className={styles.sectionHeading}><h3>设置临时新密码</h3><span>{canResetPasswords ? '已授权' : '无权限'}</span></div>
                   {canResetPasswords && !selected.guest ? <div className={styles.passwordReset}><div><KeyRound size={17} /><span><strong>重置登录凭据</strong><small>完成后所有设备立即退出，玩家需要使用新密码重新登录。</small></span></div><div><input type="password" minLength={10} maxLength={128} placeholder="10–128 位临时密码" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button className={styles.secondaryButton} disabled={newPassword.length < 10 || Boolean(busy)} onClick={() => void resetPassword()}>重置密码</button></div></div> : <div className={styles.infoNote}>{selected.guest ? '游客没有可重置的账号密码。' : '服主尚未授予当前管理员重置密码权限。'}</div>}
+                </section> : null}
+
+                {detailTab === 'cliTokens' ? <section className={styles.detailSection}>
+                  <div className={styles.sectionHeading}><h3>Creator CLI Token</h3><span>{details?.cliTokens.filter((item) => !item.revokedAt).length || 0} 个有效</span></div>
+                  {issuedCliToken ? <div className={styles.infoNote}><strong>仅显示一次：</strong><code>{issuedCliToken}</code><button className={styles.textButton} onClick={() => void copyValue('CLI Token', issuedCliToken)}>复制</button></div> : null}
+                  {canManageCreatorTokens && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy) || !selected.creatorAccess} onClick={() => void createCliToken()}>签发 CLI Token</button> : null}
+                  {details?.cliTokens.length ? <div className={styles.recordList}>{details.cliTokens.map((item) => <article key={item.id}><div><strong>{item.name}</strong><span>{item.revokedAt ? `已撤销 · ${formatDate(item.revokedAt)}` : `创建于 ${formatDate(item.createdAt)}`}</span></div><small>{item.scopes.join(', ') || '仅查看'} · 最近使用：{item.lastUsedAt ? formatDate(item.lastUsedAt) : '从未'}</small>{canManageCreatorTokens && !item.revokedAt ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void revokeCliToken(item.id, item.name)}>撤销</button> : null}</article>)}</div> : <div className={styles.compactEmpty}>尚未签发 CLI Token</div>}
                 </section> : null}
 
                 {detailTab === 'related' ? <section className={styles.detailSection}>

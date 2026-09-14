@@ -64,6 +64,9 @@ export async function resolvePlayerServiceIdentity(
         'X-Box-Player-IP': ip,
         'X-Box-Player-Proto': requestProtocol(req),
         'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
+        ...(String(req.headers.authorization || '').startsWith('Bearer ')
+          ? { 'X-Box-Creator-Authorization': String(req.headers.authorization) }
+          : {}),
       },
       cache: 'no-store',
       signal: controller.signal,

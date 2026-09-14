@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   createRuntimeIdentityAssertion,
   isInternalIdentityRequest,
+  resolveCreatorCliTokenIdentity,
   resolvePlayerIdentity,
 } from '../../../server/local-player-identity';
 
@@ -17,7 +18,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ message: '玩家身份服务内部鉴权失败' });
   }
   try {
-    const identity = await resolvePlayerIdentity(req, res);
+    const cliAuthorization = String(req.headers['x-box-creator-authorization'] || '');
+    const identity = cliAuthorization.startsWith('Bearer ')
+      ? await resolveCreatorCliTokenIdentity(cliAuthorization.slice(7), req)
+      : await resolvePlayerIdentity(req, res);
     if (identity.status === 'banned') {
       return res.status(403).json({ message: 'PLAYER_BANNED' });
     }

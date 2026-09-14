@@ -143,6 +143,8 @@ const playerPatchSchema = z
   .refine((value) => Object.keys(value).length > 0, '没有可更新的玩家字段');
 
 const playerCommandSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('create-cli-token'), name: z.string().trim().min(1, 'Token 名称不能为空').max(80, 'Token 名称不能超过 80 个字符'), scopes: creatorPermissionsSchema }).strict(),
+  z.object({ action: z.literal('revoke-cli-token'), tokenId: z.string().regex(/^[a-z0-9]{12,32}$/i, 'CLI Token 标识无效') }).strict(),
   z.object({ action: z.literal('revoke-sessions') }).strict(),
   z.object({ action: z.literal('revoke-session'), sessionId: sessionIdSchema }).strict(),
   z.object({ action: z.literal('reset-password'), password: playerPasswordSchema }).strict(),
@@ -188,6 +190,7 @@ export function playerItemRequirement(
   if (body.action === 'ban-ip' || body.action === 'ban-device' || body.action === 'unban-source') {
     return 'identity-bans.manage';
   }
+  if (body.action === 'create-cli-token' || body.action === 'revoke-cli-token') return 'creator-tokens.manage';
   return 'players.manage';
 }
 

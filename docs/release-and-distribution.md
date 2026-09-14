@@ -14,6 +14,14 @@ pnpm package:web <amd64|arm64> [镜像归档.tar.gz]
 
 `package:desktop` 和 `package:web` 会先顺序构建 Creator、Play、VOXA、玩家服务、登录门户和 Linux Web 管理端，并通过 `docker image save` 导出当前 `package.json` 版本对应的完整镜像归档，再生成目标发行包。桌面命令的目标格式为 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 或 `linux-arm64`；Web 命令的架构为 `amd64` 或 `arm64`。开发时可附加服务名执行 `pnpm package:images arm64 player-service`，只构建并导出单个镜像；桌面包必须在目标系统和 CPU 架构的原生构建机生成。
 
+如果镜像已经由本机的构建命令生成、只需要交给启动器导入，不要再次构建。使用根目录命令 `pnpm export:images` 将当前版本的六个本地服务镜像打包为 `.tar.gz`；它会在缺少任一镜像时明确失败，绝不会偷偷拉取或重建。启动器必须导入完整归档，不能以单个服务镜像归档替代：
+
+```bash
+pnpm export:images
+```
+
+输出使用启动器的规范名称：`apps/local-engine/dist/images/box-local-engine-images-v<version>-linux-<arch>.tar.gz`。命令默认查找同名的启动器镜像标签；只有在明确设置 `BOX_IMAGE_TAG` 时才会覆盖。这个归档可直接交给 `pnpm package:desktop`，由桌面发行流程生成与归档 SHA-256 绑定的 `BOX-OFFLINE-IMAGE.json`。
+
 默认输出位置：
 
 - 镜像归档：`apps/local-engine/dist/images/box-local-engine-images-v<version>-linux-<arch>.tar.gz`

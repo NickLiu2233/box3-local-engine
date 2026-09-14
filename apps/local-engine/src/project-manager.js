@@ -1775,6 +1775,43 @@ function deleteProject(id) {
   }
 }
 
+// Creator CLI writes source as a new immutable blob, then advances the project
+// head. It never mutates a referenced blob in place, so an interrupted write
+// leaves the previous editor state valid.
+function updateProjectScript(id, side, entry, content) {
+  if (!['client', 'server'].includes(side)) throw new Error('Script side must be client or server')
+  if (!/^[A-Za-z0-9._-]{1,160}$/.test(entry) || entry.includes('..')) throw new Error('Invalid script entry')
+  if (typeof content !== 'string' || Buffer.byteLength(content, 'utf8') > 20 * 1024 * 1024) {
+    throw new Error('Script content must be text up to 20 MiB')
+  }
+  const sourceRoot = path.join(projectRoot(id), 'source')
+  const blobRoot = path.join(sourceRoot, 'blobs')
+  const statePath = path.join(sourceRoot, 'project-state.json')
+  const state = readJSON(statePath)
+  const permission = readBlobJSON(blobRoot, state.permissionHash, '工程权限数据')
+  const versionControl = readBlobJSON(blobRoot, permission.versionControl, '工程版本数据')
+  const branch = versionControl.branches?.[versionControl.currentBranch || 'master'] || versionControl.branches?.master
+  if (!branch?.headHash) throw new Error('工程缺少当前版本头')
+  const project = readBlobJSON(blobRoot, branch.headHash, '工程地图数据')
+  const scriptAssets = readBlobJSON(blobRoot, project.scriptAssets, '工程脚本索引')
+  const scriptHash = storeReleaseBlob(blobRoot, Buffer.from(content, 'utf8'))
+  const existing = scriptAssets[entry] || {}
+  const nextAssets = {
+    ...scriptAssets,
+    [entry]: { ...existing, hash: scriptHash, size: Buffer.byteLength(content, 'utf8'), type: side === 'server' ? 1 : 7 },
+  }
+  const nextAssetsHash = storeReleaseJSON(blobRoot, nextAssets)
+  const nextProjectHash = storeReleaseJSON(blobRoot, { ...project, scriptAssets: nextAssetsHash, prevHash: branch.headHash, timestamp: new Date().toISOString() })
+  const branchName = versionControl.currentBranch || 'master'
+  const nextVersionControlHash = storeReleaseJSON(blobRoot, {
+    ...versionControl,
+    branches: { ...versionControl.branches, [branchName]: { ...branch, headHash: nextProjectHash } },
+  })
+  const nextPermissionHash = storeReleaseJSON(blobRoot, { ...permission, versionControl: nextVersionControlHash })
+  writeJSON(statePath, { ...state, permissionHash: nextPermissionHash, updatedAt: new Date().toISOString() })
+  return { entry, side, revision: nextProjectHash, hash: scriptHash }
+}
+
 function publishProject(id, requestedVersion, notes = '') {
   const metadata = getProject(id)
   const root = projectRoot(id)
@@ -2356,6 +2393,7 @@ module.exports = {
   publishProject,
   publishMapGroup,
   updateProject,
+  updateProjectScript,
 }
 
 if (require.main === module) {

@@ -102,6 +102,7 @@ pnpm dev:creator
 | `pnpm dev`                      | 启动完整源码开发栈                 |
 | `pnpm dev:creator`              | 仅启动 Creator 源码运行时          |
 | `pnpm package:images <arch>`    | 构建并导出完整 Linux 镜像归档      |
+| `pnpm export:images`            | 不重建，按启动器规范打包当前完整镜像 |
 | `pnpm package:desktop <target>` | 构建桌面离线包                     |
 | `pnpm package:web <arch>`       | 构建 Linux Web 服务器包            |
 | `pnpm verify`                   | 运行格式、lint、类型检查和全部回归 |
