@@ -25,6 +25,7 @@
     "@box-local/apis": "workspace:0.1.0",
     "@box-local/box-design": "workspace:~1.0.6",
     "@box-local/build-system": "workspace:0.3.1",
+    "@box-local/cli": "workspace:*",
     "@box-local/content-server": "workspace:*",
     "@box-local/env": "workspace:~0.3.0",
     "@box-local/icons": "workspace:~1.0.0",

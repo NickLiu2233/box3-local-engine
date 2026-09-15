@@ -1592,7 +1592,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
   `, [subjectId]);
   const row = result.rows[0];
   if (!row) throw new Error('玩家不存在');
-  const [sessions, history, adminHistory, relatedAccounts, identityBans, cliTokens] = await Promise.all([
+  const [sessions, cliTokens, history, adminHistory, relatedAccounts, identityBans] = await Promise.all([
     database.query<{
       session_id: string; created_at: string | Date; last_seen_at: string | Date;
       expires_at: string | Date; created_ip: string; last_seen_ip: string; user_agent: string;

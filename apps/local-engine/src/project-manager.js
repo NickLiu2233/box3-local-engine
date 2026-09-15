@@ -4,6 +4,7 @@ const fs = require('fs')
 const os = require('os')
 const path = require('path')
 const crypto = require('crypto')
+const { createRequire } = require('module')
 const { spawnSync } = require('child_process')
 const { ensurePlayImageArchive, getPlayImageConfig } = require('./play-image')
 const { generateDistributionMetadata } = require('./distribution-metadata')
@@ -642,7 +643,8 @@ function isConcurrentSnapshotChange(error) {
 }
 
 function createProjectSnapshot(id, reason = 'automatic', options = {}) {
-  const sourceRoot = path.join(projectRoot(id), 'source')
+  const projectId = resolveProjectReference(id)
+  const sourceRoot = path.join(projectRoot(projectId), 'source')
   const validation = validateProjectSource(sourceRoot)
   if (!validation.ok || !validation.initialized) return { created: false, validation }
   const root = snapshotRoot(id)
@@ -836,6 +838,21 @@ function getProject(id) {
       : metadata.mapGroupId === metadata.mainProjectId)
   if (!validMapGroupIdentity) throw new Error(`Invalid map group metadata: ${id}`)
   return metadata
+}
+
+// Creator clients use the immutable permanent map ID, whereas legacy local
+// management APIs still use the directory key. Accept both at this boundary
+// so a CLI project configuration never depends on a mutable local path.
+function resolveProjectReference(reference) {
+  const value = String(reference || '').trim()
+  try {
+    return getProject(value).id
+  } catch (error) {
+    if (!mapIdentityPattern.test(value)) throw error
+  }
+  const project = listProjects().find((candidate) => candidate.permanentMapId === value)
+  if (!project) throw new Error(`Project not found: ${value}`)
+  return project.id
 }
 
 function listProjects() {
@@ -1784,7 +1801,11 @@ function updateProjectScript(id, side, entry, content) {
   if (typeof content !== 'string' || Buffer.byteLength(content, 'utf8') > 20 * 1024 * 1024) {
     throw new Error('Script content must be text up to 20 MiB')
   }
-  const sourceRoot = path.join(projectRoot(id), 'source')
+  // External Creator clients address maps by the permanent map ID. Resolve it
+  // here as well as accepting the legacy local directory ID, before touching
+  // any project files.
+  const projectId = resolveProjectReference(id)
+  const sourceRoot = path.join(projectRoot(projectId), 'source')
   const blobRoot = path.join(sourceRoot, 'blobs')
   const statePath = path.join(sourceRoot, 'project-state.json')
   const state = readJSON(statePath)
@@ -1795,6 +1816,71 @@ function updateProjectScript(id, side, entry, content) {
   const project = readBlobJSON(blobRoot, branch.headHash, '工程地图数据')
   const scriptAssets = readBlobJSON(blobRoot, project.scriptAssets, '工程脚本索引')
   const scriptHash = storeReleaseBlob(blobRoot, Buffer.from(content, 'utf8'))
+
+  // A normal script uploaded through Creator is shared by default. Shared
+  // scripts live in the map-group extra-project snapshot rather than in the
+  // cold project asset index. The engine intentionally excludes its two entry
+  // scripts from sharing, so they remain ordinary, map-local assets.
+  if (!['index.js', 'clientIndex.js'].includes(entry)) {
+    const group = mapGroupManager.paths(projectId)
+    const groupState = mapGroupManager.ensure(projectId)
+    const { ExtraProjectInfoSchema, MuReadStream, MuWriteStream } = creatorSharedScriptCodec()
+    let extraProject
+    if (groupState.extraProjectHash) {
+      const extraPath = path.join(group.blobRoot, groupState.extraProjectHash)
+      if (!fs.existsSync(extraPath)) throw new Error(`缺少共享脚本索引 ${groupState.extraProjectHash}`)
+      const bytes = fs.readFileSync(extraPath)
+      // A newly initialized map can persist an empty extra-project snapshot:
+      // diff(identity, identity) produces zero bytes. That is a valid identity
+      // value, but MuReadStream cannot decode a struct bitmask from an empty
+      // buffer. Treat it as the schema identity before adding the first shared
+      // script.
+      if (bytes.length > 0) {
+        const stream = new MuReadStream(bytes)
+        // MuReadStream is a lightweight cursor over the supplied buffer; unlike
+        // MuWriteStream it owns no allocation and deliberately has no destroy().
+        extraProject = ExtraProjectInfoSchema.patch(ExtraProjectInfoSchema.identity, stream)
+      }
+    }
+    if (!extraProject) extraProject = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity)
+    const existingShared = Object.entries(extraProject.scriptAssets).find(([, asset]) => asset.name === entry)
+    const fileId = existingShared?.[0] || crypto.randomUUID()
+    const previous = existingShared?.[1]
+    const nextOrder = previous?.order ?? Math.max(
+      0,
+      ...Object.values(extraProject.scriptAssets).map((asset) => Number(asset.order) || 0),
+    ) + 1
+    extraProject.scriptAssets[fileId] = {
+      hash: scriptHash,
+      name: entry,
+      isClient: side === 'client',
+      isShare: true,
+      order: nextOrder,
+      lockedMapTitle: '',
+      lockedMapId: 0,
+      id: fileId,
+    }
+    const persisted = new MuWriteStream(1024)
+    let extraProjectHash
+    try {
+      ExtraProjectInfoSchema.diff(ExtraProjectInfoSchema.identity, extraProject, persisted)
+      extraProjectHash = storeReleaseBlob(group.blobRoot, Buffer.from(persisted.bytes()))
+    } finally {
+      persisted.destroy()
+      ExtraProjectInfoSchema.free(extraProject)
+    }
+    writeJSON(group.statePath, {
+      ...groupState,
+      extraProjectHash,
+      revision: Math.max(1, Number(groupState.revision) || 1) + 1,
+      updatedAt: new Date().toISOString(),
+    })
+    // Keep this map's local state and blob pool coherent immediately. Other
+    // maps in the group read the same group-state snapshot on their next load.
+    mapGroupManager.materialize(projectId)
+    return { entry, side, revision: branch.headHash, hash: scriptHash, shared: true }
+  }
+
   const existing = scriptAssets[entry] || {}
   const nextAssets = {
     ...scriptAssets,
@@ -1809,7 +1895,21 @@ function updateProjectScript(id, side, entry, content) {
   })
   const nextPermissionHash = storeReleaseJSON(blobRoot, { ...permission, versionControl: nextVersionControlHash })
   writeJSON(statePath, { ...state, permissionHash: nextPermissionHash, updatedAt: new Date().toISOString() })
-  return { entry, side, revision: nextProjectHash, hash: scriptHash }
+  return { entry, side, revision: nextProjectHash, hash: scriptHash, shared: false }
+}
+
+function creatorSharedScriptCodec() {
+  // The Creator web process and edit runtime deliberately share the canonical
+  // MuDB codec. Resolve it from the deployed game-server package so this file
+  // works both in the repository and in the slim Creator image.
+  // Do not call `require()` with a calculated request here: when this module
+  // is loaded by a Next API route, Webpack replaces that form with a limited
+  // module context. `createRequire` stays a Node runtime resolver and follows
+  // the deployed game-server dependency tree in both environments.
+  const runtimeRequire = createRequire(path.join(repoRoot, 'services/game-server/package.json'))
+  const { ExtraProjectInfoSchema } = runtimeRequire('@box-local/schema/project/hot-schema')
+  const { MuReadStream, MuWriteStream } = runtimeRequire('@box-local/mudb/stream')
+  return { ExtraProjectInfoSchema, MuReadStream, MuWriteStream }
 }
 
 function publishProject(id, requestedVersion, notes = '') {
@@ -2372,6 +2472,7 @@ module.exports = {
     saveAssetDistributionConfiguration(projectsRoot, configuration),
   getLaunchTarget,
   getProject,
+  resolveProjectReference,
   projectStorageIdentity,
   mapGroupIdentity,
   mapGroupPaths: (id) => mapGroupManager.paths(id),

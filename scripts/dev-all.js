@@ -22,6 +22,18 @@ function randomSecret(existing, fallbackLength = 32) {
 }
 
 function databaseURL() {
+  // `pnpm dev --infra` starts the disposable development PostgreSQL profile.
+  // A Desktop-generated .env can still contain BOX_DATABASE_URL for its
+  // managed-postgres container, whose hostname and credentials are not valid
+  // from source processes. Prefer the infra profile's local connection so
+  // development services and the database they just started always match.
+  if (args.has('--infra')) {
+    const username = process.env.BOX_POSTGRES_USER || 'box'
+    const password = process.env.BOX_POSTGRES_PASSWORD || 'local-box-change-me'
+    const database = process.env.BOX_POSTGRES_DB || 'box'
+    const port = process.env.BOX_POSTGRES_HOST_PORT || '5432'
+    return `postgresql://${encodeURIComponent(username)}:${encodeURIComponent(password)}@127.0.0.1:${port}/${encodeURIComponent(database)}`
+  }
   if (process.env.BOX_DATABASE_URL) return process.env.BOX_DATABASE_URL
   const password = process.env.BOX_POSTGRES_PASSWORD || 'local-box-change-me'
   return `postgresql://box:${encodeURIComponent(password)}@127.0.0.1:5432/box`

@@ -57,6 +57,11 @@ Creator Adapter 应复用命令框架、输出约定和 HTTP 依赖；不复用�
 
 ## 3. 新模块结构
 
+Creator 协议契约由 Local Engine workspace 中的 `@box-local/cli` 包拥有。它是
+Creator HTTP Adapter 与 `apc creator` 共用的唯一协议来源，包含 URL、权限 scope、
+请求/响应类型和输入校验；它不包含 Token、HTTP Client、Next.js 或项目文件访问。
+这让 CLI 可独立发布，同时服务端不会因为 CLI 的实现细节而耦合。
+
 建议在 ArenaPro CLI 中新增：
 
     cli/

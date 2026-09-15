@@ -27,6 +27,7 @@ FROM source-base AS engine-build-base
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile \
+      --filter @box-local/cli... \
       --filter @box-local/game... \
       --filter @box-local/game-server... \
       --filter @box-local/local-engine...
@@ -38,7 +39,8 @@ RUN pnpm --dir apps/local-engine run prepare-assets
 
 FROM engine-build-base AS creator-build
 
-RUN pnpm --dir apps/local-engine run build:creator
+RUN pnpm --filter @box-local/cli build \
+    && pnpm --dir apps/local-engine run build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
@@ -74,7 +76,8 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 
 FROM engine-build-base AS play-build
 
-RUN pnpm --dir apps/local-engine run build:play
+RUN pnpm --filter @box-local/cli build \
+    && pnpm --dir apps/local-engine run build:play
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \

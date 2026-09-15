@@ -103,6 +103,7 @@ import {
   updateLocalProjectModelMetadata,
 } from '../../project/local-project-state';
 import { mergeExtraProjectInfo } from '../../project/project-extra';
+import { decodeExtraProjectInfo } from '../../project/decode-extra-project';
 import { isContentHash } from '../../project/content-hash';
 import {
   resolveRenamedProjectMesh,
@@ -1886,10 +1887,7 @@ export class EditReplicaServer {
             `map group resource snapshot is missing: ${authoritativeHash}`,
           );
         }
-        authoritative = ExtraProjectInfoSchema.patch(
-          ExtraProjectInfoSchema.identity,
-          new MuReadStream(bytes),
-        );
+        authoritative = decodeExtraProjectInfo(bytes);
       }
       extra = mergeExtraProjectInfo(
         authoritative,

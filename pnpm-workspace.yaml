@@ -16,6 +16,7 @@ packages:
   - packages/ao-mesher
   - packages/box-design
   - packages/content-server
+  - packages/cli
   - packages/dsbridge
   - packages/icons
   - packages/iframe-event-bus

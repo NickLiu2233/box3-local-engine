@@ -97,14 +97,24 @@ describe('player management visual consistency', () => {
   });
 
   test('gives every player detail screen one focused responsibility', () => {
-    expect(pageSource).toContain("type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'userKey' | 'sessions' | 'logins' | 'ban' | 'password' | 'related' | 'history' | 'danger';");
-    for (const label of ['基本资料', '身份档案', '神岛 ID', '用户 Key', '会话设备', '登录记录', '封禁管理', '密码重置', '关联线索', '管理记录', '删除身份']) {
+    expect(pageSource).toContain("type PlayerDetailTab = 'profile' | 'identity' | 'boxId' | 'userKey' | 'sessions' | 'logins' | 'ban' | 'password' | 'cliTokens' | 'related' | 'history' | 'danger';");
+    for (const label of ['基本资料', '身份档案', '神岛 ID', '用户 Key', '会话设备', '登录记录', '封禁管理', '密码重置', 'Creator CLI Token', '关联线索', '管理记录', '删除身份']) {
       expect(pageSource).toContain(`<strong>${label}</strong>`);
     }
     expect(pageSource).not.toContain('>资料与权限</button>');
     expect(pageSource).not.toContain('>会话与登录</button>');
     expect(pageSource).not.toContain('>安全与恢复</button>');
     expect(pageSource).toContain('className={styles.detailWorkspace}');
+  });
+
+  test('keeps CLI token results aligned with their detail response field', () => {
+    const detailsStart = identitySource.indexOf('export async function getManagedPlayerDetails');
+    const detailsEnd = identitySource.indexOf('export type CreatorCliTokenView', detailsStart);
+    const detailsSource = identitySource.slice(detailsStart, detailsEnd);
+    expect(detailsSource).toContain(
+      'const [sessions, cliTokens, history, adminHistory, relatedAccounts, identityBans] = await Promise.all([',
+    );
+    expect(detailsSource).toContain('player: toView(rowToIdentity(row), row),\n    cliTokens,');
   });
 
   test('keeps legacy Box ID binding in its own administrator-managed screen', () => {

@@ -68,6 +68,12 @@ try {
   )
 
   const before = manager.projectStorageIdentity(main.id)
+  assert.equal(manager.resolveProjectReference(main.id), main.id)
+  assert.equal(manager.resolveProjectReference(main.permanentMapId), main.id)
+  assert.throws(
+    () => manager.resolveProjectReference('0123456789abcdef0123'),
+    /Project not found/,
+  )
   const launchTarget = manager.getLaunchTarget({ project: main.id })
   assert.deepEqual(launchTarget.initialMapSize, [32, 32, 32])
   assert.equal(launchTarget.initialTerrainTheme, 'plane')

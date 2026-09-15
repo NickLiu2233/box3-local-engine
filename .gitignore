@@ -27,6 +27,9 @@ apps/local-engine/data/*
 apps/local-engine/data/blobs/*
 !apps/local-engine/data/blobs/.gitkeep
 apps/local-engine/projects/
+# Ephemeral edit/play runtime blobs and build caches. They are rebuilt from
+# local map data and must never be versioned or shipped as source artifacts.
+apps/local-engine/runtime-cache/
 apps/local-engine/dist/
 apps/local-engine/backups/
 apps/local-engine/play-worlds/*

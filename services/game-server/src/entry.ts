@@ -68,6 +68,7 @@ import {
   getLocalProjectSkinPreviews,
   persistLocalProjectState,
 } from './project/local-project-state';
+import { decodeExtraProjectInfo } from './project/decode-extra-project';
 import { BuildSystemRemote } from './service/build-system-remote';
 import { FrameskipsManager } from './utils/frameskips-manager';
 import { LOGGER_HOST_UUID, rootLogger } from './utils/logger';
@@ -529,10 +530,7 @@ export async function startServer(spec: ServerRuntimeConfig) {
               `published model metadata is missing: ${persistedExtraProjectHash}`,
             );
           }
-          extraProject = ExtraProjectInfoSchema.patch(
-            ExtraProjectInfoSchema.identity,
-            new MuReadStream(persistedExtraProject),
-          );
+          extraProject = decodeExtraProjectInfo(persistedExtraProject);
           if (embeddedExtraProject) {
             const localExtraProject = await getExtraProject(
               contentId,
