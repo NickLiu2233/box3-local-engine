@@ -4,6 +4,7 @@ import {
   PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
   type PlayerAdminRequirement,
 } from '../shared/player-admin-policy';
+import { CREATOR_CLI_CAPABILITIES } from '../shared/creator-cli-policy';
 import { CREATOR_CAPABILITIES } from '../shared/creator-policy';
 import { PlayerAdminRequestError } from './player-admin-errors';
 
@@ -98,6 +99,15 @@ const creatorPermissionsSchema = z
   ]))
   .max(CREATOR_CAPABILITIES.length)
   .transform((permissions) => [...new Set(permissions)]);
+const creatorCliPermissionsSchema = z
+  .array(z.enum(CREATOR_CLI_CAPABILITIES as [
+    (typeof CREATOR_CLI_CAPABILITIES)[number],
+    ...(typeof CREATOR_CLI_CAPABILITIES)[number][],
+  ]))
+  // Normalize duplicates before the stored-scope limit is meaningful. Keeping
+  // this small input cap also prevents a needlessly large admin request.
+  .max(32)
+  .transform((permissions) => [...new Set(permissions)]);
 
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
@@ -143,7 +153,8 @@ const playerPatchSchema = z
   .refine((value) => Object.keys(value).length > 0, '没有可更新的玩家字段');
 
 const playerCommandSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('create-cli-token'), name: z.string().trim().min(1, 'Token 名称不能为空').max(80, 'Token 名称不能超过 80 个字符'), scopes: creatorPermissionsSchema }).strict(),
+  z.object({ action: z.literal('create-cli-token'), name: z.string().trim().min(1, 'Token 名称不能为空').max(80, 'Token 名称不能超过 80 个字符'), scopes: creatorCliPermissionsSchema }).strict(),
+  z.object({ action: z.literal('update-cli-token'), tokenId: z.string().regex(/^[a-z0-9]{12,32}$/i, 'CLI Token 标识无效'), scopes: creatorCliPermissionsSchema }).strict(),
   z.object({ action: z.literal('revoke-cli-token'), tokenId: z.string().regex(/^[a-z0-9]{12,32}$/i, 'CLI Token 标识无效') }).strict(),
   z.object({ action: z.literal('revoke-sessions') }).strict(),
   z.object({ action: z.literal('revoke-session'), sessionId: sessionIdSchema }).strict(),

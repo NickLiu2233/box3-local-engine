@@ -11,6 +11,7 @@ export type RuntimePlayerIdentity = {
     avatarSkinId: string;
     creatorAccess: boolean;
     creatorPermissions: readonly string[];
+    creatorCliPermissions?: readonly string[];
     role: LocalPlayerRole;
     status: LocalPlayerStatus;
     expiresAt: number;

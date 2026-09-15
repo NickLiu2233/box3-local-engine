@@ -42,6 +42,9 @@ function validIdentity(value) {
         Array.isArray(value.creatorPermissions) &&
         value.creatorPermissions.length <= 32 &&
         value.creatorPermissions.every((permission) => typeof permission === 'string' && permission.length <= 64) &&
+        Array.isArray(value.creatorCliPermissions) &&
+        value.creatorCliPermissions.length <= 32 &&
+        value.creatorCliPermissions.every((permission) => typeof permission === 'string' && permission.length <= 64) &&
         ['player', 'moderator', 'admin'].includes(value.role) &&
         ['active', 'banned'].includes(value.status) &&
         Number.isSafeInteger(value.expiresAt));
@@ -49,7 +52,7 @@ function validIdentity(value) {
 function signRuntimePlayerIdentity(identity, secret, ttlMs = 60000) {
     if (!secret)
         throw new Error('player identity secret is not configured');
-    const value = Object.assign(Object.assign({}, identity), { userKey: identity.userKey || '', expiresAt: Date.now() + Math.max(5000, Math.min(ttlMs, 5 * 60000)) });
+    const value = Object.assign(Object.assign({}, identity), { userKey: identity.userKey || '', creatorCliPermissions: identity.creatorCliPermissions || [], expiresAt: Date.now() + Math.max(5000, Math.min(ttlMs, 5 * 60000)) });
     if (!validIdentity(value))
         throw new Error('invalid runtime player identity');
     const payload = encodeBase64URL(JSON.stringify(value));

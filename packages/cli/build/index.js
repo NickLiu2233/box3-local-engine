@@ -1,8 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CREATOR_SCRIPT_MAX_BYTES = exports.CREATOR_SCRIPT_SIDES = exports.FULL_CREATOR_CAPABILITIES = exports.CREATOR_CAPABILITY_META = exports.CREATOR_CAPABILITIES = exports.CREATOR_API_PREFIX = exports.CREATOR_API_VERSION = void 0;
-exports.normalizeCreatorCapabilities = normalizeCreatorCapabilities;
-exports.hasCreatorCapability = hasCreatorCapability;
+exports.CREATOR_SCRIPT_MAX_BYTES = exports.CREATOR_SCRIPT_SIDES = exports.CREATOR_API_PREFIX = exports.CREATOR_API_VERSION = void 0;
 exports.creatorApiPath = creatorApiPath;
 exports.creatorProjectScriptPath = creatorProjectScriptPath;
 exports.parseCreatorProjectScriptWrite = parseCreatorProjectScriptWrite;
@@ -14,25 +12,6 @@ exports.writeCreatorProjectScript = writeCreatorProjectScript;
  */
 exports.CREATOR_API_VERSION = 'v1';
 exports.CREATOR_API_PREFIX = `/api/creator/${exports.CREATOR_API_VERSION}`;
-exports.CREATOR_CAPABILITIES = [
-    'projects.view',
-    'projects.create',
-    'projects.edit',
-    'projects.delete',
-    'projects.import',
-    'projects.export',
-    'models.manage',
-];
-exports.CREATOR_CAPABILITY_META = Object.freeze({
-    'projects.view': { label: '查看地图', description: '进入创作端并查看地图列表' },
-    'projects.create': { label: '新建地图', description: '创建主地图和副地图' },
-    'projects.edit': { label: '编辑地图', description: '修改地图资料、内容和运行配置' },
-    'projects.delete': { label: '删除地图', description: '删除地图或地图组，不可恢复' },
-    'projects.import': { label: '导入工程', description: '导入创作工程和副地图' },
-    'projects.export': { label: '导出工程', description: '导出创作工程或游玩包' },
-    'models.manage': { label: '管理模型', description: '导入、修改和导出 VOXA 模型工程' },
-});
-exports.FULL_CREATOR_CAPABILITIES = [...exports.CREATOR_CAPABILITIES];
 exports.CREATOR_SCRIPT_SIDES = ['client', 'server'];
 exports.CREATOR_SCRIPT_MAX_BYTES = 20 * 1024 * 1024;
 function protocolError(code, message, status = 422) {
@@ -40,15 +19,6 @@ function protocolError(code, message, status = 422) {
 }
 function recordOf(value) {
     return value && typeof value === 'object' ? value : {};
-}
-function normalizeCreatorCapabilities(value) {
-    if (!Array.isArray(value))
-        return [];
-    const allowed = new Set(exports.CREATOR_CAPABILITIES);
-    return [...new Set(value.map(String).filter((capability) => allowed.has(capability)))];
-}
-function hasCreatorCapability(permissions, capability) {
-    return capability === 'projects.view' || normalizeCreatorCapabilities(permissions).includes(capability);
 }
 function creatorApiPath(...segments) {
     return [exports.CREATOR_API_PREFIX, ...segments.map((segment) => encodeURIComponent(String(segment)))].join('/');

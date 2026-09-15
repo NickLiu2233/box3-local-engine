@@ -58,8 +58,9 @@ Creator Adapter 应复用命令框架、输出约定和 HTTP 依赖；不复用�
 ## 3. 新模块结构
 
 Creator 协议契约由 Local Engine workspace 中的 `@box-local/cli` 包拥有。它是
-Creator HTTP Adapter 与 `apc creator` 共用的唯一协议来源，包含 URL、权限 scope、
-请求/响应类型和输入校验；它不包含 Token、HTTP Client、Next.js 或项目文件访问。
+Creator HTTP Adapter 与 `apc creator` 共用的协议来源，包含 URL、请求/响应类型和输入校验；
+Creator 权限由 Player Service 的创作者授权策略拥有，CLI 不维护权限 scope。它不包含 Token、
+HTTP Client、Next.js 或项目文件访问。
 这让 CLI 可独立发布，同时服务端不会因为 CLI 的实现细节而耦合。
 
 建议在 ArenaPro CLI 中新增：
@@ -264,20 +265,11 @@ Profile 创建、登录与 endpoint 变更时调用它。CLI 不能把 token 发
       → 是否有目标地图/地图组 ACL？
       → 执行操作并记录审计
 
-首版 scope：
+当前已实现的 CLI scope 仅为：
 
-    cli.use
-    projects.view
-    projects.export
-    projects.import
-    projects.edit
-    projects.publish
-    projects.delete
-    scripts.view
-    scripts.edit
-    assets.view
-    assets.edit
-    runtime.preview
+    scripts.update
+
+它只允许上传或覆盖脚本。CLI Token 仍要求玩家已被授予总开关“允许进入创作端”；该总开关关闭时，所有 CLI Token 都不可用。工程、资源、导入导出和运行时等接口尚未作为 CLI API 开放，因此不能预先签发对应权限；待接口实现后再扩展此表。
 
 项目级 ACL：
 
@@ -341,8 +333,8 @@ Profile 创建、登录与 endpoint 变更时调用它。CLI 不能把 token 发
 - 在 ArenaPro CLI 增加 `registerCreatorCommands`；
 - 实现 `CreatorProfileStore`、`CredentialStore` 和 `CreatorHttpClient`；
 - 增加 `apc creator profile`、`login`、`status`；
-- Creator 实现 `health`、`auth/me`、`capabilities`；
-- Creator 服务端实现 `cli.use` 与项目 ACL 检查；
+- Creator 实现 `health`；
+- Creator 服务端验证 CLI Token 的 `scripts.update`；
 - CLI 不再需要新建 `box-cli` 项目。
 
 ### Phase 2：只读与工程包
@@ -371,8 +363,8 @@ Profile 创建、登录与 endpoint 变更时调用它。CLI 不能把 token 发
 - `apc creator profile list` 不泄露 token；
 - 同一用户可登录多个 Creator 服务器，凭据互不覆盖；
 - endpoint 改指向新服务器后旧 token 不会被发送；
-- 未登录、无 CLI scope、无项目 ACL 都被服务端拒绝；
-- CLI 可以导入导出、管理脚本、下载 DTS 和发布；
+- 无效 Token 或缺少 `scripts.update` 的 Token 都被服务端拒绝；
+- CLI 可以上传和覆盖脚本；导入导出、DTS 下载和发布仍待对应 API 实现；
 - 多服务器写入返回逐目标结果；
 - CLI 和 Creator 服务端都不直接操作内部 Blob；
 - 发布不会自动创建备份。
@@ -381,13 +373,12 @@ Profile 创建、登录与 endpoint 变更时调用它。CLI 不能把 token 发
 
 ArenaPro CLI 是已经存在的、真实可运行的 CLI 基座；BOX 的工作应是增加一个 `Creator Adapter`，不是重新发明命令框架。
 
-最先打通的纵向链路：
+当前应先打通的纵向链路：
 
     apc creator profile add local --endpoint 127.0.0.1:3127
-      → apc creator login --profile local
-      → Creator Device Auth
-      → cli.use + projects.view + 项目 ACL
-      → apc creator project list --profile local
+      → 在玩家管理中签发 scripts.update Token
+      → 将 Token 保存到 CLI 的全局凭据配置
+      → apc creator script push ... --profile local
       → 审计事件
 
-它稳定后再增加工程包、脚本、DTS、资源和多服务器发布。
+它稳定后再按实际开放的接口增加工程包、DTS、资源和多服务器发布。

@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { CreatorCapability } from '../shared/creator-policy';
 import { hasCreatorCapability } from '../shared/creator-policy';
+import type { CreatorCliCapability } from '../shared/creator-cli-policy';
 import {
   PlayerAuthenticationRequiredError,
   requestPlayerServiceIp,
@@ -97,6 +98,42 @@ export async function allowAuthenticatedCreatorApi(
       return false;
     }
     res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证创作者身份' });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Authorizes one explicitly exposed CLI operation. Creator Access remains the
+ * product-level gate; CLI scopes deliberately do not inherit Creator UI's
+ * individual operation permissions.
+ */
+export async function allowAuthenticatedCreatorCliApi(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  capability: CreatorCliCapability,
+) {
+  if (!allowCreatorApi(req, res)) return false;
+  try {
+    const { identity } = await resolvePlayerServiceIdentity(
+      req,
+      res,
+      requestPlayerServiceIp(req),
+    );
+    if (!identity.creatorAccess) {
+      res.status(403).json({ code: 'CREATOR_ACCESS_REQUIRED', message: '当前账号未获准进入创作端，CLI 不可用' });
+      return false;
+    }
+    if (!identity.creatorCliPermissions?.includes(capability)) {
+      res.status(403).json({ code: 'CREATOR_CLI_PERMISSION_DENIED', message: '当前 CLI Token 没有执行此操作的权限' });
+      return false;
+    }
+  } catch (error) {
+    if (error instanceof PlayerAuthenticationRequiredError) {
+      res.status(401).json({ code: 'AUTH_REQUIRED', message: 'CLI Token 无效或已撤销' });
+      return false;
+    }
+    res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证 CLI Token' });
     return false;
   }
   return true;

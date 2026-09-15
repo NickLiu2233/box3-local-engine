@@ -9,6 +9,7 @@ import {
   revokeManagedPlayerSession,
   revokeIdentityBan,
   revokeCreatorCliToken,
+  updateCreatorCliToken,
   updateManagedPlayer,
 } from '../../../../server/local-player-identity';
 import {
@@ -64,6 +65,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
       if (command.action === 'create-cli-token') {
         return res.status(201).json(await createCreatorCliToken(subjectId, command, context));
+      }
+      if (command.action === 'update-cli-token') {
+        return res.status(200).json(await updateCreatorCliToken(subjectId, command.tokenId, command.scopes, context));
       }
       if (command.action === 'revoke-cli-token') {
         return res.status(200).json(await revokeCreatorCliToken(subjectId, command.tokenId, context));

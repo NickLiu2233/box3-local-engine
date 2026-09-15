@@ -19,6 +19,8 @@ export type RuntimePlayerIdentity = {
   creatorAccess: boolean;
   /** Server-enforced Creator capabilities. Never trust a browser-provided value. */
   creatorPermissions: readonly string[];
+  /** CLI Token-only capabilities. They are independent from Creator UI access. */
+  creatorCliPermissions?: readonly string[];
   role: LocalPlayerRole;
   status: LocalPlayerStatus;
   expiresAt: number;
@@ -72,6 +74,9 @@ function validIdentity(value: RuntimePlayerIdentity) {
     Array.isArray(value.creatorPermissions) &&
     value.creatorPermissions.length <= 32 &&
     value.creatorPermissions.every((permission) => typeof permission === 'string' && permission.length <= 64) &&
+    Array.isArray(value.creatorCliPermissions) &&
+    value.creatorCliPermissions.length <= 32 &&
+    value.creatorCliPermissions.every((permission) => typeof permission === 'string' && permission.length <= 64) &&
     ['player', 'moderator', 'admin'].includes(value.role) &&
     ['active', 'banned'].includes(value.status) &&
     Number.isSafeInteger(value.expiresAt)
@@ -87,6 +92,7 @@ export function signRuntimePlayerIdentity(
   const value: RuntimePlayerIdentity = {
     ...identity,
     userKey: identity.userKey || '',
+    creatorCliPermissions: identity.creatorCliPermissions || [],
     expiresAt: Date.now() + Math.max(5_000, Math.min(ttlMs, 5 * 60_000)),
   };
   if (!validIdentity(value)) throw new Error('invalid runtime player identity');

@@ -22,6 +22,12 @@ import {
   CREATOR_CAPABILITIES,
   type CreatorCapability,
 } from '../shared/creator-policy';
+import {
+  CREATOR_CLI_CAPABILITIES,
+  CREATOR_CLI_CAPABILITY_META,
+  FULL_CREATOR_CLI_CAPABILITIES,
+  type CreatorCliCapability,
+} from '../shared/creator-cli-policy';
 import styles from './player-management.module.css';
 
 const THEME_KEY = 'box-player-admin-theme';
@@ -59,7 +65,7 @@ type Player = {
 
 type PlayerDetails = {
   player: Player;
-  cliTokens: Array<{ id: string; name: string; scopes: CreatorCapability[]; createdAt: string; createdBy: string; lastUsedAt?: string; lastUsedIp: string; revokedAt?: string }>;
+  cliTokens: Array<{ id: string; name: string; scopes: CreatorCliCapability[]; createdAt: string; createdBy: string; lastUsedAt?: string; lastUsedIp: string; revokedAt?: string }>;
   sessions: Array<{
     sessionId: string;
     createdAt: string;
@@ -375,19 +381,12 @@ function PlayerAdminBrand() {
 
 function AdminDialogHeader({
   title,
-  closeLabel,
-  disabled,
 }: {
   title: string;
-  closeLabel: string;
-  disabled: boolean;
 }) {
   return (
     <header className={styles.dialogHeader}>
       <Dialog.Title>{title}</Dialog.Title>
-      <Dialog.Close asChild>
-        <button type="button" className={styles.iconButton} aria-label={closeLabel} disabled={disabled}><X size={16} /></button>
-      </Dialog.Close>
     </header>
   );
 }
@@ -420,6 +419,10 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
   const [permissionGroupOpen, setPermissionGroupOpen] = useState(false);
   const [editingPermissionGroupId, setEditingPermissionGroupId] = useState('');
   const [permissionGroupForm, setPermissionGroupForm] = useState(emptyPermissionGroup);
+  const [createCliTokenOpen, setCreateCliTokenOpen] = useState(false);
+  const [cliTokenName, setCliTokenName] = useState('');
+  const [cliTokenScopes, setCliTokenScopes] = useState<CreatorCliCapability[]>([]);
+  const [editingCliToken, setEditingCliToken] = useState<{ id: string; name: string } | null>(null);
   const [identityFilter, setIdentityFilter] = useState<'all' | 'user' | 'banned'>(
     initialSection === 'bans' ? 'banned' : ['sessions', 'roles'].includes(initialSection) ? 'user' : 'all',
   );
@@ -1257,21 +1260,43 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
     }
   }
 
+  function openCreateCliTokenDialog() {
+    if (!selected || !canManageCreatorTokens || selected.guest || !selected.creatorAccess || busy) return;
+    setCliTokenName('');
+    setCliTokenScopes(FULL_CREATOR_CLI_CAPABILITIES);
+    setEditingCliToken(null);
+    setCreateCliTokenOpen(true);
+  }
+
+  function openEditCliTokenDialog(token: { id: string; name: string; scopes: CreatorCliCapability[]; revokedAt?: string }) {
+    if (!selected || !canManageCreatorTokens || !selected.creatorAccess || token.revokedAt || busy) return;
+    setCliTokenName(token.name);
+    setCliTokenScopes(token.scopes);
+    setEditingCliToken({ id: token.id, name: token.name });
+    setCreateCliTokenOpen(true);
+  }
+
   async function createCliToken() {
-    if (!selected || !canManageCreatorTokens || selected.guest) return;
-    const name = prompt('CLI Token 名称（例如：开发机或 CI）')?.trim();
-    if (!name) return;
+    const name = cliTokenName.trim();
+    if (!selected || !canManageCreatorTokens || selected.guest || (!editingCliToken && !name)) return;
     setBusy('cli-token');
     try {
       const response = await fetch(`/api/play-admin/players/${selected.subjectId}`, {
         method: 'POST', headers: adminHeaders(true),
-        body: JSON.stringify({ action: 'create-cli-token', name, scopes: selected.creatorPermissions }),
+        body: JSON.stringify(editingCliToken
+          ? { action: 'update-cli-token', tokenId: editingCliToken.id, scopes: cliTokenScopes }
+          : { action: 'create-cli-token', name, scopes: cliTokenScopes }),
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || 'CLI Token 创建失败');
-      setIssuedCliToken(data.token || '');
+      if (!response.ok) throw new Error(data.message || `CLI Token ${editingCliToken ? '更新' : '创建'}失败`);
+      if (!editingCliToken) setIssuedCliToken(data.token || '');
+      setCreateCliTokenOpen(false);
+      setCliTokenName('');
+      setCliTokenScopes([]);
+      const updatedName = editingCliToken?.name;
+      setEditingCliToken(null);
       await openDetails(selected, 'cliTokens');
-      setNotice('CLI Token 已创建；请立即复制，关闭后不会再次显示。');
+      setNotice(updatedName ? `CLI Token “${updatedName}”权限已更新。` : 'CLI Token 已创建；请立即复制，关闭后不会再次显示。');
     } catch (error) { setNotice((error as Error).message); } finally { setBusy(''); }
   }
 
@@ -1592,11 +1617,20 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
                   {canResetPasswords && !selected.guest ? <div className={styles.passwordReset}><div><KeyRound size={17} /><span><strong>重置登录凭据</strong><small>完成后所有设备立即退出，玩家需要使用新密码重新登录。</small></span></div><div><input type="password" minLength={10} maxLength={128} placeholder="10–128 位临时密码" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} /><button className={styles.secondaryButton} disabled={newPassword.length < 10 || Boolean(busy)} onClick={() => void resetPassword()}>重置密码</button></div></div> : <div className={styles.infoNote}>{selected.guest ? '游客没有可重置的账号密码。' : '服主尚未授予当前管理员重置密码权限。'}</div>}
                 </section> : null}
 
-                {detailTab === 'cliTokens' ? <section className={styles.detailSection}>
-                  <div className={styles.sectionHeading}><h3>Creator CLI Token</h3><span>{details?.cliTokens.filter((item) => !item.revokedAt).length || 0} 个有效</span></div>
-                  {issuedCliToken ? <div className={styles.infoNote}><strong>仅显示一次：</strong><code>{issuedCliToken}</code><button className={styles.textButton} onClick={() => void copyValue('CLI Token', issuedCliToken)}>复制</button></div> : null}
-                  {canManageCreatorTokens && !selected.guest ? <button className={styles.primaryButton} disabled={Boolean(busy) || !selected.creatorAccess} onClick={() => void createCliToken()}>签发 CLI Token</button> : null}
-                  {details?.cliTokens.length ? <div className={styles.recordList}>{details.cliTokens.map((item) => <article key={item.id}><div><strong>{item.name}</strong><span>{item.revokedAt ? `已撤销 · ${formatDate(item.revokedAt)}` : `创建于 ${formatDate(item.createdAt)}`}</span></div><small>{item.scopes.join(', ') || '仅查看'} · 最近使用：{item.lastUsedAt ? formatDate(item.lastUsedAt) : '从未'}</small>{canManageCreatorTokens && !item.revokedAt ? <button className={styles.textButton} disabled={Boolean(busy)} onClick={() => void revokeCliToken(item.id, item.name)}>撤销</button> : null}</article>)}</div> : <div className={styles.compactEmpty}>尚未签发 CLI Token</div>}
+                {detailTab === 'cliTokens' ? <section className={`${styles.detailSection} ${styles.cliTokenSection}`}>
+                  <div className={styles.sectionHeading}><h3>Creator CLI Token</h3><span className={styles.cliTokenCount}>{selected.creatorAccess ? details?.cliTokens.filter((item) => !item.revokedAt).length || 0 : 0} 个有效</span></div>
+                  {!selected.creatorAccess ? <div className={styles.cliTokenUnavailable}>
+                    <span className={styles.cliTokenUnavailableIcon}><KeyRound size={17} /></span>
+                    <div><strong>CLI 不可用</strong><p>请先在“基本资料”中开启“允许进入创作端”。</p></div>
+                  </div> : canManageCreatorTokens && !selected.guest ? <div className={styles.cliTokenIssue}>
+                    <div><strong>签发长期 Token</strong><small>需先允许进入创作端；开启后，CLI Token 的细分权限可独立编辑。</small></div>
+                    <button className={styles.primaryButton} disabled={Boolean(busy)} onClick={openCreateCliTokenDialog}><KeyRound size={14} />签发 CLI Token</button>
+                  </div> : null}
+                  {details?.cliTokens.length ? <div className={styles.cliTokenList}>{details.cliTokens.map((item) => <article className={item.revokedAt ? styles.cliTokenRevoked : ''} key={item.id}>
+                    <div className={styles.cliTokenCardHeader}><div><strong>{item.name}</strong><small>{item.revokedAt ? `已撤销于 ${formatDate(item.revokedAt)}` : `签发于 ${formatDate(item.createdAt)}`}</small></div><span className={item.revokedAt ? styles.cliTokenStatusRevoked : selected.creatorAccess ? styles.cliTokenStatusActive : styles.cliTokenStatusUnavailable}>{item.revokedAt ? '已撤销' : selected.creatorAccess ? '有效' : '不可用'}</span></div>
+                    <div className={styles.cliTokenScopes}>{item.scopes.length ? item.scopes.map((scope) => <span key={scope}>{CREATOR_CLI_CAPABILITY_META[scope]?.label || scope}</span>) : <span>仅查看</span>}</div>
+                    <footer><span>最近使用：{item.lastUsedAt ? formatDate(item.lastUsedAt) : '从未'}</span>{item.lastUsedAt && item.lastUsedIp ? <span className={styles.mono}>{displayIp(item.lastUsedIp)}</span> : null}{canManageCreatorTokens && !item.revokedAt ? <><button className={styles.cliTokenEditButton} disabled={Boolean(busy) || !selected.creatorAccess} onClick={() => openEditCliTokenDialog(item)}>编辑权限</button><button className={styles.cliTokenRevokeButton} disabled={Boolean(busy)} onClick={() => void revokeCliToken(item.id, item.name)}>撤销 Token</button></> : null}</footer>
+                  </article>)}</div> : <div className={styles.compactEmpty}>尚未签发 CLI Token</div>}
                 </section> : null}
 
                 {detailTab === 'related' ? <section className={styles.detailSection}>
@@ -1637,7 +1671,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
           <Dialog.Overlay className={styles.dialogOverlay} />
           <Dialog.Content className={`${styles.modalDialog} ${styles.createUserDialog}`} aria-describedby={undefined}>
           <form onSubmit={(event) => { event.preventDefault(); void submitCreateUser(); }}>
-            <AdminDialogHeader title="新增用户" closeLabel="关闭新增用户" disabled={busy === 'create-user'} />
+            <AdminDialogHeader title="新增用户" />
             <div className={styles.createUserGrid}>
               <label>用户名<input autoFocus required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createUser.username} onChange={(event) => setCreateUser({ ...createUser, username: event.target.value })} placeholder="例如 player_001" /></label>
               <label>昵称<input required maxLength={32} value={createUser.displayName} onChange={(event) => setCreateUser({ ...createUser, displayName: event.target.value })} placeholder="玩家显示名称" /></label>
@@ -1658,12 +1692,48 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
         </Dialog.Portal>
       </Dialog.Root>
 
+      <Dialog.Root open={createCliTokenOpen} onOpenChange={(open) => { if (busy !== 'cli-token') { setCreateCliTokenOpen(open); if (!open) setEditingCliToken(null); } }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className={styles.dialogOverlay} />
+          <Dialog.Content className={`${styles.modalDialog} ${styles.cliTokenDialog}`}>
+            <form onSubmit={(event) => { event.preventDefault(); void createCliToken(); }}>
+              <AdminDialogHeader title={editingCliToken ? '编辑 CLI Token 权限' : '签发 CLI Token'} />
+              <Dialog.Description className={styles.cliTokenDialogDescription}>需先允许进入创作端；CLI 的细分权限不继承基本资料中的创作者操作权限。</Dialog.Description>
+              {!editingCliToken ? <label>凭据名称<input id="cli-token-name" autoFocus required maxLength={64} autoComplete="off" value={cliTokenName} onChange={(event) => setCliTokenName(event.target.value)} placeholder="例如：开发机、CI 或自动化脚本" /></label> : null}
+              <fieldset className={styles.cliTokenPermissionList}>
+                <legend>允许的操作</legend>
+                {CREATOR_CLI_CAPABILITIES.map((capability) => <label className={styles.cliTokenPermission} key={capability}><input type="checkbox" checked={cliTokenScopes.includes(capability)} onChange={(event) => setCliTokenScopes(event.target.checked ? [...new Set([...cliTokenScopes, capability])] : cliTokenScopes.filter((value) => value !== capability))} /><span><strong>{CREATOR_CLI_CAPABILITY_META[capability].label}</strong><small>{CREATOR_CLI_CAPABILITY_META[capability].description}</small></span></label>)}
+              </fieldset>
+              <footer className={styles.createUserActions}>
+                <Dialog.Close asChild><button className={styles.secondaryButton} type="button" disabled={busy === 'cli-token'}>取消</button></Dialog.Close>
+                <button className={styles.primaryButton} type="submit" disabled={busy === 'cli-token' || (!editingCliToken && !cliTokenName.trim())}>{busy === 'cli-token' ? '保存中…' : editingCliToken ? '保存权限' : '确认签发'}</button>
+              </footer>
+            </form>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      <Dialog.Root open={Boolean(issuedCliToken)} onOpenChange={(open) => { if (!open) setIssuedCliToken(''); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className={styles.dialogOverlay} />
+          <Dialog.Content className={`${styles.modalDialog} ${styles.issuedCliTokenDialog}`} aria-describedby={undefined}>
+            <AdminDialogHeader title="CLI Token" />
+            <p className={styles.issuedCliTokenWarning}>此 Token 只显示一次。请妥善保管，不要提供给其他任何人。</p>
+            <code className={styles.issuedCliTokenValue}>{issuedCliToken}</code>
+            <footer className={styles.issuedCliTokenActions}>
+              <button className={styles.primaryButton} type="button" onClick={() => void copyValue('CLI Token', issuedCliToken)}><Copy size={14} />复制 Token</button>
+              <Dialog.Close asChild><button className={styles.secondaryButton} type="button">关闭</button></Dialog.Close>
+            </footer>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <Dialog.Root open={createAdminOpen} onOpenChange={(open) => { if (busy !== 'admin-save') setCreateAdminOpen(open); }}>
         <Dialog.Portal>
           <Dialog.Overlay className={styles.dialogOverlay} />
           <Dialog.Content className={`${styles.modalDialog} ${styles.adminAccountDialog}`} aria-describedby={undefined}>
           <form onSubmit={(event) => { event.preventDefault(); void submitAdminAccount(); }}>
-            <AdminDialogHeader title={editingAdminId ? '编辑管理账号' : '新增管理账号'} closeLabel="关闭管理账号编辑" disabled={busy === 'admin-save'} />
+            <AdminDialogHeader title={editingAdminId ? '编辑管理账号' : '新增管理账号'} />
             <div className={styles.createUserGrid}>
               <label>管理员用户名<input autoFocus={!editingAdminId} required disabled={Boolean(editingAdminId)} minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9_]{2,31}" autoComplete="off" value={createAdmin.username} onChange={(event) => setCreateAdmin({ ...createAdmin, username: event.target.value })} placeholder="例如 ops_admin" /></label>
               <label>显示名称<input required maxLength={32} value={createAdmin.displayName} onChange={(event) => setCreateAdmin({ ...createAdmin, displayName: event.target.value })} placeholder="后台显示名称" /></label>
@@ -1687,7 +1757,7 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
           <Dialog.Overlay className={styles.dialogOverlay} />
           <Dialog.Content className={`${styles.modalDialog} ${styles.permissionGroupDialog}`} aria-describedby={undefined}>
           <form onSubmit={(event) => { event.preventDefault(); void savePermissionGroup(); }}>
-            <AdminDialogHeader title={editingPermissionGroupId ? '编辑权限组' : '新建权限组'} closeLabel="关闭权限组" disabled={busy.startsWith('permission-group')} />
+            <AdminDialogHeader title={editingPermissionGroupId ? '编辑权限组' : '新建权限组'} />
             <label>名称<input autoFocus required maxLength={32} value={permissionGroupForm.name} onChange={(event) => setPermissionGroupForm({ ...permissionGroupForm, name: event.target.value })} placeholder="例如：客服" /></label>
             <div className={styles.permissionGrid}>
               <article className={styles.permissionLocked}><span><strong>{PLAYER_ADMIN_CAPABILITY_META['players.view'].label}</strong><small>{PLAYER_ADMIN_CAPABILITY_META['players.view'].description}</small></span><em>默认</em></article>

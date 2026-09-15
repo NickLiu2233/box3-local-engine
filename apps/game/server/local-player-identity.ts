@@ -25,6 +25,10 @@ import {
   normalizeCreatorCapabilities,
   type CreatorCapability,
 } from '../shared/creator-policy';
+import {
+  normalizeCreatorCliCapabilities,
+  type CreatorCliCapability,
+} from '../shared/creator-cli-policy';
 import { requestClientAddress } from './client-address';
 import { hasTrustedPlayerAuthKey } from './player-auth-security';
 
@@ -82,6 +86,7 @@ type IdentityRow = QueryResultRow & {
   admin_permissions?: string[] | null;
   creator_access?: boolean | null;
   creator_permissions?: string[] | null;
+  creator_cli_permissions?: string[] | null;
 };
 
 export type PlayerAccountView = {
@@ -666,6 +671,7 @@ function rowToIdentity(row: IdentityRow): RuntimePlayerIdentity {
     avatarSkinId: builtInSkinIds.has(row.avatar_skin_id || '') ? row.avatar_skin_id! : defaultBuiltInSkinId,
     creatorAccess: row.creator_access === true,
     creatorPermissions: normalizeCreatorCapabilities(row.creator_permissions),
+    creatorCliPermissions: normalizeCreatorCliCapabilities(row.creator_cli_permissions),
     role: row.role || 'player',
     status: row.status || 'active',
     expiresAt: 0,
@@ -834,10 +840,11 @@ export async function resolveCreatorCliTokenIdentity(token: string, req: NextApi
     WHERE t.token_hash = $1 AND t.revoked_at IS NULL
   `, [hash]);
   const row = result.rows[0];
-  if (!row?.user_id || row.status !== 'active' || !row.creator_access) throw new Error('AUTH_REQUIRED');
-  const allowed = new Set(normalizeCreatorCapabilities(row.creator_permissions));
-  row.creator_permissions = normalizeCreatorCapabilities(row.scopes)
-    .filter((scope) => scope === 'projects.view' || allowed.has(scope));
+  if (!row?.user_id || row.status !== 'active') throw new Error('AUTH_REQUIRED');
+  // CLI scopes are separate from Creator UI's individual permissions. The
+  // product-level creator_access flag remains on the identity as a required
+  // gate for every Creator and CLI operation.
+  row.creator_cli_permissions = normalizeCreatorCliCapabilities(row.scopes);
   await database.query(`UPDATE ${table('creator_cli_tokens')} SET last_used_at = NOW(), last_used_ip = $2 WHERE token_hash = $1`, [hash, requestIp(req)]);
   return rowToIdentity(row);
 }
@@ -1706,7 +1713,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
 export type CreatorCliTokenView = {
   id: string;
   name: string;
-  scopes: CreatorCapability[];
+  scopes: CreatorCliCapability[];
   createdAt: string;
   createdBy: string;
   lastUsedAt?: string;
@@ -1724,7 +1731,7 @@ export async function listCreatorCliTokens(subjectId: string): Promise<CreatorCl
   }>(`SELECT id, name, scopes, created_at, created_by, last_used_at, last_used_ip, revoked_at
       FROM ${table('creator_cli_tokens')} WHERE principal_id = $1 ORDER BY created_at DESC`, [subjectId]);
   return result.rows.map((row) => ({
-    id: row.id, name: row.name, scopes: normalizeCreatorCapabilities(row.scopes),
+    id: row.id, name: row.name, scopes: normalizeCreatorCliCapabilities(row.scopes),
     createdAt: new Date(row.created_at).toISOString(), createdBy: row.created_by || '',
     lastUsedAt: row.last_used_at ? new Date(row.last_used_at).toISOString() : undefined,
     lastUsedIp: row.last_used_ip || '',
@@ -1742,16 +1749,13 @@ export async function createCreatorCliToken(
   await initialize();
   const name = values.name.trim();
   if (!name || name.length > 80) throw new Error('Token 名称无效');
-  const requested = normalizeCreatorCapabilities(values.scopes);
-  const target = await database.query<{ creator_access: boolean; creator_permissions: string[]; status: string }>(
-    `SELECT creator_access, creator_permissions, status FROM ${table('users')} WHERE principal_id = $1`, [subjectId],
+  const requested = normalizeCreatorCliCapabilities(values.scopes);
+  const target = await database.query<{ status: string; creator_access: boolean }>(
+    `SELECT status, creator_access FROM ${table('users')} WHERE principal_id = $1`, [subjectId],
   );
   const user = target.rows[0];
-  if (!user || !user.creator_access || user.status !== 'active') throw new Error('目标玩家没有有效的创作权限');
-  const granted = new Set(normalizeCreatorCapabilities(user.creator_permissions));
-  if (requested.some((scope) => scope !== 'projects.view' && !granted.has(scope))) {
-    throw new Error('CLI Token 不能授予玩家尚未拥有的创作权限');
-  }
+  if (!user || user.status !== 'active') throw new Error('目标玩家账号不可用于 CLI Token');
+  if (!user.creator_access) throw new Error('目标玩家尚未允许进入创作端，CLI Token 不可用');
   const id = randomBytes(9).toString('hex');
   const token = `bxc_${id}_${randomBytes(32).toString('base64url')}`;
   const tokenHash = createHmac('sha256', identitySecret()).update(token).digest('hex');
@@ -1774,6 +1778,30 @@ export async function revokeCreatorCliToken(subjectId: string, tokenId: string, 
   if (!result.rowCount) throw new Error('CLI Token 不存在或已撤销');
   await audit(database, 'creator.cli-token.revoke', subjectId, { tokenId, name: result.rows[0].name }, context);
   return { revoked: true };
+}
+
+export async function updateCreatorCliToken(
+  subjectId: string,
+  tokenId: string,
+  scopes: unknown,
+  context?: AdminActionContext,
+) {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const requested = normalizeCreatorCliCapabilities(scopes);
+  const target = await database.query<{ status: string; creator_access: boolean }>(
+    `SELECT status, creator_access FROM ${table('users')} WHERE principal_id = $1`, [subjectId],
+  );
+  const user = target.rows[0];
+  if (!user || user.status !== 'active') throw new Error('目标玩家账号不可用于 CLI Token');
+  if (!user.creator_access) throw new Error('目标玩家尚未允许进入创作端，CLI Token 不可用');
+  const result = await database.query<{ name: string }>(`UPDATE ${table('creator_cli_tokens')}
+      SET scopes = $3 WHERE id = $1 AND principal_id = $2 AND revoked_at IS NULL RETURNING name`,
+    [tokenId, subjectId, requested]);
+  if (!result.rowCount) throw new Error('CLI Token 不存在或已撤销');
+  await audit(database, 'creator.cli-token.update', subjectId, { tokenId, name: result.rows[0].name, scopes: requested }, context);
+  return { id: tokenId, name: result.rows[0].name, scopes: requested };
 }
 
 async function audit(

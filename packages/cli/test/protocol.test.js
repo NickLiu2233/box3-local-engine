@@ -38,8 +38,7 @@ test('rejects malformed Creator CLI writes before they reach a storage adapter',
   )
 })
 
-test('does not let a CLI token scope exceed the player creator permissions', () => {
-  assert.deepEqual(protocol.normalizeCreatorCapabilities(['projects.edit', 'nope', 'projects.edit']), ['projects.edit'])
-  assert.equal(protocol.hasCreatorCapability([], 'projects.view'), true)
-  assert.equal(protocol.hasCreatorCapability(['projects.edit'], 'projects.delete'), false)
+test('does not own Creator authorization policy', () => {
+  assert.equal('CREATOR_CAPABILITIES' in protocol, false)
+  assert.equal('hasCreatorCapability' in protocol, false)
 })

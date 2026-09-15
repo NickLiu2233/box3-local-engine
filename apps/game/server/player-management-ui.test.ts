@@ -59,9 +59,9 @@ describe('player management visual consistency', () => {
 
   test('uses Radix dialogs with one shared header and readable themed titles', () => {
     expect(pageSource).toContain("from '@radix-ui/react-dialog'");
-    expect(pageSource.match(/<Dialog\.Root/g)).toHaveLength(3);
-    expect(pageSource.match(/<AdminDialogHeader/g)).toHaveLength(3);
-    expect(pageSource.match(/styles\.modalDialog/g)).toHaveLength(3);
+    expect(pageSource.match(/<Dialog\.Root/g)).toHaveLength(5);
+    expect(pageSource.match(/<AdminDialogHeader/g)).toHaveLength(5);
+    expect(pageSource.match(/styles\.modalDialog/g)).toHaveLength(5);
     expect(styleSource).toMatch(/\.dialogHeader h2\s*\{[^}]*color:\s*var\(--text\);/s);
     expect(styleSource).toMatch(/\.modalDialog\s*\{[^}]*color:\s*var\(--text\);/s);
   });
@@ -115,6 +115,21 @@ describe('player management visual consistency', () => {
       'const [sessions, cliTokens, history, adminHistory, relatedAccounts, identityBans] = await Promise.all([',
     );
     expect(detailsSource).toContain('player: toView(rowToIdentity(row), row),\n    cliTokens,');
+  });
+
+  test('collects a new CLI token name in the in-app dialog instead of a browser prompt', () => {
+    expect(pageSource).toContain("const [createCliTokenOpen, setCreateCliTokenOpen] = useState(false);");
+    expect(pageSource).toContain("title={editingCliToken ? '编辑 CLI Token 权限' : '签发 CLI Token'}");
+    expect(pageSource).toContain('id="cli-token-name"');
+    expect(pageSource).toContain("action: 'update-cli-token'");
+    expect(pageSource).toContain('编辑权限');
+    expect(pageSource).toContain('className={styles.cliTokenPermissionList}');
+    expect(pageSource).toContain('className={styles.issuedCliTokenValue}');
+    expect(pageSource).toContain('此 Token 只显示一次。请妥善保管，不要提供给其他任何人。');
+    expect(pageSource).not.toContain('styles.cliTokenReveal');
+    expect(pageSource).toContain('styles.cliTokenUnavailable');
+    expect(pageSource).toContain('!selected.creatorAccess');
+    expect(pageSource).not.toContain("prompt('CLI Token 名称");
   });
 
   test('keeps legacy Box ID binding in its own administrator-managed screen', () => {

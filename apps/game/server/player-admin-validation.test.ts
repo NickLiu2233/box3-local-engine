@@ -62,6 +62,30 @@ describe('player administration request validation', () => {
     );
   });
 
+  test('accepts only the independent CLI script-update permission', () => {
+    expect(parsePlayerItemOperation('POST', subjectId, {
+      action: 'create-cli-token',
+      name: '  CI deploy  ',
+      scopes: ['scripts.update', 'scripts.update'],
+    })).toEqual({
+      kind: 'command',
+      subjectId,
+      command: { action: 'create-cli-token', name: 'CI deploy', scopes: ['scripts.update'] },
+    });
+    expect(parsePlayerItemOperation('POST', subjectId, {
+      action: 'update-cli-token',
+      tokenId: '0123456789abcdef01',
+      scopes: ['scripts.update'],
+    })).toEqual({
+      kind: 'command',
+      subjectId,
+      command: { action: 'update-cli-token', tokenId: '0123456789abcdef01', scopes: ['scripts.update'] },
+    });
+    expectRequestError(() => parsePlayerItemOperation('POST', subjectId, {
+      action: 'create-cli-token', name: 'too broad', scopes: ['projects.edit'],
+    }));
+  });
+
   test('never accepts legacy player role, admin permission, or avatar fields', () => {
     for (const body of [
       { role: 'admin' },

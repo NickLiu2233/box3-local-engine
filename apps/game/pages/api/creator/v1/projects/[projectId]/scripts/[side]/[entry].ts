@@ -4,7 +4,7 @@ import {
   writeCreatorProjectScript,
   type CreatorProjectScriptStore,
 } from '@box-local/cli';
-import { allowAuthenticatedCreatorApi } from '../../../../../../../../server/creator-api-security';
+import { allowAuthenticatedCreatorCliApi } from '../../../../../../../../server/creator-api-security';
 import { getLocalProjectManager } from '../../../../../../../../server/local-project-manager';
 
 // The protocol permits 20 MiB of UTF-8 script content. Leave a small envelope
@@ -15,7 +15,7 @@ export const config = { api: { bodyParser: { sizeLimit: '22mb' } } };
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'PUT') { res.setHeader('Allow', 'PUT'); return res.status(405).end(); }
-  if (!await allowAuthenticatedCreatorApi(req, res, 'projects.edit')) return;
+  if (!await allowAuthenticatedCreatorCliApi(req, res, 'scripts.update')) return;
   try {
     const input = parseCreatorProjectScriptWrite({
       projectId: Array.isArray(req.query.projectId) ? req.query.projectId[0] : req.query.projectId,
