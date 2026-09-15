@@ -4,6 +4,7 @@ import { lookup } from 'dns/promises';
 import type { Logger } from 'pino';
 
 import type { ContentServer } from '@box-local/content-server';
+import { voxaInternalHeaders } from '../project/voxa-internal-auth';
 
 /**
  * Local projects use one filesystem directory for both IPFS and OSS-style
@@ -18,7 +19,11 @@ export function createLocalContentWithVoxa(
   retrieveVoxaBlob = async (hash: string) => {
     const response = await axios.get(
       `${voxaURL.replace(/\/$/, '')}/api/local/blobs/${encodeURIComponent(hash)}`,
-      { responseType: 'arraybuffer', timeout: 30_000 },
+      {
+        headers: voxaInternalHeaders(),
+        responseType: 'arraybuffer',
+        timeout: 30_000,
+      },
     );
     return new Uint8Array(response.data);
   },

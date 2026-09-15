@@ -12,6 +12,8 @@ import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
 const validModelHash = 'QmSKfrPgmkCoomW2tbpHkynGL5aCd4qRA2JSBG1QDhRJzJ';
 
 async function checkAllLocalVoxaAssetsAreVisible() {
+  const previousPermissionSecret = process.env.PERMISSION_TOKEN_SECRET;
+  process.env.PERMISSION_TOKEN_SECRET = 'local-voxa-regression-secret';
   const models = [
     {
       modelId: 1,
@@ -41,6 +43,11 @@ async function checkAllLocalVoxaAssetsAreVisible() {
   const server = createServer((request, response) => {
     const url = new URL(request.url || '/', 'http://127.0.0.1');
     response.setHeader('content-type', 'application/json');
+    if (request.headers.authorization !== 'Bearer local-voxa-regression-secret') {
+      response.statusCode = 401;
+      response.end(JSON.stringify({ code: 'AUTH_REQUIRED' }));
+      return;
+    }
     if (url.pathname === '/api/local/default-skin') {
       response.end('{}');
       return;
@@ -77,6 +84,8 @@ async function checkAllLocalVoxaAssetsAreVisible() {
   } finally {
     server.close();
     await once(server, 'close');
+    if (previousPermissionSecret === undefined) delete process.env.PERMISSION_TOKEN_SECRET;
+    else process.env.PERMISSION_TOKEN_SECRET = previousPermissionSecret;
   }
   console.log('PASS: Creator includes every local VOXA model and skin');
 }

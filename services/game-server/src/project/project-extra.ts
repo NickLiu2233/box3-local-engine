@@ -8,6 +8,7 @@ import {
 } from '@box-local/schema/project/hot-schema';
 import { CreativeMode } from '@box-local/apis';
 import { isContentHash } from './content-hash';
+import { voxaInternalHeaders } from './voxa-internal-auth';
 
 export type Mode = 'edit' | 'play';
 
@@ -94,17 +95,20 @@ export async function getLocalExtraProject(
           params: {
             creativeMode: CreativeMode.Model,
           },
+          headers: voxaInternalHeaders(),
           timeout: 10_000,
         }),
         axios.get(`${baseURL}/api/local/models`, {
           params: {
             creativeMode: CreativeMode.Skin,
           },
+          headers: voxaInternalHeaders(),
           timeout: 10_000,
         }),
         axios
           .get(`${baseURL}/api/local/default-skin`, {
             params: projectKey ? { projectKey, mapId } : { mapId },
+            headers: voxaInternalHeaders(),
             timeout: 10_000,
           })
           .catch(() => ({ data: null })),

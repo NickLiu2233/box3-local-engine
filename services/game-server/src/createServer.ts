@@ -68,6 +68,7 @@ import {
   projectModelNameFromPath,
 } from './project/project-model-import';
 import { isContentHash } from './project/content-hash';
+import { voxaInternalHeaders } from './project/voxa-internal-auth';
 
 export type HttpRoutes = {
   [route: string]: (
@@ -608,6 +609,7 @@ export async function createGameServer(spec: {
           const result = await localModelImports.run(modelId, async () => {
             const modelResponse = await fetch(
               `${voxaURL}/api/local/models/${modelId}`,
+              { headers: voxaInternalHeaders() },
             );
             if (!modelResponse.ok) throw new Error('local model not found');
             const model =
@@ -642,6 +644,7 @@ export async function createGameServer(spec: {
             ].filter(Boolean)) {
               const blobResponse = await fetch(
                 `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+                { headers: voxaInternalHeaders() },
               );
               if (!blobResponse.ok) {
                 throw new Error(`local model resource is missing: ${hash}`);
@@ -706,6 +709,7 @@ export async function createGameServer(spec: {
             for (const hash of hashes) {
               const blobResponse = await fetch(
                 `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+                { headers: voxaInternalHeaders() },
               );
               if (!blobResponse.ok) {
                 throw new Error(`VOXA model resource does not exist: ${hash}`);
@@ -733,6 +737,7 @@ export async function createGameServer(spec: {
         if (!projectFileHash && localIdMatch) {
           const sourceResponse = await fetch(
             `${voxaURL}/api/local/models/${encodeURIComponent(localIdMatch[1])}`,
+            { headers: voxaInternalHeaders() },
           );
           if (sourceResponse.ok) {
             sourceModel = await sourceResponse.json() as Record<string, unknown>;
@@ -752,8 +757,8 @@ export async function createGameServer(spec: {
         const response = await fetch(`${voxaURL}/api/local/models`, {
           method: 'POST',
           headers: {
+            ...voxaInternalHeaders(),
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
           },
           body: JSON.stringify({
             modelName: name,
@@ -839,7 +844,9 @@ export async function createGameServer(spec: {
           if (!skinIds.length) throw new Error('请选择要导入的本地皮肤');
           let result;
           for (const skinId of skinIds) {
-            const modelResponse = await fetch(`${voxaURL}/api/local/models/${skinId}`);
+            const modelResponse = await fetch(`${voxaURL}/api/local/models/${skinId}`, {
+              headers: voxaInternalHeaders(),
+            });
             if (!modelResponse.ok) throw new Error(`本地皮肤 ${skinId} 不存在`);
             const model = await modelResponse.json() as Record<string, unknown>;
             const hashes = [
@@ -850,6 +857,7 @@ export async function createGameServer(spec: {
             for (const hash of hashes) {
               const blobResponse = await fetch(
                 `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
+                { headers: voxaInternalHeaders() },
               );
               if (!blobResponse.ok) {
                 throw new Error(`本地皮肤资源不存在：${hash}`);
@@ -893,9 +901,9 @@ export async function createGameServer(spec: {
           }
           const response = await fetch(`${voxaURL}/api/local/models`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${process.env.PERMISSION_TOKEN_SECRET || ''}`,
+          headers: {
+            ...voxaInternalHeaders(),
+            'Content-Type': 'application/json',
             },
             body: JSON.stringify({
               modelName: name,
@@ -920,7 +928,10 @@ export async function createGameServer(spec: {
             )}`,
             {
               method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                ...voxaInternalHeaders(),
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({
                 projectKey:
                   serverConfig.containerName || String(serverConfig.contentId),
