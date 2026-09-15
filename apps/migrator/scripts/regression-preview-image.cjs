@@ -55,6 +55,7 @@ fs.writeFileSync(
     mergeCloudPhotos,
     migratedScriptEntry,
     normalizeMigratedPermission,
+    inlineVersionControlHeadHash,
     parseJSON,
     referencedHashes,
     referencedResources,
@@ -73,6 +74,15 @@ fs.writeFileSync(
     normalizeMigratedPermission({ type: 'permission', version: '0.1.7' }).version,
     '0.1.7',
     'known source versions must remain available for the engine migration path',
+  )
+  assert.equal(
+    inlineVersionControlHeadHash({
+      branches: { master: { hash: actualHash } },
+      headBranch: 'master',
+      headHash: actualHash,
+    }),
+    actualHash,
+    'legacy permission roots may embed versionControl instead of storing a CID reference',
   )
   console.log('PASS: migrated legacy permissions receive a runnable schema version')
   const previewName = 'QmZc3bR7rJHXuYBtSe2VZoS5EYZ7m5kHzpK2cJ1hPzb3QU.jpeg'
@@ -585,7 +595,6 @@ fs.writeFileSync(
   else process.env.BOX_MIGRATOR_RETRY_DELAY_MS = originalBodyRetryDelay
   console.log('PASS: stalled response bodies respect the migration request timeout')
 
-  process.env.BOX_MIGRATOR_ENGINE_API_URL = 'https://engine.invalid.test'
   process.env.BOX_MIGRATOR_ENGINE_API_KEY = 'fixed-key'
   const engineRequests = []
   global.fetch = async (url, init) => {

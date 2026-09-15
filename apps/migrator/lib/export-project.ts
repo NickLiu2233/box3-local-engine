@@ -147,6 +147,15 @@ export function normalizeMigratedPermission(permission: Record<string, unknown>)
   return version ? permission : { ...permission, version: LOCAL_PERMISSION_VERSION }
 }
 
+export function inlineVersionControlHeadHash(value: unknown) {
+  if (!isRecord(value)) return undefined
+  const branches = isRecord(value.branches) ? value.branches : undefined
+  const headBranch = typeof value.headBranch === 'string' ? value.headBranch : 'master'
+  const branch = branches && isRecord(branches[headBranch]) ? branches[headBranch] : undefined
+  const headHash = branch?.headHash || branch?.hash || value.headHash
+  return typeof headHash === 'string' && EXACT_CID_PATTERN.test(headHash) ? headHash : undefined
+}
+
 function blobFileName(hash: string) {
   return hash.split('.')[0]
 }
@@ -1471,6 +1480,8 @@ export async function generateProjectArchive(
       if (!value) throw new Error(`${label}格式无效`)
       return value
     }
+    const retrieveJSONOrInline = async (value: unknown, parentHash: string, label: string) =>
+      isRecord(value) || Array.isArray(value) ? value : retrieveJSON(value, parentHash, label)
     const recordSkippedDownload = (
       hash: string,
       parentHash: string | undefined,
@@ -1550,32 +1561,39 @@ export async function generateProjectArchive(
     if (rootDocument.type === 'permission' || rootDocument.type === 'permissions') {
       permission = rootDocument
       const sourceVersionControlHash = permission.versionControl
-      if (
-        typeof sourceVersionControlHash !== 'string' ||
-        !EXACT_CID_PATTERN.test(sourceVersionControlHash)
-      ) {
+      const inlineProjectHash = inlineVersionControlHeadHash(sourceVersionControlHash)
+      if (inlineProjectHash) {
+        // Very old islands embedded the version-control document directly in
+        // the permission root instead of storing a CID reference.
+        versionControlHash = ''
+        projectHash = inlineProjectHash
+        const sourceProjectDocument = parseJSON(await retrieve(projectHash, rootHash))
+        if (!isRecord(sourceProjectDocument)) throw new Error('master 地图工程格式无效')
+        projectDocument = sourceProjectDocument
+      } else if (typeof sourceVersionControlHash === 'string' && EXACT_CID_PATTERN.test(sourceVersionControlHash)) {
+        versionControlHash = sourceVersionControlHash
+        report({
+          stage: 'resolving',
+          detail: '权限入口有效，正在定位 master 分支…',
+          currentHash: versionControlHash,
+          parentHash: rootHash,
+        })
+        const versionControlDocument = parseJSON(await retrieve(versionControlHash, rootHash))
+        const versionControl = isRecord(versionControlDocument) ? versionControlDocument : undefined
+        const branches = versionControl?.branches as
+          | Record<string, { headHash?: unknown }>
+          | undefined
+        const sourceProjectHash = branches?.master?.headHash
+        if (typeof sourceProjectHash !== 'string' || !EXACT_CID_PATTERN.test(sourceProjectHash)) {
+          throw new Error('权限版本没有可迁移的 master 地图工程')
+        }
+        projectHash = sourceProjectHash
+        const sourceProjectDocument = parseJSON(await retrieve(projectHash, versionControlHash))
+        if (!isRecord(sourceProjectDocument)) throw new Error('master 地图工程格式无效')
+        projectDocument = sourceProjectDocument
+      } else {
         throw new Error('权限版本缺少 versionControl，无法定位当前地图工程')
       }
-      versionControlHash = sourceVersionControlHash
-      report({
-        stage: 'resolving',
-        detail: '权限入口有效，正在定位 master 分支…',
-        currentHash: versionControlHash,
-        parentHash: rootHash,
-      })
-      const versionControlDocument = parseJSON(await retrieve(versionControlHash, rootHash))
-      const versionControl = isRecord(versionControlDocument) ? versionControlDocument : undefined
-      const branches = versionControl?.branches as
-        | Record<string, { headHash?: unknown }>
-        | undefined
-      const sourceProjectHash = branches?.master?.headHash
-      if (typeof sourceProjectHash !== 'string' || !EXACT_CID_PATTERN.test(sourceProjectHash)) {
-        throw new Error('权限版本没有可迁移的 master 地图工程')
-      }
-      projectHash = sourceProjectHash
-      const sourceProjectDocument = parseJSON(await retrieve(projectHash, versionControlHash))
-      if (!isRecord(sourceProjectDocument)) throw new Error('master 地图工程格式无效')
-      projectDocument = sourceProjectDocument
     } else if (isLegacyProjectRoot) {
       // BOX 0.3.x maps were exported as the project document itself, before
       // permission/version-control roots were introduced. Rebuild those roots
@@ -1602,9 +1620,11 @@ export async function generateProjectArchive(
       parentHash: versionControlHash,
     })
     const retrieveOptionalJSON = async (hash: unknown, parentHash: string, label: string) =>
-      typeof hash === 'string' && EXACT_CID_PATTERN.test(hash)
-        ? retrieveJSON(hash, parentHash, label)
-        : {}
+      isRecord(hash) || Array.isArray(hash)
+        ? hash
+        : typeof hash === 'string' && EXACT_CID_PATTERN.test(hash)
+          ? retrieveJSON(hash, parentHash, label)
+          : {}
     const [
       assets,
       scriptAssets,
@@ -1618,17 +1638,17 @@ export async function generateProjectArchive(
       player,
       ambientSound,
     ] = await Promise.all([
-      retrieveJSON(projectDocument.assets, projectHash, '工程资源索引'),
-      retrieveJSON(projectDocument.scriptAssets, projectHash, '工程脚本索引'),
-      retrieveJSON(projectDocument.deleteAssets, projectHash, '工程删除资源索引'),
+      retrieveJSONOrInline(projectDocument.assets, projectHash, '工程资源索引'),
+      retrieveJSONOrInline(projectDocument.scriptAssets || projectDocument.assets, projectHash, '工程脚本索引'),
+      retrieveJSONOrInline(projectDocument.deleteAssets || {}, projectHash, '工程删除资源索引'),
       retrieveOptionalJSON(projectDocument.audioAssets, projectHash, '工程音频索引'),
       retrieveOptionalJSON(projectDocument.entitiesTree, projectHash, '工程实体树'),
       retrieveOptionalJSON(projectDocument.entities, projectHash, '旧版工程实体索引'),
       retrieveOptionalJSON(projectDocument.folders, projectHash, '旧版工程分组索引'),
       retrieveOptionalJSON(projectDocument.pictureAssets, projectHash, '工程图片索引'),
-      retrieveJSON(projectDocument.environment, projectHash, '工程环境配置'),
-      retrieveJSON(projectDocument.player, projectHash, '工程玩家配置'),
-      retrieveJSON(projectDocument.ambientSound, projectHash, '工程环境音配置'),
+      retrieveJSONOrInline(projectDocument.environment, projectHash, '工程环境配置'),
+      retrieveJSONOrInline(projectDocument.player, projectHash, '工程玩家配置'),
+      retrieveJSONOrInline(projectDocument.ambientSound || {}, projectHash, '工程环境音配置'),
     ])
 
     let cloudData: CloudEngineData | undefined

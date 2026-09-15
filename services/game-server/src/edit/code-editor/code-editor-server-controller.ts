@@ -48,6 +48,7 @@ export class CodeEditorServerController {
   private _autoSaveTimer: Record<string, NodeJS.Timeout> = {};
 
   public fileDictReplica: MuCodeEditorReplicaServer<typeof FileDictRDA>;
+  private _savingFileIds = new Set<string>();
   constructor(
     editServer: EditServer,
     protocol: MuServerProtocol<typeof CodeEditorProtocol>,
@@ -291,8 +292,13 @@ export class CodeEditorServerController {
 
   // 保存共享文件
   private async _saveFile(fileId: string) {
+    // Selection, blur and disconnect can arrive together. They all request a
+    // save for the same shared script; one in-flight write is sufficient and
+    // prevents stale snapshots racing each other.
+    if (this._savingFileIds.has(fileId)) return;
     const file = this._getFileByFileId(fileId);
     if (!file?.isShare) return;
+    this._savingFileIds.add(fileId);
     const { text, name } = file;
     try {
       // Boxes persists a shared script independently from a whole-project
@@ -311,6 +317,7 @@ export class CodeEditorServerController {
       );
       throw error;
     } finally {
+      this._savingFileIds.delete(fileId);
       this._unLockFile(fileId);
       this._clearAutoSaveTimer(fileId);
     }
@@ -321,10 +328,8 @@ export class CodeEditorServerController {
     const lockedFileIds = this._getLockedByCurrentFileIds();
     const selectedFileIds = Object.values(this._editorState.selectedFiles);
     lockedFileIds.forEach((lockedFileId) => {
-      if (
-        this._getFileByFileId(lockedFileId).isShare &&
-        !selectedFileIds.includes(lockedFileId)
-      ) {
+      const file = this._getFileByFileId(lockedFileId);
+      if (file?.isShare && !selectedFileIds.includes(lockedFileId)) {
         this._saveFile(lockedFileId);
       }
     });
@@ -350,7 +355,10 @@ export class CodeEditorServerController {
   // 共享文件选择时，加锁，设置定时器；120s没有变化，则保存
   private _recordFileSelected(fileId: string) {
     const file = this._getFileByFileId(fileId);
-    if (!file.isShare) {
+    // A remote shared-resource refresh can remove a file between the client
+    // click and this protocol message. Ignore that stale selection instead of
+    // throwing from the socket handler and disconnecting the editor.
+    if (!file?.isShare) {
       return;
     }
 
@@ -458,6 +466,10 @@ export class CodeEditorServerController {
   }
 
   private _getLockedByCurrentFileIds() {
+    // Local map groups use contentId=0 for every member. An unlocked shared
+    // file also carries lockedMapId=0, so treating that as a held lock made a
+    // click on one script save every shared script and could race unshare.
+    if (getConfigSync()?.method === 'local') return [];
     const extraAssets = this._state.replica.extraProjectInfo.scriptAssets;
     const scripts = Object.values(extraAssets);
     const { contentId } = getConfigSync();

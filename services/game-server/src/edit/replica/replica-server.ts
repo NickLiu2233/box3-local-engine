@@ -68,6 +68,10 @@ import {
   ExtraProjectInfoSchema,
   getMeshPath,
 } from '@box-local/schema/project/hot-schema';
+import {
+  canPersistLocalSharedScript,
+  isSharedAfterLocalScriptAction,
+} from './local-shared-script-state';
 import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
 import { getExtraProject } from '../../project/project-extra';
 import { getConfigSync } from '../../../config/server';
@@ -1959,7 +1963,28 @@ export class EditReplicaServer {
     }
 
     const replicaState = this._state.replica;
-    const extra = ExtraProjectInfoSchema.clone(replicaState.extraProjectInfo);
+    // Another map can unshare a file between this editor's last refresh and
+    // its delayed auto-save. Always begin with the map group's current root;
+    // cloning this runtime's stale replica would write the removed entry back
+    // and make it reappear in every map.
+    const authoritativeHash = getLocalExtraProjectStateHash();
+    let authoritative = replicaState.extraProjectInfo;
+    let decodedAuthoritative: ExtraProjectInfo | undefined;
+    if (
+      authoritativeHash &&
+      authoritativeHash !== this._observedLocalExtraProjectHash
+    ) {
+      const bytes = await this._state.contentServer.retrieve(authoritativeHash);
+      if (!bytes) {
+        throw new Error(
+          `map group resource snapshot is missing: ${authoritativeHash}`,
+        );
+      }
+      decodedAuthoritative = decodeExtraProjectInfo(bytes);
+      authoritative = decodedAuthoritative;
+    }
+    const extra = ExtraProjectInfoSchema.clone(authoritative);
+    decodedAuthoritative && ExtraProjectInfoSchema.free(decodedAuthoritative);
     if (input.action !== 'create' && !extra.skinAssets[name]) {
       throw new Error('skin not found');
     }
@@ -2242,7 +2267,9 @@ export class EditReplicaServer {
       hash = String(input.hash || '').trim();
       if (!hash) throw new Error('script hash is required');
       const shared = extra.scriptAssets[fileId];
-      if (!shared?.isShare) throw new Error('script is not shared');
+      if (!canPersistLocalSharedScript('save', Boolean(shared?.isShare))) {
+        throw new Error('script is no longer shared');
+      }
       shared.hash = hash;
       shared.name = file.name;
       shared.isClient = file.isClient;
@@ -2282,7 +2309,10 @@ export class EditReplicaServer {
       this._codeEditorController.fileDictReplica
         .action()
         .update(fileId)
-        .isShare(input.action === 'share'),
+        // Saving a shared script must not turn it back into a local script in
+        // the editor replica. The shared snapshot above remains authoritative
+        // for `save`; only an explicit unshare action removes that status.
+        .isShare(isSharedAfterLocalScriptAction(input.action)),
     );
     return { hash };
   };

@@ -1,4 +1,5 @@
-const DEFAULT_ENGINE_API_URL = 'https://code-api-pc.dao3.fun'
+// The migrator always talks to the production Creator backend.
+const CREATERA_API_URL = 'https://code-api-pc.dao3.fun'
 
 export type EngineMode = 'edit' | 'play'
 export type ModelLookupInput = { modelType: 1 | 2 | 3; mapId?: number; mode?: EngineMode }
@@ -54,10 +55,7 @@ function positiveInteger(name: string, fallback: number) {
 }
 
 function apiBase() {
-  return (process.env.BOX_MIGRATOR_ENGINE_API_URL?.trim() || DEFAULT_ENGINE_API_URL).replace(
-    /\/$/,
-    '',
-  )
+  return CREATERA_API_URL
 }
 
 function apiHeaders() {
