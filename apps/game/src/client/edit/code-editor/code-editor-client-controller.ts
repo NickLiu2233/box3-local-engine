@@ -54,6 +54,12 @@ export class CodeEditorClientController {
   public onShareAutoSave = new EventBus<void>();
   private _canUnlockSelectedFile = true;
 
+  private _isLockedByCurrentMap(file: FileState) {
+    return clientConfig.mapInfo.isLocalMapGroup
+      ? file.lockedMapId === clientConfig.localMapRuntimeId
+      : file.lockedMapTitle === clientConfig.mapInfo.name;
+  }
+
   constructor(
     state: ClientStateType,
     protocol: MuClientProtocol<typeof CodeEditorProtocol>,
@@ -95,7 +101,7 @@ export class CodeEditorClientController {
           this._editorState.fileDict[this._editorState.selectedFileId];
         if (
           !file ||
-          (file.isShare && file.lockedMapTitle !== clientConfig.mapInfo.name)
+          (file.isShare && !this._isLockedByCurrentMap(file))
         ) {
           return false;
         }
@@ -289,6 +295,9 @@ export class CodeEditorClientController {
       const cursor = this._editorState.cursorDict[this._editorState.sessionId];
       cursor.fileId = fileId;
       this._protocol.server.message.syncCursor(cursor);
+      if (clientConfig.mapInfo.isLocalMapGroup && file.isShare) {
+        this._protocol.server.message.selectFile(fileId);
+      }
 
       this.applySelectedFileDeclarations();
       if (this.monacoController.isReady) {
@@ -617,7 +626,7 @@ export class CodeEditorClientController {
       clientConfig.mapInfo.combType &&
       file &&
       file.isShare &&
-      file.lockedMapTitle === clientConfig.mapInfo.name &&
+      this._isLockedByCurrentMap(file) &&
       this._editorState.selectedFileId === fileId
     ) {
       this._canUnlockSelectedFile = false;
@@ -638,7 +647,7 @@ export class CodeEditorClientController {
       !file ||
       checkIndexFile(file.name) ||
       !file.isShare ||
-      file.lockedMapTitle === clientConfig.mapInfo.name
+      this._isLockedByCurrentMap(file)
     ) {
       return;
     }
@@ -662,7 +671,7 @@ export class CodeEditorClientController {
     // 判断是否持有锁、判断本次blur是否允许执行unlock
     if (
       file.lockedMapTitle &&
-      file.lockedMapTitle === clientConfig.mapInfo.name &&
+      this._isLockedByCurrentMap(file) &&
       this._canUnlockSelectedFile
     ) {
       this._protocol.server.message.blurFile();

@@ -30,7 +30,7 @@ export const ScriptRenameModal = () => {
   const [isFocused, setIsFocused] = useState<boolean>(false);
 
   const { codeEditorState } = useContext(CodeEditorStateContext);
-  const { contentId } = clientConfig.mapInfo;
+  const { contentId, isLocalMapGroup } = clientConfig.mapInfo;
   const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
 
   const renameOptions = useSelector(
@@ -234,6 +234,21 @@ export const ScriptRenameModal = () => {
     renameInProject,
   ]);
 
+  const onRenameInLocalMapGroup = useCallback(async () => {
+    if (!renameFile || !preCheck()) return;
+    try {
+      await (apis.createra as any).updateLocalSharedScript(
+        'rename',
+        renameFile.fileId,
+        newNameWithExt,
+      );
+      Toast.success({ content: intl.formatMessage({ id: 'renameSuccess' }) });
+      closeRenameModal();
+    } catch {
+      Toast.info({ content: intl.formatMessage({ id: 'renameFail' }) });
+    }
+  }, [closeRenameModal, intl, newNameWithExt, preCheck, renameFile]);
+
   /**
    * 普通重命名
    */
@@ -243,7 +258,9 @@ export const ScriptRenameModal = () => {
       closeRenameModal();
       return;
     }
-    if (!usesCloudGroupAPI) {
+    if (isLocalMapGroup && renameFile?.isShare) {
+      onRenameInLocalMapGroup();
+    } else if (!usesCloudGroupAPI) {
       onRenameInNormalMap();
     } else {
       onRenameInExtraMap();
@@ -254,6 +271,9 @@ export const ScriptRenameModal = () => {
     closeRenameModal,
     onRenameInNormalMap,
     onRenameInExtraMap,
+    onRenameInLocalMapGroup,
+    isLocalMapGroup,
+    renameFile?.isShare,
     usesCloudGroupAPI,
   ]);
 

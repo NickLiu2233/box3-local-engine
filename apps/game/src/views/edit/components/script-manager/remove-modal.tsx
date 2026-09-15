@@ -21,7 +21,7 @@ export const ScriptRemoveModal = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   const { codeEditorState } = useContext(CodeEditorStateContext);
-  const { contentId, name: currMapTitle } = clientConfig.mapInfo;
+  const { contentId, name: currMapTitle, isLocalMapGroup } = clientConfig.mapInfo;
   const usesCloudGroupAPI = usesCloudMapGroupAPIs(clientConfig.mapInfo);
 
   const removeId = useSelector(
@@ -117,9 +117,20 @@ export const ScriptRemoveModal = () => {
     ],
   );
 
+  const removeLocalSharedScript = useCallback(async (file: FileState) => {
+    try {
+      await (apis.createra as any).updateLocalSharedScript('delete', file.fileId);
+      Toast.success({ content: intl.formatMessage({ id: 'removeScriptSuccess' }) });
+    } catch {
+      Toast.info({ content: intl.formatMessage({ id: 'deleteFailed' }) });
+    }
+  }, [intl]);
+
   const onRemove = useCallback(
     (originalFile: FileState) => {
-      if (!usesCloudGroupAPI) {
+      if (isLocalMapGroup && originalFile.isShare) {
+        removeLocalSharedScript(originalFile);
+      } else if (!usesCloudGroupAPI) {
         // 非扩展地图
         removeNormalScript(originalFile);
       } else {
@@ -127,7 +138,7 @@ export const ScriptRemoveModal = () => {
         removeExtensionScript(originalFile);
       }
     },
-    [removeExtensionScript, removeNormalScript, usesCloudGroupAPI],
+    [isLocalMapGroup, removeExtensionScript, removeLocalSharedScript, removeNormalScript, usesCloudGroupAPI],
   );
 
   const onConfirm = useCallback(() => {

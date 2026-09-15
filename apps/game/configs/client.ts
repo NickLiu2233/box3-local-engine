@@ -1,6 +1,15 @@
 import { pick } from 'ramda';
 import type { ServerConfig } from './server';
 
+function localSharedScriptLockOwnerId(runtimeName: string): number {
+  let hash = 2_166_136_261;
+  for (let index = 0; index < runtimeName.length; index += 1) {
+    hash ^= runtimeName.charCodeAt(index);
+    hash = Math.imul(hash, 16_777_619);
+  }
+  return (hash >>> 0) || 1;
+}
+
 export interface MapInfoConfig {
   // content id
   contentId: number;
@@ -92,6 +101,8 @@ export type ServerConfigForClient = Pick<
   (typeof PROPERTIES_FROM_SERVER)[number]
 > & {
   localRuntimeInfo?: LocalRuntimeInfo;
+  /** Stable runtime owner used to identify local shared-script edit locks. */
+  localMapRuntimeId?: number;
 };
 
 /**
@@ -123,6 +134,9 @@ export function extractServerConfigForClient(
   const clientConfig: ServerConfigForClient = {
     ...pickedConfig,
     ...(localRuntimeInfo ? { localRuntimeInfo } : {}),
+    ...(serverConfig.isLocalGameServer && containerName
+      ? { localMapRuntimeId: localSharedScriptLockOwnerId(containerName) }
+      : {}),
   };
 
   if (

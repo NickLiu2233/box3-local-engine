@@ -156,6 +156,25 @@ if (clientConfig.isLocalGameServer) {
     const result = await response.json();
     return String(result.hash || '');
   };
+  // Local map groups use one runtime API for all shared-script mutations.
+  // Keeping rename/delete here avoids changing only the currently open map.
+  (createraApi as any).updateLocalSharedScript = async (
+    action: 'rename' | 'delete',
+    fileId: string,
+    name?: string,
+  ) => {
+    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
+    const response = await fetch(
+      resolveRuntimeURL(runtimeURL, 'api/project-scripts'),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, fileId, ...(name ? { name } : {}) }),
+      },
+    );
+    if (!response.ok) throw new Error((await response.text()) || '更新共享脚本失败');
+    return response.json();
+  };
   modelApi.copyProjectSharedModelUsingPost = async ({ originModelId }) => {
     const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
     const response = await fetch(

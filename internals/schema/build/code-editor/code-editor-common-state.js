@@ -15,6 +15,7 @@ exports.FileRDA = new rda_1.MuRDAStruct({
     // 文件是否正在开启共享
     isUploading: new rda_1.MuRDARegister(new schema_1.MuBoolean(false)),
     lockedMapTitle: new rda_1.MuRDARegister(new schema_1.MuUTF8()),
+    lockedMapId: new rda_1.MuRDARegister(new schema_1.MuVarint(0)),
     size: new rda_1.MuRDARegister(new schema_1.MuVarint(0)),
 });
 // fileId: file

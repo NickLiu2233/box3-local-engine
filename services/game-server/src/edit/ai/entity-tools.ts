@@ -202,6 +202,7 @@ export const createScriptTools = (
           isClient,
           isShare: false,
           lockedMapTitle: '',
+          lockedMapId: 0,
           isUploading: false,
           size: 0,
         };

@@ -20,6 +20,7 @@ export const FileRDA = new MuRDAStruct({
   // 文件是否正在开启共享
   isUploading: new MuRDARegister(new MuBoolean(false)),
   lockedMapTitle: new MuRDARegister(new MuUTF8()),
+  lockedMapId: new MuRDARegister(new MuVarint(0)),
   size: new MuRDARegister(new MuVarint(0)),
 });
 

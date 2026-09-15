@@ -57,8 +57,11 @@ export const ScriptMenu = React.memo(() => {
     }
     const { name, isShare, isUploading, lockedMapTitle } = file;
     const isIndex = checkIndexFile(name);
-    const isLockedByOther = !!(
-      lockedMapTitle && lockedMapTitle !== currMapTitle
+    const isLockedByOther = Boolean(
+      lockedMapTitle &&
+        (isLocalMapGroup
+          ? file.lockedMapId !== clientConfig.localMapRuntimeId
+          : lockedMapTitle !== currMapTitle),
     );
 
     return [
@@ -96,7 +99,7 @@ export const ScriptMenu = React.memo(() => {
         disabled: isLockedByOther || isUploading,
       },
     ];
-  }, [currMapTitle, file, intl, supportsScriptSharing]);
+  }, [currMapTitle, file, intl, isLocalMapGroup, supportsScriptSharing]);
   const data: ContextmenuData[] = list.filter(
     (item): item is ContextmenuData => !!item,
   );

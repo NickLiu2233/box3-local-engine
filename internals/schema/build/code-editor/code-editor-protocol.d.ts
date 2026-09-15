@@ -17,6 +17,7 @@ export declare const CodeEditorProtocol: {
             isShare: MuBoolean;
             isUploading: MuBoolean;
             lockedMapTitle: MuUTF8;
+            lockedMapId: import("@box-local/mudb/schema").MuVarint;
             size: import("@box-local/mudb/schema").MuVarint;
         }>;
         removeFile: MuUTF8;

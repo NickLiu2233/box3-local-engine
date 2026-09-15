@@ -793,17 +793,15 @@ export async function createGameServer(spec: {
       try {
         const body = await bodyParse(req) as Record<string, unknown>;
         const action = String(body.action || '');
-        if (action !== 'share' && action !== 'unshare') {
+        if (!['share', 'unshare', 'rename', 'delete'].includes(action)) {
           throw new Error('unsupported script action');
         }
         const result = await editServer!.replica.updateLocalSharedScript(
           action === 'share'
-            ? {
-                action,
-                fileId: String(body.fileId || ''),
-                hash: String(body.hash || ''),
-              }
-            : { action, fileId: String(body.fileId || '') },
+            ? { action, fileId: String(body.fileId || ''), hash: String(body.hash || '') }
+            : action === 'rename'
+            ? { action, fileId: String(body.fileId || ''), name: String(body.name || '') }
+            : { action: action as 'unshare' | 'delete', fileId: String(body.fileId || '') },
         );
         res.end(JSON.stringify(result));
       } catch (error) {

@@ -69,8 +69,10 @@ import {
   getMeshPath,
 } from '@box-local/schema/project/hot-schema';
 import {
+  applyLocalSharedScriptMutation,
   canPersistLocalSharedScript,
   isSharedAfterLocalScriptAction,
+  localSharedScriptLockOwnerId,
 } from './local-shared-script-state';
 import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
 import { getExtraProject } from '../../project/project-extra';
@@ -101,6 +103,7 @@ import {
   getLocalProjectSkinProjects,
   persistLocalGroupProjectMetaData,
   persistLocalProjectState,
+  withLocalGroupSharedResourceLock,
   syncLocalProjectModelPaths,
   setDeletedLocalProjectModelPath,
   updateLocalProjectSkinMetadata,
@@ -173,7 +176,11 @@ export type LocalProjectModelAction =
 export type LocalSharedScriptAction =
   | { action: 'share'; fileId: string; hash: string }
   | { action: 'save'; fileId: string; hash: string }
-  | { action: 'unshare'; fileId: string };
+  | { action: 'unshare'; fileId: string }
+  | { action: 'rename'; fileId: string; name: string }
+  | { action: 'delete'; fileId: string }
+  | { action: 'lock'; fileId: string; ownerId: number; ownerTitle: string }
+  | { action: 'unlock'; fileId: string; ownerId: number };
 
 type ReplicaRemoteClient = MuRemoteClient<
   (typeof EditReplicaProtocol)['client']
@@ -2232,10 +2239,17 @@ export class EditReplicaServer {
     };
   };
 
-  public updateLocalSharedScript = async (input: LocalSharedScriptAction) => {
+  public updateLocalSharedScript = async (input: LocalSharedScriptAction) =>
+    withLocalGroupSharedResourceLock(() => this._updateLocalSharedScript(input));
+
+  private _updateLocalSharedScript = async (input: LocalSharedScriptAction) => {
     if (getConfigSync()?.method !== 'local') {
       throw new Error('local shared scripts are only available in local mode');
     }
+    // Always begin with the map group's latest snapshot. A submap can have an
+    // older in-memory copy while another map renamed, removed or saved a
+    // shared script.
+    await this._checkAndSetExtraProject();
     const fileId = String(input.fileId || '').trim();
     const file = this._state.codeEditor.fileDict[fileId];
     if (!file) throw new Error('script not found');
@@ -2245,6 +2259,9 @@ export class EditReplicaServer {
 
     const replicaState = this._state.replica;
     const extra = ExtraProjectInfoSchema.clone(replicaState.extraProjectInfo);
+    const previousExtra = ExtraProjectInfoSchema.clone(replicaState.extraProjectInfo);
+    const config = getConfigSync();
+    const callerOwnerId = localSharedScriptLockOwnerId(config?.containerName || '');
     let hash = '';
     if (input.action === 'share') {
       hash = String(input.hash || '').trim();
@@ -2270,15 +2287,44 @@ export class EditReplicaServer {
       if (!canPersistLocalSharedScript('save', Boolean(shared?.isShare))) {
         throw new Error('script is no longer shared');
       }
-      shared.hash = hash;
-      shared.name = file.name;
-      shared.isClient = file.isClient;
-      shared.order = file.order;
+      const next = applyLocalSharedScriptMutation(shared, {
+        action: 'save', hash, name: file.name, isClient: file.isClient, order: file.order,
+      }, callerOwnerId);
+      Object.assign(shared, next);
+    } else if (input.action === 'rename') {
+      const name = String(input.name || '').trim();
+      if (!name) throw new Error('script name is required');
+      const duplicate = Object.values(extra.scriptAssets).find(
+        (script) => script.name === name && script.id !== fileId,
+      );
+      if (duplicate) throw new Error('script name already exists');
+      const shared = extra.scriptAssets[fileId];
+      const next = applyLocalSharedScriptMutation(
+        shared,
+        { action: 'rename', name },
+        callerOwnerId,
+      );
+      Object.assign(shared, next);
+    } else if (input.action === 'lock' || input.action === 'unlock') {
+      const shared = extra.scriptAssets[fileId];
+      const next = applyLocalSharedScriptMutation(
+        shared,
+        input.action === 'lock'
+          ? { action: 'lock', ownerId: input.ownerId, ownerTitle: input.ownerTitle }
+          : { action: 'unlock', ownerId: input.ownerId },
+        input.ownerId,
+      );
+      Object.assign(shared, next);
     } else {
       const shared = extra.scriptAssets[fileId];
       if (!shared?.isShare) throw new Error('script is not shared');
       hash = shared.hash;
-      delete extra.scriptAssets[fileId];
+      const next = applyLocalSharedScriptMutation(
+        shared,
+        { action: 'delete' },
+        callerOwnerId,
+      );
+      if (next === undefined) delete extra.scriptAssets[fileId];
     }
 
     const stream = new MuWriteStream(1);
@@ -2290,6 +2336,12 @@ export class EditReplicaServer {
         replicaState.extraProjectInfo,
         new MuReadStream(bytes),
       );
+      if (input.action !== 'unshare') {
+        await this._codeEditorController.resyncFiles(
+          replicaState.extraProjectInfo.scriptAssets,
+          previousExtra.scriptAssets,
+        );
+      }
       const persistedStream = new MuWriteStream(1);
       ExtraProjectInfoSchema.diff(
         ExtraProjectInfoSchema.identity,
@@ -2305,16 +2357,22 @@ export class EditReplicaServer {
       replicaState.hotProjectDirty = true;
     }
     stream.destroy();
-    this._codeEditorController.fileDictReplica.dispatch(
-      this._codeEditorController.fileDictReplica
-        .action()
-        .update(fileId)
-        // Saving a shared script must not turn it back into a local script in
-        // the editor replica. The shared snapshot above remains authoritative
-        // for `save`; only an explicit unshare action removes that status.
-        .isShare(isSharedAfterLocalScriptAction(input.action)),
-    );
-    return { hash };
+    ExtraProjectInfoSchema.free(previousExtra);
+    if (input.action === 'unshare') {
+      this._codeEditorController.fileDictReplica.dispatch(
+        this._codeEditorController.fileDictReplica
+          .action()
+          .update(fileId)
+          // Saving a shared script must not turn it back into a local script in
+          // the editor replica. The shared snapshot above remains authoritative
+          // for `save`; only an explicit unshare action removes that status.
+          .isShare(isSharedAfterLocalScriptAction(input.action)),
+      );
+    }
+    return {
+      hash,
+      lockedMapId: replicaState.extraProjectInfo.scriptAssets[fileId]?.lockedMapId || 0,
+    };
   };
 
   /**

@@ -25,7 +25,7 @@ export const MonacoEditor = React.memo((props: Props) => {
   const { monacoController } = editor.codeEditorController;
 
   const readOnly = useMemo(() => {
-    const { name: currMapTitle, combType } = clientConfig.mapInfo;
+    const { name: currMapTitle, combType, isLocalMapGroup } = clientConfig.mapInfo;
     const permissionReadOnly =
       replica.permissions.accessLevel ===
         PermissionAccessLevel.SCRIPT_VIEW_ONLY &&
@@ -39,7 +39,9 @@ export const MonacoEditor = React.memo((props: Props) => {
         (file.isUploading ||
           (file.isShare &&
             file.lockedMapTitle &&
-            file.lockedMapTitle !== currMapTitle));
+            (isLocalMapGroup
+              ? file.lockedMapId !== clientConfig.localMapRuntimeId
+              : file.lockedMapTitle !== currMapTitle)));
       return permissionReadOnly || !!shareScriptReadOnly;
     }
   }, [codeEditorState, replica]);
@@ -73,6 +75,10 @@ export const MonacoEditor = React.memo((props: Props) => {
   }, []);
 
   const blurOnShareAutoSave = useCallback(() => {
+    // Local map groups keep their map-level edit lock until the editor truly
+    // leaves the script. The legacy cloud behavior blurs after auto-save,
+    // which would otherwise immediately release that lock.
+    if (clientConfig.mapInfo.isLocalMapGroup) return;
     if (
       monacoController.monacoEditor.hasTextFocus() &&
       document.activeElement instanceof HTMLElement

@@ -253,6 +253,52 @@ function withGroupStateLock<T>(statePath: string, operation: () => T): T {
   }
 }
 
+/**
+ * Serializes long-running shared-resource edits across map runtimes. Unlike
+ * the short state-file lock, this may cover content retrieval and hashing, so
+ * two maps cannot both read the same old snapshot and publish competing edits.
+ */
+export async function withLocalGroupSharedResourceLock<T>(
+  operation: () => Promise<T>,
+): Promise<T> {
+  const statePath = process.env.BOX_GROUP_PROJECT_STATE_PATH;
+  if (!statePath) return operation();
+  const lockPath = `${statePath}.shared-resource.lock`;
+  const token = randomUUID();
+  const { timeoutMs, staleMs } = lockTimings();
+  const deadline = Date.now() + timeoutMs;
+  let descriptor: fs.promises.FileHandle | undefined;
+  while (!descriptor) {
+    try {
+      descriptor = await fs.promises.open(lockPath, 'wx');
+      await descriptor.writeFile(`${token}\n`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      const snapshot = readGroupStateLock(lockPath);
+      if (snapshot && snapshot.ageMs >= staleMs) {
+        fs.rmSync(lockPath, { force: true });
+        continue;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error('timed out waiting for shared resource edit lock');
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+  }
+  try {
+    return await operation();
+  } finally {
+    await descriptor.close();
+    try {
+      if (fs.readFileSync(lockPath, 'utf8').trim() === token) {
+        fs.rmSync(lockPath, { force: true });
+      }
+    } catch {
+      // A stale-lock recovery must never be undone by a prior owner.
+    }
+  }
+}
+
 function updateLocalGroupProjectState(
   update: (state: LocalGroupProjectState) => void | boolean,
 ) {

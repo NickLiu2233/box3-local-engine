@@ -118,6 +118,7 @@ export declare const FileRDA: MuRDAStruct<{
     isShare: MuRDARegister<MuBoolean>;
     isUploading: MuRDARegister<MuBoolean>;
     lockedMapTitle: MuRDARegister<MuUTF8>;
+    lockedMapId: MuRDARegister<MuVarint>;
     size: MuRDARegister<MuVarint>;
 }>;
 export declare const FileDictRDA: MuRDAMap<MuUTF8, MuRDAStruct<{
@@ -238,6 +239,7 @@ export declare const FileDictRDA: MuRDAMap<MuUTF8, MuRDAStruct<{
     isShare: MuRDARegister<MuBoolean>;
     isUploading: MuRDARegister<MuBoolean>;
     lockedMapTitle: MuRDARegister<MuUTF8>;
+    lockedMapId: MuRDARegister<MuVarint>;
     size: MuRDARegister<MuVarint>;
 }>>;
 export declare const FileSchema: MuStruct<{
@@ -249,6 +251,7 @@ export declare const FileSchema: MuStruct<{
     isShare: MuBoolean;
     isUploading: MuBoolean;
     lockedMapTitle: MuUTF8;
+    lockedMapId: MuVarint;
     size: MuVarint;
 }>;
 export type FileState = typeof FileSchema.identity;
@@ -261,6 +264,7 @@ export declare const FileDictSchema: MuDictionary<MuStruct<{
     isShare: MuBoolean;
     isUploading: MuBoolean;
     lockedMapTitle: MuUTF8;
+    lockedMapId: MuVarint;
     size: MuVarint;
 }>>;
 export type FileDictState = typeof FileDictSchema.identity;

@@ -595,6 +595,13 @@ export declare class GameWorld {
      */
     lightMode: 'natural' | 'manual';
     /**
+     * Global scene-light intensity. This feeds the renderer's shared lighting
+     * uniform, so it is safe to animate from a map script without recompiling a
+     * shader. Values are clamped to the supported range of 0 through 0.6.
+     * @category rendering
+     */
+    globalLight: number;
+    /**
      * The initial phase of the sun's motion through the sky.  The time of day is calculated using the formula:
      * `timeOfDay = (sunPhase + sunFrequency * tick) % 1`
      * @category weather
@@ -650,6 +657,14 @@ export declare class GameWorld {
      * @category weather
      */
     skyBackLight: GameRGBColor;
+    /**
+     * Display gamma used by the final render pass. This is a renderer parameter,
+     * not shader source: setting it changes the image immediately and does not
+     * create a material or shader-program variant. Values are clamped to 0.1
+     * through 3.
+     * @category rendering
+     */
+    gamma: number;
     /**
      * Fog color
      * @category weather

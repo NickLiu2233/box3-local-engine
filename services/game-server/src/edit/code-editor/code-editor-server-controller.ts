@@ -23,6 +23,7 @@ import {
   ExtraProjectInfoSchema,
 } from '@box-local/schema/project/hot-schema';
 import { AssetType } from '@box-local/schema/project/project-rda';
+import { localSharedScriptLockOwnerId } from '../replica/local-shared-script-state';
 
 const HEART_BEAT_DURATION = 30 * 1000;
 const AUTO_SAVE_DURATION = 120 * 1000;
@@ -89,7 +90,7 @@ export class CodeEditorServerController {
         const selectedFileId = this._editorState.selectedFiles[client.sessionId];
         delete this._editorState.selectedFiles[client.sessionId];
         this._updateFilesState();
-        if (selectedFileId) this._saveFile(selectedFileId).catch(() => {});
+        if (selectedFileId) this._saveFileIfNoSessionSelected(selectedFileId);
       },
       message: {
         copyFile: (client, fileId) => {
@@ -201,10 +202,10 @@ export class CodeEditorServerController {
 
           const previousFileId = this._editorState.selectedFiles[client.sessionId];
           this._editorState.selectedFiles[client.sessionId] = fileId;
-          this._recordFileSelected(fileId);
+          this._recordFileSelected(fileId).catch(() => {});
           this._updateFilesState();
           if (previousFileId && previousFileId !== fileId) {
-            this._saveFile(previousFileId).catch(() => {});
+            this._saveFileIfNoSessionSelected(previousFileId);
           }
         },
 
@@ -219,7 +220,7 @@ export class CodeEditorServerController {
           const selectedFileId = this._editorState.selectedFiles[client.sessionId];
           delete this._editorState.selectedFiles[client.sessionId];
           this._updateFilesState();
-          if (selectedFileId) this._saveFile(selectedFileId).catch(() => {});
+          if (selectedFileId) this._saveFileIfNoSessionSelected(selectedFileId);
         },
 
         removeFile: (client, fileId) => {
@@ -318,7 +319,12 @@ export class CodeEditorServerController {
       throw error;
     } finally {
       this._savingFileIds.delete(fileId);
-      this._unLockFile(fileId);
+      // Auto-save must not hand the script to another map while this map is
+      // still editing it. Switching away, blur and disconnect remove the
+      // selection first, then arrive here and release the lock.
+      if (!Object.values(this._editorState.selectedFiles).includes(fileId)) {
+        this._unLockFile(fileId);
+      }
       this._clearAutoSaveTimer(fileId);
     }
   }
@@ -335,13 +341,23 @@ export class CodeEditorServerController {
     });
   }
 
+  /** Release a map-level lock only after its last local editor leaves it. */
+  private _saveFileIfNoSessionSelected(fileId: string) {
+    if (!Object.values(this._editorState.selectedFiles).includes(fileId)) {
+      this._saveFile(fileId).catch(() => {});
+    }
+  }
+
   private _isFileLockedByCurrentMap(fileId: string) {
     const serverConfig = getConfigSync();
     const file = this._state.replica.extraProjectInfo.scriptAssets[fileId];
     if (!file) {
       return false;
     }
-    return file.lockedMapId === serverConfig.contentId;
+    const ownerId = serverConfig.method === 'local'
+      ? localSharedScriptLockOwnerId(serverConfig.containerName || '')
+      : serverConfig.contentId;
+    return file.lockedMapId === ownerId;
   }
 
   private _updateAutoSaveTimer(fileId: string) {
@@ -353,7 +369,7 @@ export class CodeEditorServerController {
   }
 
   // 共享文件选择时，加锁，设置定时器；120s没有变化，则保存
-  private _recordFileSelected(fileId: string) {
+  private async _recordFileSelected(fileId: string) {
     const file = this._getFileByFileId(fileId);
     // A remote shared-resource refresh can remove a file between the client
     // click and this protocol message. Ignore that stale selection instead of
@@ -365,8 +381,8 @@ export class CodeEditorServerController {
     if (this._isFileLockedByCurrentMap(fileId)) {
       this._updateAutoSaveTimer(fileId);
     } else if (!file.lockedMapTitle) {
-      this._lockFile(fileId);
-      this._updateAutoSaveTimer(fileId);
+      const locked = await this._lockFile(fileId);
+      if (locked) this._updateAutoSaveTimer(fileId);
     }
   }
 
@@ -387,6 +403,7 @@ export class CodeEditorServerController {
     lockedMapTitle = '',
     order?: number,
     size?: number,
+    lockedMapId = 0,
   ) {
     const dict = this._editorState.fileDict;
     for (const fileId in dict) {
@@ -408,6 +425,7 @@ export class CodeEditorServerController {
       isClient,
       isShare,
       lockedMapTitle,
+      lockedMapId,
       isUploading: false,
       size: size || 0,
     };
@@ -440,7 +458,17 @@ export class CodeEditorServerController {
     return cursor;
   }
 
-  private async _lockFile(_fileId: string) {}
+  private async _lockFile(fileId: string) {
+    const config = getConfigSync();
+    if (config?.method !== 'local') return false;
+    const result = await this._editServer.replica.updateLocalSharedScript({
+      action: 'lock',
+      fileId,
+      ownerId: localSharedScriptLockOwnerId(config.containerName || ''),
+      ownerTitle: config.containerName || '本地地图',
+    });
+    return result.lockedMapId === localSharedScriptLockOwnerId(config.containerName || '');
+  }
 
   private _clearHeartBeatTimer(fileId: string) {
     const timer = this._heartBeatTimer[fileId];
@@ -469,7 +497,14 @@ export class CodeEditorServerController {
     // Local map groups use contentId=0 for every member. An unlocked shared
     // file also carries lockedMapId=0, so treating that as a held lock made a
     // click on one script save every shared script and could race unshare.
-    if (getConfigSync()?.method === 'local') return [];
+    if (getConfigSync()?.method === 'local') {
+      const ownerId = localSharedScriptLockOwnerId(
+        getConfigSync()?.containerName || '',
+      );
+      return Object.values(this._state.replica.extraProjectInfo.scriptAssets)
+        .filter((script) => script.lockedMapId === ownerId)
+        .map((script) => script.id);
+    }
     const extraAssets = this._state.replica.extraProjectInfo.scriptAssets;
     const scripts = Object.values(extraAssets);
     const { contentId } = getConfigSync();
@@ -480,6 +515,13 @@ export class CodeEditorServerController {
 
   private async _unLockFile(fileId: string) {
     this._clearHeartBeatTimer(fileId);
+    const config = getConfigSync();
+    if (config?.method !== 'local') return;
+    await this._editServer.replica.updateLocalSharedScript({
+      action: 'unlock',
+      fileId,
+      ownerId: localSharedScriptLockOwnerId(config.containerName || ''),
+    }).catch(() => {});
   }
 
   private _removeCursor(sessionId) {
@@ -507,10 +549,10 @@ export class CodeEditorServerController {
     const currentFiles = Object.values(this._editorState.fileDict);
 
     // 根据后端的数据更新文件name，共享状态，被锁定地图title
-    pairs(extraAssets).map(
+    await Promise.all(pairs(extraAssets).map(
       async ([
         id,
-        { hash, isClient, isShare, lockedMapTitle, name, order },
+        { hash, isClient, isShare, lockedMapTitle, lockedMapId, name, order },
       ]) => {
         // 存在则更新字段
         if (this._editorState.fileDict[id]) {
@@ -528,6 +570,9 @@ export class CodeEditorServerController {
               .action()
               .update(id)
               .lockedMapTitle(lockedMapTitle),
+          );
+          this.fileDictReplica.dispatch(
+            this.fileDictReplica.action().update(id).lockedMapId(lockedMapId),
           );
           // hash变化则更新内容，共享文件被其它图编辑了
           if (hash && preExtraScriptAssets[id]?.hash !== hash) {
@@ -556,10 +601,12 @@ export class CodeEditorServerController {
             isShare,
             lockedMapTitle,
             order,
+            undefined,
+            lockedMapId,
           );
         }
       },
-    );
+    ));
     // 删除后端已经没有了的文件: 1，文件被删除了；2，共享文件被其它图取消贡献了
     currentFiles.map((file) => {
       // In a local Map Group, ordinary scripts are owned by the map's project
@@ -646,7 +693,7 @@ export class CodeEditorServerController {
         pairs(extraAssets).map(
           async ([
             id,
-            { hash, isClient, isShare, lockedMapTitle, name, order },
+            { hash, isClient, isShare, lockedMapTitle, lockedMapId, name, order },
           ]) => {
             // 本地文件hash从本地拿
             if (!isShare && assets[name]) {
@@ -668,6 +715,7 @@ export class CodeEditorServerController {
               lockedMapTitle,
               order,
               buffer?.length,
+              lockedMapId,
             );
           },
         ),
