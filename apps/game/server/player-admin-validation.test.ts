@@ -62,15 +62,15 @@ describe('player administration request validation', () => {
     );
   });
 
-  test('accepts only the independent CLI script-update permission', () => {
+  test('accepts only independent Creator CLI permissions', () => {
     expect(parsePlayerItemOperation('POST', subjectId, {
       action: 'create-cli-token',
       name: '  CI deploy  ',
-      scopes: ['scripts.update', 'scripts.update'],
+      scopes: ['projects.list', 'scripts.update', 'projects.list'],
     })).toEqual({
       kind: 'command',
       subjectId,
-      command: { action: 'create-cli-token', name: 'CI deploy', scopes: ['scripts.update'] },
+      command: { action: 'create-cli-token', name: 'CI deploy', scopes: ['projects.list', 'scripts.update'] },
     });
     expect(parsePlayerItemOperation('POST', subjectId, {
       action: 'update-cli-token',

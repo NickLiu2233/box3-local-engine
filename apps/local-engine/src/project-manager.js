@@ -1898,6 +1898,32 @@ function updateProjectScript(id, side, entry, content) {
   return { entry, side, revision: nextProjectHash, hash: scriptHash, shared: false }
 }
 
+function getProjectResources(id) {
+  const projectId = resolveProjectReference(id)
+  const sourceRoot = path.join(projectRoot(projectId), 'source')
+  const blobRoot = path.join(sourceRoot, 'blobs')
+  const state = readJSON(path.join(sourceRoot, 'project-state.json'))
+  const permission = readBlobJSON(blobRoot, state.permissionHash, '工程权限数据')
+  const versionControl = readBlobJSON(blobRoot, permission.versionControl, '工程版本数据')
+  const branch = versionControl.branches?.[versionControl.currentBranch || 'master'] || versionControl.branches?.master
+  if (!branch?.headHash) throw new Error('工程缺少当前版本头')
+  const project = readBlobJSON(blobRoot, branch.headHash, '工程地图数据')
+  const resolveIndex = (value, label) => typeof value === 'string' ? readBlobJSON(blobRoot, value, label) : (value || {})
+  // `assets` also stores LUTs and particle effects. Only `mesh/` entries can
+  // be assigned to the engine's GameModelAssets / mesh fields, so keep the
+  // Creator CLI manifest semantically narrow instead of exposing all assets
+  // as models.
+  const modelAssets = Object.fromEntries(Object.entries(resolveIndex(project.assets, '资源索引'))
+    .filter(([assetPath]) => assetPath.startsWith('mesh/')))
+  return {
+    projectId: getProject(projectId).permanentMapId,
+    modelAssets,
+    pictureAssets: resolveIndex(project.pictureAssets, '图片资源索引'),
+    audioAssets: resolveIndex(project.audioAssets, '音频资源索引'),
+    uiTree: resolveIndex(project.uiTree, 'UI 资源索引'),
+  }
+}
+
 function creatorSharedScriptCodec() {
   // The Creator web process and edit runtime deliberately share the canonical
   // MuDB codec. Resolve it from the deployed game-server package so this file
@@ -2495,6 +2521,7 @@ module.exports = {
   publishMapGroup,
   updateProject,
   updateProjectScript,
+  getProjectResources,
 }
 
 if (require.main === module) {

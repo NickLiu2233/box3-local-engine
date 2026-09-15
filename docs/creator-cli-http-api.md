@@ -1,6 +1,6 @@
 # Creator CLI 与 HTTP API（当前实现）
 
-本文记录当前可用的 Creator HTTP 接口、CLI Token 权限模型，以及 CLI 适配器应遵守的协议。它描述的是**已经实现**的能力；`[ArenaPro CLI 接入设计](./arenapro-cli-creator-adapter.md)` 中的设备登录、工程导入导出、资源同步等内容仍是后续设计，不应当被当作当前 API 合约。
+本文记录当前可用的 Creator HTTP 接口、CLI Token 权限模型，以及 CLI 适配器应遵守的协议。它描述的是**已经实现**的能力；`[ArenaPro CLI 接入设计](./arenapro-cli-creator-adapter.md)` 中的设备登录、工程导入导出等内容仍是后续设计，不应当被当作当前 API 合约。
 
 ## 1. 适用范围与术语
 
@@ -35,11 +35,13 @@ CLI 应把每台 Creator 服务器保存为独立 Profile。Profile 可以使用
 
 ## 3. 权限与 Token
 
-CLI Token 必须先通过基本资料中的总开关“允许进入创作端”（Creator Access）。在此之后，Token 的 `scripts.update` 权限由服主或管理员独立授予和编辑，**不受**基本资料中 Creator 细分权限影响。关闭总开关会立即使该玩家所有 CLI Token 不可用。当前只有脚本上传接口已经开放，因此也只有一个 CLI 权限点；后续接口真正上线时才会增加相应权限点。
+CLI Token 必须先通过基本资料中的总开关“允许进入创作端”（Creator Access）。在此之后，Token 的 CLI 权限由服主或管理员独立授予和编辑，**不受**基本资料中 Creator 细分权限影响。关闭总开关会立即使该玩家所有 CLI Token 不可用。
 
 | Scope | 用途 |
 | --- | --- |
 | `scripts.update` | 上传或覆盖指定地图的客户端、服务端脚本 |
+| `projects.list` | 查看当前 Creator 服务器中的地图摘要与永久地图 ID |
+| `resources.list` | 读取地图引用的模型、图片、音频与 UI 资源索引 |
 
 ### 3.1 在玩家管理中签发／撤销
 
@@ -99,7 +101,27 @@ GET /api/creator/v1/health
 
 响应中的实例身份用于 Profile 校验，不可把它当作权限证明。
 
-## 5. 脚本上传与覆盖
+## 5. 查询当前服务器的地图
+
+```http
+GET /api/creator/v1/projects
+Authorization: Bearer bxc_...
+```
+
+需要 CLI 权限 `projects.list`。结果只包含当前 Profile 所连接服务器中的地图摘要和永久地图 ID；不会跨服务器聚合，不会返回脚本内容。
+
+## 6. 读取地图资源索引
+
+```http
+GET /api/creator/v1/projects/:projectId/resources
+Authorization: Bearer bxc_...
+```
+
+需要 CLI 权限 `resources.list`。返回模型（仅 `mesh/` 路径）、图片、音频与 UI 索引；地图资源声明由 CLI 生成。
+
+TypeScript 的 `GameAPI.d.ts` 与 `ClientAPI.d.ts` **不由 Creator HTTP API 提供**。`apc resource --type dts` 直接从 Gitee 的专用 SDK 源 `box3lab/arena_dts` 同步，因此不需要 Profile 或 CLI Token。
+
+## 7. 脚本上传与覆盖
 
 ```http
 PUT /api/creator/v1/projects/:projectId/scripts/:side/:entry
@@ -150,7 +172,7 @@ jq -Rs '{content: .}' server/gameplay.js | curl --fail-with-body -X PUT \
 
 生产 CLI 应使用 HTTP 客户端的 JSON streaming/文件读取能力，避免把大脚本放进 shell 参数或日志。上例只用于说明请求结构。
 
-## 6. 状态码与错误码
+## 8. 状态码与错误码
 
 | 状态 | 常见 code / message | 处理建议 |
 | --- | --- | --- |
@@ -166,7 +188,7 @@ jq -Rs '{content: .}' server/gameplay.js | curl --fail-with-body -X PUT \
 
 CLI 应把 JSON 错误中的 `code` 当作机器可读字段，把 `message` 当作面向人的提示；不可据此打印 Authorization header、Token 或完整工程内容。
 
-## 7. 网络与安全要求
+## 9. 网络与安全要求
 
 - Creator API 仅在 Creator 部署模式启用；非 Creator 服务拒绝这些接口。
 - 服务端检查允许的 Host，并拒绝浏览器跨站修改请求；CLI 使用 Bearer Token，不依赖 Cookie 或 CSRF 豁免技巧。
@@ -176,7 +198,7 @@ CLI 应把 JSON 错误中的 `code` 当作机器可读字段，把 `message` 当
 - 服务器应通过反向代理提供 HTTPS、访问日志与速率限制；不要把 Creator 端口直接暴露到不受信任公网。
 - 工程脚本文本可能含敏感信息。发布前仍需遵守 Local Engine 的敏感内容检查；API 不会替 CLI 自动脱敏日志。
 
-## 8. 开发与验证
+## 10. 开发与验证
 
 ```bash
 pnpm dev --infra
