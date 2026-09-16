@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   parseCreatorProjectScriptWrite,
+  parseCreatorProjectScriptReference,
+  readCreatorProjectScript,
   writeCreatorProjectScript,
   type CreatorProjectScriptStore,
 } from '@box-local/cli';
@@ -14,9 +16,17 @@ export const config = { api: { bodyParser: { sizeLimit: '22mb' } } };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'no-store');
-  if (req.method !== 'PUT') { res.setHeader('Allow', 'PUT'); return res.status(405).end(); }
-  if (!await allowAuthenticatedCreatorCliApi(req, res, 'scripts.update')) return;
+  if (!['GET', 'PUT'].includes(req.method || '')) { res.setHeader('Allow', 'GET, PUT'); return res.status(405).end(); }
+  if (!await allowAuthenticatedCreatorCliApi(req, res, req.method === 'GET' ? 'scripts.read' : 'scripts.update')) return;
   try {
+    if (req.method === 'GET') {
+      const input = parseCreatorProjectScriptReference({
+        projectId: Array.isArray(req.query.projectId) ? req.query.projectId[0] : req.query.projectId,
+        side: Array.isArray(req.query.side) ? req.query.side[0] : req.query.side,
+        entry: Array.isArray(req.query.entry) ? req.query.entry[0] : req.query.entry,
+      });
+      return res.status(200).json(readCreatorProjectScript(getLocalProjectManager() as CreatorProjectScriptStore, input));
+    }
     const input = parseCreatorProjectScriptWrite({
       projectId: Array.isArray(req.query.projectId) ? req.query.projectId[0] : req.query.projectId,
       side: Array.isArray(req.query.side) ? req.query.side[0] : req.query.side,

@@ -1290,12 +1290,14 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || `CLI Token ${editingCliToken ? '更新' : '创建'}失败`);
       if (!editingCliToken) setIssuedCliToken(data.token || '');
+      const updatedName = editingCliToken?.name;
+      await openDetails(selected, 'cliTokens');
+      // Detail refresh replaces the selected-player data asynchronously. Close
+      // the controlled dialog last so that refresh cannot leave it visible.
       setCreateCliTokenOpen(false);
       setCliTokenName('');
       setCliTokenScopes([]);
-      const updatedName = editingCliToken?.name;
       setEditingCliToken(null);
-      await openDetails(selected, 'cliTokens');
       setNotice(updatedName ? `CLI Token “${updatedName}”权限已更新。` : 'CLI Token 已创建；请立即复制，关闭后不会再次显示。');
     } catch (error) { setNotice((error as Error).message); } finally { setBusy(''); }
   }

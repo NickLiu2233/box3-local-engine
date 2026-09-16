@@ -1898,6 +1898,47 @@ function updateProjectScript(id, side, entry, content) {
   return { entry, side, revision: nextProjectHash, hash: scriptHash, shared: false }
 }
 
+function readProjectScript(id, side, entry) {
+  if (!['client', 'server'].includes(side)) throw new Error('Script side must be client or server')
+  if (!/^[A-Za-z0-9._-]{1,160}$/.test(entry) || entry.includes('..')) throw new Error('Invalid script entry')
+  const projectId = resolveProjectReference(id)
+  const group = mapGroupManager.paths(projectId)
+  const groupState = mapGroupManager.ensure(projectId)
+  if (!groupState.extraProjectHash) throw new Error(`Script not found: ${side}/${entry}`)
+  const bytes = fs.readFileSync(path.join(group.blobRoot, groupState.extraProjectHash))
+  if (!bytes.length) throw new Error(`Script not found: ${side}/${entry}`)
+  const { ExtraProjectInfoSchema, MuReadStream } = creatorSharedScriptCodec()
+  const stream = new MuReadStream(bytes)
+  const extra = ExtraProjectInfoSchema.patch(ExtraProjectInfoSchema.identity, stream)
+  try {
+    const asset = Object.values(extra.scriptAssets).find((value) => value.name === entry && value.isClient === (side === 'client'))
+    if (!asset || asset.isShare !== true) throw new Error(`Shared script not found: ${side}/${entry}`)
+    return { entry, side, hash: asset.hash, shared: true, content: fs.readFileSync(path.join(group.blobRoot, asset.hash), 'utf8') }
+  } finally {
+    ExtraProjectInfoSchema.free(extra)
+  }
+}
+
+function listProjectSharedScripts(id) {
+  const projectId = resolveProjectReference(id)
+  const group = mapGroupManager.paths(projectId)
+  const groupState = mapGroupManager.ensure(projectId)
+  if (!groupState.extraProjectHash) return { projectId: getProject(projectId).permanentMapId, scripts: [] }
+  const bytes = fs.readFileSync(path.join(group.blobRoot, groupState.extraProjectHash))
+  if (!bytes.length) return { projectId: getProject(projectId).permanentMapId, scripts: [] }
+  const { ExtraProjectInfoSchema, MuReadStream } = creatorSharedScriptCodec()
+  const extra = ExtraProjectInfoSchema.patch(ExtraProjectInfoSchema.identity, new MuReadStream(bytes))
+  try {
+    const scripts = Object.values(extra.scriptAssets)
+      .filter((asset) => asset.isShare === true)
+      .map((asset) => ({ entry: asset.name, side: asset.isClient ? 'client' : 'server', hash: asset.hash, size: fs.statSync(path.join(group.blobRoot, asset.hash)).size, shared: true }))
+      .sort((left, right) => left.side.localeCompare(right.side) || left.entry.localeCompare(right.entry))
+    return { projectId: getProject(projectId).permanentMapId, scripts }
+  } finally {
+    ExtraProjectInfoSchema.free(extra)
+  }
+}
+
 function getProjectResources(id) {
   const projectId = resolveProjectReference(id)
   const sourceRoot = path.join(projectRoot(projectId), 'source')
@@ -2521,6 +2562,8 @@ module.exports = {
   publishMapGroup,
   updateProject,
   updateProjectScript,
+  readProjectScript,
+  listProjectSharedScripts,
   getProjectResources,
 }
 

@@ -20,11 +20,33 @@ export type CreatorProjectScriptWriteResult = Readonly<{
     revision: string;
     hash: string;
     shared: boolean;
+    skipped?: boolean;
+}>;
+export type CreatorProjectScriptReadResult = Readonly<{
+    entry: string;
+    side: CreatorScriptSide;
+    hash: string;
+    shared: boolean;
+    content: string;
 }>;
 export interface CreatorProjectScriptStore {
     updateProjectScript(projectId: string, side: CreatorScriptSide, entry: string, content: string): CreatorProjectScriptWriteResult;
+    readProjectScript(projectId: string, side: CreatorScriptSide, entry: string): CreatorProjectScriptReadResult;
 }
 export declare function creatorApiPath(...segments: readonly (string | number)[]): string;
 export declare function creatorProjectScriptPath(projectId: string, side: CreatorScriptSide, entry: string): string;
 export declare function parseCreatorProjectScriptWrite(value: unknown): CreatorProjectScriptWrite;
+export declare function parseCreatorProjectScriptReference(value: unknown): Readonly<{
+    projectId: string;
+    side: CreatorScriptSide;
+    entry: string;
+    content: string;
+}>;
 export declare function writeCreatorProjectScript(store: CreatorProjectScriptStore, input: CreatorProjectScriptWrite): CreatorProjectScriptWriteResult;
+export declare function readCreatorProjectScript(store: CreatorProjectScriptStore, input: Omit<CreatorProjectScriptWrite, 'content'>): Readonly<{
+    entry: string;
+    side: CreatorScriptSide;
+    hash: string;
+    shared: boolean;
+    content: string;
+}>;

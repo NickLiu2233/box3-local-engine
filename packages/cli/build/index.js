@@ -4,7 +4,9 @@ exports.CREATOR_SCRIPT_MAX_BYTES = exports.CREATOR_SCRIPT_SIDES = exports.CREATO
 exports.creatorApiPath = creatorApiPath;
 exports.creatorProjectScriptPath = creatorProjectScriptPath;
 exports.parseCreatorProjectScriptWrite = parseCreatorProjectScriptWrite;
+exports.parseCreatorProjectScriptReference = parseCreatorProjectScriptReference;
 exports.writeCreatorProjectScript = writeCreatorProjectScript;
+exports.readCreatorProjectScript = readCreatorProjectScript;
 /**
  * Stable protocol surface shared by CLI clients and Creator HTTP adapters.
  * This module deliberately contains no HTTP, credential or storage code:
@@ -49,9 +51,18 @@ function parseCreatorProjectScriptWrite(value) {
     }
     return { projectId, side: side, entry, content };
 }
+function parseCreatorProjectScriptReference(value) {
+    const input = recordOf(value);
+    return parseCreatorProjectScriptWrite({ ...input, content: '' });
+}
 function writeCreatorProjectScript(store, input) {
     if (!store || typeof store.updateProjectScript !== 'function') {
         throw new TypeError('CreatorProjectScriptStore 必须提供 updateProjectScript');
     }
     return store.updateProjectScript(input.projectId, input.side, input.entry, input.content);
+}
+function readCreatorProjectScript(store, input) {
+    if (!store || typeof store.readProjectScript !== 'function')
+        throw new TypeError('CreatorProjectScriptStore 必须提供 readProjectScript');
+    return store.readProjectScript(input.projectId, input.side, input.entry);
 }

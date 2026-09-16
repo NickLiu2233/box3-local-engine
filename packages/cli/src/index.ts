@@ -23,6 +23,15 @@ export type CreatorProjectScriptWriteResult = Readonly<{
   revision: string;
   hash: string;
   shared: boolean;
+  skipped?: boolean;
+}>;
+
+export type CreatorProjectScriptReadResult = Readonly<{
+  entry: string;
+  side: CreatorScriptSide;
+  hash: string;
+  shared: boolean;
+  content: string;
 }>;
 
 export interface CreatorProjectScriptStore {
@@ -32,6 +41,7 @@ export interface CreatorProjectScriptStore {
     entry: string,
     content: string,
   ): CreatorProjectScriptWriteResult;
+  readProjectScript(projectId: string, side: CreatorScriptSide, entry: string): CreatorProjectScriptReadResult;
 }
 
 type ProtocolError = Error & { code: string; status: number };
@@ -75,6 +85,11 @@ export function parseCreatorProjectScriptWrite(value: unknown): CreatorProjectSc
   return { projectId, side: side as CreatorScriptSide, entry, content };
 }
 
+export function parseCreatorProjectScriptReference(value: unknown) {
+  const input = recordOf(value);
+  return parseCreatorProjectScriptWrite({ ...input, content: '' });
+}
+
 export function writeCreatorProjectScript(
   store: CreatorProjectScriptStore,
   input: CreatorProjectScriptWrite,
@@ -83,4 +98,9 @@ export function writeCreatorProjectScript(
     throw new TypeError('CreatorProjectScriptStore 必须提供 updateProjectScript');
   }
   return store.updateProjectScript(input.projectId, input.side, input.entry, input.content);
+}
+
+export function readCreatorProjectScript(store: CreatorProjectScriptStore, input: Omit<CreatorProjectScriptWrite, 'content'>) {
+  if (!store || typeof store.readProjectScript !== 'function') throw new TypeError('CreatorProjectScriptStore 必须提供 readProjectScript');
+  return store.readProjectScript(input.projectId, input.side, input.entry);
 }
