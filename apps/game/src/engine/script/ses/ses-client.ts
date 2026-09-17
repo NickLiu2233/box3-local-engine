@@ -322,7 +322,14 @@ export class SesContext {
 
     for (const [name, code] of Object.entries(this.modules)) {
       // 预处理代码：将相对路径 import 转换为绝对路径
-      const transformedCode = this.transformRelativeImports(code, sandboxRoot);
+      // Keep a stable module filename in browser stack traces. The source still
+      // runs from a Blob for sandbox isolation, but DevTools and CLI diagnostics
+      // now report clientIndex.js just like server scripts report index.js.
+      const sourceName = name.replace(/[\r\n]/g, '');
+      const transformedCode = `${this.transformRelativeImports(
+        code,
+        sandboxRoot,
+      )}\n//# sourceURL=${sourceName}\n`;
 
       const blob = new Blob([transformedCode], { type: 'text/javascript' });
       const url = URL.createObjectURL(blob);
