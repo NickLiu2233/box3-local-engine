@@ -30,6 +30,24 @@ export declare const DebuggerProtocol: {
             token: MuVarint;
             expr: MuUTF8;
         }>;
+        /** Browser-side script output, relayed to the editor and Creator CLI. */
+        clientLog: MuStruct<{
+            level: MuUint8;
+            message: MuUTF8;
+        }>;
+        clientException: MuStruct<{
+            name: MuUTF8;
+            message: MuUTF8;
+            stack: import("@box-local/mudb/schema").MuArray<MuStruct<{
+                function: MuUTF8;
+                file: MuUTF8;
+                line: import("@box-local/mudb/schema").MuUint32;
+                column: import("@box-local/mudb/schema").MuUint32;
+                source: MuUTF8;
+                isolate: MuBoolean;
+            }>>;
+        }>;
+        clientClearLog: MuVoid;
     };
 };
 //# sourceMappingURL=protocol.d.ts.map

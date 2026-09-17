@@ -32,6 +32,12 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       --filter @box-local/game-server... \
       --filter @box-local/local-engine...
 
+# Protocol modules are consumed from internals/schema/build.  Build them in
+# the image instead of relying on a developer's previously generated output;
+# otherwise a newly added MuDB message can be present in TypeScript source but
+# absent from the production runtime.
+RUN pnpm --filter @box-local/schema build
+
 # Generated content-addressed runtime resources are intentionally excluded
 # from Git. Rebuild them inside the shared build stage so clean CI checkouts
 # and local Docker builds produce the same Creator/Play runtime data.

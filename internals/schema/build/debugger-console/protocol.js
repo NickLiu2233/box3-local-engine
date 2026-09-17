@@ -23,6 +23,13 @@ exports.DebuggerProtocol = {
             token: new schema_1.MuVarint(),
             expr: new schema_1.MuUTF8(),
         }),
+        /** Browser-side script output, relayed to the editor and Creator CLI. */
+        clientLog: new schema_1.MuStruct({
+            level: new schema_1.MuUint8(),
+            message: new schema_1.MuUTF8(),
+        }),
+        clientException: schema_2.ParsedErrorSchema,
+        clientClearLog: new schema_1.MuVoid(),
     },
 };
 //# sourceMappingURL=protocol.js.map

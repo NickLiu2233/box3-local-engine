@@ -68,33 +68,54 @@ export class DebuggerClient {
   private _sendRemoteEvent(
     event: (typeof this._pendingRemoteEvents)[number],
   ) {
-    if (!this._protocol.client.running) {
-      if (event.type === 'clear') this._pendingRemoteEvents = [];
-      this._pendingRemoteEvents.push(event);
-      if (this._pendingRemoteEvents.length > 200) {
-        this._pendingRemoteEvents.shift();
-      }
+    if (!this._protocol.client.running || !this._dispatchRemoteEvent(event)) {
+      this._queueRemoteEvent(event);
       return;
     }
-    this._dispatchRemoteEvent(event);
   }
 
   private _flushPendingRemoteEvents = () => {
     const events = this._pendingRemoteEvents;
     this._pendingRemoteEvents = [];
-    for (const event of events) this._dispatchRemoteEvent(event);
+    for (const event of events) {
+      if (!this._dispatchRemoteEvent(event)) {
+        this._queueRemoteEvent(event);
+      }
+    }
   };
+
+  private _queueRemoteEvent(event: (typeof this._pendingRemoteEvents)[number]) {
+    if (event.type === 'clear') this._pendingRemoteEvents = [];
+    this._pendingRemoteEvents.push(event);
+    if (this._pendingRemoteEvents.length > 200) {
+      this._pendingRemoteEvents.shift();
+    }
+  }
 
   private _dispatchRemoteEvent(
     event: (typeof this._pendingRemoteEvents)[number],
   ) {
+    // An editor may be newer than an already-running local runtime. Treat the
+    // client-log messages as an optional protocol extension until that runtime
+    // is restarted; console.log must never become a user-script exception.
+    const message = this._protocol.server.message as typeof this._protocol.server.message & {
+      clientLog?: (value: { level: GameLogLevel; message: string }) => void;
+      clientException?: (
+        value: Parameters<DebuggerConsole['scriptException']>[0],
+      ) => void;
+      clientClearLog?: () => void;
+    };
     if (event.type === 'log') {
-      this._protocol.server.message.clientLog(event.value);
+      if (typeof message.clientLog !== 'function') return false;
+      message.clientLog(event.value);
     } else if (event.type === 'exception') {
-      this._protocol.server.message.clientException(event.value);
+      if (typeof message.clientException !== 'function') return false;
+      message.clientException(event.value);
     } else {
-      this._protocol.server.message.clientClearLog();
+      if (typeof message.clientClearLog !== 'function') return false;
+      message.clientClearLog();
     }
+    return true;
   }
 
   public scriptEval = (expr: string) => {
