@@ -348,7 +348,7 @@ function startEditLibrary({
         const starting = starts.has(key)
         if (!current && !starting) {
           res.writeHead(409, { 'content-type': 'application/json; charset=utf-8' })
-          res.end(JSON.stringify({ message: '地图编辑器尚未打开；请先启动预览运行' }))
+          res.end(JSON.stringify({ message: '地图编辑器尚未打开' }))
           return
         }
       }

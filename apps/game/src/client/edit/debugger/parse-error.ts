@@ -6,8 +6,6 @@ import {
 const CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+\:\d+|\(native\))/m;
 const SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code\])?$/;
 
-export const SOURCE_FILE = 'clientIndex.js';
-
 /**
  * 将前端脚本产生的错误对象转换为可被 DebuggerConsole 接收的格式
  * @param error
@@ -72,7 +70,11 @@ function parseClientV8(error: Error) {
   for (let i = 0; i < lines.length; ++i) {
     const line = lines[i];
 
-    if (!line.includes(SOURCE_FILE) || !line.match(CHROME_IE_STACK_REGEXP)) {
+    // The legacy editor emitted clientIndex.js, while Creator Vite projects
+    // emit names such as main.client.js.  Filtering for the old filename here
+    // discarded every useful frame before the CLI had a chance to map it via
+    // the generated source map.
+    if (!line.match(CHROME_IE_STACK_REGEXP)) {
       continue;
     }
 
