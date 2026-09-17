@@ -43,16 +43,7 @@ export class IvmpScriptSocketServer implements ScriptServer {
       join(__dirname, './ivmp-process-entry'),
       undefined,
       {
-        // 开发环境下调试可以在这里添加 '--inspect'，但不建议常开，会影响实际表现
-        execArgv:
-          process.env.NODE_ENV === 'development'
-            ? [
-                '-r',
-                '@swc-node/register',
-                '--inspect=9226',
-                '--no-node-snapshot',
-              ]
-            : ['--no-node-snapshot'],
+        execArgv: ['-r', '@swc-node/register', '--no-node-snapshot'],
         stdio: 'inherit',
         serialization: 'advanced',
         env: Object.assign({}, process.env, {
@@ -157,6 +148,12 @@ export class IvmpScriptSocketServer implements ScriptServer {
   public close() {
     this._state = MuSocketServerState.SHUTDOWN;
     this.clients.forEach((c) => c.close());
+
+    // The script worker is not detached; leaving it alive leaks its process
+    // after a map runtime or development stack is restarted.
+    if (!this._childProcess.killed) {
+      this._childProcess.kill('SIGTERM');
+    }
 
     this._spec?.close();
     this.logger.debug('Socket server closed.');

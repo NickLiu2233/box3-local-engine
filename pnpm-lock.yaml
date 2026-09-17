@@ -539,7 +539,7 @@ importers:
         version: link:../../packages/voxa-project
       next:
         specifier: 15.5.24
-        version: 15.5.24(@babel/core@7.17.8)(@opentelemetry/api@1.9.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(sass@1.49.10)
+        version: 15.5.24(@babel/core@7.28.5)(@opentelemetry/api@1.9.0)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(sass@1.49.10)
       react:
         specifier: 19.2.1
         version: 19.2.1
@@ -1574,6 +1574,9 @@ importers:
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.3.4)
+      better-sse:
+        specifier: 0.16.1
+        version: 0.16.1
       debug:
         specifier: 4.3.4
         version: 4.3.4
@@ -5957,6 +5960,10 @@ packages:
 
   bcrypt-pbkdf@1.0.2:
     resolution: {integrity: sha512-qeFIXtP4MSoi6NLqO12WfqARWWuCKi2Rn/9hJLEmtB5yTNr9DqFWkJRCf2qShWzPeAMRnOgCrq0sg/KLv5ES9w==}
+
+  better-sse@0.16.1:
+    resolution: {integrity: sha512-1gc5LUmdMX49Whq/XWOfNKBmMpZCaFLWk0Pt4A5p41T/6/sK1cV7Px/3ep84gwZs6Vz6V/tgozz6EscTT0lLoA==}
+    engines: {node: '>=20', pnpm: '>=10'}
 
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
@@ -17759,6 +17766,8 @@ snapshots:
   bcrypt-pbkdf@1.0.2:
     dependencies:
       tweetnacl: 0.14.5
+
+  better-sse@0.16.1: {}
 
   big.js@5.2.2: {}
 

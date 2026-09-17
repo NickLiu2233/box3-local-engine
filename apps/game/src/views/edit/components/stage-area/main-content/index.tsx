@@ -14,7 +14,6 @@ import { RootState } from 'src/redux/edit';
 import { LoadingSeed, Seeds3DContainer } from '../seeds';
 import { touchable } from 'src/utils/mobile';
 
-import { DebugPanel } from '../../debugPanel';
 import { TransformType } from '../../transformHandler';
 import { RotationTurorial } from '../../rotation-tutorial';
 import { EditHyperLink } from '../../edit-hyperLink';
@@ -43,9 +42,6 @@ export function MainContent(props: MainContentProps) {
   );
   const editorUiShowStatus = useSelector(
     (state: RootState) => state.ui.editorUiShowStatus,
-  );
-  const permissionDebugger = useSelector(
-    (state: RootState) => state.permission.debugger,
   );
   const permissionCreatePanel = useSelector(
     (state: RootState) =>
@@ -91,18 +87,6 @@ export function MainContent(props: MainContentProps) {
   }, [editor, isShowDebugLogPanel]);
 
   const isRunning = useSelector((state: RootState) => state.ui.isRunning);
-
-  const floatDebugPanel = useMemo(() => {
-    /* 脚本编辑器打开的情况下，透明debug面板要消失 */
-    if (
-      navMode !== LeftNavModeEnum.Script &&
-      permissionDebugger &&
-      isShowDebugLogPanel
-    ) {
-      return <DebugPanel float />;
-    }
-    return;
-  }, [isShowDebugLogPanel, navMode, permissionDebugger]);
 
   const gameUIMenu = useMemo(() => {
     if (navMode !== LeftNavModeEnum.UI || isRunning) {
@@ -151,7 +135,6 @@ export function MainContent(props: MainContentProps) {
         }}
       >
         <ScriptContainer />
-        {floatDebugPanel}
       </div>
       <RotationTurorial />
       {mouseRect.show && (

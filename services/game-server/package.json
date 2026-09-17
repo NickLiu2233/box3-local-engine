@@ -41,6 +41,7 @@
     "agora-access-token": "2.0.4",
     "ai": "5.0.92",
     "axios": "1.18.0",
+    "better-sse": "0.16.1",
     "debug": "4.3.4",
     "dotenv": "16.0.1",
     "gl-matrix": "3.4.3",

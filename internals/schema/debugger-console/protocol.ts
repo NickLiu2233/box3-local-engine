@@ -28,5 +28,12 @@ export const DebuggerProtocol = {
       token: new MuVarint(),
       expr: new MuUTF8(),
     }),
+    /** Browser-side script output, relayed to the editor and Creator CLI. */
+    clientLog: new MuStruct({
+      level: new MuUint8(),
+      message: new MuUTF8(),
+    }),
+    clientException: ParsedErrorSchema,
+    clientClearLog: new MuVoid(),
   },
 };

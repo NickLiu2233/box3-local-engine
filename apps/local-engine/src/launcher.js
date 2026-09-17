@@ -325,7 +325,19 @@ let backupTimer
 
 async function terminateRuntimeChild(child, runtime, graceMs) {
   if (runtime.exited) return
-  child.kill('SIGTERM')
+  const signalRuntime = (signal) => {
+    // Project runtimes are their own process groups. Terminating only the
+    // launcher leaves game and script-worker descendants orphaned, which in
+    // turn leaks ports into the next development run.
+    if (runtime.processGroup && process.platform !== 'win32' && child.pid) {
+      try {
+        process.kill(-child.pid, signal)
+        return
+      } catch {}
+    }
+    child.kill(signal)
+  }
+  signalRuntime('SIGTERM')
   await new Promise((resolve) => {
     const timer = setTimeout(resolve, graceMs)
     child.once('exit', () => {
@@ -334,7 +346,7 @@ async function terminateRuntimeChild(child, runtime, graceMs) {
     })
   })
   if (runtime.exited) return
-  child.kill('SIGKILL')
+  signalRuntime('SIGKILL')
   await new Promise((resolve) => {
     const timer = setTimeout(resolve, 1000)
     child.once('exit', () => {
@@ -815,6 +827,7 @@ async function main() {
       ],
       {
         cwd: repoRoot,
+        detached: process.platform !== 'win32',
         stdio: 'inherit',
         env: {
           ...process.env,
@@ -840,6 +853,7 @@ async function main() {
       pid: child.pid,
       startedAt: new Date().toISOString(),
       exited: false,
+      processGroup: process.platform !== 'win32',
       async stop() {
         await terminateRuntimeChild(child, runtime, 5000)
       },

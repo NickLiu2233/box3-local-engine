@@ -59,6 +59,39 @@ function startEditLibrary({
   let nextPort = runtimePortStart
   let closed = false
 
+  // A Creator instance may be restarted while an older map process is still
+  // winding down. Allocate per-map ports defensively instead of assuming the
+  // sequential range is empty after every restart.
+  const usedRuntimePorts = () =>
+    new Set(
+      [...runtimes.values()]
+        .filter((runtime) => runtime && !runtime.exited)
+        .map((runtime) => runtime.port),
+    )
+
+  const portIsAvailable = (candidate) =>
+    new Promise((resolve) => {
+      const probe = net.createServer()
+      const finish = (available) => {
+        probe.removeAllListeners()
+        if (probe.listening) probe.close(() => resolve(available))
+        else resolve(available)
+      }
+      probe.once('error', () => finish(false))
+      probe.once('listening', () => finish(true))
+      probe.listen(candidate, '127.0.0.1')
+    })
+
+  async function allocateRuntimePort() {
+    const unavailable = usedRuntimePorts()
+    for (let attempts = 0; attempts < 512; attempts += 1) {
+      const candidate = nextPort++
+      if (unavailable.has(candidate)) continue
+      if (await portIsAvailable(candidate)) return candidate
+    }
+    throw Object.assign(new Error('没有可用的地图运行时端口，请稍后重试'), { statusCode: 503 })
+  }
+
   const setStatus = (id, status) => {
     const next = { ...status, updatedAt: new Date().toISOString() }
     statuses.set(id, next)
@@ -133,7 +166,7 @@ function startEditLibrary({
         percent: 18,
         message: roomId ? '正在创建私有传送房间' : '正在创建独立运行时',
       })
-      const runtimePort = nextPort++
+      const runtimePort = await allocateRuntimePort()
       const runtime = await startRuntime(project, runtimePort, {
         serverId: roomId || project.permanentMapId,
         privateRoom: Boolean(roomId),
@@ -273,6 +306,51 @@ function startEditLibrary({
           ),
         )
         return
+      }
+      // Creator CLI status and log subscriptions observe an editor runtime;
+      // neither operation may allocate a map process as a side effect. Only a
+      // deliberate preview `start` request is allowed to create one.
+      const isCreatorPreviewRoute =
+        forwardedPath === '/internal/creator-preview-runtime' ||
+        forwardedPath === '/internal/creator-preview-runtime/events'
+      if (isCreatorPreviewRoute) {
+        project = resolveProject(reference)
+        if (!project) {
+          res.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ message: '工程不存在' }))
+          return
+        }
+        id = project.id
+        key = runtimeKey(id, roomId)
+      }
+      if (forwardedPath === '/internal/creator-preview-runtime') {
+        const current = runtimes.get(key)
+        const starting = starts.has(key)
+        const previewAction = req.headers['x-box-creator-preview-action']
+        if (req.method === 'POST' && previewAction === 'start') {
+          // `runtime start` is an explicit request to make a previously
+          // recycled preview usable again, just like opening the map editor.
+          destroyed.delete(key)
+        }
+        if (req.method === 'GET' && !current && !starting) {
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ phase: 'idle', running: false, message: '预览已停止', updatedAt: new Date().toISOString() }))
+          return
+        }
+        if (req.method === 'POST' && previewAction === 'stop' && !current && !starting) {
+          res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ phase: 'idle', running: false, message: '预览已停止', updatedAt: new Date().toISOString() }))
+          return
+        }
+      }
+      if (forwardedPath === '/internal/creator-preview-runtime/events') {
+        const current = runtimes.get(key)
+        const starting = starts.has(key)
+        if (!current && !starting) {
+          res.writeHead(409, { 'content-type': 'application/json; charset=utf-8' })
+          res.end(JSON.stringify({ message: '地图编辑器尚未打开；请先启动预览运行' }))
+          return
+        }
       }
       let existingRuntime = runtimes.get(key)
       // Publishing asks an already-open editor to flush its state. A project

@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import ivm from 'isolated-vm';
 import type { Level, Logger } from 'pino';
 import v8 from 'v8';
-import WebSocket from 'ws';
 import { BOILERPLATE_FILENAME } from '../../../script/parse-error';
 import type { ScriptShellSysLog } from '../../../script/script-shell';
 import type {
@@ -19,7 +18,6 @@ import type {
  */
 export class IsolateVmController {
   private _isolate: ivm.Isolate | undefined;
-  private _inspector?: ivm.InspectorSession;
   private _context: ivm.Context | undefined;
   private _script: ivm.Script | undefined;
   private _isRunning: boolean = false;
@@ -51,49 +49,7 @@ export class IsolateVmController {
     private _scriptTimeout: number,
     private _memoryLimitMb: number,
     private _logger: Logger,
-  ) {
-    if (process.env.NODE_ENV === 'development') {
-      let wss = new WebSocket.Server({ port: 9231 });
-      // devtools://devtools/bundled/inspector.html?experiments=true&v8only=true&ws=127.0.0.1:9231
-      wss.on('connection', (ws) => {
-        if (!this._isolate) {
-          return;
-        }
-        const channel = this._isolate.createInspectorSession();
-        this._inspector = channel;
-        // Dispose inspector session on websocket disconnect
-
-        function dispose() {
-          try {
-            channel.dispose();
-          } catch (err) {}
-        }
-        ws.on('error', dispose);
-        ws.on('close', dispose);
-
-        // Relay messages from frontend to backend
-        ws.on('message', function (message) {
-          try {
-            channel.dispatchProtocolMessage(String(message));
-          } catch (err) {
-            // This happens if inspector session was closed unexpectedly
-            ws.close();
-          }
-        });
-
-        // Relay messages from backend to frontend
-        function send(message) {
-          try {
-            ws.send(message);
-          } catch (err) {
-            dispose();
-          }
-        }
-        channel.onResponse = (_, message) => send(message);
-        channel.onNotification = send;
-      });
-    }
-  }
+  ) {}
 
   public async run(sessionId: string) {
     if (this._isRunning) {
@@ -115,12 +71,12 @@ export class IsolateVmController {
         this.events.crash.notify();
         this.stop();
       },
-      inspector: process.env.NODE_ENV === 'development',
+      inspector: false,
     });
     this._isolate = isolate;
     try {
       const context = isolate.createContextSync({
-        inspector: process.env.NODE_ENV === 'development',
+        inspector: false,
       });
       this._context = context;
       try {
@@ -278,7 +234,6 @@ export class IsolateVmController {
       this._logger.error(e);
     }
     try {
-      this._inspector && this._inspector.dispose();
       this._isolate!.dispose();
     } catch (e) {
       this._logger.warn(e, 'Error disposing isolate.');

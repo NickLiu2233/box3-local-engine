@@ -15,7 +15,11 @@ function getWebpackConfig(config,
     new webpack.IgnorePlugin({ resourceRegExp: new RegExp(/assets\/server/) }),
   ];
 
-  if (!isPlayBuild) {
+  // Monaco is requested by the browser from `/_next/static/vs`.  Creator,
+  // Play and Player Service each use a separate NEXT_DIST_DIR in development,
+  // so writing to a hard-coded `.next` leaves Creator without the loader.
+  // Only the client compiler owns browser static assets.
+  if (!isPlayBuild && !isServer) {
     plugins.push(new CopyWebpackPlugin({
       patterns: [
         {
@@ -23,7 +27,16 @@ function getWebpackConfig(config,
             dirname(require.resolve('monaco-editor/package.json')),
             'min/vs',
           ),
-          to: join(__dirname, '../.next/static/vs'),
+          // `output.path` is not the public Next dist directory for every
+          // compiler (notably the server compiler).  NEXT_DIST_DIR is the
+          // shared source of truth used by next.config.js and dev-all.
+          to: join(
+            __dirname,
+            '..',
+            process.env.NEXT_DIST_DIR || '.next',
+            'static',
+            'vs',
+          ),
           // Terser skip this file for minimization
           info: { minimized: true },
         },

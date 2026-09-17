@@ -27,6 +27,7 @@ import { AiServer } from './ai/ai-server';
 import { CodeEditorServerController } from './code-editor/code-editor-server-controller';
 import { MuCodeEditorReplicaServer } from './code-editor/replica/server';
 import { DebuggerServer } from './debugger/debugger-server';
+import { CreatorPreviewRuntime } from './creator-preview-runtime';
 import { EditServerStateSchema } from './edit-server-schema';
 import { PublishServer } from './publish/publish-server';
 import { EditReplicaServer } from './replica/replica-server';
@@ -97,6 +98,7 @@ export async function startEditServer(spec: {
     skipVoxels: false,
     play: false,
   });
+  server.creatorPreviewRuntime.markReady();
   return server;
 }
 
@@ -106,6 +108,7 @@ export class EditServer {
   public codeEditorController: CodeEditorServerController;
   public replica: EditReplicaServer;
   public debugger: DebuggerServer;
+  public creatorPreviewRuntime: CreatorPreviewRuntime;
   public ai: AiServer;
   public rpc: EditRPCServer;
   public publish: PublishServer;
@@ -178,6 +181,11 @@ export class EditServer {
     this.debugger = new DebuggerServer({
       server: spec.server,
       state: this.state,
+    });
+    this.creatorPreviewRuntime = new CreatorPreviewRuntime({
+      state: this.state,
+      replica: this.replica,
+      debugger: this.debugger,
     });
 
     // 初始化 AI 服务

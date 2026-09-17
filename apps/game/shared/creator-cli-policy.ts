@@ -7,6 +7,8 @@ export const CREATOR_CLI_CAPABILITIES = [
   'resources.list',
   'scripts.read',
   'scripts.update',
+  'runtime.view',
+  'runtime.control',
 ] as const;
 export type CreatorCliCapability = typeof CREATOR_CLI_CAPABILITIES[number];
 
@@ -15,6 +17,8 @@ export const CREATOR_CLI_CAPABILITY_META: Readonly<Record<CreatorCliCapability, 
   'resources.list': { label: '同步资源索引', description: '读取地图引用的模型、图片、音频与 UI 资源清单' },
   'scripts.read': { label: '读取脚本', description: '读取指定地图的客户端、服务端脚本，用于同步与差异比较' },
   'scripts.update': { label: '更新脚本', description: '上传或覆盖指定地图的客户端、服务端脚本' },
+  'runtime.view': { label: '查看预览日志', description: '查看地图预览运行状态，并订阅客户端与服务端控制台' },
+  'runtime.control': { label: '控制预览运行', description: '启动或停止地图预览运行' },
 });
 export const FULL_CREATOR_CLI_CAPABILITIES = [...CREATOR_CLI_CAPABILITIES] as CreatorCliCapability[];
 

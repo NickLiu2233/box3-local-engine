@@ -19,6 +19,20 @@ export class DebuggerClient {
     this._state = spec.state;
     this._console = spec.console;
 
+    // Creator may hot-reload before an already-open map runtime is restarted.
+    // Keep the local console working during that short protocol-version skew;
+    // the new runtime receives and relays these messages after reconnecting.
+    const remoteMessages = this._protocol.server.message as unknown as {
+      clientLog?: (log: { level: GameLogLevel; message: string }) => void;
+      clientException?: (error: Parameters<DebuggerConsole['scriptException']>[0]) => void;
+      clientClearLog?: () => void;
+    };
+    this._console.setRemoteReporter({
+      log: (log) => remoteMessages.clientLog?.(log),
+      exception: (error) => remoteMessages.clientException?.(error),
+      clear: () => remoteMessages.clientClearLog?.(),
+    });
+
     protocol.configure({
       message: {
         updateLog: this._console.updateLogList,

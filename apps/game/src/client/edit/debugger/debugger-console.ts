@@ -13,8 +13,17 @@ import { parseClientScriptError } from './parse-error';
 
 export class DebuggerConsole implements ClientConsole {
   private _state: ClientStateType;
+  private _remoteReporter?: {
+    log: (log: { level: GameLogLevel; message: string }) => void;
+    exception: (error: ParsedError) => void;
+    clear: () => void;
+  };
   constructor(state: ClientStateType) {
     this._state = state;
+  }
+
+  public setRemoteReporter(reporter: typeof this._remoteReporter) {
+    this._remoteReporter = reporter;
   }
 
   private _nextToken() {
@@ -42,6 +51,16 @@ export class DebuggerConsole implements ClientConsole {
     }
   };
 
+  private _reportLog(log: { level: GameLogLevel; message: string }) {
+    this.updateLogList(log);
+    this._remoteReporter?.log(log);
+  }
+
+  private _reportException(error: ParsedError) {
+    this.scriptException(error);
+    this._remoteReporter?.exception(error);
+  }
+
   public clearLog = () => {
     this._state.debugger.log = LogListSchema.assign(
       this._state.debugger.log,
@@ -68,41 +87,41 @@ export class DebuggerConsole implements ClientConsole {
   };
 
   assert = (value: any, message?: string, ...optionalParams: any[]): void => {
-    this.updateLogList({
+    this._reportLog({
       level: GameLogLevel.ERROR,
       message: [value, message, ...optionalParams].join(' '),
     });
   };
 
   debug = (message?: any, ...optionalParams: any[]): void => {
-    this.updateLogList({
+    this._reportLog({
       level: GameLogLevel.DEBUG,
       message: [message, ...optionalParams].join(' '),
     });
   };
 
   error = (message?: any, ...optionalParams: any[]): void => {
-    this.scriptException(
+    this._reportException(
       parseClientScriptError(message?.stack ? message : new Error(message)),
     );
   };
 
   log = (message?: any, ...optionalParams: any[]): void => {
-    this.updateLogList({
+    this._reportLog({
       level: GameLogLevel.INFO,
       message: [message, ...optionalParams].join(' '),
     });
   };
 
   warn = (message?: any, ...optionalParams: any[]): void => {
-    this.updateLogList({
+    this._reportLog({
       level: GameLogLevel.WARN,
       message: [message, ...optionalParams].join(' '),
     });
   };
 
   info(message?: any, ...optionalParams: any[]): void {
-    this.updateLogList({
+    this._reportLog({
       level: GameLogLevel.INFO,
       message: [message, ...optionalParams].join(' '),
     });
@@ -110,5 +129,6 @@ export class DebuggerConsole implements ClientConsole {
 
   clear = () => {
     this.clearLog();
+    this._remoteReporter?.clear();
   };
 }

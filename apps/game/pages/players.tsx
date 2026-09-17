@@ -229,6 +229,10 @@ const cliCapabilityGroups: ReadonlyArray<{
     label: '脚本',
     capabilities: ['scripts.read', 'scripts.update'],
   },
+  {
+    label: '预览运行',
+    capabilities: ['runtime.view', 'runtime.control'],
+  },
 ];
 
 function parseSection(value: unknown): AdminSection {

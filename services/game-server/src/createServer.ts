@@ -528,6 +528,57 @@ export async function createGameServer(spec: {
   // process asks the active edit runtime to persist its current replica before
   // project-manager reads project-state.json and builds an immutable release.
   if (serverConfig.method === 'local' && serverConfig.mode === 'edit' && editServer) {
+    const localOnly = (req: http.IncomingMessage, res: http.ServerResponse) => {
+      const address = req.socket.remoteAddress || '';
+      const allowed = address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1';
+      if (!allowed) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: 'forbidden' }));
+      }
+      return allowed;
+    };
+
+    spec.httpRoutes['/internal/creator-preview-runtime'] = async (req, res) => {
+      if (!localOnly(req, res)) return;
+      if (req.method === 'GET') {
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(editServer.creatorPreviewRuntime.status()));
+        return;
+      }
+      if (req.method !== 'POST') {
+        res.writeHead(405, { Allow: 'GET, POST' });
+        res.end();
+        return;
+      }
+      try {
+        const body = await bodyParse(req) as { action?: unknown };
+        const action = body.action;
+        if (action !== 'start' && action !== 'stop') {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ message: 'action 必须为 start 或 stop' }));
+          return;
+        }
+        const status = action === 'start'
+          ? await editServer.creatorPreviewRuntime.start()
+          : await editServer.creatorPreviewRuntime.stop();
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(status));
+      } catch (error) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ message: error instanceof Error ? error.message : String(error) }));
+      }
+    };
+
+    spec.httpRoutes['/internal/creator-preview-runtime/events'] = async (req, res) => {
+      if (!localOnly(req, res)) return;
+      if (req.method !== 'GET') {
+        res.writeHead(405, { Allow: 'GET' });
+        res.end();
+        return;
+      }
+      await editServer.creatorPreviewRuntime.subscribe(req, res);
+    };
+
     spec.httpRoutes['/internal/save-local-project'] = async (req, res) => {
       const remoteAddress = req.socket.remoteAddress || '';
       const isLoopback =
