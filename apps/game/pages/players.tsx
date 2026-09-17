@@ -23,7 +23,6 @@ import {
   type CreatorCapability,
 } from '../shared/creator-policy';
 import {
-  CREATOR_CLI_CAPABILITIES,
   CREATOR_CLI_CAPABILITY_META,
   FULL_CREATOR_CLI_CAPABILITIES,
   type CreatorCliCapability,
@@ -217,6 +216,20 @@ const detailTabMeta: Record<PlayerDetailTab, { title: string }> = {
   history: { title: '管理记录' },
   danger: { title: '删除身份' },
 };
+
+const cliCapabilityGroups: ReadonlyArray<{
+  label: string;
+  capabilities: readonly CreatorCliCapability[];
+}> = [
+  {
+    label: '地图与资源',
+    capabilities: ['projects.list', 'resources.list'],
+  },
+  {
+    label: '脚本',
+    capabilities: ['scripts.read', 'scripts.update'],
+  },
+];
 
 function parseSection(value: unknown): AdminSection {
   const section = Array.isArray(value) ? value[0] : value;
@@ -1700,11 +1713,19 @@ export default function PlayersPage({ returnUrl, returnLabel, initialSection }: 
           <Dialog.Content className={`${styles.modalDialog} ${styles.cliTokenDialog}`}>
             <form onSubmit={(event) => { event.preventDefault(); void createCliToken(); }}>
               <AdminDialogHeader title={editingCliToken ? '编辑 CLI Token 权限' : '签发 CLI Token'} />
-              <Dialog.Description className={styles.cliTokenDialogDescription}>需先允许进入创作端；CLI 的细分权限不继承基本资料中的创作者操作权限。</Dialog.Description>
+              <Dialog.Description className={styles.visuallyHidden}>配置此 CLI Token 可使用的操作权限。</Dialog.Description>
               {!editingCliToken ? <label>凭据名称<input id="cli-token-name" autoFocus required maxLength={64} autoComplete="off" value={cliTokenName} onChange={(event) => setCliTokenName(event.target.value)} placeholder="例如：开发机、CI 或自动化脚本" /></label> : null}
               <fieldset className={styles.cliTokenPermissionList}>
-                <legend>允许的操作</legend>
-                {CREATOR_CLI_CAPABILITIES.map((capability) => <label className={styles.cliTokenPermission} key={capability}><input type="checkbox" checked={cliTokenScopes.includes(capability)} onChange={(event) => setCliTokenScopes(event.target.checked ? [...new Set([...cliTokenScopes, capability])] : cliTokenScopes.filter((value) => value !== capability))} /><span><strong>{CREATOR_CLI_CAPABILITY_META[capability].label}</strong><small>{CREATOR_CLI_CAPABILITY_META[capability].description}</small></span></label>)}
+                <legend className={styles.visuallyHidden}>CLI Token 权限</legend>
+                {cliCapabilityGroups.map((group) => <section className={styles.cliTokenPermissionGroup} key={group.label}>
+                  <header><strong>{group.label}</strong></header>
+                  <div className={styles.cliTokenPermissionGrid}>
+                    {group.capabilities.map((capability) => <label className={styles.cliTokenPermission} key={capability}>
+                      <input type="checkbox" checked={cliTokenScopes.includes(capability)} onChange={(event) => setCliTokenScopes(event.target.checked ? [...new Set([...cliTokenScopes, capability])] : cliTokenScopes.filter((value) => value !== capability))} />
+                      <span><strong>{CREATOR_CLI_CAPABILITY_META[capability].label}</strong></span>
+                    </label>)}
+                  </div>
+                </section>)}
               </fieldset>
               <footer className={styles.createUserActions}>
                 <Dialog.Close asChild><button className={styles.secondaryButton} type="button" disabled={busy === 'cli-token'}>取消</button></Dialog.Close>
