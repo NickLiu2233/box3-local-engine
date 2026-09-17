@@ -1939,10 +1939,64 @@ function listProjectSharedScripts(id) {
   }
 }
 
+function selectCreatorModelAssets(assets, groupState, projectId) {
+  // Older projects store models in the map's general assets index. Modern
+  // Creator imports store per-map mesh paths in shared map-group state, so
+  // combine both representations for the CLI manifest.
+  const legacyModels = Object.fromEntries(
+    Object.entries(assets || {}).filter(([assetPath]) =>
+      assetPath.startsWith('mesh/'),
+    ),
+  )
+  const groupPaths = groupState?.projectModelPathsByMap?.[projectId]
+  if (!Array.isArray(groupPaths)) return legacyModels
+
+  const groupModels = Object.fromEntries(
+    groupPaths
+      .filter(
+        (assetPath) =>
+          typeof assetPath === 'string' && assetPath.startsWith('mesh/'),
+      )
+      .map((assetPath) => {
+        const modelName = path.basename(assetPath, path.extname(assetPath))
+        return [
+          assetPath,
+          {
+            hash: groupState.modelProjects?.[modelName] || '',
+            previewImage: groupState.modelPreviews?.[modelName] || '',
+          },
+        ]
+      }),
+  )
+  return { ...legacyModels, ...groupModels }
+}
+
+function selectCreatorAssetIndex(
+  projectIndex,
+  groupState,
+  indexName,
+  readGroupIndex,
+) {
+  const indexHash = groupState?.groupProjectMetaData?.hashes?.[indexName]
+  if (typeof indexHash !== 'string' || !indexHash) return projectIndex
+  return readGroupIndex(indexHash, `地图组 ${indexName} 资源索引`)
+}
+
+function selectCreatorUiTree(projectUiTree, groupState, readGroupIndex) {
+  return selectCreatorAssetIndex(
+    projectUiTree,
+    groupState,
+    'uiTree',
+    readGroupIndex,
+  )
+}
+
 function getProjectResources(id) {
   const projectId = resolveProjectReference(id)
   const sourceRoot = path.join(projectRoot(projectId), 'source')
   const blobRoot = path.join(sourceRoot, 'blobs')
+  const group = mapGroupManager.paths(projectId)
+  const groupState = mapGroupManager.ensure(projectId)
   const state = readJSON(path.join(sourceRoot, 'project-state.json'))
   const permission = readBlobJSON(blobRoot, state.permissionHash, '工程权限数据')
   const versionControl = readBlobJSON(blobRoot, permission.versionControl, '工程版本数据')
@@ -1950,18 +2004,36 @@ function getProjectResources(id) {
   if (!branch?.headHash) throw new Error('工程缺少当前版本头')
   const project = readBlobJSON(blobRoot, branch.headHash, '工程地图数据')
   const resolveIndex = (value, label) => typeof value === 'string' ? readBlobJSON(blobRoot, value, label) : (value || {})
-  // `assets` also stores LUTs and particle effects. Only `mesh/` entries can
-  // be assigned to the engine's GameModelAssets / mesh fields, so keep the
-  // Creator CLI manifest semantically narrow instead of exposing all assets
-  // as models.
-  const modelAssets = Object.fromEntries(Object.entries(resolveIndex(project.assets, '资源索引'))
-    .filter(([assetPath]) => assetPath.startsWith('mesh/')))
+  // The general asset index also stores LUTs and particle effects. Only mesh
+  // entries can be assigned to the engine's GameModelAssets / mesh fields.
+  const modelAssets = selectCreatorModelAssets(
+    resolveIndex(project.assets, '资源索引'),
+    groupState,
+    projectId,
+  )
+  const uiTree = selectCreatorUiTree(
+    resolveIndex(project.uiTree, 'UI 资源索引'),
+    groupState,
+    (hash, label) => readBlobJSON(group.blobRoot, hash, label),
+  )
+  const readGroupIndex = (hash, label) =>
+    readBlobJSON(group.blobRoot, hash, label)
   return {
     projectId: getProject(projectId).permanentMapId,
     modelAssets,
-    pictureAssets: resolveIndex(project.pictureAssets, '图片资源索引'),
-    audioAssets: resolveIndex(project.audioAssets, '音频资源索引'),
-    uiTree: resolveIndex(project.uiTree, 'UI 资源索引'),
+    pictureAssets: selectCreatorAssetIndex(
+      resolveIndex(project.pictureAssets, '图片资源索引'),
+      groupState,
+      'pictureAssets',
+      readGroupIndex,
+    ),
+    audioAssets: selectCreatorAssetIndex(
+      resolveIndex(project.audioAssets, '音频资源索引'),
+      groupState,
+      'audioAssets',
+      readGroupIndex,
+    ),
+    uiTree,
   }
 }
 
@@ -2564,6 +2636,9 @@ module.exports = {
   updateProjectScript,
   readProjectScript,
   listProjectSharedScripts,
+  selectCreatorModelAssets,
+  selectCreatorAssetIndex,
+  selectCreatorUiTree,
   getProjectResources,
 }
 
