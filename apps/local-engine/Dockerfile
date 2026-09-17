@@ -42,6 +42,8 @@ FROM engine-build-base AS creator-build
 RUN pnpm --filter @box-local/cli build \
     && pnpm --dir apps/local-engine run build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
+# Creator preview console streaming depends on better-sse. Verify it survives
+# the production-only deploy before the compact runtime is assembled.
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
     npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
@@ -71,6 +73,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
     && cd /opt/game-server \
     && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
+    && node -e "require.resolve('better-sse')" \
     && cd /app/services/game-server \
     && node scripts/compact-runtime-javascript.js /opt/game-server/dist /app/apps/local-engine/src
 
@@ -222,6 +225,10 @@ COPY --from=creator-build --chown=node:node /app/apps/local-engine/config /app/a
 COPY --from=creator-build --chown=node:node /app/distribution/play/.env.example /app/distribution/play/.env.example
 COPY --from=creator-build --chown=node:node /app/distribution/LICENSE.txt /app/distribution/LICENSE.txt
 COPY --from=creator-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
+
+# The production deploy above is copied wholesale, including runtime-only
+# dependencies. Verify the final layer still contains the SSE implementation.
+RUN node -e "require.resolve('better-sse', { paths: ['/app/services/game-server'] })"
 
 RUN mkdir -p /app/apps/local-engine/projects /app/apps/local-engine/dist \
     && chown -R node:node /app/apps/local-engine

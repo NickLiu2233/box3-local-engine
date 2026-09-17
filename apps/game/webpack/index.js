@@ -42,7 +42,14 @@ function getWebpackConfig(config,
         },
       ],
     }));
-  } else {
+  }
+
+  // Player-only entry replacements are a product-mode decision, not a
+  // compiler-side decision. The previous `else` was paired with the
+  // client-only Monaco copy condition, so Creator's server compiler was
+  // incorrectly given the Play entry points. That produces incompatible
+  // server/client editor output and leaves the Creator page black.
+  if (isPlayBuild) {
     const playerOnlyRoot = join(__dirname, '../src/player-only');
     plugins.push(
       new webpack.NormalModuleReplacementPlugin(

@@ -6,10 +6,22 @@ import {
 import type { ParsedError } from '@box-local/schema/debugger-console/schema';
 import { EventBus } from '@box-local/utils/event';
 import { ChildProcess, fork } from 'child_process';
-import { join } from 'path';
+import { extname, join } from 'path';
 import { Logger } from 'pino';
 import type { ScriptServer } from '../type';
 import { IvmpScriptSocketClient } from './ivmp-script-socket-client';
+
+/**
+ * Source-mode workers execute TypeScript and therefore need SWC. Production
+ * workers are built JavaScript and the production image deliberately excludes
+ * that development-only compiler.
+ */
+function scriptWorkerExecArgv(entryPath: string) {
+  const runtimeArgs = ['--no-node-snapshot'];
+  return extname(entryPath) === '.ts'
+    ? ['-r', '@swc-node/register', ...runtimeArgs]
+    : runtimeArgs;
+}
 
 export class IvmpScriptSocketServer implements ScriptServer {
   private _state = MuSocketServerState.INIT;
@@ -43,7 +55,7 @@ export class IvmpScriptSocketServer implements ScriptServer {
       join(__dirname, './ivmp-process-entry'),
       undefined,
       {
-        execArgv: ['-r', '@swc-node/register', '--no-node-snapshot'],
+        execArgv: scriptWorkerExecArgv(join(__dirname, './ivmp-process-entry')),
         stdio: 'inherit',
         serialization: 'advanced',
         env: Object.assign({}, process.env, {

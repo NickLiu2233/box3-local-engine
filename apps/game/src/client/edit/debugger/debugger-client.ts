@@ -9,6 +9,14 @@ export class DebuggerClient {
   private _protocol: MuClientProtocol<typeof DebuggerProtocol>;
   private _state: ClientStateType;
   private _console: DebuggerConsole;
+  private _pendingRemoteEvents: Array<
+    | { type: 'log'; value: { level: GameLogLevel; message: string } }
+    | {
+        type: 'exception';
+        value: Parameters<DebuggerConsole['scriptException']>[0];
+      }
+    | { type: 'clear' }
+  > = [];
 
   constructor(spec: {
     client: MuClient;
@@ -19,18 +27,11 @@ export class DebuggerClient {
     this._state = spec.state;
     this._console = spec.console;
 
-    // Creator may hot-reload before an already-open map runtime is restarted.
-    // Keep the local console working during that short protocol-version skew;
-    // the new runtime receives and relays these messages after reconnecting.
-    const remoteMessages = this._protocol.server.message as unknown as {
-      clientLog?: (log: { level: GameLogLevel; message: string }) => void;
-      clientException?: (error: Parameters<DebuggerConsole['scriptException']>[0]) => void;
-      clientClearLog?: () => void;
-    };
     this._console.setRemoteReporter({
-      log: (log) => remoteMessages.clientLog?.(log),
-      exception: (error) => remoteMessages.clientException?.(error),
-      clear: () => remoteMessages.clientClearLog?.(),
+      log: (log) => this._sendRemoteEvent({ type: 'log', value: log }),
+      exception: (error) =>
+        this._sendRemoteEvent({ type: 'exception', value: error }),
+      clear: () => this._sendRemoteEvent({ type: 'clear' }),
     });
 
     protocol.configure({
@@ -57,7 +58,43 @@ export class DebuggerClient {
         },
         clearLog: this._console.clearLog,
       },
+      // Client scripts may start while the session WebSocket is still being
+      // established. Flush their early console output once protocol senders
+      // have been created instead of silently losing it.
+      ready: this._flushPendingRemoteEvents,
     });
+  }
+
+  private _sendRemoteEvent(
+    event: (typeof this._pendingRemoteEvents)[number],
+  ) {
+    if (!this._protocol.client.running) {
+      if (event.type === 'clear') this._pendingRemoteEvents = [];
+      this._pendingRemoteEvents.push(event);
+      if (this._pendingRemoteEvents.length > 200) {
+        this._pendingRemoteEvents.shift();
+      }
+      return;
+    }
+    this._dispatchRemoteEvent(event);
+  }
+
+  private _flushPendingRemoteEvents = () => {
+    const events = this._pendingRemoteEvents;
+    this._pendingRemoteEvents = [];
+    for (const event of events) this._dispatchRemoteEvent(event);
+  };
+
+  private _dispatchRemoteEvent(
+    event: (typeof this._pendingRemoteEvents)[number],
+  ) {
+    if (event.type === 'log') {
+      this._protocol.server.message.clientLog(event.value);
+    } else if (event.type === 'exception') {
+      this._protocol.server.message.clientException(event.value);
+    } else {
+      this._protocol.server.message.clientClearLog();
+    }
   }
 
   public scriptEval = (expr: string) => {
