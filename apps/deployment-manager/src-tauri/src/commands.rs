@@ -2099,7 +2099,10 @@ fn runtime_endpoint_status_at(
     let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_millis(800)) else {
         return unavailable_runtime_status();
     };
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
+    // An isolated runtime also asks Docker for CPU/memory stats.  Docker
+    // Desktop can take longer than 1.2s here, which otherwise makes a
+    // healthy map appear as disconnected in the catalog.
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
     let _ = stream.set_write_timeout(Some(Duration::from_millis(800)));
     let route_prefix = route_prefix.trim_matches('/');
     let path = if route_prefix.is_empty() {

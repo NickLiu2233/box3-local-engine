@@ -1639,7 +1639,12 @@ fn runtime_status(host: &str, port: u16, project_id: &str, prefix: &str) -> Valu
     let Ok(mut stream) = TcpStream::connect((host, port)) else {
         return unavailable_runtime();
     };
-    let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
+    // Isolated map runtimes include a Docker stats lookup in this response.
+    // On Docker Desktop that regularly takes longer than the old 1.2s
+    // budget, causing a healthy runtime to be shown as disconnected.
+    // This catalog is refreshed explicitly by the operator, so favour a
+    // correct result over an aggressively short probe timeout.
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
     let path = if prefix.is_empty() {
         format!("/{project_id}/__local_runtime/status")
     } else {
