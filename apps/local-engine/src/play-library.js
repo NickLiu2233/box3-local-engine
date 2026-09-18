@@ -142,18 +142,29 @@ function startPlayLibrary({
     return next
   }
 
-  const runtimeStatus = (id, runtime, fallback, details = {}) => ({
-    ...(statuses.get(id) || fallback),
-    ...details,
-    ...(runtime && !runtime.exited
-      ? {
-          port: runtime.port,
-          pid: runtime.pid,
-          startedAt: runtime.startedAt,
-          ...(runtime.metrics?.() || {}),
-        }
-      : {}),
-  })
+  const runtimeStatus = async (id, runtime, fallback, details = {}) => {
+    let metrics = {}
+    if (runtime && !runtime.exited && runtime.metrics) {
+      try {
+        metrics = (await runtime.metrics()) || {}
+      } catch {
+        // A transient Docker stats failure must not make the map status API
+        // unavailable. The next dashboard request will sample it again.
+      }
+    }
+    return {
+      ...(statuses.get(id) || fallback),
+      ...details,
+      ...(runtime && !runtime.exited
+        ? {
+            port: runtime.port,
+            pid: runtime.pid,
+            startedAt: runtime.startedAt,
+            ...metrics,
+          }
+        : {}),
+    }
+  }
 
   async function stopRuntime(id) {
     const runtime = runtimes.get(id)
@@ -302,7 +313,7 @@ function startPlayLibrary({
         res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         res.end(
           JSON.stringify(
-            runtimeStatus(
+            await runtimeStatus(
               key,
               runtime,
               {

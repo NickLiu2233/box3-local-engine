@@ -6,6 +6,18 @@ const os = require('node:os')
 const path = require('node:path')
 const { startPlayLibrary } = require('../src/play-library')
 
+function get(port, requestPath) {
+  return new Promise((resolve, reject) => {
+    require('node:http')
+      .get(`http://127.0.0.1:${port}${requestPath}`, (response) => {
+        const chunks = []
+        response.on('data', (chunk) => chunks.push(chunk))
+        response.on('end', () => resolve(Buffer.concat(chunks).toString()))
+      })
+      .on('error', reject)
+  })
+}
+
 async function main() {
   const libraryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-library-'))
   const worldRoot = path.join(libraryRoot, 'slow-world')
@@ -34,6 +46,9 @@ async function main() {
     exited: false,
     async stop() {
       runtime.exited = true
+    },
+    async metrics() {
+      return { cpuPercent: 12.5, memoryBytes: 268435456, processCount: 7, uptimeMs: 1234 }
     },
   }
   const library = startPlayLibrary({
@@ -68,6 +83,12 @@ async function main() {
     const [first, second] = await Promise.all([firstStartup, secondStartup])
     assert.equal(first, second)
     assert.equal(first.exited, false)
+    const address = library.server.address()
+    assert(address && typeof address !== 'string')
+    const status = JSON.parse(await get(address.port, '/slow-world/__local_runtime/status'))
+    assert.equal(status.cpuPercent, 12.5)
+    assert.equal(status.memoryBytes, 268435456)
+    assert.equal(status.processCount, 7)
     console.log('play runtime startup sharing regression passed')
   } finally {
     await library.stop()

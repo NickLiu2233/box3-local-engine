@@ -34,6 +34,14 @@ async function ensureRuntimeContainer(settings, request) {
     containerId: String(result.containerId || ''),
     startedAt: result.startedAt || new Date().toISOString(),
     exited: false,
+    async metrics() {
+      const stats = await schedulerRequest(
+        settings,
+        `/api/runtime/${encodeURIComponent(result.containerId)}/stats`,
+      )
+      if (!stats.running) this.exited = true
+      return stats.running ? stats : {}
+    },
     async stop() {
       await schedulerRequest(settings, `/api/runtime/${encodeURIComponent(result.containerId)}`, {
         method: 'DELETE',

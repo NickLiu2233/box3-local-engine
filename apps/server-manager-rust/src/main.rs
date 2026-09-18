@@ -174,6 +174,84 @@ fn runtime_container_running(name: &str) -> bool {
         .is_ok_and(|value| value.trim() == "true")
 }
 
+fn valid_runtime_container_id(value: &str) -> bool {
+    value.starts_with("box-runtime-")
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+}
+
+fn docker_bytes(value: &str) -> Option<u64> {
+    let value = value.trim();
+    let units = [
+        ("TiB", 1024_f64.powi(4)),
+        ("GiB", 1024_f64.powi(3)),
+        ("MiB", 1024_f64.powi(2)),
+        ("KiB", 1024_f64),
+        ("TB", 1000_f64.powi(4)),
+        ("GB", 1000_f64.powi(3)),
+        ("MB", 1000_f64.powi(2)),
+        ("kB", 1000_f64),
+        ("B", 1_f64),
+    ];
+    for (unit, multiplier) in units {
+        if let Some(number) = value.strip_suffix(unit) {
+            let bytes = number.trim().parse::<f64>().ok()? * multiplier;
+            return (bytes.is_finite() && bytes >= 0.0).then_some(bytes.round() as u64);
+        }
+    }
+    None
+}
+
+fn runtime_container_stats(container_id: &str) -> Result<Value, String> {
+    if !valid_runtime_container_id(container_id) {
+        return Err("地图运行时容器标识无效".into());
+    }
+    if !runtime_container_running(container_id) {
+        return Ok(json!({"running":false}));
+    }
+    let row: Value = serde_json::from_str(&docker(&[
+        "stats",
+        "--no-stream",
+        "--format",
+        "{{json .}}",
+        container_id,
+    ])?)
+    .map_err(|error| format!("Docker 性能数据格式无效：{error}"))?;
+    let cpu_percent = row
+        .get("CPUPerc")
+        .and_then(Value::as_str)
+        .unwrap_or("0%")
+        .trim_end_matches('%')
+        .parse::<f64>()
+        .unwrap_or(0.0);
+    let memory = row
+        .get("MemUsage")
+        .and_then(Value::as_str)
+        .unwrap_or("0B / 0B");
+    let mut memory_parts = memory.split('/').map(str::trim);
+    let memory_usage = memory_parts.next().and_then(docker_bytes).unwrap_or(0);
+    let memory_limit = memory_parts.next().and_then(docker_bytes).unwrap_or(0);
+    let started_at = docker(&["inspect", "--format", "{{.State.StartedAt}}", container_id])?;
+    let uptime_ms = chrono::DateTime::parse_from_rfc3339(started_at.trim())
+        .ok()
+        .map(|started| {
+            Utc::now()
+                .signed_duration_since(started.with_timezone(&Utc))
+                .num_milliseconds()
+                .max(0) as u64
+        })
+        .unwrap_or(0);
+    Ok(json!({
+        "running": true,
+        "cpuPercent": cpu_percent,
+        "memoryBytes": memory_usage,
+        "memoryLimitBytes": memory_limit,
+        "uptimeMs": uptime_ms,
+        "processCount": row.get("PIDs").and_then(Value::as_str).and_then(|value| value.parse::<u64>().ok()).unwrap_or(0)
+    }))
+}
+
 async fn ensure_runtime_container(
     State(app): State<Arc<App>>,
     headers: HeaderMap,
@@ -301,11 +379,7 @@ async fn delete_runtime_container(
     if let Err(response) = runtime_auth(&headers, &app) {
         return response;
     }
-    if !container_id.starts_with("box-runtime-")
-        || !container_id
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
-    {
+    if !valid_runtime_container_id(&container_id) {
         return fail("运行时容器标识无效");
     }
     match tokio::task::spawn_blocking(move || docker(&["rm", "-f", &container_id])).await {
@@ -315,6 +389,21 @@ async fn delete_runtime_container(
         }
         Ok(Err(error)) => fail(error),
         Err(error) => fail(format!("运行时容器销毁异常：{error}")),
+    }
+}
+
+async fn get_runtime_container_stats(
+    State(app): State<Arc<App>>,
+    headers: HeaderMap,
+    Path(container_id): Path<String>,
+) -> Response {
+    if let Err(response) = runtime_auth(&headers, &app) {
+        return response;
+    }
+    match tokio::task::spawn_blocking(move || runtime_container_stats(&container_id)).await {
+        Ok(Ok(value)) => Json(value).into_response(),
+        Ok(Err(error)) => fail(error),
+        Err(error) => fail(format!("读取地图容器性能异常：{error}")),
     }
 }
 impl App {
@@ -2571,6 +2660,10 @@ async fn main() {
             "/api/runtime/{container_id}",
             delete(delete_runtime_container),
         )
+        .route(
+            "/api/runtime/{container_id}/stats",
+            get(get_runtime_container_stats),
+        )
         .route("/api/backups/upload", post(upload_backup))
         .route("/api/backups/{archive}/download", get(download_backup))
         .route(
@@ -3044,5 +3137,13 @@ mod tests {
             decode_chunked_body(b"11\r\n{\"phase\":\"ready\"}\r\n0\r\n\r\n"),
             Some(b"{\"phase\":\"ready\"}".to_vec())
         );
+    }
+
+    #[test]
+    fn docker_bytes_decodes_docker_stats_units() {
+        assert_eq!(docker_bytes("243.8MiB"), Some(255_642_829));
+        assert_eq!(docker_bytes("256MiB"), Some(268_435_456));
+        assert_eq!(docker_bytes("1.5GB"), Some(1_500_000_000));
+        assert_eq!(docker_bytes("not-a-size"), None);
     }
 }
