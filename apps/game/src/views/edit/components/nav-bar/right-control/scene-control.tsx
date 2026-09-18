@@ -58,9 +58,12 @@ export const SceneControl = () => {
               continue;
             }
             if (!response.ok) break;
-            const action = await response.json() as { id: string; type: 'capture' };
+            const action = await response.json() as { id: string; type: 'capture'; view: 'full' | '3d' | '2d' };
             if (action.type !== 'capture') continue;
-            const blob = await editor.captureScreenshot();
+            let blob;
+            if (action.view === '3d') blob = await editor.captureScreenshot();
+            else if (action.view === '2d') blob = await editor.captureUiScreenshot();
+            else blob = await editor.capturePlayerScreenshot();
             if (!blob) throw new Error('当前场景尚未准备好，无法截图');
             const submit = await fetch(`/api/creator/v1/projects/${encodeURIComponent(projectId)}/scene/actions/${encodeURIComponent(action.id)}`, {
               method: 'POST',

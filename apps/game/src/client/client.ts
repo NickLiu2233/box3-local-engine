@@ -130,6 +130,29 @@ export class EngineClient {
     return await canvasToBlob(canvas, { type: 'png' });
   };
 
+  /** Captures the 3D scene together with the 2D player UI overlay. */
+  public capturePlayerScreenshot = async () => {
+    const { canvas, canvas2D } = this.game.state.dom;
+    if (!canvas) return;
+    if (!canvas2D) return this.captureScreenshot();
+
+    const composite = document.createElement('canvas');
+    composite.width = canvas2D.width;
+    composite.height = canvas2D.height;
+    const context = composite.getContext('2d');
+    if (!context) return;
+    context.drawImage(canvas, 0, 0, composite.width, composite.height);
+    context.drawImage(canvas2D, 0, 0, composite.width, composite.height);
+    return await canvasToBlob(composite, { type: 'png' });
+  };
+
+  /** Captures only the transparent 2D player UI overlay. */
+  public captureUiScreenshot = async () => {
+    const canvas = this.game.state.dom.canvas2D;
+    if (!canvas) return;
+    return await canvasToBlob(canvas, { type: 'png' });
+  };
+
   public sendScreenshot = async () => {
     const blob = await this.captureScreenshot();
     if (!blob) {

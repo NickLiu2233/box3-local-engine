@@ -4,8 +4,11 @@ const SESSION_TTL_MS = 15 * 60_000;
 const REQUEST_TTL_MS = 25_000;
 const MAX_CAPTURE_BYTES = 6 * 1024 * 1024;
 
+export type CreatorSceneCaptureView = 'full' | '3d' | '2d';
+
 type CaptureRequest = {
   id: string;
+  view: CreatorSceneCaptureView;
   resolve: (value: { content: Buffer; contentType: 'image/png' }) => void;
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
@@ -62,10 +65,10 @@ export function nextCreatorSceneAction(projectId: string, sessionId: string, own
   const session = activeSession(projectId);
   if (!session || session.id !== sessionId || session.ownerSubjectId !== ownerSubjectId) throw new Error('编辑场景控制会话不可用');
   if (!session.capture) return null;
-  return { id: session.capture.id, type: 'capture' as const };
+  return { id: session.capture.id, type: 'capture' as const, view: session.capture.view };
 }
 
-export function requestCreatorSceneCapture(projectId: string) {
+export function requestCreatorSceneCapture(projectId: string, view: CreatorSceneCaptureView = 'full') {
   const session = activeSession(projectId);
   if (!session) throw Object.assign(new Error('地图当前没有已授权的编辑场景控制会话'), { statusCode: 409 });
   if (session.capture) throw Object.assign(new Error('已有截图请求正在等待编辑器响应'), { statusCode: 409 });
@@ -75,7 +78,7 @@ export function requestCreatorSceneCapture(projectId: string) {
       if (session.capture?.id === id) session.capture = undefined;
       reject(Object.assign(new Error('等待编辑器截图超时，请确认地图已打开且已允许 CLI 场景控制'), { statusCode: 504 }));
     }, REQUEST_TTL_MS);
-    session.capture = { id, resolve, reject, timer };
+    session.capture = { id, view, resolve, reject, timer };
   });
 }
 

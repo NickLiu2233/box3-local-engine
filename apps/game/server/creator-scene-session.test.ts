@@ -29,6 +29,7 @@ describe('Creator scene session', () => {
     const pending = requestCreatorSceneCapture(projectId);
     const action = nextCreatorSceneAction(projectId, session.sessionId, owner);
     expect(action?.type).toBe('capture');
+    expect(action?.view).toBe('full');
 
     expect(() => completeCreatorSceneCapture(projectId, session.sessionId, action!.id, owner, 'not base64!')).toThrow('编码无效');
     const payload = Buffer.from('png-smoke').toString('base64');
