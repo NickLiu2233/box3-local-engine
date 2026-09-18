@@ -4,6 +4,7 @@ import { CreateControl } from './create-control';
 import styles from './index.module.scss';
 import { NavControl } from './nav-control';
 import { RunControl } from './run-control';
+import { SceneControl } from './scene-control';
 
 type RightControlProps = {
   isGuest: boolean;
@@ -24,7 +25,10 @@ export const RightControl = React.memo((props: RightControlProps) => {
     <div className={`${styles.rightControl}`}>
       {!isGuest && <CreateControl />}
       <NavControl isGuest={isGuest} />
+      {!isGuest && <SceneControl />}
       {!isGuest && <RunControl />}
     </div>
   );
 });
+
+RightControl.displayName = 'RightControl';

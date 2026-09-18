@@ -977,7 +977,7 @@ function createProject({ id, name, author = '', description = '', mapSize }) {
 }
 
 function projectStorageIdentity(id) {
-  const project = getProject(id)
+  const project = getProject(resolveProjectReference(id))
   const main = project.mainProjectId === project.id ? project : getProject(project.mainProjectId)
   return {
     permanentMapId: project.permanentMapId,

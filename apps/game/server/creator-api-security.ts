@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import type { RuntimePlayerIdentity } from '@box-local/utils/local-player-identity';
 import type { CreatorCapability } from '../shared/creator-policy';
 import { hasCreatorCapability } from '../shared/creator-policy';
 import type { CreatorCliCapability } from '../shared/creator-cli-policy';
@@ -76,7 +77,20 @@ export async function allowAuthenticatedCreatorApi(
   res: NextApiResponse,
   capability: CreatorCapability | readonly CreatorCapability[] = 'projects.view',
 ) {
-  if (!allowCreatorApi(req, res)) return false;
+  return Boolean(await authenticatedCreatorIdentity(req, res, capability));
+}
+
+/**
+ * Same authorization gate as allowAuthenticatedCreatorApi, but returns the
+ * verified identity when a feature must bind a short-lived browser session to
+ * its owner. Never derive that owner from a browser supplied value.
+ */
+export async function authenticatedCreatorIdentity(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  capability: CreatorCapability | readonly CreatorCapability[] = 'projects.view',
+): Promise<RuntimePlayerIdentity | undefined> {
+  if (!allowCreatorApi(req, res)) return undefined;
   try {
     const { identity } = await resolvePlayerServiceIdentity(
       req,
@@ -85,22 +99,22 @@ export async function allowAuthenticatedCreatorApi(
     );
     if (!identity.creatorAccess) {
       res.status(403).json({ code: 'CREATOR_ACCESS_REQUIRED', message: '当前账号没有创作权限' });
-      return false;
+      return undefined;
     }
     const requiredCapabilities = Array.isArray(capability) ? capability : [capability];
     if (!requiredCapabilities.some((item) => hasCreatorCapability(identity.creatorPermissions, item))) {
       res.status(403).json({ code: 'CREATOR_PERMISSION_DENIED', message: '当前账号没有执行此创作操作的权限' });
-      return false;
+      return undefined;
     }
+    return identity;
   } catch (error) {
     if (error instanceof PlayerAuthenticationRequiredError) {
       res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先注册或登录账号' });
-      return false;
+      return undefined;
     }
     res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证创作者身份' });
-    return false;
+    return undefined;
   }
-  return true;
 }
 
 /**

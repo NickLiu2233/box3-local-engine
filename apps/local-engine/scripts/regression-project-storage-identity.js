@@ -70,6 +70,11 @@ try {
   const before = manager.projectStorageIdentity(main.id)
   assert.equal(manager.resolveProjectReference(main.id), main.id)
   assert.equal(manager.resolveProjectReference(main.permanentMapId), main.id)
+  assert.deepEqual(
+    manager.projectStorageIdentity(main.permanentMapId),
+    before,
+    'CLI permanent map IDs must resolve to the same storage namespace as the project directory ID',
+  )
   assert.throws(
     () => manager.resolveProjectReference('0123456789abcdef0123'),
     /Project not found/,

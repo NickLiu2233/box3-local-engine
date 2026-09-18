@@ -122,7 +122,7 @@ export class EngineClient {
     this.game.state.hidePlayers = hide;
   };
 
-  private screenshot = async () => {
+  public captureScreenshot = async () => {
     const canvas = this.game.state.dom.canvas;
     if (!canvas) {
       return;
@@ -131,7 +131,7 @@ export class EngineClient {
   };
 
   public sendScreenshot = async () => {
-    const blob = await this.screenshot();
+    const blob = await this.captureScreenshot();
     if (!blob) {
       return;
     }

@@ -217,23 +217,21 @@ const detailTabMeta: Record<PlayerDetailTab, { title: string }> = {
   danger: { title: '删除身份' },
 };
 
-const cliCapabilityGroups: ReadonlyArray<{
-  label: string;
-  capabilities: readonly CreatorCliCapability[];
-}> = [
-  {
-    label: '地图与资源',
-    capabilities: ['projects.list', 'resources.list'],
-  },
-  {
-    label: '脚本',
-    capabilities: ['scripts.read', 'scripts.update'],
-  },
-  {
-    label: '预览运行',
-    capabilities: ['runtime.view', 'runtime.control'],
-  },
-];
+const cliCapabilityGroups = FULL_CREATOR_CLI_CAPABILITIES.reduce<
+  Array<{ label: string; capabilities: CreatorCliCapability[] }>
+>((groups, capability) => {
+  const meta = CREATOR_CLI_CAPABILITY_META[capability];
+  const group = groups.find((item) => item.label === meta.group);
+  if (group) {
+    group.capabilities.push(capability);
+  } else {
+    groups.push({
+      label: meta.group,
+      capabilities: [capability],
+    });
+  }
+  return groups;
+}, []);
 
 function parseSection(value: unknown): AdminSection {
   const section = Array.isArray(value) ? value[0] : value;
