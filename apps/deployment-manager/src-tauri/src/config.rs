@@ -103,6 +103,10 @@ pub(crate) fn ensure_runtime_files(app: &AppHandle) -> Result<(), String> {
     for directory in [
         "apps/local-engine/projects",
         "apps/local-engine/dist",
+        "apps/local-engine/data",
+        // Runtime containers mount this path read-only.  It must exist before
+        // the game server initializes its local content store.
+        "apps/local-engine/data/blobs",
         "apps/local-engine/backups",
         "apps/local-engine/play-worlds",
         "apps/voxa/data",

@@ -20,6 +20,7 @@ function createRuntimeLifecycle({
   setStatus,
   maxRuntimes,
   idleTimeoutMs,
+  idleTimeoutFor,
   idleMessage = '运行时已因空闲自动回收',
 }) {
   const maximum = runtimeLimit(maxRuntimes)
@@ -74,7 +75,8 @@ function createRuntimeLifecycle({
           !starts.has(id) &&
           !runtime.exited &&
           !runtime.activeConnections &&
-          now - (runtime.lastAccessAt || now) >= idleAfter,
+          now - (runtime.lastAccessAt || now) >=
+            idleTimeout(runtime?.idleTimeoutMs ?? idleTimeoutFor?.(runtime), idleAfter),
       )
       .map(([id]) => id)
     await Promise.all(

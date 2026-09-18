@@ -11,6 +11,8 @@ const {
 } = require('./runtime-storage-namespace')
 const { makeRuntimeDataReadable } = require('./runtime-data-permissions')
 const { runtimeStartTimeout } = require('./runtime-readiness')
+const { resolveMapRuntimeProfile } = require('./map-runtime-profiles')
+const { ensureRuntimeContainer, schedulerSettings } = require('./runtime-container-client')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')
@@ -32,6 +34,8 @@ if (!process.env.BOX_TELEPORT_INTERNAL_TOKEN) {
 }
 const configPath = path.join(packageRoot, 'config/local.config.json')
 const defaultDataRoot = path.join(packageRoot, 'data')
+const mapRuntimeProfilesPath = process.env.BOX_MAP_RUNTIME_PROFILES_PATH || path.join(defaultDataRoot, 'map-runtime-profiles.json')
+const runtimeScheduler = schedulerSettings()
 const generatedAsset = path.join(
   repoRoot,
   process.argv.includes('--production')
@@ -195,6 +199,46 @@ function dataStorageNamespace(id) {
   return resolveMapRuntimeNamespace({
     permanentMapId: id,
     prefix: process.env.BOX_DATA_STORAGE_NAMESPACE_PREFIX || '',
+  })
+}
+
+function mapRuntimeProfile(permanentMapId, mode) {
+  let document
+  try {
+    document = JSON.parse(fs.readFileSync(mapRuntimeProfilesPath, 'utf8'))
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      console.warn(`Unable to read map runtime profiles: ${error.message}`)
+    }
+    document = { profiles: [] }
+  }
+  return resolveMapRuntimeProfile(document, { permanentMapId, mode }, {
+    playerLimit: Number(process.env.BOX_LOCAL_PLAYER_LIMIT || 70),
+    roomLimit: Number(process.env.BOX_TELEPORT_MAX_ROOMS || 64),
+    idleTimeoutMs: Number(process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || 900000),
+  })
+}
+
+async function startScheduledContainer({ profile, mapId, mode, roomId, projectId, port }) {
+  if (profile.isolation !== 'container') return null
+  if (!runtimeScheduler) {
+    console.warn(
+      `Map ${mapId} requests isolated resources, but BOX_RUNTIME_MANAGER_URL is not configured; using the shared Node runtime.`,
+    )
+    return null
+  }
+  return ensureRuntimeContainer(runtimeScheduler, {
+    permanentMapId: mapId,
+    mode,
+    roomId: roomId || undefined,
+    projectId,
+    cpuMilli: profile.cpuMilli,
+    memoryMb: profile.memoryMb,
+    playerLimit: profile.playerLimit,
+    idleTimeoutMs: profile.idleTimeoutMs,
+    teleportControlUrl: 'http://play:3000/__local_teleport',
+    teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
+    port,
   })
 }
 
@@ -716,12 +760,28 @@ async function main() {
             process.env.BOX_SERVER_CONTENT_ID ||
             '',
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '70',
-          MAX_ZERO_PLAYER_TIME: '2147483647',
+          MAX_ZERO_PLAYER_TIME:
+            process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '2147483647',
+          ...(Number(process.env.BOX_RUNTIME_NODE_MEMORY_MB) > 0
+            ? {
+                NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=${process.env.BOX_RUNTIME_NODE_MEMORY_MB}`.trim(),
+              }
+            : {}),
         },
       },
     )
 
   const startLibraryRuntime = async (world, port, instance = {}) => {
+    const profile = mapRuntimeProfile(world.manifest.permanentMapId || world.id, 'play')
+    const scheduled = await startScheduledContainer({
+      profile,
+      mapId: world.manifest.permanentMapId || world.id,
+      mode: 'play',
+      roomId: instance.privateRoom ? instance.serverId : '',
+      projectId: world.id,
+      port,
+    })
+    if (scheduled) return scheduled
     const externalDistribution = world.manifest?.assetDistribution
     const externalCDN =
       externalDistribution?.mode === 'external-cdn' &&
@@ -734,8 +794,8 @@ async function main() {
     const child = spawn(
       process.execPath,
       production
-        ? ['dist/src/launch.js', '--useProdBundle']
-        : ['-r', '@swc-node/register', 'src/launch.ts'],
+        ? [...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []), 'dist/src/launch.js', '--useProdBundle']
+        : [...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []), '-r', '@swc-node/register', 'src/launch.ts'],
       {
         cwd: gameServerRoot,
         stdio: 'inherit',
@@ -786,8 +846,8 @@ async function main() {
               }
             : {}),
           BOX_TELEPORT_CONTROL_URL: playTeleportControlURL,
-          PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '70',
-          MAX_ZERO_PLAYER_TIME: '2147483647',
+          PLAYER_LIMIT: String(profile.playerLimit),
+          MAX_ZERO_PLAYER_TIME: String(profile.idleTimeoutMs),
         },
       },
     )
@@ -814,9 +874,25 @@ async function main() {
   }
 
   const startProjectRuntime = async (project, port, mode, instance = {}) => {
+    // Desktop map policies apply only to the installed Play service. Creator
+    // preview/edit runtimes intentionally remain lightweight child processes.
+    const profile = mapRuntimeProfile(
+      project.permanentMapId || project.id,
+      creatorMode ? 'edit' : mode,
+    )
+    const scheduled = await startScheduledContainer({
+      profile,
+      mapId: project.permanentMapId || project.id,
+      mode,
+      roomId: instance.privateRoom ? instance.serverId : '',
+      projectId: project.id,
+      port,
+    })
+    if (scheduled) return scheduled
     const child = spawn(
       process.execPath,
       [
+        ...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []),
         path.join(packageRoot, 'src/launcher.js'),
         ...(production ? ['--production'] : []),
         '--runtime-only',
@@ -834,6 +910,10 @@ async function main() {
           SERVER_ID: instance.serverId || project.permanentMapId || project.id,
           TYPE: instance.privateRoom ? 'teleport' : 'public',
           TELEPORT_ACCESS: 'true',
+          BOX_LOCAL_PLAYER_LIMIT: String(profile.playerLimit),
+          BOX_TELEPORT_MAX_ROOMS: String(profile.roomLimit),
+          BOX_RUNTIME_IDLE_TIMEOUT_MS: String(profile.idleTimeoutMs),
+          BOX_RUNTIME_NODE_MEMORY_MB: profile.memoryMb ? String(profile.memoryMb) : '',
           BOX_TELEPORT_CONTROL_URL:
             mode === 'edit' ? editTeleportControlURL : playTeleportControlURL,
           ...(mode === 'edit'
@@ -1007,6 +1087,8 @@ async function main() {
       teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
       teleportMaxRooms: process.env.BOX_TELEPORT_MAX_ROOMS || '64',
       teleportRoomIdleTimeoutMs: process.env.BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS || '900000',
+      runtimeProfileForWorld: (world) =>
+        mapRuntimeProfile(world?.manifest?.permanentMapId || world?.id || '', 'play'),
     })
     await playLibrary.ready
   } else if (startsPlayServer) {

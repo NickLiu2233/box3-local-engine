@@ -104,16 +104,19 @@ const state = {
   backupMessage: '',
   backupDialog: null,
   runtimeDestroyDialog: null,
+  mapRuntimeProfileDialog: false,
   managedDatabaseInfo: null,
   managedRedisInfo: null,
   dataStorage: null,
   performance: null,
   performanceLoading: false,
   performanceError: '',
-  projectRuntimes: { creator: [], play: [] },
+  projectRuntimes: { creator: [], play: [], playMaps: [] },
   projectRuntimesLoading: false,
   projectRuntimesLoaded: false,
   projectRuntimesError: '',
+  mapRuntimeProfiles: [],
+  mapRuntimeProfilesLoaded: false,
   runtimeExpandedProjects: new Set(),
   runtimeCatalogTab: 'creator',
   theme: localStorage.getItem(THEME_KEY) || 'system',
@@ -241,6 +244,7 @@ function shell(content) {
     ${state.startMenuOpen ? startScopeDialog() : ''}
     ${state.backupDialog ? backupConfirmDialog() : ''}
     ${state.runtimeDestroyDialog ? runtimeDestroyDialog() : ''}
+    ${state.mapRuntimeProfileDialog ? mapRuntimeProfileDialog() : ''}
     ${state.legalDialog ? legalDocumentDialog() : ''}
   </div>`
 }
@@ -310,6 +314,24 @@ function runtimeDestroyDialog() {
   const dialog = state.runtimeDestroyDialog
   const target = dialog.roomId ? `房间 ${dialog.roomId}` : '这个作品的运行实例'
   return `<div class="dialog-backdrop runtime-destroy-backdrop" data-runtime-destroy-dialog-dismiss><section class="start-dialog runtime-destroy-dialog" role="dialog" aria-modal="true" aria-labelledby="runtime-destroy-title"><header><div><h2 id="runtime-destroy-title">销毁运行实例？</h2><p>将销毁${escapeHtml(target)}，不会删除作品数据。</p></div></header><div class="dialog-actions"><button class="button" id="cancel-runtime-destroy-secondary">取消</button><button class="button danger" id="confirm-runtime-destroy">确认销毁</button></div></section></div>`
+}
+
+function mapRuntimeProfileDialog() {
+  const playMaps = state.projectRuntimes?.playMaps || state.projectRuntimes?.play || []
+  const maps = Array.from(
+    new Map(
+      playMaps
+        .filter((project) => project.permanentMapId || project.projectId)
+        .map((project) => [project.permanentMapId || project.projectId, project]),
+    ).values(),
+  )
+  const options = maps
+    .map(
+      (project) =>
+        `<option value="${escapeHtml(project.permanentMapId || project.projectId)}">${escapeHtml(project.name || project.projectId)} · ${escapeHtml(project.permanentMapId || project.projectId)}</option>`,
+    )
+    .join('')
+  return `<div class="dialog-backdrop" data-map-runtime-profile-dismiss><section class="start-dialog map-runtime-profile-dialog" role="dialog" aria-modal="true" aria-labelledby="map-runtime-profile-title"><header><div><h2 id="map-runtime-profile-title">新增游玩地图配置</h2></div><button class="dialog-close" id="cancel-map-runtime-profile" aria-label="关闭">×</button></header>${maps.length ? `<form id="map-runtime-profile-form"><input name="mode" type="hidden" value="play"/><div class="form-grid compact"> <label class="field"><span>游玩地图</span><select name="permanentMapId" required>${options}</select><small>来自当前游玩端地图</small></label>${input('playerLimit', '人数上限', '70', 'number', '', true, { min: 1, max: 10000 })}${input('roomLimit', '房间上限', '64', 'number', '', true, { min: 1, max: 10000 })}${input('idleTimeoutMs', '无用户时存活时间（ms）', '900000', 'number', '900000 = 15 分钟', true, { min: 1000, max: 604800000 })}</div><label class="runtime-isolation-switch"><input type="checkbox" data-runtime-isolation-toggle/><span aria-hidden="true"></span><div><strong>使用独立容器</strong><small>仅在需要固定 CPU 或内存限制时开启</small></div></label><div class="form-grid compact runtime-isolation-fields">${input('cpuMilli', 'CPU 上限（m）', '', 'number', '1000 m = 1 个 CPU 核心', false, { min: 1, max: 128000, disabled: true })}${input('memoryMb', '内存上限（MB）', '', 'number', '例如 512 MB', false, { min: 64, max: 1048576, disabled: true })}</div><div class="dialog-actions"><button class="button" type="button" id="cancel-map-runtime-profile-secondary">取消</button><button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button></div></form>` : '<div class="runtime-empty">当前没有可配置的游玩地图。</div>'}</section></div>`
 }
 
 function legalDocumentDialog() {
@@ -527,10 +549,24 @@ function formatRuntimeUptime(value) {
 }
 
 function runtimes() {
-  const catalog = state.projectRuntimes || { creator: [], play: [] }
-  const creatorItems = (catalog.creator || []).filter((project) => project.edit?.phase === 'ready')
-  const playItems = (catalog.play || []).filter((project) => project.play?.phase === 'ready')
-  const catalogTab = state.runtimeCatalogTab === 'play' ? 'play' : 'creator'
+  const catalog = state.projectRuntimes || { creator: [], play: [], playMaps: [] }
+  const creatorItems = catalog.creator || []
+  const playItems = catalog.play || []
+  const playMapItems = catalog.playMaps || playItems
+  const catalogTab = ['play', 'config'].includes(state.runtimeCatalogTab)
+    ? state.runtimeCatalogTab
+    : 'creator'
+  if (catalogTab === 'config') {
+    const profiles = state.mapRuntimeProfiles.filter((profile) => profile.mode === 'play')
+    const rows = profiles.length
+      ? profiles
+          .map(
+            (profile) => `<article class="runtime-project runtime-profile-card"><header><div><div class="runtime-profile-title"><h2>${escapeHtml((playMapItems.find((project) => project.permanentMapId === profile.permanentMapId) || {}).name || profile.permanentMapId)}</h2></div><p>地图 ID：<code>${escapeHtml(profile.permanentMapId)}</code> · ${profile.playerLimit} 人 · ${profile.roomLimit} 房间 · ${formatDuration(profile.idleTimeoutMs)}</p></div><div class="runtime-actions"><button type="button" data-runtime-profile-delete="${escapeHtml(profile.permanentMapId)}" data-runtime-profile-mode="play" ${state.busy ? 'disabled' : ''}>删除</button></div></header><div class="runtime-profile-limits">${profile.cpuMilli || profile.memoryMb ? `<strong>独立容器</strong><span>CPU ${profile.cpuMilli || '未限制'} m · 内存 ${profile.memoryMb || '未限制'} MB</span>` : `<strong>共享运行时</strong><span>使用全局 Node 容量</span>`}</div></article>`,
+          )
+          .join('')
+      : '<div class="runtime-empty runtime-profile-empty">未单独配置的游玩地图将使用全局人数、房间与空闲回收设置，并运行在共享 Node 中。</div>'
+    return `<header><div><h1>地图容器管理</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play">游玩端 <span>${playItems.length}</span></button><button type="button" data-runtime-catalog="config" class="active">容器配置 <span>${profiles.length}</span></button></nav><section class="runtime-profile-saved"><div class="runtime-profile-saved-heading runtime-profile-actions"><button class="button primary" id="add-map-runtime-profile" ${state.busy || !playMapItems.length ? 'disabled' : ''}>新增配置</button></div><div class="runtime-list runtime-profile-list">${rows}</div></section>`
+  }
   const items = catalogTab === 'play' ? playItems : creatorItems
   const submapsByMain = new Map()
   const mainMaps = []
@@ -569,11 +605,11 @@ function runtimes() {
       : state.projectRuntimesError
         ? `<div class="runtime-empty">${escapeHtml(state.projectRuntimesError)}</div>`
         : !mainMaps.length
-          ? `<div class="runtime-empty">${catalogTab === 'creator' ? '创作端当前没有地图容器管理。' : '游玩端当前没有地图容器管理。'}</div>`
+          ? `<div class="runtime-empty">${catalogTab === 'creator' ? '创作端当前没有已启动的地图容器。' : '游玩端当前没有已启动的地图容器。'}</div>`
           : `<div class="runtime-list">${mainMaps
               .map((project) => runtimeProject(project, submapsByMain.get(project.projectId) || []))
               .join('')}</div>`
-  return `<header><div><h1>地图容器管理</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button></nav>${body}`
+  return `<header><div><h1>地图容器管理</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button><button type="button" data-runtime-catalog="config">容器配置 <span>${state.mapRuntimeProfiles.length}</span></button></nav>${body}`
 }
 
 function serviceCard([id, name, description, portKey, defaultPort], options = {}) {
@@ -618,7 +654,15 @@ function input(name, label, value = '', type = 'text', hint = '', required = fal
     type === 'number'
       ? `min="${limits.min ?? 0}"${limits.max === undefined ? '' : ` max="${limits.max}"`} step="${limits.step ?? 1}"`
       : ''
-  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${numberLimits} ${required ? 'required' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
+  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${numberLimits} ${required ? 'required' : ''} ${limits.disabled ? 'disabled' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
+}
+
+function formatDuration(milliseconds) {
+  const value = Number(milliseconds)
+  if (!Number.isFinite(value) || value < 1000) return `${milliseconds} ms`
+  if (value % 60000 === 0) return `${value / 60000} 分钟`
+  if (value % 1000 === 0) return `${value / 1000} 秒`
+  return `${value} ms`
 }
 
 function settingToggle(name, label, description, checked) {
@@ -1146,7 +1190,10 @@ function bindEvents() {
       if (state.page === 'about') loadLegalNotices()
       if (state.page === 'license') refreshLicenseStatus()
       if (state.page === 'setup') refreshManagedServiceInfo()
-      if (state.page === 'runtimes') scheduleProjectRuntimeRefresh()
+      if (state.page === 'runtimes') {
+        scheduleProjectRuntimeRefresh()
+        if (!state.mapRuntimeProfilesLoaded) void refreshMapRuntimeProfiles()
+      }
     }),
   )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', dismissFeedback)
@@ -1220,9 +1267,52 @@ function bindEvents() {
   })
   document.querySelectorAll('[data-runtime-catalog]').forEach((node) =>
     node.addEventListener('click', () => {
-      state.runtimeCatalogTab = node.dataset.runtimeCatalog === 'play' ? 'play' : 'creator'
+      state.runtimeCatalogTab = ['play', 'config'].includes(node.dataset.runtimeCatalog)
+        ? node.dataset.runtimeCatalog
+        : 'creator'
       render()
     }),
+  )
+  document.querySelector('#add-map-runtime-profile')?.addEventListener('click', () => {
+    state.mapRuntimeProfileDialog = true
+    render()
+  })
+  const closeMapRuntimeProfileDialog = () => {
+    state.mapRuntimeProfileDialog = false
+    render()
+  }
+  document.querySelector('#cancel-map-runtime-profile')?.addEventListener('click', closeMapRuntimeProfileDialog)
+  document
+    .querySelector('#cancel-map-runtime-profile-secondary')
+    ?.addEventListener('click', closeMapRuntimeProfileDialog)
+  document.querySelector('[data-map-runtime-profile-dismiss]')?.addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) closeMapRuntimeProfileDialog()
+  })
+  document.querySelector('#map-runtime-profile-form')?.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const values = Object.fromEntries(new FormData(event.currentTarget))
+    void saveMapRuntimeProfile({
+      ...values,
+      playerLimit: Number(values.playerLimit),
+      roomLimit: Number(values.roomLimit),
+      idleTimeoutMs: Number(values.idleTimeoutMs),
+      cpuMilli: values.cpuMilli ? Number(values.cpuMilli) : null,
+      memoryMb: values.memoryMb ? Number(values.memoryMb) : null,
+    })
+  })
+  document.querySelector('[data-runtime-isolation-toggle]')?.addEventListener('change', (event) => {
+    const enabled = event.currentTarget.checked
+    const form = event.currentTarget.closest('form')
+    form?.classList.toggle('isolation-enabled', enabled)
+    form?.querySelectorAll('.runtime-isolation-fields input').forEach((inputNode) => {
+      inputNode.disabled = !enabled
+      inputNode.toggleAttribute('disabled', !enabled)
+    })
+  })
+  document.querySelectorAll('[data-runtime-profile-delete]').forEach((node) =>
+    node.addEventListener('click', () =>
+      void deleteMapRuntimeProfile(node.dataset.runtimeProfileDelete, node.dataset.runtimeProfileMode),
+    ),
   )
   document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
   document.querySelector('#create-backup')?.addEventListener('click', createBackup)
@@ -1539,7 +1629,7 @@ async function refreshPerformance() {
 function syncProjectRuntimePolling() {
   clearInterval(projectRuntimeTimer)
   projectRuntimeTimer = undefined
-  if (state.page !== 'runtimes') {
+  if (state.page !== 'runtimes' || state.runtimeCatalogTab === 'config') {
     clearTimeout(projectRuntimeRefreshTimer)
     projectRuntimeRefreshTimer = undefined
     return
@@ -1559,7 +1649,13 @@ function syncProjectRuntimePolling() {
 }
 
 function scheduleProjectRuntimeRefresh() {
-  if (projectRuntimeRefreshTimer || projectRuntimeLoading || state.page !== 'runtimes') return
+  if (
+    projectRuntimeRefreshTimer ||
+    projectRuntimeLoading ||
+    state.page !== 'runtimes' ||
+    state.runtimeCatalogTab === 'config'
+  )
+    return
   projectRuntimeRefreshTimer = window.setTimeout(() => {
     projectRuntimeRefreshTimer = undefined
     refreshProjectRuntimes()
@@ -1598,10 +1694,54 @@ async function refreshProjectRuntimes() {
     if (
       state.page === 'runtimes' &&
       !state.runtimeDestroyDialog &&
+      !state.mapRuntimeProfileDialog &&
       (!wasLoaded || runtimesChanged || errorChanged)
     ) {
       render()
     }
+  }
+}
+
+async function refreshMapRuntimeProfiles() {
+  try {
+    state.mapRuntimeProfiles = await invoke('list_map_runtime_profiles')
+    state.mapRuntimeProfilesLoaded = true
+  } catch (error) {
+    state.projectRuntimesError = String(error)
+  }
+}
+
+async function saveMapRuntimeProfile(profile) {
+  if (state.busy) return
+  state.busy = true
+  clearFeedback()
+  render()
+  try {
+    await invoke('save_map_runtime_profile', { profile })
+    await refreshMapRuntimeProfiles()
+    state.mapRuntimeProfileDialog = false
+    state.notice = '地图容器配置已保存；新启动的运行时会使用该配置。'
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    render()
+  }
+}
+
+async function deleteMapRuntimeProfile(permanentMapId, mode) {
+  if (!permanentMapId || !mode || state.busy) return
+  state.busy = true
+  clearFeedback()
+  try {
+    await invoke('delete_map_runtime_profile', { permanentMapId, mode })
+    await refreshMapRuntimeProfiles()
+    state.notice = '地图容器配置已删除；后续启动将使用默认共享运行时。'
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.busy = false
+    render()
   }
 }
 

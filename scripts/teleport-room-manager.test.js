@@ -221,3 +221,45 @@ test('idle private rooms are removed and their runtimes are stopped', async () =
     (error) => error.code === 'ROOM_NOT_FOUND',
   )
 })
+
+test('room limits and idle collection can be scoped to the target map', async () => {
+  const maps = [
+    { id: 'main-map', permanentMapId: '11111111111111111111', mapGroupId: 'group-a' },
+    { id: 'sub-map', permanentMapId: '22222222222222222222', mapGroupId: 'group-a' },
+    { id: 'other-map', permanentMapId: '33333333333333333333', mapGroupId: 'group-a' },
+  ]
+  let now = 1_000
+  let serial = 0
+  const stops = []
+  const manager = createTeleportRoomManager({
+    resolveMap: (reference) => maps.find((map) => map.id === reference || map.permanentMapId === reference),
+    ensureRuntime: async () => undefined,
+    stopRuntime: async (roomId) => stops.push(roomId),
+    isRoomActive: () => false,
+    randomRoomId: () => `private-room-${String(++serial).padStart(12, '0')}`,
+    now: () => now,
+    maxRoomsForMap: (mapId) => (mapId === '22222222222222222222' ? 1 : 2),
+    roomIdleTimeoutForMap: (mapId) => (mapId === '22222222222222222222' ? 100 : 500),
+  })
+  const first = await manager.allocate({
+    sourceMapId: '11111111111111111111',
+    targetMapId: '22222222222222222222',
+    subjectIds: ['player-a'],
+  })
+  await assert.rejects(
+    manager.allocate({
+      sourceMapId: '11111111111111111111',
+      targetMapId: '22222222222222222222',
+      subjectIds: ['player-b'],
+    }),
+    (error) => error.code === 'ROOM_CAPACITY_REACHED' && error.message.includes('1'),
+  )
+  await manager.allocate({
+    sourceMapId: '11111111111111111111',
+    targetMapId: '33333333333333333333',
+    subjectIds: ['player-c'],
+  })
+  now += 101
+  assert.deepEqual(await manager.collectIdle(), [first.serverId])
+  assert.deepEqual(stops, [first.serverId])
+})

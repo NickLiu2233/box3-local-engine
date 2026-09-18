@@ -142,6 +142,28 @@ struct DataStorageInfo {
     using_default: bool,
 }
 
+/// Owner-managed overrides for one map runtime.  Keeping these in the runtime
+/// data directory (rather than project.json or a published manifest) lets the
+/// same permanent map share a policy across Creator and Play without mutating
+/// user source or release artifacts.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MapRuntimeProfile {
+    permanent_map_id: String,
+    mode: String,
+    player_limit: u32,
+    room_limit: u32,
+    idle_timeout_ms: u64,
+    cpu_milli: Option<u32>,
+    memory_mb: Option<u32>,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize)]
+struct MapRuntimeProfilesFile {
+    version: u8,
+    profiles: Vec<MapRuntimeProfile>,
+}
+
 impl Default for InstallConfigView {
     fn default() -> Self {
         Self {
@@ -834,6 +856,18 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         &mut content,
         "BOX_PLAY_ADMIN_TOKEN",
         &resolve_secret("BOX_PLAY_ADMIN_TOKEN", &config.play_admin_token, &existing)?,
+    )?;
+    // Separate, non-browser credential for Creator -> Runtime Manager calls.
+    // It is intentionally not part of the editable installation form.
+    set_env(
+        &mut content,
+        "BOX_RUNTIME_MANAGER_TOKEN",
+        &resolve_secret("BOX_RUNTIME_MANAGER_TOKEN", "", &existing)?,
+    )?;
+    set_env(
+        &mut content,
+        "BOX_SERVER_MANAGER_TOKEN",
+        &resolve_secret("BOX_SERVER_MANAGER_TOKEN", "", &existing)?,
     )?;
     set_env(
         &mut content,
@@ -1970,6 +2004,10 @@ fn unavailable_runtime_status() -> RuntimeEndpointStatus {
     }
 }
 
+fn runtime_is_active(status: &RuntimeEndpointStatus) -> bool {
+    !matches!(status.phase.as_str(), "idle" | "unavailable")
+}
+
 fn decode_chunked_http_body(bytes: &[u8]) -> Option<Vec<u8>> {
     let mut cursor = 0;
     let mut body = Vec::new();
@@ -2238,6 +2276,114 @@ async fn destroy_project_runtime(
     .map_err(|error| format!("销毁运行时异常结束：{error}"))?
 }
 
+fn map_runtime_profiles_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(runtime_root(app)?.join("apps/local-engine/data/map-runtime-profiles.json"))
+}
+
+fn valid_permanent_map_id(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    !bytes.is_empty()
+        && bytes.len() <= 63
+        && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
+        && bytes
+            .iter()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || *byte == b'-')
+}
+
+fn validate_map_runtime_profile(profile: &MapRuntimeProfile) -> Result<(), String> {
+    if !valid_permanent_map_id(&profile.permanent_map_id) {
+        return Err("地图永久 ID 格式无效".into());
+    }
+    if profile.mode != "play" {
+        return Err("地图容器配置仅支持游玩端".into());
+    }
+    if !(1..=10_000).contains(&profile.player_limit) {
+        return Err("人数上限必须在 1 到 10000 之间".into());
+    }
+    if !(1..=10_000).contains(&profile.room_limit) {
+        return Err("房间上限必须在 1 到 10000 之间".into());
+    }
+    if !(1_000..=604_800_000).contains(&profile.idle_timeout_ms) {
+        return Err("无用户时存活时间必须在 1000 到 604800000 ms 之间".into());
+    }
+    if profile
+        .cpu_milli
+        .is_some_and(|value| !(1..=128_000).contains(&value))
+    {
+        return Err("CPU 上限必须在 1 到 128000 m 之间".into());
+    }
+    if profile
+        .memory_mb
+        .is_some_and(|value| !(64..=1_048_576).contains(&value))
+    {
+        return Err("内存上限必须在 64 到 1048576 MB 之间".into());
+    }
+    Ok(())
+}
+
+fn read_map_runtime_profiles(app: &AppHandle) -> Result<MapRuntimeProfilesFile, String> {
+    let path = map_runtime_profiles_path(app)?;
+    match fs::read_to_string(path) {
+        Ok(content) => {
+            serde_json::from_str(&content).map_err(|error| format!("地图容器配置格式无效：{error}"))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(MapRuntimeProfilesFile {
+            version: 1,
+            profiles: vec![],
+        }),
+        Err(error) => Err(format!("无法读取地图容器配置：{error}")),
+    }
+}
+
+fn write_map_runtime_profiles(
+    app: &AppHandle,
+    document: &MapRuntimeProfilesFile,
+) -> Result<(), String> {
+    let encoded = serde_json::to_vec_pretty(document)
+        .map_err(|error| format!("无法编码地图容器配置：{error}"))?;
+    write_private_file(&map_runtime_profiles_path(app)?, encoded, "地图容器配置")
+}
+
+#[tauri::command]
+fn list_map_runtime_profiles(app: AppHandle) -> Result<Vec<MapRuntimeProfile>, String> {
+    let mut profiles = read_map_runtime_profiles(&app)?.profiles;
+    profiles.sort_by(|left, right| {
+        (&left.permanent_map_id, &left.mode).cmp(&(&right.permanent_map_id, &right.mode))
+    });
+    Ok(profiles
+        .into_iter()
+        .filter(|profile| profile.mode == "play")
+        .collect())
+}
+
+#[tauri::command]
+fn save_map_runtime_profile(app: AppHandle, profile: MapRuntimeProfile) -> Result<(), String> {
+    validate_map_runtime_profile(&profile)?;
+    let mut document = read_map_runtime_profiles(&app)?;
+    document.version = 1;
+    document.profiles.retain(|candidate| {
+        candidate.permanent_map_id != profile.permanent_map_id || candidate.mode != profile.mode
+    });
+    document.profiles.push(profile);
+    write_map_runtime_profiles(&app, &document)
+}
+
+#[tauri::command]
+fn delete_map_runtime_profile(
+    app: AppHandle,
+    permanent_map_id: String,
+    mode: String,
+) -> Result<(), String> {
+    if !valid_permanent_map_id(&permanent_map_id) || mode != "play" {
+        return Err("地图容器配置标识无效".into());
+    }
+    let mut document = read_map_runtime_profiles(&app)?;
+    document.profiles.retain(|candidate| {
+        candidate.permanent_map_id != permanent_map_id || candidate.mode != mode
+    });
+    write_map_runtime_profiles(&app, &document)
+}
+
 #[tauri::command]
 fn get_project_runtime_status(app: AppHandle) -> Result<ProjectRuntimeCatalog, String> {
     let runtime = runtime_root(&app)?;
@@ -2321,7 +2467,14 @@ fn get_project_runtime_status(app: AppHandle) -> Result<ProjectRuntimeCatalog, S
         .collect::<Vec<_>>();
     creator.sort_by(|left, right| left.name.cmp(&right.name));
     play.sort_by(|left, right| left.name.cmp(&right.name));
-    Ok(ProjectRuntimeCatalog { creator, play })
+    let play_maps = play.clone();
+    creator.retain(|project| runtime_is_active(&project.edit));
+    play.retain(|project| runtime_is_active(&project.play));
+    Ok(ProjectRuntimeCatalog {
+        creator,
+        play,
+        play_maps,
+    })
 }
 
 #[tauri::command]
@@ -3814,6 +3967,9 @@ pub fn run() {
             save_raw_environment,
             get_system_status,
             get_project_runtime_status,
+            list_map_runtime_profiles,
+            save_map_runtime_profile,
+            delete_map_runtime_profile,
             destroy_project_runtime,
             get_about_info,
             get_legal_notices,

@@ -6,6 +6,7 @@ const net = require('net')
 const path = require('path')
 const { createRuntimeLifecycle } = require('./runtime-lifecycle')
 const { waitForRuntimeReady } = require('./runtime-readiness')
+const { runtimeUpstream, runtimeHostHeader } = require('./runtime-upstream')
 const {
   createTeleportControlHandler,
   createTeleportRoomManager,
@@ -125,6 +126,7 @@ function startPlayLibrary({
   teleportInternalToken,
   teleportMaxRooms = 64,
   teleportRoomIdleTimeoutMs = 15 * 60_000,
+  runtimeProfileForWorld = () => ({}),
 }) {
   fs.mkdirSync(libraryRoot, { recursive: true })
   const runtimes = new Map()
@@ -167,6 +169,7 @@ function startPlayLibrary({
     setStatus,
     maxRuntimes,
     idleTimeoutMs,
+    idleTimeoutFor: (runtime) => runtime.idleTimeoutMs,
   })
 
   const runtimeKey = (worldId, roomId = '') => (roomId ? `room:${roomId}` : worldId)
@@ -208,6 +211,8 @@ function startPlayLibrary({
         serverId: roomId || world.manifest.permanentMapId,
         privateRoom: Boolean(roomId),
       })
+      const profile = runtimeProfileForWorld(world) || {}
+      runtime.idleTimeoutMs = profile.idleTimeoutMs
       if (destroyed.has(key)) {
         await runtime.stop()
         throw Object.assign(new Error('运行时已销毁，请刷新页面或点击重新链接'), {
@@ -223,7 +228,7 @@ function startPlayLibrary({
         setStatus(key, { phase: 'loading', percent: 42, message: '正在加载地图与预烘焙资源' })
         await waitForRuntimeReady({
           runtime,
-          url: `http://127.0.0.1:${runtimePort}/api/health-check`,
+          url: `http://${runtime.hostname || '127.0.0.1'}:${runtime.port || runtimePort}/api/health-check`,
           waitForRuntime,
           startupTimeoutMs,
           onWindowElapsed: ({ elapsedMs, timeoutMs }) => {
@@ -271,6 +276,9 @@ function startPlayLibrary({
     isRoomActive: (roomId) => Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
     maxRooms: teleportMaxRooms,
     roomIdleTimeoutMs: teleportRoomIdleTimeoutMs,
+    maxRoomsForMap: (permanentMapId) => runtimeProfileForWorld(resolveWorld(libraryRoot, permanentMapId) || {})?.roomLimit,
+    roomIdleTimeoutForMap: (permanentMapId) =>
+      runtimeProfileForWorld(resolveWorld(libraryRoot, permanentMapId) || {})?.idleTimeoutMs,
   })
   const handleTeleportControl = teleportInternalToken
     ? createTeleportControlHandler({
@@ -361,11 +369,10 @@ function startPlayLibrary({
       res.once('close', releaseConnection)
       const proxy = http.request(
         {
-          hostname: '127.0.0.1',
-          port: runtime.port,
+          ...runtimeUpstream(runtime),
           method: req.method,
           path: forwardedPath,
-          headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
+          headers: { ...req.headers, host: runtimeHostHeader(runtime) },
         },
         (upstream) => {
           res.writeHead(upstream.statusCode || 502, upstream.headers)
@@ -400,9 +407,10 @@ function startPlayLibrary({
       const runtime = await ensureRuntime(world || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       socket.once('close', releaseConnection)
-      const upstream = net.connect(runtime.port, '127.0.0.1')
+      const target = runtimeUpstream(runtime)
+      const upstream = net.connect(target.port, target.hostname)
       upstream.on('connect', () => {
-        const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
+        const headers = { ...req.headers, host: runtimeHostHeader(runtime) }
         const lines = [
           `${req.method} ${forwardedPath} HTTP/${req.httpVersion}`,
           ...Object.entries(headers).map(

@@ -130,10 +130,15 @@ function createTeleportRoomManager({
   now = Date.now,
   roomIdleTimeoutMs = 15 * 60_000,
   maxRooms = 64,
+  roomIdleTimeoutForMap,
+  maxRoomsForMap,
 }) {
   const rooms = new Map()
   const idleAfter = positiveInteger(roomIdleTimeoutMs, 15 * 60_000, 7 * 24 * 60 * 60_000)
   const maximum = positiveInteger(maxRooms, 64, 1024)
+  const idleAfterFor = (mapId) =>
+    positiveInteger(roomIdleTimeoutForMap?.(mapId), idleAfter, 7 * 24 * 60 * 60_000)
+  const maximumFor = (mapId) => positiveInteger(maxRoomsForMap?.(mapId), maximum, 10_000)
 
   function resolve(reference) {
     const normalized = normalizeMapIdentity(reference)
@@ -168,7 +173,11 @@ function createTeleportRoomManager({
   async function collectIdle() {
     const timestamp = now()
     const expired = [...rooms.values()]
-      .filter((room) => !isRoomActive(room.id) && timestamp - room.lastAccessAt >= idleAfter)
+      .filter(
+        (room) =>
+          !isRoomActive(room.id) &&
+          timestamp - room.lastAccessAt >= (room.idleTimeoutMs || idleAfterFor(room.targetMapId)),
+      )
       .map((room) => room.id)
     for (const roomId of expired) {
       rooms.delete(roomId)
@@ -212,8 +221,12 @@ function createTeleportRoomManager({
       }
     } else {
       await collectIdle()
-      if (rooms.size >= maximum) {
-        throw roomError('ROOM_CAPACITY_REACHED', `私有房间数量已达上限（${maximum}）`, 503)
+      const roomLimit = maximumFor(targetIdentity.permanentMapId)
+      const roomCount = [...rooms.values()].filter(
+        (candidate) => candidate.targetMapId === targetIdentity.permanentMapId,
+      ).length
+      if (roomCount >= roomLimit) {
+        throw roomError('ROOM_CAPACITY_REACHED', `私有房间数量已达上限（${roomLimit}）`, 503)
       }
       const roomId = randomRoomId()
       if (!roomIdPattern.test(roomId) || rooms.has(roomId)) {
@@ -226,6 +239,7 @@ function createTeleportRoomManager({
         subjects: new Set(),
         createdAt: now(),
         lastAccessAt: now(),
+        idleTimeoutMs: idleAfterFor(targetIdentity.permanentMapId),
       }
       rooms.set(room.id, room)
       createdRoom = true

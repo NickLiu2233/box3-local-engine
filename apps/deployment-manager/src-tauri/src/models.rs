@@ -113,6 +113,9 @@ pub(crate) struct ProjectRuntimeStatus {
 pub(crate) struct ProjectRuntimeCatalog {
     pub(crate) creator: Vec<ProjectRuntimeStatus>,
     pub(crate) play: Vec<ProjectRuntimeStatus>,
+    /// Published Play maps for configuration pickers. Unlike `play`, this is
+    /// not restricted to maps that currently have a running instance.
+    pub(crate) play_maps: Vec<ProjectRuntimeStatus>,
 }
 
 #[derive(Debug, Clone, Serialize)]

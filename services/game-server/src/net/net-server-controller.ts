@@ -409,18 +409,18 @@ export class NetServer {
         },
       },
       connect: (client) => {
-        // check number of active connections, if above limit reject new player
+        // `protocol.clients` already includes the client currently connecting,
+        // so a strict `>` preserves exactly `playerLimit` slots.
         const playerCount = Object.keys(this.protocol.clients).length;
         if (playerCount > this._state.settings.playerLimit) {
-          const connection = this._state.connections[client.sessionId];
-          if (!connection || !connection.sessionData.isAdmin) {
-            this._logger.warn(
-              'server is full, rejecting connection from ' + client.sessionId,
-            );
-            client.message.exceedUserLimit(this._state.settings.playerLimit);
-            // client.close();
-            return;
-          }
+          this._logger.warn(
+            'server is full, rejecting connection from ' + client.sessionId,
+          );
+          client.message.exceedUserLimit(this._state.settings.playerLimit);
+          // Reporting the error alone leaves the protocol client connected,
+          // allowing it to appear in the world despite the configured limit.
+          client.close();
+          return;
         } else {
           client.message.exceedUserLimit(0);
         }

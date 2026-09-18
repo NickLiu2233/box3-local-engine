@@ -204,8 +204,9 @@ services:
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   server-manager:
-    profiles: [server-manager]
-    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
+    # Creator's per-map runtime scheduler depends on this service.  Keep it
+    # outside an optional profile: `docker compose --profile creator up`
+    # otherwise removes it from the project and makes Creator invalid.
     image: box-local-engine-server-manager:${BOX_IMAGE_TAG:-0.1.1}
     build:
       context: .
@@ -233,6 +234,7 @@ services:
       BOX_SERVER_MANAGER_HOST: 0.0.0.0
       BOX_SERVER_MANAGER_PORT: 3130
       BOX_SERVER_MANAGER_TOKEN: ${BOX_SERVER_MANAGER_TOKEN:-}
+      BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.1}
       BOX_SERVER_MANAGER_ROOT: /workspace
       BOX_SERVER_MANAGER_HOST_ROOT: ${BOX_SERVER_MANAGER_HOST_ROOT:-}
@@ -255,6 +257,12 @@ services:
       - /etc/machine-id:/run/host-machine-id:ro
     tmpfs:
       - /tmp:size=16m,mode=1777
+    healthcheck:
+      test: ["CMD", "/app/server-manager", "--healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
 
   creator:
     profiles: [creator]
@@ -278,6 +286,8 @@ services:
     cpus: ${BOX_CREATOR_CPU_LIMIT:-4.0}
     pids_limit: ${BOX_CREATOR_PIDS_LIMIT:-1024}
     depends_on:
+      server-manager:
+        condition: service_healthy
       creator-storage-init:
         condition: service_completed_successfully
     environment:
@@ -291,6 +301,8 @@ services:
       VOXA_INTERNAL_URL: http://voxa:3001
       BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.1.1}
       BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.1.1}
+      BOX_RUNTIME_MANAGER_URL: ${BOX_RUNTIME_MANAGER_URL:-http://server-manager:3130}
+      BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
       BOX_PLAY_IMAGE_ARCHIVE: /app/apps/local-engine/dist/images/play-image.tar
       BOX_PLAY_PLATFORM: ${BOX_PLAY_PLATFORM:-linux/amd64}
       # Docker publishes these ports only on host 127.0.0.1 below. Inside the
@@ -357,6 +369,7 @@ services:
     volumes:
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/dist:/app/apps/local-engine/dist"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data:ro"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/backups:/app/apps/local-engine/backups"
       - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data:ro"
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
@@ -443,10 +456,14 @@ services:
     cpus: ${BOX_PLAY_CPU_LIMIT:-4.0}
     pids_limit: ${BOX_PLAY_PIDS_LIMIT:-1024}
     depends_on:
+      server-manager:
+        condition: service_healthy
       play-storage-init:
         condition: service_completed_successfully
     environment:
       BOX_DEPLOYMENT_MODE: play
+      BOX_RUNTIME_MANAGER_URL: ${BOX_RUNTIME_MANAGER_URL:-http://server-manager:3130}
+      BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
       BOX_PLAY_LIBRARY_PATH: /app/play-worlds
       BOX_PLAY_LIBRARY_READ_ONLY: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
       BOX_PLAY_ADMIN_TOKEN: ${BOX_PLAY_ADMIN_TOKEN:-}
@@ -497,6 +514,10 @@ services:
         read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
         bind:
           create_host_path: true
+      # Per-map play policies are managed by the Desktop launcher and must be
+      # visible to the Play launcher before it starts each game-server child.
+      # Keep this mount read-only: Play only consumes the owner-managed file.
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data:ro"
       - box-play-runtime-cache:/app/play-runtime-cache
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"

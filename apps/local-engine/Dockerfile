@@ -217,6 +217,9 @@ COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/launcher.
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-data-permissions.js /app/apps/local-engine/src/runtime-data-permissions.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-readiness.js /app/apps/local-engine/src/runtime-readiness.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-storage-namespace.js /app/apps/local-engine/src/runtime-storage-namespace.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/map-runtime-profiles.js /app/apps/local-engine/src/map-runtime-profiles.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-upstream.js /app/apps/local-engine/src/runtime-upstream.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-container-client.js /app/apps/local-engine/src/runtime-container-client.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/edit-library.js /app/apps/local-engine/src/edit-library.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/teleport-room-manager.js /app/apps/local-engine/src/teleport-room-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/map-identity.js /app/apps/local-engine/src/map-identity.js
@@ -283,6 +286,9 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/launcher.js 
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-data-permissions.js /app/apps/local-engine/src/runtime-data-permissions.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-readiness.js /app/apps/local-engine/src/runtime-readiness.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-storage-namespace.js /app/apps/local-engine/src/runtime-storage-namespace.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/map-runtime-profiles.js /app/apps/local-engine/src/map-runtime-profiles.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-upstream.js /app/apps/local-engine/src/runtime-upstream.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-container-client.js /app/apps/local-engine/src/runtime-container-client.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library.js /app/apps/local-engine/src/play-library.js

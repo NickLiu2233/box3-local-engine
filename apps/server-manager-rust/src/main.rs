@@ -6,7 +6,7 @@ use axum::{
     http::{header, HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{Html, IntoResponse, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use chrono::Utc;
@@ -43,10 +43,279 @@ const LEGAL_NOTICE: &str = include_str!("../../../distribution/LICENSE.txt");
 struct App {
     root: PathBuf,
     token: String,
+    runtime_token: String,
     compose_file: PathBuf,
     environment_file: PathBuf,
     operations: Arc<Operations>,
     operation_id: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeEnsureRequest {
+    permanent_map_id: String,
+    mode: String,
+    project_id: String,
+    room_id: Option<String>,
+    cpu_milli: Option<u32>,
+    memory_mb: Option<u32>,
+    player_limit: u32,
+    idle_timeout_ms: u64,
+    teleport_control_url: String,
+    teleport_internal_token: String,
+}
+
+fn runtime_auth(headers: &HeaderMap, app: &App) -> Result<(), Response> {
+    let got = headers
+        .get("x-box-runtime-token")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    if got.len() == app.runtime_token.len()
+        && got
+            .as_bytes()
+            .iter()
+            .zip(app.runtime_token.as_bytes())
+            .fold(0u8, |a, (x, y)| a | (x ^ y))
+            == 0
+    {
+        Ok(())
+    } else {
+        Err((
+            StatusCode::UNAUTHORIZED,
+            Json(Error {
+                message: "运行时调度凭证无效".into(),
+            }),
+        )
+            .into_response())
+    }
+}
+
+fn runtime_container_name(request: &RuntimeEnsureRequest) -> Result<String, String> {
+    let valid = |value: &str| {
+        !value.is_empty()
+            && value.len() <= 63
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+    };
+    if !valid(&request.permanent_map_id)
+        || !valid(&request.project_id)
+        || request.mode != "play"
+        || request
+            .room_id
+            .as_deref()
+            .is_some_and(|value| !valid(value))
+    {
+        return Err("地图运行时标识无效".into());
+    }
+    if request
+        .cpu_milli
+        .is_some_and(|value| !(1..=128_000).contains(&value))
+        || request
+            .memory_mb
+            .is_some_and(|value| !(64..=1_048_576).contains(&value))
+    {
+        return Err("地图运行时资源限制无效".into());
+    }
+    if !(1..=10_000).contains(&request.player_limit)
+        || !(1_000..=604_800_000).contains(&request.idle_timeout_ms)
+        || request.teleport_control_url != "http://play:3000/__local_teleport"
+        || request.teleport_internal_token.len() < 32
+    {
+        return Err("地图运行时参数无效".into());
+    }
+    Ok(format!(
+        "box-runtime-{}-{}{}",
+        request.mode,
+        request.permanent_map_id,
+        request
+            .room_id
+            .as_ref()
+            .map(|room| format!("-{room}"))
+            .unwrap_or_default()
+    ))
+}
+
+fn runtime_network() -> Result<String, String> {
+    if let Ok(configured) = env::var("BOX_RUNTIME_DOCKER_NETWORK") {
+        if !configured.trim().is_empty() {
+            return Ok(configured);
+        }
+    }
+    let container_id = fs::read_to_string("/etc/hostname")
+        .map_err(|error| format!("无法读取调度器容器标识：{error}"))?;
+    let output = docker(&[
+        "inspect",
+        "--format",
+        "{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{\"\\n\"}}{{end}}",
+        container_id.trim(),
+    ])?;
+    output
+        .lines()
+        .map(str::trim)
+        .find(|value| !value.is_empty())
+        .map(str::to_owned)
+        .ok_or_else(|| "无法确定地图运行时 Docker 网络".into())
+}
+
+fn required_runtime_value(values: &BTreeMap<String, String>, key: &str) -> Result<String, String> {
+    values
+        .get(key)
+        .filter(|value| !value.trim().is_empty())
+        .cloned()
+        .ok_or_else(|| format!("地图运行时缺少配置：{key}"))
+}
+
+fn runtime_env_arg(args: &mut Vec<String>, key: &str, value: impl AsRef<str>) {
+    args.extend(["-e".into(), format!("{key}={}", value.as_ref())]);
+}
+
+fn runtime_container_running(name: &str) -> bool {
+    docker(&["inspect", "--format", "{{.State.Running}}", name])
+        .is_ok_and(|value| value.trim() == "true")
+}
+
+async fn ensure_runtime_container(
+    State(app): State<Arc<App>>,
+    headers: HeaderMap,
+    Json(request): Json<RuntimeEnsureRequest>,
+) -> Response {
+    if let Err(response) = runtime_auth(&headers, &app) {
+        return response;
+    }
+    let result = tokio::task::spawn_blocking(move || -> Result<Value, String> {
+        let name = runtime_container_name(&request)?;
+        if !runtime_container_running(&name) {
+            let _ = docker(&["rm", "-f", &name]);
+            // Isolated play runtimes must inherit the same derived database,
+            // Redis and service endpoints as the Compose Play service. The
+            // owner `.env` stores editable fields, while `.runtime.env`
+            // contains the resolved URLs actually consumed by containers.
+            let values = parse_env(
+                &fs::read_to_string(runtime_env_path(&app))
+                    .map_err(|error| format!("无法读取运行配置：{error}"))?,
+            );
+            let tag = data_image_tag(&app);
+            let data_root = configured_data_directory(&app)?;
+            let readable_data_root = container_visible_path(&app, &data_root)?;
+            let world_root = data_root.join("apps/local-engine/play-worlds").join(&request.project_id);
+            let readable_world_root = readable_data_root
+                .join("apps/local-engine/play-worlds")
+                .join(&request.project_id);
+            let manifest_path = readable_world_root.join("manifest.json");
+            let manifest: Value = serde_json::from_str(
+                &fs::read_to_string(&manifest_path)
+                    .map_err(|error| format!("无法读取发布地图 {}：{error}", manifest_path.display()))?,
+            ).map_err(|error| format!("发布地图清单无效：{error}"))?;
+            if manifest.get("id").and_then(Value::as_str) != Some(request.project_id.as_str())
+                || manifest.get("permanentMapId").and_then(Value::as_str)
+                    != Some(request.permanent_map_id.as_str())
+            {
+                return Err("发布地图身份与调度请求不匹配".into());
+            }
+            let permission_hash = manifest.get("permissionHash").and_then(Value::as_str)
+                .filter(|value| !value.is_empty()).ok_or("发布地图缺少 permissionHash")?;
+            let project_name = manifest.get("projectName").and_then(Value::as_str).unwrap_or(&request.project_id);
+            let group_namespace = manifest.get("permanentMapGroupId").and_then(Value::as_str)
+                .unwrap_or(&request.permanent_map_id);
+            let network = runtime_network()?;
+            let world_mount = format!("{}:/app/world:ro", world_root.display());
+            let data_mount = format!("{}:/app/apps/local-engine/data:ro", data_root.join("apps/local-engine/data").display());
+            let license_mount = format!("{}:/run/secrets/box3-license.boxlic:ro", data_root.join("license/box3-license.boxlic").display());
+            let device_mount = format!("{}:/run/secrets/box3-device-id:ro", data_root.join("license/device-id").display());
+            let secret = required_runtime_value(&values, "PERMISSION_TOKEN_SECRET")?;
+            let database_url = required_runtime_value(&values, "BOX_DATABASE_URL")?;
+            let image = format!("box-local-engine-play:{tag}");
+            let server_id = request.room_id.as_deref().unwrap_or(&request.permanent_map_id);
+            let mut args = vec![
+                "run".into(), "-d".into(), "--name".into(), name.clone(),
+                "--network".into(), network, "--network-alias".into(), name.clone(),
+                "--read-only".into(), "--security-opt".into(), "no-new-privileges:true".into(),
+                "--cap-drop".into(), "ALL".into(), "--pids-limit".into(), "512".into(),
+                "--tmpfs".into(), "/tmp:size=1g,mode=1777".into(),
+                "--health-cmd".into(),
+                "node -e \"fetch('http://127.0.0.1:9966/api/health-check').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"".into(),
+                "--health-interval".into(), "5s".into(),
+                "--health-timeout".into(), "3s".into(),
+                "--health-retries".into(), "12".into(),
+                "--health-start-period".into(), "30s".into(),
+                "-v".into(), world_mount, "-v".into(), data_mount,
+                "-v".into(), license_mount, "-v".into(), device_mount,
+            ];
+            if let Some(cpu) = request.cpu_milli { args.extend(["--cpus".into(), format!("{}", cpu as f64 / 1000.0)]) }
+            if let Some(memory) = request.memory_mb { args.extend(["--memory".into(), format!("{memory}m")]) }
+            for (key, value) in [
+                ("METHOD", "local"), ("MODE", "play"), ("LOGIN", ""),
+                ("IS_HTTPS", "false"), ("PORT", "9966"), ("HOST_IP", "0.0.0.0"),
+                ("STORAGE_PATH", "/app/world/data"),
+                ("BOX_PROJECT_STATE_PATH", "/app/world/data/project-state.json"),
+                ("BOX_DERIVED_STORAGE_PATH", "/tmp/derived"), ("HASH", permission_hash),
+                ("VM", "isolate"), ("CONTENT_ID", &request.project_id),
+                ("BOX_DATA_STORAGE_NAMESPACE", &request.permanent_map_id),
+                ("BOX_WORLD_PERMANENT_MAP_ID", &request.permanent_map_id),
+                ("BOX_GROUP_STORAGE_NAMESPACE", group_namespace), ("BOX_SERVER_NAME", project_name),
+                ("CONTAINER_NAME", &request.project_id), ("SERVER_ID", server_id),
+                ("TYPE", if request.room_id.is_some() { "teleport" } else { "public" }),
+                ("TELEPORT_ACCESS", "true"), ("PLAYER_LIMIT", &request.player_limit.to_string()),
+                ("MAX_ZERO_PLAYER_TIME", &request.idle_timeout_ms.to_string()),
+                ("PERMISSION_TOKEN_SECRET", &secret), ("BOX_DATABASE_URL", &database_url),
+                ("BOX_TELEPORT_CONTROL_URL", &request.teleport_control_url),
+                ("BOX_TELEPORT_INTERNAL_TOKEN", &request.teleport_internal_token),
+                ("BOX_DIRECT_SESSION_API", "false"),
+                ("BOX_PLAYER_SERVICE_INTERNAL_URL", values.get("BOX_PLAYER_SERVICE_INTERNAL_URL").map(String::as_str).unwrap_or("http://player-service:3213")),
+                ("BOX_DATABASE_SCHEMA", values.get("BOX_DATABASE_SCHEMA").map(String::as_str).unwrap_or("box_engine")),
+                ("BOX_DATABASE_POOL_SIZE", values.get("BOX_DATABASE_POOL_SIZE").map(String::as_str).unwrap_or("4")),
+                ("BOX_DATABASE_SSL", values.get("BOX_DATABASE_SSL").map(String::as_str).unwrap_or("false")),
+                ("BOX_DATABASE_SSL_REJECT_UNAUTHORIZED", values.get("BOX_DATABASE_SSL_REJECT_UNAUTHORIZED").map(String::as_str).unwrap_or("true")),
+                ("REDIS_HOST", values.get("REDIS_HOST").map(String::as_str).unwrap_or("")),
+                ("REDIS_PORT", values.get("REDIS_PORT").map(String::as_str).unwrap_or("6379")),
+                ("REDIS_PASSWORD", values.get("REDIS_PASSWORD").map(String::as_str).unwrap_or("")),
+                ("REDIS_DB", values.get("REDIS_DB").map(String::as_str).unwrap_or("0")),
+                ("STORAGE_CACHE_REDIS_DB", values.get("STORAGE_CACHE_REDIS_DB").map(String::as_str).unwrap_or("1")),
+                ("STORAGE_CACHE_REDIS_TTL", values.get("STORAGE_CACHE_REDIS_TTL").map(String::as_str).unwrap_or("240")),
+                ("BOX_BUNDLED_CONTENT_PATH", "/app/apps/local-engine/data/blobs"),
+                ("BOX_LOCAL_CONFIG_PATH", "/app/apps/local-engine/config/local.config.json"),
+                ("BOX_LOCAL_ENGINE_ROOT", "/app/apps/local-engine"),
+                ("NEXT_PUBLIC_APP_ENV", "development"),
+                ("NEXT_PUBLIC_APP_EDITION", "createra"),
+                ("NEXT_PUBLIC_APP_REGION", "cn"),
+                ("NODE_ENV", "production"),
+            ] { runtime_env_arg(&mut args, key, value); }
+            args.extend([image, "node".into(), "-r".into(), "/app/license/process-guard.js".into(),
+                "/app/services/game-server/dist/src/launch.js".into(), "--useProdBundle".into()]);
+            let argv = args.iter().map(String::as_str).collect::<Vec<_>>();
+            docker(&argv)?;
+        }
+        Ok(json!({"containerId":name,"hostname":name,"port":9966,"startedAt":Utc::now().to_rfc3339()}))
+    }).await.unwrap_or_else(|error| Err(format!("运行时容器任务异常：{error}")));
+    match result {
+        Ok(value) => Json(value).into_response(),
+        Err(error) => fail(error),
+    }
+}
+
+async fn delete_runtime_container(
+    State(app): State<Arc<App>>,
+    headers: HeaderMap,
+    Path(container_id): Path<String>,
+) -> Response {
+    if let Err(response) = runtime_auth(&headers, &app) {
+        return response;
+    }
+    if !container_id.starts_with("box-runtime-")
+        || !container_id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+    {
+        return fail("运行时容器标识无效");
+    }
+    match tokio::task::spawn_blocking(move || docker(&["rm", "-f", &container_id])).await {
+        Ok(Ok(_)) => StatusCode::NO_CONTENT.into_response(),
+        Ok(Err(error)) if error.contains("No such container") => {
+            StatusCode::NO_CONTENT.into_response()
+        }
+        Ok(Err(error)) => fail(error),
+        Err(error) => fail(format!("运行时容器销毁异常：{error}")),
+    }
 }
 impl App {
     fn progress(&self, stage: &str, message: &str, percent: u8) {
@@ -330,6 +599,23 @@ fn configured_data_directory(app: &App) -> Result<PathBuf, String> {
         .transpose()?
         .map(Ok)
         .unwrap_or_else(|| host_project_root(app))
+}
+
+/// Translate a host path used for Docker bind mounts back into the path that
+/// the manager container can read through its `/workspace` bind mount.
+fn container_visible_path(app: &App, host_path: &FsPath) -> Result<PathBuf, String> {
+    if !in_container() {
+        return Ok(host_path.to_path_buf());
+    }
+    let host_root = host_project_root(app)?;
+    let relative = host_path.strip_prefix(&host_root).map_err(|_| {
+        format!(
+            "数据目录 {} 不在管理器已挂载的部署目录 {} 内",
+            host_path.display(),
+            host_root.display()
+        )
+    })?;
+    Ok(app.root.join(relative))
 }
 
 fn has_running_application_services() -> Result<bool, String> {
@@ -1257,16 +1543,21 @@ fn decode_chunked_body(mut body: &[u8]) -> Option<Vec<u8>> {
     }
 }
 fn runtime_status(host: &str, port: u16, project_id: &str, prefix: &str) -> Value {
-    let Ok(mut stream) = TcpStream::connect((host, port)) else { return unavailable_runtime() };
+    let Ok(mut stream) = TcpStream::connect((host, port)) else {
+        return unavailable_runtime();
+    };
     let _ = stream.set_read_timeout(Some(Duration::from_millis(1200)));
     let path = if prefix.is_empty() {
         format!("/{project_id}/__local_runtime/status")
     } else {
         format!("/{prefix}/{project_id}/__local_runtime/status")
     };
-    if stream.write_all(
-        format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n").as_bytes(),
-    ).is_err() {
+    if stream
+        .write_all(
+            format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n").as_bytes(),
+        )
+        .is_err()
+    {
         return unavailable_runtime();
     }
     // Node's proxy uses chunked transfer encoding for this tiny document and
@@ -1275,26 +1566,53 @@ fn runtime_status(host: &str, port: u16, project_id: &str, prefix: &str) -> Valu
     let mut raw = Vec::with_capacity(1024);
     let mut chunk = [0_u8; 4096];
     while raw.len() < 16 * 1024 {
-        let length = match stream.read(&mut chunk) { Ok(length) if length > 0 => length, _ => break };
+        let length = match stream.read(&mut chunk) {
+            Ok(length) if length > 0 => length,
+            _ => break,
+        };
         raw.extend_from_slice(&chunk[..length]);
         if let Some(header_end) = raw.windows(4).position(|window| window == b"\r\n\r\n") {
             let headers = String::from_utf8_lossy(&raw[..header_end]).to_ascii_lowercase();
             let body = &raw[header_end + 4..];
             if headers.contains("transfer-encoding: chunked") {
-                if body.windows(5).any(|window| window == b"0\r\n\r\n") { break; }
-            } else if let Some(length) = headers.lines().find_map(|line| line.strip_prefix("content-length:")?.trim().parse::<usize>().ok()) {
-                if body.len() >= length { break; }
-            } else { break; }
+                if body.windows(5).any(|window| window == b"0\r\n\r\n") {
+                    break;
+                }
+            } else if let Some(length) = headers.lines().find_map(|line| {
+                line.strip_prefix("content-length:")?
+                    .trim()
+                    .parse::<usize>()
+                    .ok()
+            }) {
+                if body.len() >= length {
+                    break;
+                }
+            } else {
+                break;
+            }
         }
     }
     let response = String::from_utf8_lossy(&raw);
     if !(response.starts_with("HTTP/1.1 200") || response.starts_with("HTTP/1.0 200")) {
         return unavailable_runtime();
     }
-    let Some((headers, body)) = raw.windows(4).position(|window| window == b"\r\n\r\n").map(|index| (&raw[..index], &raw[index + 4..])) else { return unavailable_runtime() };
-    let chunked = String::from_utf8_lossy(headers).to_ascii_lowercase().contains("transfer-encoding: chunked");
-    let body = if chunked { decode_chunked_body(body) } else { Some(body.to_vec()) };
-    body.and_then(|body| serde_json::from_slice(&body).ok()).unwrap_or_else(unavailable_runtime)
+    let Some((headers, body)) = raw
+        .windows(4)
+        .position(|window| window == b"\r\n\r\n")
+        .map(|index| (&raw[..index], &raw[index + 4..]))
+    else {
+        return unavailable_runtime();
+    };
+    let chunked = String::from_utf8_lossy(headers)
+        .to_ascii_lowercase()
+        .contains("transfer-encoding: chunked");
+    let body = if chunked {
+        decode_chunked_body(body)
+    } else {
+        Some(body.to_vec())
+    };
+    body.and_then(|body| serde_json::from_slice(&body).ok())
+        .unwrap_or_else(unavailable_runtime)
 }
 fn runtime_catalog(app: &App) -> Value {
     let projects = |relative: &str, metadata: &str, is_creator: bool| {
@@ -1555,6 +1873,11 @@ fn url_host(value: Option<&String>, fallback: &str) -> String {
 fn is_hex_secret(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
+fn is_device_id(value: &str) -> bool {
+    value.len() == 68
+        && value.starts_with("dev_")
+        && value[4..].bytes().all(|byte| byte.is_ascii_hexdigit())
+}
 /// The installation secret must survive a package upgrade. Keeping it in the
 /// unpacked directory meant that replacing the ZIP silently produced a new
 /// device identity and invalidated an installed license, so the operator's
@@ -1581,6 +1904,20 @@ fn install_secret(app: &App) -> Result<String, String> {
 }
 fn device(app: &App) -> Result<String, String> {
     let dir = app.root.join("license");
+    let path = dir.join("device-id");
+    remove_empty_file_placeholder(&path)?;
+    // The device file is shared with every licensed service and may have been
+    // created by the native desktop launcher. A manager running in Docker sees
+    // the Docker VM machine-id, not the host machine-id, so recalculating here
+    // would overwrite a valid host identity and immediately invalidate the
+    // installed license. Existing valid identities are therefore authoritative;
+    // derivation is only the first-install fallback.
+    if let Ok(existing) = fs::read_to_string(&path) {
+        let existing = existing.trim();
+        if is_device_id(existing) {
+            return Ok(existing.to_string());
+        }
+    }
     let value = install_secret(app)?;
     let hw_path =
         env::var("BOX_LICENSE_HARDWARE_ID_FILE").unwrap_or_else(|_| "/run/host-machine-id".into());
@@ -1589,19 +1926,6 @@ fn device(app: &App) -> Result<String, String> {
         .or_else(|_| fs::read_to_string("/etc/machine-id"))
         .map_err(|_| "无法读取 Linux 设备标识")?;
     let id = shared_license::derive_web_device_id(&hw, &value);
-    let path = dir.join("device-id");
-    remove_empty_file_placeholder(&path)?;
-    // This path is bind-mounted as a single file into every business
-    // container. Replacing an existing file (even atomically) can briefly
-    // make it disappear to Docker's file mount and races child runtime
-    // startup. Its contents are deterministic, so a matching file is already
-    // the correct durable identity and must retain its inode.
-    if fs::read_to_string(&path)
-        .ok()
-        .is_some_and(|existing| existing.trim() == id)
-    {
-        return Ok(id);
-    }
     private(&path, &id)?;
     Ok(id)
 }
@@ -2214,13 +2538,20 @@ async fn main() {
     let root = env::var("BOX_SERVER_MANAGER_ROOT").unwrap_or_else(|_| "/workspace".into());
     let root_path = PathBuf::from(&root);
     let token = env::var("BOX_SERVER_MANAGER_TOKEN").expect("BOX_SERVER_MANAGER_TOKEN is required");
+    let runtime_token =
+        env::var("BOX_RUNTIME_MANAGER_TOKEN").expect("BOX_RUNTIME_MANAGER_TOKEN is required");
     assert!(
         token.len() >= 32,
         "BOX_SERVER_MANAGER_TOKEN must be at least 32 characters"
     );
+    assert!(
+        runtime_token.len() >= 32,
+        "BOX_RUNTIME_MANAGER_TOKEN must be at least 32 characters"
+    );
     let app = Arc::new(App {
         root: root_path.clone(),
         token,
+        runtime_token,
         compose_file: env::var("BOX_SERVER_MANAGER_COMPOSE_FILE")
             .map(PathBuf::from)
             .unwrap_or_else(|_| root_path.join("compose.yml")),
@@ -2235,6 +2566,11 @@ async fn main() {
     let router = Router::new()
         .route("/", get(index))
         .route("/api/health", get(health))
+        .route("/api/runtime/ensure", post(ensure_runtime_container))
+        .route(
+            "/api/runtime/{container_id}",
+            delete(delete_runtime_container),
+        )
         .route("/api/backups/upload", post(upload_backup))
         .route("/api/backups/{archive}/download", get(download_backup))
         .route(
@@ -2268,6 +2604,7 @@ mod tests {
         let app = Arc::new(App {
             root: PathBuf::from("/unused-test-root"),
             token: "fixture-token-with-at-least-32-chars".into(),
+            runtime_token: "fixture-runtime-token-with-32-chars".into(),
             compose_file: PathBuf::from("/unused-test-root/compose.yml"),
             environment_file: PathBuf::from("/unused-test-root/.env"),
             operations: Arc::new(Operations::default()),
@@ -2437,6 +2774,7 @@ mod tests {
                 compose_file: root.join("compose.yml"),
                 root,
                 token: "fixture-token-not-used-for-network".into(),
+                runtime_token: "fixture-runtime-token-not-used".into(),
                 operations: Arc::new(Operations::default()),
                 operation_id: None,
             })
@@ -2610,6 +2948,7 @@ mod tests {
         let app = App {
             root: root.clone(),
             token: "fixture-token-with-at-least-32-chars".into(),
+            runtime_token: "fixture-runtime-token-with-32-chars".into(),
             compose_file: root.join("compose.yml"),
             environment_file: root.join(".env"),
             operations: Arc::new(Operations::default()),
@@ -2622,15 +2961,19 @@ mod tests {
         std::env::remove_var("BOX_LICENSE_HARDWARE_ID_FILE");
         let device = root.join("license/device-id");
         assert!(device.is_file());
-        assert!(fs::read_to_string(&device).unwrap().starts_with("dev_"));
+        let first_device = fs::read_to_string(&device).unwrap();
+        assert!(first_device.starts_with("dev_"));
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
             let inode = fs::metadata(&device).unwrap().ino();
-            std::env::set_var("BOX_LICENSE_HARDWARE_ID_FILE", &hardware);
+            let changed_hardware = root.join("changed-machine-id");
+            fs::write(&changed_hardware, "different-machine-id\n").unwrap();
+            std::env::set_var("BOX_LICENSE_HARDWARE_ID_FILE", &changed_hardware);
             initialize_license_storage(&app).unwrap();
             std::env::remove_var("BOX_LICENSE_HARDWARE_ID_FILE");
             assert_eq!(fs::metadata(&device).unwrap().ino(), inode);
+            assert_eq!(fs::read_to_string(&device).unwrap(), first_device);
         }
         fs::remove_dir_all(root).unwrap();
     }
@@ -2665,6 +3008,7 @@ mod tests {
         let app = App {
             root: root.clone(),
             token: "x".repeat(32),
+            runtime_token: "y".repeat(32),
             compose_file: root.join("compose.yml"),
             operations: Arc::new(Operations::default()),
             operation_id: None,

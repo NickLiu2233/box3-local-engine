@@ -25,6 +25,10 @@ const sharedBackend = fs
   .map((file) => fs.readFileSync(path.join(sharedDirectory, file), 'utf8'))
   .join('\n')
 const backend = desktopBackend + '\n' + sharedBackend
+const serverManager = fs.readFileSync(
+  path.join(root, 'apps/server-manager-rust/src/main.rs'),
+  'utf8',
+)
 const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), 'utf8')
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
@@ -208,6 +212,25 @@ assert.match(
   /127\.0\.0\.1:\$\{BOX_MANAGED_POSTGRES_HOST_PORT:-5432\}:5432/,
 )
 assert.match(compose, /BOX_MANAGED_POSTGRES_MEMORY_LIMIT:-512m/)
+assert.match(
+  compose.match(/ {2}play:[\s\S]*?\n  voxa:/)?.[0] || '',
+  /apps\/local-engine\/data:\/app\/apps\/local-engine\/data:ro/,
+  'Play must read the Desktop-managed per-map runtime profiles',
+)
+const playService = compose.match(/ {2}play:[\s\S]*?\n  voxa:/)?.[0] || ''
+assert.match(playService, /server-manager:[\s\S]*?condition: service_healthy/)
+assert.match(playService, /BOX_RUNTIME_MANAGER_URL:/)
+assert.match(playService, /BOX_RUNTIME_MANAGER_TOKEN:/)
+assert.match(serverManager, /box-local-engine-play:\{tag\}/)
+assert.match(serverManager, /\/app\/world:ro/)
+assert.match(serverManager, /--cpus/)
+assert.match(serverManager, /--memory/)
+assert.match(serverManager, /runtime_network\(\)/)
+assert.doesNotMatch(
+  serverManager.match(/async fn ensure_runtime_container[\s\S]*?async fn delete_runtime_container/)?.[0] || '',
+  /box-local-engine-creator:/,
+  'published Play isolation must never start a Creator image',
+)
 assert.match(compose, /PGPASSWORD=.*psql .*SELECT 1/)
 assert.match(compose, /BOX_VOXA_MEMORY_LIMIT:-1g/)
 // The headless package builder extracts the managed services from the shared

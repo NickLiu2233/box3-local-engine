@@ -4,6 +4,7 @@ const http = require('http')
 const net = require('net')
 const { createRuntimeLifecycle } = require('./runtime-lifecycle')
 const { waitForRuntimeReady } = require('./runtime-readiness')
+const { runtimeUpstream, runtimeHostHeader } = require('./runtime-upstream')
 const {
   createTeleportControlHandler,
   createTeleportRoomManager,
@@ -185,7 +186,7 @@ function startEditLibrary({
         setStatus(key, { phase: 'loading', percent: 42, message: '正在加载工程与预烘焙资源' })
         await waitForRuntimeReady({
           runtime,
-          url: `http://127.0.0.1:${runtimePort}/api/health-check`,
+          url: `http://${runtime.hostname || '127.0.0.1'}:${runtime.port || runtimePort}/api/health-check`,
           waitForRuntime,
           startupTimeoutMs,
           onWindowElapsed: ({ elapsedMs, timeoutMs }) => {
@@ -387,11 +388,10 @@ function startEditLibrary({
       res.once('close', releaseConnection)
       const proxy = http.request(
         {
-          hostname: '127.0.0.1',
-          port: runtime.port,
+          ...runtimeUpstream(runtime),
           method: req.method,
           path: forwardedPath,
-          headers: { ...req.headers, host: `127.0.0.1:${runtime.port}` },
+          headers: { ...req.headers, host: runtimeHostHeader(runtime) },
         },
         (upstream) => {
           res.writeHead(upstream.statusCode || 502, upstream.headers)
@@ -430,9 +430,10 @@ function startEditLibrary({
       const runtime = await ensureRuntime(project || reference, roomId)
       const releaseConnection = lifecycle.acquire(runtime)
       socket.once('close', releaseConnection)
-      const upstream = net.connect(runtime.port, '127.0.0.1')
+      const target = runtimeUpstream(runtime)
+      const upstream = net.connect(target.port, target.hostname)
       upstream.on('connect', () => {
-        const headers = { ...req.headers, host: `127.0.0.1:${runtime.port}` }
+        const headers = { ...req.headers, host: runtimeHostHeader(runtime) }
         const lines = [
           `${req.method} ${forwardedPath} HTTP/${req.httpVersion}`,
           ...Object.entries(headers).map(
