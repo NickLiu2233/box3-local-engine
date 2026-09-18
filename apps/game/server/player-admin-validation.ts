@@ -100,7 +100,7 @@ const creatorPermissionsSchema = z
   .max(CREATOR_CAPABILITIES.length)
   .transform((permissions) => [...new Set(permissions)]);
 const creatorCliPermissionsSchema = z
-  .array(z.enum(CREATOR_CLI_CAPABILITIES as [
+  .array(z.enum(CREATOR_CLI_CAPABILITIES as unknown as [
     (typeof CREATOR_CLI_CAPABILITIES)[number],
     ...(typeof CREATOR_CLI_CAPABILITIES)[number][],
   ]))
