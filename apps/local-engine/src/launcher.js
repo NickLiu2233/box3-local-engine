@@ -236,7 +236,11 @@ async function startScheduledContainer({ profile, mapId, mode, roomId, projectId
     memoryMb: profile.memoryMb,
     playerLimit: profile.playerLimit,
     idleTimeoutMs: profile.idleTimeoutMs,
-    teleportControlUrl: 'http://play:3000/__local_teleport',
+    // The room manager lives in the Play Library runtime, not in Next.js.
+    // Keep this on Docker's private network: 9966 is deliberately not
+    // published by the Play service, but isolated map containers must be
+    // able to allocate and authorize their private rooms through it.
+    teleportControlUrl: 'http://play:9966/__local_teleport',
     teleportInternalToken: process.env.BOX_TELEPORT_INTERNAL_TOKEN,
     port,
   })

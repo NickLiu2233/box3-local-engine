@@ -609,7 +609,7 @@ function runtimes() {
           : `<div class="runtime-list">${mainMaps
               .map((project) => runtimeProject(project, submapsByMain.get(project.projectId) || []))
               .join('')}</div>`
-  return `<header><div><h1>地图容器管理</h1></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button><button type="button" data-runtime-catalog="config">容器配置 <span>${state.mapRuntimeProfiles.length}</span></button></nav>${body}`
+  return `<header><div><h1>地图容器管理</h1></div><div class="header-actions"><button class="button" id="refresh-project-runtimes" ${state.projectRuntimesLoading ? 'disabled' : ''}>刷新</button></div></header><nav class="runtime-catalog-tabs" aria-label="运行时分类"><button type="button" data-runtime-catalog="creator" class="${catalogTab === 'creator' ? 'active' : ''}">创作端 <span>${creatorItems.length}</span></button><button type="button" data-runtime-catalog="play" class="${catalogTab === 'play' ? 'active' : ''}">游玩端 <span>${playItems.length}</span></button><button type="button" data-runtime-catalog="config">容器配置 <span>${state.mapRuntimeProfiles.length}</span></button></nav>${body}`
 }
 
 function serviceCard([id, name, description, portKey, defaultPort], options = {}) {
@@ -1273,6 +1273,9 @@ function bindEvents() {
       render()
     }),
   )
+  document.querySelector('#refresh-project-runtimes')?.addEventListener('click', () => {
+    void refreshProjectRuntimes()
+  })
   document.querySelector('#add-map-runtime-profile')?.addEventListener('click', () => {
     state.mapRuntimeProfileDialog = true
     render()

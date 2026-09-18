@@ -118,7 +118,11 @@ fn runtime_container_name(request: &RuntimeEnsureRequest) -> Result<String, Stri
     }
     if !(1..=10_000).contains(&request.player_limit)
         || !(1_000..=604_800_000).contains(&request.idle_timeout_ms)
-        || request.teleport_control_url != "http://play:3000/__local_teleport"
+        // This endpoint is the Play Library listener. Port 9966 stays inside
+        // the Docker network (it is never host-published), so isolated map
+        // containers can manage teleport rooms without exposing the control
+        // API to browsers or the host network.
+        || request.teleport_control_url != "http://play:9966/__local_teleport"
         || request.teleport_internal_token.len() < 32
     {
         return Err("地图运行时参数无效".into());

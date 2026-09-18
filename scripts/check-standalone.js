@@ -1454,8 +1454,8 @@ requirePattern(
 requirePattern(
   playDockerStage,
   dockerFile,
-  'loopback-only play runtime',
-  /BOX_PLAY_RUNTIME_HOST=127\.0\.0\.1/,
+  'Docker-network-reachable private play runtime',
+  /BOX_PLAY_RUNTIME_HOST=0\.0\.0\.0/,
 )
 requirePattern(
   creatorDockerStage,

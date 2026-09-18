@@ -267,6 +267,9 @@ LABEL org.box.local-engine.play-format="7" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
       org.opencontainers.image.licenses="LicenseRef-Proprietary"
 
+# The Play Library control endpoint is private to the Compose network.
+# Isolated map/room containers use it for signed teleport allocation;
+# docker-compose publishes only port 3000 to the host.
 ENV BOX_DEPLOYMENT_MODE=play \
     BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
     BOX_BUILD_COMMIT=${BOX_BUILD_COMMIT} \
@@ -274,7 +277,7 @@ ENV BOX_DEPLOYMENT_MODE=play \
     BOX_BUILD_SOURCE=${BOX_BUILD_SOURCE} \
     BOX_WEB_HOST=0.0.0.0 \
     BOX_WEB_PORT=3000 \
-    BOX_PLAY_RUNTIME_HOST=127.0.0.1 \
+    BOX_PLAY_RUNTIME_HOST=0.0.0.0 \
     BOX_PLAY_RUNTIME_PORT=9966 \
     HOSTNAME=0.0.0.0 \
     PORT=3000 \

@@ -71,6 +71,13 @@ const config = {
           source: '/p/:world/__local_runtime/:path*',
           destination: `${localPlayRuntime}/:world/__local_runtime/:path*`,
         },
+        // Private-room lifecycle routes sit one segment deeper than the main
+        // world. Route them through the same Play Library handler so the
+        // desktop container manager can show and destroy individual rooms.
+        {
+          source: '/p/:world/__room/:room/__local_runtime/:path*',
+          destination: `${localPlayRuntime}/:world/__room/:room/__local_runtime/:path*`,
+        },
         {
           source: '/runtime/play',
           has: [{ type: 'header', key: 'upgrade', value: 'websocket' }],

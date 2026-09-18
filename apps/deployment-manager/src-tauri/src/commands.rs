@@ -857,6 +857,14 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_PLAY_ADMIN_TOKEN",
         &resolve_secret("BOX_PLAY_ADMIN_TOKEN", &config.play_admin_token, &existing)?,
     )?;
+    // Keep this credential stable across Play restarts. Isolated map
+    // containers retain it so they can continue to allocate private rooms
+    // through the Play Library's Docker-only control endpoint.
+    set_env(
+        &mut content,
+        "BOX_TELEPORT_INTERNAL_TOKEN",
+        &resolve_secret("BOX_TELEPORT_INTERNAL_TOKEN", "", &existing)?,
+    )?;
     // Separate, non-browser credential for Creator -> Runtime Manager calls.
     // It is intentionally not part of the editable installation form.
     set_env(
