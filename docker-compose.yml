@@ -335,6 +335,9 @@ services:
       BOX_GROUP_STATE_LOCK_STALE_MS: ${BOX_GROUP_STATE_LOCK_STALE_MS:-300000}
       BOX_TELEPORT_MAX_ROOMS: ${BOX_TELEPORT_MAX_ROOMS:-64}
       BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS: ${BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS:-900000}
+      # Creator's edit library also handles same-group map switches. It must
+      # share the private control credential with Play to authorize that path.
+      BOX_TELEPORT_INTERNAL_TOKEN: ${BOX_TELEPORT_INTERNAL_TOKEN:-}
       BOX_RUNTIME_CACHE_PATH: /app/apps/local-engine/projects/.runtime-cache
       BOX_AUTO_BACKUP_ENABLED: ${BOX_AUTO_BACKUP_ENABLED:-false}
       BOX_AUTO_BACKUP_INTERVAL_MINUTES: ${BOX_AUTO_BACKUP_INTERVAL_MINUTES:-60}

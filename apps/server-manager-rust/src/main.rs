@@ -139,6 +139,24 @@ fn runtime_container_name(request: &RuntimeEnsureRequest) -> Result<String, Stri
     ))
 }
 
+/// A base64url room ID can contain uppercase letters and `_`, neither of
+/// which is safe to use as a portable Docker DNS label. The Play Library only
+/// contacts isolated runtimes on its private Docker network, so return the
+/// container's assigned private IP instead of relying on a container alias.
+fn runtime_container_address(name: &str) -> Result<String, String> {
+    let address = docker(&[
+        "inspect",
+        "--format",
+        "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+        name,
+    ])?;
+    let address = address.trim();
+    if address.parse::<std::net::IpAddr>().is_err() {
+        return Err(format!("无法获取地图运行时容器地址：{name}"));
+    }
+    Ok(address.into())
+}
+
 fn runtime_network() -> Result<String, String> {
     if let Ok(configured) = env::var("BOX_RUNTIME_DOCKER_NETWORK") {
         if !configured.trim().is_empty() {
@@ -367,7 +385,8 @@ async fn ensure_runtime_container(
             let argv = args.iter().map(String::as_str).collect::<Vec<_>>();
             docker(&argv)?;
         }
-        Ok(json!({"containerId":name,"hostname":name,"port":9966,"startedAt":Utc::now().to_rfc3339()}))
+        let hostname = runtime_container_address(&name)?;
+        Ok(json!({"containerId":name,"hostname":hostname,"port":9966,"startedAt":Utc::now().to_rfc3339()}))
     }).await.unwrap_or_else(|error| Err(format!("运行时容器任务异常：{error}")));
     match result {
         Ok(value) => Json(value).into_response(),
@@ -2700,6 +2719,29 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn private_runtime_container_name_preserves_the_room_identifier() {
+        let request = RuntimeEnsureRequest {
+            permanent_map_id: "4dffa49240b57b50ad2c".into(),
+            mode: "play".into(),
+            project_id: "cloud-38e4bc37eb12c301-imported".into(),
+            // base64url room IDs intentionally include uppercase characters.
+            room_id: Some("jH7lkcTtX4Dy9UhViJBShztfSFX2O7gQ".into()),
+            cpu_milli: Some(500),
+            memory_mb: Some(256),
+            player_limit: 8,
+            idle_timeout_ms: 900_000,
+            teleport_control_url: "http://play:9966/__local_teleport".into(),
+            teleport_internal_token: "test-token-with-at-least-32-characters".into(),
+        };
+
+        let name = runtime_container_name(&request).unwrap();
+        assert_eq!(
+            name,
+            "box-runtime-play-4dffa49240b57b50ad2c-jH7lkcTtX4Dy9UhViJBShztfSFX2O7gQ"
+        );
+    }
 
     #[tokio::test]
     async fn http_command_progress_has_the_same_shape_and_requires_authentication() {
