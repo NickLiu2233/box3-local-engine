@@ -44,7 +44,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
 ) => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
     return {
-      redirect: { destination: '/players', permanent: false },
+      redirect: { destination: '/', permanent: false },
     };
   }
   const gameName = String(context.params?.gameName || '');

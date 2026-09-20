@@ -3007,7 +3007,7 @@ function HomePageContent({
 
 export const getServerSideProps: GetServerSideProps = async () => {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
-    return { redirect: { destination: '/players', permanent: false } }
+    return { redirect: { destination: '/', permanent: false } }
   }
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') {
     return { redirect: { destination: '/projects', permanent: false } }

@@ -62,8 +62,14 @@ const config = {
     proxyTimeout: 300_000,
   },
   async rewrites() {
+    const playerAdminAtRoot = process.env.BOX_DEPLOYMENT_MODE === 'player-service';
     return {
       beforeFiles: [
+        // Player Service is a standalone administration site. Serve its Umi
+        // entry at the origin without changing the address bar to /index.html.
+        ...(playerAdminAtRoot
+          ? [{ source: '/', destination: '/index.html' }]
+          : []),
         // The play landing page is rendered by Next.js, while lifecycle
         // control for an installed world belongs to the play-library server.
         // Keep this narrow so ordinary /p/:world pages still render normally.

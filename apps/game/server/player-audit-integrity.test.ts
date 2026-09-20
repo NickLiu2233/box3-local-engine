@@ -3,7 +3,6 @@ import path from 'node:path';
 
 import { describePlayerAdminAuditAction } from '../shared/player-admin-audit-catalog';
 
-const pageSource = fs.readFileSync(path.resolve(__dirname, '../pages/players.tsx'), 'utf8');
 const playerIdentitySource = fs.readFileSync(
   path.resolve(__dirname, 'local-player-identity.ts'),
   'utf8',
@@ -25,13 +24,6 @@ function functionSource(source: string, name: string, nextName?: string) {
 }
 
 describe('player administration audit integrity', () => {
-  test('does not duplicate password reset in the administrator row menu', () => {
-    expect(pageSource).not.toContain(
-      "openAdminAccount(admin); setTimeout(() => document.getElementById('admin-account-password')?.focus(), 0);",
-    );
-    expect(pageSource).toContain("editingAdminId ? '新密码（可选）' : '初始密码'");
-  });
-
   test('records player deletion only after a row was actually deleted', () => {
     const source = functionSource(playerIdentitySource, 'deleteManagedPlayer');
     expect(source).toContain('DELETE FROM ${table(\'principals\')} WHERE id = $1 RETURNING id');

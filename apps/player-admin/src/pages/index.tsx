@@ -97,6 +97,7 @@ type Activity = {
   action: string
   actor: string
   actorDisplayName: string
+  subjectId: string
   displayName: string
   username: string
   ip: string
@@ -2302,7 +2303,18 @@ export default function PlayerAdminPage() {
               },
               { title: '操作', dataIndex: 'action' },
               { title: '操作人', render: (_, r: Activity) => r.actorDisplayName || r.actor },
-              { title: '对象', render: (_, r: Activity) => r.displayName || r.username || '—' },
+              {
+                title: '对象',
+                render: (_, r: Activity) => {
+                  const name = r.displayName || r.username || '—'
+                  return r.subjectId ? (
+                    <>
+                      <div>{name}</div>
+                      <div className="player-admin-muted">{r.subjectId}</div>
+                    </>
+                  ) : name
+                },
+              },
               { title: 'IP 地址', dataIndex: 'ip', render: (v) => v || '—' },
               {
                 title: '详情',

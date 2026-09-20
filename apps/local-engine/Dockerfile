@@ -135,8 +135,12 @@ FROM engine-build-base AS player-service-build
 
 # Keep the Next build below Docker Desktop's available memory budget. A larger
 # V8 heap lets the compiler compete with webpack workers and can trigger exit 137.
-RUN pnpm --filter @box-local/player-admin build \
+RUN rm -rf apps/game/public/player-admin \
+    && pnpm --filter @box-local/player-admin build \
+    && cp -a apps/game/public/player-admin/. apps/game/public/ \
+    && rm -rf apps/game/public/player-admin \
     && NODE_OPTIONS=--max-old-space-size=3072 \
+    BOX_DEPLOYMENT_MODE=player-service \
     NEXT_PUBLIC_APP_ENV=development \
     NEXT_PUBLIC_APP_EDITION=createra \
     NEXT_PUBLIC_APP_REGION=cn \

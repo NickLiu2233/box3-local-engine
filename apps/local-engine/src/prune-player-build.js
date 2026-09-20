@@ -20,7 +20,6 @@ const playerServiceRoutes = new Set([
   '/_app',
   '/_document',
   '/_error',
-  '/player-admin',
   '/players',
   '/api/config/[...slug]',
   '/api/health-check',
@@ -37,6 +36,7 @@ const playerServiceRoutes = new Set([
   '/api/play-admin/activity',
   '/api/play-admin/admins',
   '/api/play-admin/admins/[id]',
+  '/api/play-admin/identity-bans',
   '/api/play-admin/login',
   '/api/play-admin/logout',
   '/api/play-admin/maintenance',
@@ -48,6 +48,7 @@ const playerServiceRoutes = new Set([
   '/api/play-admin/players/batch',
   '/api/play-admin/players/export',
   '/api/play-admin/players/overview',
+  '/api/play-admin/self-password',
   '/api/play-admin/verify',
 ])
 

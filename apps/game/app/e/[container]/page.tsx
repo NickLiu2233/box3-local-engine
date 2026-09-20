@@ -12,7 +12,7 @@ import {
 
 export default async function Page({ params, searchParams }) {
   if (process.env.BOX_DEPLOYMENT_MODE === 'player-service') {
-    redirect('/players');
+    redirect('/');
   }
   if (process.env.BOX_DEPLOYMENT_MODE === 'play') {
     redirect('/p/local');
