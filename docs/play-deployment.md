@@ -11,9 +11,10 @@ node apps/local-engine/src/deploy.js play-up
 
 - Player Service 与 PostgreSQL 已启动。
 - 设置 `PERMISSION_TOKEN_SECRET`、`BOX_PLAYER_AUTH_API_KEY` 和 `BOX_PLAY_ADMIN_TOKEN`。
-- 需要网页导入/删除地图时，设置 `BOX_PLAY_LIBRARY_READ_ONLY=false`。
 
 ## 地图管理
+
+使用玩家管理后台的“服主管理 → 游玩地图”导入、审查、启停、设置访问 ID 或删除地图。游玩端首页不再提供服主管理入口。
 
 服主通过密钥进入管理页，导入前可审查地图组、代码、图片和音频；确认后才安装。主地图与副地图会作为同一地图组运行，在线人数汇总到所属主地图。Play 只能开关或删除地图，不能编辑发布信息或导出地图包。
 

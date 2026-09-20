@@ -15,7 +15,7 @@ import './styles.css'
 const services = [
   ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
   ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
-  ['play', '游玩端', '作品游玩与服主管理', 'playPort', 3121, '/'],
+  ['play', '游玩端', '作品游玩与地图服务', 'playPort', 3121, '/'],
   ['player-service', '账号服务', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
   ['player-auth-portal', '登录页面', '玩家登录与注册', 'authPortalPort', 3125, '/'],
 ]
@@ -826,8 +826,8 @@ function setup() {
               '上限越高，Docker 可用内存需求越大。首次部署可保持默认，出现排队再逐步提高。',
             ],
           ])}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与地图权限</h2></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}${settingToggle('libraryManagementEnabled', '允许网页管理地图包', '关闭后 Play 地图库只读，不能通过网页导入或删除地图包', config.libraryManagementEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>服主密钥</h2></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主操作令牌', config.hasPlayAdminToken, '用于 Play 服主管理接口')}${secretInput('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey, '用于服主接入登录、注册接口')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
-          '配置说明：服主密钥分别做什么？',
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与地图权限</h2></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>管理密钥</h2></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '游玩地图管理令牌', config.hasPlayAdminToken, '用于玩家管理后台代理游玩地图操作')}${secretInput('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey, '用于登录、注册与账号服务接入')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
+          '配置说明：管理密钥分别做什么？',
           [
             ['自动生成', '首次保存配置时，三个密钥会自动生成；只有需要自定义时才填写新的值。'],
             ['开放注册', '关闭后新玩家不能自行注册，但已有玩家、服主和后台管理员仍可正常登录。'],
@@ -839,8 +839,8 @@ function setup() {
               '查看密钥',
               '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
             ],
-            ['服主操作令牌', '保护 Play 端的服主操作接口。'],
-            ['账号服务 API Key', '供服主自建登录、注册或用户接入程序调用账号服务。'],
+            ['游玩地图管理令牌', '保护玩家管理后台代理到游玩端的地图操作。'],
+            ['账号服务 API Key', '供登录、注册或用户接入程序调用账号服务。'],
             ['运行时身份密钥', '用于 Creator 和 Play 之间签发、校验运行时身份。'],
             [
               '修改影响',
@@ -1109,7 +1109,7 @@ function restoreScrollPositions(positions) {
 function webLogin() {
   return `<section class="manager-login-page"><article class="manager-login-card">
     <div class="manager-login-heading"><span class="manager-login-kicker">BOX3 ENGINE</span><h1>Box Engine 管理界面</h1></div>
-    <form id="web-login-form" class="manager-login-form"><label class="field"><span>服主管理密钥</span><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="请输入管理密钥" required/><small>密钥仅保存在当前标签页；关闭标签页或退出管理后需要重新输入。</small></label><p id="web-login-error"></p><button class="button primary" type="submit">进入管理平台</button></form>
+    <form id="web-login-form" class="manager-login-form"><label class="field"><span>管理密钥</span><input name="token" type="password" minlength="32" autocomplete="current-password" placeholder="请输入管理密钥" required/><small>密钥仅保存在当前标签页；关闭标签页或退出管理后需要重新输入。</small></label><p id="web-login-error"></p><button class="button primary" type="submit">进入管理平台</button></form>
   </article></section>`
 }
 
@@ -1776,7 +1776,6 @@ function captureSetupForm() {
   const databaseSsl = form.elements.namedItem('databaseSsl')
   const autoBackupEnabled = form.elements.namedItem('autoBackupEnabled')
   const registrationEnabled = form.elements.namedItem('registrationEnabled')
-  const libraryManagementEnabled = form.elements.namedItem('libraryManagementEnabled')
   const next = {
     ...state.config,
     ...values,
@@ -1786,10 +1785,6 @@ function captureSetupForm() {
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,
     registrationEnabled:
       registrationEnabled instanceof HTMLInputElement ? registrationEnabled.checked : false,
-    libraryManagementEnabled:
-      libraryManagementEnabled instanceof HTMLInputElement
-        ? libraryManagementEnabled.checked
-        : false,
   }
   // Password inputs are intentionally blank after rendering. An empty field
   // means “keep the saved/session value”, not “erase it”, unless the user has
@@ -2308,7 +2303,6 @@ async function saveConfiguration(event) {
   config.databaseSsl = form.has('databaseSsl')
   config.autoBackupEnabled = form.has('autoBackupEnabled')
   config.registrationEnabled = form.has('registrationEnabled')
-  config.libraryManagementEnabled = form.has('libraryManagementEnabled')
   for (const key of numericConfigFields) config[key] = Number(config[key])
   state.config = {
     ...state.config,

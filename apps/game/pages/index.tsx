@@ -24,7 +24,6 @@ import {
 } from '../components/player-account/player-account'
 import type { PlayWorld } from '../server/play-worlds'
 import { getPlayWorlds } from '../server/play-worlds'
-import { isPlayAdminEnabled } from '../server/play-admin-security'
 import { getPlayPresenceCounts } from '../server/play-presence'
 import {
   importResponseError,
@@ -157,8 +156,6 @@ function formatImportedAt(value: string) {
 
 type HomePageProps = {
   worlds: PlayWorld[]
-  adminEnabled: boolean
-  adminToolsVisible: boolean
   uiPreview: boolean
   mapStats: Record<string, MapDiscoveryStats>
 }
@@ -173,8 +170,6 @@ export default function HomePage(props: HomePageProps) {
 
 function HomePageContent({
   worlds,
-  adminEnabled,
-  adminToolsVisible,
   uiPreview,
   mapStats,
 }: HomePageProps) {
@@ -358,15 +353,6 @@ function HomePageContent({
     setLoginOpen(false)
     return true
   }
-
-  useEffect(() => {
-    if (!adminEnabled) return
-    const saved = sessionStorage.getItem(TOKEN_KEY)
-    if (saved)
-      verifyToken(saved, true).then((valid) => {
-        if (!valid) sessionStorage.removeItem(TOKEN_KEY)
-      })
-  }, [adminEnabled])
 
   useEffect(() => {
     if (uiPreview) {
@@ -915,7 +901,7 @@ function HomePageContent({
             </span>
           </Link>
 
-          {verified ? null : playerName || playerUserId || playerBoxId || previewSignedIn ? (
+          {playerName || playerUserId || playerBoxId || previewSignedIn ? (
             <PlayerAccount
               identity={{
                 displayName: playerName,
@@ -945,51 +931,11 @@ function HomePageContent({
         <div className="header">
           <div className="title">
             <h1>{t('playHome.maps')}</h1>
-            <span>
-              {verified
-                ? `${worldGroups.length} 个地图组 · ${worldList.length} 张地图`
-                : `${worldGroups.length} 个地图`}
-            </span>
+            <span>{`${worldGroups.length} 个地图`}</span>
           </div>
-          <div className="headerActions">
-            {adminToolsVisible ? (
-              verified ? (
-                <>
-                  <button
-                    className="button primary"
-                    disabled={Boolean(busy)}
-                    onClick={() => importInput.current?.click()}
-                  >
-                    <Upload size={16} />
-                    {busy === 'import' ? t('playHome.importing') : t('playHome.importBundle')}
-                  </button>
-                  <button className="button" onClick={exitAdmin}>
-                    <LogOut size={16} />
-                    {t('playHome.exitManagement')}
-                  </button>
-                </>
-              ) : (
-                <button className="button" onClick={openAdminTools}>
-                  <Settings size={16} />
-                  {t('playHome.ownerManagement')}
-                </button>
-              )
-            ) : null}
-          </div>
-          <input
-            ref={importInput}
-            className="hidden"
-            type="file"
-            accept=".boxplay,.tar.gz,.tgz,application/gzip"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              event.currentTarget.value = ''
-              if (file) importBundle(file)
-            }}
-          />
         </div>
 
-        {!verified && libraryEnabled && worldList.length ? (
+        {libraryEnabled && worldList.length ? (
           <nav className="collectionNav">
             <button
               className={collectionView === 'all' ? 'active' : ''}
@@ -1019,7 +965,7 @@ function HomePageContent({
           </div>
         ) : null}
 
-        {worldList.length && !verified ? (
+        {worldList.length ? (
           playerGroups.length ? (
             <div className="playerGrid" aria-label={t('playHome.mapList')}>
               {libraryGroups.map(({ groupId, main }) => (
@@ -3016,12 +2962,9 @@ export const getServerSideProps: GetServerSideProps = async () => {
   // never set this flag, so their player authentication flow is unchanged.
   if (process.env.NODE_ENV === 'development' && process.env.BOX_UI_PREVIEW === 'true') {
     const worlds = getPlayWorlds()
-    const adminEnabled = isPlayAdminEnabled()
     return {
       props: {
         worlds: worlds.length ? worlds : previewWorlds,
-        adminEnabled,
-        adminToolsVisible: adminEnabled,
         uiPreview: true,
         mapStats: previewMapStats,
       },
@@ -3039,12 +2982,9 @@ export const getServerSideProps: GetServerSideProps = async () => {
   const groupByMap = Object.fromEntries(
     worlds.map((world) => [world.publicId, world.mapGroupId || world.mainProjectId || world.id]),
   )
-  const adminEnabled = isPlayAdminEnabled()
   return {
     props: {
       worlds,
-      adminEnabled,
-      adminToolsVisible: adminEnabled,
       uiPreview: false,
       mapStats: getPlayPresenceCounts(worlds.map((world) => world.publicId), groupByMap),
     },

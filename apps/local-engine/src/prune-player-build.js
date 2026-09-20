@@ -37,6 +37,8 @@ const playerServiceRoutes = new Set([
   '/api/play-admin/admins',
   '/api/play-admin/admins/[id]',
   '/api/play-admin/identity-bans',
+  '/api/play-admin/library/[section]/[[...id]]',
+  '/api/play-admin/library/import',
   '/api/play-admin/login',
   '/api/play-admin/logout',
   '/api/play-admin/maintenance',

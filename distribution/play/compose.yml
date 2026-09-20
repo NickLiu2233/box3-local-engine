@@ -117,7 +117,6 @@ services:
       - type: bind
         source: ./play-worlds
         target: /app/play-worlds
-        read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
         bind:
           create_host_path: true
       - box-play-runtime-cache:/app/play-runtime-cache

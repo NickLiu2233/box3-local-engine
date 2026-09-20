@@ -119,7 +119,6 @@ function Initialize-Configuration {
   $content = Set-EnvValue $content 'PERMISSION_TOKEN_SECRET' $permissionSecret
   $content = Set-EnvValue $content 'BOX_PLAYER_AUTH_API_KEY' $authKey
   $content = Set-EnvValue $content 'BOX_PLAY_ADMIN_TOKEN' $adminToken
-  $content = Set-EnvValue $content 'BOX_PLAY_LIBRARY_READ_ONLY' 'false'
   $content = Set-EnvValue $content 'BOX_PLAYER_LOGIN_URL' 'http://127.0.0.1:3125'
   $content = Set-EnvValue $content 'BOX_PLAYER_AUTH_ALLOWED_ORIGINS' 'http://127.0.0.1:3121,http://127.0.0.1:3127,http://127.0.0.1:3125'
 

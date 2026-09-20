@@ -967,8 +967,8 @@ requirePattern(
 requirePattern(
   playCompose,
   composeFile,
-  'external read-only play library mount',
-  /BOX_PLAY_LIBRARY_PATH: \/app\/play-worlds[\s\S]*?source: "\$\{BOX_DATA_DIRECTORY:-\.\}\/apps\/local-engine\/play-worlds"[\s\S]*?read_only: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
+  'external writable play library mount',
+  /BOX_PLAY_LIBRARY_PATH: \/app\/play-worlds[\s\S]*?source: "\$\{BOX_DATA_DIRECTORY:-\.\}\/apps\/local-engine\/play-worlds"/,
 )
 forbidPattern(
   playCompose,
@@ -1234,16 +1234,10 @@ for (const [file, label, pattern] of [
     'play admin disabled without a configured token',
     /BOX_PLAY_ADMIN_TOKEN[\s\S]*?mode === 'play'/,
   ],
-  ['docker-compose.yml', 'play library write access is opt-in', /BOX_PLAY_LIBRARY_READ_ONLY:-true/],
   [
     'docker-compose.yml',
     'auth portal receives the player registration policy',
     /AUTH_DEMO_REGISTRATION_ENABLED: \$\{BOX_PLAYER_REGISTRATION_ENABLED:-true\}/,
-  ],
-  [
-    'docker-compose.yml',
-    'play web process receives the library write policy',
-    /BOX_PLAY_LIBRARY_READ_ONLY: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
   ],
 ]) {
   requirePattern(readRequired(file), file, label, pattern)

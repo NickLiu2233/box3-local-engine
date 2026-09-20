@@ -6,4 +6,6 @@ const { playerServiceRoutes } = require('./prune-player-build')
 test('keeps Player Admin routes that are called by the standalone management UI', () => {
   assert.equal(playerServiceRoutes.has('/api/play-admin/identity-bans'), true)
   assert.equal(playerServiceRoutes.has('/api/play-admin/self-password'), true)
+  assert.equal(playerServiceRoutes.has('/api/play-admin/library/[section]/[[...id]]'), true)
+  assert.equal(playerServiceRoutes.has('/api/play-admin/library/import'), true)
 })

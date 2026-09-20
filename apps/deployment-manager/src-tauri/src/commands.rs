@@ -108,7 +108,6 @@ struct InstallConfigView {
     teleport_max_rooms: u32,
     teleport_room_idle_minutes: u32,
     registration_enabled: bool,
-    library_management_enabled: bool,
     player_service_memory_mb: u32,
     player_service_cpu_limit: f64,
     auth_portal_memory_mb: u32,
@@ -195,7 +194,6 @@ impl Default for InstallConfigView {
             teleport_max_rooms: 64,
             teleport_room_idle_minutes: 15,
             registration_enabled: true,
-            library_management_enabled: true,
             player_service_memory_mb: 1024,
             player_service_cpu_limit: 1.0,
             auth_portal_memory_mb: 128,
@@ -297,8 +295,6 @@ struct InstallConfigInput {
     teleport_room_idle_minutes: u32,
     #[serde(default = "default_true")]
     registration_enabled: bool,
-    #[serde(default = "default_true")]
-    library_management_enabled: bool,
     #[serde(default = "default_player_service_memory_mb")]
     player_service_memory_mb: u32,
     #[serde(default = "default_player_service_cpu_limit")]
@@ -861,15 +857,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
         "BOX_SERVER_MANAGER_TOKEN",
         &resolve_secret("BOX_SERVER_MANAGER_TOKEN", "", &existing)?,
     )?;
-    set_env(
-        &mut content,
-        "BOX_PLAY_LIBRARY_READ_ONLY",
-        if config.library_management_enabled {
-            "false"
-        } else {
-            "true"
-        },
-    )?;
+    remove_env(&mut content, "BOX_PLAY_LIBRARY_READ_ONLY");
     set_env(
         &mut content,
         "BOX_PLAYER_REGISTRATION_ENABLED",
@@ -1843,7 +1831,6 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             15,
         ),
         registration_enabled: enabled("BOX_PLAYER_REGISTRATION_ENABLED", true),
-        library_management_enabled: !enabled("BOX_PLAY_LIBRARY_READ_ONLY", false),
         player_service_memory_mb: memory_mebibytes(
             values.get("BOX_PLAYER_SERVICE_MEMORY_LIMIT"),
             1024,
@@ -3547,7 +3534,6 @@ mod tests {
             teleport_max_rooms: default_teleport_max_rooms(),
             teleport_room_idle_minutes: default_teleport_room_idle_minutes(),
             registration_enabled: true,
-            library_management_enabled: true,
             player_service_memory_mb: default_player_service_memory_mb(),
             player_service_cpu_limit: default_player_service_cpu_limit(),
             auth_portal_memory_mb: default_auth_portal_memory_mb(),

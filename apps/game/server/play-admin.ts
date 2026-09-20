@@ -590,7 +590,7 @@ function installPreparedPlayBundle(validated: ValidatedPlayWorld[]) {
     for (const target of staging.values()) cleanupDirectoryQuietly(target);
     for (const id of installed) cleanupDirectoryQuietly(path.join(root, id));
     if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
-      throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
+      throw new Error('地图目录不可写，请检查 Play 地图库挂载权限');
     }
     throw error;
   }
@@ -721,7 +721,7 @@ export function deletePlayWorld(id: string) {
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
-      throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
+      throw new Error('地图目录不可写，请检查 Play 地图库挂载权限');
     }
     throw error;
   }
@@ -791,7 +791,7 @@ export function updatePlayWorld(id: string, patch: Record<string, unknown>) {
   } catch (error) {
     fs.rmSync(temporaryPath, { force: true });
     if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
-      throw new Error('地图目录是只读的，请设置 BOX_PLAY_LIBRARY_READ_ONLY=false 后重启游玩端');
+      throw new Error('地图目录不可写，请检查 Play 地图库挂载权限');
     }
     throw error;
   }

@@ -66,10 +66,6 @@ const playerIdentity = fs.readFileSync(
   path.join(root, 'apps/game/server/local-player-identity.ts'),
   'utf8',
 )
-const playAdminSecurity = fs.readFileSync(
-  path.join(root, 'apps/game/server/play-admin-security.ts'),
-  'utf8',
-)
 const authPortalServer = fs.readFileSync(
   path.join(root, 'examples/player-auth-portal/server.js'),
   'utf8',
@@ -269,7 +265,6 @@ for (const [name, value] of [
   ['BOX_TELEPORT_MAX_ROOMS', '64'],
   ['BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS', '900000'],
   ['BOX_PLAYER_REGISTRATION_ENABLED', 'true'],
-  ['BOX_PLAY_LIBRARY_READ_ONLY', 'false'],
   ['BOX_PLAYER_SERVICE_MEMORY_LIMIT', '1g'],
   ['BOX_PLAYER_SERVICE_CPU_LIMIT', '1.0'],
   ['BOX_AUTH_PORTAL_MEMORY_LIMIT', '128m'],
@@ -403,12 +398,6 @@ for (const [name, composePattern, consumer, consumerPattern] of [
     authPortalServer,
     /AUTH_DEMO_REGISTRATION_ENABLED/,
   ],
-  [
-    'BOX_PLAY_LIBRARY_READ_ONLY',
-    /BOX_PLAY_LIBRARY_READ_ONLY: \$\{BOX_PLAY_LIBRARY_READ_ONLY:-true\}/,
-    playAdminSecurity,
-    /process\.env\.BOX_PLAY_LIBRARY_READ_ONLY/,
-  ],
 ]) {
   assert.match(compose, composePattern, `${name} is not forwarded by Compose`)
   assert.match(consumer, consumerPattern, `${name} has no runtime consumer`)
@@ -452,8 +441,6 @@ assert.match(frontend, /运行时空闲回收（分钟）/)
 assert.match(frontend, /Teleport 私有房间上限/)
 assert.match(backend, /fn minutes_to_milliseconds/)
 assert.match(frontend, /允许新玩家注册/)
-assert.match(frontend, /允许网页管理地图包/)
-assert.match(backend, /if config\.library_management_enabled[\s\S]*?"false"[\s\S]*?"true"/)
 assert.match(backend, /"BOX_SCRIPT_HEAP_MB"[\s\S]*?"BOX_SCRIPT_MEMORY_MB"/)
 assert.match(frontend, /PostgreSQL<\/h2>/)
 assert.match(backend, /外部 PostgreSQL 模式必须配置数据库地址后才能启动服务/)

@@ -468,7 +468,6 @@ services:
       BOX_RUNTIME_MANAGER_URL: ${BOX_RUNTIME_MANAGER_URL:-http://server-manager:3130}
       BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
       BOX_PLAY_LIBRARY_PATH: /app/play-worlds
-      BOX_PLAY_LIBRARY_READ_ONLY: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
       BOX_PLAY_ADMIN_TOKEN: ${BOX_PLAY_ADMIN_TOKEN:-}
       BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
       BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
@@ -515,7 +514,6 @@ services:
       - type: bind
         source: "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/play-worlds"
         target: /app/play-worlds
-        read_only: ${BOX_PLAY_LIBRARY_READ_ONLY:-true}
         bind:
           create_host_path: true
       # Per-map play policies are managed by the Desktop launcher and must be

@@ -25,7 +25,7 @@
 | VOXA 请求来源           | 非允许来源直接访问                                               | `403`              | 通过       |
 | Player Service 内部 API | 伪造 `PERMISSION_TOKEN_SECRET`                                   | `401`              | 通过       |
 | 玩家管理后台            | 跨站访问管理员 API                                               | `403`              | 通过       |
-| Play 服主管理           | 不携带 Bearer 服主密钥                                           | `401`              | 通过       |
+| 游玩地图管理代理        | 不携带后台会话或内部管理令牌                                     | `401` / `403`      | 通过       |
 | 权限提升                | 只有 `projects.edit` 时尝试管理 VOXA 模型                        | `403`              | 通过       |
 | 权限撤销                | `creatorAccess=false` 但保留能力字符串                           | `403`              | 通过       |
 | 网络暴露                | 检查 Creator、Play、VOXA、Player Service、PostgreSQL、Redis 监听 | 默认仅 `127.0.0.1` | 通过       |

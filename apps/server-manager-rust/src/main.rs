@@ -1109,16 +1109,12 @@ fn configuration_document_for_save(
             "BOX_PLAYER_REGISTRATION_ENABLED",
             false,
         ),
-        (
-            "libraryManagementEnabled",
-            "BOX_PLAY_LIBRARY_READ_ONLY",
-            true,
-        ),
     ] {
         if let Some(value) = config.get(input).and_then(Value::as_bool) {
             source = set_env(source, key, if value ^ inverted { "true" } else { "false" })?;
         }
     }
+    box_manager_core::environment::remove_env(&mut source, "BOX_PLAY_LIBRARY_READ_ONLY");
     for (input, key) in [
         ("databasePassword", "BOX_DATABASE_PASSWORD"),
         ("redisPassword", "REDIS_PASSWORD"),
@@ -1275,16 +1271,7 @@ fn configuration_document_for_save(
             if value { "true" } else { "false" },
         )?;
     }
-    if let Some(value) = config
-        .get("libraryManagementEnabled")
-        .and_then(Value::as_bool)
-    {
-        source = set_env(
-            source,
-            "BOX_PLAY_LIBRARY_READ_ONLY",
-            if value { "false" } else { "true" },
-        )?;
-    }
+    box_manager_core::environment::remove_env(&mut source, "BOX_PLAY_LIBRARY_READ_ONLY");
     // The desktop launcher keeps the script heap limit in step with
     // the memory limit; the runtime reads BOX_SCRIPT_HEAP_MB.
     if let Some(value) = config.get("scriptMemoryMb") {
@@ -2463,7 +2450,6 @@ async fn command(
                     "teleportMaxRooms": number("BOX_TELEPORT_MAX_ROOMS", 64),
                     "teleportRoomIdleMinutes": number("BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS", 900000) / 60000,
                     "registrationEnabled": enabled("BOX_PLAYER_REGISTRATION_ENABLED", true),
-                    "libraryManagementEnabled": !enabled("BOX_PLAY_LIBRARY_READ_ONLY", false),
                     "playerServiceMemoryMb": memory("BOX_PLAYER_SERVICE_MEMORY_LIMIT", 1024),
                     "playerServiceCpuLimit": decimal("BOX_PLAYER_SERVICE_CPU_LIMIT", 1.0),
                     "authPortalMemoryMb": memory("BOX_AUTH_PORTAL_MEMORY_LIMIT", 128),

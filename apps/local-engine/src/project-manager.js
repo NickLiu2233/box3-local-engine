@@ -2529,6 +2529,10 @@ function packageProject(reference, outputDirectory, options = {}) {
         '      BOX_PLAYER_SERVICE_PUBLIC_URL: ${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_TRUST_PROXY:',
         '      BOX_PLAYER_SERVICE_PUBLIC_URL: ${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3213}\n      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}\n      BOX_TRUST_PROXY:',
       )
+      .replace(
+        '      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_PLAYER_LOGIN_URL:',
+        '      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3000}\n      BOX_PLAY_INTERNAL_URL: http://play:3000\n      BOX_PLAYER_LOGIN_URL:',
+      )
       .replace(/^\s*BOX_DATA_STORAGE_NAMESPACE:.*\n/m, '')
       .replace(/^\s*BOX_GROUP_STORAGE_NAMESPACE:.*\n/m, '')
       .replaceAll(
