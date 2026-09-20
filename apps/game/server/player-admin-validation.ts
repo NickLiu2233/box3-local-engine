@@ -180,7 +180,7 @@ export function playerItemRequirement(
 ): PlayerAdminRequirement | PlayerAdminRequirement[] {
   const body = requestBody(bodyValue);
   if (method === 'GET') return 'players.view';
-  if (method === 'DELETE') return 'owner';
+  if (method === 'DELETE') return 'players.delete';
   if (method === 'PATCH') {
     const requirements: PlayerAdminRequirement[] = [];
     if (['status', 'banReason', 'bannedUntil'].some((field) => field in body)) {
@@ -190,7 +190,7 @@ export function playerItemRequirement(
       requirements.push('players.manage');
     }
     if (['creatorAccess', 'creatorPermissions'].some((field) => field in body)) {
-      requirements.push('owner');
+      requirements.push('creator-access.manage');
     }
     return requirements.length ? requirements : 'players.manage';
   }
@@ -253,16 +253,12 @@ const createAdminAccountSchema = z.object({
   username: usernameSchema,
   displayName: adminDisplayNameSchema,
   password: adminPasswordSchema,
-  role: z.enum(['admin', 'moderator']),
-  permissions: permissionsSchema.optional().default([]),
-  permissionGroupId: uuidSchema.nullable().optional().default(null),
+  permissionGroupId: uuidSchema,
 }).strict();
 
 const updateAdminAccountSchema = z.object({
   displayName: adminDisplayNameSchema.optional(),
   password: adminPasswordSchema.optional(),
-  role: z.enum(['admin', 'moderator']).optional(),
-  permissions: permissionsSchema.optional(),
   permissionGroupId: uuidSchema.nullable().optional(),
   status: z.enum(['active', 'disabled']).optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, '没有可更新的管理账号字段');
@@ -273,6 +269,15 @@ export function parseCreateAdminAccount(value: unknown) {
 
 export function parseUpdateAdminAccount(value: unknown) {
   return parse(updateAdminAccountSchema, requestBody(value));
+}
+
+const changeOwnAdminPasswordSchema = z.object({
+  currentPassword: z.string().min(1, '请输入当前密码').max(128, '当前密码无效'),
+  newPassword: adminPasswordSchema,
+}).strict();
+
+export function parseChangeOwnAdminPassword(value: unknown) {
+  return parse(changeOwnAdminPasswordSchema, requestBody(value));
 }
 
 const permissionGroupSchema = z.object({
@@ -337,7 +342,7 @@ const playerListQuerySchema = z.object({
   search: z.string().trim().max(64).optional().default(''),
   page: z.coerce.number().int().min(1).catch(1),
   pageSize: z.coerce.number().int().min(10).max(100).catch(30),
-  identity: z.enum(['all', 'user', 'banned']).catch('all'),
+  identity: z.enum(['all', 'user', 'box', 'banned']).catch('all'),
   online: z.enum(['all', 'online', 'offline']).catch('all'),
   sort: z.enum(['lastSeen', 'registered', 'displayName', 'loginCount']).catch('lastSeen'),
 }).passthrough();

@@ -59,7 +59,7 @@ describe('player administration role policy', () => {
     expect(source).toContain("sameSite: 'strict'");
     expect(source).toContain('LOGIN_IP_LIMIT');
     expect(source).toContain('LOGIN_ACCOUNT_LIMIT');
-    expect(source).toContain('服主只能通过服主密钥进入，不能分配给管理账号');
+    expect(source).toContain("role: 'moderator' as const");
     expect(source).toContain("CHECK (role IN ('admin', 'moderator'))");
     expect(source).toContain("WHERE role = 'owner'");
     expect(source).toContain('admin_sessions_identity_check');

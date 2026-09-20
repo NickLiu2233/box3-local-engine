@@ -3,6 +3,7 @@ packages:
   - apps/server-manager
   - apps/game
   - apps/local-engine
+  - apps/player-admin
   - apps/license-server
   - apps/voxa
   - apps/migrator

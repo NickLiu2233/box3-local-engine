@@ -53,6 +53,14 @@ _Avoid_: Permanent Map ID, internal ID
 The local directory and runtime routing key of an editable project. It is an implementation locator, not a persistent game-data identity.
 _Avoid_: Permanent Map ID, Access ID
 
+**Player Admin Read Capability**:
+A permission that exposes management information without changing player, security, or Creator state. Viewing the player directory is the baseline read capability for every active management account.
+_Avoid_: Edit permission, management permission
+
+**Player Admin Operation Capability**:
+A permission that permits a state-changing player, security, or Creator operation, such as editing profiles, revoking sessions, or applying a ban. It does not imply ownership of the server.
+_Avoid_: Read permission, owner permission
+
 ## Architecture Decisions
 
 - Map groups preserve Boxes' project and group schemas. Local metadata only owns membership and the authoritative shared root pointer.

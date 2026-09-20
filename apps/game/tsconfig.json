@@ -39,18 +39,30 @@
     "isolatedModules": true,
     "paths": {
       // 由于我们用了 src/xxx 这种绝对路径，这里需要覆盖一下base的配置
-      "/*": ["./apps/game/*"],
-      "~/*": ["./apps/game/src/*"],
-      "*": ["./apps/game/*"]
+      "/*": [
+        "./apps/game/*"
+      ],
+      "~/*": [
+        "./apps/game/src/*"
+      ],
+      "*": [
+        "./apps/game/*"
+      ]
     },
-    "typeRoots": ["./node_modules/@webgpu/types", "./node_modules/@types"],
+    "typeRoots": [
+      "./node_modules/@webgpu/types",
+      "./node_modules/@types"
+    ],
     "plugins": [
       {
         "name": "next"
       }
     ]
   },
-  "exclude": ["build", "public"],
+  "exclude": [
+    "build",
+    "public"
+  ],
   // 仅本地开发使用
   "ts-node": {
     "files": true,
@@ -62,9 +74,10 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "../../services/game-server/src/edit/ai/llm-context.d.ts",
     "./types/*.d.ts",
-    "next-env.d.ts",
     ".next/types/**/*.ts",
-    "../../services/game-server/src/edit/ai/llm-context.d.ts"
+    "next-env.d.ts",
+    ".next-player-service/types/**/*.ts"
   ]
 }

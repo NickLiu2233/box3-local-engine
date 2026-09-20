@@ -13,6 +13,8 @@ import {
 
 export type PlayerAdminActor = AdminActionContext & {
   actor: string;
+  /** Login name, kept separate from the stable audit actor identifier. */
+  actorUsername?: string;
   actorDisplayName: string;
   actorRole: PlayerAdminRole;
   actorPermissions: PlayerAdminCapability[];
@@ -174,6 +176,7 @@ export async function authorizePlayerAdmin(
         identity.credential === 'owner-session'
           ? 'server-owner'
           : `admin:${identity.id}`,
+      actorUsername: identity.username,
       actorDisplayName: identity.displayName,
       actorRole: identity.role,
       actorPermissions: identity.permissions,

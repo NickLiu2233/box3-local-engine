@@ -500,15 +500,12 @@ function validateAccountInput(values: {
   username?: unknown;
   displayName?: unknown;
   password?: unknown;
-  role?: unknown;
-  permissions?: unknown;
   permissionGroupId?: unknown;
 }) {
   const username = typeof values.username === 'string' ? values.username.trim() : '';
   const displayName =
     typeof values.displayName === 'string' ? values.displayName.trim() : '';
   const password = typeof values.password === 'string' ? values.password : '';
-  const role = values.role as PlayerAdminAccountRole;
   if (!usernamePattern.test(username)) {
     throw new PlayerAdminRequestError('管理员用户名必须以字母开头，只能包含字母、数字和下划线，长度为 3 到 32');
   }
@@ -518,18 +515,13 @@ function validateAccountInput(values: {
   if (password.length < 12 || password.length > 128) {
     throw new PlayerAdminRequestError('管理员密码长度必须为 12 到 128 个字符');
   }
-  if (!['admin', 'moderator'].includes(role)) {
-    throw new PlayerAdminRequestError('服主只能通过服主密钥进入，不能分配给管理账号');
-  }
   return {
     username,
     displayName,
     password,
-    role,
-    permissions:
-      role === 'moderator' ? normalizePlayerAdminCapabilities(values.permissions) : [],
-    permissionGroupId:
-      role === 'moderator' ? parsePermissionGroupId(values.permissionGroupId) : null,
+    role: 'moderator' as const,
+    permissions: [],
+    permissionGroupId: parsePermissionGroupId(values.permissionGroupId),
   };
 }
 
@@ -777,8 +769,6 @@ export async function createPlayerAdminAccount(
     username?: unknown;
     displayName?: unknown;
     password?: unknown;
-    role?: unknown;
-    permissions?: unknown;
     permissionGroupId?: unknown;
   },
   actor: PlayerAdminIdentity,
@@ -842,8 +832,6 @@ export async function updatePlayerAdminAccount(
   values: {
     displayName?: unknown;
     password?: unknown;
-    role?: unknown;
-    permissions?: unknown;
     permissionGroupId?: unknown;
     status?: unknown;
   },
@@ -873,20 +861,17 @@ export async function updatePlayerAdminAccount(
     if (!displayName || displayName.length > 32) {
       throw new PlayerAdminRequestError('管理员昵称长度必须为 1 到 32 个字符');
     }
-    const role = values.role === undefined ? row.role : (values.role as PlayerAdminAccountRole);
-    if (!['admin', 'moderator'].includes(role)) {
-      throw new PlayerAdminRequestError('服主只能通过服主密钥进入，不能分配给管理账号');
-    }
+    // 管理账号的权限始终由权限组决定；历史上的 admin 账号会在下一次保存时收敛到此模型。
+    const role: PlayerAdminAccountRole = 'moderator';
     const status = (values.status === undefined ? row.status : values.status) as
       | 'active'
       | 'disabled';
     if (!['active', 'disabled'].includes(String(status))) {
       throw new PlayerAdminRequestError('管理员状态无效');
     }
-    const permissions =
-      role === 'moderator'
-        ? normalizePlayerAdminCapabilities(values.permissions ?? row.permissions)
-        : [];
+    const permissions = role === 'moderator'
+      ? normalizePlayerAdminCapabilities(row.permissions)
+      : [];
     const permissionGroupId =
       role !== 'moderator'
         ? null
@@ -958,6 +943,62 @@ export async function updatePlayerAdminAccount(
     );
     await client.query('COMMIT');
     return identity;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** Changes only the authenticated administrator's own password and invalidates every session. */
+export async function changeOwnPlayerAdminPassword(
+  actor: PlayerAdminIdentity,
+  values: { currentPassword?: unknown; newPassword?: unknown },
+  req?: NextApiRequest,
+) {
+  if (actor.credential !== 'account') {
+    throw new PlayerAdminRequestError('服主密钥会话不能修改管理员密码', 403);
+  }
+  const currentPassword = typeof values.currentPassword === 'string' ? values.currentPassword : '';
+  const newPassword = typeof values.newPassword === 'string' ? values.newPassword : '';
+  if (!currentPassword) throw new PlayerAdminRequestError('请输入当前密码');
+  if (newPassword.length < 12 || newPassword.length > 128) {
+    throw new PlayerAdminRequestError('管理员密码长度必须为 12 到 128 个字符');
+  }
+  await initialize();
+  const client = await database().connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<AdminRow>(`
+      SELECT * FROM ${table('admin_accounts')} WHERE id = $1 FOR UPDATE
+    `, [actor.id]);
+    const row = result.rows[0];
+    if (!row || row.status !== 'active') {
+      throw new PlayerAdminRequestError('当前管理账号不可用', 403);
+    }
+    const supplied = await derivePassword(currentPassword, row.password_salt);
+    const expected = Buffer.from(row.password_hash, 'base64url');
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+      throw new PlayerAdminRequestError('当前密码不正确', 400);
+    }
+    const salt = randomBytes(16).toString('base64url');
+    const hash = (await derivePassword(newPassword, salt)).toString('base64url');
+    await client.query(`
+      UPDATE ${table('admin_accounts')}
+      SET password_salt = $2, password_hash = $3, updated_at = NOW()
+      WHERE id = $1
+    `, [actor.id, salt, hash]);
+    await client.query(`DELETE FROM ${table('admin_sessions')} WHERE admin_id = $1`, [actor.id]);
+    await auditAdminAction(
+      client,
+      actor,
+      'admin.account.password.change',
+      actor.id,
+      { username: row.username },
+      req,
+    );
+    await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -1122,7 +1163,14 @@ export async function updatePlayerAdminPermissionGroup(
       actor,
       'admin.permission-group.update',
       id,
-      { name: group.name, permissions: group.permissions },
+      {
+        before: {
+          name: row.name,
+          permissions: normalizePlayerAdminCapabilities(row.permissions),
+        },
+        after: { name: group.name, permissions: group.permissions },
+        affectedAdminCount: group.adminCount,
+      },
       req,
     );
     await client.query('COMMIT');

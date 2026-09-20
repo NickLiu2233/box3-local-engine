@@ -20,6 +20,7 @@ const playerServiceRoutes = new Set([
   '/_app',
   '/_document',
   '/_error',
+  '/player-admin',
   '/players',
   '/api/config/[...slug]',
   '/api/health-check',

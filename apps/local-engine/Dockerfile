@@ -29,6 +29,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile \
       --filter @box-local/cli... \
       --filter @box-local/game... \
+      --filter @box-local/player-admin... \
       --filter @box-local/game-server... \
       --filter @box-local/local-engine...
 
@@ -132,7 +133,10 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 
 FROM engine-build-base AS player-service-build
 
-RUN NODE_OPTIONS=--max-old-space-size=4096 \
+# Keep the Next build below Docker Desktop's available memory budget. A larger
+# V8 heap lets the compiler compete with webpack workers and can trigger exit 137.
+RUN pnpm --filter @box-local/player-admin build \
+    && NODE_OPTIONS=--max-old-space-size=3072 \
     NEXT_PUBLIC_APP_ENV=development \
     NEXT_PUBLIC_APP_EDITION=createra \
     NEXT_PUBLIC_APP_REGION=cn \

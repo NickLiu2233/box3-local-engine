@@ -3,6 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import { PlayerAdminRequestError } from './player-admin-errors';
 import {
   parseCreateAdminAccount,
+  parseChangeOwnAdminPassword,
   parseCreateManagedPlayer,
   parseCreatePermissionGroup,
   parsePlayerBatch,
@@ -134,17 +135,35 @@ describe('player administration request validation', () => {
     }), '请求包含不支持的字段');
   });
 
-  test('admin accounts cannot be assigned the owner role', () => {
+  test('admin account role is server-controlled and requires a permission group', () => {
     const base = {
       username: 'admin_user',
       displayName: '管理员',
       password: 'strong-password',
-      permissions: [],
+      permissionGroupId: '123e4567-e89b-12d3-a456-426614174000',
     };
-    expect(parseCreateAdminAccount({ ...base, role: 'admin' }).role).toBe('admin');
-    expect(parseCreateAdminAccount({ ...base, role: 'moderator' }).role).toBe('moderator');
-    expectRequestError(() => parseCreateAdminAccount({ ...base, role: 'owner' }));
-    expectRequestError(() => parseUpdateAdminAccount({ role: 'owner' }));
+    expect(parseCreateAdminAccount(base)).toEqual(base);
+    expectRequestError(() => parseCreateAdminAccount({ ...base, role: 'admin' }));
+    expectRequestError(() => parseUpdateAdminAccount({ role: 'admin' }));
+    expectRequestError(() => parseCreateAdminAccount({ ...base, permissionGroupId: undefined }));
+  });
+
+  test('self password changes require the current password and a 12-character new password', () => {
+    expect(parseChangeOwnAdminPassword({
+      currentPassword: 'current-password',
+      newPassword: 'new-password-12',
+    })).toEqual({
+      currentPassword: 'current-password',
+      newPassword: 'new-password-12',
+    });
+    expectRequestError(() => parseChangeOwnAdminPassword({
+      currentPassword: '',
+      newPassword: 'new-password-12',
+    }), '请输入当前密码');
+    expectRequestError(() => parseChangeOwnAdminPassword({
+      currentPassword: 'current-password',
+      newPassword: 'too-short',
+    }), '管理员密码长度必须为 12 到 128 个字符');
   });
 
   test('permission groups only accept grantable capabilities', () => {
@@ -188,6 +207,7 @@ describe('player administration request validation', () => {
       online: 'all',
       sort: 'lastSeen',
     });
+    expect(parsePlayerListQuery({ identity: 'box' })).toMatchObject({ identity: 'box' });
   });
 
   test('administrator and permission-group identifiers must be UUIDs', () => {

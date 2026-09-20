@@ -78,6 +78,7 @@ type IdentityRow = QueryResultRow & {
   last_login_ip?: string | null;
   login_count?: string | number | null;
   active_session_count?: string | number | null;
+  active_creator_token_count?: string | number | null;
   admin_note?: string | null;
   tags?: string[] | null;
   ban_reason?: string | null;
@@ -111,6 +112,7 @@ export type PlayerAccountView = {
   lastLoginIp: string;
   loginCount: number;
   activeSessionCount: number;
+  activeCreatorTokenCount: number;
   adminNote: string;
   tags: string[];
   banReason: string;
@@ -125,7 +127,7 @@ export type ManagedPlayerListOptions = {
   search?: string;
   page?: number;
   pageSize?: number;
-  identity?: 'all' | 'user' | 'banned';
+  identity?: 'all' | 'user' | 'box' | 'banned';
   role?: 'all' | LocalPlayerRole;
   online?: 'all' | 'online' | 'offline';
   sort?: 'lastSeen' | 'registered' | 'displayName' | 'loginCount';
@@ -133,6 +135,31 @@ export type ManagedPlayerListOptions = {
 
 export type ManagedPlayerList = {
   players: PlayerAccountView[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
+export type IdentityBanListOptions = {
+  search?: string;
+  kind?: 'all' | 'ip' | 'device';
+  page?: number;
+  pageSize?: number;
+};
+
+export type IdentityBanList = {
+  bans: Array<{
+    id: string;
+    kind: 'ip' | 'device';
+    displayValue: string;
+    reason: string;
+    bannedAt: string;
+    bannedUntil?: string;
+    sourceSubjectId?: string;
+    sourceDisplayName: string;
+    sourceUsername: string;
+  }>;
   total: number;
   page: number;
   pageSize: number;
@@ -702,6 +729,7 @@ function toView(identity: RuntimePlayerIdentity, dates: Partial<IdentityRow> = {
     lastLoginIp: dates.last_login_ip || '',
     loginCount: Number(dates.login_count || 0),
     activeSessionCount: Number(dates.active_session_count || 0),
+    activeCreatorTokenCount: Number(dates.active_creator_token_count || 0),
     adminNote: dates.admin_note || '',
     tags: Array.isArray(dates.tags) ? dates.tags : [],
     banReason: dates.ban_reason || '',
@@ -1350,7 +1378,7 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
   const normalized = (options.search || '').trim().slice(0, 64);
   const pageSize = Math.max(10, Math.min(100, Math.trunc(options.pageSize || 30)));
   const page = Math.max(1, Math.trunc(options.page || 1));
-  const identity = ['all', 'user', 'banned'].includes(options.identity || '') ? options.identity : 'all';
+  const identity = ['all', 'user', 'box', 'banned'].includes(options.identity || '') ? options.identity : 'all';
   const role = ['player', 'moderator', 'admin'].includes(options.role || '') ? options.role : 'all';
   const online = ['online', 'offline'].includes(options.online || '') ? options.online : 'all';
   const orderBy = {
@@ -1367,7 +1395,12 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
       OR u.admin_note ILIKE '%' || $1 || '%'
       OR $1 = ANY(u.tags)
       OR CAST(u.id AS TEXT) = $1 OR CAST(p.id AS TEXT) ILIKE $1 || '%')
-    AND ($2 = 'all' OR ($2 = 'user' AND u.id IS NOT NULL) OR ($2 = 'banned' AND u.status = 'banned'))
+    AND (
+      $2 = 'all'
+      OR ($2 = 'user' AND u.id IS NOT NULL AND NULLIF(BTRIM(u.box_id), '') IS NULL)
+      OR ($2 = 'box' AND NULLIF(BTRIM(u.box_id), '') IS NOT NULL)
+      OR ($2 = 'banned' AND u.status = 'banned')
+    )
     AND ($3 = 'all' OR u.role = $3)
     AND ($4 = 'all' OR ($4 = 'online' AND EXISTS (
       SELECT 1 FROM ${table('sessions')} sx WHERE sx.principal_id = p.id AND sx.expires_at > NOW()
@@ -1392,7 +1425,9 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
       u.last_login_at, u.last_login_ip, u.login_count, u.admin_note, u.tags,
       u.ban_reason, u.banned_at, u.banned_until, u.admin_permissions,
       (SELECT COUNT(*) FROM ${table('sessions')} s
-        WHERE s.principal_id = p.id AND s.expires_at > NOW()) AS active_session_count
+        WHERE s.principal_id = p.id AND s.expires_at > NOW()) AS active_session_count,
+      (SELECT COUNT(*) FROM ${table('creator_cli_tokens')} ct
+        WHERE ct.principal_id = p.id AND ct.revoked_at IS NULL) AS active_creator_token_count
     FROM ${table('principals')} p
     LEFT JOIN ${table('users')} u ON u.principal_id = p.id
     WHERE ${where}
@@ -1401,6 +1436,65 @@ export async function listManagedPlayers(options: ManagedPlayerListOptions = {})
   `, values);
   return {
     players: result.rows.map((row) => toView(rowToIdentity(row), row)),
+    total,
+    page: safePage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function listIdentityBans(options: IdentityBanListOptions = {}): Promise<IdentityBanList> {
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const search = (options.search || '').trim().slice(0, 128);
+  const kind = options.kind === 'ip' || options.kind === 'device' ? options.kind : 'all';
+  const pageSize = Math.max(10, Math.min(100, Math.trunc(options.pageSize || 30)));
+  const page = Math.max(1, Math.trunc(options.page || 1));
+  const values: unknown[] = [search, kind];
+  const where = `
+    b.revoked_at IS NULL
+    AND (b.banned_until IS NULL OR b.banned_until > NOW())
+    AND ($1 = '' OR b.display_value ILIKE '%' || $1 || '%' OR b.reason ILIKE '%' || $1 || '%'
+      OR u.username ILIKE '%' || $1 || '%' OR u.display_name ILIKE '%' || $1 || '%')
+    AND ($2 = 'all' OR b.kind = $2)
+  `;
+  const count = await database.query<{ total: string }>(`
+    SELECT COUNT(*) AS total
+    FROM ${table('identity_bans')} b
+    LEFT JOIN ${table('users')} u ON u.principal_id = b.source_subject_id
+    WHERE ${where}
+  `, values);
+  const total = Number(count.rows[0]?.total || 0);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  values.push(pageSize, (safePage - 1) * pageSize);
+  const result = await database.query<{
+    id: string; kind: 'ip' | 'device'; display_value: string; reason: string;
+    banned_at: string | Date; banned_until: string | Date | null; source_subject_id: string | null;
+    source_display_name: string | null; source_username: string | null;
+  }>(`
+    SELECT b.id::text, b.kind, b.display_value, b.reason, b.banned_at, b.banned_until,
+      REPLACE(b.source_subject_id::text, '-', '') AS source_subject_id,
+      u.display_name AS source_display_name, u.username AS source_username
+    FROM ${table('identity_bans')} b
+    LEFT JOIN ${table('users')} u ON u.principal_id = b.source_subject_id
+    WHERE ${where}
+    ORDER BY b.banned_at DESC
+    LIMIT $3 OFFSET $4
+  `, values);
+  return {
+    bans: result.rows.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      displayValue: row.display_value,
+      reason: row.reason,
+      bannedAt: new Date(row.banned_at).toISOString(),
+      bannedUntil: row.banned_until ? new Date(row.banned_until).toISOString() : undefined,
+      sourceSubjectId: row.source_subject_id || undefined,
+      sourceDisplayName: row.source_display_name || row.source_username || '未知玩家',
+      sourceUsername: row.source_username || '',
+    })),
     total,
     page: safePage,
     pageSize,
@@ -2091,6 +2185,35 @@ export async function revokeIdentityBan(subjectId: string, banId: unknown, conte
     if (!result.rowCount) throw new Error('封禁记录不存在或已经解除');
     await audit(client, `identity.${result.rows[0].kind}.unban`, subjectId, {
       banId: String(banId), displayValue: result.rows[0].display_value,
+    }, context);
+    await client.query('COMMIT');
+    return { revoked: true };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function revokeIdentityBanGlobally(banId: unknown, context?: AdminActionContext) {
+  if (!/^\d+$/.test(String(banId || ''))) throw new Error('封禁记录无效');
+  const database = getPool();
+  if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
+  await initialize();
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<{ kind: 'ip' | 'device'; display_value: string; source_subject_id: string | null }>(`
+      UPDATE ${table('identity_bans')}
+      SET revoked_at = NOW(), revoked_by = $2
+      WHERE id = $1 AND revoked_at IS NULL
+      RETURNING kind, display_value, REPLACE(source_subject_id::text, '-', '') AS source_subject_id
+    `, [String(banId), context?.actor || 'server-owner']);
+    if (!result.rowCount) throw new Error('封禁记录不存在、已经解除或已过期');
+    const ban = result.rows[0];
+    await audit(client, `identity.${ban.kind}.unban`, ban.source_subject_id || null, {
+      banId: String(banId), displayValue: ban.display_value, source: 'identity-ban-list',
     }, context);
     await client.query('COMMIT');
     return { revoked: true };

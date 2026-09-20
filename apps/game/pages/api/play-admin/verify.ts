@@ -14,6 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       verified: true,
       actor: {
         displayName: actor.actorDisplayName,
+        username: actor.actorUsername,
         role: actor.actorRole,
         subjectId: actor.subjectId,
         credential: actor.credential,
@@ -28,6 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!allowPlayAdmin(req, res)) return;
   return res.status(200).json({
     verified: true,
-    actor: { displayName: '服主密钥', role: 'owner', credential: 'owner-token' },
+    actor: {
+      displayName: '服主密钥',
+      username: 'server-owner',
+      role: 'owner',
+      credential: 'owner-token',
+    },
   });
 }
