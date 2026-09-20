@@ -30,6 +30,9 @@ use box_manager_core::configuration as shared_config;
 use box_manager_core::configuration_migration::{
     clear_overrides_on_configuration_change, migrate_document,
 };
+use box_manager_core::map_runtime_profiles::{
+    valid_permanent_map_id, validate_map_runtime_profile, MapRuntimeProfile, MapRuntimeProfilesFile,
+};
 use box_manager_core::services::{
     self, Runtime as ServiceRuntime, APPLICATION_SERVICES as SERVICES,
 };
@@ -1744,6 +1747,67 @@ fn runtime_catalog(app: &App) -> Value {
     };
     json!({"creator":projects("apps/local-engine/projects","project.json",true),"play":projects("apps/local-engine/play-worlds","manifest.json",false)})
 }
+
+fn map_runtime_profiles_path(app: &App) -> PathBuf {
+    app.root
+        .join("apps/local-engine/data/map-runtime-profiles.json")
+}
+
+fn read_map_runtime_profiles(app: &App) -> Result<MapRuntimeProfilesFile, String> {
+    match fs::read_to_string(map_runtime_profiles_path(app)) {
+        Ok(content) => {
+            serde_json::from_str(&content).map_err(|error| format!("地图容器配置格式无效：{error}"))
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Ok(MapRuntimeProfilesFile::default())
+        }
+        Err(error) => Err(format!("无法读取地图容器配置：{error}")),
+    }
+}
+
+fn write_map_runtime_profiles(app: &App, document: &MapRuntimeProfilesFile) -> Result<(), String> {
+    let encoded = serde_json::to_string_pretty(document)
+        .map_err(|error| format!("无法编码地图容器配置：{error}"))?;
+    private(&map_runtime_profiles_path(app), &encoded)
+        .map_err(|error| format!("无法写入地图容器配置：{error}"))
+}
+
+fn list_map_runtime_profiles(app: &App) -> Result<Value, String> {
+    let mut profiles = read_map_runtime_profiles(app)?.profiles;
+    profiles.sort_by(|left, right| {
+        (&left.permanent_map_id, &left.mode).cmp(&(&right.permanent_map_id, &right.mode))
+    });
+    serde_json::to_value(
+        profiles
+            .into_iter()
+            .filter(|profile| profile.mode == "play")
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|error| format!("无法编码地图容器配置：{error}"))
+}
+
+fn save_map_runtime_profile(app: &App, profile: MapRuntimeProfile) -> Result<(), String> {
+    validate_map_runtime_profile(&profile)?;
+    let mut document = read_map_runtime_profiles(app)?;
+    document.version = 1;
+    document.profiles.retain(|candidate| {
+        candidate.permanent_map_id != profile.permanent_map_id || candidate.mode != profile.mode
+    });
+    document.profiles.push(profile);
+    write_map_runtime_profiles(app, &document)
+}
+
+fn delete_map_runtime_profile(app: &App, permanent_map_id: &str, mode: &str) -> Result<(), String> {
+    if !valid_permanent_map_id(permanent_map_id) || mode != "play" {
+        return Err("地图容器配置标识无效".into());
+    }
+    let mut document = read_map_runtime_profiles(app)?;
+    document.profiles.retain(|candidate| {
+        candidate.permanent_map_id != permanent_map_id || candidate.mode != mode
+    });
+    write_map_runtime_profiles(app, &document)
+}
+
 fn destroy_runtime(project_id: &str, mode: &str, room_id: Option<&str>) -> Result<(), String> {
     if project_id.is_empty()
         || !project_id
@@ -2497,6 +2561,32 @@ async fn command(
                 migrate_data_directory(&app, directory)
             }
             "get_project_runtime_status" => Ok(runtime_catalog(&app)),
+            "list_map_runtime_profiles" => list_map_runtime_profiles(&app),
+            "save_map_runtime_profile" => {
+                let profile: MapRuntimeProfile = serde_json::from_value(
+                    req.body
+                        .get("profile")
+                        .cloned()
+                        .ok_or("地图容器配置无效")?,
+                )
+                .map_err(|error| format!("地图容器配置无效：{error}"))?;
+                save_map_runtime_profile(&app, profile)?;
+                Ok(Value::Null)
+            }
+            "delete_map_runtime_profile" => {
+                let permanent_map_id = req
+                    .body
+                    .get("permanentMapId")
+                    .and_then(Value::as_str)
+                    .ok_or("地图永久 ID 无效")?;
+                let mode = req
+                    .body
+                    .get("mode")
+                    .and_then(Value::as_str)
+                    .ok_or("运行端类型无效")?;
+                delete_map_runtime_profile(&app, permanent_map_id, mode)?;
+                Ok(Value::Null)
+            }
             "destroy_project_runtime" => {
                 let project = req
                     .body
@@ -3159,6 +3249,58 @@ mod tests {
             environment_file: root.join(".env"),
         };
         assert_eq!(runtime_catalog(&app), json!({"creator":[],"play":[]}));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn map_runtime_profiles_match_desktop_storage_semantics() {
+        let root = std::env::temp_dir().join(format!(
+            "box-map-runtime-profiles-{}-{}",
+            std::process::id(),
+            random_hex(6)
+        ));
+        let app = App {
+            root: root.clone(),
+            token: "x".repeat(32),
+            runtime_token: "y".repeat(32),
+            compose_file: root.join("compose.yml"),
+            environment_file: root.join(".env"),
+            operations: Arc::new(Operations::default()),
+            operation_id: None,
+        };
+        let profile = MapRuntimeProfile {
+            permanent_map_id: "demo-map-1".into(),
+            mode: "play".into(),
+            player_limit: 12,
+            room_limit: 3,
+            idle_timeout_ms: 60_000,
+            cpu_milli: Some(750),
+            memory_mb: Some(512),
+        };
+
+        save_map_runtime_profile(&app, profile).unwrap();
+        assert_eq!(
+            list_map_runtime_profiles(&app).unwrap(),
+            json!([{
+                "permanentMapId": "demo-map-1",
+                "mode": "play",
+                "playerLimit": 12,
+                "roomLimit": 3,
+                "idleTimeoutMs": 60_000,
+                "cpuMilli": 750,
+                "memoryMb": 512
+            }])
+        );
+        assert_eq!(
+            serde_json::from_str::<Value>(
+                &fs::read_to_string(map_runtime_profiles_path(&app)).unwrap()
+            )
+            .unwrap()["version"],
+            1
+        );
+        delete_map_runtime_profile(&app, "demo-map-1", "play").unwrap();
+        assert_eq!(list_map_runtime_profiles(&app).unwrap(), json!([]));
+        assert!(delete_map_runtime_profile(&app, "bad_map", "play").is_err());
         let _ = fs::remove_dir_all(root);
     }
 

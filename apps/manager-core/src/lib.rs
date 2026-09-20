@@ -5,5 +5,6 @@ pub mod configuration;
 pub mod configuration_migration;
 pub mod environment;
 pub mod license;
+pub mod map_runtime_profiles;
 pub mod operation;
 pub mod services;

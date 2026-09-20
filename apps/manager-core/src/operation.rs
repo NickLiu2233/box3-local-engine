@@ -23,6 +23,8 @@ pub fn mutates_runtime(command: &str) -> bool {
             | "restore_backup"
             | "delete_backup"
             | "import_backup"
+            | "save_map_runtime_profile"
+            | "delete_map_runtime_profile"
             | "destroy_project_runtime"
     )
 }

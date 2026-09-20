@@ -2,7 +2,13 @@ use box_manager_core::configuration as shared_config;
 use box_manager_core::configuration_migration::{
     clear_overrides_on_configuration_change, migrate_document,
 };
-use box_manager_core::{backup, backup_store};
+use box_manager_core::{
+    backup, backup_store,
+    map_runtime_profiles::{
+        valid_permanent_map_id, validate_map_runtime_profile, MapRuntimeProfile,
+        MapRuntimeProfilesFile,
+    },
+};
 use postgres::NoTls;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -140,28 +146,6 @@ struct ManagedServiceInfo {
 struct DataStorageInfo {
     path: String,
     using_default: bool,
-}
-
-/// Owner-managed overrides for one map runtime.  Keeping these in the runtime
-/// data directory (rather than project.json or a published manifest) lets the
-/// same permanent map share a policy across Creator and Play without mutating
-/// user source or release artifacts.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct MapRuntimeProfile {
-    permanent_map_id: String,
-    mode: String,
-    player_limit: u32,
-    room_limit: u32,
-    idle_timeout_ms: u64,
-    cpu_milli: Option<u32>,
-    memory_mb: Option<u32>,
-}
-
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct MapRuntimeProfilesFile {
-    version: u8,
-    profiles: Vec<MapRuntimeProfile>,
 }
 
 impl Default for InstallConfigView {
@@ -2289,47 +2273,6 @@ async fn destroy_project_runtime(
 
 fn map_runtime_profiles_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join("apps/local-engine/data/map-runtime-profiles.json"))
-}
-
-fn valid_permanent_map_id(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    !bytes.is_empty()
-        && bytes.len() <= 63
-        && (bytes[0].is_ascii_lowercase() || bytes[0].is_ascii_digit())
-        && bytes
-            .iter()
-            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || *byte == b'-')
-}
-
-fn validate_map_runtime_profile(profile: &MapRuntimeProfile) -> Result<(), String> {
-    if !valid_permanent_map_id(&profile.permanent_map_id) {
-        return Err("地图永久 ID 格式无效".into());
-    }
-    if profile.mode != "play" {
-        return Err("地图容器配置仅支持游玩端".into());
-    }
-    if !(1..=10_000).contains(&profile.player_limit) {
-        return Err("人数上限必须在 1 到 10000 之间".into());
-    }
-    if !(1..=10_000).contains(&profile.room_limit) {
-        return Err("房间上限必须在 1 到 10000 之间".into());
-    }
-    if !(1_000..=604_800_000).contains(&profile.idle_timeout_ms) {
-        return Err("无用户时存活时间必须在 1000 到 604800000 ms 之间".into());
-    }
-    if profile
-        .cpu_milli
-        .is_some_and(|value| !(1..=128_000).contains(&value))
-    {
-        return Err("CPU 上限必须在 1 到 128000 m 之间".into());
-    }
-    if profile
-        .memory_mb
-        .is_some_and(|value| !(64..=1_048_576).contains(&value))
-    {
-        return Err("内存上限必须在 64 到 1048576 MB 之间".into());
-    }
-    Ok(())
 }
 
 fn read_map_runtime_profiles(app: &AppHandle) -> Result<MapRuntimeProfilesFile, String> {
