@@ -41,6 +41,8 @@ const playerServiceRoutes = new Set([
   '/api/play-admin/admins',
   '/api/play-admin/admins/[id]',
   '/api/play-admin/identity-bans',
+  '/api/play-admin/import',
+  '/api/play-admin/import-resource',
   '/api/play-admin/library/[section]/[[...id]]',
   '/api/play-admin/library/import',
   '/api/play-admin/login',
@@ -56,6 +58,9 @@ const playerServiceRoutes = new Set([
   '/api/play-admin/players/overview',
   '/api/play-admin/self-password',
   '/api/play-admin/verify',
+  '/api/play-admin/worlds',
+  '/api/play-admin/worlds/[id]',
+  '/api/play-admin/worlds/status',
 ])
 
 function readJSON(filePath) {
