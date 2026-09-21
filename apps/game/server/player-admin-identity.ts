@@ -194,6 +194,21 @@ async function initialize() {
         CHECK (role IN ('admin', 'moderator'))
       `);
       await client.query(`
+        UPDATE ${table('admin_permission_groups')}
+        SET permissions = ARRAY(
+          SELECT DISTINCT capability
+          FROM unnest(
+            permissions
+            || ARRAY['players.view', 'sessions.view']::text[]
+            || CASE WHEN 'players.ban' = ANY(permissions)
+              THEN ARRAY['account-bans.view']::text[] ELSE '{}'::text[] END
+          ) AS capability
+        )
+        WHERE NOT ('players.view' = ANY(permissions))
+          OR NOT ('sessions.view' = ANY(permissions))
+          OR ('players.ban' = ANY(permissions) AND NOT ('account-bans.view' = ANY(permissions)))
+      `);
+      await client.query(`
         CREATE UNIQUE INDEX IF NOT EXISTS local_admin_accounts_username_lower
         ON ${table('admin_accounts')} (LOWER(username))
       `);
@@ -638,11 +653,11 @@ export async function loginPlayerAdmin(
   const expected = row
     ? Buffer.from(row.password_hash, 'base64url')
     : await derivePassword('box-local-invalid-admin-password', fallbackSalt);
-  const valid =
+  const passwordMatches =
     Boolean(row) &&
     derived.length === expected.length &&
-    timingSafeEqual(derived, expected) &&
-    row.status === 'active';
+    timingSafeEqual(derived, expected);
+  const valid = passwordMatches && row?.status === 'active';
   await database().query(`
     INSERT INTO ${table('admin_login_events')}
       (admin_id, username, success, reason, ip_address, user_agent)
@@ -656,7 +671,12 @@ export async function loginPlayerAdmin(
     requestUserAgent(req),
   ]);
   if (!valid || !row) {
-    throw new PlayerAdminRequestError('管理员用户名或密码错误', 401);
+    throw new PlayerAdminRequestError(
+      row?.status === 'disabled' && passwordMatches
+        ? '该管理账号已被停用'
+        : '管理员用户名或密码错误',
+      401,
+    );
   }
 
   await database().query(`

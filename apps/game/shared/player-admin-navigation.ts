@@ -31,8 +31,8 @@ export const PLAYER_ADMIN_VIEW_REQUIREMENTS: Record<
 > = {
   overview: 'players.view',
   players: 'players.view',
-  'online-sessions': 'players.view',
-  'account-bans': 'players.ban',
+  'online-sessions': 'sessions.view',
+  'account-bans': 'account-bans.view',
   'identity-bans': 'identity-bans.view',
   security: 'audit.view',
   admins: 'owner',

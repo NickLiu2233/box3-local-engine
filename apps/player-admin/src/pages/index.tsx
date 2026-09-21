@@ -32,6 +32,7 @@ import {
   Layout as AntLayout,
   Menu as AntMenu,
   message,
+  notification,
   Modal as AntModal,
   Pagination,
   Row,
@@ -59,7 +60,12 @@ import {
   type PlayerAdminView,
 } from '../../../game/shared/player-admin-navigation'
 import { playerAdminApi as api } from '../player-admin-api'
-import { capabilityLeaves, permissionTree } from '../permission-tree'
+import {
+  capabilityLeaves,
+  expandPermissionSelection,
+  isViewRequiredBySelection,
+  permissionTree,
+} from '../permission-tree'
 
 type Player = {
   subjectId: string
@@ -2035,18 +2041,23 @@ export default function PlayerAdminPage() {
       return
     }
     try {
-      const payload: Record<string, any> = {
-        ...values,
-        permissions: [],
-        permissionGroupId: values.permissionGroupId,
-      }
+      const payload = editingAdmin
+        ? {
+            displayName: values.displayName,
+            permissionGroupId: values.permissionGroupId,
+            ...(values.password ? { password: values.password } : {}),
+          }
+        : {
+            username: values.username,
+            displayName: values.displayName,
+            password: values.password,
+            permissionGroupId: values.permissionGroupId,
+          }
       await api(
         editingAdmin ? `/api/play-admin/admins/${editingAdmin.id}` : '/api/play-admin/admins',
         {
           method: editingAdmin ? 'PATCH' : 'POST',
-          body: JSON.stringify(
-            editingAdmin && !payload.password ? { ...payload, password: undefined } : payload,
-          ),
+          body: JSON.stringify(payload),
         },
       )
       message.success(editingAdmin ? '管理账号已更新' : '管理账号已创建')
@@ -2598,7 +2609,6 @@ export default function PlayerAdminPage() {
             dataSource={players}
             rowKey="subjectId"
             pagination={false}
-            locale={{ emptyText: <Empty description="当前没有账号封禁" /> }}
           />
           <div className="player-admin-table-pagination">
             <Pagination
@@ -2658,7 +2668,6 @@ export default function PlayerAdminPage() {
             dataSource={identityBans}
             rowKey="id"
             pagination={false}
-            locale={{ emptyText: <Empty description="当前没有有效的 IP 或设备封禁" /> }}
             columns={[
               {
                 title: '类型',
@@ -3245,8 +3254,27 @@ export default function PlayerAdminPage() {
             <TreeSelect
               treeData={permissionTree}
               treeCheckable
-              treeDefaultExpandedKeys={['category:players', 'category:players:write']}
+              treeDefaultExpandedKeys={['category:players', 'category:players:player-accounts']}
               showCheckedStrategy={TreeSelect.SHOW_CHILD}
+              onChange={(values, _labels, extra) => {
+                const requested = capabilityLeaves(Array.isArray(values) ? values : [])
+                const expanded = expandPermissionSelection(requested)
+                const previous = capabilityLeaves(groupForm.getFieldValue('permissions') || [])
+                const retained = previous.filter(
+                  (capability) => !requested.includes(capability) && expanded.includes(capability),
+                )
+                const attemptedView = typeof extra?.triggerValue === 'string'
+                  && extra.checked === false
+                  && isViewRequiredBySelection(extra.triggerValue, previous)
+                if (retained.length || attemptedView) {
+                  notification.warning({
+                    message: '无法取消查看权限',
+                    description: '编辑权限需要对应的查看权限。请先取消相关编辑权限。',
+                    placement: 'topRight',
+                  })
+                }
+                groupForm.setFieldValue('permissions', expanded)
+              }}
               placeholder="选择此权限组包含的能力"
               className="player-admin-permission-select"
             />

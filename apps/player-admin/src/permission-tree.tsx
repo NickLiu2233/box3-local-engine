@@ -2,93 +2,51 @@ import {
   PLAYER_ADMIN_CAPABILITY_META,
   PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
 } from '../../game/shared/player-admin-policy'
+import { PLAYER_ADMIN_PERMISSION_MENU } from '../../game/shared/player-admin-permission-menu'
 
-const categories = [
-  {
-    key: 'players',
-    title: '玩家管理',
-    sections: [
-      {
-        key: 'read',
-        title: '只读',
-        capabilities: ['players.export'],
-      },
-      {
-        key: 'write',
-        title: '编辑与处置',
-        capabilities: [
-          'players.manage',
-          'players.create',
-          'players.ban',
-          'players.delete',
-          'passwords.reset',
-        ],
-      },
-    ],
-  },
-  {
-    key: 'security',
-    title: '安全管理',
-    sections: [
-      {
-        key: 'read',
-        title: '只读',
-        capabilities: ['audit.view', 'identity-bans.view'],
-      },
-      {
-        key: 'write',
-        title: '编辑与处置',
-        capabilities: ['sessions.manage', 'identity-bans.manage'],
-      },
-    ],
-  },
-  {
-    key: 'creator',
-    title: '创作管理',
-    sections: [
-      {
-        key: 'write',
-        title: '编辑与处置',
-        capabilities: ['creator-access.view', 'creator-tokens.view'],
-      },
-    ],
-  },
-  {
-    key: 'play',
-    title: '游玩管理',
-    sections: [
-      {
-        key: 'read',
-        title: '只读',
-        capabilities: ['play-maps.view'],
-      },
-      {
-        key: 'write',
-        title: '编辑与处置',
-        capabilities: ['play-maps.manage'],
-      },
-    ],
-  },
-  {
-    key: 'containers',
-    title: '容器管理',
-    sections: [
-      {
-        key: 'read',
-        title: '只读',
-        capabilities: ['containers.view'],
-      },
-      {
-        key: 'write',
-        title: '编辑与处置',
-        capabilities: ['containers.manage'],
-      },
-    ],
-  },
-]
+const isReadCapability = (capability: string) =>
+  capability.endsWith('.view') || capability === 'players.export'
+
+const requiredViewByEdit: Record<string, string> = {
+  'players.manage': 'players.view',
+  'players.create': 'players.view',
+  'passwords.reset': 'players.view',
+  'players.delete': 'players.view',
+  'sessions.manage': 'sessions.view',
+  'players.ban': 'account-bans.view',
+  'identity-bans.manage': 'identity-bans.view',
+  'creator-access.manage': 'creator-access.view',
+  'creator-tokens.manage': 'creator-tokens.view',
+  'play-maps.manage': 'play-maps.view',
+  'containers.manage': 'containers.view',
+}
+
+/** Editing a feature always grants the matching view capability. */
+export const expandPermissionSelection = (values: string[] = []) => {
+  const selected = new Set(capabilityLeaves(values))
+  for (const capability of selected) {
+    const requiredView = requiredViewByEdit[capability]
+    if (requiredView) selected.add(requiredView)
+  }
+  return [...selected]
+}
+
+export const isViewRequiredBySelection = (viewCapability: string, values: string[] = []) =>
+  capabilityLeaves(values).some((capability) => requiredViewByEdit[capability] === viewCapability)
+
+const capabilityNode = (capability: string) => ({
+  value: capability,
+  title: (
+    <span className="player-admin-permission-option">
+      <strong>
+        {PLAYER_ADMIN_CAPABILITY_META[capability as keyof typeof PLAYER_ADMIN_CAPABILITY_META].label}
+      </strong>
+    </span>
+  ),
+})
 
 /** UI-only category values make category-wide selection possible; callers must persist leaves only. */
-export const permissionTree = categories.map((category) => ({
+export const permissionTree = PLAYER_ADMIN_PERMISSION_MENU.map((category) => ({
   key: `category:${category.key}`,
   value: `category:${category.key}`,
   title: category.title,
@@ -98,36 +56,22 @@ export const permissionTree = categories.map((category) => ({
     value: `category:${category.key}:${section.key}`,
     title: section.title,
     selectable: false,
-    children: [
-      ...(category.key === 'players' && section.key === 'read'
-        ? [
-            {
-              key: 'readonly:players.view',
-              value: 'readonly:players.view',
-              title: '查看玩家目录（默认）',
-              selectable: false,
-              checkable: false,
-            },
-          ]
-        : []),
-      ...section.capabilities
-        .filter((capability) => PLAYER_ADMIN_GRANTABLE_CAPABILITIES.includes(capability as never))
-        .map((capability) => ({
-          value: capability,
-          title: (
-            <span className="player-admin-permission-option">
-              <strong>
-                {
-                  PLAYER_ADMIN_CAPABILITY_META[capability as keyof typeof PLAYER_ADMIN_CAPABILITY_META]
-                    .label
-                }
-              </strong>
-            </span>
-          ),
-        })),
-    ],
+    children: ([
+      ['read', '查看', section.capabilities.filter(isReadCapability)],
+      ['write', '编辑', section.capabilities.filter((capability) => !isReadCapability(capability))],
+    ] as const)
+      .filter(([, , capabilities]) => capabilities.length)
+      .map(([mode, title, capabilities]) => ({
+        key: `category:${category.key}:${section.key}:${mode}`,
+        value: `category:${category.key}:${section.key}:${mode}`,
+        title,
+        selectable: false,
+        children: capabilities
+          .filter((capability) => PLAYER_ADMIN_GRANTABLE_CAPABILITIES.includes(capability as never))
+          .map(capabilityNode),
+      })),
   })),
 }))
 
 export const capabilityLeaves = (values: string[] = []) =>
-  values.filter((value) => !value.startsWith('category:') && !value.startsWith('readonly:'))
+  values.filter((value) => !value.startsWith('category:'))

@@ -1,5 +1,7 @@
 export const PLAYER_ADMIN_CAPABILITIES = [
   'players.view',
+  'sessions.view',
+  'account-bans.view',
   'players.manage',
   'players.ban',
   'sessions.manage',
@@ -24,18 +26,18 @@ export type PlayerAdminCapability = typeof PLAYER_ADMIN_CAPABILITIES[number];
 export type PlayerAdminRequirement = PlayerAdminCapability | 'owner';
 export type PlayerAdminRole = 'owner' | 'admin' | 'moderator';
 
-export const PLAYER_ADMIN_GRANTABLE_CAPABILITIES = PLAYER_ADMIN_CAPABILITIES.filter(
-  (capability) => capability !== 'players.view',
-) as Exclude<PlayerAdminCapability, 'players.view'>[];
+export const PLAYER_ADMIN_GRANTABLE_CAPABILITIES = [...PLAYER_ADMIN_CAPABILITIES];
 
 export const PLAYER_ADMIN_CAPABILITY_META: Record<PlayerAdminCapability, {
   label: string;
   description: string;
 }> = {
-  'players.view': { label: '查看玩家', description: '进入后台并查看玩家目录、资料和概览' },
+  'players.view': { label: '查看玩家账号', description: '查看玩家目录、资料和概览' },
+  'sessions.view': { label: '查看在线会话', description: '查看当前在线玩家及其会话信息' },
+  'account-bans.view': { label: '查看账号封禁', description: '查看当前已封禁的玩家账号' },
   'players.manage': { label: '维护玩家资料', description: '修改昵称、标签、备注与神岛 ID' },
-  'players.ban': { label: '账号封禁', description: '临时或永久封禁普通玩家账号并解除处罚' },
-  'sessions.manage': { label: '会话管理', description: '撤销登录会话并让普通玩家立即下线' },
+  'players.ban': { label: '管理账号封禁', description: '临时或永久封禁普通玩家账号并解除处罚' },
+  'sessions.manage': { label: '管理在线会话', description: '撤销登录会话并让普通玩家立即下线' },
   'identity-bans.view': { label: '查看 IP 与设备封禁', description: '查看当前有效的 IP 和设备封禁记录' },
   'identity-bans.manage': { label: 'IP 与设备封禁', description: '封禁或解除登录 IP 和设备标识' },
   'players.create': { label: '新增普通玩家', description: '创建普通玩家账号，不能创建管理员或服主' },
@@ -69,11 +71,13 @@ export function effectivePlayerAdminCapabilities(
   // Existing permission groups stored only the write capability. A write
   // capability continues to imply its paired read capability after upgrade.
   if (capabilities.includes('identity-bans.manage')) capabilities.push('identity-bans.view');
+  if (capabilities.includes('sessions.manage')) capabilities.push('sessions.view');
+  if (capabilities.includes('players.ban')) capabilities.push('account-bans.view');
   if (capabilities.includes('creator-access.manage')) capabilities.push('creator-access.view');
   if (capabilities.includes('creator-tokens.manage')) capabilities.push('creator-tokens.view');
   if (capabilities.includes('play-maps.manage')) capabilities.push('play-maps.view');
   if (capabilities.includes('containers.manage')) capabilities.push('containers.view');
-  return ['players.view', ...new Set(capabilities)];
+  return [...new Set(capabilities)];
 }
 
 export function roleHasPlayerAdminPermission(

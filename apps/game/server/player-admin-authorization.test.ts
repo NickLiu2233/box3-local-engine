@@ -6,7 +6,7 @@ import {
   actorHasPlayerAdminPermission,
   roleHasPlayerAdminPermission,
 } from './player-admin-authorization';
-import { parsePlayerItemOperation } from './player-admin-validation';
+import { parsePlayerItemOperation, playerItemRequirement } from './player-admin-validation';
 
 describe('player administration role policy', () => {
   test('player identity resolution is absent from the authorization seam', () => {
@@ -20,7 +20,8 @@ describe('player administration role policy', () => {
   });
 
   test('administrators only receive the capabilities assigned by an owner', () => {
-    expect(roleHasPlayerAdminPermission('moderator', 'players.view')).toBe(true);
+    expect(roleHasPlayerAdminPermission('moderator', 'players.view')).toBe(false);
+    expect(roleHasPlayerAdminPermission('moderator', 'players.view', ['players.view'])).toBe(true);
     expect(roleHasPlayerAdminPermission('moderator', 'players.ban')).toBe(false);
     expect(roleHasPlayerAdminPermission('moderator', 'players.ban', ['players.ban'])).toBe(true);
     expect(roleHasPlayerAdminPermission('moderator', 'sessions.manage', ['players.ban'])).toBe(false);
@@ -50,6 +51,12 @@ describe('player administration role policy', () => {
 
   test('unknown stored permission values never become effective permissions', () => {
     expect(roleHasPlayerAdminPermission('moderator', 'players.ban', ['owner', 'players.delete'])).toBe(false);
+  });
+
+  test('CLI Token creation, editing, and revocation all require the matching management permission', () => {
+    for (const action of ['create-cli-token', 'update-cli-token', 'revoke-cli-token']) {
+      expect(playerItemRequirement('POST', { action })).toBe('creator-tokens.manage');
+    }
   });
 
   test('admin sessions use dedicated cookies instead of player cookies', () => {

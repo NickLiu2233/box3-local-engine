@@ -201,7 +201,9 @@ export function playerItemRequirement(
   if (body.action === 'ban-ip' || body.action === 'ban-device' || body.action === 'unban-source') {
     return 'identity-bans.manage';
   }
-  if (body.action === 'create-cli-token' || body.action === 'revoke-cli-token') return 'creator-tokens.manage';
+  if (['create-cli-token', 'update-cli-token', 'revoke-cli-token'].includes(String(body.action))) {
+    return 'creator-tokens.manage';
+  }
   return 'players.manage';
 }
 

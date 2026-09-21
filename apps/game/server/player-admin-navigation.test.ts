@@ -2,12 +2,13 @@ import {
   allowedPlayerAdminViews,
   canOpenPlayerAdminView,
   playerAdminFallbackView,
+  PLAYER_ADMIN_VIEWS,
 } from '../shared/player-admin-navigation';
 
 describe('player-admin navigation permissions', () => {
   const moderator = {
     role: 'moderator' as const,
-    permissions: ['players.view', 'players.manage'],
+    permissions: ['players.view', 'players.manage', 'sessions.view'],
   };
 
   test('does not expose pages whose capability was not granted', () => {
@@ -22,7 +23,9 @@ describe('player-admin navigation permissions', () => {
   });
 
   test('owner can open all pages', () => {
-    expect(allowedPlayerAdminViews({ role: 'owner', permissions: [] })).toHaveLength(13);
+    expect(allowedPlayerAdminViews({ role: 'owner', permissions: [] })).toHaveLength(
+      PLAYER_ADMIN_VIEWS.length,
+    );
   });
 
   test('delegates the play-map page only to groups with map visibility', () => {

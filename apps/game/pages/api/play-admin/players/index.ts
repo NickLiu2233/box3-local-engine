@@ -27,7 +27,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.setHeader('Allow', 'GET, POST');
       return res.status(405).end();
     }
-    if (!await authorizePlayerAdmin(req, res, 'players.view')) return;
+    const requirement = req.query.online === 'online'
+      ? 'sessions.view'
+      : req.query.identity === 'banned'
+        ? 'account-bans.view'
+        : 'players.view';
+    if (!await authorizePlayerAdmin(req, res, requirement)) return;
     return res.status(200).json(
       await listManagedPlayers(parsePlayerListQuery(req.query)),
     );

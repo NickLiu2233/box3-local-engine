@@ -3,6 +3,11 @@ node_modules/
 .next/
 apps/game/.next-*/
 apps/game/.tsconfig.dev-*.json
+# Player admin bundles and Umi's generated runtime source are rebuilt during
+# the player-service image build; keep source changes only.
+apps/game/public/player-admin/
+apps/player-admin/src/.umi/
+apps/player-admin/src/.umi-production/
 services/game-server/dist/
 coverage/
 apps/game/html-report/
