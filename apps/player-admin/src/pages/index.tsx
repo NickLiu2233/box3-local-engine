@@ -205,6 +205,14 @@ type PlayMap = {
   playEnabled: boolean
 }
 type PlayMapResourceStatus = { id: string; bytes: number; importedAt: string }
+type PlayMapTableRow = {
+  key: string
+  kind: 'group' | 'submap'
+  map: PlayMap
+  mapCount?: number
+  resourceBytes?: number
+  children?: PlayMapTableRow[]
+}
 type PlayBundleReview = {
   id: string
   expiresAt: string
@@ -302,7 +310,7 @@ function CreatorManagementPage({ mode }: { mode: 'creator-access' | 'creator-tok
   const title = mode === 'creator-access' ? '玩家创作权限' : 'CLI Token'
   return (
     <>
-      <Row justify="space-between" align="middle" style={{ marginBottom: 22 }}>
+      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
         <Col>
           <h1 className="player-admin-page-title">{title}</h1>
         </Col>
@@ -866,7 +874,6 @@ function PlayerDirectory(props: {
       <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
         <Col>
           <h1 className="player-admin-page-title">玩家账号</h1>
-          <span className="player-admin-muted">查询、处置和维护本地玩家身份。</span>
         </Col>
         <Col>
           <Button type="primary" icon={<PlusOutlined />} onClick={create}>
@@ -1115,6 +1122,16 @@ function PlayMapsPage({ canManage }: { canManage: boolean }) {
       return { id, main, submaps: members.filter((item) => item.id !== main.id) }
     })
   }, [worlds])
+  const tableRows = useMemo<PlayMapTableRow[]>(() => groups.map(({ id, main, submaps }) => ({
+    key: id,
+    kind: 'group',
+    map: main,
+    mapCount: 1 + submaps.length,
+    resourceBytes: [main, ...submaps].reduce((sum, item) => sum + (statuses[item.id]?.bytes || 0), 0),
+    ...(submaps.length
+      ? { children: submaps.map((map) => ({ key: map.id, kind: 'submap' as const, map })) }
+      : {}),
+  })), [groups, statuses])
   const patchWorld = async (world: PlayMap, values: Record<string, unknown>) => {
     await api(`/api/play-admin/library/worlds/${encodeURIComponent(world.id)}`, { method: 'PATCH', body: JSON.stringify(values) })
     await load()
@@ -1179,22 +1196,32 @@ function PlayMapsPage({ canManage }: { canManage: boolean }) {
     } catch (error) { message.error((error as Error).message) }
   }
   return <>
-    <Row justify="space-between" align="middle" style={{ marginBottom: 22 }}>
+    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
       <Col><h1 className="player-admin-page-title">游玩地图</h1></Col>
       <Col><Space><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>{canManage ? <Button type="primary" icon={<UploadOutlined />} loading={loading} onClick={() => uploadRef.current?.click()}>导入游玩包</Button> : null}</Space></Col>
     </Row>
     <input ref={uploadRef} hidden type="file" accept=".boxplay,.tar.gz,.tgz,application/gzip" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void inspectBundle(file) }} />
-    {groups.length ? groups.map(({ id, main, submaps }) => {
-      const members = [main, ...submaps]; const resourceBytes = members.reduce((sum, item) => sum + (statuses[item.id]?.bytes || 0), 0)
-      return <Card key={id} className="player-admin-panel player-admin-map-card" style={{ marginBottom: 16 }} title={<div className="player-admin-map-heading"><strong title={main.name}>{main.name}</strong>{main.version ? <span className="player-admin-map-version">v{main.version.replace(/^v/i, '')}</span> : null}<Tag color={main.playEnabled !== false ? 'success' : 'default'}>{main.playEnabled !== false ? '已开放' : '已关闭'}</Tag></div>} extra={<div className="player-admin-map-metrics"><span>{members.length} 张地图</span><i aria-hidden="true" /><span>{formatBytes(resourceBytes)}</span><Switch disabled={!canManage} checked={main.playEnabled !== false} checkedChildren="开放" unCheckedChildren="关闭" onChange={(playEnabled) => void patchWorld(main, { playEnabled }).then(() => message.success(playEnabled ? '地图组已开放' : '地图组已关闭')).catch((error) => message.error(error.message))} /></div>}>
-        <AntTable className="player-admin-map-table" tableLayout="fixed" size="small" pagination={false} rowKey="id" dataSource={members} columns={[
-          { title: '地图', width: '26%', render: (_, item: PlayMap) => <div className="player-admin-map-name"><Tag>{item.mapRole === 'main' ? '主地图' : '副地图'}</Tag><span title={item.name}>{item.name}</span></div> },
-          { title: '访问 ID', dataIndex: 'publicId', width: '38%', ellipsis: true, render: (value) => <code title={value}>{value}</code> },
-          { title: '导入时间', width: '22%', render: (_, item: PlayMap) => dateTime(statuses[item.id]?.importedAt) },
-          { title: '操作', width: '14%', render: (_, item: PlayMap) => canManage ? <Space><Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(item); form.setFieldsValue({ publicId: item.publicId }) }}>设置</Button>{item.mapRole === 'main' ? <Button type="link" danger icon={<DeleteOutlined />} onClick={() => removeWorld(item)}>删除</Button> : null}</Space> : '—' },
-        ]} />
-      </Card>
-    }) : <Card className="player-admin-panel"><Empty description="暂无游玩地图">{canManage ? <Button type="primary" onClick={() => uploadRef.current?.click()}>导入游玩包</Button> : null}</Empty></Card>}
+    {groups.length ? <Card className="player-admin-panel player-admin-map-directory" title="已导入地图" extra={<span className="player-admin-muted">{groups.length} 个地图组 · {worlds.length} 张地图</span>}>
+      <AntTable
+        className="player-admin-map-table"
+        tableLayout="fixed"
+        size="middle"
+        pagination={false}
+        rowKey="key"
+        dataSource={tableRows}
+        expandable={{
+          expandRowByClick: false,
+          rowExpandable: (row) => row.kind === 'group' && Boolean(row.children?.length),
+        }}
+        columns={[
+          { title: '地图', width: '29%', render: (_, row: PlayMapTableRow) => <div className="player-admin-map-name"><span className="player-admin-map-title" title={row.map.name}>{row.map.name}</span>{row.map.version ? <span className="player-admin-map-version">v{row.map.version.replace(/^v/i, '')}</span> : null}</div> },
+          { title: '访问 ID', width: '29%', render: (_, row: PlayMapTableRow) => <code title={row.map.publicId}>{row.map.publicId}</code> },
+          { title: '地图与资源', width: '16%', render: (_, row: PlayMapTableRow) => row.kind === 'group' ? <span className="player-admin-map-summary">{row.mapCount} 张地图 · {formatBytes(row.resourceBytes)}</span> : '—' },
+          { title: '导入时间', width: '16%', render: (_, row: PlayMapTableRow) => dateTime(statuses[row.map.id]?.importedAt) },
+          { title: '状态与操作', width: '10%', render: (_, row: PlayMapTableRow) => row.kind === 'submap' ? (canManage ? <Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(row.map); form.setFieldsValue({ publicId: row.map.publicId }) }}>设置</Button> : '—') : <Space size={8}>{canManage ? <Switch checked={row.map.playEnabled !== false} checkedChildren="开放" unCheckedChildren="关闭" onChange={(playEnabled) => void patchWorld(row.map, { playEnabled }).then(() => message.success(playEnabled ? '地图组已开放' : '地图组已关闭')).catch((error) => message.error(error.message))} /> : <Tag color={row.map.playEnabled !== false ? 'success' : 'default'}>{row.map.playEnabled !== false ? '已开放' : '已关闭'}</Tag>} {canManage ? <Dropdown menu={{ items: [{ key: 'settings', label: '设置访问 ID', icon: <EditOutlined />, onClick: () => { setEditing(row.map); form.setFieldsValue({ publicId: row.map.publicId }) } }, { type: 'divider' }, { key: 'delete', label: '删除地图组', danger: true, icon: <DeleteOutlined />, onClick: () => removeWorld(row.map) }] }}><Button type="text">更多</Button></Dropdown> : null}</Space> },
+        ]}
+      />
+    </Card> : <Card className="player-admin-panel"><Empty description="暂无游玩地图">{canManage ? <Button type="primary" onClick={() => uploadRef.current?.click()}>导入游玩包</Button> : null}</Empty></Card>}
     <Modal title="地图设置" open={Boolean(editing)} onCancel={() => setEditing(undefined)} onOk={() => void saveWorld()} okText="保存">
       <Form form={form} layout="vertical"><Form.Item name="publicId" label="访问 ID" rules={[{ required: true, pattern: /^[a-z0-9][a-z0-9-]{0,62}$/, message: '使用小写字母、数字或连字符，最长 63 位' }]}><Input addonBefore="/p/" maxLength={63} onChange={(event) => form.setFieldValue('publicId', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} /></Form.Item></Form>
     </Modal>
@@ -2113,7 +2140,7 @@ export default function PlayerAdminPage() {
       : []),
   ]
   const title = (text: string, action?: React.ReactNode) => (
-    <Row justify="space-between" align="middle" style={{ marginBottom: 22 }}>
+    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
       <Col>
         <h1 className="player-admin-page-title">{text}</h1>
       </Col>
@@ -2231,7 +2258,7 @@ export default function PlayerAdminPage() {
             rowKey="subjectId"
             pagination={false}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div className="player-admin-table-pagination">
             <Pagination
               current={page}
               total={total}
@@ -2277,7 +2304,7 @@ export default function PlayerAdminPage() {
             pagination={false}
             locale={{ emptyText: <Empty description="当前没有在线玩家" /> }}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div className="player-admin-table-pagination">
             <Pagination
               current={page}
               total={total}
@@ -2323,7 +2350,7 @@ export default function PlayerAdminPage() {
             pagination={false}
             locale={{ emptyText: <Empty description="当前没有账号封禁" /> }}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div className="player-admin-table-pagination">
             <Pagination
               current={page}
               total={total}
@@ -2436,7 +2463,7 @@ export default function PlayerAdminPage() {
               },
             ]}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div className="player-admin-table-pagination">
             <Pagination
               current={identityBanPage}
               total={identityBanTotal}
@@ -2533,7 +2560,7 @@ export default function PlayerAdminPage() {
               },
             ]}
           />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+          <div className="player-admin-table-pagination">
             <Pagination
               current={activityPage}
               total={activityTotal}

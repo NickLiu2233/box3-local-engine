@@ -1,5 +1,12 @@
 :root {
-  color: #182033;
+  --player-admin-ink: #182033;
+  --player-admin-text: #354158;
+  --player-admin-muted: #727b8d;
+  --player-admin-line: #e3e7ed;
+  --player-admin-surface: #ffffff;
+  --player-admin-subtle: #f8f9fb;
+  --player-admin-blue: #2474e8;
+  color: var(--player-admin-ink);
   background: #f6f7f9;
   font-family: Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
@@ -117,8 +124,16 @@ body {
 }
 .player-admin-content {
   min-height: calc(100vh - 64px);
-  padding: 24px 28px 36px;
+  padding: 28px 32px 40px;
   background: #f6f7f9;
+}
+.player-admin-page-toolbar {
+  min-height: 40px;
+  margin-bottom: 20px;
+}
+.player-admin-page-toolbar > .ant-col:last-child > .ant-space,
+.player-admin-page-toolbar > .ant-col:last-child > .ant-btn {
+  justify-content: flex-end;
 }
 .player-admin-page-title {
   margin: 0;
@@ -137,7 +152,9 @@ body {
 }
 .player-admin-stat,
 .player-admin-panel {
-  border: 1px solid #e3e7ed;
+  overflow: hidden;
+  background: var(--player-admin-surface);
+  border: 1px solid var(--player-admin-line);
   border-radius: 4px;
   box-shadow: none;
 }
@@ -155,50 +172,34 @@ body {
 }
 .player-admin-panel .ant-card-head {
   min-height: 56px;
+  padding: 0 24px;
   border-bottom-color: #e5e8ee;
 }
 .player-admin-panel .ant-card-head-title {
   color: #263249;
   font-weight: 600;
 }
+.player-admin-panel .ant-card-extra {
+  display: flex;
+  min-height: 55px;
+  align-items: center;
+}
+.player-admin-panel .ant-card-body {
+  padding: 20px 24px 24px;
+}
 .player-admin-map-version {
   color: #7a8598;
   font-size: 12px;
   font-weight: 500;
 }
-.player-admin-map-card .ant-card-head {
-  padding: 0 24px;
-}
-.player-admin-map-heading,
-.player-admin-map-metrics,
 .player-admin-map-name {
   display: flex;
   min-width: 0;
   align-items: center;
 }
-.player-admin-map-heading {
-  gap: 9px;
-}
-.player-admin-map-heading > strong {
-  overflow: hidden;
-  color: #263249;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.player-admin-map-metrics {
-  gap: 8px;
-  color: #748198;
-  font-size: 12px;
-  white-space: nowrap;
-}
-.player-admin-map-metrics > i {
-  width: 3px;
-  height: 3px;
-  background: #aab3c0;
-  border-radius: 50%;
-}
-.player-admin-map-metrics .ant-switch {
-  margin-left: 7px;
+.player-admin-map-directory .ant-card-body {
+  /* Keep the map directory aligned with every other admin panel. */
+  padding: 20px 24px 24px;
 }
 .player-admin-map-table .ant-table {
   border-radius: 0;
@@ -216,20 +217,49 @@ body {
   gap: 8px;
   overflow: hidden;
 }
-.player-admin-map-name > span:last-child,
+.player-admin-map-title,
 .player-admin-map-table code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.player-admin-map-name > span:last-child {
+.player-admin-map-title {
   min-width: 0;
+}
+.player-admin-map-summary {
+  color: #68758a;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.player-admin-map-table .ant-table-tbody > .ant-table-row-level-1 > td {
+  background: #fafafa;
+  border-top-color: #ededed;
+  border-bottom-color: #ededed;
+}
+.player-admin-map-table .ant-table-tbody > .ant-table-row-level-1:hover > td {
+  background: #f5f5f5;
 }
 .player-admin-filterbar {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+}
+.player-admin-pagination {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #edf0f4;
+}
+.player-admin-table-pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #edf0f4;
 }
 .player-admin-filterbar > .ant-input-affix-wrapper {
   flex: 1 1 360px;
@@ -254,6 +284,27 @@ body {
   background: #f8f9fb;
   font-size: 12px;
   font-weight: 600;
+}
+.player-admin-panel .ant-table-thead > tr > th {
+  padding-top: 11px;
+  padding-bottom: 11px;
+  color: #626d80;
+  background: var(--player-admin-subtle);
+  border-bottom-color: #e8ecf1;
+  font-size: 12px;
+  font-weight: 600;
+}
+.player-admin-panel .ant-table-tbody > tr > td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  color: var(--player-admin-text);
+  border-bottom-color: #edf0f4;
+}
+.player-admin-panel .ant-table-tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+.player-admin-panel .ant-table-tbody > tr:hover > td {
+  background: #f6f9fd;
 }
 .player-admin-table .ant-table-tbody > tr > td {
   color: #354158;
@@ -397,6 +448,18 @@ body {
 .player-admin-shell .ant-drawer-content,
 .player-admin-shell .ant-modal-content {
   box-shadow: none;
+}
+.player-admin-shell .ant-modal-header,
+.player-admin-shell .ant-drawer-header {
+  min-height: 56px;
+  padding: 16px 20px;
+}
+.player-admin-shell .ant-modal-body {
+  padding: 20px;
+}
+.player-admin-shell .ant-modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid #edf0f4;
 }
 .player-admin-shell .ant-drawer-header,
 .player-admin-shell .ant-modal-header {
