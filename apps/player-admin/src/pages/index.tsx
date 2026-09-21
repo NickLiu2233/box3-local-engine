@@ -527,12 +527,35 @@ function CreatorDialog() {
           )}
         </div>
       ) : <CliTokenPanel controller={c} detail={detail} />}
+      <AntModal
+        title="CLI Token 已签发"
+        open={Boolean(c.issuedCliToken)}
+        closable={false}
+        maskClosable={false}
+        footer={<Button type="primary" onClick={c.dismissIssuedCliToken}>我已保存</Button>}
+      >
+        <p>此 Token 仅显示一次，请立即复制并妥善保存。</p>
+        <Input.TextArea
+          className="player-admin-issued-token"
+          readOnly
+          value={c.issuedCliToken?.token || ''}
+          autoSize={{ minRows: 3, maxRows: 6 }}
+        />
+        <Button
+          style={{ marginTop: 12 }}
+          onClick={async () => {
+            await navigator.clipboard?.writeText(c.issuedCliToken?.token || '')
+            message.success('Token 已复制')
+          }}
+        >
+          复制 Token
+        </Button>
+      </AntModal>
     </AntModal>
   )
 }
 function CliTokenPanel({ controller: c, detail }: { controller: any; detail: Detail }) {
   const [editor, setEditor] = useState<any>()
-  const [issued, setIssued] = useState('')
   const [form] = Form.useForm()
   const editable = c.can('creator-tokens.manage') && detail.player.creatorAccess
   const openEditor = (token?: any) => {
@@ -541,14 +564,13 @@ function CliTokenPanel({ controller: c, detail }: { controller: any; detail: Det
   }
   const submit = async () => {
     const values = await form.validateFields()
-    const result = await c.command(
+    await c.command(
       editor?.id
         ? { action: 'update-cli-token', tokenId: editor.id, scopes: values.scopes || [] }
         : { action: 'create-cli-token', name: values.name, scopes: values.scopes || [] },
       editor?.id ? 'CLI Token 权限已更新' : 'CLI Token 已签发',
     )
     setEditor(undefined)
-    if (result?.token) setIssued(result.token)
   }
   return <>
     <div className="player-admin-token-toolbar">
@@ -564,9 +586,6 @@ function CliTokenPanel({ controller: c, detail }: { controller: any; detail: Det
     ]} />
     <AntModal title={editor?.id ? '编辑 CLI Token' : '新增 CLI Token'} open={Boolean(editor)} onCancel={() => setEditor(undefined)} onOk={() => void submit()}>
       <Form form={form} layout="vertical"><Form.Item name="name" label="名称" rules={[{ required: true }]}><Input disabled={Boolean(editor?.id)} /></Form.Item><Form.Item name="scopes" label="权限"><CliTokenScopes /></Form.Item></Form>
-    </AntModal>
-    <AntModal title="请立即保存 Token" open={Boolean(issued)} footer={<Button type="primary" onClick={() => setIssued('')}>我已保存</Button>} closable={false}>
-      <Input.TextArea readOnly value={issued} autoSize /><Button style={{ marginTop: 12 }} onClick={() => navigator.clipboard?.writeText(issued)}>复制 Token</Button>
     </AntModal>
   </>
 }
@@ -1538,6 +1557,7 @@ export default function PlayerAdminPage() {
     detail?: Detail
     mode: 'creator-access' | 'creator-tokens'
   }>()
+  const [issuedCliToken, setIssuedCliToken] = useState<{ token: string }>()
   const [creatorPickerOpen, setCreatorPickerOpen] = useState(false)
   const [creatorCandidates, setCreatorCandidates] = useState<Player[]>([])
   const [creatorPickerForm] = Form.useForm()
@@ -1922,7 +1942,14 @@ export default function PlayerAdminPage() {
         method: 'POST',
         body: JSON.stringify(commandValue),
       })
+      let issuedToken: string | undefined
+      if (commandValue.action === 'create-cli-token') {
+        const token = typeof result?.token === 'string' ? result.token : ''
+        if (!token) throw new Error('CLI Token 签发成功，但未收到可展示的 Token')
+        issuedToken = token
+      }
       message.success(success)
+      if (issuedToken) setIssuedCliToken({ token: issuedToken })
       await openCreatorDialog(creatorDialog.player, creatorDialog.mode)
       await loadPlayers()
       return result
@@ -1943,6 +1970,19 @@ export default function PlayerAdminPage() {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: () => (action ? action() : command(commandValue || {}, success)),
+    })
+  const confirmCreatorCommand = (
+    title: string,
+    commandValue: Record<string, unknown>,
+    success: string,
+  ) =>
+    Modal.confirm({
+      title,
+      content: '此操作会立即使该 CLI Token 失效，使用它的 CLI 将无法继续访问创作端。',
+      okText: '确认撤销',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: () => creatorCommand(commandValue, success),
     })
   const saveBan = async () => {
     if (!selected) return
@@ -2297,11 +2337,13 @@ export default function PlayerAdminPage() {
   creatorDialogController = {
     state: creatorDialog,
     close: () => setCreatorDialog(undefined),
+    issuedCliToken,
+    dismissIssuedCliToken: () => setIssuedCliToken(undefined),
     isOwner,
     can,
     updateCreator: updateCreatorDialog,
     command: creatorCommand,
-    confirmCommand,
+    confirmCommand: confirmCreatorCommand,
   }
   banDialogController = {
     state: banDialog,
