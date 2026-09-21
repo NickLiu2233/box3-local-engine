@@ -1202,6 +1202,18 @@ export async function deletePlayerAdminPermissionGroup(
     `, [id]);
     const row = current.rows[0];
     if (!row) throw new PlayerAdminRequestError('权限组不存在', 404);
+    const adminCount = Number(await client
+      .query<{ count: string }>(`
+        SELECT COUNT(*)::text AS count FROM ${table('admin_accounts')}
+        WHERE permission_group_id = $1
+      `, [id])
+      .then((count) => count.rows[0]?.count || '0'));
+    if (adminCount > 0) {
+      throw new PlayerAdminRequestError(
+        `该权限组仍有 ${adminCount} 个管理账号使用，无法删除`,
+        409,
+      );
+    }
     const deleted = await client.query(`
       DELETE FROM ${table('admin_permission_groups')} WHERE id = $1 RETURNING id
     `, [id]);

@@ -22,8 +22,8 @@ function normalizeMapRuntimeProfile(input = {}) {
   const mode = String(input.mode || '').trim()
   if (!profileMode.has(mode)) throw new Error('地图容器配置仅支持游玩端')
 
-  const cpuMilli = input.cpuMilli == null || input.cpuMilli === '' ? null : positiveInteger(input.cpuMilli, 'CPU 上限（m）', { minimum: 1, maximum: 128000 })
-  const memoryMb = input.memoryMb == null || input.memoryMb === '' ? null : positiveInteger(input.memoryMb, '内存上限（MB）', { minimum: 64, maximum: 1048576 })
+  const resourceGroupId = String(input.resourceGroupId || '').trim()
+  if (resourceGroupId && !permanentMapIdPattern.test(resourceGroupId)) throw new Error('资源组 ID 格式无效')
 
   return {
     permanentMapId,
@@ -34,11 +34,24 @@ function normalizeMapRuntimeProfile(input = {}) {
       minimum: 1000,
       maximum: 7 * 24 * 60 * 60 * 1000,
     }),
-    // Having either hard resource value selects the container adapter. Both
-    // values are optional so existing maps retain the low-overhead process
-    // adapter without a migration.
-    cpuMilli,
-    memoryMb,
+    // Resource limits are only supplied by a reusable resource group.  Do
+    // not honor historical per-map values when a document is read.
+    cpuMilli: null,
+    memoryMb: null,
+    ...(resourceGroupId ? { resourceGroupId } : {}),
+  }
+}
+
+function normalizeRuntimeResourceGroup(input = {}) {
+  const id = String(input.id || '').trim()
+  if (!permanentMapIdPattern.test(id)) throw new Error('资源组 ID 格式无效')
+  const name = String(input.name || '').trim()
+  if (!name || name.length > 64) throw new Error('资源组名称不能为空且不能超过 64 个字符')
+  return {
+    id,
+    name,
+    cpuMilli: positiveInteger(input.cpuMilli, 'CPU 上限（m）', { minimum: 1, maximum: 128000 }),
+    memoryMb: positiveInteger(input.memoryMb, '内存上限（MB）', { minimum: 64, maximum: 1048576 }),
   }
 }
 
@@ -62,19 +75,28 @@ function resolveMapRuntimeProfile(document, { permanentMapId, mode }, defaults =
     (candidate) => candidate?.permanentMapId === permanentMapId && candidate?.mode === mode,
   )
   const normalized = profile ? normalizeMapRuntimeProfile(profile) : null
+  const groups = Array.isArray(document?.resourceGroups) ? document.resourceGroups : []
+  const resourceGroup = normalized?.resourceGroupId
+    ? groups.map((group) => {
+      try { return normalizeRuntimeResourceGroup(group) } catch { return null }
+    }).find((group) => group?.id === normalized.resourceGroupId)
+    : null
+  const cpuMilli = resourceGroup?.cpuMilli ?? null
+  const memoryMb = resourceGroup?.memoryMb ?? null
   return {
     playerLimit: normalized?.playerLimit ?? defaults.playerLimit,
     roomLimit: normalized?.roomLimit ?? defaults.roomLimit,
     idleTimeoutMs: normalized?.idleTimeoutMs ?? defaults.idleTimeoutMs,
-    cpuMilli: normalized?.cpuMilli ?? null,
-    memoryMb: normalized?.memoryMb ?? null,
-    isolation: normalized?.cpuMilli || normalized?.memoryMb ? 'container' : 'process',
+    cpuMilli,
+    memoryMb,
+    isolation: cpuMilli || memoryMb ? 'container' : 'process',
   }
 }
 
 module.exports = {
   PROFILE_VERSION,
   normalizeMapRuntimeProfile,
+  normalizeRuntimeResourceGroup,
   resolveMapRuntimeProfile,
   runtimeProfileKey,
 }

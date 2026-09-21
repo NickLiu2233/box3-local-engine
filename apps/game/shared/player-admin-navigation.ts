@@ -10,6 +10,9 @@ export const PLAYER_ADMIN_VIEWS = [
   'admins',
   'permission-groups',
   'play-maps',
+  'container-play',
+  'container-creator',
+  'container-profiles',
   'creator-access',
   'creator-tokens',
 ] as const;
@@ -35,6 +38,9 @@ export const PLAYER_ADMIN_VIEW_REQUIREMENTS: Record<
   admins: 'owner',
   'permission-groups': 'owner',
   'play-maps': 'play-maps.view',
+  'container-play': 'containers.view',
+  'container-creator': 'containers.view',
+  'container-profiles': 'containers.view',
   'creator-access': 'creator-access.view',
   'creator-tokens': 'creator-tokens.view',
 };

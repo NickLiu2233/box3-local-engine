@@ -47,6 +47,16 @@ describe('player administration audit integrity', () => {
     }
   });
 
+  test('refuses to delete a permission group while an administrator still uses it', () => {
+    const groupDelete = functionSource(adminIdentitySource, 'deletePlayerAdminPermissionGroup');
+    expect(groupDelete).toContain("WHERE permission_group_id = $1");
+    expect(groupDelete).toContain('if (adminCount > 0)');
+    expect(groupDelete).toContain('仍有 ${adminCount} 个管理账号使用，无法删除');
+    expect(groupDelete.indexOf('if (adminCount > 0)')).toBeLessThan(
+      groupDelete.indexOf('const deleted = await client.query'),
+    );
+  });
+
   test('includes administrator account, permission-group and administrator login events', () => {
     expect(playerIdentitySource).toContain("FROM ${table('admin_audit_events')} aa");
     expect(playerIdentitySource).toContain("FROM ${table('admin_login_events')} al");

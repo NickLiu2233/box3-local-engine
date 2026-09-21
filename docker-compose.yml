@@ -132,6 +132,9 @@ services:
       # Player Service proxies map administration calls to Play.  This must
       # use Docker DNS: a public loopback URL resolves to Player Service itself.
       BOX_PLAY_INTERNAL_URL: ${BOX_PLAY_INTERNAL_URL:-http://play:3000}
+      BOX_CREATOR_RUNTIME_INTERNAL_URL: ${BOX_CREATOR_RUNTIME_INTERNAL_URL:-http://creator:9967}
+      BOX_MAP_RUNTIME_PROFILES_PATH: /app/apps/local-engine/data/map-runtime-profiles.json
+      BOX_CREATOR_PROJECTS_PATH: /app/apps/local-engine/projects
       BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}
       BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
       BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
@@ -154,6 +157,10 @@ services:
     ports:
       - "${BOX_BIND_IP:-127.0.0.1}:${BOX_PLAYER_SERVICE_PORT:-3124}:3213"
     volumes:
+      # Player administration owns the per-map policy document.  Play keeps
+      # this directory read-only and only consumes the policy at runtime.
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects:ro"
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 

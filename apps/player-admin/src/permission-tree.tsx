@@ -69,6 +69,22 @@ const categories = [
       },
     ],
   },
+  {
+    key: 'containers',
+    title: '容器管理',
+    sections: [
+      {
+        key: 'read',
+        title: '只读',
+        capabilities: ['containers.view'],
+      },
+      {
+        key: 'write',
+        title: '编辑与处置',
+        capabilities: ['containers.manage'],
+      },
+    ],
+  },
 ]
 
 /** UI-only category values make category-wide selection possible; callers must persist leaves only. */

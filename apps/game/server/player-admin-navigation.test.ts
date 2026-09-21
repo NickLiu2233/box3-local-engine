@@ -22,7 +22,7 @@ describe('player-admin navigation permissions', () => {
   });
 
   test('owner can open all pages', () => {
-    expect(allowedPlayerAdminViews({ role: 'owner', permissions: [] })).toHaveLength(11);
+    expect(allowedPlayerAdminViews({ role: 'owner', permissions: [] })).toHaveLength(13);
   });
 
   test('delegates the play-map page only to groups with map visibility', () => {
@@ -31,5 +31,17 @@ describe('player-admin navigation permissions', () => {
       role: 'moderator',
       permissions: ['players.view', 'play-maps.view'],
     }, 'play-maps')).toBe(true);
+  });
+
+  test('delegates both container views only to groups with container visibility', () => {
+    expect(canOpenPlayerAdminView(moderator, 'container-play')).toBe(false);
+    expect(canOpenPlayerAdminView({
+      role: 'moderator',
+      permissions: ['players.view', 'containers.view'],
+    }, 'container-play')).toBe(true);
+    expect(canOpenPlayerAdminView({
+      role: 'moderator',
+      permissions: ['players.view', 'containers.view'],
+    }, 'container-creator')).toBe(true);
   });
 });

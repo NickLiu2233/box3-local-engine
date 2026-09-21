@@ -224,6 +224,56 @@ type PlayBundleReview = {
   resources: Array<{ id: string; worldId: string; name: string; kind: string; mimeType: string; bytes: number; previewable: boolean; scriptTarget?: string }>
   warnings: string[]
 }
+type RuntimeStatus = {
+  phase: string
+  percent: number
+  message: string
+  cpuPercent?: number
+  memoryBytes?: number
+  uptimeMs?: number
+  processCount?: number
+  onlineCount?: number
+  rooms?: Array<{ roomId: string; active: boolean }>
+}
+type ContainerProfile = {
+  permanentMapId: string
+  mode: 'play'
+  playerLimit: number
+  roomLimit: number
+  idleTimeoutMs: number
+  cpuMilli: number | null
+  memoryMb: number | null
+  resourceGroupId?: string
+  configurationScope: 'group' | 'map'
+  configurationRootId: string
+}
+type ContainerResourceGroup = {
+  id?: string
+  name: string
+  cpuMilli: number
+  memoryMb: number
+}
+type ContainerMap = {
+  id: string
+  permanentMapId: string
+  name: string
+  version?: string
+  mapGroupId?: string
+  mapRole: 'main' | 'submap'
+  mainProjectId: string
+  status: RuntimeStatus
+  profile?: ContainerProfile
+}
+type ContainerRuntimeRow = ContainerMap & { children?: ContainerRuntimeRow[] }
+type ContainerCatalog = {
+  mode: 'play' | 'creator'
+  defaults: Pick<ContainerProfile, 'playerLimit' | 'roomLimit' | 'idleTimeoutMs' | 'cpuMilli' | 'memoryMb'>
+  profiles: ContainerProfile[]
+  resourceGroups: ContainerResourceGroup[]
+  availableMaps: Array<Pick<ContainerMap, 'permanentMapId' | 'name' | 'version' | 'mapGroupId'> & { memberCount?: number }>
+  allMaps: Array<Pick<ContainerMap, 'permanentMapId' | 'name' | 'version' | 'mapGroupId'>>
+  maps: ContainerMap[]
+}
 const formatBytes = (value = 0) => {
   if (!value) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
@@ -277,6 +327,8 @@ function Menu(props: ComponentProps<typeof AntMenu>) {
           ? 'creator-center'
           : selectedKey === 'play-maps'
             ? 'play-center'
+            : selectedKey === 'container-play' || selectedKey === 'container-creator' || selectedKey === 'container-profiles'
+              ? 'container-center'
             : selectedKey === 'admins' || selectedKey === 'permission-groups'
             ? 'owner-center'
             : ''
@@ -1256,6 +1308,185 @@ function PlayMapsPage({ canManage }: { canManage: boolean }) {
   </>
 }
 
+function ContainerManagementPage({ mode, canManage }: { mode: 'play' | 'creator'; canManage: boolean }) {
+  const [catalog, setCatalog] = useState<ContainerCatalog>()
+  const [loading, setLoading] = useState(false)
+  const isPlay = mode === 'play'
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setCatalog(await api<ContainerCatalog>(`/api/play-admin/containers?mode=${mode}`)) }
+    catch (error) { message.error((error as Error).message) }
+    finally { setLoading(false) }
+  }, [mode])
+  useEffect(() => { void load() }, [load])
+  const runtimeRows = useMemo<ContainerRuntimeRow[]>(() => {
+    const maps = catalog?.maps || []
+    const mainIds = new Set(maps.filter((map) => map.mapRole === 'main').map((map) => map.id))
+    const childrenByMain = new Map<string, ContainerMap[]>()
+    for (const map of maps) {
+      if (map.mapRole !== 'submap' || !mainIds.has(map.mainProjectId)) continue
+      const children = childrenByMain.get(map.mainProjectId) || []
+      children.push(map)
+      childrenByMain.set(map.mainProjectId, children)
+    }
+    const roots = maps
+      .filter((map) => map.mapRole === 'main')
+      .map((map) => ({ ...map, children: childrenByMain.get(map.id) }))
+    const orphanSubmaps = maps.filter((map) => map.mapRole === 'submap' && !mainIds.has(map.mainProjectId))
+    return [...roots, ...orphanSubmaps]
+  }, [catalog?.maps])
+  const destroy = (map: ContainerMap, roomId?: string) => Modal.confirm({
+    title: roomId ? '销毁房间运行时' : '销毁地图运行时',
+    content: roomId ? `房间“${roomId}”中的玩家会断开连接。` : `地图“${map.name}”当前的运行时会停止，玩家会断开连接。`,
+    okText: '确认销毁', cancelText: '取消', okButtonProps: { danger: true },
+    onOk: async () => { await api('/api/play-admin/containers', { method: 'POST', body: JSON.stringify({ action: 'destroy', mode, projectId: map.id, roomId }) }); message.success('运行时已销毁'); await load() },
+  })
+  const restart = (map: ContainerMap) => Modal.confirm({
+    title: '重启地图运行时',
+    content: `地图“${map.name}”会先停止再重新启动，当前玩家会断开连接。`,
+    okText: '确认重启', cancelText: '取消',
+    onOk: async () => {
+      await api('/api/play-admin/containers', { method: 'POST', body: JSON.stringify({ action: 'restart', mode, projectId: map.id }) })
+      message.success('运行时正在重新启动')
+      await load()
+    },
+  })
+  const statusLabel = (status: RuntimeStatus) => {
+    if (status.phase === 'ready') return '运行中'
+    if (status.phase === 'loading' || status.phase === 'starting') return '启动中'
+    if (status.phase === 'error') return '异常退出'
+    return '未就绪'
+  }
+  return <>
+    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
+      <Col><h1 className="player-admin-page-title">{isPlay ? '游玩端容器' : '创作端容器'}</h1></Col>
+      <Col><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button></Col>
+    </Row>
+    <Card className="player-admin-panel" title="已启动地图容器">
+      <AntTable<ContainerRuntimeRow>
+        className="player-admin-map-table player-admin-container-table"
+        loading={loading} rowKey="id" pagination={false} dataSource={runtimeRows}
+        expandable={{
+          expandRowByClick: false,
+          rowExpandable: (item) => Boolean(item.children?.length),
+        }}
+        columns={[
+          { title: '地图', width: '30%', render: (_, item) => <div className="player-admin-map-name"><span className="player-admin-map-title" title={item.name}>{item.name}</span>{item.version ? <span className="player-admin-map-version">v{item.version.replace(/^v/i, '')}</span> : null}</div> },
+          { title: '地图 ID', dataIndex: 'permanentMapId', render: (value) => <code>{value}</code> },
+          { title: '运行状态', width: 150, render: (_, item) => <Tooltip title={item.status.message || undefined}><Tag color={item.status.phase === 'ready' ? 'success' : item.status.phase === 'error' ? 'error' : 'processing'}>{statusLabel(item.status)}</Tag></Tooltip> },
+          { title: '资源使用 / 上限', render: (_, item) => { const resourceGroup = (catalog?.resourceGroups || []).find((group) => group.id === item.profile?.resourceGroupId); const cpuLimit = resourceGroup?.cpuMilli ?? item.profile?.cpuMilli ?? catalog?.defaults.cpuMilli ?? 4000; const memoryLimit = resourceGroup?.memoryMb ?? item.profile?.memoryMb ?? catalog?.defaults.memoryMb ?? 4096; return <span className="player-admin-muted">CPU {item.status.cpuPercent == null ? '—' : (item.status.cpuPercent / 100).toFixed(2)} / {(cpuLimit / 1000).toFixed(2)} 核 · 内存 {item.status.memoryBytes == null ? '—' : formatBytes(item.status.memoryBytes)} / {memoryLimit} MB</span> } },
+          { title: '在线人数 / 上限', width: 120, render: (_, item) => `${item.status.onlineCount ?? 0} / ${item.profile?.playerLimit ?? catalog?.defaults.playerLimit ?? 70} 人` },
+          { title: '房间', width: 70, render: (_, item) => <span>{item.status.rooms?.length || 0}</span> },
+          { title: '操作', width: 140, render: (_, item) => canManage ? <Space size={4}><Button type="link" onClick={() => restart(item)}>重启</Button><Button type="link" danger onClick={() => destroy(item)}>销毁</Button></Space> : '—' },
+        ]}
+      />
+    </Card>
+  </>
+}
+
+function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
+  const [catalog, setCatalog] = useState<ContainerCatalog>()
+  const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<ContainerProfile>()
+  const [form] = Form.useForm<ContainerProfile>()
+  const [resourceGroup, setResourceGroup] = useState<ContainerResourceGroup>()
+  const [resourceGroupForm] = Form.useForm<ContainerResourceGroup>()
+  const configurationScope = Form.useWatch('configurationScope', form) || 'group'
+  const resourceGroupId = Form.useWatch('resourceGroupId', form)
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setCatalog(await api<ContainerCatalog>('/api/play-admin/containers?mode=play')) }
+    catch (error) { message.error((error as Error).message) }
+    finally { setLoading(false) }
+  }, [])
+  useEffect(() => { void load() }, [load])
+  const openProfile = (item?: ContainerProfile) => {
+    const defaults = catalog?.defaults || { playerLimit: 70, roomLimit: 64, idleTimeoutMs: 900000 }
+    const next = item || { permanentMapId: '', mode: 'play' as const, ...defaults, cpuMilli: null, memoryMb: null, configurationScope: 'group' as const, configurationRootId: '' }
+    setProfile(next)
+    form.setFieldsValue(next)
+  }
+  const saveProfile = async () => {
+    try {
+      const values = await form.validateFields()
+      await api('/api/play-admin/containers', { method: 'POST', body: JSON.stringify(values) })
+      message.success('地图容器配置已保存；新启动的运行时会使用该配置')
+      setProfile(undefined)
+      await load()
+    } catch (error) { if (error instanceof Error) message.error(error.message) }
+  }
+  const removeProfile = (item: ContainerProfile) => Modal.confirm({
+    title: '删除容器配置', content: '后续启动将使用全局默认容量和共享 Node 运行时。', okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
+    onOk: async () => { await api(`/api/play-admin/containers/${encodeURIComponent(item.permanentMapId)}`, { method: 'DELETE', body: JSON.stringify({ configurationScope: item.configurationScope }) }); message.success('容器配置已删除'); await load() },
+  })
+  const openResourceGroup = (item?: ContainerResourceGroup) => {
+    const next = item || { name: '', cpuMilli: 1000, memoryMb: 1024 }
+    setResourceGroup(next)
+    resourceGroupForm.setFieldsValue(next)
+  }
+  const saveResourceGroup = async () => {
+    try {
+      const values = await resourceGroupForm.validateFields()
+      const result = await api<{ resourceGroup: ContainerResourceGroup }>(resourceGroup?.id ? `/api/play-admin/container-resource-groups/${encodeURIComponent(resourceGroup.id)}` : '/api/play-admin/container-resource-groups', { method: resourceGroup?.id ? 'PATCH' : 'POST', body: JSON.stringify(values) })
+      form.setFieldValue('resourceGroupId', result.resourceGroup.id)
+      setResourceGroup(undefined)
+      await load()
+      message.success('资源组已保存')
+    } catch (error) { if (error instanceof Error) message.error(error.message) }
+  }
+  const selectedResourceGroup = (catalog?.resourceGroups || []).find((item) => item.id === resourceGroupId)
+  const removeResourceGroup = () => {
+    if (!selectedResourceGroup?.id) return
+    Modal.confirm({
+      title: `删除资源组“${selectedResourceGroup.name}”？`,
+      content: '未被地图使用的资源组会被永久删除。',
+      okText: '删除',
+      cancelText: '取消',
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        await api(`/api/play-admin/container-resource-groups/${encodeURIComponent(selectedResourceGroup.id!)}`, { method: 'DELETE' })
+        form.setFieldValue('resourceGroupId', undefined)
+        await load()
+        message.success('资源组已删除')
+      },
+    })
+  }
+  return <>
+    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
+      <Col><h1 className="player-admin-page-title">地图容器配置</h1></Col>
+      <Col><Space><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>{canManage ? <Button type="primary" onClick={() => openProfile()}>新增配置</Button> : null}</Space></Col>
+    </Row>
+    <Card className="player-admin-panel player-admin-container-profiles">
+      <AntTable<ContainerProfile>
+        loading={loading} rowKey={(item) => `${item.configurationScope}:${item.permanentMapId}`} pagination={false} dataSource={catalog?.profiles || []}
+        columns={[
+          { title: '地图', dataIndex: 'permanentMapId', render: (value) => { const map = (catalog?.allMaps || []).find((item) => item.permanentMapId === value); return <div><div>{map?.name || '已删除地图'}</div><code className="player-admin-muted">{value}</code></div> } },
+          { title: '配置范围', dataIndex: 'configurationScope', render: (value) => <Tag color={value === 'group' ? 'blue' : 'default'}>{value === 'group' ? '地图组' : '单个地图'}</Tag> },
+          { title: '人数上限', dataIndex: 'playerLimit', render: (value) => `${value} 人` },
+          { title: '房间上限', dataIndex: 'roomLimit', render: (value) => `${value} 个` },
+          { title: '空闲回收', dataIndex: 'idleTimeoutMs', render: (value) => `${value} ms` },
+          { title: '资源组', render: (_, item) => { const group = (catalog?.resourceGroups || []).find((candidate) => candidate.id === item.resourceGroupId); return group ? <Tag color="blue">{group.name}</Tag> : '—' } },
+          { title: 'CPU 上限', dataIndex: 'cpuMilli', render: (value, item) => { const group = (catalog?.resourceGroups || []).find((candidate) => candidate.id === item.resourceGroupId); return group ? `${group.cpuMilli} m` : value == null ? '—' : `${value} m` } },
+          { title: '内存上限', dataIndex: 'memoryMb', render: (value, item) => { const group = (catalog?.resourceGroups || []).find((candidate) => candidate.id === item.resourceGroupId); return group ? `${group.memoryMb} MB` : value == null ? '—' : `${value} MB` } },
+          { title: '运行方式', render: (_, item) => item.resourceGroupId || item.cpuMilli || item.memoryMb ? <Tag color="blue">独立 Docker 容器</Tag> : <Tag>共享 Node</Tag> },
+          { title: '操作', render: (_, item) => canManage ? <Space size={4}><Button type="link" onClick={() => openProfile(item)}>编辑</Button><Button type="link" danger onClick={() => removeProfile(item)}>删除</Button></Space> : '—' },
+        ]}
+      />
+    </Card>
+    <Modal title={profile?.permanentMapId ? '地图容量配置' : '新增地图容量配置'} open={Boolean(profile)} onCancel={() => setProfile(undefined)} onOk={() => void saveProfile()} okText="保存">
+      <Form form={form} layout="vertical">
+        <Row gutter={16}><Col span={8}><Form.Item name="configurationScope" label="配置范围"><Select disabled={Boolean(profile?.permanentMapId)} options={[{ value: 'group', label: '地图组' }, { value: 'map', label: '单个地图' }]} onChange={() => form.setFieldValue('permanentMapId', undefined)} /></Form.Item></Col><Col span={16}><Form.Item name="permanentMapId" label="地图 ID" rules={[{ required: true, message: configurationScope === 'group' ? '请选择地图组' : '请选择地图' }]}><Select disabled={Boolean(profile?.permanentMapId)} placeholder={configurationScope === 'group' ? '选择地图组' : '选择地图'} options={(configurationScope === 'group' ? (catalog?.availableMaps || []) : (catalog?.allMaps || [])).map((item) => ({ value: item.permanentMapId, label: `${item.name} · ${item.permanentMapId}${configurationScope === 'group' && (item.memberCount || 1) > 1 ? ` · ${item.memberCount} 张地图` : ''}` }))} /></Form.Item></Col></Row>
+        <Row gutter={16}><Col span={12}><Form.Item name="playerLimit" label="人数上限" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="roomLimit" label="房间上限" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col></Row>
+        <Form.Item name="idleTimeoutMs" label="无用户时存活时间（ms）" rules={[{ required: true }]}><Input type="number" min={1000} /></Form.Item>
+        <Form.Item name="resourceGroupId" label="资源组"><Row gutter={8} wrap={false}><Col flex="auto"><Select allowClear placeholder="选择资源组；留空使用共享 Node" options={(catalog?.resourceGroups || []).map((item) => ({ value: item.id, label: `${item.name} · ${item.cpuMilli} m · ${item.memoryMb} MB` }))} /></Col>{canManage ? <Col><Space>{selectedResourceGroup ? <><Button onClick={() => openResourceGroup(selectedResourceGroup)}>编辑</Button><Button danger onClick={removeResourceGroup}>删除</Button></> : <Button onClick={() => openResourceGroup()}>新建资源组</Button>}</Space></Col> : null}</Row></Form.Item>
+      </Form>
+    </Modal>
+    <Modal title={resourceGroup?.id ? '编辑资源组' : '新建资源组'} open={Boolean(resourceGroup)} onCancel={() => setResourceGroup(undefined)} onOk={() => void saveResourceGroup()} okText="保存">
+      <Form form={resourceGroupForm} layout="vertical"><Form.Item name="name" label="资源组名称" rules={[{ required: true, message: '请输入资源组名称' }, { max: 64 }]}><Input placeholder="例如：小型地图" /></Form.Item><Row gutter={16}><Col span={12}><Form.Item name="cpuMilli" label="CPU 上限（m）" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="memoryMb" label="内存上限（MB）" rules={[{ required: true }]}><Input type="number" min={64} /></Form.Item></Col></Row></Form>
+    </Modal>
+  </>
+}
+
 export default function PlayerAdminPage() {
   const [actor, setActor] = useState<Actor>()
   const [booting, setBooting] = useState(true)
@@ -2126,6 +2357,19 @@ export default function PlayerAdminPage() {
           },
         ]
       : []),
+    ...(canOpenPlayerAdminView(actor, 'container-play') || canOpenPlayerAdminView(actor, 'container-creator') || canOpenPlayerAdminView(actor, 'container-profiles')
+      ? [
+          {
+            key: 'container-center',
+            label: '容器管理',
+            children: [
+              ...(canOpenPlayerAdminView(actor, 'container-play') ? [{ key: 'container-play', label: '游玩端' }] : []),
+              ...(canOpenPlayerAdminView(actor, 'container-creator') ? [{ key: 'container-creator', label: '创作端' }] : []),
+              ...(canOpenPlayerAdminView(actor, 'container-profiles') ? [{ key: 'container-profiles', label: '地图容器配置' }] : []),
+            ],
+          },
+        ]
+      : []),
     ...(isOwner
       ? [
           {
@@ -2157,6 +2401,12 @@ export default function PlayerAdminPage() {
   let body: React.ReactNode
   if (view === 'play-maps')
     body = <PlayMapsPage canManage={can('play-maps.manage')} />
+  else if (view === 'container-play')
+    body = <ContainerManagementPage mode="play" canManage={can('containers.manage')} />
+  else if (view === 'container-creator')
+    body = <ContainerManagementPage mode="creator" canManage={can('containers.manage')} />
+  else if (view === 'container-profiles')
+    body = <ContainerProfilesPage canManage={can('containers.manage')} />
   else if (view === 'overview')
     body = (
       <>
@@ -2692,7 +2942,6 @@ export default function PlayerAdminPage() {
         <Card className="player-admin-panel">
           <Table
             loading={ownerLoading}
-            locale={{ emptyText: <Empty description="暂无权限组" /> }}
             dataSource={groups}
             rowKey="id"
             pagination={{
@@ -2726,23 +2975,29 @@ export default function PlayerAdminPage() {
                     <Button type="link" onClick={() => openGroupEditor(r)}>
                       编辑
                     </Button>
-                    <Button
-                      danger
-                      type="link"
-                      onClick={() =>
-                        Modal.confirm({
-                          title: `删除权限组“${r.name}”？`,
-                          content: r.adminCount
-                            ? `已有 ${r.adminCount} 个管理账号使用该权限组，删除后将只保留基础查看权限。`
-                            : '删除后无法恢复。',
-                          okText: '删除',
-                          okButtonProps: { danger: true },
-                          onOk: () => removeGroup(r),
-                        })
-                      }
-                    >
-                      删除
-                    </Button>
+                    {r.adminCount ? (
+                      <Tooltip title={`已有 ${r.adminCount} 个管理账号使用，无法删除`}>
+                        <Button danger type="link" disabled>
+                          删除
+                        </Button>
+                      </Tooltip>
+                    ) : (
+                      <Button
+                        danger
+                        type="link"
+                        onClick={() =>
+                          Modal.confirm({
+                            title: `删除权限组“${r.name}”？`,
+                            content: '删除后无法恢复。',
+                            okText: '删除',
+                            okButtonProps: { danger: true },
+                            onOk: () => removeGroup(r),
+                          })
+                        }
+                      >
+                        删除
+                      </Button>
+                    )}
                   </Space>
                 ),
               },

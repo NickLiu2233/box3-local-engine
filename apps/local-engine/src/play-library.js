@@ -160,6 +160,7 @@ function startPlayLibrary({
             port: runtime.port,
             pid: runtime.pid,
             startedAt: runtime.startedAt,
+            onlineCount: Number(runtime.activeConnections || 0),
             ...metrics,
           }
         : {}),

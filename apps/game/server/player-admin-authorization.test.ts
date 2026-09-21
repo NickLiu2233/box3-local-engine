@@ -26,6 +26,8 @@ describe('player administration role policy', () => {
     expect(roleHasPlayerAdminPermission('moderator', 'sessions.manage', ['players.ban'])).toBe(false);
     expect(roleHasPlayerAdminPermission('moderator', 'play-maps.view', ['play-maps.manage'])).toBe(true);
     expect(roleHasPlayerAdminPermission('moderator', 'play-maps.manage', ['play-maps.view'])).toBe(false);
+    expect(roleHasPlayerAdminPermission('moderator', 'containers.view', ['containers.manage'])).toBe(true);
+    expect(roleHasPlayerAdminPermission('moderator', 'containers.manage', ['containers.view'])).toBe(false);
     expect(roleHasPlayerAdminPermission('moderator', 'owner')).toBe(false);
   });
 

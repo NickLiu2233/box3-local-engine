@@ -228,7 +228,7 @@ function themeControl() {
 function shell(content) {
   const webLoginRequired = isWebManager() && !hasWebManagerToken()
   const licensedNavigation = hasValidLicense()
-    ? `${navItem('overview', 'home', '服务总览')}${runtimeServiceRunning() ? navItem('runtimes', 'play', '地图容器管理') : ''}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
+    ? `${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
     : ''
   const primaryNavigation = webLoginRequired
     ? navItem('web-login', 'device', '管理登录')
