@@ -13,6 +13,8 @@ export const PLAYER_ADMIN_CAPABILITIES = [
   'creator-access.manage',
   'creator-tokens.view',
   'creator-tokens.manage',
+  'play-maps.view',
+  'play-maps.manage',
   'audit.view',
 ] as const;
 
@@ -42,6 +44,8 @@ export const PLAYER_ADMIN_CAPABILITY_META: Record<PlayerAdminCapability, {
   'creator-access.manage': { label: '管理创作权限', description: '授予或调整玩家进入创作端的权限，不包含后台管理权限' },
   'creator-tokens.view': { label: '查看 Creator CLI Token', description: '查看已签发的 Creator CLI Token 信息' },
   'creator-tokens.manage': { label: '管理 Creator CLI Token', description: '为已获创作权限的玩家签发或撤销 CLI Token，不会提升其创作权限' },
+  'play-maps.view': { label: '查看游玩地图', description: '查看已导入的游玩地图、状态和资源统计' },
+  'play-maps.manage': { label: '管理游玩地图', description: '导入、设置、开放或删除游玩地图' },
   'audit.view': { label: '查看安全审计', description: '查看登录风险、关联线索和管理操作记录' },
 };
 
@@ -63,6 +67,7 @@ export function effectivePlayerAdminCapabilities(
   if (capabilities.includes('identity-bans.manage')) capabilities.push('identity-bans.view');
   if (capabilities.includes('creator-access.manage')) capabilities.push('creator-access.view');
   if (capabilities.includes('creator-tokens.manage')) capabilities.push('creator-tokens.view');
+  if (capabilities.includes('play-maps.manage')) capabilities.push('play-maps.view');
   return ['players.view', ...new Set(capabilities)];
 }
 

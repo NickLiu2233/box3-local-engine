@@ -12,9 +12,7 @@ import {
   ReloadOutlined,
   SafetyCertificateOutlined,
   SearchOutlined,
-  SettingOutlined,
   SoundOutlined,
-  TeamOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons'
@@ -269,8 +267,9 @@ function Menu(props: ComponentProps<typeof AntMenu>) {
         ? 'security-center'
         : selectedKey === 'creator-access' || selectedKey === 'creator-tokens'
           ? 'creator-center'
-          : selectedKey === 'admins' || selectedKey === 'permission-groups'
-              || selectedKey === 'play-maps'
+          : selectedKey === 'play-maps'
+            ? 'play-center'
+            : selectedKey === 'admins' || selectedKey === 'permission-groups'
             ? 'owner-center'
             : ''
   const [openKeys, setOpenKeys] = useState<string[]>(group ? [group] : [])
@@ -1062,10 +1061,10 @@ function Login({ onSuccess }: { onSuccess: (actor: Actor) => void }) {
           ) : (
             <Form.Item
               name="password"
-              label="服主密钥"
-              rules={[{ required: true, message: '请输入服主密钥' }]}
+              label="服主管理令牌"
+              rules={[{ required: true, message: '请输入服主管理令牌' }]}
             >
-              <Input.Password prefix={<SafetyCertificateOutlined />} />
+              <Input.Password prefix={<SafetyCertificateOutlined />} autoComplete="off" />
             </Form.Item>
           )}
           <Button type="primary" htmlType="submit" block loading={loading}>
@@ -1077,7 +1076,7 @@ function Login({ onSuccess }: { onSuccess: (actor: Actor) => void }) {
   )
 }
 
-function PlayMapsPage() {
+function PlayMapsPage({ canManage }: { canManage: boolean }) {
   const uploadRef = useRef<HTMLInputElement>(null)
   const [worlds, setWorlds] = useState<PlayMap[]>([])
   const [statuses, setStatuses] = useState<Record<string, PlayMapResourceStatus>>({})
@@ -1182,20 +1181,20 @@ function PlayMapsPage() {
   return <>
     <Row justify="space-between" align="middle" style={{ marginBottom: 22 }}>
       <Col><h1 className="player-admin-page-title">游玩地图</h1></Col>
-      <Col><Space><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button><Button type="primary" icon={<UploadOutlined />} loading={loading} onClick={() => uploadRef.current?.click()}>导入游玩包</Button></Space></Col>
+      <Col><Space><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>{canManage ? <Button type="primary" icon={<UploadOutlined />} loading={loading} onClick={() => uploadRef.current?.click()}>导入游玩包</Button> : null}</Space></Col>
     </Row>
     <input ref={uploadRef} hidden type="file" accept=".boxplay,.tar.gz,.tgz,application/gzip" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) void inspectBundle(file) }} />
     {groups.length ? groups.map(({ id, main, submaps }) => {
       const members = [main, ...submaps]; const resourceBytes = members.reduce((sum, item) => sum + (statuses[item.id]?.bytes || 0), 0)
-      return <Card key={id} className="player-admin-panel" style={{ marginBottom: 16 }} title={<Space size={8}><span>{main.name}</span>{main.version ? <span className="player-admin-map-version">{main.version}</span> : null}<Tag color={main.playEnabled !== false ? 'success' : 'default'}>{main.playEnabled !== false ? '已开放' : '已关闭'}</Tag></Space>} extra={<Space><span className="player-admin-muted">{members.length} 张地图 · {formatBytes(resourceBytes)}</span><Switch checked={main.playEnabled !== false} checkedChildren="开放" unCheckedChildren="关闭" onChange={(playEnabled) => void patchWorld(main, { playEnabled }).then(() => message.success(playEnabled ? '地图组已开放' : '地图组已关闭')).catch((error) => message.error(error.message))} /></Space>}>
-        <AntTable size="small" pagination={false} rowKey="id" dataSource={members} columns={[
-          { title: '地图', render: (_, item: PlayMap) => <Space><Tag>{item.mapRole === 'main' ? '主地图' : '副地图'}</Tag><span>{item.name}</span></Space> },
-          { title: '访问 ID', dataIndex: 'publicId', render: (value) => <code>{value}</code> },
-          { title: '导入时间', render: (_, item: PlayMap) => dateTime(statuses[item.id]?.importedAt) },
-          { title: '操作', width: 150, render: (_, item: PlayMap) => <Space><Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(item); form.setFieldsValue({ publicId: item.publicId }) }}>设置</Button>{item.mapRole === 'main' ? <Button type="link" danger icon={<DeleteOutlined />} onClick={() => removeWorld(item)}>删除</Button> : null}</Space> },
+      return <Card key={id} className="player-admin-panel player-admin-map-card" style={{ marginBottom: 16 }} title={<div className="player-admin-map-heading"><strong title={main.name}>{main.name}</strong>{main.version ? <span className="player-admin-map-version">v{main.version.replace(/^v/i, '')}</span> : null}<Tag color={main.playEnabled !== false ? 'success' : 'default'}>{main.playEnabled !== false ? '已开放' : '已关闭'}</Tag></div>} extra={<div className="player-admin-map-metrics"><span>{members.length} 张地图</span><i aria-hidden="true" /><span>{formatBytes(resourceBytes)}</span><Switch disabled={!canManage} checked={main.playEnabled !== false} checkedChildren="开放" unCheckedChildren="关闭" onChange={(playEnabled) => void patchWorld(main, { playEnabled }).then(() => message.success(playEnabled ? '地图组已开放' : '地图组已关闭')).catch((error) => message.error(error.message))} /></div>}>
+        <AntTable className="player-admin-map-table" tableLayout="fixed" size="small" pagination={false} rowKey="id" dataSource={members} columns={[
+          { title: '地图', width: '26%', render: (_, item: PlayMap) => <div className="player-admin-map-name"><Tag>{item.mapRole === 'main' ? '主地图' : '副地图'}</Tag><span title={item.name}>{item.name}</span></div> },
+          { title: '访问 ID', dataIndex: 'publicId', width: '38%', ellipsis: true, render: (value) => <code title={value}>{value}</code> },
+          { title: '导入时间', width: '22%', render: (_, item: PlayMap) => dateTime(statuses[item.id]?.importedAt) },
+          { title: '操作', width: '14%', render: (_, item: PlayMap) => canManage ? <Space><Button type="link" icon={<EditOutlined />} onClick={() => { setEditing(item); form.setFieldsValue({ publicId: item.publicId }) }}>设置</Button>{item.mapRole === 'main' ? <Button type="link" danger icon={<DeleteOutlined />} onClick={() => removeWorld(item)}>删除</Button> : null}</Space> : '—' },
         ]} />
       </Card>
-    }) : <Card className="player-admin-panel"><Empty description="暂无游玩地图"><Button type="primary" onClick={() => uploadRef.current?.click()}>导入游玩包</Button></Empty></Card>}
+    }) : <Card className="player-admin-panel"><Empty description="暂无游玩地图">{canManage ? <Button type="primary" onClick={() => uploadRef.current?.click()}>导入游玩包</Button> : null}</Empty></Card>}
     <Modal title="地图设置" open={Boolean(editing)} onCancel={() => setEditing(undefined)} onOk={() => void saveWorld()} okText="保存">
       <Form form={form} layout="vertical"><Form.Item name="publicId" label="访问 ID" rules={[{ required: true, pattern: /^[a-z0-9][a-z0-9-]{0,62}$/, message: '使用小写字母、数字或连字符，最长 63 位' }]}><Input addonBefore="/p/" maxLength={63} onChange={(event) => form.setFieldValue('publicId', event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))} /></Form.Item></Form>
     </Modal>
@@ -2061,7 +2060,6 @@ export default function PlayerAdminPage() {
       ? [
           {
             key: 'player-center',
-            icon: <TeamOutlined />,
             label: '玩家管理',
             children: playerItems,
           },
@@ -2071,7 +2069,6 @@ export default function PlayerAdminPage() {
       ? [
           {
             key: 'security-center',
-            icon: <LockOutlined />,
             label: '安全管理',
             children: securityItems,
           },
@@ -2081,7 +2078,6 @@ export default function PlayerAdminPage() {
       ? [
           {
             key: 'creator-center',
-            icon: <SafetyCertificateOutlined />,
             label: '创作管理',
             children: [
               ...(canOpenPlayerAdminView(actor, 'creator-access')
@@ -2094,16 +2090,23 @@ export default function PlayerAdminPage() {
           },
         ]
       : []),
+    ...(canOpenPlayerAdminView(actor, 'play-maps')
+      ? [
+          {
+            key: 'play-center',
+            label: '游玩管理',
+            children: [{ key: 'play-maps', label: '游玩地图' }],
+          },
+        ]
+      : []),
     ...(isOwner
       ? [
           {
             key: 'owner-center',
-            icon: <SettingOutlined />,
             label: '服主管理',
             children: [
               { key: 'admins', label: '管理账号' },
               { key: 'permission-groups', label: '权限组' },
-              { key: 'play-maps', label: '游玩地图' },
             ],
           },
         ]
@@ -2126,7 +2129,7 @@ export default function PlayerAdminPage() {
   )
   let body: React.ReactNode
   if (view === 'play-maps')
-    body = <PlayMapsPage />
+    body = <PlayMapsPage canManage={can('play-maps.manage')} />
   else if (view === 'overview')
     body = (
       <>

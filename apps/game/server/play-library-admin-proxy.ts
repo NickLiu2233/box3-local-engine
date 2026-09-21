@@ -63,7 +63,12 @@ async function proxy(req: NextApiRequest, res: NextApiResponse, path: string, ra
 
 export const playLibraryAdminRoute = playerAdminRoute({
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  requirement: 'owner',
+  // Reading maps is safe for delegated map operators; every mutation still
+  // requires the paired management capability before the owner token is used
+  // to reach Play's internal API.
+  requirement: (req) => ['GET', 'HEAD'].includes(req.method || 'GET')
+    ? 'play-maps.view'
+    : 'play-maps.manage',
   errorContext: 'Play library administration proxy failed',
 }, async ({ req, res }) => {
   const section = Array.isArray(req.query.section) ? req.query.section[0] : req.query.section;

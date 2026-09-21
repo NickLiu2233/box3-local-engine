@@ -826,20 +826,20 @@ function setup() {
               '上限越高，Docker 可用内存需求越大。首次部署可保持默认，出现排队再逐步提高。',
             ],
           ])}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与地图权限</h2></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>管理密钥</h2></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '游玩地图管理令牌', config.hasPlayAdminToken, '用于玩家管理后台代理游玩地图操作')}${secretInput('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey, '用于登录、注册与账号服务接入')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与后台权限</h2></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>管理密钥</h2></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主管理令牌', config.hasPlayAdminToken, '用于服主登录及后台受控调用游玩端服务')}${secretInput('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey, '用于登录、注册与账号服务接入')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
           '配置说明：管理密钥分别做什么？',
           [
             ['自动生成', '首次保存配置时，三个密钥会自动生成；只有需要自定义时才填写新的值。'],
             ['开放注册', '关闭后新玩家不能自行注册，但已有玩家、服主和后台管理员仍可正常登录。'],
             [
-              '地图包管理',
-              '关闭后网页仍能展示和启动地图，但不能导入、覆盖或删除服务器上的地图包。',
+              '服主管理',
+              '使用服主管理令牌登录玩家管理后台后，可管理后台账号、权限组和游玩地图。管理员能看到和操作的功能仍由其权限组决定。',
             ],
             [
               '查看密钥',
               '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
             ],
-            ['游玩地图管理令牌', '保护玩家管理后台代理到游玩端的地图操作。'],
+            ['服主管理令牌', '用于验证服主登录，并保护玩家管理后台到游玩端的内部调用；它不直接授予普通管理员页面权限。'],
             ['账号服务 API Key', '供登录、注册或用户接入程序调用账号服务。'],
             ['运行时身份密钥', '用于 Creator 和 Play 之间签发、校验运行时身份。'],
             [

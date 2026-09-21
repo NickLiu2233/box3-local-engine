@@ -129,6 +129,9 @@ services:
       BOX_PLAYER_SERVICE_PUBLIC_URL: ${BOX_PLAYER_SERVICE_PUBLIC_URL:-http://127.0.0.1:3124}
       BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3127}
       BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3121}
+      # Player Service proxies map administration calls to Play.  This must
+      # use Docker DNS: a public loopback URL resolves to Player Service itself.
+      BOX_PLAY_INTERNAL_URL: ${BOX_PLAY_INTERNAL_URL:-http://play:3000}
       BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}
       BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
       BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}

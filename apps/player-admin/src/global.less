@@ -83,22 +83,9 @@ body {
   color: #aeb8ca;
   font-size: 13px;
 }
-.player-admin-sider .ant-menu-sub .ant-menu-item::before {
-  position: absolute;
-  left: 36px;
-  width: 4px;
-  height: 4px;
-  background: currentColor;
-  border-radius: 50%;
-  content: '';
-  opacity: 0.7;
-}
 .player-admin-sider .ant-menu-item-selected {
   background: #248bf5 !important;
   color: #fff !important;
-}
-.player-admin-sider .ant-menu-item-selected::before {
-  opacity: 1;
 }
 .player-admin-sider .ant-menu-submenu-selected > .ant-menu-submenu-title {
   color: #fff;
@@ -178,6 +165,65 @@ body {
   color: #7a8598;
   font-size: 12px;
   font-weight: 500;
+}
+.player-admin-map-card .ant-card-head {
+  padding: 0 24px;
+}
+.player-admin-map-heading,
+.player-admin-map-metrics,
+.player-admin-map-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+.player-admin-map-heading {
+  gap: 9px;
+}
+.player-admin-map-heading > strong {
+  overflow: hidden;
+  color: #263249;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-admin-map-metrics {
+  gap: 8px;
+  color: #748198;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.player-admin-map-metrics > i {
+  width: 3px;
+  height: 3px;
+  background: #aab3c0;
+  border-radius: 50%;
+}
+.player-admin-map-metrics .ant-switch {
+  margin-left: 7px;
+}
+.player-admin-map-table .ant-table {
+  border-radius: 0;
+}
+.player-admin-map-table .ant-table-thead > tr > th {
+  color: #626d80;
+  background: #f8f9fb;
+  font-size: 12px;
+  font-weight: 600;
+}
+.player-admin-map-table .ant-table-tbody > tr > td {
+  color: #354158;
+}
+.player-admin-map-name {
+  gap: 8px;
+  overflow: hidden;
+}
+.player-admin-map-name > span:last-child,
+.player-admin-map-table code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.player-admin-map-name > span:last-child {
+  min-width: 0;
 }
 .player-admin-filterbar {
   display: flex;
@@ -661,6 +707,7 @@ body {
 .play-bundle-review-resource-list,
 .play-bundle-review-preview {
   display: flex;
+  min-height: 0;
   min-width: 0;
   flex-direction: column;
 }
@@ -676,11 +723,13 @@ body {
 }
 .play-bundle-review-scroll {
   min-height: 0;
-  flex: 1;
+  flex: 1 1 0;
   padding: 0 8px 10px;
+  overscroll-behavior: contain;
   overflow-y: auto;
 }
 .play-bundle-review-resource-list .ant-tabs-nav {
+  flex: 0 0 auto;
   margin: 0;
   padding: 0 10px;
 }

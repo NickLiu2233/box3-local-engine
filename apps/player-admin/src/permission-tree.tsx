@@ -53,6 +53,22 @@ const categories = [
       },
     ],
   },
+  {
+    key: 'play',
+    title: '游玩管理',
+    sections: [
+      {
+        key: 'read',
+        title: '只读',
+        capabilities: ['play-maps.view'],
+      },
+      {
+        key: 'write',
+        title: '编辑与处置',
+        capabilities: ['play-maps.manage'],
+      },
+    ],
+  },
 ]
 
 /** UI-only category values make category-wide selection possible; callers must persist leaves only. */

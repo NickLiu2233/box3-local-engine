@@ -34,7 +34,7 @@ export const PLAYER_ADMIN_VIEW_REQUIREMENTS: Record<
   security: 'audit.view',
   admins: 'owner',
   'permission-groups': 'owner',
-  'play-maps': 'owner',
+  'play-maps': 'play-maps.view',
   'creator-access': 'creator-access.view',
   'creator-tokens': 'creator-tokens.view',
 };
