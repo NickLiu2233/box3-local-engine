@@ -41,6 +41,11 @@ use operations::Operations;
 
 const KEY: &str = include_str!("../../../distribution/license-public-key.pem");
 const LEGAL_NOTICE: &str = include_str!("../../../distribution/LICENSE.txt");
+// Isolated map runtimes are created with `docker run`, rather than from the
+// deployment Compose file.  Keep their Docker Compose project label distinct
+// from the main Engine stack so Docker Desktop and operational tooling do not
+// mix short-lived map containers with Engine's persistent services.
+const RUNTIME_COMPOSE_PROJECT: &str = "box-local-engine-runtime";
 
 #[derive(Clone)]
 struct App {
@@ -153,6 +158,17 @@ fn runtime_container_name(request: &RuntimeEnsureRequest) -> Result<String, Stri
             .map(|room| format!("-{room}"))
             .unwrap_or_default()
     ))
+}
+
+fn runtime_compose_labels(request: &RuntimeEnsureRequest) -> [String; 2] {
+    let room = request.room_id.as_deref().unwrap_or("public");
+    [
+        format!("com.docker.compose.project={RUNTIME_COMPOSE_PROJECT}"),
+        format!(
+            "com.docker.compose.service=play-{}-{room}",
+            request.permanent_map_id
+        ),
+    ]
 }
 
 /// A base64url room ID can contain uppercase letters and `_`, neither of
@@ -372,8 +388,11 @@ async fn ensure_runtime_container(
             let process_limit = request.process_limit.unwrap_or(512);
             let network_policy = request.network_policy.as_deref().unwrap_or("unrestricted");
             let bandwidth_mbps = request.bandwidth_mbps.unwrap_or(0);
+            let [runtime_project_label, runtime_service_label] = runtime_compose_labels(&request);
             let mut args = vec![
                 "run".into(), "-d".into(), "--name".into(), name.clone(),
+                "--label".into(), runtime_project_label,
+                "--label".into(), runtime_service_label,
                 "--network".into(), network, "--network-alias".into(), name.clone(),
                 "--read-only".into(), "--security-opt".into(), "no-new-privileges:true".into(),
                 "--cap-drop".into(), "ALL".into(), "--pids-limit".into(), process_limit.to_string(),
@@ -2888,12 +2907,63 @@ mod tests {
     }
 
     #[test]
+    fn isolated_runtimes_have_a_separate_compose_project_and_service_label() {
+        let request = RuntimeEnsureRequest {
+            permanent_map_id: "map-a".into(),
+            mode: "play".into(),
+            project_id: "map-a".into(),
+            room_id: Some("room-01".into()),
+            cpu_milli: Some(500),
+            memory_mb: Some(256),
+            process_limit: Some(128),
+            network_policy: Some("unrestricted".into()),
+            bandwidth_mbps: None,
+            player_limit: 8,
+            idle_timeout_ms: 900_000,
+            teleport_control_url: "http://play:9966/__local_teleport".into(),
+            teleport_internal_token: "test-token-with-at-least-32-characters".into(),
+        };
+        assert_eq!(
+            runtime_compose_labels(&request),
+            [
+                String::from("com.docker.compose.project=box-local-engine-runtime"),
+                String::from("com.docker.compose.service=play-map-a-room-01"),
+            ]
+        );
+    }
+
+    #[test]
+    fn public_runtime_service_label_uses_public_as_the_room_name() {
+        let request = RuntimeEnsureRequest {
+            permanent_map_id: "map-a".into(),
+            mode: "play".into(),
+            project_id: "map-a".into(),
+            room_id: None,
+            cpu_milli: Some(500),
+            memory_mb: Some(256),
+            process_limit: Some(128),
+            network_policy: Some("unrestricted".into()),
+            bandwidth_mbps: None,
+            player_limit: 8,
+            idle_timeout_ms: 900_000,
+            teleport_control_url: "http://play:9966/__local_teleport".into(),
+            teleport_internal_token: "test-token-with-at-least-32-characters".into(),
+        };
+        assert_eq!(
+            runtime_compose_labels(&request)[1],
+            "com.docker.compose.service=play-map-a-public"
+        );
+    }
+
+    #[test]
     fn privileged_runtime_setup_drops_to_node_before_starting_the_game() {
         let command = runtime_entrypoint_command(true);
         assert!(command.contains("iptables -P OUTPUT DROP"));
         assert!(command.contains("tc qdisc replace dev eth0 root tbf"));
         assert!(command.contains("chown node:node /tmp/box3-license-time-play.json"));
-        assert!(command.contains("exec setpriv --reuid=node --regid=node --init-groups --bounding-set=-all node"));
+        assert!(command.contains(
+            "exec setpriv --reuid=node --regid=node --init-groups --bounding-set=-all node"
+        ));
         assert!(!runtime_entrypoint_command(false).contains("setpriv"));
     }
 
