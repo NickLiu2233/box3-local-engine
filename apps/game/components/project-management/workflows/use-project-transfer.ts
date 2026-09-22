@@ -5,8 +5,8 @@ import {
   importResponseError,
   type DetailedImportError,
   type ImportDiagnostic,
-} from '../../server/import-diagnostics';
-import type { ExportProgress, ImportMode, ImportProgress, LocalProject, ProjectExportScope } from './project-types';
+} from '../../../server/import-diagnostics';
+import type { ExportProgress, ImportMode, ImportProgress, LocalProject, ProjectExportScope } from '../project-types';
 
 type Options = {
   mainProjects: LocalProject[];

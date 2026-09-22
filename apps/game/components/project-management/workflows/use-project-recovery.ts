@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import type { LocalProject, ProjectSnapshot } from './project-types';
+import type { LocalProject, ProjectSnapshot } from '../project-types';
 
 type Options = {
   refreshProjects: () => Promise<void>;

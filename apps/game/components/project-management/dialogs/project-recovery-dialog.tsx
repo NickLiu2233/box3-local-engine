@@ -1,9 +1,9 @@
 import { History, RotateCcw } from 'lucide-react';
 
-import styles from '../../pages/projects/projects.module.css';
-import { snapshotReasonLabels } from './project-fixtures';
-import { formatBytes } from './project-presentation';
-import type { LocalProject, ProjectSnapshot } from './project-types';
+import styles from '../../../pages/projects/projects.module.css';
+import { snapshotReasonLabels } from '../project-fixtures';
+import { formatBytes } from '../project-presentation';
+import type { LocalProject, ProjectSnapshot } from '../project-types';
 
 type Props = {
   project: LocalProject | null;

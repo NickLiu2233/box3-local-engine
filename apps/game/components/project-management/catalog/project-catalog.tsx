@@ -1,8 +1,8 @@
 import type { ChangeEvent, ReactNode, RefObject } from 'react';
 import { ChevronDown, FolderOpen, Plus, Search, Upload } from 'lucide-react';
 
-import styles from '../../pages/projects/projects.module.css';
-import type { ImportProgress, LocalProject } from './project-types';
+import styles from '../../../pages/projects/projects.module.css';
+import type { ImportProgress, LocalProject } from '../project-types';
 import type { ProjectCatalogController } from './use-project-catalog';
 
 type Props = {

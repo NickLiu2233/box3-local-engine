@@ -1,11 +1,11 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import { Grid2X2, Upload } from 'lucide-react';
 
-import defaultLoadingCover from '../../assets/banner.jpg';
-import styles from '../../pages/projects/projects.module.css';
-import { defaultMapCover, mapSizeOptions, readProjectImage } from './project-fixtures';
-import { customMapSizeMessage } from './project-presentation';
-import type { AssetDistributionConfiguration, LocalProject, MapSizeChoice } from './project-types';
+import defaultLoadingCover from '../../../assets/banner.jpg';
+import styles from '../../../pages/projects/projects.module.css';
+import { defaultMapCover, mapSizeOptions, readProjectImage } from '../project-fixtures';
+import { customMapSizeMessage } from '../project-presentation';
+import type { AssetDistributionConfiguration, LocalProject, MapSizeChoice } from '../project-types';
 import { AssetDistributionFields } from './asset-distribution-fields';
 
 export type ProjectDialogKind = 'create' | 'submap' | 'delete' | 'details' | 'publish';

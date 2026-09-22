@@ -1,7 +1,7 @@
 import { Download, Grid2X2, Play, Upload } from 'lucide-react';
 
-import styles from '../../pages/projects/projects.module.css';
-import type { ImportMode, LocalProject, ProjectExportScope } from './project-types';
+import styles from '../../../pages/projects/projects.module.css';
+import type { ImportMode, LocalProject, ProjectExportScope } from '../project-types';
 
 type ImportChoiceProps = {
   file: File | null;

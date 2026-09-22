@@ -1,9 +1,9 @@
 import { Clock3, Download, History, Pencil, Plus, Trash2 } from 'lucide-react';
 
-import styles from '../../pages/projects/projects.module.css';
-import { defaultMapCover } from './project-fixtures';
-import { formatProjectUpdatedAt } from './project-presentation';
-import type { ExportProgress, LocalProject } from './project-types';
+import styles from '../../../pages/projects/projects.module.css';
+import { defaultMapCover } from '../project-fixtures';
+import { formatProjectUpdatedAt } from '../project-presentation';
+import type { ExportProgress, LocalProject } from '../project-types';
 
 type Props = {
   project: LocalProject;

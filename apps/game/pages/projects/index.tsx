@@ -9,10 +9,7 @@ import {
   Box,
 } from 'lucide-react';
 import styles from './projects.module.css';
-import {
-  customMapSizeMessage,
-  nextReleaseVersion,
-} from '../../components/project-management/project-presentation';
+import { customMapSizeMessage } from '../../components/project-management/project-presentation';
 import zhMessages from '../../i18n/zh.json';
 import { CreatorModelLibrary } from '../../components/creator-model-library';
 import {
@@ -22,23 +19,22 @@ import {
 } from '../../components/player-account/player-account';
 import { playerLoginURL, requestPlayerServiceIp, resolvePlayerServiceIdentity } from '../../server/player-service-client';
 import type {
-  AssetDistributionConfiguration,
-  CompatibilityReport,
   LocalProject,
   MapSizeChoice,
   ProjectsPageProps,
-  PublishProgress,
   WorkCenterView,
 } from '../../components/project-management/project-types';
-import { ProjectCard } from '../../components/project-management/project-card';
-import { ProjectCatalog } from '../../components/project-management/project-catalog';
-import { ProjectProgressDialogs } from '../../components/project-management/project-progress-dialogs';
-import { ProjectExportChoiceDialog, ProjectImportChoiceDialog } from '../../components/project-management/project-choice-dialogs';
-import { ProjectRecoveryDialog } from '../../components/project-management/project-recovery-dialog';
-import { ProjectEditorDialog, type ProjectEditorController } from '../../components/project-management/project-editor-dialog';
-import { useProjectTransfer } from '../../components/project-management/use-project-transfer';
-import { useProjectRecovery } from '../../components/project-management/use-project-recovery';
-import { useProjectCatalog } from '../../components/project-management/use-project-catalog';
+import { ProjectCard } from '../../components/project-management/catalog/project-card';
+import { ProjectCatalog } from '../../components/project-management/catalog/project-catalog';
+import { useProjectCatalog } from '../../components/project-management/catalog/use-project-catalog';
+import { ProjectProgressDialogs } from '../../components/project-management/dialogs/project-progress-dialogs';
+import { ProjectExportChoiceDialog, ProjectImportChoiceDialog } from '../../components/project-management/dialogs/project-choice-dialogs';
+import { ProjectRecoveryDialog } from '../../components/project-management/dialogs/project-recovery-dialog';
+import { ProjectEditorDialog, type ProjectEditorController } from '../../components/project-management/dialogs/project-editor-dialog';
+import { useProjectTransfer } from '../../components/project-management/workflows/use-project-transfer';
+import { useProjectRecovery } from '../../components/project-management/workflows/use-project-recovery';
+import { useProjectPublisher } from '../../components/project-management/workflows/use-project-publisher';
+import { openProjectEditor } from '../../components/project-management/project-runtime-navigation';
 
 export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req, res, query }) => {
   if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
@@ -98,23 +94,9 @@ export default function ProjectsPage({
   const [customMapSize, setCustomMapSize] = useState<[number, number, number]>([64, 128, 64]);
   const [dialogError, setDialogError] = useState('');
   const importInputRef = useRef<HTMLInputElement>(null);
-  const [releaseVersion, setReleaseVersion] = useState('v1.0.0');
-  const [releaseNotes, setReleaseNotes] = useState('');
-  const [assetMode, setAssetMode] = useState<'local' | 'oss'>('local');
-  const [assetConfig, setAssetConfig] = useState<AssetDistributionConfiguration>({
-    endpoint: '',
-    bucket: '',
-    region: 'auto',
-    accessKeyId: '',
-    secretAccessKey: '',
-    cdnBaseUrl: '',
-    hasSecretAccessKey: false,
-  });
-  const [savingAssetConfig, setSavingAssetConfig] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedProject, setSelectedProject] = useState<LocalProject | null>(null);
   const [notice, setNotice] = useState('');
-  const [publishProgress, setPublishProgress] = useState<PublishProgress | null>(null);
   const customSizeFeedback = mapSize === 'custom' ? customMapSizeMessage(customMapSize) : null;
   const updateCustomMapSize = (index: 0 | 1 | 2, value: string) => {
     setCustomMapSize((current) => {
@@ -207,6 +189,17 @@ export default function ProjectsPage({
     setNotice,
     closeProjectMenu: () => setMenuProject(null),
   });
+  const publisher = useProjectPublisher({
+    projects,
+    refreshProjects,
+    setNotice,
+    closeProjectMenu: () => setMenuProject(null),
+    selectProject: setSelectedProject,
+    openPublishDialog: () => setDialog('publish'),
+    closeDialog: () => setDialog(null),
+    setDialogError,
+    isSubmitting: () => submitting,
+  });
 
   const openCreateDialog = () => {
     setSelectedProject(null);
@@ -247,59 +240,6 @@ export default function ProjectsPage({
     setDialog('details');
   };
 
-  const openPublishDialog = (project: LocalProject) => {
-    setMenuProject(null);
-    const mainProject = projects.find((entry) => entry.id === project.mainProjectId) || project;
-    setSelectedProject(mainProject);
-    setReleaseVersion(nextReleaseVersion(mainProject.latestRelease));
-    setReleaseNotes('');
-    setAssetMode('local');
-    setDialogError('');
-    setDialog('publish');
-    void fetch('/api/local-projects/asset-distribution')
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || '无法读取 OSS 配置');
-        setAssetConfig((current) => ({
-          ...current,
-          ...(data.configuration || {}),
-          secretAccessKey: '',
-        }));
-      })
-      .catch((error) => setDialogError(error.message));
-  };
-
-  const persistAssetConfiguration = async () => {
-    const response = await fetch('/api/local-projects/asset-distribution', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(assetConfig),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || '无法保存 OSS 资源分发设置');
-    }
-    setAssetConfig((current) => ({
-      ...current,
-      ...(data.configuration || {}),
-      secretAccessKey: '',
-    }));
-  };
-
-  const saveAssetConfiguration = async () => {
-    if (savingAssetConfig || submitting) return;
-    setSavingAssetConfig(true);
-    setDialogError('');
-    try {
-      await persistAssetConfiguration();
-      setNotice('OSS 配置已保存到本机；尚未上传任何资源。');
-    } catch (error) {
-      setDialogError(error instanceof Error ? error.message : '无法保存 OSS 资源分发设置');
-    } finally {
-      setSavingAssetConfig(false);
-    }
-  };
-
   const submitProject = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const name = projectName.trim();
@@ -311,192 +251,7 @@ export default function ProjectsPage({
       return;
     }
     if (dialog === 'publish' && selectedProject) {
-      const project = selectedProject;
-      let publishedVersion = releaseVersion.trim();
-      let compatibility: CompatibilityReport | undefined;
-      const startedAt = Date.now();
-      if (assetMode === 'oss') {
-        await persistAssetConfiguration();
-      }
-      setDialog(null);
-      setNotice('');
-      setPublishProgress({
-        projectName: project.name,
-        version: publishedVersion,
-        phase: 'saving',
-        percent: 5,
-        received: 0,
-        total: 0,
-        elapsedSeconds: 0,
-      });
-      const timer = window.setInterval(() => {
-        setPublishProgress((current) =>
-          current && !['done', 'error'].includes(current.phase)
-            ? {
-                ...current,
-                elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
-                percent:
-                  current.phase === 'saving'
-                    ? Math.min(18, current.percent + 0.35)
-                    : current.phase === 'publishing'
-                      ? Math.min(38, current.percent + 0.25)
-                      : current.phase === 'packing'
-                        ? Math.min(62, current.percent + 0.18)
-                        : current.percent,
-              }
-            : current,
-        );
-      }, 500);
-      const publishPhaseTimer = window.setTimeout(() => {
-        setPublishProgress((current) =>
-          current?.phase === 'saving'
-            ? { ...current, phase: 'publishing', percent: Math.max(20, current.percent) }
-            : current,
-        );
-      }, 1200);
-      try {
-        const response = await fetch(`/api/local-projects/${project.id}/publish`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ version: publishedVersion, notes: releaseNotes }),
-        });
-        const data = await response.json();
-        if (response.ok) {
-          publishedVersion = data.release.version;
-          const reports = Array.isArray(data.release.releases)
-            ? (data.release.releases
-                .map((release: { compatibility?: CompatibilityReport }) => release.compatibility)
-                .filter(Boolean) as CompatibilityReport[])
-            : [];
-          compatibility = reports.length
-            ? {
-                level: reports.some((report) => report.level === 'error')
-                  ? 'error'
-                  : reports.some((report) => report.level === 'warning')
-                    ? 'warning'
-                    : 'compatible',
-                summary: reports.reduce(
-                  (summary, report) => ({
-                    warnings: summary.warnings + report.summary.warnings,
-                    errors: summary.errors + report.summary.errors,
-                    missingBlobCount: summary.missingBlobCount + report.summary.missingBlobCount,
-                  }),
-                  { warnings: 0, errors: 0, missingBlobCount: 0 },
-                ),
-              }
-            : undefined;
-        } else {
-          throw new Error(data.message || '生成游戏包版本失败');
-        }
-        setPublishProgress((current) =>
-          current
-            ? {
-                ...current,
-                phase: 'packing',
-                percent: 42,
-                version: publishedVersion,
-              }
-            : current,
-        );
-        const packageResponse = await fetch(`/api/local-projects/${project.id}/package`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ version: publishedVersion, assetMode }),
-        });
-        if (!packageResponse.ok) {
-          const packageData = await packageResponse.json().catch(() => ({}));
-          throw new Error(packageData.message || '导出游玩包失败');
-        }
-        const disposition = packageResponse.headers.get('Content-Disposition') || '';
-        const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
-        const filename = encodedName
-          ? decodeURIComponent(encodedName)
-          : `${project.name}_${project.id}_${publishedVersion}.boxplay`;
-        const total = Number(packageResponse.headers.get('Content-Length') || 0);
-        const mapCount = Number(packageResponse.headers.get('X-Box-Map-Count') || 1);
-        let received = 0;
-        const chunks: Uint8Array[] = [];
-        setPublishProgress((current) =>
-          current
-            ? {
-                ...current,
-                phase: 'downloading',
-                percent: 65,
-                total,
-                filename,
-              }
-            : current,
-        );
-        if (packageResponse.body) {
-          const reader = packageResponse.body.getReader();
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (!value) continue;
-            chunks.push(value);
-            received += value.byteLength;
-            setPublishProgress((current) =>
-              current
-                ? {
-                    ...current,
-                    phase: 'downloading',
-                    percent: total
-                      ? 65 + Math.min(33, (received / total) * 33)
-                      : Math.min(96, 65 + chunks.length),
-                    received,
-                    total,
-                    elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
-                    filename,
-                  }
-                : current,
-            );
-          }
-        } else {
-          const value = new Uint8Array(await packageResponse.arrayBuffer());
-          chunks.push(value);
-          received = value.byteLength;
-        }
-        const blob = new Blob(chunks, { type: 'application/gzip' });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement('a');
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        setPublishProgress({
-          projectName: project.name,
-          version: publishedVersion,
-          phase: 'done',
-          percent: 100,
-          received: received || blob.size,
-          total: total || blob.size,
-          elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
-          filename,
-        });
-        setNotice(
-          compatibility && (compatibility.summary.warnings || compatibility.summary.errors)
-            ? `游戏包 ${publishedVersion} 已导出，包含 ${mapCount} 张地图；兼容性检查发现 ${compatibility.summary.errors} 个错误、${compatibility.summary.warnings} 个提醒`
-            : `游戏包 ${publishedVersion} 已导出，包含 ${mapCount} 张地图；兼容性检查通过`,
-        );
-        await refreshProjects();
-      } catch (error) {
-        setPublishProgress((current) => ({
-          projectName: project.name,
-          version: publishedVersion,
-          phase: 'error',
-          percent: current?.percent || 0,
-          received: current?.received || 0,
-          total: current?.total || 0,
-          elapsedSeconds: Math.floor((Date.now() - startedAt) / 1000),
-          filename: current?.filename,
-          message: error instanceof Error ? error.message : '导出游玩包失败',
-        }));
-      } finally {
-        window.clearInterval(timer);
-        window.clearTimeout(publishPhaseTimer);
-      }
+      await publisher.publish(selectedProject);
       return;
     } else if (dialog === 'submap' && selectedProject) {
       const id = `${selectedProject.mainProjectId}-map-${Date.now().toString(36)}`.slice(0, 63);
@@ -573,19 +328,6 @@ export default function ProjectsPage({
     setDialog('delete');
   };
 
-  const openProjectEditor = (project: LocalProject) => {
-    // Match boxes' navigation model: open the engine route immediately and
-    // let its built-in Connecting flow own the whole startup lifecycle. The
-    // local runtime allocation is started in parallel and deduplicated by the
-    // edit library, so there is no separate loading page before the editor.
-    void fetch(`/api/local-projects/${encodeURIComponent(project.id)}/runtime`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'edit' }),
-    }).catch(() => undefined);
-    window.open(`/e/${encodeURIComponent(project.id)}`, '_blank', 'noopener');
-  };
-
   const renderProjectCard = (project: LocalProject) => {
     return (
       <ProjectCard
@@ -618,11 +360,11 @@ export default function ProjectsPage({
     mapSize,
     customMapSize,
     customSizeFeedback,
-    releaseVersion,
-    releaseNotes,
-    assetMode,
-    assetConfig,
-    savingAssetConfig,
+    releaseVersion: publisher.releaseVersion,
+    releaseNotes: publisher.releaseNotes,
+    assetMode: publisher.assetMode,
+    assetConfig: publisher.assetConfig,
+    savingAssetConfig: publisher.savingAssetConfig,
     dialogError,
     setDialog,
     setSubmitting,
@@ -635,12 +377,12 @@ export default function ProjectsPage({
     setProjectLoadingCover,
     setMapSize,
     updateCustomMapSize,
-    setReleaseVersion,
-    setReleaseNotes,
-    setAssetMode,
-    setAssetConfig,
+    setReleaseVersion: publisher.setReleaseVersion,
+    setReleaseNotes: publisher.setReleaseNotes,
+    setAssetMode: publisher.setAssetMode,
+    setAssetConfig: publisher.setAssetConfig,
     submitProject,
-    saveAssetConfiguration,
+    saveAssetConfiguration: publisher.saveAssetConfiguration,
   };
 
   return (
@@ -723,7 +465,7 @@ export default function ProjectsPage({
         exportProject={(project, scope) => void exportProjectFile(project, scope)}
         publishProject={(project) => {
           setExportChoiceProject(null);
-          openPublishDialog(project);
+          publisher.open(project);
         }}
       />
       <ProjectEditorDialog controller={editorController} />
@@ -740,10 +482,10 @@ export default function ProjectsPage({
       <ProjectProgressDialogs
         exportProgress={exportProgress}
         importProgress={importProgress}
-        publishProgress={publishProgress}
+        publishProgress={publisher.publishProgress}
         closeExport={() => setExportProgress(null)}
         closeImport={() => setImportProgress(null)}
-        closePublish={() => setPublishProgress(null)}
+        closePublish={() => publisher.setPublishProgress(null)}
       />
       <footer className={styles.creatorFooter}>
         <span>

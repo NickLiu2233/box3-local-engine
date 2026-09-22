@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 
-import styles from '../../pages/projects/projects.module.css';
-import type { AssetDistributionConfiguration } from './project-types';
+import styles from '../../../pages/projects/projects.module.css';
+import type { AssetDistributionConfiguration } from '../project-types';
 
 type Props = {
   configuration: AssetDistributionConfiguration;

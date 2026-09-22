@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { previewProjects } from './project-fixtures';
-import type { LocalProject, ProjectStatus } from './project-types';
+import { previewProjects } from '../project-fixtures';
+import type { LocalProject, ProjectStatus } from '../project-types';
 
 type Options = {
   uiPreview: boolean;

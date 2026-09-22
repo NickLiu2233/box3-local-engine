@@ -1,8 +1,8 @@
 import { Download, Play, Upload } from 'lucide-react';
 
-import styles from '../../pages/projects/projects.module.css';
-import { formatBytes } from './project-presentation';
-import type { ExportProgress, ImportProgress, PublishProgress } from './project-types';
+import styles from '../../../pages/projects/projects.module.css';
+import { formatBytes } from '../project-presentation';
+import type { ExportProgress, ImportProgress, PublishProgress } from '../project-types';
 
 type Props = {
   exportProgress: ExportProgress | null;
