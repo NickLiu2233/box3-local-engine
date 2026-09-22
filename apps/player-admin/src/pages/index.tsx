@@ -59,244 +59,37 @@ import {
   playerAdminFallbackView,
   type PlayerAdminView,
 } from '../../../game/shared/player-admin-navigation'
-import { playerAdminApi as api } from '../player-admin-api'
+import { playerAdminApi as api, playerAdminRoutes as routes } from '../player-admin-api'
 import {
   capabilityLeaves,
   expandPermissionSelection,
   isViewRequiredBySelection,
   permissionTree,
 } from '../permission-tree'
-
-type Player = {
-  subjectId: string
-  userId: string
-  username: string
-  displayName: string
-  boxId: string
-  userKey?: string
-  status: 'active' | 'banned'
-  guest: boolean
-  createdAt?: string
-  registeredAt?: string
-  lastSeenAt?: string
-  lastLoginAt?: string
-  firstSeenIp?: string
-  registrationIp?: string
-  lastLoginIp?: string
-  lastSeenIp?: string
-  loginCount: number
-  activeSessionCount: number
-  tags: string[]
-  adminNote: string
-  banReason?: string
-  bannedUntil?: string
-  creatorAccess?: boolean
-  creatorPermissions?: string[]
-  activeCreatorTokenCount?: number
-}
-type Actor = {
-  displayName: string
-  username?: string
-  role: 'moderator' | 'admin' | 'owner'
-  credential: string
-  permissions: string[]
-}
-type Activity = {
-  id: string
-  kind: 'login' | 'admin'
-  action: string
-  actor: string
-  actorDisplayName: string
-  subjectId: string
-  displayName: string
-  username: string
-  ip: string
-  userAgent?: string
-  details?: Record<string, unknown>
-  createdAt: string
-}
-type Admin = {
-  id: string
-  username: string
-  displayName: string
-  role: 'admin' | 'moderator'
-  status: 'active' | 'disabled'
-  permissionGroupId?: string
-  permissionGroupName?: string
-  lastLoginAt?: string
-}
-type Group = {
-  id: string
-  name: string
-  permissions: string[]
-  adminCount: number
-  createdAt?: string
-}
-type Detail = {
-  player: Player
-  cliTokens: Array<{
-    id: string
-    name: string
-    scopes: string[]
-    createdAt: string
-    lastUsedAt?: string
-    lastUsedIp?: string
-    revokedAt?: string
-  }>
-  sessions: Array<{
-    sessionId: string
-    createdAt: string
-    lastSeenAt: string
-    expiresAt?: string
-    createdIp?: string
-    lastSeenIp?: string
-    userAgent: string
-    deviceHash?: string
-    deviceId?: string
-  }>
-  loginHistory: Array<{
-    createdAt: string
-    ip: string
-    userAgent: string
-    deviceHash?: string
-    deviceId?: string
-  }>
-  adminHistory: Array<{
-    id: string
-    action: string
-    actor: string
-    actorDisplayName: string
-    createdAt: string
-  }>
-  relatedAccounts: Array<{
-    subjectId: string
-    displayName: string
-    username: string
-    sharedIp: string
-    lastSeenAt: string
-  }>
-  identityBans: Array<{
-    id: string
-    kind: 'ip' | 'device'
-    displayValue: string
-    reason: string
-    bannedAt: string
-    bannedUntil?: string
-  }>
-}
-type View = PlayerAdminView
-type IdentityBan = {
-  id: string
-  kind: 'ip' | 'device'
-  displayValue: string
-  reason: string
-  bannedAt: string
-  bannedUntil?: string
-  sourceSubjectId?: string
-  sourceDisplayName: string
-  sourceUsername: string
-}
-type PlayMap = {
-  id: string
-  permanentMapId: string
-  publicId: string
-  name: string
-  author: string
-  description: string
-  cover: string
-  version: string
-  mapGroupId: string
-  mapRole: 'main' | 'submap'
-  mainProjectId: string
-  playEnabled: boolean
-}
-type PlayMapResourceStatus = { id: string; bytes: number; importedAt: string }
-type PlayMapTableRow = {
-  key: string
-  kind: 'group' | 'submap'
-  map: PlayMap
-  mapCount?: number
-  resourceBytes?: number
-  children?: PlayMapTableRow[]
-}
-type PlayBundleReview = {
-  id: string
-  expiresAt: string
-  mapCount: number
-  totalBytes: number
-  blobCount: number
-  unindexedBlobCount: number
-  worlds: Array<{ id: string; name: string; mapRole: 'main' | 'submap'; version: string }>
-  resources: Array<{ id: string; worldId: string; name: string; kind: string; mimeType: string; bytes: number; previewable: boolean; scriptTarget?: string }>
-  warnings: string[]
-}
-type RuntimeStatus = {
-  phase: string
-  percent: number
-  message: string
-  cpuPercent?: number
-  memoryBytes?: number
-  uptimeMs?: number
-  processCount?: number
-  onlineCount?: number
-  rooms?: Array<{ roomId: string; active: boolean }>
-}
-type ContainerProfile = {
-  permanentMapId: string
-  mode: 'play'
-  playerLimit: number
-  roomLimit: number
-  idleTimeoutMs: number
-  cpuMilli: number | null
-  memoryMb: number | null
-  resourceGroupId?: string
-  configurationScope: 'group' | 'map'
-  configurationRootId: string
-}
-type ContainerResourceGroup = {
-  id?: string
-  name: string
-  cpuMilli: number
-  memoryMb: number
-  description: string
-  networkPolicy: 'unrestricted' | 'private'
-  processLimit: number
-  bandwidthMbps: number | null
-}
-type ContainerMap = {
-  id: string
-  permanentMapId: string
-  name: string
-  version?: string
-  mapGroupId?: string
-  mapRole: 'main' | 'submap'
-  mainProjectId: string
-  status: RuntimeStatus
-  profile?: ContainerProfile
-}
-type ContainerRuntimeRow = ContainerMap & { children?: ContainerRuntimeRow[] }
-type ContainerCatalog = {
-  mode: 'play' | 'creator'
-  defaults: Pick<ContainerProfile, 'playerLimit' | 'roomLimit' | 'idleTimeoutMs' | 'cpuMilli' | 'memoryMb'>
-  profiles: ContainerProfile[]
-  resourceGroups: ContainerResourceGroup[]
-  availableMaps: Array<Pick<ContainerMap, 'permanentMapId' | 'name' | 'version' | 'mapGroupId'> & { memberCount?: number }>
-  allMaps: Array<Pick<ContainerMap, 'permanentMapId' | 'name' | 'version' | 'mapGroupId'>>
-  maps: ContainerMap[]
-}
-const formatBytes = (value = 0) => {
-  if (!value) return '0 B'
-  const units = ['B', 'KB', 'MB', 'GB']
-  const unit = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1)
-  return `${(value / 1024 ** unit).toFixed(unit ? 1 : 0)} ${units[unit]}`
-}
+import { dateTime, formatBytes } from '../player-admin-format'
+import type {
+  Activity,
+  Actor,
+  Admin,
+  ContainerCatalog,
+  ContainerProfile,
+  Detail,
+  Group,
+  IdentityBan,
+  PlayBundleReview,
+  PlayMap,
+  PlayMapResourceStatus,
+  PlayMapTableRow,
+  Player,
+  View,
+} from '../player-admin-types'
+import { ContainerResourceGroupsPage } from './container-resource-groups-page'
+import { ContainerManagementPage } from './container-management-page'
 const viewFromLocation = (): View => {
   if (typeof window === 'undefined') return 'players'
   const value = new URLSearchParams(window.location.search).get('view')
   return PLAYER_ADMIN_VIEWS.includes(value as View) ? (value as View) : 'players'
 }
-const dateTime = (value?: string) =>
-  value ? new Date(value).toLocaleString('zh-CN', { hour12: false }) : '—'
 const askText = (title: string, placeholder: string, onOk: (value: string) => void) => {
   let value = ''
   Modal.confirm({
@@ -1337,81 +1130,6 @@ function PlayMapsPage({ canManage }: { canManage: boolean }) {
   </>
 }
 
-function ContainerManagementPage({ mode, canManage }: { mode: 'play' | 'creator'; canManage: boolean }) {
-  const [catalog, setCatalog] = useState<ContainerCatalog>()
-  const [loading, setLoading] = useState(false)
-  const isPlay = mode === 'play'
-  const load = useCallback(async () => {
-    setLoading(true)
-    try { setCatalog(await api<ContainerCatalog>(`/api/play-admin/containers?mode=${mode}`)) }
-    catch (error) { message.error((error as Error).message) }
-    finally { setLoading(false) }
-  }, [mode])
-  useEffect(() => { void load() }, [load])
-  const runtimeRows = useMemo<ContainerRuntimeRow[]>(() => {
-    const maps = catalog?.maps || []
-    const mainIds = new Set(maps.filter((map) => map.mapRole === 'main').map((map) => map.id))
-    const childrenByMain = new Map<string, ContainerMap[]>()
-    for (const map of maps) {
-      if (map.mapRole !== 'submap' || !mainIds.has(map.mainProjectId)) continue
-      const children = childrenByMain.get(map.mainProjectId) || []
-      children.push(map)
-      childrenByMain.set(map.mainProjectId, children)
-    }
-    const roots = maps
-      .filter((map) => map.mapRole === 'main')
-      .map((map) => ({ ...map, children: childrenByMain.get(map.id) }))
-    const orphanSubmaps = maps.filter((map) => map.mapRole === 'submap' && !mainIds.has(map.mainProjectId))
-    return [...roots, ...orphanSubmaps]
-  }, [catalog?.maps])
-  const destroy = (map: ContainerMap, roomId?: string) => Modal.confirm({
-    title: roomId ? '销毁房间运行时' : '销毁地图运行时',
-    content: roomId ? `房间“${roomId}”中的玩家会断开连接。` : `地图“${map.name}”当前的运行时会停止，玩家会断开连接。`,
-    okText: '确认销毁', cancelText: '取消', okButtonProps: { danger: true },
-    onOk: async () => { await api('/api/play-admin/containers', { method: 'POST', body: JSON.stringify({ action: 'destroy', mode, projectId: map.id, roomId }) }); message.success('运行时已销毁'); await load() },
-  })
-  const restart = (map: ContainerMap) => Modal.confirm({
-    title: '重启地图运行时',
-    content: `地图“${map.name}”会先停止再重新启动，当前玩家会断开连接。`,
-    okText: '确认重启', cancelText: '取消',
-    onOk: async () => {
-      await api('/api/play-admin/containers', { method: 'POST', body: JSON.stringify({ action: 'restart', mode, projectId: map.id }) })
-      message.success('运行时正在重新启动')
-      await load()
-    },
-  })
-  const statusLabel = (status: RuntimeStatus) => {
-    if (status.phase === 'ready') return '运行中'
-    if (status.phase === 'loading' || status.phase === 'starting') return '启动中'
-    if (status.phase === 'error') return '异常退出'
-    return '未就绪'
-  }
-  return <>
-    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-      <Col><h1 className="player-admin-page-title">{isPlay ? '游玩端容器' : '创作端容器'}</h1></Col>
-      <Col><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button></Col>
-    </Row>
-    <Card className="player-admin-panel" title="已启动地图容器">
-      <AntTable<ContainerRuntimeRow>
-        className="player-admin-map-table player-admin-container-table"
-        loading={loading} rowKey="id" pagination={false} dataSource={runtimeRows}
-        expandable={{
-          expandRowByClick: false,
-          rowExpandable: (item) => Boolean(item.children?.length),
-        }}
-        columns={[
-          { title: '地图', width: '30%', render: (_, item) => <div className="player-admin-map-name"><span className="player-admin-map-title" title={item.name}>{item.name}</span>{item.version ? <span className="player-admin-map-version">v{item.version.replace(/^v/i, '')}</span> : null}</div> },
-          { title: '地图 ID', dataIndex: 'permanentMapId', render: (value) => <code>{value}</code> },
-          { title: '运行状态', width: 150, render: (_, item) => <Tooltip title={item.status.message || undefined}><Tag color={item.status.phase === 'ready' ? 'success' : item.status.phase === 'error' ? 'error' : 'processing'}>{statusLabel(item.status)}</Tag></Tooltip> },
-          { title: '资源使用 / 上限', render: (_, item) => { const resourceGroup = (catalog?.resourceGroups || []).find((group) => group.id === item.profile?.resourceGroupId); const cpuLimit = resourceGroup?.cpuMilli ?? item.profile?.cpuMilli ?? catalog?.defaults.cpuMilli ?? 4000; const memoryLimit = resourceGroup?.memoryMb ?? item.profile?.memoryMb ?? catalog?.defaults.memoryMb ?? 4096; return <span className="player-admin-muted">CPU {item.status.cpuPercent == null ? '—' : (item.status.cpuPercent / 100).toFixed(2)} / {(cpuLimit / 1000).toFixed(2)} 核 · 内存 {item.status.memoryBytes == null ? '—' : formatBytes(item.status.memoryBytes)} / {memoryLimit} MB</span> } },
-          { title: '房间', width: 70, render: (_, item) => <span>{item.status.rooms?.length || 0}</span> },
-          { title: '操作', width: 140, render: (_, item) => canManage ? <Space size={4}><Button type="link" onClick={() => restart(item)}>重启</Button><Button type="link" danger onClick={() => destroy(item)}>销毁</Button></Space> : '—' },
-        ]}
-      />
-    </Card>
-  </>
-}
-
 function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
   const [catalog, setCatalog] = useState<ContainerCatalog>()
   const [loading, setLoading] = useState(false)
@@ -1470,77 +1188,6 @@ function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
         <Row gutter={16}><Col span={12}><Form.Item name="playerLimit" label="人数上限" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="roomLimit" label="房间上限" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col></Row>
         <Form.Item name="idleTimeoutMs" label="无用户时存活时间（ms）" rules={[{ required: true }]}><Input type="number" min={1000} /></Form.Item>
         <Form.Item name="resourceGroupId" label="资源组"><Select allowClear placeholder="选择资源组；留空使用共享 Node" options={(catalog?.resourceGroups || []).map((item) => ({ value: item.id, label: `${item.name} · ${item.cpuMilli} m · ${item.memoryMb} MB` }))} /></Form.Item>
-      </Form>
-    </Modal>
-  </>
-}
-
-function ContainerResourceGroupsPage({ canManage }: { canManage: boolean }) {
-  const [groups, setGroups] = useState<ContainerResourceGroup[]>([])
-  const [loading, setLoading] = useState(false)
-  const [editing, setEditing] = useState<ContainerResourceGroup>()
-  const [form] = Form.useForm<ContainerResourceGroup>()
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result = await api<{ resourceGroups: ContainerResourceGroup[] }>('/api/play-admin/container-resource-groups')
-      setGroups(result.resourceGroups || [])
-    } catch (error) { message.error((error as Error).message) }
-    finally { setLoading(false) }
-  }, [])
-  useEffect(() => { void load() }, [load])
-  const open = (item?: ContainerResourceGroup) => {
-    const next = item || {
-      name: '', cpuMilli: 1000, memoryMb: 1024, description: '',
-      networkPolicy: 'unrestricted' as const, processLimit: 512, bandwidthMbps: null,
-    }
-    setEditing(next)
-    form.setFieldsValue(next)
-  }
-  const save = async () => {
-    try {
-      const values = await form.validateFields()
-      await api(editing?.id ? `/api/play-admin/container-resource-groups/${encodeURIComponent(editing.id)}` : '/api/play-admin/container-resource-groups', {
-        method: editing?.id ? 'PATCH' : 'POST', body: JSON.stringify(values),
-      })
-      setEditing(undefined)
-      message.success('资源组已保存')
-      await load()
-    } catch (error) { if (error instanceof Error) message.error(error.message) }
-  }
-  const remove = (item: ContainerResourceGroup) => Modal.confirm({
-    title: `删除资源组“${item.name}”？`, content: '资源组未被地图容器配置使用时才可删除。',
-    okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
-    onOk: async () => {
-      await api(`/api/play-admin/container-resource-groups/${encodeURIComponent(item.id || '')}`, { method: 'DELETE' })
-      message.success('资源组已删除')
-      await load()
-    },
-  })
-  return <>
-    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-      <Col><h1 className="player-admin-page-title">资源组</h1></Col>
-      <Col><Space><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>{canManage ? <Button type="primary" onClick={() => open()}>新建资源组</Button> : null}</Space></Col>
-    </Row>
-    <Card className="player-admin-panel">
-      <AntTable loading={loading} rowKey="id" pagination={false} dataSource={groups} columns={[
-        { title: '名称', dataIndex: 'name' },
-        { title: 'CPU 上限', dataIndex: 'cpuMilli', render: (value) => `${value} m` },
-        { title: '内存上限', dataIndex: 'memoryMb', render: (value) => `${value} MB` },
-        { title: '网络', dataIndex: 'networkPolicy', render: (value) => value === 'private' ? <Tag color="gold">仅内网</Tag> : <Tag>不限制</Tag> },
-        { title: '进程上限', dataIndex: 'processLimit', render: (value) => `${value ?? 512}` },
-        { title: '出网带宽', dataIndex: 'bandwidthMbps', render: (value) => value ? `${value} Mbps` : '不限制' },
-        { title: '说明', dataIndex: 'description', ellipsis: true, render: (value) => value || '—' },
-        { title: '操作', render: (_, item: ContainerResourceGroup) => canManage ? <Space><Button type="link" onClick={() => open(item)}>编辑</Button><Button type="link" danger onClick={() => remove(item)}>删除</Button></Space> : '—' },
-      ]} />
-    </Card>
-    <Modal title={editing?.id ? '编辑资源组' : '新建资源组'} open={Boolean(editing)} onCancel={() => setEditing(undefined)} onOk={() => void save()} okText="保存">
-      <Form form={form} layout="vertical">
-        <Form.Item name="name" label="资源组名称" rules={[{ required: true, message: '请输入资源组名称' }, { max: 64 }]}><Input placeholder="例如：小型地图" /></Form.Item>
-        <Row gutter={16}><Col span={12}><Form.Item name="cpuMilli" label="CPU 上限（m）" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="memoryMb" label="内存上限（MB）" rules={[{ required: true }]}><Input type="number" min={64} /></Form.Item></Col></Row>
-        <Row gutter={16}><Col span={12}><Form.Item name="networkPolicy" label="网络策略" rules={[{ required: true }]}><Select options={[{ value: 'unrestricted', label: '不限制' }, { value: 'private', label: '仅内网（禁止访问公网）' }]} /></Form.Item></Col><Col span={12}><Form.Item name="processLimit" label="容器进程上限" rules={[{ required: true }]}><Input type="number" min={16} max={4096} /></Form.Item></Col></Row>
-        <Form.Item name="bandwidthMbps" label="出网带宽上限（Mbps）" extra="留空表示不限制；仅对独立 Docker 容器生效。"><Input type="number" min={1} max={100000} placeholder="不限制" /></Form.Item>
-        <Form.Item name="description" label="资源说明" rules={[{ max: 500 }]}><Input.TextArea rows={3} placeholder="例如：适合小型地图、测试地图" maxLength={500} showCount /></Form.Item>
       </Form>
     </Modal>
   </>
@@ -1617,7 +1264,7 @@ export default function PlayerAdminPage() {
     window.history.pushState({ view: destination }, '', `${url.pathname}${url.search}${url.hash}`)
   }, [allowedViews, fallbackView])
   const loadOverview = useCallback(async () => {
-    const result = await api<{ totals: Record<string, number> }>('/api/play-admin/players/overview')
+    const result = await api<{ totals: Record<string, number> }>(routes.playerOverview)
     setTotals(result.totals || {})
   }, [])
   const loadPlayers = useCallback(async () => {
@@ -1632,7 +1279,7 @@ export default function PlayerAdminPage() {
       sort: 'lastSeen',
     })
     const result = await api<{ players: Player[]; total: number }>(
-      `/api/play-admin/players?${query}`,
+      `${routes.players}?${query}`,
     )
     setPlayers(result.players || [])
     setTotal(result.total || 0)
@@ -1647,7 +1294,7 @@ export default function PlayerAdminPage() {
         online: status,
         sort: 'lastSeen',
       })
-      const response = await fetch(`/api/play-admin/players/export?${query}`, {
+      const response = await fetch(`${routes.playerExport}?${query}`, {
         cache: 'no-store',
         credentials: 'same-origin',
       })
@@ -1676,7 +1323,7 @@ export default function PlayerAdminPage() {
     setActivityLoading(true)
     try {
       const r = await api<{ events: Activity[]; total: number }>(
-        `/api/play-admin/activity?${new URLSearchParams({ page: String(activityPage), pageSize: String(activityPageSize), kind: activityKind, search: activitySearch })}`,
+        `${routes.activity}?${new URLSearchParams({ page: String(activityPage), pageSize: String(activityPageSize), kind: activityKind, search: activitySearch })}`,
       )
       setActivity(r.events || [])
       setActivityTotal(r.total || 0)
@@ -1696,7 +1343,7 @@ export default function PlayerAdminPage() {
         pageSize: String(identityBanPageSize),
       })
       const r = await api<{ bans: IdentityBan[]; total: number }>(
-        `/api/play-admin/identity-bans?${query}`,
+        `${routes.identityBans}?${query}`,
       )
       setIdentityBans(r.bans || [])
       setIdentityBanTotal(r.total || 0)
@@ -1710,8 +1357,8 @@ export default function PlayerAdminPage() {
     setOwnerLoading(true)
     try {
       const [a, g] = await Promise.all([
-        api<{ admins: Admin[] }>('/api/play-admin/admins'),
-        api<{ groups: Group[] }>('/api/play-admin/permission-groups'),
+        api<{ admins: Admin[] }>(routes.admins),
+        api<{ groups: Group[] }>(routes.permissionGroups),
       ])
       setAdmins(a.admins || [])
       setGroups(g.groups || [])
@@ -1740,7 +1387,7 @@ export default function PlayerAdminPage() {
     void (async () => {
       setBooting(true)
       try {
-        const r = await api<{ actor: Actor }>('/api/play-admin/verify')
+        const r = await api<{ actor: Actor }>(routes.verify)
         setActor(r.actor)
         await loadOverview()
       } catch {
@@ -1767,7 +1414,7 @@ export default function PlayerAdminPage() {
       setDetails(undefined)
       setDetailLoading(true)
       setDetailTab(tab)
-      const r = await api<Detail>(`/api/play-admin/players/${player.subjectId}`)
+      const r = await api<Detail>(routes.player(player.subjectId))
       setSelected(r.player)
       setDetails(r)
       editForm.setFieldsValue({
@@ -1786,7 +1433,7 @@ export default function PlayerAdminPage() {
   const openCreatorDialog = async (player: Player, mode: 'creator-access' | 'creator-tokens') => {
     try {
       setCreatorDialog({ player, mode })
-      const detail = await api<Detail>(`/api/play-admin/players/${player.subjectId}`)
+      const detail = await api<Detail>(routes.player(player.subjectId))
       setCreatorDialog({ player: detail.player, detail, mode })
     } catch (error) {
       setCreatorDialog(undefined)
@@ -1795,7 +1442,7 @@ export default function PlayerAdminPage() {
   }
   const openCreatorPicker = async () => {
     try {
-      const result = await api<{ players: Player[] }>('/api/play-admin/players?page=1&pageSize=100&identity=all&online=all&sort=displayName')
+      const result = await api<{ players: Player[] }>(`${routes.players}?page=1&pageSize=100&identity=all&online=all&sort=displayName`)
       setCreatorCandidates(result.players || [])
       creatorPickerForm.resetFields()
       setCreatorPickerOpen(true)
@@ -1820,7 +1467,7 @@ export default function PlayerAdminPage() {
       banForm.resetFields()
       banForm.setFieldsValue({ targets: ['account'], duration: 'permanent', reason: '' })
       setBanDialog({ player })
-      const detail = await api<Detail>(`/api/play-admin/players/${player.subjectId}`)
+      const detail = await api<Detail>(routes.player(player.subjectId))
       setBanDialog({ player: detail.player, detail })
     } catch (error) {
       setBanDialog(undefined)

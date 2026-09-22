@@ -48,7 +48,7 @@ pnpm --filter @box-local/game-server test
 pnpm --filter @box-local/local-engine test
 ```
 
-修改兼容接口、发布包、永久地图 ID、脚本 API 或运行时协议时，先阅读[系统架构](./architecture.md)和[对齐基线](./boxes-parity.md)，并补充回归测试。
+修改兼容接口、发布包、永久地图 ID、脚本 API 或运行时协议时，先阅读[系统架构](./architecture.md)和[对齐基线](./boxes-parity.md)，并补充回归测试。修改玩家管理页面、权限或容器后台流程时，还须阅读[管理后台开发说明](./player-admin-development.md)，同步更新接口文档和权限测试。
 
 ## 协作规则
 

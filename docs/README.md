@@ -12,7 +12,7 @@
 | 创建和发布地图             | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                          |
 | 部署 Play 或公开服务器     | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                  |
 | 部署 VOXA                  | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                            |
-| 接入登录、玩家账号或后台管理 | [玩家身份与服主管理](./player-identity.md)          | [Player Service API](./player-service-api.md)、[自建登录门户](./self-hosted-login.md)          |
+| 接入登录、玩家账号或后台管理 | [玩家身份与管理后台](./player-identity.md)          | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md)          |
 | 配置 PostgreSQL/Redis      | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
 | 开发或修复代码             | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                    |
 | Fork、提交 PR 和构建贡献包 | [贡献者指南](../CONTRIBUTING.md)                      | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)     |
@@ -38,7 +38,8 @@
 
 ### 玩家身份与数据
 
-- [玩家身份与服主管理](./player-identity.md)：玩家账号、预置皮肤、单设备会话、独立管理账号、权限组、游玩地图与容器管理边界。
+- [玩家身份与管理后台](./player-identity.md)：玩家账号、预置皮肤、单设备会话、独立管理账号、权限组、游玩地图与容器管理边界。
+- [管理后台开发说明](./player-admin-development.md)：后台前端模块地图、请求与权限 seam、页面开发约定和验收清单。
 - [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
 - [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。
 - [个人学习许可证](./licensing.md)：服主侧的申请、设备绑定和运行门禁，以及仅供运营方使用的本机离线签发器。
