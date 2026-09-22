@@ -44,6 +44,26 @@ describe('map container profile validation', () => {
   test('rejects invalid map IDs and unsafe limits', () => {
     expect(() => normalizeMapRuntimeProfile({ ...valid, permanentMapId: '../unsafe' })).toThrow('地图永久 ID 格式无效');
     expect(() => normalizeRuntimeResourceGroup({ id: 'resource-small', name: '资源组', cpuMilli: 1000, memoryMb: 32 })).toThrow('内存上限（MB）');
+    expect(() => normalizeRuntimeResourceGroup({ id: 'resource-small', name: '资源组', cpuMilli: 1000, memoryMb: 512, networkPolicy: 'internet' })).toThrow('网络策略无效');
+    expect(() => normalizeRuntimeResourceGroup({ id: 'resource-small', name: '资源组', cpuMilli: 1000, memoryMb: 512, processLimit: 1 })).toThrow('容器进程上限');
+  });
+
+  test('normalizes enforced network, process, bandwidth and description settings', () => {
+    expect(normalizeRuntimeResourceGroup({
+      id: 'resource-networked',
+      name: '受限地图',
+      cpuMilli: 1000,
+      memoryMb: 1024,
+      description: '只能访问内部服务',
+      networkPolicy: 'private',
+      processLimit: 128,
+      bandwidthMbps: 20,
+    })).toMatchObject({
+      description: '只能访问内部服务',
+      networkPolicy: 'private',
+      processLimit: 128,
+      bandwidthMbps: 20,
+    });
   });
 
   test('uses the Play public runtime prefix but not the Creator one', () => {

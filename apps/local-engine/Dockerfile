@@ -173,8 +173,8 @@ FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tini ca-certificates \
+RUN apt-get -o Acquire::Retries=3 update \
+    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends tini ca-certificates iproute2 iptables \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

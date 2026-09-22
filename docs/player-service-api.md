@@ -120,7 +120,7 @@
 | `PATCH/DELETE`          | `/admins/:id`            | 服主             | 修改或删除后台管理账号      |
 | `GET/POST`              | `/permission-groups`     | 服主             | 查询或创建权限组            |
 | `PATCH/DELETE`          | `/permission-groups/:id` | 服主             | 修改或删除权限组            |
-| `GET/POST`              | `/container-resource-groups` | `containers.view/manage` | 查询或创建 CPU/内存资源组 |
+| `GET/POST`              | `/container-resource-groups` | `containers.view/manage` | 查询或创建地图容器资源组 |
 | `PATCH/DELETE`          | `/container-resource-groups/:id` | `containers.manage` | 修改或删除资源组 |
 | `GET/POST`              | `/containers`            | `containers.view/manage` | 查询运行容器，保存地图容量配置或执行重启/销毁 |
 | `DELETE`                | `/containers/:mapId`     | `containers.manage` | 删除地图组或单图容器配置 |
@@ -202,7 +202,7 @@
 }
 ```
 
-服主会话来自 `BOX_PLAY_ADMIN_TOKEN`，不是一种可创建或分配的后台账号；维护管理员、权限组和删除玩家均只接受服主会话。创建、更新、删除资源组时，如果资源组已经被地图容器配置使用，删除会被拒绝。
+服主会话来自 `BOX_PLAY_ADMIN_TOKEN`，不是一种可创建或分配的后台账号；维护管理员、权限组和删除玩家均只接受服主会话。创建、更新、删除资源组时，如果资源组已经被地图容器配置使用，删除会被拒绝。资源组包括 CPU（毫核）、内存（MB）、容器进程上限、网络策略（不限制或仅内网）、可选的出网带宽上限（Mbps）及资源说明；这些限制仅在新的独立地图容器启动或重启后生效。
 
 ### 审计与维护
 

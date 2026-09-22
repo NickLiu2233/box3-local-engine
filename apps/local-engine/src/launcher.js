@@ -234,6 +234,9 @@ async function startScheduledContainer({ profile, mapId, mode, roomId, projectId
     projectId,
     cpuMilli: profile.cpuMilli,
     memoryMb: profile.memoryMb,
+    processLimit: profile.processLimit,
+    networkPolicy: profile.networkPolicy,
+    bandwidthMbps: profile.bandwidthMbps,
     playerLimit: profile.playerLimit,
     idleTimeoutMs: profile.idleTimeoutMs,
     // The room manager lives in the Play Library runtime, not in Next.js.

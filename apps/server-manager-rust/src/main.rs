@@ -61,6 +61,9 @@ struct RuntimeEnsureRequest {
     room_id: Option<String>,
     cpu_milli: Option<u32>,
     memory_mb: Option<u32>,
+    process_limit: Option<u32>,
+    network_policy: Option<String>,
+    bandwidth_mbps: Option<u32>,
     player_limit: u32,
     idle_timeout_ms: u64,
     teleport_control_url: String,
@@ -116,6 +119,16 @@ fn runtime_container_name(request: &RuntimeEnsureRequest) -> Result<String, Stri
         || request
             .memory_mb
             .is_some_and(|value| !(64..=1_048_576).contains(&value))
+        || request
+            .process_limit
+            .is_some_and(|value| !(16..=4_096).contains(&value))
+        || request
+            .bandwidth_mbps
+            .is_some_and(|value| !(1..=100_000).contains(&value))
+        || request
+            .network_policy
+            .as_deref()
+            .is_some_and(|value| value != "unrestricted" && value != "private")
     {
         return Err("地图运行时资源限制无效".into());
     }
@@ -277,6 +290,33 @@ fn runtime_container_stats(container_id: &str) -> Result<Value, String> {
     }))
 }
 
+fn runtime_entrypoint_command(needs_privileged_init: bool) -> String {
+    let game_command = "node -r /app/license/process-guard.js /app/services/game-server/dist/src/launch.js --useProdBundle";
+    if needs_privileged_init {
+        // The Play image deliberately runs as `node`. Network setup needs
+        // NET_ADMIN, but the game itself must not inherit root or capabilities.
+        format!(
+            "if [ \"$BOX_RUNTIME_NETWORK_POLICY\" = private ]; then \
+              iptables -P OUTPUT DROP; \
+              iptables -A OUTPUT -o lo -j ACCEPT; \
+              iptables -A OUTPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; \
+              iptables -A OUTPUT -d 10.0.0.0/8 -j ACCEPT; \
+              iptables -A OUTPUT -d 172.16.0.0/12 -j ACCEPT; \
+              iptables -A OUTPUT -d 192.168.0.0/16 -j ACCEPT; \
+            fi; \
+            if [ \"${{BOX_RUNTIME_BANDWIDTH_MBPS:-0}}\" -gt 0 ]; then \
+              tc qdisc replace dev eth0 root tbf rate \"${{BOX_RUNTIME_BANDWIDTH_MBPS}}mbit\" burst 64kb latency 400ms; \
+            fi; \
+            # runtime-gate runs before this command and creates the trusted
+            # time cache as root. The game rechecks that cache as node.
+            chown node:node /tmp/box3-license-time-play.json 2>/dev/null || true; \
+            exec setpriv --reuid=node --regid=node --init-groups --bounding-set=-all {game_command}"
+        )
+    } else {
+        format!("exec {game_command}")
+    }
+}
+
 async fn ensure_runtime_container(
     State(app): State<Arc<App>>,
     headers: HeaderMap,
@@ -329,11 +369,14 @@ async fn ensure_runtime_container(
             let database_url = required_runtime_value(&values, "BOX_DATABASE_URL")?;
             let image = format!("box-local-engine-play:{tag}");
             let server_id = request.room_id.as_deref().unwrap_or(&request.permanent_map_id);
+            let process_limit = request.process_limit.unwrap_or(512);
+            let network_policy = request.network_policy.as_deref().unwrap_or("unrestricted");
+            let bandwidth_mbps = request.bandwidth_mbps.unwrap_or(0);
             let mut args = vec![
                 "run".into(), "-d".into(), "--name".into(), name.clone(),
                 "--network".into(), network, "--network-alias".into(), name.clone(),
                 "--read-only".into(), "--security-opt".into(), "no-new-privileges:true".into(),
-                "--cap-drop".into(), "ALL".into(), "--pids-limit".into(), "512".into(),
+                "--cap-drop".into(), "ALL".into(), "--pids-limit".into(), process_limit.to_string(),
                 "--tmpfs".into(), "/tmp:size=1g,mode=1777".into(),
                 "--health-cmd".into(),
                 "node -e \"fetch('http://127.0.0.1:9966/api/health-check').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"".into(),
@@ -344,6 +387,22 @@ async fn ensure_runtime_container(
                 "-v".into(), world_mount, "-v".into(), data_mount,
                 "-v".into(), license_mount, "-v".into(), device_mount,
             ];
+            // Docker has no portable bandwidth or egress-policy flag. The
+            // runtime image includes iptables/tc; grant NET_ADMIN only when
+            // this resource group needs one of these enforced controls.
+            let needs_privileged_init = network_policy == "private" || bandwidth_mbps > 0;
+            if needs_privileged_init {
+                // Root exists only for the short firewall/traffic-control setup.
+                // setpriv in the command below drops to node and clears all caps
+                // before the game server is executed.
+                args.extend([
+                    "--user".into(), "0".into(),
+                    "--cap-add".into(), "NET_ADMIN".into(),
+                    "--cap-add".into(), "CHOWN".into(),
+                    "--cap-add".into(), "SETUID".into(),
+                    "--cap-add".into(), "SETGID".into(),
+                ]);
+            }
             if let Some(cpu) = request.cpu_milli { args.extend(["--cpus".into(), format!("{}", cpu as f64 / 1000.0)]) }
             if let Some(memory) = request.memory_mb { args.extend(["--memory".into(), format!("{memory}m")]) }
             for (key, value) in [
@@ -360,6 +419,8 @@ async fn ensure_runtime_container(
                 ("TYPE", if request.room_id.is_some() { "teleport" } else { "public" }),
                 ("TELEPORT_ACCESS", "true"), ("PLAYER_LIMIT", &request.player_limit.to_string()),
                 ("MAX_ZERO_PLAYER_TIME", &request.idle_timeout_ms.to_string()),
+                ("BOX_RUNTIME_NETWORK_POLICY", network_policy),
+                ("BOX_RUNTIME_BANDWIDTH_MBPS", &bandwidth_mbps.to_string()),
                 ("PERMISSION_TOKEN_SECRET", &secret), ("BOX_DATABASE_URL", &database_url),
                 ("BOX_TELEPORT_CONTROL_URL", &request.teleport_control_url),
                 ("BOX_TELEPORT_INTERNAL_TOKEN", &request.teleport_internal_token),
@@ -383,8 +444,12 @@ async fn ensure_runtime_container(
                 ("NEXT_PUBLIC_APP_REGION", "cn"),
                 ("NODE_ENV", "production"),
             ] { runtime_env_arg(&mut args, key, value); }
-            args.extend([image, "node".into(), "-r".into(), "/app/license/process-guard.js".into(),
-                "/app/services/game-server/dist/src/launch.js".into(), "--useProdBundle".into()]);
+            args.extend([
+                image,
+                "sh".into(),
+                "-ec".into(),
+                runtime_entrypoint_command(needs_privileged_init),
+            ]);
             let argv = args.iter().map(String::as_str).collect::<Vec<_>>();
             docker(&argv)?;
         }
@@ -2806,6 +2871,9 @@ mod tests {
             room_id: Some("jH7lkcTtX4Dy9UhViJBShztfSFX2O7gQ".into()),
             cpu_milli: Some(500),
             memory_mb: Some(256),
+            process_limit: Some(128),
+            network_policy: Some("private".into()),
+            bandwidth_mbps: Some(20),
             player_limit: 8,
             idle_timeout_ms: 900_000,
             teleport_control_url: "http://play:9966/__local_teleport".into(),
@@ -2817,6 +2885,16 @@ mod tests {
             name,
             "box-runtime-play-4dffa49240b57b50ad2c-jH7lkcTtX4Dy9UhViJBShztfSFX2O7gQ"
         );
+    }
+
+    #[test]
+    fn privileged_runtime_setup_drops_to_node_before_starting_the_game() {
+        let command = runtime_entrypoint_command(true);
+        assert!(command.contains("iptables -P OUTPUT DROP"));
+        assert!(command.contains("tc qdisc replace dev eth0 root tbf"));
+        assert!(command.contains("chown node:node /tmp/box3-license-time-play.json"));
+        assert!(command.contains("exec setpriv --reuid=node --regid=node --init-groups --bounding-set=-all node"));
+        assert!(!runtime_entrypoint_command(false).contains("setpriv"));
     }
 
     #[tokio::test]

@@ -258,6 +258,10 @@ type ContainerResourceGroup = {
   name: string
   cpuMilli: number
   memoryMb: number
+  description: string
+  networkPolicy: 'unrestricted' | 'private'
+  processLimit: number
+  bandwidthMbps: number | null
 }
 type ContainerMap = {
   id: string
@@ -1486,7 +1490,10 @@ function ContainerResourceGroupsPage({ canManage }: { canManage: boolean }) {
   }, [])
   useEffect(() => { void load() }, [load])
   const open = (item?: ContainerResourceGroup) => {
-    const next = item || { name: '', cpuMilli: 1000, memoryMb: 1024 }
+    const next = item || {
+      name: '', cpuMilli: 1000, memoryMb: 1024, description: '',
+      networkPolicy: 'unrestricted' as const, processLimit: 512, bandwidthMbps: null,
+    }
     setEditing(next)
     form.setFieldsValue(next)
   }
@@ -1520,11 +1527,21 @@ function ContainerResourceGroupsPage({ canManage }: { canManage: boolean }) {
         { title: '名称', dataIndex: 'name' },
         { title: 'CPU 上限', dataIndex: 'cpuMilli', render: (value) => `${value} m` },
         { title: '内存上限', dataIndex: 'memoryMb', render: (value) => `${value} MB` },
+        { title: '网络', dataIndex: 'networkPolicy', render: (value) => value === 'private' ? <Tag color="gold">仅内网</Tag> : <Tag>不限制</Tag> },
+        { title: '进程上限', dataIndex: 'processLimit', render: (value) => `${value ?? 512}` },
+        { title: '出网带宽', dataIndex: 'bandwidthMbps', render: (value) => value ? `${value} Mbps` : '不限制' },
+        { title: '说明', dataIndex: 'description', ellipsis: true, render: (value) => value || '—' },
         { title: '操作', render: (_, item: ContainerResourceGroup) => canManage ? <Space><Button type="link" onClick={() => open(item)}>编辑</Button><Button type="link" danger onClick={() => remove(item)}>删除</Button></Space> : '—' },
       ]} />
     </Card>
     <Modal title={editing?.id ? '编辑资源组' : '新建资源组'} open={Boolean(editing)} onCancel={() => setEditing(undefined)} onOk={() => void save()} okText="保存">
-      <Form form={form} layout="vertical"><Form.Item name="name" label="资源组名称" rules={[{ required: true, message: '请输入资源组名称' }, { max: 64 }]}><Input placeholder="例如：小型地图" /></Form.Item><Row gutter={16}><Col span={12}><Form.Item name="cpuMilli" label="CPU 上限（m）" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="memoryMb" label="内存上限（MB）" rules={[{ required: true }]}><Input type="number" min={64} /></Form.Item></Col></Row></Form>
+      <Form form={form} layout="vertical">
+        <Form.Item name="name" label="资源组名称" rules={[{ required: true, message: '请输入资源组名称' }, { max: 64 }]}><Input placeholder="例如：小型地图" /></Form.Item>
+        <Row gutter={16}><Col span={12}><Form.Item name="cpuMilli" label="CPU 上限（m）" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="memoryMb" label="内存上限（MB）" rules={[{ required: true }]}><Input type="number" min={64} /></Form.Item></Col></Row>
+        <Row gutter={16}><Col span={12}><Form.Item name="networkPolicy" label="网络策略" rules={[{ required: true }]}><Select options={[{ value: 'unrestricted', label: '不限制' }, { value: 'private', label: '仅内网（禁止访问公网）' }]} /></Form.Item></Col><Col span={12}><Form.Item name="processLimit" label="容器进程上限" rules={[{ required: true }]}><Input type="number" min={16} max={4096} /></Form.Item></Col></Row>
+        <Form.Item name="bandwidthMbps" label="出网带宽上限（Mbps）" extra="留空表示不限制；仅对独立 Docker 容器生效。"><Input type="number" min={1} max={100000} placeholder="不限制" /></Form.Item>
+        <Form.Item name="description" label="资源说明" rules={[{ max: 500 }]}><Input.TextArea rows={3} placeholder="例如：适合小型地图、测试地图" maxLength={500} showCount /></Form.Item>
+      </Form>
     </Modal>
   </>
 }
