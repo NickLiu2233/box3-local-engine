@@ -8,4 +8,7 @@ test('keeps Player Admin routes that are called by the standalone management UI'
   assert.equal(playerServiceRoutes.has('/api/play-admin/self-password'), true)
   assert.equal(playerServiceRoutes.has('/api/play-admin/library/[section]/[[...id]]'), true)
   assert.equal(playerServiceRoutes.has('/api/play-admin/library/import'), true)
+  assert.equal(playerServiceRoutes.has('/api/play-admin/worlds'), false)
+  assert.equal(playerServiceRoutes.has('/api/play-admin/worlds/[id]'), false)
+  assert.equal(playerServiceRoutes.has('/api/play-admin/worlds/status'), false)
 })

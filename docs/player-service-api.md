@@ -124,8 +124,9 @@
 | `PATCH/DELETE`          | `/container-resource-groups/:id` | `containers.manage` | 修改或删除资源组 |
 | `GET/POST`              | `/containers`            | `containers.view/manage` | 查询运行容器，保存地图容量配置或执行重启/销毁 |
 | `DELETE`                | `/containers/:mapId`     | `containers.manage` | 删除地图组或单图容器配置 |
-| `GET`                   | `/worlds`、`/worlds/status` | 服主令牌         | 查询游玩地图和地图资源状态 |
-| `GET/POST/DELETE`       | `/import`                | 服主令牌         | 预览、确认导入或取消 `.boxplay` 审查 |
+| `GET/PATCH/DELETE`      | `/library/worlds`、`/library/worlds/:id` | `play-maps.view/manage` | 查询、设置或删除游玩地图 |
+| `GET`                   | `/library/world-status`  | `play-maps.view` | 查询游玩地图资源状态 |
+| `GET/POST/DELETE`       | `/library/import`        | `play-maps.view/manage` | 预览、确认导入或取消 `.boxplay` 审查 |
 
 ### 查询与创建
 

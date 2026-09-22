@@ -58,9 +58,6 @@ const playerServiceRoutes = new Set([
   '/api/play-admin/players/overview',
   '/api/play-admin/self-password',
   '/api/play-admin/verify',
-  '/api/play-admin/worlds',
-  '/api/play-admin/worlds/[id]',
-  '/api/play-admin/worlds/status',
 ])
 
 function readJSON(filePath) {
