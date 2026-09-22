@@ -46,6 +46,7 @@ export const playerAdminRoutes = {
   containerResourceGroup: (id: string) =>
     `/api/play-admin/container-resource-groups/${escaped(id)}`,
   identityBans: '/api/play-admin/identity-bans',
+  login: '/api/play-admin/login',
   libraryImport: '/api/play-admin/library/import',
   libraryWorlds: '/api/play-admin/library/worlds',
   libraryWorld: (id: string) => `/api/play-admin/library/worlds/${escaped(id)}`,
@@ -57,6 +58,7 @@ export const playerAdminRoutes = {
   playerBatch: '/api/play-admin/players/batch',
   playerExport: '/api/play-admin/players/export',
   playerOverview: '/api/play-admin/players/overview',
+  ownerSession: '/api/play-admin/owner-session',
   selfPassword: '/api/play-admin/self-password',
   verify: '/api/play-admin/verify',
 } as const

@@ -1,8 +1,8 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { Button, Card, Col, Form, Input, Modal, Row, Select, Space, Table, Tag, message } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../player-admin-api'
-import type { ContainerResourceGroup } from '../player-admin-types'
+import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import type { ContainerResourceGroup } from '../../player-admin-types'
 
 type Props = { canManage: boolean }
 

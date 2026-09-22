@@ -228,13 +228,20 @@ export type ContainerMap = {
 }
 
 export type ContainerRuntimeRow = ContainerMap & { children?: ContainerRuntimeRow[] }
+export type ContainerMapChoice = Pick<
+  ContainerMap,
+  'permanentMapId' | 'name' | 'version' | 'mapGroupId'
+> & {
+  /** Present for a map-group choice; omitted for individual-map choices. */
+  memberCount?: number
+}
 export type ContainerCatalog = {
   mode: 'play' | 'creator'
   defaults: Pick<ContainerProfile, 'playerLimit' | 'roomLimit' | 'idleTimeoutMs' | 'cpuMilli' | 'memoryMb'>
   profiles: ContainerProfile[]
   resourceGroups: ContainerResourceGroup[]
-  availableMaps: Array<Pick<ContainerMap, 'permanentMapId' | 'name' | 'version' | 'mapGroupId'> & { memberCount?: number }>
-  allMaps: Array<Pick<ContainerMap, 'permanentMapId' | 'name' | 'version' | 'mapGroupId'>>
+  availableMaps: ContainerMapChoice[]
+  allMaps: ContainerMapChoice[]
   maps: ContainerMap[]
 }
 

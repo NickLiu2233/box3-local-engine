@@ -1,9 +1,9 @@
 import { ReloadOutlined } from '@ant-design/icons'
 import { Button, Card, Col, Modal, Row, Space, Table, Tag, Tooltip, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { formatBytes } from '../player-admin-format'
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../player-admin-api'
-import type { ContainerCatalog, ContainerMap, ContainerRuntimeRow, RuntimeStatus } from '../player-admin-types'
+import { formatBytes } from '../../player-admin-format'
+import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import type { ContainerCatalog, ContainerMap, ContainerRuntimeRow, RuntimeStatus } from '../../player-admin-types'
 
 type Props = { mode: 'play' | 'creator'; canManage: boolean }
 

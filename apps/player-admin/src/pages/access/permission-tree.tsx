@@ -1,8 +1,8 @@
 import {
   PLAYER_ADMIN_CAPABILITY_META,
   PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
-} from '../../game/shared/player-admin-policy'
-import { PLAYER_ADMIN_PERMISSION_MENU } from '../../game/shared/player-admin-permission-menu'
+} from '../../../../game/shared/player-admin-policy'
+import { PLAYER_ADMIN_PERMISSION_MENU } from '../../../../game/shared/player-admin-permission-menu'
 
 const isReadCapability = (capability: string) =>
   capability.endsWith('.view') || capability === 'players.export'
