@@ -2745,7 +2745,7 @@ export default function PlayerAdminPage() {
     <Layout className="player-admin-shell">
       <Layout.Sider width={224} className="player-admin-sider">
         <div className="player-admin-brand">
-          <span className="player-admin-brand-mark">B</span>BOX3 玩家管理
+          <span className="player-admin-brand-mark">B</span>BOX3 后台管理
         </div>
         <Menu
           theme="dark"

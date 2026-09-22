@@ -1,0 +1,960 @@
+//! Deployment configuration, host paths and Compose orchestration.
+
+use crate::*;
+
+pub(crate) fn env_path(app: &App) -> PathBuf {
+    app.environment_file.clone()
+}
+use box_manager_core::environment::parse_env;
+
+pub(crate) fn set_env(mut source: String, key: &str, value: &str) -> Result<String, String> {
+    box_manager_core::environment::set_env(&mut source, key, value)?;
+    Ok(source)
+}
+pub(crate) fn json_value(value: &Value) -> Result<String, String> {
+    let rendered = match value {
+        Value::String(value) => value.clone(),
+        Value::Number(value) => value.to_string(),
+        Value::Bool(value) => value.to_string(),
+        _ => return Err("配置项格式无效".into()),
+    };
+    if rendered.len() > 2048 || rendered.contains(['\r', '\n', '\0']) {
+        return Err("配置项内容无效".into());
+    }
+    Ok(rendered)
+}
+pub(crate) fn port(value: &Value, label: &str) -> Result<String, String> {
+    let value = json_value(value)?;
+    match value.parse::<u16>() {
+        Ok(1..=65535) => Ok(value),
+        _ => Err(format!("{label} 必须在 1–65535 之间")),
+    }
+}
+/// Verifies both same-origin requests and the management Bearer token.
+///
+/// The manager controls Docker through a mounted socket, therefore a valid
+/// token alone is not enough for a browser request from an unrelated origin.
+pub(crate) fn auth(headers: &HeaderMap, app: &App) -> Result<(), Response> {
+    if let Some(origin) = headers
+        .get(header::ORIGIN)
+        .and_then(|value| value.to_str().ok())
+    {
+        let host = headers
+            .get(header::HOST)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("");
+        let matches = origin
+            .strip_prefix("http://")
+            .or_else(|| origin.strip_prefix("https://"))
+            .map(|value| value.trim_end_matches('/'))
+            == Some(host);
+        if !matches {
+            return Err((
+                StatusCode::FORBIDDEN,
+                Json(Error {
+                    message: "拒绝跨站管理请求".into(),
+                }),
+            )
+                .into_response());
+        }
+    }
+    let got = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .unwrap_or("");
+    if got.len() == app.token.len()
+        && got
+            .as_bytes()
+            .iter()
+            .zip(app.token.as_bytes())
+            .fold(0u8, |a, (x, y)| a | (x ^ y))
+            == 0
+    {
+        Ok(())
+    } else {
+        Err((
+            StatusCode::UNAUTHORIZED,
+            Json(Error {
+                message: "管理令牌无效".into(),
+            }),
+        )
+            .into_response())
+    }
+}
+/// Resolves the deployment directory as seen by the Docker daemon.
+///
+/// In the container the manager sees `/workspace`, while Docker bind mounts
+/// require the host path. The explicit environment variable wins; otherwise
+/// the path is derived from this container's own bind mount.
+pub(crate) fn host_project_root(app: &App) -> Result<PathBuf, String> {
+    if let Some(root) = env::var("BOX_SERVER_MANAGER_HOST_ROOT")
+        .ok()
+        .filter(|root| !root.trim().is_empty())
+    {
+        let root = PathBuf::from(root);
+        if root.is_absolute() {
+            return Ok(root);
+        }
+        return Err("BOX_SERVER_MANAGER_HOST_ROOT 必须是宿主机绝对路径".into());
+    }
+    if !in_container() {
+        return Ok(app.root.clone());
+    }
+    let container = env::var("HOSTNAME")
+        .map_err(|_| "无法定位管理容器，请配置 BOX_SERVER_MANAGER_HOST_ROOT")?;
+    let mounts: Value = serde_json::from_str(&docker(&[
+        "inspect",
+        "--format",
+        "{{json .Mounts}}",
+        &container,
+    ])?)
+    .map_err(|e| e.to_string())?;
+    mapped_host_root(&app.root, &mounts)
+}
+pub(crate) fn mapped_host_root(root: &FsPath, mounts: &Value) -> Result<PathBuf, String> {
+    mounts
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|mount| {
+            if mount.get("Type")?.as_str()? != "bind" {
+                return None;
+            }
+            let destination = PathBuf::from(mount.get("Destination")?.as_str()?);
+            let relative = root.strip_prefix(&destination).ok()?;
+            let source = PathBuf::from(mount.get("Source")?.as_str()?);
+            source
+                .is_absolute()
+                .then(|| (destination.components().count(), source.join(relative)))
+        })
+        .max_by_key(|(depth, _)| *depth)
+        .map(|(_, root)| root)
+        .ok_or_else(|| {
+            "无法定位部署目录的宿主机挂载路径，请配置 BOX_SERVER_MANAGER_HOST_ROOT".into()
+        })
+}
+/// Runs a fixed Compose subcommand against the managed Engine project.
+///
+/// Runtime configuration is regenerated before each call, so direct edits to
+/// the owner `.env` cannot leave Docker using stale derived endpoints.
+pub(crate) fn compose(app: &App, args: &[&str]) -> Result<String, String> {
+    if let Some(result) = services::control_existing(args, "box-local-engine", docker) {
+        return result;
+    }
+    let environment = generate_runtime_environment(app)?;
+    let mut command = Command::new("docker");
+    command
+        .args([
+            "compose",
+            "--project-name",
+            "box-local-engine",
+            "--project-directory",
+        ])
+        .arg(host_project_root(app)?)
+        .arg("--env-file")
+        .arg(&environment)
+        .arg("-f")
+        .arg(&app.compose_file)
+        .args(args)
+        .current_dir(&app.root);
+    for key in
+        parse_env(&fs::read_to_string(&environment).map_err(|error| error.to_string())?).keys()
+    {
+        command.env_remove(key);
+    }
+    // These variables configure the manager process, not host-side bind paths.
+    command
+        .env_remove("BOX_SERVER_MANAGER_ROOT")
+        .env_remove("BOX_SERVER_MANAGER_COMPOSE_FILE");
+    let output = command
+        .output()
+        .map_err(|e| format!("无法运行 Docker：{e}"))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).into())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).into())
+    }
+}
+pub(crate) fn docker(args: &[&str]) -> Result<String, String> {
+    let output = Command::new("docker")
+        .args(args)
+        .output()
+        .map_err(|error| format!("无法运行 Docker：{error}"))?;
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
+    }
+}
+
+pub(crate) fn linux_data_directory(value: &str) -> Result<PathBuf, String> {
+    let path = value.trim();
+    if path.is_empty() || !path.starts_with('/') {
+        return Err("数据目录必须是 Linux 服务器上的绝对路径".into());
+    }
+    if path.len() > 512
+        || !path
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'/' | b'.' | b'_' | b'-'))
+    {
+        return Err("数据目录只能包含字母、数字、/、.、_ 和 -".into());
+    }
+    Ok(PathBuf::from(path))
+}
+
+pub(crate) fn configured_data_directory(app: &App) -> Result<PathBuf, String> {
+    let values = parse_env(&fs::read_to_string(env_path(app)).map_err(|error| error.to_string())?);
+    values
+        .get("BOX_DATA_DIRECTORY")
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| linux_data_directory(value))
+        .transpose()?
+        .map(Ok)
+        .unwrap_or_else(|| host_project_root(app))
+}
+
+/// Translate a host path used for Docker bind mounts back into the path that
+/// the manager container can read through its `/workspace` bind mount.
+pub(crate) fn container_visible_path(app: &App, host_path: &FsPath) -> Result<PathBuf, String> {
+    if !in_container() {
+        return Ok(host_path.to_path_buf());
+    }
+    let host_root = host_project_root(app)?;
+    let relative = host_path.strip_prefix(&host_root).map_err(|_| {
+        format!(
+            "数据目录 {} 不在管理器已挂载的部署目录 {} 内",
+            host_path.display(),
+            host_root.display()
+        )
+    })?;
+    Ok(app.root.join(relative))
+}
+
+pub(crate) fn has_running_application_services() -> Result<bool, String> {
+    let output = docker(&[
+        "ps",
+        "--filter",
+        "label=com.docker.compose.project=box-local-engine",
+        "--filter",
+        "status=running",
+        "--format",
+        "{{.Label \"com.docker.compose.service\"}}",
+    ])?;
+    Ok(output.lines().any(|service| {
+        SERVICES.contains(&service.trim())
+            || matches!(service.trim(), "managed-postgres" | "managed-redis")
+    }))
+}
+
+pub(crate) fn data_image_tag(app: &App) -> String {
+    parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default())
+        .get("BOX_IMAGE_TAG")
+        .cloned()
+        .or_else(|| env::var("BOX_IMAGE_TAG").ok())
+        .unwrap_or_else(|| env!("CARGO_PKG_VERSION").into())
+}
+
+/// Moves persisted deployment data only after all application services stop.
+/// This prevents a live database or map writer from producing a split copy.
+pub(crate) fn migrate_data_directory(app: &App, requested: &str) -> Result<Value, String> {
+    let source = configured_data_directory(app)?;
+    let destination = linux_data_directory(requested)?;
+    if source == destination {
+        return Ok(json!({"path": destination, "usingDefault": false}));
+    }
+    if has_running_application_services()? {
+        return Err("请先在服务总览停止全部服务，再迁移数据目录".into());
+    }
+    let image = format!("box-local-engine-server-manager:{}", data_image_tag(app));
+    let source_mount = format!("{}:/source", source.display());
+    let destination_mount = format!("{}:/target", destination.display());
+    app.progress("data-copy", "正在迁移地图、模型与备份…", 25);
+    docker(&[
+        "run", "--rm", "-v", &source_mount, "-v", &destination_mount, "--entrypoint", "/bin/sh",
+        &image, "-c",
+        "set -eu; test -z \"$(ls -A /target)\"; for path in apps/local-engine/projects apps/local-engine/dist apps/local-engine/backups apps/local-engine/play-worlds apps/voxa/data; do if [ -e /source/$path ]; then mkdir -p /target/$(dirname $path); cp -a /source/$path /target/$path; fi; done",
+    ])?;
+    let content = fs::read_to_string(env_path(app)).map_err(|error| error.to_string())?;
+    let content = set_env(
+        content,
+        "BOX_DATA_DIRECTORY",
+        &destination.to_string_lossy(),
+    )?;
+    private(&env_path(app), &content)?;
+    generate_runtime_environment(app)?;
+    app.progress("data-switch", "正在切换数据目录…", 80);
+    docker(&[
+        "run", "--rm", "-v", &source_mount, "-v", &destination_mount, "--entrypoint", "/bin/sh",
+        &image, "-c",
+        "set -eu; for path in apps/local-engine/projects apps/local-engine/dist apps/local-engine/backups apps/local-engine/play-worlds apps/voxa/data; do rm -rf /source/$path; mkdir -p /source/$(dirname $path); ln -s /target/$path /source/$path; done",
+    ])?;
+    app.progress("complete", "数据目录已迁移，请从服务总览重新启动服务", 100);
+    Ok(json!({"path": destination, "usingDefault": false}))
+}
+pub(crate) fn docker_check() -> (bool, String, String) {
+    match Command::new("docker")
+        .args(["info", "--format", "{{.ServerVersion}}"])
+        .output()
+    {
+        Ok(output) if output.status.success() => (
+            true,
+            String::from_utf8_lossy(&output.stdout).trim().to_string(),
+            String::new(),
+        ),
+        Ok(output) => (
+            false,
+            String::new(),
+            String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        ),
+        Err(error) => (false, String::new(), format!("无法运行 Docker：{error}")),
+    }
+}
+pub(crate) fn random_hex(bytes: usize) -> String {
+    let mut value = vec![0u8; bytes];
+    OsRng.fill_bytes(&mut value);
+    value.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+pub(crate) fn managed_value(values: &BTreeMap<String, String>, key: &str) -> Option<String> {
+    values
+        .get(key)
+        .cloned()
+        .filter(|value| !value.trim().is_empty())
+}
+pub(crate) fn managed_database_identity(
+    existing: &BTreeMap<String, String>,
+) -> Option<(String, String)> {
+    let database = managed_value(existing, "BOX_MANAGED_POSTGRES_DATABASE");
+    let user = managed_value(existing, "BOX_MANAGED_POSTGRES_USER");
+    if let (Some(database), Some(user)) = (database, user) {
+        return Some((database, user));
+    }
+    existing
+        .get("BOX_DATABASE_MODE")
+        .is_some_and(|mode| mode == "managed")
+        .then(|| {
+            Some((
+                managed_value(existing, "BOX_DATABASE_NAME")?,
+                managed_value(existing, "BOX_DATABASE_USER")?,
+            ))
+        })
+        .flatten()
+}
+pub(crate) fn managed_database_password(existing: &BTreeMap<String, String>) -> Option<String> {
+    managed_value(existing, "BOX_MANAGED_POSTGRES_PASSWORD").or_else(|| {
+        existing
+            .get("BOX_DATABASE_MODE")
+            .is_some_and(|mode| mode == "managed")
+            .then(|| managed_value(existing, "BOX_DATABASE_PASSWORD"))
+            .flatten()
+    })
+}
+pub(crate) fn managed_redis_password(existing: &BTreeMap<String, String>) -> Option<String> {
+    managed_value(existing, "BOX_MANAGED_REDIS_PASSWORD").or_else(|| {
+        existing
+            .get("BOX_REDIS_MODE")
+            .is_some_and(|mode| mode == "managed")
+            .then(|| managed_value(existing, "REDIS_PASSWORD"))
+            .flatten()
+    })
+}
+pub(crate) fn managed_volume_exists(name: &str) -> bool {
+    docker(&["volume", "inspect", name]).is_ok()
+}
+pub(crate) fn guard_managed_storage_credentials(
+    content: &str,
+    config: &serde_json::Map<String, Value>,
+    postgres_volume_exists: bool,
+    redis_volume_exists: bool,
+) -> Result<(), String> {
+    let existing = parse_env(&migrate_document(content)?);
+    if config.get("databaseMode").and_then(Value::as_str) == Some("managed")
+        && postgres_volume_exists
+        && (managed_database_identity(&existing).is_none()
+            || managed_database_password(&existing).is_none())
+    {
+        return Err("检测到已有内置 PostgreSQL 数据，但缺少其原始连接凭据。为避免生成不匹配的新账号，已停止保存；请恢复此前的 .env 后重试。".into());
+    }
+    if config.get("redisMode").and_then(Value::as_str) == Some("managed")
+        && redis_volume_exists
+        && managed_redis_password(&existing).is_none()
+    {
+        return Err("检测到已有内置 Redis 数据，但缺少其原始连接凭据。为避免生成不匹配的新密码，已停止保存；请恢复此前的 .env 后重试。".into());
+    }
+    Ok(())
+}
+
+/// The Web console no longer runs on the server's own network namespace, so a
+/// container-local probe would return the Docker bridge address (for example
+/// 172.18.0.2) instead of the address players actually use. Prefer the value
+/// install.sh detected on the host and never fall back to a probe inside a
+/// container.
+pub(crate) fn configured_lan_ip() -> Option<String> {
+    let value = env::var("BOX_LAN_IP").ok()?;
+    let value = value.trim();
+    (!value.is_empty() && validate_host(value, "局域网地址").is_ok()).then(|| value.to_string())
+}
+pub(crate) fn in_container() -> bool {
+    FsPath::new("/.dockerenv").exists() || FsPath::new("/run/.containerenv").exists()
+}
+/// Ask the OS which outbound interface it would use. No traffic is sent to the
+/// documentation-only probe address; this only reveals the LAN address.
+pub(crate) fn detect_lan_ip() -> Option<String> {
+    if let Some(value) = configured_lan_ip() {
+        return Some(value);
+    }
+    if in_container() {
+        return None;
+    }
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("192.0.2.1:80").ok()?;
+    let address = socket.local_addr().ok()?.ip();
+    (!address.is_loopback() && !address.is_unspecified()).then(|| address.to_string())
+}
+use shared_config::validate_host;
+
+pub(crate) fn runtime_env_path(app: &App) -> PathBuf {
+    app.root.join(".runtime.env")
+}
+
+/// Same limits the desktop launcher enforces, so the Web form cannot persist a
+/// configuration the launcher would reject.
+pub(crate) fn check_remote_endpoint(label: &str, host: &str, port: u16) -> Result<(), String> {
+    let addresses = (host, port)
+        .to_socket_addrs()
+        .map_err(|error| format!("无法解析{label}地址 {host}:{port}：{error}"))?;
+    let mut last_error = None;
+    for address in addresses {
+        match TcpStream::connect_timeout(&address, Duration::from_secs(5)) {
+            Ok(_) => return Ok(()),
+            Err(error) => last_error = Some(error),
+        }
+    }
+    Err(format!(
+        "无法连接{label} {host}:{port}：{}。请检查云安全组、防火墙和监听地址。",
+        last_error
+            .map(|error| error.to_string())
+            .unwrap_or_else(|| "没有可用地址".into())
+    ))
+}
+/// The five business containers plus the Web manager itself. Managed
+/// PostgreSQL/Redis only join the profile set when the operator selects them,
+/// otherwise `--remove-orphans` would treat their running containers as
+/// orphans and delete them on the next start.
+/// Docker only ever consumes this derived file. `.env` stays the single source
+/// of truth that the operator edits, while hostnames, origins and public URLs
+/// are recomputed from the access modes on every compose call so the Web console
+/// and the desktop launcher behave identically.
+/// Derives the Docker-consumed `.runtime.env` from the owner-editable `.env`.
+/// Secrets stay in the owner document; this function only normalizes and
+/// resolves the values services need at runtime.
+pub(crate) fn generate_runtime_environment(app: &App) -> Result<PathBuf, String> {
+    let owner =
+        fs::read_to_string(env_path(app)).map_err(|error| format!("无法读取部署配置：{error}"))?;
+    let migrated_owner = migrate_document(&owner)?;
+    let values = parse_env(&migrated_owner);
+    let lan_ip = detect_lan_ip();
+    let image_tag = values
+        .get("BOX_IMAGE_TAG")
+        .cloned()
+        .or_else(|| env::var("BOX_IMAGE_TAG").ok())
+        .unwrap_or_else(|| env!("CARGO_PKG_VERSION").into());
+    let derived = shared_config::runtime_environment(
+        &values,
+        &shared_config::RuntimeInputs {
+            lan_ip: lan_ip.as_deref(),
+            image_tag: &image_tag,
+            platform: if cfg!(target_arch = "aarch64") {
+                "linux/arm64"
+            } else {
+                "linux/amd64"
+            },
+            license_file: values
+                .get("BOX_LICENSE_FILE")
+                .map(String::as_str)
+                .unwrap_or("./license/box3-license.boxlic"),
+            license_device_file: values
+                .get("BOX_LICENSE_DEVICE_FILE")
+                .map(String::as_str)
+                .unwrap_or("./license/device-id"),
+            database_required: false,
+            web_manager: true,
+        },
+    )?;
+    let mut runtime = migrated_owner.clone();
+    for (key, value) in derived {
+        runtime = set_env(runtime, &key, &value)?;
+    }
+    let path = runtime_env_path(app);
+    private(&path, &runtime)?;
+    // Persist migration markers only after all derivation and runtime writing
+    // succeed, so a rejected configuration does not silently change the owner.
+    if migrated_owner != owner {
+        private(&env_path(app), &migrated_owner)?;
+    }
+    Ok(path)
+}
+/// Pure form-to-owner transformation, shared by the HTTP save path and fixtures.
+pub(crate) fn configuration_document_for_save(
+    content: &str,
+    config: &serde_json::Map<String, Value>,
+) -> Result<String, String> {
+    let mut source = migrate_document(content)?;
+    clear_overrides_on_configuration_change(&mut source, config)?;
+    let existing = parse_env(&source);
+    let database_mode = config
+        .get("databaseMode")
+        .and_then(Value::as_str)
+        .unwrap_or("external");
+    let redis_mode = config
+        .get("redisMode")
+        .and_then(Value::as_str)
+        .unwrap_or("disabled");
+    if !["managed", "external"].contains(&database_mode) {
+        return Err("数据库模式无效".into());
+    }
+    if !["disabled", "managed", "external"].contains(&redis_mode) {
+        return Err("Redis 模式无效".into());
+    }
+    source = set_env(source, "BOX_DATABASE_MODE", database_mode)?;
+    source = set_env(source, "BOX_REDIS_MODE", redis_mode)?;
+    for (input, key) in [
+        ("playPort", "BOX_PLAY_PORT"),
+        ("creatorPort", "BOX_CREATOR_PORT"),
+        ("voxaPort", "BOX_VOXA_PORT"),
+        ("playerServicePort", "BOX_PLAYER_SERVICE_PORT"),
+        ("authPortalPort", "BOX_AUTH_PORTAL_PORT"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &port(value, input)?)?;
+        }
+    }
+    for (input, key) in [
+        ("redisHost", "REDIS_HOST"),
+        ("redisPort", "REDIS_PORT"),
+        ("redisDb", "REDIS_DB"),
+        ("storageCacheRedisDb", "STORAGE_CACHE_REDIS_DB"),
+        ("storageCacheRedisTtl", "STORAGE_CACHE_REDIS_TTL"),
+        ("databasePoolSize", "BOX_DATABASE_POOL_SIZE"),
+        ("publicHost", "BOX_PLAY_PUBLIC_HOST"),
+        ("playNetworkMode", "BOX_PLAY_NETWORK_MODE"),
+        ("creatorHost", "BOX_CREATOR_HOST"),
+        ("creatorNetworkMode", "BOX_CREATOR_NETWORK_MODE"),
+        ("creatorEditRuntimes", "BOX_CREATOR_EDIT_MAX_RUNTIMES"),
+        ("creatorPlayRuntimes", "BOX_CREATOR_PLAY_MAX_RUNTIMES"),
+        (
+            "creatorEditPrewarmRuntimes",
+            "BOX_CREATOR_EDIT_PREWARM_RUNTIMES",
+        ),
+        ("playRuntimes", "BOX_PLAY_MAX_RUNTIMES"),
+        ("playPrewarmRuntimes", "BOX_PLAY_PREWARM_RUNTIMES"),
+        ("playerLimit", "BOX_LOCAL_PLAYER_LIMIT"),
+        ("teleportMaxRooms", "BOX_TELEPORT_MAX_ROOMS"),
+        ("scriptMemoryMb", "BOX_SCRIPT_MEMORY_MB"),
+        (
+            "autoBackupIntervalMinutes",
+            "BOX_AUTO_BACKUP_INTERVAL_MINUTES",
+        ),
+        (
+            "autoBackupRetentionCount",
+            "BOX_AUTO_BACKUP_RETENTION_COUNT",
+        ),
+        ("autoBackupRetentionDays", "BOX_AUTO_BACKUP_RETENTION_DAYS"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &json_value(value)?)?;
+        }
+    }
+    for (input, key) in [
+        ("runtimeIdleMinutes", "BOX_RUNTIME_IDLE_TIMEOUT_MS"),
+        ("runtimeStartTimeoutMinutes", "BOX_RUNTIME_START_TIMEOUT_MS"),
+        (
+            "teleportRoomIdleMinutes",
+            "BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS",
+        ),
+    ] {
+        if let Some(value) = config.get(input) {
+            let minutes = json_value(value)?
+                .parse::<u64>()
+                .map_err(|_| format!("{input} 必须是有效分钟数"))?;
+            if minutes == 0 {
+                return Err(format!("{input} 必须大于 0"));
+            }
+            source = set_env(source, key, &minutes.saturating_mul(60_000).to_string())?;
+        }
+    }
+    for (input, key) in [
+        ("playerServiceMemoryMb", "BOX_PLAYER_SERVICE_MEMORY_LIMIT"),
+        ("authPortalMemoryMb", "BOX_AUTH_PORTAL_MEMORY_LIMIT"),
+        ("creatorMemoryMb", "BOX_CREATOR_MEMORY_LIMIT"),
+        ("playMemoryMb", "BOX_PLAY_MEMORY_LIMIT"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &format!("{}m", json_value(value)?))?;
+        }
+    }
+    for (input, key) in [
+        ("playerServiceCpuLimit", "BOX_PLAYER_SERVICE_CPU_LIMIT"),
+        ("authPortalCpuLimit", "BOX_AUTH_PORTAL_CPU_LIMIT"),
+        ("creatorCpuLimit", "BOX_CREATOR_CPU_LIMIT"),
+        ("playCpuLimit", "BOX_PLAY_CPU_LIMIT"),
+    ] {
+        if let Some(value) = config.get(input) {
+            source = set_env(source, key, &json_value(value)?)?;
+        }
+    }
+    for (input, key, inverted) in [
+        ("databaseSsl", "BOX_DATABASE_SSL", false),
+        ("autoBackupEnabled", "BOX_AUTO_BACKUP_ENABLED", false),
+        (
+            "registrationEnabled",
+            "BOX_PLAYER_REGISTRATION_ENABLED",
+            false,
+        ),
+    ] {
+        if let Some(value) = config.get(input).and_then(Value::as_bool) {
+            source = set_env(source, key, if value ^ inverted { "true" } else { "false" })?;
+        }
+    }
+    box_manager_core::environment::remove_env(&mut source, "BOX_PLAY_LIBRARY_READ_ONLY");
+    for (input, key) in [
+        ("databasePassword", "BOX_DATABASE_PASSWORD"),
+        ("redisPassword", "REDIS_PASSWORD"),
+        ("permissionTokenSecret", "PERMISSION_TOKEN_SECRET"),
+        ("playerAuthApiKey", "BOX_PLAYER_AUTH_API_KEY"),
+        ("playAdminToken", "BOX_PLAY_ADMIN_TOKEN"),
+    ] {
+        if let Some(value) = config
+            .get(input)
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+        {
+            source = set_env(source, key, value)?;
+        }
+    }
+    if database_mode == "managed" {
+        let (database, user) = managed_database_identity(&existing).unwrap_or_else(|| {
+            (
+                format!("box_db_{}", random_hex(8)),
+                format!("box_user_{}", random_hex(8)),
+            )
+        });
+        let password = managed_database_password(&existing).unwrap_or_else(|| random_hex(32));
+        source = set_env(source, "BOX_DATABASE_HOST", "managed-postgres")?;
+        source = set_env(source, "BOX_DATABASE_PORT", "5432")?;
+        source = set_env(source, "BOX_DATABASE_NAME", &database)?;
+        source = set_env(source, "BOX_DATABASE_USER", &user)?;
+        source = set_env(source, "BOX_DATABASE_PASSWORD", &password)?;
+        source = set_env(source, "BOX_MANAGED_POSTGRES_DATABASE", &database)?;
+        source = set_env(source, "BOX_MANAGED_POSTGRES_USER", &user)?;
+        source = set_env(source, "BOX_MANAGED_POSTGRES_PASSWORD", &password)?;
+        source = set_env(
+            source,
+            "BOX_DATABASE_URL",
+            &format!(
+                "postgres://{}:{}@managed-postgres:5432/{}",
+                urlencoding::encode(&user),
+                urlencoding::encode(&password),
+                urlencoding::encode(&database)
+            ),
+        )?;
+        source = set_env(source, "BOX_DATABASE_SSL", "false")?;
+    } else if let Some(host) = config.get("databaseHost") {
+        let host = json_value(host)?;
+        if host.is_empty() {
+            source = set_env(source, "BOX_DATABASE_URL", "")?;
+        } else {
+            let existing = parse_env(&source);
+            let (_, old_port, old_name, old_user, old_password) =
+                database_fields(existing.get("BOX_DATABASE_URL"));
+            let database_port = config
+                .get("databasePort")
+                .map(|value| port(value, "数据库端口"))
+                .transpose()?
+                .unwrap_or(old_port);
+            let database_name = config
+                .get("databaseName")
+                .map(json_value)
+                .transpose()?
+                .unwrap_or(old_name);
+            let database_user = config
+                .get("databaseUser")
+                .map(json_value)
+                .transpose()?
+                .unwrap_or(old_user);
+            let database_password = config
+                .get("databasePassword")
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .or_else(|| existing.get("BOX_DATABASE_PASSWORD").cloned())
+                .unwrap_or(old_password);
+            let authority = if database_user.is_empty() {
+                host.clone()
+            } else {
+                format!(
+                    "{}:{}@{}",
+                    urlencoding::encode(&database_user),
+                    urlencoding::encode(&database_password),
+                    host
+                )
+            };
+            source = set_env(source, "BOX_DATABASE_HOST", &host)?;
+            source = set_env(source, "BOX_DATABASE_PORT", &database_port)?;
+            source = set_env(source, "BOX_DATABASE_NAME", &database_name)?;
+            source = set_env(source, "BOX_DATABASE_USER", &database_user)?;
+            source = set_env(source, "BOX_DATABASE_PASSWORD", &database_password)?;
+            source = set_env(
+                source,
+                "BOX_DATABASE_URL",
+                &format!(
+                    "postgres://{authority}:{database_port}/{}",
+                    urlencoding::encode(&database_name)
+                ),
+            )?;
+        }
+    }
+    if redis_mode == "managed" {
+        let password = managed_redis_password(&existing).unwrap_or_else(|| random_hex(32));
+        source = set_env(source, "REDIS_HOST", "managed-redis")?;
+        source = set_env(source, "REDIS_PORT", "6379")?;
+        source = set_env(source, "REDIS_PASSWORD", &password)?;
+        source = set_env(source, "BOX_MANAGED_REDIS_PASSWORD", &password)?;
+        source = set_env(source, "REDIS_DB", "0")?;
+        source = set_env(source, "STORAGE_CACHE_REDIS_DB", "1")?;
+        source = set_env(source, "STORAGE_CACHE_REDIS_TTL", "240")?;
+    } else if redis_mode == "disabled" {
+        source = set_env(source, "REDIS_HOST", "")?;
+        source = set_env(source, "REDIS_PASSWORD", "")?;
+    }
+    if let Some(host) = config.get("publicHost") {
+        let host = json_value(host)?;
+        let port = config
+            .get("playPort")
+            .map(|value| port(value, "Play 端口"))
+            .transpose()?
+            .unwrap_or_else(|| "3121".into());
+        source = set_env(
+            source,
+            "BOX_PLAY_PUBLIC_URL",
+            &format!("http://{host}:{port}"),
+        )?;
+        let bind = if config.get("playNetworkMode").and_then(Value::as_str) == Some("local") {
+            "127.0.0.1"
+        } else {
+            "0.0.0.0"
+        };
+        source = set_env(source, "BOX_BIND_IP", bind)?;
+    }
+    if let Some(host) = config.get("creatorHost") {
+        let host = json_value(host)?;
+        let port = config
+            .get("creatorPort")
+            .map(|value| port(value, "Creator 端口"))
+            .transpose()?
+            .unwrap_or_else(|| "3127".into());
+        source = set_env(
+            source,
+            "BOX_CREATOR_PUBLIC_URL",
+            &format!("http://{host}:{port}"),
+        )?;
+        let bind = if config.get("creatorNetworkMode").and_then(Value::as_str) == Some("local") {
+            "127.0.0.1"
+        } else {
+            "0.0.0.0"
+        };
+        source = set_env(source, "BOX_CREATOR_BIND_IP", bind)?;
+        source = set_env(source, "BOX_VOXA_BIND_IP", bind)?;
+    }
+    if let Some(value) = config.get("registrationEnabled").and_then(Value::as_bool) {
+        source = set_env(
+            source,
+            "BOX_PLAYER_REGISTRATION_ENABLED",
+            if value { "true" } else { "false" },
+        )?;
+    }
+    box_manager_core::environment::remove_env(&mut source, "BOX_PLAY_LIBRARY_READ_ONLY");
+    // The desktop launcher keeps the script heap limit in step with
+    // the memory limit; the runtime reads BOX_SCRIPT_HEAP_MB.
+    if let Some(value) = config.get("scriptMemoryMb") {
+        source = set_env(source, "BOX_SCRIPT_HEAP_MB", &json_value(value)?)?;
+    }
+    if database_mode == "managed" {
+        box_manager_core::environment::remove_env(&mut source, "BOX_DATABASE_QUERY");
+    }
+    Ok(source)
+}
+
+pub(crate) fn managed_image(
+    values: &BTreeMap<String, String>,
+    service: &str,
+) -> Result<String, String> {
+    match service {
+        "postgresql" => Ok(values
+            .get("BOX_POSTGRES_IMAGE")
+            .cloned()
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "docker.m.daocloud.io/library/postgres:16-alpine".into())),
+        "redis" => Ok(values
+            .get("BOX_REDIS_IMAGE")
+            .cloned()
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "docker.m.daocloud.io/library/redis:7-alpine".into())),
+        _ => Err("只支持内置 PostgreSQL 或 Redis".into()),
+    }
+}
+pub(crate) fn managed_service_name(service: &str) -> Result<&'static str, String> {
+    match service {
+        "postgresql" => Ok("managed-postgres"),
+        "redis" => Ok("managed-redis"),
+        _ => Err("只支持内置 PostgreSQL 或 Redis".into()),
+    }
+}
+pub(crate) fn managed_running(service: &str) -> bool {
+    docker(&[
+        "ps",
+        "--filter",
+        "label=com.docker.compose.project=box-local-engine",
+        "--filter",
+        &format!("label=com.docker.compose.service={service}"),
+        "--filter",
+        "status=running",
+        "--format",
+        "{{.ID}}",
+    ])
+    .is_ok_and(|output| !output.is_empty())
+}
+pub(crate) fn managed_service_info(app: &App, service: &str) -> Result<Value, String> {
+    let values = parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default());
+    let image = managed_image(&values, service)?;
+    let image_available = docker(&["image", "inspect", &image]).is_ok();
+    match service {
+        "postgresql" => {
+            let database = values
+                .get("BOX_MANAGED_POSTGRES_DATABASE")
+                .or_else(|| values.get("BOX_DATABASE_NAME"))
+                .cloned()
+                .unwrap_or_else(|| "box".into());
+            let user = values
+                .get("BOX_MANAGED_POSTGRES_USER")
+                .or_else(|| values.get("BOX_DATABASE_USER"))
+                .cloned()
+                .unwrap_or_else(|| "box".into());
+            let password = values
+                .get("BOX_MANAGED_POSTGRES_PASSWORD")
+                .or_else(|| values.get("BOX_DATABASE_PASSWORD"))
+                .cloned()
+                .unwrap_or_default();
+            let port = values
+                .get("BOX_MANAGED_POSTGRES_HOST_PORT")
+                .cloned()
+                .unwrap_or_else(|| "5432".into());
+            let configured = values
+                .get("BOX_DATABASE_MODE")
+                .is_some_and(|mode| mode == "managed")
+                && !password.is_empty();
+            Ok(json!({
+                "imageAvailable": image_available,
+                "configured": configured,
+                "running": managed_running("managed-postgres"),
+                "host": "127.0.0.1",
+                "port": port,
+                "database": database,
+                "user": user,
+                "password": password,
+                "connectionUrl": if configured { format!("postgresql://{}:{}@127.0.0.1:{}/{}", urlencoding::encode(&user), urlencoding::encode(&password), port, urlencoding::encode(&database)) } else { String::new() }
+            }))
+        }
+        "redis" => {
+            let password = values
+                .get("BOX_MANAGED_REDIS_PASSWORD")
+                .or_else(|| values.get("REDIS_PASSWORD"))
+                .cloned()
+                .unwrap_or_default();
+            let port = values
+                .get("BOX_MANAGED_REDIS_HOST_PORT")
+                .cloned()
+                .unwrap_or_else(|| "6379".into());
+            let database = values
+                .get("REDIS_DB")
+                .cloned()
+                .unwrap_or_else(|| "0".into());
+            let configured = values
+                .get("BOX_REDIS_MODE")
+                .is_some_and(|mode| mode == "managed")
+                && !password.is_empty();
+            Ok(json!({
+                "imageAvailable": image_available,
+                "configured": configured,
+                "running": managed_running("managed-redis"),
+                "host": "127.0.0.1",
+                "port": port,
+                "database": database,
+                "user": "",
+                "password": password,
+                "connectionUrl": if configured { format!("redis://:{}@127.0.0.1:{}/{}", urlencoding::encode(&password), port, database) } else { String::new() }
+            }))
+        }
+        _ => unreachable!(),
+    }
+}
+pub(crate) fn prepare_managed_service(app: &App, service: &str) -> Result<(), String> {
+    app.progress("managed-check", "正在检查内置服务镜像…", 10);
+    let values = parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default());
+    let image = managed_image(&values, service)?;
+    docker(&["info", "--format", "{{.ServerVersion}}"])?;
+    if docker(&["image", "inspect", &image]).is_err() {
+        app.progress("managed-image", "正在下载内置服务镜像…", 20);
+        docker(&["pull", &image])?;
+    }
+    Ok(())
+}
+pub(crate) fn start_managed_service(app: &App, service: &str) -> Result<(), String> {
+    let values = parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default());
+    let compose_service = managed_service_name(service)?;
+    let mode_key = if service == "postgresql" {
+        "BOX_DATABASE_MODE"
+    } else {
+        "BOX_REDIS_MODE"
+    };
+    if !values.get(mode_key).is_some_and(|mode| mode == "managed") {
+        return Err("请先保存内置服务配置".into());
+    }
+    compose(app, &["up", "-d", "--wait", compose_service])?;
+    Ok(())
+}
+pub(crate) fn private(path: &FsPath, value: &str) -> Result<(), String> {
+    fs::create_dir_all(path.parent().ok_or("无效路径")?).map_err(|e| e.to_string())?;
+    remove_empty_file_placeholder(path)?;
+    let tmp = path.with_extension(format!("{}.{}.tmp", std::process::id(), random_hex(8)));
+    fs::write(&tmp, value).map_err(|e| e.to_string())?;
+    if let Err(error) = fs::rename(&tmp, path) {
+        let _ = fs::remove_file(tmp);
+        return Err(error.to_string());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Docker creates a directory when a configured bind-mounted file does not
+/// exist yet. Treat only an empty real directory as that placeholder; links or
+/// directories containing data remain hard errors.
+pub(crate) fn remove_empty_file_placeholder(path: &FsPath) -> Result<(), String> {
+    let metadata = match fs::symlink_metadata(path) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(error.to_string()),
+    };
+    if !metadata.file_type().is_dir() {
+        return Ok(());
+    }
+    let mut entries = fs::read_dir(path).map_err(|error| error.to_string())?;
+    if entries.next().is_some() {
+        return Err(format!("{} 应为文件，但当前是非空目录", path.display()));
+    }
+    fs::remove_dir(path).map_err(|error| error.to_string())
+}
