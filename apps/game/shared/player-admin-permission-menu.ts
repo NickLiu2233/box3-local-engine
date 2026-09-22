@@ -42,8 +42,8 @@ export const PLAYER_ADMIN_PERMISSION_MENU: readonly PlayerAdminPermissionMenuCat
     key: 'creator',
     title: '创作管理',
     sections: [
-      { key: 'creator-access', title: '玩家创作权限', capabilities: ['creator-access.view', 'creator-access.manage'] },
-      { key: 'creator-tokens', title: 'CLI Token', capabilities: ['creator-tokens.view', 'creator-tokens.manage'] },
+      { key: 'creator-access', title: '创作权限', capabilities: ['creator-access.view', 'creator-access.manage'] },
+      { key: 'creator-tokens', title: 'CLI 令牌', capabilities: ['creator-tokens.view', 'creator-tokens.manage'] },
     ],
   },
   {
@@ -58,7 +58,7 @@ export const PLAYER_ADMIN_PERMISSION_MENU: readonly PlayerAdminPermissionMenuCat
     title: '容器管理',
     sections: [
       { key: 'runtimes', title: '游玩端 / 创作端', capabilities: ['containers.view'] },
-      { key: 'profiles', title: '地图容器配置', capabilities: ['containers.manage'] },
+      { key: 'profiles', title: '容器配置', capabilities: ['containers.manage'] },
     ],
   },
 ];

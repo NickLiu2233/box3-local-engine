@@ -2073,10 +2073,10 @@ export default function PlayerAdminPage() {
             label: '创作管理',
             children: [
               ...(canOpenPlayerAdminView(actor, 'creator-access')
-                ? [{ key: 'creator-access', label: '玩家创作权限' }]
+                ? [{ key: 'creator-access', label: '创作权限' }]
                 : []),
               ...(canOpenPlayerAdminView(actor, 'creator-tokens')
-                ? [{ key: 'creator-tokens', label: 'CLI Token' }]
+                ? [{ key: 'creator-tokens', label: 'CLI 令牌' }]
                 : []),
             ],
           },
@@ -2099,7 +2099,7 @@ export default function PlayerAdminPage() {
             children: [
               ...(canOpenPlayerAdminView(actor, 'container-play') ? [{ key: 'container-play', label: '游玩端' }] : []),
               ...(canOpenPlayerAdminView(actor, 'container-creator') ? [{ key: 'container-creator', label: '创作端' }] : []),
-              ...(canOpenPlayerAdminView(actor, 'container-profiles') ? [{ key: 'container-profiles', label: '地图容器配置' }] : []),
+              ...(canOpenPlayerAdminView(actor, 'container-profiles') ? [{ key: 'container-profiles', label: '容器配置' }] : []),
               ...(canOpenPlayerAdminView(actor, 'container-resource-groups') ? [{ key: 'container-resource-groups', label: '资源组' }] : []),
             ],
           },
