@@ -69,7 +69,7 @@ Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到
 BOX_PLAY_ADMIN_TOKEN=至少16位随机管理密钥
 ```
 
-然后执行 `docker compose up -d --force-recreate`，在玩家管理后台的“服主管理 → 游玩地图”中导入
+然后执行 `docker compose up -d --force-recreate`，在玩家管理后台的“游玩管理 → 游玩地图”中导入
 `.boxplay`。也可以把完整发布目录放入 `play-worlds/<作品ID>/`。增加地图不需要重建镜像。
 
 更新镜像：

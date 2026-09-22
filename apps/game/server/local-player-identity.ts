@@ -31,6 +31,7 @@ import {
 } from '../shared/creator-cli-policy';
 import { requestClientAddress } from './client-address';
 import { hasTrustedPlayerAuthKey } from './player-auth-security';
+import { PlayerAdminRequestError } from './player-admin-errors';
 
 const COOKIE_NAME = 'box_local_player_session';
 const DEVICE_COOKIE_NAME = 'box_local_player_device';
@@ -1692,7 +1693,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
     WHERE p.id = $1
   `, [subjectId]);
   const row = result.rows[0];
-  if (!row) throw new Error('玩家不存在');
+  if (!row) throw new PlayerAdminRequestError('玩家不存在', 404);
   const [sessions, cliTokens, history, adminHistory, relatedAccounts, identityBans] = await Promise.all([
     database.query<{
       session_id: string; created_at: string | Date; last_seen_at: string | Date;

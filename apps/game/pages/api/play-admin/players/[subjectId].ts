@@ -15,6 +15,7 @@ import {
 import {
   authorizePlayerAdmin,
 } from '../../../../server/player-admin-authorization';
+import { playerAdminRequestError } from '../../../../server/player-admin-errors';
 import {
   parsePlayerItemOperation,
   playerItemRequirement,
@@ -91,6 +92,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ deleted: true });
     }
   } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+    const requestError = playerAdminRequestError(error);
+    return res.status(requestError?.status || 400).json({
+      message: requestError?.message || (error as Error).message,
+    });
   }
 }

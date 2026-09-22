@@ -13,6 +13,7 @@ export const PLAYER_ADMIN_VIEWS = [
   'container-play',
   'container-creator',
   'container-profiles',
+  'container-resource-groups',
   'creator-access',
   'creator-tokens',
 ] as const;
@@ -41,6 +42,7 @@ export const PLAYER_ADMIN_VIEW_REQUIREMENTS: Record<
   'container-play': 'containers.view',
   'container-creator': 'containers.view',
   'container-profiles': 'containers.view',
+  'container-resource-groups': 'containers.view',
   'creator-access': 'creator-access.view',
   'creator-tokens': 'creator-tokens.view',
 };

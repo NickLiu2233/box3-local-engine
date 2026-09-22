@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { PlayerAdminRequestError } from './player-admin-errors';
 
 type RuntimeMode = 'play' | 'creator';
 type PlayMapReference = {
@@ -147,7 +148,15 @@ export async function saveRuntimeResourceGroup(input: Record<string, unknown>) {
   const document = await profileDocument();
   const requestedId = String(input.id || '').trim();
   const id = requestedId || `resource-${randomUUID().replace(/-/g, '').slice(0, 32)}`;
-  const group = normalizeRuntimeResourceGroup(input, id);
+  let group: RuntimeResourceGroup;
+  try {
+    group = normalizeRuntimeResourceGroup(input, id);
+  } catch (error) {
+    throw new PlayerAdminRequestError(
+      error instanceof Error ? error.message : '资源组配置无效',
+      400,
+    );
+  }
   document.resourceGroups = document.resourceGroups.filter((item: RuntimeResourceGroup) => item.id !== group.id);
   document.resourceGroups.push(group);
   await writeProfileDocument(document);
@@ -158,7 +167,9 @@ export async function deleteRuntimeResourceGroup(id: string) {
   if (!mapIdPattern.test(id)) throw new Error('资源组 ID 格式无效');
   const document = await profileDocument();
   const inUse = document.profiles.some((item: MapRuntimeProfile) => item.resourceGroupId === id);
-  if (inUse) throw new Error('该资源组仍被地图容器配置使用，无法删除');
+  if (inUse) {
+    throw new PlayerAdminRequestError('该资源组仍被地图容器配置使用，无法删除', 409);
+  }
   document.resourceGroups = document.resourceGroups.filter((item: RuntimeResourceGroup) => item.id !== id);
   await writeProfileDocument(document);
 }
@@ -274,13 +285,30 @@ function playMapGroup(maps: PlayMapReference[], permanentMapId: string) {
 /** Saving a map group mirrors its profile onto every submap runtime. */
 export async function savePlayMapGroupRuntimeProfile(input: Record<string, unknown>) {
   const maps = await playMaps() as PlayMapReference[];
-  const { main, members } = playMapGroup(maps, String(input.permanentMapId || ''));
+  let mapGroup: ReturnType<typeof playMapGroup>;
+  try {
+    mapGroup = playMapGroup(maps, String(input.permanentMapId || ''));
+  } catch (error) {
+    throw new PlayerAdminRequestError(
+      error instanceof Error ? error.message : '地图容器配置无效',
+      400,
+    );
+  }
+  const { main, members } = mapGroup;
   const configurationScope = input.configurationScope === 'map' ? 'map' : 'group';
   const root = configurationScope === 'group' ? main : members.find((map) => map.permanentMapId === String(input.permanentMapId))!;
-  const profile = normalizeMapRuntimeProfile({ ...input, permanentMapId: root.permanentMapId, configurationScope, configurationRootId: root.permanentMapId });
+  let profile: MapRuntimeProfile;
+  try {
+    profile = normalizeMapRuntimeProfile({ ...input, permanentMapId: root.permanentMapId, configurationScope, configurationRootId: root.permanentMapId });
+  } catch (error) {
+    throw new PlayerAdminRequestError(
+      error instanceof Error ? error.message : '地图容器配置无效',
+      400,
+    );
+  }
   const document = await profileDocument();
   if (profile.resourceGroupId && !document.resourceGroups.some((item: RuntimeResourceGroup) => item.id === profile.resourceGroupId)) {
-    throw new Error('所选资源组不存在或已删除');
+    throw new PlayerAdminRequestError('所选资源组不存在或已删除', 400);
   }
   const targetIds = configurationScope === 'group' ? new Set(members.map((map) => map.permanentMapId)) : new Set([root.permanentMapId]);
   document.profiles = document.profiles.filter((item: MapRuntimeProfile) => !targetIds.has(item.permanentMapId));

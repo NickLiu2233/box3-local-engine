@@ -114,11 +114,18 @@
 | `GET`                   | `/players/overview`      | `players.view`   | 概览与安全指标              |
 | `GET`                   | `/players/export`        | `players.export` | 导出 CSV                    |
 | `GET`                   | `/activity`              | `audit.view`     | 登录与管理审计分页查询      |
+| `GET/POST`              | `/identity-bans`         | 查看/管理来源封禁 | 查询或维护 IP、设备封禁     |
 | `POST`                  | `/maintenance`           | 服主             | 清理已过期会话              |
 | `GET/POST`              | `/admins`                | 服主             | 查询或创建后台管理账号      |
 | `PATCH/DELETE`          | `/admins/:id`            | 服主             | 修改或删除后台管理账号      |
 | `GET/POST`              | `/permission-groups`     | 服主             | 查询或创建权限组            |
 | `PATCH/DELETE`          | `/permission-groups/:id` | 服主             | 修改或删除权限组            |
+| `GET/POST`              | `/container-resource-groups` | `containers.view/manage` | 查询或创建 CPU/内存资源组 |
+| `PATCH/DELETE`          | `/container-resource-groups/:id` | `containers.manage` | 修改或删除资源组 |
+| `GET/POST`              | `/containers`            | `containers.view/manage` | 查询运行容器，保存地图容量配置或执行重启/销毁 |
+| `DELETE`                | `/containers/:mapId`     | `containers.manage` | 删除地图组或单图容器配置 |
+| `GET`                   | `/worlds`、`/worlds/status` | 服主令牌         | 查询游玩地图和地图资源状态 |
+| `GET/POST/DELETE`       | `/import`                | 服主令牌         | 预览、确认导入或取消 `.boxplay` 审查 |
 
 ### 查询与创建
 
@@ -165,7 +172,7 @@
 
 `POST /players/batch` 的 `subjectIds` 为 1–100 个身份 ID；支持 `revoke-sessions`、`ban`、`unban`、`add-tag`、`remove-tag`。
 
-可分配权限：`players.view`、`players.manage`、`players.ban`、`sessions.manage`、`identity-bans.manage`、`players.create`、`players.export`、`passwords.reset`、`audit.view`。`admin` 拥有全部后台权限；`moderator` 仅拥有分配权限；服主身份不可授予。
+可分配权限覆盖玩家、会话、账号/IP/设备封禁、创作权限、Creator CLI Token、游玩地图、地图容器和审计。每个功能都有独立查看能力，编辑/管理能力自动包含其对应查看能力。普通后台账号是管理员并拥有全部可分配能力；为账号指定权限组即可限制其可见菜单和 API 操作。服主身份不可授予。
 
 创作者权限与后台权限相互独立：
 
@@ -183,18 +190,18 @@
 
 ### 管理账号与权限组
 
-创建后台账号需要 `username`、`displayName`、至少 12 位的 `password`、`role`（`admin|moderator`），可选 `permissions` 和 `permissionGroupId`。管理员账号 ID 和权限组 ID 均为 UUID。更新账号可修改昵称、密码、角色、权限组、直接权限和 `status`（`active|disabled`）。
+创建后台账号需要 `username`、`displayName`、至少 12 位的 `password` 和 `permissionGroupId`。账号默认是管理员；管理员账号 ID 和权限组 ID 均为 UUID。更新账号可修改昵称、密码、权限组和 `status`（`active|disabled`）；不再接受角色或直接权限字段。
 
 权限组请求为：
 
 ```json
 {
   "name": "客服组",
-  "permissions": ["players.view", "players.manage", "sessions.manage"]
+  "permissions": ["players.view", "players.manage", "sessions.view", "sessions.manage"]
 }
 ```
 
-服主会话来自 `BOX_PLAY_ADMIN_TOKEN`，不是一种可创建或分配的后台账号；维护管理员、权限组和删除玩家均只接受服主会话。
+服主会话来自 `BOX_PLAY_ADMIN_TOKEN`，不是一种可创建或分配的后台账号；维护管理员、权限组和删除玩家均只接受服主会话。创建、更新、删除资源组时，如果资源组已经被地图容器配置使用，删除会被拒绝。
 
 ### 审计与维护
 

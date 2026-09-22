@@ -333,7 +333,7 @@ function Menu(props: ComponentProps<typeof AntMenu>) {
           ? 'creator-center'
           : selectedKey === 'play-maps'
             ? 'play-center'
-            : selectedKey === 'container-play' || selectedKey === 'container-creator' || selectedKey === 'container-profiles'
+            : selectedKey === 'container-play' || selectedKey === 'container-creator' || selectedKey === 'container-profiles' || selectedKey === 'container-resource-groups'
               ? 'container-center'
             : selectedKey === 'admins' || selectedKey === 'permission-groups'
             ? 'owner-center'
@@ -1400,7 +1400,6 @@ function ContainerManagementPage({ mode, canManage }: { mode: 'play' | 'creator'
           { title: '地图 ID', dataIndex: 'permanentMapId', render: (value) => <code>{value}</code> },
           { title: '运行状态', width: 150, render: (_, item) => <Tooltip title={item.status.message || undefined}><Tag color={item.status.phase === 'ready' ? 'success' : item.status.phase === 'error' ? 'error' : 'processing'}>{statusLabel(item.status)}</Tag></Tooltip> },
           { title: '资源使用 / 上限', render: (_, item) => { const resourceGroup = (catalog?.resourceGroups || []).find((group) => group.id === item.profile?.resourceGroupId); const cpuLimit = resourceGroup?.cpuMilli ?? item.profile?.cpuMilli ?? catalog?.defaults.cpuMilli ?? 4000; const memoryLimit = resourceGroup?.memoryMb ?? item.profile?.memoryMb ?? catalog?.defaults.memoryMb ?? 4096; return <span className="player-admin-muted">CPU {item.status.cpuPercent == null ? '—' : (item.status.cpuPercent / 100).toFixed(2)} / {(cpuLimit / 1000).toFixed(2)} 核 · 内存 {item.status.memoryBytes == null ? '—' : formatBytes(item.status.memoryBytes)} / {memoryLimit} MB</span> } },
-          { title: '在线人数 / 上限', width: 120, render: (_, item) => `${item.status.onlineCount ?? 0} / ${item.profile?.playerLimit ?? catalog?.defaults.playerLimit ?? 70} 人` },
           { title: '房间', width: 70, render: (_, item) => <span>{item.status.rooms?.length || 0}</span> },
           { title: '操作', width: 140, render: (_, item) => canManage ? <Space size={4}><Button type="link" onClick={() => restart(item)}>重启</Button><Button type="link" danger onClick={() => destroy(item)}>销毁</Button></Space> : '—' },
         ]}
@@ -1414,10 +1413,7 @@ function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<ContainerProfile>()
   const [form] = Form.useForm<ContainerProfile>()
-  const [resourceGroup, setResourceGroup] = useState<ContainerResourceGroup>()
-  const [resourceGroupForm] = Form.useForm<ContainerResourceGroup>()
   const configurationScope = Form.useWatch('configurationScope', form) || 'group'
-  const resourceGroupId = Form.useWatch('resourceGroupId', form)
   const load = useCallback(async () => {
     setLoading(true)
     try { setCatalog(await api<ContainerCatalog>('/api/play-admin/containers?mode=play')) }
@@ -1444,38 +1440,6 @@ function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
     title: '删除容器配置', content: '后续启动将使用全局默认容量和共享 Node 运行时。', okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
     onOk: async () => { await api(`/api/play-admin/containers/${encodeURIComponent(item.permanentMapId)}`, { method: 'DELETE', body: JSON.stringify({ configurationScope: item.configurationScope }) }); message.success('容器配置已删除'); await load() },
   })
-  const openResourceGroup = (item?: ContainerResourceGroup) => {
-    const next = item || { name: '', cpuMilli: 1000, memoryMb: 1024 }
-    setResourceGroup(next)
-    resourceGroupForm.setFieldsValue(next)
-  }
-  const saveResourceGroup = async () => {
-    try {
-      const values = await resourceGroupForm.validateFields()
-      const result = await api<{ resourceGroup: ContainerResourceGroup }>(resourceGroup?.id ? `/api/play-admin/container-resource-groups/${encodeURIComponent(resourceGroup.id)}` : '/api/play-admin/container-resource-groups', { method: resourceGroup?.id ? 'PATCH' : 'POST', body: JSON.stringify(values) })
-      form.setFieldValue('resourceGroupId', result.resourceGroup.id)
-      setResourceGroup(undefined)
-      await load()
-      message.success('资源组已保存')
-    } catch (error) { if (error instanceof Error) message.error(error.message) }
-  }
-  const selectedResourceGroup = (catalog?.resourceGroups || []).find((item) => item.id === resourceGroupId)
-  const removeResourceGroup = () => {
-    if (!selectedResourceGroup?.id) return
-    Modal.confirm({
-      title: `删除资源组“${selectedResourceGroup.name}”？`,
-      content: '未被地图使用的资源组会被永久删除。',
-      okText: '删除',
-      cancelText: '取消',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        await api(`/api/play-admin/container-resource-groups/${encodeURIComponent(selectedResourceGroup.id!)}`, { method: 'DELETE' })
-        form.setFieldValue('resourceGroupId', undefined)
-        await load()
-        message.success('资源组已删除')
-      },
-    })
-  }
   return <>
     <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
       <Col><h1 className="player-admin-page-title">地图容器配置</h1></Col>
@@ -1491,8 +1455,6 @@ function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
           { title: '房间上限', dataIndex: 'roomLimit', render: (value) => `${value} 个` },
           { title: '空闲回收', dataIndex: 'idleTimeoutMs', render: (value) => `${value} ms` },
           { title: '资源组', render: (_, item) => { const group = (catalog?.resourceGroups || []).find((candidate) => candidate.id === item.resourceGroupId); return group ? <Tag color="blue">{group.name}</Tag> : '—' } },
-          { title: 'CPU 上限', dataIndex: 'cpuMilli', render: (value, item) => { const group = (catalog?.resourceGroups || []).find((candidate) => candidate.id === item.resourceGroupId); return group ? `${group.cpuMilli} m` : value == null ? '—' : `${value} m` } },
-          { title: '内存上限', dataIndex: 'memoryMb', render: (value, item) => { const group = (catalog?.resourceGroups || []).find((candidate) => candidate.id === item.resourceGroupId); return group ? `${group.memoryMb} MB` : value == null ? '—' : `${value} MB` } },
           { title: '运行方式', render: (_, item) => item.resourceGroupId || item.cpuMilli || item.memoryMb ? <Tag color="blue">独立 Docker 容器</Tag> : <Tag>共享 Node</Tag> },
           { title: '操作', render: (_, item) => canManage ? <Space size={4}><Button type="link" onClick={() => openProfile(item)}>编辑</Button><Button type="link" danger onClick={() => removeProfile(item)}>删除</Button></Space> : '—' },
         ]}
@@ -1503,11 +1465,66 @@ function ContainerProfilesPage({ canManage }: { canManage: boolean }) {
         <Row gutter={16}><Col span={8}><Form.Item name="configurationScope" label="配置范围"><Select disabled={Boolean(profile?.permanentMapId)} options={[{ value: 'group', label: '地图组' }, { value: 'map', label: '单个地图' }]} onChange={() => form.setFieldValue('permanentMapId', undefined)} /></Form.Item></Col><Col span={16}><Form.Item name="permanentMapId" label="地图 ID" rules={[{ required: true, message: configurationScope === 'group' ? '请选择地图组' : '请选择地图' }]}><Select disabled={Boolean(profile?.permanentMapId)} placeholder={configurationScope === 'group' ? '选择地图组' : '选择地图'} options={(configurationScope === 'group' ? (catalog?.availableMaps || []) : (catalog?.allMaps || [])).map((item) => ({ value: item.permanentMapId, label: `${item.name} · ${item.permanentMapId}${configurationScope === 'group' && (item.memberCount || 1) > 1 ? ` · ${item.memberCount} 张地图` : ''}` }))} /></Form.Item></Col></Row>
         <Row gutter={16}><Col span={12}><Form.Item name="playerLimit" label="人数上限" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="roomLimit" label="房间上限" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col></Row>
         <Form.Item name="idleTimeoutMs" label="无用户时存活时间（ms）" rules={[{ required: true }]}><Input type="number" min={1000} /></Form.Item>
-        <Form.Item name="resourceGroupId" label="资源组"><Row gutter={8} wrap={false}><Col flex="auto"><Select allowClear placeholder="选择资源组；留空使用共享 Node" options={(catalog?.resourceGroups || []).map((item) => ({ value: item.id, label: `${item.name} · ${item.cpuMilli} m · ${item.memoryMb} MB` }))} /></Col>{canManage ? <Col><Space><Button onClick={() => openResourceGroup()}>新建</Button>{selectedResourceGroup ? <><Button onClick={() => openResourceGroup(selectedResourceGroup)}>编辑</Button><Button danger onClick={removeResourceGroup}>删除</Button></> : null}</Space></Col> : null}</Row></Form.Item>
+        <Form.Item name="resourceGroupId" label="资源组"><Select allowClear placeholder="选择资源组；留空使用共享 Node" options={(catalog?.resourceGroups || []).map((item) => ({ value: item.id, label: `${item.name} · ${item.cpuMilli} m · ${item.memoryMb} MB` }))} /></Form.Item>
       </Form>
     </Modal>
-    <Modal title={resourceGroup?.id ? '编辑资源组' : '新建资源组'} open={Boolean(resourceGroup)} onCancel={() => setResourceGroup(undefined)} onOk={() => void saveResourceGroup()} okText="保存">
-      <Form form={resourceGroupForm} layout="vertical"><Form.Item name="name" label="资源组名称" rules={[{ required: true, message: '请输入资源组名称' }, { max: 64 }]}><Input placeholder="例如：小型地图" /></Form.Item><Row gutter={16}><Col span={12}><Form.Item name="cpuMilli" label="CPU 上限（m）" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="memoryMb" label="内存上限（MB）" rules={[{ required: true }]}><Input type="number" min={64} /></Form.Item></Col></Row></Form>
+  </>
+}
+
+function ContainerResourceGroupsPage({ canManage }: { canManage: boolean }) {
+  const [groups, setGroups] = useState<ContainerResourceGroup[]>([])
+  const [loading, setLoading] = useState(false)
+  const [editing, setEditing] = useState<ContainerResourceGroup>()
+  const [form] = Form.useForm<ContainerResourceGroup>()
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await api<{ resourceGroups: ContainerResourceGroup[] }>('/api/play-admin/container-resource-groups')
+      setGroups(result.resourceGroups || [])
+    } catch (error) { message.error((error as Error).message) }
+    finally { setLoading(false) }
+  }, [])
+  useEffect(() => { void load() }, [load])
+  const open = (item?: ContainerResourceGroup) => {
+    const next = item || { name: '', cpuMilli: 1000, memoryMb: 1024 }
+    setEditing(next)
+    form.setFieldsValue(next)
+  }
+  const save = async () => {
+    try {
+      const values = await form.validateFields()
+      await api(editing?.id ? `/api/play-admin/container-resource-groups/${encodeURIComponent(editing.id)}` : '/api/play-admin/container-resource-groups', {
+        method: editing?.id ? 'PATCH' : 'POST', body: JSON.stringify(values),
+      })
+      setEditing(undefined)
+      message.success('资源组已保存')
+      await load()
+    } catch (error) { if (error instanceof Error) message.error(error.message) }
+  }
+  const remove = (item: ContainerResourceGroup) => Modal.confirm({
+    title: `删除资源组“${item.name}”？`, content: '资源组未被地图容器配置使用时才可删除。',
+    okText: '删除', cancelText: '取消', okButtonProps: { danger: true },
+    onOk: async () => {
+      await api(`/api/play-admin/container-resource-groups/${encodeURIComponent(item.id || '')}`, { method: 'DELETE' })
+      message.success('资源组已删除')
+      await load()
+    },
+  })
+  return <>
+    <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
+      <Col><h1 className="player-admin-page-title">资源组</h1></Col>
+      <Col><Space><Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>刷新</Button>{canManage ? <Button type="primary" onClick={() => open()}>新建资源组</Button> : null}</Space></Col>
+    </Row>
+    <Card className="player-admin-panel">
+      <AntTable loading={loading} rowKey="id" pagination={false} dataSource={groups} columns={[
+        { title: '名称', dataIndex: 'name' },
+        { title: 'CPU 上限', dataIndex: 'cpuMilli', render: (value) => `${value} m` },
+        { title: '内存上限', dataIndex: 'memoryMb', render: (value) => `${value} MB` },
+        { title: '操作', render: (_, item: ContainerResourceGroup) => canManage ? <Space><Button type="link" onClick={() => open(item)}>编辑</Button><Button type="link" danger onClick={() => remove(item)}>删除</Button></Space> : '—' },
+      ]} />
+    </Card>
+    <Modal title={editing?.id ? '编辑资源组' : '新建资源组'} open={Boolean(editing)} onCancel={() => setEditing(undefined)} onOk={() => void save()} okText="保存">
+      <Form form={form} layout="vertical"><Form.Item name="name" label="资源组名称" rules={[{ required: true, message: '请输入资源组名称' }, { max: 64 }]}><Input placeholder="例如：小型地图" /></Form.Item><Row gutter={16}><Col span={12}><Form.Item name="cpuMilli" label="CPU 上限（m）" rules={[{ required: true }]}><Input type="number" min={1} /></Form.Item></Col><Col span={12}><Form.Item name="memoryMb" label="内存上限（MB）" rules={[{ required: true }]}><Input type="number" min={64} /></Form.Item></Col></Row></Form>
     </Modal>
   </>
 }
@@ -2410,7 +2427,7 @@ export default function PlayerAdminPage() {
           },
         ]
       : []),
-    ...(canOpenPlayerAdminView(actor, 'container-play') || canOpenPlayerAdminView(actor, 'container-creator') || canOpenPlayerAdminView(actor, 'container-profiles')
+    ...(canOpenPlayerAdminView(actor, 'container-play') || canOpenPlayerAdminView(actor, 'container-creator') || canOpenPlayerAdminView(actor, 'container-profiles') || canOpenPlayerAdminView(actor, 'container-resource-groups')
       ? [
           {
             key: 'container-center',
@@ -2419,6 +2436,7 @@ export default function PlayerAdminPage() {
               ...(canOpenPlayerAdminView(actor, 'container-play') ? [{ key: 'container-play', label: '游玩端' }] : []),
               ...(canOpenPlayerAdminView(actor, 'container-creator') ? [{ key: 'container-creator', label: '创作端' }] : []),
               ...(canOpenPlayerAdminView(actor, 'container-profiles') ? [{ key: 'container-profiles', label: '地图容器配置' }] : []),
+              ...(canOpenPlayerAdminView(actor, 'container-resource-groups') ? [{ key: 'container-resource-groups', label: '资源组' }] : []),
             ],
           },
         ]
@@ -2460,6 +2478,8 @@ export default function PlayerAdminPage() {
     body = <ContainerManagementPage mode="creator" canManage={can('containers.manage')} />
   else if (view === 'container-profiles')
     body = <ContainerProfilesPage canManage={can('containers.manage')} />
+  else if (view === 'container-resource-groups')
+    body = <ContainerResourceGroupsPage canManage={can('containers.manage')} />
   else if (view === 'overview')
     body = (
       <>

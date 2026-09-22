@@ -20,7 +20,8 @@ BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 | 类别     | 变量                                                                                                                                            |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | 网络     | `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP`、五个服务端口与对应 `*_PUBLIC_URL`                                                     |
-| Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`                                                                 |
+| Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`、`BOX_LOCAL_PLAYER_LIMIT`                                         |
+| 容器资源 | `BOX_PLAY_CPU_LIMIT`、`BOX_PLAY_MEMORY_LIMIT`、`BOX_PLAYER_SERVICE_CPU_LIMIT`、`BOX_PLAYER_SERVICE_MEMORY_LIMIT`                                |
 | Teleport | `BOX_TELEPORT_MAX_ROOMS`、`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`                                                                                   |
 | 数据     | `BOX_DATABASE_MODE`、`BOX_REDIS_MODE`、`BOX_DATABASE_URL`、`BOX_DATABASE_SSL`、`REDIS_HOST`、`REDIS_PORT`、`REDIS_DB`、`STORAGE_CACHE_REDIS_DB` |
 | 登录     | `BOX_PLAYER_LOGIN_URL`、`BOX_PLAYER_AUTH_ALLOWED_ORIGINS`、`BOX_PLAYER_REGISTRATION_ENABLED`、`BOX_PLAYER_COOKIE_DOMAIN`                        |
@@ -37,7 +38,9 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 
 `BOX_PLAY_MAX_RUNTIMES` 限制同时运行的地图和 Teleport 房间总数；`BOX_PLAY_PREWARM_RUNTIMES` 与 `BOX_CREATOR_EDIT_PREWARM_RUNTIMES` 默认均为 `2`，只预热主地图优先的指定数量，不会为了预热遍历整个地图仓库；`BOX_RUNTIME_IDLE_TIMEOUT_MS` 控制无连接地图的回收时间。低配机器可设为 `0`，高配置服主可按实际负载提高，再观察启动器性能监控。
 
-游玩地图由“玩家管理后台 → 服主管理 → 游玩地图”统一管理；地图文件不会因端口或容器重启而丢失，但自定义目录必须在升级后继续挂载。
+游玩地图由“玩家管理后台 → 游玩管理 → 游玩地图”统一管理，不再在 Play 游戏内提供旧的服主管理入口。地图文件不会因端口或容器重启而丢失，但自定义目录必须在升级后继续挂载。
+
+地图运行容器的默认 CPU 与内存来自启动器写入的 `BOX_PLAY_CPU_LIMIT`/`BOX_PLAY_MEMORY_LIMIT`（以及 Creator 对应运行配置）。后台“地图容器配置”可创建多个资源组并对地图组或单张地图覆盖默认值；资源组优先于单独配置，单独配置优先于环境默认值。Docker 的 CPU 是核数（可使用小数），内存使用 `m` 或 `g` 等 Docker 容量格式；后台显示和编辑资源组时使用 CPU 毫核（`1000 m = 1 核`）与 MB。
 
 ## 修改后的动作
 
@@ -46,6 +49,7 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 | 端口、公开 URL、Cookie、Origin | Play、Player Service、登录门户 |
 | PostgreSQL、Redis、密钥        | 所有依赖该配置的服务           |
 | Play 容量、Teleport、地图库    | Play                           |
+| 地图容器资源组、地图容量配置  | 仅新启动或重启的目标地图容器   |
 | 注册开关                       | Player Service 与登录门户      |
 
 启动器保存配置后会重新派生内部 URL；不要手工编辑 `.runtime.env`。源码部署可以编辑 `.env`，但改动后同样需要重新创建容器。
