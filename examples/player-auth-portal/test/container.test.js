@@ -25,7 +25,10 @@ test('container image copies only runtime source and never an env file', () => {
   assert.doesNotMatch(dockerfile, /COPY[^\n]*\.env/i)
   assert.match(dockerfile, /USER node/)
   assert.match(dockerignore, /^\.env$/m)
-  assert.match(dockerignore, /^apps\/license-server\/$/m)
+  assert.match(dockerignore, /^apps\/license-server\/\*$/m)
+  assert.match(dockerignore, /^!apps\/license-server\/package\.json$/m)
+  assert.doesNotMatch(dockerignore, /^!apps\/license-server\/$/m)
+  assert.doesNotMatch(dockerignore, /^!apps\/license-server\/\*\*$/m)
 })
 
 test('Compose keeps the auth key server-side and uses Player Service over its internal URL', () => {

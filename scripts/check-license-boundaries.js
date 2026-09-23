@@ -74,7 +74,13 @@ assert.match(compose, /\/etc\/machine-id:\/run\/host-machine-id:ro/)
 // The issuer is an internal control-plane service. User releases may contain
 // the verification library and public key, but never the issuer application,
 // its admin console, image, configuration or signing key.
-assert.match(dockerIgnore, /^apps\/license-server\/$/m)
+// Rush reads every registered project manifest during a filtered install. The
+// public image context may therefore include the issuer package manifest, but
+// it must continue to exclude the issuer source, console and signing material.
+assert.match(dockerIgnore, /^apps\/license-server\/\*$/m)
+assert.match(dockerIgnore, /^!apps\/license-server\/package\.json$/m)
+assert.doesNotMatch(dockerIgnore, /^!apps\/license-server\/$/m)
+assert.doesNotMatch(dockerIgnore, /^!apps\/license-server\/\*\*$/m)
 assert.match(issuerDockerIgnore, /^apps\/license-server\/\.local\/$/m)
 assert.match(issuerDockerIgnore, /^apps\/license-server\/\.env$/m)
 assert.doesNotMatch(releaseWorkflow, /box-local-engine-license-server/)
