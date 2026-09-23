@@ -7,9 +7,9 @@
   "types": "build/index.d.ts",
   "scripts": {
     "build": "rm -rf ./build && tsc",
-    "build:watch": "pnpm run build",
-    "figma:export": "rm -rf output && figma-export use-config && pnpm run prettier",
-    "figma:build": "pnpm run figma:export && pnpm run build",
+    "build:watch": "npm run build",
+    "figma:export": "rm -rf output && figma-export use-config && npm run prettier",
+    "figma:build": "npm run figma:export && npm run build",
     "prettier": "prettier output --write --config ../../.prettierrc.js --ignore-path=../../.prettierignore"
   },
   "author": "Code Infinity",

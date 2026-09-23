@@ -8,7 +8,6 @@ const { spawn, spawnSync } = require('child_process')
 const repoRoot = path.resolve(__dirname, '..')
 const children = new Set()
 const isWindows = process.platform === 'win32'
-const pnpmCommand = isWindows ? 'pnpm.cmd' : 'pnpm'
 const args = new Set(process.argv.slice(2))
 const creatorOnly = args.has('--creator-only')
 const gameRoot = path.join(repoRoot, 'apps/game')
@@ -23,7 +22,7 @@ function randomSecret(existing, fallbackLength = 32) {
 }
 
 function databaseURL() {
-  // `pnpm dev --infra` starts the disposable development PostgreSQL profile.
+  // `rush dev --infra` starts the disposable development PostgreSQL profile.
   // A Desktop-generated .env can still contain BOX_DATABASE_URL for its
   // managed-postgres container, whose hostname and credentials are not valid
   // from source processes. Prefer the infra profile's local connection so
@@ -126,7 +125,7 @@ function startInfrastructure() {
   )
   if (result.error?.code === 'ENOENT') {
     throw new Error(
-      '未找到 Docker。请安装并启动 Docker Desktop，或直接使用 pnpm dev 连接已有基础服务',
+      '未找到 Docker。请安装并启动 Docker Desktop，或直接使用 rush dev 连接已有基础服务',
     )
   }
   if (result.status !== 0) throw new Error('PostgreSQL/Redis 基础服务启动失败')
@@ -192,7 +191,8 @@ try {
     })
   }
 
-  start('voxa', pnpmCommand, ['exec', 'next', 'dev', '-p', '3123'], {
+  const nextExecutable = path.join(voxaRoot, 'node_modules/.bin', isWindows ? 'next.cmd' : 'next')
+  start('voxa', nextExecutable, ['dev', '-p', '3123'], {
     cwd: voxaRoot,
     env: {
       BOX_PLAYER_SERVICE_INTERNAL_URL: 'http://127.0.0.1:3124',
@@ -222,7 +222,7 @@ try {
   console.log('  Player Service http://127.0.0.1:3124/')
   console.log('  Auth Portal    http://127.0.0.1:3125/')
   console.log(
-    '\n按 Ctrl-C 停止源码服务。默认不会启动或停止 Docker 基础服务；需要时使用 pnpm dev --infra。',
+    '\n按 Ctrl-C 停止源码服务。默认不会启动或停止 Docker 基础服务；需要时使用 rush dev --infra。',
   )
 } catch (error) {
   console.error(`开发服务启动失败：${error.message}`)

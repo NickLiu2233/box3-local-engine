@@ -1,0 +1,51 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
+  "rushVersion": "5.156.0",
+  "pnpmVersion": "10.12.1",
+  "nodeSupportedVersionRange": ">=22.17.0 <23.0.0",
+  "ensureConsistentVersions": false,
+  "projectFolderMinDepth": 2,
+  "projectFolderMaxDepth": 2,
+  "repository": {
+    "url": "https://github.com/ifishcool/box-local-engine.git",
+    "defaultBranch": "main"
+  },
+  "projects": [
+    { "packageName": "@box-local/deployment-manager", "projectFolder": "apps/deployment-manager" },
+    { "packageName": "@box-local/game", "projectFolder": "apps/game" },
+    { "packageName": "@box-local/license-server", "projectFolder": "apps/license-server" },
+    { "packageName": "@box-local/local-engine", "projectFolder": "apps/local-engine" },
+    { "packageName": "@box-local/migrator", "projectFolder": "apps/migrator" },
+    { "packageName": "@box-local/player-admin", "projectFolder": "apps/player-admin" },
+    { "packageName": "@box-local/server-manager", "projectFolder": "apps/server-manager" },
+    { "packageName": "@box-local/voxa", "projectFolder": "apps/voxa" },
+    {
+      "packageName": "box-player-auth-portal-example",
+      "projectFolder": "examples/player-auth-portal"
+    },
+    { "packageName": "@box-local/apis", "projectFolder": "internals/apis" },
+    { "packageName": "@box-local/build-system", "projectFolder": "internals/build-system" },
+    { "packageName": "@box-local/env", "projectFolder": "internals/env" },
+    { "packageName": "@box-local/schema", "projectFolder": "internals/schema" },
+    { "packageName": "@box-local/vb", "projectFolder": "internals/vb" },
+    { "packageName": "@box-local/ao-mesher", "projectFolder": "packages/ao-mesher" },
+    { "packageName": "@box-local/box-design", "projectFolder": "packages/box-design" },
+    { "packageName": "@box-local/cli", "projectFolder": "packages/cli" },
+    { "packageName": "@box-local/content-server", "projectFolder": "packages/content-server" },
+    { "packageName": "@box-local/dsbridge", "projectFolder": "packages/dsbridge" },
+    { "packageName": "@box-local/icons", "projectFolder": "packages/icons" },
+    { "packageName": "@box-local/iframe-event-bus", "projectFolder": "packages/iframe-event-bus" },
+    { "packageName": "@box-local/license", "projectFolder": "packages/license" },
+    { "packageName": "@box-local/mesher", "projectFolder": "packages/mesher" },
+    { "packageName": "@box-local/mudb", "projectFolder": "packages/mudb" },
+    { "packageName": "@box-local/regl", "projectFolder": "packages/regl" },
+    { "packageName": "@box-local/rewgpu", "projectFolder": "packages/rewgpu" },
+    { "packageName": "@box-local/script-api", "projectFolder": "packages/script-api" },
+    { "packageName": "@box-local/sdk", "projectFolder": "packages/sdk" },
+    { "packageName": "@box-local/utils", "projectFolder": "packages/utils" },
+    { "packageName": "@box-local/vb-parser", "projectFolder": "packages/vb-parser" },
+    { "packageName": "@box-local/voxa-project", "projectFolder": "packages/voxa-project" },
+    { "packageName": "@box-local/game-server", "projectFolder": "services/game-server" },
+    { "packageName": "@box-local/repo-tooling", "projectFolder": "tools/repo-tooling" }
+  ]
+}

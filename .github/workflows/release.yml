@@ -164,9 +164,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - run: corepack enable
-      - run: pnpm --version
-      - run: pnpm install --frozen-lockfile
+      - run: node common/scripts/install-run-rush.js install
       - name: Check cached desktop installer in Aliyun OSS
         id: desktop-cache
         shell: bash
@@ -245,7 +243,9 @@ jobs:
         run: |
           archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
           test -f "$archive"
-          pnpm package:desktop '${{ matrix.target }}' "$archive"
+          node common/scripts/install-run-rush.js package-desktop \
+            --target '${{ matrix.target }}' \
+            --archive "$archive"
       - name: Upload desktop installer to Aliyun OSS
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash

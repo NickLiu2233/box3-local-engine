@@ -1,5 +1,11 @@
 node_modules/
 .pnpm-store/
+# Rush generates project links and its temporary PNPM workspace locally.
+**/.rush/
+common/temp/
+common/deploy/
+common/autoinstallers/*/node_modules/
+common/autoinstallers/*/.rush/
 .next/
 apps/game/.next-*/
 apps/game/.tsconfig.dev-*.json

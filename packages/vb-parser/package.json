@@ -9,7 +9,7 @@
   "types": "build/types/index.d.ts",
   "scripts": {
     "build": "rm -rf build && rollup -c rollup.config.mjs",
-    "build:watch": "pnpm run build",
+    "build:watch": "npm run build",
     "dev": "rollup -c rollup.config.mjs -w",
     "prepublishOnly": "npm run build",
     "release": "npm run build && npm publish"

@@ -182,7 +182,7 @@ function assertPlayerServiceHealthy() {
 
 function deployCreator({ build }) {
   if (commandArgs.length) {
-    throw new Error(`pnpm ${build ? 'creator' : 'creator:up'} 不接受作品参数`)
+    throw new Error(`Rush Creator ${build ? 'build' : 'start'} 不接受作品参数`)
   }
   assertRuntimeConfiguration('creator')
   assertPlayerServiceHealthy()
@@ -195,7 +195,7 @@ function deployCreator({ build }) {
 
 function startPlayerService({ build }) {
   if (commandArgs.length) {
-    throw new Error(`pnpm ${build ? 'player-service' : 'player-service:up'} 不接受参数`)
+    throw new Error(`Rush Player Service ${build ? 'build' : 'start'} 不接受参数`)
   }
   assertRuntimeConfiguration('player-service')
   const config = build
@@ -222,7 +222,7 @@ function startPlayerService({ build }) {
 
 function startPlayerAuthPortal({ build }) {
   if (commandArgs.length) {
-    throw new Error(`pnpm ${build ? 'player-auth-portal' : 'player-auth-portal:up'} 不接受参数`)
+    throw new Error(`Rush Player Auth Portal ${build ? 'build' : 'start'} 不接受参数`)
   }
   const apiKey = configuredValue('BOX_PLAYER_AUTH_API_KEY')
   if (apiKey.length < 16) {
@@ -254,7 +254,7 @@ function startPlayerAuthPortal({ build }) {
 }
 
 function deployPlay({ build }) {
-  if (commandArgs.length) throw new Error(`pnpm ${build ? 'play' : 'play:up'} 不接受作品参数`)
+  if (commandArgs.length) throw new Error(`Rush Play ${build ? 'build' : 'start'} 不接受作品参数`)
   assertRuntimeConfiguration('play')
   assertPlayerServiceHealthy()
   const libraryRoot = configuredPlayLibraryDir()
@@ -283,7 +283,7 @@ function deployPlay({ build }) {
 
 function startVoxa({ build }) {
   if (commandArgs.length) {
-    throw new Error(`pnpm ${build ? 'voxa' : 'voxa:up'} 不接受参数`)
+    throw new Error(`Rush VOXA ${build ? 'build' : 'start'} 不接受参数`)
   }
   const dataRoot = path.join(repoRoot, 'apps/voxa/data')
   fs.mkdirSync(dataRoot, { recursive: true })

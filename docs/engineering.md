@@ -12,5 +12,5 @@
 唯一的全量验证命令：
 
 ```bash
-pnpm verify
+rush verify
 ```

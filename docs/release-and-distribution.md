@@ -7,36 +7,36 @@
 发布前先执行：
 
 ```bash
-pnpm verify
-pnpm audit --prod --audit-level critical
+rush verify
+rush-pnpm audit --prod --audit-level critical
 ```
 
 构建完整 Linux 镜像归档：
 
 ```bash
-pnpm package:images <amd64|arm64>
+rush package-images --architecture <amd64|arm64>
 ```
 
 构建桌面包或 Linux 无桌面服务器包：
 
 ```bash
-pnpm package:desktop <target> [镜像归档.tar.gz]
-pnpm package:web <amd64|arm64> [镜像归档.tar.gz]
+rush package-desktop --target <target> [--archive 镜像归档.tar.gz]
+rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz]
 ```
 
 桌面目标支持 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 和 `linux-arm64`。桌面包必须在目标操作系统和 CPU 架构的原生构建机生成；当前公开流水线不构建 `macos-amd64`。
 
-不传镜像归档时，`package:desktop` 和 `package:web` 会先构建六个发行镜像，再生成安装包。传入匹配版本与架构的完整归档时会跳过镜像重建：
+不传镜像归档时，`package-desktop` 和 `package-web` 会先构建六个发行镜像，再生成安装包。传入匹配版本与架构的完整归档时会跳过镜像重建：
 
 ```bash
-pnpm package:desktop macos-arm64 \
-  apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+rush package-desktop --target macos-arm64 \
+  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
 ```
 
 已经在本机完成六个镜像构建、只想导出归档时使用：
 
 ```bash
-pnpm export:images
+rush export-images
 ```
 
 该命令不会拉取或重建镜像，缺少任一发行镜像时会失败。单服务归档不能交给桌面或服务器打包器。
@@ -58,7 +58,7 @@ Verify 工作流在 Pull Request 和 `main` 推送时执行：
 1. 安装锁定依赖；
 2. 拒绝 critical 级生产依赖漏洞；
 3. 校验 Compose 模板；
-4. 执行 `pnpm verify`。
+4. 执行 `rush verify`。
 
 Release 工作流只在 `v*` Tag 推送时执行。它先确认所有项目版本与根 `package.json` 一致、Tag 严格等于 `v<version>`，并检查 OSS Secret，然后构建发行物。Release 工作流不会重复运行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 

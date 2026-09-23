@@ -7,7 +7,7 @@
 
 执行命令:
 
-`pnpm run figma:build`
+`rushx figma:build`
 
 # 配置Access Token
 由于是从figma上拉取数据，需要自行配置token。

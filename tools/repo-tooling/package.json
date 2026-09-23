@@ -1,0 +1,15 @@
+{
+  "name": "@box-local/repo-tooling",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "format": "node ../../scripts/format-repository.js --write",
+    "format:check": "node ../../scripts/format-repository.js",
+    "lint:root": "eslint ../../apps/local-engine/src ../../apps/local-engine/scripts ../../apps/license-server ../../packages/license ../../scripts --ext .js,.cjs"
+  },
+  "devDependencies": {
+    "eslint": "8.57.1",
+    "eslint-config-prettier": "9.1.0",
+    "prettier": "3.6.2"
+  }
+}

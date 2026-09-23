@@ -8,17 +8,17 @@
 在本目录可以直接启动一个使用 Local Engine 本地配置的游玩运行时：
 
 ```bash
-pnpm run dev
+rushx dev
 ```
 
 默认监听 `127.0.0.1:9966`，调试器监听 `127.0.0.1:9223`。切换为编辑运行时：
 
 ```bash
-MODE=edit pnpm run dev
+MODE=edit rushx dev
 ```
 
 该命令会自动加载 `apps/local-engine/config/local.config.json`，无需手动填写环境、版本或
-区域变量。日常打开完整创作端仍应在仓库根目录执行 `pnpm dev`。
+区域变量。日常打开完整创作端仍应在仓库根目录执行 `rush dev`。
 
 ## 在两种模式中的职责
 
@@ -32,8 +32,8 @@ MODE=edit pnpm run dev
 普通用户只运行：
 
 ```bash
-pnpm creator
-pnpm play
+rush package-images --architecture <amd64|arm64> --service creator
+rush package-images --architecture <amd64|arm64> --service play
 ```
 
 具体作品通过作品管理器导出的部署包启动。底层运行时由产品启动器自动管理。

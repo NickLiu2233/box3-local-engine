@@ -5,13 +5,12 @@ ARG RUST_IMAGE=docker.m.daocloud.io/library/rust:1.93-bookworm
 FROM ${DOCKER_CLI_IMAGE} AS docker-cli
 
 FROM ${NODE_IMAGE} AS console-build
-ENV CI=true PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+ENV CI=true RUSH_PNPM_STORE_PATH=/pnpm/store
 WORKDIR /source
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/deployment-manager ./apps/deployment-manager
-RUN corepack enable && corepack prepare pnpm@10.12.1 --activate \
-    && pnpm install --frozen-lockfile --filter @box-local/deployment-manager... \
-    && pnpm --dir apps/deployment-manager exec vite build
+COPY . .
+RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    node common/scripts/install-run-rush.js install --to @box-local/deployment-manager
+RUN cd apps/deployment-manager && node ../../common/scripts/install-run-rushx.js build
 
 FROM ${RUST_IMAGE} AS rust-build
 ARG BOX_BUILD_VERSION=0.2.0

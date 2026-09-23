@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "build": "rm -rf dist && tsc --emitDeclarationOnly && rollup --config rollup.config.mjs",
-    "build:watch": "pnpm run build",
+    "build:watch": "npm run build",
     "dev": "rollup --config rollup.config.mjs -w"
   },
   "dependencies": {

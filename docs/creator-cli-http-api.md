@@ -325,7 +325,7 @@ CLI 应把 JSON 错误中的 `code` 当作机器可读字段，把 `message` 当
 ## 13. 开发与验证
 
 ```bash
-pnpm dev --infra
+rush dev --infra
 ```
 
 开发服务地址：Creator `3127`、Player Service `3124`。`--infra` 会启动开发 PostgreSQL 与 Redis；它不会构建 Creator 镜像。
@@ -333,7 +333,8 @@ pnpm dev --infra
 协议包测试：
 
 ```bash
-pnpm --filter @box-local/cli test
+cd packages/cli
+rushx test
 ```
 
 手动验证时应始终使用临时玩家、临时 CLI Token 与临时工程，并在 `finally` 中撤销 Token、停止运行时、删除工程。验证应覆盖全部 9 个 Scope 的允许与拒绝路径、网络输入校验、共享脚本索引、覆盖写入、数据空间限制、运行时事件和无编辑会话时的截图错误，避免污染真实地图。

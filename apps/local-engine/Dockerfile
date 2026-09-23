@@ -8,15 +8,12 @@ FROM ${NODE_IMAGE} AS source-base
 
 ENV CI=true \
     NEXT_TELEMETRY_DISABLED=1 \
-    PNPM_HOME=/pnpm \
-    PATH=/pnpm:$PATH \
+    RUSH_PNPM_STORE_PATH=/pnpm/store \
     NODE_OPTIONS=--max-old-space-size=8192
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && corepack enable \
-    && corepack prepare pnpm@10.12.1 --activate
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 ARG BOX_RUNTIME_BUILD_NONCE=source
@@ -26,35 +23,34 @@ COPY . .
 FROM source-base AS engine-build-base
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile \
-      --filter @box-local/cli... \
-      --filter @box-local/game... \
-      --filter @box-local/player-admin... \
-      --filter @box-local/game-server... \
-      --filter @box-local/local-engine...
+    node common/scripts/install-run-rush.js install \
+      --to @box-local/game \
+      --to @box-local/player-admin \
+      --to @box-local/game-server \
+      --to @box-local/local-engine
 
 # Protocol modules are consumed from internals/schema/build.  Build them in
 # the image instead of relying on a developer's previously generated output;
 # otherwise a newly added MuDB message can be present in TypeScript source but
 # absent from the production runtime.
-RUN pnpm --filter @box-local/schema build
+RUN cd internals/schema && node ../../common/scripts/install-run-rushx.js build
 
 # Generated content-addressed runtime resources are intentionally excluded
 # from Git. Rebuild them inside the shared build stage so clean CI checkouts
 # and local Docker builds produce the same Creator/Play runtime data.
-RUN pnpm --dir apps/local-engine run prepare-assets
+RUN cd apps/local-engine && node ../../common/scripts/install-run-rushx.js prepare-assets
 
 FROM engine-build-base AS creator-build
 
-RUN pnpm --filter @box-local/cli build \
-    && pnpm --dir apps/local-engine run build:creator
+RUN cd packages/cli && node ../../common/scripts/install-run-rushx.js build \
+    && cd ../../apps/local-engine && node ../../common/scripts/install-run-rushx.js build:creator
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 # Creator preview console streaming depends on better-sse. Verify it survives
 # the production-only deploy before the compact runtime is assembled.
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
     npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
-    pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
+    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box-local/game-server --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
     && rm -rf /opt/game-server/src /opt/game-server/scripts /opt/game-server/dist/scripts \
@@ -86,13 +82,13 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 
 FROM engine-build-base AS play-build
 
-RUN pnpm --filter @box-local/cli build \
-    && pnpm --dir apps/local-engine run build:play
+RUN cd packages/cli && node ../../common/scripts/install-run-rushx.js build \
+    && cd ../../apps/local-engine && node ../../common/scripts/install-run-rushx.js build:play
 RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
     npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
-    pnpm --filter @box-local/game-server deploy --prod --legacy /opt/game-server \
+    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box-local/game-server --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
     && rm -rf /opt/game-server/src /opt/game-server/scripts /opt/game-server/dist/scripts \
@@ -136,7 +132,9 @@ FROM engine-build-base AS player-service-build
 # Keep the Next build below Docker Desktop's available memory budget. A larger
 # V8 heap lets the compiler compete with webpack workers and can trigger exit 137.
 RUN rm -rf apps/game/public/player-admin \
-    && pnpm --filter @box-local/player-admin build \
+    && cd apps/player-admin \
+    && node ../../common/scripts/install-run-rushx.js build \
+    && cd ../.. \
     && cp -a apps/game/public/player-admin/. apps/game/public/ \
     && rm -rf apps/game/public/player-admin \
     && NODE_OPTIONS=--max-old-space-size=3072 \
@@ -144,7 +142,7 @@ RUN rm -rf apps/game/public/player-admin \
     NEXT_PUBLIC_APP_ENV=development \
     NEXT_PUBLIC_APP_EDITION=createra \
     NEXT_PUBLIC_APP_REGION=cn \
-    pnpm --filter @box-local/game build-next
+    sh -c 'cd apps/game && node ../../common/scripts/install-run-rushx.js build-next'
 RUN node apps/local-engine/src/prune-player-build.js --player-service \
       apps/game/.next \
       apps/game/.next/standalone/apps/game/.next \
@@ -165,8 +163,8 @@ RUN node apps/local-engine/src/prune-player-build.js --player-service \
 FROM source-base AS voxa-build
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter @box-local/voxa...
-RUN pnpm --filter @box-local/voxa build
+    node common/scripts/install-run-rush.js install --to @box-local/voxa
+RUN cd apps/voxa && node ../../common/scripts/install-run-rushx.js build
 
 FROM ${NODE_IMAGE} AS runtime-base
 

@@ -15,11 +15,11 @@
   "module": "dist/es/index.js",
   "types": "dist/types/index.d.ts",
   "scripts": {
-    "build": "pnpm run build:cjs && pnpm run build:esm && pnpm run build:types",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:types",
     "build:cjs": "tsc --module commonjs --outDir dist/cjs",
     "build:esm": "tsc --module esnext --outDir dist/es",
     "build:types": "tsc --emitDeclarationOnly --declarationDir dist/types",
-    "build:watch": "pnpm run build"
+    "build:watch": "npm run build"
   },
   "dependencies": {
     "eventemitter3": "5.0.1"

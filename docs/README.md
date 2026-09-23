@@ -71,7 +71,7 @@
 - 桌面启动器和 Linux Web 管理端都可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis。
 - 构建版本、提交短号、构建日期和来源来自镜像 `BOX_BUILD_*` 元数据；正式 Tag 构建应注入这些值，服主无需配置。
 - 当前桌面发行目标为 Windows x64、Windows ARM64、Apple Silicon macOS、Linux x64 和 Linux ARM64。构建脚本支持 Intel macOS，但当前公开 Release 不构建该目标。
-- 主分支和 Pull Request 的 Verify 工作流执行依赖审计、Compose 校验和 `pnpm verify`；Tag Release 工作流校验版本与 OSS 配置后构建发行包，不会重复执行完整 Verify。
+- 主分支和 Pull Request 的 Verify 工作流执行依赖审计、Compose 校验和 `rush verify`；Tag Release 工作流校验版本与 OSS 配置后构建发行包，不会重复执行完整 Verify。
 
 ## 当前脚本边界
 

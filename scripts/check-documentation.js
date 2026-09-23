@@ -51,6 +51,19 @@ for (const obsolete of [
   assert.ok(!publishedDocs.includes(obsolete), `documentation still contains obsolete: ${obsolete}`)
 }
 
+for (const obsoleteCommand of [
+  'pnpm install',
+  'pnpm --filter',
+  'pnpm --dir',
+  'pnpm dev',
+  'pnpm verify',
+]) {
+  assert.ok(
+    !publishedDocs.includes(obsoleteCommand),
+    `documentation still contains direct pnpm Workspace command: ${obsoleteCommand}`,
+  )
+}
+
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
 for (const supportedTarget of [
   'Windows x64',
@@ -63,6 +76,8 @@ for (const supportedTarget of [
 }
 
 assert.ok(readme.includes('当前版本：`0.2.0`'), 'README does not identify version 0.2.0')
+assert.ok(readme.includes('rush install'), 'README does not explain Rush installation')
+assert.ok(readme.includes('rush verify'), 'README does not explain Rush verification')
 assert.ok(
   readme.includes('地图导入和日常管理统一在玩家管理后台'),
   'README does not identify Player Admin as the play-map management entry',

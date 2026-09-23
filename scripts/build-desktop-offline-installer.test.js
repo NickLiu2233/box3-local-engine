@@ -99,14 +99,17 @@ test('archive reader forces a Windows drive-letter archive path to stay local', 
   })
 })
 
-test('Windows starts pnpm through its command shim and reports spawn failures', () => {
-  assert.deepEqual(tauriBuildCommand('win32'), { command: 'pnpm.cmd', shell: true })
+test('Windows starts the Rush-installed Tauri command shim and reports spawn failures', () => {
+  assert.deepEqual(tauriBuildCommand('win32'), {
+    command: path.join(__dirname, '../apps/deployment-manager/node_modules/.bin/tauri.cmd'),
+    shell: true,
+  })
   assert.match(
     tauriBuildFailure({
       status: null,
-      error: { code: 'ENOENT', message: 'spawnSync pnpm ENOENT' },
+      error: { code: 'ENOENT', message: 'spawnSync tauri ENOENT' },
     }),
-    /无法启动 Tauri 构建命令：ENOENT: spawnSync pnpm ENOENT/,
+    /无法启动 Tauri 构建命令：ENOENT: spawnSync tauri ENOENT/,
   )
 })
 

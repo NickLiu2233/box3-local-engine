@@ -51,7 +51,7 @@ docker compose --env-file apps/license-server/.env \
   -f apps/license-server/docker-compose.yml up -d --build
 ```
 
-日常操作直接使用 `docker compose --env-file apps/license-server/.env -f apps/license-server/docker-compose.yml`，再附加 `ps`、`logs -f license-server`、`stop` 或 `down`。只运行源码签发器时执行 `pnpm --dir apps/license-server start`；它仅供内部开发使用。
+日常操作直接使用 `docker compose --env-file apps/license-server/.env -f apps/license-server/docker-compose.yml`，再附加 `ps`、`logs -f license-server`、`stop` 或 `down`。只运行源码签发器时进入 `apps/license-server` 后执行 `rushx start`；它仅供内部开发使用。
 
 密钥生成命令只允许执行一次，不会覆盖已有密钥。`apps/license-server/.local/license-private-key.pem` 必须立即进行加密离线备份；丢失私钥后无法继续为现有发行版签发许可证。私钥只能在内部签发器运行时以只读文件挂载，禁止写入 Git、公共 Docker 构建上下文、发行镜像、启动器、日志和分享包。签发器只映射到本机 `127.0.0.1:3220`，不应通过公网反向代理对外开放。
 

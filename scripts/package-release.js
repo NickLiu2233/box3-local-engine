@@ -29,9 +29,9 @@ function architectureForDesktopTarget(target) {
 
 function usage(kind) {
   if (kind === 'desktop') {
-    return '用法: pnpm package:desktop <windows-amd64|windows-arm64|macos-amd64|macos-arm64|linux-amd64|linux-arm64> [镜像归档.tar.gz]'
+    return '用法: rush package-desktop --target <windows-amd64|windows-arm64|macos-amd64|macos-arm64|linux-amd64|linux-arm64> [--archive 镜像归档.tar.gz]'
   }
-  return '用法: pnpm package:web <amd64|arm64> [镜像归档.tar.gz]'
+  return '用法: rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz]'
 }
 
 function createReleasePlan(kind, target, archiveArgument, version) {

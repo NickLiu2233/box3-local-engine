@@ -1,15 +1,12 @@
 ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
-ENV CI=true PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+ENV CI=true RUSH_PNPM_STORE_PATH=/pnpm/store
 WORKDIR /workspace
-RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/license-server ./apps/license-server
-COPY packages/license ./packages/license
+COPY . .
 RUN --mount=type=cache,id=box-license-server-pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter @box-local/license-server... \
-    && pnpm --filter @box-local/license-server deploy --prod --legacy /opt/license-server
+    node common/scripts/install-run-rush.js install --to @box-local/license-server \
+    && node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box-local/license-server --prod --legacy /opt/license-server
 
 FROM ${NODE_IMAGE}
 ENV NODE_ENV=production \

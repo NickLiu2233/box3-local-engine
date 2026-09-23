@@ -24,7 +24,7 @@ function fail(message) {
 }
 
 if (!supportedArchitectures.has(architecture)) {
-  fail('用法: pnpm package:images [amd64|arm64] [服务名]')
+  fail('用法: rush package-images --architecture <amd64|arm64> [--service 服务名]')
 }
 if (selectedService && !services.includes(selectedService)) {
   fail(`未知服务：${selectedService}；可选值：${services.join('、')}`)

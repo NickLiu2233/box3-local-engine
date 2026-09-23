@@ -172,14 +172,24 @@ if (fs.existsSync(path.join(root, 'apps/game/pages/time-restriction.tsx'))) {
   fail('apps/game/pages/time-restriction.tsx: retired anti-addiction page remains')
 }
 
-// Workspace dependencies must stay self-contained and must not point at the
-// old private registry.
-const workspaceText = readRequired('pnpm-workspace.yaml')
-const workspaceDirs = workspaceText
-  .split('\n')
-  .map((line) => line.match(/^\s*-\s+['"]?([^'"]+)['"]?\s*$/)?.[1])
-  .filter(Boolean)
+// Rush projects must stay self-contained and must not point at the old private
+// registry. rush.json is the only committed monorepo project inventory.
+const rushConfiguration = JSON.parse(readRequired('rush.json'))
+const workspaceDirs = rushConfiguration.projects.map(({ projectFolder }) => projectFolder)
 const packages = new Map()
+
+for (const parent of ['apps', 'examples', 'internals', 'packages', 'services', 'tools']) {
+  for (const entry of fs.readdirSync(path.join(root, parent), { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    const directory = `${parent}/${entry.name}`
+    if (
+      fs.existsSync(path.join(root, directory, 'package.json')) &&
+      !workspaceDirs.includes(directory)
+    ) {
+      fail(`rush.json does not register workspace project: ${directory}`)
+    }
+  }
+}
 
 for (const directory of workspaceDirs) {
   const packageFile = path.join(root, directory, 'package.json')
@@ -207,18 +217,24 @@ for (const { directory, manifest } of packages.values()) {
   }
 }
 
-// The root manifest is intentionally small: product deployment belongs to
-// the desktop/Web managers, while component commands live with their project.
+// The root manifest is intentionally small. Rush owns the project graph,
+// dependency installation and repository-level commands.
 const rootManifest = JSON.parse(readRequired('package.json'))
-for (const [name, command] of Object.entries({
-  'dev': 'node scripts/dev-all.js',
-  'package:images': 'node scripts/sync-root-version.js && node scripts/package-offline-images.js',
-  'package:desktop': 'node scripts/package-release.js desktop',
-  'package:web': 'node scripts/package-release.js web',
-})) {
-  requireScript(rootManifest, 'package.json', name, command)
+requireScript(rootManifest, 'package.json', 'rush', 'node common/scripts/install-run-rush.js')
+for (const forbiddenFile of ['pnpm-workspace.yaml', 'pnpm-lock.yaml']) {
+  if (fs.existsSync(path.join(root, forbiddenFile))) {
+    fail(`${forbiddenFile}: legacy pnpm Workspace file must be removed`)
+  }
 }
+readRequired('common/config/rush/pnpm-lock.yaml', 'Rush pnpm lockfile')
+readRequired('common/config/rush/command-line.json', 'Rush command configuration')
+
 for (const name of [
+  'dev',
+  'verify',
+  'package:images',
+  'package:desktop',
+  'package:web',
   'creator',
   'creator:up',
   'play',
@@ -271,7 +287,7 @@ for (const name of [
   'lint:control',
 ]) {
   if (rootManifest.scripts?.[name]) {
-    fail(`package.json: legacy public script must be removed: ${name}`)
+    fail(`package.json: repository command must be owned by Rush, not a root npm script: ${name}`)
   }
 }
 
@@ -281,7 +297,7 @@ for (const [label, pattern] of [
   ['creator image build', /'build', 'creator'/],
   ['creator builds only the creator image', /'build', 'creator'/],
   ['play uses the external world library', /BOX_PLAY_LIBRARY_DIR/],
-  ['play accepts no release argument', /pnpm \$\{build \? 'play' : 'play:up'\} 不接受作品参数/],
+  ['play accepts no release argument', /Rush Play \$\{build \? 'build' : 'start'\} 不接受作品参数/],
   [
     'play command forces a metadata-labelled image rebuild',
     /build\s*\?\s*ensurePlayImageArchive\(\{[\s\S]*?forceBuild:\s*true,[\s\S]*?buildMetadata:\s*automaticBuildMetadata,[\s\S]*?\}\)/,
@@ -442,26 +458,23 @@ for (const [label, pattern] of [
   ['creator build stage', /^FROM engine-build-base AS creator-build$/m],
   [
     'creator build command',
-    /^RUN pnpm --filter @box-local\/cli build \\\n\s*&& pnpm --dir apps\/local-engine run build:creator$/m,
+    /install-run-rushx\.js build[\s\S]*?install-run-rushx\.js build:creator/,
   ],
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
-  [
-    'play build command',
-    /^RUN pnpm --filter @box-local\/cli build \\\n\s*&& pnpm --dir apps\/local-engine run build:play$/m,
-  ],
+  ['play build command', /install-run-rushx\.js build[\s\S]*?install-run-rushx\.js build:play/],
   [
     'clean-checkout runtime asset generation',
-    /^RUN pnpm --dir apps\/local-engine run prepare-assets$/m,
+    /^RUN cd apps\/local-engine && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js prepare-assets$/m,
   ],
   ['licensed runtime base', /^FROM runtime-base AS licensed-runtime-base$/m],
   ['creator final target', /^FROM licensed-runtime-base AS creator$/m],
   ['play final target', /^FROM licensed-runtime-base AS play$/m],
   ['VOXA build stage', /^FROM source-base AS voxa-build$/m],
+  ['VOXA targeted Rush install', /install-run-rush\.js install --to @box-local\/voxa/],
   [
-    'VOXA filtered dependency install',
-    /pnpm install --frozen-lockfile --filter @box-local\/voxa\.\.\./,
+    'VOXA build command',
+    /^RUN cd apps\/voxa && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js build$/m,
   ],
-  ['VOXA build command', /^RUN pnpm --filter @box-local\/voxa build$/m],
   ['VOXA final target', /^FROM licensed-runtime-base AS voxa$/m],
   ['referenced runtime-blob staging', /stage-runtime-data\.js \/opt\/runtime-data/],
   [

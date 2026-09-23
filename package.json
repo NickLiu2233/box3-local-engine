@@ -7,50 +7,7 @@
   "engines": {
     "node": "22.17.x"
   },
-  "packageManager": "pnpm@10.12.1",
   "scripts": {
-    "version:check": "node scripts/sync-root-version.js --check",
-    "dev": "node scripts/dev-all.js",
-    "dev:creator": "node apps/local-engine/src/launcher.js --creator",
-    "dev:creator-stack": "node scripts/dev-all.js --creator-only",
-    "package:images": "node scripts/sync-root-version.js && node scripts/package-offline-images.js",
-    "export:images": "node scripts/export-current-images.js",
-    "package:desktop": "node scripts/package-release.js desktop",
-    "package:web": "node scripts/package-release.js web",
-    "check": "node apps/local-engine/src/build-metadata.test.js && node apps/local-engine/scripts/regression-project-storage-identity.js && node scripts/regression-empty-mesh-asset.js && node scripts/check-standalone.js && node scripts/check-play-version-refresh.js && pnpm --filter @box-local/game run test:local-runtime-session && pnpm --filter @box-local/voxa run check:model-library-scope && pnpm --filter @box-local/voxa run check:model-project-bundle && pnpm --filter @box-local/voxa run check:local-cors && pnpm --filter @box-local/voxa run check:model-management-permission && pnpm --filter @box-local/game-server run check:disabled-storage && node scripts/platform-api-removal.test.js && node scripts/check-engine-wire-protocols.js && pnpm --filter @box-local/license test && pnpm --filter @box-local/license-server test && node scripts/check-license-boundaries.js && node scripts/check-windows-offline-installer.js && node --test scripts/package-release.test.js scripts/build-desktop-offline-installer.test.js scripts/verify-desktop-offline-package.test.js scripts/linux-bootstrap-installer.test.js && node scripts/check-desktop-deployment-manager.js && node scripts/check-headless-rust-manager.js && node --test scripts/deployment-manager-transport.test.js && node scripts/check-release-workflow.js && node scripts/check-documentation.js && pnpm --filter @box-local/game-server exec node -r @swc-node/register scripts/regression-map-group-state-lock.ts && pnpm --dir examples/player-auth-portal check && cargo test --manifest-path apps/manager-core/Cargo.toml && cargo test --manifest-path apps/server-manager-rust/Cargo.toml && pnpm --filter @box-local/migrator test && node --test scripts/teleport-room-manager.test.js scripts/teleport-library-integration.test.js",
-    "lint": "eslint apps/local-engine/src apps/local-engine/scripts apps/license-server packages/license scripts --ext .js,.cjs && pnpm --filter @box-local/game lint && pnpm --filter @box-local/voxa lint && pnpm --filter @box-local/migrator lint",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "typecheck": "pnpm --filter @box-local/migrator typecheck",
-    "test": "pnpm --filter @box-local/local-engine test && pnpm --filter @box-local/game-server test && pnpm check",
-    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
-  },
-  "pnpm": {
-    "overrides": {
-      "axios@0.21.4": "0.32.0",
-      "dompurify@3.4.12": "3.4.13",
-      "form-data@2.3.3": "2.5.6",
-      "immer@8.0.4": "9.0.21",
-      "mermaid@11.16.0": "11.16.1",
-      "minimatch@3.1.2": "3.1.4",
-      "minimist@0.0.8": "0.2.4",
-      "postcss@8.4.31": "8.5.23",
-      "serialize-javascript@6.0.2": "7.0.3",
-      "sharp@0.34.5": "0.35.0",
-      "static-eval@0.2.4": "2.1.1",
-      "undici@5.29.0": "6.27.0",
-      "ws@7.4.0": "7.5.13"
-    },
-    "onlyBuiltDependencies": [
-      "@swc/core",
-      "esbuild",
-      "isolated-vm",
-      "sharp"
-    ]
-  },
-  "devDependencies": {
-    "eslint": "8.57.1",
-    "eslint-config-prettier": "9.1.0",
-    "prettier": "3.6.2"
+    "rush": "node common/scripts/install-run-rush.js"
   }
 }

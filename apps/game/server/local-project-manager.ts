@@ -17,7 +17,7 @@ export function getLocalProjectManager() {
     .find((candidate) => fs.existsSync(candidate));
 
   if (!managerPath) {
-    throw new Error('未找到 Local Engine 项目管理器。请从项目根目录运行 pnpm dev。');
+    throw new Error('未找到 Local Engine 项目管理器。请从项目根目录运行 rush dev。');
   }
 
   // Node 22 provides this runtime-only builtin lookup. Keeping the require out

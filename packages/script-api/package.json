@@ -18,12 +18,12 @@
     "./libs/*"
   ],
   "scripts": {
-    "build": "pnpm run build:dist && pnpm run rollup && node ./scripts/fix-dts.js",
+    "build": "npm run build:dist && npm run rollup && node ./scripts/fix-dts.js",
     "build:cjs": "tsc --module CommonJS --outDir dist/cjs",
-    "build:dist": "rm -rf dist && pnpm run build:es && pnpm run build:cjs",
+    "build:dist": "rm -rf dist && npm run build:es && npm run build:cjs",
     "build:es": "tsc --module ESNext --outDir dist/es",
-    "build:watch": "pnpm run build",
-    "dev": "pnpm run wiki --watch",
+    "build:watch": "npm run build",
+    "dev": "npm run wiki --watch",
     "doc": "typedoc --plugin typedoc-plugin-markdown --disableSources --hideInPageTOC --excludeInternal --entryPointStrategy expand --out docs/ --tsconfig tsconfig.json --entryPoints ./src/server/global-doc.ts --entryPoints ./src/server/modules",
     "rollup": "rollup --config rollup.config.mjs",
     "test": "echo \"Error: no test specified\" && exit 1",

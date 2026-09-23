@@ -3,6 +3,7 @@
 .DS_Store
 **/.DS_Store
 **/node_modules
+**/.rush
 **/.next
 **/coverage
 **/.turbo
@@ -34,7 +35,8 @@ apps/voxa/data/
 # the issuer source or its local secrets into their Docker build context.
 # apps/license-server/Dockerfile.dockerignore defines the narrower context used
 # when the internal issuer itself is built.
-apps/license-server/
+apps/license-server/*
+!apps/license-server/package.json
 
 # Local blobs created by the current workspace are never part of the engine
 # template. The runtime image is additionally assembled from referenced blobs
@@ -47,3 +49,4 @@ apps/migrator/cache
 apps/migrator/cache/
 
 apps/manager-core/target/
+common/temp/

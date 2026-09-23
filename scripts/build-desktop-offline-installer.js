@@ -185,8 +185,8 @@ function imageDetailsFromArchive(archive) {
 
 function tauriBuildCommand(platform = process.platform) {
   return platform === 'win32'
-    ? { command: 'pnpm.cmd', shell: true }
-    : { command: 'pnpm', shell: false }
+    ? { command: path.join(managerRoot, 'node_modules/.bin/tauri.cmd'), shell: true }
+    : { command: path.join(managerRoot, 'node_modules/.bin/tauri'), shell: false }
 }
 
 function tauriBuildEnvironment(
@@ -225,7 +225,9 @@ function main() {
   const archive = process.argv[3] ? path.resolve(process.argv[3]) : ''
   const spec = supported.get(platform)
   if (!spec) {
-    fail(`用法: pnpm package:desktop <${[...supported.keys()].join('|')}> <镜像归档.tar.gz>`)
+    fail(
+      `用法: rush package-desktop --target <${[...supported.keys()].join('|')}> --archive <镜像归档.tar.gz>`,
+    )
   }
   if (process.platform !== spec.os || process.arch !== spec.arch) {
     fail(`${platform} 原生安装器必须在对应的 ${spec.os}/${spec.arch} 构建机上生成`)
@@ -287,12 +289,12 @@ function main() {
   }
   fs.writeFileSync(payloadImageInfo, `${JSON.stringify(imageInfo, null, 2)}\n`)
   try {
-    const tauriArgs = ['--filter', '@box-local/deployment-manager', 'tauri', 'build']
+    const tauriArgs = ['build']
     if (spec.bundle) tauriArgs.push('--bundles', spec.bundle)
     else tauriArgs.push('--no-bundle')
     const invocation = tauriBuildCommand()
     const result = spawnSync(invocation.command, tauriArgs, {
-      cwd: repoRoot,
+      cwd: managerRoot,
       env: tauriBuildEnvironment({ ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag }),
       shell: invocation.shell,
       stdio: 'inherit',

@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "build": "rm -rf build && tsc --project tsconfig.build.json",
-    "build:watch": "pnpm run build"
+    "build:watch": "npm run build"
   },
   "dependencies": {
     "@box-local/mesher": "workspace:1.0.0",

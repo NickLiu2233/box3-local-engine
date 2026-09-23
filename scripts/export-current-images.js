@@ -34,7 +34,7 @@ function fail(message) {
 }
 
 if (process.argv.length !== 2) {
-  fail('用法: pnpm export:images')
+  fail('用法: rush export-images')
 }
 
 function inspectImage(image) {
@@ -59,7 +59,7 @@ const missingImages = images.filter((image) => !inspectImage(image))
 if (missingImages.length) {
   fail(
     `以下镜像尚未在本机构建，不能导出：\n${missingImages.map((image) => `  - ${image}`).join('\n')}\n` +
-      '请先构建缺少的服务后再执行 pnpm export:images',
+      '请先构建缺少的服务后再执行 rush export-images',
   )
 }
 

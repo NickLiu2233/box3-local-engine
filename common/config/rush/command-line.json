@@ -1,0 +1,146 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/command-line.schema.json",
+  "commands": [
+    {
+      "commandKind": "bulk",
+      "name": "build",
+      "summary": "Build projects in dependency order.",
+      "enableParallelism": true,
+      "incremental": true,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    },
+    {
+      "commandKind": "global",
+      "name": "dev",
+      "summary": "Start the complete source development stack.",
+      "shellCommand": "node scripts/dev-all.js"
+    },
+    {
+      "commandKind": "global",
+      "name": "dev-creator",
+      "summary": "Start the Creator source development stack.",
+      "shellCommand": "node scripts/dev-all.js --creator-only"
+    },
+    {
+      "commandKind": "global",
+      "name": "format",
+      "summary": "Format the repository.",
+      "shellCommand": "node scripts/repo-tasks.js format"
+    },
+    {
+      "commandKind": "global",
+      "name": "format-check",
+      "summary": "Check repository formatting.",
+      "shellCommand": "node scripts/repo-tasks.js format-check"
+    },
+    {
+      "commandKind": "global",
+      "name": "lint",
+      "summary": "Lint all maintained source surfaces.",
+      "shellCommand": "node scripts/repo-tasks.js lint"
+    },
+    {
+      "commandKind": "global",
+      "name": "typecheck",
+      "summary": "Run repository type checks.",
+      "shellCommand": "node scripts/repo-tasks.js typecheck"
+    },
+    {
+      "commandKind": "global",
+      "name": "test",
+      "summary": "Run the complete regression suite.",
+      "shellCommand": "node scripts/repo-tasks.js test"
+    },
+    {
+      "commandKind": "global",
+      "name": "integration-check",
+      "summary": "Run integration and distribution checks.",
+      "shellCommand": "node scripts/repo-tasks.js check"
+    },
+    {
+      "commandKind": "global",
+      "name": "verify",
+      "summary": "Run formatting, lint, type checks and all regressions.",
+      "shellCommand": "node scripts/repo-tasks.js verify"
+    },
+    {
+      "commandKind": "global",
+      "name": "version-check",
+      "summary": "Verify synchronized product versions.",
+      "shellCommand": "node scripts/sync-root-version.js --check"
+    },
+    {
+      "commandKind": "global",
+      "name": "package-images",
+      "summary": "Build and export all offline images.",
+      "shellCommand": "node scripts/rush-command.js package-images"
+    },
+    {
+      "commandKind": "global",
+      "name": "export-images",
+      "summary": "Export the existing complete image set.",
+      "shellCommand": "node scripts/export-current-images.js"
+    },
+    {
+      "commandKind": "global",
+      "name": "package-desktop",
+      "summary": "Build a desktop offline package.",
+      "shellCommand": "node scripts/rush-command.js package-desktop"
+    },
+    {
+      "commandKind": "global",
+      "name": "package-web",
+      "summary": "Build a headless Linux server package.",
+      "shellCommand": "node scripts/rush-command.js package-web"
+    }
+  ],
+  "parameters": [
+    {
+      "parameterKind": "flag",
+      "longName": "--infra",
+      "description": "Start the disposable development PostgreSQL and Redis services.",
+      "associatedCommands": ["dev", "dev-creator"]
+    },
+    {
+      "parameterKind": "choice",
+      "longName": "--architecture",
+      "description": "Target Linux architecture.",
+      "alternatives": [
+        { "name": "amd64", "description": "Linux AMD64" },
+        { "name": "arm64", "description": "Linux ARM64" }
+      ],
+      "associatedCommands": ["package-images", "package-web"],
+      "required": true
+    },
+    {
+      "parameterKind": "string",
+      "longName": "--service",
+      "argumentName": "SERVICE",
+      "description": "Optional single image service name.",
+      "associatedCommands": ["package-images"]
+    },
+    {
+      "parameterKind": "choice",
+      "longName": "--target",
+      "description": "Desktop target platform and architecture.",
+      "alternatives": [
+        { "name": "windows-amd64", "description": "Windows x64" },
+        { "name": "windows-arm64", "description": "Windows ARM64" },
+        { "name": "macos-amd64", "description": "macOS Intel" },
+        { "name": "macos-arm64", "description": "macOS Apple Silicon" },
+        { "name": "linux-amd64", "description": "Linux x64" },
+        { "name": "linux-arm64", "description": "Linux ARM64" }
+      ],
+      "associatedCommands": ["package-desktop"],
+      "required": true
+    },
+    {
+      "parameterKind": "string",
+      "longName": "--archive",
+      "argumentName": "ARCHIVE",
+      "description": "Optional existing image archive path.",
+      "associatedCommands": ["package-desktop", "package-web"]
+    }
+  ]
+}

@@ -30,7 +30,8 @@ git switch -c codex/<short-description>
 ## 3. 环境要求
 
 - Node.js `22.17.x`，仓库通过 `.node-version` 固定版本；
-- pnpm `10.12.1`；
+- Rush `5.156.0`，由仓库启动脚本自动准备；
+- pnpm `10.12.1`，仅由 Rush 内部管理，无需全局安装；
 - Docker Engine 或 Docker Desktop，支持 Docker Compose v2；
 - Rust stable，用于管理器测试和桌面 App 构建；
 - 目标平台原生构建工具。桌面公开包必须在对应操作系统和 CPU 架构上生成。
@@ -38,9 +39,8 @@ git switch -c codex/<short-description>
 安装依赖：
 
 ```bash
-corepack enable
-corepack prepare pnpm@10.12.1 --activate
-pnpm install --frozen-lockfile
+npm install --global @microsoft/rush@5.156.0
+rush install
 cp .env.docker.example .env
 ```
 
@@ -54,10 +54,14 @@ REDIS_PASSWORD=
 REDIS_DB=0
 ```
 
+Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/config/rush/pnpm-lock.yaml` 是唯一提交的 JavaScript 依赖锁文件；不要重新创建根目录的 `pnpm-workspace.yaml` 或 `pnpm-lock.yaml`。
+
+拉取没有依赖变化的提交后运行 `rush install`。修改任意项目的 `package.json`、新增项目或调整依赖后运行 `rush update`，并提交更新后的 Rush 锁文件。新增项目还必须加入 `rush.json`。在单个项目目录执行该项目脚本时使用 `rushx <script>`；跨项目构建使用 `rush build --to <package-name>`，修改公共包后可用 `rush build --from <package-name>` 构建所有受影响项目。
+
 ## 4. 启动源码开发环境
 
 ```bash
-pnpm dev
+rush dev
 ```
 
 该命令直接运行源码，不使用业务镜像：
@@ -70,16 +74,16 @@ pnpm dev
 | Player Service / 玩家管理 | `http://127.0.0.1:3124/` |
 | 参考登录门户              | `http://127.0.0.1:3125/` |
 
-`pnpm dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要临时开发数据库时执行：
+`rush dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要临时开发数据库时执行：
 
 ```bash
-pnpm dev --infra
+rush dev --infra
 ```
 
 只开发 Creator 相关功能时可以执行：
 
 ```bash
-pnpm dev:creator
+rush dev-creator
 ```
 
 Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig。前端页面通常支持热更新；`apps/local-engine/src/`、`services/game-server/src/` 和公共包构建产物变化后通常需要重启开发栈。
@@ -108,22 +112,21 @@ Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 I
 提交前必须运行：
 
 ```bash
-pnpm verify
+rush verify
 ```
 
 它依次执行格式检查、Lint、类型检查、Node 回归、发行包检查、文档检查以及 Rust 测试。快速开发时可先运行与改动最相关的命令：
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm --filter @box-local/local-engine test
-pnpm --filter @box-local/game-server test
-pnpm --filter @box-local/voxa build
-pnpm --filter @box-local/player-admin build
+rush format-check
+rush lint
+rush typecheck
+rushx test # 在 apps/local-engine 或 services/game-server 中执行
+rush build --to @box-local/voxa
+rush build --to @box-local/player-admin
 ```
 
-涉及 Compose、Dockerfile、安装器、权限、数据库 schema、地图组、地图 ID、`.boxproject`/`.boxplay`、脚本 API 或管理器时，不能只运行局部测试，必须执行完整 `pnpm verify`。
+涉及 Compose、Dockerfile、安装器、权限、数据库 schema、地图组、地图 ID、`.boxproject`/`.boxplay`、脚本 API 或管理器时，不能只运行局部测试，必须执行完整 `rush verify`。
 
 ## 7. 文档要求
 
@@ -141,7 +144,7 @@ pnpm --filter @box-local/player-admin build
 构建完整镜像归档：
 
 ```bash
-pnpm package:images arm64
+rush package-images --architecture arm64
 ```
 
 输出示例：
@@ -153,13 +156,13 @@ apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
 已有当前版本和架构的六个镜像时，可只导出而不重建：
 
 ```bash
-pnpm export:images
+rush export-images
 ```
 
 构建桌面包：
 
 ```bash
-pnpm package:desktop macos-arm64
+rush package-desktop --target macos-arm64
 ```
 
 支持目标为 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 和 `linux-arm64`；当前公开流水线不构建 `macos-amd64`。输出示例：
@@ -171,14 +174,14 @@ apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
 使用已有镜像归档可以跳过镜像重建：
 
 ```bash
-pnpm package:desktop macos-arm64 \
-  apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+rush package-desktop --target macos-arm64 \
+  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
 ```
 
 Linux 无桌面服务器包：
 
 ```bash
-pnpm package:web arm64
+rush package-web --architecture arm64
 ```
 
 输出位于 `apps/local-engine/dist/server-packages/`。完整发布要求见[构建与分发](docs/release-and-distribution.md)。
@@ -190,7 +193,7 @@ pnpm package:web arm64
 ```bash
 git status --short
 git diff --check
-pnpm verify
+rush verify
 ```
 
 Pull Request 至少说明：
@@ -207,7 +210,7 @@ Pull Request 至少说明：
 
 ## 10. 发布纪律
 
-主分支和 Pull Request 的 Verify 工作流执行生产依赖审计、Compose 校验和 `pnpm verify`。Tag Release 工作流负责版本/OSS 配置校验、镜像与安装包构建、GitHub Release 及 OSS/CDN 发布；它不会再次执行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
+主分支和 Pull Request 的 Verify 工作流执行生产依赖审计、Compose 校验和 `rush verify`。Tag Release 工作流负责版本/OSS 配置校验、镜像与安装包构建、GitHub Release 及 OSS/CDN 发布；它不会再次执行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 
 Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本应使用 `v0.2.0`。不要移动或重复使用已发布 Tag；流水线会按 `box-local-engine/<tag>/` 复用同版本 OSS 中间产物。
 

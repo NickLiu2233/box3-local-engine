@@ -12,6 +12,6 @@
 
 ### 使用
 
-直接修改 `src/client` 内的文件即可，`pnpm run build` 会处理并在 `dts` 目录下生成对应的文件。
+直接修改 `src/client` 内的文件，在本目录执行 `rushx build`，构建会处理并在 `dts` 目录下生成对应的文件。
 
 后端脚本的API暂时还不能够在这里生成。

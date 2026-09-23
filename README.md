@@ -64,50 +64,50 @@ Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理
 
 ## 源码快速开始
 
-要求：Node.js `22.17.x`、pnpm `10.12.1`、Docker Compose v2。完整验证和桌面 App 构建还需要 Rust stable 及目标平台原生工具链。
+要求：Node.js `22.17.x`、Docker Compose v2。Rush 会自动安装仓库锁定的 Rush `5.156.0` 和 pnpm `10.12.1`；完整验证和桌面 App 构建还需要 Rust stable 及目标平台原生工具链。
 
 ```bash
-corepack enable
-corepack prepare pnpm@10.12.1 --activate
-pnpm install --frozen-lockfile
+npm install --global @microsoft/rush@5.156.0
+rush install
 cp .env.docker.example .env
 ```
 
 启动完整源码开发栈：
 
 ```bash
-pnpm dev
+rush dev
 ```
 
-`pnpm dev` 直接运行 Creator、Play、VOXA、Player Service 和参考登录门户源码，默认连接 `.env` 中已有的 PostgreSQL/Redis。没有可用基础服务时使用：
+`rush dev` 直接运行 Creator、Play、VOXA、Player Service 和参考登录门户源码，默认连接 `.env` 中已有的 PostgreSQL/Redis。没有可用基础服务时使用：
 
 ```bash
-pnpm dev --infra
+rush dev --infra
 ```
 
 只启动 Creator 相关开发服务：
 
 ```bash
-pnpm dev:creator
+rush dev-creator
 ```
 
 常用命令：
 
-| 命令                                 | 作用                                   |
-| ------------------------------------ | -------------------------------------- |
-| `pnpm dev`                           | 启动完整源码开发栈                     |
-| `pnpm dev --infra`                   | 启动开发栈并启动开发 PostgreSQL/Redis  |
-| `pnpm dev:creator`                   | 启动 Creator 相关开发服务              |
-| `pnpm package:images <amd64\|arm64>` | 构建六个 Linux 镜像并导出归档          |
-| `pnpm export:images`                 | 不重建，导出本机已有的完整镜像集合     |
-| `pnpm package:desktop <target>`      | 生成目标平台桌面离线包                 |
-| `pnpm package:web <amd64\|arm64>`    | 生成 Linux 无桌面服务器包              |
-| `pnpm verify`                        | 执行格式、Lint、类型检查和全部回归测试 |
+| 命令                                        | 作用                                   |
+| ------------------------------------------- | -------------------------------------- |
+| `rush dev`                                  | 启动完整源码开发栈                     |
+| `rush dev --infra`                          | 启动开发栈并启动开发 PostgreSQL/Redis  |
+| `rush dev-creator`                          | 启动 Creator 相关开发服务              |
+| `rush build --to <项目名>`                  | 按依赖顺序增量构建指定项目             |
+| `rush package-images --architecture <架构>` | 构建六个 Linux 镜像并导出归档          |
+| `rush export-images`                        | 不重建，导出本机已有的完整镜像集合     |
+| `rush package-desktop --target <目标>`      | 生成目标平台桌面离线包                 |
+| `rush package-web --architecture <架构>`    | 生成 Linux 无桌面服务器包              |
+| `rush verify`                               | 执行格式、Lint、类型检查和全部回归测试 |
 
 例如构建 Apple Silicon macOS 包：
 
 ```bash
-pnpm package:desktop macos-arm64
+rush package-desktop --target macos-arm64
 ```
 
 输出：
@@ -143,7 +143,7 @@ apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
 - Linux amd64/arm64 无桌面服务器 ZIP；
 - Linux amd64/arm64 完整镜像归档（仅作为流水线中间产物存入 OSS）。
 
-GitHub Release 发布桌面包、服务器包和 `install.sh`。Linux 服务器的 `install.sh`、`latest.txt` 与两个架构的版本包同时发布到 OSS 的 `local-engine/` 目录，由 `https://assets.box3.fun/local-engine/` 提供下载。Tag 流水线会校验 Tag 与项目版本及 OSS Secret，但不会替代主分支和 Pull Request 的 `pnpm verify`；创建 Tag 前必须先完成完整验证。
+GitHub Release 发布桌面包、服务器包和 `install.sh`。Linux 服务器的 `install.sh`、`latest.txt` 与两个架构的版本包同时发布到 OSS 的 `local-engine/` 目录，由 `https://assets.box3.fun/local-engine/` 提供下载。Tag 流水线会校验 Tag 与项目版本及 OSS Secret，但不会替代主分支和 Pull Request 的 `rush verify`；创建 Tag 前必须先完成完整验证。
 
 ## 许可与安全
 

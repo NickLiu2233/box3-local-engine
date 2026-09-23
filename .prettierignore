@@ -1,8 +1,11 @@
 # Dependencies and build output
+.git/
 **/node_modules/
+**/.rush/
 **/.next/
 **/dist/
 **/coverage/
+**/target/
 **/*.tsbuildinfo
 apps/game/html-report/
 
@@ -12,10 +15,13 @@ apps/local-engine/projects/
 apps/local-engine/play-worlds/
 apps/local-engine/backups/
 apps/local-engine/.build-lock/
+apps/local-engine/runtime-cache/
 apps/voxa/data/
 apps/migrator/cache/
 apps/deployment-manager/src-tauri/gen/
 apps/deployment-manager/src-tauri/target/
+apps/player-admin/src/.umi/
+apps/player-admin/src/.umi-production/
 
 # Generated and binary-heavy assets
 apps/game/public/
@@ -29,6 +35,10 @@ apps/voxa/assets/
 # Vendored browser bundle retained by the standalone reference login portal.
 examples/player-auth-portal/public/app.js
 pnpm-lock.yaml
+common/config/rush/pnpm-lock.yaml
+common/config/rush/repo-state.json
+common/scripts/
+common/temp/
 
 # Compose files are validated as distributable text templates. Keep their
 # double-quoted interpolation syntax stable for the release regression checks.

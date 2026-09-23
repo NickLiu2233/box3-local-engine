@@ -10,7 +10,7 @@
   "types": "build/index.d.ts",
   "scripts": {
     "build": "rm -rf build && rollup -c rollup.config.mjs && node scripts/fix-build-imports.js",
-    "build:watch": "pnpm run build"
+    "build:watch": "npm run build"
   },
   "dependencies": {
     "@box-local/icons": "workspace:~1.0.0",

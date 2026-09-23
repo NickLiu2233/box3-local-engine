@@ -2,22 +2,24 @@
 
 ## 环境与启动
 
-使用 Node.js `22.17.0`、pnpm `10.12.1` 和 Docker Compose v2：
+使用 Node.js `22.17.0`、Rush `5.156.0` 和 Docker Compose v2。Rush 会准备项目锁定的 pnpm `10.12.1`：
 
 ```bash
-corepack enable
-pnpm install --frozen-lockfile
+npm install --global @microsoft/rush@5.156.0
+rush install
 cp .env.docker.example .env
-pnpm verify
+rush verify
 ```
 
 完整的 fork、分支、提交、测试、镜像和桌面包流程见根目录[贡献者指南](../CONTRIBUTING.md)。本文件聚焦源码开发和调试。
 
-常用入口：`pnpm dev`（完整源码开发栈）、`pnpm dev:creator`（仅 Creator）、`pnpm package:images`（离线镜像）、`pnpm package:desktop` 和 `pnpm package:web`（发行包）。桌面启动器位于 `apps/deployment-manager/`；服务级源码调试命令位于对应子项目中。
+常用入口：`rush dev`（完整源码开发栈）、`rush dev-creator`（仅 Creator）、`rush package-images`（离线镜像）、`rush package-desktop` 和 `rush package-web`（发行包）。桌面启动器位于 `apps/deployment-manager/`；服务级源码调试命令位于对应子项目中。
 
-`pnpm dev` 默认不启动 Docker 容器，而是直接以源码热更新模式启动 Creator、Play、Player Service、VOXA 和参考登录门户，并使用 `.env` 中已有的 PostgreSQL/Redis。默认地址为 Creator `3127`、Play `3121`、VOXA `3123`、Player Service `3124`、登录门户 `3125`；运行时端口为 Creator `9966/9967`、Play `9971`。它会为每个 Next 实例使用独立的 `.next-*` 和临时 tsconfig，避免多个开发服务互相覆盖构建输出。如果没有可用的基础服务，可明确执行 `pnpm dev --infra` 启动仓库内 Docker PostgreSQL/Redis；这会占用宿主机的 5432/6379 端口。
+`rush.json` 是唯一项目清单，Rush 的 PNPM 锁文件位于 `common/config/rush/pnpm-lock.yaml`。普通拉取使用 `rush install`；修改依赖或新增项目后使用 `rush update` 并提交锁文件。单项目脚本在项目目录内通过 `rushx <script>` 执行，不再使用根 pnpm Workspace 命令。依赖方向构建使用 `rush build --to <package-name>`，受影响方向构建使用 `rush build --from <package-name>`。
 
-`pnpm dev` 直接运行源码，不使用业务镜像。它只在显式传入 `--infra` 时启动仓库内 PostgreSQL/Redis；默认使用 `.env` 中的数据库和 Redis。三个 Game Next 实例使用独立 `.next-*` 和临时 tsconfig，避免互相覆盖构建输出。`apps/local-engine` 和 `services/game-server` 的运行时子进程修改后通常需要重启开发栈。
+`rush dev` 默认不启动 Docker 容器，而是直接以源码热更新模式启动 Creator、Play、Player Service、VOXA 和参考登录门户，并使用 `.env` 中已有的 PostgreSQL/Redis。默认地址为 Creator `3127`、Play `3121`、VOXA `3123`、Player Service `3124`、登录门户 `3125`；运行时端口为 Creator `9966/9967`、Play `9971`。它会为每个 Next 实例使用独立的 `.next-*` 和临时 tsconfig，避免多个开发服务互相覆盖构建输出。如果没有可用的基础服务，可明确执行 `rush dev --infra` 启动仓库内 Docker PostgreSQL/Redis；这会占用宿主机的 5432/6379 端口。
+
+`rush dev` 直接运行源码，不使用业务镜像。它只在显式传入 `--infra` 时启动仓库内 PostgreSQL/Redis；默认使用 `.env` 中的数据库和 Redis。三个 Game Next 实例使用独立 `.next-*` 和临时 tsconfig，避免互相覆盖构建输出。`apps/local-engine` 和 `services/game-server` 的运行时子进程修改后通常需要重启开发栈。
 
 ## 代码边界
 
@@ -34,22 +36,22 @@ Creator 读取可编辑工程，Play 只读取发布快照。不要跨越这条�
 ## 提交前
 
 ```bash
-pnpm verify
+rush verify
 ```
 
 快速反馈也可以使用：
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm --filter @box-local/voxa build
-pnpm --filter @box-local/game-server test
-pnpm --filter @box-local/local-engine test
+rush format-check
+rush lint
+rush typecheck
+rush build --to @box-local/voxa
+cd services/game-server && rushx test
+cd apps/local-engine && rushx test
 ```
 
 修改兼容接口、发布包、永久地图 ID、脚本 API 或运行时协议时，先阅读[系统架构](./architecture.md)和[对齐基线](./boxes-parity.md)，并补充回归测试。修改玩家管理页面、权限或容器后台流程时，还须阅读[管理后台开发说明](./player-admin-development.md)，同步更新接口文档和权限测试。
 
 ## 协作规则
 
-开始修改前检查工作区已有改动；不要覆盖其他协作者的数据或生成物。代码改动至少运行相关 lint/测试，跨服务、镜像或发行变更运行 `pnpm verify`。文档、配置样例和发布脚本应随行为变化同步更新。
+开始修改前检查工作区已有改动；不要覆盖其他协作者的数据或生成物。代码改动至少运行相关 lint/测试，跨服务、镜像或发行变更运行 `rush verify`。文档、配置样例和发布脚本应随行为变化同步更新。

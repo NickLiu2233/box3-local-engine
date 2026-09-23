@@ -74,27 +74,21 @@ BOX_AUTH_PORTAL_PUBLIC_URL=http://127.0.0.1:3125
 首次部署：
 
 ```bash
-pnpm player-service
-pnpm player-auth-portal
+docker compose --profile player-service --profile auth-portal up -d --build \
+  player-service player-auth-portal
 ```
 
 访问 [http://127.0.0.1:3125](http://127.0.0.1:3125)。代码或基础镜像没有变化时，可直接
 启动已有镜像：
 
 ```bash
-pnpm player-auth-portal:up
+docker compose --profile player-service --profile auth-portal up -d --no-build \
+  player-service player-auth-portal
 ```
 
 门户容器固定通过 Compose 内网地址 `http://player-service:3213` 访问玩家服务。浏览器不会拿到
 `BOX_PLAYER_AUTH_API_KEY`。容器默认仅绑定宿主机 `127.0.0.1:3125`、以非 root 用户运行，启用
 只读根文件系统、能力删除和健康检查。
-
-只使用 Docker Compose 时也可执行：
-
-```bash
-docker compose --profile player-service --profile auth-portal up -d --build \
-  player-service player-auth-portal
-```
 
 健康检查：
 

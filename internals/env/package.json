@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "rm -rf dist && tsc --emitDeclarationOnly && rollup --config rollup.config.mjs && node scripts/normalize-dist.js",
-    "build:watch": "pnpm run build"
+    "build:watch": "npm run build"
   },
   "dependencies": {
     "@box-local/utils": "workspace:*",

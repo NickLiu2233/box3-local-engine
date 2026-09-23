@@ -53,19 +53,21 @@
 改动后台页面至少执行：
 
 ```bash
-pnpm --filter @box-local/player-admin build
+rush build --to @box-local/player-admin
 ```
 
 改动权限、路由或数据校验还应执行：
 
 ```bash
-pnpm --filter @box-local/game test -- player-admin-authorization player-admin-validation player-admin-route
+cd apps/game
+rushx test -- player-admin-authorization player-admin-validation player-admin-route
 ```
 
 改动容器管理还应执行：
 
 ```bash
-pnpm --filter @box-local/game test -- map-container-admin
+cd apps/game
+rushx test -- map-container-admin
 ```
 
-提交前执行 `pnpm verify`。手工验收至少覆盖：服主登录、受限账号菜单隐藏与直连 403、分页、创建/编辑/删除确认、Token 一次性展示、地图导入预览、容器重启/销毁，以及刷新后按 URL 恢复正确页面。
+提交前执行 `rush verify`。手工验收至少覆盖：服主登录、受限账号菜单隐藏与直连 403、分页、创建/编辑/删除确认、Token 一次性展示、地图导入预览、容器重启/销毁，以及刷新后按 URL 恢复正确页面。

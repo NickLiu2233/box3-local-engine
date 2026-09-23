@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "build": "rm -rf build && tsc",
-    "build:watch": "pnpm run build"
+    "build:watch": "npm run build"
   },
   "dependencies": {
     "@box-local/ao-mesher": "workspace:0.2.10",
