@@ -58,6 +58,25 @@ Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/
 
 拉取没有依赖变化的提交后运行 `rush install`。修改任意项目的 `package.json`、新增项目或调整依赖后运行 `rush update`，并提交更新后的 Rush 锁文件。新增项目还必须加入 `rush.json`。在单个项目目录执行该项目脚本时使用 `rushx <script>`；跨项目构建使用 `rush build --to <package-name>`，修改公共包后可用 `rush build --from <package-name>` 构建所有受影响项目。
 
+根 `package.json` 提供等价的 npm 入口，便于不知道 Rush 命令的新贡献者查找：
+
+| 任务                 | Rush 命令          | npm 别名              |
+| -------------------- | ------------------ | --------------------- |
+| 安装锁定依赖         | `rush install`     | `npm run install:all` |
+| 更新依赖锁           | `rush update`      | `npm run update:all`  |
+| 启动完整开发栈       | `rush dev`         | `npm run dev`         |
+| 启动开发栈及基础服务 | `rush dev --infra` | `npm run dev:infra`   |
+| 全量构建             | `rush build`       | `npm run build`       |
+| 格式化               | `rush format`      | `npm run format`      |
+| 完整验证             | `rush verify`      | `npm run verify`      |
+
+npm 别名的额外参数必须放在 `--` 后，例如：
+
+```bash
+npm run build -- --to @box-local/player-admin
+npm run package:images -- --architecture arm64 --service player-service
+```
+
 ## 4. 启动源码开发环境
 
 ```bash
@@ -196,6 +215,27 @@ git diff --check
 rush verify
 ```
 
+只暂存本次工作的文件，确认暂存内容后再提交：
+
+```bash
+git add <files>
+git diff --cached
+git commit -m "feat: describe the change"
+git push -u origin codex/<short-description>
+```
+
+评审期间需要同步主分支时：
+
+```bash
+git fetch upstream
+git rebase upstream/main
+rush install
+rush verify
+git push --force-with-lease
+```
+
+不要使用无保护的 `git push --force`。不要用 `git add .` 把 `.env`、日志、数据库、地图、模型、压缩包或其他协作者的改动一起提交。
+
 Pull Request 至少说明：
 
 1. 问题和目标；
@@ -208,7 +248,18 @@ Pull Request 至少说明：
 
 评审重点包括服务端授权、秘密泄露、数据可恢复性、跨平台行为、离线包可复现性和文档准确性。
 
-## 10. 发布纪律
+## 10. 常见开发问题
+
+- **依赖锁不一致：**普通拉取后执行 `rush install`；自己修改依赖后执行 `rush update`。不要绕过 Rush 直接调用 pnpm 的依赖安装命令。
+- **端口冲突：**检查 3121、3123、3124、3125、3127、9966、9967 和 9971；使用 `--infra` 时还需检查 5432 和 6379。
+- **源码已改但容器未更新：**开发服务和业务镜像互不自动同步。重新构建镜像并重新创建容器，重启旧容器不会获取新代码。
+- **运行时没有热更新：**`apps/local-engine`、`services/game-server` 和公共包变化后通常需要重启 `rush dev`。
+- **Rush 报告已有任务：**等待正在运行的安装、验证或打包任务完成，不要删除 Rush 锁或强行并发。
+- **格式检查失败：**运行 `rush format`，检查格式化 diff 后再执行 `rush format-check`。
+
+完整排障、局部构建、镜像部署验证和模块说明见[开发者与协作手册](docs/developer-guide.md)。
+
+## 11. 发布纪律
 
 主分支和 Pull Request 的 Verify 工作流执行生产依赖审计、Compose 校验和 `rush verify`。Tag Release 工作流负责版本/OSS 配置校验、镜像与安装包构建、GitHub Release 及 OSS/CDN 发布；它不会再次执行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 
@@ -216,7 +267,7 @@ Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本
 
 公开发布前还应在干净机器验证镜像导入、许可证安装、数据库初始化、登录、地图导入、Creator/Play/VOXA、容器重启、升级保留数据和 SHA-256 校验。Windows 使用 Authenticode；macOS 使用 Developer ID 签名和公证。
 
-## 11. 安全边界
+## 12. 安全边界
 
 - 不把密钥、权限判定和权威存档放进浏览器或客户端地图脚本；
 - 不把 Docker Socket、PostgreSQL、Redis 或管理端裸露到不受信任公网；

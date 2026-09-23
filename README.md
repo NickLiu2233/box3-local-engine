@@ -140,6 +140,25 @@ apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
 | `distribution/`                | 服务器包、独立部署和许可模板                   |
 | `scripts/`                     | 开发、回归、打包和文档检查脚本                 |
 
+## 参与开发
+
+新人建议先阅读[开发者与协作手册](docs/developer-guide.md)，它完整说明环境准备、Rush 依赖管理、源码启动、模块定位、测试、镜像与发行包构建、部署验证和常见故障。准备提交代码时，再按[贡献者指南](CONTRIBUTING.md)完成分支同步、提交检查和 Pull Request。
+
+最短开发流程：
+
+```bash
+git switch -c codex/<short-description>
+rush install
+cp .env.docker.example .env
+rush dev --infra
+# 完成修改和相关局部测试
+rush verify
+git status --short
+git diff --check
+```
+
+修改依赖或增加 Rush 项目时使用 `rush update`，并提交 `common/config/rush/pnpm-lock.yaml`。普通拉取只使用 `rush install`。不要重新创建 pnpm Workspace 文件，也不要提交 `.env`、数据库、地图、模型、日志、Docker 卷和本地构建产物。
+
 ## 发行范围
 
 当前 Tag 流水线构建：
