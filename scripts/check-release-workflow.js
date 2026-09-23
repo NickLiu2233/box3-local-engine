@@ -37,8 +37,10 @@ assert.match(
 )
 assert.match(workflow, /architecture: amd64\s+runner: ubuntu-latest/)
 assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/)
-assert.doesNotMatch(workflow, /^\s{2}verify:/m)
-assert.doesNotMatch(workflow, /needs: verify/)
+assert.match(workflow, /^ {2}validate-release:/m)
+assert.match(workflow, /images:\s+needs: validate-release/)
+assert.match(workflow, /sync-root-version\.js --check/)
+assert.match(workflow, /GITHUB_REF_NAME.*v\$version/)
 assert.doesNotMatch(workflow, /docker\/setup-qemu-action/)
 assert.match(
   workflow,
@@ -119,7 +121,7 @@ for (const step of [
   'Download images from Aliyun OSS',
   'Upload desktop installer to Aliyun OSS',
   'Upload server package to Aliyun OSS',
-  'Download release files from Aliyun OSS',
+  'Download release packages from Aliyun OSS',
 ]) {
   assert.match(workflow, new RegExp(step))
 }
@@ -131,21 +133,37 @@ assert.match(
   workflow,
   /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
 )
-assert.match(
-  workflow,
-  /OSS_PREFIX: box-local-engine\/\$\{\{ github\.ref_name \}\}\/e407586a7d349bd29f83c134b758d6797c4466cb/,
-)
-assert.doesNotMatch(workflow, /OSS_PREFIX:.*github\.sha/)
+assert.match(workflow, /OSS_BUILD_PREFIX: box-local-engine\/\$\{\{ github\.ref_name \}\}/)
+assert.match(workflow, /OSS_SERVER_RELEASE_PREFIX: local-engine/)
+assert.match(workflow, /ALIYUN_OSS_BUCKET must contain only the bucket name/)
+assert.match(workflow, /ALIYUN_OSS_ENDPOINT must be an OSS endpoint hostname/)
 assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
 assert.doesNotMatch(workflow, /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['"][^$]/i)
 assert.match(workflow, /release-files\/BOX-Local-Engine-\*\.zip/)
 assert.match(workflow, /release-files\/BOX3-Engine-Server-\*\.zip/)
 assert.match(workflow, /distribution\/server\/bootstrap\.sh release-files\/install\.sh/)
 assert.match(workflow, /release-files\/install\.sh/)
-assert.match(workflow, /oss:\/\/\$OSS_BUCKET\/local-engine\/install\.sh/)
-assert.match(workflow, /oss:\/\/\$OSS_BUCKET\/local-engine\/latest\.txt/)
+assert.match(workflow, /for architecture in amd64 arm64/)
+assert.match(
+  workflow,
+  /for target in windows-amd64 windows-arm64 macos-arm64 linux-amd64 linux-arm64/,
+)
+assert.doesNotMatch(
+  workflow,
+  /ossutil cp "oss:\/\/\$OSS_BUCKET\/\$OSS_BUILD_PREFIX\/" \.\/release-files\/ --recursive/,
+)
+assert.match(workflow, /oss:\/\/\$OSS_BUCKET\/\$OSS_SERVER_RELEASE_PREFIX\/" --update/)
+assert.match(workflow, /oss:\/\/\$OSS_BUCKET\/\$OSS_SERVER_RELEASE_PREFIX\/install\.sh/)
+assert.match(workflow, /oss:\/\/\$OSS_BUCKET\/\$OSS_SERVER_RELEASE_PREFIX\/latest\.txt/)
 assert.match(workflow, /Publish latest\.txt last/)
 assert.doesNotMatch(workflow, /release-files\/\*\.tar\.gz/)
+assert.match(workflow, /BOX_BUILD_COMMIT: \$\{\{ github\.sha \}\}/)
+assert.match(workflow, /BOX_BUILD_SOURCE: github-actions/)
+assert.ok(
+  workflow.indexOf('name: Publish GitHub Release') <
+    workflow.indexOf('name: Publish stable Linux installer to OSS'),
+  'GitHub Release must exist before the CDN latest pointer is updated',
+)
 for (const requiredTemplateFile of [
   'README.md',
   'install.sh',

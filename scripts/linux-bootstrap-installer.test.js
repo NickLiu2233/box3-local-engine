@@ -21,14 +21,11 @@ test('Linux bootstrap selects the matching release and preserves existing state'
     const packageRoot = path.join(temporaryRoot, 'fixture', 'BOX3-Engine-Server-9.8.7-linux-amd64')
     const installRoot = path.join(temporaryRoot, 'install')
     const dockerCalls = path.join(temporaryRoot, 'docker-calls.log')
-    const dnfCalls = path.join(temporaryRoot, 'dnf-calls.log')
     const curlCalls = path.join(temporaryRoot, 'curl-calls.log')
-    const osRelease = path.join(temporaryRoot, 'os-release')
     fs.mkdirSync(mockBin, { recursive: true })
     fs.mkdirSync(packageRoot, { recursive: true })
     fs.mkdirSync(installRoot, { recursive: true })
     fs.writeFileSync(path.join(temporaryRoot, 'machine-id'), 'test-machine\n')
-    fs.writeFileSync(osRelease, 'ID=alinux\nVERSION_ID="3"\n')
     fs.writeFileSync(
       path.join(installRoot, '.env'),
       [
@@ -71,16 +68,7 @@ test('Linux bootstrap selects the matching release and preserves existing state'
       '#!/bin/sh\ncase "${1:-}" in -s) echo Linux;; -m) echo x86_64;; *) echo Linux;; esac\n',
     )
     executable(
-      path.join(mockBin, 'dnf'),
-      `#!/bin/sh
-set -eu
-printf '%s\n' "$*" >> "$DNF_CALLS"
-cp "$MOCK_BIN/docker-template" "$MOCK_BIN/docker"
-chmod +x "$MOCK_BIN/docker"
-`,
-    )
-    executable(
-      path.join(mockBin, 'docker-template'),
+      path.join(mockBin, 'docker'),
       `#!/bin/sh
 set -eu
 printf '%s\n' "$*" >> "$DOCKER_CALLS"
@@ -124,16 +112,13 @@ fi
       env: {
         ...process.env,
         PATH: `${mockBin}:/usr/bin:/bin`,
-        MOCK_BIN: mockBin,
         FIXTURE_ZIP: fixtureZip,
         DOCKER_CALLS: dockerCalls,
-        DNF_CALLS: dnfCalls,
         CURL_CALLS: curlCalls,
         BOX3_REPOSITORY_URL: 'https://example.test/project',
         BOX3_RELEASE_CDN_URL: 'https://cdn.example.test/box3',
         BOX3_INSTALL_DIRECTORY: installRoot,
         BOX3_MACHINE_ID_FILE: path.join(temporaryRoot, 'machine-id'),
-        BOX3_OS_RELEASE_FILE: osRelease,
       },
       encoding: 'utf8',
     })
@@ -158,9 +143,6 @@ fi
     const dockerInvocations = fs.readFileSync(dockerCalls, 'utf8')
     assert.match(dockerInvocations, /up .*play creator/)
     assert.doesNotMatch(dockerInvocations, /up .*managed-postgres/)
-    const dnfInvocations = fs.readFileSync(dnfCalls, 'utf8')
-    assert.match(dnfInvocations, /dnf-plugin-releasever-adapter --repo alinux3-plus/)
-    assert.match(dnfInvocations, /docker-compose-plugin/)
     const curlInvocations = fs.readFileSync(curlCalls, 'utf8')
     assert.match(curlInvocations, /https:\/\/cdn\.example\.test\/box3\/latest\.txt/)
     assert.match(

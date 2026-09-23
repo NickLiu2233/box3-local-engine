@@ -63,6 +63,6 @@ pnpm package:desktop macos-arm64 \
 
 同一离线包中的 App、镜像归档和清单必须来自同一构建。GitHub Release 只上传发行物和校验信息，不上传用户数据。Windows 公开分发使用 Authenticode；macOS 使用 Developer ID 签名和公证，否则系统可能提示未知开发者或阻止启动。
 
-Linux 服务器稳定分发目录为 `https://assets.box3.fun/local-engine`。Release 流程先上传 amd64/arm64 两个 `BOX3-Engine-Server-<version>-linux-<arch>.zip` 和 `install.sh`，最后上传只包含版本号的 `latest.txt`。安装器也可以通过 `BOX3_RELEASE_CDN_URL` 临时切换到其他静态目录，不要求 OSS 模拟 GitHub Release 路由。
+Linux 服务器稳定分发目录为 `https://assets.box3.fun/local-engine`，对应 OSS Bucket 内的 `local-engine/` 目录。Release 流程先上传 amd64/arm64 两个 `BOX3-Engine-Server-<version>-linux-<arch>.zip` 和 `install.sh`，最后上传只包含版本号的 `latest.txt`。构建镜像、桌面安装包等流水线中间文件仍保存在独立的 `box-local-engine/<tag>/` 目录，不会暴露为服务器 CDN 下载地址。安装器也可以通过 `BOX3_RELEASE_CDN_URL` 临时切换到其他静态目录，不要求 OSS 模拟 GitHub Release 路由。
 
 发行 CI 应在镜像中写入 `BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE` 和 `BOX_BUILD_SOURCE`。Play 游戏内“关于”使用这些值显示 `版本-local · 提交短号`；缺少有效提交号时只显示版本。发布前核对 App、镜像归档和该显示信息均来自同一个 Tag 构建。
