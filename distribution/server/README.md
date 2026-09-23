@@ -7,7 +7,7 @@
 如果尚未下载本包，联网服务器可以直接运行一键安装命令；该命令会自动下载匹配架构的完整包并执行本 README 中的校验和安装流程，同时把管理端开放到局域网和公网，并在终端显示访问地址与两类管理密钥：
 
 ```bash
-curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
 ## 一、准备一台纯 Linux 服务器

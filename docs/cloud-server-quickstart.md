@@ -9,7 +9,7 @@
 使用 root 权限执行稳定安装地址：
 
 ```bash
-curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
 安装目录固定为 `/opt/box3-engine`。重复执行同一条命令可以升级程序和镜像，已有 `.env`、许可证、地图、模型、备份和 Docker 数据卷不会被覆盖。
@@ -23,7 +23,7 @@ curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/downloa
 指定版本或自定义安装目录时，先下载安装器再传入环境变量：
 
 ```bash
-curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh -o install.sh
+curl -fsSL https://assets.box3.fun/local-engine/install.sh -o install.sh
 sudo BOX3_VERSION=0.1.1 BOX3_INSTALL_DIRECTORY=/opt/box3-engine sh install.sh
 rm install.sh
 ```
@@ -33,6 +33,33 @@ rm install.sh
 ```bash
 sudo BOX3_MANAGER_BIND_IP=127.0.0.1 sh install.sh
 ```
+
+### OSS/CDN 文件结构
+
+把下面三个文件放在同一个 HTTPS 目录：
+
+```text
+latest.txt
+BOX3-Engine-Server-0.1.1-linux-amd64.zip
+BOX3-Engine-Server-0.1.1-linux-arm64.zip
+```
+
+`latest.txt` 只写当前版本号，例如：
+
+```text
+0.1.1
+```
+
+正式下载目录是 `https://assets.box3.fun/local-engine`，因此服主通常不需要指定额外参数。迁移到其他 OSS/CDN 时，可以执行：
+
+```bash
+curl -fsSL https://abc.com/install.sh |
+  sudo env BOX3_RELEASE_CDN_URL=https://abc.com/box3 sh
+```
+
+该目录必须支持 HTTPS 原始文件下载，不能返回登录页面或 HTML 错误页。正式 Release 会自动先上传两个架构包和 `install.sh`，最后更新 `latest.txt`。
+
+CDN 的 `latest.txt` 或当前架构 ZIP 返回错误时，安装器会自动回退到同版本的 GitHub Release；CDN 与 GitHub 都无法下载时才停止安装。
 
 ## 2. 准备服务器
 

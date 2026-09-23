@@ -35,7 +35,7 @@ df -h /
 联网服务器直接执行：
 
 ```bash
-curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
 安装器会自动识别 `amd64` 或 `arm64`、准备 Docker Engine 与 Compose v2、下载并校验匹配的完整发行包，然后安装到 `/opt/box3-engine` 并启动管理端。管理端默认监听 `0.0.0.0:3130`，安装完成时会显示局域网地址、公网地址、管理端登录密钥和服主管理密钥。重复执行会升级程序文件并保留现有配置、许可证、地图、模型、备份和数据库卷。

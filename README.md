@@ -20,7 +20,7 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 无图形 Linux 服务器可以一键安装：
 
 ```bash
-curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
 ## 当前组成

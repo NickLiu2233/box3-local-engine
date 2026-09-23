@@ -44,7 +44,7 @@ pnpm package:desktop macos-arm64 \
 
 解压后启动器位于 `BOX-Local-Engine-<version>-macos-arm64/BOX3 Engine Launcher.app`。VOXA standalone 输出不是桌面 App。
 
-公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。发布任务还会把 `distribution/server/bootstrap.sh` 作为固定名称 `install.sh` 上传，因此 `releases/latest/download/install.sh` 始终指向当前发行版本的一键安装入口。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
+公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。发布任务还会把 `distribution/server/bootstrap.sh` 作为固定名称 `install.sh` 上传到 GitHub Release，并同步到 `https://assets.box3.fun/local-engine/install.sh`。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
 
 桌面离线包包含启动器与所需镜像；Linux 无图形包包含 Creator、VOXA、Play、Player Service、登录门户和 Rust Web 管理端，不包含迁移器。Web 管理端可以按需拉取并维护内置 PostgreSQL/Redis，也可以连接服主提供的外部服务；两种内置基础服务镜像不包含在离线归档中。Release 不得包含 `.env`、地图、项目、备份、数据库卷、日志或真实密钥。
 
@@ -62,5 +62,7 @@ pnpm package:desktop macos-arm64 \
 ## 版本与签名
 
 同一离线包中的 App、镜像归档和清单必须来自同一构建。GitHub Release 只上传发行物和校验信息，不上传用户数据。Windows 公开分发使用 Authenticode；macOS 使用 Developer ID 签名和公证，否则系统可能提示未知开发者或阻止启动。
+
+Linux 服务器稳定分发目录为 `https://assets.box3.fun/local-engine`。Release 流程先上传 amd64/arm64 两个 `BOX3-Engine-Server-<version>-linux-<arch>.zip` 和 `install.sh`，最后上传只包含版本号的 `latest.txt`。安装器也可以通过 `BOX3_RELEASE_CDN_URL` 临时切换到其他静态目录，不要求 OSS 模拟 GitHub Release 路由。
 
 发行 CI 应在镜像中写入 `BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE` 和 `BOX_BUILD_SOURCE`。Play 游戏内“关于”使用这些值显示 `版本-local · 提交短号`；缺少有效提交号时只显示版本。发布前核对 App、镜像归档和该显示信息均来自同一个 Tag 构建。

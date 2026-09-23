@@ -303,6 +303,20 @@ jobs:
         run: |
           cp distribution/server/bootstrap.sh release-files/install.sh
           chmod +x release-files/install.sh
+      - name: Publish stable Linux installer to OSS
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          printf '%s\n' "$version" > release-files/latest.txt
+          for server_package in release-files/BOX3-Engine-Server-*-linux-*.zip; do
+            test -f "$server_package"
+            ossutil cp "$server_package" "oss://$OSS_BUCKET/local-engine/" --update
+          done
+          ossutil cp release-files/install.sh \
+            "oss://$OSS_BUCKET/local-engine/install.sh" --update
+          # Publish latest.txt last so clients never observe a version before
+          # both architecture packages and the matching installer are ready.
+          ossutil cp release-files/latest.txt \
+            "oss://$OSS_BUCKET/local-engine/latest.txt" --update
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true

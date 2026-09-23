@@ -22,6 +22,7 @@ test('Linux bootstrap selects the matching release and preserves existing state'
     const installRoot = path.join(temporaryRoot, 'install')
     const dockerCalls = path.join(temporaryRoot, 'docker-calls.log')
     const dnfCalls = path.join(temporaryRoot, 'dnf-calls.log')
+    const curlCalls = path.join(temporaryRoot, 'curl-calls.log')
     const osRelease = path.join(temporaryRoot, 'os-release')
     fs.mkdirSync(mockBin, { recursive: true })
     fs.mkdirSync(packageRoot, { recursive: true })
@@ -95,6 +96,8 @@ esac
       path.join(mockBin, 'curl'),
       `#!/bin/sh
 set -eu
+printf '%s\n' "$*" >> "$CURL_CALLS"
+arguments="$*"
 output=''
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -103,7 +106,11 @@ while [ "$#" -gt 0 ]; do
     *) shift ;;
   esac
 done
-if [ "$output" = '/dev/null' ]; then
+if printf '%s' "$arguments" | grep -q 'latest.txt'; then
+  printf '9.8.7\n'
+elif printf '%s' "$arguments" | grep -q 'cdn.example.test.*BOX3-Engine-Server'; then
+  exit 22
+elif [ "$output" = '/dev/null' ]; then
   printf 'https://example.test/releases/tag/v9.8.7'
 elif [ -z "$output" ]; then
   printf '203.0.113.10'
@@ -121,7 +128,9 @@ fi
         FIXTURE_ZIP: fixtureZip,
         DOCKER_CALLS: dockerCalls,
         DNF_CALLS: dnfCalls,
+        CURL_CALLS: curlCalls,
         BOX3_REPOSITORY_URL: 'https://example.test/project',
+        BOX3_RELEASE_CDN_URL: 'https://cdn.example.test/box3',
         BOX3_INSTALL_DIRECTORY: installRoot,
         BOX3_MACHINE_ID_FILE: path.join(temporaryRoot, 'machine-id'),
         BOX3_OS_RELEASE_FILE: osRelease,
@@ -152,6 +161,17 @@ fi
     const dnfInvocations = fs.readFileSync(dnfCalls, 'utf8')
     assert.match(dnfInvocations, /dnf-plugin-releasever-adapter --repo alinux3-plus/)
     assert.match(dnfInvocations, /docker-compose-plugin/)
+    const curlInvocations = fs.readFileSync(curlCalls, 'utf8')
+    assert.match(curlInvocations, /https:\/\/cdn\.example\.test\/box3\/latest\.txt/)
+    assert.match(
+      curlInvocations,
+      /https:\/\/cdn\.example\.test\/box3\/BOX3-Engine-Server-9\.8\.7-linux-amd64\.zip/,
+    )
+    assert.match(
+      curlInvocations,
+      /https:\/\/example\.test\/project\/releases\/download\/v9\.8\.7\/BOX3-Engine-Server-9\.8\.7-linux-amd64\.zip/,
+    )
+    assert.match(result.stdout, /CDN 发行包不可用，回退到 GitHub Releases/)
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
   }
