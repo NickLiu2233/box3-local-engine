@@ -140,7 +140,7 @@ export const SettingPanel = (props: Props) => {
         <div className={`${style.itemWrapper} ${style.lastItemWrapper}`}>
           {item(
             intl.formatMessage({ id: 'aboutEngineVersion' }),
-            `${(clientConfig.localRuntimeInfo?.productVersion || '0.1.1').replace(/^v/, '')}-local`,
+            `${(clientConfig.localRuntimeInfo?.productVersion || '0.2.0').replace(/^v/, '')}-local`,
           )}
           {item(
             intl.formatMessage({ id: 'aboutEngineDeveloper' }),

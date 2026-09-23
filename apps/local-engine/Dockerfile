@@ -1,5 +1,5 @@
 ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
-ARG BOX_BUILD_VERSION=0.1.1
+ARG BOX_BUILD_VERSION=0.2.0
 ARG BOX_BUILD_COMMIT=unknown
 ARG BOX_BUILD_DATE=unknown
 ARG BOX_BUILD_SOURCE=local

@@ -12,6 +12,7 @@ const jsonFiles = [
   'apps/local-engine/package.json',
   'apps/license-server/package.json',
   'apps/migrator/package.json',
+  'apps/player-admin/package.json',
   'apps/server-manager/package.json',
   'apps/deployment-manager/src-tauri/tauri.conf.json',
 ]
@@ -53,7 +54,7 @@ for (const file of tomlFiles) {
 for (const file of composeFiles) {
   const location = path.join(root, file)
   const current = fs.readFileSync(location, 'utf8')
-  const next = current.replaceAll(/(BOX_IMAGE_TAG:-)\d+\.\d+\.\d+/g, `$1${version}`)
+  const next = current.replaceAll(/(BOX_(?:IMAGE_TAG|BUILD_VERSION):-)\d+\.\d+\.\d+/g, `$1${version}`)
   changed = writeIfChanged(file, next) || changed
 }
 

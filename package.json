@@ -1,6 +1,6 @@
 {
   "name": "box-local-engine",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Standalone local-first voxel engine developer preview",
   "license": "UNLICENSED",

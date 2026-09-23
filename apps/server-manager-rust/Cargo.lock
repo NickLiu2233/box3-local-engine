@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "box-local-engine-server-manager"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "axum",
  "box-manager-core",
@@ -162,7 +162,7 @@ dependencies = [
 
 [[package]]
 name = "box-manager-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "base64",
  "chrono",

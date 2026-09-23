@@ -24,7 +24,7 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 
 ```bash
 curl -fsSL https://assets.box3.fun/local-engine/install.sh -o install.sh
-sudo BOX3_VERSION=0.1.1 BOX3_INSTALL_DIRECTORY=/opt/box3-engine sh install.sh
+sudo BOX3_VERSION=0.2.0 BOX3_INSTALL_DIRECTORY=/opt/box3-engine sh install.sh
 rm install.sh
 ```
 
@@ -40,14 +40,14 @@ sudo BOX3_MANAGER_BIND_IP=127.0.0.1 sh install.sh
 
 ```text
 latest.txt
-BOX3-Engine-Server-0.1.1-linux-amd64.zip
-BOX3-Engine-Server-0.1.1-linux-arm64.zip
+BOX3-Engine-Server-0.2.0-linux-amd64.zip
+BOX3-Engine-Server-0.2.0-linux-arm64.zip
 ```
 
 `latest.txt` 只写当前版本号，例如：
 
 ```text
-0.1.1
+0.2.0
 ```
 
 正式下载目录是 `https://assets.box3.fun/local-engine`，因此服主通常不需要指定额外参数。迁移到其他 OSS/CDN 时，可以执行：

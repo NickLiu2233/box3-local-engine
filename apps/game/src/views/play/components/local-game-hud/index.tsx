@@ -47,7 +47,7 @@ export function LocalGameHud() {
     boxId: '',
     avatarSkinId: 'explorer',
   });
-  const engineVersion = `${(clientConfig.localRuntimeInfo?.productVersion || '0.1.1').replace(/^v/, '')}-local`;
+  const engineVersion = `${(clientConfig.localRuntimeInfo?.productVersion || '0.2.0').replace(/^v/, '')}-local`;
   const buildCommit = clientConfig.localRuntimeInfo?.buildCommit;
   const buildVersion = buildCommit && buildCommit !== 'unknown'
     ? `${engineVersion} · ${buildCommit.slice(0, 7)}`

@@ -120,7 +120,7 @@ export function extractServerConfigForClient(
   ) as ServerConfigForClient;
   const localRuntimeInfo: LocalRuntimeInfo | undefined = serverConfig.isLocalGameServer
     ? {
-      productVersion: process.env.BOX_BUILD_VERSION || process.env.BOX_IMAGE_TAG || '0.1.1',
+      productVersion: process.env.BOX_BUILD_VERSION || process.env.BOX_IMAGE_TAG || '0.2.0',
         buildCommit: process.env.BOX_BUILD_COMMIT || 'unknown',
         nodeVersion: process.version,
         deploymentMode: process.env.BOX_DEPLOYMENT_MODE || 'local',

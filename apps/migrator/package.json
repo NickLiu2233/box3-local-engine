@@ -1,6 +1,6 @@
 {
   "name": "@box-local/migrator",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "Cloud project to Local Engine project migration tool",
   "scripts": {

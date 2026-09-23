@@ -92,7 +92,7 @@ GET /api/creator/v1/health
 ```json
 {
   "apiVersion": "v1",
-  "engineVersion": "0.1.1",
+  "engineVersion": "0.2.0",
   "serverInstanceId": "local-engine",
   "issuer": "local-engine",
   "deploymentMode": "creator"

@@ -26,7 +26,7 @@ if [ ! -f .env ]; then
   echo 'Created .env. Review public URLs and optional PostgreSQL/Redis settings before public deployment.'
 fi
 
-archive='box-local-engine-images-0.1.1-linux-amd64.tar.gz'
+archive='box-local-engine-images-0.2.0-linux-amd64.tar.gz'
 if [ ! -f "$archive" ]; then
   echo "Missing $archive" >&2
   exit 1

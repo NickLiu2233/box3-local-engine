@@ -199,7 +199,7 @@ Creator 登录使用独立的 Device Authorization Flow，而不是沿用 `cli/a
 
     {
       "apiVersion": "v1",
-      "engineVersion": "0.1.1",
+      "engineVersion": "0.2.0",
       "serverInstanceId": "creator-prod-cn-01",
       "issuer": "https://identity.example.com"
     }

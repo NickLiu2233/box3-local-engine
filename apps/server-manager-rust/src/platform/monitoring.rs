@@ -157,7 +157,7 @@ pub(crate) fn service_images() -> Vec<Value> {
         "aarch64" | "arm64" => "linux/arm64",
         _ => "linux",
     };
-    let image_tag = if tag.is_empty() { "0.1.1".into() } else { tag };
+    let image_tag = if tag.is_empty() { "0.2.0".into() } else { tag };
     [
         ("地图创作工具 / 创作作品管理", "box-local-engine-creator"),
         ("模型创作工具", "box-local-engine-voxa"),

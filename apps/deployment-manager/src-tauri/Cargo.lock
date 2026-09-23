@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "box-local-engine-manager"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "box-manager-core",
  "chrono",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "box-manager-core"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
