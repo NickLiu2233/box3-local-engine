@@ -75,10 +75,7 @@ try {
     before,
     'CLI permanent map IDs must resolve to the same storage namespace as the project directory ID',
   )
-  assert.throws(
-    () => manager.resolveProjectReference('0123456789abcdef0123'),
-    /Project not found/,
-  )
+  assert.throws(() => manager.resolveProjectReference('0123456789abcdef0123'), /Project not found/)
   const launchTarget = manager.getLaunchTarget({ project: main.id })
   assert.deepEqual(launchTarget.initialMapSize, [32, 32, 32])
   assert.equal(launchTarget.initialTerrainTheme, 'plane')

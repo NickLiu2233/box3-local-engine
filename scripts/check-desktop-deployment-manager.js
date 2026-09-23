@@ -212,11 +212,11 @@ assert.match(
 )
 assert.match(compose, /BOX_MANAGED_POSTGRES_MEMORY_LIMIT:-512m/)
 assert.match(
-  compose.match(/ {2}play:[\s\S]*?\n  voxa:/)?.[0] || '',
+  compose.match(/ {2}play:[\s\S]*?\n {2}voxa:/)?.[0] || '',
   /apps\/local-engine\/data:\/app\/apps\/local-engine\/data:ro/,
   'Play must read the Desktop-managed per-map runtime profiles',
 )
-const playService = compose.match(/ {2}play:[\s\S]*?\n  voxa:/)?.[0] || ''
+const playService = compose.match(/ {2}play:[\s\S]*?\n {2}voxa:/)?.[0] || ''
 assert.match(playService, /server-manager:[\s\S]*?condition: service_healthy/)
 assert.match(playService, /BOX_RUNTIME_MANAGER_URL:/)
 assert.match(playService, /BOX_RUNTIME_MANAGER_TOKEN:/)

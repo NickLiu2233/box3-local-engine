@@ -18,12 +18,28 @@ type AdminDialogProps = {
   submit: () => void
 }
 
-export function AdminAccountDialog({ form, open, editing, groups, close, submit }: AdminDialogProps) {
+export function AdminAccountDialog({
+  form,
+  open,
+  editing,
+  groups,
+  close,
+  submit,
+}: AdminDialogProps) {
   return (
-    <Modal title={editing ? '编辑管理账号' : '新增管理账号'} open={open} onCancel={close} onOk={submit}>
+    <Modal
+      title={editing ? '编辑管理账号' : '新增管理账号'}
+      open={open}
+      onCancel={close}
+      onOk={submit}
+    >
       <Form form={form} layout="vertical" initialValues={{ permissions: [] }}>
-        <Form.Item name="username" label="用户名" rules={[{ required: true }]}><Input disabled={Boolean(editing)} /></Form.Item>
-        <Form.Item name="displayName" label="显示名称" rules={[{ required: true }]}><Input /></Form.Item>
+        <Form.Item name="username" label="用户名" rules={[{ required: true }]}>
+          <Input disabled={Boolean(editing)} />
+        </Form.Item>
+        <Form.Item name="displayName" label="显示名称" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
         <Form.Item
           name="password"
           label={editing ? '新密码（留空不修改）' : '初始密码'}
@@ -31,7 +47,11 @@ export function AdminAccountDialog({ form, open, editing, groups, close, submit 
         >
           <Input.Password />
         </Form.Item>
-        <Form.Item name="permissionGroupId" label="权限组" rules={[{ required: true, message: '请选择权限组' }]}>
+        <Form.Item
+          name="permissionGroupId"
+          label="权限组"
+          rules={[{ required: true, message: '请选择权限组' }]}
+        >
           <Select
             placeholder="选择权限组"
             options={groups.map((group) => ({
@@ -53,7 +73,13 @@ type PermissionGroupDialogProps = {
   submit: () => void
 }
 
-export function PermissionGroupDialog({ form, open, editing, close, submit }: PermissionGroupDialogProps) {
+export function PermissionGroupDialog({
+  form,
+  open,
+  editing,
+  close,
+  submit,
+}: PermissionGroupDialogProps) {
   return (
     <Modal title={editing ? '编辑权限组' : '新增权限组'} open={open} onCancel={close} onOk={submit}>
       <Form form={form} layout="vertical">
@@ -62,7 +88,9 @@ export function PermissionGroupDialog({ form, open, editing, close, submit }: Pe
             保存后将影响 {editing.adminCount} 个管理账号的实际权限。
           </div>
         ) : null}
-        <Form.Item name="name" label="权限组名称" rules={[{ required: true }]}><Input maxLength={32} /></Form.Item>
+        <Form.Item name="name" label="权限组名称" rules={[{ required: true }]}>
+          <Input maxLength={32} />
+        </Form.Item>
         <Form.Item name="permissions" label="权限" rules={[{ required: true }]}>
           <TreeSelect
             treeData={permissionTree}
@@ -76,9 +104,10 @@ export function PermissionGroupDialog({ form, open, editing, close, submit }: Pe
               const retained = previous.filter(
                 (capability) => !requested.includes(capability) && expanded.includes(capability),
               )
-              const attemptedView = typeof extra?.triggerValue === 'string'
-                && extra.checked === false
-                && isViewRequiredBySelection(extra.triggerValue, previous)
+              const attemptedView =
+                typeof extra?.triggerValue === 'string' &&
+                extra.checked === false &&
+                isViewRequiredBySelection(extra.triggerValue, previous)
               if (retained.length || attemptedView) {
                 notification.warning({
                   message: '无法取消查看权限',

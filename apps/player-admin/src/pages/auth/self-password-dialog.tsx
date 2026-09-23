@@ -21,13 +21,20 @@ export function SelfPasswordDialog({ form, open, saving, close, submit }: Props)
       onOk={submit}
     >
       <Form form={form} layout="vertical">
-        <Form.Item name="currentPassword" label="当前密码" rules={[{ required: true, message: '请输入当前密码' }]}>
+        <Form.Item
+          name="currentPassword"
+          label="当前密码"
+          rules={[{ required: true, message: '请输入当前密码' }]}
+        >
           <Input.Password autoComplete="current-password" />
         </Form.Item>
         <Form.Item
           name="newPassword"
           label="新密码"
-          rules={[{ required: true, message: '请输入新密码' }, { min: 12, message: '密码至少 12 位' }]}
+          rules={[
+            { required: true, message: '请输入新密码' },
+            { min: 12, message: '密码至少 12 位' },
+          ]}
         >
           <Input.Password autoComplete="new-password" />
         </Form.Item>

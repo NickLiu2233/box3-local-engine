@@ -102,33 +102,33 @@
 
 以下接口位于 `/api/play-admin/`，使用独立后台 Cookie 或服主临时会话；普通玩家 Cookie 无效。未授权为 `401/403`，参数错误为 `400`。
 
-| 方法                    | 路径                     | 权限             | 用途                        |
-| ----------------------- | ------------------------ | ---------------- | --------------------------- |
-| `POST`                  | `/login`                 | 无               | 管理员登录，写入后台 Cookie |
-| `POST`                  | `/owner-session`         | 服主密钥         | 创建临时服主会话            |
-| `GET`                   | `/verify`                | `players.view`   | 返回后台身份与权限          |
-| `POST`                  | `/self-password`         | `players.view`（仅管理员账号会话） | 修改当前管理员自己的密码 |
-| `GET`                   | `/players`               | `players.view`   | 分页查询玩家                |
-| `POST`                  | `/players`               | `players.create` | 新建普通玩家                |
-| `GET/PATCH/POST/DELETE` | `/players/:subjectId`    | 见下文           | 玩家详情、维护、命令、删除  |
-| `POST`                  | `/players/batch`         | 对应操作权限     | 批量操作                    |
-| `GET`                   | `/players/overview`      | `players.view`   | 概览与安全指标              |
-| `GET`                   | `/players/export`        | `players.export` | 导出 CSV                    |
-| `GET`                   | `/activity`              | `audit.view`     | 登录与管理审计分页查询      |
-| `GET/POST`              | `/identity-bans`         | 查看/管理来源封禁 | 查询或维护 IP、设备封禁     |
-| `POST`                  | `/maintenance`           | 服主             | 清理已过期会话              |
-| `GET/POST`              | `/admins`                | 服主             | 查询或创建后台管理账号      |
-| `PATCH/DELETE`          | `/admins/:id`            | 服主             | 修改或删除后台管理账号      |
-| `GET/POST`              | `/permission-groups`     | 服主             | 查询或创建权限组            |
-| `PATCH/DELETE`          | `/permission-groups/:id` | 服主             | 修改或删除权限组            |
-| `GET/POST`              | `/container-resource-groups` | `containers.view/manage` | 查询或创建地图容器资源组 |
-| `PATCH/DELETE`          | `/container-resource-groups/:id` | `containers.manage` | 修改或删除资源组 |
-| `GET/POST`              | `/containers`            | `containers.view/manage` | 查询运行容器，保存地图容量配置或执行重启/销毁 |
-| `DELETE`                | `/containers/:mapId`     | `containers.manage` | 删除地图组或单图容器配置 |
-| `GET`                   | `/library/worlds`        | `play-maps.view` | 查询已导入游玩地图          |
-| `PATCH/DELETE`          | `/library/worlds/:id`    | `play-maps.manage` | 设置、开放或删除游玩地图  |
-| `GET`                   | `/library/world-status`  | `play-maps.view` | 查询游玩地图资源状态 |
-| `GET/POST/DELETE`       | `/library/import`        | `play-maps.view/manage` | 预览、确认导入或取消 `.boxplay` 审查 |
+| 方法                    | 路径                             | 权限                               | 用途                                          |
+| ----------------------- | -------------------------------- | ---------------------------------- | --------------------------------------------- |
+| `POST`                  | `/login`                         | 无                                 | 管理员登录，写入后台 Cookie                   |
+| `POST`                  | `/owner-session`                 | 服主密钥                           | 创建临时服主会话                              |
+| `GET`                   | `/verify`                        | `players.view`                     | 返回后台身份与权限                            |
+| `POST`                  | `/self-password`                 | `players.view`（仅管理员账号会话） | 修改当前管理员自己的密码                      |
+| `GET`                   | `/players`                       | `players.view`                     | 分页查询玩家                                  |
+| `POST`                  | `/players`                       | `players.create`                   | 新建普通玩家                                  |
+| `GET/PATCH/POST/DELETE` | `/players/:subjectId`            | 见下文                             | 玩家详情、维护、命令、删除                    |
+| `POST`                  | `/players/batch`                 | 对应操作权限                       | 批量操作                                      |
+| `GET`                   | `/players/overview`              | `players.view`                     | 概览与安全指标                                |
+| `GET`                   | `/players/export`                | `players.export`                   | 导出 CSV                                      |
+| `GET`                   | `/activity`                      | `audit.view`                       | 登录与管理审计分页查询                        |
+| `GET/POST`              | `/identity-bans`                 | 查看/管理来源封禁                  | 查询或维护 IP、设备封禁                       |
+| `POST`                  | `/maintenance`                   | 服主                               | 清理已过期会话                                |
+| `GET/POST`              | `/admins`                        | 服主                               | 查询或创建后台管理账号                        |
+| `PATCH/DELETE`          | `/admins/:id`                    | 服主                               | 修改或删除后台管理账号                        |
+| `GET/POST`              | `/permission-groups`             | 服主                               | 查询或创建权限组                              |
+| `PATCH/DELETE`          | `/permission-groups/:id`         | 服主                               | 修改或删除权限组                              |
+| `GET/POST`              | `/container-resource-groups`     | `containers.view/manage`           | 查询或创建地图容器资源组                      |
+| `PATCH/DELETE`          | `/container-resource-groups/:id` | `containers.manage`                | 修改或删除资源组                              |
+| `GET/POST`              | `/containers`                    | `containers.view/manage`           | 查询运行容器，保存地图容量配置或执行重启/销毁 |
+| `DELETE`                | `/containers/:mapId`             | `containers.manage`                | 删除地图组或单图容器配置                      |
+| `GET`                   | `/library/worlds`                | `play-maps.view`                   | 查询已导入游玩地图                            |
+| `PATCH/DELETE`          | `/library/worlds/:id`            | `play-maps.manage`                 | 设置、开放或删除游玩地图                      |
+| `GET`                   | `/library/world-status`          | `play-maps.view`                   | 查询游玩地图资源状态                          |
+| `GET/POST/DELETE`       | `/library/import`                | `play-maps.view/manage`            | 预览、确认导入或取消 `.boxplay` 审查          |
 
 `/library/*` 由 Player Service 先完成后台身份与能力检查，再代理到 Play 管理服务；浏览器不直接持有 Play 内部管理凭据。`/containers` 的 `POST` 使用 `action=restart|destroy` 时返回异步接受或无内容响应；保存配置时返回保存后的 profile。
 
@@ -222,17 +222,17 @@
 
 权限组保存 capability 字符串。每一项编辑能力都需要并自动包含同一工作流的查看能力：
 
-| 菜单分类 | 查看能力 | 编辑/管理能力 |
-| --- | --- | --- |
-| 玩家账号 | `players.view` | `players.manage`、`players.create`、`players.export`、`players.delete`、`passwords.reset` |
-| 在线会话 | `sessions.view` | `sessions.manage` |
-| 账号封禁 | `account-bans.view` | `players.ban` |
-| IP / 设备封禁 | `identity-bans.view` | `identity-bans.manage` |
-| 玩家创作权限 | `creator-access.view` | `creator-access.manage` |
-| Creator CLI Token | `creator-tokens.view` | `creator-tokens.manage` |
-| 游玩地图 | `play-maps.view` | `play-maps.manage` |
-| 容器管理、资源组和地图配置 | `containers.view` | `containers.manage` |
-| 安全记录 | `audit.view` | 无写能力 |
+| 菜单分类                   | 查看能力              | 编辑/管理能力                                                                             |
+| -------------------------- | --------------------- | ----------------------------------------------------------------------------------------- |
+| 玩家账号                   | `players.view`        | `players.manage`、`players.create`、`players.export`、`players.delete`、`passwords.reset` |
+| 在线会话                   | `sessions.view`       | `sessions.manage`                                                                         |
+| 账号封禁                   | `account-bans.view`   | `players.ban`                                                                             |
+| IP / 设备封禁              | `identity-bans.view`  | `identity-bans.manage`                                                                    |
+| 玩家创作权限               | `creator-access.view` | `creator-access.manage`                                                                   |
+| Creator CLI Token          | `creator-tokens.view` | `creator-tokens.manage`                                                                   |
+| 游玩地图                   | `play-maps.view`      | `play-maps.manage`                                                                        |
+| 容器管理、资源组和地图配置 | `containers.view`     | `containers.manage`                                                                       |
+| 安全记录                   | `audit.view`          | 无写能力                                                                                  |
 
 服主拥有全部能力但不可被权限组授予。普通管理账号在未分配权限组时拥有全部可分配能力；为它分配权限组后，菜单可见性和服务端授权都会按该组收缩。完整的前端与服务端维护顺序见[管理后台开发说明](./player-admin-development.md)。
 

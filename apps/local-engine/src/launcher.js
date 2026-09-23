@@ -34,7 +34,9 @@ if (!process.env.BOX_TELEPORT_INTERNAL_TOKEN) {
 }
 const configPath = path.join(packageRoot, 'config/local.config.json')
 const defaultDataRoot = path.join(packageRoot, 'data')
-const mapRuntimeProfilesPath = process.env.BOX_MAP_RUNTIME_PROFILES_PATH || path.join(defaultDataRoot, 'map-runtime-profiles.json')
+const mapRuntimeProfilesPath =
+  process.env.BOX_MAP_RUNTIME_PROFILES_PATH ||
+  path.join(defaultDataRoot, 'map-runtime-profiles.json')
 const runtimeScheduler = schedulerSettings()
 const generatedAsset = path.join(
   repoRoot,
@@ -212,11 +214,15 @@ function mapRuntimeProfile(permanentMapId, mode) {
     }
     document = { profiles: [] }
   }
-  return resolveMapRuntimeProfile(document, { permanentMapId, mode }, {
-    playerLimit: Number(process.env.BOX_LOCAL_PLAYER_LIMIT || 70),
-    roomLimit: Number(process.env.BOX_TELEPORT_MAX_ROOMS || 64),
-    idleTimeoutMs: Number(process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || 900000),
-  })
+  return resolveMapRuntimeProfile(
+    document,
+    { permanentMapId, mode },
+    {
+      playerLimit: Number(process.env.BOX_LOCAL_PLAYER_LIMIT || 70),
+      roomLimit: Number(process.env.BOX_TELEPORT_MAX_ROOMS || 64),
+      idleTimeoutMs: Number(process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || 900000),
+    },
+  )
 }
 
 async function startScheduledContainer({ profile, mapId, mode, roomId, projectId, port }) {
@@ -384,7 +390,9 @@ async function terminateRuntimeChild(child, runtime, graceMs) {
       try {
         process.kill(-child.pid, signal)
         return
-      } catch {}
+      } catch {
+        // The child may have already left its process group; fall back to its PID.
+      }
     }
     child.kill(signal)
   }
@@ -767,11 +775,11 @@ async function main() {
             process.env.BOX_SERVER_CONTENT_ID ||
             '',
           PLAYER_LIMIT: process.env.BOX_LOCAL_PLAYER_LIMIT || '70',
-          MAX_ZERO_PLAYER_TIME:
-            process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '2147483647',
+          MAX_ZERO_PLAYER_TIME: process.env.BOX_RUNTIME_IDLE_TIMEOUT_MS || '2147483647',
           ...(Number(process.env.BOX_RUNTIME_NODE_MEMORY_MB) > 0
             ? {
-                NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --max-old-space-size=${process.env.BOX_RUNTIME_NODE_MEMORY_MB}`.trim(),
+                NODE_OPTIONS:
+                  `${process.env.NODE_OPTIONS || ''} --max-old-space-size=${process.env.BOX_RUNTIME_NODE_MEMORY_MB}`.trim(),
               }
             : {}),
         },
@@ -801,8 +809,17 @@ async function main() {
     const child = spawn(
       process.execPath,
       production
-        ? [...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []), 'dist/src/launch.js', '--useProdBundle']
-        : [...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []), '-r', '@swc-node/register', 'src/launch.ts'],
+        ? [
+            ...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []),
+            'dist/src/launch.js',
+            '--useProdBundle',
+          ]
+        : [
+            ...(profile.memoryMb ? [`--max-old-space-size=${profile.memoryMb}`] : []),
+            '-r',
+            '@swc-node/register',
+            'src/launch.ts',
+          ],
       {
         cwd: gameServerRoot,
         stdio: 'inherit',

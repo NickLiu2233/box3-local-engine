@@ -211,7 +211,7 @@ for (const { directory, manifest } of packages.values()) {
 // the desktop/Web managers, while component commands live with their project.
 const rootManifest = JSON.parse(readRequired('package.json'))
 for (const [name, command] of Object.entries({
-  'dev': 'node apps/local-engine/src/launcher.js --creator',
+  'dev': 'node scripts/dev-all.js',
   'package:images': 'node scripts/sync-root-version.js && node scripts/package-offline-images.js',
   'package:desktop': 'node scripts/package-release.js desktop',
   'package:web': 'node scripts/package-release.js web',
@@ -440,9 +440,15 @@ for (const [label, pattern] of [
 }
 for (const [label, pattern] of [
   ['creator build stage', /^FROM engine-build-base AS creator-build$/m],
-  ['creator build command', /^RUN pnpm --dir apps\/local-engine run build:creator$/m],
+  [
+    'creator build command',
+    /^RUN pnpm --filter @box-local\/cli build \\\n\s*&& pnpm --dir apps\/local-engine run build:creator$/m,
+  ],
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
-  ['play build command', /^RUN pnpm --dir apps\/local-engine run build:play$/m],
+  [
+    'play build command',
+    /^RUN pnpm --filter @box-local\/cli build \\\n\s*&& pnpm --dir apps\/local-engine run build:play$/m,
+  ],
   [
     'clean-checkout runtime asset generation',
     /^RUN pnpm --dir apps\/local-engine run prepare-assets$/m,
@@ -751,7 +757,6 @@ requirePattern(
   /profiles: \[auth-portal\]/,
 )
 for (const [label, pattern] of [
-  ['dedicated profile', /profiles: \[server-manager\]/],
   ['dedicated Dockerfile', /dockerfile: apps\/server-manager\/Dockerfile/],
   [
     'loopback-only default port',
@@ -765,6 +770,7 @@ for (const [label, pattern] of [
 ]) {
   requirePattern(serverManagerCompose, composeFile, `server manager ${label}`, pattern)
 }
+forbidPattern(serverManagerCompose, composeFile, 'optional server manager profile', /profiles:/)
 for (const [name, service] of [
   ['managed-redis', getComposeService(composeSource, 'managed-redis')],
   ['managed-postgres', getComposeService(composeSource, 'managed-postgres')],
@@ -788,10 +794,10 @@ requirePattern(
   /APPLICATION_SERVICES as SERVICES/,
 )
 requirePattern(
-  serverManagerRust,
-  serverManagerRustFile,
+  managerCoreServices,
+  'apps/manager-core/src/services.rs',
   'fixed service validation',
-  /SERVICES\.contains\(&service\.trim\(\)\)/,
+  /APPLICATION_SERVICES\.contains\(&service\)/,
 )
 requirePattern(
   managerCoreServices,
@@ -1224,7 +1230,7 @@ for (const filePath of playAdminApiFiles) {
     source,
     file,
     'play admin API guard',
-    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin|allowPlayerAdminRequestOrigin)\(req, res|playerAdminRoute\s*\(/,
+    /(?:allowPlay(?:Library)?Admin|authorizePlayerAdmin|allowPlayerAdminRequestOrigin|playLibraryAdminRoute)\(req, res|playerAdminRoute\s*\(|export default playLibraryAdminRoute/,
   )
 }
 
@@ -1277,7 +1283,7 @@ for (const [file, label, pattern] of [
   [
     'apps/game/webpack/index.js',
     'Monaco excluded from player builds',
-    /if \(!isPlayBuild\) \{[\s\S]*?CopyWebpackPlugin[\s\S]*?monaco-editor\/package\.json/,
+    /if \(!isPlayBuild(?: && !isServer)?\) \{[\s\S]*?CopyWebpackPlugin[\s\S]*?monaco-editor\/package\.json/,
   ],
 ]) {
   requirePattern(readRequired(file), file, label, pattern)

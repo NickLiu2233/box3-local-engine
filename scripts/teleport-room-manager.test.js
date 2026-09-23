@@ -232,7 +232,8 @@ test('room limits and idle collection can be scoped to the target map', async ()
   let serial = 0
   const stops = []
   const manager = createTeleportRoomManager({
-    resolveMap: (reference) => maps.find((map) => map.id === reference || map.permanentMapId === reference),
+    resolveMap: (reference) =>
+      maps.find((map) => map.id === reference || map.permanentMapId === reference),
     ensureRuntime: async () => undefined,
     stopRuntime: async (roomId) => stops.push(roomId),
     isRoomActive: () => false,

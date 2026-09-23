@@ -8,6 +8,16 @@ const root = path.resolve(__dirname, '..')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 const dockerfile = read('apps/server-manager/Dockerfile')
 const adapter = read('apps/server-manager-rust/src/main.rs')
+const collectRust = (directory) =>
+  fs
+    .readdirSync(directory, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .flatMap((entry) => {
+      const target = path.join(directory, entry.name)
+      if (entry.isDirectory()) return collectRust(target)
+      return entry.name.endsWith('.rs') ? [fs.readFileSync(target, 'utf8')] : []
+    })
+const serverManager = collectRust(path.join(root, 'apps/server-manager-rust/src')).join('\n')
 const sharedDirectory = path.join(root, 'apps/manager-core/src')
 const sharedBackend = fs
   .readdirSync(sharedDirectory)
@@ -15,7 +25,7 @@ const sharedBackend = fs
   .sort()
   .map((file) => fs.readFileSync(path.join(sharedDirectory, file), 'utf8'))
   .join('\n')
-const service = adapter + '\n' + sharedBackend
+const service = serverManager + '\n' + sharedBackend
 const transport = read('apps/deployment-manager/src/transport.js')
 const consoleSource = read('apps/deployment-manager/src/main.js')
 const serverEnvExample = read('distribution/server/.env.example')
@@ -45,7 +55,7 @@ assert.match(
   /managementAvailable \? `<article class="about-card"><div class="about-card-heading"><h2>更新日志/,
 )
 assert.match(consoleSource, /managementAvailable \? '社区与许可' : '许可证'/)
-assert.match(adapter, /if name != "get_legal_notices"/)
+assert.match(serverManager, /if name != "get_legal_notices"/)
 assert.match(
   adapter,
   /initialize_license_storage\(&app\)[\s\S]*?before serving requests/,
@@ -78,7 +88,7 @@ for (const command of [
   'get_managed_service_info',
   'start_managed_service',
 ]) {
-  assert.match(adapter, new RegExp(`"${command}"`), `Rust manager must support ${command}`)
+  assert.match(serverManager, new RegExp(`"${command}"`), `Rust manager must support ${command}`)
 }
 const browserHandledCommands = new Set([
   'open_service',
@@ -93,7 +103,7 @@ const invokedCommands = [...consoleSource.matchAll(/invoke\('([a-z_]+)'/g)].map(
 for (const command of invokedCommands) {
   if (!browserHandledCommands.has(command)) {
     assert.match(
-      adapter,
+      serverManager,
       new RegExp(`"${command}"`),
       `Rust manager must support UI command ${command}`,
     )
@@ -256,12 +266,12 @@ assert.ok(
 // import and rollback belong in the core backup behavior suite.
 // No check here requires an archive shell command or a particular parser.
 
-const webAdapter = productionRust(adapter)
+const webAdapter = productionRust(serverManager)
 assert.match(webAdapter, /use box_manager_core::configuration as shared_config;/)
 assert.match(webAdapter, /shared_config::runtime_environment\(/)
-assert.match(webAdapter, /use shared_config::validate_configuration;/)
+assert.match(webAdapter, /use shared_config::\{[\s\S]*?validate_configuration/)
 assert.match(webAdapter, /validate_configuration\(config\)\?;/)
-assert.match(webAdapter, /use shared_config::validate_raw_environment;/)
+assert.match(webAdapter, /use shared_config::\{[\s\S]*?validate_raw_environment/)
 assert.match(webAdapter, /validate_raw_environment\(s\)\?;/)
 assert.match(webAdapter, /web_manager:\s*true/)
 assert.match(

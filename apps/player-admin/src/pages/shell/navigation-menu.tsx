@@ -31,16 +31,30 @@ const groups: Record<MenuGroup, readonly PlayerAdminView[]> = {
 }
 
 const labels: Record<PlayerAdminView, string> = {
-  overview: '管理概览', players: '玩家账号', 'online-sessions': '在线会话',
-  'account-bans': '账号封禁', 'identity-bans': 'IP / 设备封禁', security: '安全记录',
-  admins: '管理账号', 'permission-groups': '权限组', 'play-maps': '游玩地图',
-  'container-play': '游玩端', 'container-creator': '创作端', 'container-profiles': '容器配置',
-  'container-resource-groups': '资源组', 'creator-access': '创作权限', 'creator-tokens': 'CLI 令牌',
+  'overview': '管理概览',
+  'players': '玩家账号',
+  'online-sessions': '在线会话',
+  'account-bans': '账号封禁',
+  'identity-bans': 'IP / 设备封禁',
+  'security': '安全记录',
+  'admins': '管理账号',
+  'permission-groups': '权限组',
+  'play-maps': '游玩地图',
+  'container-play': '游玩端',
+  'container-creator': '创作端',
+  'container-profiles': '容器配置',
+  'container-resource-groups': '资源组',
+  'creator-access': '创作权限',
+  'creator-tokens': 'CLI 令牌',
 }
 
 const groupLabels: Record<MenuGroup, string> = {
-  'player-center': '玩家管理', 'security-center': '安全管理', 'creator-center': '创作管理',
-  'play-center': '游玩管理', 'container-center': '容器管理', 'owner-center': '服主管理',
+  'player-center': '玩家管理',
+  'security-center': '安全管理',
+  'creator-center': '创作管理',
+  'play-center': '游玩管理',
+  'container-center': '容器管理',
+  'owner-center': '服主管理',
 }
 
 export function buildPlayerAdminMenuItems(actor: PlayerAdminNavigationActor) {
@@ -68,15 +82,11 @@ function groupForView(view: string): MenuGroup | undefined {
 export function PlayerAdminNavigationMenu(props: ComponentProps<typeof AntMenu>) {
   const selectedView = String(props.selectedKeys?.[0] || '')
   const activeGroup = useMemo(() => groupForView(selectedView), [selectedView])
-  const [openKeys, setOpenKeys] = useState<string[]>(() =>
-    activeGroup ? [activeGroup] : [],
-  )
+  const [openKeys, setOpenKeys] = useState<string[]>(() => (activeGroup ? [activeGroup] : []))
 
   useEffect(() => {
     if (!activeGroup) return
-    setOpenKeys((current) =>
-      current.includes(activeGroup) ? current : [...current, activeGroup],
-    )
+    setOpenKeys((current) => (current.includes(activeGroup) ? current : [...current, activeGroup]))
   }, [activeGroup])
 
   return (

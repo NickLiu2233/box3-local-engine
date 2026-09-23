@@ -561,7 +561,8 @@ function runtimes() {
     const rows = profiles.length
       ? profiles
           .map(
-            (profile) => `<article class="runtime-project runtime-profile-card"><header><div><div class="runtime-profile-title"><h2>${escapeHtml((playMapItems.find((project) => project.permanentMapId === profile.permanentMapId) || {}).name || profile.permanentMapId)}</h2></div><p>地图 ID：<code>${escapeHtml(profile.permanentMapId)}</code> · ${profile.playerLimit} 人 · ${profile.roomLimit} 房间 · ${formatDuration(profile.idleTimeoutMs)}</p></div><div class="runtime-actions"><button type="button" data-runtime-profile-delete="${escapeHtml(profile.permanentMapId)}" data-runtime-profile-mode="play" ${state.busy ? 'disabled' : ''}>删除</button></div></header><div class="runtime-profile-limits">${profile.cpuMilli || profile.memoryMb ? `<strong>独立容器</strong><span>CPU ${profile.cpuMilli || '未限制'} m · 内存 ${profile.memoryMb || '未限制'} MB</span>` : `<strong>共享运行时</strong><span>使用全局 Node 容量</span>`}</div></article>`,
+            (profile) =>
+              `<article class="runtime-project runtime-profile-card"><header><div><div class="runtime-profile-title"><h2>${escapeHtml((playMapItems.find((project) => project.permanentMapId === profile.permanentMapId) || {}).name || profile.permanentMapId)}</h2></div><p>地图 ID：<code>${escapeHtml(profile.permanentMapId)}</code> · ${profile.playerLimit} 人 · ${profile.roomLimit} 房间 · ${formatDuration(profile.idleTimeoutMs)}</p></div><div class="runtime-actions"><button type="button" data-runtime-profile-delete="${escapeHtml(profile.permanentMapId)}" data-runtime-profile-mode="play" ${state.busy ? 'disabled' : ''}>删除</button></div></header><div class="runtime-profile-limits">${profile.cpuMilli || profile.memoryMb ? `<strong>独立容器</strong><span>CPU ${profile.cpuMilli || '未限制'} m · 内存 ${profile.memoryMb || '未限制'} MB</span>` : `<strong>共享运行时</strong><span>使用全局 Node 容量</span>`}</div></article>`,
           )
           .join('')
       : '<div class="runtime-empty runtime-profile-empty">未单独配置的游玩地图将使用全局人数、房间与空闲回收设置，并运行在共享 Node 中。</div>'
@@ -853,7 +854,10 @@ function setup() {
               '查看密钥',
               '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
             ],
-            ['服主管理令牌', '用于验证服主登录，并保护玩家管理后台到游玩端的内部调用；它不直接授予普通管理员页面权限。'],
+            [
+              '服主管理令牌',
+              '用于验证服主登录，并保护玩家管理后台到游玩端的内部调用；它不直接授予普通管理员页面权限。',
+            ],
             ['账号服务 API Key', '供登录、注册或用户接入程序调用账号服务。'],
             ['运行时身份密钥', '用于 Creator 和 Play 之间签发、校验运行时身份。'],
             [
@@ -1337,13 +1341,17 @@ function bindEvents() {
     state.mapRuntimeProfileDialog = false
     render()
   }
-  document.querySelector('#cancel-map-runtime-profile')?.addEventListener('click', closeMapRuntimeProfileDialog)
+  document
+    .querySelector('#cancel-map-runtime-profile')
+    ?.addEventListener('click', closeMapRuntimeProfileDialog)
   document
     .querySelector('#cancel-map-runtime-profile-secondary')
     ?.addEventListener('click', closeMapRuntimeProfileDialog)
-  document.querySelector('[data-map-runtime-profile-dismiss]')?.addEventListener('click', (event) => {
-    if (event.target === event.currentTarget) closeMapRuntimeProfileDialog()
-  })
+  document
+    .querySelector('[data-map-runtime-profile-dismiss]')
+    ?.addEventListener('click', (event) => {
+      if (event.target === event.currentTarget) closeMapRuntimeProfileDialog()
+    })
   document.querySelector('#map-runtime-profile-form')?.addEventListener('submit', (event) => {
     event.preventDefault()
     const values = Object.fromEntries(new FormData(event.currentTarget))
@@ -1365,11 +1373,18 @@ function bindEvents() {
       inputNode.toggleAttribute('disabled', !enabled)
     })
   })
-  document.querySelectorAll('[data-runtime-profile-delete]').forEach((node) =>
-    node.addEventListener('click', () =>
-      void deleteMapRuntimeProfile(node.dataset.runtimeProfileDelete, node.dataset.runtimeProfileMode),
-    ),
-  )
+  document
+    .querySelectorAll('[data-runtime-profile-delete]')
+    .forEach((node) =>
+      node.addEventListener(
+        'click',
+        () =>
+          void deleteMapRuntimeProfile(
+            node.dataset.runtimeProfileDelete,
+            node.dataset.runtimeProfileMode,
+          ),
+      ),
+    )
   document.querySelector('#refresh-backups')?.addEventListener('click', loadBackups)
   document.querySelector('#create-backup')?.addEventListener('click', createBackup)
   document.querySelector('#import-backup')?.addEventListener('click', importBackup)

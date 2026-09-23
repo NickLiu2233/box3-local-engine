@@ -1,5 +1,5 @@
-import path from 'node:path';
-import { defineConfig } from '@umijs/max';
+import path from 'node:path'
+import { defineConfig } from '@umijs/max'
 
 export default defineConfig({
   antd: {},
@@ -27,4 +27,4 @@ export default defineConfig({
   // 否则浏览器会把它当成无法访问的 HTTP 地址。
   favicons: ['/favicon.png'],
   title: '玩家账号管理',
-});
+})

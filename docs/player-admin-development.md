@@ -4,17 +4,17 @@
 
 ## 模块地图
 
-| 模块 | 职责 | 不应承担的职责 |
-| --- | --- | --- |
-| `src/pages/index.tsx` | 会话启动、URL 视图切换、顶层布局与跨页面弹窗编排 | 重复定义传输数据结构、拼接资源路径、实现独立工作流 |
-| `src/pages/*.tsx` | 一个完整的后台工作流，例如资源组查询、编辑和删除 | 直接读取 Cookie、绕过统一请求客户端 |
-| `src/player-admin-api.ts` | 同源凭据、CSRF、错误归一化和路径构造 | React 页面状态或授权决定 |
-| `src/player-admin-types.ts` | UI 与管理接口之间的传输记录 | React 状态、服务端持久化实现 |
-| `src/player-admin-format.ts` | 无副作用的时间、容量等展示格式化 | 网络请求或 React 依赖 |
-| `src/permission-tree.tsx` | 权限树及查看/编辑依赖展开 | 服务端授权；服务端必须独立检查 |
-| `apps/game/shared/player-admin-*.ts` | 能力、菜单、URL view 和可见性规则 | 会话或数据库写入 |
-| `apps/game/pages/api/play-admin/` | 路由适配、方法限制、进入服务端授权模块 | 仅靠前端隐藏来保护操作 |
-| `apps/game/server/player-admin-authorization.ts` | 后台身份解析与最终授权 | 页面展示逻辑 |
+| 模块                                             | 职责                                             | 不应承担的职责                                     |
+| ------------------------------------------------ | ------------------------------------------------ | -------------------------------------------------- |
+| `src/pages/index.tsx`                            | 会话启动、URL 视图切换、顶层布局与跨页面弹窗编排 | 重复定义传输数据结构、拼接资源路径、实现独立工作流 |
+| `src/pages/*.tsx`                                | 一个完整的后台工作流，例如资源组查询、编辑和删除 | 直接读取 Cookie、绕过统一请求客户端                |
+| `src/player-admin-api.ts`                        | 同源凭据、CSRF、错误归一化和路径构造             | React 页面状态或授权决定                           |
+| `src/player-admin-types.ts`                      | UI 与管理接口之间的传输记录                      | React 状态、服务端持久化实现                       |
+| `src/player-admin-format.ts`                     | 无副作用的时间、容量等展示格式化                 | 网络请求或 React 依赖                              |
+| `src/permission-tree.tsx`                        | 权限树及查看/编辑依赖展开                        | 服务端授权；服务端必须独立检查                     |
+| `apps/game/shared/player-admin-*.ts`             | 能力、菜单、URL view 和可见性规则                | 会话或数据库写入                                   |
+| `apps/game/pages/api/play-admin/`                | 路由适配、方法限制、进入服务端授权模块           | 仅靠前端隐藏来保护操作                             |
+| `apps/game/server/player-admin-authorization.ts` | 后台身份解析与最终授权                           | 页面展示逻辑                                       |
 
 `playerAdminApi` 是所有页面的请求 seam：它统一携带同源 Cookie、为变更请求附加 CSRF header，并把 JSON 错误变成 `Error`。新增页面先在 `playerAdminRoutes` 增加路径构造器，再调用该模块；不要在多处重复手写带 ID 的 URL 或转义逻辑。
 

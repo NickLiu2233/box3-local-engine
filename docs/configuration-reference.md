@@ -20,7 +20,7 @@ BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 | 类别     | 变量                                                                                                                                            |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | 网络     | `BOX_BIND_IP`、`BOX_CREATOR_BIND_IP`、`BOX_VOXA_BIND_IP`、五个服务端口与对应 `*_PUBLIC_URL`                                                     |
-| Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`、`BOX_LOCAL_PLAYER_LIMIT`                                         |
+| Play     | `BOX_PLAY_LIBRARY_DIR`、`BOX_PLAY_MAX_RUNTIMES`、`BOX_RUNTIME_IDLE_TIMEOUT_MS`、`BOX_LOCAL_PLAYER_LIMIT`                                        |
 | 容器资源 | `BOX_PLAY_CPU_LIMIT`、`BOX_PLAY_MEMORY_LIMIT`、`BOX_PLAYER_SERVICE_CPU_LIMIT`、`BOX_PLAYER_SERVICE_MEMORY_LIMIT`                                |
 | Teleport | `BOX_TELEPORT_MAX_ROOMS`、`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`                                                                                   |
 | 数据     | `BOX_DATABASE_MODE`、`BOX_REDIS_MODE`、`BOX_DATABASE_URL`、`BOX_DATABASE_SSL`、`REDIS_HOST`、`REDIS_PORT`、`REDIS_DB`、`STORAGE_CACHE_REDIS_DB` |
@@ -49,7 +49,7 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 | 端口、公开 URL、Cookie、Origin | Play、Player Service、登录门户 |
 | PostgreSQL、Redis、密钥        | 所有依赖该配置的服务           |
 | Play 容量、Teleport、地图库    | Play                           |
-| 地图容器资源组、地图容量配置  | 仅新启动或重启的目标地图容器   |
+| 地图容器资源组、地图容量配置   | 仅新启动或重启的目标地图容器   |
 | 注册开关                       | Player Service 与登录门户      |
 
 启动器保存配置后会重新派生内部 URL；不要手工编辑 `.runtime.env`。源码部署可以编辑 `.env`，但改动后同样需要重新创建容器。

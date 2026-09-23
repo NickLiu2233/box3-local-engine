@@ -1,7 +1,9 @@
 'use strict'
 
 function schedulerSettings(env = process.env) {
-  const endpoint = String(env.BOX_RUNTIME_MANAGER_URL || '').trim().replace(/\/$/, '')
+  const endpoint = String(env.BOX_RUNTIME_MANAGER_URL || '')
+    .trim()
+    .replace(/\/$/, '')
   const token = String(env.BOX_RUNTIME_MANAGER_TOKEN || '').trim()
   return endpoint && token ? { endpoint, token } : null
 }

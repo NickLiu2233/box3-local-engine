@@ -7,7 +7,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawn, spawnSync } = require('node:child_process')
+const { spawnSync } = require('node:child_process')
 
 const root = path.resolve(__dirname, '..')
 const packageVersion = require(path.join(root, 'package.json')).version
@@ -38,11 +38,15 @@ if (process.argv.length !== 2) {
 }
 
 function inspectImage(image) {
-  const result = spawnSync('docker', ['image', 'inspect', '--format', '{{.Os}}/{{.Architecture}}', image], {
-    cwd: root,
-    encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  const result = spawnSync(
+    'docker',
+    ['image', 'inspect', '--format', '{{.Os}}/{{.Architecture}}', image],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  )
   if (result.error) {
     if (result.error.code === 'ENOENT') fail('未找到 Docker。请先安装并启动 Docker Desktop。')
     throw result.error

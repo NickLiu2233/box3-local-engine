@@ -54,7 +54,10 @@ for (const file of tomlFiles) {
 for (const file of composeFiles) {
   const location = path.join(root, file)
   const current = fs.readFileSync(location, 'utf8')
-  const next = current.replaceAll(/(BOX_(?:IMAGE_TAG|BUILD_VERSION):-)\d+\.\d+\.\d+/g, `$1${version}`)
+  const next = current.replaceAll(
+    /(BOX_(?:IMAGE_TAG|BUILD_VERSION):-)\d+\.\d+\.\d+/g,
+    `$1${version}`,
+  )
   changed = writeIfChanged(file, next) || changed
 }
 

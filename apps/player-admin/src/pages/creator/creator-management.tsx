@@ -1,9 +1,32 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Avatar, Button, Card, Checkbox, Col, Empty, Form, Input, message, Modal as AntModal, Row, Select, Space, Switch, Table, Tag } from 'antd'
+import {
+  Avatar,
+  Button,
+  Card,
+  Checkbox,
+  Col,
+  Empty,
+  Form,
+  Input,
+  message,
+  Modal as AntModal,
+  Row,
+  Select,
+  Space,
+  Switch,
+  Table,
+  Tag,
+} from 'antd'
 import { useState } from 'react'
 
-import { CREATOR_CAPABILITIES, CREATOR_CAPABILITY_META } from '../../../../game/shared/creator-policy'
-import { CREATOR_CLI_CAPABILITIES, CREATOR_CLI_CAPABILITY_META } from '../../../../game/shared/creator-cli-policy'
+import {
+  CREATOR_CAPABILITIES,
+  CREATOR_CAPABILITY_META,
+} from '../../../../game/shared/creator-policy'
+import {
+  CREATOR_CLI_CAPABILITIES,
+  CREATOR_CLI_CAPABILITY_META,
+} from '../../../../game/shared/creator-cli-policy'
 import { dateTime } from '../../player-admin-format'
 import type { Detail, Player } from '../../player-admin-types'
 
@@ -32,7 +55,10 @@ export type CreatorDialogController = {
   issuedCliToken?: { token: string }
   dismissIssuedCliToken: () => void
   can: (permission: string) => boolean
-  updateCreator: (changes: { creatorAccess: boolean; creatorPermissions: string[] }) => Promise<void>
+  updateCreator: (changes: {
+    creatorAccess: boolean
+    creatorPermissions: string[]
+  }) => Promise<void>
   command: (command: Record<string, unknown>, success: string) => Promise<unknown>
   confirmCommand: (title: string, command: Record<string, unknown>, success: string) => void
 }
@@ -47,15 +73,16 @@ export function CreatorManagementPage({
   const [tokenFilter, setTokenFilter] = useState<'all' | 'assigned' | 'unassigned'>('all')
   const hasTokens = (player: Player) => Boolean(player.creatorAccess)
   const creatorPlayers = (c?.players || []).filter((player: Player) => hasTokens(player))
-  const rows = mode === 'creator-tokens'
-    ? creatorPlayers.filter((player: Player) =>
-        tokenFilter === 'all'
-          ? true
-          : tokenFilter === 'assigned'
-            ? (player.activeCreatorTokenCount || 0) > 0
-            : (player.activeCreatorTokenCount || 0) === 0,
-      )
-    : creatorPlayers
+  const rows =
+    mode === 'creator-tokens'
+      ? creatorPlayers.filter((player: Player) =>
+          tokenFilter === 'all'
+            ? true
+            : tokenFilter === 'assigned'
+              ? (player.activeCreatorTokenCount || 0) > 0
+              : (player.activeCreatorTokenCount || 0) === 0,
+        )
+      : creatorPlayers
   const title = mode === 'creator-access' ? '玩家创作权限' : 'CLI Token'
   return (
     <>
@@ -216,13 +243,19 @@ export function CreatorDialog({ controller: c }: { controller: CreatorDialogCont
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="尚未授予创作端访问权限" />
           )}
         </div>
-      ) : <CliTokenPanel controller={c} detail={detail} />}
+      ) : (
+        <CliTokenPanel controller={c} detail={detail} />
+      )}
       <AntModal
         title="CLI Token 已签发"
         open={Boolean(c.issuedCliToken)}
         closable={false}
         maskClosable={false}
-        footer={<Button type="primary" onClick={c.dismissIssuedCliToken}>我已保存</Button>}
+        footer={
+          <Button type="primary" onClick={c.dismissIssuedCliToken}>
+            我已保存
+          </Button>
+        }
       >
         <p>此 Token 仅显示一次，请立即复制并妥善保存。</p>
         <Input.TextArea
@@ -244,7 +277,13 @@ export function CreatorDialog({ controller: c }: { controller: CreatorDialogCont
     </AntModal>
   )
 }
-function CliTokenPanel({ controller: c, detail }: { controller: CreatorDialogController; detail: Detail }) {
+function CliTokenPanel({
+  controller: c,
+  detail,
+}: {
+  controller: CreatorDialogController
+  detail: Detail
+}) {
   const [editor, setEditor] = useState<{ id?: string; name?: string; scopes?: string[] }>()
   const [form] = Form.useForm()
   const editable = c.can('creator-tokens.manage') && detail.player.creatorAccess
@@ -262,28 +301,114 @@ function CliTokenPanel({ controller: c, detail }: { controller: CreatorDialogCon
     )
     setEditor(undefined)
   }
-  return <>
-    <div className="player-admin-token-toolbar">
-      <strong>CLI Token</strong>
-      {editable ? <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>新增 Token</Button> : null}
-    </div>
-    <Table size="small" rowKey="id" pagination={false} dataSource={detail.cliTokens.filter((token) => !token.revokedAt)} columns={[
-      { title: '名称', dataIndex: 'name' },
-      { title: '权限数', dataIndex: 'scopes', render: (v: string[]) => `${v.length} 项` },
-      { title: '状态', render: (_: unknown, r: Detail['cliTokens'][number]) => r.revokedAt ? <Tag>已撤销</Tag> : <Tag color="success">有效</Tag> },
-      { title: '最近使用', dataIndex: 'lastUsedAt', render: dateTime },
-      { title: '操作', render: (_: unknown, r: Detail['cliTokens'][number]) => editable && !r.revokedAt ? <Space><Button type="link" onClick={() => openEditor(r)}>编辑</Button><Button danger type="link" onClick={() => c.confirmCommand('确定撤销这个 CLI Token？', { action: 'revoke-cli-token', tokenId: r.id }, 'CLI Token 已撤销')}>撤销</Button></Space> : '—' },
-    ]} />
-    <AntModal title={editor?.id ? '编辑 CLI Token' : '新增 CLI Token'} open={Boolean(editor)} onCancel={() => setEditor(undefined)} onOk={() => void submit()}>
-      <Form form={form} layout="vertical"><Form.Item name="name" label="名称" rules={[{ required: true }]}><Input disabled={Boolean(editor?.id)} /></Form.Item><Form.Item name="scopes" label="权限"><CliTokenScopes /></Form.Item></Form>
-    </AntModal>
-  </>
+  return (
+    <>
+      <div className="player-admin-token-toolbar">
+        <strong>CLI Token</strong>
+        {editable ? (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openEditor()}>
+            新增 Token
+          </Button>
+        ) : null}
+      </div>
+      <Table
+        size="small"
+        rowKey="id"
+        pagination={false}
+        dataSource={detail.cliTokens.filter((token) => !token.revokedAt)}
+        columns={[
+          { title: '名称', dataIndex: 'name' },
+          { title: '权限数', dataIndex: 'scopes', render: (v: string[]) => `${v.length} 项` },
+          {
+            title: '状态',
+            render: (_: unknown, r: Detail['cliTokens'][number]) =>
+              r.revokedAt ? <Tag>已撤销</Tag> : <Tag color="success">有效</Tag>,
+          },
+          { title: '最近使用', dataIndex: 'lastUsedAt', render: dateTime },
+          {
+            title: '操作',
+            render: (_: unknown, r: Detail['cliTokens'][number]) =>
+              editable && !r.revokedAt ? (
+                <Space>
+                  <Button type="link" onClick={() => openEditor(r)}>
+                    编辑
+                  </Button>
+                  <Button
+                    danger
+                    type="link"
+                    onClick={() =>
+                      c.confirmCommand(
+                        '确定撤销这个 CLI Token？',
+                        { action: 'revoke-cli-token', tokenId: r.id },
+                        'CLI Token 已撤销',
+                      )
+                    }
+                  >
+                    撤销
+                  </Button>
+                </Space>
+              ) : (
+                '—'
+              ),
+          },
+        ]}
+      />
+      <AntModal
+        title={editor?.id ? '编辑 CLI Token' : '新增 CLI Token'}
+        open={Boolean(editor)}
+        onCancel={() => setEditor(undefined)}
+        onOk={() => void submit()}
+      >
+        <Form form={form} layout="vertical">
+          <Form.Item name="name" label="名称" rules={[{ required: true }]}>
+            <Input disabled={Boolean(editor?.id)} />
+          </Form.Item>
+          <Form.Item name="scopes" label="权限">
+            <CliTokenScopes />
+          </Form.Item>
+        </Form>
+      </AntModal>
+    </>
+  )
 }
-function CliTokenScopes({ value = [], onChange }: { value?: string[]; onChange?: (value: string[]) => void }) {
-  const groups = CREATOR_CLI_CAPABILITIES.reduce<Record<string, typeof CREATOR_CLI_CAPABILITIES[number][]>>((result, capability) => {
+function CliTokenScopes({
+  value = [],
+  onChange,
+}: {
+  value?: string[]
+  onChange?: (value: string[]) => void
+}) {
+  const groups = CREATOR_CLI_CAPABILITIES.reduce<
+    Record<string, (typeof CREATOR_CLI_CAPABILITIES)[number][]>
+  >((result, capability) => {
     const group = CREATOR_CLI_CAPABILITY_META[capability].group
     ;(result[group] ||= []).push(capability)
     return result
   }, {})
-  return <div className="player-admin-token-scope-groups">{Object.entries(groups).map(([group, capabilities]) => <section key={group}><strong>{group}</strong><Checkbox.Group value={value.filter((item) => capabilities.includes(item as typeof capabilities[number]))} onChange={(next) => onChange?.([...value.filter((item) => !capabilities.includes(item as typeof capabilities[number])), ...(next as string[])])} options={capabilities.map((capability) => ({ value: capability, label: CREATOR_CLI_CAPABILITY_META[capability].label }))} /></section>)}</div>
+  return (
+    <div className="player-admin-token-scope-groups">
+      {Object.entries(groups).map(([group, capabilities]) => (
+        <section key={group}>
+          <strong>{group}</strong>
+          <Checkbox.Group
+            value={value.filter((item) =>
+              capabilities.includes(item as (typeof capabilities)[number]),
+            )}
+            onChange={(next) =>
+              onChange?.([
+                ...value.filter(
+                  (item) => !capabilities.includes(item as (typeof capabilities)[number]),
+                ),
+                ...(next as string[]),
+              ])
+            }
+            options={capabilities.map((capability) => ({
+              value: capability,
+              label: CREATOR_CLI_CAPABILITY_META[capability].label,
+            }))}
+          />
+        </section>
+      ))}
+    </div>
+  )
 }

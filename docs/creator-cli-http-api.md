@@ -37,11 +37,11 @@ CLI 应把每台 Creator 服务器保存为独立 Profile。Profile 可以使用
 
 CLI Token 必须先通过基本资料中的总开关“允许进入创作端”（Creator Access）。在此之后，Token 的 CLI 权限由服主或管理员独立授予和编辑，**不受**基本资料中 Creator 细分权限影响。关闭总开关会立即使该玩家所有 CLI Token 不可用。
 
-| Scope | 用途 |
-| --- | --- |
-| `scripts.update` | 上传或覆盖指定地图的客户端、服务端脚本 |
-| `projects.list` | 查看当前 Creator 服务器中的地图摘要与永久地图 ID |
-| `resources.list` | 读取地图引用的模型、图片、音频与 UI 资源索引 |
+| Scope            | 用途                                             |
+| ---------------- | ------------------------------------------------ |
+| `scripts.update` | 上传或覆盖指定地图的客户端、服务端脚本           |
+| `projects.list`  | 查看当前 Creator 服务器中的地图摘要与永久地图 ID |
+| `resources.list` | 读取地图引用的模型、图片、音频与 UI 资源索引     |
 
 ### 3.1 在玩家管理中签发／撤销
 
@@ -70,13 +70,13 @@ Content-Type: application/json
 撤销使用同一路由：
 
 ```json
-{"action":"revoke-cli-token","tokenId":"..."}
+{ "action": "revoke-cli-token", "tokenId": "..." }
 ```
 
 更新既有 Token 的权限：
 
 ```json
-{"action":"update-cli-token","tokenId":"...","scopes":["scripts.update"]}
+{ "action": "update-cli-token", "tokenId": "...", "scopes": ["scripts.update"] }
 ```
 
 Token 无需频繁登录，但应在机器丢失、人员离开、权限下调或 CI 密钥轮换时立即撤销。不要把服主 Token 暴露给 CLI；CLI 只使用 `bxc_...`。
@@ -133,12 +133,12 @@ Content-Type: application/json
 
 参数规则：
 
-| 字段 | 规则 |
-| --- | --- |
-| `projectId` | 推荐永久地图 ID；当前服务也兼容本地工程 ID |
-| `side` | 仅 `server` 或 `client` |
-| `entry` | 1–160 个 `[A-Za-z0-9._-]` 字符；不允许路径分隔符或 `..` |
-| `content` | UTF-8 文本，最大 **20 MiB** |
+| 字段        | 规则                                                    |
+| ----------- | ------------------------------------------------------- |
+| `projectId` | 推荐永久地图 ID；当前服务也兼容本地工程 ID              |
+| `side`      | 仅 `server` 或 `client`                                 |
+| `entry`     | 1–160 个 `[A-Za-z0-9._-]` 字符；不允许路径分隔符或 `..` |
+| `content`   | UTF-8 文本，最大 **20 MiB**                             |
 
 Next 请求体限制已配置为 22 MiB，为 JSON 包装预留空间；最终业务限制始终是内容本身的 20 MiB。
 
@@ -174,17 +174,17 @@ jq -Rs '{content: .}' server/gameplay.js | curl --fail-with-body -X PUT \
 
 ## 8. 状态码与错误码
 
-| 状态 | 常见 code / message | 处理建议 |
-| --- | --- | --- |
-| `401` | 身份验证失败 | 检查 Token 是否遗漏、失效或已撤销 |
+| 状态  | 常见 code / message             | 处理建议                                                   |
+| ----- | ------------------------------- | ---------------------------------------------------------- |
+| `401` | 身份验证失败                    | 检查 Token 是否遗漏、失效或已撤销                          |
 | `403` | `CREATOR_CLI_PERMISSION_DENIED` | Token 未授予 `scripts.update`；在玩家管理中编辑其 CLI 权限 |
-| `404` | 路由或工程不存在 | 检查 endpoint、永久地图 ID 与脚本路径 |
-| `405` | 仅允许 `PUT` | 使用正确 HTTP method |
-| `422` | `SCRIPT_SIDE_INVALID` | `side` 不是 `client`/`server` |
-| `422` | `SCRIPT_ENTRY_INVALID` | 文件名含路径、`..` 或非法字符 |
-| `422` | `SCRIPT_CONTENT_REQUIRED` | `content` 不是字符串 |
-| `422` | `SCRIPT_CONTENT_TOO_LARGE` | UTF-8 内容超过 20 MiB |
-| `422` | `SCRIPT_WRITE_FAILED` | 本地工程状态未初始化、工程不存在或写入失败 |
+| `404` | 路由或工程不存在                | 检查 endpoint、永久地图 ID 与脚本路径                      |
+| `405` | 仅允许 `PUT`                    | 使用正确 HTTP method                                       |
+| `422` | `SCRIPT_SIDE_INVALID`           | `side` 不是 `client`/`server`                              |
+| `422` | `SCRIPT_ENTRY_INVALID`          | 文件名含路径、`..` 或非法字符                              |
+| `422` | `SCRIPT_CONTENT_REQUIRED`       | `content` 不是字符串                                       |
+| `422` | `SCRIPT_CONTENT_TOO_LARGE`      | UTF-8 内容超过 20 MiB                                      |
+| `422` | `SCRIPT_WRITE_FAILED`           | 本地工程状态未初始化、工程不存在或写入失败                 |
 
 CLI 应把 JSON 错误中的 `code` 当作机器可读字段，把 `message` 当作面向人的提示；不可据此打印 Authorization header、Token 或完整工程内容。
 

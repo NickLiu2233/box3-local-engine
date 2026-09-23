@@ -5,7 +5,15 @@ export function confirmText(title: string, placeholder: string, onOk: (value: st
   let value = ''
   Modal.confirm({
     title,
-    content: <Input autoFocus placeholder={placeholder} onChange={(event) => { value = event.target.value }} />,
+    content: (
+      <Input
+        autoFocus
+        placeholder={placeholder}
+        onChange={(event) => {
+          value = event.target.value
+        }}
+      />
+    ),
     okText: '确认',
     cancelText: '取消',
     onOk: () => {

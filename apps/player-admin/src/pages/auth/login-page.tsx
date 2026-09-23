@@ -17,16 +17,17 @@ export function LoginPage({ onSuccess }: Props) {
     try {
       const values = await form.validateFields()
       setLoading(true)
-      const result = mode === 'admin'
-        ? await api<{ actor: Actor }>(routes.login, {
-            method: 'POST',
-            body: JSON.stringify(values),
-          })
-        : await api<{ actor: Actor }>(routes.ownerSession, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${values.password}` },
-            body: '{}',
-          })
+      const result =
+        mode === 'admin'
+          ? await api<{ actor: Actor }>(routes.login, {
+              method: 'POST',
+              body: JSON.stringify(values),
+            })
+          : await api<{ actor: Actor }>(routes.ownerSession, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${values.password}` },
+              body: '{}',
+            })
       onSuccess(result.actor)
       message.success('登录成功')
     } catch (error) {
@@ -60,19 +61,33 @@ export function LoginPage({ onSuccess }: Props) {
         <Form form={form} layout="vertical" onFinish={submit}>
           {mode === 'admin' ? (
             <>
-              <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
+              <Form.Item
+                name="username"
+                label="用户名"
+                rules={[{ required: true, message: '请输入用户名' }]}
+              >
                 <Input prefix={<UserOutlined />} />
               </Form.Item>
-              <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
+              <Form.Item
+                name="password"
+                label="密码"
+                rules={[{ required: true, message: '请输入密码' }]}
+              >
                 <Input.Password prefix={<LockOutlined />} />
               </Form.Item>
             </>
           ) : (
-            <Form.Item name="password" label="服主管理令牌" rules={[{ required: true, message: '请输入服主管理令牌' }]}>
+            <Form.Item
+              name="password"
+              label="服主管理令牌"
+              rules={[{ required: true, message: '请输入服主管理令牌' }]}
+            >
               <Input.Password prefix={<SafetyCertificateOutlined />} autoComplete="off" />
             </Form.Item>
           )}
-          <Button type="primary" htmlType="submit" block loading={loading}>登录后台</Button>
+          <Button type="primary" htmlType="submit" block loading={loading}>
+            登录后台
+          </Button>
         </Form>
       </Card>
     </main>

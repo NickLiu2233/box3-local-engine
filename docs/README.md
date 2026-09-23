@@ -4,21 +4,21 @@
 
 ## 推荐阅读顺序
 
-| 目标                       | 主文档                                                | 必要补充                                                                                       |
-| -------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| 桌面启动器首次部署         | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                       |
-| 无图形 Linux 服务器        | [Linux Web 管理端](./linux-web-manager.md)            | [安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)       |
-| 云服务器快速安装           | [云服务器快速部署](./cloud-server-quickstart.md)      | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                      |
-| 创建和发布地图             | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                          |
-| 部署 Play 或公开服务器     | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                  |
-| 部署 VOXA                  | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                            |
-| 接入登录、玩家账号或后台管理 | [玩家身份与管理后台](./player-identity.md)          | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md)          |
-| 配置 PostgreSQL/Redis      | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md) |
-| 开发或修复代码             | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                    |
-| Fork、提交 PR 和构建贡献包 | [贡献者指南](../CONTRIBUTING.md)                      | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)     |
-| 构建镜像和发行包           | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                |
-| 会议或业务介绍             | [业务方案对比](./business-comparison.md)              | [系统架构](./architecture.md)                                                                  |
-| 申请个人学习许可证         | [个人学习许可证](./licensing.md)                      | [构建、分发与 CI](./release-and-distribution.md)                                               |
+| 目标                         | 主文档                                                | 必要补充                                                                                                                                 |
+| ---------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 桌面启动器首次部署           | [图形化部署管理器](./graphical-deployment-manager.md) | [配置参考](./configuration-reference.md)                                                                                                 |
+| 无图形 Linux 服务器          | [Linux Web 管理端](./linux-web-manager.md)            | [安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)                                                 |
+| 云服务器快速安装             | [云服务器快速部署](./cloud-server-quickstart.md)      | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                                                                |
+| 创建和发布地图               | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                                                                    |
+| 部署 Play 或公开服务器       | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                                                            |
+| 部署 VOXA                    | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                                                                      |
+| 接入登录、玩家账号或后台管理 | [玩家身份与管理后台](./player-identity.md)            | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
+| 配置 PostgreSQL/Redis        | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md)                                           |
+| 开发或修复代码               | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                                                              |
+| Fork、提交 PR 和构建贡献包   | [贡献者指南](../CONTRIBUTING.md)                      | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)                                               |
+| 构建镜像和发行包             | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                                                          |
+| 会议或业务介绍               | [业务方案对比](./business-comparison.md)              | [系统架构](./architecture.md)                                                                                                            |
+| 申请个人学习许可证           | [个人学习许可证](./licensing.md)                      | [构建、分发与 CI](./release-and-distribution.md)                                                                                         |
 
 ## 文档职责
 

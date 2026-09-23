@@ -1797,7 +1797,8 @@ function deleteProject(id) {
 // leaves the previous editor state valid.
 function updateProjectScript(id, side, entry, content) {
   if (!['client', 'server'].includes(side)) throw new Error('Script side must be client or server')
-  if (!/^[A-Za-z0-9._-]{1,160}$/.test(entry) || entry.includes('..')) throw new Error('Invalid script entry')
+  if (!/^[A-Za-z0-9._-]{1,160}$/.test(entry) || entry.includes('..'))
+    throw new Error('Invalid script entry')
   if (typeof content !== 'string' || Buffer.byteLength(content, 'utf8') > 20 * 1024 * 1024) {
     throw new Error('Script content must be text up to 20 MiB')
   }
@@ -1811,7 +1812,9 @@ function updateProjectScript(id, side, entry, content) {
   const state = readJSON(statePath)
   const permission = readBlobJSON(blobRoot, state.permissionHash, '工程权限数据')
   const versionControl = readBlobJSON(blobRoot, permission.versionControl, '工程版本数据')
-  const branch = versionControl.branches?.[versionControl.currentBranch || 'master'] || versionControl.branches?.master
+  const branch =
+    versionControl.branches?.[versionControl.currentBranch || 'master'] ||
+    versionControl.branches?.master
   if (!branch?.headHash) throw new Error('工程缺少当前版本头')
   const project = readBlobJSON(blobRoot, branch.headHash, '工程地图数据')
   const scriptAssets = readBlobJSON(blobRoot, project.scriptAssets, '工程脚本索引')
@@ -1828,7 +1831,8 @@ function updateProjectScript(id, side, entry, content) {
     let extraProject
     if (groupState.extraProjectHash) {
       const extraPath = path.join(group.blobRoot, groupState.extraProjectHash)
-      if (!fs.existsSync(extraPath)) throw new Error(`缺少共享脚本索引 ${groupState.extraProjectHash}`)
+      if (!fs.existsSync(extraPath))
+        throw new Error(`缺少共享脚本索引 ${groupState.extraProjectHash}`)
       const bytes = fs.readFileSync(extraPath)
       // A newly initialized map can persist an empty extra-project snapshot:
       // diff(identity, identity) produces zero bytes. That is a valid identity
@@ -1843,13 +1847,17 @@ function updateProjectScript(id, side, entry, content) {
       }
     }
     if (!extraProject) extraProject = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity)
-    const existingShared = Object.entries(extraProject.scriptAssets).find(([, asset]) => asset.name === entry)
+    const existingShared = Object.entries(extraProject.scriptAssets).find(
+      ([, asset]) => asset.name === entry,
+    )
     const fileId = existingShared?.[0] || crypto.randomUUID()
     const previous = existingShared?.[1]
-    const nextOrder = previous?.order ?? Math.max(
-      0,
-      ...Object.values(extraProject.scriptAssets).map((asset) => Number(asset.order) || 0),
-    ) + 1
+    const nextOrder =
+      previous?.order ??
+      Math.max(
+        0,
+        ...Object.values(extraProject.scriptAssets).map((asset) => Number(asset.order) || 0),
+      ) + 1
     extraProject.scriptAssets[fileId] = {
       hash: scriptHash,
       name: entry,
@@ -1884,23 +1892,44 @@ function updateProjectScript(id, side, entry, content) {
   const existing = scriptAssets[entry] || {}
   const nextAssets = {
     ...scriptAssets,
-    [entry]: { ...existing, hash: scriptHash, size: Buffer.byteLength(content, 'utf8'), type: side === 'server' ? 1 : 7 },
+    [entry]: {
+      ...existing,
+      hash: scriptHash,
+      size: Buffer.byteLength(content, 'utf8'),
+      type: side === 'server' ? 1 : 7,
+    },
   }
   const nextAssetsHash = storeReleaseJSON(blobRoot, nextAssets)
-  const nextProjectHash = storeReleaseJSON(blobRoot, { ...project, scriptAssets: nextAssetsHash, prevHash: branch.headHash, timestamp: new Date().toISOString() })
+  const nextProjectHash = storeReleaseJSON(blobRoot, {
+    ...project,
+    scriptAssets: nextAssetsHash,
+    prevHash: branch.headHash,
+    timestamp: new Date().toISOString(),
+  })
   const branchName = versionControl.currentBranch || 'master'
   const nextVersionControlHash = storeReleaseJSON(blobRoot, {
     ...versionControl,
-    branches: { ...versionControl.branches, [branchName]: { ...branch, headHash: nextProjectHash } },
+    branches: {
+      ...versionControl.branches,
+      [branchName]: { ...branch, headHash: nextProjectHash },
+    },
   })
-  const nextPermissionHash = storeReleaseJSON(blobRoot, { ...permission, versionControl: nextVersionControlHash })
-  writeJSON(statePath, { ...state, permissionHash: nextPermissionHash, updatedAt: new Date().toISOString() })
+  const nextPermissionHash = storeReleaseJSON(blobRoot, {
+    ...permission,
+    versionControl: nextVersionControlHash,
+  })
+  writeJSON(statePath, {
+    ...state,
+    permissionHash: nextPermissionHash,
+    updatedAt: new Date().toISOString(),
+  })
   return { entry, side, revision: nextProjectHash, hash: scriptHash, shared: false }
 }
 
 function readProjectScript(id, side, entry) {
   if (!['client', 'server'].includes(side)) throw new Error('Script side must be client or server')
-  if (!/^[A-Za-z0-9._-]{1,160}$/.test(entry) || entry.includes('..')) throw new Error('Invalid script entry')
+  if (!/^[A-Za-z0-9._-]{1,160}$/.test(entry) || entry.includes('..'))
+    throw new Error('Invalid script entry')
   const projectId = resolveProjectReference(id)
   const group = mapGroupManager.paths(projectId)
   const groupState = mapGroupManager.ensure(projectId)
@@ -1911,9 +1940,18 @@ function readProjectScript(id, side, entry) {
   const stream = new MuReadStream(bytes)
   const extra = ExtraProjectInfoSchema.patch(ExtraProjectInfoSchema.identity, stream)
   try {
-    const asset = Object.values(extra.scriptAssets).find((value) => value.name === entry && value.isClient === (side === 'client'))
-    if (!asset || asset.isShare !== true) throw new Error(`Shared script not found: ${side}/${entry}`)
-    return { entry, side, hash: asset.hash, shared: true, content: fs.readFileSync(path.join(group.blobRoot, asset.hash), 'utf8') }
+    const asset = Object.values(extra.scriptAssets).find(
+      (value) => value.name === entry && value.isClient === (side === 'client'),
+    )
+    if (!asset || asset.isShare !== true)
+      throw new Error(`Shared script not found: ${side}/${entry}`)
+    return {
+      entry,
+      side,
+      hash: asset.hash,
+      shared: true,
+      content: fs.readFileSync(path.join(group.blobRoot, asset.hash), 'utf8'),
+    }
   } finally {
     ExtraProjectInfoSchema.free(extra)
   }
@@ -1923,16 +1961,29 @@ function listProjectSharedScripts(id) {
   const projectId = resolveProjectReference(id)
   const group = mapGroupManager.paths(projectId)
   const groupState = mapGroupManager.ensure(projectId)
-  if (!groupState.extraProjectHash) return { projectId: getProject(projectId).permanentMapId, scripts: [] }
+  if (!groupState.extraProjectHash)
+    return { projectId: getProject(projectId).permanentMapId, scripts: [] }
   const bytes = fs.readFileSync(path.join(group.blobRoot, groupState.extraProjectHash))
   if (!bytes.length) return { projectId: getProject(projectId).permanentMapId, scripts: [] }
   const { ExtraProjectInfoSchema, MuReadStream } = creatorSharedScriptCodec()
-  const extra = ExtraProjectInfoSchema.patch(ExtraProjectInfoSchema.identity, new MuReadStream(bytes))
+  const extra = ExtraProjectInfoSchema.patch(
+    ExtraProjectInfoSchema.identity,
+    new MuReadStream(bytes),
+  )
   try {
     const scripts = Object.values(extra.scriptAssets)
       .filter((asset) => asset.isShare === true)
-      .map((asset) => ({ entry: asset.name, side: asset.isClient ? 'client' : 'server', hash: asset.hash, size: fs.statSync(path.join(group.blobRoot, asset.hash)).size, shared: true }))
-      .sort((left, right) => left.side.localeCompare(right.side) || left.entry.localeCompare(right.entry))
+      .map((asset) => ({
+        entry: asset.name,
+        side: asset.isClient ? 'client' : 'server',
+        hash: asset.hash,
+        size: fs.statSync(path.join(group.blobRoot, asset.hash)).size,
+        shared: true,
+      }))
+      .sort(
+        (left, right) =>
+          left.side.localeCompare(right.side) || left.entry.localeCompare(right.entry),
+      )
     return { projectId: getProject(projectId).permanentMapId, scripts }
   } finally {
     ExtraProjectInfoSchema.free(extra)
@@ -1944,19 +1995,14 @@ function selectCreatorModelAssets(assets, groupState, projectId) {
   // Creator imports store per-map mesh paths in shared map-group state, so
   // combine both representations for the CLI manifest.
   const legacyModels = Object.fromEntries(
-    Object.entries(assets || {}).filter(([assetPath]) =>
-      assetPath.startsWith('mesh/'),
-    ),
+    Object.entries(assets || {}).filter(([assetPath]) => assetPath.startsWith('mesh/')),
   )
   const groupPaths = groupState?.projectModelPathsByMap?.[projectId]
   if (!Array.isArray(groupPaths)) return legacyModels
 
   const groupModels = Object.fromEntries(
     groupPaths
-      .filter(
-        (assetPath) =>
-          typeof assetPath === 'string' && assetPath.startsWith('mesh/'),
-      )
+      .filter((assetPath) => typeof assetPath === 'string' && assetPath.startsWith('mesh/'))
       .map((assetPath) => {
         const modelName = path.basename(assetPath, path.extname(assetPath))
         return [
@@ -1971,24 +2017,14 @@ function selectCreatorModelAssets(assets, groupState, projectId) {
   return { ...legacyModels, ...groupModels }
 }
 
-function selectCreatorAssetIndex(
-  projectIndex,
-  groupState,
-  indexName,
-  readGroupIndex,
-) {
+function selectCreatorAssetIndex(projectIndex, groupState, indexName, readGroupIndex) {
   const indexHash = groupState?.groupProjectMetaData?.hashes?.[indexName]
   if (typeof indexHash !== 'string' || !indexHash) return projectIndex
   return readGroupIndex(indexHash, `地图组 ${indexName} 资源索引`)
 }
 
 function selectCreatorUiTree(projectUiTree, groupState, readGroupIndex) {
-  return selectCreatorAssetIndex(
-    projectUiTree,
-    groupState,
-    'uiTree',
-    readGroupIndex,
-  )
+  return selectCreatorAssetIndex(projectUiTree, groupState, 'uiTree', readGroupIndex)
 }
 
 function getProjectResources(id) {
@@ -2000,10 +2036,13 @@ function getProjectResources(id) {
   const state = readJSON(path.join(sourceRoot, 'project-state.json'))
   const permission = readBlobJSON(blobRoot, state.permissionHash, '工程权限数据')
   const versionControl = readBlobJSON(blobRoot, permission.versionControl, '工程版本数据')
-  const branch = versionControl.branches?.[versionControl.currentBranch || 'master'] || versionControl.branches?.master
+  const branch =
+    versionControl.branches?.[versionControl.currentBranch || 'master'] ||
+    versionControl.branches?.master
   if (!branch?.headHash) throw new Error('工程缺少当前版本头')
   const project = readBlobJSON(blobRoot, branch.headHash, '工程地图数据')
-  const resolveIndex = (value, label) => typeof value === 'string' ? readBlobJSON(blobRoot, value, label) : (value || {})
+  const resolveIndex = (value, label) =>
+    typeof value === 'string' ? readBlobJSON(blobRoot, value, label) : value || {}
   // The general asset index also stores LUTs and particle effects. Only mesh
   // entries can be assigned to the engine's GameModelAssets / mesh fields.
   const modelAssets = selectCreatorModelAssets(
@@ -2016,8 +2055,7 @@ function getProjectResources(id) {
     groupState,
     (hash, label) => readBlobJSON(group.blobRoot, hash, label),
   )
-  const readGroupIndex = (hash, label) =>
-    readBlobJSON(group.blobRoot, hash, label)
+  const readGroupIndex = (hash, label) => readBlobJSON(group.blobRoot, hash, label)
   return {
     projectId: getProject(projectId).permanentMapId,
     modelAssets,

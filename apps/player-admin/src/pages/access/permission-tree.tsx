@@ -39,7 +39,10 @@ const capabilityNode = (capability: string) => ({
   title: (
     <span className="player-admin-permission-option">
       <strong>
-        {PLAYER_ADMIN_CAPABILITY_META[capability as keyof typeof PLAYER_ADMIN_CAPABILITY_META].label}
+        {
+          PLAYER_ADMIN_CAPABILITY_META[capability as keyof typeof PLAYER_ADMIN_CAPABILITY_META]
+            .label
+        }
       </strong>
     </span>
   ),
@@ -56,10 +59,16 @@ export const permissionTree = PLAYER_ADMIN_PERMISSION_MENU.map((category) => ({
     value: `category:${category.key}:${section.key}`,
     title: section.title,
     selectable: false,
-    children: ([
-      ['read', '查看', section.capabilities.filter(isReadCapability)],
-      ['write', '编辑', section.capabilities.filter((capability) => !isReadCapability(capability))],
-    ] as const)
+    children: (
+      [
+        ['read', '查看', section.capabilities.filter(isReadCapability)],
+        [
+          'write',
+          '编辑',
+          section.capabilities.filter((capability) => !isReadCapability(capability)),
+        ],
+      ] as const
+    )
       .filter(([, , capabilities]) => capabilities.length)
       .map(([mode, title, capabilities]) => ({
         key: `category:${category.key}:${section.key}:${mode}`,

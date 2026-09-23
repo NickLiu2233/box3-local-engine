@@ -336,12 +336,26 @@ function startEditLibrary({
         }
         if (req.method === 'GET' && !current && !starting) {
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
-          res.end(JSON.stringify({ phase: 'idle', running: false, message: '预览已停止', updatedAt: new Date().toISOString() }))
+          res.end(
+            JSON.stringify({
+              phase: 'idle',
+              running: false,
+              message: '预览已停止',
+              updatedAt: new Date().toISOString(),
+            }),
+          )
           return
         }
         if (req.method === 'POST' && previewAction === 'stop' && !current && !starting) {
           res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
-          res.end(JSON.stringify({ phase: 'idle', running: false, message: '预览已停止', updatedAt: new Date().toISOString() }))
+          res.end(
+            JSON.stringify({
+              phase: 'idle',
+              running: false,
+              message: '预览已停止',
+              updatedAt: new Date().toISOString(),
+            }),
+          )
           return
         }
       }

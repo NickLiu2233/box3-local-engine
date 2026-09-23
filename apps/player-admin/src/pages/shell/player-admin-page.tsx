@@ -1,8 +1,5 @@
 // Player-admin application coordinator. Route entry lives in pages/index.tsx.
-import {
-  KeyOutlined,
-  LogoutOutlined,
-} from '@ant-design/icons'
+import { KeyOutlined, LogoutOutlined } from '@ant-design/icons'
 import {
   Button,
   Card,
@@ -21,16 +18,16 @@ import {
   playerAdminFallbackView,
 } from '../../../../game/shared/player-admin-navigation'
 import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
-import type {
-  Actor,
-  Detail,
-  Player,
-  View,
-} from '../../player-admin-types'
+import type { Actor, Detail, Player, View } from '../../player-admin-types'
 import { ContainerResourceGroupsPage } from '../containers/container-resource-groups-page'
 import { ContainerManagementPage } from '../containers/container-management-page'
 import { ContainerProfilesPage } from '../containers/container-profiles-page'
-import { CreatorDialog, CreatorManagementPage, type CreatorDialogController, type CreatorPageController } from '../creator/creator-management'
+import {
+  CreatorDialog,
+  CreatorManagementPage,
+  type CreatorDialogController,
+  type CreatorPageController,
+} from '../creator/creator-management'
 import { LoginPage } from '../auth/login-page'
 import { SelfPasswordDialog } from '../auth/self-password-dialog'
 import { OverviewPage } from '../dashboard/overview-page'
@@ -43,7 +40,11 @@ import { AdminAccountDialog, PermissionGroupDialog } from '../access/owner-manag
 import { PlayerDirectoryPage } from '../players/player-directory-page'
 import { BanDialog, type BanDialogController } from '../players/ban-dialog'
 import type { DetailController } from '../players/player-detail-drawer'
-import { CreatePlayerDialog, CreatorPickerDialog, PlayerProfileDrawer } from '../players/player-profile-dialogs'
+import {
+  CreatePlayerDialog,
+  CreatorPickerDialog,
+  PlayerProfileDrawer,
+} from '../players/player-profile-dialogs'
 import { useOwnerManagement } from '../access/use-owner-management'
 import { useSecurityManagement } from '../security/use-security-management'
 import { usePlayerDirectory } from '../players/use-player-directory'
@@ -81,13 +82,16 @@ export default function PlayerAdminPage() {
   const directory = usePlayerDirectory(view, can('players.export'))
   const allowedViews = useMemo(() => allowedPlayerAdminViews(actor), [actor])
   const fallbackView = useMemo(() => playerAdminFallbackView(actor), [actor])
-  const navigate = useCallback((next: View) => {
-    const destination = allowedViews.includes(next) ? next : fallbackView
-    setView(destination)
-    const url = new URL(window.location.href)
-    url.searchParams.set('view', destination)
-    window.history.pushState({ view: destination }, '', `${url.pathname}${url.search}${url.hash}`)
-  }, [allowedViews, fallbackView])
+  const navigate = useCallback(
+    (next: View) => {
+      const destination = allowedViews.includes(next) ? next : fallbackView
+      setView(destination)
+      const url = new URL(window.location.href)
+      url.searchParams.set('view', destination)
+      window.history.pushState({ view: destination }, '', `${url.pathname}${url.search}${url.hash}`)
+    },
+    [allowedViews, fallbackView],
+  )
   const loadOverview = useCallback(async () => {
     const result = await api<{ totals: Record<string, number> }>(routes.playerOverview)
     setTotals(result.totals || {})
@@ -106,7 +110,15 @@ export default function PlayerAdminPage() {
     if (view === 'security') return security.activity.load()
     if (view === 'admins' || view === 'permission-groups') return owner.load()
     return loadOverview()
-  }, [actor, view, directory.load, security.identityBans.load, security.activity.load, owner.load, loadOverview])
+  }, [
+    actor,
+    view,
+    directory.load,
+    security.identityBans.load,
+    security.activity.load,
+    owner.load,
+    loadOverview,
+  ])
   useEffect(() => {
     void (async () => {
       setBooting(true)
@@ -144,7 +156,9 @@ export default function PlayerAdminPage() {
   }
   const openCreatorPicker = async () => {
     try {
-      const result = await api<{ players: Player[] }>(`${routes.players}?page=1&pageSize=100&identity=all&online=all&sort=displayName`)
+      const result = await api<{ players: Player[] }>(
+        `${routes.players}?page=1&pageSize=100&identity=all&online=all&sort=displayName`,
+      )
       setCreatorCandidates(result.players || [])
       creatorPickerForm.resetFields()
       setCreatorPickerOpen(true)
@@ -193,10 +207,13 @@ export default function PlayerAdminPage() {
   const creatorCommand = async (commandValue: Record<string, unknown>, success: string) => {
     if (!creatorDialog) return
     try {
-      const result = await api<{ token?: unknown }>(`/api/play-admin/players/${creatorDialog.player.subjectId}`, {
-        method: 'POST',
-        body: JSON.stringify(commandValue),
-      })
+      const result = await api<{ token?: unknown }>(
+        `/api/play-admin/players/${creatorDialog.player.subjectId}`,
+        {
+          method: 'POST',
+          body: JSON.stringify(commandValue),
+        },
+      )
       let issuedToken: string | undefined
       if (commandValue.action === 'create-cli-token') {
         const token = typeof result?.token === 'string' ? result.token : ''
@@ -317,8 +334,7 @@ export default function PlayerAdminPage() {
   let body: React.ReactNode
   if (view === 'creator-access' || view === 'creator-tokens')
     body = <CreatorManagementPage mode={view} controller={creatorPageController} />
-  else if (view === 'play-maps')
-    body = <PlayMapsPage canManage={can('play-maps.manage')} />
+  else if (view === 'play-maps') body = <PlayMapsPage canManage={can('play-maps.manage')} />
   else if (view === 'container-play')
     body = <ContainerManagementPage mode="play" canManage={can('containers.manage')} />
   else if (view === 'container-creator')
@@ -328,7 +344,15 @@ export default function PlayerAdminPage() {
   else if (view === 'container-resource-groups')
     body = <ContainerResourceGroupsPage canManage={can('containers.manage')} />
   else if (view === 'overview')
-    body = <OverviewPage totals={totals} canViewSecurity={canOpenPlayerAdminView(actor, 'security')} isOwner={isOwner} refresh={() => void load()} navigate={navigate} />
+    body = (
+      <OverviewPage
+        totals={totals}
+        canViewSecurity={canOpenPlayerAdminView(actor, 'security')}
+        isOwner={isOwner}
+        refresh={() => void load()}
+        navigate={navigate}
+      />
+    )
   else if (view === 'players' || view === 'online-sessions' || view === 'account-bans')
     body = (
       <PlayerDirectoryPage
@@ -357,13 +381,35 @@ export default function PlayerAdminPage() {
       />
     )
   else if (view === 'identity-bans')
-    body = <IdentityBansPage {...security.identityBans} canManage={can('identity-bans.manage')} refresh={() => void load()} />
+    body = (
+      <IdentityBansPage
+        {...security.identityBans}
+        canManage={can('identity-bans.manage')}
+        refresh={() => void load()}
+      />
+    )
   else if (view === 'security')
     body = <SecurityActivityPage {...security.activity} refresh={() => void load()} />
   else if (view === 'admins')
-    body = <AdminAccountsPage admins={owner.admins} loading={owner.loading} refresh={owner.load} edit={owner.adminDialog.openEditor} remove={owner.removeAdmin} />
+    body = (
+      <AdminAccountsPage
+        admins={owner.admins}
+        loading={owner.loading}
+        refresh={owner.load}
+        edit={owner.adminDialog.openEditor}
+        remove={owner.removeAdmin}
+      />
+    )
   else
-    body = <PermissionGroupsPage groups={owner.groups} loading={owner.loading} refresh={owner.load} edit={owner.groupDialog.openEditor} remove={owner.removeGroup} />
+    body = (
+      <PermissionGroupsPage
+        groups={owner.groups}
+        loading={owner.loading}
+        refresh={owner.load}
+        edit={owner.groupDialog.openEditor}
+        remove={owner.removeGroup}
+      />
+    )
   return (
     <Layout className="player-admin-shell">
       <Layout.Sider width={224} className="player-admin-sider">
@@ -419,8 +465,19 @@ export default function PlayerAdminPage() {
         close={directory.closeDetails}
         save={() => void directory.savePlayer()}
       />
-      <CreatePlayerDialog form={directory.createDialog.form} open={directory.createDialog.open} close={directory.createDialog.close} submit={() => void directory.createDialog.submit()} />
-      <CreatorPickerDialog form={creatorPickerForm} open={creatorPickerOpen} candidates={creatorCandidates} close={() => setCreatorPickerOpen(false)} submit={() => void selectCreatorCandidate()} />
+      <CreatePlayerDialog
+        form={directory.createDialog.form}
+        open={directory.createDialog.open}
+        close={directory.createDialog.close}
+        submit={() => void directory.createDialog.submit()}
+      />
+      <CreatorPickerDialog
+        form={creatorPickerForm}
+        open={creatorPickerOpen}
+        candidates={creatorCandidates}
+        close={() => setCreatorPickerOpen(false)}
+        submit={() => void selectCreatorCandidate()}
+      />
       <AdminAccountDialog
         form={owner.adminDialog.form}
         open={owner.adminDialog.open}

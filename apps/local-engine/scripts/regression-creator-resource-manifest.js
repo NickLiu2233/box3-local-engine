@@ -19,11 +19,11 @@ const modelAssets = selectCreatorModelAssets(
     },
     modelProjects: {
       'New-model': 'new-model-hash',
-      吉吉喵哭: 'cat-model-hash',
+      '吉吉喵哭': 'cat-model-hash',
     },
     modelPreviews: {
       'New-model': 'new-model-preview',
-      吉吉喵哭: 'cat-model-preview',
+      '吉吉喵哭': 'cat-model-preview',
     },
   },
   'map-demo',
@@ -50,8 +50,8 @@ const uiTree = selectCreatorUiTree(
   (hash) => {
     assert.equal(hash, 'latest-ui-tree')
     return {
-      ROOT_ID: { childrenIds: ['DEFAULT_SCREEN_ID'] },
-      DEFAULT_SCREEN_ID: { childrenIds: ['box-1'] },
+      'ROOT_ID': { childrenIds: ['DEFAULT_SCREEN_ID'] },
+      'DEFAULT_SCREEN_ID': { childrenIds: ['box-1'] },
       'box-1': { childrenIds: ['input-1'] },
       'input-1': { childrenIds: [] },
     }

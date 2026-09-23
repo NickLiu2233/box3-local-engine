@@ -3421,7 +3421,11 @@ details.about-image-row:first-child {
 .runtime-profile-form-header {
   padding: 20px 22px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(115deg, color-mix(in srgb, var(--accent) 10%, var(--panel)), var(--panel) 46%);
+  background: linear-gradient(
+    115deg,
+    color-mix(in srgb, var(--accent) 10%, var(--panel)),
+    var(--panel) 46%
+  );
 }
 
 .eyebrow {

@@ -18,6 +18,10 @@ const serverManager = fs.readFileSync(
   path.join(root, 'apps/server-manager-rust/src/main.rs'),
   'utf8',
 )
+const serverManagerCommands = fs.readFileSync(
+  path.join(root, 'apps/server-manager-rust/src/http/commands.rs'),
+  'utf8',
+)
 const serverManagerTransport = fs.readFileSync(
   path.join(root, 'apps/deployment-manager/src/transport.js'),
   'utf8',
@@ -58,8 +62,8 @@ assert.match(
 assert.match(processGuard, /const timer = setInterval/)
 assert.match(trustedTime, /TIME_TOKEN_PREFIX = 'box3t1'/)
 assert.match(trustedTime, /检测到系统时间回拨/)
-assert.match(serverManager, /"get_license_status" => license/)
-assert.match(serverManager, /"install_license" => license/)
+assert.match(serverManagerCommands, /"get_license_status" => license/)
+assert.match(serverManagerCommands, /"install_license" => license/)
 assert.match(serverManager, /请先安装有效许可证/)
 assert.match(serverManagerTransport, /\/api\/commands\/\$\{encodeURIComponent\(command\)\}/)
 assert.match(headlessInstaller, /up -d --no-build --remove-orphans(?: --wait)? server-manager/)

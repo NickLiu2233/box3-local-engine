@@ -1570,7 +1570,10 @@ export async function generateProjectArchive(
         const sourceProjectDocument = parseJSON(await retrieve(projectHash, rootHash))
         if (!isRecord(sourceProjectDocument)) throw new Error('master 地图工程格式无效')
         projectDocument = sourceProjectDocument
-      } else if (typeof sourceVersionControlHash === 'string' && EXACT_CID_PATTERN.test(sourceVersionControlHash)) {
+      } else if (
+        typeof sourceVersionControlHash === 'string' &&
+        EXACT_CID_PATTERN.test(sourceVersionControlHash)
+      ) {
         versionControlHash = sourceVersionControlHash
         report({
           stage: 'resolving',
@@ -1639,7 +1642,11 @@ export async function generateProjectArchive(
       ambientSound,
     ] = await Promise.all([
       retrieveJSONOrInline(projectDocument.assets, projectHash, '工程资源索引'),
-      retrieveJSONOrInline(projectDocument.scriptAssets || projectDocument.assets, projectHash, '工程脚本索引'),
+      retrieveJSONOrInline(
+        projectDocument.scriptAssets || projectDocument.assets,
+        projectHash,
+        '工程脚本索引',
+      ),
       retrieveJSONOrInline(projectDocument.deleteAssets || {}, projectHash, '工程删除资源索引'),
       retrieveOptionalJSON(projectDocument.audioAssets, projectHash, '工程音频索引'),
       retrieveOptionalJSON(projectDocument.entitiesTree, projectHash, '工程实体树'),

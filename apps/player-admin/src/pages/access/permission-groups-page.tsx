@@ -18,11 +18,17 @@ export function PermissionGroupsPage({ groups, loading, refresh, edit, remove }:
   return (
     <>
       <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col><h1 className="player-admin-page-title">权限组</h1></Col>
+        <Col>
+          <h1 className="player-admin-page-title">权限组</h1>
+        </Col>
         <Col>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>刷新</Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => edit()}>新增权限组</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
+              刷新
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => edit()}>
+              新增权限组
+            </Button>
           </Space>
         </Col>
       </Row>
@@ -59,22 +65,28 @@ export function PermissionGroupsPage({ groups, loading, refresh, edit, remove }:
               title: '操作',
               render: (_, group) => (
                 <Space>
-                  <Button type="link" onClick={() => edit(group)}>编辑</Button>
+                  <Button type="link" onClick={() => edit(group)}>
+                    编辑
+                  </Button>
                   {group.adminCount ? (
                     <Tooltip title={`已有 ${group.adminCount} 个管理账号使用，无法删除`}>
-                      <Button danger type="link" disabled>删除</Button>
+                      <Button danger type="link" disabled>
+                        删除
+                      </Button>
                     </Tooltip>
                   ) : (
                     <Button
                       danger
                       type="link"
-                      onClick={() => Modal.confirm({
-                        title: `删除权限组“${group.name}”？`,
-                        content: '删除后无法恢复。',
-                        okText: '删除',
-                        okButtonProps: { danger: true },
-                        onOk: () => remove(group),
-                      })}
+                      onClick={() =>
+                        Modal.confirm({
+                          title: `删除权限组“${group.name}”？`,
+                          content: '删除后无法恢复。',
+                          okText: '删除',
+                          okButtonProps: { danger: true },
+                          onOk: () => remove(group),
+                        })
+                      }
                     >
                       删除
                     </Button>

@@ -42,9 +42,16 @@ export function useOwnerManagement() {
 
   const openAdminEditor = (admin?: Admin) => {
     setEditingAdmin(admin)
-    adminForm.setFieldsValue(admin
-      ? { ...admin, password: '', permissions: [], permissionGroupId: admin.permissionGroupId || undefined }
-      : { permissions: [], permissionGroupId: undefined })
+    adminForm.setFieldsValue(
+      admin
+        ? {
+            ...admin,
+            password: '',
+            permissions: [],
+            permissionGroupId: admin.permissionGroupId || undefined,
+          }
+        : { permissions: [], permissionGroupId: undefined },
+    )
     setAdminOpen(true)
   }
 
@@ -93,9 +100,9 @@ export function useOwnerManagement() {
 
   const openGroupEditor = (group?: Group) => {
     setEditingGroup(group)
-    groupForm.setFieldsValue(group
-      ? { name: group.name, permissions: group.permissions }
-      : { name: '', permissions: [] })
+    groupForm.setFieldsValue(
+      group ? { name: group.name, permissions: group.permissions } : { name: '', permissions: [] },
+    )
     setGroupOpen(true)
   }
 
@@ -108,13 +115,10 @@ export function useOwnerManagement() {
   const saveGroup = async () => {
     try {
       const values = await groupForm.validateFields()
-      await api(
-        editingGroup ? routes.permissionGroup(editingGroup.id) : routes.permissionGroups,
-        {
-          method: editingGroup ? 'PATCH' : 'POST',
-          body: JSON.stringify({ ...values, permissions: capabilityLeaves(values.permissions) }),
-        },
-      )
+      await api(editingGroup ? routes.permissionGroup(editingGroup.id) : routes.permissionGroups, {
+        method: editingGroup ? 'PATCH' : 'POST',
+        body: JSON.stringify({ ...values, permissions: capabilityLeaves(values.permissions) }),
+      })
       message.success(editingGroup ? '权限组已更新' : '权限组已创建')
       closeGroupEditor()
       await load()

@@ -33,7 +33,7 @@ type Props = {
 }
 
 const copy = {
-  players: { title: '玩家账号', panel: '玩家目录' },
+  'players': { title: '玩家账号', panel: '玩家目录' },
   'online-sessions': { title: '在线会话', panel: '当前在线玩家' },
   'account-bans': { title: '账号封禁', panel: '已封禁账号' },
 } as const
@@ -50,17 +50,27 @@ export function PlayerDirectoryPage(props: Props) {
   return (
     <>
       <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col><h1 className="player-admin-page-title">{labels.title}</h1></Col>
+        <Col>
+          <h1 className="player-admin-page-title">{labels.title}</h1>
+        </Col>
         <Col>
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={props.refresh}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={props.refresh}>
+              刷新
+            </Button>
             {props.mode === 'players' && props.canExport ? (
-              <Button icon={<DownloadOutlined />} loading={props.exporting} onClick={props.exportPlayers}>
+              <Button
+                icon={<DownloadOutlined />}
+                loading={props.exporting}
+                onClick={props.exportPlayers}
+              >
                 导出 CSV
               </Button>
             ) : null}
             {props.mode === 'players' && props.canCreate ? (
-              <Button type="primary" icon={<PlusOutlined />} onClick={props.createPlayer}>新增玩家</Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={props.createPlayer}>
+                新增玩家
+              </Button>
             ) : null}
           </Space>
         </Col>
@@ -68,7 +78,7 @@ export function PlayerDirectoryPage(props: Props) {
       <Card
         className="player-admin-panel"
         title={panelTitle}
-        extra={(
+        extra={
           <Space>
             <Input
               prefix={<SearchOutlined />}
@@ -95,7 +105,7 @@ export function PlayerDirectoryPage(props: Props) {
               />
             ) : null}
           </Space>
-        )}
+        }
       >
         <PlayerTable
           className="player-admin-table"
@@ -107,9 +117,11 @@ export function PlayerDirectoryPage(props: Props) {
           dataSource={props.players}
           rowKey="subjectId"
           pagination={false}
-          locale={props.mode === 'online-sessions'
-            ? { emptyText: <Empty description="当前没有在线玩家" /> }
-            : undefined}
+          locale={
+            props.mode === 'online-sessions'
+              ? { emptyText: <Empty description="当前没有在线玩家" /> }
+              : undefined
+          }
         />
         <div className="player-admin-table-pagination">
           <Pagination

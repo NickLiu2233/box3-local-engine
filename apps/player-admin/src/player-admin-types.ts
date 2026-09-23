@@ -175,7 +175,16 @@ export type PlayBundleReview = {
   blobCount: number
   unindexedBlobCount: number
   worlds: Array<{ id: string; name: string; mapRole: 'main' | 'submap'; version: string }>
-  resources: Array<{ id: string; worldId: string; name: string; kind: string; mimeType: string; bytes: number; previewable: boolean; scriptTarget?: string }>
+  resources: Array<{
+    id: string
+    worldId: string
+    name: string
+    kind: string
+    mimeType: string
+    bytes: number
+    previewable: boolean
+    scriptTarget?: string
+  }>
   warnings: string[]
 }
 
@@ -237,7 +246,10 @@ export type ContainerMapChoice = Pick<
 }
 export type ContainerCatalog = {
   mode: 'play' | 'creator'
-  defaults: Pick<ContainerProfile, 'playerLimit' | 'roomLimit' | 'idleTimeoutMs' | 'cpuMilli' | 'memoryMb'>
+  defaults: Pick<
+    ContainerProfile,
+    'playerLimit' | 'roomLimit' | 'idleTimeoutMs' | 'cpuMilli' | 'memoryMb'
+  >
   profiles: ContainerProfile[]
   resourceGroups: ContainerResourceGroup[]
   availableMaps: ContainerMapChoice[]

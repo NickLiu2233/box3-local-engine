@@ -288,7 +288,8 @@ function startPlayLibrary({
     isRoomActive: (roomId) => Boolean(runtimes.get(runtimeKey('', roomId))?.activeConnections),
     maxRooms: teleportMaxRooms,
     roomIdleTimeoutMs: teleportRoomIdleTimeoutMs,
-    maxRoomsForMap: (permanentMapId) => runtimeProfileForWorld(resolveWorld(libraryRoot, permanentMapId) || {})?.roomLimit,
+    maxRoomsForMap: (permanentMapId) =>
+      runtimeProfileForWorld(resolveWorld(libraryRoot, permanentMapId) || {})?.roomLimit,
     roomIdleTimeoutForMap: (permanentMapId) =>
       runtimeProfileForWorld(resolveWorld(libraryRoot, permanentMapId) || {})?.idleTimeoutMs,
   })

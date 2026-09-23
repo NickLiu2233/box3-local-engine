@@ -50,7 +50,9 @@ export function useSecurityManagement() {
         page: String(identityBanPage),
         pageSize: String(identityBanPageSize),
       })
-      const result = await api<{ bans: IdentityBan[]; total: number }>(`${routes.identityBans}?${query}`)
+      const result = await api<{ bans: IdentityBan[]; total: number }>(
+        `${routes.identityBans}?${query}`,
+      )
       setIdentityBans(result.bans || [])
       setIdentityBanTotal(result.total || 0)
     } catch (error) {

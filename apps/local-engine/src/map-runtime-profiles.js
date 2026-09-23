@@ -28,7 +28,8 @@ function normalizeMapRuntimeProfile(input = {}) {
   if (!profileMode.has(mode)) throw new Error('地图容器配置仅支持游玩端')
 
   const resourceGroupId = String(input.resourceGroupId || '').trim()
-  if (resourceGroupId && !permanentMapIdPattern.test(resourceGroupId)) throw new Error('资源组 ID 格式无效')
+  if (resourceGroupId && !permanentMapIdPattern.test(resourceGroupId))
+    throw new Error('资源组 ID 格式无效')
 
   return {
     permanentMapId,
@@ -55,7 +56,11 @@ function normalizeRuntimeResourceGroup(input = {}) {
   const description = String(input.description || '').trim()
   if (description.length > 500) throw new Error('资源说明不能超过 500 个字符')
   const networkPolicy = input.networkPolicy === 'private' ? 'private' : 'unrestricted'
-  if (input.networkPolicy !== undefined && input.networkPolicy !== 'private' && input.networkPolicy !== 'unrestricted') {
+  if (
+    input.networkPolicy !== undefined &&
+    input.networkPolicy !== 'private' &&
+    input.networkPolicy !== 'unrestricted'
+  ) {
     throw new Error('网络策略无效')
   }
   return {
@@ -65,8 +70,14 @@ function normalizeRuntimeResourceGroup(input = {}) {
     memoryMb: positiveInteger(input.memoryMb, '内存上限（MB）', { minimum: 64, maximum: 1048576 }),
     description,
     networkPolicy,
-    processLimit: positiveInteger(input.processLimit ?? 512, '容器进程上限', { minimum: 16, maximum: 4096 }),
-    bandwidthMbps: optionalPositiveInteger(input.bandwidthMbps, '出网带宽上限（Mbps）', { minimum: 1, maximum: 100000 }),
+    processLimit: positiveInteger(input.processLimit ?? 512, '容器进程上限', {
+      minimum: 16,
+      maximum: 4096,
+    }),
+    bandwidthMbps: optionalPositiveInteger(input.bandwidthMbps, '出网带宽上限（Mbps）', {
+      minimum: 1,
+      maximum: 100000,
+    }),
   }
 }
 
@@ -92,9 +103,15 @@ function resolveMapRuntimeProfile(document, { permanentMapId, mode }, defaults =
   const normalized = profile ? normalizeMapRuntimeProfile(profile) : null
   const groups = Array.isArray(document?.resourceGroups) ? document.resourceGroups : []
   const resourceGroup = normalized?.resourceGroupId
-    ? groups.map((group) => {
-      try { return normalizeRuntimeResourceGroup(group) } catch { return null }
-    }).find((group) => group?.id === normalized.resourceGroupId)
+    ? groups
+        .map((group) => {
+          try {
+            return normalizeRuntimeResourceGroup(group)
+          } catch {
+            return null
+          }
+        })
+        .find((group) => group?.id === normalized.resourceGroupId)
     : null
   const cpuMilli = resourceGroup?.cpuMilli ?? null
   const memoryMb = resourceGroup?.memoryMb ?? null

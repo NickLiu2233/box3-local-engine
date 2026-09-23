@@ -103,13 +103,16 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
         body: JSON.stringify({
           ...values,
           tags: values.tags
-            ? values.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+            ? values.tags
+                .split(',')
+                .map((tag: string) => tag.trim())
+                .filter(Boolean)
             : [],
         }),
       })
       if (result.player) {
         setSelected(result.player)
-        setDetails((current) => current ? { ...current, player: result.player } : current)
+        setDetails((current) => (current ? { ...current, player: result.player } : current))
       }
       message.success('玩家资料已保存')
       await load()
@@ -138,7 +141,10 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       const status = player.status === 'banned' ? 'active' : 'banned'
       await api(routes.player(player.subjectId), {
         method: 'PATCH',
-        body: JSON.stringify({ status, ...(status === 'banned' ? { banReason: '由管理后台执行' } : {}) }),
+        body: JSON.stringify({
+          status,
+          ...(status === 'banned' ? { banReason: '由管理后台执行' } : {}),
+        }),
       })
       message.success(status === 'banned' ? '账号已封禁' : '账号已解除封禁')
       await load()
@@ -165,9 +171,8 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
     try {
       const values = await banForm.validateFields()
       const targets = values.targets as string[]
-      const bannedUntil = values.duration === 'temporary'
-        ? new Date(values.bannedUntil).toISOString()
-        : null
+      const bannedUntil =
+        values.duration === 'temporary' ? new Date(values.bannedUntil).toISOString() : null
       if (values.duration === 'temporary' && new Date(bannedUntil || '').getTime() <= Date.now()) {
         throw new Error('封禁到期时间必须晚于当前时间')
       }
@@ -223,8 +228,8 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       })
       const notices: Record<PlayerBatchAction, string> = {
         'revoke-sessions': '已发送下线指令',
-        ban: '已批量封禁',
-        unban: '已批量解封',
+        'ban': '已批量封禁',
+        'unban': '已批量解封',
         'add-tag': '已添加标签',
         'remove-tag': '已移除标签',
       }
@@ -238,7 +243,10 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
 
   const createPlayer = async () => {
     try {
-      await api(routes.players, { method: 'POST', body: JSON.stringify(await createForm.validateFields()) })
+      await api(routes.players, {
+        method: 'POST',
+        body: JSON.stringify(await createForm.validateFields()),
+      })
       message.success('玩家账号已创建')
       setCreateOpen(false)
       createForm.resetFields()

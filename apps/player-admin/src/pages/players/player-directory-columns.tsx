@@ -67,27 +67,35 @@ export function playerDirectoryColumns(options: Options): ColumnsType<Player> {
                 key: 'ban',
                 label: player.status === 'banned' ? '解除封禁' : '封禁账号',
                 danger: player.status !== 'banned',
-                onClick: () => void (player.status === 'banned'
-                  ? options.toggleBan(player)
-                  : options.openBanDialog(player)),
+                onClick: () =>
+                  void (player.status === 'banned'
+                    ? options.toggleBan(player)
+                    : options.openBanDialog(player)),
               },
-              ...(options.canDelete ? [{
-                key: 'delete',
-                label: '删除身份',
-                danger: true,
-                onClick: () => Modal.confirm({
-                  title: `删除身份 · ${player.displayName || player.username}`,
-                  content: '将永久删除该玩家的资料、角色、处罚记录和全部会话，且无法恢复。',
-                  okText: '永久删除',
-                  cancelText: '取消',
-                  okButtonProps: { danger: true },
-                  onOk: () => options.deletePlayer(player),
-                }),
-              }] : []),
+              ...(options.canDelete
+                ? [
+                    {
+                      key: 'delete',
+                      label: '删除身份',
+                      danger: true,
+                      onClick: () =>
+                        Modal.confirm({
+                          title: `删除身份 · ${player.displayName || player.username}`,
+                          content: '将永久删除该玩家的资料、角色、处罚记录和全部会话，且无法恢复。',
+                          okText: '永久删除',
+                          cancelText: '取消',
+                          okButtonProps: { danger: true },
+                          onOk: () => options.deletePlayer(player),
+                        }),
+                    },
+                  ]
+                : []),
             ],
           }}
         >
-          <Button type="link" size="small">更多</Button>
+          <Button type="link" size="small">
+            更多
+          </Button>
         </Dropdown>
       ),
     },

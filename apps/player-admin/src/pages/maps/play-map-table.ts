@@ -1,8 +1,4 @@
-import type {
-  PlayMap,
-  PlayMapResourceStatus,
-  PlayMapTableRow,
-} from '../../player-admin-types'
+import type { PlayMap, PlayMapResourceStatus, PlayMapTableRow } from '../../player-admin-types'
 
 export type PlayMapGroup = {
   id: string
