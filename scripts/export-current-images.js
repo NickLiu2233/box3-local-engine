@@ -8,6 +8,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { defaultExportImageTag } = require('./export-image-plan')
 
 const root = path.resolve(__dirname, '..')
 const packageVersion = require(path.join(root, 'package.json')).version
@@ -23,10 +24,10 @@ const hostArchitecture = process.arch === 'arm64' ? 'arm64' : process.arch === '
 if (!hostArchitecture) {
   fail(`不支持当前主机架构：${process.arch}`)
 }
-// This command packages images for the launcher, whose stable image tag is
-// independent of the .env development tag. Keep the release-style default in
-// sync with package:images; callers may still explicitly override it.
-const imageTag = process.env.BOX_IMAGE_TAG || `v${packageVersion}-linux-${hostArchitecture}`
+// Keep this release tag in sync with package-images. BOX_IMAGE_TAG configures
+// runtime Compose deployments and may legitimately point at an older image;
+// it must not change which freshly built release images this command exports.
+const imageTag = defaultExportImageTag(packageVersion, hostArchitecture)
 
 function fail(message) {
   console.error(`ERROR: ${message}`)

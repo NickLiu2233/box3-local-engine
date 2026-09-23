@@ -59,6 +59,7 @@ function check() {
   node('scripts/check-windows-offline-installer.js')
   run(process.execPath, [
     '--test',
+    'scripts/export-current-images.test.js',
     'scripts/package-release.test.js',
     'scripts/build-desktop-offline-installer.test.js',
     'scripts/verify-desktop-offline-package.test.js',
