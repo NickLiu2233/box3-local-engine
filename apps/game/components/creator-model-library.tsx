@@ -91,6 +91,12 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     return () => window.removeEventListener('focus', handleFocus);
   }, [canManageModels, refreshModels]);
 
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(''), 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const visibleModels = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('zh-CN');
     return models.filter((model) => (
@@ -187,12 +193,12 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     }
   };
 
-  const sectionHeader = <div className={styles.sectionHeader}>
-    <div className={styles.sectionSummary}>
+  const sectionHeader = <div className={`${styles.sectionHeader} creatorSectionHeader`}>
+    <div className={`${styles.sectionSummary} creatorSectionSummary`}>
       <strong>模型作品</strong>
       <span>{serviceState === 'loading' ? '正在连接…' : `${models.length} 个模型与皮肤`}</span>
     </div>
-    <div className={styles.sectionActions}>
+    <div className={`${styles.sectionActions} creatorSectionActions`}>
       <button className={styles.secondaryButton} disabled={serviceState !== 'ready' || submitting} onClick={() => importInputRef.current?.click()}>
         <Upload size={16} />导入模型工程
       </button>
@@ -217,7 +223,7 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
   </div>;
 
   if (!canManageModels) {
-    return <section className={styles.library}>
+    return <section className={`${styles.library} creatorLibrary`}>
       <div className={styles.servicePanel} aria-live="polite">
         <div className={styles.serviceIcon}><ServerOff size={24} /></div>
         <div className={styles.serviceCopy}>
@@ -230,7 +236,7 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
   }
 
   if (serviceState === 'unavailable') {
-    return <section className={styles.library}>
+    return <section className={`${styles.library} creatorLibrary`}>
       {sectionHeader}
       <div className={styles.servicePanel} aria-live="polite">
         <div className={styles.serviceIcon}><ServerOff size={24} /></div>
@@ -246,17 +252,17 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     </section>;
   }
 
-  return <section className={styles.library} onClick={() => setMenuModel(null)}>
+  return <section className={`${styles.library} creatorLibrary`} onClick={() => setMenuModel(null)}>
     {sectionHeader}
 
-    {notice && <div className={styles.notice} role="status">{notice}</div>}
+    {notice && <div className={`${styles.notice} creatorToast`} role="status">{notice}</div>}
 
     <div className={styles.toolbar}>
       <label className={styles.search}>
         <Search size={17} />
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索模型或皮肤" />
       </label>
-      <div className={styles.typeTabs} aria-label="模型类型">
+      <div className={`${styles.typeTabs} creatorFilterTabs`} aria-label="模型类型">
         {(['全部', '模型', '皮肤'] as const).map((option) => <button
           key={option}
           type="button"
@@ -289,7 +295,12 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
           </div>
         </div>
         <div className={styles.menuWrap} onClick={(event) => event.stopPropagation()}>
-          <button className={styles.moreButton} aria-label="更多操作" onClick={() => setMenuModel(menuModel === model.modelId ? null : model.modelId)}>
+          <button
+            className={styles.moreButton}
+            aria-label="更多操作"
+            aria-expanded={menuModel === model.modelId}
+            onClick={() => setMenuModel(menuModel === model.modelId ? null : model.modelId)}
+          >
             <MoreHorizontal size={18} />
           </button>
           {menuModel === model.modelId && <div className={styles.menu}>

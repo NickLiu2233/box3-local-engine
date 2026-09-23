@@ -12,6 +12,7 @@
     "version:check": "node scripts/sync-root-version.js --check",
     "dev": "node scripts/dev-all.js",
     "dev:creator": "node apps/local-engine/src/launcher.js --creator",
+    "dev:creator-stack": "node scripts/dev-all.js --creator-only",
     "package:images": "node scripts/sync-root-version.js && node scripts/package-offline-images.js",
     "export:images": "node scripts/export-current-images.js",
     "package:desktop": "node scripts/package-release.js desktop",

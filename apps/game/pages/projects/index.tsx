@@ -170,6 +170,12 @@ export default function ProjectsPage({
     return () => window.removeEventListener('popstate', handleHistory);
   }, []);
 
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(''), 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   const catalog = useProjectCatalog({ uiPreview, setNotice });
   const { projects, mainProjects, refresh: refreshProjects } = catalog;
   const transfer = useProjectTransfer({
@@ -390,7 +396,6 @@ export default function ProjectsPage({
       className={`${styles.page} boxWorkCenter creatorWorkCenter`}
       onClick={() => {
         setMenuProject(null);
-        catalog.setFilterOpen(false);
       }}
     >
       <header className={styles.header}>

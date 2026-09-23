@@ -14,7 +14,6 @@ export function useProjectCatalog({ uiPreview, setNotice }: Options) {
   );
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'全部' | ProjectStatus>('全部');
-  const [filterOpen, setFilterOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     if (uiPreview) {
@@ -101,7 +100,6 @@ export function useProjectCatalog({ uiPreview, setNotice }: Options) {
     projects,
     query,
     status,
-    filterOpen,
     visibleProjects,
     singleMapProjects,
     multiMapGroups,
@@ -110,7 +108,6 @@ export function useProjectCatalog({ uiPreview, setNotice }: Options) {
     refresh,
     setQuery,
     setStatus,
-    setFilterOpen,
     clearFilters,
   };
 }

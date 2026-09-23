@@ -10,6 +10,7 @@ const children = new Set()
 const isWindows = process.platform === 'win32'
 const pnpmCommand = isWindows ? 'pnpm.cmd' : 'pnpm'
 const args = new Set(process.argv.slice(2))
+const creatorOnly = args.has('--creator-only')
 const gameRoot = path.join(repoRoot, 'apps/game')
 const baseGameTsconfig = path.join(gameRoot, 'tsconfig.json')
 
@@ -177,17 +178,19 @@ try {
     },
   })
 
-  start('play', process.execPath, [path.join(localEngineRoot, 'src/launcher.js'), '--play'], {
-    env: {
-      BOX_WEB_PORT: '3121',
-      BOX_PLAY_RUNTIME_PORT: '9971',
-      BOX_EDIT_RUNTIME_PORT: '9972',
-      BOX_PLAY_LIBRARY_PATH: path.join(localEngineRoot, 'play-worlds'),
-      NEXT_DIST_DIR: '.next-play',
-      NEXT_TSCONFIG_PATH: '.tsconfig.dev-play.json',
-      BOX_DEPLOYMENT_MODE: 'play',
-    },
-  })
+  if (!creatorOnly) {
+    start('play', process.execPath, [path.join(localEngineRoot, 'src/launcher.js'), '--play'], {
+      env: {
+        BOX_WEB_PORT: '3121',
+        BOX_PLAY_RUNTIME_PORT: '9971',
+        BOX_EDIT_RUNTIME_PORT: '9972',
+        BOX_PLAY_LIBRARY_PATH: path.join(localEngineRoot, 'play-worlds'),
+        NEXT_DIST_DIR: '.next-play',
+        NEXT_TSCONFIG_PATH: '.tsconfig.dev-play.json',
+        BOX_DEPLOYMENT_MODE: 'play',
+      },
+    })
+  }
 
   start('voxa', pnpmCommand, ['exec', 'next', 'dev', '-p', '3123'], {
     cwd: voxaRoot,
@@ -214,7 +217,7 @@ try {
 
   console.log('\n开发服务已启动：')
   console.log('  Creator        http://127.0.0.1:3127/')
-  console.log('  Play           http://127.0.0.1:3121/')
+  if (!creatorOnly) console.log('  Play           http://127.0.0.1:3121/')
   console.log('  VOXA           http://127.0.0.1:3123/')
   console.log('  Player Service http://127.0.0.1:3124/')
   console.log('  Auth Portal    http://127.0.0.1:3125/')

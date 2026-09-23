@@ -1,5 +1,5 @@
 import type { ChangeEvent, ReactNode, RefObject } from 'react';
-import { ChevronDown, FolderOpen, Plus, Search, Upload } from 'lucide-react';
+import { FolderOpen, Plus, Search, Upload } from 'lucide-react';
 
 import styles from '../../../pages/projects/projects.module.css';
 import type { ImportProgress, LocalProject } from '../project-types';
@@ -32,12 +32,12 @@ export function ProjectCatalog({
 
   return (
     <>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionSummary}>
+      <div className={`${styles.sectionHeader} creatorSectionHeader`}>
+        <div className={`${styles.sectionSummary} creatorSectionSummary`}>
           <strong>地图作品</strong>
           <span>{catalog.projects.length} 个地图</span>
         </div>
-        <div className={styles.sectionActions}>
+        <div className={`${styles.sectionActions} creatorSectionActions`}>
           <button
             className={styles.importButton}
             disabled={Boolean(
@@ -73,41 +73,21 @@ export function ProjectCatalog({
             aria-label="搜索作品"
           />
         </label>
-        <div className={styles.filterWrap} onClick={(event) => event.stopPropagation()}>
-          <button
-            className={styles.filter}
-            type="button"
-            onClick={() => catalog.setFilterOpen((open) => !open)}
-            aria-haspopup="listbox"
-            aria-expanded={catalog.filterOpen}
-          >
-            <span>状态</span>
-            <strong>{catalog.status}</strong>
-            <ChevronDown size={15} aria-hidden="true" />
-          </button>
-          {catalog.filterOpen && (
-            <div className={styles.filterMenu} role="listbox" aria-label="作品状态">
-              {(['全部', '草稿', '已发布'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  role="option"
-                  aria-selected={catalog.status === option}
-                  className={catalog.status === option ? styles.selectedFilter : undefined}
-                  onClick={() => {
-                    catalog.setStatus(option);
-                    catalog.setFilterOpen(false);
-                  }}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="creatorFilterTabs" aria-label="作品状态">
+          {(['全部', '草稿', '已发布'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={catalog.status === option}
+              onClick={() => catalog.setStatus(option)}
+            >
+              {option}
+            </button>
+          ))}
         </div>
       </div>
 
-      {notice && <div className={styles.notice} role="status">{notice}</div>}
+      {notice && <div className={`${styles.notice} creatorToast`} role="status">{notice}</div>}
       {catalog.visibleProjects.length ? (
         <div className={styles.mapCategories}>
           {catalog.singleMapProjects.length > 0 && (
