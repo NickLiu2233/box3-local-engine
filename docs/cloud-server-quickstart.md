@@ -2,11 +2,43 @@
 
 > 适用于 BOX3-Engine-Server 0.1.x 的 Linux amd64/arm64 发行包。
 
-服务器只需要 Docker、服务器发行包和有效许可证。正常部署通过 Web 管理端完成，不需要手改 `.env`、`.runtime.env` 或 Docker Compose。
+服务器只需要一条安装命令和有效许可证。安装器会自动准备 Docker、下载与 CPU 架构匹配的发行包、校验文件、导入镜像并启动管理端，不需要手改 `.env`、`.runtime.env` 或 Docker Compose。
 
-## 1. 准备服务器
+## 1. 一键安装
+
+使用 root 权限执行稳定安装地址：
+
+```bash
+curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+```
+
+安装目录固定为 `/opt/box3-engine`。重复执行同一条命令可以升级程序和镜像，已有 `.env`、许可证、地图、模型、备份和 Docker 数据卷不会被覆盖。
+
+升级时，安装器只把 `.env` 中由发行版控制的镜像标签和运行平台切换到新版本，其他配置保持不变。更新前正在运行的 Player Service、登录门户、管理端、Creator、Play 和 VOXA 会使用新镜像重建；原本未启动的服务不会被擅自启动。PostgreSQL、Redis、地图文件、玩家数据、许可证及备份不会删除或重建。
+
+安装结束后，管理端默认监听 `0.0.0.0:3130`。安装器会在终端显示局域网地址、公网地址、管理端登录密钥和服主管理密钥，并在已启用的 UFW 或 firewalld 中自动放行 TCP 3130。云厂商安全组仍需由服主放行该端口，外部设备才能打开管理页面。
+
+管理端直接对公网开放时必须保护好登录密钥，并尽快通过 HTTPS 反向代理或 VPN 限制访问。业务服务不会绕过许可证自动启动；服主登录管理端、安装有效许可证并完成数据配置后，再启动游玩端或创作端。
+
+指定版本或自定义安装目录时，先下载安装器再传入环境变量：
+
+```bash
+curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh -o install.sh
+sudo BOX3_VERSION=0.1.1 BOX3_INSTALL_DIRECTORY=/opt/box3-engine sh install.sh
+rm install.sh
+```
+
+如果只允许服务器本机通过 SSH 隧道访问管理端，可以使用：
+
+```bash
+sudo BOX3_MANAGER_BIND_IP=127.0.0.1 sh install.sh
+```
+
+## 2. 准备服务器
 
 完整运行 Play、Creator 和 VOXA，建议至少 8 核 CPU、16 GB 内存和 50 GB 可用磁盘。只运行游玩端时可以适当降低配置。
+
+一键安装器完整支持 Ubuntu 22.04/24.04、Debian 12、Alibaba Cloud Linux 2/3，以及 Docker 官方安装脚本支持的 CentOS、RHEL 和 Rocky Linux。Alibaba Cloud Linux 3 使用 `alinux3-plus`，Alibaba Cloud Linux 2 使用阿里云 Docker CE 镜像仓库，均会安装并验证 Compose v2。
 
 确认服务器架构与下载包一致：
 
@@ -51,7 +83,9 @@ docker compose version
 - `docker info` 检查当前用户能否连接 Docker Engine；如果提示权限不足，通常是尚未重新登录。
 - `docker compose version` 检查 Compose v2 插件。输出应以 `Docker Compose version v2` 开头。
 
-## 2. 安装服务器包
+## 3. 手动安装服务器包
+
+无法访问 GitHub Release，或需要完全离线部署时，使用本节的手动方式；正常联网服务器直接使用上一节的一键安装命令。
 
 先在自己的电脑上将对应架构的 ZIP 上传到服务器：
 
@@ -85,9 +119,9 @@ chmod +x *.sh
 
 `verify.sh` 必须全部通过。如果失败，不要继续安装，也不要从其他版本复制单个文件补齐。`install.sh` 不会直接启动 Play、Creator 等业务服务，也不会覆盖已经存在的 `.env`。
 
-## 3. 打开 Web 管理端
+## 4. 打开 Web 管理端
 
-管理端只监听服务器本机的 `127.0.0.1:3130`。在自己的电脑执行：
+一键安装模式可以直接打开安装器输出的局域网或公网地址。手动安装模式默认只监听服务器本机的 `127.0.0.1:3130`，需要在自己的电脑执行：
 
 ```bash
 ssh -L 3130:127.0.0.1:3130 <服务器用户>@<服务器地址>
@@ -115,9 +149,9 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 这条命令只读取 `.env` 中的管理令牌，并去掉变量名前缀后显示。它不会修改配置。如果没有输出，请确认当前目录是服务器包安装目录，并执行 `./install.sh` 检查安装是否完成。
 
-不要把 3130 端口、管理密钥、`.env` 或 Docker Socket 暴露到公网。
+不要公开管理密钥、`.env` 或 Docker Socket。一键安装开放 3130 是为了方便首次配置，长期使用应增加 HTTPS、VPN 或来源 IP 白名单。
 
-## 4. 在管理端完成配置
+## 5. 在管理端完成配置
 
 首次部署只需按下面顺序操作：
 
@@ -141,7 +175,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 管理端会自动维护 `.env` 并生成 `.runtime.env`。不要手工修改 `.runtime.env`，它会在下次保存或启动时被覆盖。
 
-## 5. 验证和导入地图
+## 6. 验证和导入地图
 
 在服务器查看服务状态：
 
@@ -171,7 +205,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 | `./logs.sh creator` | Creator 页面、工程打开或发布异常时查看              |
 | `./stop.sh`         | 停止 BOX 服务；不会删除地图、工程、许可证或数据库卷 |
 
-## 6. 公网访问
+## 7. 公网访问
 
 不使用域名或反向代理时，可以直接使用“公网 IP + 端口”：
 
@@ -184,16 +218,16 @@ http://<公网IP>:<登录页面端口>
 
 常见端口如下，实际值以管理端页面为准：
 
-| 端口   | 服务       | 是否建议公网开放                   |
-| ------ | ---------- | ---------------------------------- |
-| `3121` | Play       | 需要玩家访问时开放                 |
-| `3125` | 登录页面   | 使用内置登录门户时开放             |
-| `3127` | Creator    | 默认不开放；远程创作时优先使用 VPN |
-| `3123` | VOXA       | 默认不开放；只允许可信创作者访问   |
-| `3124` | 玩家服务   | 不直接开放管理接口                 |
-| `3130` | Web 管理端 | 不开放，始终使用 SSH 隧道或 VPN    |
-| `5432` | PostgreSQL | 不开放                             |
-| `6379` | Redis      | 不开放                             |
+| 端口   | 服务       | 是否建议公网开放                                 |
+| ------ | ---------- | ------------------------------------------------ |
+| `3121` | Play       | 需要玩家访问时开放                               |
+| `3125` | 登录页面   | 使用内置登录门户时开放                           |
+| `3127` | Creator    | 默认不开放；远程创作时优先使用 VPN               |
+| `3123` | VOXA       | 默认不开放；只允许可信创作者访问                 |
+| `3124` | 玩家服务   | 不直接开放管理接口                               |
+| `3130` | Web 管理端 | 一键安装时开放；长期使用 HTTPS、VPN 或 IP 白名单 |
+| `5432` | PostgreSQL | 不开放                                           |
+| `6379` | Redis      | 不开放                                           |
 
 “安全组放行”只允许网络流量到达服务器，不会自动启动对应服务。修改安全组后仍要确认管理端中的服务已经启动，并检查服务器自身防火墙规则。
 
@@ -201,7 +235,7 @@ http://<公网IP>:<登录页面端口>
 
 Creator 和 VOXA 默认应只允许本机、内网或 VPN 中的可信创作者访问。
 
-## 7. 备份和升级
+## 8. 备份和升级
 
 通过管理端备份 Creator 工程和 Play 地图，并单独备份 PostgreSQL。升级前至少保存：
 

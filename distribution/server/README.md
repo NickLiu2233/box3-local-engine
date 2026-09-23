@@ -4,6 +4,12 @@
 
 包内不包含真实 `.env`、密钥、许可证、地图、模型、玩家数据、备份、日志，也不包含 PostgreSQL/Redis 镜像。选择内置 PostgreSQL 或 Redis 时需要联网拉取对应基础镜像。
 
+如果尚未下载本包，联网服务器可以直接运行一键安装命令；该命令会自动下载匹配架构的完整包并执行本 README 中的校验和安装流程，同时把管理端开放到局域网和公网，并在终端显示访问地址与两类管理密钥：
+
+```bash
+curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+```
+
 ## 一、准备一台纯 Linux 服务器
 
 推荐 Ubuntu 24.04 LTS 或 Debian 12。运行 `uname -m`：`x86_64` 使用 `linux-amd64` 包，`aarch64`/`arm64` 使用 `linux-arm64` 包。服务器必须有稳定的 `/etc/machine-id`。
@@ -81,7 +87,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 | 端口        | 用途               | 建议                                              |
 | ----------- | ------------------ | ------------------------------------------------- |
-| `3130`      | Web 管理端         | 只绑定本机，通过 SSH 隧道/VPN 访问                |
+| `3130`      | Web 管理端         | 手动安装只绑定本机；一键安装默认开放              |
 | `3121`      | Play               | 面向玩家时通过 HTTPS 反向代理                     |
 | `3125`      | 参考登录门户       | 使用时通过 HTTPS 反向代理                         |
 | `3124`      | Player Service     | 不直接公开管理路由，按需由 HTTPS 网关代理玩家 API |
@@ -90,7 +96,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 | `5432/6379` | PostgreSQL/Redis   | 只绑定 `127.0.0.1`                                |
 | `9966-9967` | Creator 内部运行时 | 只绑定 `127.0.0.1`                                |
 
-不要把 3130、Docker Socket、数据库或 Redis 暴露到公网。
+不要把 Docker Socket、数据库或 Redis 暴露到公网。一键安装开放 3130 是为了方便首次配置，长期使用应为管理端配置 HTTPS、VPN 或来源 IP 白名单。
 
 ## 六、资源与精简模式
 

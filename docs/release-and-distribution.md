@@ -27,6 +27,7 @@ pnpm export:images
 - 镜像归档：`apps/local-engine/dist/images/box-local-engine-images-v<version>-linux-<arch>.tar.gz`
 - macOS 桌面包：`apps/local-engine/dist/desktop-installers/BOX-Local-Engine-<version>-macos-arm64.zip`
 - Linux Web 包：`apps/local-engine/dist/server-packages/BOX3-Engine-Server-<version>-linux-<arch>.zip`
+- Linux 一键安装入口：Release 附件 `install.sh`
 
 Apple Silicon 本地构建：
 
@@ -43,7 +44,7 @@ pnpm package:desktop macos-arm64 \
 
 解压后启动器位于 `BOX-Local-Engine-<version>-macos-arm64/BOX3 Engine Launcher.app`。VOXA standalone 输出不是桌面 App。
 
-公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
+公开发行只能从干净工作区的 `v*` Tag 构建。Tag CI 会运行验证，并构建 Windows x64、Apple Silicon macOS、Linux x64 桌面包，以及 Linux amd64/arm64 服务器包和镜像归档。发布任务还会把 `distribution/server/bootstrap.sh` 作为固定名称 `install.sh` 上传，因此 `releases/latest/download/install.sh` 始终指向当前发行版本的一键安装入口。CI 必须同时注入本节的 `BOX_BUILD_*` 构建元数据。不得把本机测试包、未提交改动构建或使用 `BOX_ALLOW_DIRTY_RELEASE=true` 构建的包上传到公开 Release。
 
 桌面离线包包含启动器与所需镜像；Linux 无图形包包含 Creator、VOXA、Play、Player Service、登录门户和 Rust Web 管理端，不包含迁移器。Web 管理端可以按需拉取并维护内置 PostgreSQL/Redis，也可以连接服主提供的外部服务；两种内置基础服务镜像不包含在离线归档中。Release 不得包含 `.env`、地图、项目、备份、数据库卷、日志或真实密钥。
 

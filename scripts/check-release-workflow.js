@@ -140,6 +140,8 @@ assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/)
 assert.doesNotMatch(workflow, /(?:access[_-]?key[_-]?id|access[_-]?key[_-]?secret)\s*:\s*['"][^$]/i)
 assert.match(workflow, /release-files\/BOX-Local-Engine-\*\.zip/)
 assert.match(workflow, /release-files\/BOX3-Engine-Server-\*\.zip/)
+assert.match(workflow, /distribution\/server\/bootstrap\.sh release-files\/install\.sh/)
+assert.match(workflow, /release-files\/install\.sh/)
 assert.doesNotMatch(workflow, /release-files\/\*\.tar\.gz/)
 for (const requiredTemplateFile of [
   'README.md',
@@ -154,5 +156,21 @@ for (const requiredTemplateFile of [
     `missing headless server template file: ${requiredTemplateFile}`,
   )
 }
+
+const bootstrapInstaller = fs.readFileSync(
+  path.join(root, 'distribution/server/bootstrap.sh'),
+  'utf8',
+)
+assert.match(bootstrapInstaller, /uname -m/)
+assert.match(bootstrapInstaller, /releases\/latest/)
+assert.match(bootstrapInstaller, /BOX3-Engine-Server-\$version-linux-\$architecture/)
+assert.match(bootstrapInstaller, /get\.docker\.com/)
+assert.match(bootstrapInstaller, /distribution_id.*alinux/)
+assert.match(bootstrapInstaller, /alinux3-plus/)
+assert.match(bootstrapInstaller, /mirrors\.aliyun\.com\/docker-ce/)
+assert.match(bootstrapInstaller, /docker-compose-plugin/)
+assert.match(bootstrapInstaller, /"\$package_directory\/verify\.sh"/)
+assert.match(bootstrapInstaller, /\.\/install\.sh/)
+assert.doesNotMatch(bootstrapInstaller, /rm -rf "?\/opt/)
 
 console.log('release workflow image-tag contract check passed')

@@ -17,6 +17,12 @@ BOX3 Engine 是一个本地优先的体素游戏引擎发行版，提供地图�
 | 构建镜像、App 或 GitHub Release         | [构建、分发与 CI](docs/release-and-distribution.md)      |
 | 浏览全部专题                            | [文档中心](docs/README.md)                               |
 
+无图形 Linux 服务器可以一键安装：
+
+```bash
+curl -fsSL https://github.com/ifishcool/box-local-engine/releases/latest/download/install.sh | sudo bash
+```
+
 ## 当前组成
 
 桌面启动器管理五个 Linux 业务容器。完整镜像归档还携带仅供无图形 Linux 服务器使用的 Rust Web 管理镜像；它构建并提供与桌面启动器相同的管理前端，通过 HTTP 适配同名管理命令。下表地址同时是当前启动器模板与仓库 Compose 的默认值；
@@ -97,15 +103,15 @@ pnpm dev:creator
 
 常用命令：
 
-| 命令                            | 作用                               |
-| ------------------------------- | ---------------------------------- |
-| `pnpm dev`                      | 启动完整源码开发栈                 |
-| `pnpm dev:creator`              | 仅启动 Creator 源码运行时          |
-| `pnpm package:images <arch>`    | 构建并导出完整 Linux 镜像归档      |
+| 命令                            | 作用                                 |
+| ------------------------------- | ------------------------------------ |
+| `pnpm dev`                      | 启动完整源码开发栈                   |
+| `pnpm dev:creator`              | 仅启动 Creator 源码运行时            |
+| `pnpm package:images <arch>`    | 构建并导出完整 Linux 镜像归档        |
 | `pnpm export:images`            | 不重建，按启动器规范打包当前完整镜像 |
-| `pnpm package:desktop <target>` | 构建桌面离线包                     |
-| `pnpm package:web <arch>`       | 构建 Linux Web 服务器包            |
-| `pnpm verify`                   | 运行格式、lint、类型检查和全部回归 |
+| `pnpm package:desktop <target>` | 构建桌面离线包                       |
+| `pnpm package:web <arch>`       | 构建 Linux Web 服务器包              |
+| `pnpm verify`                   | 运行格式、lint、类型检查和全部回归   |
 
 构建 Apple Silicon macOS 桌面包：
 
