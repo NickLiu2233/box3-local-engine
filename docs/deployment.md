@@ -17,7 +17,7 @@ Play 与登录门户是面向普通玩家的公开页面。Creator 和 VOXA 可�
 3. 玩家可登录、进入地图并返回大厅。
 4. 备份 PostgreSQL 与重要工程。
 
-具体端口和变量见[配置参考](./configuration-reference.md)，Play 管理见[游玩端部署](./play-deployment.md)。
+具体端口和变量见[配置参考](./configuration-reference.md)，游玩地图管理见[游玩端部署](./play-deployment.md)。
 
 ## 反向代理要求
 

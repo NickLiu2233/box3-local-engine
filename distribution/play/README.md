@@ -63,7 +63,7 @@ Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到
 `BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS` 控制无人房间的回收时间，房间运行时仍计入
 `BOX_PLAY_MAX_RUNTIMES`。
 
-地图可以通过网页服主管理导入。先在 `.env` 设置：
+地图可以通过玩家管理后台导入。先在 `.env` 设置：
 
 ```env
 BOX_PLAY_ADMIN_TOKEN=至少16位随机管理密钥

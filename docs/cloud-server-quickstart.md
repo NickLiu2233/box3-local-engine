@@ -1,6 +1,6 @@
 # BOX3 Engine 云服务器快速部署
 
-> 适用于 BOX3-Engine-Server 0.1.x 的 Linux amd64/arm64 发行包。
+> 适用于 BOX3-Engine-Server 0.2.x 的 Linux amd64/arm64 发行包。
 
 服务器只需要一条安装命令和有效许可证。安装器会自动准备 Docker、下载与 CPU 架构匹配的发行包、校验文件、导入镜像并启动管理端，不需要手改 `.env`、`.runtime.env` 或 Docker Compose。
 
@@ -214,7 +214,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 - `status.sh` 显示容器是否正在运行以及健康状态，不会启动或停止服务。
 - `logs.sh server-manager` 显示 Web 管理端最近的日志，适合排查管理页面打不开或操作失败。
 
-根据“访问设置”中的地址和端口打开 Play 或 Creator。游玩地图通过 Play 管理页面导入 `.boxplay`；Creator 工程使用 `.boxproject`，两种文件不能混用。
+根据“访问设置”中的地址和端口打开 Play 或 Creator。游玩地图通过玩家管理后台的“游玩管理 → 游玩地图”审查并导入 `.boxplay`；Creator 工程使用 `.boxproject`，两种文件不能混用。
 
 常用命令：
 

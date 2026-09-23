@@ -30,13 +30,13 @@ BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
 
 ## 网络与公开地址
 
-默认端口为 Play `3000`、VOXA `3001`、Creator `3002`、Player Service `3213`、登录门户 `3214`。同一台主机上的端口不能重复。本机模式绑定 `127.0.0.1`；局域网模式使用检测到的私网地址；公网模式需要填写 IP 或域名，并同步更新公开 URL、登录门户 URL 和反向代理配置。
+默认宿主机端口为 Play `3121`、VOXA `3123`、Creator `3127`、Player Service `3124`、登录门户 `3125`，Linux Web 管理端为 `3130`。Compose 内部端口与这些宿主机地址不同，部署者不应直接公开内部端口。同一台主机上的宿主机端口不能重复。本机模式绑定 `127.0.0.1`；局域网模式使用检测到的私网地址；公网模式需要填写 IP 或域名，并同步更新公开 URL、登录门户 URL 和反向代理配置。
 
 Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式风险高，只应在 HTTPS、严格防火墙或 VPN、可信创作者账号及最小权限均已配置时使用。Play 公网地址写入 `BOX_PLAY_PUBLIC_URL` 或对应启动器配置；Cookie 跨子域共享时才设置 `BOX_PLAYER_COOKIE_DOMAIN`。
 
 ## 容量与运行时
 
-`BOX_PLAY_MAX_RUNTIMES` 限制同时运行的地图和 Teleport 房间总数；`BOX_PLAY_PREWARM_RUNTIMES` 与 `BOX_CREATOR_EDIT_PREWARM_RUNTIMES` 默认均为 `2`，只预热主地图优先的指定数量，不会为了预热遍历整个地图仓库；`BOX_RUNTIME_IDLE_TIMEOUT_MS` 控制无连接地图的回收时间。低配机器可设为 `0`，高配置服主可按实际负载提高，再观察启动器性能监控。
+`BOX_PLAY_MAX_RUNTIMES` 限制同时运行的地图和 Teleport 房间总数；`BOX_PLAY_PREWARM_RUNTIMES` 与 `BOX_CREATOR_EDIT_PREWARM_RUNTIMES` 默认均为 `0`。提高后只预热主地图优先的指定数量，不会为了预热遍历整个地图仓库；`BOX_RUNTIME_IDLE_TIMEOUT_MS` 控制无连接地图的回收时间。低配机器保持 `0`，高配置服主可按实际负载提高，再观察启动器性能监控。
 
 游玩地图由“玩家管理后台 → 游玩管理 → 游玩地图”统一管理，不再在 Play 游戏内提供旧的服主管理入口。地图文件不会因端口或容器重启而丢失，但自定义目录必须在升级后继续挂载。
 

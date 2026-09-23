@@ -37,11 +37,17 @@ CLI 应把每台 Creator 服务器保存为独立 Profile。Profile 可以使用
 
 CLI Token 必须先通过基本资料中的总开关“允许进入创作端”（Creator Access）。在此之后，Token 的 CLI 权限由服主或管理员独立授予和编辑，**不受**基本资料中 Creator 细分权限影响。关闭总开关会立即使该玩家所有 CLI Token 不可用。
 
-| Scope            | 用途                                             |
-| ---------------- | ------------------------------------------------ |
-| `scripts.update` | 上传或覆盖指定地图的客户端、服务端脚本           |
-| `projects.list`  | 查看当前 Creator 服务器中的地图摘要与永久地图 ID |
-| `resources.list` | 读取地图引用的模型、图片、音频与 UI 资源索引     |
+| Scope             | 用途                                                     |
+| ----------------- | -------------------------------------------------------- |
+| `projects.list`   | 查看当前 Creator 服务器中的地图摘要与永久地图 ID         |
+| `resources.list`  | 读取地图引用的模型、图片、音频与 UI 资源索引             |
+| `scripts.read`    | 列出并读取指定地图的客户端、服务端脚本                   |
+| `scripts.update`  | 上传或覆盖指定地图的客户端、服务端脚本                   |
+| `storage.read`    | 读取地图或地图组的数据空间                               |
+| `storage.write`   | 写入或删除地图或地图组的数据空间                         |
+| `runtime.view`    | 查看预览运行状态并订阅客户端、服务端控制台事件           |
+| `runtime.control` | 启动或停止地图预览运行                                   |
+| `scene.capture`   | 从当前已授权的 Creator 编辑会话截取完整、3D 或 2D 场景图 |
 
 ### 3.1 在玩家管理中签发／撤销
 
@@ -53,7 +59,7 @@ Cookie: box_local_admin_session=...
 X-Box-Admin-CSRF: ...
 Content-Type: application/json
 
-{"action":"create-cli-token","name":"CI deploy","scopes":["scripts.update"]}
+{"action":"create-cli-token","name":"CI deploy","scopes":["projects.list","scripts.update"]}
 ```
 
 成功时只返回一次明文 Token：
@@ -62,7 +68,7 @@ Content-Type: application/json
 {
   "id": "18 位十六进制 token id",
   "name": "CI deploy",
-  "scopes": ["scripts.update"],
+  "scopes": ["projects.list", "scripts.update"],
   "token": "bxc_..."
 }
 ```
@@ -76,7 +82,7 @@ Content-Type: application/json
 更新既有 Token 的权限：
 
 ```json
-{ "action": "update-cli-token", "tokenId": "...", "scopes": ["scripts.update"] }
+{ "action": "update-cli-token", "tokenId": "...", "scopes": ["projects.list", "scripts.update"] }
 ```
 
 Token 无需频繁登录，但应在机器丢失、人员离开、权限下调或 CI 密钥轮换时立即撤销。不要把服主 Token 暴露给 CLI；CLI 只使用 `bxc_...`。
@@ -121,7 +127,25 @@ Authorization: Bearer bxc_...
 
 TypeScript 的 `GameAPI.d.ts` 与 `ClientAPI.d.ts` **不由 Creator HTTP API 提供**。`apc resource --type dts` 直接从 Gitee 的专用 SDK 源 `box3lab/arena_dts` 同步，因此不需要 Profile 或 CLI Token。
 
-## 7. 脚本上传与覆盖
+## 7. 读取、上传与覆盖脚本
+
+列出地图组共享脚本：
+
+```http
+GET /api/creator/v1/projects/:projectId/scripts
+Authorization: Bearer bxc_...
+```
+
+读取单个脚本：
+
+```http
+GET /api/creator/v1/projects/:projectId/scripts/:side/:entry
+Authorization: Bearer bxc_...
+```
+
+以上两个接口需要 `scripts.read`。脚本内容仅在调用者明确拥有读取权限时返回，不应使用 `scripts.update` 代替读取授权。
+
+上传或覆盖单个脚本：
 
 ```http
 PUT /api/creator/v1/projects/:projectId/scripts/:side/:entry
@@ -172,33 +196,133 @@ jq -Rs '{content: .}' server/gameplay.js | curl --fail-with-body -X PUT \
 
 生产 CLI 应使用 HTTP 客户端的 JSON streaming/文件读取能力，避免把大脚本放进 shell 参数或日志。上例只用于说明请求结构。
 
-## 8. 状态码与错误码
+## 8. 数据空间
 
-| 状态  | 常见 code / message             | 处理建议                                                   |
-| ----- | ------------------------------- | ---------------------------------------------------------- |
-| `401` | 身份验证失败                    | 检查 Token 是否遗漏、失效或已撤销                          |
-| `403` | `CREATOR_CLI_PERMISSION_DENIED` | Token 未授予 `scripts.update`；在玩家管理中编辑其 CLI 权限 |
-| `404` | 路由或工程不存在                | 检查 endpoint、永久地图 ID 与脚本路径                      |
-| `405` | 仅允许 `PUT`                    | 使用正确 HTTP method                                       |
-| `422` | `SCRIPT_SIDE_INVALID`           | `side` 不是 `client`/`server`                              |
-| `422` | `SCRIPT_ENTRY_INVALID`          | 文件名含路径、`..` 或非法字符                              |
-| `422` | `SCRIPT_CONTENT_REQUIRED`       | `content` 不是字符串                                       |
-| `422` | `SCRIPT_CONTENT_TOO_LARGE`      | UTF-8 内容超过 20 MiB                                      |
-| `422` | `SCRIPT_WRITE_FAILED`           | 本地工程状态未初始化、工程不存在或写入失败                 |
+数据空间接口用于读取或修改指定地图的工程级、地图组级键值数据：
+
+```http
+GET    /api/creator/v1/projects/:projectId/storage/:scope/:space
+PUT    /api/creator/v1/projects/:projectId/storage/:scope/:space
+DELETE /api/creator/v1/projects/:projectId/storage/:scope/:space
+Authorization: Bearer bxc_...
+```
+
+- `GET` 需要 `storage.read`；`PUT`、`DELETE` 需要 `storage.write`。
+- `projectId` 必须是合法的永久地图 ID。
+- `scope` 只能是 `project` 或 `group`。
+- `space` 只能包含字母、数字和下划线，长度为 1–50。
+- `key` 必须是非空 UTF-8 字符串，最大 1024 字节。
+- `value` 必须是可序列化的 JSON 值，编码后最大 4 MiB。
+
+读取单项：
+
+```http
+GET /api/creator/v1/projects/:projectId/storage/project/player_data?key=score
+```
+
+分页列出数据：
+
+```http
+GET /api/creator/v1/projects/:projectId/storage/group/rankings?page=0&limit=50
+```
+
+`page` 从 `0` 开始；`limit` 默认为 `50`，服务端会限制在 1–100。
+
+写入：
+
+```http
+PUT /api/creator/v1/projects/:projectId/storage/project/player_data
+Content-Type: application/json
+
+{"key":"score","value":{"total":120}}
+```
+
+删除时可以在请求体或查询参数中提供 `key`：
+
+```http
+DELETE /api/creator/v1/projects/:projectId/storage/project/player_data?key=score
+```
+
+## 9. 预览运行
+
+查看当前地图的预览运行状态：
+
+```http
+GET /api/creator/v1/projects/:projectId/runtime
+Authorization: Bearer bxc_...
+```
+
+订阅预览运行事件：
+
+```http
+GET /api/creator/v1/projects/:projectId/runtime/events
+Authorization: Bearer bxc_...
+```
+
+这两个接口需要 `runtime.view`。事件接口保持流式连接，用于接收客户端和服务端控制台输出；调用方应支持断线重连，并避免把 Token 写入日志。
+
+启动或停止预览运行：
+
+```http
+POST /api/creator/v1/projects/:projectId/runtime
+Authorization: Bearer bxc_...
+Content-Type: application/json
+
+{"action":"start"}
+```
+
+停止时请求体为：
+
+```json
+{ "action": "stop" }
+```
+
+控制接口需要 `runtime.control`。仅查看状态和日志的 Token 不应授予该权限。
+
+## 10. 场景截图
+
+```http
+GET /api/creator/v1/projects/:projectId/scene/capture?view=full
+Authorization: Bearer bxc_...
+```
+
+需要 `scene.capture`。`view` 可取：
+
+| 值     | 内容                         |
+| ------ | ---------------------------- |
+| `full` | 完整编辑界面；省略参数时默认 |
+| `3d`   | 3D 场景区域                  |
+| `2d`   | 2D/UI 编辑区域               |
+
+截图来自当前已授权且正在编辑该地图的 Creator 会话；没有可用编辑会话时会返回冲突错误。成功响应是图片内容，不是 JSON。
+
+## 11. 状态码与错误码
+
+| 状态  | 常见 code / message             | 处理建议                                                    |
+| ----- | ------------------------------- | ----------------------------------------------------------- |
+| `401` | 身份验证失败                    | 检查 Token 是否遗漏、失效或已撤销                           |
+| `403` | `CREATOR_CLI_PERMISSION_DENIED` | Token 未授予当前接口所需 Scope；在玩家管理中编辑其 CLI 权限 |
+| `404` | 路由或工程不存在                | 检查 endpoint、永久地图 ID 与脚本路径                       |
+| `405` | 仅允许 `PUT`                    | 使用正确 HTTP method                                        |
+| `422` | `SCRIPT_SIDE_INVALID`           | `side` 不是 `client`/`server`                               |
+| `422` | `SCRIPT_ENTRY_INVALID`          | 文件名含路径、`..` 或非法字符                               |
+| `422` | `SCRIPT_CONTENT_REQUIRED`       | `content` 不是字符串                                        |
+| `422` | `SCRIPT_CONTENT_TOO_LARGE`      | UTF-8 内容超过 20 MiB                                       |
+| `422` | `SCRIPT_WRITE_FAILED`           | 本地工程状态未初始化、工程不存在或写入失败                  |
 
 CLI 应把 JSON 错误中的 `code` 当作机器可读字段，把 `message` 当作面向人的提示；不可据此打印 Authorization header、Token 或完整工程内容。
 
-## 9. 网络与安全要求
+## 12. 网络与安全要求
 
 - Creator API 仅在 Creator 部署模式启用；非 Creator 服务拒绝这些接口。
 - 服务端检查允许的 Host，并拒绝浏览器跨站修改请求；CLI 使用 Bearer Token，不依赖 Cookie 或 CSRF 豁免技巧。
-- 每个写入请求都重新验证 Token、基本资料中的 Creator Access 总开关与 `scripts.update`，不能只在登录时验证。
+- 每个请求都重新验证 Token、基本资料中的 Creator Access 总开关与当前接口所需 Scope，不能只在登录时验证。
 - 路由参数会进行 URL 编码，服务端进一步拒绝 `..` 和路径字符；不要拼接未经编码的 entry 名称。
-- CLI Token 只授予必要 scope。当前上传脚本的自动化仅需 `scripts.update`。
+- CLI Token 只授予命令实际需要的 Scope。例如只上传已知地图脚本可仅授予 `scripts.update`；需要先查找地图时再增加 `projects.list`，读取差异时再增加 `scripts.read`。
 - 服务器应通过反向代理提供 HTTPS、访问日志与速率限制；不要把 Creator 端口直接暴露到不受信任公网。
 - 工程脚本文本可能含敏感信息。发布前仍需遵守 Local Engine 的敏感内容检查；API 不会替 CLI 自动脱敏日志。
 
-## 10. 开发与验证
+## 13. 开发与验证
 
 ```bash
 pnpm dev --infra
@@ -212,4 +336,4 @@ pnpm dev --infra
 pnpm --filter @box-local/cli test
 ```
 
-手动验证时应始终使用临时玩家、临时 CLI Token 与临时工程，并在 `finally` 中撤销 Token、停止运行时、删除工程。这样能同时覆盖权限、网络输入校验、共享脚本索引与覆盖写入，而不污染真实地图。
+手动验证时应始终使用临时玩家、临时 CLI Token 与临时工程，并在 `finally` 中撤销 Token、停止运行时、删除工程。验证应覆盖全部 9 个 Scope 的允许与拒绝路径、网络输入校验、共享脚本索引、覆盖写入、数据空间限制、运行时事件和无编辑会话时的截图错误，避免污染真实地图。

@@ -1,6 +1,6 @@
-# BOX3 Engine 文档中心
+# BOX3 Local Engine 文档中心
 
-根目录 [README](../README.md) 说明当前产品、支持平台和最短启动方式。本目录按实际任务拆分专题；部署者不需要从头读完，也不要同时照着多份部署文档执行。
+根目录 [README](../README.md) 说明当前 `0.2.0` 产品范围、支持平台和最短启动方式。本目录按实际任务拆分专题；部署者不需要从头读完，也不要同时照着多份部署文档执行。
 
 ## 推荐阅读顺序
 
@@ -33,8 +33,8 @@
 - [游玩端部署](./play-deployment.md)：`.boxplay` 导入、地图开关、更新和公网部署；地图日常管理统一在玩家管理后台完成。
 - [VOXA 部署](./voxa-deployment.md)：模型工程、地图引用和本地数据备份。
 - [地图作品、地图组与发布包](./projects.md)：主地图/副地图、`.boxproject`、`.boxplay` 和共享资源。
-- [ArenaPro CLI 接入 BOX Creator 设计](./arenapro-cli-creator-adapter.md)：复用 `apc`、多服务器 Profile、Creator API、权限认证和分阶段适配。
-- [Creator CLI HTTP API](./creator-cli-http-api.md)：Creator CLI Token、可授权能力和服务端调用契约。
+- [Creator CLI HTTP API](./creator-cli-http-api.md)：当前 Creator CLI Token、九项可授权能力和服务端调用契约。
+- [ArenaPro CLI 接入设计](./arenapro-cli-creator-adapter.md)：保留的协议设计背景，不作为当前 `apc` 命令手册。
 
 ### 玩家身份与数据
 
@@ -61,7 +61,7 @@
 
 ## 当前发行边界
 
-- 桌面启动器管理 Creator、Play、VOXA、Player Service 和参考登录门户五个业务服务。
+- 桌面启动器管理 Creator、Play、VOXA、Player Service 和参考登录门户五个业务服务；完整镜像归档还包含 Linux Server Manager，共六个镜像。
 - Apple Silicon 本地桌面构建产物位于 `apps/local-engine/dist/desktop-installers/`，文件名为 `BOX-Local-Engine-<version>-macos-arm64.zip`；解压后包含 `BOX3 Engine Launcher.app`。
 - 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
@@ -70,7 +70,8 @@
 - 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
 - 桌面启动器和 Linux Web 管理端都可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis。
 - 构建版本、提交短号、构建日期和来源来自镜像 `BOX_BUILD_*` 元数据；正式 Tag 构建应注入这些值，服主无需配置。
-- 当前桌面发行目标为 Windows x64、Apple Silicon macOS 和 Linux x64。Windows ARM、Intel macOS 与 Linux ARM64 桌面 App 不是默认 Release 目标。
+- 当前桌面发行目标为 Windows x64、Windows ARM64、Apple Silicon macOS、Linux x64 和 Linux ARM64。构建脚本支持 Intel macOS，但当前公开 Release 不构建该目标。
+- 主分支和 Pull Request 的 Verify 工作流执行依赖审计、Compose 校验和 `pnpm verify`；Tag Release 工作流校验版本与 OSS 配置后构建发行包，不会重复执行完整 Verify。
 
 ## 当前脚本边界
 

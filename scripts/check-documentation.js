@@ -52,8 +52,48 @@ for (const obsolete of [
 }
 
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
-for (const supportedTarget of ['Windows x64', 'Apple Silicon macOS', 'Linux x64']) {
+for (const supportedTarget of [
+  'Windows x64',
+  'Windows ARM64',
+  'Apple Silicon macOS',
+  'Linux x64',
+  'Linux ARM64',
+]) {
   assert.ok(readme.includes(supportedTarget), `README is missing release target ${supportedTarget}`)
+}
+
+assert.ok(readme.includes('当前版本：`0.2.0`'), 'README does not identify version 0.2.0')
+assert.ok(
+  readme.includes('地图导入和日常管理统一在玩家管理后台'),
+  'README does not identify Player Admin as the play-map management entry',
+)
+assert.ok(
+  !readme.includes('当前版本：`0.1.1`'),
+  'README still identifies the obsolete project version 0.1.1',
+)
+
+const releaseGuide = fs.readFileSync(path.join(docsRoot, 'release-and-distribution.md'), 'utf8')
+assert.ok(
+  releaseGuide.includes('Release 工作流不会重复运行完整 Verify'),
+  'release guide does not explain the Tag Release verification boundary',
+)
+
+const creatorCliApi = fs.readFileSync(path.join(docsRoot, 'creator-cli-http-api.md'), 'utf8')
+for (const scope of [
+  'projects.list',
+  'resources.list',
+  'scripts.read',
+  'scripts.update',
+  'storage.read',
+  'storage.write',
+  'runtime.view',
+  'runtime.control',
+  'scene.capture',
+]) {
+  assert.ok(
+    creatorCliApi.includes(`\`${scope}\``),
+    `Creator CLI API guide is missing scope ${scope}`,
+  )
 }
 
 for (const [label, snippet] of [

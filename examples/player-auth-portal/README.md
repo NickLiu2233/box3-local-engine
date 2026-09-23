@@ -9,7 +9,7 @@ Session 查询和退出请求。`BOX_PLAYER_AUTH_API_KEY` 的对应密钥不会�
 
 ## 本地运行
 
-要求 Node.js 20 或更高版本，不需要安装第三方依赖。
+要求 Node.js `22.17.x`，不需要安装第三方依赖。
 
 ```bash
 cd examples/player-auth-portal

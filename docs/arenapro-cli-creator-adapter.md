@@ -1,9 +1,12 @@
-# ArenaPro CLI 接入 BOX Creator 设计
+# ArenaPro CLI 接入 BOX Creator（历史设计背景）
 
-> 状态：提案（Draft）  
-> CLI 仓库：`/Users/viyrs/Desktop/boxCode/arenapro-cli`  
-> 现有命令：`apc`  
-> 接入命名空间：`apc creator`
+> 状态：历史提案，不是当前命令手册。
+>
+> 本文保留早期适配方案，帮助理解协议演进；其中 `apc creator ...`、Device Authorization Flow、工程导入导出和资源变更集没有按本文方案发布。
+>
+> 当前命令以 `apc --help` 和产品文档中的 APC CLI 手册为准；Local Engine 当前已经实现的服务端接口以 [Creator CLI 与 HTTP API](./creator-cli-http-api.md) 为准。
+
+文中的命令与配置名均属于设计草案，不应复制到当前项目或 CI。尤其是 `BOX_CLI_PROFILE` 已废弃；当前公开工程变量为 `VITE_BOX_CREATOR_PROFILE`，CLI Token 保存在 APC 用户私密配置中，不写入项目 `.env`。
 
 ## 1. 决策
 
@@ -131,7 +134,7 @@ Profile 规则：
 - endpoint 更换、`serverInstanceId` 或 issuer 变化后，CLI 必须拒绝复用旧 token 并要求重新登录；
 - 本机/局域网 IPv4 与 `[::1]` 可以省略协议并默认 `http://`；公网 IP 和域名必须显式使用 `https://`，防止 token 被意外发送到不安全连接；
 - `--profile` 可重复，用于多服务器操作；
-- 未指定时使用 `defaultProfile`；`BOX_CLI_PROFILE` 仅作为 CI 的 profile 选择，不保存秘密。
+- 未指定时使用 `defaultProfile`。草案曾考虑 `BOX_CLI_PROFILE`，当前实现没有该变量；工程通过 `VITE_BOX_CREATOR_PROFILE` 选择 APC 全局 Creator Profile。
 
 命令：
 
@@ -265,11 +268,7 @@ Profile 创建、登录与 endpoint 变更时调用它。CLI 不能把 token 发
       → 是否有目标地图/地图组 ACL？
       → 执行操作并记录审计
 
-当前已实现的 CLI scope 仅为：
-
-    scripts.update
-
-它只允许上传或覆盖脚本。CLI Token 仍要求玩家已被授予总开关“允许进入创作端”；该总开关关闭时，所有 CLI Token 都不可用。工程、资源、导入导出和运行时等接口尚未作为 CLI API 开放，因此不能预先签发对应权限；待接口实现后再扩展此表。
+当前实现已经从本提案最初的单一 `scripts.update` 扩展为 9 个 Scope，包含地图和资源查询、脚本读写、数据空间读写、预览查看与控制、场景截图。完整清单和实际开放接口见 [Creator CLI 与 HTTP API](./creator-cli-http-api.md)。本文后续的工程导入导出、发布、资源写入和多服务器 fan-out 仍只是历史设想。
 
 项目级 ACL：
 

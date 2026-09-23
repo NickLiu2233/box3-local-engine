@@ -1,44 +1,41 @@
-# BOX3 Engine 贡献者指南
+# BOX3 Local Engine 贡献指南
 
-本文面向需要 fork、修改源码、运行完整开发栈、提交 Pull Request，或构建本地镜像/桌面包的开发者。仓库属于私有发行项目；贡献代码不等于获得源代码再分发、商业使用或品牌使用授权。
+本文说明如何准备环境、运行源码、验证改动、提交 Pull Request 和维护发行文档。仓库属于私有发行项目；提交代码不代表获得源码再分发、商业使用或品牌使用授权。
 
 ## 1. 开始前
 
-贡献者应确认自己有权访问上游仓库及其二方源码，不提交真实密钥、许可证私钥、用户数据、数据库备份、地图工程或 Docker 卷。涉及协议、发布包、永久地图 ID、权限或数据空间的修改，必须同步补充回归测试和文档。
+贡献者需要有权访问仓库及相关二方源码。开始工作前先确认工作区状态，不要覆盖其他协作者的改动：
 
-不要直接修改 `.next`、`dist` 或 `build`；这些目录是生成物，会在下一次构建时被覆盖。
+```bash
+git status --short
+git remote -v
+```
 
-## 2. Fork 与分支
+禁止提交真实密钥、许可证私钥、用户数据、数据库备份、地图工程、VOXA 数据、Docker 卷和日志。不要手工修改 `.next*`、`dist/`、`build/`、`target/` 或其他生成物，除非该生成物明确属于仓库发布契约。
 
-在 GitHub 页面点击 Fork，然后：
+## 2. Fork、同步与分支
 
 ```bash
 git clone https://github.com/<your-account>/box-local-engine.git
 cd box-local-engine
 git remote add upstream https://github.com/ifishcool/box-local-engine.git
-git remote -v
-```
-
-`origin` 指向自己的 fork，`upstream` 指向官方仓库。同步主线前确认没有本地未提交修改：
-
-```bash
-git status --short
 git fetch upstream
 git switch main
 git pull --ff-only upstream main
-```
-
-不要在 `main` 上直接开发：
-
-```bash
 git switch -c codex/<short-description>
 ```
 
-例如：`codex/dev-stack`、`codex/voxa-webgl-fix`、`codex/player-revocation-interval`。
+不要直接在 `main` 开发。分支名应简短描述范围，例如 `codex/player-permissions`、`codex/linux-installer` 或 `codex/voxa-model-card`。
 
-## 3. 环境准备
+## 3. 环境要求
 
-要求：Node.js `22.17.x`（当前锁定 `22.17.0`）、pnpm `10.12.1`、Docker Compose v2。运行完整验证或构建桌面/无图形管理端还需要 Rust stable；macOS App 必须在 macOS 和目标 CPU 架构的原生机器上构建。
+- Node.js `22.17.x`，仓库通过 `.node-version` 固定版本；
+- pnpm `10.12.1`；
+- Docker Engine 或 Docker Desktop，支持 Docker Compose v2；
+- Rust stable，用于管理器测试和桌面 App 构建；
+- 目标平台原生构建工具。桌面公开包必须在对应操作系统和 CPU 架构上生成。
+
+安装依赖：
 
 ```bash
 corepack enable
@@ -47,192 +44,181 @@ pnpm install --frozen-lockfile
 cp .env.docker.example .env
 ```
 
-`.env` 只保存在本机。使用外部基础服务时配置：
+`.env` 只保存在本机。源码开发至少需要 PostgreSQL；Redis 可选。使用外部服务时设置：
 
 ```env
 BOX_DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/DATABASE
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-REDIS_PASSWORD=...
+REDIS_PASSWORD=
 REDIS_DB=0
 ```
 
-不要提交 `.env`。
-
-## 4. 完整源码开发
-
-默认入口：
+## 4. 启动源码开发环境
 
 ```bash
 pnpm dev
 ```
 
-这会直接启动源码，不使用业务镜像：
+该命令直接运行源码，不使用业务镜像：
 
-| 服务           | 默认地址                 |
-| -------------- | ------------------------ |
-| Creator        | `http://127.0.0.1:3127/` |
-| Play           | `http://127.0.0.1:3121/` |
-| VOXA           | `http://127.0.0.1:3123/` |
-| Player Service | `http://127.0.0.1:3124/` |
-| Auth Portal    | `http://127.0.0.1:3125/` |
+| 服务                      | 默认地址                 |
+| ------------------------- | ------------------------ |
+| Creator                   | `http://127.0.0.1:3127/` |
+| Play                      | `http://127.0.0.1:3121/` |
+| VOXA                      | `http://127.0.0.1:3123/` |
+| Player Service / 玩家管理 | `http://127.0.0.1:3124/` |
+| 参考登录门户              | `http://127.0.0.1:3125/` |
 
-默认不会启动或停止 Docker 基础服务；如果没有可用的 PostgreSQL/Redis，明确执行：
+`pnpm dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要临时开发数据库时执行：
 
 ```bash
 pnpm dev --infra
 ```
 
-只运行 Creator：
+只开发 Creator 相关功能时可以执行：
 
 ```bash
 pnpm dev:creator
 ```
 
-Ctrl-C 只停止源码进程。Creator、Play、Player Service 使用独立 `.next-*` 和临时 tsconfig；这些文件已加入忽略规则。前端页面、组件和 API 支持热更新，但 `apps/local-engine/src`、`services/game-server/src` 以及通过 `build/dist` 导出的公共包修改后通常需要重启。
+Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig。前端页面通常支持热更新；`apps/local-engine/src/`、`services/game-server/src/` 和公共包构建产物变化后通常需要重启开发栈。
 
-## 5. 源码边界
+## 5. 代码边界
 
-| 领域                             | 目录                                                |
-| -------------------------------- | --------------------------------------------------- |
-| Creator / Play 前端与 API        | `apps/game/`                                        |
-| 项目、地图组、发布和本地生命周期 | `apps/local-engine/src/`                            |
-| 权威游戏服务器和脚本运行时       | `services/game-server/src/`                         |
-| VOXA 模型、皮肤和动画编辑器      | `apps/voxa/`                                        |
-| 登录门户                         | `examples/player-auth-portal/`                      |
-| Tauri 桌面启动器                 | `apps/deployment-manager/`、`apps/manager-core/`    |
-| Linux Web 管理端                 | `apps/server-manager/`、`apps/server-manager-rust/` |
+| 领域                                     | 主要目录                       |
+| ---------------------------------------- | ------------------------------ |
+| Creator、Play、Player Service 与引擎前端 | `apps/game/`                   |
+| 玩家管理后台                             | `apps/player-admin/`           |
+| 工程、地图组、发布与运行时生命周期       | `apps/local-engine/src/`       |
+| 权威游戏服务器和脚本运行时               | `services/game-server/src/`    |
+| VOXA 模型编辑                            | `apps/voxa/`                   |
+| 桌面启动器                               | `apps/deployment-manager/`     |
+| 桌面/Web 共用管理核心                    | `apps/manager-core/`           |
+| Linux Web 管理端                         | `apps/server-manager-rust/`    |
+| 登录门户                                 | `examples/player-auth-portal/` |
+| 内部迁移工具                             | `apps/migrator/`               |
 
-Creator 编辑可变 `.boxproject`，Play 读取不可变 `.boxplay`。账号、权限、奖励、存档和胜负必须由服务端决定；客户端脚本和资源均视为不可信。
+Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口；修改前阅读[系统架构](docs/architecture.md)与[对齐基线](docs/boxes-parity.md)。
 
-## 6. 测试与验证
+玩家管理菜单与 API 必须使用同一套 capability。新增页面或写操作时同步修改前端可见性、服务端授权、权限组分类、API 文档和拒绝测试，不能只隐藏按钮。
 
-快速反馈：
+## 6. 测试
 
-```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm --filter @box-local/voxa build
-pnpm --filter @box-local/local-engine test
-pnpm --filter @box-local/game-server test
-```
-
-完整验证：
+提交前必须运行：
 
 ```bash
 pnpm verify
 ```
 
-完整验证还包括发行包、Docker 约束、Tauri/Rust 管理端、迁移器和文档检查。涉及 Compose、Dockerfile、权限、数据库 schema、地图组、永久 Map ID、`.boxproject`/`.boxplay`、MuDB 或脚本 API 时，应运行完整验证。
-
-## 7. 构建 VOXA、镜像和桌面 App
-
-只构建 VOXA 生产 App：
+它依次执行格式检查、Lint、类型检查、Node 回归、发行包检查、文档检查以及 Rust 测试。快速开发时可先运行与改动最相关的命令：
 
 ```bash
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm --filter @box-local/local-engine test
+pnpm --filter @box-local/game-server test
 pnpm --filter @box-local/voxa build
+pnpm --filter @box-local/player-admin build
 ```
 
-输出：`apps/voxa/.next/`，standalone 入口为 `apps/voxa/.next/standalone/apps/voxa/server.js`。
+涉及 Compose、Dockerfile、安装器、权限、数据库 schema、地图组、地图 ID、`.boxproject`/`.boxplay`、脚本 API 或管理器时，不能只运行局部测试，必须执行完整 `pnpm verify`。
 
-构建 VOXA 镜像：
+## 7. 文档要求
 
-```bash
-docker compose --profile voxa build voxa
-```
+以下变化必须在同一提交更新根 README、相关 `docs/` 专题、配置示例和回归测试：
 
-默认镜像标签：`box-local-engine-voxa:0.1.1`。
+- 服务、端口、镜像、安装方式、发行附件或支持平台；
+- 环境变量、默认值、管理器表单和 Compose 传递；
+- 地图组、发布包、玩家身份、权限、Cookie 或 API；
+- 用户可见按钮、菜单、错误信息和删除的功能。
 
-构建 Apple Silicon 桌面发行包：
+文档只描述已经实现的行为。设计草案必须明确标注“设计”或“历史”，不能混入用户操作步骤。命令应从当前 `package.json`、脚本帮助和工作流核对，不能凭旧版本复制。
 
-```bash
-pnpm package:desktop macos-arm64
-```
+## 8. 构建镜像和发行包
 
-输出：
-
-```text
-apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.1.1-macos-arm64.zip
-```
-
-解压后包含：
-
-```text
-BOX-Local-Engine-0.1.1-macos-arm64/BOX3 Engine Launcher.app
-```
-
-构建完整 arm64 镜像归档：
+构建完整镜像归档：
 
 ```bash
 pnpm package:images arm64
 ```
 
-输出：`apps/local-engine/dist/images/box-local-engine-images-v0.1.1-linux-arm64.tar.gz`。
+输出示例：
 
-已有匹配归档时，可以跳过镜像重建：
+```text
+apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+```
+
+已有当前版本和架构的六个镜像时，可只导出而不重建：
+
+```bash
+pnpm export:images
+```
+
+构建桌面包：
+
+```bash
+pnpm package:desktop macos-arm64
+```
+
+支持目标为 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 和 `linux-arm64`；当前公开流水线不构建 `macos-amd64`。输出示例：
+
+```text
+apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
+```
+
+使用已有镜像归档可以跳过镜像重建：
 
 ```bash
 pnpm package:desktop macos-arm64 \
-  apps/local-engine/dist/images/box-local-engine-images-v0.1.1-linux-arm64.tar.gz
+  apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
 ```
 
-桌面包必须在目标系统和 CPU 架构原生构建机生成。公开 macOS 发布还需要 Developer ID 签名和公证；本地测试包可能只有 ad-hoc 资源签名。
+Linux 无桌面服务器包：
 
-## 8. 提交规范
-
-提交应小而完整，代码、测试、配置示例和文档一起更新。提交标题使用祈使句并说明范围，例如：
-
-```text
-Fix VOXA production build output
-Add full source dev stack
-Reduce player revocation poll interval
+```bash
+pnpm package:web arm64
 ```
 
-提交前运行：
+输出位于 `apps/local-engine/dist/server-packages/`。完整发布要求见[构建与分发](docs/release-and-distribution.md)。
+
+## 9. 提交与 Pull Request
+
+提交应小而完整，代码、测试、配置与文档一起更新。提交前检查：
 
 ```bash
 git status --short
 git diff --check
-pnpm format:check
+pnpm verify
 ```
 
-禁止提交 `.env`、密码、API Key、Cookie、数据库 URL、许可证私钥、`node_modules`、`.next`、`dist`、`build`、Docker 卷、日志、用户地图、模型库和备份。
+Pull Request 至少说明：
 
-## 9. Pull Request 要求
+1. 问题和目标；
+2. 修改范围及受影响服务；
+3. 数据、协议、权限和兼容性变化；
+4. 已运行的验证命令和结果；
+5. UI 改动截图或录屏；
+6. 发行改动的目标平台、架构和构建来源；
+7. 风险与回滚方式。
 
-PR 描述至少包含：
+评审重点包括服务端授权、秘密泄露、数据可恢复性、跨平台行为、离线包可复现性和文档准确性。
 
-1. 背景和要解决的问题；
-2. 修改范围及影响的服务；
-3. 数据格式、协议、配置或权限是否变化；
-4. 已运行的命令及结果；
-5. UI 修改的截图或录屏；
-6. 发行修改的目标架构和构建来源；
-7. 已知风险、兼容性和回滚方式。
+## 10. 发布纪律
 
-评审会重点检查服务边界、服务端授权、客户端秘密泄露、数据可恢复性、生产构建可复现性，以及文档是否与真实命令一致。
+主分支和 Pull Request 的 Verify 工作流执行生产依赖审计、Compose 校验和 `pnpm verify`。Tag Release 工作流负责版本/OSS 配置校验、镜像与安装包构建、GitHub Release 及 OSS/CDN 发布；它不会再次执行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 
-## 10. 版本与发布纪律
+Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本应使用 `v0.2.0`。不要移动或重复使用已发布 Tag；流水线会按 `box-local-engine/<tag>/` 复用同版本 OSS 中间产物。
 
-正式发布必须从干净 Git Tag 构建。不要从带未提交修改的工作区制作公开发行包。构建版本、提交、日期和来源由 `BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE`、`BOX_BUILD_SOURCE` 注入。
+公开发布前还应在干净机器验证镜像导入、许可证安装、数据库初始化、登录、地图导入、Creator/Play/VOXA、容器重启、升级保留数据和 SHA-256 校验。Windows 使用 Authenticode；macOS 使用 Developer ID 签名和公证。
 
-发布前应在干净机器完成镜像导入、许可证导入、PostgreSQL 初始化、Creator/Play/VOXA/Player Service/登录门户启动、登录与地图进入、停止后再次启动、SHA-256 校验和离线包验证。商业使用、再分发、品牌合作和公开源码镜像需要权利人书面授权。
+## 11. 安全边界
 
-## 11. 常见问题
+- 不把密钥、权限判定和权威存档放进浏览器或客户端地图脚本；
+- 不把 Docker Socket、PostgreSQL、Redis 或管理端裸露到不受信任公网；
+- 不在日志、截图、Issue 或 PR 中粘贴 Cookie、Token、数据库 URL 和用户数据；
+- 不用删除卷、清空数据库或删除地图目录作为常规排障手段；
+- 高风险删除、封禁、Token 撤销和容器操作必须保留确认、授权与审计。
 
-### 6379 端口被占用
-
-`pnpm dev` 默认不启动 Docker 基础服务，直接使用 `.env` 的 Redis。只有 `pnpm dev --infra` 才会尝试绑定 6379/5432。
-
-### VOXA 模型为空或 Creator 返回 503
-
-确认 VOXA 在 3123 健康，Creator 的环境包含 `VOXA_URL` 和 `VOXA_INTERNAL_URL`，再检查 `/api/local/models` 和 `/api/local/blobs/<hash>`。生产 App 与开发 App 使用不同数据目录时，确认 `VOXA_DATA_PATH` 指向包含 `models.json` 和 blobs 的目录。
-
-### Next 首次打开很慢
-
-开发模式会为 Creator、Play、Player Service 分别编译同一份 `apps/game`，首次页面请求触发编译是正常的。正式包使用预构建产物，不应以开发模式耗时衡量发布性能。
-
-### WebGL 报 `Vertex buffer is null`
-
-先停止旧开发进程、删除 VOXA 的 `.next` 缓存后重启。VOXA 开发配置关闭了 React Strict Mode 的双挂载；如果生产构建仍复现，应保留浏览器 WebGL 控制台、模型 ID 和 blob 请求状态提交问题。
+用户发行包适用 [BOX3 Local Engine 本地部署用户许可协议](distribution/LICENSE.txt)。商业使用、再分发和品牌合作需要权利人书面授权。
