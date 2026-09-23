@@ -2151,6 +2151,24 @@ input.storage-path {
   background: var(--panel);
 }
 
+.network-access-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.network-access-card .network-card-heading {
+  min-width: 0;
+}
+
+.network-access-card .access-choice {
+  justify-self: end;
+}
+
+.network-access-address {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
 .network-service-card .field {
   grid-template-rows: 15px 34px minmax(15px, auto);
 }
@@ -2181,8 +2199,7 @@ input.storage-path {
   font-size: 11px;
 }
 
-.access-choice,
-.creator-network-choice {
+.access-choice {
   display: inline-flex;
   width: fit-content;
   padding: 3px;
@@ -2191,8 +2208,7 @@ input.storage-path {
   background: var(--panel-soft);
 }
 
-.access-choice button,
-.creator-network-choice button {
+.access-choice button {
   height: 28px;
   padding: 0 9px;
   border: 0;
@@ -2204,38 +2220,15 @@ input.storage-path {
   white-space: nowrap;
 }
 
-.access-choice button.active,
-.creator-network-choice button.active {
+.access-choice button.active {
   background: var(--panel);
   color: var(--text);
   box-shadow: 0 1px 3px color-mix(in srgb, #000 12%, transparent);
 }
 
-.access-choice button:disabled,
-.creator-network-choice button:disabled {
+.access-choice button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
-}
-
-.network-warning {
-  display: grid;
-  gap: 4px;
-  padding: 10px 11px;
-  border: 1px solid color-mix(in srgb, #d18a12 52%, var(--border));
-  border-radius: 8px;
-  background: color-mix(in srgb, #d18a12 9%, var(--panel));
-  color: var(--text);
-  font-size: 11px;
-  line-height: 1.55;
-}
-
-.network-warning strong {
-  color: color-mix(in srgb, #d18a12 72%, var(--text));
-  font-size: 12px;
-}
-
-.network-warning span {
-  color: var(--muted);
 }
 
 .card-port-grid {
@@ -3976,7 +3969,6 @@ details.about-image-row:first-child {
 .service-more-menu button,
 .copy-connection,
 .access-choice button,
-.creator-network-choice button,
 .field input,
 .toast button {
   border-radius: var(--radius-control);
@@ -3996,9 +3988,7 @@ details.about-image-row:first-child {
 .database-download-note,
 .managed-service-note,
 .setting-toggle,
-.network-warning,
 .access-choice,
-.creator-network-choice,
 .about-card,
 .about-image-meta,
 .diagnostic-list > div,
@@ -4105,6 +4095,14 @@ details.about-image-row:first-child {
 }
 
 @media (max-width: 760px) {
+  .network-access-card {
+    grid-template-columns: 1fr;
+  }
+
+  .network-access-card .access-choice {
+    justify-self: start;
+  }
+
   .overview-start-options,
   .overview-support-groups {
     grid-template-columns: 1fr;

@@ -486,6 +486,14 @@ fn config_number(config: &Map<String, Value>, key: &str) -> Option<f64> {
 
 /// Validate supplied camelCase form fields after merging adapter defaults or prior state.
 pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String> {
+    if let (Some(play_mode), Some(creator_mode)) = (
+        config.get("playNetworkMode").and_then(Value::as_str),
+        config.get("creatorNetworkMode").and_then(Value::as_str),
+    ) {
+        if play_mode != creator_mode {
+            return Err("游玩端与创作端必须使用相同的访问范围".into());
+        }
+    }
     for key in ["redisDb", "storageCacheRedisDb", "storageCacheRedisTtl"] {
         if let Some(value) = config.get(key) {
             if !value.as_u64().is_some_and(|value| value <= 255) {
@@ -977,6 +985,14 @@ mod tests {
     #[test]
     fn form_validation_rejects_web_type_and_range_bypasses() {
         let validate = |v: Value| validate_configuration(v.as_object().unwrap());
+        assert_eq!(
+            validate(json!({
+                "playNetworkMode": "lan",
+                "creatorNetworkMode": "local"
+            }))
+            .unwrap_err(),
+            "游玩端与创作端必须使用相同的访问范围"
+        );
         assert!(
             validate(json!({"playPort":" 3121 ","voxaPort":3123,"playRuntimes":2,
             "playPrewarmRuntimes":1,"creatorCpuLimit":0.5}))

@@ -16,7 +16,7 @@ const services = [
   ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
   ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
   ['play', '游玩端', '作品游玩与地图服务', 'playPort', 3121, '/'],
-  ['player-service', '账号服务', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
+  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
   ['player-auth-portal', '登录页面', '玩家登录与注册', 'authPortalPort', 3125, '/'],
 ]
 
@@ -126,7 +126,7 @@ const state = {
   startPrompt: '',
   serviceMenu: '',
   legalDialog: '',
-  playAccessMode: '',
+  accessMode: '',
   ownerSecrets: null,
   ownerSecretsVisible: false,
   error: '',
@@ -678,21 +678,27 @@ function setup() {
   const databaseMode = config.databaseMode || 'managed'
   const redisMode = config.redisMode || 'disabled'
   const creatorHost = config.creatorHost || '127.0.0.1'
-  const creatorAccessMode = config.creatorNetworkMode || 'local'
-  const creatorPublicHost =
+  const legacyCreatorPublicHost =
     creatorHost === '127.0.0.1' ||
     creatorHost === 'localhost' ||
     (config.lanIp && creatorHost === config.lanIp)
       ? ''
       : creatorHost
-  const inferredPlayAccessMode =
+  const inferredAccessMode =
     config.playNetworkMode ||
+    config.creatorNetworkMode ||
     (config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
       ? 'local'
       : config.lanIp && config.publicHost === config.lanIp
         ? 'lan'
         : 'public')
-  const playAccessMode = state.playAccessMode || inferredPlayAccessMode
+  const accessMode = state.accessMode || inferredAccessMode
+  const sharedHost =
+    accessMode === 'local'
+      ? '127.0.0.1'
+      : accessMode === 'lan'
+        ? config.lanIp || '127.0.0.1'
+        : config.publicHost || legacyCreatorPublicHost
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
   const secretInput = (name, label, configured, hint) =>
@@ -788,20 +794,28 @@ function setup() {
             ['立即备份', '需要在重要修改前手动保存时，请前往“数据与备份”使用右上角的“立即备份”。'],
           ])}
         </section>
-        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network"><div class="network-layout"><div class="network-primary-grid"><section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><input name="playNetworkMode" type="hidden" value="${playAccessMode}"/><div class="access-choice"><button type="button" class="${playAccessMode === 'local' ? 'active' : ''}" data-play-network-mode="local">本机</button><button type="button" class="${playAccessMode === 'lan' ? 'active' : ''}" data-play-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${playAccessMode === 'public' ? 'active' : ''}" data-play-network-mode="public">公网</button></div>${playAccessMode === 'public' ? input('publicHost', '公网地址（IP 或域名）', config.publicHost, 'text', '例如 play.example.com；不填写协议') : `<input name="publicHost" type="hidden" value="${escapeHtml(config.publicHost || '127.0.0.1')}"/>`}<div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section><section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><input name="creatorNetworkMode" type="hidden" value="${creatorAccessMode}"/><div class="access-choice"><button type="button" class="${creatorAccessMode === 'local' ? 'active' : ''}" data-creator-network-mode="local">本机</button><button type="button" class="${creatorAccessMode === 'lan' ? 'active' : ''}" data-creator-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${creatorAccessMode === 'public' ? 'active' : ''}" data-creator-network-mode="public">公网</button></div>${creatorAccessMode === 'public' ? `${input('creatorHost', '公网地址（IP 或域名）', creatorPublicHost, 'text', '例如 create.example.com；不填写协议')}<aside class="network-warning" role="note"><strong>不建议直接向公网开放创作端</strong><span>创作端可管理工程与资源，建议优先使用本机、局域网或 VPN。确需公网访问时，请配置 HTTPS 反向代理，并只授予可信账号创作者权限。</span></aside>` : `<input name="creatorHost" type="hidden" value="${escapeHtml(creatorHost)}"/>`}<div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section></div><section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用游玩端地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '账号服务', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section></div>${setupExplanation(
-          '配置说明：访问地址和端口有什么影响？',
-          [
+        <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network">
+          <div class="network-layout">
+            <section class="network-service-card network-access-card">
+              <div class="network-card-heading"><h2>访问范围</h2></div>
+              <input name="playNetworkMode" type="hidden" value="${accessMode}"/>
+              <input name="creatorNetworkMode" type="hidden" value="${accessMode}"/>
+              <div class="access-choice"><button type="button" class="${accessMode === 'local' ? 'active' : ''}" data-network-mode="local">本机</button><button type="button" class="${accessMode === 'lan' ? 'active' : ''}" data-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${accessMode === 'public' ? 'active' : ''}" data-network-mode="public">公网</button></div>
+              ${accessMode === 'public' ? `<div class="network-access-address">${input('publicHost', '公网地址（IP 或域名）', sharedHost, 'text', '例如 engine.example.com；不填写协议')}<input name="creatorHost" type="hidden" value="${escapeHtml(sharedHost)}"/></div>` : `<input name="publicHost" type="hidden" value="${escapeHtml(sharedHost)}"/><input name="creatorHost" type="hidden" value="${escapeHtml(sharedHost)}"/>`}
+            </section>
+            <div class="network-primary-grid">
+              <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section>
+              <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section>
+            </div>
+            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用统一访问范围</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section>
+          </div>${setupExplanation('配置说明：访问地址和端口有什么影响？', [
             [
-              '创作端访问',
-              '可选择本机、局域网或公网。公网模式只允许已获创作者授权的账号进入，生产环境建议使用 HTTPS 反向代理。',
+              '统一访问范围',
+              'Play、ARENA、VOXA、账号服务和登录页面统一使用本机、局域网或公网模式，避免监听地址互相冲突。',
             ],
-            [
-              '游玩访问',
-              'Play、账号服务和登录页面可填写公网 IP 或域名；生产环境建议使用 HTTPS 反向代理。',
-            ],
+            ['公网地址', '所有服务统一使用同一个公网 IP 或域名；生产环境建议配置 HTTPS 反向代理。'],
             ['端口', '每个服务使用独立端口，不能重复；修改后访问链接也会随之改变。'],
-          ],
-        )}</section>
+          ])}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 70, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>预热策略</h2></div></div><div class="form-grid">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}</div></div>
@@ -1484,38 +1498,34 @@ function bindEvents() {
       render()
     }),
   )
-  document.querySelectorAll('[data-creator-network-mode]').forEach((node) =>
+  document.querySelectorAll('[data-network-mode]').forEach((node) =>
     node.addEventListener('click', () => {
       captureSetupForm()
-      const mode = node.dataset.creatorNetworkMode
-      if (!mode) return
-      state.config.creatorNetworkMode = mode
-      if (mode === 'local') state.config.creatorHost = '127.0.0.1'
-      if (mode === 'lan' && state.config.lanIp) state.config.creatorHost = state.config.lanIp
-      if (
-        mode === 'public' &&
-        ['127.0.0.1', 'localhost', state.config.lanIp].includes(state.config.creatorHost)
-      ) {
-        state.config.creatorHost = ''
-      }
-      render()
-    }),
-  )
-  document.querySelectorAll('[data-play-network-mode]').forEach((node) =>
-    node.addEventListener('click', () => {
-      captureSetupForm()
-      const mode = node.dataset.playNetworkMode
+      const mode = node.dataset.networkMode
       if (!mode) return
       state.config.playNetworkMode = mode
-      if (mode === 'local') state.config.publicHost = '127.0.0.1'
-      if (mode === 'lan' && state.config.lanIp) state.config.publicHost = state.config.lanIp
+      state.config.creatorNetworkMode = mode
+      if (mode === 'local') {
+        state.config.publicHost = '127.0.0.1'
+        state.config.creatorHost = '127.0.0.1'
+      }
+      if (mode === 'lan' && state.config.lanIp) {
+        state.config.publicHost = state.config.lanIp
+        state.config.creatorHost = state.config.lanIp
+      }
       if (
         mode === 'public' &&
         ['127.0.0.1', 'localhost', state.config.lanIp].includes(state.config.publicHost)
       ) {
         state.config.publicHost = ''
       }
-      state.playAccessMode = mode
+      if (
+        mode === 'public' &&
+        ['127.0.0.1', 'localhost', state.config.lanIp].includes(state.config.creatorHost)
+      ) {
+        state.config.creatorHost = ''
+      }
+      state.accessMode = mode
       render()
     }),
   )
@@ -1779,7 +1789,9 @@ function captureSetupForm() {
   const next = {
     ...state.config,
     ...values,
-    playNetworkMode: state.playAccessMode || state.config?.playNetworkMode || 'local',
+    playNetworkMode: state.accessMode || state.config?.playNetworkMode || 'local',
+    creatorNetworkMode: state.accessMode || state.config?.playNetworkMode || 'local',
+    creatorHost: values.publicHost,
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,
@@ -2057,7 +2069,7 @@ async function refreshStatus() {
     state.managedRedisInfo = managedRedisInfo
     state.license = license
     state.dataStorage = dataStorage
-    state.playAccessMode = ''
+    state.accessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
   } catch (error) {

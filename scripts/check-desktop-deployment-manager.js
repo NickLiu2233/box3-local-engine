@@ -25,10 +25,13 @@ const sharedBackend = fs
   .map((file) => fs.readFileSync(path.join(sharedDirectory, file), 'utf8'))
   .join('\n')
 const backend = desktopBackend + '\n' + sharedBackend
-const serverManager = fs.readFileSync(
-  path.join(root, 'apps/server-manager-rust/src/main.rs'),
-  'utf8',
-)
+const serverManagerSourceDirectory = path.join(root, 'apps/server-manager-rust/src')
+const serverManager = fs
+  .readdirSync(serverManagerSourceDirectory, { recursive: true })
+  .filter((file) => file.endsWith('.rs'))
+  .sort()
+  .map((file) => fs.readFileSync(path.join(serverManagerSourceDirectory, file), 'utf8'))
+  .join('\n')
 const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), 'utf8')
 const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
@@ -223,7 +226,9 @@ assert.match(serverManager, /--cpus/)
 assert.match(serverManager, /--memory/)
 assert.match(serverManager, /runtime_network\(\)/)
 assert.doesNotMatch(
-  serverManager.match(/async fn ensure_runtime_container[\s\S]*?async fn delete_runtime_container/)?.[0] || '',
+  serverManager.match(
+    /async fn ensure_runtime_container[\s\S]*?async fn delete_runtime_container/,
+  )?.[0] || '',
   /box-local-engine-creator:/,
   'published Play isolation must never start a Creator image',
 )
@@ -476,23 +481,26 @@ assert.match(
 )
 assert.match(frontend, /function switchSetupSection\(section\)/)
 for (const mode of ['local', 'lan', 'public']) {
-  assert.match(frontend, new RegExp(`data-creator-network-mode="${mode}"`))
+  assert.match(frontend, new RegExp(`data-network-mode="${mode}"`))
 }
-assert.match(frontend, /name="creatorNetworkMode" type="hidden"/)
-assert.match(frontend, /name="creatorHost" type="hidden"/)
-assert.match(frontend, /if \(mode === 'local'\) state\.config\.creatorHost = '127\.0\.0\.1'/)
-assert.match(
-  frontend,
-  /if \(mode === 'lan' && state\.config\.lanIp\) state\.config\.creatorHost = state\.config\.lanIp/,
+assert.equal(
+  (frontend.match(/data-network-mode=/g) || []).length,
+  3,
+  'access scope must render one shared local/LAN/public selector',
 )
+assert.doesNotMatch(frontend, /data-(?:play|creator)-network-mode=/)
+assert.match(frontend, /name="creatorNetworkMode" type="hidden" value="\$\{accessMode\}"/)
+assert.match(frontend, /name="creatorHost" type="hidden"/)
+assert.match(frontend, /creatorHost: values\.publicHost/)
+assert.equal((frontend.match(/input\('publicHost'/g) || []).length, 1)
 assert.doesNotMatch(frontend, /创作端访问地址/)
-assert.match(frontend, /data-play-network-mode="public"/)
-// The selected Play access mode must be part of FormData. Otherwise choosing
-// local only changes the host field while save_configuration_command keeps the
-// previously persisted `lan` mode and resolves it back to the LAN address.
-assert.match(frontend, /name="playNetworkMode" type="hidden" value="\$\{playAccessMode\}"/)
+assert.doesNotMatch(frontend, /不建议直接向公网开放创作端/)
+assert.match(frontend, /name="playNetworkMode" type="hidden" value="\$\{accessMode\}"/)
 assert.match(frontend, /state\.config\.playNetworkMode = mode/)
-assert.match(frontend, /const inferredPlayAccessMode/)
+assert.match(frontend, /state\.config\.creatorNetworkMode = mode/)
+assert.match(frontend, /creatorNetworkMode: state\.accessMode/)
+assert.match(frontend, /const inferredAccessMode/)
+assert.match(sharedBackend, /游玩端与创作端必须使用相同的访问范围/)
 assert.match(backend, /fn detect_lan_ip/)
 for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 'authPortalPort']) {
   assert.match(frontend, new RegExp(`input\\('${port}'`))
@@ -638,7 +646,6 @@ for (const scope of ['"all"', '"creator"', '"play"']) {
 }
 assert.doesNotMatch(backend, /async fn install_and_start/)
 assert.match(backend, /fn validate_creator_host/)
-assert.match(frontend, /不建议直接向公网开放创作端/)
 assert.match(backend, /fn enforce_creator_network_policy/)
 assert.match(backend, /enforce_creator_network_policy\(app\)\?;/)
 assert.match(backend, /BOX_CREATOR_PUBLIC_URL/)
@@ -965,6 +972,16 @@ if (core.lib.includes('pub mod backup;')) {
       const binding = member.trim().match(/^(\w+)(?:\s+as\s+(\w+))?$/)
       if (binding) coreImports.set(binding[1], binding[2] || binding[1])
     }
+  }
+  // Rustfmt may keep flat modules and a nested module tree in the same grouped
+  // import. The simple flat-group matcher above intentionally does not parse
+  // nested braces, so recover the two required top-level bindings here.
+  for (const module of ['backup', 'backup_store']) {
+    if (coreImports.has(module)) continue
+    const grouped = desktopCommands.match(
+      new RegExp(`use\\s+box_manager_core::\\{[\\s\\S]*?\\b${module}\\b(?:\\s+as\\s+(\\w+))?`),
+    )
+    if (grouped) coreImports.set(module, grouped[1] || module)
   }
   for (const module of ['backup', 'backup_store']) {
     assert.ok(coreImports.has(module), 'desktop must import core ' + module)
