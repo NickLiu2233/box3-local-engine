@@ -217,10 +217,28 @@ for (const { directory, manifest } of packages.values()) {
   }
 }
 
-// The root manifest is intentionally small. Rush owns the project graph,
-// dependency installation and repository-level commands.
+// Root npm scripts are discoverable aliases only. Rush still owns the project
+// graph, dependency installation and every repository-level implementation.
 const rootManifest = JSON.parse(readRequired('package.json'))
 requireScript(rootManifest, 'package.json', 'rush', 'node common/scripts/install-run-rush.js')
+for (const [name, command] of Object.entries({
+  'install:all': 'install',
+  'update:all': 'update',
+  'dev': 'dev',
+  'verify': 'verify',
+  'package:images:amd64': 'package-images --architecture amd64',
+  'package:images:arm64': 'package-images --architecture arm64',
+  'package:desktop:macos-arm64': 'package-desktop --target macos-arm64',
+  'package:web:amd64': 'package-web --architecture amd64',
+  'package:web:arm64': 'package-web --architecture arm64',
+})) {
+  requireScript(
+    rootManifest,
+    'package.json',
+    name,
+    `node common/scripts/install-run-rush.js ${command}`,
+  )
+}
 for (const forbiddenFile of ['pnpm-workspace.yaml', 'pnpm-lock.yaml']) {
   if (fs.existsSync(path.join(root, forbiddenFile))) {
     fail(`${forbiddenFile}: legacy pnpm Workspace file must be removed`)
@@ -230,11 +248,6 @@ readRequired('common/config/rush/pnpm-lock.yaml', 'Rush pnpm lockfile')
 readRequired('common/config/rush/command-line.json', 'Rush command configuration')
 
 for (const name of [
-  'dev',
-  'verify',
-  'package:images',
-  'package:desktop',
-  'package:web',
   'creator',
   'creator:up',
   'play',
