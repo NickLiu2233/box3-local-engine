@@ -116,15 +116,15 @@ rush dev --infra
 
 对应 npm 别名为 `npm run dev` 和 `npm run dev:infra`。
 
-| 服务            | 地址                     | 用途                    |
-| --------------- | ------------------------ | ----------------------- |
-| Creator         | `http://127.0.0.1:3127/` | 地图工程、编辑和发布    |
-| Play            | `http://127.0.0.1:3121/` | 地图大厅、房间和游玩    |
-| VOXA            | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑    |
-| Player Service  | `http://127.0.0.1:3124/` | 登录 API 与玩家管理后台 |
-| 参考登录门户    | `http://127.0.0.1:3125/` | 注册、登录和回跳示例    |
-| Creator Runtime | `9966/9967`              | Creator 游戏运行时      |
-| Play Runtime    | `9971`                   | Play 游戏运行时         |
+| 服务            | 地址                     | 用途                 |
+| --------------- | ------------------------ | -------------------- |
+| Creator         | `http://127.0.0.1:3127/` | 地图工程、编辑和发布 |
+| Play            | `http://127.0.0.1:3121/` | 地图大厅、房间和游玩 |
+| VOXA            | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑 |
+| Player Service  | `http://127.0.0.1:3124/` | 登录与玩家管理 API   |
+| 参考登录门户    | `http://127.0.0.1:3125/` | 注册、登录和回跳示例 |
+| Creator Runtime | `9966/9967`              | Creator 游戏运行时   |
+| Play Runtime    | `9971`                   | Play 游戏运行时      |
 
 `rush dev` 直接运行源码，不会构建或启动业务镜像；只有显式传入 `--infra` 才会管理开发 PostgreSQL/Redis。停止开发命令时，不要顺手删除数据库卷。
 
@@ -135,6 +135,19 @@ rush dev-creator
 # 或同时启动基础设施
 rush dev-creator --infra
 ```
+
+### 玩家管理后台前端
+
+玩家管理的 Umi 前端为了保持独立热更新，不包含在 `rush dev` 进程中。先保持 Player Service 和 PostgreSQL 运行，再另开终端：
+
+```bash
+cd apps/player-admin
+npm run dev
+```
+
+浏览器打开 `http://127.0.0.1:8000/`。开发服务器把 `/api` 代理到 `http://127.0.0.1:3124`。如果页面显示“玩家管理服务暂时不可用”，先查看 Player Service 日志；最常见原因是 PostgreSQL 未启动、`.env` 中的账号不匹配，或开发 schema 尚未初始化。没有外部数据库时应使用 `rush dev --infra` 或 `rush dev-creator --infra`。
+
+发行构建会把 `apps/player-admin` 的静态产物装入 Player Service，因此部署环境直接访问 Player Service 管理地址，不运行 8000 端口。
 
 前端页面通常支持热更新。`apps/local-engine/src/`、`services/game-server/src/`、公共包或运行时子进程变化后，通常需要停止并重新执行开发命令。Creator、Play 和 Player Service 使用独立 `.next-*` 与临时 tsconfig，不要手工提交这些生成目录。
 
@@ -162,6 +175,16 @@ Creator 编辑可变 `.boxproject` 工程，Play 只运行发布后的只读 `.b
 3. 权限组中的查看/编辑分类；
 4. 拒绝访问和越权测试；
 5. API 与管理后台文档更新。
+
+HTTP API 统一由 `internals/apis` 维护。开发接口前先阅读 [Local Engine API 与 Swagger](./local-engine-api.md)，并使用以下命令更新契约：
+
+```bash
+npm run api:generate
+npm run api:check
+npm run api:build
+```
+
+`openapi/openapi.json`、`src/generated/openapi.ts` 和 `src/generated/client.ts` 是生成结果，不应手工修改。调用端使用 `ApiClient` 或 `createApiClient` 及其生成方法，不要复制请求/响应 interface，也不要为单个应用再建一套通用 API 封装。Swagger 页面只在开发环境开放，正式构建不会携带 Swagger UI 资源和 OpenAPI JSON。
 
 不能只隐藏前端按钮。账号、权限、付费、奖励和权威存档也不能交给客户端脚本决定。
 
@@ -362,7 +385,7 @@ git push --force-with-lease
 
 ### 端口已占用
 
-检查 3121、3123、3124、3125、3127、9966、9967 和 9971。使用 `--infra` 时还要检查 5432 和 6379。先确认端口属于哪个进程，不要直接终止未知服务。
+检查 3121、3123、3124、3125、3127、8000、9966、9967 和 9971。使用 `--infra` 时还要检查 5432 和 6379。先确认端口属于哪个进程，不要直接终止未知服务。
 
 ### 页面更新但运行时行为未更新
 
@@ -370,7 +393,15 @@ git push --force-with-lease
 
 ### 数据库连接失败
 
-核对 `.env` 的 `BOX_DATABASE_URL`、数据库是否存在、用户权限和端口。使用 `rush dev --infra` 时确认 Docker 正常运行且 5432 未被其他 PostgreSQL 占用。
+核对 `.env` 的 `BOX_DATABASE_URL`、数据库是否存在、用户权限和端口。`rush dev` 会使用 `.env` 中已有的连接；`rush dev --infra` 会启动开发 PostgreSQL，并强制源码进程使用对应的本机连接，避免桌面部署的 Compose 主机名或旧账号覆盖开发配置。使用 `--infra` 时确认 Docker 正常运行且 5432 未被其他 PostgreSQL 占用。
+
+停止源码服务不会删除开发数据库。只停止基础设施可执行：
+
+```bash
+docker compose --profile infra stop postgres redis
+```
+
+除非明确要清空测试数据，否则不要添加 `-v`，也不要执行 `docker compose down -v`。
 
 ### Rush 提示已有任务运行
 

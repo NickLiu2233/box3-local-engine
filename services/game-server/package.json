@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "1.0.28",
-    "@box/apis": "workspace:0.1.0",
+    "@box/apis": "workspace:0.2.0",
     "@box/build-system": "workspace:0.3.1",
     "@box/content-server": "workspace:*",
     "@box/env": "workspace:~0.3.0",

@@ -1,5 +1,7 @@
 'use strict'
 
+const { ApiClient } = require('@box/apis')
+
 function schedulerSettings(env = process.env) {
   const endpoint = String(env.BOX_RUNTIME_MANAGER_URL || '')
     .trim()
@@ -8,25 +10,20 @@ function schedulerSettings(env = process.env) {
   return endpoint && token ? { endpoint, token } : null
 }
 
-async function schedulerRequest(settings, path, options = {}) {
-  const response = await fetch(`${settings.endpoint}${path}`, {
-    ...options,
+function schedulerApi(settings) {
+  return new ApiClient({
+    baseUrl: settings.endpoint,
     headers: {
       'content-type': 'application/json',
       'x-box-runtime-token': settings.token,
-      ...(options.headers || {}),
     },
+    defaultErrorMessage: '地图容器调度失败',
   })
-  const body = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(body.message || `地图容器调度失败（${response.status}）`)
-  return body
 }
 
 async function ensureRuntimeContainer(settings, request) {
-  const result = await schedulerRequest(settings, '/api/runtime/ensure', {
-    method: 'POST',
-    body: JSON.stringify(request),
-  })
+  const api = schedulerApi(settings)
+  const result = await api.postApiRuntimeEnsure({ body: request })
   if (!result.hostname || !Number.isInteger(Number(result.port))) {
     throw new Error('地图容器调度器返回了无效的运行时地址')
   }
@@ -37,16 +34,15 @@ async function ensureRuntimeContainer(settings, request) {
     startedAt: result.startedAt || new Date().toISOString(),
     exited: false,
     async metrics() {
-      const stats = await schedulerRequest(
-        settings,
-        `/api/runtime/${encodeURIComponent(result.containerId)}/stats`,
-      )
+      const stats = await api.getApiRuntimeContainerIdStats({
+        params: { path: { container_id: String(result.containerId) } },
+      })
       if (!stats.running) this.exited = true
       return stats.running ? stats : {}
     },
     async stop() {
-      await schedulerRequest(settings, `/api/runtime/${encodeURIComponent(result.containerId)}`, {
-        method: 'DELETE',
+      await api.deleteApiRuntimeContainerId({
+        params: { path: { container_id: String(result.containerId) } },
       })
       this.exited = true
     },

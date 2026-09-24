@@ -1,6 +1,5 @@
 import { extractServerConfigForClient } from 'configs/client';
 import { getMapContentInfo } from './map-info';
-import { getUserInfo } from './data-fatching';
 import { getServerConfig } from '../configs/server';
 import { getSharedLogger } from './logger';
 import { LangType, VALID_LANGUAGE, DEFAULT_LANGUAGE } from 'src/apis/createra';
@@ -26,13 +25,10 @@ export async function getArenaServerRenderProps(spec: {
     );
 
     const mapInfo = await getMapContentInfo(mode, containerName, cookie);
-    const userInfo = serverConfig.isLocalGameServer
-      ? null
-      : await getUserInfo(cookie, token);
     // 优先级：用户语言 > 本地语言(cookie) > 浏览器语言 > 默认语言
     const browserLocale = getDescLocaleList(browserLanguage)[0]?.locale;
     const cookieLocale = parseCookie(cookie)['locale'];
-    const userLocale = userInfo?.language;
+    const userLocale = undefined;
     const validLocale = getValidLocale(
       userLocale || cookieLocale || browserLocale,
     );
@@ -55,7 +51,7 @@ export async function getArenaServerRenderProps(spec: {
             ? extractedConfig.VOXA_URL
             : `${extractedConfig.WEBSITE_URL}/edit-model`,
         },
-        userInfo,
+        userInfo: null,
       },
     };
   } catch (error) {

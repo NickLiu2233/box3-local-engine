@@ -6,7 +6,6 @@ import { PrefetchCachesType } from '@box/content-server/content-fetch';
 
 import { getServerConfig } from '../../configs/server';
 import { getSharedLogger } from '../../server/logger';
-import { getCreateraInstance } from '../../server/request';
 import { localhostRegex } from 'src/utils/url-helpers';
 import {
   PlayerAuthenticationRequiredError,
@@ -185,27 +184,16 @@ async function getSessionData(
       : ServerConfig.isLocalGameServer
       ? 120_000
       : 20_000;
-  let teamId = '';
-  let refererServerId = '';
   let runtimeAuth = req.headers.auth || '';
   let runtimeFingerPrint = fingerPrint;
   let authenticatedSubjectId = '';
   let privateRoomId = '';
 
-  const requestReferer = req.headers.referer;
-  if (requestReferer) {
-    try {
-      const url = new URL(requestReferer);
-      teamId = url.searchParams.get('teamId') || '';
-      refererServerId = url.searchParams.get('refererServerId') || '';
-    } catch {
-      console.warn(`Failed to parse request referer: ${requestReferer}`);
-    }
-  }
-
   let httpServerUrl: string;
   let socketServerUrl: string;
-  if (ServerConfig.isLocalGameServer === true) {
+  if (ServerConfig.isLocalGameServer !== true) {
+    throw new Error('BOX3 Local Engine requires the local game server');
+  }
     if (
       (process.env.BOX_DEPLOYMENT_MODE === 'play' ||
         process.env.BOX_DEPLOYMENT_MODE === 'creator') &&
@@ -271,26 +259,7 @@ async function getSessionData(
       if (!runtime.ready) return undefined;
     }
     // 本地就直接把 http server url 处理成 socket server url
-    socketServerUrl = httpServerUrl.replace('http', 'ws');
-  } else {
-    const createraInstance = await getCreateraInstance();
-    const containerInfo = await createraInstance.containerAllocate(
-      {
-        mapId: contentId,
-        mode,
-        serverId,
-        teamId,
-        refererServerId,
-      },
-      {
-        cookie: req.headers ? req.headers.cookie || '' : '',
-        Authorization: req.headers?.auth || '',
-      },
-    );
-
-    httpServerUrl = containerInfo.httpServerUrl;
-    socketServerUrl = containerInfo.socketServerUrl;
-  }
+  socketServerUrl = httpServerUrl.replace('http', 'ws');
 
   const data = await axios.post(
     httpServerUrl + '/createSession',

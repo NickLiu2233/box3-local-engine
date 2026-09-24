@@ -1,261 +1,187 @@
-import axios from 'axios';
-import {
-  Createra,
-  Model,
-  Models,
-  Upload,
-  Collaboration,
-  CreatorStore,
-} from '@box/apis';
+import { ApiClient } from '@box/apis';
 import { clientConfig, getConfig } from 'src/config/client';
-import { getToken } from 'src/utils/token';
-import { resolveRuntimeURL } from 'src/utils/runtime-url';
-
-export const cancelSource = axios.CancelToken.source();
 
 export interface PagedData<T> {
   count: number;
   rows: T[];
 }
 
-function initAxios(baseURL: string) {
-  /**
-   * init axios instance
-   */
-  const axiosInstance = axios.create({
-    baseURL,
-    withCredentials: true,
-    headers: {},
+function runtimeApi() {
+  return new ApiClient({
+    baseUrl: getConfig().BACKEND_SERVER_URL.replace(/\/$/, ''),
+    defaultErrorMessage: '本地地图运行时请求失败',
   });
+}
 
-  /**
-   * inject Authorization into header
-   */
-  axiosInstance.interceptors.request.use(
-    ({ cancelToken, headers, ...config }) => {
-      const token = getToken();
-      if (token) {
-        headers.authorization = token;
-      }
-      // 过滤掉url search中的appId和token
-      const urlObj = new URL(config.url || '', baseURL);
-      const params = new URLSearchParams(urlObj.search);
-      params.delete('appId');
-      params.delete('token');
-      urlObj.search = params.toString();
-      config.url = urlObj.pathname + urlObj.search + urlObj.hash;
+function voxaApi() {
+  if (!clientConfig.VOXA_URL) throw new Error('本地 VOXA 地址未配置，请先启动 VOXA');
+  return new ApiClient({
+    baseUrl: clientConfig.VOXA_URL.replace(/\/$/, ''),
+    credentials: 'include',
+    defaultErrorMessage: '本地 VOXA 请求失败',
+  });
+}
+
+function absoluteVoxaURL(value?: string) {
+  if (!value || /^https?:\/\//.test(value) || value.startsWith('/api/creator-models/')) {
+    return value;
+  }
+  return `${clientConfig.VOXA_URL.replace(/\/$/, '')}/${value.replace(/^\//, '')}`;
+}
+
+const unsupportedCollaboration = async (..._args: any[]) => {
+  throw new Error('本地引擎不提供旧平台协作接口');
+};
+
+/**
+ * Compatibility-shaped adapters used by inherited Creator screens.
+ * Every implementation targets Local Engine routes; no cloud client is used.
+ */
+export const apis = {
+  createra: {
+    async nextGameUidListUsingGet({ num }: { num?: number }) {
+      const count = Math.max(0, Math.min(1000, Number(num) || 0));
+      return Array.from({ length: count }, () => `local-${globalThis.crypto.randomUUID()}`);
+    },
+    async checkNameScriptUsingGet(_input?: unknown) { return true; },
+    async createScriptUsingPost(
+      _input: Record<string, unknown>,
+    ): Promise<{ id: string; name: string; share: boolean; type: number }> {
+      throw new Error('本地地图使用工程内脚本，不支持旧平台脚本创建接口');
+    },
+    async deleteScriptUsingDelete(_input: Record<string, unknown>): Promise<boolean> {
+      throw new Error('本地地图使用工程内脚本，不支持旧平台脚本删除接口');
+    },
+    async renameScriptUsingPost(_input: Record<string, unknown>): Promise<boolean> {
+      throw new Error('本地地图使用工程内脚本，不支持旧平台脚本重命名接口');
+    },
+    async shareScriptUsingPost({ id, hash }: { id: string; hash: string; mapId?: unknown }) {
+      await runtimeApi().postApiProjectScripts({ body: { action: 'share', fileId: id, hash } });
+      return true;
+    },
+    async unshareScriptUsingPost({ id }: { id: string; mapId?: unknown }) {
+      const result = await runtimeApi().postApiProjectScripts({
+        body: { action: 'unshare', fileId: id },
+      }) as { hash?: string };
+      return String(result.hash || '');
+    },
+    updateLocalSharedScript(action: 'rename' | 'delete', fileId: string, name?: string) {
+      return runtimeApi().postApiProjectScripts({
+        body: { action, fileId, ...(name ? { name } : {}) },
+      });
+    },
+  },
+  upload: {
+    async fileUploadPost({ file }: { file?: Blob; type?: string }) {
+      if (!file) throw new Error('请选择要上传的文件');
+      const result = await runtimeApi().postBlockRaw({
+        body: file as never,
+        bodySerializer: (body) => body as unknown as BodyInit,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      });
+      if (!result.response.ok) throw new Error('本地资源保存失败');
+      return String(result.data || '');
+    },
+  },
+  model: {
+    getModelDetailUsingGet(modelId: number | string, _params?: Record<string, unknown>) {
+      return voxaApi().getApiLocalModelsId({ params: { path: { id: String(modelId) } } });
+    },
+    copyProjectSharedModelUsingPost({ originModelId }: { originModelId: number | string }) {
+      return runtimeApi().postApiProjectModels({
+        body: { action: 'importLocal', modelId: originModelId },
+      });
+    },
+    async deleteModelUsingDelete(modelIds: Array<number | string>) {
+      const results = await Promise.all(
+        modelIds.map((modelId) => voxaApi().deleteApiLocalModelsId({
+          params: { path: { id: String(modelId) } },
+        })),
+      );
+      return results.every(Boolean);
+    },
+    deleteProjectSharedModelUsingDelete({ modelId }: { modelId: number | string }) {
+      return voxaApi().deleteApiLocalModelsId({ params: { path: { id: String(modelId) } } });
+    },
+    renameProjectSharedModelUsingPut({ modelId, modelName }: {
+      modelId: number | string; modelName: string;
+    }) {
+      return voxaApi().putApiLocalModelsId({
+        params: { path: { id: String(modelId) } },
+        body: { modelName },
+      });
+    },
+    setDefaultSkinUsingPut({ mapId, skinId }: { mapId: number; skinId: number }) {
+      const projectKey = String(clientConfig.name || mapId);
+      return voxaApi().putApiLocalDefaultSkin({
+        params: { query: { projectKey, mapId: String(mapId) } },
+        body: { projectKey, mapId, skinId },
+      });
+    },
+    async getDefaultSkinUsingGet({ mapId }: { mapId: number }) {
+      const projectKey = String(clientConfig.name || mapId);
+      const skin = await voxaApi().getApiLocalDefaultSkin({
+        params: { query: { projectKey, mapId: String(mapId) } },
+      }) as Record<string, any> | undefined;
+      return skin ? { ...skin, modelPreviewUrl: absoluteVoxaURL(skin.modelPreviewUrl) } : undefined;
+    },
+    async getSkinMapIdList() { return []; },
+    async batchAddSkinUsingPost() { return true; },
+  },
+  models: {
+    async getModelsUsingGetV2(query: Record<string, unknown>) {
+      const parameters = Object.fromEntries(
+        Object.entries(query || {})
+          .filter(([, value]) => value !== undefined && value !== null)
+          .map(([key, value]) => [key, String(value)]),
+      );
+      const result = await new ApiClient({
+        defaultErrorMessage: '本地模型服务请求失败',
+      }).getApiCreatorModels({
+        params: { query: parameters },
+        credentials: 'same-origin',
+        cache: 'no-store',
+      }) as { rows: Array<Record<string, any>> } & Record<string, any>;
       return {
-        // 自带 cancelToken 的就不覆盖
-        cancelToken: cancelToken ?? cancelSource.token,
-        headers,
-        ...config,
+        ...result,
+        rows: result.rows.map((model) => ({
+          ...model, modelPreviewUrl: absoluteVoxaURL(model.modelPreviewUrl),
+        })),
       };
     },
-  );
-  return axiosInstance;
-}
-
-const axiosInstance = initAxios(clientConfig.CREATERA_BACKEND_SERVER_URL);
-const uploadApi = new Upload(axiosInstance);
-const modelApi = new Model(axiosInstance);
-const modelsApi = new Models(axiosInstance);
-const createraApi = new Createra(axiosInstance);
-
-if (clientConfig.isLocalGameServer) {
-  createraApi.nextGameUidListUsingGet = async ({ num }) => {
-    const count = Math.max(0, Math.min(1000, Number(num) || 0));
-    return Array.from(
-      { length: count },
-      () => `local-${globalThis.crypto.randomUUID()}`,
-    );
-  };
-
-  uploadApi.fileUploadPost = async ({ file }) => {
-    if (!file) throw new Error('请选择要上传的文件');
-    const response = await fetch(
-      resolveRuntimeURL(getConfig().BACKEND_SERVER_URL || '', 'block'),
-      {
-        method: 'POST',
-        body: file,
-      },
-    );
-    if (!response.ok) {
-      throw new Error((await response.text()) || '本地资源保存失败');
-    }
-    return await response.text();
-  };
-
-  const voxaRequest = async (path: string, init?: RequestInit) => {
-    if (!clientConfig.VOXA_URL) {
-      throw new Error('本地 VOXA 地址未配置，请先启动 VOXA');
-    }
-    const response = await fetch(
-      `${clientConfig.VOXA_URL.replace(/\/$/, '')}/api/local${path}`,
-      { ...init, credentials: 'include' },
-    );
-    if (!response.ok) {
-      throw new Error((await response.text()) || '本地 VOXA 请求失败');
-    }
-    return await response.json();
-  };
-
-  const absoluteVoxaURL = (value?: string) => {
-    // Creator proxies model previews through its own origin.  Preserve those
-    // paths; prefixing them with VOXA_URL would send the browser back to the
-    // stale/public VOXA address and produces an empty model panel on LAN.
-    if (
-      !value ||
-      /^https?:\/\//.test(value) ||
-      value.startsWith('/api/creator-models/')
-    ) return value;
-    return `${clientConfig.VOXA_URL.replace(/\/$/, '')}/${value.replace(/^\//, '')}`;
-  };
-
-  modelApi.getModelDetailUsingGet = async (modelId) =>
-    voxaRequest(`/models/${modelId}`);
-  createraApi.shareScriptUsingPost = async ({ id, hash }) => {
-    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
-    const response = await fetch(
-      resolveRuntimeURL(runtimeURL, 'api/project-scripts'),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'share', fileId: id, hash }),
-      },
-    );
-    if (!response.ok) throw new Error((await response.text()) || '共享脚本失败');
-    return true;
-  };
-  createraApi.unshareScriptUsingPost = async ({ id }) => {
-    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
-    const response = await fetch(
-      resolveRuntimeURL(runtimeURL, 'api/project-scripts'),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'unshare', fileId: id }),
-      },
-    );
-    if (!response.ok) throw new Error((await response.text()) || '关闭共享失败');
-    const result = await response.json();
-    return String(result.hash || '');
-  };
-  // Local map groups use one runtime API for all shared-script mutations.
-  // Keeping rename/delete here avoids changing only the currently open map.
-  (createraApi as any).updateLocalSharedScript = async (
-    action: 'rename' | 'delete',
-    fileId: string,
-    name?: string,
-  ) => {
-    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
-    const response = await fetch(
-      resolveRuntimeURL(runtimeURL, 'api/project-scripts'),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, fileId, ...(name ? { name } : {}) }),
-      },
-    );
-    if (!response.ok) throw new Error((await response.text()) || '更新共享脚本失败');
-    return response.json();
-  };
-  modelApi.copyProjectSharedModelUsingPost = async ({ originModelId }) => {
-    const runtimeURL = getConfig().BACKEND_SERVER_URL.replace(/\/$/, '');
-    const response = await fetch(
-      resolveRuntimeURL(runtimeURL, 'api/project-models'),
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'importLocal', modelId: originModelId }),
-      },
-    );
-    if (!response.ok) {
-      throw new Error((await response.text()) || '本地模型加入项目失败');
-    }
-    return await response.json();
-  };
-  modelApi.deleteModelUsingDelete = async (modelIds) => {
-    const results = await Promise.all(
-      modelIds.map((modelId) =>
-        voxaRequest(`/models/${modelId}`, { method: 'DELETE' }),
-      ),
-    );
-    return results.every(Boolean);
-  };
-  modelApi.deleteProjectSharedModelUsingDelete = async ({ modelId }) =>
-    voxaRequest(`/models/${modelId}`, { method: 'DELETE' });
-  modelApi.renameProjectSharedModelUsingPut = async ({ modelId, modelName }) =>
-    voxaRequest(`/models/${modelId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelName }),
-    });
-  const defaultSkinProjectScope = (mapId: number) =>
-    String(clientConfig.name || mapId);
-  modelApi.setDefaultSkinUsingPut = async ({ mapId, skinId }) => {
-    const projectKey = defaultSkinProjectScope(mapId);
-    return voxaRequest(
-      `/default-skin?projectKey=${encodeURIComponent(projectKey)}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectKey, mapId, skinId }),
-      },
-    );
-  };
-  modelApi.getDefaultSkinUsingGet = async ({ mapId }) => {
-    const projectKey = defaultSkinProjectScope(mapId);
-    const skin = await voxaRequest(
-      `/default-skin?projectKey=${encodeURIComponent(projectKey)}`,
-    );
-    return skin
-      ? { ...skin, modelPreviewUrl: absoluteVoxaURL(skin.modelPreviewUrl) }
-      : undefined;
-  };
-  modelApi.getSkinMapIdList = async () => [];
-  modelApi.batchAddSkinUsingPost = async () => true;
-
-  modelsApi.getModelsUsingGetV2 = async (query) => {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(query || {})) {
-      if (value !== undefined && value !== null) params.set(key, String(value));
-    }
-    const result = clientConfig.isLocalGameServer
-      ? await (async () => {
-          const response = await fetch(`/api/creator-models?${params}`, {
-            credentials: 'same-origin',
-            cache: 'no-store',
-          });
-          if (!response.ok) {
-            throw new Error((await response.text()) || '本地模型服务请求失败');
-          }
-          return await response.json();
-        })()
-      : await voxaRequest(`/models?${params}`);
-    return {
-      ...result,
-      rows: result.rows.map((model) => ({
-        ...model,
-        modelPreviewUrl: absoluteVoxaURL(model.modelPreviewUrl),
-      })),
-    };
-  };
-  modelsApi.deleteSharedSkinUsingDelete = async ({ skinId }) =>
-    voxaRequest(`/models/${skinId}`, { method: 'DELETE' });
-  modelsApi.renameSharedSkinUsingPut = async ({ skinId, skinName }) =>
-    voxaRequest(`/models/${skinId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelName: skinName }),
-    });
-}
-
-export const apis = {
-  // Local Creator-compatible endpoints.
-  createra: createraApi,
-  collaboration: new Collaboration(axiosInstance),
-  creatorStore: new CreatorStore(axiosInstance),
-  models: modelsApi,
-  model: modelApi,
-  upload: uploadApi,
+    deleteSharedSkinUsingDelete({ skinId }: { skinId: number | string }) {
+      return voxaApi().deleteApiLocalModelsId({ params: { path: { id: String(skinId) } } });
+    },
+    renameSharedSkinUsingPut({ skinId, skinName }: {
+      skinId: number | string; skinName: string;
+    }) {
+      return voxaApi().putApiLocalModelsId({
+        params: { path: { id: String(skinId) } },
+        body: { modelName: skinName },
+      });
+    },
+  },
+  collaboration: {
+    async roleListUsingGet(_input?: unknown) { return []; },
+    async applyListUsingGet(_input?: unknown) { return []; },
+    updateMapPrivacyUsingPut: unsupportedCollaboration,
+    async memberPermissionUsingGet(_input?: unknown) {
+      return { admin: true, owner: true, collaboration: undefined };
+    },
+    applyUsingPost: unsupportedCollaboration,
+    terminateUsingPost: unsupportedCollaboration,
+    deleteRoleUsingDelete: unsupportedCollaboration,
+    updateRoleUsingPut: unsupportedCollaboration,
+    addRoleUsingPost: unsupportedCollaboration,
+    updateMemberUsingPut: unsupportedCollaboration,
+    unbanUsingPost: unsupportedCollaboration,
+    banUsingPost: unsupportedCollaboration,
+    memberSortUsingPost: unsupportedCollaboration,
+    rejectApplyUsingPost: unsupportedCollaboration,
+    ticketRefreshUsingGet: unsupportedCollaboration,
+    getTicketUsingGet: unsupportedCollaboration,
+  },
+  creatorStore: {
+    async checkStoreAccessUsingGet(_input?: unknown) { return false; },
+  },
 };

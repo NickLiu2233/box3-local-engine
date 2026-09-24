@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { apiOperations } from '@box/apis';
 
+import { apiClient } from '../../../src/apis/client';
 import {
   compatibilityDiagnostics,
   importResponseError,
@@ -45,7 +47,10 @@ export function useProjectTransfer(options: Options) {
         const request = new XMLHttpRequest();
         const parameters = new URLSearchParams({ mode });
         if (mode === 'submap') parameters.set('targetMainProjectId', targetMainProjectId);
-        request.open('POST', `/api/local-projects/import?${parameters.toString()}`);
+        request.open(
+          apiOperations.postApiLocalProjectsImport.method,
+          `${apiOperations.postApiLocalProjectsImport.path}?${parameters.toString()}`,
+        );
         request.setRequestHeader('Content-Type', 'application/octet-stream');
         request.upload.onprogress = (event) => {
           const total = event.lengthComputable ? event.total : file.size;
@@ -109,11 +114,12 @@ export function useProjectTransfer(options: Options) {
         : current);
     }, 500);
     try {
-      const response = await fetch(`/api/local-projects/${encodeURIComponent(project.id)}/export?scope=${scope}`);
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data.message || '导出工程失败');
-      }
+      const result = await apiClient.getApiLocalProjectsIdExportRaw({
+        params: { path: { id: project.id }, query: { scope } },
+        parseAs: 'stream',
+      });
+      if (result.error) throw new Error(result.error.message || '导出工程失败');
+      const response = result.response;
       const disposition = response.headers.get('Content-Disposition') || '';
       const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
       const filename = encodedName ? decodeURIComponent(encodedName) : `${project.name}_${project.id}.boxproject`;
@@ -121,8 +127,8 @@ export function useProjectTransfer(options: Options) {
       let received = 0;
       const chunks: Uint8Array[] = [];
       setExportProgress((current) => current ? { ...current, phase: 'downloading', percent: 35, total, filename } : current);
-      if (response.body) {
-        const reader = response.body.getReader();
+      if (result.data) {
+        const reader = result.data.getReader();
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;

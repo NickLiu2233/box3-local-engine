@@ -1,4 +1,5 @@
 import type { LocalProject } from './project-types';
+import { apiClient } from '../../src/apis/client';
 
 /**
  * Open the editor immediately while runtime allocation starts in parallel.
@@ -6,10 +7,11 @@ import type { LocalProject } from './project-types';
  * visible connecting state instead of showing an extra launcher page.
  */
 export function openProjectEditor(project: LocalProject) {
-  void fetch(`/api/local-projects/${encodeURIComponent(project.id)}/runtime`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: 'edit' }),
-  }).catch(() => undefined);
+  void apiClient
+    .postApiLocalProjectsIdRuntime({
+      params: { path: { id: project.id } },
+      body: { mode: 'edit' },
+    })
+    .catch(() => undefined);
   window.open(`/e/${encodeURIComponent(project.id)}`, '_blank', 'noopener');
 }

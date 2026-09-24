@@ -15,6 +15,7 @@ import {
   Upload,
 } from 'lucide-react';
 
+import { apiClient } from '../src/apis/client';
 import styles from './creator-model-library.module.css';
 
 type ModelTypeFilter = '全部' | '模型' | '皮肤';
@@ -71,9 +72,9 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
       setServiceMessage('正在连接模型服务…');
     }
     try {
-      const response = await fetch('/api/creator-models', { cache: 'no-store' });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '模型服务暂时不可用');
+      const data = (await apiClient.getApiCreatorModels({ cache: 'no-store' })) as {
+        rows?: CreatorModel[];
+      };
       setModels(Array.isArray(data.rows) ? data.rows : []);
       setServiceState('ready');
       setServiceMessage('模型服务运行正常');
@@ -115,13 +116,11 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     setSubmitting(true);
     setNotice('正在导入模型工程…');
     try {
-      const response = await fetch('/api/creator-models/import', {
-        method: 'POST',
+      const data = (await apiClient.postApiCreatorModelsImport({
         headers: { 'Content-Type': file.type || 'application/vnd.box.voxaproject+zip' },
         body: file,
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '导入模型工程失败');
+        bodySerializer: (body) => body,
+      })) as { requiresResourceResave?: boolean; modelName?: string };
       setNotice(data.requiresResourceResave
         ? `已导入“${data.modelName || file.name}”。此旧工程未包含模型资源，请在 VOXA 中打开并保存一次后再放置。`
         : `已导入“${data.modelName || file.name}”`);
@@ -151,16 +150,13 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     setSubmitting(true);
     setDialogError('');
     try {
-      const response = await fetch(`/api/creator-models/${editingModel.modelId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const updated = (await apiClient.putApiCreatorModelsId({
+        params: { path: { id: String(editingModel.modelId) } },
+        body: {
           modelName: modelName.trim(),
           modelDescription: modelDescription.trim(),
-        }),
-      });
-      const updated = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(updated.message || '保存模型信息失败');
+        },
+      })) as Partial<CreatorModel>;
       setModels((items) => items.map((item) => item.modelId === editingModel.modelId
         // VOXA's update response contains model metadata but not Creator's
         // derived preview URL. Keep that local field until the next refresh.
@@ -180,9 +176,9 @@ export function CreatorModelLibrary({ voxaUrl, canManageModels }: {
     setSubmitting(true);
     setDialogError('');
     try {
-      const response = await fetch(`/api/creator-models/${deletingModel.modelId}`, { method: 'DELETE' });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '删除模型失败');
+      await apiClient.deleteApiCreatorModelsId({
+        params: { path: { id: String(deletingModel.modelId) } },
+      });
       setModels((items) => items.filter((item) => item.modelId !== deletingModel.modelId));
       setDeletingModel(null);
       setNotice('模型已删除');

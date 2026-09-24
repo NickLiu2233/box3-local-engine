@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from 'next';
+import { ApiClientError } from '@box/apis';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,6 +18,7 @@ import {
 
 import { isPlayAdminEnabled } from '../server/play-admin-security';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../server/player-service-client';
+import { apiClient } from '../src/apis/client';
 import styles from './play-system.module.css';
 
 const TOKEN_KEY = 'box-play-admin-token';
@@ -152,20 +154,21 @@ export default function PlaySystemPage() {
     }
     if (!quiet) setLoading(true);
     try {
-      const response = await fetch('/api/play-admin/status', {
+      const next = await apiClient.getApiPlayAdminStatus({
         cache: 'no-store',
         headers: { Authorization: `Bearer ${token}` },
-      });
-      const next = await response.json().catch(() => ({}));
-      if (response.status === 401 || response.status === 403) {
+      }) as PlaySystemStatus;
+      setData(next);
+      setError('');
+    } catch (nextError) {
+      if (
+        nextError instanceof ApiClientError &&
+        (nextError.response.status === 401 || nextError.response.status === 403)
+      ) {
         window.sessionStorage.removeItem(TOKEN_KEY);
         void router.replace('/');
         return;
       }
-      if (!response.ok) throw new Error(next.message || '无法读取游玩端运行状态');
-      setData(next);
-      setError('');
-    } catch (nextError) {
       setError((nextError as Error).message);
     } finally {
       setLoading(false);

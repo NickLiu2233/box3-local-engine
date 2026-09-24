@@ -3,6 +3,51 @@ const assert = require('node:assert/strict')
 const { test } = require('node:test')
 const fs = require('node:fs')
 const path = require('node:path')
+const { pathToFileURL } = require('node:url')
+
+// openapi-fetch uses the standards-based Request form. Keep these regression
+// assertions readable by adapting Request back to the legacy test tuple while
+// preserving the original body object (notably File/Blob uploads).
+const NativeRequest = globalThis.Request
+const requestBodies = new WeakMap()
+globalThis.Request = class TestRequest extends NativeRequest {
+  constructor(input, init) {
+    const resolvedInput =
+      typeof input === 'string' && input.startsWith('/') ? `http://localhost${input}` : input
+    super(resolvedInput, init)
+    requestBodies.set(
+      this,
+      init?.body ?? (input instanceof NativeRequest ? requestBodies.get(input) : undefined),
+    )
+  }
+}
+
+let fetchHandler
+Object.defineProperty(globalThis, 'fetch', {
+  configurable: true,
+  get() {
+    const handler = fetchHandler
+    return (input, init) => {
+      if (!(input instanceof NativeRequest)) return handler(input, init)
+      const url = new URL(input.url)
+      const headers = Object.fromEntries(input.headers.entries())
+      for (const name of ['Authorization', 'Content-Type', 'X-Backup-Name', 'X-Operation-Id']) {
+        const value = input.headers.get(name)
+        if (value !== null) headers[name] = value
+      }
+      return handler(`${url.pathname}${url.search}`, {
+        method: input.method,
+        headers,
+        credentials: input.credentials,
+        signal: input.signal,
+        body: requestBodies.get(input),
+      })
+    }
+  },
+  set: (handler) => {
+    fetchHandler = handler
+  },
+})
 
 // Exercise the real transport with only the native bridge and HTTP boundary stubbed.
 const source = fs
@@ -14,6 +59,12 @@ const source = fs
   .replace(
     /import .* from '@tauri-apps\/api\/event'/,
     'const tauriListen = (...args) => globalThis.nativeListen(...args)',
+  )
+  .replace(
+    "import { ApiClient } from '@box/apis'",
+    `import { ApiClient } from ${JSON.stringify(
+      pathToFileURL(path.join(__dirname, '../internals/apis/dist/index.es.js')).href,
+    )}`,
   )
 const transport = import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 

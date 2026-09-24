@@ -2,7 +2,7 @@ import { ReloadOutlined } from '@ant-design/icons'
 import { Button, Card, Col, Modal, Row, Space, Table, Tag, Tooltip, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatBytes } from '../../player-admin-format'
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type {
   ContainerCatalog,
   ContainerMap,
@@ -27,7 +27,7 @@ export function ContainerManagementPage({ mode, canManage }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setCatalog(await api<ContainerCatalog>(`${routes.containers}?mode=${mode}`))
+      setCatalog(await api.getApiPlayAdminContainers({ params: { query: { mode } } }))
     } catch (error) {
       message.error((error as Error).message)
     } finally {
@@ -67,9 +67,8 @@ export function ContainerManagementPage({ mode, canManage }: Props) {
       cancelText: '取消',
       okButtonProps: action === 'destroy' ? { danger: true } : undefined,
       onOk: async () => {
-        await api(routes.containers, {
-          method: 'POST',
-          body: JSON.stringify({ action, mode, projectId: map.id, roomId }),
+        await api.postApiPlayAdminContainers({
+          body: { action, mode, projectId: map.id, roomId },
         })
         message.success(action === 'restart' ? '运行时正在重新启动' : '运行时已销毁')
         await load()

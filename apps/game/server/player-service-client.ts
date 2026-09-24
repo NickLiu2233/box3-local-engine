@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { ApiClient } from '@box/apis';
 import type { RuntimePlayerIdentity } from '@box/utils/local-player-identity';
 import { requestClientAddress } from './client-address';
 
@@ -35,6 +36,25 @@ function internalSecret() {
   return value;
 }
 
+function playerServiceApi(headers: HeadersInit) {
+  return new ApiClient({
+    baseUrl: internalURL(),
+    headers,
+    defaultErrorMessage: '玩家身份服务请求失败',
+  });
+}
+
+async function requestRuntimeIdentity(headers: HeadersInit, signal: AbortSignal) {
+  const result = await playerServiceApi(headers).postApiPlayerInternalRuntimeIdentityRaw({
+    cache: 'no-store',
+    signal,
+  });
+  const data = (result.data || result.error || {}) as Partial<RuntimeIdentityResponse> & {
+    message?: string;
+  };
+  return { ...result, data };
+}
+
 /** Always preserve the same canonical address when forwarding player requests. */
 export function requestPlayerServiceIp(req: Pick<NextApiRequest, 'headers' | 'socket'>) {
   return requestClientAddress(req).slice(0, 128);
@@ -56,9 +76,8 @@ export async function resolvePlayerServiceIdentity(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await fetch(`${internalURL()}/api/player-internal/runtime-identity`, {
-      method: 'POST',
-      headers: {
+    const { response, data } = await requestRuntimeIdentity(
+      {
         Authorization: `Bearer ${internalSecret()}`,
         Cookie: String(req.headers.cookie || ''),
         'X-Box-Player-IP': ip,
@@ -68,9 +87,8 @@ export async function resolvePlayerServiceIdentity(
           ? { 'X-Box-Creator-Authorization': String(req.headers.authorization) }
           : {}),
       },
-      cache: 'no-store',
-      signal: controller.signal,
-    });
+      controller.signal,
+    );
     const responseHeaders = response.headers as Headers & {
       getSetCookie?: () => string[];
     };
@@ -81,7 +99,6 @@ export async function resolvePlayerServiceIdentity(
       const setCookie = response.headers.get('set-cookie');
       if (setCookie) res.setHeader('Set-Cookie', setCookie);
     }
-    const data = await response.json().catch(() => ({})) as Partial<RuntimeIdentityResponse> & { message?: string };
     if (!response.ok || !data.identity || !data.assertion) {
       if (response.status === 401 || data.message === 'AUTH_REQUIRED') {
         throw new PlayerAuthenticationRequiredError();
@@ -118,20 +135,15 @@ export async function getAuthenticatedPlayerIdentity(cookie = '', ip = '', userA
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await fetch(`${internalURL()}/api/player-internal/runtime-identity`, {
-      method: 'POST',
-      headers: {
+    const { response, data } = await requestRuntimeIdentity(
+      {
         Authorization: `Bearer ${internalSecret()}`,
         Cookie: cookie,
         'X-Box-Player-IP': ip,
         'X-Box-Player-User-Agent': userAgent.slice(0, 512),
       },
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    const data = await response.json().catch(() => ({})) as Partial<RuntimeIdentityResponse> & {
-      message?: string;
-    };
+      controller.signal,
+    );
     if (!response.ok || !data.identity || !data.assertion) {
       if (response.status === 401 || data.message === 'AUTH_REQUIRED') {
         throw new PlayerAuthenticationRequiredError();

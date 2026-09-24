@@ -1,7 +1,7 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import { Button, Card, Col, Modal, Row, Space, Table, Tag } from 'antd'
 
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import { dateTime } from '../../player-admin-format'
 import type { Admin } from '../../player-admin-types'
 
@@ -22,12 +22,12 @@ export function AdminAccountsPage({ admins, loading, refresh, edit, remove }: Pr
       okText: admin.status === 'active' ? '停用' : '启用',
       okButtonProps: admin.status === 'active' ? { danger: true } : undefined,
       onOk: async () => {
-        await api(routes.admin(admin.id), {
-          method: 'PATCH',
-          body: JSON.stringify({
+        await api.patchApiPlayAdminAdminsId({
+          params: { path: { id: admin.id } },
+          body: {
             displayName: admin.displayName,
             status: admin.status === 'active' ? 'disabled' : 'active',
-          }),
+          },
         })
         await refresh()
       },

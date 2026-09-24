@@ -35,6 +35,7 @@ import { useProjectTransfer } from '../../components/project-management/workflow
 import { useProjectRecovery } from '../../components/project-management/workflows/use-project-recovery';
 import { useProjectPublisher } from '../../components/project-management/workflows/use-project-publisher';
 import { openProjectEditor } from '../../components/project-management/project-runtime-navigation';
+import { apiClient } from '../../src/apis/client';
 
 export const getServerSideProps: GetServerSideProps<ProjectsPageProps> = async ({ req, res, query }) => {
   if (['play', 'player-service'].includes(process.env.BOX_DEPLOYMENT_MODE || '')) {
@@ -111,11 +112,7 @@ export default function ProjectsPage({
       setNotice('预览模式：已模拟退出登录。');
       return;
     }
-    const response = await fetch('/api/creator-logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-    });
-    if (!response.ok) throw new Error('退出登录失败，请稍后重试');
+    await apiClient.postApiCreatorLogout();
     window.location.assign('/projects');
   };
 
@@ -125,13 +122,9 @@ export default function ProjectsPage({
       setNotice('资料已保存');
       return;
     }
-    const response = await fetch('/api/creator-profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(changes),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || '资料保存失败');
+    const data = (await apiClient.patchApiCreatorProfile({ body: changes })) as {
+      player?: PlayerProfileChanges;
+    };
     setCreatorIdentity((current) => ({
       ...current,
       displayName: data.player?.displayName || changes.displayName,
@@ -143,12 +136,10 @@ export default function ProjectsPage({
   const switchView = async (view: WorkCenterView) => {
     if (view === 'models' && !uiPreview) {
       try {
-        const response = await fetch('/api/creator-permissions', {
-          cache: 'no-store',
-          credentials: 'same-origin',
-        });
-        const data = await response.json().catch(() => ({}));
-        if (response.ok && Array.isArray(data.creatorPermissions)) {
+        const data = (await apiClient.getApiCreatorPermissions({ cache: 'no-store' })) as {
+          creatorPermissions?: unknown[];
+        };
+        if (Array.isArray(data.creatorPermissions)) {
           setCreatorPermissions(data.creatorPermissions.map(String));
         }
       } catch {
@@ -261,53 +252,40 @@ export default function ProjectsPage({
       return;
     } else if (dialog === 'submap' && selectedProject) {
       const id = `${selectedProject.mainProjectId}-map-${Date.now().toString(36)}`.slice(0, 63);
-      const response = await fetch(
-        `/api/local-projects/${encodeURIComponent(selectedProject.mainProjectId)}/maps`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+      await apiClient.postApiLocalProjectsIdMaps({
+        params: { path: { id: selectedProject.mainProjectId } },
+        body: {
             id,
             name,
             description: projectDescription,
             mapSize: mapSize === 'custom' ? customMapSize : mapSize,
-          }),
         },
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '创建副地图失败');
+      });
       setNotice(`副地图“${name}”已创建`);
     } else if (dialog === 'details' && selectedProject) {
-      const response = await fetch(`/api/local-projects/${selectedProject.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const data = (await apiClient.patchApiLocalProjectsId({
+        params: { path: { id: selectedProject.id } },
+        body: {
           publicId: projectPublicId,
           name,
           author: selectedProject.mapRole === 'submap' ? undefined : projectAuthor,
           description: projectDescription,
           cover: projectCover,
           loadingCover: projectLoadingCover,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '重命名失败');
+        },
+      })) as { project: { publicId: string } };
       setNotice(`地图信息已保存，玩家链接为 /p/${data.project.publicId}`);
     } else {
       const id = `project-${Date.now().toString(36)}`;
-      const response = await fetch('/api/local-projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      await apiClient.postApiLocalProjects({
+        body: {
           id,
           name,
           author: projectAuthor,
           description: projectDescription,
           mapSize: mapSize === 'custom' ? customMapSize : mapSize,
-        }),
+        },
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '创建作品失败');
       setNotice('作品已创建');
     }
     setDialog(null);
@@ -317,11 +295,7 @@ export default function ProjectsPage({
   const deleteProject = async (project: LocalProject) => {
     setMenuProject(null);
     if (project.isEngineWorld) return;
-    const response = await fetch(`/api/local-projects/${project.id}`, { method: 'DELETE' });
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || '删除作品失败');
-    }
+    await apiClient.deleteApiLocalProjectsId({ params: { path: { id: project.id } } });
     setNotice('工程及其本地发布版本已删除');
     await refreshProjects();
   };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { apiClient } from '../../../src/apis/client';
 import type { LocalProject, ProjectSnapshot } from '../project-types';
 
 type Options = {
@@ -23,9 +24,9 @@ export function useProjectRecovery(options: Options) {
     setError('');
     setLoading(true);
     try {
-      const response = await fetch(`/api/local-projects/${encodeURIComponent(target.id)}/snapshots`);
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '读取恢复记录失败');
+      const data = (await apiClient.getApiLocalProjectsIdSnapshots({
+        params: { path: { id: target.id } },
+      })) as { snapshots?: ProjectSnapshot[] };
       const next = Array.isArray(data.snapshots) ? data.snapshots : [];
       setSnapshots(next);
       setSelectedSnapshot(next[0]?.name || '');
@@ -41,13 +42,10 @@ export function useProjectRecovery(options: Options) {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/local-projects/${encodeURIComponent(project.id)}/snapshots`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ snapshot: selectedSnapshot }),
+      await apiClient.postApiLocalProjectsIdSnapshots({
+        params: { path: { id: project.id } },
+        body: { snapshot: selectedSnapshot },
       });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '恢复历史版本失败');
       options.setNotice(`已恢复 ${project.name} 的历史版本；重新打开编辑器后生效`);
       setProject(null);
       await options.refreshProjects();

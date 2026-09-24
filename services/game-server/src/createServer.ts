@@ -1,5 +1,5 @@
 import { ProjectBakeCache } from '@box/build-system/project/bake';
-import { CreativeMode, ModelType } from '@box/apis';
+import { ApiClient, CreativeMode, ModelType } from '@box/apis';
 import { PrebakeCache } from '@box/build-system/project/prebake-schema';
 import { BuildSystemAPI } from '@box/build-system/type';
 import { ContentServer } from '@box/content-server';
@@ -76,6 +76,26 @@ export type HttpRoutes = {
     res: http.ServerResponse,
   ) => Promise<void>;
 };
+
+function localVoxaApi(baseUrl: string) {
+  return new ApiClient({
+    baseUrl,
+    headers: voxaInternalHeaders(),
+    defaultErrorMessage: 'VOXA request failed',
+  });
+}
+
+async function storeVoxaBlob(api: ApiClient, hash: string, contentServer: ContentServer) {
+  const result = await api.getApiLocalBlobsHashRaw({
+    params: { path: { hash } },
+    parseAs: 'arrayBuffer',
+  });
+  if (!result.response.ok || !(result.data instanceof ArrayBuffer)) {
+    throw new Error(`VOXA model resource does not exist: ${hash}`);
+  }
+  const storedHash = await contentServer.store(new Uint8Array(result.data));
+  if (storedHash !== hash) throw new Error(`model resource verification failed: ${hash}`);
+}
 
 // This session id is just used for identifying a socket, should not use cookie session id
 function genSessionId() {
@@ -652,19 +672,16 @@ export async function createGameServer(spec: {
           process.env.VOXA_URL ||
           'http://127.0.0.1:3001'
         ).replace(/\/$/, '');
+        const voxaApi = localVoxaApi(voxaURL);
         if (action === 'importLocal') {
           const modelId = Number(body.modelId || 0);
           if (!Number.isSafeInteger(modelId) || modelId <= 0) {
             throw new Error('local model id is required');
           }
           const result = await localModelImports.run(modelId, async () => {
-            const modelResponse = await fetch(
-              `${voxaURL}/api/local/models/${modelId}`,
-              { headers: voxaInternalHeaders() },
-            );
-            if (!modelResponse.ok) throw new Error('local model not found');
-            const model =
-              (await modelResponse.json()) as Record<string, unknown>;
+            const model = await voxaApi.getApiLocalModelsId({
+              params: { path: { id: String(modelId) } },
+            }) as Record<string, unknown>;
             const modelFileHash = String(model.modelFileHash || '');
             const previewHash = String(model.modelPreviewHash || '');
             const projectFileHash = String(model.projectFileHash || '');
@@ -693,19 +710,7 @@ export async function createGameServer(spec: {
               previewHash,
               projectFileHash,
             ].filter(Boolean)) {
-              const blobResponse = await fetch(
-                `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
-                { headers: voxaInternalHeaders() },
-              );
-              if (!blobResponse.ok) {
-                throw new Error(`local model resource is missing: ${hash}`);
-              }
-              const storedHash = await spec.contentServer.store(
-                new Uint8Array(await blobResponse.arrayBuffer()),
-              );
-              if (storedHash !== hash) {
-                throw new Error(`model resource verification failed: ${hash}`);
-              }
+              await storeVoxaBlob(voxaApi, hash, spec.contentServer);
             }
             const baseName = String(
               model.modelName || `模型 ${modelId}`,
@@ -758,19 +763,7 @@ export async function createGameServer(spec: {
             ].filter(Boolean);
             if (!isContentHash(hashes[0])) throw new Error('model hash is invalid');
             for (const hash of hashes) {
-              const blobResponse = await fetch(
-                `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
-                { headers: voxaInternalHeaders() },
-              );
-              if (!blobResponse.ok) {
-                throw new Error(`VOXA model resource does not exist: ${hash}`);
-              }
-              const storedHash = await spec.contentServer.store(
-                new Uint8Array(await blobResponse.arrayBuffer()),
-              );
-              if (storedHash !== hash) {
-                throw new Error(`model resource verification failed: ${hash}`);
-              }
+              await storeVoxaBlob(voxaApi, hash, spec.contentServer);
             }
           }
           const result = await editServer!.replica.updateLocalProjectModel(
@@ -786,12 +779,11 @@ export async function createGameServer(spec: {
         let sourceModel: Record<string, unknown> | undefined;
         const localIdMatch = assetPath.match(/__local_(\d+)\.vb$/);
         if (!projectFileHash && localIdMatch) {
-          const sourceResponse = await fetch(
-            `${voxaURL}/api/local/models/${encodeURIComponent(localIdMatch[1])}`,
-            { headers: voxaInternalHeaders() },
-          );
-          if (sourceResponse.ok) {
-            sourceModel = await sourceResponse.json() as Record<string, unknown>;
+          const sourceResponse = await voxaApi.getApiLocalModelsIdRaw({
+            params: { path: { id: localIdMatch[1] } },
+          });
+          if (sourceResponse.response.ok) {
+            sourceModel = sourceResponse.data as Record<string, unknown>;
             projectFileHash = String(sourceModel.projectFileHash || '');
           }
         }
@@ -805,13 +797,8 @@ export async function createGameServer(spec: {
           );
           return;
         }
-        const response = await fetch(`${voxaURL}/api/local/models`, {
-          method: 'POST',
-          headers: {
-            ...voxaInternalHeaders(),
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+        const importedModel = await voxaApi.postApiLocalModels({
+          body: {
             modelName: name,
             modelType: ModelType.Project,
             creativeMode: CreativeMode.Model,
@@ -823,10 +810,9 @@ export async function createGameServer(spec: {
               asset.modelPreviewHash ||
               '',
             mapId: serverConfig.contentId,
-          }),
+          },
         });
-        if (!response.ok) throw new Error((await response.text()) || 'VOXA model import failed');
-        res.end(await response.text());
+        res.end(JSON.stringify(importedModel));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         res.writeHead(message.includes('already exists') ? 409 : 400);
@@ -886,6 +872,7 @@ export async function createGameServer(spec: {
           process.env.VOXA_URL ||
           'http://127.0.0.1:3001'
         ).replace(/\/$/, '');
+        const voxaApi = localVoxaApi(voxaURL);
         if (body.action === 'importLocal') {
           const skinIds = Array.isArray(body.skinIds)
             ? body.skinIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
@@ -893,28 +880,16 @@ export async function createGameServer(spec: {
           if (!skinIds.length) throw new Error('请选择要导入的本地皮肤');
           let result;
           for (const skinId of skinIds) {
-            const modelResponse = await fetch(`${voxaURL}/api/local/models/${skinId}`, {
-              headers: voxaInternalHeaders(),
-            });
-            if (!modelResponse.ok) throw new Error(`本地皮肤 ${skinId} 不存在`);
-            const model = await modelResponse.json() as Record<string, unknown>;
+            const model = await voxaApi.getApiLocalModelsId({
+              params: { path: { id: String(skinId) } },
+            }) as Record<string, unknown>;
             const hashes = [
               String(model.modelFileHash || ''),
               String(model.projectFileHash || ''),
               String(model.modelPreviewHash || ''),
             ].filter(Boolean);
             for (const hash of hashes) {
-              const blobResponse = await fetch(
-                `${voxaURL}/api/local/blobs/${encodeURIComponent(hash)}`,
-                { headers: voxaInternalHeaders() },
-              );
-              if (!blobResponse.ok) {
-                throw new Error(`本地皮肤资源不存在：${hash}`);
-              }
-              const storedHash = await spec.contentServer.store(
-                new Uint8Array(await blobResponse.arrayBuffer()),
-              );
-              if (storedHash !== hash) throw new Error(`皮肤资源校验失败：${hash}`);
+              await storeVoxaBlob(voxaApi, hash, spec.contentServer);
             }
             let skinName = String(model.modelName || `皮肤 ${skinId}`).trim();
             const skinAssets = editServer!.state.replica.extraProjectInfo.skinAssets;
@@ -948,13 +923,8 @@ export async function createGameServer(spec: {
             );
             return;
           }
-          const response = await fetch(`${voxaURL}/api/local/models`, {
-            method: 'POST',
-          headers: {
-            ...voxaInternalHeaders(),
-            'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+          const importedSkin = await voxaApi.postApiLocalModels({
+            body: {
               modelName: name,
               modelType: ModelType.ExtensionLib,
               creativeMode: CreativeMode.Skin,
@@ -962,33 +932,21 @@ export async function createGameServer(spec: {
               modelProjectFileHash: projectFileHash,
               modelPreviewFileHash: getLocalProjectSkinPreviews()[name] || '',
               mapId: serverConfig.contentId,
-            }),
+            },
           });
-          if (!response.ok) {
-            throw new Error((await response.text()) || 'VOXA skin import failed');
-          }
-          res.end(await response.text());
+          res.end(JSON.stringify(importedSkin));
           return;
         }
         if (body.action === 'setDefault') {
-          await fetch(
-            `${voxaURL}/api/local/default-skin?projectKey=${encodeURIComponent(
-              serverConfig.containerName || String(serverConfig.contentId),
-            )}`,
-            {
-              method: 'PUT',
-              headers: {
-                ...voxaInternalHeaders(),
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                projectKey:
-                  serverConfig.containerName || String(serverConfig.contentId),
-                mapId: serverConfig.contentId,
-                skinId: 0,
-              }),
+          const projectKey = serverConfig.containerName || String(serverConfig.contentId);
+          await voxaApi.putApiLocalDefaultSkin({
+            params: { query: { projectKey, mapId: String(serverConfig.contentId) } },
+            body: {
+              projectKey,
+              mapId: serverConfig.contentId,
+              skinId: 0,
             },
-          );
+          });
         }
         const result = await editServer!.replica.updateLocalProjectSkin(
           body as LocalProjectSkinAction,

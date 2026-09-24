@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { ArenaBg } from '../../components/loading/arena';
+import { apiClient } from '../../src/apis/client';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../server/player-service-client';
 import { getLocalProjectManager } from '../../server/local-project-manager';
 
@@ -66,16 +67,15 @@ export default function ProjectLaunchPage() {
     let cancelled = false;
     let pollTimer: number | undefined;
 
-    const request = async (method: 'GET' | 'POST') => {
-      const response = await fetch(`/api/local-projects/${encodeURIComponent(project)}/runtime`, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        ...(method === 'POST' ? { body: JSON.stringify({ mode }) } : {}),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || '运行时启动失败');
-      return data as RuntimeStatus;
-    };
+    const request = (method: 'GET' | 'POST') =>
+      (method === 'POST'
+        ? apiClient.postApiLocalProjectsIdRuntime({
+            params: { path: { id: project } },
+            body: { mode },
+          })
+        : apiClient.getApiLocalProjectsIdRuntime({
+            params: { path: { id: project }, query: { mode } },
+          })) as Promise<RuntimeStatus>;
 
     const poll = async () => {
       try {

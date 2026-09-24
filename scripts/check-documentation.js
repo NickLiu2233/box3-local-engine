@@ -15,7 +15,11 @@ function markdownFiles(directory) {
   })
 }
 
-const files = [path.join(root, 'README.md'), ...markdownFiles(docsRoot)]
+const files = [
+  path.join(root, 'README.md'),
+  path.join(root, 'CONTRIBUTING.md'),
+  ...markdownFiles(docsRoot),
+]
 const linkPattern = /!?\[[^\]]*\]\(([^)]+)\)/g
 
 for (const file of files) {
@@ -79,6 +83,14 @@ assert.ok(readme.includes('当前版本：`0.2.0`'), 'README does not identify v
 assert.ok(readme.includes('rush install'), 'README does not explain Rush installation')
 assert.ok(readme.includes('rush verify'), 'README does not explain Rush verification')
 assert.ok(
+  readme.includes('http://127.0.0.1:8000/'),
+  'README does not identify the standalone Player Admin development address',
+)
+assert.ok(
+  readme.includes('Player Admin 在发行镜像中构建进 Player Service'),
+  'README does not explain the Player Admin development/production boundary',
+)
+assert.ok(
   readme.includes('地图导入和日常管理统一在玩家管理后台'),
   'README does not identify Player Admin as the play-map management entry',
 )
@@ -136,6 +148,20 @@ for (const removedApi of [
 const securityAudit = fs.readFileSync(path.join(docsRoot, 'security-audit.md'), 'utf8')
 for (const boundary of ['DTS 不构成沙箱', '不使用平台域名白名单', '前端隐藏按钮不作为授权依据']) {
   assert.ok(securityAudit.includes(boundary), `security audit is missing boundary: ${boundary}`)
+}
+
+const contributorGuide = fs.readFileSync(path.join(root, 'CONTRIBUTING.md'), 'utf8')
+for (const required of [
+  'cd apps/player-admin',
+  'npm run dev',
+  '`@box/apis`',
+  '内部许可证签发器和迁移器是明确例外',
+  'rush dev --infra',
+]) {
+  assert.ok(
+    contributorGuide.includes(required),
+    `CONTRIBUTING.md is missing contributor guidance: ${required}`,
+  )
 }
 
 const infrastructure = fs.readFileSync(path.join(docsRoot, 'local-infrastructure.md'), 'utf8')

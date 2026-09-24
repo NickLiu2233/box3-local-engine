@@ -11,12 +11,10 @@ process.env.BOX_PLAYER_SERVICE_INTERNAL_URL = 'http://player-service:3213';
 process.env.PERMISSION_TOKEN_SECRET = 'regression-secret';
 process.env.BOX_PLAYER_REVOCATION_POLL_MS = '30000';
 
-global.fetch = async (input, init) => {
-  assert.equal(
-    (init?.headers as Record<string, string>).Authorization,
-    'Bearer regression-secret',
-  );
-  const since = new Date(new URL(String(input)).searchParams.get('since') || '');
+global.fetch = async (input) => {
+  const request = input instanceof Request ? input : new Request(input);
+  assert.equal(request.headers.get('Authorization'), 'Bearer regression-secret');
+  const since = new Date(new URL(request.url).searchParams.get('since') || '');
   const events = since <= eventCreatedAt
     ? [{ id: '41', subjectId, reason: 'banned' }]
     : [];
@@ -54,7 +52,7 @@ async function main() {
   startPlayerRevocationPoller(game as never, logger as never);
   await new Promise((resolve) => setTimeout(resolve, 50));
 
-  assert.deepEqual(kicked, ['matching-session']);
+  assert.deepEqual(kicked, ['matching-session'], messages.join('\n'));
   assert.ok(messages.some((message) => message.includes(subjectId)));
   console.log('player revocation poller regression passed');
 }

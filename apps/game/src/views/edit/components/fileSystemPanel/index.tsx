@@ -4,7 +4,7 @@ import { Toast } from '@box/box-design';
 import {
   ScriptType,
   ShareScriptErrorCode,
-} from '@box/apis/src/createra/data-contracts';
+} from '@box/apis';
 import { Modal as BoxModal } from '@box/box-design';
 
 import { preloadSoundSample } from 'src/engine/sound/client-sound-controller';

@@ -14,7 +14,7 @@ import {
   message,
 } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { ContainerResourceGroup } from '../../player-admin-types'
 
 type Props = { canManage: boolean }
@@ -39,9 +39,7 @@ export function ContainerResourceGroupsPage({ canManage }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const result = await api<{ resourceGroups: ContainerResourceGroup[] }>(
-        routes.containerResourceGroups,
-      )
+      const result = await api.getApiPlayAdminContainerResourceGroups()
       setGroups(result.resourceGroups || [])
     } catch (error) {
       message.error((error as Error).message)
@@ -61,10 +59,14 @@ export function ContainerResourceGroupsPage({ canManage }: Props) {
   const save = async () => {
     try {
       const values = await form.validateFields()
-      await api(
-        editing?.id ? routes.containerResourceGroup(editing.id) : routes.containerResourceGroups,
-        { method: editing?.id ? 'PATCH' : 'POST', body: JSON.stringify(values) },
-      )
+      if (editing?.id) {
+        await api.patchApiPlayAdminContainerResourceGroupsId({
+          params: { path: { id: editing.id } },
+          body: values,
+        })
+      } else {
+        await api.postApiPlayAdminContainerResourceGroups({ body: values })
+      }
       setEditing(undefined)
       message.success('资源组已保存')
       await load()
@@ -81,7 +83,9 @@ export function ContainerResourceGroupsPage({ canManage }: Props) {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await api(routes.containerResourceGroup(group.id || ''), { method: 'DELETE' })
+        await api.deleteApiPlayAdminContainerResourceGroupsId({
+          params: { path: { id: group.id || '' } },
+        })
         message.success('资源组已删除')
         await load()
       },

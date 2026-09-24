@@ -1,4 +1,5 @@
 import type { Logger } from 'pino';
+import { ApiClient } from '@box/apis';
 
 import type { GameServer } from '../index';
 
@@ -41,13 +42,15 @@ export function startPlayerRevocationPoller(game: GameServer, logger: Logger) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), Math.max(2_000, intervalMs * 2));
     try {
-      const query = new URLSearchParams({ cursor, after: cursor, since: startedAt });
-      const response = await fetch(`${serviceURL}/api/player-internal/revocations?${query}`, {
+      const api = new ApiClient({
+        baseUrl: serviceURL,
         headers: { Authorization: `Bearer ${secret}` },
-        signal: controller.signal,
+        defaultErrorMessage: 'Player revocation request failed',
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json() as RevocationResponse;
+      const data = await api.getApiPlayerInternalRevocations({
+        params: { query: { after: cursor, since: startedAt } },
+        signal: controller.signal,
+      }) as RevocationResponse;
       if (!Array.isArray(data.events) || !/^\d+$/.test(String(data.cursor || ''))) {
         throw new Error('invalid revocation response');
       }

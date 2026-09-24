@@ -1,5 +1,5 @@
 import { PrebakeCache } from '@box/build-system/project/prebake-schema';
-import { CollaborationMigrationVO } from '@box/apis/dist/createra/data-contracts';
+import { CollaborationMigrationVO } from '@box/apis';
 import {
   CreateraPermissionNameMap,
   mapPermissionToCreatera,

@@ -2,8 +2,8 @@
 
 const fs = require('fs')
 const path = require('path')
-const crypto = require('crypto')
 const { spawn, spawnSync } = require('child_process')
+const { createDevelopmentEnvironment } = require('./dev-environment')
 
 const repoRoot = path.resolve(__dirname, '..')
 const children = new Set()
@@ -17,52 +17,11 @@ if (fs.existsSync(path.join(repoRoot, '.env')) && typeof process.loadEnvFile ===
   process.loadEnvFile(path.join(repoRoot, '.env'))
 }
 
-function randomSecret(existing, fallbackLength = 32) {
-  return existing || crypto.randomBytes(fallbackLength).toString('hex')
-}
-
-function databaseURL() {
-  // `rush dev --infra` starts the disposable development PostgreSQL profile.
-  // A Desktop-generated .env can still contain BOX_DATABASE_URL for its
-  // managed-postgres container, whose hostname and credentials are not valid
-  // from source processes. Prefer the infra profile's local connection so
-  // development services and the database they just started always match.
-  if (args.has('--infra')) {
-    const username = process.env.BOX_POSTGRES_USER || 'box'
-    const password = process.env.BOX_POSTGRES_PASSWORD || 'local-box-change-me'
-    const database = process.env.BOX_POSTGRES_DB || 'box'
-    const port = process.env.BOX_POSTGRES_HOST_PORT || '5432'
-    return `postgresql://${encodeURIComponent(username)}:${encodeURIComponent(password)}@127.0.0.1:${port}/${encodeURIComponent(database)}`
-  }
-  if (process.env.BOX_DATABASE_URL) return process.env.BOX_DATABASE_URL
-  const password = process.env.BOX_POSTGRES_PASSWORD || 'local-box-change-me'
-  return `postgresql://box:${encodeURIComponent(password)}@127.0.0.1:5432/box`
-}
-
-const sharedEnv = {
-  ...process.env,
-  NODE_ENV: 'development',
-  PERMISSION_TOKEN_SECRET: randomSecret(process.env.PERMISSION_TOKEN_SECRET),
-  BOX_TELEPORT_INTERNAL_TOKEN: randomSecret(process.env.BOX_TELEPORT_INTERNAL_TOKEN),
-  BOX_PLAYER_AUTH_API_KEY: randomSecret(process.env.BOX_PLAYER_AUTH_API_KEY, 16),
-  BOX_DATABASE_URL: databaseURL(),
-  BOX_DATABASE_SCHEMA: process.env.BOX_DATABASE_SCHEMA || 'box_engine',
-  BOX_IDENTITY_DATABASE_SCHEMA: process.env.BOX_IDENTITY_DATABASE_SCHEMA || 'box_identity',
-  BOX_PLAYER_SERVICE_INTERNAL_URL: 'http://127.0.0.1:3124',
-  BOX_PLAYER_SERVICE_PUBLIC_URL: 'http://127.0.0.1:3124',
-  BOX_CREATOR_PUBLIC_URL: 'http://127.0.0.1:3127',
-  BOX_PLAY_PUBLIC_URL: 'http://127.0.0.1:3121',
-  BOX_VOXA_PUBLIC_URL: 'http://127.0.0.1:3123',
-  BOX_VOXA_ALLOWED_ORIGINS: 'http://127.0.0.1:3123,http://127.0.0.1:3127',
-  // Match the production Compose split: Creator uses the internal URL for
-  // server-side model API proxying and the public URL for browser embeds.
-  VOXA_INTERNAL_URL: 'http://127.0.0.1:3123',
-  VOXA_URL: 'http://127.0.0.1:3123',
-  BOX_PLAYER_LOGIN_URL: 'http://127.0.0.1:3125',
-  BOX_PLAYER_AUTH_ALLOWED_ORIGINS: 'http://127.0.0.1:3125',
-  BOX_AUTH_PORTAL_PUBLIC_URL: 'http://127.0.0.1:3125',
-  BOX_RESOURCE_ALLOWED_ORIGINS: 'http://127.0.0.1:3123,http://127.0.0.1:3127',
-}
+const sharedEnv = createDevelopmentEnvironment({
+  repoRoot,
+  inheritedEnv: process.env,
+  useInfrastructure: args.has('--infra'),
+})
 
 function prefixLines(prefix) {
   let buffered = ''

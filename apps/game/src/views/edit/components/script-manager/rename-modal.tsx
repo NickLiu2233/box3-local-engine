@@ -8,7 +8,7 @@ import { AssetType } from '@box/schema/project/project-rda';
 import {
   ScriptType,
   ShareScriptErrorCode,
-} from '@box/apis/src/createra/data-contracts';
+} from '@box/apis';
 
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import { RootState } from 'src/redux/edit';

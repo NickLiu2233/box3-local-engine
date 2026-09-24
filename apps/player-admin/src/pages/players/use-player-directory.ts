@@ -1,7 +1,7 @@
 import { Form, message } from 'antd'
 import { useCallback, useState } from 'react'
 
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { Detail, Player, View } from '../../player-admin-types'
 import type { PlayerBatchAction } from './player-table'
 
@@ -25,15 +25,18 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
   const [banForm] = Form.useForm()
 
   const load = useCallback(async () => {
-    const query = new URLSearchParams({
-      search,
-      page: String(page),
-      pageSize: String(pageSize),
-      identity: view === 'account-bans' ? 'banned' : identity,
-      online: view === 'online-sessions' ? 'online' : 'all',
-      sort: 'lastSeen',
+    const result = await api.getApiPlayAdminPlayers({
+      params: {
+        query: {
+          search,
+          page: String(page),
+          pageSize: String(pageSize),
+          identity: view === 'account-bans' ? 'banned' : identity,
+          online: view === 'online-sessions' ? 'online' : 'all',
+          sort: 'lastSeen',
+        },
+      },
     })
-    const result = await api<{ players: Player[]; total: number }>(`${routes.players}?${query}`)
     setPlayers(result.players || [])
     setTotal(result.total || 0)
   }, [identity, page, pageSize, search, view])
@@ -42,16 +45,13 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
     if (exporting || !canExport) return
     setExporting(true)
     try {
-      const query = new URLSearchParams({ search, identity, online: 'all', sort: 'lastSeen' })
-      const response = await fetch(`${routes.playerExport}?${query}`, {
+      const result = await api.getApiPlayAdminPlayersExportRaw({
+        params: { query: { search, identity, online: 'all', sort: 'lastSeen' } },
         cache: 'no-store',
-        credentials: 'same-origin',
+        parseAs: 'blob',
       })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || '导出玩家数据失败')
-      }
-      const file = URL.createObjectURL(await response.blob())
+      if (!result.data) throw new Error(result.error?.message || '导出玩家数据失败')
+      const file = URL.createObjectURL(result.data)
       const anchor = document.createElement('a')
       anchor.href = file
       anchor.download = `players-${new Date().toISOString().slice(0, 10)}.csv`
@@ -59,8 +59,8 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       anchor.click()
       anchor.remove()
       URL.revokeObjectURL(file)
-      const exported = response.headers.get('X-BOX-Exported-Rows') || '0'
-      const totalRows = response.headers.get('X-BOX-Total-Rows') || exported
+      const exported = result.response.headers.get('X-BOX-Exported-Rows') || '0'
+      const totalRows = result.response.headers.get('X-BOX-Total-Rows') || exported
       message.success(`已导出 ${exported} / ${totalRows} 条玩家记录`)
     } catch (error) {
       message.error((error as Error).message)
@@ -74,7 +74,9 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       setSelected(player)
       setDetails(undefined)
       setDetailTab(tab)
-      const result = await api<Detail>(routes.player(player.subjectId))
+      const result = (await api.getApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: player.subjectId } },
+      })) as Detail
       setSelected(result.player)
       setDetails(result)
       editForm.setFieldsValue({
@@ -98,9 +100,9 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
     if (!selected) return
     try {
       const values = await editForm.validateFields()
-      const result = await api<{ player: Player }>(routes.player(selected.subjectId), {
-        method: 'PATCH',
-        body: JSON.stringify({
+      const result = (await api.patchApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: selected.subjectId } },
+        body: {
           ...values,
           tags: values.tags
             ? values.tags
@@ -108,8 +110,8 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
                 .map((tag: string) => tag.trim())
                 .filter(Boolean)
             : [],
-        }),
-      })
+        },
+      })) as { player: Player }
       if (result.player) {
         setSelected(result.player)
         setDetails((current) => (current ? { ...current, player: result.player } : current))
@@ -124,9 +126,9 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
   const command = async (commandValue: Record<string, unknown>, success: string) => {
     if (!selected) return
     try {
-      await api(routes.player(selected.subjectId), {
-        method: 'POST',
-        body: JSON.stringify(commandValue),
+      await api.postApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: selected.subjectId } },
+        body: commandValue,
       })
       message.success(success)
       await openDetails(selected)
@@ -139,12 +141,12 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
   const toggleBan = async (player: Player) => {
     try {
       const status = player.status === 'banned' ? 'active' : 'banned'
-      await api(routes.player(player.subjectId), {
-        method: 'PATCH',
-        body: JSON.stringify({
+      await api.patchApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: player.subjectId } },
+        body: {
           status,
           ...(status === 'banned' ? { banReason: '由管理后台执行' } : {}),
-        }),
+        },
       })
       message.success(status === 'banned' ? '账号已封禁' : '账号已解除封禁')
       await load()
@@ -158,7 +160,9 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       banForm.resetFields()
       banForm.setFieldsValue({ targets: ['account'], duration: 'permanent', reason: '' })
       setBanDialog({ player })
-      const detail = await api<Detail>(routes.player(player.subjectId))
+      const detail = (await api.getApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: player.subjectId } },
+      })) as Detail
       setBanDialog({ player: detail.player, detail })
     } catch (error) {
       setBanDialog(undefined)
@@ -176,23 +180,22 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       if (values.duration === 'temporary' && new Date(bannedUntil || '').getTime() <= Date.now()) {
         throw new Error('封禁到期时间必须晚于当前时间')
       }
-      const playerRoute = routes.player(banDialog.player.subjectId)
       if (targets.includes('account')) {
-        await api(playerRoute, {
-          method: 'PATCH',
-          body: JSON.stringify({ status: 'banned', banReason: values.reason, bannedUntil }),
+        await api.patchApiPlayAdminPlayersSubjectId({
+          params: { path: { subjectId: banDialog.player.subjectId } },
+          body: { status: 'banned', banReason: values.reason, bannedUntil },
         })
       }
       for (const target of targets) {
         if (!target.startsWith('ip:') && !target.startsWith('device:')) continue
-        await api(playerRoute, {
-          method: 'POST',
-          body: JSON.stringify({
+        await api.postApiPlayAdminPlayersSubjectId({
+          params: { path: { subjectId: banDialog.player.subjectId } },
+          body: {
             action: target.startsWith('ip:') ? 'ban-ip' : 'ban-device',
             value: target.slice(target.indexOf(':') + 1),
             reason: values.reason,
             bannedUntil,
-          }),
+          },
         })
       }
       setBanDialog(undefined)
@@ -206,7 +209,9 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
   const deletePlayer = async (player = selected) => {
     if (!player) return
     try {
-      await api(routes.player(player.subjectId), { method: 'DELETE' })
+      await api.deleteApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: player.subjectId } },
+      })
       message.success('玩家身份已删除')
       closeDetails()
       await load()
@@ -217,14 +222,13 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
 
   const batchPlayers = async (action: PlayerBatchAction, subjectIds: string[], tag?: string) => {
     try {
-      await api(routes.playerBatch, {
-        method: 'POST',
-        body: JSON.stringify({
+      await api.postApiPlayAdminPlayersBatch({
+        body: {
           action,
           subjectIds,
           ...(action === 'ban' ? { reason: '由管理后台批量执行' } : {}),
           ...(['add-tag', 'remove-tag'].includes(action) ? { tag } : {}),
-        }),
+        },
       })
       const notices: Record<PlayerBatchAction, string> = {
         'revoke-sessions': '已发送下线指令',
@@ -243,10 +247,7 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
 
   const createPlayer = async () => {
     try {
-      await api(routes.players, {
-        method: 'POST',
-        body: JSON.stringify(await createForm.validateFields()),
-      })
+      await api.postApiPlayAdminPlayers({ body: await createForm.validateFields() })
       message.success('玩家账号已创建')
       setCreateOpen(false)
       createForm.resetFields()

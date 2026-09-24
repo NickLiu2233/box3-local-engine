@@ -15,7 +15,7 @@ import {
 } from 'antd'
 import { useCallback, useEffect, useState } from 'react'
 
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { ContainerCatalog, ContainerProfile } from '../../player-admin-types'
 
 type Props = { canManage: boolean }
@@ -31,7 +31,7 @@ export function ContainerProfilesPage({ canManage }: Props) {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setCatalog(await api<ContainerCatalog>(`${routes.containers}?mode=play`))
+      setCatalog(await api.getApiPlayAdminContainers({ params: { query: { mode: 'play' } } }))
     } catch (error) {
       message.error((error as Error).message)
     } finally {
@@ -65,7 +65,7 @@ export function ContainerProfilesPage({ canManage }: Props) {
   const saveProfile = async () => {
     try {
       const values = await form.validateFields()
-      await api(routes.containers, { method: 'POST', body: JSON.stringify(values) })
+      await api.postApiPlayAdminContainers({ body: values })
       message.success('地图容器配置已保存；新启动的运行时会使用该配置')
       setProfile(undefined)
       await load()
@@ -82,9 +82,9 @@ export function ContainerProfilesPage({ canManage }: Props) {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await api(routes.container(item.permanentMapId), {
-          method: 'DELETE',
-          body: JSON.stringify({ configurationScope: item.configurationScope }),
+        await api.deleteApiPlayAdminContainersPermanentMapId({
+          params: { path: { permanentMapId: item.permanentMapId } },
+          body: { configurationScope: item.configurationScope },
         })
         message.success('容器配置已删除')
         await load()

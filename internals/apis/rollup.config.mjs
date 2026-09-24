@@ -23,22 +23,21 @@ const commonConfig = {
   ],
 };
 
-export default [
-  {
-    input: './src/index.ts',
-    output: [
-      {
-        file: pkg.module,
-        format: 'es',
-        indent: false,
-      },
-      {
-        file: pkg.main,
-        format: 'cjs',
-        indent: false,
-      },
-    ],
-    external: commonConfig.external,
-    plugins: commonConfig.plugins,
-  },
-];
+export default {
+  input: './src/index.ts',
+  output: [
+    {
+      file: pkg.module,
+      format: 'es',
+      indent: false,
+    },
+    {
+      file: pkg.main,
+      format: 'cjs',
+      indent: false,
+      interop: 'auto',
+    },
+  ],
+  external: commonConfig.external,
+  plugins: commonConfig.plugins,
+};

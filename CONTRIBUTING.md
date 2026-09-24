@@ -40,9 +40,11 @@ git switch -c codex/<short-description>
 
 ```bash
 npm install --global @microsoft/rush@5.156.0
-rush install
+npm run install:all
 cp .env.docker.example .env
 ```
+
+根 npm 命令会自动准备仓库锁定版本的 Rush；全局安装则提供本文后续使用的 `rush` 与 `rushx` 命令。也可以始终使用根 `package.json` 中的 npm 别名，不全局安装 Rush。已经安装 Rush `5.156.0` 时，可用 `rush install` 代替 `npm run install:all`。
 
 `.env` 只保存在本机。源码开发至少需要 PostgreSQL；Redis 可选。使用外部服务时设置：
 
@@ -85,13 +87,13 @@ rush dev
 
 该命令直接运行源码，不使用业务镜像：
 
-| 服务                      | 默认地址                 |
-| ------------------------- | ------------------------ |
-| Creator                   | `http://127.0.0.1:3127/` |
-| Play                      | `http://127.0.0.1:3121/` |
-| VOXA                      | `http://127.0.0.1:3123/` |
-| Player Service / 玩家管理 | `http://127.0.0.1:3124/` |
-| 参考登录门户              | `http://127.0.0.1:3125/` |
+| 服务               | 默认地址                 |
+| ------------------ | ------------------------ |
+| Creator            | `http://127.0.0.1:3127/` |
+| Play               | `http://127.0.0.1:3121/` |
+| VOXA               | `http://127.0.0.1:3123/` |
+| Player Service API | `http://127.0.0.1:3124/` |
+| 参考登录门户       | `http://127.0.0.1:3125/` |
 
 `rush dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要临时开发数据库时执行：
 
@@ -104,6 +106,15 @@ rush dev --infra
 ```bash
 rush dev-creator
 ```
+
+玩家管理前端不由 `rush dev` 启动。开发后台页面时保留上述 Player Service，并在另一个终端运行：
+
+```bash
+cd apps/player-admin
+npm run dev
+```
+
+访问 `http://127.0.0.1:8000/`。Umi 会把 `/api` 代理到 `3124`；生产发行版则把构建结果挂载在 Player Service 根路径，不需要独立前端进程。
 
 Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig。前端页面通常支持热更新；`apps/local-engine/src/`、`services/game-server/src/` 和公共包构建产物变化后通常需要重启开发栈。
 
@@ -125,6 +136,8 @@ Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig�
 Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口；修改前阅读[领域模型](docs/domain-model.md)、[系统架构](docs/architecture.md)与[对齐基线](docs/boxes-parity.md)。
 
 玩家管理菜单与 API 必须使用同一套 capability。新增页面或写操作时同步修改前端可见性、服务端授权、权限组分类、API 文档和拒绝测试，不能只隐藏按钮。
+
+所有对外 Local Engine HTTP 接口统一登记在 `@box/apis` 的 OpenAPI 契约中。新增或修改接口时按 [Local Engine API 与 Swagger](docs/local-engine-api.md) 更新 schema、生成类型和调用端；禁止在应用内新增平行 API 客户端，禁止重新引入旧平台生成接口。内部许可证签发器和迁移器是明确例外，不进入统一契约和普通发行包。
 
 ## 6. 测试
 
@@ -251,7 +264,8 @@ Pull Request 至少说明：
 ## 10. 常见开发问题
 
 - **依赖锁不一致：**普通拉取后执行 `rush install`；自己修改依赖后执行 `rush update`。不要绕过 Rush 直接调用 pnpm 的依赖安装命令。
-- **端口冲突：**检查 3121、3123、3124、3125、3127、9966、9967 和 9971；使用 `--infra` 时还需检查 5432 和 6379。
+- **端口冲突：**检查 3121、3123、3124、3125、3127、8000、9966、9967 和 9971；使用 `--infra` 时还需检查 5432 和 6379。
+- **玩家管理提示服务不可用：**先检查 Player Service 日志和 PostgreSQL。后台前端端口是 8000，API 仍依赖 3124；没有外部数据库时用 `rush dev --infra`。该模式会使用开发 PostgreSQL 参数，避免桌面部署写入 `.env` 的容器数据库 URL 被源码进程误用。
 - **源码已改但容器未更新：**开发服务和业务镜像互不自动同步。重新构建镜像并重新创建容器，重启旧容器不会获取新代码。
 - **运行时没有热更新：**`apps/local-engine`、`services/game-server` 和公共包变化后通常需要重启 `rush dev`。
 - **Rush 报告已有任务：**等待正在运行的安装、验证或打包任务完成，不要删除 Rush 锁或强行并发。

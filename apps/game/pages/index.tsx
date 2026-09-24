@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from 'next'
+import { apiOperations } from '@box/apis'
 import Head from 'next/head'
 import Link from 'next/link'
 import type { FormEvent } from 'react'
@@ -30,6 +31,7 @@ import {
   type DetailedImportError,
   type ImportDiagnostic,
 } from '../server/import-diagnostics'
+import { apiClient } from '../src/apis/client'
 
 const TOKEN_KEY = 'box-play-admin-token'
 const DEFAULT_MAP_COVER = '/map-templates/blank-template.png'
@@ -252,23 +254,25 @@ function HomePageContent({
     const controller = new AbortController()
     let objectUrl = ''
     setReviewLoading(true)
-    fetch(
-      `/api/play-admin/import-resource?reviewId=${encodeURIComponent(bundleReview.id)}&resourceId=${encodeURIComponent(resource.id)}`,
-      {
+    apiClient
+      .getApiPlayAdminImportResourceRaw({
+        params: {
+          query: { reviewId: bundleReview.id, resourceId: resource.id },
+        },
         headers: { Authorization: `Bearer ${adminToken}` },
         signal: controller.signal,
-      },
-    )
-      .then(async (response) => {
+      })
+      .then(async ({ data, error, response }) => {
         if (!response.ok) {
-          const data = await response.json().catch(() => ({}))
-          throw new Error(data.message || '资源预览加载失败')
+          const details = error as { message?: string } | undefined
+          throw new Error(details?.message || '资源预览加载失败')
         }
         if (resource.kind === 'script') {
-          setReviewText(await response.text())
+          setReviewText(typeof data === 'string' ? data : '')
           return
         }
-        objectUrl = URL.createObjectURL(await response.blob())
+        if (!(data instanceof Blob)) throw new Error('资源预览响应格式无效')
+        objectUrl = URL.createObjectURL(data)
         setReviewResourceUrl(objectUrl)
       })
       .catch((error) => {
@@ -289,10 +293,11 @@ function HomePageContent({
     if (!mapIds.length) return
     let cancelled = false
     const refresh = () => {
-      fetch(`/api/play-presence?maps=${encodeURIComponent(mapIds.join(','))}`)
-        .then((response) => (response.ok ? response.json() : undefined))
+      apiClient
+        .getApiPlayPresence({ params: { query: { maps: mapIds.join(',') } } })
         .then((data) => {
-          if (!cancelled && data?.maps) setLiveMapStats(data.maps)
+          const result = data as { maps?: Record<string, MapDiscoveryStats> }
+          if (!cancelled && result?.maps) setLiveMapStats(result.maps)
         })
         .catch(() => undefined)
     }
@@ -314,15 +319,14 @@ function HomePageContent({
       return
     }
     let cancelled = false
-    fetch('/api/play-admin/worlds/status', {
-      headers: { Authorization: `Bearer ${adminToken}` },
-    })
-      .then((response) => (response.ok ? response.json() : undefined))
+    apiClient
+      .getApiPlayAdminWorldsStatus({ headers: { Authorization: `Bearer ${adminToken}` } })
       .then((data) => {
-        if (cancelled || !Array.isArray(data?.worlds)) return
+        const result = data as { worlds?: Array<{ id: string; bytes: number; importedAt: string }> }
+        if (cancelled || !Array.isArray(result?.worlds)) return
         setResourceStatuses(
           Object.fromEntries(
-            data.worlds.map((world: { id: string; bytes: number; importedAt: string }) => [
+            result.worlds.map((world) => [
               world.id,
               { bytes: world.bytes, importedAt: world.importedAt },
             ]),
@@ -336,15 +340,10 @@ function HomePageContent({
   }, [adminToken, uiPreview, verified])
 
   async function verifyToken(token: string, quiet = false) {
-    const response = await fetch('/api/play-admin/verify', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!response.ok) {
-      if (!quiet) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || '验证失败')
-      }
+    try {
+      await apiClient.postApiPlayAdminVerify({ headers: { Authorization: `Bearer ${token}` } })
+    } catch (error) {
+      if (!quiet) throw error
       return false
     }
     sessionStorage.setItem(TOKEN_KEY, token)
@@ -359,10 +358,10 @@ function HomePageContent({
       setLibraryEnabled(true)
       return
     }
-    fetch('/api/play-library')
-      .then(async (response) => {
-        if (!response.ok) return
-        const data = await response.json()
+    apiClient
+      .getApiPlayLibrary()
+      .then((value) => {
+        const data = value as Record<string, any>
         setPlayerName(data.player?.displayName || data.player?.username || '')
         setPlayerUsername(data.player?.username || '')
         setPlayerUserId(data.player?.userId || '')
@@ -384,11 +383,7 @@ function HomePageContent({
   }, [uiPreview])
 
   const updateLibrary = (mapId: string, changes: Record<string, boolean>) =>
-    fetch('/api/play-library', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mapId, ...changes }),
-    }).catch(() => undefined)
+    apiClient.patchApiPlayLibrary({ body: { mapId, ...changes } }).catch(() => undefined)
   const toggleFavorite = (mapId: string) => {
     const next = new Set(favoriteIds)
     next.has(mapId) ? next.delete(mapId) : next.add(mapId)
@@ -477,7 +472,7 @@ function HomePageContent({
         details?: ImportDiagnostic[]
       }>((resolve, reject) => {
         const request = new XMLHttpRequest()
-        request.open('POST', '/api/play-admin/import?mode=preview')
+        request.open('POST', `${apiOperations.postApiPlayAdminImport.path}?mode=preview`)
         request.setRequestHeader('Authorization', `Bearer ${adminToken}`)
         request.setRequestHeader('Content-Type', 'application/octet-stream')
         request.upload.onprogress = (event) => {
@@ -583,8 +578,8 @@ function HomePageContent({
     setReviewWorldId('')
     setReviewFilename('')
     if (!review || uiPreview) return
-    await fetch(`/api/play-admin/import?reviewId=${encodeURIComponent(review.id)}`, {
-      method: 'DELETE',
+    await apiClient.deleteApiPlayAdminImport({
+      params: { query: { reviewId: review.id } },
       headers: { Authorization: `Bearer ${adminToken}` },
     }).catch(() => undefined)
   }
@@ -604,15 +599,14 @@ function HomePageContent({
       elapsedSeconds: 0,
     })
     try {
-      const response = await fetch(
-        `/api/play-admin/import?mode=confirm&reviewId=${encodeURIComponent(review.id)}`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${adminToken}` },
-        },
-      )
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw importResponseError(data, response.status, '导入游玩包失败')
+      const result = await apiClient.postApiPlayAdminImportRaw({
+        params: { query: { mode: 'confirm', reviewId: review.id } },
+        headers: { Authorization: `Bearer ${adminToken}` },
+      })
+      const data = (result.data || result.error || {}) as Record<string, any>
+      if (!result.response.ok) {
+        throw importResponseError(data, result.response.status, '导入游玩包失败')
+      }
       const importedWorlds: PlayWorld[] = data.worlds?.length ? data.worlds : data.world ? [data.world] : []
       if (importedWorlds.length) {
         const importedIds = new Set(importedWorlds.map((world) => world.id))
@@ -662,14 +656,10 @@ function HomePageContent({
     setBusy(`delete:${deleteWorld.id}`)
     setNotice('')
     try {
-      const response = await fetch(`/api/play-admin/worlds/${encodeURIComponent(deleteWorld.id)}`, {
-        method: 'DELETE',
+      await apiClient.deleteApiPlayAdminWorldsId({
+        params: { path: { id: deleteWorld.id } },
         headers: { Authorization: `Bearer ${adminToken}` },
       })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || '删除失败')
-      }
       window.location.reload()
     } catch (error) {
       setNotice((error as Error).message)
@@ -700,13 +690,11 @@ function HomePageContent({
     setBusy(`availability:${world.id}`)
     setNotice('')
     try {
-      const response = await fetch(`/api/play-admin/worlds/${encodeURIComponent(world.id)}`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playEnabled: !isPlayEnabled(world) }),
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || '设置失败')
+      const data = await apiClient.patchApiPlayAdminWorldsId({
+        params: { path: { id: world.id } },
+        headers: { Authorization: `Bearer ${adminToken}` },
+        body: { playEnabled: !isPlayEnabled(world) },
+      }) as Record<string, any>
       const changed = new Map<string, PlayWorld>(
         ((data.worlds || []) as PlayWorld[]).map((entry) => [entry.id, entry]),
       )
@@ -742,18 +730,11 @@ function HomePageContent({
     setBusy(`edit:${editWorld.id}`)
     setNotice('')
     try {
-      const response = await fetch(`/api/play-admin/worlds/${encodeURIComponent(editWorld.id)}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          publicId: editPublicId,
-        }),
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || '保存失败')
+      const data = await apiClient.patchApiPlayAdminWorldsId({
+        params: { path: { id: editWorld.id } },
+        headers: { Authorization: `Bearer ${adminToken}` },
+        body: { publicId: editPublicId },
+      }) as Record<string, any>
       setWorldList((current) =>
         current.map((world) => (world.id === editWorld.id ? data.world : world)),
       )
@@ -774,8 +755,7 @@ function HomePageContent({
 
   async function logoutAccount() {
     if (!uiPreview) {
-      const response = await fetch('/api/play-logout', { method: 'POST', credentials: 'same-origin' })
-      if (!response.ok) throw new Error('退出登录失败，请稍后重试')
+      await apiClient.postApiPlayLogout()
     }
     setPreviewSignedIn(false)
     setPlayerName('')
@@ -795,13 +775,7 @@ function HomePageContent({
       setPlayerName(changes.displayName)
       setPlayerSkinId(changes.avatarSkinId)
     } else {
-      const response = await fetch('/api/play-profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(changes),
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || '资料保存失败')
+      const data = await apiClient.patchApiPlayProfile({ body: changes }) as Record<string, any>
       setPlayerName(data.player?.displayName || changes.displayName)
       setPlayerSkinId(data.player?.avatarSkinId || changes.avatarSkinId)
     }

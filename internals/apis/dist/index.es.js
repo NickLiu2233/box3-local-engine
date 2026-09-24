@@ -1,47 +1,9 @@
-class HttpClient {
-    constructor(axios){
-        this.request = async ({ path, type, query, body, ...requestParams })=>{
-            return this.instance.request({
-                params: query,
-                data: body,
-                url: path,
-                ...requestParams
-            }).then((res)=>{
-                const { code, data } = res.data;
-                if (code >= 200 && code < 300) {
-                    return data;
-                }
-                throw res.data;
-            });
-        };
-        this.instance = axios;
-    }
-}
+import createClient, { wrapAsPathBasedClient } from 'openapi-fetch';
 
-var ContentType;
-(function(ContentType) {
-    ContentType["Json"] = "application/json";
-    ContentType["FormData"] = "multipart/form-data";
-    ContentType["UrlEncoded"] = "application/x-www-form-urlencoded";
-})(ContentType || (ContentType = {}));
-
-var _interface = /*#__PURE__*/Object.freeze({
-__proto__: null,
-get ContentType () { return ContentType; }
-});
-
-var UserInfoPermissions;
+/** Stable wire values used by Local Engine Creator, VOXA and game runtime. */ var UserInfoPermissions;
 (function(UserInfoPermissions) {
     UserInfoPermissions[UserInfoPermissions["Admin"] = 65536] = "Admin";
 })(UserInfoPermissions || (UserInfoPermissions = {}));
-var SuitList;
-(function(SuitList) {
-    SuitList[SuitList["Suit"] = 0] = "Suit";
-    SuitList[SuitList["Head"] = 1] = "Head";
-    SuitList[SuitList["Shirt"] = 2] = "Shirt";
-    SuitList[SuitList["Pants"] = 3] = "Pants";
-    SuitList[SuitList["Shoes"] = 4] = "Shoes";
-})(SuitList || (SuitList = {}));
 var AvatarBodyPart;
 (function(AvatarBodyPart) {
     AvatarBodyPart[AvatarBodyPart["head"] = 1] = "head";
@@ -63,1664 +25,12 @@ var AvatarBodyPart;
     AvatarBodyPart[AvatarBodyPart["rightUpperLeg"] = 17] = "rightUpperLeg";
     AvatarBodyPart[AvatarBodyPart["torso"] = 18] = "torso";
 })(AvatarBodyPart || (AvatarBodyPart = {}));
-class Createra extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * No description
-   *
-   * @tags gallery分享信息
-   * @name getGalleryShareInfo
-   * @summary 获取gallery分享需要的信息
-   * @request GET:/gallery/info
-   */ this.getGalleryShareInfo = (hash)=>this.request({
-                path: `/gallery/info/${hash}`,
-                method: 'GET'
-            });
-        /**
-   * No description
-   *
-   * @tags gallery关注作者
-   * @name followAuthor
-   * @summary 关注gallery作者
-   * @request POST:/follow/following
-   */ this.followAuthor = (authorID)=>this.request({
-                path: `/follow/following/${authorID}`,
-                method: 'POST'
-            });
-        /**
-   * No description
-   *
-   * @tags 取消关注作者
-   * @name unFollowAuthor
-   * @summary 取消关注gallery作者
-   * @request POST:/follow/following
-   */ this.unFollowAuthor = (authorID)=>this.request({
-                path: `/follow/unfollow/${authorID}`,
-                method: 'DELETE'
-            });
-        /**
-   * No description
-   *
-   * @tags 是否开启游客登录
-   * @name isLoginAsGuest
-   * @summary 判断该游戏是否能够游客登录
-   * @request GET:/follow/following
-   */ this.isLoginAsGuest = (contentId)=>this.request({
-                path: `/content/auth/guest/${contentId}`,
-                method: 'GET'
-            });
-        /**
-   * No description
-   *
-   * @tags 连接成功统计
-   * @name online
-   * @summary 统计连接成功次数
-   * @request POST:/statistics/content/online
-   */ this.online = (opts)=>{
-            if (!opts.guestId) {
-                delete opts.guestId;
-            }
-            if (!opts.mode) {
-                delete opts.mode;
-            }
-            return this.request({
-                path: `/statistics/content/online${window.location.search}`,
-                method: 'POST',
-                body: opts
-            });
-        };
-        /**
-   * No description
-   *
-   * @tags 断线次数统计
-   * @name online
-   * @summary 统计断线次数
-   * @request POST:/statistics/content/offline
-   */ this.offline = (contentId)=>this.request({
-                path: '/statistics/content/offline',
-                method: 'POST',
-                body: {
-                    contentId
-                }
-            });
-        /**
-   * No description
-   *
-   * @tags auth-controller
-   * @name GetUserByTokenUsingGet
-   * @summary 根据token 获取用户信息
-   * @request GET:/auth/user
-   * @secure
-   */ this.getUserByTokenUsingGet = (params = {})=>this.request({
-                path: `/auth/user`,
-                method: 'GET',
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags ga,e-controller
-   * @name getGameInfo
-   * @summary 根据container_name获取地图信息
-   * @request GET: /engine/map
-   * @secure
-   */ this.getGameInfo = (query)=>this.request({
-                path: `/engine/map`,
-                method: 'GET',
-                query: {
-                    ...query,
-                    key: '3c324d6e-2814-4d46-ba3a-b6e112bdab81'
-                }
-            });
-        /**
-   * No description
-   *
-   * @tags 获取商城配置
-   * @name getContentStoreConfig
-   * @summary 获取商城配置
-   * @request GET:/creator-store/config
-   */ this.getContentStoreConfig = (contentId)=>this.request({
-                path: `/creator-store/config/${contentId}`,
-                method: 'GET'
-            });
-        /**
-   * No description
-   *
-   * @tags auth-controller
-   * @name getUserSuitUsingGET
-   * @summary 根据userId获取套装和皮肤信息。userId为0或者空字符串时，返回默认皮肤
-   * @request GET:/avatar/suit
-   * @secure
-   */ this.getUserSuitUsingGET = (userId, params = {})=>this.request({
-                path: `/avatar/suit${userId && `?userId=${userId}`}`,
-                method: 'GET',
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 获取用户语言环境
-   * @name getUserLanguage
-   * @summary 获取用户语言环境
-   * @request GET: /user/language
-   * @secure
-   */ this.fetchUserLanguage = (headers)=>this.request({
-                path: `/user/language`,
-                method: 'GET',
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 设置用户语言环境
-   * @name setUserLanguage
-   * @summary 设置用户语言环境
-   * @request PATCH: /user/language/{language}
-   * @secure
-   */ this.setUserLanguage = (language)=>this.request({
-                path: `/user/language/${language}`,
-                method: 'PATCH'
-            });
-        /**
-   * No description
-   *
-   * @tags 获取聊天服务器地址
-   * @name getWebSocketServerUsingGet
-   * @summary 获取聊天服务器地址
-   * @request GET:/websocket/server
-   * @secure
-   */ this.getWebSocketServerUsingGet = (params = {})=>this.request({
-                path: '/websocket/server',
-                method: 'GET',
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 获取地图下所有可用表情包
-   * @name getAllStickers
-   * @summary 获取地图下所有可用表情包
-   * @request GET:/sticker/all
-   * @secure
-   */ this.getAllStickers = (query, params = {})=>this.request({
-                path: '/sticker/all',
-                method: 'GET',
-                query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 获取用户商城开发者权限
-   * @name getUserPaidAccessCert
-   * @summary 获取用户商城开发者权限
-   * @request GET:/user/cert
-   * @secure
-   */ this.getUserPaidAccessCert = ()=>this.request({
-                path: '/user/cert',
-                method: 'GET'
-            });
-        /**
-   * No description
-   *
-   * @tags 分配容器：分服、动态扩容
-   * @name containerAllocate
-   * @summary 分配容器：分服、动态扩容
-   * @request POST:/container/allocate
-   * @secure
-   */ this.containerAllocate = (params, headers)=>this.request({
-                path: '/container/allocate',
-                method: 'POST',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 更新容器的metadata
-   * @name containerUpdateMetaData
-   * @summary 更新容器的metadata
-   * @request PUT: /container/metadata
-   * @secure
-   */ this.containerUpdateMetaData = (params, headers)=>this.request({
-                path: '/container/metadata',
-                method: 'PUT',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 更新engine version
-   * @name containerInsertImageHash
-   * @summary 更新engine version
-   * @request POST:/container/engine-version
-   * @secure
-   */ this.containerInsertImageHash = (params, headers)=>this.request({
-                path: '/container/engine-version',
-                method: 'POST',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 根据容器名称删除容器
-   * @name containerDeleteByName
-   * @summary 根据容器名称删除容器
-   * @request DELETE:/container/by-name
-   * @secure
-   */ this.containerDeleteByName = (query, headers)=>this.request({
-                path: '/container/by-name',
-                method: 'DELETE',
-                query,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 根据容器名称重启容器
-   * @name containerRestart
-   * @summary 根据容器名称重启容器
-   * @request POST:/container/restart
-   * @secure
-   */ this.containerRestart = (params, headers)=>this.request({
-                path: '/container/restart',
-                method: 'POST',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 获取地图工程Hash
-   * @name getMapHash
-   * @summary 获取地图工程Hash
-   * @request GET:/map/hash
-   * @secure
-   */ this.getMapHash = (query, headers)=>this.request({
-                path: '/engine/map/hash',
-                method: 'GET',
-                query,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 更新地图工程Hash
-   * @name updateMapHash
-   * @summary 更新地图工程Hash
-   * @request PUT:/engine/map/hash
-   * @secure
-   */ this.updateMapHash = (params, headers)=>this.request({
-                path: '/engine/map/hash',
-                method: 'PUT',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 地图用户下线通知
-   * @name reportUserOffline
-   * @summary 地图用户下线通知
-   * @request POST:/engine/user/offline
-   * @secure
-   */ this.reportUserOffline = (params, headers)=>this.request({
-                path: '/engine/user/offline',
-                method: 'POST',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 地图用户上线通知
-   * @name reportUserOnline
-   * @summary 地图用户上线通知
-   * @request POST:/engine/user/online
-   * @secure
-   */ this.reportUserOnline = (params, headers)=>this.request({
-                path: '/engine/user/online',
-                method: 'POST',
-                body: params,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 获取container name即playHash/editHash
-   * @name getContainerHashById
-   * @summary 获取container name
-   * @request GET:/engine/container/hash
-   * @secure
-   */ this.getContainerHashById = (query, headers)=>this.request({
-                path: '/engine/container/hash',
-                method: 'GET',
-                query,
-                headers
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name GetCollaborationUsingGet
-   * @summary 获取所有协作数据
-   * @request GET:/engine/collaboration/migration
-   * @secure
-   */ this.getCollaborationUsingGet = (query, params = {})=>this.request({
-                path: `/engine/collaboration/migration`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name CollaborationMigrationUsingPost
-   * @summary 地图权限migration
-   * @request POST:/engine/collaboration/migration
-   * @secure
-   */ this.collaborationMigrationUsingPost = (param, params = {})=>this.request({
-                path: `/engine/collaboration/migration`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name GetScriptUsingGet
-   * @summary 获取脚本最新信息
-   * @request GET:/engine/script
-   * @secure
-   */ this.getScriptUsingGet = (query, params = {})=>this.request({
-                path: `/engine/script`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name CreateUsingPost
-   * @summary 新建/复制脚本
-   * @request POST:/engine/script
-   * @secure
-   */ this.createUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name DeleteUsingDelete
-   * @summary 删除脚本
-   * @request DELETE:/engine/script
-   * @secure
-   */ this.deleteUsingDelete = (query, params = {})=>this.request({
-                path: `/engine/script`,
-                method: 'DELETE',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name BatchUpdateHashUsingPost
-   * @summary 更新共享文件Hash（批量）
-   * @request POST:/engine/script/batch/update-hash
-   * @secure
-   */ this.batchUpdateHashUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/batch/update-hash`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name ListUsingGet
-   * @summary 获取脚本列表
-   * @request GET:/engine/script/list
-   * @secure
-   */ this.listUsingGet = (query, params = {})=>this.request({
-                path: `/engine/script/list`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name LockUsingPost
-   * @summary 获取脚本锁
-   * @request POST:/engine/script/lock
-   * @secure
-   */ this.lockUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/lock`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name HeartbeatUsingPost
-   * @summary 脚本锁心跳
-   * @request POST:/engine/script/lock/heartbeat
-   * @secure
-   */ this.heartbeatUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/lock/heartbeat`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name CheckNameUsingGet
-   * @summary 校验脚本名是否可用
-   * @request GET:/engine/script/name-check
-   * @secure
-   */ this.checkNameUsingGet = (query, params = {})=>this.request({
-                path: `/engine/script/name-check`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name RenameUsingPost
-   * @summary 脚本重命名
-   * @request POST:/engine/script/rename
-   * @secure
-   */ this.renameUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/rename`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name ShareUsingPost
-   * @summary 共享脚本
-   * @request POST:/engine/script/share
-   * @secure
-   */ this.shareUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/share`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name UnlockUsingPost
-   * @summary 释放脚本锁
-   * @request POST:/engine/script/unlock
-   * @secure
-   */ this.unlockUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/unlock`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name UnshareUsingPost
-   * @summary 取消共享脚本
-   * @request POST:/engine/script/unshare
-   * @secure
-   */ this.unshareUsingPost = (param, params = {})=>this.request({
-                path: `/engine/script/unshare`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name MigrationUsingGet
-   * @summary 脚本migration
-   * @request GET:/engine/script/migration
-   * @secure
-   */ this.migrationUsingGet = (query, params = {})=>this.request({
-                path: `/engine/script/migration`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 共享脚本模块
-   * @name createScriptUsingPost
-   * @summary 新建/复制脚本
-   * @request POST:/script
-   * @secure
-   */ this.createScriptUsingPost = (param, params = {})=>this.request({
-                path: `/script`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 共享脚本模块
-   * @name deleteScriptUsingDelete
-   * @summary 删除脚本
-   * @request DELETE:/script
-   * @secure
-   */ this.deleteScriptUsingDelete = (query, params = {})=>this.request({
-                path: `/script`,
-                method: 'DELETE',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 共享脚本模块
-   * @name renameScriptUsingPost
-   * @summary 脚本重命名
-   * @request POST:/script/rename
-   * @secure
-   */ this.renameScriptUsingPost = (param, params = {})=>this.request({
-                path: `/script/rename`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name ShareUsingPost
-   * @summary 共享脚本
-   * @request POST:/engine/script/share
-   * @secure
-   */ this.shareScriptUsingPost = (param, params = {})=>this.request({
-                path: `/script/share`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 引擎后端相关
-   * @name UnshareUsingPost
-   * @summary 取消共享脚本
-   * @request POST:/engine/script/unshare
-   * @secure
-   */ this.unshareScriptUsingPost = (param, params = {})=>this.request({
-                path: `/script/unshare`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 共享脚本模块
-   * @name checkNameScriptUsingGet
-   * @summary 校验脚本名是否可用
-   * @request GET:/script/name-check
-   * @secure
-   */ this.checkNameScriptUsingGet = (query, params = {})=>this.request({
-                path: `/script/name-check`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 分布式ID模块
-   * @name nextGameUidListUsingGet
-   * @summary 生成多个分布式ID，前端使用
-   * @request GET:/uid/list
-   * @secure
-   */ this.nextGameUidListUsingGet = (query, params = {})=>this.request({
-                path: `/uid/list`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-    }
-}
-
-class Collaboration extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name ApplyListUsingGet
-   * @summary 查询协作申请列表
-   * @request GET:/collaboration/apply
-   * @secure
-   */ this.applyListUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/apply`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name ApplyUsingPost
-   * @summary 发起协作申请
-   * @request POST:/collaboration/apply
-   * @secure
-   */ this.applyUsingPost = (query, params = {})=>this.request({
-                path: `/collaboration/apply`,
-                method: 'POST',
-                query: query,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name ApplyExistUsingGet
-   * @summary 检查用户是否申请过
-   * @request GET:/collaboration/apply/exist
-   * @secure
-   */ this.applyExistUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/apply/exist`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name NewApplyUsingGet
-   * @summary 查询是否有新的申请
-   * @request GET:/collaboration/apply/new
-   * @secure
-   */ this.newApplyUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/apply/new`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name RejectApplyUsingPost
-   * @summary 拒绝协作申请
-   * @request POST:/collaboration/apply/reject
-   * @secure
-   */ this.rejectApplyUsingPost = (query, params = {})=>this.request({
-                path: `/collaboration/apply/reject`,
-                method: 'POST',
-                query: query,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name BanUsingPost
-   * @summary 拉黑协作者
-   * @request POST:/collaboration/ban
-   * @secure
-   */ this.banUsingPost = (param, params = {})=>this.request({
-                path: `/collaboration/ban`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name AddMemberUsingPost
-   * @summary 新增协作者
-   * @request POST:/collaboration/member
-   * @secure
-   * @return 如果是图主，接口返回null
-   */ this.addMemberUsingPost = (param, params = {})=>this.request({
-                path: `/collaboration/member`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name UpdateMemberUsingPut
-   * @summary 编辑协作者
-   * @request PUT:/collaboration/member
-   * @secure
-   */ this.updateMemberUsingPut = (param, params = {})=>this.request({
-                path: `/collaboration/member`,
-                method: 'PUT',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name DeleteMemberUsingDelete
-   * @summary 删除协作者
-   * @request DELETE:/collaboration/member
-   * @secure
-   */ this.deleteMemberUsingDelete = (query, params = {})=>this.request({
-                path: `/collaboration/member`,
-                method: 'DELETE',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name MemberListUsingGet
-   * @summary 查询协作者列表
-   * @request GET:/collaboration/member/list
-   * @secure
-   */ this.memberListUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/member/list`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name MemberPermissionUsingGet
-   * @summary 查询协作者权限
-   * @request GET:/collaboration/member/permission
-   * @secure
-   */ this.memberPermissionUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/member/permission`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name MemberSortUsingPost
-   * @summary 协作者排序
-   * @request POST:/collaboration/member/sort
-   * @secure
-   */ this.memberSortUsingPost = (param, params = {})=>this.request({
-                path: `/collaboration/member/sort`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name PermissionsUsingGet
-   * @summary 获取权限点列表
-   * @request GET:/collaboration/permission
-   * @secure
-   */ this.permissionsUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/permission`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name RoleListUsingGet
-   * @summary 协作角色列表
-   * @request GET:/collaboration/role
-   * @secure
-   */ this.roleListUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/role`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name AddRoleUsingPost
-   * @summary 新增协作角色
-   * @request POST:/collaboration/role
-   * @secure
-   */ this.addRoleUsingPost = (param, params = {})=>this.request({
-                path: `/collaboration/role`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name UpdateRoleUsingPut
-   * @summary 编辑协作角色
-   * @request PUT:/collaboration/role
-   * @secure
-   */ this.updateRoleUsingPut = (param, params = {})=>this.request({
-                path: `/collaboration/role`,
-                method: 'PUT',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name DeleteRoleUsingDelete
-   * @summary 删除协作角色
-   * @request DELETE:/collaboration/role
-   * @secure
-   */ this.deleteRoleUsingDelete = (query, params = {})=>this.request({
-                path: `/collaboration/role`,
-                method: 'DELETE',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name TerminateUsingPost
-   * @summary 终止协作
-   * @request POST:/collaboration/terminate
-   * @secure
-   */ this.terminateUsingPost = (param, params = {})=>this.request({
-                path: `/collaboration/terminate`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name GetTicketUsingGet
-   * @summary 获取分享ticket
-   * @request GET:/collaboration/ticket
-   * @secure
-   */ this.getTicketUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/ticket`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name TicketRefreshUsingGet
-   * @summary 刷新ticket过期时间
-   * @request GET:/collaboration/ticket/refresh
-   * @secure
-   */ this.ticketRefreshUsingGet = (query, params = {})=>this.request({
-                path: `/collaboration/ticket/refresh`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name UnbanUsingPost
-   * @summary 取消拉黑协作者
-   * @request POST:/collaboration/unban
-   * @secure
-   */ this.unbanUsingPost = (param, params = {})=>this.request({
-                path: `/collaboration/unban`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name MapPrivacyUsingGet
-   * @summary 查询地图隐私
-   * @request GET:/map/privacy
-   * @secure
-   */ this.mapPrivacyUsingGet = (query, params = {})=>this.request({
-                path: `/map/privacy`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 协作模块
-   * @name UpdateMapPrivacyUsingPut
-   * @summary 编辑地图隐私
-   * @request PUT:/map/privacy
-   * @secure
-   */ this.updateMapPrivacyUsingPut = (param, params = {})=>this.request({
-                path: `/map/privacy`,
-                method: 'PUT',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-    }
-}
-
-class CreatorStore extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * No description
-   *
-   * @tags 商品模块
-   * @name CheckStoreAccessUsingGet
-   * @summary 查询地图是否有商城权限
-   * @request GET:/creator-store/access
-   * @secure
-   */ this.checkStoreAccessUsingGet = (query, params = {})=>this.request({
-                path: `/creator-store/access`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 商品模块
-   * @name GetCreatorStoreConfigUsingGet1
-   * @summary 通过ContainerName获取Creator Store配置
-   * @request GET:/creator-store/config
-   * @secure
-   */ this.getCreatorStoreConfigUsingGet1 = (query, params = {})=>this.request({
-                path: `/creator-store/config`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 商品模块
-   * @name UpdateCreatorStoreConfigUsingPost
-   * @summary 更新Creator Store配置
-   * @request POST:/creator-store/config
-   * @secure
-   */ this.updateCreatorStoreConfigUsingPost = (param, params = {})=>this.request({
-                path: `/creator-store/config`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 商品模块
-   * @name GetCreatorStoreConfigUsingGet
-   * @summary 通过mapId获取Creator Store配置
-   * @request GET:/creator-store/config/{mapId}
-   * @secure
-   */ this.getCreatorStoreConfigUsingGet = (mapId, params = {})=>this.request({
-                path: `/creator-store/config/${mapId}`,
-                method: 'GET',
-                ...params
-            });
-    }
-}
-
-class Storage extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * @description 查询数据，不存在则返回null；如果操作时key已被lock且ticket不正确，则抛出33000009异常
-   *
-   * @tags DataStores
-   * @name GetUsingGet
-   * @summary 查询数据
-   * @request GET:/storage/data-stores
-   * @secure
-   */ this.getUsingGet = (query, params = {})=>this.request({
-                path: `/storage/data-stores`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * @description 不存在则写入，存在则更新，操作成功则返回true，操作失败则返回false；如果操作时key已被lock且ticket不正确，则抛出33000009异常
-   *
-   * @tags DataStores
-   * @name SetUsingPost
-   * @summary 写入/更新数据
-   * @request POST:/storage/data-stores
-   * @secure
-   */ this.setUsingPost = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores`,
-                method: 'POST',
-                body: params,
-                type: ContentType.Json,
-                ...requestParams
-            });
-        /**
-   * @description 针对某个key增长一定的值，并返回增长后的值；
-   *
-   * @tags DataStores
-   * @name IncrUsingPost
-   * @summary 针对某个key增长一定的值，并返回增长后的值；
-   * @request POST:/storage/data-stores/incr
-   * @secure
-   */ this.incrUsingPost = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores/incr`,
-                method: 'POST',
-                body: params,
-                type: ContentType.Json,
-                ...requestParams
-            });
-        /**
-   * @description 逻辑删除，可通过参数控制是否返回删除的内容；如果操作时key已被lock且ticket不正确，则抛出33000009异常
-   *
-   * @tags DataStores
-   * @name RemoveUsingDelete
-   * @summary 删除数据
-   * @request DELETE:/storage/data-stores
-   * @secure
-   */ this.removeUsingDelete = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores`,
-                method: 'DELETE',
-                body: params,
-                type: ContentType.Json,
-                ...requestParams
-            });
-        /**
-   * @description 成功则返回true，失败则返回false，已被锁定抛出33000009异常
-   *
-   * @tags DataStores
-   * @name LockUsingPost
-   * @summary key读写加锁
-   * @request POST:/storage/data-stores/lock
-   * @secure
-   */ this.lockUsingPost = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores/lock`,
-                method: 'POST',
-                body: params,
-                type: ContentType.Json,
-                ...requestParams
-            });
-        /**
-   * @description constraint参数控制约束与排序条件
-   *
-   * @tags DataStores
-   * @name PageListUsingGet
-   * @summary 分页查询
-   * @request GET:/storage/data-stores/page
-   * @secure
-   */ this.pageListUsingGet = (query, params = {})=>this.request({
-                path: `/storage/data-stores/page`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * @description 如果该表存在则直接返回true，不存在则创建并返回true，如果创建失败则返回false
-   *
-   * @tags DataStores
-   * @name PrepareUsingPost
-   * @summary 准备存储表
-   * @request POST:/storage/data-stores/prepare
-   * @secure
-   */ this.prepareUsingPost = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores/prepare`,
-                method: 'POST',
-                body: params,
-                type: ContentType.Json,
-                ...requestParams
-            });
-        /**
-   * @description 成功返回true，失败返回false
-   *
-   * @tags DataStores
-   * @name DeleteStorageUsingDelete
-   * @summary 删除存储表
-   * @request DELETE:/storage/data-stores/storage
-   * @secure
-   */ this.deleteStorageUsingDelete = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores/storage`,
-                method: 'DELETE',
-                body: params,
-                ...requestParams
-            });
-        /**
-   * @description 成功则返回true，失败则返回false
-   *
-   * @tags DataStores
-   * @name UnlockUsingPost
-   * @summary key读写解锁
-   * @request POST:/storage/data-stores/unlock
-   * @secure
-   */ this.unlockUsingPost = (params, requestParams = {})=>this.request({
-                path: `/storage/data-stores/unlock`,
-                method: 'POST',
-                body: params,
-                type: ContentType.Json,
-                ...requestParams
-            });
-    }
-}
-
-class Model extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name CopyModelUsingPost
-   * @summary 复制模型
-   * @request POST:/model/copy
-   * @secure
-   */ this.copyModelUsingPost = (query, params = {})=>this.request({
-                path: `/model/copy`,
-                method: 'POST',
-                query: query,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 皮肤模块
-   * @name saveSkinUsingPost
-   * @summary 保存共享皮肤
-   * @request POST:/model/skin/save
-   * @secure
-   */ this.saveSharedSkinUsingPost = (param, params = {})=>this.request({
-                path: `/model/skin/save`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name saveModelUsingPostV1
-   * @summary 保存模型/保存皮肤
-   * @request POST:/model/save-v1
-   * @secure
-   */ this.saveModelUsingPostV1 = (param, params = {})=>this.request({
-                path: `/model/save-v1`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name GetSnapshotsUsingGet
-   * @summary 获取模型快照列表
-   * @request GET:/model/snapshots/{modelId}
-   * @secure
-   */ this.getSnapshotsUsingGet = (modelId, query, params = {})=>this.request({
-                path: `/model/snapshots/${modelId}`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name updateModelUsingPost
-   * @summary 更新模型数据
-   * @request POST:/model/update
-   * @secure
-   */ this.updateModelUsingPost = (data, params = {})=>{
-            const formData = new FormData();
-            const { modelId, animated, modelFile, modelFileHash, modelName } = data;
-            formData.append('modelId', JSON.stringify(modelId));
-            if (modelFileHash) {
-                formData.append('modelFileHash', modelFileHash);
-            }
-            if (modelFile) {
-                formData.append('modelFile', modelFile);
-            }
-            if (modelName) {
-                formData.append('modelName', modelName);
-            }
-            if (animated !== undefined) {
-                formData.append('animated', JSON.stringify(animated));
-            }
-            return this.request({
-                path: `/model/update`,
-                method: 'POST',
-                body: formData,
-                type: ContentType.FormData,
-                ...params
-            });
-        };
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name getModelDetailUsingGet
-   * @summary 获取模型v2
-   * @request GET:/model/detail/{modelId}
-   * @secure
-   */ this.getModelDetailUsingGet = (modelId, params = {})=>this.request({
-                path: `/model/detail/${modelId}`,
-                method: 'GET',
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name DeleteModelUsingDelete
-   * @summary 删除模型
-   * @request DELETE:/model/{modelId}
-   * @secure
-   */ this.deleteModelUsingDelete = (modelIds, params = {})=>this.request({
-                path: `/model/delete`,
-                method: 'DELETE',
-                body: modelIds,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型、模板
-   * @name AddModelSharePoolUsingPost
-   * @summary 新增共享模型
-   * @request POST:/model/v2/share-pool
-   * @secure
-   */ this.addModelSharePoolUsingPost = (param, params = {})=>this.request({
-                path: `/model/v2/share-pool`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型、模板
-   * @name DeleteModelSharePoolUsingDelete
-   * @summary 删除共享模型
-   * @request DELETE:/model/v2/share-pool
-   * @secure
-   */ this.deleteModelSharePoolUsingDelete = (param, params = {})=>this.request({
-                path: `/model/v2/share-pool`,
-                method: 'DELETE',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型-皮肤
-   * @name batchAddSkinUsingPost
-   * @summary 批量添加到项目皮肤库
-   * @request POST:/model/skin/project/batch-add
-   * @secure
-   */ this.batchAddSkinUsingPost = (param, params = {})=>this.request({
-                path: `/model/skin/project/batch-add`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型-皮肤
-   * @name setDefaultSkinUsingPut
-   * @summary 设置地图默认皮肤
-   * @request PUT:/model/skin/default
-   * @secure
-   */ this.setDefaultSkinUsingPut = (query, params = {})=>this.request({
-                path: `/model/skin/default`,
-                method: 'PUT',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型-皮肤
-   * @name getDefaultSkinUsingGet
-   * @summary 查询默认皮肤
-   * @request GET:/model/skin/default
-   * @secure
-   */ this.getDefaultSkinUsingGet = (query, params = {})=>this.request({
-                path: `/model/skin/default`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型-皮肤
-   * @name getEngineDefaultSkinUsingGet
-   * @summary 查询默认皮肤。game server使用，不用登录鉴权
-   * @request GET:/engine/model/skin/default
-   * @secure
-   */ this.getEngineDefaultSkinUsingGet = (query, params = {})=>this.request({
-                path: `/engine/model/skin/default`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型-皮肤
-   * @name
-   * @summary 查询将指定皮肤设置为默认皮肤的地图。game server使用
-   * @request GET:/model/skin/project/default-map/{skinId}
-   * @secure
-   */ this.getSkinMapIdList = (skinId, params = {})=>this.request({
-                path: `/model/skin/project/default-map/${skinId}`,
-                method: 'GET',
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 扩展地图-模型共享
-   * @name saveProjectSharedModelUsingPost
-   * @summary 保存/修改项目共享模型
-   * @request POST:/model/project-shared/save
-   * @secure
-   */ this.saveProjectSharedModelUsingPost = (param, params = {})=>this.request({
-                path: `/model/project-shared/save`,
-                method: 'POST',
-                body: param,
-                type: ContentType.Json,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 扩展地图-模型共享
-   * @name deleteProjectSharedModelUsingDelete
-   * @summary 删除项目共享模型
-   * @request DELETE:/model/project-shared
-   * @secure
-   */ this.deleteProjectSharedModelUsingDelete = (query, params = {})=>this.request({
-                path: `/model/project-shared`,
-                method: 'DELETE',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 扩展地图-模型共享
-   * @name renameProjectSharedModelUsingPut
-   * @summary 重命名项目共享模型
-   * @request PUT:/model/project-shared/rename
-   * @secure
-   */ this.renameProjectSharedModelUsingPut = (query, params = {})=>this.request({
-                path: `/model/project-shared/rename`,
-                method: 'PUT',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 扩展地图-模型共享
-   * @name copyProjectSharedModelUsingPost
-   * @summary 复制模型
-   * @request POST:/model/project-shared/copy
-   * @secure
-   */ this.copyProjectSharedModelUsingPost = (param, params = {})=>this.request({
-                path: `/model/project-shared/copy`,
-                method: 'POST',
-                body: param,
-                ...params
-            });
-    }
-}
-
-class Models extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name GetModelsUsingGet
-   * @summary 获取模型列表
-   * @request GET:/models
-   * @secure
-   * @deprecated 请使用getModelsUsingGetV2
-   */ this.getModelsUsingGet = (query, params = {})=>this.request({
-                path: `/models`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name GetModelsUsingGet
-   * @summary 获取模型列表，可分页
-   * @request GET:/models/v2
-   * @secure
-   */ this.getModelsUsingGetV2 = (query, params = {})=>this.request({
-                path: `/models/v2`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name SearchModelUsingGet
-   * @summary 搜索模型
-   * @request GET:/models/search
-   * @secure
-   * @deprecated 请使用getModelsUsingGetV2
-   */ this.searchModelUsingGet = (query, params = {})=>this.request({
-                path: `/models/search`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 分页获取用户模型数据
-   * @name listModelsUsingGET
-   * @summary 分页获取用户模型数据
-   * @request GET:/models-page
-   * @secure
-   */ this.listModelsUsingGET = (query, params = {})=>this.request({
-                path: `/models-page`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 皮肤模块
-   * @name deleteSharedSkinUsingDelete
-   * @summary 删除共享皮肤
-   * @request DELETE:/model/skin/{mapId}/{skinId}
-   * @secure
-   */ this.deleteSharedSkinUsingDelete = (param, params = {})=>this.request({
-                path: `/model/skin/${param.mapId}/${param.skinId}`,
-                method: 'DELETE',
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 皮肤模块
-   * @name renameSharedSkinUsingPut
-   * @summary 重命名共享皮肤
-   * @request PUT:/model/skin/rename
-   * @secure
-   */ this.renameSharedSkinUsingPut = (param, params = {})=>this.request({
-                path: `/model/skin/rename`,
-                method: 'PUT',
-                query: param,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name getEngineModelsUsingGet
-   * @summary 获取模型列表，可分页，game server使用，不用登录鉴权
-   * @request GET:/engine/models
-   * @secure
-   */ this.getEngineModelsUsingGet = (query, params = {})=>this.request({
-                path: `/engine/models`,
-                method: 'GET',
-                query: query,
-                ...params
-            });
-        /**
-   * No description
-   *
-   * @tags 模型模块
-   * @name mapModelMigrationUsingPost
-   * @summary 项目模型迁移。server使用
-   * @request POST:/engine/model/project-shared/migration
-   * @secure
-   */ this.mapModelMigrationUsingPost = (query, params = {})=>this.request({
-                path: `/engine/model/project-shared/migration`,
-                method: 'POST',
-                query: query,
-                ...params
-            });
-    }
-}
-
-class Upload extends HttpClient {
-    constructor(...args){
-        super(...args);
-        /**
-   * 上传文件接口
-   * @param data
-   * @param params
-   * @returns
-   */ this.fileUploadPost = (data, params = {})=>{
-            const formData = new FormData();
-            const { file, type } = data;
-            if (file) {
-                formData.append('file', file);
-            }
-            if (type) {
-                formData.append('type', type);
-            }
-            return this.request({
-                path: `/file-upload-auth`,
-                method: 'POST',
-                body: formData,
-                type: ContentType.FormData,
-                ...params
-            });
-        };
-    }
-}
-
-/* eslint-disable */ /* tslint:disable */ /*
- * ---------------------------------------------------------------
- * ## THIS FILE WAS GENERATED VIA SWAGGER-TYPESCRIPT-API        ##
- * ##                                                           ##
- * ## AUTHOR: acacode                                           ##
- * ## SOURCE: https://github.com/acacode/swagger-typescript-api ##
- * ---------------------------------------------------------------
- */ var ModelMigrationState;
-(function(ModelMigrationState) {
-    ModelMigrationState[ModelMigrationState["Init"] = 0] = "Init";
-    ModelMigrationState[ModelMigrationState["Migrating"] = 1] = "Migrating";
-    ModelMigrationState[ModelMigrationState["Success"] = 2] = "Success";
-    ModelMigrationState[ModelMigrationState["Fails"] = 3] = "Fails";
-})(ModelMigrationState || (ModelMigrationState = {}));
 var ModelType;
 (function(ModelType) {
-    /**
-   * 私有模型/私有皮肤
-   */ ModelType[ModelType["Private"] = 0] = "Private";
-    /**
-   * 公共模型/公共皮肤
-   */ ModelType[ModelType["Public"] = 1] = "Public";
-    /**
-   * 地图模型
-   */ ModelType[ModelType["Project"] = 2] = "Project";
-    /**
-   * 扩展模型/共享皮肤
-   */ ModelType[ModelType["ExtensionLib"] = 3] = "ExtensionLib";
+    ModelType[ModelType["Private"] = 0] = "Private";
+    ModelType[ModelType["Public"] = 1] = "Public";
+    ModelType[ModelType["Project"] = 2] = "Project";
+    ModelType[ModelType["ExtensionLib"] = 3] = "ExtensionLib";
 })(ModelType || (ModelType = {}));
 var CreativeMode;
 (function(CreativeMode) {
@@ -1735,30 +45,40 @@ var SortOrder;
 })(SortOrder || (SortOrder = {}));
 var SourceType;
 (function(SourceType) {
-    /**
-   * 最新保存的模型
-   */ SourceType[SourceType["Snapshot"] = 0] = "Snapshot";
-    /**
-   * 已发布的模型
-   */ SourceType[SourceType["Release"] = 1] = "Release";
+    SourceType[SourceType["Snapshot"] = 0] = "Snapshot";
+    SourceType[SourceType["Release"] = 1] = "Release";
 })(SourceType || (SourceType = {}));
+var CopyEvent;
+(function(CopyEvent) {
+    CopyEvent[CopyEvent["ActiveCopy"] = 0] = "ActiveCopy";
+    CopyEvent[CopyEvent["PassiveCopy"] = 1] = "PassiveCopy";
+})(CopyEvent || (CopyEvent = {}));
 var ModelErrorCode;
 (function(ModelErrorCode) {
     ModelErrorCode[ModelErrorCode["NameExisted"] = 10020013] = "NameExisted";
     ModelErrorCode[ModelErrorCode["ModelNotExisted"] = 10020011] = "ModelNotExisted";
 })(ModelErrorCode || (ModelErrorCode = {}));
-/**
- * 请求超时时间
- */ const REQUEST_TIMEOUT = 10 * 1000;
-var CopyEvent;
-(function(CopyEvent) {
-    /**
-   * 主动复制
-   */ CopyEvent[CopyEvent["ActiveCopy"] = 0] = "ActiveCopy";
-    /**
-   * 被动复制
-   */ CopyEvent[CopyEvent["PassiveCopy"] = 1] = "PassiveCopy";
-})(CopyEvent || (CopyEvent = {}));
+var ShareScriptErrorCode;
+(function(ShareScriptErrorCode) {
+    ShareScriptErrorCode[ShareScriptErrorCode["ScriptNotExist"] = 21010001] = "ScriptNotExist";
+    ShareScriptErrorCode[ShareScriptErrorCode["ScriptGetLockFailed"] = 21010002] = "ScriptGetLockFailed";
+    ShareScriptErrorCode[ShareScriptErrorCode["ScriptLockedByAnotherMap"] = 21010003] = "ScriptLockedByAnotherMap";
+    ShareScriptErrorCode[ShareScriptErrorCode["NotCombMap"] = 21010005] = "NotCombMap";
+    ShareScriptErrorCode[ShareScriptErrorCode["ScriptNameRepeat"] = 21010007] = "ScriptNameRepeat";
+    ShareScriptErrorCode[ShareScriptErrorCode["ScriptGlobalLockFailed"] = 21010008] = "ScriptGlobalLockFailed";
+})(ShareScriptErrorCode || (ShareScriptErrorCode = {}));
+var ScriptType;
+(function(ScriptType) {
+    ScriptType[ScriptType["Server"] = 0] = "Server";
+    ScriptType[ScriptType["Client"] = 1] = "Client";
+})(ScriptType || (ScriptType = {}));
+var ContentType;
+(function(ContentType) {
+    ContentType["Json"] = "application/json";
+    ContentType["FormData"] = "multipart/form-data";
+    ContentType["UrlEncoded"] = "application/x-www-form-urlencoded";
+})(ContentType || (ContentType = {}));
+const REQUEST_TIMEOUT = 10 * 1000;
 
 /**
  * Editor capabilities understood by the local Creator and VOXA clients.
@@ -1778,4 +98,1783 @@ var CopyEvent;
     Permissions["ResourceEnginePlay"] = "resource:engine:play";
 })(Permissions || (Permissions = {}));
 
-export { AvatarBodyPart, Collaboration, ContentType, CopyEvent, Createra, CreativeMode, CreatorStore, HttpClient, _interface as Interface, Model, ModelErrorCode, ModelMigrationState, ModelType, Models, Permissions, REQUEST_TIMEOUT, SortOrder, SourceType, Storage, SuitList, Upload, UserInfoPermissions };
+const escaped = (value)=>encodeURIComponent(value);
+/** Stable paths consumed by the player administration application. */ const playerAdminRoutes = {
+    activity: '/api/play-admin/activity',
+    admins: '/api/play-admin/admins',
+    admin: (id)=>`/api/play-admin/admins/${escaped(id)}`,
+    containers: '/api/play-admin/containers',
+    container: (mapId)=>`/api/play-admin/containers/${escaped(mapId)}`,
+    containerResourceGroups: '/api/play-admin/container-resource-groups',
+    containerResourceGroup: (id)=>`/api/play-admin/container-resource-groups/${escaped(id)}`,
+    identityBans: '/api/play-admin/identity-bans',
+    login: '/api/play-admin/login',
+    logout: '/api/play-admin/logout',
+    libraryImport: '/api/play-admin/library/import',
+    libraryImportPreview: '/api/play-admin/library/import?mode=preview',
+    libraryImportReview: (reviewId)=>`/api/play-admin/library/import?reviewId=${escaped(reviewId)}`,
+    libraryImportConfirm: (reviewId)=>`/api/play-admin/library/import?mode=confirm&reviewId=${escaped(reviewId)}`,
+    libraryImportResource: (reviewId, resourceId)=>`/api/play-admin/library/import?mode=resource&reviewId=${escaped(reviewId)}&resourceId=${escaped(resourceId)}`,
+    libraryWorlds: '/api/play-admin/library/worlds',
+    libraryWorld: (id)=>`/api/play-admin/library/worlds/${escaped(id)}`,
+    libraryWorldStatus: '/api/play-admin/library/world-status',
+    permissionGroups: '/api/play-admin/permission-groups',
+    permissionGroup: (id)=>`/api/play-admin/permission-groups/${escaped(id)}`,
+    player: (subjectId)=>`/api/play-admin/players/${escaped(subjectId)}`,
+    players: '/api/play-admin/players',
+    playerBatch: '/api/play-admin/players/batch',
+    playerExport: '/api/play-admin/players/export',
+    playerOverview: '/api/play-admin/players/overview',
+    ownerSession: '/api/play-admin/owner-session',
+    selfPassword: '/api/play-admin/self-password',
+    verify: '/api/play-admin/verify'
+};
+
+const apiOperations = {
+    "deleteApiCreatorModelsId": {
+        "path": "/api/creator-models/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiCreatorV1ProjectsProjectIdSceneSession": {
+        "path": "/api/creator/v1/projects/{projectId}/scene/session",
+        "method": "DELETE"
+    },
+    "deleteApiCreatorV1ProjectsProjectIdStorageScopeSpace": {
+        "path": "/api/creator/v1/projects/{projectId}/storage/{scope}/{space}",
+        "method": "DELETE"
+    },
+    "deleteApiLocalModelsId": {
+        "path": "/api/local/models/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiLocalProjectsId": {
+        "path": "/api/local-projects/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminAdminsId": {
+        "path": "/api/play-admin/admins/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminContainerResourceGroupsId": {
+        "path": "/api/play-admin/container-resource-groups/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminContainersPermanentMapId": {
+        "path": "/api/play-admin/containers/{permanentMapId}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminImport": {
+        "path": "/api/play-admin/import",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminLibraryImport": {
+        "path": "/api/play-admin/library/import",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminLibrarySection": {
+        "path": "/api/play-admin/library/{section}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminLibrarySectionId": {
+        "path": "/api/play-admin/library/{section}/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminPermissionGroupsId": {
+        "path": "/api/play-admin/permission-groups/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminPlayersSubjectId": {
+        "path": "/api/play-admin/players/{subjectId}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayAdminWorldsId": {
+        "path": "/api/play-admin/worlds/{id}",
+        "method": "DELETE"
+    },
+    "deleteApiPlayPresence": {
+        "path": "/api/play-presence",
+        "method": "DELETE"
+    },
+    "deleteApiRuntimeContainerId": {
+        "path": "/api/runtime/{container_id}",
+        "method": "DELETE"
+    },
+    "getApiAuthSession": {
+        "path": "/api/auth/session",
+        "method": "GET"
+    },
+    "getApiBackupsArchiveDownload": {
+        "path": "/api/backups/{archive}/download",
+        "method": "GET"
+    },
+    "getApiConfigSlug": {
+        "path": "/api/config/{slug}",
+        "method": "GET"
+    },
+    "getApiCreatorModels": {
+        "path": "/api/creator-models",
+        "method": "GET"
+    },
+    "getApiCreatorModelsBlobsHash": {
+        "path": "/api/creator-models/blobs/{hash}",
+        "method": "GET"
+    },
+    "getApiCreatorModelsIdExport": {
+        "path": "/api/creator-models/{id}/export",
+        "method": "GET"
+    },
+    "getApiCreatorPermissions": {
+        "path": "/api/creator-permissions",
+        "method": "GET"
+    },
+    "getApiCreatorV1Health": {
+        "path": "/api/creator/v1/health",
+        "method": "GET"
+    },
+    "getApiCreatorV1Projects": {
+        "path": "/api/creator/v1/projects",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdResources": {
+        "path": "/api/creator/v1/projects/{projectId}/resources",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdRuntime": {
+        "path": "/api/creator/v1/projects/{projectId}/runtime",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdRuntimeEvents": {
+        "path": "/api/creator/v1/projects/{projectId}/runtime/events",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdSceneAction": {
+        "path": "/api/creator/v1/projects/{projectId}/scene/action",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdSceneCapture": {
+        "path": "/api/creator/v1/projects/{projectId}/scene/capture",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdSceneSession": {
+        "path": "/api/creator/v1/projects/{projectId}/scene/session",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdScripts": {
+        "path": "/api/creator/v1/projects/{projectId}/scripts",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdScriptsSideEntry": {
+        "path": "/api/creator/v1/projects/{projectId}/scripts/{side}/{entry}",
+        "method": "GET"
+    },
+    "getApiCreatorV1ProjectsProjectIdStorageScopeSpace": {
+        "path": "/api/creator/v1/projects/{projectId}/storage/{scope}/{space}",
+        "method": "GET"
+    },
+    "getApiDiagnosticsArchiveDownload": {
+        "path": "/api/diagnostics/{archive}/download",
+        "method": "GET"
+    },
+    "getApiDocsAsset": {
+        "path": "/api/docs/{asset}",
+        "method": "GET"
+    },
+    "getApiGetMapInfo": {
+        "path": "/api/getMapInfo",
+        "method": "GET"
+    },
+    "getApiHealth": {
+        "path": "/api/health",
+        "method": "GET"
+    },
+    "getApiHealthCheck": {
+        "path": "/api/health-check",
+        "method": "GET"
+    },
+    "getApiLocalBlobsHash": {
+        "path": "/api/local/blobs/{hash}",
+        "method": "GET"
+    },
+    "getApiLocalDefaultSkin": {
+        "path": "/api/local/default-skin",
+        "method": "GET"
+    },
+    "getApiLocalModels": {
+        "path": "/api/local/models",
+        "method": "GET"
+    },
+    "getApiLocalModelsId": {
+        "path": "/api/local/models/{id}",
+        "method": "GET"
+    },
+    "getApiLocalModelsIdExport": {
+        "path": "/api/local/models/{id}/export",
+        "method": "GET"
+    },
+    "getApiLocalModelsIdSnapshots": {
+        "path": "/api/local/models/{id}/snapshots",
+        "method": "GET"
+    },
+    "getApiLocalProjects": {
+        "path": "/api/local-projects",
+        "method": "GET"
+    },
+    "getApiLocalProjectsAssetDistribution": {
+        "path": "/api/local-projects/asset-distribution",
+        "method": "GET"
+    },
+    "getApiLocalProjectsIdExport": {
+        "path": "/api/local-projects/{id}/export",
+        "method": "GET"
+    },
+    "getApiLocalProjectsIdMaps": {
+        "path": "/api/local-projects/{id}/maps",
+        "method": "GET"
+    },
+    "getApiLocalProjectsIdRuntime": {
+        "path": "/api/local-projects/{id}/runtime",
+        "method": "GET"
+    },
+    "getApiLocalProjectsIdSnapshots": {
+        "path": "/api/local-projects/{id}/snapshots",
+        "method": "GET"
+    },
+    "getApiOpenapi": {
+        "path": "/api/openapi",
+        "method": "GET"
+    },
+    "getApiOperationsId": {
+        "path": "/api/operations/{id}",
+        "method": "GET"
+    },
+    "getApiPlayAdminActivity": {
+        "path": "/api/play-admin/activity",
+        "method": "GET"
+    },
+    "getApiPlayAdminAdmins": {
+        "path": "/api/play-admin/admins",
+        "method": "GET"
+    },
+    "getApiPlayAdminContainerResourceGroups": {
+        "path": "/api/play-admin/container-resource-groups",
+        "method": "GET"
+    },
+    "getApiPlayAdminContainers": {
+        "path": "/api/play-admin/containers",
+        "method": "GET"
+    },
+    "getApiPlayAdminIdentityBans": {
+        "path": "/api/play-admin/identity-bans",
+        "method": "GET"
+    },
+    "getApiPlayAdminImport": {
+        "path": "/api/play-admin/import",
+        "method": "GET"
+    },
+    "getApiPlayAdminImportResource": {
+        "path": "/api/play-admin/import-resource",
+        "method": "GET"
+    },
+    "getApiPlayAdminLibraryImport": {
+        "path": "/api/play-admin/library/import",
+        "method": "GET"
+    },
+    "getApiPlayAdminLibrarySection": {
+        "path": "/api/play-admin/library/{section}",
+        "method": "GET"
+    },
+    "getApiPlayAdminLibrarySectionId": {
+        "path": "/api/play-admin/library/{section}/{id}",
+        "method": "GET"
+    },
+    "getApiPlayAdminPermissionGroups": {
+        "path": "/api/play-admin/permission-groups",
+        "method": "GET"
+    },
+    "getApiPlayAdminPlayers": {
+        "path": "/api/play-admin/players",
+        "method": "GET"
+    },
+    "getApiPlayAdminPlayersExport": {
+        "path": "/api/play-admin/players/export",
+        "method": "GET"
+    },
+    "getApiPlayAdminPlayersOverview": {
+        "path": "/api/play-admin/players/overview",
+        "method": "GET"
+    },
+    "getApiPlayAdminPlayersSubjectId": {
+        "path": "/api/play-admin/players/{subjectId}",
+        "method": "GET"
+    },
+    "getApiPlayAdminStatus": {
+        "path": "/api/play-admin/status",
+        "method": "GET"
+    },
+    "getApiPlayAdminVerify": {
+        "path": "/api/play-admin/verify",
+        "method": "GET"
+    },
+    "getApiPlayAdminWorlds": {
+        "path": "/api/play-admin/worlds",
+        "method": "GET"
+    },
+    "getApiPlayAdminWorldsStatus": {
+        "path": "/api/play-admin/worlds/status",
+        "method": "GET"
+    },
+    "getApiPlayerAuthLoginRequired": {
+        "path": "/api/player-auth/login-required",
+        "method": "GET"
+    },
+    "getApiPlayerAuthSession": {
+        "path": "/api/player-auth/session",
+        "method": "GET"
+    },
+    "getApiPlayerInternalMapLibrary": {
+        "path": "/api/player-internal/map-library",
+        "method": "GET"
+    },
+    "getApiPlayerInternalRevocations": {
+        "path": "/api/player-internal/revocations",
+        "method": "GET"
+    },
+    "getApiPlayLibrary": {
+        "path": "/api/play-library",
+        "method": "GET"
+    },
+    "getApiPlayPresence": {
+        "path": "/api/play-presence",
+        "method": "GET"
+    },
+    "getApiPlayWorlds": {
+        "path": "/api/play-worlds",
+        "method": "GET"
+    },
+    "getApiProjectModels": {
+        "path": "/api/project-models",
+        "method": "GET"
+    },
+    "getApiProjectSkinPreviews": {
+        "path": "/api/project-skin-previews",
+        "method": "GET"
+    },
+    "getApiProjectSkins": {
+        "path": "/api/project-skins",
+        "method": "GET"
+    },
+    "getApiRuntimeContainerIdStats": {
+        "path": "/api/runtime/{container_id}/stats",
+        "method": "GET"
+    },
+    "getApiServerInfo": {
+        "path": "/api/server-info",
+        "method": "GET"
+    },
+    "getApiSession": {
+        "path": "/api/session",
+        "method": "GET"
+    },
+    "getApiSystemBackups": {
+        "path": "/api/system/backups",
+        "method": "GET"
+    },
+    "getApiSystemBackupsProjectIdName": {
+        "path": "/api/system/backups/{projectId}/{name}",
+        "method": "GET"
+    },
+    "getApiSystemStatus": {
+        "path": "/api/system/status",
+        "method": "GET"
+    },
+    "getBlockHash": {
+        "path": "/block/{hash}",
+        "method": "GET"
+    },
+    "getInternalCreatorPreviewRuntime": {
+        "path": "/internal/creator-preview-runtime",
+        "method": "GET"
+    },
+    "getInternalCreatorPreviewRuntimeEvents": {
+        "path": "/internal/creator-preview-runtime/events",
+        "method": "GET"
+    },
+    "getLocalRuntimeStatus": {
+        "path": "/__local_runtime/status",
+        "method": "GET"
+    },
+    "patchApiCreatorProfile": {
+        "path": "/api/creator-profile",
+        "method": "PATCH"
+    },
+    "patchApiLocalProjectsAssetDistribution": {
+        "path": "/api/local-projects/asset-distribution",
+        "method": "PATCH"
+    },
+    "patchApiLocalProjectsId": {
+        "path": "/api/local-projects/{id}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminAdminsId": {
+        "path": "/api/play-admin/admins/{id}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminContainerResourceGroupsId": {
+        "path": "/api/play-admin/container-resource-groups/{id}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminLibrarySection": {
+        "path": "/api/play-admin/library/{section}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminLibrarySectionId": {
+        "path": "/api/play-admin/library/{section}/{id}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminPermissionGroupsId": {
+        "path": "/api/play-admin/permission-groups/{id}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminPlayersSubjectId": {
+        "path": "/api/play-admin/players/{subjectId}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminWorldsId": {
+        "path": "/api/play-admin/worlds/{id}",
+        "method": "PATCH"
+    },
+    "patchApiPlayerInternalMapLibrary": {
+        "path": "/api/player-internal/map-library",
+        "method": "PATCH"
+    },
+    "patchApiPlayerInternalProfile": {
+        "path": "/api/player-internal/profile",
+        "method": "PATCH"
+    },
+    "patchApiPlayLibrary": {
+        "path": "/api/play-library",
+        "method": "PATCH"
+    },
+    "patchApiPlayProfile": {
+        "path": "/api/play-profile",
+        "method": "PATCH"
+    },
+    "postApiAuthLogin": {
+        "path": "/api/auth/login",
+        "method": "POST"
+    },
+    "postApiAuthLogout": {
+        "path": "/api/auth/logout",
+        "method": "POST"
+    },
+    "postApiAuthRegister": {
+        "path": "/api/auth/register",
+        "method": "POST"
+    },
+    "postApiBackupsUpload": {
+        "path": "/api/backups/upload",
+        "method": "POST"
+    },
+    "postApiCommandsName": {
+        "path": "/api/commands/{name}",
+        "method": "POST"
+    },
+    "postApiCreateSession": {
+        "path": "/api/createSession",
+        "method": "POST"
+    },
+    "postApiCreatorLogout": {
+        "path": "/api/creator-logout",
+        "method": "POST"
+    },
+    "postApiCreatorModelsImport": {
+        "path": "/api/creator-models/import",
+        "method": "POST"
+    },
+    "postApiCreatorV1ProjectsProjectIdRuntime": {
+        "path": "/api/creator/v1/projects/{projectId}/runtime",
+        "method": "POST"
+    },
+    "postApiCreatorV1ProjectsProjectIdSceneActionsRequestId": {
+        "path": "/api/creator/v1/projects/{projectId}/scene/actions/{requestId}",
+        "method": "POST"
+    },
+    "postApiCreatorV1ProjectsProjectIdSceneSession": {
+        "path": "/api/creator/v1/projects/{projectId}/scene/session",
+        "method": "POST"
+    },
+    "postApiLocalBlob": {
+        "path": "/api/local/blob",
+        "method": "POST"
+    },
+    "postApiLocalModels": {
+        "path": "/api/local/models",
+        "method": "POST"
+    },
+    "postApiLocalModelsImport": {
+        "path": "/api/local/models/import",
+        "method": "POST"
+    },
+    "postApiLocalProjects": {
+        "path": "/api/local-projects",
+        "method": "POST"
+    },
+    "postApiLocalProjectsIdMaps": {
+        "path": "/api/local-projects/{id}/maps",
+        "method": "POST"
+    },
+    "postApiLocalProjectsIdPackage": {
+        "path": "/api/local-projects/{id}/package",
+        "method": "POST"
+    },
+    "postApiLocalProjectsIdPublish": {
+        "path": "/api/local-projects/{id}/publish",
+        "method": "POST"
+    },
+    "postApiLocalProjectsIdRuntime": {
+        "path": "/api/local-projects/{id}/runtime",
+        "method": "POST"
+    },
+    "postApiLocalProjectsIdSnapshots": {
+        "path": "/api/local-projects/{id}/snapshots",
+        "method": "POST"
+    },
+    "postApiLocalProjectsImport": {
+        "path": "/api/local-projects/import",
+        "method": "POST"
+    },
+    "postApiPlayAdminAdmins": {
+        "path": "/api/play-admin/admins",
+        "method": "POST"
+    },
+    "postApiPlayAdminContainerResourceGroups": {
+        "path": "/api/play-admin/container-resource-groups",
+        "method": "POST"
+    },
+    "postApiPlayAdminContainers": {
+        "path": "/api/play-admin/containers",
+        "method": "POST"
+    },
+    "postApiPlayAdminIdentityBans": {
+        "path": "/api/play-admin/identity-bans",
+        "method": "POST"
+    },
+    "postApiPlayAdminImport": {
+        "path": "/api/play-admin/import",
+        "method": "POST"
+    },
+    "postApiPlayAdminLibraryImport": {
+        "path": "/api/play-admin/library/import",
+        "method": "POST"
+    },
+    "postApiPlayAdminLibrarySection": {
+        "path": "/api/play-admin/library/{section}",
+        "method": "POST"
+    },
+    "postApiPlayAdminLibrarySectionId": {
+        "path": "/api/play-admin/library/{section}/{id}",
+        "method": "POST"
+    },
+    "postApiPlayAdminLogin": {
+        "path": "/api/play-admin/login",
+        "method": "POST"
+    },
+    "postApiPlayAdminLogout": {
+        "path": "/api/play-admin/logout",
+        "method": "POST"
+    },
+    "postApiPlayAdminMaintenance": {
+        "path": "/api/play-admin/maintenance",
+        "method": "POST"
+    },
+    "postApiPlayAdminOwnerSession": {
+        "path": "/api/play-admin/owner-session",
+        "method": "POST"
+    },
+    "postApiPlayAdminPermissionGroups": {
+        "path": "/api/play-admin/permission-groups",
+        "method": "POST"
+    },
+    "postApiPlayAdminPlayers": {
+        "path": "/api/play-admin/players",
+        "method": "POST"
+    },
+    "postApiPlayAdminPlayersBatch": {
+        "path": "/api/play-admin/players/batch",
+        "method": "POST"
+    },
+    "postApiPlayAdminPlayersSubjectId": {
+        "path": "/api/play-admin/players/{subjectId}",
+        "method": "POST"
+    },
+    "postApiPlayAdminSelfPassword": {
+        "path": "/api/play-admin/self-password",
+        "method": "POST"
+    },
+    "postApiPlayAdminVerify": {
+        "path": "/api/play-admin/verify",
+        "method": "POST"
+    },
+    "postApiPlayerAuthLogin": {
+        "path": "/api/player-auth/login",
+        "method": "POST"
+    },
+    "postApiPlayerAuthLogout": {
+        "path": "/api/player-auth/logout",
+        "method": "POST"
+    },
+    "postApiPlayerAuthRegister": {
+        "path": "/api/player-auth/register",
+        "method": "POST"
+    },
+    "postApiPlayerInternalLogout": {
+        "path": "/api/player-internal/logout",
+        "method": "POST"
+    },
+    "postApiPlayerInternalRuntimeIdentity": {
+        "path": "/api/player-internal/runtime-identity",
+        "method": "POST"
+    },
+    "postApiPlayLogout": {
+        "path": "/api/play-logout",
+        "method": "POST"
+    },
+    "postApiPlayPresence": {
+        "path": "/api/play-presence",
+        "method": "POST"
+    },
+    "postApiProjectModels": {
+        "path": "/api/project-models",
+        "method": "POST"
+    },
+    "postApiProjectScripts": {
+        "path": "/api/project-scripts",
+        "method": "POST"
+    },
+    "postApiProjectSkins": {
+        "path": "/api/project-skins",
+        "method": "POST"
+    },
+    "postApiRuntimeEnsure": {
+        "path": "/api/runtime/ensure",
+        "method": "POST"
+    },
+    "postApiSystemBackups": {
+        "path": "/api/system/backups",
+        "method": "POST"
+    },
+    "postBlock": {
+        "path": "/block",
+        "method": "POST"
+    },
+    "postBlockHash": {
+        "path": "/block/{hash}",
+        "method": "POST"
+    },
+    "postCreateSession": {
+        "path": "/createSession",
+        "method": "POST"
+    },
+    "postInternalSaveLocalProject": {
+        "path": "/internal/save-local-project",
+        "method": "POST"
+    },
+    "postLocalRuntimeDestroy": {
+        "path": "/__local_runtime/destroy",
+        "method": "POST"
+    },
+    "postLocalRuntimeStart": {
+        "path": "/__local_runtime/start",
+        "method": "POST"
+    },
+    "postRoomRoomIdLocalRuntimeDestroy": {
+        "path": "/__room/{roomId}/__local_runtime/destroy",
+        "method": "POST"
+    },
+    "putApiCreatorModelsId": {
+        "path": "/api/creator-models/{id}",
+        "method": "PUT"
+    },
+    "putApiCreatorV1ProjectsProjectIdScriptsSideEntry": {
+        "path": "/api/creator/v1/projects/{projectId}/scripts/{side}/{entry}",
+        "method": "PUT"
+    },
+    "putApiCreatorV1ProjectsProjectIdStorageScopeSpace": {
+        "path": "/api/creator/v1/projects/{projectId}/storage/{scope}/{space}",
+        "method": "PUT"
+    },
+    "putApiLocalDefaultSkin": {
+        "path": "/api/local/default-skin",
+        "method": "PUT"
+    },
+    "putApiLocalModelsId": {
+        "path": "/api/local/models/{id}",
+        "method": "PUT"
+    }
+};
+class ApiClientError extends Error {
+    constructor(message, response, details){
+        super(message);
+        this.response = response;
+        this.details = details;
+        this.name = 'ApiClientError';
+    }
+}
+class ApiClient {
+    async unwrap(pending) {
+        const result = await pending;
+        if (result.error !== undefined || !result.response.ok) {
+            const details = result.error;
+            const message = typeof details === 'string' && details.trim() ? details : details && typeof details === 'object' && 'message' in details && typeof details.message === 'string' ? details.message : this.defaultErrorMessage;
+            throw new ApiClientError(message, result.response, details);
+        }
+        return result.data;
+    }
+    deleteApiCreatorModelsIdRaw(...init) {
+        return this.paths["/api/creator-models/{id}"].DELETE(...init);
+    }
+    deleteApiCreatorModelsId(...init) {
+        return this.unwrap(this.deleteApiCreatorModelsIdRaw(...init));
+    }
+    deleteApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scene/session"].DELETE(...init);
+    }
+    deleteApiCreatorV1ProjectsProjectIdSceneSession(...init) {
+        return this.unwrap(this.deleteApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init));
+    }
+    deleteApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/storage/{scope}/{space}"].DELETE(...init);
+    }
+    deleteApiCreatorV1ProjectsProjectIdStorageScopeSpace(...init) {
+        return this.unwrap(this.deleteApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init));
+    }
+    deleteApiLocalModelsIdRaw(...init) {
+        return this.paths["/api/local/models/{id}"].DELETE(...init);
+    }
+    deleteApiLocalModelsId(...init) {
+        return this.unwrap(this.deleteApiLocalModelsIdRaw(...init));
+    }
+    deleteApiLocalProjectsIdRaw(...init) {
+        return this.paths["/api/local-projects/{id}"].DELETE(...init);
+    }
+    deleteApiLocalProjectsId(...init) {
+        return this.unwrap(this.deleteApiLocalProjectsIdRaw(...init));
+    }
+    deleteApiPlayAdminAdminsIdRaw(...init) {
+        return this.paths["/api/play-admin/admins/{id}"].DELETE(...init);
+    }
+    deleteApiPlayAdminAdminsId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminAdminsIdRaw(...init));
+    }
+    deleteApiPlayAdminContainerResourceGroupsIdRaw(...init) {
+        return this.paths["/api/play-admin/container-resource-groups/{id}"].DELETE(...init);
+    }
+    deleteApiPlayAdminContainerResourceGroupsId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminContainerResourceGroupsIdRaw(...init));
+    }
+    deleteApiPlayAdminContainersPermanentMapIdRaw(...init) {
+        return this.paths["/api/play-admin/containers/{permanentMapId}"].DELETE(...init);
+    }
+    deleteApiPlayAdminContainersPermanentMapId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminContainersPermanentMapIdRaw(...init));
+    }
+    deleteApiPlayAdminImportRaw(...init) {
+        return this.paths["/api/play-admin/import"].DELETE(...init);
+    }
+    deleteApiPlayAdminImport(...init) {
+        return this.unwrap(this.deleteApiPlayAdminImportRaw(...init));
+    }
+    deleteApiPlayAdminLibraryImportRaw(...init) {
+        return this.paths["/api/play-admin/library/import"].DELETE(...init);
+    }
+    deleteApiPlayAdminLibraryImport(...init) {
+        return this.unwrap(this.deleteApiPlayAdminLibraryImportRaw(...init));
+    }
+    deleteApiPlayAdminLibrarySectionRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}"].DELETE(...init);
+    }
+    deleteApiPlayAdminLibrarySection(...init) {
+        return this.unwrap(this.deleteApiPlayAdminLibrarySectionRaw(...init));
+    }
+    deleteApiPlayAdminLibrarySectionIdRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}/{id}"].DELETE(...init);
+    }
+    deleteApiPlayAdminLibrarySectionId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminLibrarySectionIdRaw(...init));
+    }
+    deleteApiPlayAdminPermissionGroupsIdRaw(...init) {
+        return this.paths["/api/play-admin/permission-groups/{id}"].DELETE(...init);
+    }
+    deleteApiPlayAdminPermissionGroupsId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminPermissionGroupsIdRaw(...init));
+    }
+    deleteApiPlayAdminPlayersSubjectIdRaw(...init) {
+        return this.paths["/api/play-admin/players/{subjectId}"].DELETE(...init);
+    }
+    deleteApiPlayAdminPlayersSubjectId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminPlayersSubjectIdRaw(...init));
+    }
+    deleteApiPlayAdminWorldsIdRaw(...init) {
+        return this.paths["/api/play-admin/worlds/{id}"].DELETE(...init);
+    }
+    deleteApiPlayAdminWorldsId(...init) {
+        return this.unwrap(this.deleteApiPlayAdminWorldsIdRaw(...init));
+    }
+    deleteApiPlayPresenceRaw(...init) {
+        return this.paths["/api/play-presence"].DELETE(...init);
+    }
+    deleteApiPlayPresence(...init) {
+        return this.unwrap(this.deleteApiPlayPresenceRaw(...init));
+    }
+    deleteApiRuntimeContainerIdRaw(...init) {
+        return this.paths["/api/runtime/{container_id}"].DELETE(...init);
+    }
+    deleteApiRuntimeContainerId(...init) {
+        return this.unwrap(this.deleteApiRuntimeContainerIdRaw(...init));
+    }
+    getApiAuthSessionRaw(...init) {
+        return this.paths["/api/auth/session"].GET(...init);
+    }
+    getApiAuthSession(...init) {
+        return this.unwrap(this.getApiAuthSessionRaw(...init));
+    }
+    getApiBackupsArchiveDownloadRaw(...init) {
+        return this.paths["/api/backups/{archive}/download"].GET(...init);
+    }
+    getApiBackupsArchiveDownload(...init) {
+        return this.unwrap(this.getApiBackupsArchiveDownloadRaw(...init));
+    }
+    getApiConfigSlugRaw(...init) {
+        return this.paths["/api/config/{slug}"].GET(...init);
+    }
+    getApiConfigSlug(...init) {
+        return this.unwrap(this.getApiConfigSlugRaw(...init));
+    }
+    getApiCreatorModelsRaw(...init) {
+        return this.paths["/api/creator-models"].GET(...init);
+    }
+    getApiCreatorModels(...init) {
+        return this.unwrap(this.getApiCreatorModelsRaw(...init));
+    }
+    getApiCreatorModelsBlobsHashRaw(...init) {
+        return this.paths["/api/creator-models/blobs/{hash}"].GET(...init);
+    }
+    getApiCreatorModelsBlobsHash(...init) {
+        return this.unwrap(this.getApiCreatorModelsBlobsHashRaw(...init));
+    }
+    getApiCreatorModelsIdExportRaw(...init) {
+        return this.paths["/api/creator-models/{id}/export"].GET(...init);
+    }
+    getApiCreatorModelsIdExport(...init) {
+        return this.unwrap(this.getApiCreatorModelsIdExportRaw(...init));
+    }
+    getApiCreatorPermissionsRaw(...init) {
+        return this.paths["/api/creator-permissions"].GET(...init);
+    }
+    getApiCreatorPermissions(...init) {
+        return this.unwrap(this.getApiCreatorPermissionsRaw(...init));
+    }
+    getApiCreatorV1HealthRaw(...init) {
+        return this.paths["/api/creator/v1/health"].GET(...init);
+    }
+    getApiCreatorV1Health(...init) {
+        return this.unwrap(this.getApiCreatorV1HealthRaw(...init));
+    }
+    getApiCreatorV1ProjectsRaw(...init) {
+        return this.paths["/api/creator/v1/projects"].GET(...init);
+    }
+    getApiCreatorV1Projects(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdResourcesRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/resources"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdResources(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdResourcesRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdRuntimeRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/runtime"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdRuntime(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdRuntimeRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdRuntimeEventsRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/runtime/events"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdRuntimeEvents(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdRuntimeEventsRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdSceneActionRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scene/action"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdSceneAction(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdSceneActionRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdSceneCaptureRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scene/capture"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdSceneCapture(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdSceneCaptureRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scene/session"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdSceneSession(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdScriptsRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scripts"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdScripts(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdScriptsRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdScriptsSideEntryRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scripts/{side}/{entry}"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdScriptsSideEntry(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdScriptsSideEntryRaw(...init));
+    }
+    getApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/storage/{scope}/{space}"].GET(...init);
+    }
+    getApiCreatorV1ProjectsProjectIdStorageScopeSpace(...init) {
+        return this.unwrap(this.getApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init));
+    }
+    getApiDiagnosticsArchiveDownloadRaw(...init) {
+        return this.paths["/api/diagnostics/{archive}/download"].GET(...init);
+    }
+    getApiDiagnosticsArchiveDownload(...init) {
+        return this.unwrap(this.getApiDiagnosticsArchiveDownloadRaw(...init));
+    }
+    getApiDocsAssetRaw(...init) {
+        return this.paths["/api/docs/{asset}"].GET(...init);
+    }
+    getApiDocsAsset(...init) {
+        return this.unwrap(this.getApiDocsAssetRaw(...init));
+    }
+    getApiGetMapInfoRaw(...init) {
+        return this.paths["/api/getMapInfo"].GET(...init);
+    }
+    getApiGetMapInfo(...init) {
+        return this.unwrap(this.getApiGetMapInfoRaw(...init));
+    }
+    getApiHealthRaw(...init) {
+        return this.paths["/api/health"].GET(...init);
+    }
+    getApiHealth(...init) {
+        return this.unwrap(this.getApiHealthRaw(...init));
+    }
+    getApiHealthCheckRaw(...init) {
+        return this.paths["/api/health-check"].GET(...init);
+    }
+    getApiHealthCheck(...init) {
+        return this.unwrap(this.getApiHealthCheckRaw(...init));
+    }
+    getApiLocalBlobsHashRaw(...init) {
+        return this.paths["/api/local/blobs/{hash}"].GET(...init);
+    }
+    getApiLocalBlobsHash(...init) {
+        return this.unwrap(this.getApiLocalBlobsHashRaw(...init));
+    }
+    getApiLocalDefaultSkinRaw(...init) {
+        return this.paths["/api/local/default-skin"].GET(...init);
+    }
+    getApiLocalDefaultSkin(...init) {
+        return this.unwrap(this.getApiLocalDefaultSkinRaw(...init));
+    }
+    getApiLocalModelsRaw(...init) {
+        return this.paths["/api/local/models"].GET(...init);
+    }
+    getApiLocalModels(...init) {
+        return this.unwrap(this.getApiLocalModelsRaw(...init));
+    }
+    getApiLocalModelsIdRaw(...init) {
+        return this.paths["/api/local/models/{id}"].GET(...init);
+    }
+    getApiLocalModelsId(...init) {
+        return this.unwrap(this.getApiLocalModelsIdRaw(...init));
+    }
+    getApiLocalModelsIdExportRaw(...init) {
+        return this.paths["/api/local/models/{id}/export"].GET(...init);
+    }
+    getApiLocalModelsIdExport(...init) {
+        return this.unwrap(this.getApiLocalModelsIdExportRaw(...init));
+    }
+    getApiLocalModelsIdSnapshotsRaw(...init) {
+        return this.paths["/api/local/models/{id}/snapshots"].GET(...init);
+    }
+    getApiLocalModelsIdSnapshots(...init) {
+        return this.unwrap(this.getApiLocalModelsIdSnapshotsRaw(...init));
+    }
+    getApiLocalProjectsRaw(...init) {
+        return this.paths["/api/local-projects"].GET(...init);
+    }
+    getApiLocalProjects(...init) {
+        return this.unwrap(this.getApiLocalProjectsRaw(...init));
+    }
+    getApiLocalProjectsAssetDistributionRaw(...init) {
+        return this.paths["/api/local-projects/asset-distribution"].GET(...init);
+    }
+    getApiLocalProjectsAssetDistribution(...init) {
+        return this.unwrap(this.getApiLocalProjectsAssetDistributionRaw(...init));
+    }
+    getApiLocalProjectsIdExportRaw(...init) {
+        return this.paths["/api/local-projects/{id}/export"].GET(...init);
+    }
+    getApiLocalProjectsIdExport(...init) {
+        return this.unwrap(this.getApiLocalProjectsIdExportRaw(...init));
+    }
+    getApiLocalProjectsIdMapsRaw(...init) {
+        return this.paths["/api/local-projects/{id}/maps"].GET(...init);
+    }
+    getApiLocalProjectsIdMaps(...init) {
+        return this.unwrap(this.getApiLocalProjectsIdMapsRaw(...init));
+    }
+    getApiLocalProjectsIdRuntimeRaw(...init) {
+        return this.paths["/api/local-projects/{id}/runtime"].GET(...init);
+    }
+    getApiLocalProjectsIdRuntime(...init) {
+        return this.unwrap(this.getApiLocalProjectsIdRuntimeRaw(...init));
+    }
+    getApiLocalProjectsIdSnapshotsRaw(...init) {
+        return this.paths["/api/local-projects/{id}/snapshots"].GET(...init);
+    }
+    getApiLocalProjectsIdSnapshots(...init) {
+        return this.unwrap(this.getApiLocalProjectsIdSnapshotsRaw(...init));
+    }
+    getApiOpenapiRaw(...init) {
+        return this.paths["/api/openapi"].GET(...init);
+    }
+    getApiOpenapi(...init) {
+        return this.unwrap(this.getApiOpenapiRaw(...init));
+    }
+    getApiOperationsIdRaw(...init) {
+        return this.paths["/api/operations/{id}"].GET(...init);
+    }
+    getApiOperationsId(...init) {
+        return this.unwrap(this.getApiOperationsIdRaw(...init));
+    }
+    getApiPlayAdminActivityRaw(...init) {
+        return this.paths["/api/play-admin/activity"].GET(...init);
+    }
+    getApiPlayAdminActivity(...init) {
+        return this.unwrap(this.getApiPlayAdminActivityRaw(...init));
+    }
+    getApiPlayAdminAdminsRaw(...init) {
+        return this.paths["/api/play-admin/admins"].GET(...init);
+    }
+    getApiPlayAdminAdmins(...init) {
+        return this.unwrap(this.getApiPlayAdminAdminsRaw(...init));
+    }
+    getApiPlayAdminContainerResourceGroupsRaw(...init) {
+        return this.paths["/api/play-admin/container-resource-groups"].GET(...init);
+    }
+    getApiPlayAdminContainerResourceGroups(...init) {
+        return this.unwrap(this.getApiPlayAdminContainerResourceGroupsRaw(...init));
+    }
+    getApiPlayAdminContainersRaw(...init) {
+        return this.paths["/api/play-admin/containers"].GET(...init);
+    }
+    getApiPlayAdminContainers(...init) {
+        return this.unwrap(this.getApiPlayAdminContainersRaw(...init));
+    }
+    getApiPlayAdminIdentityBansRaw(...init) {
+        return this.paths["/api/play-admin/identity-bans"].GET(...init);
+    }
+    getApiPlayAdminIdentityBans(...init) {
+        return this.unwrap(this.getApiPlayAdminIdentityBansRaw(...init));
+    }
+    getApiPlayAdminImportRaw(...init) {
+        return this.paths["/api/play-admin/import"].GET(...init);
+    }
+    getApiPlayAdminImport(...init) {
+        return this.unwrap(this.getApiPlayAdminImportRaw(...init));
+    }
+    getApiPlayAdminImportResourceRaw(...init) {
+        return this.paths["/api/play-admin/import-resource"].GET(...init);
+    }
+    getApiPlayAdminImportResource(...init) {
+        return this.unwrap(this.getApiPlayAdminImportResourceRaw(...init));
+    }
+    getApiPlayAdminLibraryImportRaw(...init) {
+        return this.paths["/api/play-admin/library/import"].GET(...init);
+    }
+    getApiPlayAdminLibraryImport(...init) {
+        return this.unwrap(this.getApiPlayAdminLibraryImportRaw(...init));
+    }
+    getApiPlayAdminLibrarySectionRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}"].GET(...init);
+    }
+    getApiPlayAdminLibrarySection(...init) {
+        return this.unwrap(this.getApiPlayAdminLibrarySectionRaw(...init));
+    }
+    getApiPlayAdminLibrarySectionIdRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}/{id}"].GET(...init);
+    }
+    getApiPlayAdminLibrarySectionId(...init) {
+        return this.unwrap(this.getApiPlayAdminLibrarySectionIdRaw(...init));
+    }
+    getApiPlayAdminPermissionGroupsRaw(...init) {
+        return this.paths["/api/play-admin/permission-groups"].GET(...init);
+    }
+    getApiPlayAdminPermissionGroups(...init) {
+        return this.unwrap(this.getApiPlayAdminPermissionGroupsRaw(...init));
+    }
+    getApiPlayAdminPlayersRaw(...init) {
+        return this.paths["/api/play-admin/players"].GET(...init);
+    }
+    getApiPlayAdminPlayers(...init) {
+        return this.unwrap(this.getApiPlayAdminPlayersRaw(...init));
+    }
+    getApiPlayAdminPlayersExportRaw(...init) {
+        return this.paths["/api/play-admin/players/export"].GET(...init);
+    }
+    getApiPlayAdminPlayersExport(...init) {
+        return this.unwrap(this.getApiPlayAdminPlayersExportRaw(...init));
+    }
+    getApiPlayAdminPlayersOverviewRaw(...init) {
+        return this.paths["/api/play-admin/players/overview"].GET(...init);
+    }
+    getApiPlayAdminPlayersOverview(...init) {
+        return this.unwrap(this.getApiPlayAdminPlayersOverviewRaw(...init));
+    }
+    getApiPlayAdminPlayersSubjectIdRaw(...init) {
+        return this.paths["/api/play-admin/players/{subjectId}"].GET(...init);
+    }
+    getApiPlayAdminPlayersSubjectId(...init) {
+        return this.unwrap(this.getApiPlayAdminPlayersSubjectIdRaw(...init));
+    }
+    getApiPlayAdminStatusRaw(...init) {
+        return this.paths["/api/play-admin/status"].GET(...init);
+    }
+    getApiPlayAdminStatus(...init) {
+        return this.unwrap(this.getApiPlayAdminStatusRaw(...init));
+    }
+    getApiPlayAdminVerifyRaw(...init) {
+        return this.paths["/api/play-admin/verify"].GET(...init);
+    }
+    getApiPlayAdminVerify(...init) {
+        return this.unwrap(this.getApiPlayAdminVerifyRaw(...init));
+    }
+    getApiPlayAdminWorldsRaw(...init) {
+        return this.paths["/api/play-admin/worlds"].GET(...init);
+    }
+    getApiPlayAdminWorlds(...init) {
+        return this.unwrap(this.getApiPlayAdminWorldsRaw(...init));
+    }
+    getApiPlayAdminWorldsStatusRaw(...init) {
+        return this.paths["/api/play-admin/worlds/status"].GET(...init);
+    }
+    getApiPlayAdminWorldsStatus(...init) {
+        return this.unwrap(this.getApiPlayAdminWorldsStatusRaw(...init));
+    }
+    getApiPlayerAuthLoginRequiredRaw(...init) {
+        return this.paths["/api/player-auth/login-required"].GET(...init);
+    }
+    getApiPlayerAuthLoginRequired(...init) {
+        return this.unwrap(this.getApiPlayerAuthLoginRequiredRaw(...init));
+    }
+    getApiPlayerAuthSessionRaw(...init) {
+        return this.paths["/api/player-auth/session"].GET(...init);
+    }
+    getApiPlayerAuthSession(...init) {
+        return this.unwrap(this.getApiPlayerAuthSessionRaw(...init));
+    }
+    getApiPlayerInternalMapLibraryRaw(...init) {
+        return this.paths["/api/player-internal/map-library"].GET(...init);
+    }
+    getApiPlayerInternalMapLibrary(...init) {
+        return this.unwrap(this.getApiPlayerInternalMapLibraryRaw(...init));
+    }
+    getApiPlayerInternalRevocationsRaw(...init) {
+        return this.paths["/api/player-internal/revocations"].GET(...init);
+    }
+    getApiPlayerInternalRevocations(...init) {
+        return this.unwrap(this.getApiPlayerInternalRevocationsRaw(...init));
+    }
+    getApiPlayLibraryRaw(...init) {
+        return this.paths["/api/play-library"].GET(...init);
+    }
+    getApiPlayLibrary(...init) {
+        return this.unwrap(this.getApiPlayLibraryRaw(...init));
+    }
+    getApiPlayPresenceRaw(...init) {
+        return this.paths["/api/play-presence"].GET(...init);
+    }
+    getApiPlayPresence(...init) {
+        return this.unwrap(this.getApiPlayPresenceRaw(...init));
+    }
+    getApiPlayWorldsRaw(...init) {
+        return this.paths["/api/play-worlds"].GET(...init);
+    }
+    getApiPlayWorlds(...init) {
+        return this.unwrap(this.getApiPlayWorldsRaw(...init));
+    }
+    getApiProjectModelsRaw(...init) {
+        return this.paths["/api/project-models"].GET(...init);
+    }
+    getApiProjectModels(...init) {
+        return this.unwrap(this.getApiProjectModelsRaw(...init));
+    }
+    getApiProjectSkinPreviewsRaw(...init) {
+        return this.paths["/api/project-skin-previews"].GET(...init);
+    }
+    getApiProjectSkinPreviews(...init) {
+        return this.unwrap(this.getApiProjectSkinPreviewsRaw(...init));
+    }
+    getApiProjectSkinsRaw(...init) {
+        return this.paths["/api/project-skins"].GET(...init);
+    }
+    getApiProjectSkins(...init) {
+        return this.unwrap(this.getApiProjectSkinsRaw(...init));
+    }
+    getApiRuntimeContainerIdStatsRaw(...init) {
+        return this.paths["/api/runtime/{container_id}/stats"].GET(...init);
+    }
+    getApiRuntimeContainerIdStats(...init) {
+        return this.unwrap(this.getApiRuntimeContainerIdStatsRaw(...init));
+    }
+    getApiServerInfoRaw(...init) {
+        return this.paths["/api/server-info"].GET(...init);
+    }
+    getApiServerInfo(...init) {
+        return this.unwrap(this.getApiServerInfoRaw(...init));
+    }
+    getApiSessionRaw(...init) {
+        return this.paths["/api/session"].GET(...init);
+    }
+    getApiSession(...init) {
+        return this.unwrap(this.getApiSessionRaw(...init));
+    }
+    getApiSystemBackupsRaw(...init) {
+        return this.paths["/api/system/backups"].GET(...init);
+    }
+    getApiSystemBackups(...init) {
+        return this.unwrap(this.getApiSystemBackupsRaw(...init));
+    }
+    getApiSystemBackupsProjectIdNameRaw(...init) {
+        return this.paths["/api/system/backups/{projectId}/{name}"].GET(...init);
+    }
+    getApiSystemBackupsProjectIdName(...init) {
+        return this.unwrap(this.getApiSystemBackupsProjectIdNameRaw(...init));
+    }
+    getApiSystemStatusRaw(...init) {
+        return this.paths["/api/system/status"].GET(...init);
+    }
+    getApiSystemStatus(...init) {
+        return this.unwrap(this.getApiSystemStatusRaw(...init));
+    }
+    getBlockHashRaw(...init) {
+        return this.paths["/block/{hash}"].GET(...init);
+    }
+    getBlockHash(...init) {
+        return this.unwrap(this.getBlockHashRaw(...init));
+    }
+    getInternalCreatorPreviewRuntimeRaw(...init) {
+        return this.paths["/internal/creator-preview-runtime"].GET(...init);
+    }
+    getInternalCreatorPreviewRuntime(...init) {
+        return this.unwrap(this.getInternalCreatorPreviewRuntimeRaw(...init));
+    }
+    getInternalCreatorPreviewRuntimeEventsRaw(...init) {
+        return this.paths["/internal/creator-preview-runtime/events"].GET(...init);
+    }
+    getInternalCreatorPreviewRuntimeEvents(...init) {
+        return this.unwrap(this.getInternalCreatorPreviewRuntimeEventsRaw(...init));
+    }
+    getLocalRuntimeStatusRaw(...init) {
+        return this.paths["/__local_runtime/status"].GET(...init);
+    }
+    getLocalRuntimeStatus(...init) {
+        return this.unwrap(this.getLocalRuntimeStatusRaw(...init));
+    }
+    patchApiCreatorProfileRaw(...init) {
+        return this.paths["/api/creator-profile"].PATCH(...init);
+    }
+    patchApiCreatorProfile(...init) {
+        return this.unwrap(this.patchApiCreatorProfileRaw(...init));
+    }
+    patchApiLocalProjectsAssetDistributionRaw(...init) {
+        return this.paths["/api/local-projects/asset-distribution"].PATCH(...init);
+    }
+    patchApiLocalProjectsAssetDistribution(...init) {
+        return this.unwrap(this.patchApiLocalProjectsAssetDistributionRaw(...init));
+    }
+    patchApiLocalProjectsIdRaw(...init) {
+        return this.paths["/api/local-projects/{id}"].PATCH(...init);
+    }
+    patchApiLocalProjectsId(...init) {
+        return this.unwrap(this.patchApiLocalProjectsIdRaw(...init));
+    }
+    patchApiPlayAdminAdminsIdRaw(...init) {
+        return this.paths["/api/play-admin/admins/{id}"].PATCH(...init);
+    }
+    patchApiPlayAdminAdminsId(...init) {
+        return this.unwrap(this.patchApiPlayAdminAdminsIdRaw(...init));
+    }
+    patchApiPlayAdminContainerResourceGroupsIdRaw(...init) {
+        return this.paths["/api/play-admin/container-resource-groups/{id}"].PATCH(...init);
+    }
+    patchApiPlayAdminContainerResourceGroupsId(...init) {
+        return this.unwrap(this.patchApiPlayAdminContainerResourceGroupsIdRaw(...init));
+    }
+    patchApiPlayAdminLibrarySectionRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}"].PATCH(...init);
+    }
+    patchApiPlayAdminLibrarySection(...init) {
+        return this.unwrap(this.patchApiPlayAdminLibrarySectionRaw(...init));
+    }
+    patchApiPlayAdminLibrarySectionIdRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}/{id}"].PATCH(...init);
+    }
+    patchApiPlayAdminLibrarySectionId(...init) {
+        return this.unwrap(this.patchApiPlayAdminLibrarySectionIdRaw(...init));
+    }
+    patchApiPlayAdminPermissionGroupsIdRaw(...init) {
+        return this.paths["/api/play-admin/permission-groups/{id}"].PATCH(...init);
+    }
+    patchApiPlayAdminPermissionGroupsId(...init) {
+        return this.unwrap(this.patchApiPlayAdminPermissionGroupsIdRaw(...init));
+    }
+    patchApiPlayAdminPlayersSubjectIdRaw(...init) {
+        return this.paths["/api/play-admin/players/{subjectId}"].PATCH(...init);
+    }
+    patchApiPlayAdminPlayersSubjectId(...init) {
+        return this.unwrap(this.patchApiPlayAdminPlayersSubjectIdRaw(...init));
+    }
+    patchApiPlayAdminWorldsIdRaw(...init) {
+        return this.paths["/api/play-admin/worlds/{id}"].PATCH(...init);
+    }
+    patchApiPlayAdminWorldsId(...init) {
+        return this.unwrap(this.patchApiPlayAdminWorldsIdRaw(...init));
+    }
+    patchApiPlayerInternalMapLibraryRaw(...init) {
+        return this.paths["/api/player-internal/map-library"].PATCH(...init);
+    }
+    patchApiPlayerInternalMapLibrary(...init) {
+        return this.unwrap(this.patchApiPlayerInternalMapLibraryRaw(...init));
+    }
+    patchApiPlayerInternalProfileRaw(...init) {
+        return this.paths["/api/player-internal/profile"].PATCH(...init);
+    }
+    patchApiPlayerInternalProfile(...init) {
+        return this.unwrap(this.patchApiPlayerInternalProfileRaw(...init));
+    }
+    patchApiPlayLibraryRaw(...init) {
+        return this.paths["/api/play-library"].PATCH(...init);
+    }
+    patchApiPlayLibrary(...init) {
+        return this.unwrap(this.patchApiPlayLibraryRaw(...init));
+    }
+    patchApiPlayProfileRaw(...init) {
+        return this.paths["/api/play-profile"].PATCH(...init);
+    }
+    patchApiPlayProfile(...init) {
+        return this.unwrap(this.patchApiPlayProfileRaw(...init));
+    }
+    postApiAuthLoginRaw(...init) {
+        return this.paths["/api/auth/login"].POST(...init);
+    }
+    postApiAuthLogin(...init) {
+        return this.unwrap(this.postApiAuthLoginRaw(...init));
+    }
+    postApiAuthLogoutRaw(...init) {
+        return this.paths["/api/auth/logout"].POST(...init);
+    }
+    postApiAuthLogout(...init) {
+        return this.unwrap(this.postApiAuthLogoutRaw(...init));
+    }
+    postApiAuthRegisterRaw(...init) {
+        return this.paths["/api/auth/register"].POST(...init);
+    }
+    postApiAuthRegister(...init) {
+        return this.unwrap(this.postApiAuthRegisterRaw(...init));
+    }
+    postApiBackupsUploadRaw(...init) {
+        return this.paths["/api/backups/upload"].POST(...init);
+    }
+    postApiBackupsUpload(...init) {
+        return this.unwrap(this.postApiBackupsUploadRaw(...init));
+    }
+    postApiCommandsNameRaw(...init) {
+        return this.paths["/api/commands/{name}"].POST(...init);
+    }
+    postApiCommandsName(...init) {
+        return this.unwrap(this.postApiCommandsNameRaw(...init));
+    }
+    postApiCreateSessionRaw(...init) {
+        return this.paths["/api/createSession"].POST(...init);
+    }
+    postApiCreateSession(...init) {
+        return this.unwrap(this.postApiCreateSessionRaw(...init));
+    }
+    postApiCreatorLogoutRaw(...init) {
+        return this.paths["/api/creator-logout"].POST(...init);
+    }
+    postApiCreatorLogout(...init) {
+        return this.unwrap(this.postApiCreatorLogoutRaw(...init));
+    }
+    postApiCreatorModelsImportRaw(...init) {
+        return this.paths["/api/creator-models/import"].POST(...init);
+    }
+    postApiCreatorModelsImport(...init) {
+        return this.unwrap(this.postApiCreatorModelsImportRaw(...init));
+    }
+    postApiCreatorV1ProjectsProjectIdRuntimeRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/runtime"].POST(...init);
+    }
+    postApiCreatorV1ProjectsProjectIdRuntime(...init) {
+        return this.unwrap(this.postApiCreatorV1ProjectsProjectIdRuntimeRaw(...init));
+    }
+    postApiCreatorV1ProjectsProjectIdSceneActionsRequestIdRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scene/actions/{requestId}"].POST(...init);
+    }
+    postApiCreatorV1ProjectsProjectIdSceneActionsRequestId(...init) {
+        return this.unwrap(this.postApiCreatorV1ProjectsProjectIdSceneActionsRequestIdRaw(...init));
+    }
+    postApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scene/session"].POST(...init);
+    }
+    postApiCreatorV1ProjectsProjectIdSceneSession(...init) {
+        return this.unwrap(this.postApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init));
+    }
+    postApiLocalBlobRaw(...init) {
+        return this.paths["/api/local/blob"].POST(...init);
+    }
+    postApiLocalBlob(...init) {
+        return this.unwrap(this.postApiLocalBlobRaw(...init));
+    }
+    postApiLocalModelsRaw(...init) {
+        return this.paths["/api/local/models"].POST(...init);
+    }
+    postApiLocalModels(...init) {
+        return this.unwrap(this.postApiLocalModelsRaw(...init));
+    }
+    postApiLocalModelsImportRaw(...init) {
+        return this.paths["/api/local/models/import"].POST(...init);
+    }
+    postApiLocalModelsImport(...init) {
+        return this.unwrap(this.postApiLocalModelsImportRaw(...init));
+    }
+    postApiLocalProjectsRaw(...init) {
+        return this.paths["/api/local-projects"].POST(...init);
+    }
+    postApiLocalProjects(...init) {
+        return this.unwrap(this.postApiLocalProjectsRaw(...init));
+    }
+    postApiLocalProjectsIdMapsRaw(...init) {
+        return this.paths["/api/local-projects/{id}/maps"].POST(...init);
+    }
+    postApiLocalProjectsIdMaps(...init) {
+        return this.unwrap(this.postApiLocalProjectsIdMapsRaw(...init));
+    }
+    postApiLocalProjectsIdPackageRaw(...init) {
+        return this.paths["/api/local-projects/{id}/package"].POST(...init);
+    }
+    postApiLocalProjectsIdPackage(...init) {
+        return this.unwrap(this.postApiLocalProjectsIdPackageRaw(...init));
+    }
+    postApiLocalProjectsIdPublishRaw(...init) {
+        return this.paths["/api/local-projects/{id}/publish"].POST(...init);
+    }
+    postApiLocalProjectsIdPublish(...init) {
+        return this.unwrap(this.postApiLocalProjectsIdPublishRaw(...init));
+    }
+    postApiLocalProjectsIdRuntimeRaw(...init) {
+        return this.paths["/api/local-projects/{id}/runtime"].POST(...init);
+    }
+    postApiLocalProjectsIdRuntime(...init) {
+        return this.unwrap(this.postApiLocalProjectsIdRuntimeRaw(...init));
+    }
+    postApiLocalProjectsIdSnapshotsRaw(...init) {
+        return this.paths["/api/local-projects/{id}/snapshots"].POST(...init);
+    }
+    postApiLocalProjectsIdSnapshots(...init) {
+        return this.unwrap(this.postApiLocalProjectsIdSnapshotsRaw(...init));
+    }
+    postApiLocalProjectsImportRaw(...init) {
+        return this.paths["/api/local-projects/import"].POST(...init);
+    }
+    postApiLocalProjectsImport(...init) {
+        return this.unwrap(this.postApiLocalProjectsImportRaw(...init));
+    }
+    postApiPlayAdminAdminsRaw(...init) {
+        return this.paths["/api/play-admin/admins"].POST(...init);
+    }
+    postApiPlayAdminAdmins(...init) {
+        return this.unwrap(this.postApiPlayAdminAdminsRaw(...init));
+    }
+    postApiPlayAdminContainerResourceGroupsRaw(...init) {
+        return this.paths["/api/play-admin/container-resource-groups"].POST(...init);
+    }
+    postApiPlayAdminContainerResourceGroups(...init) {
+        return this.unwrap(this.postApiPlayAdminContainerResourceGroupsRaw(...init));
+    }
+    postApiPlayAdminContainersRaw(...init) {
+        return this.paths["/api/play-admin/containers"].POST(...init);
+    }
+    postApiPlayAdminContainers(...init) {
+        return this.unwrap(this.postApiPlayAdminContainersRaw(...init));
+    }
+    postApiPlayAdminIdentityBansRaw(...init) {
+        return this.paths["/api/play-admin/identity-bans"].POST(...init);
+    }
+    postApiPlayAdminIdentityBans(...init) {
+        return this.unwrap(this.postApiPlayAdminIdentityBansRaw(...init));
+    }
+    postApiPlayAdminImportRaw(...init) {
+        return this.paths["/api/play-admin/import"].POST(...init);
+    }
+    postApiPlayAdminImport(...init) {
+        return this.unwrap(this.postApiPlayAdminImportRaw(...init));
+    }
+    postApiPlayAdminLibraryImportRaw(...init) {
+        return this.paths["/api/play-admin/library/import"].POST(...init);
+    }
+    postApiPlayAdminLibraryImport(...init) {
+        return this.unwrap(this.postApiPlayAdminLibraryImportRaw(...init));
+    }
+    postApiPlayAdminLibrarySectionRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}"].POST(...init);
+    }
+    postApiPlayAdminLibrarySection(...init) {
+        return this.unwrap(this.postApiPlayAdminLibrarySectionRaw(...init));
+    }
+    postApiPlayAdminLibrarySectionIdRaw(...init) {
+        return this.paths["/api/play-admin/library/{section}/{id}"].POST(...init);
+    }
+    postApiPlayAdminLibrarySectionId(...init) {
+        return this.unwrap(this.postApiPlayAdminLibrarySectionIdRaw(...init));
+    }
+    postApiPlayAdminLoginRaw(...init) {
+        return this.paths["/api/play-admin/login"].POST(...init);
+    }
+    postApiPlayAdminLogin(...init) {
+        return this.unwrap(this.postApiPlayAdminLoginRaw(...init));
+    }
+    postApiPlayAdminLogoutRaw(...init) {
+        return this.paths["/api/play-admin/logout"].POST(...init);
+    }
+    postApiPlayAdminLogout(...init) {
+        return this.unwrap(this.postApiPlayAdminLogoutRaw(...init));
+    }
+    postApiPlayAdminMaintenanceRaw(...init) {
+        return this.paths["/api/play-admin/maintenance"].POST(...init);
+    }
+    postApiPlayAdminMaintenance(...init) {
+        return this.unwrap(this.postApiPlayAdminMaintenanceRaw(...init));
+    }
+    postApiPlayAdminOwnerSessionRaw(...init) {
+        return this.paths["/api/play-admin/owner-session"].POST(...init);
+    }
+    postApiPlayAdminOwnerSession(...init) {
+        return this.unwrap(this.postApiPlayAdminOwnerSessionRaw(...init));
+    }
+    postApiPlayAdminPermissionGroupsRaw(...init) {
+        return this.paths["/api/play-admin/permission-groups"].POST(...init);
+    }
+    postApiPlayAdminPermissionGroups(...init) {
+        return this.unwrap(this.postApiPlayAdminPermissionGroupsRaw(...init));
+    }
+    postApiPlayAdminPlayersRaw(...init) {
+        return this.paths["/api/play-admin/players"].POST(...init);
+    }
+    postApiPlayAdminPlayers(...init) {
+        return this.unwrap(this.postApiPlayAdminPlayersRaw(...init));
+    }
+    postApiPlayAdminPlayersBatchRaw(...init) {
+        return this.paths["/api/play-admin/players/batch"].POST(...init);
+    }
+    postApiPlayAdminPlayersBatch(...init) {
+        return this.unwrap(this.postApiPlayAdminPlayersBatchRaw(...init));
+    }
+    postApiPlayAdminPlayersSubjectIdRaw(...init) {
+        return this.paths["/api/play-admin/players/{subjectId}"].POST(...init);
+    }
+    postApiPlayAdminPlayersSubjectId(...init) {
+        return this.unwrap(this.postApiPlayAdminPlayersSubjectIdRaw(...init));
+    }
+    postApiPlayAdminSelfPasswordRaw(...init) {
+        return this.paths["/api/play-admin/self-password"].POST(...init);
+    }
+    postApiPlayAdminSelfPassword(...init) {
+        return this.unwrap(this.postApiPlayAdminSelfPasswordRaw(...init));
+    }
+    postApiPlayAdminVerifyRaw(...init) {
+        return this.paths["/api/play-admin/verify"].POST(...init);
+    }
+    postApiPlayAdminVerify(...init) {
+        return this.unwrap(this.postApiPlayAdminVerifyRaw(...init));
+    }
+    postApiPlayerAuthLoginRaw(...init) {
+        return this.paths["/api/player-auth/login"].POST(...init);
+    }
+    postApiPlayerAuthLogin(...init) {
+        return this.unwrap(this.postApiPlayerAuthLoginRaw(...init));
+    }
+    postApiPlayerAuthLogoutRaw(...init) {
+        return this.paths["/api/player-auth/logout"].POST(...init);
+    }
+    postApiPlayerAuthLogout(...init) {
+        return this.unwrap(this.postApiPlayerAuthLogoutRaw(...init));
+    }
+    postApiPlayerAuthRegisterRaw(...init) {
+        return this.paths["/api/player-auth/register"].POST(...init);
+    }
+    postApiPlayerAuthRegister(...init) {
+        return this.unwrap(this.postApiPlayerAuthRegisterRaw(...init));
+    }
+    postApiPlayerInternalLogoutRaw(...init) {
+        return this.paths["/api/player-internal/logout"].POST(...init);
+    }
+    postApiPlayerInternalLogout(...init) {
+        return this.unwrap(this.postApiPlayerInternalLogoutRaw(...init));
+    }
+    postApiPlayerInternalRuntimeIdentityRaw(...init) {
+        return this.paths["/api/player-internal/runtime-identity"].POST(...init);
+    }
+    postApiPlayerInternalRuntimeIdentity(...init) {
+        return this.unwrap(this.postApiPlayerInternalRuntimeIdentityRaw(...init));
+    }
+    postApiPlayLogoutRaw(...init) {
+        return this.paths["/api/play-logout"].POST(...init);
+    }
+    postApiPlayLogout(...init) {
+        return this.unwrap(this.postApiPlayLogoutRaw(...init));
+    }
+    postApiPlayPresenceRaw(...init) {
+        return this.paths["/api/play-presence"].POST(...init);
+    }
+    postApiPlayPresence(...init) {
+        return this.unwrap(this.postApiPlayPresenceRaw(...init));
+    }
+    postApiProjectModelsRaw(...init) {
+        return this.paths["/api/project-models"].POST(...init);
+    }
+    postApiProjectModels(...init) {
+        return this.unwrap(this.postApiProjectModelsRaw(...init));
+    }
+    postApiProjectScriptsRaw(...init) {
+        return this.paths["/api/project-scripts"].POST(...init);
+    }
+    postApiProjectScripts(...init) {
+        return this.unwrap(this.postApiProjectScriptsRaw(...init));
+    }
+    postApiProjectSkinsRaw(...init) {
+        return this.paths["/api/project-skins"].POST(...init);
+    }
+    postApiProjectSkins(...init) {
+        return this.unwrap(this.postApiProjectSkinsRaw(...init));
+    }
+    postApiRuntimeEnsureRaw(...init) {
+        return this.paths["/api/runtime/ensure"].POST(...init);
+    }
+    postApiRuntimeEnsure(...init) {
+        return this.unwrap(this.postApiRuntimeEnsureRaw(...init));
+    }
+    postApiSystemBackupsRaw(...init) {
+        return this.paths["/api/system/backups"].POST(...init);
+    }
+    postApiSystemBackups(...init) {
+        return this.unwrap(this.postApiSystemBackupsRaw(...init));
+    }
+    postBlockRaw(...init) {
+        return this.paths["/block"].POST(...init);
+    }
+    postBlock(...init) {
+        return this.unwrap(this.postBlockRaw(...init));
+    }
+    postBlockHashRaw(...init) {
+        return this.paths["/block/{hash}"].POST(...init);
+    }
+    postBlockHash(...init) {
+        return this.unwrap(this.postBlockHashRaw(...init));
+    }
+    postCreateSessionRaw(...init) {
+        return this.paths["/createSession"].POST(...init);
+    }
+    postCreateSession(...init) {
+        return this.unwrap(this.postCreateSessionRaw(...init));
+    }
+    postInternalSaveLocalProjectRaw(...init) {
+        return this.paths["/internal/save-local-project"].POST(...init);
+    }
+    postInternalSaveLocalProject(...init) {
+        return this.unwrap(this.postInternalSaveLocalProjectRaw(...init));
+    }
+    postLocalRuntimeDestroyRaw(...init) {
+        return this.paths["/__local_runtime/destroy"].POST(...init);
+    }
+    postLocalRuntimeDestroy(...init) {
+        return this.unwrap(this.postLocalRuntimeDestroyRaw(...init));
+    }
+    postLocalRuntimeStartRaw(...init) {
+        return this.paths["/__local_runtime/start"].POST(...init);
+    }
+    postLocalRuntimeStart(...init) {
+        return this.unwrap(this.postLocalRuntimeStartRaw(...init));
+    }
+    postRoomRoomIdLocalRuntimeDestroyRaw(...init) {
+        return this.paths["/__room/{roomId}/__local_runtime/destroy"].POST(...init);
+    }
+    postRoomRoomIdLocalRuntimeDestroy(...init) {
+        return this.unwrap(this.postRoomRoomIdLocalRuntimeDestroyRaw(...init));
+    }
+    putApiCreatorModelsIdRaw(...init) {
+        return this.paths["/api/creator-models/{id}"].PUT(...init);
+    }
+    putApiCreatorModelsId(...init) {
+        return this.unwrap(this.putApiCreatorModelsIdRaw(...init));
+    }
+    putApiCreatorV1ProjectsProjectIdScriptsSideEntryRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/scripts/{side}/{entry}"].PUT(...init);
+    }
+    putApiCreatorV1ProjectsProjectIdScriptsSideEntry(...init) {
+        return this.unwrap(this.putApiCreatorV1ProjectsProjectIdScriptsSideEntryRaw(...init));
+    }
+    putApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init) {
+        return this.paths["/api/creator/v1/projects/{projectId}/storage/{scope}/{space}"].PUT(...init);
+    }
+    putApiCreatorV1ProjectsProjectIdStorageScopeSpace(...init) {
+        return this.unwrap(this.putApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init));
+    }
+    putApiLocalDefaultSkinRaw(...init) {
+        return this.paths["/api/local/default-skin"].PUT(...init);
+    }
+    putApiLocalDefaultSkin(...init) {
+        return this.unwrap(this.putApiLocalDefaultSkinRaw(...init));
+    }
+    putApiLocalModelsIdRaw(...init) {
+        return this.paths["/api/local/models/{id}"].PUT(...init);
+    }
+    putApiLocalModelsId(...init) {
+        return this.unwrap(this.putApiLocalModelsIdRaw(...init));
+    }
+    constructor(options = {}){
+        const { csrfCookie, csrfHeader = 'X-CSRF-Token', defaultErrorMessage = '请求失败，请稍后重试', ...clientOptions } = options;
+        this.defaultErrorMessage = defaultErrorMessage;
+        this.raw = createClient({
+            credentials: 'same-origin',
+            ...clientOptions
+        });
+        if (csrfCookie) {
+            this.raw.use({
+                onRequest ({ request }) {
+                    if (typeof document === 'undefined' || /^(GET|HEAD|OPTIONS)$/i.test(request.method)) {
+                        return request;
+                    }
+                    const prefix = `${csrfCookie}=`;
+                    const entry = document.cookie.split('; ').find((item)=>item.startsWith(prefix));
+                    if (entry) {
+                        request.headers.set(csrfHeader, decodeURIComponent(entry.slice(prefix.length)));
+                    }
+                    return request;
+                }
+            });
+        }
+        this.paths = wrapAsPathBasedClient(this.raw);
+    }
+}
+const createApiClient = (options = {})=>new ApiClient(options);
+
+export { ApiClient, ApiClientError, AvatarBodyPart, ContentType, CopyEvent, CreativeMode, ModelErrorCode, ModelType, Permissions, REQUEST_TIMEOUT, ScriptType, ShareScriptErrorCode, SortOrder, SourceType, UserInfoPermissions, apiOperations, createApiClient, playerAdminRoutes };

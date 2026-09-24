@@ -1,6 +1,6 @@
 import { IntlShape } from 'react-intl';
 import { Toast } from '@box/box-design/';
-import { ShareScriptErrorCode } from '@box/apis/src/createra/data-contracts';
+import { ShareScriptErrorCode } from '@box/apis';
 import { FileState } from '@box/schema/code-editor/code-editor-common-state';
 import { AssetType } from '@box/schema/project/project-rda';
 

@@ -4,8 +4,6 @@ const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
 const sourceFiles = [
-  'internals/apis/src/createra/createra.ts',
-  'internals/apis/dist/createra/createra.d.ts',
   'internals/apis/dist/index.js',
   'internals/schema/api/js/api.ts',
   'services/game-server/src/script/script-shell.ts',
@@ -49,6 +47,20 @@ for (const file of sourceFiles) {
 }
 
 for (const removed of [
+  'internals/apis/src/ai',
+  'internals/apis/src/content',
+  'internals/apis/src/createra',
+  'internals/apis/src/model',
+  'internals/apis/src/data-contracts.ts',
+  'internals/apis/src/http-client.ts',
+  'internals/apis/src/interface.ts',
+  'internals/apis/dist/ai',
+  'internals/apis/dist/content',
+  'internals/apis/dist/createra',
+  'internals/apis/dist/model',
+  'internals/apis/dist/data-contracts.d.ts',
+  'internals/apis/dist/http-client.d.ts',
+  'internals/apis/dist/interface.d.ts',
   'internals/apis/src/java',
   'internals/apis/src/maas',
   'internals/apis/src/group',
@@ -116,5 +128,39 @@ for (const file of [
   assert.equal(source.includes('SCRIPT_WHITELIST'), false, `${file} still exposes SCRIPT_WHITELIST`)
   assert.equal(source.includes('scriptWhiteList'), false, `${file} still exposes scriptWhiteList`)
 }
+
+// These modules are the local-engine HTTP boundary. Keep generated @box/apis
+// calls as the default so endpoint paths, payloads and error handling cannot
+// silently drift away from OpenAPI.
+const generatedApiConsumers = [
+  'apps/game/pages/index.tsx',
+  'apps/game/pages/play-system.tsx',
+  'apps/game/src/apis/local-api/index.ts',
+  'apps/game/server/player-service-client.ts',
+  'apps/game/server/map-container-admin.ts',
+  'apps/voxa/src/apis/index.ts',
+  'services/game-server/src/createServer.ts',
+  'services/game-server/src/player/player-revocation-poller.ts',
+  'apps/deployment-manager/src/transport.js',
+  'apps/local-engine/src/runtime-container-client.js',
+]
+
+for (const file of generatedApiConsumers) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8')
+  assert.match(source, /@box\/apis/, `${file} must consume @box/apis`)
+  assert.doesNotMatch(source, /\baxios\b/i, `${file} must not use axios directly`)
+
+  const directFetches = source.match(/(?:globalThis\.)?\bfetch\s*\(/g) || []
+  const allowedFetches = file === 'apps/voxa/src/apis/index.ts' ? ['globalThis.fetch('] : []
+  assert.deepEqual(directFetches, allowedFetches, `${file} must not bypass ApiClient`)
+
+  if (file !== 'apps/game/pages/index.tsx') {
+    assert.equal(source.includes('XMLHttpRequest'), false, `${file} must not use XMLHttpRequest`)
+  }
+}
+
+const playHome = fs.readFileSync(path.join(root, 'apps/game/pages/index.tsx'), 'utf8')
+assert.equal((playHome.match(/XMLHttpRequest/g) || []).length, 1)
+assert.match(playHome, /apiOperations\.postApiPlayAdminImport\.path/)
 
 console.log('platform API and analytics removal checks passed')

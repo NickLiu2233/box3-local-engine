@@ -706,6 +706,30 @@ fs.writeFileSync(
   }
   await engineApi.migrateMapGroupProject(100017201)
   assert.equal(migrationAttempts, 3, 'map-group migration should wait for a transient cloud lock')
+  migrationAttempts = 0
+  global.fetch = async (url) => {
+    const parsed = new URL(String(url))
+    if (parsed.pathname === '/engine/map-group-project/migration') {
+      migrationAttempts += 1
+      return new Response(JSON.stringify({ code: 500, data: null, msg: 'lock failed' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    if (parsed.pathname === '/engine/map/hash') {
+      return new Response(JSON.stringify({ code: 200, data: actualHash, msg: '' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+    throw new Error(`unexpected API ${parsed.pathname}`)
+  }
+  assert.deepEqual(
+    await engineApi.resolveMapHashForMigration(100017201, 'edit'),
+    { hash: actualHash, mapGroupMigrationLocked: true },
+    'a readable map must remain exportable when the optional group migration write is locked',
+  )
+  assert.equal(migrationAttempts, 3)
   global.fetch = originalFetch
   if (originalMigrationRetries === undefined)
     delete process.env.BOX_MIGRATOR_MAP_GROUP_MIGRATION_RETRIES

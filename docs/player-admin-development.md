@@ -4,19 +4,38 @@
 
 ## 模块地图
 
-| 模块                                             | 职责                                             | 不应承担的职责                                     |
-| ------------------------------------------------ | ------------------------------------------------ | -------------------------------------------------- |
-| `src/pages/index.tsx`                            | 会话启动、URL 视图切换、顶层布局与跨页面弹窗编排 | 重复定义传输数据结构、拼接资源路径、实现独立工作流 |
-| `src/pages/*.tsx`                                | 一个完整的后台工作流，例如资源组查询、编辑和删除 | 直接读取 Cookie、绕过统一请求客户端                |
-| `src/player-admin-api.ts`                        | 同源凭据、CSRF、错误归一化和路径构造             | React 页面状态或授权决定                           |
-| `src/player-admin-types.ts`                      | UI 与管理接口之间的传输记录                      | React 状态、服务端持久化实现                       |
-| `src/player-admin-format.ts`                     | 无副作用的时间、容量等展示格式化                 | 网络请求或 React 依赖                              |
-| `src/permission-tree.tsx`                        | 权限树及查看/编辑依赖展开                        | 服务端授权；服务端必须独立检查                     |
-| `apps/game/shared/player-admin-*.ts`             | 能力、菜单、URL view 和可见性规则                | 会话或数据库写入                                   |
-| `apps/game/pages/api/play-admin/`                | 路由适配、方法限制、进入服务端授权模块           | 仅靠前端隐藏来保护操作                             |
-| `apps/game/server/player-admin-authorization.ts` | 后台身份解析与最终授权                           | 页面展示逻辑                                       |
+| 模块                                             | 职责                                          | 不应承担的职责                             |
+| ------------------------------------------------ | --------------------------------------------- | ------------------------------------------ |
+| `src/pages/index.tsx`                            | Umi 路由入口，只导出后台 Shell                | 页面状态、数据请求或业务流程               |
+| `src/pages/shell/player-admin-page.tsx`          | 会话启动、URL 视图切换、顶层布局与跨页面编排  | 具体列表列定义、重复传输类型和底层请求实现 |
+| `src/pages/<domain>/`                            | 按 access、players、security 等领域组织工作流 | 直接读取 Cookie、绕过统一请求客户端        |
+| `src/player-admin-api.ts`                        | 创建统一的 `@box/apis` 客户端并配置 CSRF      | React 页面状态、路由字符串或授权决定       |
+| `src/player-admin-types.ts`                      | 从 `@box/apis` 契约派生后台需要的传输类型     | 手工复制服务端 DTO、服务端持久化实现       |
+| `src/player-admin-format.ts`                     | 无副作用的时间、容量等展示格式化              | 网络请求或 React 依赖                      |
+| `src/pages/access/permission-tree.tsx`           | 权限树及查看/编辑依赖展开                     | 服务端授权；服务端必须独立检查             |
+| `src/pages/shell/navigation-menu.tsx`            | 菜单分类、名称和展开状态                      | 重复定义 capability 或服务端访问规则       |
+| `apps/game/shared/player-admin-*.ts`             | 能力、菜单、URL view 和可见性规则             | 会话或数据库写入                           |
+| `apps/game/pages/api/play-admin/`                | 路由适配、方法限制、进入服务端授权模块        | 仅靠前端隐藏来保护操作                     |
+| `apps/game/server/player-admin-authorization.ts` | 后台身份解析与最终授权                        | 页面展示逻辑                               |
 
-`playerAdminApi` 是所有页面的请求 seam：它统一携带同源 Cookie、为变更请求附加 CSRF header，并把 JSON 错误变成 `Error`。新增页面先在 `playerAdminRoutes` 增加路径构造器，再调用该模块；不要在多处重复手写带 ID 的 URL 或转义逻辑。
+`playerAdminApi` 是所有页面的请求 seam：它使用 `@box/apis` 生成客户端，统一携带同源 Cookie、为变更请求附加 CSRF header，并把 JSON 错误变成 `ApiClientError`。新增或修改接口时先更新 OpenAPI 契约并运行 `npm run api:generate`，页面再调用生成的 operation 方法；不要重复手写带 ID 的 URL、请求 interface 或另一套通用 fetch 封装。
+
+## 启动开发环境
+
+玩家管理前端和服务端是两个进程。推荐从仓库根目录启动 Player Service 与开发数据库：
+
+```bash
+rush dev-creator --infra
+```
+
+然后在另一个终端启动 Umi：
+
+```bash
+cd apps/player-admin
+npm run dev
+```
+
+访问 `http://127.0.0.1:8000/`。开发代理把 `/api` 转发到 `3124`。`401` 表示服务正常但尚未登录；`503` 通常表示 Player Service 无法连接 PostgreSQL 或其下游 Play 管理接口。生产环境不会运行 8000 端口，后台静态文件由 Player Service 提供。
 
 ## 页面开发约定
 

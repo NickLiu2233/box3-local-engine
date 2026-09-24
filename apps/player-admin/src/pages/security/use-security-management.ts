@@ -1,7 +1,7 @@
 import { message } from 'antd'
 import { useCallback, useState } from 'react'
 
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { Activity, IdentityBan } from '../../player-admin-types'
 
 /** Owns paged audit records and active IP/device bans. */
@@ -24,14 +24,16 @@ export function useSecurityManagement() {
   const loadActivity = useCallback(async () => {
     setActivityLoading(true)
     try {
-      const result = await api<{ events: Activity[]; total: number }>(
-        `${routes.activity}?${new URLSearchParams({
-          page: String(activityPage),
-          pageSize: String(activityPageSize),
-          kind: activityKind,
-          search: activitySearch,
-        })}`,
-      )
+      const result = await api.getApiPlayAdminActivity({
+        params: {
+          query: {
+            page: String(activityPage),
+            pageSize: String(activityPageSize),
+            kind: activityKind,
+            search: activitySearch,
+          },
+        },
+      })
       setActivity(result.events || [])
       setActivityTotal(result.total || 0)
     } catch (error) {
@@ -44,15 +46,16 @@ export function useSecurityManagement() {
   const loadIdentityBans = useCallback(async () => {
     setIdentityBanLoading(true)
     try {
-      const query = new URLSearchParams({
-        search: identityBanSearch,
-        kind: identityBanKind,
-        page: String(identityBanPage),
-        pageSize: String(identityBanPageSize),
+      const result = await api.getApiPlayAdminIdentityBans({
+        params: {
+          query: {
+            search: identityBanSearch,
+            kind: identityBanKind,
+            page: String(identityBanPage),
+            pageSize: String(identityBanPageSize),
+          },
+        },
       })
-      const result = await api<{ bans: IdentityBan[]; total: number }>(
-        `${routes.identityBans}?${query}`,
-      )
       setIdentityBans(result.bans || [])
       setIdentityBanTotal(result.total || 0)
     } catch (error) {
@@ -64,7 +67,7 @@ export function useSecurityManagement() {
 
   const revokeIdentityBan = async (ban: IdentityBan) => {
     try {
-      await api(routes.identityBans, { method: 'POST', body: JSON.stringify({ banId: ban.id }) })
+      await api.postApiPlayAdminIdentityBans({ body: { banId: ban.id } })
       message.success(`${ban.kind === 'ip' ? 'IP' : '设备'}封禁已解除`)
       await loadIdentityBans()
     } catch (error) {

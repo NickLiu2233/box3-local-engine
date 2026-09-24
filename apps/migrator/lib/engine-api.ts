@@ -113,6 +113,26 @@ export function resolveMapHash(mapId: number, mode: EngineMode) {
   return engineApiRequest<string>('/engine/map/hash', { mapId, mode })
 }
 
+export async function resolveMapHashForMigration(mapId: number, mode: EngineMode) {
+  let mapGroupMigrationLocked = false
+  if (mode === 'edit') {
+    try {
+      await migrateMapGroupProject(mapId)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!/\block failed\b/i.test(message)) throw error
+      // The map-group migration is a cloud-side write used to upgrade legacy
+      // shared metadata. A stale/concurrent lock must not prevent exporting a
+      // map whose current permission root can already be read.
+      mapGroupMigrationLocked = true
+    }
+  }
+  return {
+    hash: await resolveMapHash(mapId, mode),
+    mapGroupMigrationLocked,
+  }
+}
+
 export async function resolveModel(modelId: number, input: ModelLookupInput) {
   const pageSize = 100
   const maxPages = positiveInteger('BOX_MIGRATOR_MODEL_LOOKUP_PAGES', 20)

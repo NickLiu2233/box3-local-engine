@@ -1,25 +1,31 @@
-import axios from 'axios';
-
-import { Permissions } from '@box/apis';
+import { ApiClient, Permissions } from '@box/apis';
 
 import { getToken } from '../utils/token';
 
-export const cancelSource = axios.CancelToken.source();
+const unauthorizedHandlers = new Set<() => void>();
 
-const axiosInstance = axios.create({
-  baseURL: '/api/local',
-  withCredentials: false,
-});
+function notifyUnauthorized() {
+  for (const handler of unauthorizedHandlers) handler();
+}
 
-axiosInstance.interceptors.request.use(({ cancelToken, headers, ...config }) => {
+function apiClient(baseUrl = '') {
   const token = getToken();
-  if (token) headers.authorization = token;
-  return {
-    cancelToken: cancelToken ?? cancelSource.token,
-    headers,
-    ...config,
-  };
-});
+  return new ApiClient({
+    baseUrl,
+    ...(token ? { headers: { Authorization: token } } : {}),
+    fetch: async (request) => {
+      const response = await globalThis.fetch(request);
+      if (response.status === 401) notifyUnauthorized();
+      return response;
+    },
+    defaultErrorMessage: '本地 VOXA 请求失败',
+  });
+}
+
+export function onApiUnauthorized(handler: () => void) {
+  unauthorizedHandlers.add(handler);
+  return () => unauthorizedHandlers.delete(handler);
+}
 
 function isEmbeddedInEngine() {
   if (typeof window === 'undefined') return false;
@@ -72,13 +78,20 @@ function parentEditStorageURL(hash = '') {
 }
 
 async function storeLocalBlob(file: Blob) {
-  const response = await fetch('/api/local/blob', {
-    method: 'POST',
+  const result = await apiClient().postApiLocalBlobRaw({
+    body: file as never,
+    bodySerializer: (body) => body as unknown as BodyInit,
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
   });
-  if (!response.ok) throw new Error((await response.text()) || '本地文件保存失败');
-  return String((await response.json()).hash || '');
+  const data = (result.data || result.error || {}) as { hash?: string; message?: string };
+  if (!result.response.ok) throw new Error(data.message || '本地文件保存失败');
+  return String(data.hash || '');
+}
+
+function parentStorageApi() {
+  const storageURL = parentEditStorageURL();
+  if (!storageURL) throw new Error('无法识别创作端本地存储地址');
+  return apiClient(storageURL.replace(/\/block$/, ''));
 }
 
 async function storeBlob(file?: Blob) {
@@ -86,13 +99,13 @@ async function storeBlob(file?: Blob) {
   const localHash = await storeLocalBlob(file);
   if (!isEmbeddedInEngine()) return localHash;
 
-  const storageURL = parentEditStorageURL();
-  if (!storageURL) throw new Error('无法识别创作端本地存储地址');
-  const response = await fetch(storageURL, { method: 'POST', body: file });
-  if (!response.ok) {
-    throw new Error((await response.text()) || '保存到当前地图失败');
-  }
-  const projectHash = (await response.text()).trim();
+  const result = await parentStorageApi().postBlockRaw({
+    body: file as never,
+    bodySerializer: (body) => body as unknown as BodyInit,
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+  });
+  if (!result.response.ok) throw new Error('保存到当前地图失败');
+  const projectHash = String(result.data || '').trim();
   if (projectHash !== localHash) {
     throw new Error('VOXA 与地图存储生成了不同的文件哈希');
   }
@@ -100,22 +113,26 @@ async function storeBlob(file?: Blob) {
 }
 
 async function retrieveBlob(hash: string, config: Record<string, unknown> = {}) {
-  try {
-    return await axios.request({
-      url: `/api/local/blobs/${encodeURIComponent(hash)}`,
-      ...config,
-    });
-  } catch (error) {
-    const parentURL = isEmbeddedInEngine() ? parentEditStorageURL(hash) : '';
-    if (!parentURL || !axios.isAxiosError(error) || error.response?.status !== 404) {
-      throw error;
-    }
-    return await axios.request({ url: parentURL, ...config });
+  const parseAs = config.responseType === 'arraybuffer' ? 'arrayBuffer' : undefined;
+  const local = await apiClient().getApiLocalBlobsHashRaw({
+    params: { path: { hash } },
+    ...(parseAs ? { parseAs } : {}),
+  });
+  if (local.response.ok) return { data: local.data };
+  if (!isEmbeddedInEngine() || local.response.status !== 404) {
+    const details = local.error as { message?: string } | undefined;
+    throw new Error(details?.message || `读取本地文件失败（HTTP ${local.response.status}）`);
   }
+  const parent = await parentStorageApi().getBlockHashRaw({
+    params: { path: { hash } },
+    ...(parseAs ? { parseAs } : {}),
+  });
+  if (!parent.response.ok) throw new Error(`读取地图文件失败（HTTP ${parent.response.status}）`);
+  return { data: parent.data };
 }
 
 async function saveModel(input: Record<string, unknown>) {
-  return (await axiosInstance.post('/models', input)).data;
+  return apiClient().postApiLocalModels({ body: input });
 }
 
 export const apis = {
@@ -129,19 +146,23 @@ export const apis = {
   },
   model: {
     async getModelDetailUsingGet(modelId: number, params: Record<string, unknown> = {}) {
-      return (await axiosInstance.get(`/models/${modelId}`, params)).data;
+      return apiClient().getApiLocalModelsId({
+        ...params,
+        params: { path: { id: String(modelId) } },
+      });
     },
     async getSnapshotsUsingGet(
       modelId: number,
       query: { autoSave: boolean },
       params: Record<string, unknown> = {},
     ) {
-      return (
-        await axiosInstance.get(`/models/${modelId}/snapshots`, {
-          ...params,
-          params: query,
-        })
-      ).data;
+      return apiClient().getApiLocalModelsIdSnapshots({
+        ...params,
+        params: {
+          path: { id: String(modelId) },
+          query: { autoSave: String(query.autoSave) },
+        },
+      });
     },
     async saveModelUsingPostV1(input: Record<string, unknown>) {
       return saveModel(input);
@@ -155,8 +176,12 @@ export const apis = {
   },
   models: {
     async getModelsUsingGetV2(query: Record<string, unknown>) {
-      const response = await axiosInstance.get('/models', { params: query });
-      return response.data;
+      const parameters = Object.fromEntries(
+        Object.entries(query)
+          .filter(([, value]) => value !== undefined && value !== null)
+          .map(([key, value]) => [key, String(value)]),
+      );
+      return apiClient().getApiLocalModels({ params: { query: parameters } });
     },
   },
   upload: {
@@ -181,7 +206,9 @@ export const apis = {
   openApisContent: {
     async getContentInfoByToken(value: string) {
       const modelId = Number(value);
-      const model = (await axiosInstance.get(`/models/${modelId}`)).data;
+      const model = await apiClient().getApiLocalModelsId({
+        params: { path: { id: String(modelId) } },
+      });
       return {
         contentType: 1,
         modelInfo: model,
@@ -189,7 +216,7 @@ export const apis = {
     },
   },
   openApisUser: {
-    async authToCookie() {
+    async authToCookie(_input?: unknown) {
       return true;
     },
   },
@@ -199,7 +226,3 @@ export const apis = {
     },
   },
 };
-
-export function getAxiosInstance() {
-  return axiosInstance;
-}

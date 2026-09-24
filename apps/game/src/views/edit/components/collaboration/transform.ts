@@ -1,5 +1,5 @@
 import { apis } from 'src/apis/local-api';
-import { CollaborationRoleVO } from '@box/apis/src/createra/data-contracts';
+import { CollaborationRoleVO } from '@box/apis';
 
 let roleNameIDMap: CollaborationRoleVO[] = [];
 export const refreshNameIDMap = async (mapId) => {

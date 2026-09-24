@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { ApiClient } from '@box/apis';
 import { PlayerAdminRequestError } from './player-admin-errors';
 
 type RuntimeMode = 'play' | 'creator';
@@ -232,13 +233,18 @@ export function runtimeControlURL(mode: RuntimeMode, projectId: string) {
   return `${runtimeBaseURL(mode)}${prefix}/${encodeURIComponent(projectId)}`;
 }
 
+function runtimeApi(mode: RuntimeMode, projectId: string) {
+  return new ApiClient({
+    baseUrl: runtimeControlURL(mode, projectId),
+    defaultErrorMessage: '地图运行时请求失败',
+  });
+}
+
 async function runtimeStatus(mode: RuntimeMode, projectId: string): Promise<RuntimeStatus> {
   try {
-    const response = await fetch(`${runtimeControlURL(mode, projectId)}/__local_runtime/status`, {
+    const result = await runtimeApi(mode, projectId).getLocalRuntimeStatus({
       signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) return { phase: 'unavailable', percent: 0, message: '运行时未启动' };
-    const result = await response.json();
+    }) as Record<string, any>;
     return {
       phase: String(result.phase || 'idle'), percent: Number(result.percent || 0), message: String(result.message || ''),
       updatedAt: result.updatedAt, cpuPercent: Number.isFinite(Number(result.cpuPercent)) ? Number(result.cpuPercent) : undefined,
@@ -270,9 +276,11 @@ async function playMaps() {
   const token = String(process.env.BOX_PLAY_ADMIN_TOKEN || '').trim();
   if (!token) return [];
   try {
-    const response = await fetch(`${runtimeBaseURL('play')}/api/play-admin/worlds`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
-    if (!response.ok) return [];
-    const result = await response.json();
+    const result = await new ApiClient({
+      baseUrl: runtimeBaseURL('play'),
+      headers: { Authorization: `Bearer ${token}` },
+      defaultErrorMessage: '读取游玩地图失败',
+    }).getApiPlayAdminWorlds({ signal: AbortSignal.timeout(5000) }) as Record<string, any>;
     return Array.isArray(result.worlds) ? result.worlds : [];
   } catch { return []; }
 }
@@ -280,11 +288,13 @@ async function playMaps() {
 async function playPresenceCounts(permanentMapIds: string[]) {
   if (!permanentMapIds.length) return {} as Record<string, number>;
   try {
-    const response = await fetch(`${runtimeBaseURL('play')}/api/play-presence?maps=${encodeURIComponent(permanentMapIds.join(','))}`, {
+    const result = await new ApiClient({
+      baseUrl: runtimeBaseURL('play'),
+      defaultErrorMessage: '读取地图在线状态失败',
+    }).getApiPlayPresence({
+      params: { query: { maps: permanentMapIds.join(',') } },
       signal: AbortSignal.timeout(5000),
-    });
-    if (!response.ok) return {} as Record<string, number>;
-    const result = await response.json();
+    }) as Record<string, any>;
     return Object.fromEntries(Object.entries(result?.maps || {}).map(([mapId, value]) => [mapId, Number((value as { onlineCount?: unknown })?.onlineCount || 0)]));
   } catch {
     return {} as Record<string, number>;
@@ -387,11 +397,15 @@ export async function getContainerCatalog(mode: RuntimeMode) {
 export async function destroyContainerRuntime(mode: RuntimeMode, projectId: string, roomId?: string) {
   if (!mapIdPattern.test(projectId)) throw new Error('地图 ID 格式无效');
   if (roomId && !/^[a-zA-Z0-9_-]{1,128}$/.test(roomId)) throw new Error('房间 ID 格式无效');
-  const suffix = roomId
-    ? `/__room/${encodeURIComponent(roomId)}/__local_runtime/destroy`
-    : '/__local_runtime/destroy';
-  const response = await fetch(`${runtimeControlURL(mode, projectId)}${suffix}`, { method: 'POST', signal: AbortSignal.timeout(10000) });
-  if (!response.ok && response.status !== 204) throw new Error(`销毁运行时失败（HTTP ${response.status}）`);
+  const api = runtimeApi(mode, projectId);
+  if (roomId) {
+    await api.postRoomRoomIdLocalRuntimeDestroy({
+      params: { path: { roomId } },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } else {
+    await api.postLocalRuntimeDestroy({ signal: AbortSignal.timeout(10_000) });
+  }
 }
 
 /**
@@ -402,10 +416,8 @@ export async function destroyContainerRuntime(mode: RuntimeMode, projectId: stri
 export async function restartContainerRuntime(mode: RuntimeMode, projectId: string) {
   if (!mapIdPattern.test(projectId)) throw new Error('地图 ID 格式无效');
   await destroyContainerRuntime(mode, projectId);
-  const response = await fetch(`${runtimeControlURL(mode, projectId)}/__local_runtime/start`, {
-    method: 'POST',
+  await runtimeApi(mode, projectId).postLocalRuntimeStart({
     headers: { 'x-box-runtime-restart': '1' },
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok && response.status !== 202) throw new Error(`启动运行时失败（HTTP ${response.status}）`);
 }

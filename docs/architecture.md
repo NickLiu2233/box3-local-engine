@@ -2,8 +2,8 @@
 
 ```text
 Creator / Play 浏览器 → apps/game → apps/local-engine → game-server
+Player Admin 浏览器 → apps/player-admin → Player Service → PostgreSQL
 VOXA → 本地模型工程
-Player Service → PostgreSQL
 Play 运行时 → PostgreSQL + 可选 Redis + 本地运行时缓存
 桌面启动器（Tauri）/ Linux Web 管理端（Rust HTTP） → Docker Compose
 ```
@@ -14,6 +14,7 @@ Play 运行时 → PostgreSQL + 可选 Redis + 本地运行时缓存
 | Play           | 已发布地图大厅与运行时           |
 | VOXA           | 本地模型、皮肤和动画编辑         |
 | Player Service | 账号、会话、权限、封禁与审计     |
+| Player Admin   | 玩家、权限、地图和容器管理界面   |
 | 登录门户       | 登录/注册参考实现或自建门户      |
 
 Creator 保存 `.boxproject`，Play 导入 `.boxplay`。主图和副图组成地图组：地图状态独立，资源与组数据可共享。服务端脚本是权威逻辑；客户端脚本不可信，不得保存秘密或执行权威判定。
@@ -38,3 +39,5 @@ Creator 保存 `.boxproject`，Play 导入 `.boxplay`。主图和副图组成地
 | 服主配置与密钥             | `.env`；启动器派生配置在 `.runtime.env` | 不应随意删除或公开             | 加密保存，禁止入库        |
 
 PostgreSQL 和文件目录保存不同类型的数据，不能互相替代；Redis 与运行时缓存均不是永久数据源。桌面启动器只管理 Docker，不参与 Creator、Play 或游戏请求链路。
+
+源码开发时 Player Admin 是独立 Umi 服务（`8000`），API 代理到 Player Service（`3124`）；发行构建把前端静态文件装入 Player Service 镜像。这个差异只影响开发热更新，不改变 API、会话、CSRF 或权限边界。

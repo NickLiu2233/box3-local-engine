@@ -16,10 +16,9 @@ import {
 } from '@box/voxa-project'
 import {
   getCloudEngineData,
-  migrateMapGroupProject,
   migrateProjectModels,
   resolveModel,
-  resolveMapHash,
+  resolveMapHashForMigration,
   type CloudEngineData,
   type EngineMode,
   type EngineModel,
@@ -1358,15 +1357,18 @@ export async function generateProjectArchive(
         detail: `正在通过引擎后端解析地图 ${mapId} 的 ${mode} 工程…`,
         currentHash: undefined,
       })
-      if (mode === 'edit') {
+      const { hash: mapHash, mapGroupMigrationLocked } = await resolveMapHashForMigration(
+        mapId,
+        mode,
+      )
+      if (mapGroupMigrationLocked) {
         report({
           stage: 'backend',
-          detail: '正在按 boxes 流程升级旧版工程组数据…',
+          detail: '云端工程组升级被占用，已使用当前可读工程继续导出…',
           currentHash: undefined,
         })
-        await migrateMapGroupProject(mapId)
       }
-      const resolvedHash = String((await resolveMapHash(mapId, mode)) || '').trim()
+      const resolvedHash = String(mapHash || '').trim()
       if (!EXACT_CID_PATTERN.test(resolvedHash)) {
         throw new Error('引擎后端没有返回有效的地图 permission hash')
       }

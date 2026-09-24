@@ -15,6 +15,8 @@
 | 接入登录、玩家账号或后台管理 | [玩家身份与管理后台](./player-identity.md)            | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
 | 配置 PostgreSQL/Redis        | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md)                                           |
 | 开发或修复代码               | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                                                              |
+| 开发玩家管理后台             | [管理后台开发说明](./player-admin-development.md)     | [Local Engine API 与 Swagger](./local-engine-api.md)、[玩家身份与管理后台](./player-identity.md)                                         |
+| 查看、调用或新增 HTTP API    | [Local Engine API 与 Swagger](./local-engine-api.md)  | [Player Service API](./player-service-api.md)、[Creator CLI HTTP API](./creator-cli-http-api.md)                                         |
 | Fork、提交 PR 和构建贡献包   | [贡献者指南](../CONTRIBUTING.md)                      | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)                                               |
 | 构建镜像和发行包             | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                                                          |
 | 会议或业务介绍               | [业务方案对比](./business-comparison.md)              | [系统架构](./architecture.md)                                                                                                            |
@@ -49,6 +51,7 @@
 ### 开发与兼容
 
 - [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
+- [Local Engine API 与 Swagger](./local-engine-api.md)：统一 OpenAPI 契约、生成客户端、Swagger 调试、鉴权和接口开发流程。
 - [领域模型](./domain-model.md)：地图组、地图资源、数据空间和管理权限的统一术语与约束。
 - [开发者与协作手册](./developer-guide.md)：从获取代码、安装依赖、配置和启动源码，到模块开发、测试、镜像部署验证、故障排查及提交 PR 的完整流程。
 - [贡献者指南](../CONTRIBUTING.md)：从 fork、分支、源码开发到测试、镜像和桌面 App 构建的完整流程。

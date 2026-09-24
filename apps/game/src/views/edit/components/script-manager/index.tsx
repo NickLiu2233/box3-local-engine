@@ -31,7 +31,7 @@ import { clientConfig } from 'src/config/client';
 import { usesCloudMapGroupAPIs } from 'configs/client';
 import { apis } from 'src/apis/local-api';
 import { Toast } from '@box/box-design';
-import { ScriptType } from '@box/apis/src/createra/data-contracts';
+import { ScriptType } from '@box/apis';
 import { ShareModal } from './share-modal';
 import { UnshareModal } from './unshare-modal';
 import { ensureFileInFileList } from 'src/views/edit/components/script-manager/utils';

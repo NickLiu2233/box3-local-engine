@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { apiClient } from '../../../src/apis/client';
 import { previewProjects } from '../project-fixtures';
 import type { LocalProject, ProjectStatus } from '../project-types';
 
@@ -20,9 +21,7 @@ export function useProjectCatalog({ uiPreview, setNotice }: Options) {
       setProjects(previewProjects);
       return;
     }
-    const response = await fetch('/api/local-projects');
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || '无法读取本地作品');
+    const data = (await apiClient.getApiLocalProjects()) as { projects: LocalProject[] };
     setProjects(data.projects);
   }, [uiPreview]);
 

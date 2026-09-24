@@ -7,6 +7,7 @@
  */
 import { invoke as tauriInvoke } from '@tauri-apps/api/core'
 import { listen as tauriListen } from '@tauri-apps/api/event'
+import { ApiClient } from '@box/apis'
 
 const WEB_TOKEN_KEY = 'box-server-manager-token'
 
@@ -31,29 +32,26 @@ export function hasWebManagerToken() {
   return Boolean(webToken())
 }
 
-async function authenticatedFetch(path, options = {}) {
-  const token = webToken()
-  if (!token) throw new Error('请先输入 Linux Web 管理令牌')
-  const response = await fetch(path, {
-    ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${token}` },
-    credentials: 'same-origin',
-  })
-  if (!response.ok) {
-    if (response.status === 401 && webToken() === token) setWebManagerToken('')
-    const body = await response.json().catch(() => ({}))
-    throw new Error(body.message || `请求失败：${response.status}`)
+function managerApi(authenticated = true) {
+  const token = authenticated ? webToken() : ''
+  if (authenticated && !token) throw new Error('请先输入 Linux Web 管理令牌')
+  return {
+    token,
+    api: new ApiClient({
+      credentials: 'same-origin',
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+      defaultErrorMessage: '服务器管理请求失败',
+    }),
   }
-  return response
 }
 
-async function publicFetch(path, options = {}) {
-  const response = await fetch(path, { ...options, credentials: 'same-origin' })
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}))
-    throw new Error(body.message || `请求失败：${response.status}`)
+function unwrapManagerResult(result, token = '') {
+  const body = result.data || result.error || {}
+  if (!result.response.ok) {
+    if (result.response.status === 401 && token && webToken() === token) setWebManagerToken('')
+    throw new Error(body.message || `请求失败：${result.response.status}`)
   }
-  return response
+  return { body, response: result.response }
 }
 
 // Explicit opt-in: background reads must never publish into the active task's progress.
@@ -99,11 +97,12 @@ function trackProgress(id) {
     if (stopped || !progressHandlers.size || !hasWebManagerToken()) return stop()
     controller = new AbortController()
     try {
-      const response = await authenticatedFetch(`/api/operations/${id}`, {
-        method: 'GET',
+      const { api, token } = managerApi()
+      const result = await api.getApiOperationsIdRaw({
+        params: { path: { id } },
         signal: controller.signal,
       })
-      const progress = await response.json()
+      const { body: progress } = unwrapManagerResult(result, token)
       if (!stopped) {
         for (const handler of [...progressHandlers]) {
           if (stopped || !progressHandlers.has(handler)) continue
@@ -130,13 +129,13 @@ export async function invoke(command, payload = {}) {
   const id = PROGRESS_COMMANDS.has(command) ? operationId() : null
   const stop = id && progressHandlers.size && hasWebManagerToken() ? trackProgress(id) : () => {}
   try {
-    const request = command === 'get_legal_notices' ? publicFetch : authenticatedFetch
-    const response = await request(`/api/commands/${encodeURIComponent(command)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(id ? { 'X-Operation-Id': id } : {}) },
-      body: JSON.stringify(payload),
+    const { api, token } = managerApi(command !== 'get_legal_notices')
+    const result = await api.postApiCommandsNameRaw({
+      params: { path: { name: command } },
+      headers: id ? { 'X-Operation-Id': id } : undefined,
+      body: payload,
     })
-    const body = await response.json()
+    const { body } = unwrapManagerResult(result, token)
     return body.result
   } finally {
     stop()
@@ -219,21 +218,24 @@ export async function exportDiagnosticsFile() {
 
 export async function uploadBackup(file) {
   if (!isWebManager()) throw new Error('此操作仅用于 Linux Web 管理端')
-  const response = await authenticatedFetch('/api/backups/upload', {
-    method: 'POST',
+  const { api, token } = managerApi()
+  const result = await api.postApiBackupsUploadRaw({
     headers: {
       'X-Backup-Name': encodeURIComponent(file.name),
     },
     body: file,
+    bodySerializer: (body) => body,
   })
-  const body = await response.json()
+  const { body } = unwrapManagerResult(result, token)
   return body.path
 }
 
-async function downloadAuthenticated(path, filename) {
-  const response = await authenticatedFetch(path)
+async function downloadAuthenticated(request, filename) {
+  const { api, token } = managerApi()
+  const { body } = unwrapManagerResult(await request(api), token)
+  const blob = body instanceof Blob ? body : new Blob([body])
   const link = document.createElement('a')
-  link.href = URL.createObjectURL(await response.blob())
+  link.href = URL.createObjectURL(blob)
   link.download = filename
   link.click()
   window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
@@ -241,10 +243,24 @@ async function downloadAuthenticated(path, filename) {
 
 export async function downloadDiagnostics(archive) {
   if (!isWebManager()) throw new Error('此操作仅用于 Linux Web 管理端')
-  await downloadAuthenticated(`/api/diagnostics/${encodeURIComponent(archive)}/download`, archive)
+  await downloadAuthenticated(
+    (api) =>
+      api.getApiDiagnosticsArchiveDownloadRaw({
+        params: { path: { archive } },
+        parseAs: 'blob',
+      }),
+    archive,
+  )
 }
 
 export async function downloadBackup(archive) {
   if (!isWebManager()) throw new Error('此操作仅用于 Linux Web 管理端')
-  await downloadAuthenticated(`/api/backups/${encodeURIComponent(archive)}/download`, archive)
+  await downloadAuthenticated(
+    (api) =>
+      api.getApiBackupsArchiveDownloadRaw({
+        params: { path: { archive } },
+        parseAs: 'blob',
+      }),
+    archive,
+  )
 }

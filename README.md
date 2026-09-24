@@ -15,6 +15,7 @@ BOX3 Local Engine 是一个本地优先的多人联机 3D 创作与游玩发行�
 | 玩家账号、权限组和后台管理       | [玩家身份与管理后台](docs/player-identity.md)            |
 | 配置端口、数据库和资源限制       | [配置参考](docs/configuration-reference.md)              |
 | 开发、测试或提交代码             | [贡献者指南](CONTRIBUTING.md)                            |
+| 查看或开发 HTTP API              | [Local Engine API 与 Swagger](docs/local-engine-api.md)  |
 | 构建镜像与发行包                 | [构建与分发](docs/release-and-distribution.md)           |
 | 查看全部专题                     | [文档中心](docs/README.md)                               |
 
@@ -33,11 +34,12 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 | Creator            | 地图作品、地图组、编辑、预览与发布     | `http://127.0.0.1:3127/` |
 | Play               | 地图大厅、公开房间和 Teleport 私有房间 | `http://127.0.0.1:3121/` |
 | VOXA               | 模型、皮肤和动画编辑                   | `http://127.0.0.1:3123/` |
-| Player Service     | 玩家登录、玩家管理后台、权限和审计     | `http://127.0.0.1:3124/` |
+| Player Service     | 玩家登录、后台 API、权限和审计         | `http://127.0.0.1:3124/` |
+| Player Admin       | 玩家管理后台前端（仅源码开发时独立）   | `http://127.0.0.1:8000/` |
 | Player Auth Portal | 可替换的参考登录/注册门户              | `http://127.0.0.1:3125/` |
 | Server Manager     | Linux 无桌面环境的 Web 管理端          | `http://127.0.0.1:3130/` |
 
-桌面版本使用 Tauri 启动器管理前五个业务服务；Linux 服务器版本使用 Server Manager 提供同一套配置和运维能力。完整离线镜像归档包含以上六个镜像。无桌面服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Server Manager。关闭桌面启动器窗口不会停止已经运行的容器。
+Player Admin 在发行镜像中构建进 Player Service，不是第七个业务镜像；只有源码开发时才由 Umi 在 `8000` 端口独立提供热更新，并把 `/api` 代理到 `3124`。桌面版本使用 Tauri 启动器管理五个业务服务；Linux 服务器版本使用 Server Manager 提供同一套配置和运维能力。完整离线镜像归档包含六个镜像。无桌面服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Server Manager。关闭桌面启动器窗口不会停止已经运行的容器。
 
 玩家管理后台由 Player Service 在根路径提供，当前主要功能包括：
 
@@ -52,19 +54,20 @@ Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理
 
 ## 技术栈
 
-| 领域                 | 主要技术                                              |
-| -------------------- | ----------------------------------------------------- |
-| Monorepo 与工程管理  | Rush.js、pnpm、Node.js、TypeScript                    |
-| Creator 与 Play      | Next.js、React、TypeScript、WebGL                     |
-| VOXA                 | Next.js、React、TypeScript、WebGL                     |
-| 玩家管理后台         | Umi Max、React、Ant Design、LESS                      |
-| 游戏服务端           | Node.js、TypeScript、WebSocket、自研 MuDB 协议        |
-| 桌面启动器           | Tauri 2、Rust、Vite                                   |
-| Linux 管理端         | Rust、Axum、Tokio                                     |
-| 玩家登录与许可证服务 | React、esbuild、Fastify、Ed25519                      |
-| 数据与资源存储       | PostgreSQL、Redis、文件系统内容寻址 Blob              |
-| 部署、交付与持续集成 | Docker、Docker Compose、GitHub Actions                |
-| 代码质量             | ESLint、Prettier、TypeScript 类型检查、自动化回归测试 |
+| 领域                 | 主要技术                                                   |
+| -------------------- | ---------------------------------------------------------- |
+| Monorepo 与工程管理  | Rush.js、pnpm、Node.js、TypeScript                         |
+| API 契约与交互文档   | OpenAPI 3.1、Swagger UI、openapi-typescript、openapi-fetch |
+| Creator 与 Play      | Next.js、React、TypeScript、WebGL                          |
+| VOXA                 | Next.js、React、TypeScript、WebGL                          |
+| 玩家管理后台         | Umi Max、React、Ant Design、LESS                           |
+| 游戏服务端           | Node.js、TypeScript、WebSocket、自研 MuDB 协议             |
+| 桌面启动器           | Tauri 2、Rust、Vite                                        |
+| Linux 管理端         | Rust、Axum、Tokio                                          |
+| 玩家登录与许可证服务 | React、esbuild、Fastify、Ed25519                           |
+| 数据与资源存储       | PostgreSQL、Redis、文件系统内容寻址 Blob                   |
+| 部署、交付与持续集成 | Docker、Docker Compose、GitHub Actions                     |
+| 代码质量             | ESLint、Prettier、TypeScript 类型检查、自动化回归测试      |
 
 Creator、Play 和 VOXA 的 3D 画面由浏览器 WebGL 渲染。Linux 服务端负责业务服务、权威游戏逻辑和地图运行容器，正常部署不要求 GPU。
 
@@ -85,28 +88,38 @@ Creator、Play 和 VOXA 的 3D 画面由浏览器 WebGL 渲染。Linux 服务端
 要求：Node.js `22.17.x`、Docker Compose v2。Rush 会自动安装仓库锁定的 Rush `5.156.0` 和 pnpm `10.12.1`；完整验证和桌面 App 构建还需要 Rust stable 及目标平台原生工具链。
 
 ```bash
-npm install --global @microsoft/rush@5.156.0
-rush install
+npm run install:all
 cp .env.docker.example .env
 ```
+
+根 npm 命令会自动下载仓库锁定的 Rush，无需预先全局安装。已经安装 Rush `5.156.0` 的贡献者也可以直接执行 `rush install`。
 
 启动完整源码开发栈：
 
 ```bash
-rush dev
+npm run dev
 ```
 
 `rush dev` 直接运行 Creator、Play、VOXA、Player Service 和参考登录门户源码，默认连接 `.env` 中已有的 PostgreSQL/Redis。没有可用基础服务时使用：
 
 ```bash
-rush dev --infra
+npm run dev:infra
 ```
 
 只启动 Creator 相关开发服务：
 
 ```bash
-rush dev-creator
+npm run dev:creator
 ```
+
+玩家管理后台前端需要另开终端启动：
+
+```bash
+cd apps/player-admin
+npm run dev
+```
+
+开发页面访问 `http://127.0.0.1:8000/`，请求会代理到 Player Service `3124`。发行模式不需要单独启动该前端。
 
 常用命令：
 
@@ -115,6 +128,8 @@ rush dev-creator
 | `rush dev`                                  | 启动完整源码开发栈                     |
 | `rush dev --infra`                          | 启动开发栈并启动开发 PostgreSQL/Redis  |
 | `rush dev-creator`                          | 启动 Creator 相关开发服务              |
+| `rush dev-creator --infra`                  | 启动 Creator 开发服务及基础设施        |
+| `cd apps/player-admin && npm run dev`       | 启动玩家管理前端热更新服务             |
 | `rush build --to <项目名>`                  | 按依赖顺序增量构建指定项目             |
 | `rush package-images --architecture <架构>` | 构建六个 Linux 镜像并导出归档          |
 | `rush export-images`                        | 不重建，导出本机已有的完整镜像集合     |
@@ -139,6 +154,12 @@ rush package-desktop --target macos-arm64
 
 ```text
 apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
+```
+
+按 `Ctrl-C` 停止源码服务。使用 `--infra` 启动的 PostgreSQL/Redis 不会删除数据卷；需要单独停止时执行：
+
+```bash
+docker compose --profile infra stop postgres redis
 ```
 
 ## 仓库结构

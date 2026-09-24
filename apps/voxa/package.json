@@ -24,7 +24,7 @@
     "@babel/plugin-transform-typescript": "7.18.8",
     "@babel/runtime": "7.28.4",
     "@box/ao-mesher": "workspace:0.2.10",
-    "@box/apis": "workspace:0.1.0",
+    "@box/apis": "workspace:0.2.0",
     "@box/box-design": "workspace:~1.0.6",
     "@box/env": "workspace:~0.3.0",
     "@box/icons": "workspace:~1.0.0",

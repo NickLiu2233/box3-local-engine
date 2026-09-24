@@ -2,7 +2,7 @@ import { Form, message } from 'antd'
 import { useCallback, useState } from 'react'
 
 import { capabilityLeaves } from './permission-tree'
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { Admin, Group } from '../../player-admin-types'
 
 type AdminFormValues = {
@@ -28,8 +28,8 @@ export function useOwnerManagement() {
     setLoading(true)
     try {
       const [adminResult, groupResult] = await Promise.all([
-        api<{ admins: Admin[] }>(routes.admins),
-        api<{ groups: Group[] }>(routes.permissionGroups),
+        api.getApiPlayAdminAdmins(),
+        api.getApiPlayAdminPermissionGroups(),
       ])
       setAdmins(adminResult.admins || [])
       setGroups(groupResult.groups || [])
@@ -76,10 +76,14 @@ export function useOwnerManagement() {
             ...(values.password ? { password: values.password } : {}),
           }
         : values
-      await api(editingAdmin ? routes.admin(editingAdmin.id) : routes.admins, {
-        method: editingAdmin ? 'PATCH' : 'POST',
-        body: JSON.stringify(payload),
-      })
+      if (editingAdmin) {
+        await api.patchApiPlayAdminAdminsId({
+          params: { path: { id: editingAdmin.id } },
+          body: payload,
+        })
+      } else {
+        await api.postApiPlayAdminAdmins({ body: payload })
+      }
       message.success(editingAdmin ? '管理账号已更新' : '管理账号已创建')
       closeAdminEditor()
       await load()
@@ -90,7 +94,7 @@ export function useOwnerManagement() {
 
   const removeAdmin = async (admin: Admin) => {
     try {
-      await api(routes.admin(admin.id), { method: 'DELETE' })
+      await api.deleteApiPlayAdminAdminsId({ params: { path: { id: admin.id } } })
       message.success('管理账号已删除')
       await load()
     } catch (error) {
@@ -115,10 +119,15 @@ export function useOwnerManagement() {
   const saveGroup = async () => {
     try {
       const values = await groupForm.validateFields()
-      await api(editingGroup ? routes.permissionGroup(editingGroup.id) : routes.permissionGroups, {
-        method: editingGroup ? 'PATCH' : 'POST',
-        body: JSON.stringify({ ...values, permissions: capabilityLeaves(values.permissions) }),
-      })
+      const payload = { ...values, permissions: capabilityLeaves(values.permissions) }
+      if (editingGroup) {
+        await api.patchApiPlayAdminPermissionGroupsId({
+          params: { path: { id: editingGroup.id } },
+          body: payload,
+        })
+      } else {
+        await api.postApiPlayAdminPermissionGroups({ body: payload })
+      }
       message.success(editingGroup ? '权限组已更新' : '权限组已创建')
       closeGroupEditor()
       await load()
@@ -129,7 +138,7 @@ export function useOwnerManagement() {
 
   const removeGroup = async (group: Group) => {
     try {
-      await api(routes.permissionGroup(group.id), { method: 'DELETE' })
+      await api.deleteApiPlayAdminPermissionGroupsId({ params: { path: { id: group.id } } })
       message.success('权限组已删除')
       await load()
     } catch (error) {

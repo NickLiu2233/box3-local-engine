@@ -17,7 +17,7 @@ import {
   PLAYER_ADMIN_VIEWS,
   playerAdminFallbackView,
 } from '../../../../game/shared/player-admin-navigation'
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { Actor, Detail, Player, View } from '../../player-admin-types'
 import { ContainerResourceGroupsPage } from '../containers/container-resource-groups-page'
 import { ContainerManagementPage } from '../containers/container-management-page'
@@ -93,7 +93,7 @@ export default function PlayerAdminPage() {
     [allowedViews, fallbackView],
   )
   const loadOverview = useCallback(async () => {
-    const result = await api<{ totals: Record<string, number> }>(routes.playerOverview)
+    const result = await api.getApiPlayAdminPlayersOverview()
     setTotals(result.totals || {})
   }, [])
   const load = useCallback(async () => {
@@ -123,7 +123,7 @@ export default function PlayerAdminPage() {
     void (async () => {
       setBooting(true)
       try {
-        const r = await api<{ actor: Actor }>(routes.verify)
+        const r = await api.getApiPlayAdminVerify()
         setActor(r.actor)
         await loadOverview()
       } catch {
@@ -147,7 +147,9 @@ export default function PlayerAdminPage() {
   const openCreatorDialog = async (player: Player, mode: 'creator-access' | 'creator-tokens') => {
     try {
       setCreatorDialog({ player, mode })
-      const detail = await api<Detail>(routes.player(player.subjectId))
+      const detail = (await api.getApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: player.subjectId } },
+      })) as Detail
       setCreatorDialog({ player: detail.player, detail, mode })
     } catch (error) {
       setCreatorDialog(undefined)
@@ -156,9 +158,17 @@ export default function PlayerAdminPage() {
   }
   const openCreatorPicker = async () => {
     try {
-      const result = await api<{ players: Player[] }>(
-        `${routes.players}?page=1&pageSize=100&identity=all&online=all&sort=displayName`,
-      )
+      const result = await api.getApiPlayAdminPlayers({
+        params: {
+          query: {
+            page: '1',
+            pageSize: '100',
+            identity: 'all',
+            online: 'all',
+            sort: 'displayName',
+          },
+        },
+      })
       setCreatorCandidates(result.players || [])
       creatorPickerForm.resetFields()
       setCreatorPickerOpen(true)
@@ -184,10 +194,10 @@ export default function PlayerAdminPage() {
   }) => {
     if (!creatorDialog?.detail) return
     try {
-      const result = await api<{ player: Player }>(
-        `/api/play-admin/players/${creatorDialog.player.subjectId}`,
-        { method: 'PATCH', body: JSON.stringify(changes) },
-      )
+      const result = (await api.patchApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: creatorDialog.player.subjectId } },
+        body: changes,
+      })) as { player: Player }
       if (result.player)
         setCreatorDialog((current) =>
           current?.detail
@@ -207,13 +217,10 @@ export default function PlayerAdminPage() {
   const creatorCommand = async (commandValue: Record<string, unknown>, success: string) => {
     if (!creatorDialog) return
     try {
-      const result = await api<{ token?: unknown }>(
-        `/api/play-admin/players/${creatorDialog.player.subjectId}`,
-        {
-          method: 'POST',
-          body: JSON.stringify(commandValue),
-        },
-      )
+      const result = (await api.postApiPlayAdminPlayersSubjectId({
+        params: { path: { subjectId: creatorDialog.player.subjectId } },
+        body: commandValue,
+      })) as { token?: unknown }
       let issuedToken: string | undefined
       if (commandValue.action === 'create-cli-token') {
         const token = typeof result?.token === 'string' ? result.token : ''
@@ -244,7 +251,7 @@ export default function PlayerAdminPage() {
     })
   const logout = async () => {
     try {
-      await api('/api/play-admin/logout', { method: 'POST', body: '{}' })
+      await api.postApiPlayAdminLogout({ body: {} })
     } finally {
       setActor(undefined)
     }
@@ -253,12 +260,11 @@ export default function PlayerAdminPage() {
     try {
       const values = await selfPasswordForm.validateFields()
       setSelfPasswordSaving(true)
-      await api('/api/play-admin/self-password', {
-        method: 'POST',
-        body: JSON.stringify({
+      await api.postApiPlayAdminSelfPassword({
+        body: {
           currentPassword: values.currentPassword,
           newPassword: values.newPassword,
-        }),
+        },
       })
       selfPasswordForm.resetFields()
       setSelfPasswordOpen(false)

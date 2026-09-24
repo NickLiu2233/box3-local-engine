@@ -2,7 +2,7 @@ import { LockOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-desi
 import { Button, Card, Form, Input, message } from 'antd'
 import { useState } from 'react'
 
-import { playerAdminApi as api, playerAdminRoutes as routes } from '../../player-admin-api'
+import { playerAdminApi as api } from '../../player-admin-api'
 import type { Actor } from '../../player-admin-types'
 
 type Props = { onSuccess: (actor: Actor) => void }
@@ -19,14 +19,10 @@ export function LoginPage({ onSuccess }: Props) {
       setLoading(true)
       const result =
         mode === 'admin'
-          ? await api<{ actor: Actor }>(routes.login, {
-              method: 'POST',
-              body: JSON.stringify(values),
-            })
-          : await api<{ actor: Actor }>(routes.ownerSession, {
-              method: 'POST',
+          ? await api.postApiPlayAdminLogin({ body: values })
+          : await api.postApiPlayAdminOwnerSession({
               headers: { Authorization: `Bearer ${values.password}` },
-              body: '{}',
+              body: {},
             })
       onSuccess(result.actor)
       message.success('登录成功')

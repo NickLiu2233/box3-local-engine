@@ -55,8 +55,12 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
     setLoading(true)
     try {
       const [maps, resourceStatus] = await Promise.all([
-        api<{ worlds: PlayMap[] }>('/api/play-admin/library/worlds'),
-        api<{ worlds: PlayMapResourceStatus[] }>('/api/play-admin/library/world-status'),
+        api.getApiPlayAdminLibrarySection({ params: { path: { section: 'worlds' } } }) as Promise<{
+          worlds: PlayMap[]
+        }>,
+        api.getApiPlayAdminLibrarySection({
+          params: { path: { section: 'world-status' } },
+        }) as Promise<{ worlds: PlayMapResourceStatus[] }>,
       ])
       setWorlds(maps.worlds || [])
       setStatuses(Object.fromEntries((resourceStatus.worlds || []).map((item) => [item.id, item])))
@@ -72,9 +76,9 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   const groups = useMemo(() => groupPlayMaps(worlds), [worlds])
   const tableRows = useMemo(() => buildPlayMapTableRows(groups, statuses), [groups, statuses])
   const patchWorld = async (world: PlayMap, values: Record<string, unknown>) => {
-    await api(`/api/play-admin/library/worlds/${encodeURIComponent(world.id)}`, {
-      method: 'PATCH',
-      body: JSON.stringify(values),
+    await api.patchApiPlayAdminLibrarySectionId({
+      params: { path: { section: 'worlds', id: world.id } },
+      body: values,
     })
     await load()
   }
@@ -100,9 +104,9 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
       cancelText: '取消',
       okButtonProps: { danger: true },
       onOk: async () => {
-        await api(`/api/play-admin/library/worlds/${encodeURIComponent(world.id)}`, {
-          method: 'DELETE',
-          body: '{}',
+        await api.deleteApiPlayAdminLibrarySectionId({
+          params: { path: { section: 'worlds', id: world.id } },
+          body: {},
         })
         message.success('地图已删除')
         await load()
@@ -111,14 +115,12 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   const inspectBundle = async (file: File) => {
     setLoading(true)
     try {
-      const result = await api<{ review: PlayBundleReview }>(
-        '/api/play-admin/library/import?mode=preview',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': file.type || 'application/octet-stream' },
-          body: file,
-        },
-      )
+      const result = (await api.postApiPlayAdminLibraryImport({
+        params: { query: { mode: 'preview' } },
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+        bodySerializer: (body) => body,
+      })) as { review: PlayBundleReview }
       setReview(result.review)
       setReviewFile(file)
       setReviewWorldId(result.review.worlds[0]?.id || '')
@@ -132,10 +134,12 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   }
   const cancelReview = async () => {
     if (review)
-      await api(`/api/play-admin/library/import?reviewId=${encodeURIComponent(review.id)}`, {
-        method: 'DELETE',
-        body: '{}',
-      }).catch(() => undefined)
+      await api
+        .deleteApiPlayAdminLibraryImport({
+          params: { query: { reviewId: review.id } },
+          body: {},
+        })
+        .catch(() => undefined)
     if (preview?.resource.kind !== 'script' && preview?.content)
       URL.revokeObjectURL(preview.content)
     setPreview(undefined)
@@ -147,10 +151,10 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
     if (!review) return
     setLoading(true)
     try {
-      await api(
-        `/api/play-admin/library/import?mode=confirm&reviewId=${encodeURIComponent(review.id)}`,
-        { method: 'POST', body: '{}' },
-      )
+      await api.postApiPlayAdminLibraryImport({
+        params: { query: { mode: 'confirm', reviewId: review.id } },
+        body: {},
+      })
       message.success(`已导入 ${review.mapCount} 张地图`)
       await cancelReview()
       await load()
@@ -163,14 +167,18 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   const previewResource = async (resource: PlayBundleReview['resources'][number]) => {
     if (!review || !resource.previewable) return
     try {
-      const response = await fetch(
-        `/api/play-admin/library/import?mode=resource&reviewId=${encodeURIComponent(review.id)}&resourceId=${encodeURIComponent(resource.id)}`,
-        { credentials: 'same-origin' },
-      )
-      if (!response.ok)
-        throw new Error((await response.json().catch(() => ({}))).message || '资源预览加载失败')
-      if (resource.kind === 'script') setPreview({ resource, content: await response.text() })
-      else setPreview({ resource, content: URL.createObjectURL(await response.blob()) })
+      const options = {
+        params: {
+          query: { mode: 'resource', reviewId: review.id, resourceId: resource.id },
+        },
+      } as const
+      if (resource.kind === 'script') {
+        const content = await api.getApiPlayAdminLibraryImport({ ...options, parseAs: 'text' })
+        setPreview({ resource, content })
+      } else {
+        const content = await api.getApiPlayAdminLibraryImport({ ...options, parseAs: 'blob' })
+        setPreview({ resource, content: URL.createObjectURL(content) })
+      }
     } catch (error) {
       message.error((error as Error).message)
     }
@@ -436,7 +444,9 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
                     <button
                       key={world.id}
                       type="button"
-                      className={`play-bundle-review-item ${reviewWorldId === world.id ? 'is-selected' : ''}`}
+                      className={`play-bundle-review-item ${
+                        reviewWorldId === world.id ? 'is-selected' : ''
+                      }`}
                       onClick={() => {
                         setReviewWorldId(world.id)
                         setPreview(undefined)
@@ -499,7 +509,9 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
                         key={resource.id}
                         type="button"
                         disabled={!resource.previewable}
-                        className={`play-bundle-review-item ${preview?.resource.id === resource.id ? 'is-selected' : ''}`}
+                        className={`play-bundle-review-item ${
+                          preview?.resource.id === resource.id ? 'is-selected' : ''
+                        }`}
                         onClick={() => void previewResource(resource)}
                       >
                         <strong title={resource.name}>{resource.name}</strong>

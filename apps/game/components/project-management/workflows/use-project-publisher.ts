@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { apiClient } from '../../../src/apis/client';
 import { nextReleaseVersion } from '../project-presentation';
 import type {
   AssetDistributionConfiguration,
@@ -47,13 +48,12 @@ export function useProjectPublisher(options: Options) {
     setAssetMode('local');
     options.setDialogError('');
     options.openPublishDialog();
-    void fetch('/api/local-projects/asset-distribution')
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.message || '无法读取 OSS 配置');
+    void apiClient
+      .getApiLocalProjectsAssetDistribution()
+      .then((data) => {
         setAssetConfig((current) => ({
           ...current,
-          ...(data.configuration || {}),
+          ...((data as { configuration?: Partial<AssetDistributionConfiguration> }).configuration || {}),
           secretAccessKey: '',
         }));
       })
@@ -61,13 +61,9 @@ export function useProjectPublisher(options: Options) {
   };
 
   const persistAssetConfiguration = async () => {
-    const response = await fetch('/api/local-projects/asset-distribution', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(assetConfig),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.message || '无法保存 OSS 资源分发设置');
+    const data = (await apiClient.patchApiLocalProjectsAssetDistribution({
+      body: assetConfig,
+    })) as { configuration?: Partial<AssetDistributionConfiguration> };
     setAssetConfig((current) => ({
       ...current,
       ...(data.configuration || {}),
@@ -131,13 +127,15 @@ export function useProjectPublisher(options: Options) {
       );
     }, 1200);
     try {
-      const response = await fetch(`/api/local-projects/${project.id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: publishedVersion, notes: releaseNotes }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || '生成游戏包版本失败');
+      const data = (await apiClient.postApiLocalProjectsIdPublish({
+        params: { path: { id: project.id } },
+        body: { version: publishedVersion, notes: releaseNotes },
+      })) as {
+        release: {
+          version: string;
+          releases?: Array<{ compatibility?: CompatibilityReport }>;
+        };
+      };
       publishedVersion = data.release.version;
       const reports = Array.isArray(data.release.releases)
         ? (data.release.releases
@@ -164,15 +162,14 @@ export function useProjectPublisher(options: Options) {
       setPublishProgress((current) =>
         current ? { ...current, phase: 'packing', percent: 42, version: publishedVersion } : current,
       );
-      const packageResponse = await fetch(`/api/local-projects/${project.id}/package`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version: publishedVersion, assetMode }),
+      const packageResult = await apiClient.postApiLocalProjectsIdPackageRaw({
+        params: { path: { id: project.id } },
+        body: { version: publishedVersion, assetMode },
+        parseAs: 'stream',
       });
-      if (!packageResponse.ok) {
-        const packageData = await packageResponse.json().catch(() => ({}));
-        throw new Error(packageData.message || '导出游玩包失败');
-      }
+      if (packageResult.error)
+        throw new Error(packageResult.error.message || '导出游玩包失败');
+      const packageResponse = packageResult.response;
       const disposition = packageResponse.headers.get('Content-Disposition') || '';
       const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/)?.[1];
       const filename = encodedName
@@ -185,8 +182,8 @@ export function useProjectPublisher(options: Options) {
       setPublishProgress((current) =>
         current ? { ...current, phase: 'downloading', percent: 65, total, filename } : current,
       );
-      if (packageResponse.body) {
-        const reader = packageResponse.body.getReader();
+      if (packageResult.data) {
+        const reader = packageResult.data.getReader();
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;

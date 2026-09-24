@@ -7,7 +7,7 @@ import {
 } from '@box/sdk';
 import { ModelResp, ModelType } from '@box/apis';
 
-import { apis, getAxiosInstance } from '../apis';
+import { apis, onApiUnauthorized } from '../apis';
 import { store } from '../redux/store';
 import { setProjectName } from '../redux/app-slice';
 import type { ProjectManager } from './project';
@@ -182,31 +182,11 @@ export class IframeTool {
     }
   };
 
-  /**
-   * 拦截axios的响应，把401作为unauthorized进行事件往外发送
-   */
+  /** 将统一 API 客户端发现的 401 作为 unauthorized 事件发送给宿主。 */
   private interceptAxiosResponse() {
-    getAxiosInstance().interceptors.response.use(
-      (res) => {
-        if (res.status === 401 || res.data.code === 401) {
-          this.tool.emitEvent('auth', { type: AuthEventType.Unauthorized });
-        }
-
-        return res;
-      },
-      (error) => {
-        try {
-          // see https://axios-http.com/docs/handling_errors
-          const json = error.toJSON();
-
-          if (json.code === 401) {
-            this.tool.emitEvent('auth', { type: AuthEventType.Unauthorized });
-          }
-        } catch (e) {}
-
-        return Promise.reject(error);
-      },
-    );
+    onApiUnauthorized(() => {
+      this.tool.emitEvent('auth', { type: AuthEventType.Unauthorized });
+    });
   }
 
   public emitPublishEvent(params: EmitEvents['publish']) {

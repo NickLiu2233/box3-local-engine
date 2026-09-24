@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { clientConfig } from '../../config';
-import { Model } from '@box/apis';
 
 export const cancelSource = axios.CancelToken.source();
 
@@ -30,7 +29,11 @@ const contentAxios = axios.create({
 });
 
 export const apis = {
-  model: new Model(axiosInstance),
+  model: {
+    async getModelDetailUsingGet(modelId: number, params: Record<string, unknown> = {}) {
+      return (await axiosInstance.get(`/api/local/models/${modelId}`, params)).data;
+    },
+  },
   content: contentAxios,
 };
 
