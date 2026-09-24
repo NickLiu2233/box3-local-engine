@@ -499,6 +499,10 @@ for (const [label, pattern] of [
   ['VOXA final target', /^FROM licensed-runtime-base AS voxa$/m],
   ['referenced runtime-blob staging', /stage-runtime-data\.js \/opt\/runtime-data/],
   [
+    'immutable creator template data',
+    /creator[\s\S]*?BOX_LOCAL_TEMPLATE_DATA_PATH=\/opt\/box3-template-data[\s\S]*?COPY --from=creator-build --chown=node:node \/opt\/runtime-data \/opt\/box3-template-data/,
+  ],
+  [
     'play server editor removal',
     /play-build[\s\S]*?rm -rf[\s\S]*?\/opt\/game-server\/dist\/src\/edit[\s\S]*?\/opt\/game-server\/dist\/src\/deploy/,
   ],
@@ -590,7 +594,9 @@ for (const [name, stage, flag] of [
     stage,
     dockerFile,
     `${name} staged runtime data`,
-    /COPY --from=[^\s]+ --chown=node:node \/opt\/runtime-data \/app\/apps\/local-engine\/data/,
+    name === 'creator'
+      ? /COPY --from=[^\s]+ --chown=node:node \/opt\/runtime-data \/opt\/box3-template-data[\s\S]*?cp -al \/opt\/box3-template-data \/app\/apps\/local-engine\/data/
+      : /COPY --from=[^\s]+ --chown=node:node \/opt\/runtime-data \/app\/apps\/local-engine\/data/,
   )
   requirePattern(
     stage,

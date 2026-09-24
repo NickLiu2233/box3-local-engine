@@ -54,6 +54,10 @@ const mapGroupManager = createMapGroupManager(projectsRoot)
 // models, skins and shared scripts disappear from the play package.
 const cidV0Pattern = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
 const urlSafeHashPattern = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])/g
+const legacyUuidHashPattern =
+  /(?<![0-9a-f])[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}(?![0-9a-f])/gi
+const legacyUuidHashExactPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const sensitiveContentRules = [
   ['私钥', /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/],
@@ -113,34 +117,40 @@ function rollbackDirectory(target) {
 }
 
 function isContentHash(hash) {
-  return /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash) || /^[A-Za-z0-9_-]{43}$/.test(hash)
+  return (
+    /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/.test(hash) ||
+    /^[A-Za-z0-9_-]{43}$/.test(hash) ||
+    legacyUuidHashExactPattern.test(hash)
+  )
 }
 
 function normalizedContentHash(value) {
   if (typeof value !== 'string') return undefined
   if (/^[A-Za-z0-9_-]{43}$/.test(value)) return value
+  if (legacyUuidHashExactPattern.test(value)) return value
   const cid = value.match(
     /^(Qm[1-9A-HJ-NP-Za-km-z]{44})(?:\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|lut))?$/i,
   )
   return cid?.[1]
 }
 
-function collectJSONReferencedHashes(value, hashes) {
+function collectJSONReferencedHashes(value, hashes, hashExists) {
   if (typeof value === 'string') {
     const hash = normalizedContentHash(value)
-    if (hash) hashes.add(hash)
+    if (hash && hashExists(hash)) hashes.add(hash)
     return
   }
   if (Array.isArray(value)) {
-    for (const child of value) collectJSONReferencedHashes(child, hashes)
+    for (const child of value) collectJSONReferencedHashes(child, hashes, hashExists)
     return
   }
   if (!value || typeof value !== 'object') return
   for (const [key, child] of Object.entries(value)) {
-    // Match the migrator's content-graph rules. Preview filenames and previous
-    // editor history are metadata, not dependencies of the runnable snapshot.
-    if (key === 'previewImage' || key === 'prevHash') continue
-    collectJSONReferencedHashes(child, hashes)
+    // Previous editor history is not part of the runnable snapshot. Preview
+    // images are included when their Blob exists so imported maps keep their
+    // model thumbnails without old broken metadata blocking publication.
+    if (key === 'prevHash') continue
+    collectJSONReferencedHashes(child, hashes, hashExists)
   }
 }
 
@@ -235,13 +245,16 @@ function extractReferencedHashes(content, binaryHashExists = () => true) {
 
   if (isText) {
     try {
-      collectJSONReferencedHashes(JSON.parse(text), hashes)
+      collectJSONReferencedHashes(JSON.parse(text), hashes, binaryHashExists)
       return hashes
     } catch {
       // Scripts and generated source files are plain text but not JSON.
     }
     for (const hash of text.match(cidV0Pattern) || []) hashes.add(hash)
     for (const hash of text.match(urlSafeHashPattern) || []) {
+      if (binaryHashExists(hash)) hashes.add(hash)
+    }
+    for (const hash of text.match(legacyUuidHashPattern) || []) {
       if (binaryHashExists(hash)) hashes.add(hash)
     }
     return hashes
@@ -258,6 +271,17 @@ function extractReferencedHashes(content, binaryHashExists = () => true) {
     if (buffer[index] !== 43) continue
     const candidate = buffer.subarray(index + 1, index + 44).toString('ascii')
     if (/^[A-Za-z0-9_-]{43}$/.test(candidate) && binaryHashExists(candidate)) {
+      hashes.add(candidate)
+    }
+  }
+  // Old platform resource indexes encode model and preview Blob IDs as
+  // length-delimited UUID strings. Only accept the exact 36-byte encoding and
+  // require a matching source Blob so arbitrary model bytes cannot become
+  // invented dependencies.
+  for (let index = 0; index + 37 <= buffer.length; index += 1) {
+    if (buffer[index] !== 36) continue
+    const candidate = buffer.subarray(index + 1, index + 37).toString('ascii')
+    if (legacyUuidHashExactPattern.test(candidate) && binaryHashExists(candidate)) {
       hashes.add(candidate)
     }
   }

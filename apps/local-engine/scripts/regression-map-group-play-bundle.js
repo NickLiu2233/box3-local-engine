@@ -21,6 +21,9 @@ function hash(character) {
   return `Qm${character.repeat(44)}`
 }
 
+const legacyModelHash = '27e4efc3-4a6f-44f3-af42-ed27f0aae251'
+const legacyPreviewHash = '7f03d38b-bb34-4f6b-8ca2-3c6cfd2a9bc2'
+
 function saveProject(id, characters) {
   const sourceRoot = path.join(projectsRoot, id, 'source')
   const blobRoot = path.join(sourceRoot, 'blobs')
@@ -29,6 +32,7 @@ function saveProject(id, characters) {
   const projectHash = hash(characters[2])
   const scriptAssetsHash = hash(characters[3])
   const scriptHash = hash(characters[4])
+  const assetIndexHash = hash('C')
 
   fs.mkdirSync(blobRoot, { recursive: true })
   fs.writeFileSync(
@@ -48,6 +52,7 @@ function saveProject(id, characters) {
     path.join(blobRoot, projectHash),
     JSON.stringify({
       scriptAssets: scriptAssetsHash,
+      ...(id === 'release-main' ? { assets: assetIndexHash } : {}),
     }),
   )
   fs.writeFileSync(
@@ -57,6 +62,21 @@ function saveProject(id, characters) {
     }),
   )
   fs.writeFileSync(path.join(blobRoot, scriptHash), 'module.exports = {}\n')
+  if (id === 'release-main') {
+    // Imported projects can keep old UUID Blob IDs in their resource index.
+    // Both the model and its existing preview are runtime package resources.
+    fs.writeFileSync(
+      path.join(blobRoot, assetIndexHash),
+      JSON.stringify({
+        'mesh/legacy-model.vb': {
+          hash: legacyModelHash,
+          previewImage: legacyPreviewHash,
+        },
+      }),
+    )
+    fs.writeFileSync(path.join(blobRoot, legacyModelHash), 'legacy model payload')
+    fs.writeFileSync(path.join(blobRoot, legacyPreviewHash), 'legacy preview payload')
+  }
   fs.writeFileSync(
     path.join(sourceRoot, 'project-state.json'),
     JSON.stringify({
@@ -217,6 +237,8 @@ function saveProject(id, characters) {
     assert(entries.includes('bundle.json'))
     assert(entries.includes('worlds/release-main/manifest.json'))
     assert(entries.includes('worlds/release-dungeon/manifest.json'))
+    assert(entries.includes(`worlds/release-main/data/blobs/${legacyModelHash}`))
+    assert(entries.includes(`worlds/release-main/data/blobs/${legacyPreviewHash}`))
     const bundledMainManifest = JSON.parse(
       execFileSync('tar', ['-xOzf', bundle.archivePath, 'worlds/release-main/manifest.json'], {
         encoding: 'utf8',
@@ -224,6 +246,15 @@ function saveProject(id, characters) {
     )
     assert.equal(bundledMainManifest.cover, artworkCover)
     assert.equal(bundledMainManifest.loadingCover, loadingCover)
+    const bundledRuntimeBlobs = JSON.parse(
+      execFileSync(
+        'tar',
+        ['-xOzf', bundle.archivePath, 'worlds/release-main/data/runtime-blobs.json'],
+        { encoding: 'utf8' },
+      ),
+    )
+    assert(bundledRuntimeBlobs.hashes.includes(legacyModelHash))
+    assert(bundledRuntimeBlobs.hashes.includes(legacyPreviewHash))
     const descriptor = JSON.parse(
       execFileSync('tar', ['-xOzf', bundle.archivePath, 'bundle.json'], { encoding: 'utf8' }),
     )

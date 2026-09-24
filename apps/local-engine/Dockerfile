@@ -219,6 +219,7 @@ ENV BOX_DEPLOYMENT_MODE=creator \
     BOX_PLAY_RUNTIME_PORT=9966 \
     BOX_EDIT_RUNTIME_HOST=0.0.0.0 \
     BOX_EDIT_RUNTIME_PORT=9967 \
+    BOX_LOCAL_TEMPLATE_DATA_PATH=/opt/box3-template-data \
     HOSTNAME=0.0.0.0 \
     PORT=3000 \
     BOX_LICENSE_FEATURE=creator
@@ -250,7 +251,11 @@ COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/play-imag
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=creator-build --chown=node:node /app/distribution/play/.env.example /app/distribution/play/.env.example
 COPY --from=creator-build --chown=node:node /app/distribution/LICENSE.txt /app/distribution/LICENSE.txt
-COPY --from=creator-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
+# Keep the blank-map template outside /app/apps/local-engine/data. Deployments
+# bind-mount that path for mutable policies, which otherwise hides the runtime
+# assets baked into the image and makes every newly created map incomplete.
+COPY --from=creator-build --chown=node:node /opt/runtime-data /opt/box3-template-data
+RUN cp -al /opt/box3-template-data /app/apps/local-engine/data
 
 # The production deploy above is copied wholesale, including runtime-only
 # dependencies. Verify the final layer still contains the SSE implementation.
