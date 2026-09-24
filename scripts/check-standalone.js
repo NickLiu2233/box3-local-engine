@@ -1375,7 +1375,7 @@ requirePattern(
   readRequired('apps/game/src/apis/local-api/index.ts'),
   'apps/game/src/apis/local-api/index.ts',
   'local uploads use the writable edit runtime',
-  /resolveRuntimeURL\(getConfig\(\)\.BACKEND_SERVER_URL \|\| '', 'block'\)[\s\S]*?method: 'POST'/,
+  /function runtimeApi\(\)[\s\S]*?baseUrl: getConfig\(\)\.BACKEND_SERVER_URL\.replace\([\s\S]*?upload:[\s\S]*?runtimeApi\(\)\.postBlockRaw/,
 )
 
 const nextConfigFile = 'apps/game/next.config.js'
