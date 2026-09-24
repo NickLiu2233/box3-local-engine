@@ -165,7 +165,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - run: node common/scripts/install-run-rush.js install
       - name: Check cached desktop installer in Aliyun OSS
         id: desktop-cache
         shell: bash
@@ -208,8 +207,11 @@ jobs:
             cat /tmp/desktop-cache-download.txt || true
             echo "cache-hit=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Install desktop dependencies
+        if: steps.desktop-cache.outputs.cache-hit != 'true'
+        run: node common/scripts/install-run-rush.js install --to '@box/deployment-manager'
       - name: Install Linux desktop dependencies
-        if: startsWith(matrix.target, 'linux-')
+        if: steps.desktop-cache.outputs.cache-hit != 'true' && startsWith(matrix.target, 'linux-')
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf zip
       - name: Download images from Aliyun OSS
         if: steps.desktop-cache.outputs.cache-hit != 'true'

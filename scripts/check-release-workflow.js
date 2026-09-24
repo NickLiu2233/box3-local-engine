@@ -168,6 +168,16 @@ assert.match(workflow, /Publish latest\.txt last/)
 assert.doesNotMatch(workflow, /release-files\/\*\.tar\.gz/)
 assert.match(workflow, /BOX_BUILD_COMMIT: \$\{\{ github\.sha \}\}/)
 assert.match(workflow, /BOX_BUILD_SOURCE: github-actions/)
+assert.match(
+  workflow,
+  /- name: Install desktop dependencies\n\s+if: steps\.desktop-cache\.outputs\.cache-hit != 'true'\n\s+run: node common\/scripts\/install-run-rush\.js install --to '@box\/deployment-manager'/,
+  'desktop runners must not install unrelated native Game Server dependencies',
+)
+assert.ok(
+  workflow.indexOf('name: Check cached desktop installer in Aliyun OSS') <
+    workflow.indexOf('name: Install desktop dependencies'),
+  'desktop dependency installation must be skipped when OSS already has the installer',
+)
 assert.ok(
   workflow.indexOf('name: Publish GitHub Release') <
     workflow.indexOf('name: Publish stable Linux installer to OSS'),
