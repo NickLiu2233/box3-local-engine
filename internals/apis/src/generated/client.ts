@@ -158,10 +158,6 @@ export const apiOperations = {
     "path": "/api/diagnostics/{archive}/download",
     "method": "GET"
   },
-  "getApiDocsAsset": {
-    "path": "/api/docs/{asset}",
-    "method": "GET"
-  },
   "getApiGetMapInfo": {
     "path": "/api/getMapInfo",
     "method": "GET"
@@ -220,10 +216,6 @@ export const apiOperations = {
   },
   "getApiLocalProjectsIdSnapshots": {
     "path": "/api/local-projects/{id}/snapshots",
-    "method": "GET"
-  },
-  "getApiOpenapi": {
-    "path": "/api/openapi",
     "method": "GET"
   },
   "getApiOperationsId": {
@@ -1195,18 +1187,6 @@ export class ApiClient {
     return this.unwrap(this.getApiDiagnosticsArchiveDownloadRaw(...init));
   }
 
-  getApiDocsAssetRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/docs/{asset}"]["GET"]>
-  ) {
-    return this.paths["/api/docs/{asset}"].GET(...init);
-  }
-
-  getApiDocsAsset(
-    ...init: Parameters<PathBasedClient<paths>["/api/docs/{asset}"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiDocsAssetRaw(...init));
-  }
-
   getApiGetMapInfoRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/getMapInfo"]["GET"]>
   ) {
@@ -1385,18 +1365,6 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/local-projects/{id}/snapshots"]["GET"]>
   ) {
     return this.unwrap(this.getApiLocalProjectsIdSnapshotsRaw(...init));
-  }
-
-  getApiOpenapiRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/openapi"]["GET"]>
-  ) {
-    return this.paths["/api/openapi"].GET(...init);
-  }
-
-  getApiOpenapi(
-    ...init: Parameters<PathBasedClient<paths>["/api/openapi"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiOpenapiRaw(...init));
   }
 
   getApiOperationsIdRaw(

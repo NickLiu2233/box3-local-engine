@@ -184,7 +184,7 @@ npm run api:check
 npm run api:build
 ```
 
-`openapi/openapi.json`、`src/generated/openapi.ts` 和 `src/generated/client.ts` 是生成结果，不应手工修改。调用端使用 `ApiClient` 或 `createApiClient` 及其生成方法，不要复制请求/响应 interface，也不要为单个应用再建一套通用 API 封装。Swagger 页面只在开发环境开放，正式构建不会携带 Swagger UI 资源和 OpenAPI JSON。
+`openapi/openapi.json`、`src/generated/openapi.ts` 和 `src/generated/client.ts` 是生成结果，不应手工修改。调用端使用 `ApiClient` 或 `createApiClient` 及其生成方法，不要复制请求/响应 interface，也不要为单个应用再建一套通用 API 封装。使用 `npm run api:docs` 独立查看只读 Swagger；Creator、Play、Player Service 和 VOXA 都不携带文档页面或 OpenAPI JSON。
 
 不能只隐藏前端按钮。账号、权限、付费、奖励和权威存档也不能交给客户端脚本决定。
 

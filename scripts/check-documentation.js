@@ -82,6 +82,7 @@ for (const supportedTarget of [
 assert.ok(readme.includes('当前版本：`0.2.0`'), 'README does not identify version 0.2.0')
 assert.ok(readme.includes('rush install'), 'README does not explain Rush installation')
 assert.ok(readme.includes('rush verify'), 'README does not explain Rush verification')
+assert.ok(readme.includes('npm run api:docs'), 'README does not explain standalone API docs')
 assert.ok(
   readme.includes('http://127.0.0.1:8000/'),
   'README does not identify the standalone Player Admin development address',

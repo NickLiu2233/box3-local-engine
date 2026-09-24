@@ -712,26 +712,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/docs/{asset}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 查询 Swagger 静态资源
-         * @description 此操作用于“查询 Swagger 静态资源”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
-         */
-        get: operations["getApiDocsAsset"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/getMapInfo": {
         parameters: {
             query?: never;
@@ -1186,26 +1166,6 @@ export interface paths {
          * @description 此操作用于“导入 VOXA 模型”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
          */
         post: operations["postApiLocalModelsImport"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/openapi": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 查询 OpenAPI 契约
-         * @description 此操作用于“查询 OpenAPI 契约”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
-         */
-        get: operations["getApiOpenapi"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4364,40 +4324,6 @@ export interface operations {
             };
         };
     };
-    getApiDocsAsset: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Swagger UI 静态资源名称。 */
-                asset: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 操作成功，返回“查询 Swagger 静态资源”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     getApiGetMapInfo: {
         parameters: {
             query?: never;
@@ -5540,37 +5466,6 @@ export interface operations {
         };
         responses: {
             /** @description 操作成功，返回“导入 VOXA 模型”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getApiOpenapi: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 操作成功，返回“查询 OpenAPI 契约”的处理结果。 */
             200: {
                 headers: {
                     [name: string]: unknown;

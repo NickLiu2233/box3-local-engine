@@ -6,25 +6,29 @@ BOX3 Local Engine 使用一份 OpenAPI 3.1 文档登记 Creator、Play、Player 
 
 ## 查看接口文档
 
-开发模式下启动 Creator、Play 或 Player Service 后访问：
+只查看文档时，不需要启动 Creator、Play、Player Service、数据库或其他业务服务。在仓库根目录执行：
 
-```text
-http://127.0.0.1:<服务端口>/api/docs
+```bash
+npm run api:docs
 ```
 
-常用开发地址：
+然后访问：
 
-| 服务           | Swagger UI                       | OpenAPI JSON                        |
-| -------------- | -------------------------------- | ----------------------------------- |
-| Creator        | `http://127.0.0.1:3127/api/docs` | `http://127.0.0.1:3127/api/openapi` |
-| Play           | `http://127.0.0.1:3121/api/docs` | `http://127.0.0.1:3121/api/openapi` |
-| Player Service | `http://127.0.0.1:3124/api/docs` | `http://127.0.0.1:3124/api/openapi` |
+```text
+http://127.0.0.1:3210/
+```
 
-页面资源来自本地 `swagger-ui-dist`，不访问外部 CDN。文档列出全部服务的接口；`x-box-services` 表示实现该操作的服务，`x-box-deployment-modes` 表示可用部署模式。
+该命令会先重新生成 OpenAPI，再启动独立的只读 Swagger UI。独立文档服务禁用 Try it out，不会向业务接口发送请求。按 `Ctrl-C` 停止。需要修改端口时使用：
 
-Swagger UI 和 `/api/openapi` 仅在开发环境开放。正式环境返回 `404`，构建时也不会复制 Swagger UI 静态资源和 OpenAPI JSON。
+```bash
+BOX_API_DOCS_PORT=8080 npm run api:docs
+```
 
-Swagger 的 Try it out 会自动携带同源 Cookie。玩家管理写请求还会从 `box_local_admin_csrf` Cookie 读取值，并设置 `X-Box-Admin-Csrf`。Creator CLI 接口需要在 Authorize 中填写 CLI Bearer Token。不要在截图、Issue 或日志中公开 Token、Cookie 和管理密钥。
+页面资源来自独立文档项目自己的 `swagger-ui-dist`，不访问外部 CDN。文档列出全部服务的接口；`x-box-services` 表示实现该操作的服务，`x-box-deployment-modes` 表示可用部署模式。
+
+Creator、Play、Player Service 和 VOXA 均不再提供 `/api/docs` 或 `/api/openapi`。开发与生产构建不会把 Swagger UI 或 OpenAPI JSON 打进业务服务。需要联调真实接口时，根据文档中的服务归属和鉴权说明，从调用端或 API 工具请求对应业务地址。
+
+独立页面是只读文档，因此没有 Try it out 和 Authorize 操作，也不会读取 Cookie。调试玩家管理写请求时仍需携带 `box_local_admin_csrf` Cookie 对应的 `X-Box-Admin-Csrf`；Creator CLI 接口需要 CLI Bearer Token。不要在截图、Issue 或日志中公开 Token、Cookie 和管理密钥。
 
 ## 契约来源
 

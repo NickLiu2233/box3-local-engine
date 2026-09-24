@@ -9,7 +9,7 @@
     "build-apis": "node -r ts-node/register --max-old-space-size=4096 ./scripts/build-apis.ts",
     "build-ipfs": "ts-node -r tsconfig-paths/register ./scripts/build-ipfs.ts",
     "build-llm-context": "node -r ts-node/register --max-old-space-size=4096 ./scripts/build-llm-context.ts",
-    "build-next": "NODE_ENV=production next build && node scripts/copy-swagger-assets.js",
+    "build-next": "NODE_ENV=production next build",
     "build-player:dev": "NODE_ENV=development webpack --config rusty/webpack.config.js",
     "build-player:prod": "NODE_ENV=production webpack --config rusty/webpack.config.js",
     "dev": "node -r ts-node/register --inspect server/dev-server/index.ts",
@@ -125,8 +125,7 @@
     "vm-browserify": "1.1.2",
     "webgpu-utils": "1.9.2",
     "weixin-js-sdk": "1.6.0",
-    "zod": "4.1.12",
-    "swagger-ui-dist": "5.33.0"
+    "zod": "4.1.12"
   },
   "devDependencies": {
     "@ai-sdk/react": "~2.0.92",

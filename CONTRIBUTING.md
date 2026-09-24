@@ -68,6 +68,7 @@ Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/
 | 更新依赖锁           | `rush update`      | `npm run update:all`  |
 | 启动完整开发栈       | `rush dev`         | `npm run dev`         |
 | 启动开发栈及基础服务 | `rush dev --infra` | `npm run dev:infra`   |
+| 独立查看 API 文档    | —                  | `npm run api:docs`    |
 | 全量构建             | `rush build`       | `npm run build`       |
 | 格式化               | `rush format`      | `npm run format`      |
 | 完整验证             | `rush verify`      | `npm run verify`      |

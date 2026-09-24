@@ -37,6 +37,7 @@ function typecheck() {
 
 function check() {
   npmScript('internals/apis', 'check:openapi')
+  npmScript('internals/apis', 'test')
   run(process.execPath, ['--test', 'scripts/dev-environment.test.js'])
   node('apps/local-engine/src/build-metadata.test.js')
   node('apps/local-engine/scripts/regression-project-storage-identity.js')

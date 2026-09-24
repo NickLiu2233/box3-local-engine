@@ -27,6 +27,7 @@
     "api:generate": "npm --prefix internals/apis run generate",
     "api:check": "npm --prefix internals/apis run check:openapi",
     "api:build": "npm --prefix internals/apis run build",
+    "api:docs": "npm --prefix internals/apis run docs",
     "version:check": "node common/scripts/install-run-rush.js version-check",
     "package:images": "node common/scripts/install-run-rush.js package-images",
     "package:images:amd64": "node common/scripts/install-run-rush.js package-images --architecture amd64",

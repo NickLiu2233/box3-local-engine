@@ -130,6 +130,7 @@ npm run dev
 | `rush dev-creator`                          | 启动 Creator 相关开发服务              |
 | `rush dev-creator --infra`                  | 启动 Creator 开发服务及基础设施        |
 | `cd apps/player-admin && npm run dev`       | 启动玩家管理前端热更新服务             |
+| `npm run api:docs`                          | 独立启动只读 Swagger API 文档          |
 | `rush build --to <项目名>`                  | 按依赖顺序增量构建指定项目             |
 | `rush package-images --architecture <架构>` | 构建六个 Linux 镜像并导出归档          |
 | `rush export-images`                        | 不重建，导出本机已有的完整镜像集合     |

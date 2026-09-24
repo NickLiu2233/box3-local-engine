@@ -2567,59 +2567,6 @@
         ]
       }
     },
-    "/api/docs/{asset}": {
-      "get": {
-        "operationId": "getApiDocsAsset",
-        "summary": "查询 Swagger 静态资源",
-        "description": "此操作用于“查询 Swagger 静态资源”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
-        "tags": [
-          "引擎公共接口"
-        ],
-        "security": [],
-        "x-box-deployment-modes": [
-          "creator",
-          "play",
-          "player-service"
-        ],
-        "parameters": [
-          {
-            "name": "asset",
-            "in": "path",
-            "required": true,
-            "description": "Swagger UI 静态资源名称。",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“查询 Swagger 静态资源”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "x-box-services": [
-          "engine-web"
-        ]
-      }
-    },
     "/api/getMapInfo": {
       "get": {
         "operationId": "getApiGetMapInfo",
@@ -4389,49 +4336,6 @@
         },
         "x-box-services": [
           "voxa"
-        ]
-      }
-    },
-    "/api/openapi": {
-      "get": {
-        "operationId": "getApiOpenapi",
-        "summary": "查询 OpenAPI 契约",
-        "description": "此操作用于“查询 OpenAPI 契约”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
-        "tags": [
-          "引擎公共接口"
-        ],
-        "security": [],
-        "x-box-deployment-modes": [
-          "creator",
-          "play",
-          "player-service"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“查询 OpenAPI 契约”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "x-box-services": [
-          "engine-web"
         ]
       }
     },
@@ -10988,14 +10892,6 @@
       "source": "apps/game/pages/api/creator-profile.ts"
     },
     {
-      "path": "/api/docs/{asset}",
-      "methods": [
-        "GET"
-      ],
-      "service": "engine-web",
-      "source": "apps/game/pages/api/docs/[[...asset]].ts"
-    },
-    {
       "path": "/api/getMapInfo",
       "methods": [
         "GET"
@@ -11096,14 +10992,6 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/local-projects/index.ts"
-    },
-    {
-      "path": "/api/openapi",
-      "methods": [
-        "GET"
-      ],
-      "service": "engine-web",
-      "source": "apps/game/pages/api/openapi.ts"
     },
     {
       "path": "/api/play-admin/activity",
