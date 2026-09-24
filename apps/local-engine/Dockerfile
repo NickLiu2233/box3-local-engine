@@ -29,6 +29,16 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       --to @box/game-server \
       --to @box/local-engine
 
+# The launcher loads the generated API client directly at runtime. Produce a
+# self-contained production deployment here so the compact Creator and Play
+# images do not depend on workspace symlinks from the build stage. The deploy
+# contains only the published dist files and runtime dependencies; OpenAPI
+# source documents and Swagger tooling remain outside the final images.
+RUN cd internals/apis && node ../../common/scripts/install-run-rushx.js build
+RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy \
+      --filter @box/apis --prod --legacy /opt/apis-runtime
+
 # Protocol modules are consumed from internals/schema/build.  Build them in
 # the image instead of relying on a developer's previously generated output;
 # otherwise a newly added MuDB message can be present in TypeScript source but
@@ -219,6 +229,7 @@ RUN apt-get update \
 
 COPY --from=creator-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=creator-build --chown=node:node /opt/game-server /app/services/game-server
+COPY --from=creator-build --chown=node:node /opt/apis-runtime /app/node_modules/@box/apis
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-data-permissions.js /app/apps/local-engine/src/runtime-data-permissions.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-readiness.js /app/apps/local-engine/src/runtime-readiness.js
@@ -291,6 +302,7 @@ ENV BOX_DEPLOYMENT_MODE=play \
 
 COPY --from=play-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=play-build --chown=node:node /opt/game-server /app/services/game-server
+COPY --from=play-build --chown=node:node /opt/apis-runtime /app/node_modules/@box/apis
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-data-permissions.js /app/apps/local-engine/src/runtime-data-permissions.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-readiness.js /app/apps/local-engine/src/runtime-readiness.js

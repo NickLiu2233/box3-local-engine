@@ -476,6 +476,14 @@ for (const [label, pattern] of [
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
   ['play build command', /install-run-rushx\.js build[\s\S]*?install-run-rushx\.js build:play/],
   [
+    'generated API runtime build',
+    /cd internals\/apis && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js build/,
+  ],
+  [
+    'generated API production deploy',
+    /install-run-rush-pnpm\.js[\s\S]*?--filter @box\/apis --prod --legacy \/opt\/apis-runtime/,
+  ],
+  [
     'clean-checkout runtime asset generation',
     /^RUN cd apps\/local-engine && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js prepare-assets$/m,
   ],
@@ -530,6 +538,9 @@ for (const [name, stage] of [
   ['creator', creatorDockerStage],
   ['play', playDockerStage],
 ]) {
+  if (!stage.includes('/opt/apis-runtime /app/node_modules/@box/apis')) {
+    fail(`${dockerFile}: ${name} target is missing the @box/apis production runtime`)
+  }
   for (const moduleFile of launcherBootstrapModules) {
     const imagePath = `/app/apps/local-engine/src/${moduleFile}`
     if (!stage.includes(`${imagePath} ${imagePath}`)) {
