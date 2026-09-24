@@ -41,7 +41,7 @@ import { SoundSchema } from 'src/client/edit/edit-schema';
 
 import imgCreateraGameCoverUniversal from 'src/assets/default_game_cover_universal.png';
 import styles from './index.module.scss';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { injectIntl, IntlShape } from 'react-intl';
 import {
   AUDIO_EXTS,

@@ -715,12 +715,6 @@
   "rotateFailed": "旋屏失败",
   "returnWebsiteModalBody": "确认返回主页吗？",
 
-  "winLimitCodemaoSkin": "赢取限量编程猫皮肤！",
-  "winLimitCodemaoSkinDone": "恭喜您已获得限量编程猫皮肤！",
-  "winCodemaoSkinProgress": "分享地图成功邀请2位新人好友注册({num}/2)，\n即可获得限量皮肤",
-  "winCodemaoSkinDeadline": "此活动截止于10月10日23点59分，登录即可参与活动",
-  "winCodemaoSkinTips": "皮肤将于活动结束后5个工作日内发放，请及时查收~ \n继续邀请更多好友上岛对战哦~",
-
   "antiAddictionNoticeHead": "夜已深，未到开放时间，请明天再来吧~",
   "antiAddictionNoticeContext": "根据最新政策要求，游玩模式将于22:00-8:00停止服务，你可以进入创作模式，感受自由创作的乐趣",
 
@@ -1024,7 +1018,6 @@
   "reBind": "重新绑定",
   "unBind": "解除绑定",
   "weibo": "微博",
-  "codemao": "编程猫",
   "oldPassword": "原密码",
   "newPassword": "新密码",
   "cannotUnBindTitle": "未能解除绑定",
@@ -1035,8 +1028,6 @@
   "setPhone": "设置手机号",
   "setEmail": "设置邮箱",
   "setSuccess": "设置成功",
-  "bindCodemaoAccount": "绑定编程猫账号",
-  "loginWithCodemao": "编程猫登录",
   "quickDescribeQuestion": "简单阐述问题",
   "describeDetails": "详细描述",
   "phoneOrEmail": "手机号或邮箱",
@@ -1108,8 +1099,6 @@
   "bound": "已绑定",
   "bindFailed": "绑定失败",
   "unauthorized": "未登录",
-  "codemaoLoginNotification": "提示: 编程猫用户请以第三方登录方式登录 (见底部)",
-
   "cmBanned": "无法绑定，该账号存在异常",
 
   "invalidDisplayname": "该昵称不可用",

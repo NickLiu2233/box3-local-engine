@@ -83,7 +83,6 @@ const PROPERTIES_FROM_SERVER = [
   'ARENA_URL',
   'VOXA_URL',
   'isbnPreview',
-  'mockJavaBackend',
   'mockJavaUrl',
   'PLATFORM_URL',
   'headless',

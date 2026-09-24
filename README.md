@@ -50,6 +50,24 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 
 Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理统一在玩家管理后台的“游玩管理”中完成。
 
+## 技术栈
+
+| 领域                 | 主要技术                                              |
+| -------------------- | ----------------------------------------------------- |
+| Monorepo 与工程管理  | Rush.js、pnpm、Node.js、TypeScript                    |
+| Creator 与 Play      | Next.js、React、TypeScript、WebGL                     |
+| VOXA                 | Next.js、React、TypeScript、WebGL                     |
+| 玩家管理后台         | Umi Max、React、Ant Design、LESS                      |
+| 游戏服务端           | Node.js、TypeScript、WebSocket、自研 MuDB 协议        |
+| 桌面启动器           | Tauri 2、Rust、Vite                                   |
+| Linux 管理端         | Rust、Axum、Tokio                                     |
+| 玩家登录与许可证服务 | React、esbuild、Fastify、Ed25519                      |
+| 数据与资源存储       | PostgreSQL、Redis、文件系统内容寻址 Blob              |
+| 部署、交付与持续集成 | Docker、Docker Compose、GitHub Actions                |
+| 代码质量             | ESLint、Prettier、TypeScript 类型检查、自动化回归测试 |
+
+Creator、Play 和 VOXA 的 3D 画面由浏览器 WebGL 渲染。Linux 服务端负责业务服务、权威游戏逻辑和地图运行容器，正常部署不要求 GPU。
+
 ## 数据边界
 
 - Creator 保存可编辑 `.boxproject`；发布生成只读 `.boxplay` 地图组包。
@@ -125,20 +143,38 @@ apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
 
 ## 仓库结构
 
-| 路径                           | 职责                                           |
-| ------------------------------ | ---------------------------------------------- |
-| `apps/game/`                   | Creator、Play、Player Service 页面与引擎客户端 |
-| `apps/player-admin/`           | 玩家管理后台 Umi 前端                          |
-| `apps/local-engine/src/`       | 工程、地图组、发布包和运行时生命周期           |
-| `services/game-server/src/`    | 权威游戏运行时、脚本和数据存储                 |
-| `apps/voxa/`                   | VOXA 模型、皮肤和动画编辑器                    |
-| `apps/deployment-manager/`     | Vite + Tauri 桌面启动器                        |
-| `apps/manager-core/`           | 桌面端和服务器管理端共用 Rust 业务核心         |
-| `apps/server-manager-rust/`    | Linux Web 管理服务                             |
-| `examples/player-auth-portal/` | 参考登录/注册门户                              |
-| `apps/migrator/`               | 内部迁移工具，不进入普通用户发行包             |
-| `distribution/`                | 服务器包、独立部署和许可模板                   |
-| `scripts/`                     | 开发、回归、打包和文档检查脚本                 |
+顶层目录按 Rush 多项目仓库的职责分类，与 `boxes` 保持相同的主体结构：
+
+| 路径            | 职责                                                 |
+| --------------- | ---------------------------------------------------- |
+| `apps/`         | 可独立运行、构建或发布的产品应用                     |
+| `services/`     | 权威后端服务与脚本运行时                             |
+| `packages/`     | 可复用的引擎、协议、UI 和工具包                      |
+| `internals/`    | 仅供仓库内部使用的 API、Schema、环境与构建基础设施   |
+| `tools/`        | 仓库工具项目与平台专用启动器                         |
+| `types/`        | 跨项目共享的类型声明                                 |
+| `common/`       | Rush 配置、锁文件、安装器和变更记录                  |
+| `docs/`         | 架构、领域模型、开发、部署与运维文档                 |
+| `distribution/` | 安装器、服务器包、独立部署和许可模板                 |
+| `scripts/`      | 仓库级开发、回归、打包和发布命令                     |
+| `license/`      | 本机许可证运行目录；仅保留占位文件，运行数据禁止入库 |
+
+`distribution/` 和 `scripts/` 是发布与仓库命令的稳定入口，因此保留在根目录。正式应用必须放入 `apps/`，不要用 `examples/` 承载生产服务，也不要在根目录新增临时项目、构建产物或本机数据。
+
+主要应用入口：
+
+| 路径                        | 职责                                           |
+| --------------------------- | ---------------------------------------------- |
+| `apps/game/`                | Creator、Play、Player Service 页面与引擎客户端 |
+| `apps/player-admin/`        | 玩家管理后台 Umi 前端                          |
+| `apps/local-engine/`        | 工程、地图组、发布包和运行时生命周期           |
+| `apps/voxa/`                | VOXA 模型、皮肤和动画编辑器                    |
+| `apps/deployment-manager/`  | Vite + Tauri 桌面启动器                        |
+| `apps/manager-core/`        | 桌面端和服务器管理端共用 Rust 业务核心         |
+| `apps/server-manager-rust/` | Linux Web 管理服务                             |
+| `apps/player-auth-portal/`  | 玩家登录与注册门户                             |
+| `apps/migrator/`            | 内部迁移工具，不进入普通用户发行包             |
+| `services/game-server/`     | 权威游戏运行时、脚本和数据存储                 |
 
 ## 参与开发
 

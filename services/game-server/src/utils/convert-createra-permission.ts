@@ -1,7 +1,7 @@
 import { PrebakeCache } from '@box/build-system/project/prebake-schema';
 import { CollaborationMigrationVO } from '@box/apis/dist/createra/data-contracts';
 import {
-  JavaPermissionsMap,
+  CreateraPermissionNameMap,
   mapPermissionToCreatera,
 } from '@box/utils/createra-permissions';
 import { PermissionMemberRDA } from '@box/schema/permissions/permission-rda';
@@ -89,7 +89,7 @@ export function applyServerPermissions(
       roleItem.permissions = {
         ...roleItem.permissions,
         ...permissions.reduce((acc, permissionName) => {
-          acc[JavaPermissionsMap[permissionName]] = true;
+          acc[CreateraPermissionNameMap[permissionName]] = true;
           return acc;
         }, {}),
       };

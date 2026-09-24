@@ -13,10 +13,10 @@ import { setUIState } from 'src/redux/edit/ui';
 import { useEdit } from 'src/client/edit/edit-context';
 import { InputPauseProvider } from 'src/views/components/input-lock';
 import { resolveEditor } from 'src/client/edit/edit-client';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import { setPermission } from 'src/redux/edit/permission';
-import { JavaPermissionsMap } from '@box/utils/createra-permissions';
+import { CreateraPermissionNameMap } from '@box/utils/createra-permissions';
 
 export type EngineStatus = 'preConnect' | 'loading' | 'started' | 'stop';
 
@@ -78,7 +78,7 @@ export const MainPage = (props: MainPageProps) => {
           subMapCommonPermissions.editMarket = true;
         } else {
           data.collaboration?.permissions.forEach((permission) => {
-            const permissionName = JavaPermissionsMap[permission];
+            const permissionName = CreateraPermissionNameMap[permission];
             if (Object.keys(subMapCommonPermissions).includes(permissionName)) {
               subMapCommonPermissions[permissionName] = true;
             }

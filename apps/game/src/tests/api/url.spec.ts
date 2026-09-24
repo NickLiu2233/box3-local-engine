@@ -2,7 +2,7 @@ import { expect, test } from '@jest/globals';
 import { URLSearchParams, URL } from '@box/schema/api/js/url';
 
 test('url basics', function () {
-  const ftpUrl = new URL('ftp://abc:123@ftp.codemao.cn:21/');
+  const ftpUrl = new URL('ftp://abc:123@files.example.test:21/');
   // test get username password
   expect(ftpUrl.protocol).toBe('ftp:');
   expect(ftpUrl.port).toBe('21');
@@ -10,15 +10,15 @@ test('url basics', function () {
   expect(ftpUrl.password).toBe('123');
 
   const url = new URL(
-    'https://game.codemao.cn:8080/p/happy-farm?a=1&b=2&c=3#anchor0',
+    'https://engine.example.test:8080/p/happy-farm?a=1&b=2&c=3#anchor0',
   );
   expect(url.hash).toBe('#anchor0'); // Return U+0023 (#), followed by this’s URL’s fragment.
-  expect(url.host).toBe('game.codemao.cn:8080');
-  expect(url.hostname).toBe('game.codemao.cn');
+  expect(url.host).toBe('engine.example.test:8080');
+  expect(url.hostname).toBe('engine.example.test');
   expect(url.href).toBe(
-    'https://game.codemao.cn:8080/p/happy-farm?a=1&b=2&c=3#anchor0',
+    'https://engine.example.test:8080/p/happy-farm?a=1&b=2&c=3#anchor0',
   );
-  expect(url.origin).toBe('https://game.codemao.cn:8080');
+  expect(url.origin).toBe('https://engine.example.test:8080');
   expect(url.pathname).toBe('/p/happy-farm');
   expect(url.port).toBe('8080');
   expect(url.protocol).toBe('https:');
@@ -30,12 +30,12 @@ test('url basics', function () {
   // can append searchParams
   url.searchParams.append('d', '4');
   expect(url.toString()).toBe(
-    'https://game.codemao.cn:8080/p/happy-farm?a=1&b=2&c=3&d=4#anchor0',
+    'https://engine.example.test:8080/p/happy-farm?a=1&b=2&c=3&d=4#anchor0',
   );
   // can delete searchParams
   url.searchParams.delete('c');
   expect(url.toString()).toBe(
-    'https://game.codemao.cn:8080/p/happy-farm?a=1&b=2&d=4#anchor0',
+    'https://engine.example.test:8080/p/happy-farm?a=1&b=2&d=4#anchor0',
   );
 });
 
@@ -48,17 +48,17 @@ test('url.href does not finish with ? if url.search is empty', function () {
 test('url base construct and setter', function () {
   const urlBase = new URL(
     'p/spaceworld',
-    'https://game.codemao.cn/p/happy-farm',
+    'https://engine.example.test/p/happy-farm',
   );
-  expect(urlBase.href).toBe('https://game.codemao.cn/p/spaceworld');
+  expect(urlBase.href).toBe('https://engine.example.test/p/spaceworld');
 
   urlBase.pathname = '/p/newgame';
-  expect(urlBase.href).toBe('https://game.codemao.cn/p/newgame');
+  expect(urlBase.href).toBe('https://engine.example.test/p/newgame');
   expect(urlBase.pathname).toBe('/p/newgame');
   urlBase.pathname = '';
 
   urlBase.hash = 'anchor1';
-  expect(urlBase.href).toBe('https://game.codemao.cn/#anchor1');
+  expect(urlBase.href).toBe('https://engine.example.test/#anchor1');
   expect(urlBase.hash).toBe('#anchor1');
   urlBase.hash = '';
 
@@ -70,9 +70,9 @@ test('url base construct and setter', function () {
   urlBase.search = '';
 
   urlBase.username = 'abc';
-  expect(urlBase.href).toBe('https://abc@game.codemao.cn/');
+  expect(urlBase.href).toBe('https://abc@engine.example.test/');
   urlBase.password = '123';
-  expect(urlBase.href).toBe('https://abc:123@game.codemao.cn/');
+  expect(urlBase.href).toBe('https://abc:123@engine.example.test/');
   urlBase.username = urlBase.password = '';
 
   urlBase.host = 'www.host1.com:8080';
@@ -80,14 +80,14 @@ test('url base construct and setter', function () {
   expect(urlBase.host).toBe('www.host1.com:8080');
   urlBase.host = '';
 
-  urlBase.hostname = 'game.codemao.cn';
-  expect(urlBase.href).toBe('https://game.codemao.cn/');
+  urlBase.hostname = 'engine.example.test';
+  expect(urlBase.href).toBe('https://engine.example.test/');
 
   urlBase.port = '80';
-  expect(urlBase.href).toBe('https://game.codemao.cn:80/');
+  expect(urlBase.href).toBe('https://engine.example.test:80/');
   expect(urlBase.port).toBe('80');
   urlBase.port = '';
-  expect(urlBase.href).toBe('https://game.codemao.cn/');
+  expect(urlBase.href).toBe('https://engine.example.test/');
 });
 
 test('usp can handle special char escaping', function () {
@@ -103,7 +103,7 @@ test('usp can handle special char escaping', function () {
 });
 
 test('usp basics', function () {
-  const url = new URL('https://game.codemao.cn/?a=1&b=2&c=3');
+  const url = new URL('https://engine.example.test/?a=1&b=2&c=3');
   const searchParams = url.search;
 
   expect(searchParams).toBe('?a=1&b=2&c=3');

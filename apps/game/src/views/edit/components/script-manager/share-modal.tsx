@@ -11,7 +11,7 @@ import {
 } from 'src/redux/edit/script-manager';
 import { useEdit } from 'src/client/edit/edit-context';
 import { CodeEditorStateContext } from '../script-container/hooks';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import style from './index.module.scss';
 

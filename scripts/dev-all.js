@@ -143,7 +143,7 @@ try {
 
   const localEngineRoot = path.join(repoRoot, 'apps/local-engine')
   const voxaRoot = path.join(repoRoot, 'apps/voxa')
-  const portalRoot = path.join(repoRoot, 'examples/player-auth-portal')
+  const portalRoot = path.join(repoRoot, 'apps/player-auth-portal')
   prepareGameTsconfigs()
 
   // Player Service uses the same Next source as Creator/Play, but an isolated

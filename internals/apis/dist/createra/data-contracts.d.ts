@@ -1280,27 +1280,6 @@ export interface EngineUserOnlineOfflineParam {
     userId: string;
 }
 export type Error = object;
-export interface FirebaseLoginParam {
-    /** firebase token */
-    firebaseToken: string;
-    /**
-     * 授权提供者（1<<2 - google, 1<<3 - Twitter, 1<<4 - Facebook）
-     * @format int32
-     */
-    provider: number;
-}
-export interface FirebaseRegisterParam {
-    /** 电子邮箱（选填） */
-    email?: string;
-    /** firebase token */
-    firebaseToken: string;
-    /** 昵称 */
-    nickname: string;
-    /** 密码 */
-    password?: string;
-    /** 邮箱验证code（选填，填写邮箱时必填） */
-    verifyCode?: string;
-}
 export interface FollowAvatarVO {
     /**
      * Assets数量

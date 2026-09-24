@@ -13,6 +13,7 @@
 .env.*
 !.env.docker.example
 docker-data
+license/
 
 # Desktop-manager Rust build output is only for the host launcher and can be
 # several gigabytes. It is unrelated to Creator/Play/VOXA container images.

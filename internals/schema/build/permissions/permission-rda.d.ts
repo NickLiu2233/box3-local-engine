@@ -25,7 +25,7 @@ export declare const PermissionSetRDA: MuRDAStruct<{
      */
     chatEnabled: MuRDARegister<MuBoolean>;
     /**
-     * java 新的权限
+     * 平台权限
      */
     editMarket: MuRDARegister<MuBoolean>;
     editStatisticsData: MuRDARegister<MuBoolean>;
@@ -52,7 +52,7 @@ export declare const PermissionGroupRDA: MuRDAStruct<{
          */
         chatEnabled: MuRDARegister<MuBoolean>;
         /**
-         * java 新的权限
+         * 平台权限
          */
         editMarket: MuRDARegister<MuBoolean>;
         editStatisticsData: MuRDARegister<MuBoolean>;
@@ -146,7 +146,7 @@ export declare const PermissionRDA: MuRDAStruct<{
              */
             chatEnabled: MuRDARegister<MuBoolean>;
             /**
-             * java 新的权限
+             * 平台权限
              */
             editMarket: MuRDARegister<MuBoolean>;
             editStatisticsData: MuRDARegister<MuBoolean>;

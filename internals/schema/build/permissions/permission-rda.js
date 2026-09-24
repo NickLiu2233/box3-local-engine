@@ -28,7 +28,7 @@ exports.PermissionSetRDA = new rda_1.MuRDAStruct({
      */
     chatEnabled: new rda_1.MuRDARegister(new schema_1.MuBoolean(true)),
     /**
-     * java 新的权限
+     * 平台权限
      */
     editMarket: new rda_1.MuRDARegister(new schema_1.MuBoolean(false)),
     editStatisticsData: new rda_1.MuRDARegister(new schema_1.MuBoolean(false)),

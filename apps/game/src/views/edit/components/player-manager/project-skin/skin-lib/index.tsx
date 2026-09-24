@@ -13,7 +13,7 @@ import { SkinList } from '../skin-list';
 import { fetchSkinData } from '../../index';
 import { Search } from '../../../search';
 import { Button, Modal, TabPanel, Tabs, Toast } from '@box/box-design/build';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig, getConfig } from 'src/config/client';
 import { PlayerSkinList } from 'src/redux/edit/player-skin';
 

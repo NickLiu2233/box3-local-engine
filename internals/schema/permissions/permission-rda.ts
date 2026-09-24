@@ -43,7 +43,7 @@ export const PermissionSetRDA = new MuRDAStruct({
    */
   chatEnabled: new MuRDARegister(new MuBoolean(true)),
   /**
-   * java 新的权限
+   * 平台权限
    */
   editMarket: new MuRDARegister(new MuBoolean(false)),
   editStatisticsData: new MuRDARegister(new MuBoolean(false)),

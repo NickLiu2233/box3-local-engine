@@ -33,7 +33,7 @@ apps/voxa/assets/
 **/*.vert
 **/*.min.js
 # Vendored browser bundle retained by the standalone reference login portal.
-examples/player-auth-portal/public/app.js
+apps/player-auth-portal/public/app.js
 pnpm-lock.yaml
 common/config/rush/pnpm-lock.yaml
 common/config/rush/repo-state.json

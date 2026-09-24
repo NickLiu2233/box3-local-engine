@@ -28,7 +28,7 @@ import {
 import { toast } from 'sonner';
 import { useEdit } from 'src/client/edit/edit-context';
 import { Streamdown } from 'streamdown';
-import { apis } from '~/apis/api-java';
+import { apis } from '~/apis/local-api';
 import {
   ChainOfThought,
   ChainOfThoughtContent,

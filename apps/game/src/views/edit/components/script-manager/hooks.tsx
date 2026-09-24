@@ -8,7 +8,7 @@ import { editor } from 'src/client/edit/edit-client';
 import { ensureFileInFileList, transformName } from './utils';
 import { clientConfig } from 'src/config/client';
 import { usesCloudMapGroupAPIs } from 'configs/client';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 
 export function useCopyScript(options: { file?: FileState; intl: IntlShape }) {
   const { file, intl } = options;

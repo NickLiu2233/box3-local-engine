@@ -7,7 +7,7 @@ const path = require('node:path')
 const root = path.resolve(__dirname, '..')
 const engineDockerfile = fs.readFileSync(path.join(root, 'apps/local-engine/Dockerfile'), 'utf8')
 const portalDockerfile = fs.readFileSync(
-  path.join(root, 'examples/player-auth-portal/Dockerfile'),
+  path.join(root, 'apps/player-auth-portal/Dockerfile'),
   'utf8',
 )
 const compose = fs.readFileSync(path.join(root, 'docker-compose.yml'), 'utf8')

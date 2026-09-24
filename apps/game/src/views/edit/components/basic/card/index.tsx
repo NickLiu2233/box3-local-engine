@@ -1,6 +1,6 @@
 import type { JSX } from 'react';
 import * as React from 'react';
-import imgGameCover from 'src/assets/maas_default_cover.png';
+import imgGameCover from 'src/assets/default_map_cover.png';
 import { hashURL } from 'src/utils/hash-url';
 import { Image } from 'src/views/components/image';
 import style from './index.module.css';

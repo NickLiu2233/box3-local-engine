@@ -23,12 +23,6 @@ apps/*/**
 !apps/license-server/
 !apps/license-server/**
 
-!examples/
-examples/**
-!examples/*/
-examples/*/**
-!examples/*/package.json
-
 !internals/
 internals/**
 !internals/*/

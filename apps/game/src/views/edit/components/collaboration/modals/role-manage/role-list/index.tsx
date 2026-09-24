@@ -8,7 +8,7 @@ import { useEdit } from 'src/client/edit/edit-context';
 import { RootState } from 'src/redux/edit';
 import { InnerRoles } from '../../../index';
 import style from './index.module.scss';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import {
   getRoleId,

@@ -1,1 +1,1 @@
-export * from './vobi';
+export * from './data-contract';

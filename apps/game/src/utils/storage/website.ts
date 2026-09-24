@@ -7,9 +7,6 @@ export const WebsiteStorage = getStorageTemplate('GAME_WEB', {
   newCreator: true,
   openModelPreviewTimes: 0,
   accountBindTipTimeStamp: 0,
-  // is codemao account weak.
-  codemaoWeak: false,
-  codemaoWeakTipTimeStamp: 0,
   clearedStorageCache: false,
   Authorization: '',
 });

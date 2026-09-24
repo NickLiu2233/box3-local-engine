@@ -1,4 +1,4 @@
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { CollaborationRoleVO } from '@box/apis/src/createra/data-contracts';
 
 let roleNameIDMap: CollaborationRoleVO[] = [];

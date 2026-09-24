@@ -14,7 +14,7 @@ import { StackModalView, StackModal } from '../../../stack-modal';
 import { RoleList } from './role-list';
 import { EditRolePanel } from './edit-role';
 import { InnerRoles } from '../../index';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import {
   getRoleId,

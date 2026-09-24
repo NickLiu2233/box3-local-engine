@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UserAuthType = exports.Action = exports.From = exports.Env = exports.Provider = exports.VerifyType = exports.VerifySituation = exports.AuthRPCSchema = exports.OnlineEntry = exports.UserDetailSchema = exports.UserBaseInfoSchema = void 0;
+exports.AuthRPCSchema = exports.OnlineEntry = exports.UserDetailSchema = exports.UserBaseInfoSchema = void 0;
 const schema_1 = require("@box/mudb/schema");
 const nullable_schema_1 = require("./nullable-schema");
 exports.UserBaseInfoSchema = new schema_1.MuStruct({
@@ -63,52 +63,4 @@ exports.AuthRPCSchema = {
         },
     },
 };
-var VerifySituation;
-(function (VerifySituation) {
-    VerifySituation[VerifySituation["register"] = 0] = "register";
-    VerifySituation[VerifySituation["login"] = 1] = "login";
-    VerifySituation[VerifySituation["update"] = 2] = "update";
-    VerifySituation[VerifySituation["resetpwd"] = 3] = "resetpwd";
-})(VerifySituation || (exports.VerifySituation = VerifySituation = {}));
-var VerifyType;
-(function (VerifyType) {
-    VerifyType[VerifyType["phone"] = 0] = "phone";
-    VerifyType[VerifyType["email"] = 1] = "email";
-    VerifyType[VerifyType["username"] = 2] = "username";
-})(VerifyType || (exports.VerifyType = VerifyType = {}));
-var Provider;
-(function (Provider) {
-    Provider["wechat"] = "wechat";
-    Provider["wechatmp"] = "wechatmp";
-    Provider["qq"] = "qq";
-    Provider["weibo"] = "weibo";
-    Provider["codemao"] = "codemao";
-})(Provider || (exports.Provider = Provider = {}));
-var Env;
-(function (Env) {
-    Env["development"] = "development";
-    Env["staging"] = "staging";
-    Env["preprod"] = "preprod";
-    Env["production"] = "production";
-})(Env || (exports.Env = Env = {}));
-var From;
-(function (From) {
-    From["cm"] = "cm";
-    From["game"] = "game";
-})(From || (exports.From = From = {}));
-var Action;
-(function (Action) {
-    Action["login"] = "login";
-    Action["bind"] = "bind";
-})(Action || (exports.Action = Action = {}));
-var UserAuthType;
-(function (UserAuthType) {
-    UserAuthType[UserAuthType["wechat"] = 1] = "wechat";
-    UserAuthType[UserAuthType["qq"] = 2] = "qq";
-    UserAuthType[UserAuthType["weibo"] = 4] = "weibo";
-    UserAuthType[UserAuthType["codemao"] = 8] = "codemao";
-    UserAuthType[UserAuthType["google"] = 16] = "google";
-    UserAuthType[UserAuthType["facebook"] = 32] = "facebook";
-    UserAuthType[UserAuthType["twitter"] = 64] = "twitter";
-})(UserAuthType || (exports.UserAuthType = UserAuthType = {}));
 //# sourceMappingURL=auth-protocol.js.map

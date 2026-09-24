@@ -12,7 +12,7 @@ import { ClientStateType } from '../edit-schema';
 import { CodeEditorClientController } from '../code-editor/code-editor-client-controller';
 import { clientConfig, getConfig } from 'src/config/client';
 import { GamepadController } from './gamepad-controller';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { appendProjectAssetRecovery } from './project-asset-trash';
 import { getModelPreviewURL } from 'src/utils/model-preview-url';
 

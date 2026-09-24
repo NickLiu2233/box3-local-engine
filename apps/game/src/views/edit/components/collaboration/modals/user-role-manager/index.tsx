@@ -12,7 +12,7 @@ import { PanelType } from '../../management-panel';
 import { EditCheckbox } from '../../../edit-checkbox';
 import style from './index.module.scss';
 import { throttle } from 'src/utils/debounce-throttle';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import { getRoleId } from 'src/views/edit/components/collaboration/transform';
 import { Toast } from '@box/box-design';

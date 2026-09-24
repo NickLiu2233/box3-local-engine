@@ -277,15 +277,6 @@ export interface ApplicationAuditParam {
      */
     status?: number;
 }
-export interface AuthSendCodeParam {
-    /** 手机/邮箱/BoxID */
-    account: string;
-    /**
-     * 处理情况：0-注册, 1-登陆, 2-更新信息, 3-重置密码
-     * @format int32
-     */
-    situation: number;
-}
 export interface AuthorInfoAndFollowCountVO {
     /** 作者头像 */
     avatar: string;
@@ -502,53 +493,6 @@ export interface CheckUsernameResultVO {
     fails: string[];
     /** 用户信息集合 */
     users: UserInfo[];
-}
-export interface CodemaoDiversionInfo {
-    /** 作者头像 */
-    authorAvatar: string;
-    /** 作者主页URL */
-    authorHomepage: string;
-    /** 作者名称 */
-    authorName: string;
-    /** 作品名称 */
-    contentName: string;
-    /** 作品URL */
-    contentUrl: string;
-    /**
-     * 排序序号（越小越靠前）
-     * @format int32
-     */
-    order: number;
-    /** 内容图片url */
-    picture: string;
-}
-export interface CodemaoLoginParam {
-    /** 编程猫授权token */
-    auth: string;
-    /**
-     * 推荐人id
-     * @format int32
-     */
-    recommendBy?: number;
-}
-export interface CodemaoRecommenderPostInfo {
-    /** 作者头像 */
-    authorAvatar: string;
-    /** 作者主页URL */
-    authorHomepage: string;
-    /** 作者名称 */
-    authorName: string;
-    /**
-     * 排序序号（越小越靠前）
-     * @format int32
-     */
-    order: number;
-    /** 内容图片url */
-    picture: string;
-    /** 帖子URL */
-    postUrl: string;
-    /** 帖子标题 */
-    title: string;
 }
 export interface CommentAndBestReplyVO {
     /** 头像hash */
@@ -950,21 +894,6 @@ export interface CreatInvitationCodeParam {
      */
     repeat: number;
 }
-export interface CreateGameEditParam {
-    /** 描述 */
-    describe?: string;
-    /** hash */
-    hash?: string;
-    /** 封面图片 */
-    image: string;
-    /** 地图名称 */
-    name: string;
-    /**
-     * 资源id
-     * @format int64
-     */
-    resourceId?: number;
-}
 export interface CreateInvatitionCodeVO {
     /** 邀请码列表 */
     codes?: string[];
@@ -1057,14 +986,6 @@ export interface DeletedListVO {
      */
     userId: number;
 }
-export interface EmailUpdateParam {
-    /** 电子邮箱验证码 */
-    code: string;
-    /** 电子邮箱 */
-    email: string;
-    /** 原始密码/新密码 */
-    password: string;
-}
 export interface EventDetailVO {
     content?: string;
     creator?: string;
@@ -1126,14 +1047,6 @@ export interface EventStatusVO {
      * @format int64
      */
     number: number;
-}
-export interface FingerprintCheckParam {
-    /** 游客id */
-    fingerprint?: string;
-}
-export interface FirebaseLoginParam {
-    /** firebase_token */
-    token: string;
 }
 export interface FirstPublishContentVO {
     /** 作品图像 */
@@ -1599,143 +1512,6 @@ export interface ListRecommendResult {
      */
     viewCount: number;
 }
-export interface LoginParam {
-    /** 手机/邮箱/BoxID */
-    account: string;
-    /** 密码 */
-    password: string;
-}
-export interface LoginUserInfoVO {
-    /**
-     * oauth授权类型
-     * @format int32
-     */
-    authInfo: number;
-    /** 头像 */
-    avatar: string;
-    /** 头像hash */
-    avatarHash: string;
-    /**
-     * 头像状态(0-waiting, 1-rejected, 2-noticed, 3-accepted, 4-cancelled)
-     * @format int32
-     */
-    avatarStatus?: number;
-    /** 是否禁止编辑 */
-    banEditor: boolean;
-    /**
-     * 账号封禁终止时间
-     * @format date-time
-     */
-    bannedTill: string;
-    /**
-     * 生日
-     * @format date-time
-     */
-    birthday: string;
-    /** 黑名单列表 */
-    blocklist?: number[];
-    /**
-     * 编程猫用户id
-     * @format int64
-     */
-    cmid?: number;
-    /**
-     * 创建时间
-     * @format date-time
-     */
-    createdAt: string;
-    /** 个性签名 */
-    description?: string;
-    /** 用户昵称 */
-    displayname: string;
-    /** Email */
-    email?: string;
-    /** 是否为首次登陆 */
-    firstLogin: boolean;
-    /**
-     * 用户标记
-     * @format int32
-     */
-    flags: number;
-    /**
-     * 性别：0-male,1-female,2-unknow
-     * @format int32
-     */
-    gender: number;
-    /**
-     * 金币数量
-     * @format int64
-     */
-    gold: number;
-    /** 是否实名认证 */
-    hasAuthenticateIdcard?: boolean;
-    /**
-     * 用户id
-     * @format int64
-     */
-    id: number;
-    /** 是否已经设置过密码 */
-    isSetPassword: boolean;
-    /** 语言配置(zh_CN:中文, en_US:英文) */
-    language: string;
-    /**
-     * 禁言终止时间
-     * @format date-time
-     */
-    mutedTill: string;
-    /**
-     * 用户权限
-     * @format int32
-     */
-    permission: number;
-    /** 手机号 */
-    phone: string;
-    /**
-     * 荣誉值
-     * @format int64
-     */
-    reputation: number;
-    /**
-     * 账号状态：0-normal，1-limited，2-warning，3-banned
-     * @format int32
-     */
-    status: number;
-    /**
-     * 标签
-     * @format int32
-     */
-    tag: number;
-    /** 授权码 */
-    token: string;
-    /**
-     * 更新时间时间
-     * @format date-time
-     */
-    updatedAt: string;
-    /** 账号 */
-    username: string;
-    /** 用户皮肤 */
-    wearingSkins: WearingSkins;
-}
-export interface MaasUserLoginParam {
-    /** 虚猕token */
-    token: string;
-}
-export interface MaasUserLoginVO {
-    /**
-     * 奇梦岛用户id
-     * @format int64
-     */
-    boxUserId: number;
-    /** 奇梦岛token */
-    token: string;
-}
-export interface MaasUserUpdateNicknameParam {
-    /** 需要更新的昵称 */
-    nickname: string;
-    /** 虚猕token */
-    token: string;
-}
 export interface NotifyParam {
     content?: string;
     id?: string;
@@ -1745,37 +1521,6 @@ export interface NotifyParam {
     /** @format int64 */
     sender?: number;
     title?: string;
-}
-export interface OauthCallBackParam {
-    /** auth action   login 表示登陆，bind 表示绑定第三方，该参数在使用wechat qq weibo 登陆/绑定时需要 */
-    action?: string;
-    appId?: string;
-    /** @format int32 */
-    authType?: number;
-    auth_code?: string;
-    authorization_code?: string;
-    code?: string;
-    oauth_token?: string;
-    oauth_verifier?: string;
-    /**
-     * 推荐人id
-     * @format int32
-     */
-    recommendBy?: number;
-    state?: string;
-}
-export interface OauthLoginParam {
-    /** auth action   login 表示登陆，bind 表示绑定第三方，该参数在使用wechat qq weibo 登陆/绑定时需要 */
-    action?: string;
-    /** appId 当前应用ID, 该参数在使用wechat qq weibo 登陆/绑定时需要 */
-    appId?: string;
-    /** code 第三方授权code, 该参数只在App/原生端登录时需要 */
-    code?: string;
-    /**
-     * 第三方平台类型 WECHAT(1), QQ(1 << 1),WEIBO(1 << 2，该参数在使用wechat qq weibo 登陆/绑定时需要）
-     * @format int32
-     */
-    oauthType?: number;
 }
 export interface OauthRedirectVO {
     /** 重定向地址  前端自己选择如何打开 */
@@ -1793,25 +1538,6 @@ export interface PermissionUpdateParam {
      */
     userId: number;
 }
-export interface PhoneLoginParam {
-    /** 验证码 */
-    code: string;
-    /** 手机号（中国+86） */
-    phone: string;
-    /**
-     * 推荐人id
-     * @format int32
-     */
-    recommendBy?: number;
-}
-export interface PhoneUpdateParam {
-    /** 手机验证码 */
-    code: string;
-    /** 原始密码/新密码 */
-    password: string;
-    /** 手机号（中国+86） */
-    phone: string;
-}
 export interface ProjectReviewInfo {
     /** 具体细节 */
     details: string;
@@ -1819,14 +1545,6 @@ export interface ProjectReviewInfo {
     reason: string[];
     /** 标题 */
     title: string;
-}
-export interface PwdUpdateParam {
-    /** 老密码, 重置密码时可不填 */
-    oldPassword?: string;
-    /** 新密码 */
-    password: string;
-    /** 密码重置token, 重置密码时选填(不填自动从cookie中获取) */
-    resetToken?: string;
 }
 export interface ReceiverVO {
     displayName?: string;
@@ -1837,23 +1555,6 @@ export interface ReceiverVO {
 export interface Receivers {
     data?: number[];
     type?: string;
-}
-export interface RegisterParam {
-    /** 手机/邮箱/BoxID */
-    account: string;
-    /** BoxID */
-    boxId?: string;
-    /** 验证码 */
-    code: string;
-    /** 用户昵称 */
-    displayname?: string;
-    /** 密码 */
-    password: string;
-    /**
-     * 推荐人id
-     * @format int32
-     */
-    recommendBy?: number;
 }
 export interface ReportVO {
     authorDisplayName?: string;
@@ -2152,6 +1853,26 @@ export interface SimpleUserInfoVO {
     username: string;
     /** 用户皮肤 */
     wearingSkins: WearingSkins;
+}
+export interface WearingSkins {
+    head?: string;
+    hips?: string;
+    leftFoot?: string;
+    leftHand?: string;
+    leftLowerArm?: string;
+    leftLowerLeg?: string;
+    leftShoulder?: string;
+    leftUpperArm?: string;
+    leftUpperLeg?: string;
+    neck?: string;
+    rightFoot?: string;
+    rightHand?: string;
+    rightLowerArm?: string;
+    rightLowerLeg?: string;
+    rightShoulder?: string;
+    rightUpperArm?: string;
+    rightUpperLeg?: string;
+    torso?: string;
 }
 export interface SkinVO {
     /**
@@ -2481,76 +2202,12 @@ export interface UserPunishVO {
     /** @format int64 */
     userId?: number;
 }
-export interface UserUpdateParam {
-    /** 头像 */
-    avatar?: string;
-    /**
-     * 生日
-     * @format date-time
-     */
-    birthday?: string;
-    /** 个性签名 */
-    description?: string;
-    /** 用户昵称 */
-    displayname?: string;
-    /**
-     * 性别：0-male,1-female,2-unknow
-     * @format int32
-     */
-    gender?: number;
-    /** 账号 */
-    username?: string;
-}
 export interface ValidSender {
     avatar?: string;
     displayName?: string;
     /** @format int64 */
     id?: number;
     userName?: string;
-}
-export interface VerifyResetPwdParam {
-    /** 手机/邮箱/BoxID */
-    account: string;
-    /** 验证码 */
-    code: string;
-}
-export interface WearingSkins {
-    /** 头 */
-    head?: string;
-    /** 臀部 */
-    hips?: string;
-    /** 左脚 */
-    leftFoot?: string;
-    /** 左手 */
-    leftHand?: string;
-    /** 左下臂 */
-    leftLowerArm?: string;
-    /** 左小腿 */
-    leftLowerLeg?: string;
-    /** 左肩膀 */
-    leftShoulder?: string;
-    /** 左上臂 */
-    leftUpperArm?: string;
-    /** 左大腿 */
-    leftUpperLeg?: string;
-    /** 脖子 */
-    neck?: string;
-    /** 右脚 */
-    rightFoot?: string;
-    /** 右手 */
-    rightHand?: string;
-    /** 右下臂 */
-    rightLowerArm?: string;
-    /** 右小腿 */
-    rightLowerLeg?: string;
-    /** 右肩膀 */
-    rightShoulder?: string;
-    /** 右上臂 */
-    rightUpperArm?: string;
-    /** 右大腿 */
-    rightUpperLeg?: string;
-    /** 躯干 */
-    torso?: string;
 }
 export interface PageResponseAvatarReviewInfoVO {
     /**
@@ -2864,32 +2521,6 @@ export interface ResAnnualReporting {
     /** 请求追中id，每次请求唯一(可能为空) */
     traceId?: string;
 }
-export interface ResAvatarStatusVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: AvatarStatusVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResAvatarUploadStatusVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: AvatarUploadStatusVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
 export interface ResCheckUsernameResultVO {
     /**
      * 状态码，200为成功，其他均为异常
@@ -2963,19 +2594,6 @@ export interface ResEventDetailVO {
     code: number;
     /** 业务数据 */
     data: EventDetailVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResEventStatusVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: EventStatusVO;
     /** 返回消息 */
     msg: string;
     /** 请求追中id，每次请求唯一(可能为空) */
@@ -3072,45 +2690,6 @@ export interface ResListActivitySkinExistedVO {
     /** 请求追中id，每次请求唯一(可能为空) */
     traceId?: string;
 }
-export interface ResListBlocklistUserInfoVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: BlocklistUserInfoVO[];
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResListCodemaoDiversionInfo {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: CodemaoDiversionInfo[];
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResListCodemaoRecommenderPostInfo {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: CodemaoRecommenderPostInfo[];
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
 export interface ResListContribution {
     /**
      * 状态码，200为成功，其他均为异常
@@ -3171,58 +2750,6 @@ export interface ResListValidSender {
     code: number;
     /** 业务数据 */
     data: ValidSender[];
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResListString {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: string[];
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResLoginUserInfoVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: LoginUserInfoVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResMaasUserLoginVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: MaasUserLoginVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResOauthRedirectVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: OauthRedirectVO;
     /** 返回消息 */
     msg: string;
     /** 请求追中id，每次请求唯一(可能为空) */
@@ -3423,32 +2950,6 @@ export interface ResPageResponseReportVO {
     /** 请求追中id，每次请求唯一(可能为空) */
     traceId?: string;
 }
-export interface ResPageResponseSimpleUserInfoAndFollowingVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: PageResponseSimpleUserInfoAndFollowingVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResPageResponseSimpleUserInfoVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: PageResponseSimpleUserInfoVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
 export interface ResPageResponseSkinVO {
     /**
      * 状态码，200为成功，其他均为异常
@@ -3457,19 +2958,6 @@ export interface ResPageResponseSkinVO {
     code: number;
     /** 业务数据 */
     data: PageResponseSkinVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResPageResponseUserBrowseHistoryVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: PageResponseUserBrowseHistoryVO;
     /** 返回消息 */
     msg: string;
     /** 请求追中id，每次请求唯一(可能为空) */
@@ -3527,19 +3015,6 @@ export interface ResSearchUserResultVO {
     /** 请求追中id，每次请求唯一(可能为空) */
     traceId?: string;
 }
-export interface ResSimpleUserInfoAndStatisticsVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: SimpleUserInfoAndStatisticsVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
 export interface ResSimpleUserInfoVO {
     /**
      * 状态码，200为成功，其他均为异常
@@ -3561,19 +3036,6 @@ export interface ResSingleValueVOLocalDateTime {
     code: number;
     /** 业务数据 */
     data: SingleValueVOLocalDateTime;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResSingleValueVOBoolean {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: SingleValueVOBoolean;
     /** 返回消息 */
     msg: string;
     /** 请求追中id，每次请求唯一(可能为空) */
@@ -3605,19 +3067,6 @@ export interface ResSingleValueVOLong {
     /** 请求追中id，每次请求唯一(可能为空) */
     traceId?: string;
 }
-export interface ResSingleValueVOString {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: SingleValueVOString;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
 export interface ResSkinVO {
     /**
      * 状态码，200为成功，其他均为异常
@@ -3639,19 +3088,6 @@ export interface ResUnReadVO {
     code: number;
     /** 业务数据 */
     data: UnReadVO;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface ResUserLanguageVO {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: UserLanguageVO;
     /** 返回消息 */
     msg: string;
     /** 请求追中id，每次请求唯一(可能为空) */
@@ -4167,55 +3603,6 @@ export declare enum CopyEvent {
      * 被动复制
      */
     PassiveCopy = 1
-}
-export interface FrontEndDataFormatMapStringString {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: Record<string, string>;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
-}
-export interface SaveMapGroupProjectParam {
-    /** 地图ID */
-    mapId: string;
-    /** 地图组工程Json */
-    project: Record<string, string>;
-}
-export interface UpdateMapGroupProjectVersionParam {
-    /**
-     * 地图ID
-     * @format int64
-     */
-    mapId: string;
-    /** 地图组工程版本 */
-    version: string;
-}
-export interface UpdateMapDefaultScreenIdParam {
-    /** 地图默认屏幕ID */
-    defaultScreenId: string;
-    /** 地图ID */
-    mapId: string;
-    /** 模式：play、edit */
-    mode: string;
-}
-export interface FrontEndDataFormatNull {
-    /**
-     * 状态码，200为成功，其他均为异常
-     * @format int32
-     */
-    code: number;
-    /** 业务数据 */
-    data: null;
-    /** 返回消息 */
-    msg: string;
-    /** 请求追中id，每次请求唯一(可能为空) */
-    traceId?: string;
 }
 export interface FrontEndDataFormatArrayString {
     /**

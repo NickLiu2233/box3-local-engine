@@ -19,10 +19,7 @@
     { "packageName": "@box/player-admin", "projectFolder": "apps/player-admin" },
     { "packageName": "@box/server-manager", "projectFolder": "apps/server-manager" },
     { "packageName": "@box/voxa", "projectFolder": "apps/voxa" },
-    {
-      "packageName": "box-player-auth-portal-example",
-      "projectFolder": "examples/player-auth-portal"
-    },
+    { "packageName": "@box/player-auth-portal", "projectFolder": "apps/player-auth-portal" },
     { "packageName": "@box/apis", "projectFolder": "internals/apis" },
     { "packageName": "@box/build-system", "projectFolder": "internals/build-system" },
     { "packageName": "@box/env", "projectFolder": "internals/env" },

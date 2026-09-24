@@ -17,7 +17,7 @@ import { ArenaEditorUIContext } from '../../../editor-ui-context';
 
 import style from '../index.module.scss';
 import { clientConfig } from 'src/config/client';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { getRoleId } from 'src/views/edit/components/collaboration/transform';
 
 export const ShareLink = () => {

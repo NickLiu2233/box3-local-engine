@@ -9,7 +9,7 @@ import { ModelResp, ModelType } from '@box/apis';
 import { useEdit } from 'src/client/edit/edit-context';
 
 import { clientConfig, getConfig } from 'src/config/client';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { RootState } from 'src/redux/edit';
 import { refreshSkinsList } from '../player-manager';
 import { EditType, setVoxaData } from 'src/redux/edit/creator';

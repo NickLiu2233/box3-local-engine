@@ -10,7 +10,7 @@ import { BackHeader } from '../header/back-header';
 import { ArenaEditorUIContext } from '../../../editor-ui-context';
 
 import style from '../index.module.scss';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import { CollaborationApplyVO } from '@box/apis/dist/createra/data-contracts';
 

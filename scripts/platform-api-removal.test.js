@@ -49,6 +49,14 @@ for (const file of sourceFiles) {
 }
 
 for (const removed of [
+  'internals/apis/src/java',
+  'internals/apis/src/maas',
+  'internals/apis/src/group',
+  'internals/apis/src/signature',
+  'internals/apis/src/ai/vobi.ts',
+  'apps/game/src/apis/api-java',
+  'apps/game/src/assets/maas_logo_white.svg',
+  'apps/game/src/assets/maas_default_cover.png',
   'packages/analytics/build/client.js',
   'packages/analytics/build/http.js',
   'packages/analytics/build/protocol.js',
@@ -59,6 +67,36 @@ for (const removed of [
   'packages/utils/build/whitelist.js',
 ]) {
   assert.equal(fs.existsSync(path.join(root, removed)), false, `${removed} still exists`)
+}
+
+for (const legacyClientName of [
+  'JavaAuth',
+  'JavaUser',
+  'MaasAuth',
+  'CodemaoLoginUsingPost',
+  'FirebaseLoginUsingPost',
+  'FlashLoginUsingPost',
+]) {
+  assert.equal(
+    fs
+      .readFileSync(path.join(root, 'internals/apis/dist/index.js'), 'utf8')
+      .includes(legacyClientName),
+    false,
+    `@box/apis still bundles ${legacyClientName}`,
+  )
+}
+
+for (const [file, legacyIdentifier] of [
+  ['apps/game/assets/icons.svg', 'icon-logo-maas'],
+  ['apps/game/configs/server.ts', 'MOCK_JAVA_BACKEND'],
+  ['apps/game/src/utils/appEdition.ts', 'isMaas'],
+  ['packages/utils/src/createra-permissions.ts', 'JavaPermissionsMap'],
+]) {
+  assert.equal(
+    fs.readFileSync(path.join(root, file), 'utf8').includes(legacyIdentifier),
+    false,
+    `${file} still exposes ${legacyIdentifier}`,
+  )
 }
 
 const localConfig = JSON.parse(

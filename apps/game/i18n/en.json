@@ -718,12 +718,6 @@
   "rotateFailed": "Rotate failed",
   "returnWebsiteModalBody": "Do you want to return to Createra?",
 
-  "winLimitCodemaoSkin": "Win a limited Codemao skin!",
-  "winLimitCodemaoSkinDone": "Congratulation on getting the limited Codemao skin!",
-  "winCodemaoSkinProgress": "Share and invite 2 friends to sign up ({num}/2), and you will get a limited edition skin.",
-  "winCodemaoSkinDeadline": "Event ends on 10/10 at 23:59. Log in to participate.",
-  "winCodemaoSkinTips": "The skin will be granted  5 days after the event. Stay tuned! \nKeep inviting. The more the merrier!",
-
   "antiAddictionNoticeHead": "Bed time! Please stop by tomorrow",
   "antiAddictionNoticeContext": "Due to regulation, playing is prohibited from 22:00 to 8:00. You may continue creating and enjoy the fun of it!",
 
@@ -956,7 +950,6 @@
   "confirm_password": "Confirm password",
   "setNewPasswordSuccess": "You have successfully reset the password",
   "update_password": "Update password",
-  "registerGuide": "New to Codemao?\nCreate your account",
   "loginGuide": "Already have an account?\nSign in",
   "loginNow": "login now",
   "login_with_pin": "Log in via SMS",
@@ -1029,7 +1022,6 @@
   "reBind": "Relink",
   "unBind": "Unlink",
   "weibo": "Weibo",
-  "codemao": "Codemao",
   "oldPassword": "Old password",
   "newPassword": "New password",
   "cannotUnBindTitle": "Cannot unlink",
@@ -1040,8 +1032,6 @@
   "setPhone": "Set up phone",
   "setEmail": "Set up email",
   "setSuccess": "Set up successfully",
-  "bindCodemaoAccount": "Link new Codemao account",
-  "loginWithCodemao": "Codemao login",
   "quickDescribeQuestion": "Summary of the problem",
   "describeDetails": "Detail description",
   "phoneOrEmail": "Phone number or email",
@@ -1112,8 +1102,6 @@
   "bound": "Bound",
   "bindFailed": "Fail to bind",
   "unauthorized": "Not logged in yet",
-  "codemaoLoginNotification": "Hint: Codemao users should log in via others (see bottom)",
-
   "cmBanned": "Can not bind",
 
   "invalidDisplayname": "This nickname is not available",

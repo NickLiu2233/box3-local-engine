@@ -62,8 +62,6 @@ export enum OnlineEntry {
   edit,
 }
 
-export type CookieType = 'game' | 'cm';
-
 export const AuthRPCSchema = {
   name: 'auth-server-rpc',
   api: {
@@ -83,52 +81,7 @@ export const AuthRPCSchema = {
   },
 };
 
-export enum VerifySituation {
-  register,
-  login,
-  update,
-  resetpwd,
-}
-
-export enum VerifyType {
-  phone,
-  email,
-  username,
-}
-
-export enum Provider {
-  wechat = 'wechat',
-  wechatmp = 'wechatmp',
-  qq = 'qq',
-  weibo = 'weibo',
-  codemao = 'codemao',
-}
-
-export enum Env {
-  development = 'development',
-  staging = 'staging',
-  preprod = 'preprod',
-  production = 'production',
-}
-
-export enum From {
-  cm = 'cm',
-  game = 'game',
-}
-
-export enum Action {
-  login = 'login',
-  bind = 'bind',
-}
-
-export enum UserAuthType {
-  wechat = 1 << 0,
-  qq = 1 << 1,
-  weibo = 1 << 2,
-  codemao = 1 << 3,
-  google = 1 << 4,
-  facebook = 1 << 5,
-  twitter = 1 << 6,
-}
+/** Opaque authentication flags supplied by the local player service. */
+export type UserAuthType = number;
 
 export type AuthAPI = MuRPCClient<typeof AuthRPCSchema>;

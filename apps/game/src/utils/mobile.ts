@@ -274,13 +274,6 @@ export const isSafari = () => {
   );
 };
 
-export const isNemoApp = () => {
-  if (typeof navigator === 'undefined') {
-    return false;
-  }
-  return navigator.userAgent.indexOf('codemao') >= 0;
-};
-
 type Orientation = 'landscape' | 'portrait';
 export async function lockOrientation(orientation: Orientation) {
   if (!isFullScreen()) {

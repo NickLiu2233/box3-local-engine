@@ -7,7 +7,7 @@ import { ShareScriptErrorCode } from '@box/apis/src/createra/data-contracts';
 import { RootState } from 'src/redux/edit';
 import { setUnshareScriptId } from 'src/redux/edit/script-manager';
 import { CodeEditorStateContext } from '../script-container/hooks';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import { useEdit } from 'src/client/edit/edit-context';
 import { AssetType } from '@box/schema/project/project-rda';

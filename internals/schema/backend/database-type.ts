@@ -334,39 +334,6 @@ export namespace DB {
       user_id: number;
       username: string;
     };
-    user_wechat_auth: {
-      user_id: number;
-      access_token: string;
-      refresh_token: string;
-      union_id: string;
-      open_id: string;
-      updated_at: TimeStamp;
-      nickname: string;
-    };
-    user_qq_auth: {
-      user_id: number;
-      access_token: string;
-      refresh_token: string;
-      union_id: string;
-      open_id: string;
-      updated_at: TimeStamp;
-      nickname: string;
-    };
-    user_weibo_auth: {
-      user_id: number;
-      access_token: string;
-      refresh_token: string;
-      uid: string;
-      updated_at: TimeStamp;
-      nickname: string;
-    };
-    user_codemao_auth: {
-      user_id: number;
-      cmid: number;
-      token: string;
-      updated_at: TimeStamp;
-      nickname: string;
-    };
     customer_service: {
       id: number;
       title: string;

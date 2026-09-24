@@ -28,7 +28,7 @@ import {
   loadRenderableMesh,
 } from 'src/engine/mesh/controller';
 import { DEFAULT_SCALE } from 'src/defs/modelScale';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { MouseLoading } from 'src/views/edit/components/basic/mouse-loading';
 import { SeedView } from 'src/views/edit/components/ui-3d/seed';
 import { setSelectedModel } from 'src/redux/edit/ui';

@@ -35,6 +35,7 @@ fs.writeFileSync(
     cloudExtraProject,
     cloudModelPreviews,
     cloudModelProjects,
+    cloudRuntimeResources,
     localizeCloudModelResources,
     cloudSkinPreviews,
     cloudSkinProjects,
@@ -327,6 +328,31 @@ fs.writeFileSync(
     'Cloud Model': 'model-project',
   })
   const cloudResourceId = 'Jh-ROpjh0o99ewON7WoYot4XQmohxR2MvOLrM6UmI6Y'
+  const cloudUuidModelHash = '1e417cbf-d778-4861-b973-135c7659fca2'
+  assert.deepEqual(
+    cloudRuntimeResources({
+      groupProject: { version: '0.3.31' },
+      scripts: { clientScripts: [], serverScripts: [] },
+      photos: [],
+      models: [
+        {
+          modelName: 'UUID-backed model',
+          modelFileHash: cloudUuidModelHash,
+          modelPreviewHash: cloudUuidModelHash,
+          projectFileHash: cloudUuidModelHash,
+        },
+      ],
+      skins: [],
+      defaultSkin: null,
+    }),
+    [{ hash: cloudUuidModelHash, sourceKind: 's3-model' }],
+    'UUID-backed cloud models must enter the OSS download queue',
+  )
+  assert.deepEqual(
+    [...referencedHashes(Buffer.from(JSON.stringify({ arbitraryId: cloudUuidModelHash })))],
+    [],
+    'generic project JSON must not treat arbitrary UUID values as content blobs',
+  )
   const localProjectHash = contentHash(Buffer.from('editable voxa project'))
   const localizedCloudModels = localizeCloudModelResources(
     [

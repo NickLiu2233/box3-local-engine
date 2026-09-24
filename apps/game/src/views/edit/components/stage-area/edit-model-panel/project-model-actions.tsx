@@ -19,7 +19,7 @@ import {
 } from '@box/apis';
 
 import { RenameModal } from 'src/views/edit/components/rename-modal';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig, getConfig } from 'src/config/client';
 import { EditType, setVoxaData } from 'src/redux/edit/creator';
 import {

@@ -7,7 +7,7 @@ import { RootState } from 'src/redux/edit';
 import { RadioBtn } from 'src/views/components/basic/radioBtn';
 import { editor } from 'src/client/edit/edit-client';
 import style from './index.module.scss';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 
 export const PrivacySetting = () => {

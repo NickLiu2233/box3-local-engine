@@ -14,7 +14,7 @@ import { CreativeMode, REQUEST_TIMEOUT, ModelType, SortOrder } from '@box/apis';
 
 import { MenuModal, Panel } from './menu-modal';
 import { setCenterPanel } from 'src/redux/edit/creator';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import { getLibraryMapId } from 'src/utils/local-voxa-library';
 import { ProjectSkin } from './project-skin/index';

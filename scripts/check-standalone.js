@@ -178,7 +178,7 @@ const rushConfiguration = JSON.parse(readRequired('rush.json'))
 const workspaceDirs = rushConfiguration.projects.map(({ projectFolder }) => projectFolder)
 const packages = new Map()
 
-for (const parent of ['apps', 'examples', 'internals', 'packages', 'services', 'tools']) {
+for (const parent of ['apps', 'internals', 'packages', 'services', 'tools']) {
   for (const entry of fs.readdirSync(path.join(root, parent), { withFileTypes: true })) {
     if (!entry.isDirectory()) continue
     const directory = `${parent}/${entry.name}`
@@ -841,7 +841,7 @@ requirePattern(
   playerAuthPortalCompose,
   composeFile,
   'player auth portal repository build context',
-  /context: \.[\s\S]*?dockerfile: examples\/player-auth-portal\/Dockerfile/,
+  /context: \.[\s\S]*?dockerfile: apps\/player-auth-portal\/Dockerfile/,
 )
 requirePattern(
   playerAuthPortalCompose,
@@ -1372,8 +1372,8 @@ requirePattern(
   /deploymentMode === 'play'[\s\S]*?runtimePath =[\s\S]*?`\/runtime\/play\/\$\{encodeURIComponent\(containerName\)\}\$\{[\s\S]*?privateRoomId[\s\S]*?json\.data\.socketServerUrl/,
 )
 requirePattern(
-  readRequired('apps/game/src/apis/api-java/index.ts'),
-  'apps/game/src/apis/api-java/index.ts',
+  readRequired('apps/game/src/apis/local-api/index.ts'),
+  'apps/game/src/apis/local-api/index.ts',
   'local uploads use the writable edit runtime',
   /resolveRuntimeURL\(getConfig\(\)\.BACKEND_SERVER_URL \|\| '', 'block'\)[\s\S]*?method: 'POST'/,
 )

@@ -24,12 +24,22 @@ apps/license-server/.local/
 .env.local
 .env.*.local
 .env
+.runtime.env
 # Runtime environment files can contain deployment secrets. Keep only the
 # documented defaults and examples in source control.
 .env.*
 !.env.docker.example
 !**/.env.example
 !**/.env.*.example
+
+# The launcher generates runtime configuration and license state locally.
+# Keep the directory placeholder, never machine-bound credentials or IDs.
+/license/*
+!/license/.gitkeep
+
+# Local .NET launcher outputs are reproducible build artifacts.
+/tools/windows-launcher/bin/
+/tools/windows-launcher/obj/
 
 # 本机创作数据只能通过工程导入/导出流转，不能随代码提交或发行。
 # 已跟踪的默认资源不受此规则影响；新增素材会被忽略。

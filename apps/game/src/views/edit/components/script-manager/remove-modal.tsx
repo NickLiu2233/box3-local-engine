@@ -6,7 +6,7 @@ import { ShareScriptErrorCode } from '@box/apis/src/createra/data-contracts';
 import { ModalView, Toast } from '@box/box-design';
 import { FileState } from '@box/schema/code-editor/code-editor-common-state';
 import { AssetType } from '@box/schema/project/project-rda';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { useEdit } from 'src/client/edit/edit-context';
 import { clientConfig } from 'src/config/client';
 import { usesCloudMapGroupAPIs } from 'configs/client';

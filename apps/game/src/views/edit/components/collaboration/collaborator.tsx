@@ -10,7 +10,7 @@ import { MenuItemType, InnerRoles, UserInfoList, UserRolesList } from './index';
 import style from './index.module.scss';
 import { MenuList } from './list/menu-list';
 import { MainHeader } from './header/manage-header';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 
 type CollaboratorInfoProps = {

@@ -46,7 +46,6 @@ export declare enum OnlineEntry {
     play = 2,
     edit = 3
 }
-export type CookieType = 'game' | 'cm';
 export declare const AuthRPCSchema: {
     name: string;
     api: {
@@ -93,46 +92,7 @@ export declare const AuthRPCSchema: {
         };
     };
 };
-export declare enum VerifySituation {
-    register = 0,
-    login = 1,
-    update = 2,
-    resetpwd = 3
-}
-export declare enum VerifyType {
-    phone = 0,
-    email = 1,
-    username = 2
-}
-export declare enum Provider {
-    wechat = "wechat",
-    wechatmp = "wechatmp",
-    qq = "qq",
-    weibo = "weibo",
-    codemao = "codemao"
-}
-export declare enum Env {
-    development = "development",
-    staging = "staging",
-    preprod = "preprod",
-    production = "production"
-}
-export declare enum From {
-    cm = "cm",
-    game = "game"
-}
-export declare enum Action {
-    login = "login",
-    bind = "bind"
-}
-export declare enum UserAuthType {
-    wechat = 1,
-    qq = 2,
-    weibo = 4,
-    codemao = 8,
-    google = 16,
-    facebook = 32,
-    twitter = 64
-}
+/** Opaque authentication flags supplied by the local player service. */
+export type UserAuthType = number;
 export type AuthAPI = MuRPCClient<typeof AuthRPCSchema>;
 //# sourceMappingURL=auth-protocol.d.ts.map

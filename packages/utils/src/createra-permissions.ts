@@ -18,7 +18,7 @@ export const Permissions: Record<string, string> = {
 /**
  * 映射平台权限点到本地权限点
  */
-export const JavaPermissionsMap: Record<string, string> = {
+export const CreateraPermissionNameMap: Record<string, string> = {
   ...Object.entries(Permissions).reduce((acc, [key, value]) => {
     acc[value] = key;
     return acc;

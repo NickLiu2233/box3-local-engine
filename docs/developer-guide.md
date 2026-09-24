@@ -140,18 +140,18 @@ rush dev-creator --infra
 
 ## 6. 找到需要修改的模块
 
-| 功能                                           | 主要目录                       |
-| ---------------------------------------------- | ------------------------------ |
-| Creator、Play、Player Service 页面与引擎客户端 | `apps/game/`                   |
-| 玩家管理后台                                   | `apps/player-admin/`           |
-| 工程、地图组、发布包和运行时生命周期           | `apps/local-engine/src/`       |
-| 权威游戏服务器与脚本运行时                     | `services/game-server/src/`    |
-| VOXA 模型、皮肤和动画编辑                      | `apps/voxa/`                   |
-| 桌面启动器                                     | `apps/deployment-manager/`     |
-| 桌面/Web 共用管理核心                          | `apps/manager-core/`           |
-| Linux 管理服务                                 | `apps/server-manager-rust/`    |
-| 登录门户示例                                   | `examples/player-auth-portal/` |
-| 内部迁移工具                                   | `apps/migrator/`               |
+| 功能                                           | 主要目录                    |
+| ---------------------------------------------- | --------------------------- |
+| Creator、Play、Player Service 页面与引擎客户端 | `apps/game/`                |
+| 玩家管理后台                                   | `apps/player-admin/`        |
+| 工程、地图组、发布包和运行时生命周期           | `apps/local-engine/src/`    |
+| 权威游戏服务器与脚本运行时                     | `services/game-server/src/` |
+| VOXA 模型、皮肤和动画编辑                      | `apps/voxa/`                |
+| 桌面启动器                                     | `apps/deployment-manager/`  |
+| 桌面/Web 共用管理核心                          | `apps/manager-core/`        |
+| Linux 管理服务                                 | `apps/server-manager-rust/` |
+| 玩家登录与注册门户                             | `apps/player-auth-portal/`  |
+| 内部迁移工具                                   | `apps/migrator/`            |
 
 Creator 编辑可变 `.boxproject` 工程，Play 只运行发布后的只读 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口，修改前应阅读[系统架构](./architecture.md)和[与 boxes 的对齐基线](./boxes-parity.md)。
 

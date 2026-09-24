@@ -7,7 +7,7 @@ import { Toast } from '@box/box-design';
 import { IconSend, IconHourglass } from '@box/icons';
 import styles from './index.module.scss';
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 
 export const GuestControl = React.memo(() => {

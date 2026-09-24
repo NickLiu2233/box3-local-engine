@@ -34,6 +34,12 @@ const CID_PATTERN = /Qm[1-9A-HJ-NP-Za-km-z]{44}/g
 // store, so both have to be carried into an offline project export.
 const EXACT_CONTENT_HASH_PATTERN =
   /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}(?:\.(?:png|jpe?g|webp|gif|mp3|wav|ogg|m4a|lut))?|[A-Za-z0-9_-]{43})$/i
+// Newer cloud model and skin records use UUIDv1-v5 object keys in OSS instead
+// of the legacy CID/base64url content hashes. UUIDs are accepted only at the
+// explicit cloud-OSS boundary below: treating them as general project blob
+// references would make the legacy recursive scanner download arbitrary IDs.
+const EXACT_OSS_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 // Cloud content blocks use the same public store for every migration. Keep the
 // endpoint internal to the migrator instead of exposing a low-level IPFS/CDN
@@ -62,6 +68,14 @@ type ModelExportInput = {
 }
 export type ResourceSourceKind = 'content' | 'voxel-model' | 's3-model' | 's3-script' | 's3-skin'
 type ReferencedResource = { hash: string; sourceKind: ResourceSourceKind }
+
+function isCloudOssResourceKey(value: unknown): value is string {
+  return (
+    typeof value === 'string' &&
+    (EXACT_CONTENT_HASH_PATTERN.test(value) || EXACT_OSS_UUID_PATTERN.test(value))
+  )
+}
+
 export type SkippedBlob = { hash: string; parentHash?: string; reason: string }
 export type MigrationProgress = {
   stage: 'validating' | 'backend' | 'resolving' | 'scanning' | 'downloading' | 'packaging'
@@ -942,10 +956,10 @@ export function applyCloudModelIds(entitiesTree: unknown, models: EngineModel[])
   return copy
 }
 
-function cloudRuntimeResources(data: CloudEngineData): ReferencedResource[] {
+export function cloudRuntimeResources(data: CloudEngineData): ReferencedResource[] {
   const resources = new Map<string, ResourceSourceKind>()
   const add = (hash: unknown, sourceKind: ResourceSourceKind) => {
-    if (typeof hash === 'string' && EXACT_CONTENT_HASH_PATTERN.test(hash)) {
+    if (isCloudOssResourceKey(hash)) {
       resources.set(hash, sourceKind)
     }
   }
@@ -1213,7 +1227,7 @@ export async function generateModelProjectArchive(
     modelName = safeProjectName(input.projectName || model.modelName || '云端模型')
     if (!modelHash) throw new Error('该模型没有可导出的工程数据（projectFileHash）')
   }
-  if (!EXACT_CONTENT_HASH_PATTERN.test(modelHash)) {
+  if (!isCloudOssResourceKey(modelHash)) {
     throw new Error('模型工程 hash 格式无效')
   }
   const limit = limits()

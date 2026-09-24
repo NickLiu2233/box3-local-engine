@@ -75,7 +75,7 @@ function check() {
     ['-r', '@swc-node/register', 'scripts/regression-map-group-state-lock.ts'],
     path.join(root, 'services/game-server'),
   )
-  npmScript('examples/player-auth-portal', 'check')
+  npmScript('apps/player-auth-portal', 'check')
   run('cargo', ['test', '--manifest-path', 'apps/manager-core/Cargo.toml'])
   run('cargo', ['test', '--manifest-path', 'apps/server-manager-rust/Cargo.toml'])
   npmScript('apps/migrator', 'test')

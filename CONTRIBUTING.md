@@ -109,20 +109,20 @@ Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig�
 
 ## 5. 代码边界
 
-| 领域                                     | 主要目录                       |
-| ---------------------------------------- | ------------------------------ |
-| Creator、Play、Player Service 与引擎前端 | `apps/game/`                   |
-| 玩家管理后台                             | `apps/player-admin/`           |
-| 工程、地图组、发布与运行时生命周期       | `apps/local-engine/src/`       |
-| 权威游戏服务器和脚本运行时               | `services/game-server/src/`    |
-| VOXA 模型编辑                            | `apps/voxa/`                   |
-| 桌面启动器                               | `apps/deployment-manager/`     |
-| 桌面/Web 共用管理核心                    | `apps/manager-core/`           |
-| Linux Web 管理端                         | `apps/server-manager-rust/`    |
-| 登录门户                                 | `examples/player-auth-portal/` |
-| 内部迁移工具                             | `apps/migrator/`               |
+| 领域                                     | 主要目录                    |
+| ---------------------------------------- | --------------------------- |
+| Creator、Play、Player Service 与引擎前端 | `apps/game/`                |
+| 玩家管理后台                             | `apps/player-admin/`        |
+| 工程、地图组、发布与运行时生命周期       | `apps/local-engine/src/`    |
+| 权威游戏服务器和脚本运行时               | `services/game-server/src/` |
+| VOXA 模型编辑                            | `apps/voxa/`                |
+| 桌面启动器                               | `apps/deployment-manager/`  |
+| 桌面/Web 共用管理核心                    | `apps/manager-core/`        |
+| Linux Web 管理端                         | `apps/server-manager-rust/` |
+| 玩家登录与注册门户                       | `apps/player-auth-portal/`  |
+| 内部迁移工具                             | `apps/migrator/`            |
 
-Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口；修改前阅读[系统架构](docs/architecture.md)与[对齐基线](docs/boxes-parity.md)。
+Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口；修改前阅读[领域模型](docs/domain-model.md)、[系统架构](docs/architecture.md)与[对齐基线](docs/boxes-parity.md)。
 
 玩家管理菜单与 API 必须使用同一套 capability。新增页面或写操作时同步修改前端可见性、服务端授权、权限组分类、API 文档和拒绝测试，不能只隐藏按钮。
 

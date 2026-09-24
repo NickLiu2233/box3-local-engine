@@ -32,7 +32,7 @@ import { EditType, setVoxaData } from 'src/redux/edit/creator';
 import { fetchSkinData } from '..';
 
 import style from './index.module.scss';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { RenameModal } from '../../rename-modal';
 import { IconSort } from '@box/icons';
 import {

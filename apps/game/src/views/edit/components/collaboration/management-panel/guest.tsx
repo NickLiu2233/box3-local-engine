@@ -10,7 +10,7 @@ import { BackHeader } from '../header/back-header';
 import { MenuList } from '../list/menu-list';
 
 import style from '../index.module.scss';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { clientConfig } from 'src/config/client';
 import { Toast } from '@box/box-design';
 

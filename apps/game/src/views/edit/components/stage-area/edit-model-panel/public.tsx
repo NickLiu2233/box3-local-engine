@@ -16,7 +16,7 @@ import {
 } from '../edit-model-panel/index';
 import { isMobile } from 'src/utils/mobile';
 import { clientConfig } from 'src/config/client';
-import { apis } from 'src/apis/api-java';
+import { apis } from 'src/apis/local-api';
 import { editor } from 'src/client/edit/edit-client';
 import { setSelectedModel } from 'src/redux/edit/ui';
 import { useDispatch, useSelector } from 'react-redux';

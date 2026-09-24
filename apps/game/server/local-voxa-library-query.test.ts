@@ -48,7 +48,7 @@ describe('local VOXA library query contract', () => {
   });
 
   test('proxies local model queries through Creator instead of the browser VOXA origin', () => {
-    const api = source('src/apis/api-java/index.ts');
+    const api = source('src/apis/local-api/index.ts');
     const route = source('pages/api/creator-models/index.ts');
 
     expect(api).toContain("fetch(`/api/creator-models?${params}`");

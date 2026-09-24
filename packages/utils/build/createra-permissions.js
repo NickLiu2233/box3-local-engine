@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.JavaPermissionsMap = exports.Permissions = void 0;
+exports.CreateraPermissionNameMap = exports.Permissions = void 0;
 exports.mapPermissionToCreatera = mapPermissionToCreatera;
 exports.Permissions = {
     editPublish: 'engine:publish',
@@ -15,7 +15,7 @@ exports.Permissions = {
     editStatisticsData: 'statistics:data',
     editPlayer: 'engine:player',
 };
-exports.JavaPermissionsMap = Object.assign({}, Object.entries(exports.Permissions).reduce((acc, [key, value]) => {
+exports.CreateraPermissionNameMap = Object.assign({}, Object.entries(exports.Permissions).reduce((acc, [key, value]) => {
     acc[value] = key;
     return acc;
 }, {}));

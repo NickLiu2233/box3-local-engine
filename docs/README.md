@@ -49,6 +49,7 @@
 ### 开发与兼容
 
 - [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
+- [领域模型](./domain-model.md)：地图组、地图资源、数据空间和管理权限的统一术语与约束。
 - [开发者与协作手册](./developer-guide.md)：从获取代码、安装依赖、配置和启动源码，到模块开发、测试、镜像部署验证、故障排查及提交 PR 的完整流程。
 - [贡献者指南](../CONTRIBUTING.md)：从 fork、分支、源码开发到测试、镜像和桌面 App 构建的完整流程。
 - [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
@@ -61,9 +62,9 @@
 
 ## 当前发行边界
 
-- 桌面启动器管理 Creator、Play、VOXA、Player Service 和参考登录门户五个业务服务；完整镜像归档还包含 Linux Server Manager，共六个镜像。
+- 桌面启动器管理 Creator、Play、VOXA、Player Service 和玩家登录门户五个业务服务；完整镜像归档还包含 Linux Server Manager，共六个镜像。
 - Apple Silicon 本地桌面构建产物位于 `apps/local-engine/dist/desktop-installers/`，文件名为 `BOX-Local-Engine-<version>-macos-arm64.zip`；解压后包含 `BOX3 Engine Launcher.app`。
-- 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
+- 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、玩家登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
 - `apps/license-server/` 是不连接数据库的内部本机签发器，不进入启动器、Linux Web 部署包、业务镜像或公开 Release；发行物只包含验签公钥和许可证校验能力。
 - Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。

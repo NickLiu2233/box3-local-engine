@@ -28,7 +28,7 @@ export const Logo = React.memo(
               props.white
                 ? isCreatera()
                   ? 'createra-logo'
-                  : 'logo-maas'
+                  : 'box3-logo'
                 : 'logo'
             }
             size={props.size || 120}

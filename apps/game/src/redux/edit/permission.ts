@@ -37,7 +37,7 @@ const initialState: PermissionState = {
   editHierarchy: false,
   editVoxels: false,
   editPermissions: false,
-  // new java permissions
+  // Platform permissions
   editMarket: false,
   editStatisticsData: false,
   editPublish: false,

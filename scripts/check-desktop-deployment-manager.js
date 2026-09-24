@@ -70,7 +70,7 @@ const playerIdentity = fs.readFileSync(
   'utf8',
 )
 const authPortalServer = fs.readFileSync(
-  path.join(root, 'examples/player-auth-portal/server.js'),
+  path.join(root, 'apps/player-auth-portal/server.js'),
   'utf8',
 )
 
