@@ -28,7 +28,6 @@ const html = `<!doctype html>
       html { box-sizing: border-box; overflow-y: scroll; }
       *, *::before, *::after { box-sizing: inherit; }
       body { margin: 0; background: #fafafa; }
-      .docs-notice { padding: 10px 18px; color: #334155; background: #eaf2ff; border-bottom: 1px solid #c8dcff; font: 14px/1.5 system-ui, sans-serif; }
     </style>
   </head>
   <body>
