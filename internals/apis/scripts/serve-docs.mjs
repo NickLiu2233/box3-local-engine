@@ -32,7 +32,6 @@ const html = `<!doctype html>
     </style>
   </head>
   <body>
-    <div class="docs-notice">独立只读 API 文档服务，不连接 Creator、Player Service、数据库或其他业务服务。</div>
     <div id="swagger-ui"></div>
     <script src="/swagger-ui-bundle.js"></script>
     <script src="/swagger-ui-standalone-preset.js"></script>
@@ -67,7 +66,7 @@ export function createDocsServer(options = {}) {
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'",
+      "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'",
     )
     if (req.method !== 'GET' && req.method !== 'HEAD') {
       res.setHeader('Allow', 'GET, HEAD')

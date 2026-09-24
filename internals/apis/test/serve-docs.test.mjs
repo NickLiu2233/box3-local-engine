@@ -14,6 +14,7 @@ test('serves standalone read-only Swagger documentation', async (context) => {
 
   const page = await fetch(`${origin}/`)
   assert.equal(page.status, 200)
+  assert.match(page.headers.get('content-security-policy') || '', /connect-src 'self'/)
   assert.match(await page.text(), /独立只读 API 文档服务/)
 
   const openapi = await fetch(`${origin}/openapi.json`)

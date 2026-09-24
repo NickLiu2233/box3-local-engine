@@ -310,9 +310,6 @@ importers:
       streamdown:
         specifier: 1.5.1
         version: 1.5.1(@types/mdast@4.0.4)(@types/react@19.2.4)(micromark-util-types@2.0.2)(micromark@4.0.2)(react@19.2.1)(unified@11.0.5)
-      swagger-ui-dist:
-        specifier: 5.33.0
-        version: 5.33.0
       tailwind-merge:
         specifier: 3.4.0
         version: 3.4.0
@@ -852,6 +849,9 @@ importers:
       rollup:
         specifier: 4.59.0
         version: 4.59.0
+      swagger-ui-dist:
+        specifier: 5.33.0
+        version: 5.33.0
       tslib:
         specifier: 2.3.1
         version: 2.3.1
