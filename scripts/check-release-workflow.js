@@ -35,6 +35,15 @@ assert.match(
   workflow,
   /for service in player-service player-auth-portal server-manager creator play voxa/,
 )
+const imageBuildLoop = workflow.match(
+  /for service in player-service player-auth-portal server-manager creator play voxa; do\n([\s\S]*?)^\s*done/m,
+)?.[1]
+assert.ok(imageBuildLoop, 'release workflow image build loop is missing')
+assert.match(
+  imageBuildLoop,
+  /docker builder prune --all --force/,
+  'BuildKit cache must be pruned between image builds to fit GitHub runner disk limits',
+)
 assert.match(workflow, /architecture: amd64\s+runner: ubuntu-latest/)
 assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/)
 assert.match(workflow, /^ {2}validate-release:/m)

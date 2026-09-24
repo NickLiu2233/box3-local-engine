@@ -110,10 +110,13 @@ jobs:
           export BOX_BUILD_COMMIT="${{ github.sha }}"
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
           export BOX_BUILD_SOURCE="github-actions"
-          # Build one service at a time. This keeps the large game/asset build
-          # stages from Creator, Play and Player Service off disk concurrently.
+          # Build one service at a time and discard its intermediate BuildKit
+          # cache immediately. The loaded image is retained for image save,
+          # while Rush's pnpm tree and Next standalone tracing layers cannot
+          # accumulate until a later Creator/Play build exhausts runner disk.
           for service in player-service player-auth-portal server-manager creator play voxa; do
             docker compose build "$service"
+            docker builder prune --all --force
           done
           docker image save \
             "box-local-engine-player-service:${BOX_IMAGE_TAG}" \
@@ -123,9 +126,7 @@ jobs:
             "box-local-engine-play:${BOX_IMAGE_TAG}" \
             "box-local-engine-voxa:${BOX_IMAGE_TAG}" \
             | gzip -1 > "box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz"
-          # The release needs the images and the compressed archive, but not
-          # intermediate BuildKit layers. Free them before artifact upload so
-          # the ARM worker remains below its Docker storage limit.
+          # Keep the builder empty before artifact upload as a final safeguard.
           docker builder prune --all --force
       - name: Upload images to Aliyun OSS
         if: steps.image-cache.outputs.cache-hit != 'true'
