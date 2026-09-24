@@ -47,6 +47,7 @@ const themes = [
 ]
 
 const UNLICENSED_PAGES = new Set(['license', 'about', 'web-login'])
+const ownerSecretKeys = ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']
 
 const numericConfigFields = [
   'playRuntimes',
@@ -128,11 +129,18 @@ const state = {
   legalDialog: '',
   accessMode: '',
   ownerSecrets: null,
-  ownerSecretsVisible: false,
+  ownerSecretEditing: {},
+  ownerSecretCopied: '',
   error: '',
   notice: '',
   dockerCheck: null,
   progress: { stage: 'idle', message: '等待操作', percent: 0 },
+}
+
+function resetOwnerSecretState() {
+  state.ownerSecrets = null
+  state.ownerSecretEditing = {}
+  state.ownerSecretCopied = ''
 }
 
 const icons = {
@@ -154,6 +162,7 @@ const icons = {
   'check': '<path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="9"/>',
   'copy':
     '<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+  'edit': '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>',
   'eye':
     '<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
   'eye-off':
@@ -184,8 +193,7 @@ function hasValidLicense() {
 function normalizeLicensedPage() {
   if (isWebManager() && !hasWebManagerToken()) {
     if (!['web-login', 'about'].includes(state.page)) state.page = 'web-login'
-    state.ownerSecrets = null
-    state.ownerSecretsVisible = false
+    resetOwnerSecretState()
     return
   }
   if (!hasValidLicense() && !UNLICENSED_PAGES.has(state.page)) state.page = 'license'
@@ -702,20 +710,31 @@ function setup() {
         : config.publicHost || legacyCreatorPublicHost
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
-  const secretInput = (name, label, configured, hint) =>
-    input(
-      name,
-      label,
-      state.ownerSecretsVisible ? state.ownerSecrets?.[name] || '' : '',
-      state.ownerSecretsVisible ? 'text' : 'password',
-      state.ownerSecretsVisible
-        ? '仅在本机当前页面显示；离开页面后自动隐藏'
-        : config[name]
-          ? '本次配置已输入，保存时会使用'
-          : configured
-            ? '留空保留当前密钥'
-            : `首次保存时自动生成，可直接留空${hint ? ` · ${hint}` : ''}`,
-    )
+  const secretCard = (name, label, configured) => {
+    const editing = Boolean(state.ownerSecretEditing[name])
+    const secret = config[name] || state.ownerSecrets?.[name] || ''
+    const displayValue = configured || secret ? '•'.repeat(16) : '保存配置后自动生成'
+    const copied = state.ownerSecretCopied === name
+    return `<article class="secret-row ${editing ? 'editing' : ''}">
+      <div class="secret-meta"><strong>${label}</strong></div>
+      <div class="secret-control">
+        ${
+          editing
+            ? `<input class="secret-editor" name="${name}" type="text" value="${escapeHtml(secret)}" autocomplete="new-password" spellcheck="false" aria-label="编辑${label}"/>`
+            : `<code class="secret-value ${secret || configured ? '' : 'empty'}">${displayValue}</code>`
+        }
+      </div>
+      <div class="secret-actions">
+        ${
+          editing
+            ? `<button type="submit" class="secret-action primary" data-secret-save="${name}" title="保存密钥">${icon('check')}<span>保存</span></button>
+               <button type="button" class="secret-action" data-secret-edit="${name}" aria-pressed="true" title="取消编辑">${icon('edit')}<span>取消</span></button>`
+            : `<button type="button" class="secret-action" data-secret-edit="${name}" aria-pressed="false" title="编辑密钥">${icon('edit')}<span>编辑</span></button>`
+        }
+        <button type="button" class="secret-action ${copied ? 'copied' : ''}" data-secret-copy="${name}" title="复制密钥">${icon(copied ? 'check' : 'copy')}<span>${copied ? '已复制' : '复制'}</span></button>
+      </div>
+    </article>`
+  }
   const rawEnvironmentPanel = `<section class="setup-panel environment-panel ${state.setupSection === 'environment' ? 'active' : ''}" data-setup-panel="environment"><div class="config-group raw-config-group"><div class="group-title"><div><h2>原始 .env</h2><span>含有敏感数据，请勿截图或转发</span></div><button type="button" class="text-button" id="reload-raw-environment" ${state.environmentFileSaving ? 'disabled' : ''}>重新读取</button></div><textarea id="raw-environment" class="raw-environment" spellcheck="false" ${state.environmentFileSaving ? 'disabled' : ''}>${escapeHtml(state.environmentFile)}</textarea></div>${setupExplanation(
     '配置说明：什么时候需要编辑原始 .env？',
     [
@@ -841,7 +860,7 @@ function setup() {
               '上限越高，Docker 可用内存需求越大。首次部署可保持默认，出现排队再逐步提高。',
             ],
           ])}</section>
-        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与后台权限</h2></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>管理密钥</h2></div><button type="button" class="text-button" id="toggle-owner-secrets">${state.ownerSecretsVisible ? '隐藏密钥' : '查看密钥'}</button></div><div class="form-grid three">${secretInput('playAdminToken', '服主管理令牌', config.hasPlayAdminToken, '用于服主登录及后台受控调用游玩端服务')}${secretInput('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey, '用于登录、注册与账号服务接入')}${secretInput('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret, '用于 Creator / Play 身份签发')}</div></div>${setupExplanation(
+        <section class="setup-panel ${state.setupSection === 'security' ? 'active' : ''}" data-setup-panel="security"><div class="config-group"><div class="group-title"><div><h2>玩家与后台权限</h2></div></div><div class="setting-toggle-list">${settingToggle('registrationEnabled', '允许新玩家注册', '关闭后登录页面不再接受自助注册', config.registrationEnabled !== false)}</div></div><div class="config-group"><div class="group-title"><div><h2>管理密钥</h2></div></div><div class="secret-list">${secretCard('playAdminToken', '服主管理令牌', config.hasPlayAdminToken)}${secretCard('playerAuthApiKey', '账号服务 API Key', config.hasPlayerAuthApiKey)}${secretCard('permissionTokenSecret', '运行时身份密钥', config.hasPermissionTokenSecret)}</div></div>${setupExplanation(
           '配置说明：管理密钥分别做什么？',
           [
             ['自动生成', '首次保存配置时，三个密钥会自动生成；只有需要自定义时才填写新的值。'],
@@ -850,10 +869,7 @@ function setup() {
               '服主管理',
               '使用服主管理令牌登录玩家管理后台后，可管理后台账号、权限组和游玩地图。管理员能看到和操作的功能仍由其权限组决定。',
             ],
-            [
-              '查看密钥',
-              '点击“查看密钥”后仅在本机当前页面显示；切换页面或点击隐藏会立即清除显示。',
-            ],
+            ['密钥操作', '点击编辑可查看并修改完整密钥，也可直接复制；离开页面后会恢复隐藏。'],
             [
               '服主管理令牌',
               '用于验证服主登录，并保护玩家管理后台到游玩端的内部调用；它不直接授予普通管理员页面权限。',
@@ -1235,8 +1251,7 @@ function bindEvents() {
         return
       }
       if (node.dataset.page !== 'setup') {
-        state.ownerSecrets = null
-        state.ownerSecretsVisible = false
+        resetOwnerSecretState()
       }
       state.page = node.dataset.page
       if (state.page === 'runtimes' && !state.projectRuntimesLoaded) {
@@ -1264,8 +1279,7 @@ function bindEvents() {
     state.license = null
     state.environmentFile = ''
     state.environmentFileLoaded = false
-    state.ownerSecrets = null
-    state.ownerSecretsVisible = false
+    resetOwnerSecretState()
     state.backups = []
     state.performance = null
     state.projectRuntimes = { creator: [], play: [] }
@@ -1502,7 +1516,16 @@ function bindEvents() {
     .querySelector('[data-save-raw-environment]')
     ?.addEventListener('click', saveRawEnvironment)
   document.querySelector('#reload-raw-environment')?.addEventListener('click', reloadRawEnvironment)
-  document.querySelector('#toggle-owner-secrets')?.addEventListener('click', toggleOwnerSecrets)
+  document
+    .querySelectorAll('[data-secret-edit]')
+    .forEach((node) =>
+      node.addEventListener('click', () => void toggleOwnerSecretEditor(node.dataset.secretEdit)),
+    )
+  document
+    .querySelectorAll('[data-secret-copy]')
+    .forEach((node) =>
+      node.addEventListener('click', () => void copyOwnerSecret(node.dataset.secretCopy)),
+    )
   document.querySelector('#choose-data-storage')?.addEventListener('click', relocateDataStorage)
   document
     .querySelectorAll('[data-test-connection]')
@@ -1834,8 +1857,8 @@ function captureSetupForm() {
   const form = document.querySelector('#setup-form')
   if (!form) return
   const values = Object.fromEntries(new FormData(form).entries())
-  for (const key of ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']) {
-    if (state.ownerSecretsVisible && values[key] === state.ownerSecrets?.[key]) delete values[key]
+  for (const key of ownerSecretKeys) {
+    if (values[key] === state.ownerSecrets?.[key]) delete values[key]
   }
   const databaseSsl = form.elements.namedItem('databaseSsl')
   const autoBackupEnabled = form.elements.namedItem('autoBackupEnabled')
@@ -1861,7 +1884,7 @@ function captureSetupForm() {
   if (!values.redisPassword && state.config?.redisPassword) {
     next.redisPassword = state.config.redisPassword
   }
-  for (const key of ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']) {
+  for (const key of ownerSecretKeys) {
     if (!values[key] && state.config?.[key]) {
       next[key] = state.config[key]
     }
@@ -1905,30 +1928,65 @@ function switchSetupSection(section) {
   captureRawEnvironment()
   captureSetupForm()
   if (section !== 'security') {
-    state.ownerSecrets = null
-    state.ownerSecretsVisible = false
+    resetOwnerSecretState()
   }
   state.setupSection = section
   clearFeedback()
   render()
 }
 
-async function toggleOwnerSecrets() {
+async function loadOwnerSecrets() {
+  if (state.ownerSecrets) return true
+  try {
+    state.ownerSecrets = await invoke('get_owner_secrets')
+    return true
+  } catch (error) {
+    state.error = String(error)
+    render()
+    return false
+  }
+}
+
+async function toggleOwnerSecretEditor(name) {
+  if (!ownerSecretKeys.includes(name)) return
   captureSetupForm()
   clearFeedback()
-  if (state.ownerSecretsVisible) {
-    state.ownerSecrets = null
-    state.ownerSecretsVisible = false
+  if (state.ownerSecretEditing[name]) {
+    state.ownerSecretEditing[name] = false
+    delete state.config?.[name]
+    render()
+    return
+  }
+  if (!(await loadOwnerSecrets())) return
+  state.ownerSecretEditing[name] = true
+  render()
+  document.querySelector(`[name="${CSS.escape(name)}"]`)?.focus()
+}
+
+async function copyOwnerSecret(name) {
+  if (!ownerSecretKeys.includes(name)) return
+  captureSetupForm()
+  clearFeedback()
+  if (!(await loadOwnerSecrets())) return
+  const secret = state.config?.[name] || state.ownerSecrets?.[name] || ''
+  if (!secret) {
+    state.error = '该密钥尚未生成，请先保存配置。'
     render()
     return
   }
   try {
-    state.ownerSecrets = await invoke('get_owner_secrets')
-    state.ownerSecretsVisible = true
+    await navigator.clipboard.writeText(secret)
+    state.ownerSecretCopied = name
+    render()
+    window.setTimeout(() => {
+      if (state.ownerSecretCopied !== name) return
+      state.ownerSecretCopied = ''
+      if (state.page === 'setup' && state.setupSection === 'security') render()
+    }, 1600)
   } catch (error) {
-    state.error = String(error)
+    state.error = `复制失败：${String(error)}`
+    render()
   }
-  render()
 }
 
 function captureRawEnvironment() {
@@ -2360,7 +2418,7 @@ async function saveConfiguration(event) {
   if (!submitted.redisPassword && state.config?.redisPassword) {
     config.redisPassword = state.config.redisPassword
   }
-  for (const key of ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']) {
+  for (const key of ownerSecretKeys) {
     if (!submitted[key] && state.config?.[key]) {
       config[key] = state.config[key]
     }
@@ -2419,6 +2477,8 @@ async function persistConfiguration(config) {
   render()
   try {
     await invoke('save_configuration_command', { config })
+    for (const key of ownerSecretKeys) delete state.config?.[key]
+    resetOwnerSecretState()
     state.notice = '已保存在当前页面，服务不会自动启动。'
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
   } catch (error) {
