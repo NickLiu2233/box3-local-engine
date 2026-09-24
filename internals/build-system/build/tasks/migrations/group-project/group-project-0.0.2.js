@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AudioAssets_002 = exports.UiTree_002 = void 0;
-const math_schema_1 = require("@box-local/schema/utils/math-schema");
+const math_schema_1 = require("@box/schema/utils/math-schema");
 const fromVersion = '0.0.1';
 const toVersion = '0.0.2';
 function noMigration(bs, hash) {

@@ -1,4 +1,4 @@
-import type { GLTFMetaData } from '@box-local/schema/mesh/model-schema';
+import type { GLTFMetaData } from '@box/schema/mesh/model-schema';
 import { apis } from 'src/apis/api-java';
 import {
   type ImageResource,

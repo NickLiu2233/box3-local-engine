@@ -1,4 +1,4 @@
-import { MuStruct, MuInt32, MuArray, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuInt32, MuArray, MuBoolean } from '@box/mudb/schema';
 export declare const CHUNK_SHIFT = 5;
 export declare const CHUNK_SIZE: number;
 export declare const CHUNK_MASK: number;
@@ -7,9 +7,9 @@ export declare const VoxelCollisionChunkSchema: MuStruct<{
     j: MuInt32;
     k: MuInt32;
     hasSolid: MuBoolean;
-    rbush: import("@box-local/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
+    rbush: import("@box/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
     hasFluid: MuBoolean;
-    fluidRBush: import("@box-local/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
+    fluidRBush: import("@box/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
 }>;
 export type VoxelCollisionChunk = typeof VoxelCollisionChunkSchema.identity;
 export declare const VoxelCollisionSchema: MuStruct<{
@@ -21,9 +21,9 @@ export declare const VoxelCollisionSchema: MuStruct<{
         j: MuInt32;
         k: MuInt32;
         hasSolid: MuBoolean;
-        rbush: import("@box-local/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
+        rbush: import("@box/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
         hasFluid: MuBoolean;
-        fluidRBush: import("@box-local/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
+        fluidRBush: import("@box/mudb/schema").MuSchema<import("../utils/rbush-schema").RBushNode>;
     }>>;
 }>;
 export type VoxelCollision = typeof VoxelCollisionSchema.identity;

@@ -1,4 +1,4 @@
-import { InputDialogConfig } from '@box-local/schema/dialog/dialog-protocol';
+import { InputDialogConfig } from '@box/schema/dialog/dialog-protocol';
 import {
   Dialog,
   DialogType,

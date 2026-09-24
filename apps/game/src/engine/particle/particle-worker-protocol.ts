@@ -6,8 +6,8 @@ import {
   MuArray,
   MuFloat64,
   MuBoolean,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 
 export const ParticleWorkerEmitterSchema = new MuStruct({
   id: new MuVarint(),

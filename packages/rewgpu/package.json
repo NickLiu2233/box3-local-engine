@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/rewgpu",
+  "name": "@box/rewgpu",
   "version": "0.0.1",
   "description": "rewgpu is a fast functional WebGPU framework.",
   "license": "UNLICENSED",

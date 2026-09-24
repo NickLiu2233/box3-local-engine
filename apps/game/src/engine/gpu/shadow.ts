@@ -1,5 +1,5 @@
 import { vec3, mat4, mat3 } from 'gl-matrix';
-import type { IREWGPUBuffer, IREWGPUGroup, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUBuffer, IREWGPUGroup, ReWGPU } from '@box/rewgpu';
 import { GameClientState } from '../game-client-schema';
 
 import {
@@ -18,7 +18,7 @@ import {
   mat3x3fromMat3,
 } from './uniform-pool';
 import { GPUShadowState } from './schema/gpu-shadow-schema';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import triangle from './wgsl/triangle-pos.wgsl';
 import vert from './wgsl/trivial-vert.wgsl';
 import shadowComposeFrag from './wgsl/shadow-compose-frag.wgsl';
@@ -27,8 +27,8 @@ import {
   Mat4Schema,
   Vec4Schema,
   Vec3Schema,
-} from '@box-local/schema/utils/math-schema';
-import { MuReadStream } from '@box-local/mudb/stream';
+} from '@box/schema/utils/math-schema';
+import { MuReadStream } from '@box/mudb/stream';
 
 const SHADOW_UP = vec3.fromValues(0, 0, 1);
 const SHADOW_EYE = vec3.create();

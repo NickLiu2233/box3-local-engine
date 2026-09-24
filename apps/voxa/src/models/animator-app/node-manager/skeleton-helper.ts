@@ -1,5 +1,5 @@
 import { quat, vec3 } from 'gl-matrix';
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { store } from '../../../redux/store';
 import { ShaderMaterial } from '../../rendering/materials/shader';
 import { Mesh } from '../../rendering/objects/mesh';

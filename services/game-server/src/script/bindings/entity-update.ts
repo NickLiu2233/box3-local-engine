@@ -1,10 +1,10 @@
 import { ScriptEntityUpdate, compareNum } from './entity-synchronizer';
 import { GameServerState } from '../../game-server-schema';
 import { ScriptSynchronizer, ScriptSyncPatch } from './synchronizer';
-import { MuSchema } from '@box-local/mudb/schema';
-import { sortedArrayDelete } from '@box-local/utils/sorted-array-remove';
-import { TaggedId, compareId, zipId } from '@box-local/utils/id';
-import { NetModelSchema } from '@box-local/schema/mesh/model-schema';
+import { MuSchema } from '@box/mudb/schema';
+import { sortedArrayDelete } from '@box/utils/sorted-array-remove';
+import { TaggedId, compareId, zipId } from '@box/utils/id';
+import { NetModelSchema } from '@box/schema/mesh/model-schema';
 import {
   RigidBodyBinding,
   ModelBinding,
@@ -20,22 +20,22 @@ import {
   EntityNameBinding,
 } from './entity-bindings';
 import { vec3, quat } from 'gl-matrix';
-import { DamageSchema } from '@box-local/schema/damage/damage-schema';
+import { DamageSchema } from '@box/schema/damage/damage-schema';
 import { ServerParticleEntitySchema } from '../../particle/particle-server-state';
 import {
   PlayerAttachmentStateSchema,
   BodyPart,
   PlayerAttachment,
   PlayerAttachmentSchema,
-} from '@box-local/schema/player/player-schema';
-import { InteractComponentSchema } from '@box-local/schema/interact/interact-protocol';
+} from '@box/schema/player/player-schema';
+import { InteractComponentSchema } from '@box/schema/interact/interact-protocol';
 import { ServerEntitySoundEffectSchema } from '../../sound/server-sound-state';
-import { CollisionFilterSchema } from '@box-local/schema/physics/collision-filter';
+import { CollisionFilterSchema } from '@box/schema/physics/collision-filter';
 import {
   destroyEntityId,
   clearDestroyedEntity,
 } from '../../entity/entity-controller';
-import { EntityNameComponentSchema } from '@box-local/schema/entity-name/entity-name';
+import { EntityNameComponentSchema } from '@box/schema/entity-name/entity-name';
 
 function createComponent<Synchronizer extends ScriptSynchronizer<any, any>>(
   synchronizer: Synchronizer,

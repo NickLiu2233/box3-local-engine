@@ -12,10 +12,10 @@ import {
   IconFolderSub,
   IconLock,
   IconUnlock,
-} from '@box-local/icons';
-import { EntitySeedRDA } from '@box-local/schema/project/project-rda';
-import { TreeNodeType, ROOT_ID } from '@box-local/schema/project/murda-tree';
-import { Toast, TooltipTrigger } from '@box-local/box-design/build';
+} from '@box/icons';
+import { EntitySeedRDA } from '@box/schema/project/project-rda';
+import { TreeNodeType, ROOT_ID } from '@box/schema/project/murda-tree';
+import { Toast, TooltipTrigger } from '@box/box-design/build';
 
 import { RootState } from 'src/redux/edit';
 import { useEdit } from 'src/client/edit/edit-context';

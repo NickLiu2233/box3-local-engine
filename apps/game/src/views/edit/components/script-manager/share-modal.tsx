@@ -1,8 +1,8 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
-import { ModalView, Toast } from '@box-local/box-design';
-import { ShareScriptErrorCode } from '@box-local/apis/src/createra/data-contracts';
+import { ModalView, Toast } from '@box/box-design';
+import { ShareScriptErrorCode } from '@box/apis/src/createra/data-contracts';
 
 import { RootState } from 'src/redux/edit';
 import {

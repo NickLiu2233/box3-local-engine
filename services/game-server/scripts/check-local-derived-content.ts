@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { FileSystemContentServer } from '@box-local/content-server/file-system-store-node';
-import { BuildSystem } from '@box-local/build-system/build-system';
+import { FileSystemContentServer } from '@box/content-server/file-system-store-node';
+import { BuildSystem } from '@box/build-system/build-system';
 import { LocalDerivedContentServer } from '../src/content/local-derived-content';
 import { LocalBuildCache } from '../src/utils/local-build-cache';
 

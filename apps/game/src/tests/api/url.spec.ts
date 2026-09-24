@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { URLSearchParams, URL } from '@box-local/schema/api/js/url';
+import { URLSearchParams, URL } from '@box/schema/api/js/url';
 
 test('url basics', function () {
   const ftpUrl = new URL('ftp://abc:123@ftp.codemao.cn:21/');

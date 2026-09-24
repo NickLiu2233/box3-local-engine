@@ -8,9 +8,9 @@ import {
   MuInt8,
   MuFloat64,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { Vec2Schema } from '../utils/math-schema';
-import { initArray } from '@box-local/utils/init-array';
+import { initArray } from '@box/utils/init-array';
 
 // Bindable keys
 export enum GameKeys {

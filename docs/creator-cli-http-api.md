@@ -10,7 +10,7 @@
 - **永久地图 ID**：创建地图时生成、不会因目录或公开名称变化而改变的 ID。外部 CLI 配置应优先保存它。
 - **CLI Token**：以 `bxc_` 开头的长期 Bearer Token。只在玩家管理中显示一次，服务端仅保存其 HMAC，不保存明文。
 
-`@box-local/cli`（`packages/cli`）是协议契约包：它定义 API 前缀、脚本路径、输入校验和 20 MiB 上限。它不保存 Token、不发 HTTP 请求，也不维护权限枚举；CLI Token 的授权由 Player Service 独立管理。
+`@box/cli`（`packages/cli`）是协议契约包：它定义 API 前缀、脚本路径、输入校验和 20 MiB 上限。它不保存 Token、不发 HTTP 请求，也不维护权限枚举；CLI Token 的授权由 Player Service 独立管理。
 
 ## 2. 多服务器 CLI Profile
 

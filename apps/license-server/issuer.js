@@ -1,8 +1,8 @@
 'use strict'
 
 const crypto = require('node:crypto')
-const { signLicense } = require('@box-local/license')
-const { signTrustedTime } = require('@box-local/license/trusted-time')
+const { signLicense } = require('@box/license')
+const { signTrustedTime } = require('@box/license/trusted-time')
 
 const FEATURES = ['creator', 'play', 'voxa', 'player-service', 'player-auth-portal']
 

@@ -1,5 +1,5 @@
-import { UserDetail } from '@box-local/schema/backend/rpc/auth-protocol';
-import { LoginUserInfoVO } from '@box-local/apis';
+import { UserDetail } from '@box/schema/backend/rpc/auth-protocol';
+import { LoginUserInfoVO } from '@box/apis';
 
 export const pipes = {
   userInfoToUserDetail(res: LoginUserInfoVO): UserDetail {

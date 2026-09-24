@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
-import { ContentSplitter } from '@box-local/content-server/content-split';
-import { ObjectStoreService } from '@box-local/content-server/object-store-service';
+import { ContentSplitter } from '@box/content-server/content-split';
+import { ObjectStoreService } from '@box/content-server/object-store-service';
 export declare function createContentServer(logger: Logger, config: {
     contentHostURL: string;
     maxIPFSConnections: number;

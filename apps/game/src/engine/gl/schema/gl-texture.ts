@@ -6,13 +6,13 @@ import {
   MuBoolean,
   MuFloat64,
   MuSchema,
-} from '@box-local/mudb/schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
+} from '@box/mudb/schema';
+import { HashSchema } from '@box/schema/content-server/index';
 import {
   REGLTexture2DSchema,
   REGLTextureCubeSchema,
 } from '../../utils/regl-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { RenderableType } from '../../mesh/parse/mesh-schema';
 
 export const GLTextureSchema = new MuStruct({

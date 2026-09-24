@@ -1,9 +1,9 @@
 import React, { ReactNode, memo, useCallback, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { IconCancel } from '@box-local/icons';
-import { Input } from '@box-local/box-design';
-import { useClassName } from '@box-local/box-design/build/util';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { IconCancel } from '@box/icons';
+import { Input } from '@box/box-design';
+import { useClassName } from '@box/box-design/build/util';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import {
   hexToRGB,
   hsvToRGB,

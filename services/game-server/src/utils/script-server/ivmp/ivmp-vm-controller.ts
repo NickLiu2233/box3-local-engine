@@ -1,6 +1,6 @@
-import type { MuData, MuMessageHandler } from '@box-local/mudb/socket/socket';
-import { EventBus } from '@box-local/utils/event';
-import { Semaphore } from '@box-local/utils/semaphore';
+import type { MuData, MuMessageHandler } from '@box/mudb/socket/socket';
+import { EventBus } from '@box/utils/event';
+import { Semaphore } from '@box/utils/semaphore';
 import crypto from 'crypto';
 import ivm from 'isolated-vm';
 import type { Level, Logger } from 'pino';

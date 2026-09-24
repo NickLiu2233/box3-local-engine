@@ -1,5 +1,5 @@
 import { useEffect, useContext, useMemo } from 'react';
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
 
 import { useEdit } from 'src/client/edit/edit-context';
 import { ScriptEditor } from '../script-editor';

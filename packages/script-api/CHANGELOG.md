@@ -1,4 +1,4 @@
-# Change Log - @box-local/script-api
+# Change Log - @box/script-api
 
 This log was last generated on Thu, 22 May 2025 08:40:52 GMT and should not be manually modified.
 

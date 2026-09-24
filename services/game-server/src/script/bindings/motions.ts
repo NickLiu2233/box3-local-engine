@@ -3,11 +3,11 @@ import {
   GameMotionConfig,
   GameMotionEvent,
   GameMotionHandler,
-} from '@box-local/schema/api/js/api';
-import { deepClone } from '@box-local/mudb/schema/json';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
-import { ScriptDispatcher } from '@box-local/schema/script/dispatcher';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+} from '@box/schema/api/js/api';
+import { deepClone } from '@box/mudb/schema/json';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
+import { ScriptDispatcher } from '@box/schema/script/dispatcher';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import { ScriptMeshMotion, ScriptResourceSync } from './resource';
 import { coerceNum, coerceObject, coerceString } from './coerce';
 

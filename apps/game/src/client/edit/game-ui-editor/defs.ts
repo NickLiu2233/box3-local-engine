@@ -1,4 +1,4 @@
-import type { UITree } from '@box-local/schema/project/ui-rda/defs';
+import type { UITree } from '@box/schema/project/ui-rda/defs';
 import type { GameUIRenderable } from 'src/engine/game-ui/nodes/renderable';
 
 export type GetUITree = () => UITree;

@@ -4,7 +4,7 @@ import {
   MuInt32,
   MuStruct,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { MeshSchema } from './schema-v1';
 import { Vec3Schema, Vec4Schema } from '../util';
 

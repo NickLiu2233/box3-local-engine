@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
 
-import { getRealIP } from '@box-local/utils/ip';
-import { PrefetchCachesType } from '@box-local/content-server/content-fetch';
+import { getRealIP } from '@box/utils/ip';
+import { PrefetchCachesType } from '@box/content-server/content-fetch';
 
 import { getServerConfig } from '../../configs/server';
 import { getSharedLogger } from '../../server/logger';

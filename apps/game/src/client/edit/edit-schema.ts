@@ -4,8 +4,8 @@ import {
   MuDictionary,
   MuSchema,
   MuStruct,
-} from '@box-local/mudb/schema';
-import { PostMessageSchema } from '@box-local/schema/navigator/navigator-schema';
+} from '@box/mudb/schema';
+import { PostMessageSchema } from '@box/schema/navigator/navigator-schema';
 import { GLTextureSchema } from 'src/engine/gl/schema/gl-texture';
 import { HyperLinkSchema } from 'src/engine/href/href-client-state';
 import { SoundResourceSchema } from 'src/engine/sound/client-sound-state';

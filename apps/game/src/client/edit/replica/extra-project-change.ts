@@ -1,4 +1,4 @@
-import type { ExtraProjectInfo } from '@box-local/schema/project/hot-schema';
+import type { ExtraProjectInfo } from '@box/schema/project/hot-schema';
 
 export type ResourceChangeCount = {
   added: number;

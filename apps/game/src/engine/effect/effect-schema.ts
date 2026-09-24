@@ -5,9 +5,9 @@ import {
   MuSchema,
   MuUint32,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { Vec2Schema, Vec3Schema } from '@box-local/schema/utils/math-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { Vec2Schema, Vec3Schema } from '@box/schema/utils/math-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { LightProbeSchema } from '../voxel/light-schema';
 
 export const BREAK_EFFECT_TIME = 8;

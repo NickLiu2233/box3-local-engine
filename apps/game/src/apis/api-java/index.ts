@@ -12,7 +12,7 @@ import {
   Upload,
   Collaboration,
   CreatorStore,
-} from '@box-local/apis';
+} from '@box/apis';
 import { clientConfig, getConfig } from 'src/config/client';
 import { isMaas } from 'src/utils/appEdition';
 import { getToken } from 'src/utils/token';

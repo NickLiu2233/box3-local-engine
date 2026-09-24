@@ -1,7 +1,7 @@
 import { loader } from '@monaco-editor/react';
 import { type editor } from 'monaco-editor';
 import { type Monaco } from '@monaco-editor/react';
-import { type CursorState } from '@box-local/schema/code-editor/code-editor-common-state';
+import { type CursorState } from '@box/schema/code-editor/code-editor-common-state';
 
 import { supportJsSql } from './js-sql-syntax';
 import { LangType, monacoLocaleMap } from 'src/apis/createra';

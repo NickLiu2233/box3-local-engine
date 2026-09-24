@@ -12,7 +12,7 @@ import {
   FluidContactEventSchema,
   VoxelContactEventSchema,
 } from '../events/physics-event-schema';
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 
 function computeContactEvents<
   T,

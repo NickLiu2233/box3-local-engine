@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { mat4, vec4 } from 'gl-matrix';
-import { createREWGPU } from '@box-local/rewgpu';
+import { createREWGPU } from '@box/rewgpu';
 import style from './style.module.css';
 import fontAtlas from './sdf.png';
 import fontAtlasJson from './sdf.json';

@@ -1,4 +1,4 @@
-import type { NetLogEvent } from '@box-local/schema/net-log/schema';
+import type { NetLogEvent } from '@box/schema/net-log/schema';
 import createDebug from 'debug';
 import pino, { levels } from 'pino';
 import { clientConfig } from 'src/config/client';

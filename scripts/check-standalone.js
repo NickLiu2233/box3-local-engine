@@ -208,7 +208,7 @@ for (const { directory, manifest } of packages.values()) {
     ...manifest.peerDependencies,
   }
   for (const [name, version] of Object.entries(dependencies)) {
-    if (name.startsWith('@box-local/') && !packages.has(name)) {
+    if (name.startsWith('@box/') && !packages.has(name)) {
       fail(`${directory}: missing local package ${name}@${version}`)
     }
   }
@@ -483,7 +483,7 @@ for (const [label, pattern] of [
   ['creator final target', /^FROM licensed-runtime-base AS creator$/m],
   ['play final target', /^FROM licensed-runtime-base AS play$/m],
   ['VOXA build stage', /^FROM source-base AS voxa-build$/m],
-  ['VOXA targeted Rush install', /install-run-rush\.js install --to @box-local\/voxa/],
+  ['VOXA targeted Rush install', /install-run-rush\.js install --to @box\/voxa/],
   [
     'VOXA build command',
     /^RUN cd apps\/voxa && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js build$/m,

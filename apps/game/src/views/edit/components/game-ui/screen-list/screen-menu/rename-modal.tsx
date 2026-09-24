@@ -2,8 +2,8 @@ import { useCallback, useContext, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
-import { Input, ModalView, Toast } from '@box-local/box-design';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
+import { Input, ModalView, Toast } from '@box/box-design';
 
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 

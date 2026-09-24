@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/license",
+  "name": "@box/license",
   "version": "0.1.1",
   "private": true,
   "description": "Signed BOX3 Engine license issuing and verification",

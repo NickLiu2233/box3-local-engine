@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 export type DB_ERROR_STATUS = 'CONSTRAINT_TARGET_INVALID' | 'PARAMS_INVALID' | 'DB_NAME_INVALID' | 'KEY_INVALID' | 'VALUE_INVALID' | 'SERVER_FETCH_ERROR' | 'REQUEST_THROTTLED' | 'INCREMENT_INVALID' | 'UNKNOWN';
 export declare class GameStorage implements I.GameStorage {
     getDataStorage: (key: string) => GameDataStorage;

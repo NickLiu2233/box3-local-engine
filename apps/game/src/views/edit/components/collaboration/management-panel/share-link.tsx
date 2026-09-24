@@ -7,8 +7,8 @@ import {
   useRef,
 } from 'react';
 import { useIntl } from 'react-intl';
-import { Button, Input, Menu, Toast, Trigger } from '@box-local/box-design';
-import { IconRetry, IconDropDown } from '@box-local/icons';
+import { Button, Input, Menu, Toast, Trigger } from '@box/box-design';
+import { IconRetry, IconDropDown } from '@box/icons';
 import { useEdit } from 'src/client/edit/edit-context';
 import { copyToClipboard } from 'src/utils/copy2clipboard';
 

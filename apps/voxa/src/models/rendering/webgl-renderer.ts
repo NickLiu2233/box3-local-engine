@@ -5,7 +5,7 @@ import type {
   Regl,
   ReglProps,
   Vec4,
-} from '@box-local/regl';
+} from '@box/regl';
 import { Object3D, Object3DType } from './objects/object3d';
 import type { Scene } from './objects/scene';
 import { Camera } from './camera/base';

@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useIntl } from 'react-intl';
 
-import { ItemId, MenuItemOptions } from '@box-local/box-design';
+import { ItemId, MenuItemOptions } from '@box/box-design';
 
 import ScrollTrigger, { ScrollManage } from '../../../scroll-trigger';
 import { ObjectCard } from 'src/views/edit/components/object-card';

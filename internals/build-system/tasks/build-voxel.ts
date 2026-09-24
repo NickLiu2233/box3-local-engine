@@ -1,9 +1,9 @@
-import { MuReadStream } from '@box-local/mudb/stream';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
-import { NewMeshSchema } from '@box-local/schema/mesh/voxel';
-import { generateNewMesh } from '@box-local/schema/mesh/new-mesher';
+import { MuReadStream } from '@box/mudb/stream';
+import { allocEmptyVoxels } from '@box/utils/helper';
+import { NewMeshSchema } from '@box/schema/mesh/voxel';
+import { generateNewMesh } from '@box/schema/mesh/new-mesher';
 import { BuildSystem } from '../type';
-import { decompress } from '@box-local/utils/rle-compress';
+import { decompress } from '@box/utils/rle-compress';
 import { BUILD_HEAVY_LOCK } from './heavy_mutex';
 
 export async function buildVoxel(bs: BuildSystem, hash: string) {

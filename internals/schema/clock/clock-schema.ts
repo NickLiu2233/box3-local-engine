@@ -1,5 +1,5 @@
-import { MuStruct } from '@box-local/mudb/schema/struct';
-import { MuVarint, MuFloat64 } from '@box-local/mudb/schema';
+import { MuStruct } from '@box/mudb/schema/struct';
+import { MuVarint, MuFloat64 } from '@box/mudb/schema';
 
 export const MS_PER_TICK = 64;
 export const FRAMESKIP = Infinity;

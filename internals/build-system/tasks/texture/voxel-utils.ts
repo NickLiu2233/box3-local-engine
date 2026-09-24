@@ -3,7 +3,7 @@ import getPixels from 'get-pixels';
 import savePixels from 'save-pixels';
 import { NDArrayLikeImage } from '../../utils/pixels';
 import { BuildSystem } from '../../type';
-import { BlockSoundGroup, BlockCategory } from '@box-local/schema/voxel/block-schema';
+import { BlockSoundGroup, BlockCategory } from '@box/schema/voxel/block-schema';
 
 export const BLOCK_BUMP_SHIFT = 6;
 export const BLOCK_BUMP_SIZE = 1 << BLOCK_BUMP_SHIFT;

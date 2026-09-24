@@ -1,11 +1,11 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
-import { MuSessionId, MuSocketServer } from '@box-local/mudb/socket/socket';
-import { MuWriteStream } from '@box-local/mudb/stream';
-import { Logger } from '@box-local/utils/logger';
-import { getById } from '@box-local/utils/id';
-import { RigidBodyFlags } from '@box-local/schema/physics/physics-schema';
-import { ScriptNetInputSchema } from '@box-local/schema/events/net-events';
-import { ScriptSentEventSchema } from '@box-local/schema/events/script-events';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
+import { MuSessionId, MuSocketServer } from '@box/mudb/socket/socket';
+import { MuWriteStream } from '@box/mudb/stream';
+import { Logger } from '@box/utils/logger';
+import { getById } from '@box/utils/id';
+import { RigidBodyFlags } from '@box/schema/physics/physics-schema';
+import { ScriptNetInputSchema } from '@box/schema/events/net-events';
+import { ScriptSentEventSchema } from '@box/schema/events/script-events';
 import {
   NetProtocolSchema,
   TimestampedClientInput,
@@ -16,21 +16,21 @@ import {
   NetInputEventSchema,
   PUBLIC_BUFFER_DIVISOR,
   ClientScriptSrcSchema,
-} from '@box-local/schema/net/net-schema';
+} from '@box/schema/net/net-schema';
 import {
   PlayerSkinHashSchema,
   PlayerFlags,
-} from '@box-local/schema/player/player-schema';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+} from '@box/schema/player/player-schema';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 
 import {
   NetPublicSchema,
   NetSecretSchema,
   NetPublic,
-} from '@box-local/schema/net/net-schema';
+} from '@box/schema/net/net-schema';
 import { GameServerState, GameConnectionState } from '../game-server-schema';
 import { getServerNetInput } from './net-server-tick';
-import { mergeNetInput } from '@box-local/schema/net/net-tick';
+import { mergeNetInput } from '@box/schema/net/net-tick';
 import {
   SERVER_SECRET_PACKET_SIZE,
   SERVER_REPLICA_PACKET_SIZE,
@@ -40,13 +40,13 @@ import {
   SERVER_REWIND_TICKS,
   MAX_BUFFERED_BYTES,
 } from './net-server-state';
-import { GameReplicaSchema } from '@box-local/schema/replica/game-replica';
+import { GameReplicaSchema } from '@box/schema/replica/game-replica';
 import { getPlayerEnvironmentZones } from '../zone/zone-server';
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
-import { CloseType } from '@box-local/schema/types/game';
-import { GamePrivateReplicaSchema } from '@box-local/schema/replica/game-private-replica';
-import { HotProject } from '@box-local/schema/project/hot-schema';
-import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
+import { CloseType } from '@box/schema/types/game';
+import { GamePrivateReplicaSchema } from '@box/schema/replica/game-private-replica';
+import { HotProject } from '@box/schema/project/hot-schema';
+import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
 import { PendingPlayerJoins } from '../player/pending-player-joins';
 
 const MIN_RESYNC_TICK_INTERVAL = 16; // 1 second

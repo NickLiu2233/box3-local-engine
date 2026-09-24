@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/schema",
+  "name": "@box/schema",
   "version": "0.4.3",
   "description": "",
   "keywords": [],
@@ -25,10 +25,10 @@
     "build:watch": "npm run build"
   },
   "dependencies": {
-    "@box-local/mesher": "workspace:1.0.0",
-    "@box-local/mudb": "workspace:1.0.4",
-    "@box-local/script-api": "workspace:~0.3.0",
-    "@box-local/utils": "workspace:*",
+    "@box/mesher": "workspace:1.0.0",
+    "@box/mudb": "workspace:1.0.4",
+    "@box/script-api": "workspace:~0.3.0",
+    "@box/utils": "workspace:*",
     "@types/node": "10.17.60",
     "debug": "4.3.4",
     "gl-matrix": "3.4.3",

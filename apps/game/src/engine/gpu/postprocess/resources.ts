@@ -1,4 +1,4 @@
-import type { IREWGPUBuffer, IREWGPUTexture, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUBuffer, IREWGPUTexture, ReWGPU } from '@box/rewgpu';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import { rootLogger } from 'src/utils/logger';
 import { F32, UniformStructF32, VEC3F } from '../uniform-pool';

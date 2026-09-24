@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
 import { ContentServer, Hash, OssCdnPath, OssStoreType } from './index';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 export declare class ObjectStoreService implements ContentServer {
     semaphore: Semaphore;
     logger: Logger;

@@ -21951,7 +21951,7 @@ function requireMutracer () {
 	    value: true
 	});
 	mutracer.createMuLogger = createMuLogger;
-	function createMuLogger(baseLogger, prefix = '@box-local/mudb/src') {
+	function createMuLogger(baseLogger, prefix = '@box/mudb/src') {
 	    const logger = baseLogger.create(prefix);
 	    return {
 	        log: (x)=>{},

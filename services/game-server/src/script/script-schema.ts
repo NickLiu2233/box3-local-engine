@@ -6,10 +6,10 @@ import {
   MuSchema,
   MuDictionary,
   MuUTF8,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { ScriptPostTickSchema, ScriptTickSchema } from './script-protocol';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { Semaphore } from '@box/utils/semaphore';
 
 export enum GameScriptRunState {
   STOPPED,

@@ -1,4 +1,4 @@
-import { VoxelWrite, VoxelWriteSchema } from '@box-local/schema/voxel/voxel-protocol';
+import { VoxelWrite, VoxelWriteSchema } from '@box/schema/voxel/voxel-protocol';
 import { GameClient } from 'src/engine/game-client';
 import {
   ClientEditAction,

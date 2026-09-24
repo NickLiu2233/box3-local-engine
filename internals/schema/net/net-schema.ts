@@ -13,7 +13,7 @@ import {
   MuRelativeVarint,
   MuQuantizedFloat,
   MuDictionary,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   PhysicsParamsSchema,
   RigidBodySetSchema,
@@ -23,7 +23,7 @@ import {
 } from '../physics/physics-schema';
 import { PlayerSetSchema, PlayerInputSetSchema } from '../player/player-schema';
 import { DeltaListSchema, DeltaSchema } from './delta-schema';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 import { ScriptSentEventSchema } from '../events/script-events';
 import { CollisionFilterSchema } from '../physics/collision-filter-schema';

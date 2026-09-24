@@ -1,4 +1,4 @@
-import { MuRDARegister, MuRDAStruct } from '@box-local/mudb/rda';
+import { MuRDARegister, MuRDAStruct } from '@box/mudb/rda';
 import {
   MuBoolean,
   MuQuantizedFloat,
@@ -7,7 +7,7 @@ import {
   MuUint8,
   MuVarint,
   MuVoid,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 import { MuRDAUnion } from '../murda-union';
 import { MuRDATree, ROOT_ID, ROOT_NAME, TreeNodeType } from '../murda-tree';

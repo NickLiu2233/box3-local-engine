@@ -1,6 +1,6 @@
-import { MuSchema } from '@box-local/mudb/schema';
-import { MuServer } from '@box-local/mudb/server';
-import { MuClient } from '@box-local/mudb/client';
+import { MuSchema } from '@box/mudb/schema';
+import { MuServer } from '@box/mudb/server';
+import { MuClient } from '@box/mudb/client';
 export declare class SchemaTraceEntry {
     name: string;
     schema: MuSchema<any>;

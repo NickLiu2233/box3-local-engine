@@ -1,4 +1,4 @@
-import { UITextFontFamily } from '@box-local/schema/project/ui-rda/defs';
+import { UITextFontFamily } from '@box/schema/project/ui-rda/defs';
 import RubikTTF from 'assets/fonts/Rubik-Regular.ttf';
 import RubikWOFF from 'assets/fonts/rubik-v20-latin-regular.woff2';
 import CodeNewRomanBoldOTF from 'assets/fonts/Code-New-Roman-Bold.otf';

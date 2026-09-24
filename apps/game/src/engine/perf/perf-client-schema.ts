@@ -1,4 +1,4 @@
-import { MuStruct, MuFloat64, MuVarint, MuUint32, MuDictionary, MuUTF8, MuSortedArray } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64, MuVarint, MuUint32, MuDictionary, MuUTF8, MuSortedArray } from '@box/mudb/schema';
 
 export const MessagePerfSchema = new MuStruct({
     name: new MuUTF8(''),

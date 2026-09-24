@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BoundsSchema = exports.Mat4Schema = exports.Mat3Schema = exports.Mat2Schema = exports.QuatSchema = exports.Vec4Schema = exports.Vec3Schema = exports.Vec2Schema = exports.NumSchema = void 0;
 const gl_matrix_1 = require("gl-matrix");
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 exports.NumSchema = new schema_1.MuFloat32();
 exports.Vec2Schema = new schema_1.MuVector(new schema_1.MuFloat32(), 2);
 const vec3Pool = [];

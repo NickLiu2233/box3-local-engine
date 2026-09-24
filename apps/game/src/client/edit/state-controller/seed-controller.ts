@@ -1,11 +1,11 @@
-import { DropType } from '@box-local/box-design';
-import { ROOT_ID, TreeNodeType } from '@box-local/schema/project/murda-tree';
+import { DropType } from '@box/box-design';
+import { ROOT_ID, TreeNodeType } from '@box/schema/project/murda-tree';
 import {
   EntitiesTreeRDA,
   EntitySeed,
   EntitySoundEnum,
   TreeNode,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import type { Logger } from 'pino';
 import { sort } from 'ramda';
 import { reduxDispatch } from 'src/redux/edit';

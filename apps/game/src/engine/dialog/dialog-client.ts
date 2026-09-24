@@ -1,9 +1,9 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
 import {
   DialogProtocol,
   DialogResult,
   OpenDialogSchema,
-} from '@box-local/schema/dialog/dialog-protocol';
+} from '@box/schema/dialog/dialog-protocol';
 import { GameClientState } from '../game-client-schema';
 
 export class DialogClient {

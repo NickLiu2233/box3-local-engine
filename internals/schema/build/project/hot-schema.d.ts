@@ -1,4 +1,4 @@
-import { MuStruct, MuDictionary, MuUTF8, MuArray, MuVarint, MuASCII, MuSchema, MuFloat32, MuInt32, MuFloat64, MuBoolean, MuUint32 } from '@box-local/mudb/schema';
+import { MuStruct, MuDictionary, MuUTF8, MuArray, MuVarint, MuASCII, MuSchema, MuFloat32, MuInt32, MuFloat64, MuBoolean, MuUint32 } from '@box/mudb/schema';
 import * as ERDA from './project-rda';
 export declare const DisplayNameSchema: MuUTF8;
 export declare const PrevHashSchema: MuASCII;
@@ -50,9 +50,9 @@ export declare const PlayerSchema: MuStruct<{
     friction: MuFloat64;
     restitution: MuFloat64;
     color: import("../utils/quantized-schema").QuantizedVec3Schema;
-    emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-    shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-    metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+    emissive: import("@box/mudb/schema").MuQuantizedFloat;
+    shininess: import("@box/mudb/schema").MuQuantizedFloat;
+    metalness: import("@box/mudb/schema").MuQuantizedFloat;
     invisible: MuBoolean;
     showName: MuBoolean;
     showIndicator: MuBoolean;
@@ -323,9 +323,9 @@ export declare const PhysicsSchema: MuStruct<{
 }>;
 export declare const VoxelSchema: MuStruct<{
     shape: MuStruct<{
-        x: import("@box-local/mudb/schema").MuUint16;
-        y: import("@box-local/mudb/schema").MuUint16;
-        z: import("@box-local/mudb/schema").MuUint16;
+        x: import("@box/mudb/schema").MuUint16;
+        y: import("@box/mudb/schema").MuUint16;
+        z: import("@box/mudb/schema").MuUint16;
     }>;
     chunks: MuArray<MuASCII>;
 }>;
@@ -801,20 +801,20 @@ export declare const HotProjectSchema: MuStruct<{
     name: MuUTF8;
     blockInfoHash: MuASCII;
     blockInfo: MuStruct<{
-        ids: import("../utils/relative-array").RelativeArray<import("@box-local/mudb/schema").MuRelativeVarint>;
+        ids: import("../utils/relative-array").RelativeArray<import("@box/mudb/schema").MuRelativeVarint>;
         names: MuArray<MuUTF8>;
         emissive: import("../utils/relative-array").RelativeArray<MuVarint>;
-        texture: import("../utils/relative-array").RelativeArray<import("@box-local/mudb/schema").MuRelativeVarint>;
+        texture: import("../utils/relative-array").RelativeArray<import("@box/mudb/schema").MuRelativeVarint>;
         animLength: import("../utils/relative-array").RelativeArray<MuVarint>;
-        friction: import("../utils/relative-array").RelativeArray<import("@box-local/mudb/schema").MuQuantizedFloat>;
-        restitution: import("../utils/relative-array").RelativeArray<import("@box-local/mudb/schema").MuQuantizedFloat>;
+        friction: import("../utils/relative-array").RelativeArray<import("@box/mudb/schema").MuQuantizedFloat>;
+        restitution: import("../utils/relative-array").RelativeArray<import("@box/mudb/schema").MuQuantizedFloat>;
         velocity: import("../utils/relative-array").RelativeArray<MuFloat32>;
         fluids: MuArray<MuStruct<{
             id: MuVarint;
             info: MuUint32;
             mass: MuFloat64;
         }>>;
-        category: MuDictionary<import("../utils/relative-array").RelativeArray<import("@box-local/mudb/schema").MuRelativeVarint>>;
+        category: MuDictionary<import("../utils/relative-array").RelativeArray<import("@box/mudb/schema").MuRelativeVarint>>;
         atlasRadius: MuVarint;
         blockBumpShift: MuVarint;
         blockColorShift: MuVarint;
@@ -979,9 +979,9 @@ export declare const HotProjectSchema: MuStruct<{
         friction: MuFloat64;
         restitution: MuFloat64;
         color: import("../utils/quantized-schema").QuantizedVec3Schema;
-        emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-        shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-        metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+        emissive: import("@box/mudb/schema").MuQuantizedFloat;
+        shininess: import("@box/mudb/schema").MuQuantizedFloat;
+        metalness: import("@box/mudb/schema").MuQuantizedFloat;
         invisible: MuBoolean;
         showName: MuBoolean;
         showIndicator: MuBoolean;
@@ -1143,9 +1143,9 @@ export declare const HotProjectSchema: MuStruct<{
     }>;
     voxels: MuStruct<{
         shape: MuStruct<{
-            x: import("@box-local/mudb/schema").MuUint16;
-            y: import("@box-local/mudb/schema").MuUint16;
-            z: import("@box-local/mudb/schema").MuUint16;
+            x: import("@box/mudb/schema").MuUint16;
+            y: import("@box/mudb/schema").MuUint16;
+            z: import("@box/mudb/schema").MuUint16;
         }>;
         chunks: MuArray<MuASCII>;
     }>;
@@ -1527,11 +1527,11 @@ export declare const HotProjectSchema: MuStruct<{
         name: MuUTF8;
         parentId: MuASCII;
         childrenIds: MuArray<MuASCII>;
-        value: import("@box-local/mudb/schema").MuOption<import("@box-local/mudb/schema").MuUnion<{
+        value: import("@box/mudb/schema").MuOption<import("@box/mudb/schema").MuUnion<{
             screen: MuStruct<{
                 enable: MuBoolean;
-                layout: import("@box-local/mudb/schema").MuUnion<{
-                    none: import("@box-local/mudb/schema").MuVoid;
+                layout: import("@box/mudb/schema").MuUnion<{
+                    none: import("@box/mudb/schema").MuVoid;
                     autoLayout: MuStruct<{
                         cellSize: MuStruct<{
                             offset: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1553,7 +1553,7 @@ export declare const HotProjectSchema: MuStruct<{
                 }>;
                 zIndex: MuVarint;
             }>;
-            element: import("@box-local/mudb/schema").MuUnion<{
+            element: import("@box/mudb/schema").MuUnion<{
                 box: MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
                     position: MuStruct<{
@@ -1567,11 +1567,11 @@ export declare const HotProjectSchema: MuStruct<{
                     autoResize: MuSchema<import("./ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1592,7 +1592,7 @@ export declare const HotProjectSchema: MuStruct<{
                         }>;
                     }>;
                     clipsDescendants: MuBoolean;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
                 image: MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1607,12 +1607,12 @@ export declare const HotProjectSchema: MuStruct<{
                     autoResize: MuSchema<import("./ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1633,16 +1633,16 @@ export declare const HotProjectSchema: MuStruct<{
                         }>;
                     }>;
                     image: MuUTF8;
-                    imageOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    imageOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     imageDisplayMode: MuSchema<import("./ui-rda/defs").ImageDisplayMode>;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
                 text: MuStruct<{
                     richText: MuBoolean;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                     textStrokeColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textStrokeOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    textStrokeThickness: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textStrokeOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    textStrokeThickness: import("@box/mudb/schema").MuQuantizedFloat;
                     textFontFamily: MuSchema<import("./ui-rda/defs").UITextFontFamily>;
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
                     position: MuStruct<{
@@ -1656,11 +1656,11 @@ export declare const HotProjectSchema: MuStruct<{
                     autoResize: MuSchema<import("./ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1682,12 +1682,12 @@ export declare const HotProjectSchema: MuStruct<{
                     }>;
                     clipsDescendants: MuBoolean;
                     textContent: MuUTF8;
-                    textFontSize: import("@box-local/mudb/schema").MuUint8;
+                    textFontSize: import("@box/mudb/schema").MuUint8;
                     textColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     textXAlignment: MuSchema<import("./ui-rda/defs").TextXAlignType>;
                     textYAlignment: MuSchema<import("./ui-rda/defs").TextYAlignType>;
-                    textLineHeight: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textLineHeight: import("@box/mudb/schema").MuQuantizedFloat;
                     autoWordWrap: MuBoolean;
                 }>;
                 scrollBox: MuStruct<{
@@ -1703,12 +1703,12 @@ export declare const HotProjectSchema: MuStruct<{
                     autoResize: MuSchema<import("./ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1734,19 +1734,19 @@ export declare const HotProjectSchema: MuStruct<{
                     scrollbarVisibility: MuSchema<import("./ui-rda/defs").UIScrollbarVisibility>;
                     scrollbarThickness: MuVarint;
                     scrollbarColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    scrollbarOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    scrollbarOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     scrollCanvasAutoResize: MuSchema<import("./ui-rda/defs").AutoResizeType>;
                     scrollCanvasSize: MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     scrollPosition: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
                 input: MuStruct<{
                     textStrokeColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textStrokeOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    textStrokeThickness: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textStrokeOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    textStrokeThickness: import("@box/mudb/schema").MuQuantizedFloat;
                     textFontFamily: MuSchema<import("./ui-rda/defs").UITextFontFamily>;
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
                     position: MuStruct<{
@@ -1760,11 +1760,11 @@ export declare const HotProjectSchema: MuStruct<{
                     autoResize: MuSchema<import("./ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
@@ -1786,17 +1786,17 @@ export declare const HotProjectSchema: MuStruct<{
                     }>;
                     clipsDescendants: MuBoolean;
                     textContent: MuUTF8;
-                    textFontSize: import("@box-local/mudb/schema").MuUint8;
+                    textFontSize: import("@box/mudb/schema").MuUint8;
                     textColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     textXAlignment: MuSchema<import("./ui-rda/defs").TextXAlignType>;
                     textYAlignment: MuSchema<import("./ui-rda/defs").TextYAlignType>;
-                    textLineHeight: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textLineHeight: import("@box/mudb/schema").MuQuantizedFloat;
                     autoWordWrap: MuBoolean;
                     placeholder: MuUTF8;
                     placeholderColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    placeholderOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    placeholderOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
             }>;
         }>>;

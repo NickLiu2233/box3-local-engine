@@ -1,8 +1,8 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { DebuggerProtocol } from '@box-local/schema/debugger-console/protocol';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { DebuggerProtocol } from '@box/schema/debugger-console/protocol';
 import { ClientStateType } from '../edit-schema';
 import { LogEntrySchema, LogEntry } from './debugger-client-state';
-import { GameLogLevel } from '@box-local/schema/api/console';
+import { GameLogLevel } from '@box/schema/api/console';
 import { DebuggerConsole } from './debugger-console';
 
 export class DebuggerClient {

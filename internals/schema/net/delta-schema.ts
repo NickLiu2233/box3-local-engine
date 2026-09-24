@@ -5,7 +5,7 @@ import {
   MuUint32,
   MuSchema,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export function DeltaListSchema<ListSchema extends MuSortedArray<any>>(
   schema: ListSchema,

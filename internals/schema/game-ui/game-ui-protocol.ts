@@ -1,5 +1,5 @@
-import { MuProtocolSchema } from '@box-local/mudb/protocol';
-import { MuBoolean, MuStruct, MuUTF8 } from '@box-local/mudb/schema';
+import { MuProtocolSchema } from '@box/mudb/protocol';
+import { MuBoolean, MuStruct, MuUTF8 } from '@box/mudb/schema';
 import { PictureAssetSetSchema } from '../project/hot-schema';
 import { UITreeRDA } from '../project/ui-rda/defs';
 

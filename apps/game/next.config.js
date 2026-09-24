@@ -244,9 +244,9 @@ const config = {
   },
 
   transpilePackages: [
-    '@box-local/build-system',
-    '@box-local/env',
-    '@box-local/apis',
+    '@box/build-system',
+    '@box/env',
+    '@box/apis',
     'webgpu-utils',
   ],
 

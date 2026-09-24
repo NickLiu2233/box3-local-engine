@@ -9,14 +9,14 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { Modal, ModalView, Toast } from '@box-local/box-design';
+import { Modal, ModalView, Toast } from '@box/box-design';
 import {
   CopyEvent,
   ModelErrorCode,
   ModelType,
   REQUEST_TIMEOUT,
   SourceType,
-} from '@box-local/apis';
+} from '@box/apis';
 
 import { RenameModal } from 'src/views/edit/components/rename-modal';
 import { apis } from 'src/apis/api-java';

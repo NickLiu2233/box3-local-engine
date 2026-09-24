@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
-import type { Regl } from '@box-local/regl';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
+import type { Regl } from '@box/regl';
+import { allocEmptyVoxels } from '@box/utils/helper';
 import type { Pointer } from '../pointer';
 import { ColorSelectMode } from './edit-mode/color-select';
 import { FitResult, Model, VMOpts } from './model';

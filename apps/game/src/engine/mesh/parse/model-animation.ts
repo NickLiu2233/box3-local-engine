@@ -5,9 +5,9 @@ import {
   ChannelNodePath,
   ProjectInterpolationType,
   MotionMetaData,
-} from '@box-local/voxa-project';
-import { NetModelMotion } from '@box-local/schema/mesh/model-schema';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+} from '@box/voxa-project';
+import { NetModelMotion } from '@box/schema/mesh/model-schema';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import { mat4, quat, vec3 } from 'gl-matrix';
 import { MeshRenderable } from '../renderable-schema';
 import {

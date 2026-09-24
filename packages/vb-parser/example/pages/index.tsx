@@ -2,7 +2,7 @@ import type { NextPage } from 'next';
 import Head from 'next/head';
 import { DragEventHandler, useCallback, useState } from 'react';
 import styles from '../styles/index.module.css';
-import { parseVbFile } from '@box-local/vb-parser';
+import { parseVbFile } from '@box/vb-parser';
 
 const Home: NextPage = () => {
   const [modelText, setModelText] = useState('');

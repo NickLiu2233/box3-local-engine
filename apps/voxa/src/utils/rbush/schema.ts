@@ -6,7 +6,7 @@ import {
   MuFloat64,
   MuSortedArray,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const VoxelCollisionBoxSchema = new MuStruct({
   minX: new MuUint8(), // 5-bits

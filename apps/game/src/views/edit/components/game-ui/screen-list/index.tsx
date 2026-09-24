@@ -8,7 +8,7 @@ import React, {
   useState,
 } from 'react';
 import styles from './style.module.scss';
-import { IconScreenUi, IconScreenUiSet } from '@box-local/icons';
+import { IconScreenUi, IconScreenUiSet } from '@box/icons';
 import {
   DropTarget,
   ScreenItem,
@@ -21,11 +21,11 @@ import {
 } from 'src/redux/edit/game-ui';
 import { useEdit } from 'src/client/edit/edit-context';
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
-import { isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { isUIScreen } from '@box/schema/project/ui-rda/util';
 import { RootState } from 'src/redux/edit';
 import { ScreenMenu } from 'src/views/edit/components/game-ui/screen-list/screen-menu';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
-import { PointerAction, Toast, useMouseUpListener } from '@box-local/box-design';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
+import { PointerAction, Toast, useMouseUpListener } from '@box/box-design';
 import { useIntl } from 'react-intl';
 import { RenameModal } from 'src/views/edit/components/game-ui/screen-list/screen-menu/rename-modal';
 import { DefaultTag } from 'src/views/edit/components/game-ui/screen-list/default-tag';

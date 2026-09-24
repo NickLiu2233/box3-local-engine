@@ -13,8 +13,8 @@ import {
   ContextMenu,
   ContextmenuData,
 } from 'src/views/edit/components/context-menu';
-import { ItemId, Modal, Toast } from '@box-local/box-design';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
+import { ItemId, Modal, Toast } from '@box/box-design';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
 import { MAX_SCREEN_COUNT } from 'src/engine/game-ui/nodes/defs';
 import styles from './style.module.scss';

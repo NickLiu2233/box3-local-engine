@@ -4,8 +4,8 @@ import {
   compareId,
   getById,
   indexEqRange,
-} from '@box-local/utils/id';
-import { MuStruct, MuUint32, MuFloat64, MuBoolean } from '@box-local/mudb/schema';
+} from '@box/utils/id';
+import { MuStruct, MuUint32, MuFloat64, MuBoolean } from '@box/mudb/schema';
 import {
   NetInput,
   NetState,

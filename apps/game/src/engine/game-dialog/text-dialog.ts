@@ -1,4 +1,4 @@
-import { TextDialogConfig } from '@box-local/schema/dialog/dialog-protocol';
+import { TextDialogConfig } from '@box/schema/dialog/dialog-protocol';
 import {
   Dialog,
   DialogType,

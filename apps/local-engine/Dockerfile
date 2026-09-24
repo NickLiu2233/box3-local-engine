@@ -24,10 +24,10 @@ FROM source-base AS engine-build-base
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     node common/scripts/install-run-rush.js install \
-      --to @box-local/game \
-      --to @box-local/player-admin \
-      --to @box-local/game-server \
-      --to @box-local/local-engine
+      --to @box/game \
+      --to @box/player-admin \
+      --to @box/game-server \
+      --to @box/local-engine
 
 # Protocol modules are consumed from internals/schema/build.  Build them in
 # the image instead of relying on a developer's previously generated output;
@@ -50,7 +50,7 @@ RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
     npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
-    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box-local/game-server --prod --legacy /opt/game-server \
+    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box/game-server --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
     && rm -rf /opt/game-server/src /opt/game-server/scripts /opt/game-server/dist/scripts \
@@ -75,7 +75,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       -name '@types+*' -exec rm -rf {} + \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
     && cd /opt/game-server \
-    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
+    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
     && node -e "require.resolve('better-sse')" \
     && cd /app/services/game-server \
     && node scripts/compact-runtime-javascript.js /opt/game-server/dist /app/apps/local-engine/src
@@ -88,7 +88,7 @@ RUN node apps/local-engine/src/stage-runtime-data.js /opt/runtime-data
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     npm_config_registry=https://registry.npmmirror.com \
     npm_config_sharp_libvips_binary_host=https://npmmirror.com/mirrors/sharp-libvips \
-    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box-local/game-server --prod --legacy /opt/game-server \
+    node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box/game-server --prod --legacy /opt/game-server \
     && mkdir -p /opt/game-server/player \
     && cp services/game-server/src/player/default-avatar.json /opt/game-server/player/default-avatar.json \
     && rm -rf /opt/game-server/src /opt/game-server/scripts /opt/game-server/dist/scripts \
@@ -123,7 +123,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       -name '@types+*' -exec rm -rf {} + \
     && rm -f /opt/game-server/node_modules/.modules.yaml \
     && cd /opt/game-server \
-    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box-local/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
+    && node -e "const fs=require('node:fs'),path=require('node:path');const env=require.resolve('@box/env');const yaml=require.resolve('yaml',{paths:[path.dirname(env)]});const directives=path.join(path.dirname(yaml),'doc','directives.js');if(!fs.existsSync(directives))throw new Error('Incomplete yaml runtime: '+directives)" \
     && cd /app/services/game-server \
     && node scripts/compact-runtime-javascript.js /opt/game-server/dist /app/apps/local-engine/src
 
@@ -163,7 +163,7 @@ RUN node apps/local-engine/src/prune-player-build.js --player-service \
 FROM source-base AS voxa-build
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
-    node common/scripts/install-run-rush.js install --to @box-local/voxa
+    node common/scripts/install-run-rush.js install --to @box/voxa
 RUN cd apps/voxa && node ../../common/scripts/install-run-rushx.js build
 
 FROM ${NODE_IMAGE} AS runtime-base

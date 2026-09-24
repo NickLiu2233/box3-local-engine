@@ -12,15 +12,15 @@ import {
   MuUTF8,
   MuASCII,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Vec3Schema,
   Vec2Schema,
   Mat4Schema,
   Vec4Schema,
   QuatSchema,
-} from '@box-local/schema/utils/math-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/schema/utils/math-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { MeshMotionMatrix, Renderable } from '../mesh/renderable-schema';
 
 // Event handlers

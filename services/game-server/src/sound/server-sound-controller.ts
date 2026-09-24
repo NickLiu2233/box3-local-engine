@@ -1,4 +1,4 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
 import {
   SoundProtocolSchema,
   SoundEffect,
@@ -8,20 +8,20 @@ import {
   PlayerSoundEffectSchema,
   PlaySoundPosition,
   SoundEffectSchema,
-} from '@box-local/schema/sound/sound-protocol';
+} from '@box/schema/sound/sound-protocol';
 import { GameServerState } from '../game-server-schema';
 import {
   AmbientSoundRDA,
   EntitySoundRDA,
   PlayerSoundRDA,
   AudioSampleRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import {
   ServerSoundStateSchema,
   ServerEntitySoundEffectSchema,
   ServerPlayerSoundEffectSchema,
 } from './server-sound-state';
-import { compareId, getById } from '@box-local/utils/id';
+import { compareId, getById } from '@box/utils/id';
 
 export class SoundServer {
   public protocol: MuServerProtocol<typeof SoundProtocolSchema>;

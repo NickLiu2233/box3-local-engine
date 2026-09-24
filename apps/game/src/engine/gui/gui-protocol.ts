@@ -4,7 +4,7 @@ import {
   MuUTF8,
   MuVarint,
   MuVoid,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const GUIProtocol = {
   name: 'gui',

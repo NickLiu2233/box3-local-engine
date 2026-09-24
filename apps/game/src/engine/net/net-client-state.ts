@@ -7,19 +7,19 @@ import {
   MuFloat64,
   MuVarint,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   NetStateSchema,
   NetInputSchema,
   NetPublicSetSchema,
   NetInputEventSchema,
   NetSecretSchema,
-} from '@box-local/schema/net/net-schema';
-import { compareId } from '@box-local/utils/id';
-import { ContactIndexSchema } from '@box-local/schema/physics/physics-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
-import { ClientKeyboardEventsSchema } from '@box-local/schema/events/client-keyboard-event-schema';
+} from '@box/schema/net/net-schema';
+import { compareId } from '@box/utils/id';
+import { ContactIndexSchema } from '@box/schema/physics/physics-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
+import { ClientKeyboardEventsSchema } from '@box/schema/events/client-keyboard-event-schema';
 
 export const INPUT_PACKET_SIZE = 1024;
 export const CLIENT_MAX_NET_BUFFER = 16;

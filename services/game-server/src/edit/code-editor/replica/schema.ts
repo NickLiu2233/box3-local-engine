@@ -1,4 +1,4 @@
-import { MuRDA } from '@box-local/mudb/rda';
+import { MuRDA } from '@box/mudb/rda';
 
 export function rdaProtocol<RDA extends MuRDA<any, any, any, any>>(
   rda: RDA,

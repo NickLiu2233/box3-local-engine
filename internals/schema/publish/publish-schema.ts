@@ -1,4 +1,4 @@
-import { MuStruct, MuUTF8, MuVarint, MuASCII } from '@box-local/mudb/schema';
+import { MuStruct, MuUTF8, MuVarint, MuASCII } from '@box/mudb/schema';
 import { RPCResultSchema, RPCTokenSchema } from '../replica/replica-schema';
 
 export const PublishRPCSchema = new MuStruct({

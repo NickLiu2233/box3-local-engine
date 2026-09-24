@@ -1,14 +1,14 @@
 import { clientConfig } from 'src/config/client';
 
-import { ContentResolver } from '@box-local/content-server/content-fetch';
-import { MuClient } from '@box-local/mudb/client';
-import { MuSystemScheduler } from '@box-local/mudb/scheduler/system';
-import { MuWebSocket } from '@box-local/mudb/socket/web/client';
-import type { ClientConsole } from '@box-local/script-api';
-import { consoleSink } from '@box-local/utils/console-sink';
-import { LoadingController } from '@box-local/utils/loading/loading-controller';
-import { BufferSink, Logger, LogLevel, LogMessage } from '@box-local/utils/logger';
-import { createMuLogger } from '@box-local/utils/mutracer';
+import { ContentResolver } from '@box/content-server/content-fetch';
+import { MuClient } from '@box/mudb/client';
+import { MuSystemScheduler } from '@box/mudb/scheduler/system';
+import { MuWebSocket } from '@box/mudb/socket/web/client';
+import type { ClientConsole } from '@box/script-api';
+import { consoleSink } from '@box/utils/console-sink';
+import { LoadingController } from '@box/utils/loading/loading-controller';
+import { BufferSink, Logger, LogLevel, LogMessage } from '@box/utils/logger';
+import { createMuLogger } from '@box/utils/mutracer';
 
 import type { Logger as PinoLogger } from 'pino';
 

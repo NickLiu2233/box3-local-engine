@@ -2,7 +2,7 @@ import {
   GroupProjectState,
   GroupProjectMetaData,
   GroupProjectStateSchema,
-} from '@box-local/schema/group-project/rda';
+} from '@box/schema/group-project/rda';
 import type { BuildSystemAPI } from '../type';
 import { buildMigrate } from '../migrations';
 

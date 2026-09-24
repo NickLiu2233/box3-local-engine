@@ -12,7 +12,7 @@ import {
   SerializedVec2,
   useSharedTipsDelay,
   TriggerOptions,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { useAppSelector } from '../../../redux/store';
 import { MotionHeader } from '../header';
 import { VoxelEditorContext } from '../../../internals';

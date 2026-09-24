@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createDefaultPermissions = createDefaultPermissions;
-const permission_rda_1 = require("@box-local/schema/permissions/permission-rda");
+const permission_rda_1 = require("@box/schema/permissions/permission-rda");
 const permission_serialize_1 = require("./permission-serialize");
 const PermissionGroupSchema = permission_rda_1.PermissionGroupRDA.stateSchema;
 const VersionControlSchema = permission_rda_1.VersionControlRDA.stateSchema;

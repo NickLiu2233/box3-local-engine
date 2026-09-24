@@ -22,7 +22,7 @@ import {
   UseSliderReturnValue,
   SerializedVec2,
   CombinedTouchEvent,
-} from '@box-local/box-design';
+} from '@box/box-design';
 
 // ref: https://usehooks-ts.com/react-hook/use-event-listener
 export function useEventListener<K extends keyof WindowEventMap>(

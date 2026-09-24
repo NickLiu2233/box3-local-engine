@@ -1,5 +1,5 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { MuScheduler } from '@box-local/mudb/scheduler';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { MuScheduler } from '@box/mudb/scheduler';
 import { GameClientState } from '../game-client-schema';
 import {
   VoxelProtocol,
@@ -7,37 +7,37 @@ import {
   BatchWrite,
   FetchHashes,
   HashesResponse,
-} from '@box-local/schema/voxel/voxel-protocol';
+} from '@box/schema/voxel/voxel-protocol';
 import {
   rebuildCollisionChunk,
   intializeCollision,
   setBlockIndex,
-} from '@box-local/schema/voxel/voxel-collision';
-import { Hash } from '@box-local/schema/content-server/index';
-import { MuReadStream } from '@box-local/mudb/stream';
+} from '@box/schema/voxel/voxel-collision';
+import { Hash } from '@box/schema/content-server/index';
+import { MuReadStream } from '@box/mudb/stream';
 import {
   boxDecompress,
   blitBoxesToChunk,
   deinterleave3,
-} from '@box-local/schema/voxel/box-decode';
+} from '@box/schema/voxel/box-decode';
 import {
   CHUNK_SHIFT,
   CHUNK_MASK,
   CHUNK_SIZE,
-} from '@box-local/schema/voxel/voxel-collision-schema';
-import { freeVoxels, allocVoxels } from '@box-local/utils/voxel';
+} from '@box/schema/voxel/voxel-collision-schema';
+import { freeVoxels, allocVoxels } from '@box/utils/voxel';
 import {
   ClientVoxelStateSchema,
   ClientVoxelChunkSchema,
 } from './voxel-client-schema';
-import { VoxelChangeEventSchema } from '@box-local/schema/events/voxel-event-schema';
+import { VoxelChangeEventSchema } from '@box/schema/events/voxel-event-schema';
 import {
   VoxelCollisionBoxList,
   VoxelCollisionBoxListSchema,
-} from '@box-local/schema/utils/rbush-schema';
-import { BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
-import { unpackBlockIndex } from '@box-local/schema/voxel/blocks';
-import { TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
+} from '@box/schema/utils/rbush-schema';
+import { BlockInfoSchema } from '@box/schema/voxel/block-schema';
+import { unpackBlockIndex } from '@box/schema/voxel/blocks';
+import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 import EventEmitter from 'events';
 import { clientConfig } from 'src/config/client';
 import { ChunkBoxes, VoxelMessageType } from './voxel-worker-schema';

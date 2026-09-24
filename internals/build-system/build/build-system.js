@@ -10,8 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BuildSystem = void 0;
-const stream_1 = require("@box-local/mudb/stream");
-const stringify_1 = require("@box-local/mudb/util/stringify");
+const stream_1 = require("@box/mudb/stream");
+const stringify_1 = require("@box/mudb/util/stringify");
 const task_index_1 = require("./task-index");
 class BuildSystem {
     constructor(cache, contentServer, ossContentServer, nextUidListUsingGet, logger, debug = false) {

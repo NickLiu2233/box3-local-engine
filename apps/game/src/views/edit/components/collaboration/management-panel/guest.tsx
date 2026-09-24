@@ -12,7 +12,7 @@ import { MenuList } from '../list/menu-list';
 import style from '../index.module.scss';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
-import { Toast } from '@box-local/box-design';
+import { Toast } from '@box/box-design';
 
 type GuestPanelProps = {
   getUsersInfoByIds: (userIds: string[]) => Promise<UserInfoList>;

@@ -2,7 +2,7 @@ import JSZip from 'jszip';
 import {
   migrateProject,
   projectSchemaToBytes,
-} from '@box-local/voxa-project';
+} from '@box/voxa-project';
 
 import { EditType } from '../../redux/app-slice';
 import { ProjectDataSchema } from '../project/defs';

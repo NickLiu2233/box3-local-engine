@@ -8,8 +8,8 @@ import React, {
 } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
-import { IconEdit } from '@box-local/icons';
-import { AlignType, ItemId, Placement, TooltipTrigger } from '@box-local/box-design';
+import { IconEdit } from '@box/icons';
+import { AlignType, ItemId, Placement, TooltipTrigger } from '@box/box-design';
 
 import { useEdit } from 'src/client/edit/edit-context';
 import { getOSSResourceUrl } from 'src/engine/resource/util';
@@ -25,7 +25,7 @@ import { setSkinByType } from '.';
 import { useUploadPicture } from 'src/views/edit/components/picture-library/hooks';
 
 import style from './style.module.scss';
-import { GroupAssetEntry } from '@box-local/schema/build/project/project-rda';
+import { GroupAssetEntry } from '@box/schema/build/project/project-rda';
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
 
 enum ContextMenuId {

@@ -5,11 +5,11 @@ import {
   MuASCII,
   MuSchema,
   MuDictionary,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { Semaphore } from '@box-local/utils/semaphore';
-import { ScriptNetInputSetSchema } from '@box-local/schema/events/net-events';
-import { RemoteClientEventsSchema } from '@box-local/schema/events/remote-channel-event-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { Semaphore } from '@box/utils/semaphore';
+import { ScriptNetInputSetSchema } from '@box/schema/events/net-events';
+import { RemoteClientEventsSchema } from '@box/schema/events/remote-channel-event-schema';
 
 // TODO: 和server script类型一致可以抽出公共类型
 

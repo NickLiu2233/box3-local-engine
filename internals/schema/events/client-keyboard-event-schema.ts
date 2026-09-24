@@ -1,4 +1,4 @@
-import { MuArray, MuStruct, MuUint8, MuVarint } from '@box-local/mudb/schema';
+import { MuArray, MuStruct, MuUint8, MuVarint } from '@box/mudb/schema';
 
 export const ClientKeyboardEventSchema = new MuStruct({
   id: new MuVarint(),

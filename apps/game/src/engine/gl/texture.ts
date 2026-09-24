@@ -1,4 +1,4 @@
-import { Hash } from '@box-local/schema/content-server/index';
+import { Hash } from '@box/schema/content-server/index';
 import { GLTexture } from './schema/gl-texture';
 import { GameClientState } from '../game-client-schema';
 import { REGL, REGLLoader, safeProp } from './regl';

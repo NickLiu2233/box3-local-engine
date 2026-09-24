@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
-import { allocEmptyVoxels, inRange } from '@box-local/utils/helper';
-import type { VoxelView } from '@box-local/utils/voxel';
-import type { ShapEModel } from '@box-local/apis/dist/ai/data-contract';
-import type { SerializedVec3 } from '@box-local/box-design';
+import { allocEmptyVoxels, inRange } from '@box/utils/helper';
+import type { VoxelView } from '@box/utils/voxel';
+import type { ShapEModel } from '@box/apis/dist/ai/data-contract';
+import type { SerializedVec3 } from '@box/box-design';
 import type { Palette } from '../palette';
 import { MAX_VOXEL_SIZE, MIN_VOXEL_SIZE } from '../../defs';
 import type { ValidPaletteItem } from '../../redux/palette-slice';

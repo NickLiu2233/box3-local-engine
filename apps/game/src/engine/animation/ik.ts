@@ -14,7 +14,7 @@ import {
   IKState,
   GroundEmote,
   IKStateSchema,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 import {
   copyIK,
   scaleIKPose,
@@ -22,12 +22,12 @@ import {
   hermiteInterpolatePose,
   playCollapsePose,
   playEmotePose,
-} from '@box-local/schema/animation/compute-ik';
+} from '@box/schema/animation/compute-ik';
 import {
   solveIKPoints,
   solveIKConfiguration,
-} from '@box-local/schema/animation/solve-ik';
-import { PlayerJumpState } from '@box-local/schema/player/player-schema';
+} from '@box/schema/animation/solve-ik';
+import { PlayerJumpState } from '@box/schema/player/player-schema';
 
 const NOISE = new SimplexNoise();
 const EPSILON = 1e-3;

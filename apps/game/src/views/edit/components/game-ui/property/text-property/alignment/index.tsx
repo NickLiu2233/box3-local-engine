@@ -2,7 +2,7 @@ import { memo, useMemo } from 'react';
 import {
   TextXAlignType,
   TextYAlignType,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import styles from './style.module.scss';
 import {
   IconAlignBottom,
@@ -11,7 +11,7 @@ import {
   IconAlignMiddle,
   IconAlignRight,
   IconAlignTop,
-} from '@box-local/icons';
+} from '@box/icons';
 
 export type OnAlignmentChange = (
   spec:

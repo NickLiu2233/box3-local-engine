@@ -1,4 +1,4 @@
-import { MuSchema } from '@box-local/mudb/schema/schema';
+import { MuSchema } from '@box/mudb/schema/schema';
 export type ArrayUnionInstance<SubTypes extends [...MuSchema<unknown>[]]> = {
     id: number[];
     data: SubTypes[number]['identity'][];

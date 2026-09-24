@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
 import type { MirrorMode } from '../../redux/editing-slice';
-import { boundary } from '@box-local/utils/helper';
+import { boundary } from '@box/utils/helper';
 import type { Camera } from '../rendering/camera/base';
 import { DEFAULT_POS } from './const';
 import { BoxBoundary } from './interfaces';

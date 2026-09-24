@@ -23,7 +23,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
  *
  * 使用示例：
  * ```typescript
- * import { IUserPrivateProfile, UserRoutes, Language } from '@box-local/box-api-types';
+ * import { IUserPrivateProfile, UserRoutes, Language } from '@box/box-api-types';
  *
  * // 在前端使用接口定义
  * const userProfile: IUserPrivateProfile = {

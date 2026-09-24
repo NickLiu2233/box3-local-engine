@@ -14,7 +14,7 @@ exports.storeProject = storeProject;
 exports.retrieveProject = retrieveProject;
 exports.updateProjectByHotProject = updateProjectByHotProject;
 const migrations_1 = require("../migrations");
-const project_rda_1 = require("@box-local/schema/project/project-rda");
+const project_rda_1 = require("@box/schema/project/project-rda");
 const CURRENT_VERSION = project_rda_1.ProjectRDA.stateSchema.identity.version;
 function storeProjectJSON(bs, rawJSON) {
     return __awaiter(this, void 0, void 0, function* () {

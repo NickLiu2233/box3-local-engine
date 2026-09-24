@@ -2,7 +2,7 @@ import * as React from 'react';
 import {
   InputPauseChange,
   InputPauseFlags,
-} from '@box-local/schema/input/input-schema';
+} from '@box/schema/input/input-schema';
 
 export interface InputPauseProps {
   flags: InputPauseFlags;

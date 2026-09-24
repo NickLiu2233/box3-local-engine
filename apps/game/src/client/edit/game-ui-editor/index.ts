@@ -1,12 +1,12 @@
-import { CameraBindingMode, MouseButton } from '@box-local/schema/input/input-schema';
+import { CameraBindingMode, MouseButton } from '@box/schema/input/input-schema';
 import {
   DEFAULT_SCREEN_ID,
   UITextFontFamily,
   type UIElementType,
-} from '@box-local/schema/project/ui-rda/defs';
-import { EventBus } from '@box-local/utils/event';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
-import { retrieveWithImage } from '@box-local/content-server/image';
+} from '@box/schema/project/ui-rda/defs';
+import { EventBus } from '@box/utils/event';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
+import { retrieveWithImage } from '@box/content-server/image';
 import { GameUIClient } from 'src/engine/game-ui';
 import { reduxDispatch, store } from 'src/redux/edit';
 import {
@@ -54,7 +54,7 @@ import type { GameUIRenderable } from 'src/engine/game-ui/nodes/renderable';
 import type { GameUIScrollBox } from 'src/engine/game-ui/nodes/scroll-box';
 import { GameUIInput } from 'src/engine/game-ui/nodes/input';
 import { isNodeInScreen } from 'src/client/edit/game-ui-editor/util';
-import { isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { isUIScreen } from '@box/schema/project/ui-rda/util';
 import { UIWheelEvent } from 'src/engine/game-ui/controls/drag';
 
 type Spec = {

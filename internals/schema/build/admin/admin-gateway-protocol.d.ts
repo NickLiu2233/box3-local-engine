@@ -1,4 +1,4 @@
-import { MuUTF8, MuVoid } from '@box-local/mudb/schema';
+import { MuUTF8, MuVoid } from '@box/mudb/schema';
 export declare const AdminProtocol: {
     name: string;
     client: {

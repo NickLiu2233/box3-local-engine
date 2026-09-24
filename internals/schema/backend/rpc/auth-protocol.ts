@@ -1,4 +1,4 @@
-import { MuRPCClient } from '@box-local/mudb/rpc/client';
+import { MuRPCClient } from '@box/mudb/rpc/client';
 import {
   MuArray,
   MuBoolean,
@@ -11,7 +11,7 @@ import {
   MuUTF8,
   MuVarint,
   MuVoid,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { PlayerSkinHash } from '../../player/player-schema';
 import { DB } from '../database-type';
 import { MuNullable } from './nullable-schema';

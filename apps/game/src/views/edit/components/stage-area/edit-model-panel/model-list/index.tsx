@@ -1,7 +1,7 @@
 import React, { useState, useMemo, Ref, forwardRef } from 'react';
 
-import { ItemId, MenuItemOptions } from '@box-local/box-design';
-import { IconAdd } from '@box-local/icons';
+import { ItemId, MenuItemOptions } from '@box/box-design';
+import { IconAdd } from '@box/icons';
 
 import { ObjectCard } from 'src/views/edit/components/object-card';
 import { ModelData } from '..';

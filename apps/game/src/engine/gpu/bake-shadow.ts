@@ -1,5 +1,5 @@
 import { mat4 } from 'gl-matrix';
-import type { IREWGPUGroup, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUGroup, ReWGPU } from '@box/rewgpu';
 import { GameClientState } from '../game-client-schema';
 
 import { BAKE_SIZE, computeBakedShadowViewAndCascade } from '../utils/shadow';
@@ -8,7 +8,7 @@ import {
   GPUBakeShadowMap,
   GPUBakeShadowMapSchema,
 } from './schema/gpu-shadow-schema';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import triangle from './wgsl/triangle-pos.wgsl';
 import vert from './wgsl/trivial-vert.wgsl';
 

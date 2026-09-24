@@ -60,7 +60,7 @@ Creator Adapter 应复用命令框架、输出约定和 HTTP 依赖；不复用�
 
 ## 3. 新模块结构
 
-Creator 协议契约由 Local Engine workspace 中的 `@box-local/cli` 包拥有。它是
+Creator 协议契约由 Local Engine workspace 中的 `@box/cli` 包拥有。它是
 Creator HTTP Adapter 与 `apc creator` 共用的协议来源，包含 URL、请求/响应类型和输入校验；
 Creator 权限由 Player Service 的创作者授权策略拥有，CLI 不维护权限 scope。它不包含 Token、
 HTTP Client、Next.js 或项目文件访问。

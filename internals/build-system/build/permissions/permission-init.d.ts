@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
 import { BuildSystemAPI } from '../type';
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 export declare function createDefaultPermissions(spec: {
     userId: number;
     projectHash: string;

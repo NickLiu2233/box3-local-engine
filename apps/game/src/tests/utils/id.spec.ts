@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { indexEq, indexPred } from '@box-local/utils/id';
+import { indexEq, indexPred } from '@box/utils/id';
 
 class Tagged {
   public id: number;

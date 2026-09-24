@@ -5,7 +5,7 @@ import {
   MuUint8,
   MuVarint,
   MuVoid,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { ParsedErrorSchema } from './schema';
 
 export const DebuggerProtocol = {

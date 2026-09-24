@@ -1,4 +1,4 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { EditRPCProtocol } from './rpc-schema';
 import { ClientStateType } from '../edit-schema';
 

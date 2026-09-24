@@ -1,24 +1,24 @@
 import { expect, test } from '@jest/globals';
 
-import { VoxelView, allocVoxels, freeVoxels } from '@box-local/utils/voxel';
+import { VoxelView, allocVoxels, freeVoxels } from '@box/utils/voxel';
 import {
   CHUNK_SIZE,
   VoxelCollisionSchema,
-} from '@box-local/schema/voxel/voxel-collision-schema';
+} from '@box/schema/voxel/voxel-collision-schema';
 import {
   intializeCollision,
   rebuildCollisionChunk,
   collideSolid,
   collideFluid,
   setBlockIndex,
-} from '@box-local/schema/voxel/voxel-collision';
-import { blitBoxesToChunk } from '@box-local/schema/voxel/box-decode';
+} from '@box/schema/voxel/voxel-collision';
+import { blitBoxesToChunk } from '@box/schema/voxel/box-decode';
 import {
   VoxelCollisionBoxList,
   VoxelCollisionBoxListSchema,
   RBushNode,
   VoxelCollisionBox,
-} from '@box-local/schema/utils/rbush-schema';
+} from '@box/schema/utils/rbush-schema';
 import { TEST_BLOCK_INDEX, TEST_BLOCK_INFO } from './test-block-index';
 
 const REPORT_STACK: RBushNode[] = [];

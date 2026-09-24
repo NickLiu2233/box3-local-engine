@@ -1,4 +1,4 @@
-import { MuArray, MuStruct, MuVarint, MuUint8, MuUint32 } from '@box-local/mudb/schema';
+import { MuArray, MuStruct, MuVarint, MuUint8, MuUint32 } from '@box/mudb/schema';
 export declare const MeshTextureSchema: MuStruct<{
     palette: MuArray<MuUint32>;
     data: MuArray<MuVarint>;

@@ -1,4 +1,4 @@
-import { VertexArrayObject } from '@box-local/regl';
+import { VertexArrayObject } from '@box/regl';
 import { Geometry, GeometryType } from '../geometry';
 
 export class MeshGeometry extends Geometry {

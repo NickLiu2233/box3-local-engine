@@ -25,7 +25,7 @@ import {
   NavigatorEventType,
   Sound,
   GameKeyBoardEvent,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import {
   coerceObject,
   coerceVec3,
@@ -51,12 +51,12 @@ import {
   MuArray,
   MuQuantizedFloat,
   MuBoolean,
-} from '@box-local/mudb/schema';
-import { TaggedId, compareId, zipId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { TaggedId, compareId, zipId } from '@box/utils/id';
 import { ScriptStateSnapshot } from '../script-state-schema';
-import { ScriptDispatcher } from '@box-local/schema/script/dispatcher';
-import { Logger } from '@box-local/utils/logger';
-import { GameQuaternion, GameVector3 } from '@box-local/schema/api/js/math';
+import { ScriptDispatcher } from '@box/schema/script/dispatcher';
+import { Logger } from '@box/utils/logger';
+import { GameQuaternion, GameVector3 } from '@box/schema/api/js/math';
 import {
   RigidBodyBinding,
   ModelBinding,
@@ -86,29 +86,29 @@ import {
   WRAPPER_PLAYER_INDEX,
   ENTITY_INDEX,
 } from './binding-factory';
-import { BodyPart } from '@box-local/schema/player/player-schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
-import { Vec3Schema, QuatSchema } from '@box-local/schema/utils/math-schema';
-import { PlaySoundPosition } from '@box-local/schema/sound/sound-protocol';
+import { BodyPart } from '@box/schema/player/player-schema';
+import { HashSchema } from '@box/schema/content-server/index';
+import { Vec3Schema, QuatSchema } from '@box/schema/utils/math-schema';
+import { PlaySoundPosition } from '@box/schema/sound/sound-protocol';
 import { ServerPlayer } from '../../player/player-server-schema';
 import {
   ScriptPhysicsSelectorManager,
   ScriptPhysicsSelectorGroup,
 } from './physics-selector';
-import { CollisionFilterSchema } from '@box-local/schema/physics/collision-filter';
+import { CollisionFilterSchema } from '@box/schema/physics/collision-filter';
 import {
   ScriptAnimationManager,
   ScriptAnimationTarget,
   ScriptParserAPI,
 } from './animations';
 import { ScriptMotionManager, ScriptMotionTarget } from './motions';
-import { ENTITY_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/entity-animation';
-import { PLAYER_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/player-animation';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+import { ENTITY_ANIM_BINDING } from '@box/schema/keyframes/bindings/entity-animation';
+import { PLAYER_ANIM_BINDING } from '@box/schema/keyframes/bindings/player-animation';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 import {
   NavigatorEventListener,
   PostMessageScriptType,
-} from '@box-local/schema/navigator/navigator-schema';
+} from '@box/schema/navigator/navigator-schema';
 import { mat4, quat, vec3, mat3 } from 'gl-matrix';
 
 // Numeric ids

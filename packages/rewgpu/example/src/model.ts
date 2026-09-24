@@ -1,15 +1,15 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
-import { createREWGPU } from '@box-local/rewgpu';
+import { createREWGPU } from '@box/rewgpu';
 import {
   migrateModel,
   ModelMetaData,
   getModelMetaData,
   bodyPartBytesToSchema,
   modelV5,
-} from '@box-local/voxa-project';
-import { MeshTextureSchema } from '@box-local/mesher/schema';
-import { unpackTextureData, unpackMeshData } from '@box-local/mesher';
-import { ContentResolver } from '@box-local/content-server/content-fetch';
+} from '@box/voxa-project';
+import { MeshTextureSchema } from '@box/mesher/schema';
+import { unpackTextureData, unpackMeshData } from '@box/mesher';
+import { ContentResolver } from '@box/content-server/content-fetch';
 import {
   MuStruct,
   MuUint32,
@@ -24,14 +24,14 @@ import {
   MuFloat32,
   MuASCII,
   MuOption,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Mat3Schema,
   Mat4Schema,
   QuatSchema,
   Vec2Schema,
   Vec3Schema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import { getCameraPosition, getCameraTarget } from './util';
 
 export const NodeInfoSchema = new MuStruct({

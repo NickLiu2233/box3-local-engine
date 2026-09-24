@@ -1,4 +1,4 @@
-import { MuStruct, MuArray, MuUTF8, MuVarint } from '@box-local/mudb/schema';
+import { MuStruct, MuArray, MuUTF8, MuVarint } from '@box/mudb/schema';
 
 const REMOTE_EVENT_SPEC = {
   tick: new MuVarint(),

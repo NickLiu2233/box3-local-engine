@@ -12,8 +12,8 @@ import {
   MuArray,
   MuDictionary,
   MuQuantizedFloat,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 import {
   QuantizedVec3Schema,
   QuantizedVec4Schema,

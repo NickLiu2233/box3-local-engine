@@ -1,5 +1,5 @@
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
-import { voxelsToMeshes } from '@box-local/mesher';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
+import { voxelsToMeshes } from '@box/mesher';
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 

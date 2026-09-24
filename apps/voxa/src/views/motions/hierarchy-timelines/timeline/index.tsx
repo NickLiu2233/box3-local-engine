@@ -1,5 +1,5 @@
 import { ReactNode, useMemo } from 'react';
-import { useClassName } from '@box-local/box-design';
+import { useClassName } from '@box/box-design';
 import { everyKeyframe } from '../../../../models/animator-app/util';
 import type { MotionKeyframe } from '../../../../redux/animator-slice';
 import { ChannelView } from './channel-view';

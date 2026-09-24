@@ -5,8 +5,8 @@ import {
   Menu,
   Button,
   MenuItemOptions,
-} from '@box-local/box-design';
-import { IconMore } from '@box-local/icons';
+} from '@box/box-design';
+import { IconMore } from '@box/icons';
 import { CARD_ID_PREFIX, PropTabType } from '../defs';
 import styles from './card.module.scss';
 

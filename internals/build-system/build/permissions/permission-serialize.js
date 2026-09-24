@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.storePermissions = storePermissions;
 exports.retrievePermissions = retrievePermissions;
 const migrations_1 = require("../migrations");
-const permission_rda_1 = require("@box-local/schema/permissions/permission-rda");
+const permission_rda_1 = require("@box/schema/permissions/permission-rda");
 const CURRENT_VERSION = permission_rda_1.PermissionRDA.stateSchema.identity.version;
 function storePermissions(bs, permissions) {
     return __awaiter(this, void 0, void 0, function* () {

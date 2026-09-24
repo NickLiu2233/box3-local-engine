@@ -1,4 +1,4 @@
-import { createTool, EventsType, Children } from '@box-local/sdk';
+import { createTool, EventsType, Children } from '@box/sdk';
 import type { BodyPartName, defaultMotions } from '../defs';
 import type { SkinPart } from '../skin-part';
 import { apis } from '../apis';

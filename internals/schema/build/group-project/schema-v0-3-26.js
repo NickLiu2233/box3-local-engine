@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GroupProjectStateV26 = void 0;
-const rda_1 = require("@box-local/mudb/rda");
-const schema_1 = require("@box-local/mudb/schema");
+const rda_1 = require("@box/mudb/rda");
+const schema_1 = require("@box/mudb/schema");
 const murda_union_1 = require("../project/murda-union");
 const murda_tree_1 = require("../project/murda-tree");
 const quantized_schema_1 = require("../utils/quantized-schema");

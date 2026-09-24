@@ -20,7 +20,7 @@ import {
   UI3DRingMouseHandler,
 } from 'src/engine/ui3d/ui3d-schema';
 import { vec3, mat4 } from 'gl-matrix';
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 import { ConeGeometry } from './3d-shapes/ConeGeometry';
 import { QuadGeometry } from './3d-shapes/QuadGeometry';
 import { BoxGeometry, BoxWireFrameGeometry } from './3d-shapes/boxGeometry';

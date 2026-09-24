@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
-import { Regl } from '@box-local/regl';
-import type { RequestParams } from '@box-local/apis/src/interface';
+import { Regl } from '@box/regl';
+import type { RequestParams } from '@box/apis/src/interface';
 import { initRegl } from '../../models/rendering/regl';
 import { Core } from '../../common/core';
 import { ProjectManager } from './project-manager';

@@ -4,7 +4,7 @@ import {
   AutoResizeType,
   PointerEventBehavior,
   UICoord2RDA,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import type { UITransform } from './interface';
 import type { HitArea } from '../util';
 import { EventMode, GameUINodeType } from './defs';

@@ -1,11 +1,11 @@
 import React, { createRef, type JSX } from 'react';
 import { Image } from '../../../components/image';
-import { Toast } from '@box-local/box-design';
+import { Toast } from '@box/box-design';
 import {
   ScriptType,
   ShareScriptErrorCode,
-} from '@box-local/apis/src/createra/data-contracts';
-import { Modal as BoxModal } from '@box-local/box-design';
+} from '@box/apis/src/createra/data-contracts';
+import { Modal as BoxModal } from '@box/box-design';
 
 import { preloadSoundSample } from 'src/engine/sound/client-sound-controller';
 import { hashURL } from 'src/utils/hash-url';
@@ -18,7 +18,7 @@ import {
   DeleteAssetsRDA,
   EntitySoundEnum,
   PlayerSoundEnum,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import {
   AudioPreviewPlayer,
   AudioUploadPreviewTool,
@@ -59,7 +59,7 @@ import ProjectModelActions, {
 import { ModelAction } from 'src/views/edit/components/stage-area/edit-model-panel';
 import type { ModelData } from 'src/views/edit/components/stage-area/edit-model-panel';
 import { getProjectModelDisplayName } from 'src/views/edit/components/stage-area/edit-model-panel/project-model-membership';
-import { ModelType } from '@box-local/apis';
+import { ModelType } from '@box/apis';
 import { convertTimeStrToTimestamp } from 'src/utils/date';
 import { clientConfig, getConfig } from 'src/config/client';
 import { setRemoveId, setRenameOptions } from 'src/redux/edit/script-manager';

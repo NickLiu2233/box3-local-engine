@@ -1,7 +1,7 @@
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 import { vec3, vec2, vec4 } from 'gl-matrix';
 import { Vec3Schema, Vec2Schema, Vec4Schema } from './math-schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 
 const SCHROEPPEL2 = 0xaaaaaaaa;
 

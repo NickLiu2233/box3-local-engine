@@ -1,7 +1,7 @@
-import { bytesToCompactModel } from '@box-local/vb';
+import { bytesToCompactModel } from '@box/vb';
 import type { mat4, vec3 } from 'gl-matrix';
-import { voxelsToMeshes } from '@box-local/mesher';
-import { VoxelView } from '@box-local/utils/voxel';
+import { voxelsToMeshes } from '@box/mesher';
+import { VoxelView } from '@box/utils/voxel';
 import { BodyPartName } from '../../avatar/models/defs';
 
 type BodyPartId = keyof typeof BodyPartName;

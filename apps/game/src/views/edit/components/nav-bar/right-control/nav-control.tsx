@@ -2,8 +2,8 @@ import React, { useEffect, useState, useContext } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { IconChat, IconBug, IconPersonGround } from '@box-local/icons';
-import { TooltipTrigger, Trigger } from '@box-local/box-design';
+import { IconChat, IconBug, IconPersonGround } from '@box/icons';
+import { TooltipTrigger, Trigger } from '@box/box-design';
 
 import { setIsShowDebugLogPanel } from 'src/redux/edit/creator';
 import { RootState } from 'src/redux/edit';

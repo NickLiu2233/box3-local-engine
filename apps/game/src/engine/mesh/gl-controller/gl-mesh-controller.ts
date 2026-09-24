@@ -1,7 +1,7 @@
 import { mat4, vec3 } from 'gl-matrix';
 import REGL from 'regl';
-import { unpackTextureData } from '@box-local/mesher';
-import { ImageModel } from '@box-local/build-system/tasks/texture/img-process';
+import { unpackTextureData } from '@box/mesher';
+import { ImageModel } from '@box/build-system/tasks/texture/img-process';
 
 import {
   GLMesh,
@@ -20,7 +20,7 @@ import {
   NodesMatrixSchema,
 } from '../parse/mesh-schema';
 
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import { GameClientState } from '../../game-client-schema';
 import { testFrustumBox } from '../../utils/frustum';
 import { LightProbe } from '../../voxel/light-schema';
@@ -29,7 +29,7 @@ import {
   Vec3Schema,
   Mat4Schema,
   Vec2Schema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import { GLState } from '../../gl/schema/gl-schema';
 import { getQuadElements } from '../../gl/quad';
 import { testChunkVisibility } from '../../voxel/voxel-controller';

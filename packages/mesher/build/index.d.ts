@@ -1,4 +1,4 @@
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 import { Texture, TexturePositions } from './texture';
 import { MeshDataSchema, MeshTextureSchema } from './schema';
 interface UnpackedTexture {
@@ -19,16 +19,16 @@ export declare function getTexture(textureMap: Map<string, Texture>): {
     texture: Texture;
     positions: Map<Texture, import("./texture").Rect>;
 };
-export declare function textureToMeshTexture(texture: Texture, palette: number[] | [number, number, number][], emissivePalette?: number[]): Promise<import("@box-local/mudb/schema/struct").Struct<{
-    palette: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint32>;
-    data: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-    width: import("@box-local/mudb/schema").MuVarint;
+export declare function textureToMeshTexture(texture: Texture, palette: number[] | [number, number, number][], emissivePalette?: number[]): Promise<import("@box/mudb/schema/struct").Struct<{
+    palette: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint32>;
+    data: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+    width: import("@box/mudb/schema").MuVarint;
 }>>;
-export declare function rectanglesToMeshData(rectangles: Rectangle[][], textureMap: Map<string, Texture>, positions: TexturePositions, extendEdge?: boolean): import("@box-local/mudb/schema/struct").Struct<{
-    vertices: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-    sizes: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-    uvs: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-    uvFlags: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint8>;
+export declare function rectanglesToMeshData(rectangles: Rectangle[][], textureMap: Map<string, Texture>, positions: TexturePositions, extendEdge?: boolean): import("@box/mudb/schema/struct").Struct<{
+    vertices: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+    sizes: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+    uvs: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+    uvFlags: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint8>;
 }>[];
 export declare class Mesher {
     private compress;
@@ -43,35 +43,35 @@ export declare class Mesher {
         texture: Texture;
         positions: Map<Texture, import("./texture").Rect>;
     };
-    getMeshes(extendEdge?: boolean): import("@box-local/mudb/schema/struct").Struct<{
-        vertices: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        sizes: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        uvs: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        uvFlags: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint8>;
+    getMeshes(extendEdge?: boolean): import("@box/mudb/schema/struct").Struct<{
+        vertices: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        sizes: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        uvs: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        uvFlags: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint8>;
     }>[][];
-    getMesh(index: number, extendEdge?: boolean): import("@box-local/mudb/schema/struct").Struct<{
-        vertices: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        sizes: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        uvs: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        uvFlags: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint8>;
+    getMesh(index: number, extendEdge?: boolean): import("@box/mudb/schema/struct").Struct<{
+        vertices: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        sizes: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        uvs: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        uvFlags: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint8>;
     }>[];
-    getTexture(palette: number[] | [number, number, number][], emissivePalette: number[]): Promise<import("@box-local/mudb/schema/struct").Struct<{
-        palette: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint32>;
-        data: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        width: import("@box-local/mudb/schema").MuVarint;
+    getTexture(palette: number[] | [number, number, number][], emissivePalette: number[]): Promise<import("@box/mudb/schema/struct").Struct<{
+        palette: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint32>;
+        data: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        width: import("@box/mudb/schema").MuVarint;
     }>>;
 }
 export declare function voxelsToMeshes(voxels: VoxelView[], palette: number[] | [number, number, number][], emissivePalette: number[], compress?: boolean, extendEdge?: boolean): Promise<{
-    meshes: import("@box-local/mudb/schema/struct").Struct<{
-        vertices: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        sizes: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        uvs: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        uvFlags: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint8>;
+    meshes: import("@box/mudb/schema/struct").Struct<{
+        vertices: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        sizes: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        uvs: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        uvFlags: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint8>;
     }>[][];
-    texture: import("@box-local/mudb/schema/struct").Struct<{
-        palette: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuUint32>;
-        data: import("@box-local/mudb/schema").MuArray<import("@box-local/mudb/schema").MuVarint>;
-        width: import("@box-local/mudb/schema").MuVarint;
+    texture: import("@box/mudb/schema/struct").Struct<{
+        palette: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuUint32>;
+        data: import("@box/mudb/schema").MuArray<import("@box/mudb/schema").MuVarint>;
+        width: import("@box/mudb/schema").MuVarint;
     }>;
 }>;
 export declare function unpackTextureData(texture: typeof MeshTextureSchema.identity, channels: number[]): Uint8Array;

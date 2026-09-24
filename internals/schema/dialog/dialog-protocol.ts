@@ -7,7 +7,7 @@ import {
   MuBoolean,
   MuArray,
   MuQuantizedFloat,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const RGBASchema = new MuStruct({
   r: new MuQuantizedFloat(1 / 256, 1),

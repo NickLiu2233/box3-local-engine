@@ -1,4 +1,4 @@
-import { CreditBalanceResponseDto, GetCreditHistoryResponseDto, GetSubscriptionPlansResponseDto, SubscribeRequestDto, SubscribeResponseDto } from '@box-local/box-api-types';
+import { CreditBalanceResponseDto, GetCreditHistoryResponseDto, GetSubscriptionPlansResponseDto, SubscribeRequestDto, SubscribeResponseDto } from '@box/box-api-types';
 import { HttpClient } from '../core/http-client';
 /**
  * 积分系统 API 客户端

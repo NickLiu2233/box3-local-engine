@@ -5,7 +5,7 @@ import {
   IconCode2,
   IconJavascript,
   IconLoading,
-} from '@box-local/icons';
+} from '@box/icons';
 import { clientConfig } from 'src/config/client';
 import style from './index.module.scss';
 

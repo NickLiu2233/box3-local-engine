@@ -7,10 +7,10 @@ import {
   MuArray,
   MuFloat32,
   MuQuantizedFloat,
-} from '@box-local/mudb/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+} from '@box/mudb/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 import { Vec3Schema } from '../utils/math-schema';
 import { PhysicsRDA } from '../project/project-rda';
 import { mat3, vec3 } from 'gl-matrix';

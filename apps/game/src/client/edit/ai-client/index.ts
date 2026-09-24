@@ -1,7 +1,7 @@
 import { UIMessage } from '@ai-sdk/react';
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { AiProtocol } from '@box-local/schema/ai/ai-protocol.schema';
-import type { AiGenerateOptions } from '@box-local/schema/ai/ai.types';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { AiProtocol } from '@box/schema/ai/ai-protocol.schema';
+import type { AiGenerateOptions } from '@box/schema/ai/ai.types';
 import { UIMessageChunk } from 'ai';
 import { nanoid } from 'nanoid';
 import type { Logger } from 'pino';

@@ -1,14 +1,14 @@
 import { EventEmitter } from 'events';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
-import { MuClient } from '@box-local/mudb';
-import { MuClientProtocol } from '@box-local/mudb/client';
-import { GameUIProtocol } from '@box-local/schema/game-ui/game-ui-protocol';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
+import { MuClient } from '@box/mudb';
+import { MuClientProtocol } from '@box/mudb/client';
+import { GameUIProtocol } from '@box/schema/game-ui/game-ui-protocol';
 import {
   PictureAsset,
   PictureAssetSet,
   PictureAssetSetSchema,
-} from '@box-local/schema/project/hot-schema';
-import { retrieveWithImage } from '@box-local/content-server/image';
+} from '@box/schema/project/hot-schema';
+import { retrieveWithImage } from '@box/content-server/image';
 import type { GameClientState } from '../game-client-schema';
 import { GameUICanvasRenderer } from './canvas-renderer';
 import {
@@ -35,7 +35,7 @@ import {
   UITextFontFamily,
   UITree,
   UITreeRDA,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import { UI_FONT_FACE_MAP } from './nodes/defs';
 import { RichTextParser } from './nodes/rich-text-parser';
 

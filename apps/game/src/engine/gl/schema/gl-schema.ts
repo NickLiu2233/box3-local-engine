@@ -1,4 +1,4 @@
-import { MuStruct, MuBoolean, MuUTF8 } from '@box-local/mudb/schema';
+import { MuStruct, MuBoolean, MuUTF8 } from '@box/mudb/schema';
 import { REGLSchema, REGLLoaderSchema, REGLElementSchema, REGLVAOSchema } from '../../utils/regl-schema';
 
 export const GLStateSchema = new MuStruct({

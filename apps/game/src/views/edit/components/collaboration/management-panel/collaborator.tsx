@@ -2,8 +2,8 @@ import { useState, useRef, useCallback, useContext, useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { Button, Menu, Toast, Trigger } from '@box-local/box-design';
-import { IconMore } from '@box-local/icons';
+import { Button, Menu, Toast, Trigger } from '@box/box-design';
+import { IconMore } from '@box/icons';
 
 import { debounce } from 'src/utils/debounce-throttle';
 import { useEdit } from 'src/client/edit/edit-context';

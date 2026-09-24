@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { FeatureFlag } from '@box-local/env/constants';
+import { FeatureFlag } from '@box/env/constants';
 import { RootState, store } from '../../..//redux/store';
 import type { EditingHistory } from '../../editing-history';
 import { PivotMode, updateModelPivot } from '../../../redux/animator-slice';

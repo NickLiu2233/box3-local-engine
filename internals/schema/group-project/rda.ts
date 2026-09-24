@@ -3,7 +3,7 @@ import {
   MuRDARegister,
   MuRDAConstant,
   MuRDAMap,
-} from '@box-local/mudb/rda';
+} from '@box/mudb/rda';
 import {
   MuUTF8,
   MuArray,
@@ -12,7 +12,7 @@ import {
   MuASCII,
   MuVarint,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { HashSchema } from '../content-server/index';
 import { UITreeRDA } from '../project/ui-rda/defs';
 

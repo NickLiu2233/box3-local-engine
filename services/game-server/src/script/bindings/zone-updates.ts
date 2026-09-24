@@ -1,6 +1,6 @@
-import { sortedArrayDelete } from '@box-local/utils/sorted-array-remove';
+import { sortedArrayDelete } from '@box/utils/sorted-array-remove';
 import { GameServerState } from '../../game-server-schema';
-import { PhysicsZoneSchema } from '@box-local/schema/zone/zone-schema';
+import { PhysicsZoneSchema } from '@box/schema/zone/zone-schema';
 import { ServerEnvironmentZoneSchema } from '../../zone/zone-server-state';
 import { synchronizeComponent } from './entity-update';
 import { EnvironmentZoneBinding, PhysicsZoneBinding } from './zone-bindings';

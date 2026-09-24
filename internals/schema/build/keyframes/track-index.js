@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.KeyframeTrackIndexSchema = void 0;
 exports.rebuildKeyframeTrackIndex = rebuildKeyframeTrackIndex;
 exports.updateKeyframeTrackIndex = updateKeyframeTrackIndex;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const type_1 = require("./type");
 function applyEasing(easing, weight) {
     switch (easing) {

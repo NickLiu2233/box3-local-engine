@@ -10,7 +10,7 @@ import {
   BVHAnimationRangeSchema,
 } from './bvh-schema';
 import { quat, vec3, mat4 } from 'gl-matrix';
-import { Vec3Schema, QuatSchema } from '@box-local/schema/utils/math-schema';
+import { Vec3Schema, QuatSchema } from '@box/schema/utils/math-schema';
 
 interface JointSpec {
   name: string;

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 import { summarizeExtraProjectChange } from '../src/client/edit/replica/extra-project-change';
 
 const previous = ExtraProjectInfoSchema.clone(ExtraProjectInfoSchema.identity);

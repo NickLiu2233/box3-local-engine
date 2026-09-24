@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.netTick = netTick;
 exports.mergeNetInput = mergeNetInput;
-const id_1 = require("@box-local/utils/id");
-const schema_1 = require("@box-local/mudb/schema");
+const id_1 = require("@box/utils/id");
+const schema_1 = require("@box/mudb/schema");
 const net_schema_1 = require("./net-schema");
 const physics_schema_1 = require("../physics/physics-schema");
 const player_schema_1 = require("../player/player-schema");

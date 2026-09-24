@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContentRPCSchema = exports.ReviewOrder = exports.ManuallyRejectType = exports.ChooseType = exports.ContentHistorySchema = exports.ContentReportSchema = exports.HomeRecommendSchema = exports.ReviewContentSchema = exports.PrivateContentSchema = exports.PublicContentSchema = exports.PublicCollaboratorDisplaySchema = exports.PublicContentListSchema = exports.ContentSchema = exports.ContentCommentStatus = exports.ProjectReviewInfoSchema = exports.ContentQualitySchema = exports.ContentStatusSchema = exports.ContentTypeSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const nullable_schema_1 = require("./nullable-schema");
 const audit_schema_1 = require("../service/audit-schema");
 exports.ContentTypeSchema = new schema_1.MuVarint();

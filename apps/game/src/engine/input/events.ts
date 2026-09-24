@@ -4,7 +4,7 @@ import {
   InputState,
   InputTouchSet,
   InputTouchSetSchema,
-} from '@box-local/schema/input/input-schema';
+} from '@box/schema/input/input-schema';
 import type { SerializedVec2 } from '../interfaces';
 
 /**

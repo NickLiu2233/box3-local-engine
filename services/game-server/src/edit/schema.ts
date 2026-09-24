@@ -8,8 +8,8 @@ import {
   MuBoolean,
   MuASCII,
   MuSchema,
-} from '@box-local/mudb/schema';
-import { DB } from '@box-local/schema/backend/database-type';
+} from '@box/mudb/schema';
+import { DB } from '@box/schema/backend/database-type';
 
 export enum EditorMode {
   GameEditor,

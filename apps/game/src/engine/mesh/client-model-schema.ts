@@ -7,15 +7,15 @@ import {
   MuVarint,
   MuDictionary,
   MuBoolean,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { Renderable, MeshMotionMatrix } from './renderable-schema';
-import { Mat4Schema, Vec4Schema } from '@box-local/schema/utils/math-schema';
+import { Mat4Schema, Vec4Schema } from '@box/schema/utils/math-schema';
 import {
   NetSkinTableSchema,
   NetMeshTableSchema,
-} from '@box-local/schema/mesh/model-schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
+} from '@box/schema/mesh/model-schema';
+import { HashSchema } from '@box/schema/content-server/index';
 
 export const ClientModelSchema = new MuStruct({
   id: new MuVarint(),

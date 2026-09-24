@@ -1,6 +1,6 @@
-import { voxelsToMeshes } from '@box-local/mesher';
-import { bytesToCompactModel, CompactModel } from '@box-local/vb';
-import { VoxelView } from '@box-local/utils/voxel';
+import { voxelsToMeshes } from '@box/mesher';
+import { bytesToCompactModel, CompactModel } from '@box/vb';
+import { VoxelView } from '@box/utils/voxel';
 import type { ModelDataV2 } from '../schema-v2';
 import type { ModelDataV3 } from '../schema-v3';
 import { ModelDataV3Schema } from '../schema-v3';

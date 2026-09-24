@@ -1,11 +1,11 @@
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
 import { GameServerState } from '../game-server-schema';
 import { RTCScriptProtocol } from './rtc-script-protocol';
 import { RTCProtocol } from './rtc-protocol';
 import { getConfigSync } from '../../config/server';
 import { PromiseWrapper } from './promise-wrapper';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 
 export class RTCServer {
   public scriptProtocol: MuServerProtocol<typeof RTCScriptProtocol>;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, type JSX } from 'react';
 import { InputPause, useInputPause } from '../../input-lock';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 
 import style from './index.module.css';
 

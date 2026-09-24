@@ -1,4 +1,4 @@
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { vec3 } from 'gl-matrix';
 import { allocEmptyVoxels, traverseVoxels } from './helper';
 import { alloc, free } from './pool';

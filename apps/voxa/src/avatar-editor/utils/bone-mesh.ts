@@ -1,4 +1,4 @@
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { TorusGeometry } from '../../models/rendering/geometries/torus-geometry';
 import { ShaderMaterial } from '../../models/rendering/materials/shader';
 import {
@@ -6,7 +6,7 @@ import {
   basicVertexShader,
 } from '../../models/rendering/shaders';
 import { Mesh } from '../../models/rendering/objects/mesh';
-import { BODY_PART_DEFAULT_SCALE } from '@box-local/schema/player/player-schema';
+import { BODY_PART_DEFAULT_SCALE } from '@box/schema/player/player-schema';
 
 const RADIUS = 1.6 * BODY_PART_DEFAULT_SCALE;
 const DEFAULT_COLOR = [0.6, 0.84, 0.53];

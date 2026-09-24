@@ -1,4 +1,4 @@
-import type { ReWGPU, IREWGPUGroup, IREWGPUBuffer } from '@box-local/rewgpu';
+import type { ReWGPU, IREWGPUGroup, IREWGPUBuffer } from '@box/rewgpu';
 import type { LightProbe } from '../voxel/light-schema';
 import type { mat3 } from 'gl-matrix';
 

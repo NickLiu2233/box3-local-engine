@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/repo-tooling",
+  "name": "@box/repo-tooling",
   "version": "0.2.0",
   "private": true,
   "scripts": {

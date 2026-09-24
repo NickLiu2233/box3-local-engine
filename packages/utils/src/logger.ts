@@ -6,7 +6,7 @@ import {
   MuArray,
   MuDate,
   MuUTF8,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export enum LogLevel {
   ERROR = 0,

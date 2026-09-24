@@ -7,9 +7,9 @@ import React, {
   useState,
 } from 'react';
 import { clamp } from 'ramda';
-import { Input } from '@box-local/box-design';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
-import { isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { Input } from '@box/box-design';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
+import { isUIScreen } from '@box/schema/project/ui-rda/util';
 import { UITreeContext } from '../../../hooks';
 
 import { InputPause, useInputPause } from 'src/views/components/input-lock';

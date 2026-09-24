@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getModelMetaData, migrateProject, projectSchemaToBytes } from '@box-local/voxa-project';
+import { getModelMetaData, migrateProject, projectSchemaToBytes } from '@box/voxa-project';
 
 import { saveModel, storeBlob } from '../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../server/local-cors';

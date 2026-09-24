@@ -13,7 +13,7 @@ import {
   VoxelCollisionBoxSchema,
 } from '../utils/rbush-schema';
 
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 import { createRBush, searchRBush, testRBush } from './rbush';
 
 let BLOCK_FLUID: Uint8Array = new Uint8Array(1);

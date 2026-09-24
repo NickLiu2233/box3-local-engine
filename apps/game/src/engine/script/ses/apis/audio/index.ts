@@ -1,4 +1,4 @@
-import { MediaError, MediaErrorCode } from '@box-local/script-api';
+import { MediaError, MediaErrorCode } from '@box/script-api';
 import { toString } from 'ramda';
 import { GameAudioState } from 'src/engine/sound/defs';
 import { isSafeUrl } from 'src/engine/utils/safe-url';

@@ -1,4 +1,4 @@
-import { MuStruct, MuUint32, MuUint16, MuSchema, MuArray, MuVarint, MuFloat32 } from '@box-local/mudb/schema';
+import { MuStruct, MuUint32, MuUint16, MuSchema, MuArray, MuVarint, MuFloat32 } from '@box/mudb/schema';
 export declare enum FootType {
     LEFT = 0,
     RIGHT = 1

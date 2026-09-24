@@ -1,4 +1,4 @@
-import { Id, ID_MAX } from '@box-local/mudb/rda/_id';
+import { Id, ID_MAX } from '@box/mudb/rda/_id';
 
 export interface AllocIdsData {
   beginId: Id;

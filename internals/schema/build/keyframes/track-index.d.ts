@@ -1,4 +1,4 @@
-import { MuArray, MuFloat64, MuQuantizedFloat, MuSchema, MuStruct, MuVarint } from '@box-local/mudb/schema';
+import { MuArray, MuFloat64, MuQuantizedFloat, MuSchema, MuStruct, MuVarint } from '@box/mudb/schema';
 import { AnimationPlaybackMode, GenericAnimation, KeyframeEaseMode } from './type';
 export declare const KeyframeTrackIndexSchema: MuStruct<{
     targetId: MuArray<MuVarint>;

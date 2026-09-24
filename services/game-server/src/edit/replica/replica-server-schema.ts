@@ -9,24 +9,24 @@ import {
   MuFloat64,
   MuVarint,
   MuDate,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
-import { MuRDATypes } from '@box-local/mudb/rda';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { ProjectRDA } from '@box/schema/project/project-rda';
+import { MuRDATypes } from '@box/mudb/rda';
 import {
   PermissionsSchema,
   PermissionSetSchema,
   PermissionRDA,
   UserIdSchema,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 import {
   ProjectStateSchema,
   VoxelWriteSequenceSchema,
-} from '@box-local/schema/replica/replica-schema';
+} from '@box/schema/replica/replica-schema';
 import {
   ExtraProjectInfoSchema,
   HotProjectSchema,
-} from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/hot-schema';
 
 export const SessionPermissionSchema = new MuStruct({
   userId: UserIdSchema,

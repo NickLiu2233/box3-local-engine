@@ -1,4 +1,4 @@
-import type { ContentServer, Hash } from '@box-local/content-server';
+import type { ContentServer, Hash } from '@box/content-server';
 
 /**
  * Read published/project blobs from an immutable source while writing build

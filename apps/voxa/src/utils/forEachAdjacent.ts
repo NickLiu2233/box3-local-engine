@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
-import type { VoxelView } from '@box-local/utils/voxel';
-import { inRange } from '@box-local/utils/helper';
+import type { VoxelView } from '@box/utils/voxel';
+import { inRange } from '@box/utils/helper';
 import { isEmptyVoxel } from '../models/editing/util';
 
 export type onVoxelParams = {

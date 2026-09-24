@@ -2,11 +2,11 @@ import {
   CollisionFilter,
   CollisionFilterSchema,
   CollisionGroupSchema,
-} from '@box-local/schema/physics/collision-filter';
+} from '@box/schema/physics/collision-filter';
 import {
   ZoneSelectorGroup,
   ZoneSelectorGroupSchema,
-} from '@box-local/schema/zone/zone-schema';
+} from '@box/schema/zone/zone-schema';
 import { ScriptEntityWrapper } from './entity-synchronizer';
 import { ParsedSelector } from './selectors';
 import { ScriptZoneWrapper } from './zone-synchronizer';

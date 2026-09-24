@@ -15,7 +15,7 @@ import {
   pushGPUModelTexture,
   pushGPUMesh,
 } from '../mesh/gpu-controller/gpu-mesh-controller';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 
 export function drawSeedsForward(
   pass: GPUMeshInstanceListDict,

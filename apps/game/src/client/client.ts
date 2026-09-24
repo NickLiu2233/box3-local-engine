@@ -1,6 +1,6 @@
 import { clientConfig } from 'src/config/client';
 import { installErrorHandler } from 'src/utils/error-handler';
-import { BufferSink, Logger } from '@box-local/utils/logger';
+import { BufferSink, Logger } from '@box/utils/logger';
 
 import { Logger as PinoLogger } from 'pino';
 
@@ -17,7 +17,7 @@ import { messenger } from 'src/messenger';
 import { BackendClientRPC } from './backend-rpc-client';
 import { getMuRef } from './client-schema';
 import { getToken, setToken } from 'src/utils/token';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 
 function localRuntimeURL(mode: 'play' | 'edit') {
   if (typeof window === 'undefined') return '';

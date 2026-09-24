@@ -171,9 +171,9 @@ Creator 编辑可变 `.boxproject` 工程，Play 只运行发布后的只读 `.b
 
 ```bash
 rush build
-rush build --to @box-local/player-admin
-rush build --to @box-local/voxa
-rush build --from @box-local/script-api
+rush build --to @box/player-admin
+rush build --to @box/voxa
+rush build --from @box/script-api
 ```
 
 - `--to` 构建目标项目及其上游依赖，适合验证一个应用；
@@ -207,7 +207,7 @@ rushx test
 自定义参数放在 `--` 后：
 
 ```bash
-npm run build -- --to @box-local/player-admin
+npm run build -- --to @box/player-admin
 npm run package:images -- --architecture arm64 --service player-service
 ```
 
@@ -230,7 +230,7 @@ Rush 同一仓库通常只允许一个会修改公共安装状态或使用全局
 rush format-check
 rush lint
 rush typecheck
-rush build --to @box-local/player-admin
+rush build --to @box/player-admin
 ```
 
 Node 服务或运行时修改可执行：

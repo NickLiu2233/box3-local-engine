@@ -1,4 +1,4 @@
-import { RedisIoCache } from '@box-local/utils/redis-cache/redis-io-cache';
+import { RedisIoCache } from '@box/utils/redis-cache/redis-io-cache';
 import type { Logger } from 'pino';
 
 export interface RuntimeRedisStore {

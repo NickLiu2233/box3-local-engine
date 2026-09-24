@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MuArrayUnion = void 0;
-const is_primitive_1 = require("@box-local/mudb/schema/is-primitive");
+const is_primitive_1 = require("@box/mudb/schema/is-primitive");
 const codegen_1 = require("./codegen");
 var Ops;
 (function (Ops) {

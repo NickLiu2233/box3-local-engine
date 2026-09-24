@@ -12,7 +12,7 @@ import {
   isGLMotionMatrix,
   isGLTexture,
 } from '../mesh/renderable-schema';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 
 export function drawModelsForward(
   pass: GLMeshInstanceList,

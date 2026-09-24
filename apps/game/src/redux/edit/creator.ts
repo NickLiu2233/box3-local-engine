@@ -1,4 +1,4 @@
-import { ModelType } from '@box-local/apis';
+import { ModelType } from '@box/apis';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
   CreateTabEnum,

@@ -1,10 +1,10 @@
-import { MuArray, MuASCII, MuBytes, MuStruct } from '@box-local/mudb/schema';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
+import { MuArray, MuASCII, MuBytes, MuStruct } from '@box/mudb/schema';
+import { ProjectRDA } from '@box/schema/project/project-rda';
 import {
   ExtraProjectInfoSchema,
   HotProjectSchema,
-} from '@box-local/schema/project/hot-schema';
-import { PermissionRDA } from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/project/hot-schema';
+import { PermissionRDA } from '@box/schema/permissions/permission-rda';
 
 export const PrebakeCacheSchema = new MuStruct({
   voxelBytes: new MuArray(new MuBytes(), Infinity),

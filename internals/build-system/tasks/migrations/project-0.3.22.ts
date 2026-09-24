@@ -2,7 +2,7 @@ import { BuildSystem } from '../../type';
 import {
   isUIElement,
   pickAutoLayoutProp,
-} from '@box-local/schema/project/ui-rda/util';
+} from '@box/schema/project/ui-rda/util';
 
 export const name = 'project';
 export const fromVersion = '0.3.21';

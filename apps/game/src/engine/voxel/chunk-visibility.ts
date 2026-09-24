@@ -1,5 +1,5 @@
 import { ChunkVisibilityFlags } from './visibility-flags';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
 
 const N = (CHUNK_SIZE + 2) * (CHUNK_SIZE + 2);
 const MASK = new Uint8Array(N);

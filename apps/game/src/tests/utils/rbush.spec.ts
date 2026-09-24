@@ -6,7 +6,7 @@ import {
   RBushSchema,
   VoxelCollisionBoxList,
   VoxelCollisionBoxListSchema,
-} from '@box-local/schema/utils/rbush-schema';
+} from '@box/schema/utils/rbush-schema';
 import { createRBush, searchRBush } from 'src/engine/utils/rbush3d/rbush';
 
 const REPORT_STACK: RBushNode[] = [];

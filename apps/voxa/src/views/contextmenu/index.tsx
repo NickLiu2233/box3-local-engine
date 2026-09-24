@@ -10,7 +10,7 @@ import React, {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
-import { Menu, SerializedVec2 } from '@box-local/box-design';
+import { Menu, SerializedVec2 } from '@box/box-design';
 
 import { store, useAppSelector } from '../../redux/store';
 import { AppMode, setContextmenu } from '../../redux/app-slice';

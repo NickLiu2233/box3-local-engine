@@ -1,7 +1,7 @@
-import { MuReadStream } from '@box-local/mudb/stream';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
+import { MuReadStream } from '@box/mudb/stream';
+import { allocEmptyVoxels } from '@box/utils/helper';
 import { BuildSystem } from '../type';
-import { decompress } from '@box-local/utils/rle-compress';
+import { decompress } from '@box/utils/rle-compress';
 import { IntBoundsSchema } from '../project/bounds-schema';
 
 export async function calcVoxelBounds(bs: BuildSystem, hash: string) {

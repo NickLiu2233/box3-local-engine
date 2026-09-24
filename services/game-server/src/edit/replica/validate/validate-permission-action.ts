@@ -1,7 +1,7 @@
 import {
   PermissionSet,
   PermissionAction,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 
 export function checkPermissionActionSequence(
   permissions: PermissionSet,

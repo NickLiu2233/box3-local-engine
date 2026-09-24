@@ -107,7 +107,7 @@ rush dev-creator
 根 `package.json` 同时提供便于发现的 npm 别名，例如 `npm run dev`、`npm run verify`、`npm run package:images:arm64`、`npm run package:desktop:macos-arm64` 和 `npm run package:web:amd64`。需要自定义参数时，可在 `--` 后继续传给 Rush：
 
 ```bash
-npm run build -- --to @box-local/player-admin
+npm run build -- --to @box/player-admin
 npm run package:images -- --architecture arm64 --service player-service
 ```
 

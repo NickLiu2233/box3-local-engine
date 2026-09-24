@@ -7,14 +7,14 @@ import {
   MuVarint,
   MuDate,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   MuRDAConstant,
   MuRDAStruct,
   MuRDAMap,
   MuRDARegister,
   MuRDAList,
-} from '@box-local/mudb/rda';
+} from '@box/mudb/rda';
 import { HashSchema } from '../content-server/index';
 
 export const UserIdSchema = new MuUTF8();

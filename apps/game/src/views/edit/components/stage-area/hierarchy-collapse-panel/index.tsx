@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CollapsePanel, Modal, Toast } from '@box-local/box-design';
+import { CollapsePanel, Modal, Toast } from '@box/box-design';
 
 import {
   IconBake,
   IconSearch,
   IconVisibility,
   IconVisibilityOff,
-} from '@box-local/icons';
+} from '@box/icons';
 
 import { reduxDispatch, RootState } from 'src/redux/edit';
 import { useDispatch, useSelector } from 'react-redux';
@@ -23,7 +23,7 @@ import { useEdit } from 'src/client/edit/edit-context';
 import { ScreenList } from 'src/views/edit/components/game-ui/screen-list';
 import { setGameUIScreenListVisible } from 'src/redux/edit/game-ui';
 import { clientConfig } from 'src/config/client';
-import { FeatureFlag } from '@box-local/env/constants';
+import { FeatureFlag } from '@box/env/constants';
 
 type HierarchyCollapsePanelProps = {
   panelId: PANEL_IDS;

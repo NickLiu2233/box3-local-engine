@@ -11,7 +11,7 @@ import {
   MAX_KEYFRAME_TIME,
   timeToFrame,
 } from '../../models/animator-app/util';
-import type { DropType } from '@box-local/box-design';
+import type { DropType } from '@box/box-design';
 import type {
   AddMotionData,
   AnimatorState,

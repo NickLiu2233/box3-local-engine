@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
 
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
 import { setCenterPanel, setNavMode } from 'src/redux/edit/creator';

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { clientConfig } from '../../config';
-import { Model } from '@box-local/apis';
+import { Model } from '@box/apis';
 
 export const cancelSource = axios.CancelToken.source();
 

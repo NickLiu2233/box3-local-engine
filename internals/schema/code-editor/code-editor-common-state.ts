@@ -5,8 +5,8 @@ import {
   MuFloat32,
   MuBoolean,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { MuRDAStruct, MuRDARegister, MuRDAMap } from '@box-local/mudb/rda';
+} from '@box/mudb/schema';
+import { MuRDAStruct, MuRDARegister, MuRDAMap } from '@box/mudb/rda';
 import { MuRDAText } from './murda-text';
 
 export const FileRDA = new MuRDAStruct({

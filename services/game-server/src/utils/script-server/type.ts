@@ -1,6 +1,6 @@
-import type { MuSocketServer } from '@box-local/mudb/socket/socket';
-import type { EventBus } from '@box-local/utils/event';
-import type { ParsedError } from '@box-local/schema/debugger-console/schema';
+import type { MuSocketServer } from '@box/mudb/socket/socket';
+import type { EventBus } from '@box/utils/event';
+import type { ParsedError } from '@box/schema/debugger-console/schema';
 
 export interface ScriptServer extends MuSocketServer {
   launch(script: number | string, _module: any): Promise<void>;

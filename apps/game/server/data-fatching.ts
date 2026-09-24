@@ -1,7 +1,7 @@
 import type { AppEnv } from '../configs/builder';
 
 import { getCreateraInstance } from './request';
-import { AppEdition } from '@box-local/schema/types/appEdition';
+import { AppEdition } from '@box/schema/types/appEdition';
 import { convertUserInfo } from 'src/utils/user';
 
 type MapInfoDetailType = {

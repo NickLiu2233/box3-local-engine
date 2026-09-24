@@ -1,4 +1,4 @@
-import { CompactModel } from '@box-local/schema/mesh/modelMeshSchema';
+import { CompactModel } from '@box/schema/mesh/modelMeshSchema';
 export interface PaletteEntry {
     r: number;
     g: number;

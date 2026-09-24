@@ -1,6 +1,6 @@
 import { BuildSystem } from '../../type';
-import { isUIElement, isUITextElement } from '@box-local/schema/project/ui-rda/util';
-import { UITree } from '@box-local/schema/project/ui-rda/defs';
+import { isUIElement, isUITextElement } from '@box/schema/project/ui-rda/util';
+import { UITree } from '@box/schema/project/ui-rda/defs';
 
 export const name = 'project';
 export const fromVersion = '0.3.22';

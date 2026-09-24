@@ -1,4 +1,4 @@
-import { MuBoolean, MuStruct, MuUTF8, MuVarint } from '@box-local/mudb/schema';
+import { MuBoolean, MuStruct, MuUTF8, MuVarint } from '@box/mudb/schema';
 
 export const GUIScriptProtocol = {
   name: 'gui',

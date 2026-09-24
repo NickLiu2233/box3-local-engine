@@ -4,7 +4,7 @@
  * 但数据迁移要，就直接搬运了
  */
 
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 
 // material tables
 const MAX_MATERIAL_COUNT = 256;

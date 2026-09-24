@@ -1,9 +1,9 @@
 import { GameClientState } from '../game-client-schema';
-import { ENTITY_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/entity-animation';
-import { PLAYER_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/player-animation';
-import { WORLD_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/world-animation';
-import { ParticleEntity } from '@box-local/schema/particle/particle-schema';
-import { getById } from '@box-local/utils/id';
+import { ENTITY_ANIM_BINDING } from '@box/schema/keyframes/bindings/entity-animation';
+import { PLAYER_ANIM_BINDING } from '@box/schema/keyframes/bindings/player-animation';
+import { WORLD_ANIM_BINDING } from '@box/schema/keyframes/bindings/world-animation';
+import { ParticleEntity } from '@box/schema/particle/particle-schema';
+import { getById } from '@box/utils/id';
 
 export function setClientKeyframeDirty(state: GameClientState) {
   const keyframes = state.keyframes;

@@ -3,7 +3,7 @@ import {
   CenterModeOption,
   FaceModeColorOption,
   FaceModeSelectOption,
-} from '@box-local/utils/helper';
+} from '@box/utils/helper';
 
 export interface MetaHashProps {
   modelProjectHash: string;

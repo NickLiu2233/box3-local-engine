@@ -8,7 +8,7 @@ import {
   PlayerSoundEnum,
   EntitySoundEnum,
   EntitySound,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { EditorUIEvent } from 'src/client/edit/schema';
 import { SoundType } from 'src/client/edit/state-controller/environment-controller';
 import { NumberProperty } from '../../../components/edit/property';
@@ -16,7 +16,7 @@ import { Button } from '../../../components/edit/button';
 import { Modal } from '../../../components/edit/modal';
 import { Divider } from '../../../components/common/divider';
 import { isMobile } from 'src/utils/mobile';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 import { editor } from 'src/client/edit/edit-client';
 
 import style from './index.module.css';

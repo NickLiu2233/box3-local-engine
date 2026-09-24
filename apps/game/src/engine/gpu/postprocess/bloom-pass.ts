@@ -4,7 +4,7 @@ import type {
   IREWGPUGroup,
   IREWGPUTexture,
   ReWGPU,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import { prevPow2 } from 'bit-twiddle';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import { rootLogger } from 'src/utils/logger';

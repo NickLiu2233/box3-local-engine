@@ -1,6 +1,6 @@
 import { memo, useState, useRef, useEffect, useMemo } from 'react';
 import styles from './style.module.scss.js';
-import { IconLoading, IconTipsInfoCircleFill, IconTipsExclamationCircleFill, IconTipsCloseCircleFill, IconTipsCheckCircleFill } from '@box-local/icons';
+import { IconLoading, IconTipsInfoCircleFill, IconTipsExclamationCircleFill, IconTipsCloseCircleFill, IconTipsCheckCircleFill } from '@box/icons';
 import { jsx, jsxs } from 'react/jsx-runtime';
 
 const DEFAULT_DURATION = 3;

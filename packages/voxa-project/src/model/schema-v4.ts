@@ -1,5 +1,5 @@
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
-import { MuArray, MuStruct, MuVarint } from '@box-local/mudb/schema';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
+import { MuArray, MuStruct, MuVarint } from '@box/mudb/schema';
 
 import { ModelNodesSchema } from './schema-v2';
 

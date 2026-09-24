@@ -1,5 +1,5 @@
-import type { ReWGPU, IREWGPUBuffer } from '@box-local/rewgpu';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import type { ReWGPU, IREWGPUBuffer } from '@box/rewgpu';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import { rootLogger } from 'src/utils/logger';
 import { recordBloomPass } from './bloom-pass';

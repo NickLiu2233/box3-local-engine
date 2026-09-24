@@ -1,4 +1,4 @@
-import { SelectDialogConfig } from '@box-local/schema/dialog/dialog-protocol';
+import { SelectDialogConfig } from '@box/schema/dialog/dialog-protocol';
 import {
   Dialog,
   DialogType,

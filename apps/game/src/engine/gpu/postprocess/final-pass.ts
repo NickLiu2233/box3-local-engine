@@ -1,4 +1,4 @@
-import type { IREWGPUGroup, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUGroup, ReWGPU } from '@box/rewgpu';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import { rootLogger } from 'src/utils/logger';
 import commonUniformWgsl from '../common/common-uniform.wgsl';

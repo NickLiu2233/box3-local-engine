@@ -1,6 +1,6 @@
 import { NDArrayLikeImage } from '../../utils/pixels';
 import { BuildSystem } from '../../type';
-import { BlockSoundGroup, BlockCategory } from '@box-local/schema/voxel/block-schema';
+import { BlockSoundGroup, BlockCategory } from '@box/schema/voxel/block-schema';
 export declare const BLOCK_BUMP_SHIFT = 6;
 export declare const BLOCK_BUMP_SIZE: number;
 export declare const BLOCK_COLOR_SHIFT = 4;

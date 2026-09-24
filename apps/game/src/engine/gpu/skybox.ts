@@ -1,4 +1,4 @@
-import type { ReWGPU, IREWGPUGroup } from '@box-local/rewgpu';
+import type { ReWGPU, IREWGPUGroup } from '@box/rewgpu';
 import { CommonUniformEntries, CommonUniformLayout } from './interface';
 import { GameClientState } from '../game-client-schema';
 import { initCube, initTexture, updateTexture } from './texture';

@@ -1,4 +1,4 @@
-import { MuSortedArray, MuStruct, MuArray, MuUint32, MuSchema, MuBoolean } from '@box-local/mudb/schema';
+import { MuSortedArray, MuStruct, MuArray, MuUint32, MuSchema, MuBoolean } from '@box/mudb/schema';
 import { TaggedId } from '../id';
 export type DeltaOutType<Schema extends MuSchema<TaggedId>> = {
     upserts: Schema['identity'][];

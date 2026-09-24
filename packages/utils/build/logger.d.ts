@@ -1,4 +1,4 @@
-import { MuStruct, MuASCII, MuSchema, MuArray, MuDate, MuUTF8 } from '@box-local/mudb/schema';
+import { MuStruct, MuASCII, MuSchema, MuArray, MuDate, MuUTF8 } from '@box/mudb/schema';
 export declare enum LogLevel {
     ERROR = 0,
     WARN = 1,

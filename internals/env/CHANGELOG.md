@@ -1,4 +1,4 @@
-# Change Log - @box-local/env
+# Change Log - @box/env
 
 This log was last generated on Wed, 03 Sep 2025 07:32:05 GMT and should not be manually modified.
 

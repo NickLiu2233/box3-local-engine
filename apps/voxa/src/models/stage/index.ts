@@ -1,4 +1,4 @@
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { vec3 } from 'gl-matrix';
 import { PointerAction, setPointerAction } from '../../redux/app-slice';
 import { store } from '../../redux/store';

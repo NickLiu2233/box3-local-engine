@@ -1,4 +1,4 @@
-import { initWebGPU, ReWGPU, type GPUConfig, createREWGPU } from '@box-local/rewgpu';
+import { initWebGPU, ReWGPU, type GPUConfig, createREWGPU } from '@box/rewgpu';
 import { gpuMain } from './main';
 
 interface ReGPUCache {

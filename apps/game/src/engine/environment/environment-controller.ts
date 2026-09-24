@@ -1,13 +1,13 @@
 import { GameClientState } from '../game-client-schema';
 import { vec3 } from 'gl-matrix';
-import { calcEnvironmentState } from '@box-local/schema/environment/environment-controller';
+import { calcEnvironmentState } from '@box/schema/environment/environment-controller';
 import {
   FogRDA,
   RainRDA,
   SkyRDA,
   SnowRDA,
-} from '@box-local/schema/project/project-rda';
-import { getById } from '@box-local/utils/id';
+} from '@box/schema/project/project-rda';
+import { getById } from '@box/utils/id';
 
 function saturate(x: number) {
   return Math.max(0, Math.min(1, x));

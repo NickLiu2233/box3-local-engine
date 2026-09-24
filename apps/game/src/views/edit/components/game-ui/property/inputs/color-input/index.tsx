@@ -1,7 +1,7 @@
 import { vec3 } from 'gl-matrix';
 import React, { memo, useState, useCallback, useMemo, useRef } from 'react';
-import { Input } from '@box-local/box-design';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { Input } from '@box/box-design';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import { RGBToHex, hexToRGB } from 'src/utils/color';

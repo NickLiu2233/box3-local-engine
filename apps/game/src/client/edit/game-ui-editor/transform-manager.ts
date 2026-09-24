@@ -1,7 +1,7 @@
 import { vec2 } from 'gl-matrix';
 import { sort } from 'ramda';
-import { UICoord2RDA } from '@box-local/schema/project/ui-rda/defs';
-import { isUIElement } from '@box-local/schema/project/ui-rda/util';
+import { UICoord2RDA } from '@box/schema/project/ui-rda/defs';
+import { isUIElement } from '@box/schema/project/ui-rda/util';
 import { store } from 'src/redux/edit';
 import {
   getBreadcrumbs,

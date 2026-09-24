@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GamePrivateReplicaSetSchema = exports.GamePrivateReplicaSchema = exports.PlayerGamepadSchema = void 0;
 const index_1 = require("../content-server/index");
-const schema_1 = require("@box-local/mudb/schema");
-const id_1 = require("@box-local/utils/id");
+const schema_1 = require("@box/mudb/schema");
+const id_1 = require("@box/utils/id");
 const camera_schema_1 = require("../camera/camera-schema");
 const sound_protocol_1 = require("../sound/sound-protocol");
 exports.PlayerGamepadSchema = new schema_1.MuStruct({

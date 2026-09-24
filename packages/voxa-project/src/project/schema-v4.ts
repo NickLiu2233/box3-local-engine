@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuArray } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuArray } from '@box/mudb/schema';
 import {
   VoxelsSchema,
   VoxelSchema,

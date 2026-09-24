@@ -19,7 +19,7 @@ exports.watchNewFiles = watchNewFiles;
 const chokidar_1 = __importDefault(require("chokidar"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 /**
  * helper function, uploads a directory completely into IPFS
  *

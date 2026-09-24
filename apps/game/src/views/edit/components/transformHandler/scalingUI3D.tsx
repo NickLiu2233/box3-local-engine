@@ -3,7 +3,7 @@ import { vec3 } from 'gl-matrix';
 import { UI3DLine } from '../ui-3d';
 import { CubeLine } from '../ui-3d/cubeline';
 import { BoundBox } from '../ui-3d/boundbox';
-import { MouseState } from '@box-local/schema/input/input-schema';
+import { MouseState } from '@box/schema/input/input-schema';
 import { HoverObject, hoverColor } from './util';
 import { touchable } from 'src/utils/mobile';
 

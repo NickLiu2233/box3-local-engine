@@ -1,9 +1,9 @@
 import { GLMeshInstanceList } from '../mesh/gl-controller/gl-mesh-schema';
 import { GameClientState } from '../game-client-schema';
-import { zipId } from '@box-local/utils/id';
+import { zipId } from '@box/utils/id';
 import { testFrustumBox } from '../utils/frustum';
 import { GLShadowMap } from './schema/gl-shadow-schema';
-import { PlayerDisplayFlags } from '@box-local/schema/player/player-schema';
+import { PlayerDisplayFlags } from '@box/schema/player/player-schema';
 import { testChunkVisibility } from '../voxel/voxel-controller';
 import { createRenderPlayerFn } from '../player/player-render';
 import { drawName, drawPlayerOverlay } from '../overlay/player-overlay';

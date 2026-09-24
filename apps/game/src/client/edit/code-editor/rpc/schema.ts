@@ -1,4 +1,4 @@
-import { MuStruct, MuUTF8 } from '@box-local/mudb/schema';
+import { MuStruct, MuUTF8 } from '@box/mudb/schema';
 import { CodeEditorStateSchema } from '../schema';
 
 export const CodeEditorRPCProtocol = {

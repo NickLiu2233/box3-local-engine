@@ -1,5 +1,5 @@
-import { getModelMetaData, migrateModel } from '@box-local/voxa-project';
-import type { RequestParams } from '@box-local/apis/src/interface';
+import { getModelMetaData, migrateModel } from '@box/voxa-project';
+import type { RequestParams } from '@box/apis/src/interface';
 import type { Loader } from '../../../common/loader';
 import type { Object3D } from '../../../models/rendering/objects/object3d';
 import { apis } from '../apis';

@@ -1,5 +1,5 @@
 import { VERTEX_SIZE } from './voxel-mesher';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
 import { initArray } from '../utils/init-array';
 
 const FACE_SIZE = 4 * VERTEX_SIZE;

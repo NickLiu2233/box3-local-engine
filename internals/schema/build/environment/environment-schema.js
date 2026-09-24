@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EnvironmentStateSchema = exports.EnvironmentParamSchema = void 0;
 const project_rda_1 = require("../project/project-rda");
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("../utils/math-schema");
 exports.EnvironmentParamSchema = project_rda_1.EnvironmentRDA.stateSchema;
 exports.EnvironmentStateSchema = new schema_1.MuStruct({

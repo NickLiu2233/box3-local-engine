@@ -1,6 +1,6 @@
-import { MuStruct, MuArray, MuUint8 } from '@box-local/mudb/schema';
+import { MuStruct, MuArray, MuUint8 } from '@box/mudb/schema';
 import { Vec2Schema } from '../utils/math-schema';
-import { initArray } from '@box-local/utils/init-array';
+import { initArray } from '@box/utils/init-array';
 import { GameKeys } from '../input/input-schema';
 import { AnimationEventSchema } from './animation-event-schema';
 import { ChatEventSchema } from './chat-event-schema';

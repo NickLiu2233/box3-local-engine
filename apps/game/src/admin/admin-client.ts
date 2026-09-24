@@ -1,13 +1,13 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
-import { AdminProtocol } from '@box-local/schema/admin/admin-gateway-protocol';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
+import { AdminProtocol } from '@box/schema/admin/admin-gateway-protocol';
 import {
   AdminCommand,
   AdminCommandSchema,
   AdminEventSchema,
   AdminUserSchema,
   AdminUserSetSchema,
-} from '@box-local/schema/admin/admin-protocol';
+} from '@box/schema/admin/admin-protocol';
 import { ClientStateType } from 'src/client/edit/edit-schema';
 import { EditRPCClient } from 'src/client/edit/rpc/rpc-client';
 import { AssetController } from 'src/client/edit/state-controller/asset-controller';

@@ -1,4 +1,4 @@
-import type { TreeNode } from '@box-local/schema/project/project-rda';
+import type { TreeNode } from '@box/schema/project/project-rda';
 
 export type PlacementMeshInfo = {
   modelId: number;

@@ -11,8 +11,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toVersion = exports.fromVersion = exports.name = void 0;
 exports.migration = migration;
-const defs_1 = require("@box-local/schema/project/ui-rda/defs");
-const util_1 = require("@box-local/schema/project/ui-rda/util");
+const defs_1 = require("@box/schema/project/ui-rda/defs");
+const util_1 = require("@box/schema/project/ui-rda/util");
 exports.name = 'project';
 exports.fromVersion = '0.3.27';
 exports.toVersion = '0.3.28';

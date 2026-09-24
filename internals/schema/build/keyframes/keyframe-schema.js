@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KeyframeReplicaSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const entity_animation_1 = require("./bindings/entity-animation");
 const player_animation_1 = require("./bindings/player-animation");
 const world_animation_1 = require("./bindings/world-animation");

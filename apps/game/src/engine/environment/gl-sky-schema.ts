@@ -1,7 +1,7 @@
 import REGL from 'regl';
-import { MuStruct } from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { EnvironmentStateSchema } from '@box-local/schema/environment/environment-schema';
+import { MuStruct } from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { EnvironmentStateSchema } from '@box/schema/environment/environment-schema';
 import { GLTextureSchema } from '../gl/schema/gl-texture';
 
 export const GLSkySchema = new MuStruct({

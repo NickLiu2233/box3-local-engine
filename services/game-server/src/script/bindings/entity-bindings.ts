@@ -8,14 +8,14 @@ import {
   GameFluidContact,
   GameAssetType,
   GameInputDirection,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import {
   RigidBody,
   RigidBodySchema,
   RigidBodyFlags,
   ContactRecord,
   ContactRecordSchema,
-} from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/physics/physics-schema';
 import {
   BindingFactory,
   constant,
@@ -30,7 +30,7 @@ import {
   NetModel,
   NetModelMotionSchema,
   MotionsPlaybackSchema,
-} from '@box-local/schema/mesh/model-schema';
+} from '@box/schema/mesh/model-schema';
 import { mat4, quat, vec3 } from 'gl-matrix';
 import {
   Player,
@@ -47,11 +47,11 @@ import {
   PlayerWalkState,
   PlayerButtonState,
   InputDirectionState,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   GamePrivateReplica,
   GamePrivateReplicaSchema,
-} from '@box-local/schema/replica/game-private-replica';
+} from '@box/schema/replica/game-private-replica';
 import {
   MuUint16,
   MuUint8,
@@ -63,8 +63,8 @@ import {
   MuASCII,
   MuBoolean,
   MuStruct,
-} from '@box-local/mudb/schema';
-import { calcPlayerLookDirection } from '@box-local/schema/player/player-move';
+} from '@box/mudb/schema';
+import { calcPlayerLookDirection } from '@box/schema/player/player-move';
 import {
   ServerPlayer,
   ServerPlayerSchema,
@@ -72,22 +72,22 @@ import {
 import {
   CameraMode,
   CameraFreezedAxis,
-} from '@box-local/schema/camera/camera-schema';
-import { Damage, DamageSchema } from '@box-local/schema/damage/damage-schema';
+} from '@box/schema/camera/camera-schema';
+import { Damage, DamageSchema } from '@box/schema/damage/damage-schema';
 import {
   GameVector3,
   GameRGBColor,
   GameRGBAColor,
-} from '@box-local/schema/api/js/math';
+} from '@box/schema/api/js/math';
 import { ServerParticleEntitySchema } from '../../particle/particle-server-state';
 import {
   InteractComponent,
   InteractComponentSchema,
-} from '@box-local/schema/interact/interact-protocol';
+} from '@box/schema/interact/interact-protocol';
 import {
   EntityNameComponent,
   EntityNameComponentSchema,
-} from '@box-local/schema/entity-name/entity-name';
+} from '@box/schema/entity-name/entity-name';
 import {
   ServerEntitySoundEffect,
   ServerEntitySoundEffectSchema,
@@ -100,9 +100,9 @@ import {
   MAX_VELOCITY,
   MIN_RADIUS,
   MAX_RADIUS,
-} from '@box-local/schema/physics/physics-solve';
-import * as GameURL from '@box-local/schema/api/js/url';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/schema/physics/physics-solve';
+import * as GameURL from '@box/schema/api/js/url';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
 const TMP = vec3.create();
 

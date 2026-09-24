@@ -9,26 +9,26 @@ import {
   PlayerDisplayFlags,
   PlayerAttachmentStateSchema,
   PlayerSkinInvisibleSchema,
-} from '@box-local/schema/player/player-schema';
-import { PlayerSkinHashSchema } from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
+import { PlayerSkinHashSchema } from '@box/schema/player/player-schema';
 import {
   RigidBodySchema,
   RigidBodyFlags,
   RigidBody,
-} from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/physics/physics-schema';
 import {
   PlayerRDA,
   PlayerSoundRDA,
   EntitySoundRDA,
-} from '@box-local/schema/project/project-rda';
-import { TimestampedClientInputSchema } from '@box-local/schema/net/net-schema';
+} from '@box/schema/project/project-rda';
+import { TimestampedClientInputSchema } from '@box/schema/net/net-schema';
 import {
   CameraConfigurationSchema,
   CameraFreezedAxis,
   CameraMode,
-} from '@box-local/schema/camera/camera-schema';
-import { DamageSchema } from '@box-local/schema/damage/damage-schema';
-import { RespawnEventSchema } from '@box-local/schema/events/damage-event-schema';
+} from '@box/schema/camera/camera-schema';
+import { DamageSchema } from '@box/schema/damage/damage-schema';
+import { RespawnEventSchema } from '@box/schema/events/damage-event-schema';
 
 import {
   GameServerState,
@@ -43,16 +43,16 @@ import {
   PLAYER_FRICTION,
   PLAYER_RESTITUTION,
   PLAYER_MASS,
-} from '@box-local/schema/player/player-move';
-import { zipId, getById, compareId } from '@box-local/utils/id';
-import { createPlayerUserKey } from '@box-local/utils/local-player-identity';
+} from '@box/schema/player/player-move';
+import { zipId, getById, compareId } from '@box/utils/id';
+import { createPlayerUserKey } from '@box/utils/local-player-identity';
 import { ChatServer } from '../chat/chat-server';
 import { synchronizeNetClientInput } from '../net/net-server-controller';
 import { copyConfigToDamage } from '../damage/damage-server';
 import {
   GamePrivateReplica,
   GamePrivateReplicaSchema,
-} from '@box-local/schema/replica/game-private-replica';
+} from '@box/schema/replica/game-private-replica';
 import { GameScriptRunState, scriptRunState } from '../script/script-schema';
 import {
   ServerPlayerEntitySoundEffect,
@@ -63,8 +63,8 @@ import crypto from 'crypto';
 import { ModelServer } from '../mesh/server-model-controller';
 import { getConfigSync } from '../../config/server';
 import { PlayerServer } from './player-server';
-import { PlayerEventSchema } from '@box-local/schema/events/player-event-schema';
-import { GamepadSchema, PictureAssetSet } from '@box-local/schema/project/hot-schema';
+import { PlayerEventSchema } from '@box/schema/events/player-event-schema';
+import { GamepadSchema, PictureAssetSet } from '@box/schema/project/hot-schema';
 
 // create some unique user id
 function genUserKey(id: string | number, type = 'userid') {

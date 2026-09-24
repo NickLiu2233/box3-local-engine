@@ -10,9 +10,9 @@ import {
 import { GameClientState } from '../game-client-schema';
 import { isMobile } from '../../utils/mobile';
 import { SETTINGS_MIGRATIONS } from './migration';
-import { ContentResolver } from '@box-local/content-server/content-fetch';
+import { ContentResolver } from '@box/content-server/content-fetch';
 import { CHINESE_HOLIDAY_RES } from '../../resource/chinese_holiday';
-import { decodeUTF8 } from '@box-local/mudb/stream';
+import { decodeUTF8 } from '@box/mudb/stream';
 
 export const LOCAL_STORAGE_KEY = 'GAME';
 

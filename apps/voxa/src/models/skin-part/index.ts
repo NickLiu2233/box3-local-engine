@@ -1,4 +1,4 @@
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import type { Intersection, Raycaster } from '../rendering/raycast';
 import { vec3 } from 'gl-matrix';
 import { nanoid } from 'nanoid';

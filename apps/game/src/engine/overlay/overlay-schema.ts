@@ -8,9 +8,9 @@ import {
   MuBoolean,
   MuASCII,
   MuDictionary,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import { GameClientState } from '../game-client-schema';
 import type { ParsedGIF } from '../gl/gif-parser';
 

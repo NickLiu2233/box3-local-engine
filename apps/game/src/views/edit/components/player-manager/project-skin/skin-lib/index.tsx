@@ -8,11 +8,11 @@ import React, {
 import { useIntl } from 'react-intl';
 
 import style from './index.module.scss';
-import { REQUEST_TIMEOUT, ModelType, SourceType } from '@box-local/apis';
+import { REQUEST_TIMEOUT, ModelType, SourceType } from '@box/apis';
 import { SkinList } from '../skin-list';
 import { fetchSkinData } from '../../index';
 import { Search } from '../../../search';
-import { Button, Modal, TabPanel, Tabs, Toast } from '@box-local/box-design/build';
+import { Button, Modal, TabPanel, Tabs, Toast } from '@box/box-design/build';
 import { apis } from 'src/apis/api-java';
 import { clientConfig, getConfig } from 'src/config/client';
 import { PlayerSkinList } from 'src/redux/edit/player-skin';

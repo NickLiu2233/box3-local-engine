@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals';
-import { ModelType } from '@box-local/apis';
+import { ModelType } from '@box/apis';
 
 import {
   getProjectModelDisplayName,

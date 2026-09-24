@@ -1,7 +1,7 @@
 import { vec3 } from 'gl-matrix';
 import { store } from '../../../redux/store';
 import { forEachAdjacent } from '../../../utils/forEachAdjacent';
-import { traverseVoxels } from '@box-local/utils/helper';
+import { traverseVoxels } from '@box/utils/helper';
 import type { Model } from '../../voxel-model/model';
 import { isEmptyVoxel } from '../util';
 import { BasicTool } from './base';

@@ -1,6 +1,6 @@
-import { alloc } from '@box-local/utils/pool';
-import { fillArray } from '@box-local/utils/fill';
-import { CompactModel } from '@box-local/schema/mesh/modelMeshSchema';
+import { alloc } from '@box/utils/pool';
+import { fillArray } from '@box/utils/fill';
+import { CompactModel } from '@box/schema/mesh/modelMeshSchema';
 
 export interface PaletteEntry {
   r: number;

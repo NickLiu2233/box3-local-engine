@@ -1,11 +1,11 @@
-import { GlobalNoticeSchema } from '@box-local/schema/chat/chat-schema';
-import { FileDictRDA } from '@box-local/schema/code-editor/code-editor-common-state';
-import { CodeEditorProtocol } from '@box-local/schema/code-editor/code-editor-protocol';
-import { CameraBindingMode } from '@box-local/schema/input/input-schema';
+import { GlobalNoticeSchema } from '@box/schema/chat/chat-schema';
+import { FileDictRDA } from '@box/schema/code-editor/code-editor-common-state';
+import { CodeEditorProtocol } from '@box/schema/code-editor/code-editor-protocol';
+import { CameraBindingMode } from '@box/schema/input/input-schema';
 import {
   PostMessageSchema,
   PostMessageType,
-} from '@box-local/schema/navigator/navigator-schema';
+} from '@box/schema/navigator/navigator-schema';
 import { quat, vec3 } from 'gl-matrix';
 import { GameAdminClient } from 'src/entry/admin-client';
 import { GameUIEditor } from 'src/client/edit/game-ui-editor';

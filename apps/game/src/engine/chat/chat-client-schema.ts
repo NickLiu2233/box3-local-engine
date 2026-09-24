@@ -9,10 +9,10 @@ import {
   MuOption,
   MuASCII,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { MsgType } from '@box-local/schema/chat/chat-schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { MsgType } from '@box/schema/chat/chat-schema';
+import { compareId } from '@box/utils/id';
 
 export const GIFInfo = new MuStruct({
   url: new MuASCII(),

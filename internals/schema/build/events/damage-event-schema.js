@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DamageEventSchema = exports.RespawnEventSetSchema = exports.RespawnEventSchema = exports.HurtEventSetSchema = exports.HurtEventSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 exports.HurtEventSchema = new schema_1.MuStruct({
     id: new schema_1.MuVarint(0),
     damage: new schema_1.MuVarint(0),

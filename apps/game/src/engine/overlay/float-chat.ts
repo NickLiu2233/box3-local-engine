@@ -1,4 +1,4 @@
-import { ChatSchema } from '@box-local/schema/chat/chat-schema';
+import { ChatSchema } from '@box/schema/chat/chat-schema';
 import { GameClientState } from '../game-client-schema';
 import { nowrapEllipsisText } from '../utils/canvas';
 import { intlMessage } from 'src/utils/i18n';

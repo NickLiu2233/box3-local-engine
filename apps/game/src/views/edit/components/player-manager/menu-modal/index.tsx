@@ -5,8 +5,8 @@ import React, {
   useCallback,
   type JSX,
 } from 'react';
-import { IconCancel } from '@box-local/icons';
-import { IconArrowBack } from '@box-local/icons';
+import { IconCancel } from '@box/icons';
+import { IconArrowBack } from '@box/icons';
 
 import style from './index.module.scss';
 

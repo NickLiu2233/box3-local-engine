@@ -4,8 +4,8 @@ import {
   PlayerJumpState,
   PlayerButtonState,
   BodyPart,
-} from '@box-local/schema/player/player-schema';
-import { AvatarBodyPart } from '@box-local/apis';
+} from '@box/schema/player/player-schema';
+import { AvatarBodyPart } from '@box/apis';
 
 export function playerStateBits(
   move: PlayerFlyState,

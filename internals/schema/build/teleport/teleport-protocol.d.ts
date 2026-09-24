@@ -1,4 +1,4 @@
-import { MuASCII, MuStruct, MuUTF8 } from '@box-local/mudb/schema';
+import { MuASCII, MuStruct, MuUTF8 } from '@box/mudb/schema';
 export declare const TeleportProtocol: {
     name: string;
     client: {

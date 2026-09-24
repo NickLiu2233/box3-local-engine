@@ -1,6 +1,6 @@
 import React, { ReactNode, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
-import { FileDictSchema } from '@box-local/schema/code-editor/code-editor-common-state';
+import { FileDictSchema } from '@box/schema/code-editor/code-editor-common-state';
 
 import { CodeEditorStateContext } from '../script-container/hooks';
 import { checkIndexFile } from '../script-manager/utils';

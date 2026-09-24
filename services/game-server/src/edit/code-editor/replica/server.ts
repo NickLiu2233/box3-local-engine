@@ -1,9 +1,9 @@
 import { rdaProtocol, RDAProtocol } from './schema';
-import { MuRDA, MuRDATypes } from '@box-local/mudb/rda';
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
-import { MuScheduler, MuSystemScheduler } from '@box-local/mudb/scheduler';
-import { MuLogger, MuDefaultLogger } from '@box-local/mudb/logger';
-import { MuSessionId } from '@box-local/mudb/socket/socket';
+import { MuRDA, MuRDATypes } from '@box/mudb/rda';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
+import { MuScheduler, MuSystemScheduler } from '@box/mudb/scheduler';
+import { MuLogger, MuDefaultLogger } from '@box/mudb/logger';
+import { MuSessionId } from '@box/mudb/socket/socket';
 import { EditServer } from '../../edit-server';
 
 export class MuCodeEditorReplicaServer<RDA extends MuRDA<any, any, any, any>> {

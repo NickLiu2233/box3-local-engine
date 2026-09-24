@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import { Toast } from '@box-local/box-design';
-import { URL } from '@box-local/schema/api/js/url';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { Toast } from '@box/box-design';
+import { URL } from '@box/schema/api/js/url';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 
 import { HrefClient } from 'src/engine/href/href-client';
 import { HyperLink as HyperLinkType } from 'src/engine/href/href-client-state';

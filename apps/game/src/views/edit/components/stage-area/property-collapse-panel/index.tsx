@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
-import { CollapsePanel } from '@box-local/box-design';
+import { CollapsePanel } from '@box/box-design';
 import type { RootState } from 'src/redux/edit';
 import { SeedDetailPanel } from '../../seedDetailPanel';
 import { PANEL_IDS } from '../right-sidebar/content-panel';

@@ -1,10 +1,10 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
 import {
   InteractProtocol,
   InteractComponentSetSchema,
-} from '@box-local/schema/interact/interact-protocol';
+} from '@box/schema/interact/interact-protocol';
 import { GameServerState } from '../game-server-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { InteractEventSchema } from './interact-server-state';
 import { GameScriptRunState, scriptRunState } from '../script/script-schema';
 

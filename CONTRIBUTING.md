@@ -73,7 +73,7 @@ Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/
 npm 别名的额外参数必须放在 `--` 后，例如：
 
 ```bash
-npm run build -- --to @box-local/player-admin
+npm run build -- --to @box/player-admin
 npm run package:images -- --architecture arm64 --service player-service
 ```
 
@@ -141,8 +141,8 @@ rush format-check
 rush lint
 rush typecheck
 rushx test # 在 apps/local-engine 或 services/game-server 中执行
-rush build --to @box-local/voxa
-rush build --to @box-local/player-admin
+rush build --to @box/voxa
+rush build --to @box/player-admin
 ```
 
 涉及 Compose、Dockerfile、安装器、权限、数据库 schema、地图组、地图 ID、`.boxproject`/`.boxplay`、脚本 API 或管理器时，不能只运行局部测试，必须执行完整 `rush verify`。

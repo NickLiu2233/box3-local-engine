@@ -4,15 +4,15 @@ import {
   MuStruct,
   MuArray,
   MuUTF8,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   NetSkinTableSchema,
   NetMeshTableSchema,
   NetSkinPartTableSchema,
-} from '@box-local/schema/mesh/model-schema';
-import { HashSchema } from '@box-local/content-server';
-import { MotionListSchema } from '@box-local/schema/project/hot-schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/schema/mesh/model-schema';
+import { HashSchema } from '@box/content-server';
+import { MotionListSchema } from '@box/schema/project/hot-schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
 export const ServerMeshInfoSchema = new MuStruct({
   hash: HashSchema,

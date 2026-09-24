@@ -1,4 +1,4 @@
-import type { ListPageOptions } from '@box-local/schema/api/js/storage';
+import type { ListPageOptions } from '@box/schema/api/js/storage';
 
 import type { CommonGameDataServer, TableType } from './types';
 

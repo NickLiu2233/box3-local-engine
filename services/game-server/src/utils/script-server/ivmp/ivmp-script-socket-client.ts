@@ -1,14 +1,14 @@
-import { MuClient } from '@box-local/mudb';
-import { MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient } from '@box/mudb';
+import { MuClientProtocol } from '@box/mudb/client';
 import {
   MuData,
   MuSessionId,
   MuSocket,
   MuSocketSpec,
   MuSocketState,
-} from '@box-local/mudb/socket/socket';
-import type { ParsedError } from '@box-local/schema/debugger-console/schema';
-import { EventBus } from '@box-local/utils/event';
+} from '@box/mudb/socket/socket';
+import type { ParsedError } from '@box/schema/debugger-console/schema';
+import { EventBus } from '@box/utils/event';
 
 import { RemoteScriptProtocol } from './protocol';
 import type { Logger } from 'pino';

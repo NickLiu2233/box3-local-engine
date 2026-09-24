@@ -1,7 +1,7 @@
 import {
   ProjectAction,
   ProjectActionSchema,
-} from '@box-local/schema/replica/replica-schema';
+} from '@box/schema/replica/replica-schema';
 import { ClientStateType } from '../../edit-schema';
 import {
   ClientEditAction,
@@ -9,7 +9,7 @@ import {
   ClientEditActionSchema,
   ClientProjectActionSchema,
 } from '../replica-client-schema';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
+import { ProjectRDA } from '@box/schema/project/project-rda';
 
 export class ClientProjectTransaction {
   private forward: ProjectAction[] = [];

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatProtocolSchema = exports.GlobalNoticeSchema = exports.ChatMessageSchema = exports.MsgType = exports.ChatSchema = exports.BroadcastDataType = exports.P2PDataType = exports.Channel = exports.OPCode = void 0;
 exports.genStickerText = genStickerText;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 var OPCode;
 (function (OPCode) {
     /**

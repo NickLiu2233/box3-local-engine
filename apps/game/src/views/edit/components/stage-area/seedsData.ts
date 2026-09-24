@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { lerp } from '@box-local/voxa-project';
+import { lerp } from '@box/voxa-project';
 import { UI3DVoxelEventSchema } from 'src/engine/ui3d/ui3d-schema';
 import {
   getRenderableGLTF,
@@ -8,8 +8,8 @@ import {
 } from '../../../../engine/mesh/controller';
 import { editor } from 'src/client/edit/edit-client';
 import { getSquareVoxelCenter } from '../terrainPanel/voxel-helper';
-import { AssetType, TreeNodes } from '@box-local/schema/project/project-rda';
-import { TreeNodeType } from '@box-local/schema/project/murda-tree';
+import { AssetType, TreeNodes } from '@box/schema/project/project-rda';
+import { TreeNodeType } from '@box/schema/project/murda-tree';
 
 /**
  * 透明度动画一个循环1秒

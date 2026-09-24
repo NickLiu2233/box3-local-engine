@@ -1,4 +1,4 @@
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 export declare class MuRefSchema<T> implements MuSchema<T | null> {
     identity: T | null;
     muType: string;

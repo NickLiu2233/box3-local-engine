@@ -1,4 +1,4 @@
-import { MuStruct, MuUint8, MuArray, MuSchema, MuBoolean, MuInt32, MuInt8, MuFloat64, MuVarint } from '@box-local/mudb/schema';
+import { MuStruct, MuUint8, MuArray, MuSchema, MuBoolean, MuInt32, MuInt8, MuFloat64, MuVarint } from '@box/mudb/schema';
 export declare enum GameKeys {
     LEFT = 0,
     RIGHT = 1,

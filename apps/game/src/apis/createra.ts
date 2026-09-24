@@ -1,4 +1,4 @@
-import { LocaleFullType } from '@box-local/apis';
+import { LocaleFullType } from '@box/apis';
 
 /**
  * 只读，定义了项目本身提供的、允许的语言。

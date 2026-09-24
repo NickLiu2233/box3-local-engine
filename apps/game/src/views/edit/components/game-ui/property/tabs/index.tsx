@@ -11,8 +11,8 @@ import {
 } from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
-import { IconAdd2 } from '@box-local/icons';
-import { ItemId, Menu, MenuItemOptions, Trigger } from '@box-local/box-design';
+import { IconAdd2 } from '@box/icons';
+import { ItemId, Menu, MenuItemOptions, Trigger } from '@box/box-design';
 import { useEdit } from 'src/client/edit/edit-context';
 import { RootState } from 'src/redux/edit';
 import { GameUIPropsContext, PropTabType } from '../defs';

@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
-import type { BuildCacheAPI } from '@box-local/build-system/type';
+import type { BuildCacheAPI } from '@box/build-system/type';
 
 type CacheData = Record<string, string>;
 const INVALID_CACHE_ENTRY = '!';

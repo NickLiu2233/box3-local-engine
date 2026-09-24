@@ -9,9 +9,9 @@ import React, {
   useState,
 } from 'react';
 import { useIntl } from 'react-intl';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
-import { isUIImageNode } from '@box-local/schema/project/ui-rda/util';
-import { ImageDisplayMode } from '@box-local/schema/project/ui-rda/defs';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
+import { isUIImageNode } from '@box/schema/project/ui-rda/util';
+import { ImageDisplayMode } from '@box/schema/project/ui-rda/defs';
 import {
   Input,
   ItemId,
@@ -19,9 +19,9 @@ import {
   Modal,
   SelectProps,
   Toast,
-} from '@box-local/box-design';
-import type { MenuItemOptions } from '@box-local/box-design/build/menu';
-import { IconAdd2, IconFolder, IconPublish, IconDelete } from '@box-local/icons';
+} from '@box/box-design';
+import type { MenuItemOptions } from '@box/box-design/build/menu';
+import { IconAdd2, IconFolder, IconPublish, IconDelete } from '@box/icons';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import { useEdit } from 'src/client/edit/edit-context';
 import { getOSSResourceUrl } from 'src/engine/resource/util';
@@ -29,7 +29,7 @@ import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
 import { UITreeContext } from '../../hooks';
 import styles from './style.module.scss';
 import IconEdit from './icon-edit.svg';
-import { GroupAssetEntry } from '@box-local/schema/project/project-rda';
+import { GroupAssetEntry } from '@box/schema/project/project-rda';
 import { InlineSelectInput } from '../inputs/select-input';
 import { isDisplayMode, mergeBasicType, MergedConfig } from '../util';
 

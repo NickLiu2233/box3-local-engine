@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Actions, EditingMode } from '@box-local/utils/helper';
-import { AxisType } from '@box-local/box-design';
+import { Actions, EditingMode } from '@box/utils/helper';
+import { AxisType } from '@box/box-design';
 import { DEFAULT_SPACE_SIZE } from '../defs';
 import { VoxelDimensionType } from '../models/project/interfaces';
 import { VoxelDimension } from '../models/project/defs';

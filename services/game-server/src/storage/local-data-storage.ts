@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-import type { ListPageOptions } from '@box-local/schema/api/js/storage';
-import type { Logger } from '@box-local/utils/logger';
+import type { ListPageOptions } from '@box/schema/api/js/storage';
+import type { Logger } from '@box/utils/logger';
 import type { CommonGameDataServer, ReturnValue, TableType } from './types';
 
 type StoredTable = {

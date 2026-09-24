@@ -1,7 +1,7 @@
 import { vec3, mat4 } from 'gl-matrix';
 import { ChunkVisibilityFlags } from '../voxel/visibility-flags';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
-import { Frustum, FrustumSchema } from '@box-local/schema/utils/frustum-schema';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
+import { Frustum, FrustumSchema } from '@box/schema/utils/frustum-schema';
 
 // huge epsilon, add a tolerance of +0.5 voxels to each axis
 const EPSILON = 0.1;

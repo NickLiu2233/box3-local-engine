@@ -1,4 +1,4 @@
-import { BodyPart } from '@box-local/schema/player/player-schema';
+import { BodyPart } from '@box/schema/player/player-schema';
 export { VOXA_SKIN_VERSION, BodyPartDataTypes, BodyPartData } from './def';
 export { migrate as migrateSkin, bodyPartSchemaToBytes, bodyPartBytesToSchema, isLatest as isLatestSkin, } from './migrations';
 export * as skinV1 from './schema-v1';

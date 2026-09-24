@@ -1,6 +1,6 @@
 import { mat4, vec3, vec4, quat } from 'gl-matrix';
 import { IntlShape } from 'react-intl';
-import { AXIS, AxisType } from '@box-local/box-design';
+import { AXIS, AxisType } from '@box/box-design';
 import type { EditingHistory } from '../editing-history';
 import { VEState } from './state';
 import { BoundaryBox } from '../boundary';

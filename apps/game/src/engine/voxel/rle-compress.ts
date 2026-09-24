@@ -1,5 +1,5 @@
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
-import { VoxelView } from '@box-local/utils/voxel';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
+import { VoxelView } from '@box/utils/voxel';
 import { vec3 } from 'gl-matrix';
 
 export type Vector3 = vec3 | number[];

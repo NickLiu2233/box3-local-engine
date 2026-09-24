@@ -1,4 +1,4 @@
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 
 export interface CompactModel {
   material: { [key: number]: { rgb: number[]; pbr: number[] } };

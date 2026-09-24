@@ -23,7 +23,7 @@ declare module '*.mp4' {
   export default content;
 }
 
-declare module '@box-local/ao-mesher';
+declare module '@box/ao-mesher';
 
 interface Navigator {
   /**

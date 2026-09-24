@@ -1,7 +1,7 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { RemoteChannelProtocol } from '@box-local/schema/remote-channel/channel-protocol';
-import { RemoteClientEventSchema } from '@box-local/schema/events/remote-channel-event-schema';
-import type { JSONValue } from '@box-local/schema/api/common';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { RemoteChannelProtocol } from '@box/schema/remote-channel/channel-protocol';
+import { RemoteClientEventSchema } from '@box/schema/events/remote-channel-event-schema';
+import type { JSONValue } from '@box/schema/api/common';
 import { GameClientState } from '../game-client-schema';
 
 export class RemoteChannelClient {

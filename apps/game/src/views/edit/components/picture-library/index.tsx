@@ -8,14 +8,14 @@ import {
   useContext,
 } from 'react';
 import { useIntl } from 'react-intl';
-import { Toast } from '@box-local/box-design';
-import { SortOrder } from '@box-local/apis';
+import { Toast } from '@box/box-design';
+import { SortOrder } from '@box/apis';
 import { getOSSResourceUrl } from 'src/engine/resource/util';
 import { copyToClipboard } from 'src/utils/copy2clipboard';
 import { AssetLibrary } from '../asset-library';
 
 import styles from './style.module.scss';
-import { GroupAssetEntry } from '@box-local/schema/project/project-rda';
+import { GroupAssetEntry } from '@box/schema/project/project-rda';
 import { ArenaEditorUIContext } from '../../editor-ui-context';
 
 type Props = {

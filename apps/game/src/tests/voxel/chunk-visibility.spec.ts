@@ -1,12 +1,12 @@
 import { expect, test } from '@jest/globals';
 
-import { allocVoxels, VoxelView } from '@box-local/utils/voxel';
+import { allocVoxels, VoxelView } from '@box/utils/voxel';
 import {
   chunkVisibility,
   ChunkVisibilityTable,
 } from 'src/engine/voxel/chunk-visibility';
 import { ChunkVisibilityFlags } from 'src/engine/voxel/visibility-flags';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
 
 const RAY_STEPS = 3 * CHUNK_SIZE;
 

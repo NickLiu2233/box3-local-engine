@@ -1,7 +1,7 @@
 import type { Logger } from 'pino';
 
 import { BuildSystemAPI } from '../type';
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 import {
   PermissionAccessLevel,
   PermissionGroupMemberRDA,
@@ -9,7 +9,7 @@ import {
   PermissionsSchema,
   PermissionUserRDA,
   VersionControlRDA,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 import { storePermissions } from './permission-serialize';
 
 const PermissionGroupSchema = PermissionGroupRDA.stateSchema;

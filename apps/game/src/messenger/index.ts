@@ -4,10 +4,10 @@ import {
   EventsType,
   EmitEventType,
   CallAsyncType,
-} from '@box-local/sdk';
-import type { PlayerSkinHash } from '@box-local/schema/player/player-schema';
-import type { GroundEmote } from '@box-local/schema/animation/ik-schema';
-import { IframeEventBus } from '@box-local/iframe-event-bus';
+} from '@box/sdk';
+import type { PlayerSkinHash } from '@box/schema/player/player-schema';
+import type { GroundEmote } from '@box/schema/animation/ik-schema';
+import { IframeEventBus } from '@box/iframe-event-bus';
 
 import { clientConfig } from 'src/config/client';
 import type { Settings } from 'src/engine/settings/settings-schema';

@@ -1,6 +1,6 @@
 import { memo, useCallback, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
-import { isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { isUIScreen } from '@box/schema/project/ui-rda/util';
 import { useEdit } from 'src/client/edit/edit-context';
 import { InlineNamedSpinInput } from '../inputs/inline-named-spin-input';
 import { UITreeContext } from '../../hooks';

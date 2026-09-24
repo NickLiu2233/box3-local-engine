@@ -1,4 +1,4 @@
-import { createTool, EventsType } from '@box-local/sdk';
+import { createTool, EventsType } from '@box/sdk';
 
 export class IframeTool {
   private tool = createTool<EventsType, EventsType>();

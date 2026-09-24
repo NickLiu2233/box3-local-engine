@@ -8,16 +8,16 @@ import {
   IconInput,
   IconScrollBox,
   IconTextbox,
-} from '@box-local/icons';
-import { Button } from '@box-local/box-design';
-import { UIElementType, UITree } from '@box-local/schema/project/ui-rda/defs';
+} from '@box/icons';
+import { Button } from '@box/box-design';
+import { UIElementType, UITree } from '@box/schema/project/ui-rda/defs';
 import { setNavMode } from 'src/redux/edit/creator';
 import { LeftNavModeEnum } from 'src/views/edit/defs';
 import { RootState } from 'src/redux/edit';
 import { useEdit } from 'src/client/edit/edit-context';
 import { clientConfig } from 'src/config/client';
 import styles from './style.module.scss';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
 
 function GameUIMenuView() {
   const intl = useIntl();

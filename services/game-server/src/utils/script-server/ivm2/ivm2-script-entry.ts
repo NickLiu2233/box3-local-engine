@@ -5,8 +5,8 @@ import {
   MuSocket,
   MuSocketSpec,
   MuSocketState,
-} from '@box-local/mudb/socket/socket';
-import { Semaphore } from '@box-local/utils/semaphore';
+} from '@box/mudb/socket/socket';
+import { Semaphore } from '@box/utils/semaphore';
 import type { Level } from 'pino';
 import { ScriptShell } from '../../../script/script-shell';
 import { Ivm2HostInterface, Ivm2ShellInterface } from './ivm2-script-interface';

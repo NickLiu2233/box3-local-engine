@@ -1,7 +1,7 @@
 import React, { type JSX } from 'react';
 import { IntlShape, injectIntl } from 'react-intl';
 
-import { GameKeys } from '@box-local/schema/input/input-schema';
+import { GameKeys } from '@box/schema/input/input-schema';
 import { InputController } from 'src/engine/input/input-controller';
 import { loadSettings } from 'src/engine/settings/settings-controller';
 import { calc_class_name } from 'src/utils/classname';

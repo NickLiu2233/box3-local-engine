@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PhysicsZoneIndex = exports.PhysicsZoneIndexNode = void 0;
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 const MAX_ENTRIES = 16;
 class PhysicsZoneIndexNode {
     constructor() {

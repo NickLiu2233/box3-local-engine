@@ -7,7 +7,7 @@ import {
   BASE_2D_OFFSET_Y,
   updateVisibilityAndScale,
 } from './overlays';
-import { zipId } from '@box-local/utils/id';
+import { zipId } from '@box/utils/id';
 import { GameClientState } from '../game-client-schema';
 import { vec3 } from 'gl-matrix';
 import { raycastEye } from '../utils/raycast-eye';

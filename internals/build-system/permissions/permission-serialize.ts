@@ -3,7 +3,7 @@ import { BuildSystemAPI } from '../type';
 import {
   PermissionRDA,
   Permissions,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 
 const CURRENT_VERSION = PermissionRDA.stateSchema.identity.version;
 

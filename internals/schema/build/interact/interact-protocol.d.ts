@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuSortedArray, MuUTF8, MuVoid, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuSortedArray, MuUTF8, MuVoid, MuQuantizedFloat } from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 export declare const InteractComponentSchema: MuStruct<{
     id: MuVarint;
@@ -23,7 +23,7 @@ export declare const InteractProtocol: {
         acknowledgeInteract: MuVoid;
         emoteEvent: MuStruct<{
             id: MuVarint;
-            emote: import("@box-local/mudb/schema").MuSchema<import("../animation/ik-schema").GroundEmote>;
+            emote: import("@box/mudb/schema").MuSchema<import("../animation/ik-schema").GroundEmote>;
         }>;
     };
     server: {
@@ -31,7 +31,7 @@ export declare const InteractProtocol: {
             id: MuVarint;
             tick: MuQuantizedFloat;
         }>;
-        playEmote: import("@box-local/mudb/schema").MuSchema<import("../animation/ik-schema").GroundEmote>;
+        playEmote: import("@box/mudb/schema").MuSchema<import("../animation/ik-schema").GroundEmote>;
     };
 };
 //# sourceMappingURL=interact-protocol.d.ts.map

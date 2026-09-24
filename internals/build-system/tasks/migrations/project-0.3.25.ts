@@ -1,6 +1,6 @@
 import { BuildSystem } from '../../type';
-import { DEFAULT_SCREEN_ID } from '@box-local/schema/project/ui-rda/defs';
-import { isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { DEFAULT_SCREEN_ID } from '@box/schema/project/ui-rda/defs';
+import { isUIScreen } from '@box/schema/project/ui-rda/util';
 
 export const name = 'project';
 export const fromVersion = '0.3.24';

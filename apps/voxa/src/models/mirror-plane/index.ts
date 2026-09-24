@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
-import type { Regl } from '@box-local/regl';
-import type { AxisType } from '@box-local/box-design';
+import type { Regl } from '@box/regl';
+import type { AxisType } from '@box/box-design';
 import { ShaderMaterial } from '../rendering/materials/shader';
 import { Mesh } from '../rendering/objects/mesh';
 import vertexShader from './vert.glsl';

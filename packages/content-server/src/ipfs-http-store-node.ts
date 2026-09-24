@@ -5,7 +5,7 @@ import type { Logger } from 'pino';
 
 import { ContentServer, Hash } from './index';
 import FormData from 'form-data';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 
 export class GoIPFSStore implements ContentServer {
   public semaphore: Semaphore;

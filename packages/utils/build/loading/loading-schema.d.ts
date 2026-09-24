@@ -1,4 +1,4 @@
-import { MuStruct, MuUTF8, MuSchema } from '@box-local/mudb/schema';
+import { MuStruct, MuUTF8, MuSchema } from '@box/mudb/schema';
 export declare enum TaskTypeEnum {
     Get = 0,
     Image = 1,

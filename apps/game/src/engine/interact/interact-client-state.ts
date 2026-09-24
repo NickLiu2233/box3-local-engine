@@ -4,7 +4,7 @@ import {
   MuVarint,
   MuFloat64,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const InteractClientStateSchema = new MuStruct({
   currentInteractive: new MuVarint(0),

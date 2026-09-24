@@ -12,7 +12,7 @@ import {
   isRectOverlap,
 } from 'src/client/edit/2d-visiual/coordinate';
 import { computeSeedData } from 'src/client/edit/seed/seed-helper';
-import { MouseButton } from '@box-local/schema/input/input-schema';
+import { MouseButton } from '@box/schema/input/input-schema';
 import { TransformHandler, TransformType } from '../transformHandler';
 
 import { touchable } from 'src/utils/mobile';
@@ -28,7 +28,7 @@ import { CreateTabEnum, MouseRectType, LeftNavModeEnum } from '../../defs';
 import { ArenaEditorUIContext } from '../../editor-ui-context';
 import { StageAreaContext } from './context';
 import { Renderable } from 'src/engine/mesh/renderable-schema';
-import { TreeNodeType } from '@box-local/schema/project/murda-tree';
+import { TreeNodeType } from '@box/schema/project/murda-tree';
 import { computeEntitySeedRenderBox } from '../transformHandler/util';
 
 export type LoadingSeed = {

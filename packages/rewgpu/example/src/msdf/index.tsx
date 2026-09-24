@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { mat4, vec3 } from 'gl-matrix';
-import { IndexBufferDescriptor, createREWGPU } from '@box-local/rewgpu';
+import { IndexBufferDescriptor, createREWGPU } from '@box/rewgpu';
 import style from './style.module.css';
 // import fontAtlas from './roboto-regular.png';
 // import fontAtlasJson from './roboto-regular.json';

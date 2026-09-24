@@ -8,7 +8,7 @@ import {
   useRef,
 } from 'react';
 
-import { IconLoading } from '@box-local/icons';
+import { IconLoading } from '@box/icons';
 
 import { debounce } from 'src/utils/debounce-throttle';
 

@@ -3,7 +3,7 @@ import {
   Vec3Schema,
   Mat4Schema,
   QuatSchema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import {
   MuStruct,
   MuInt32,
@@ -12,8 +12,8 @@ import {
   MuDictionary,
   MuUint16,
   MuBoolean,
-} from '@box-local/mudb/schema';
-import { RelativeArray } from '@box-local/schema/utils/relative-array';
+} from '@box/mudb/schema';
+import { RelativeArray } from '@box/schema/utils/relative-array';
 
 export const BVHBoneSchema = new MuStruct({
   name: new MuASCII(''),

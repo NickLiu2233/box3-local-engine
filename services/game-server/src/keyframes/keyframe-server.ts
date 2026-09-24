@@ -1,11 +1,11 @@
 import { GameServerState } from '../game-server-schema';
 import { ScriptKeyframePostTick } from '../script/script-protocol';
-import { ENTITY_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/entity-animation';
-import { applySyncPacket } from '@box-local/schema/keyframes/keyframe-binding';
-import { PLAYER_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/player-animation';
-import { WORLD_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/world-animation';
-import { GameReplica } from '@box-local/schema/replica/game-replica';
-import { KeyframeReplicaSchema } from '@box-local/schema/keyframes/keyframe-schema';
+import { ENTITY_ANIM_BINDING } from '@box/schema/keyframes/bindings/entity-animation';
+import { applySyncPacket } from '@box/schema/keyframes/keyframe-binding';
+import { PLAYER_ANIM_BINDING } from '@box/schema/keyframes/bindings/player-animation';
+import { WORLD_ANIM_BINDING } from '@box/schema/keyframes/bindings/world-animation';
+import { GameReplica } from '@box/schema/replica/game-replica';
+import { KeyframeReplicaSchema } from '@box/schema/keyframes/keyframe-schema';
 
 export function clearKeyframeReplica(
   state: GameServerState,

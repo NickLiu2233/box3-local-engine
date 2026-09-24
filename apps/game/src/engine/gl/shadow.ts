@@ -14,7 +14,7 @@ import {
 } from '../utils/shadow';
 import { updateTexture } from './texture';
 import { getOSSResourceUrl } from '../resource/util';
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 
 const SHADOW_UP = vec3.fromValues(0, 0, 1);
 const SHADOW_EYE = vec3.create();

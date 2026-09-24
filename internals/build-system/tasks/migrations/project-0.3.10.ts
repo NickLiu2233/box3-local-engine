@@ -1,5 +1,5 @@
-import { EnvironmentParams } from '@box-local/schema/environment/environment-schema';
-import { ZoneSet } from '@box-local/schema/project/project-rda';
+import { EnvironmentParams } from '@box/schema/environment/environment-schema';
+import { ZoneSet } from '@box/schema/project/project-rda';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

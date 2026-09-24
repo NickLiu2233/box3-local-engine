@@ -1,4 +1,4 @@
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import { VoxelCollisionBox } from '../utils/rbush-schema';
 export declare function deinterleave3(v_: number): number;
 export declare function boxDecompress(inp: MuReadStream): VoxelCollisionBox[];

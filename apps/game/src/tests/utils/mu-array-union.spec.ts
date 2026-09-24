@@ -1,6 +1,6 @@
 import { expect, test } from '@jest/globals';
-import { MuArray, MuStruct, MuUTF8, MuVarint } from '@box-local/mudb/schema';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuArray, MuStruct, MuUTF8, MuVarint } from '@box/mudb/schema';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { MuArrayUnion } from 'src/engine/keyframes/mu-array-union';
 
 test('mu-array-union', () => {

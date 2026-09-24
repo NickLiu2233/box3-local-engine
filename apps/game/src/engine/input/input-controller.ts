@@ -10,14 +10,14 @@ import {
   InputPauseFlags,
   InputTouchSet,
   InputTouch,
-} from '@box-local/schema/input/input-schema';
+} from '@box/schema/input/input-schema';
 import { saveSettings } from '../settings/settings-controller';
 import { ClockClient } from '../clock/clock-client-controller';
-import { InputProtocolSchema } from '@box-local/schema/input/input-protocol';
-import { MuClient } from '@box-local/mudb';
-import { MuClientProtocol } from '@box-local/mudb/client';
-import { getById } from '@box-local/utils/id';
-import { EventBus } from '@box-local/utils/event';
+import { InputProtocolSchema } from '@box/schema/input/input-protocol';
+import { MuClient } from '@box/mudb';
+import { MuClientProtocol } from '@box/mudb/client';
+import { getById } from '@box/utils/id';
+import { EventBus } from '@box/utils/event';
 import {
   GameAxisChangeEvent,
   GameContextMenuEvent,

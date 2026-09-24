@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generatePermissionToken = generatePermissionToken;
 exports.parsePermissionToken = parsePermissionToken;
-const permission_rda_1 = require("@box-local/schema/permissions/permission-rda");
-const stream_1 = require("@box-local/mudb/stream");
+const permission_rda_1 = require("@box/schema/permissions/permission-rda");
+const stream_1 = require("@box/mudb/stream");
 const crypto_1 = __importDefault(require("crypto"));
 const HMAC_LENGTH = 42;
 const MAX_TOKEN_LENGTH = 256;

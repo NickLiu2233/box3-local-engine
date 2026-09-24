@@ -1,4 +1,4 @@
-import { MuStruct, MuUint32, MuVarint, MuSortedArray, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuUint32, MuVarint, MuSortedArray, MuQuantizedFloat } from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 export declare function packColor(c: {
     r: number;

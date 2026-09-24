@@ -1,4 +1,4 @@
-import { IconCancel } from '@box-local/icons';
+import { IconCancel } from '@box/icons';
 import type { JSX } from 'react';
 import * as React from 'react';
 import { calc_class_name } from 'src/utils/classname';

@@ -1,4 +1,4 @@
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { isApp } from './session-storage';
 
 // any mobile configurations are set here

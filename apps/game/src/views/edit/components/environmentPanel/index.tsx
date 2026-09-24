@@ -7,9 +7,9 @@ import {
   IconMusic,
   IconPhysics,
   IconSunshine,
-} from '@box-local/icons/build';
-import { AssetType } from '@box-local/schema/project/project-rda';
-import { getById } from '@box-local/utils/id';
+} from '@box/icons/build';
+import { AssetType } from '@box/schema/project/project-rda';
+import { getById } from '@box/utils/id';
 import type { JSX } from 'react';
 import * as React from 'react';
 import { IntlShape, injectIntl } from 'react-intl';

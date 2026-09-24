@@ -1,10 +1,10 @@
 import assert from 'assert';
 
-import { resolveSeedMeshInfo } from '@box-local/build-system/project/bake';
+import { resolveSeedMeshInfo } from '@box/build-system/project/bake';
 import {
   HotProjectSchema,
   MeshAssetSchema,
-} from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/hot-schema';
 
 const projectPath = 'mesh/New-model.vb';
 const localPath = 'mesh/New-model__local_20.vb';

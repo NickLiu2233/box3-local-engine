@@ -2,7 +2,7 @@ This is an example project for rewgpu interface
 
 ## Getting Started
 
-### Build @box-local/rewgpu first
+### Build @box/rewgpu first
 
 ### Install
 

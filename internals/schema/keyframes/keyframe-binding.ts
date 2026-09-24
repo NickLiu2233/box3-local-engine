@@ -16,14 +16,14 @@ import {
   MuUint32,
   MuUint8,
   MuVarint,
-} from '@box-local/mudb/schema/index';
+} from '@box/mudb/schema/index';
 import { RigidBodyFlags } from '../physics/physics-schema';
 import { MuRefSchema } from '../utils/ref-schema';
-import { compareId, indexEqRange } from '@box-local/utils/id';
+import { compareId, indexEqRange } from '@box/utils/id';
 
 import { CodeGenBlock, CodeGenContext } from './codegen';
 import { MuArrayUnion } from './mu-array-union';
-import { sortedArrayDelete } from '@box-local/utils/sorted-array-remove';
+import { sortedArrayDelete } from '@box/utils/sorted-array-remove';
 import {
   RestrictProps,
   RestrictObj,
@@ -31,7 +31,7 @@ import {
   safeReadNumExpr,
   safeReadStrExpr,
   safeReadBoolExpr,
-} from '@box-local/utils/script';
+} from '@box/utils/script';
 import {
   KeyframeTrackIndex,
   KeyframeTrackIndexSchema,

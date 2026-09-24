@@ -4,8 +4,8 @@ import {
   migrateProject,
   modelSchemaToBytes,
   projectSchemaToBytes,
-} from '@box-local/voxa-project';
-import { parseVbFile } from '@box-local/vb-parser';
+} from '@box/voxa-project';
+import { parseVbFile } from '@box/vb-parser';
 import Head from 'next/head';
 import { DragEventHandler, useCallback } from 'react';
 import styles from '../styles/index.module.css';

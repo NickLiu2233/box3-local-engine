@@ -6,11 +6,11 @@ import {
   QueryList,
   DB_ERROR_STATUS,
   ListReturnValue,
-} from '@box-local/schema/api/js/storage';
-import { CommonError } from '@box-local/schema/api/js/error';
-import { MuClientProtocol } from '@box-local/mudb/client';
+} from '@box/schema/api/js/storage';
+import { CommonError } from '@box/schema/api/js/error';
+import { MuClientProtocol } from '@box/mudb/client';
 import { StorageProtocol, DBType } from './storage-protocol';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { PromiseWrapper } from '../utils/script-promise';
 // isolate-vm 环境没有Buffer，故使用non-secure
 import { nanoid } from 'nanoid/non-secure';

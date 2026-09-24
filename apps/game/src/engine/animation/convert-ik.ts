@@ -6,7 +6,7 @@ import {
   IKPoseSchema,
   IKRigSchema,
   IKPaletteSchema,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 
 // marker points in the file
 const LEFT_TOE = 'r foot_02';

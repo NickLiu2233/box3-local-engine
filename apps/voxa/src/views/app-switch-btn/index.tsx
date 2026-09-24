@@ -1,6 +1,6 @@
 import { memo, useContext } from 'react';
 import { useIntl } from 'react-intl';
-import { IconArrowBack } from '@box-local/icons';
+import { IconArrowBack } from '@box/icons';
 import { VoxelEditorContext } from '../../internals';
 import { FloatBtn } from '../float-menu/float-btn';
 import styles from './style.module.scss';

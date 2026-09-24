@@ -1,14 +1,14 @@
-import { BlockIndexSchema } from '@box-local/schema/voxel/block-schema';
-import { unpackBlockIndex } from '@box-local/schema/voxel/blocks';
+import { BlockIndexSchema } from '@box/schema/voxel/block-schema';
+import { unpackBlockIndex } from '@box/schema/voxel/blocks';
 import {
   CHUNK_SHIFT,
   CHUNK_SIZE,
-} from '@box-local/schema/voxel/voxel-collision-schema';
+} from '@box/schema/voxel/voxel-collision-schema';
 import {
   VoxelRaycastHitResult,
   raycast,
-} from '@box-local/schema/voxel/voxel-raycast';
-import { VoxelView, allocVoxels } from '@box-local/utils/voxel';
+} from '@box/schema/voxel/voxel-raycast';
+import { VoxelView, allocVoxels } from '@box/utils/voxel';
 import { vec3 } from 'gl-matrix';
 import pino from 'pino';
 import { alloc, free } from '../utils/pool';
@@ -31,7 +31,7 @@ import {
   WorkerUpdateLightMessage,
   WorkerUpdateVoxelViewMessage,
 } from './voxel-worker-schema';
-import { blitBoxesToChunk } from '@box-local/schema/voxel/box-decode';
+import { blitBoxesToChunk } from '@box/schema/voxel/box-decode';
 
 const logger = pino({
   browser: {

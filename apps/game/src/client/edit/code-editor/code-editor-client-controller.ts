@@ -1,25 +1,25 @@
-import { ContentResolver } from '@box-local/content-server/content-fetch';
-import { MuClientProtocol } from '@box-local/mudb/client';
-import { searchId } from '@box-local/mudb/rda/_id';
-import { decodeUTF8 } from '@box-local/mudb/stream';
+import { ContentResolver } from '@box/content-server/content-fetch';
+import { MuClientProtocol } from '@box/mudb/client';
+import { searchId } from '@box/mudb/rda/_id';
+import { decodeUTF8 } from '@box/mudb/stream';
 import {
   CursorSchema,
   CursorState,
   FileDictRDA,
   FileSchema,
   FileState,
-} from '@box-local/schema/code-editor/code-editor-common-state';
-import { CodeEditorProtocol } from '@box-local/schema/code-editor/code-editor-protocol';
-import { allocIdsEx } from '@box-local/schema/code-editor/murda-id';
+} from '@box/schema/code-editor/code-editor-common-state';
+import { CodeEditorProtocol } from '@box/schema/code-editor/code-editor-protocol';
+import { allocIdsEx } from '@box/schema/code-editor/murda-id';
 import {
   MuRDAText,
   MuRDATextStore,
   TextSelection,
-} from '@box-local/schema/code-editor/murda-text';
-import CLIENT_API_TYPES from '@box-local/script-api/dts/client-api-types.dts';
-import SERVER_API_TYPES from '@box-local/script-api/dts/server-api-types.dts';
+} from '@box/schema/code-editor/murda-text';
+import CLIENT_API_TYPES from '@box/script-api/dts/client-api-types.dts';
+import SERVER_API_TYPES from '@box/script-api/dts/server-api-types.dts';
 import LOCAL_API_DECLARATIONS from 'src/resource/api-declarations.dts';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 import { clientConfig } from 'src/config/client';
 import { reduxDispatch } from 'src/redux/edit';
 import {

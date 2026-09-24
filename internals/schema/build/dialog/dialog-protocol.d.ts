@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuUTF8, MuUnion, MuVoid, MuBoolean, MuArray, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuUTF8, MuUnion, MuVoid, MuBoolean, MuArray, MuQuantizedFloat } from '@box/mudb/schema';
 export declare const RGBASchema: MuStruct<{
     r: MuQuantizedFloat;
     g: MuQuantizedFloat;

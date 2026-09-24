@@ -10,8 +10,8 @@ import {
   MuASCII,
   MuDictionary,
   MuFloat32,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 
 import {
   NodesInfoSchema,
@@ -28,7 +28,7 @@ import {
   Mat4Schema,
   Mat3Schema,
   Vec3Schema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import { LightProbe } from 'src/engine/voxel/light-schema';
 
 export const GPUMeshSchema = new MuStruct({

@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch } from 'react-redux';
-import { Button, Input, TooltipTrigger, useClassName } from '@box-local/box-design';
+import { Button, Input, TooltipTrigger, useClassName } from '@box/box-design';
 import { RootState, store, useAppSelector } from '../../redux/store';
 import { hexToRGB, RGBToHex, RGBToHsv } from '../../utils/color';
 import { HueSlider, SaturationValueSketch } from './slider-sketch';

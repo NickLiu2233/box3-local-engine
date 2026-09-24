@@ -11,7 +11,7 @@ import {
   MuASCII,
   MuOption,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export type DBFetchType =
   | 'get'

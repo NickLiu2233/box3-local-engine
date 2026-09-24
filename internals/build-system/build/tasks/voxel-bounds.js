@@ -10,9 +10,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calcVoxelBounds = calcVoxelBounds;
-const stream_1 = require("@box-local/mudb/stream");
-const helper_1 = require("@box-local/utils/helper");
-const rle_compress_1 = require("@box-local/utils/rle-compress");
+const stream_1 = require("@box/mudb/stream");
+const helper_1 = require("@box/utils/helper");
+const rle_compress_1 = require("@box/utils/rle-compress");
 const bounds_schema_1 = require("../project/bounds-schema");
 function calcVoxelBounds(bs, hash) {
     return __awaiter(this, void 0, void 0, function* () {

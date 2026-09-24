@@ -6,7 +6,7 @@ import {
   MuUTF8,
   MuVarint,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const RTCScriptProtocol = {
   name: 'rtc',

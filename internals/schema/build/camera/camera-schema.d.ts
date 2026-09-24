@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { MuStruct, MuFloat64, MuBoolean, MuSchema, MuVarint, MuUint8 } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64, MuBoolean, MuSchema, MuVarint, MuUint8 } from '@box/mudb/schema';
 import { QuantizedScalar, QuantizedVec3Schema } from '../utils/quantized-schema';
 export declare const UP: vec3;
 export declare const EMISSIVE_SCALE = 100;

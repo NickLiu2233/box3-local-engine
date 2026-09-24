@@ -1,8 +1,8 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { MuScheduler } from '@box-local/mudb/scheduler/scheduler';
-import { ClockProtocol, TICK_RATE } from '@box-local/schema/clock/clock-schema';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
+import { MuScheduler } from '@box/mudb/scheduler/scheduler';
+import { ClockProtocol, TICK_RATE } from '@box/schema/clock/clock-schema';
 import { GameServerState } from '../game-server-schema';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 
 export class ClockServer {
   private _protocol: MuServerProtocol<typeof ClockProtocol>;

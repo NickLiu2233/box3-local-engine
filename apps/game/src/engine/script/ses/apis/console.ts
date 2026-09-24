@@ -1,4 +1,4 @@
-import type { ClientConsole } from '@box-local/script-api';
+import type { ClientConsole } from '@box/script-api';
 
 export class ScriptClientConsole implements ClientConsole {
   constructor(_console: ClientConsole) {

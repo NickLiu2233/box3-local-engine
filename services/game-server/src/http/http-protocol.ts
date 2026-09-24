@@ -8,7 +8,7 @@ import {
   MuUnion,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const HeadersSchema = new MuDictionary(
   new MuArray(new MuASCII(), Infinity),

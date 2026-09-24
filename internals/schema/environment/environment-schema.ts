@@ -1,5 +1,5 @@
 import { EnvironmentRDA } from '../project/project-rda';
-import { MuStruct, MuFloat64, MuBoolean, MuFloat32 } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64, MuBoolean, MuFloat32 } from '@box/mudb/schema';
 import { Vec3Schema, Vec4Schema } from '../utils/math-schema';
 
 export const EnvironmentParamSchema = EnvironmentRDA.stateSchema;

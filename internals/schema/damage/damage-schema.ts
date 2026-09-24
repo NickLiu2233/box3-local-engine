@@ -4,8 +4,8 @@ import {
   MuBoolean,
   MuSortedArray,
   MuQuantizedFloat,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 
 export const DamageSchema = new MuStruct({
   id: new MuVarint(),

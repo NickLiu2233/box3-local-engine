@@ -1,5 +1,5 @@
 import { mat4, vec3 } from 'gl-matrix';
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { BoxGeometry } from '../rendering/geometries/box-geometry';
 import { ShaderMaterial } from '../rendering/materials/shader';
 import { Mesh } from '../rendering/objects/mesh';

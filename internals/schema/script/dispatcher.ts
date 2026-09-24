@@ -3,7 +3,7 @@ import {
   GameEventHandlerToken,
   GameEventFuture,
 } from '../api/js/api';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 
 export let DISPATCHER_CREATE_COUNT = 0;
 export let DISPATCHER_DESTROY_COUNT = 0;

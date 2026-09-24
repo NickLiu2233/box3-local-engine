@@ -1,4 +1,4 @@
-import { retrieveWithImage } from '@box-local/content-server/image';
+import { retrieveWithImage } from '@box/content-server/image';
 import type { GameClientState } from '../game-client-schema';
 import type { InputController } from '../input/input-controller';
 import type { ResourceController } from '../resource';

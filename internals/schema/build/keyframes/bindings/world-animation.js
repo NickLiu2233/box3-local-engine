@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.WorldAnimationIndexSchema = exports.WorldAnimationSetSchema = exports.WorldAnimationSchema = exports.WORLD_ANIM_BINDING = void 0;
 const api_1 = require("../../api/js/api");
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const project_rda_1 = require("../../project/project-rda");
 const environment_schema_1 = require("../../environment/environment-schema");
 const physics_schema_1 = require("../../physics/physics-schema");

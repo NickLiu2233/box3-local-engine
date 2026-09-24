@@ -4,29 +4,29 @@ import {
   PlayerSchema,
   PlayerDisplaySchema,
   PlayerInputSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import { ServerPlayerSchema } from '../player/player-server-schema';
 import {
   RigidBodySchema,
   ContactRecordSchema,
-} from '@box-local/schema/physics/physics-schema';
-import { NetModelSchema } from '@box-local/schema/mesh/model-schema';
-import { DamageSchema } from '@box-local/schema/damage/damage-schema';
+} from '@box/schema/physics/physics-schema';
+import { NetModelSchema } from '@box/schema/mesh/model-schema';
+import { DamageSchema } from '@box/schema/damage/damage-schema';
 import { SeedLinkSchema } from '../seed/seed-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { ServerParticleEntitySchema } from '../particle/particle-server-state';
 import {
   EntitySoundEffectSchema,
   PlayerSoundEffectSchema,
-} from '@box-local/schema/sound/sound-protocol';
+} from '@box/schema/sound/sound-protocol';
 import {
   ServerEntitySoundEffectSchema,
   ServerPlayerSoundEffectSchema,
 } from '../sound/server-sound-state';
-import { InteractComponentSchema } from '@box-local/schema/interact/interact-protocol';
-import { GamePrivateReplicaSchema } from '@box-local/schema/replica/game-private-replica';
-import { DeletedEntitiesSchema } from '@box-local/schema/entity/entity-schema';
-import { EntityNameComponentSchema } from '@box-local/schema/entity-name/entity-name';
+import { InteractComponentSchema } from '@box/schema/interact/interact-protocol';
+import { GamePrivateReplicaSchema } from '@box/schema/replica/game-private-replica';
+import { DeletedEntitiesSchema } from '@box/schema/entity/entity-schema';
+import { EntityNameComponentSchema } from '@box/schema/entity-name/entity-name';
 
 export function createEntityId(state: GameServerState) {
   const id = ++state.entity.counter << 1;

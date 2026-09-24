@@ -1,4 +1,4 @@
-import { LogMessageSchema } from '@box-local/utils/logger';
+import { LogMessageSchema } from '@box/utils/logger';
 import {
   MuStruct,
   MuVarint,
@@ -6,7 +6,7 @@ import {
   MuASCII,
   MuArray,
   MuJSON,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const NetLogEventSchema = new MuJSON();
 export type NetLogEvent = typeof NetLogEventSchema.identity;

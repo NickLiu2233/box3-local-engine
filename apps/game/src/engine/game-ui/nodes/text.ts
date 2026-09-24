@@ -6,7 +6,7 @@ import {
   TextXAlignType,
   TextYAlignType,
   UITextFontFamily,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import type { GetContext } from './interface';
 import type { BaseSpec } from './base';
 import { getTextFont, maxByAutoResize } from '../util';

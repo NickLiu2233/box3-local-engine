@@ -1,7 +1,7 @@
-import { allocVoxels, freeVoxels } from '@box-local/utils/voxel';
+import { allocVoxels, freeVoxels } from '@box/utils/voxel';
 import { saveVoxelData } from './voxel';
 import { genTerrain, TerrainTheme } from '.';
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 
 function initialMapSize(): [number, number, number] {
   const values = String(process.env.BOX_INITIAL_MAP_SIZE || '')

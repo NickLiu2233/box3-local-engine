@@ -11,8 +11,8 @@ import {
   MuVarint,
   MuArray,
   MuInt8,
-} from '@box-local/mudb/schema';
-import { GameKeys } from '@box-local/schema/input/input-schema';
+} from '@box/mudb/schema';
+import { GameKeys } from '@box/schema/input/input-schema';
 
 export const KeyBindingSchema = new MuDictionary(
   <MuSchema<GameKeys>>new MuUint16(),

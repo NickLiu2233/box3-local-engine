@@ -8,7 +8,7 @@ import {
   MuSchema,
   MuStruct,
   MuUnion,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const Vec3Schema = new MuVector(new MuFloat32(), 3);
 export const Vec4Schema = new MuVector(new MuFloat32(), 4);

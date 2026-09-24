@@ -1,13 +1,13 @@
 import createTree from 'functional-red-black-tree';
 import { equals } from 'ramda';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
+import { allocEmptyVoxels } from '@box/utils/helper';
 import {
   compareBox,
   VoxelCollisionBox,
   VoxelCollisionBoxListSchema,
   VoxelCollisionBoxSchema,
 } from '../../utils/rbush/schema';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 import { blitBoxesToChunk } from '../voxel/box-decode';
 import { CommonHistory } from './interface';
 

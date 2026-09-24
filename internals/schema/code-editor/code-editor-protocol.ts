@@ -4,7 +4,7 @@ import {
   MuStruct,
   MuBoolean,
   MuFloat32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   FileSchema,
   CursorSchema,

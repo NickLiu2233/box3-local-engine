@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { IKPaletteSchema, IKPalette } from '@box-local/schema/animation/ik-schema';
+import { IKPaletteSchema, IKPalette } from '@box/schema/animation/ik-schema';
 import { AvatarIKState } from '../../avatar/models/interfaces';
 import type { SkinPart } from '../../avatar/models/skin-part';
 import {
@@ -11,7 +11,7 @@ import {
 import { DEFAULT_PROJECT } from '../../models/project/default-project';
 import { ROOT_BONE_ID } from '../../defs';
 import { mat4, quat, vec3 } from 'gl-matrix';
-import { BODY_PART_DEFAULT_SCALE } from '@box-local/schema/player/player-schema';
+import { BODY_PART_DEFAULT_SCALE } from '@box/schema/player/player-schema';
 import { BodyPartName } from '../../avatar/models/defs';
 import { getEuler } from '../../models/rendering/math/quat';
 

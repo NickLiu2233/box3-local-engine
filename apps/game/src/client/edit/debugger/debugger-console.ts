@@ -1,9 +1,9 @@
-import { GameLogLevel } from '@box-local/schema/api/console';
+import { GameLogLevel } from '@box/schema/api/console';
 import {
   ParsedError,
   ParsedErrorSchema,
-} from '@box-local/schema/debugger-console/schema';
-import type { ClientConsole } from '@box-local/script-api';
+} from '@box/schema/debugger-console/schema';
+import type { ClientConsole } from '@box/script-api';
 
 import { ClientStateType } from '../edit-schema';
 import { LogEntrySchema, LogListSchema } from './debugger-client-state';

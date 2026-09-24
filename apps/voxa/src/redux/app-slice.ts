@@ -1,4 +1,4 @@
-import { CreativeMode, ModelType } from '@box-local/apis';
+import { CreativeMode, ModelType } from '@box/apis';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { DEFAULT_PROJECT_NAME } from '../defs';
 import { DEFAULT_ZOOM_WIDTH } from '../views/motions/hierarchy-timelines/const';

@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildAnim = buildAnim;
-const ik_schema_1 = require("@box-local/schema/animation/ik-schema");
+const ik_schema_1 = require("@box/schema/animation/ik-schema");
 function buildAnim(bs, hash) {
     return __awaiter(this, void 0, void 0, function* () {
         const playerJSON = yield bs.retrieveJSON(hash);

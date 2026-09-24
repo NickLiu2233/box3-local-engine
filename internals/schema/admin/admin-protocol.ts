@@ -7,7 +7,7 @@ import {
   MuUTF8,
   MuVoid,
   MuArray,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { UserIdSchema } from '../permissions/permission-rda';
 
 export const AdminCommandSchema = new MuUnion({

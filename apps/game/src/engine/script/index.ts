@@ -1,10 +1,10 @@
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import {
   RemoteClientEventSchema,
   RemoteClientEventsSchema,
-} from '@box-local/schema/events/remote-channel-event-schema';
-import type { ClientConsole } from '@box-local/script-api';
-import { Semaphore } from '@box-local/utils/semaphore';
+} from '@box/schema/events/remote-channel-event-schema';
+import type { ClientConsole } from '@box/script-api';
+import { Semaphore } from '@box/utils/semaphore';
 import type { Logger } from 'pino';
 
 import { GameUIInputEvents } from 'src/engine/game-ui/controls/input-manager';

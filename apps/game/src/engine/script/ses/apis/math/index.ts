@@ -1,6 +1,6 @@
 import { vec2, vec3 } from 'gl-matrix';
-import type * as I from '@box-local/script-api';
-import { UICoord2, UICoord2RDA } from '@box-local/schema/project/ui-rda/defs';
+import type * as I from '@box/script-api';
+import { UICoord2, UICoord2RDA } from '@box/schema/project/ui-rda/defs';
 
 export class Coord2 {
   public readonly offset: Vec2;

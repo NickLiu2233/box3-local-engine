@@ -3,8 +3,8 @@ import {
   XYZType,
   MovementBounds,
   VoxelShape,
-} from '@box-local/schema/project/project-rda';
-import { Toast } from '@box-local/box-design/build';
+} from '@box/schema/project/project-rda';
+import { Toast } from '@box/box-design/build';
 
 import {
   CustomProperty,

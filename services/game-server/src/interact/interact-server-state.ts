@@ -1,5 +1,5 @@
-import { MuStruct, MuVarint, MuFloat64, MuSortedArray } from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+import { MuStruct, MuVarint, MuFloat64, MuSortedArray } from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 
 export const InteractEventSchema = new MuStruct({
   id: new MuVarint(),

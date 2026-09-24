@@ -58,7 +58,7 @@ function collectThirdPartyDependencies(repoRoot) {
     if (visited.has(real)) return
     visited.add(real)
     const manifest = readJSON(path.join(real, 'package.json'))
-    if (manifest?.name && manifest?.version && !manifest.name.startsWith('@box-local/')) {
+    if (manifest?.name && manifest?.version && !manifest.name.startsWith('@box/')) {
       const key = `${manifest.name}@${manifest.version}`
       dependencies.set(key, {
         name: manifest.name,

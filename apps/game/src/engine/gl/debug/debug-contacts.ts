@@ -1,12 +1,12 @@
 import REGL from 'regl';
 import { REGLLoader } from '../regl';
-import { ContactIndex, RigidBody } from '@box-local/schema/physics/physics-schema';
+import { ContactIndex, RigidBody } from '@box/schema/physics/physics-schema';
 import glBox from './debug-box';
 import glArrow from './debug-arrow';
 import glText from '../text';
 import glLine from './debug-line';
 import { vec3 } from 'gl-matrix';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 
 export default function (regl: REGL.Regl, loader: REGLLoader) {
   const drawBox = loader.require(glBox);

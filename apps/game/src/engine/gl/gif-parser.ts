@@ -1,4 +1,4 @@
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import { getCanvas2DContext } from '../utils/device';
 
 export interface ParsedGIF {

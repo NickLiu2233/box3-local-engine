@@ -1,10 +1,10 @@
 import { mat4, vec3 } from 'gl-matrix';
-import { Regl, Texture2D } from '@box-local/regl';
-import { unpackTextureData, unpackMeshData } from '@box-local/mesher';
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
-import { PlayerSkinPartSchema } from '@box-local/schema/mesh/skin-schema';
-import { BodyPart } from '@box-local/schema/player/player-schema';
+import { Regl, Texture2D } from '@box/regl';
+import { unpackTextureData, unpackMeshData } from '@box/mesher';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
+import { PlayerSkinPartSchema } from '@box/schema/mesh/skin-schema';
+import { BodyPart } from '@box/schema/player/player-schema';
 import type { BodyPartName } from '../defs';
 import { Object3D } from '../../../models/rendering/objects/object3d';
 import { Box3 } from '../../../models/rendering/math/box3';

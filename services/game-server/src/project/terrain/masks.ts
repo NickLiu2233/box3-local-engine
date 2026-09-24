@@ -1,6 +1,6 @@
 import { LibNoise } from './noise';
 import { vec2 } from 'gl-matrix';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 type VEC2 = [number, number];
 
 interface NoiseEdge {

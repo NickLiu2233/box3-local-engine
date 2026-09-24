@@ -1,11 +1,11 @@
-import { zipId } from '@box-local/utils/id';
-import { PlayerDisplayFlags } from '@box-local/schema/player/player-schema';
+import { zipId } from '@box/utils/id';
+import { PlayerDisplayFlags } from '@box/schema/player/player-schema';
 import type { GameClientState } from '../game-client-schema';
 import { createRenderPlayerFn } from '../player/player-render';
 import type { GPUMeshInstanceListDict } from '../mesh/gpu-controller/gpu-mesh-schema';
 import { testChunkVisibility } from '../voxel/voxel-controller';
 import { testFrustumBox } from '../utils/frustum';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import { drawName, drawPlayerOverlay } from '../overlay/player-overlay';
 
 export function gpuPlayer() {

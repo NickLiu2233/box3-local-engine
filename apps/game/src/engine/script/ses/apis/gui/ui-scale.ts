@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import { GameUIScale } from 'src/engine/game-ui/nodes/scale';
 import { ClientScriptContext } from '../context/const';
 import { validateScaleValue } from 'src/engine/game-ui/util';

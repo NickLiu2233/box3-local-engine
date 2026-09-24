@@ -2,7 +2,7 @@ import { mat2d, vec2, vec3 } from 'gl-matrix';
 import {
   TextXAlignType,
   TextYAlignType,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import { GameUINode } from 'src/engine/game-ui/nodes/base';
 import { GameUIBox } from 'src/engine/game-ui/nodes/box';
 import { EventMode } from 'src/engine/game-ui/nodes/defs';

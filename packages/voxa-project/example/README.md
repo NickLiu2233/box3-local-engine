@@ -2,7 +2,7 @@ This is an example project for testing migrate model and project file
 
 ## Getting Started
 
-### Build @box-local/voxa-project first
+### Build @box/voxa-project first
 
 ### Install
 

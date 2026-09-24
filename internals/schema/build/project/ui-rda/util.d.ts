@@ -29,49 +29,49 @@ export declare function isUIAutoLayout(value: UILayoutType): value is UnionRDAIn
 /**
  * 获取屏幕节点或元素节点的布局属性
  */
-export declare function pickLayoutProp(value: UINode): import("@box-local/mudb/schema/union").UnionInstance<{
-    none: import("@box-local/mudb/schema").MuVoid;
-    autoLayout: import("@box-local/mudb/schema").MuStruct<{
-        cellSize: import("@box-local/mudb/schema").MuStruct<{
+export declare function pickLayoutProp(value: UINode): import("@box/mudb/schema/union").UnionInstance<{
+    none: import("@box/mudb/schema").MuVoid;
+    autoLayout: import("@box/mudb/schema").MuStruct<{
+        cellSize: import("@box/mudb/schema").MuStruct<{
             offset: import("../../utils/quantized-schema").QuantizedVec2Schema;
             ratio: import("../../utils/quantized-schema").QuantizedVec2Schema;
         }>;
-        lineHeightEnabled: import("@box-local/mudb/schema").MuBoolean;
-        columnWidthEnabled: import("@box-local/mudb/schema").MuBoolean;
-        startCorner: import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutStartCorner>;
-        fillDirection: import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutFillDirection>;
-        maxCells: import("@box-local/mudb/schema").MuVarint;
-        maxCellsEnabled: import("@box-local/mudb/schema").MuBoolean;
-        cellPadding: import("@box-local/mudb/schema").MuStruct<{
+        lineHeightEnabled: import("@box/mudb/schema").MuBoolean;
+        columnWidthEnabled: import("@box/mudb/schema").MuBoolean;
+        startCorner: import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutStartCorner>;
+        fillDirection: import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutFillDirection>;
+        maxCells: import("@box/mudb/schema").MuVarint;
+        maxCellsEnabled: import("@box/mudb/schema").MuBoolean;
+        cellPadding: import("@box/mudb/schema").MuStruct<{
             offset: import("../../utils/quantized-schema").QuantizedVec2Schema;
             ratio: import("../../utils/quantized-schema").QuantizedVec2Schema;
         }>;
-        horizontalAlignment: import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutHorizontalAlignType>;
-        verticalAlignment: import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutVerticalAlignType>;
+        horizontalAlignment: import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutHorizontalAlignType>;
+        verticalAlignment: import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutVerticalAlignType>;
     }>;
 }, "none" | "autoLayout"> | undefined;
 /**
  * 获取节点的自布局属性，如果未开启自动布局，返回undefined
  */
 export declare function pickAutoLayoutProp(value: UINode): UnionRDAInstance<{
-    none: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
-    autoLayout: import("@box-local/mudb/rda").MuRDAStruct<{
-        cellSize: import("@box-local/mudb/rda").MuRDAStruct<{
-            offset: import("@box-local/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
-            ratio: import("@box-local/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
+    none: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuVoid>;
+    autoLayout: import("@box/mudb/rda").MuRDAStruct<{
+        cellSize: import("@box/mudb/rda").MuRDAStruct<{
+            offset: import("@box/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
+            ratio: import("@box/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
         }>;
-        lineHeightEnabled: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuBoolean>;
-        columnWidthEnabled: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuBoolean>;
-        startCorner: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutStartCorner>>;
-        fillDirection: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutFillDirection>>;
-        maxCells: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuVarint>;
-        maxCellsEnabled: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuBoolean>;
-        cellPadding: import("@box-local/mudb/rda").MuRDAStruct<{
-            offset: import("@box-local/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
-            ratio: import("@box-local/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
+        lineHeightEnabled: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuBoolean>;
+        columnWidthEnabled: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuBoolean>;
+        startCorner: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutStartCorner>>;
+        fillDirection: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutFillDirection>>;
+        maxCells: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuVarint>;
+        maxCellsEnabled: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuBoolean>;
+        cellPadding: import("@box/mudb/rda").MuRDAStruct<{
+            offset: import("@box/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
+            ratio: import("@box/mudb/rda").MuRDARegister<import("../../utils/quantized-schema").QuantizedVec2Schema>;
         }>;
-        horizontalAlignment: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutHorizontalAlignType>>;
-        verticalAlignment: import("@box-local/mudb/rda").MuRDARegister<import("@box-local/mudb/schema").MuSchema<import("./defs").AutoLayoutVerticalAlignType>>;
+        horizontalAlignment: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutHorizontalAlignType>>;
+        verticalAlignment: import("@box/mudb/rda").MuRDARegister<import("@box/mudb/schema").MuSchema<import("./defs").AutoLayoutVerticalAlignType>>;
     }>;
 }, "autoLayout"> | undefined;
 export {};

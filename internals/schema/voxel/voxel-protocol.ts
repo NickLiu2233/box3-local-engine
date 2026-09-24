@@ -7,7 +7,7 @@ import {
   MuRelativeVarint,
   MuBoolean,
   MuFloat64,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { HashSchema } from '../content-server/index';
 import { VoxelCollisionBoxListSchema } from '../utils/rbush-schema';
 

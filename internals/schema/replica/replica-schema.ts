@@ -9,7 +9,7 @@ import {
   MuVoid,
   MuDictionary,
   MuOption,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { VoxelWriteSchema } from '../voxel/voxel-protocol';
 import {
   PermissionStoreSchema,

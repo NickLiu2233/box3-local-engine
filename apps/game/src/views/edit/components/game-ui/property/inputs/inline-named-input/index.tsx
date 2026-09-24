@@ -1,5 +1,5 @@
 import { ReactNode, memo } from 'react';
-import { useClassName } from '@box-local/box-design';
+import { useClassName } from '@box/box-design';
 import styles from './style.module.scss';
 
 function InlineNamedInputView(props: {

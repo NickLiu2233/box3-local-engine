@@ -1,4 +1,4 @@
-import { MuRPCClient } from '@box-local/mudb/rpc/client';
+import { MuRPCClient } from '@box/mudb/rpc/client';
 import {
   MuUTF8,
   MuVoid,
@@ -11,7 +11,7 @@ import {
   MuDate,
   MuUnion,
   MuOption,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { DB } from '../database-type';
 import { MuNullable } from './nullable-schema';
 

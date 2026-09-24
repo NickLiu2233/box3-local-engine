@@ -1,6 +1,6 @@
-import { MuRDA, MuRDAStore, MuRDATypes } from '@box-local/mudb/rda';
-import { allocIds, compareId, ID_MAX, ID_MIN } from '@box-local/mudb/rda/_id';
-import { MuRDAActionMeta, MuRDABindableActionMeta } from '@box-local/mudb/rda/rda';
+import { MuRDA, MuRDAStore, MuRDATypes } from '@box/mudb/rda';
+import { allocIds, compareId, ID_MAX, ID_MIN } from '@box/mudb/rda/_id';
+import { MuRDAActionMeta, MuRDABindableActionMeta } from '@box/mudb/rda/rda';
 import {
   MuArray,
   MuASCII,
@@ -12,7 +12,7 @@ import {
   MuStruct,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import defineDebug from 'debug';
 
 const debug = defineDebug('box:schema:project:murda-tree');

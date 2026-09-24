@@ -1,5 +1,5 @@
-import { EventBus } from '@box-local/utils/event';
-import { MuSchema, MuStruct } from '@box-local/mudb/schema';
+import { EventBus } from '@box/utils/event';
+import { MuSchema, MuStruct } from '@box/mudb/schema';
 
 export type FrameSchemaType = {
   [key: string]: MuSchema<any>;

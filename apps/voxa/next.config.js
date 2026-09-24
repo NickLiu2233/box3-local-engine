@@ -10,11 +10,11 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   transpilePackages: [
-    '@box-local/regl',
-    '@box-local/env',
-    '@box-local/apis',
-    '@box-local/vb',
-    '@box-local/schema',
+    '@box/regl',
+    '@box/env',
+    '@box/apis',
+    '@box/vb',
+    '@box/schema',
   ],
   // VOXA owns long-lived WebGL/regl resources. React Strict Mode intentionally
   // remounts effects in development, which can destroy a buffer while the

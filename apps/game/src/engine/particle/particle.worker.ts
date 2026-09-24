@@ -11,9 +11,9 @@ import {
   MuBuffer,
   MuReadStream,
   MuWriteStream,
-} from '@box-local/mudb/stream';
+} from '@box/mudb/stream';
 import { alloc, free } from '../utils/pool';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 
 // particle format:
 //

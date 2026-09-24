@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DamageSetSchema = exports.DamageSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
-const id_1 = require("@box-local/utils/id");
+const schema_1 = require("@box/mudb/schema");
+const id_1 = require("@box/utils/id");
 exports.DamageSchema = new schema_1.MuStruct({
     id: new schema_1.MuVarint(),
     // display style

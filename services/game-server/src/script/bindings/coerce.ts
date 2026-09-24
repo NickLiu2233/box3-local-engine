@@ -5,12 +5,12 @@ import {
   GameRGBAColor,
   GameBounds3,
   GameRGBColor,
-} from '@box-local/schema/api/js/math';
+} from '@box/schema/api/js/math';
 import {
   GameEntity,
   GameSoundEffect,
   GameSoundEffectConfig,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 
 export function coerceNum(_x: any, y: number) {
   const x = +_x;

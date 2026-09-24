@@ -1,7 +1,7 @@
 import { GameClientState } from '../game-client-schema';
 import { ClientModelSchema, ClientModel } from './client-model-schema';
 import { isGLMesh, isGPUMesh, TextureRenderable } from './renderable-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { mat4, vec3 } from 'gl-matrix';
 import { setMotionTexture } from './gl-controller/gl-mesh-controller';
 import {
@@ -14,13 +14,13 @@ import {
   ModelProtocol,
   NetSkinSchema,
   NetMeshTableEntrySchema,
-} from '@box-local/schema/mesh/model-schema';
-import { NetModelMotion } from '@box-local/schema/mesh/model-schema';
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
+} from '@box/schema/mesh/model-schema';
+import { NetModelMotion } from '@box/schema/mesh/model-schema';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
 import { HurtEffect } from '../effect/effect-schema';
 import { fromQuat } from './util';
-import { HashType } from '@box-local/schema/project/hot-schema';
-import { PlayerDisplay } from '@box-local/schema/player/player-schema';
+import { HashType } from '@box/schema/project/hot-schema';
+import { PlayerDisplay } from '@box/schema/player/player-schema';
 import {
   parseDefaultMotion,
   ParsedPlayInfo,

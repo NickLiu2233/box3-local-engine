@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import { UiRenderable } from './ui-renderable';
 import { ClientScriptContext } from '../context/const';
 import { GameUIScrollBox } from 'src/engine/game-ui/nodes/scroll-box';

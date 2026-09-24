@@ -1,4 +1,4 @@
-import type { NDArrayLike } from '@box-local/regl';
+import type { NDArrayLike } from '@box/regl';
 import {
   FLIP_BIT,
   AO_SHIFT,

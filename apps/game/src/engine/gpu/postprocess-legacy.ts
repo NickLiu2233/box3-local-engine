@@ -6,7 +6,7 @@ import type {
   ReWGPU,
   GroupEntry,
   RenderDescriptor,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import { prevPow2 } from 'bit-twiddle';
 import { CommonUniforms } from './interface';
 import { GameClientState } from '../game-client-schema';

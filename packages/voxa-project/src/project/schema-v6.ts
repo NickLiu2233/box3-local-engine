@@ -8,7 +8,7 @@ import {
   MuFloat32,
   MuSchema,
   MuOption,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Uint8Vec3Schema,
   Vec3Schema,

@@ -1,5 +1,5 @@
 import { useContext, useMemo } from 'react';
-import { Icon } from '@box-local/box-design';
+import { Icon } from '@box/box-design';
 import type { InterpolationType } from '../../../../redux/animator-slice';
 import { timeToFrame } from '../../../../models/animator-app/util';
 import { INTERPOLATION_TO_ICON } from '../../../const';

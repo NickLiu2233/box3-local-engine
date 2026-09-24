@@ -4,9 +4,9 @@ import type {
   IndexBufferDescriptor,
   IREWGPUBuffer,
   IREWGPUGroup,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 
-import { Hash } from '@box-local/schema/content-server/index';
+import { Hash } from '@box/schema/content-server/index';
 import { GameClientState } from '../game-client-schema';
 import { GPUGameTexture } from './schema/gpu-texture';
 import { CommonUniformEntries, CommonUniformLayout } from './interface';

@@ -1,6 +1,6 @@
 import { GameServerState } from '../game-server-schema';
 import { mat3, vec3 } from 'gl-matrix';
-import { RigidBody } from '@box-local/schema/physics/physics-schema';
+import { RigidBody } from '@box/schema/physics/physics-schema';
 import {
   ModelProtocol,
   NetMeshTableEntry,
@@ -10,17 +10,17 @@ import {
   NetModel,
   NetSkin,
   NetSkinSchema,
-} from '@box-local/schema/mesh/model-schema';
-import { PlayerDisplay, PlayerSkinId } from '@box-local/schema/player/player-schema';
-import { PLAYER_WIDTH, PLAYER_HEIGHT } from '@box-local/schema/player/player-move';
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+} from '@box/schema/mesh/model-schema';
+import { PlayerDisplay, PlayerSkinId } from '@box/schema/player/player-schema';
+import { PLAYER_WIDTH, PLAYER_HEIGHT } from '@box/schema/player/player-move';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
 import { ServerMeshInfoSchema } from './server-model-schema';
 import {
   PlayerSkinHash,
   PlayerSkinHashSchema,
-} from '@box-local/schema/player/player-schema';
-import { MotionListSchema } from '@box-local/schema/project/hot-schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/schema/player/player-schema';
+import { MotionListSchema } from '@box/schema/project/hot-schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
 const BODY_PARTS = Object.keys(PlayerSkinHashSchema.identity);
 

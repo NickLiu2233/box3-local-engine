@@ -3,7 +3,7 @@ import { vec3 } from 'gl-matrix';
 import {
   AssetEntry,
   AssetType,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { appendProjectAssetRecovery } from '../src/client/edit/state-controller/project-asset-trash';
 
 for (const type of [AssetType.AUDIO, AssetType.PICTURE]) {

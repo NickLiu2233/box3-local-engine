@@ -1,5 +1,5 @@
-import { AutoResizeType } from '@box-local/schema/project/ui-rda/defs';
-import type * as I from '@box-local/script-api';
+import { AutoResizeType } from '@box/schema/project/ui-rda/defs';
+import type * as I from '@box/script-api';
 import { Coord2, Vec2, Vec3 } from '../math';
 import { UiNode } from './ui-node';
 import { GameUIRenderable } from 'src/engine/game-ui/nodes/renderable';

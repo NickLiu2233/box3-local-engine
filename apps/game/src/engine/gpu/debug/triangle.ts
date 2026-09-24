@@ -1,4 +1,4 @@
-import { ReWGPU } from '@box-local/rewgpu';
+import { ReWGPU } from '@box/rewgpu';
 
 export function gpuTriangle(rewgpu: ReWGPU) {
   const pipelineRed = rewgpu.createPipeline({

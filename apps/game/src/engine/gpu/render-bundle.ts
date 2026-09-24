@@ -6,7 +6,7 @@ import type {
   IREWGPUGroup,
   ReWGPU,
   REWGPUObject,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import { Spec, UniformStructF32 } from './uniform-pool';
 
 /**

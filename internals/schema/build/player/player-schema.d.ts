@@ -1,4 +1,4 @@
-import { MuStruct, MuUint32, MuUTF8, MuASCII, MuUint8, MuSortedArray, MuUint16, MuVarint, MuSchema, MuBoolean, MuArray, MuDictionary, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuUint32, MuUTF8, MuASCII, MuUint8, MuSortedArray, MuUint16, MuVarint, MuSchema, MuBoolean, MuArray, MuDictionary, MuQuantizedFloat } from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 import { vec3, quat } from 'gl-matrix';
 export declare enum PlayerLoginState {

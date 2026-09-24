@@ -1,5 +1,5 @@
 import { vec2, vec3, vec4, quat, mat2, mat3, mat4 } from 'gl-matrix';
-import { MuFloat32, MuSchema, MuStruct } from '@box-local/mudb/schema';
+import { MuFloat32, MuSchema, MuStruct } from '@box/mudb/schema';
 export declare const NumSchema: MuFloat32;
 export declare const Vec2Schema: MuSchema<vec2>;
 export declare const Vec3Schema: MuSchema<vec3>;

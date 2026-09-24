@@ -3,7 +3,7 @@ import type {
   Buffer as REGLBuffer,
   AttributeConfig,
   Regl,
-} from '@box-local/regl';
+} from '@box/regl';
 import { nextPow2 } from 'bit-twiddle';
 import { Mesh } from '../../rendering/objects/mesh';
 import { MeshGeometry } from '../../rendering/geometries/mesh-geometry';

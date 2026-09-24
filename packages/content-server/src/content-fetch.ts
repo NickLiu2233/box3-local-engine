@@ -1,8 +1,8 @@
 // Client side content resolve gateway
 
 import { ContentServer, DEFAULT_OSS_CDN_PATH, OssCdnPath } from '.';
-import { MuSchema } from '@box-local/mudb/schema';
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuSchema } from '@box/mudb/schema';
+import { MuReadStream } from '@box/mudb/stream';
 import {
   ImageRequest,
   RetrieveImageFunction,
@@ -10,8 +10,8 @@ import {
   retrieveImage,
 } from './image';
 import { DataRequest, retrieveData } from './data';
-import { LoadingController } from '@box-local/utils/loading/loading-controller';
-import { TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
+import { LoadingController } from '@box/utils/loading/loading-controller';
+import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 
 type RequestHandler = [(data: Uint8Array | void) => void, (error: any) => void];
 

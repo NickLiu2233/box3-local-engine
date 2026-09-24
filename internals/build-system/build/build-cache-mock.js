@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MockBuildCache = void 0;
 const crypto_1 = require("crypto");
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 class MockBuildCache {
     constructor() {
         this.cache = {};

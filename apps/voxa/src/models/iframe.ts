@@ -4,8 +4,8 @@ import {
   EventsType,
   AuthEventType,
   ErrorType,
-} from '@box-local/sdk';
-import { ModelResp, ModelType } from '@box-local/apis';
+} from '@box/sdk';
+import { ModelResp, ModelType } from '@box/apis';
 
 import { apis, getAxiosInstance } from '../apis';
 import { store } from '../redux/store';

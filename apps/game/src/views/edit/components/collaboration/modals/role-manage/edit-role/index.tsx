@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 
-import { Input, Switch } from '@box-local/box-design';
-import { PermissionSet } from '@box-local/schema/permissions/permission-rda';
+import { Input, Switch } from '@box/box-design';
+import { PermissionSet } from '@box/schema/permissions/permission-rda';
 import { InputPauseConsumer } from 'src/views/components/input-lock';
 import { InnerRoles } from '../../../index';
 
 import style from './index.module.scss';
 import { clientConfig } from 'src/config/client';
-import { Permissions } from '@box-local/utils/createra-permissions';
+import { Permissions } from '@box/utils/createra-permissions';
 import { RootState } from 'src/redux/edit';
 import { useSelector } from 'react-redux';
 

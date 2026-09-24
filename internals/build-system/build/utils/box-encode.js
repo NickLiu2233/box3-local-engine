@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.interleave3 = interleave3;
 exports.boxCompress = boxCompress;
 exports.meshChunkToBoxes = meshChunkToBoxes;
-const voxel_collision_schema_1 = require("@box-local/schema/voxel/voxel-collision-schema");
-const rbush_schema_1 = require("@box-local/schema/utils/rbush-schema");
+const voxel_collision_schema_1 = require("@box/schema/voxel/voxel-collision-schema");
+const rbush_schema_1 = require("@box/schema/utils/rbush-schema");
 function signEncode(x) {
     const y = x & voxel_collision_schema_1.CHUNK_MASK;
     if (y > 16) {

@@ -4,7 +4,7 @@ exports.deltaList = deltaList;
 exports.patchList = patchList;
 exports.deltaItem = deltaItem;
 exports.patchItem = patchItem;
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 const sorted_array_remove_1 = require("../utils/sorted-array-remove");
 function deltaList(schema, out, base, target) {
     for (let i = 0; i < out.upserts.length; ++i) {

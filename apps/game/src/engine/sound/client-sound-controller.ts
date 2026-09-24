@@ -1,10 +1,10 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
+import { Semaphore } from '@box/utils/semaphore';
 import { GameClientState } from '../game-client-schema';
 import {
   SoundProtocolSchema,
   SoundEffect,
-} from '@box-local/schema/sound/sound-protocol';
+} from '@box/schema/sound/sound-protocol';
 import {
   SoundResourceSchema,
   SoundNodeSchema,
@@ -14,8 +14,8 @@ import {
   SoundResource,
 } from './client-sound-state';
 import { vec3 } from 'gl-matrix';
-import { getById } from '@box-local/utils/id';
-import type { ContentResolver } from '@box-local/content-server/content-fetch';
+import { getById } from '@box/utils/id';
+import type { ContentResolver } from '@box/content-server/content-fetch';
 import { resumeAudioContext } from './resume-audio-context';
 import { userInteract } from '../utils/user-interact';
 import type { EngineProfiler } from '../profile/profiler';

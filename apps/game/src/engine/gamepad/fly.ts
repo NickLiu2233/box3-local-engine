@@ -1,4 +1,4 @@
-import { GameKeys } from '@box-local/schema/input/input-schema';
+import { GameKeys } from '@box/schema/input/input-schema';
 import { FLY_REVERSED_IMG, FLY_IMG, GamepadButtons, TAP_TIME } from './const';
 import { GamepadBtn, Spec } from './interface';
 import {

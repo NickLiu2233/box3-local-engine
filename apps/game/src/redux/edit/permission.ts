@@ -3,7 +3,7 @@ import {
   PermissionAccessLevel,
   PermissionSetSchema,
   Permissions,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 
 export type PermissionState = typeof PermissionSetSchema.identity & {
   localOwner: boolean;

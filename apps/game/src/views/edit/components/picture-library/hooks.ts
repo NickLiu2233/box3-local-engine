@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { IntlShape } from 'react-intl';
 import { Dispatch } from '@reduxjs/toolkit';
 
-import { Modal, Toast } from '@box-local/box-design';
+import { Modal, Toast } from '@box/box-design';
 
 import {
   IMAGE_EXTS_WITHOUT_DOT,
@@ -15,7 +15,7 @@ import { ImageResource } from 'src/engine/resource/schema';
 import { AssetController } from 'src/client/edit/state-controller/asset-controller';
 import { EditContentStorage } from 'src/client/edit/content';
 import { isInvalidFileName } from '../script-manager/utils';
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { AssetType } from '@box/schema/project/project-rda';
 import { assetConflict } from 'src/client/edit/state-controller/asset-controller';
 
 type UploadPictureSpec = {

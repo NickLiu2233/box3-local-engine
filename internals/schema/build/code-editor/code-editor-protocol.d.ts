@@ -1,4 +1,4 @@
-import { MuVoid, MuUTF8, MuStruct, MuBoolean, MuFloat32 } from '@box-local/mudb/schema';
+import { MuVoid, MuUTF8, MuStruct, MuBoolean, MuFloat32 } from '@box/mudb/schema';
 export declare const ShareScriptResSchema: MuStruct<{
     success: MuBoolean;
     errorCode: MuFloat32;
@@ -17,8 +17,8 @@ export declare const CodeEditorProtocol: {
             isShare: MuBoolean;
             isUploading: MuBoolean;
             lockedMapTitle: MuUTF8;
-            lockedMapId: import("@box-local/mudb/schema").MuVarint;
-            size: import("@box-local/mudb/schema").MuVarint;
+            lockedMapId: import("@box/mudb/schema").MuVarint;
+            size: import("@box/mudb/schema").MuVarint;
         }>;
         removeFile: MuUTF8;
         syncCursor: MuStruct<{
@@ -36,7 +36,7 @@ export declare const CodeEditorProtocol: {
             endPosId: MuUTF8;
         }>;
         removeCursor: MuUTF8;
-        syncCursorDict: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+        syncCursorDict: import("@box/mudb/schema").MuDictionary<MuStruct<{
             sessionId: MuUTF8;
             name: MuUTF8;
             fileId: MuUTF8;

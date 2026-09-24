@@ -9,7 +9,7 @@ import {
   MuDate,
   MuOption,
   MuASCII,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { PlayerSkinHashSchema, PlayerSkinHash } from '../player/player-schema';
 import { Vec3Schema } from '../utils/math-schema';
 import { MuNullable } from '../backend/rpc/nullable-schema';

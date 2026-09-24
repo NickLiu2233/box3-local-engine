@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { useIntl } from 'react-intl';
-import { Button, Toast } from '@box-local/box-design';
-import { IconCancel, IconDone } from '@box-local/icons';
+import { Button, Toast } from '@box/box-design';
+import { IconCancel, IconDone } from '@box/icons';
 import { useEdit } from 'src/client/edit/edit-context';
 
 import { UserInfoList } from '../index';
@@ -12,7 +12,7 @@ import { ArenaEditorUIContext } from '../../../editor-ui-context';
 import style from '../index.module.scss';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
-import { CollaborationApplyVO } from '@box-local/apis/dist/createra/data-contracts';
+import { CollaborationApplyVO } from '@box/apis/dist/createra/data-contracts';
 
 type ApplicationListProps = {
   getUsersInfoByIds: (userIds: string[]) => Promise<UserInfoList>;

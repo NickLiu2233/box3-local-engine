@@ -1,5 +1,5 @@
-import { MuSchema } from '@box-local/mudb/schema/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuSchema } from '@box/mudb/schema/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 export declare class CompactModel {
     material: {
         [key: number]: {

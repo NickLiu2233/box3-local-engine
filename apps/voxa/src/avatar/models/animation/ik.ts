@@ -5,11 +5,11 @@ import {
   copyIK,
   playEmotePose,
   playCollapsePose,
-} from '@box-local/schema/animation/compute-ik';
+} from '@box/schema/animation/compute-ik';
 import {
   solveIKConfiguration,
   solveIKPoints,
-} from '@box-local/schema/animation/solve-ik';
+} from '@box/schema/animation/solve-ik';
 import {
   IKConfigurationSchema,
   IKPalette,
@@ -18,7 +18,7 @@ import {
   getTicksBySecond,
   rateKey,
   cycleKey,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 
 const BLENDS: IKPose[] = [];
 const WEIGHTS: number[] = [];

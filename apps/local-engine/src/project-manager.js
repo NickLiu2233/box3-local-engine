@@ -2084,8 +2084,8 @@ function creatorSharedScriptCodec() {
   // module context. `createRequire` stays a Node runtime resolver and follows
   // the deployed game-server dependency tree in both environments.
   const runtimeRequire = createRequire(path.join(repoRoot, 'services/game-server/package.json'))
-  const { ExtraProjectInfoSchema } = runtimeRequire('@box-local/schema/project/hot-schema')
-  const { MuReadStream, MuWriteStream } = runtimeRequire('@box-local/mudb/stream')
+  const { ExtraProjectInfoSchema } = runtimeRequire('@box/schema/project/hot-schema')
+  const { MuReadStream, MuWriteStream } = runtimeRequire('@box/mudb/stream')
   return { ExtraProjectInfoSchema, MuReadStream, MuWriteStream }
 }
 

@@ -1,10 +1,10 @@
 import React from 'react';
-import { DB } from '@box-local/schema/backend/database-type';
+import { DB } from '@box/schema/backend/database-type';
 import { calc_class_name } from 'src/utils/classname';
 import { intlMessage } from 'src/utils/i18n';
 import { dateToStr } from 'src/utils/time';
 import { getIntlStatus } from './statusMessage';
-import { ContentHistorySchema } from '@box-local/schema/backend/rpc/content-protocol';
+import { ContentHistorySchema } from '@box/schema/backend/rpc/content-protocol';
 
 type StatusHistory = typeof ContentHistorySchema.identity[];
 

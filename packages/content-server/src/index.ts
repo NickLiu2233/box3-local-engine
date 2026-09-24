@@ -1,4 +1,4 @@
-import { MuASCII } from '@box-local/mudb/schema';
+import { MuASCII } from '@box/mudb/schema';
 
 //
 // FIXME: Given how many hashes we have, this should be easily optimizable.

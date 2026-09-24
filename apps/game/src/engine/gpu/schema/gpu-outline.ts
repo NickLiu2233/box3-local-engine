@@ -1,4 +1,4 @@
-import { MuStruct } from '@box-local/mudb/schema';
+import { MuStruct } from '@box/mudb/schema';
 import { REWGPUTexture2DSchema } from 'src/engine/utils/rewgpu-schema';
 
 export const GPUOutlineStateSchema = new MuStruct({

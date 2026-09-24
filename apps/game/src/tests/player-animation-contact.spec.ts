@@ -1,4 +1,4 @@
-import { ContactRecordSchema } from '@box-local/schema/physics/physics-schema';
+import { ContactRecordSchema } from '@box/schema/physics/physics-schema';
 import { resolvePlayerAnimationContact } from '../engine/player/player-animation-contact';
 
 describe('player animation contact snapshots', () => {

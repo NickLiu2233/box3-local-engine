@@ -5,7 +5,7 @@ import {
   Menu,
   ToolbarMenuContext,
   ToolbarMenuContextProps,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { getMenuData } from './menu-data';
 import styles from './style.module.scss';
 import { SubMenu } from './sub-menu';

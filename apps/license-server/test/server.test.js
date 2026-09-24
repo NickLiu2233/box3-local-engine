@@ -4,7 +4,7 @@ const crypto = require('node:crypto')
 const test = require('node:test')
 const assert = require('node:assert/strict')
 const { createServer, safeEqual } = require('../server')
-const { verifyTrustedTime } = require('@box-local/license/trusted-time')
+const { verifyTrustedTime } = require('@box/license/trusted-time')
 
 test('admin tokens use constant-time equality', () => {
   assert.equal(safeEqual('a'.repeat(32), 'a'.repeat(32)), true)

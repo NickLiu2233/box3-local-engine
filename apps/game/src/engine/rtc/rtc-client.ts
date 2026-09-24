@@ -1,5 +1,5 @@
 import type { IAgoraRTCClient, IMicrophoneAudioTrack } from 'agora-rtc-sdk-ng';
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { PromiseWrapper } from './promise-wrapper';
 import { RTCProtocol } from './rtc-protocol';
 import { ImportAgoraRTC } from '../defer-imports';

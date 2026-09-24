@@ -1,4 +1,4 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
 import { GameServerState } from '../game-server-schema';
 import {
   ChatProtocolSchema,
@@ -11,10 +11,10 @@ import {
   genStickerText,
   ReceivedChatTxtMsg,
   ReceivedChatStickerMsg,
-} from '@box-local/schema/chat/chat-schema';
-import { getById } from '@box-local/utils/id';
-import { ChatLogEventSchema } from '@box-local/schema/events/chat-event-schema';
-import { Logger } from '@box-local/utils/logger';
+} from '@box/schema/chat/chat-schema';
+import { getById } from '@box/utils/id';
+import { ChatLogEventSchema } from '@box/schema/events/chat-event-schema';
+import { Logger } from '@box/utils/logger';
 import { ContainerType } from '../settings/server-settings-schema';
 import { ServerPlayer } from '../player/player-server-schema';
 import { BackendSocket } from '../../backendSocket';

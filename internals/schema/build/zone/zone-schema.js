@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EnvironmentZoneSetSchema = exports.EnvironmentZoneSchema = exports.PhysicsZoneSetSchema = exports.PhysicsZoneSchema = exports.ZoneSelectorGroupSetSchema = exports.ZoneSelectorGroupSchema = exports.ZoneSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const project_rda_1 = require("../project/project-rda");
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 // common zone stuff
 exports.ZoneSchema = new schema_1.MuStruct({
     id: new schema_1.MuVarint(),

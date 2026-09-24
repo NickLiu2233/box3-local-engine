@@ -1,4 +1,4 @@
-import { MuBoolean, MuQuantizedFloat, MuSortedArray, MuStruct, MuVarint } from '@box-local/mudb/schema';
+import { MuBoolean, MuQuantizedFloat, MuSortedArray, MuStruct, MuVarint } from '@box/mudb/schema';
 export declare const ZoneSchema: MuStruct<{
     id: MuVarint;
     minX: MuQuantizedFloat;
@@ -57,101 +57,101 @@ export declare const EnvironmentZoneSchema: MuStruct<{
     overrideFog: MuBoolean;
     fog: MuStruct<{
         fogColor: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
-        fogStartDistance: import("@box-local/mudb/schema").MuFloat64;
-        fogHeightOffset: import("@box-local/mudb/schema").MuFloat64;
-        fogHeightFalloff: import("@box-local/mudb/schema").MuFloat64;
-        fogDensity: import("@box-local/mudb/schema").MuFloat64;
-        maxFog: import("@box-local/mudb/schema").MuFloat64;
+        fogStartDistance: import("@box/mudb/schema").MuFloat64;
+        fogHeightOffset: import("@box/mudb/schema").MuFloat64;
+        fogHeightFalloff: import("@box/mudb/schema").MuFloat64;
+        fogDensity: import("@box/mudb/schema").MuFloat64;
+        maxFog: import("@box/mudb/schema").MuFloat64;
     }>;
     overrideSky: MuBoolean;
     sky: MuStruct<{
-        skyType: import("@box-local/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
-        globalLight: import("@box-local/mudb/schema").MuFloat64;
-        sunPhase: import("@box-local/mudb/schema").MuFloat64;
-        sunFrequency: import("@box-local/mudb/schema").MuFloat64;
-        lunarPhase: import("@box-local/mudb/schema").MuFloat64;
+        skyType: import("@box/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
+        globalLight: import("@box/mudb/schema").MuFloat64;
+        sunPhase: import("@box/mudb/schema").MuFloat64;
+        sunFrequency: import("@box/mudb/schema").MuFloat64;
+        lunarPhase: import("@box/mudb/schema").MuFloat64;
         sunDirection: MuStruct<{
-            x: import("@box-local/mudb/schema").MuFloat64;
-            y: import("@box-local/mudb/schema").MuFloat64;
-            z: import("@box-local/mudb/schema").MuFloat64;
+            x: import("@box/mudb/schema").MuFloat64;
+            y: import("@box/mudb/schema").MuFloat64;
+            z: import("@box/mudb/schema").MuFloat64;
         }>;
         sunColor: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyLeft: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyRight: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyTop: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyBottom: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyFront: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyBack: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
-        gamma: import("@box-local/mudb/schema").MuFloat32;
+        gamma: import("@box/mudb/schema").MuFloat32;
     }>;
     overrideSnow: MuBoolean;
     snow: MuStruct<{
-        texture: import("@box-local/mudb/schema").MuUTF8;
-        density: import("@box-local/mudb/schema").MuFloat64;
+        texture: import("@box/mudb/schema").MuUTF8;
+        density: import("@box/mudb/schema").MuFloat64;
         size: MuStruct<{
-            w: import("@box-local/mudb/schema").MuFloat64;
-            h: import("@box-local/mudb/schema").MuFloat64;
+            w: import("@box/mudb/schema").MuFloat64;
+            h: import("@box/mudb/schema").MuFloat64;
         }>;
-        fallSpeed: import("@box-local/mudb/schema").MuFloat64;
-        spinSpeed: import("@box-local/mudb/schema").MuFloat64;
+        fallSpeed: import("@box/mudb/schema").MuFloat64;
+        spinSpeed: import("@box/mudb/schema").MuFloat64;
         color: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
-            a: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
+            a: import("@box/mudb/schema").MuFloat64;
         }>;
     }>;
     overrideRain: MuBoolean;
     rain: MuStruct<{
-        density: import("@box-local/mudb/schema").MuFloat64;
+        density: import("@box/mudb/schema").MuFloat64;
         direction: MuStruct<{
-            x: import("@box-local/mudb/schema").MuFloat64;
-            y: import("@box-local/mudb/schema").MuFloat64;
-            z: import("@box-local/mudb/schema").MuFloat64;
+            x: import("@box/mudb/schema").MuFloat64;
+            y: import("@box/mudb/schema").MuFloat64;
+            z: import("@box/mudb/schema").MuFloat64;
         }>;
-        speed: import("@box-local/mudb/schema").MuFloat64;
+        speed: import("@box/mudb/schema").MuFloat64;
         size: MuStruct<{
-            w: import("@box-local/mudb/schema").MuFloat64;
-            h: import("@box-local/mudb/schema").MuFloat64;
+            w: import("@box/mudb/schema").MuFloat64;
+            h: import("@box/mudb/schema").MuFloat64;
         }>;
-        interference: import("@box-local/mudb/schema").MuFloat64;
+        interference: import("@box/mudb/schema").MuFloat64;
         color: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
-            a: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
+            a: import("@box/mudb/schema").MuFloat64;
         }>;
     }>;
 }>;
@@ -168,101 +168,101 @@ export declare const EnvironmentZoneSetSchema: MuSortedArray<MuStruct<{
     overrideFog: MuBoolean;
     fog: MuStruct<{
         fogColor: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
-        fogStartDistance: import("@box-local/mudb/schema").MuFloat64;
-        fogHeightOffset: import("@box-local/mudb/schema").MuFloat64;
-        fogHeightFalloff: import("@box-local/mudb/schema").MuFloat64;
-        fogDensity: import("@box-local/mudb/schema").MuFloat64;
-        maxFog: import("@box-local/mudb/schema").MuFloat64;
+        fogStartDistance: import("@box/mudb/schema").MuFloat64;
+        fogHeightOffset: import("@box/mudb/schema").MuFloat64;
+        fogHeightFalloff: import("@box/mudb/schema").MuFloat64;
+        fogDensity: import("@box/mudb/schema").MuFloat64;
+        maxFog: import("@box/mudb/schema").MuFloat64;
     }>;
     overrideSky: MuBoolean;
     sky: MuStruct<{
-        skyType: import("@box-local/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
-        globalLight: import("@box-local/mudb/schema").MuFloat64;
-        sunPhase: import("@box-local/mudb/schema").MuFloat64;
-        sunFrequency: import("@box-local/mudb/schema").MuFloat64;
-        lunarPhase: import("@box-local/mudb/schema").MuFloat64;
+        skyType: import("@box/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
+        globalLight: import("@box/mudb/schema").MuFloat64;
+        sunPhase: import("@box/mudb/schema").MuFloat64;
+        sunFrequency: import("@box/mudb/schema").MuFloat64;
+        lunarPhase: import("@box/mudb/schema").MuFloat64;
         sunDirection: MuStruct<{
-            x: import("@box-local/mudb/schema").MuFloat64;
-            y: import("@box-local/mudb/schema").MuFloat64;
-            z: import("@box-local/mudb/schema").MuFloat64;
+            x: import("@box/mudb/schema").MuFloat64;
+            y: import("@box/mudb/schema").MuFloat64;
+            z: import("@box/mudb/schema").MuFloat64;
         }>;
         sunColor: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyLeft: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyRight: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyTop: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyBottom: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyFront: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
         skyBack: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
         }>;
-        gamma: import("@box-local/mudb/schema").MuFloat32;
+        gamma: import("@box/mudb/schema").MuFloat32;
     }>;
     overrideSnow: MuBoolean;
     snow: MuStruct<{
-        texture: import("@box-local/mudb/schema").MuUTF8;
-        density: import("@box-local/mudb/schema").MuFloat64;
+        texture: import("@box/mudb/schema").MuUTF8;
+        density: import("@box/mudb/schema").MuFloat64;
         size: MuStruct<{
-            w: import("@box-local/mudb/schema").MuFloat64;
-            h: import("@box-local/mudb/schema").MuFloat64;
+            w: import("@box/mudb/schema").MuFloat64;
+            h: import("@box/mudb/schema").MuFloat64;
         }>;
-        fallSpeed: import("@box-local/mudb/schema").MuFloat64;
-        spinSpeed: import("@box-local/mudb/schema").MuFloat64;
+        fallSpeed: import("@box/mudb/schema").MuFloat64;
+        spinSpeed: import("@box/mudb/schema").MuFloat64;
         color: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
-            a: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
+            a: import("@box/mudb/schema").MuFloat64;
         }>;
     }>;
     overrideRain: MuBoolean;
     rain: MuStruct<{
-        density: import("@box-local/mudb/schema").MuFloat64;
+        density: import("@box/mudb/schema").MuFloat64;
         direction: MuStruct<{
-            x: import("@box-local/mudb/schema").MuFloat64;
-            y: import("@box-local/mudb/schema").MuFloat64;
-            z: import("@box-local/mudb/schema").MuFloat64;
+            x: import("@box/mudb/schema").MuFloat64;
+            y: import("@box/mudb/schema").MuFloat64;
+            z: import("@box/mudb/schema").MuFloat64;
         }>;
-        speed: import("@box-local/mudb/schema").MuFloat64;
+        speed: import("@box/mudb/schema").MuFloat64;
         size: MuStruct<{
-            w: import("@box-local/mudb/schema").MuFloat64;
-            h: import("@box-local/mudb/schema").MuFloat64;
+            w: import("@box/mudb/schema").MuFloat64;
+            h: import("@box/mudb/schema").MuFloat64;
         }>;
-        interference: import("@box-local/mudb/schema").MuFloat64;
+        interference: import("@box/mudb/schema").MuFloat64;
         color: MuStruct<{
-            r: import("@box-local/mudb/schema").MuFloat64;
-            g: import("@box-local/mudb/schema").MuFloat64;
-            b: import("@box-local/mudb/schema").MuFloat64;
-            a: import("@box-local/mudb/schema").MuFloat64;
+            r: import("@box/mudb/schema").MuFloat64;
+            g: import("@box/mudb/schema").MuFloat64;
+            b: import("@box/mudb/schema").MuFloat64;
+            a: import("@box/mudb/schema").MuFloat64;
         }>;
     }>;
 }>>;

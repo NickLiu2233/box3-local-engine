@@ -1,4 +1,4 @@
-import { SUN_TIME, Lightmap, sunColors, Directions } from '@box-local/utils/lightmap';
+import { SUN_TIME, Lightmap, sunColors, Directions } from '@box/utils/lightmap';
 import { vec3 } from 'gl-matrix';
 import { EnvironmentState, EnvironmentParams } from './environment-schema';
 import { EnvironmentSkyType } from '../project/project-rda';

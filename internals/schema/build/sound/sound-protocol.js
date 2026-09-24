@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.SoundProtocolSchema = exports.SoundReplicaSchema = exports.PlayerSoundEffectSetSchema = exports.PlayerSoundEffectSchema = exports.EntitySoundEffectSetSchema = exports.EntitySoundEffectSchema = exports.AmbientSoundEffectSchema = exports.SoundEffectSchema = exports.PlaySoundMessage = exports.PlaySoundPositionSchema = exports.SoundSetSchema = exports.HashSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const quantized_schema_1 = require("../utils/quantized-schema");
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 exports.HashSchema = new schema_1.MuASCII();
 exports.SoundSetSchema = new schema_1.MuArray(exports.HashSchema, Infinity);
 exports.PlaySoundPositionSchema = new schema_1.MuUnion({

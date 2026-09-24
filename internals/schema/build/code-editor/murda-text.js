@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MuRDAText = exports.MuRDATextStore = exports.TextSelection = exports.TextIterator = exports.MuRDATextStoreSchema = exports.MuRDATextStoreEntrySchema = exports.MuRDATextActionSchema = exports.MuRDATextStateSchema = void 0;
 exports.findMatchingIdsInSortedArrays = findMatchingIdsInSortedArrays;
-const schema_1 = require("@box-local/mudb/schema");
-const _id_1 = require("@box-local/mudb/rda/_id");
+const schema_1 = require("@box/mudb/schema");
+const _id_1 = require("@box/mudb/rda/_id");
 const murda_id_1 = require("./murda-id");
 exports.MuRDATextStateSchema = new schema_1.MuUTF8();
 /**

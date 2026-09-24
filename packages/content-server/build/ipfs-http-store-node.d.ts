@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as https from 'https';
 import type { Logger } from 'pino';
 import { ContentServer, Hash } from './index';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 export declare class GoIPFSStore implements ContentServer {
     semaphore: Semaphore;
     protocol: string;

@@ -1,6 +1,6 @@
-import { MuUTF8, MuStruct, MuDictionary } from '@box-local/mudb/schema';
-import { MuRDAText } from '@box-local/schema/code-editor/murda-text';
-import { MuRDARegister, MuRDAStruct, MuRDAMap } from '@box-local/mudb/rda';
+import { MuUTF8, MuStruct, MuDictionary } from '@box/mudb/schema';
+import { MuRDAText } from '@box/schema/code-editor/murda-text';
+import { MuRDARegister, MuRDAStruct, MuRDAMap } from '@box/mudb/rda';
 
 export const ScriptRDA = new MuRDAStruct({
   id: new MuRDARegister(new MuUTF8()),

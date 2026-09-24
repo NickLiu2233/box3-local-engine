@@ -1,4 +1,4 @@
-import { ClientNavigator, DeviceType } from '@box-local/script-api';
+import { ClientNavigator, DeviceType } from '@box/script-api';
 import { isMobile } from 'src/utils/mobile';
 
 type GetScreenSize = () => { width: number; height: number };

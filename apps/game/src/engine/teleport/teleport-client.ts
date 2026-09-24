@@ -1,6 +1,6 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { GameClientState } from '../game-client-schema';
-import { TeleportProtocol } from '@box-local/schema/teleport/teleport-protocol';
+import { TeleportProtocol } from '@box/schema/teleport/teleport-protocol';
 import { messenger } from 'src/messenger';
 import { clientConfig } from 'src/config/client';
 

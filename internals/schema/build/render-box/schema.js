@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RenderBoxSetSchema = exports.RenderBoxSchema = exports.OverlayInfoVisibleScaleEnum = void 0;
-const schema_1 = require("@box-local/mudb/schema");
-const id_1 = require("@box-local/utils/id");
+const schema_1 = require("@box/mudb/schema");
+const id_1 = require("@box/utils/id");
 /**
  * 摄像机到body中心点的距离产生的缩放
  */

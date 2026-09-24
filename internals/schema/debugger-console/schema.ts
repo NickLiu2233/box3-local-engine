@@ -4,7 +4,7 @@ import {
   MuStruct,
   MuArray,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const StackFrameSchema = new MuStruct({
   function: new MuUTF8(),

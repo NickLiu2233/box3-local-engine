@@ -11,10 +11,10 @@ import {
   MuCloseHandler,
   MuMessageHandler,
   MuReadyHandler,
-} from '@box-local/mudb/socket/socket';
+} from '@box/mudb/socket/socket';
 import { Ivm2HostInterface, Ivm2ShellInterface } from './ivm2-script-interface';
-import { Semaphore } from '@box-local/utils/semaphore';
-import { EventBus } from '@box-local/utils/event';
+import { Semaphore } from '@box/utils/semaphore';
+import { EventBus } from '@box/utils/event';
 import { parseIvmError } from './parse-error';
 import { BOILERPLATE_FILENAME, ParsedError } from '../../../script/parse-error';
 import crypto from 'crypto';

@@ -1,4 +1,4 @@
-import type { GroupEntry } from '@box-local/rewgpu';
+import type { GroupEntry } from '@box/rewgpu';
 import { GameClientState } from '../game-client-schema';
 
 /**

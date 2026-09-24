@@ -5,7 +5,7 @@ import {
   QuantizedVec2Schema,
   QuantizedVec4Schema,
 } from 'src/engine/utils/quantized-schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 
 test('quantized-vec2', function () {
   function testDiffPatch(x: vec2, y: vec2, schema: QuantizedVec2Schema) {

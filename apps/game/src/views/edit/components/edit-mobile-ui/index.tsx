@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { vec3 } from 'gl-matrix';
-import { CameraMode } from '@box-local/schema/camera/camera-schema';
+import { CameraMode } from '@box/schema/camera/camera-schema';
 
 import { UI3DContainer, UI3DText, UI3DDirectionSign } from '../ui-3d';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { editor } from 'src/client/edit/edit-client';
 
 import style from './index.module.css';

@@ -1,4 +1,4 @@
-import { MuArray, MuDictionary, MuStruct, MuUint8 } from '@box-local/mudb/schema';
+import { MuArray, MuDictionary, MuStruct, MuUint8 } from '@box/mudb/schema';
 import { Vec3Schema } from '../util';
 
 export const MeshSchema = new MuArray(new MuUint8(), Infinity);

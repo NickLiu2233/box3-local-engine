@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CameraSchema = exports.CameraConfigurationSchema = exports.CameraFreezedAxis = exports.CameraMode = exports.MIN_CAMERA_DISTANCE = exports.EMISSIVE_SCALE = exports.UP = void 0;
 const gl_matrix_1 = require("gl-matrix");
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("../utils/math-schema");
 const frustum_schema_1 = require("../utils/frustum-schema");
 const quantized_schema_1 = require("../utils/quantized-schema");

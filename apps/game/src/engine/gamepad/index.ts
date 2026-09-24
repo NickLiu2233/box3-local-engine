@@ -3,8 +3,8 @@ import {
   playerFlyState,
   PlayerFlyState,
   InputDirectionState,
-} from '@box-local/schema/player/player-schema';
-import { getById } from '@box-local/utils/id';
+} from '@box/schema/player/player-schema';
+import { getById } from '@box/utils/id';
 
 import { SerializedVec2 } from '../interfaces';
 import { InputController } from '../input/input-controller';

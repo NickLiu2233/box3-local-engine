@@ -1,5 +1,5 @@
 import { GameAssetType, GameWorldKeyframe } from '../../api/js/api';
-import { MuFloat32 } from '@box-local/mudb/schema';
+import { MuFloat32 } from '@box/mudb/schema';
 import { EnvironmentSkyType } from '../../project/project-rda';
 import { EnvironmentParamSchema } from '../../environment/environment-schema';
 import { PhysicsParamsSchema } from '../../physics/physics-schema';

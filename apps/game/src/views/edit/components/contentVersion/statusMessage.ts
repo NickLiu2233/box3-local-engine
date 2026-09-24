@@ -1,4 +1,4 @@
-import { DB } from '@box-local/schema/backend/database-type';
+import { DB } from '@box/schema/backend/database-type';
 
 export function getIntlStatus(intl: any, status: DB.ContentStatus) {
   const statusMessage: { [s in DB.ContentStatus]: string } = {

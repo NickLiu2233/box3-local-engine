@@ -9,7 +9,7 @@ import {
   MuUint8,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Uint16Vec3Schema,
   Vec3Schema,

@@ -1,6 +1,6 @@
 import { vec3, vec4 } from 'gl-matrix';
-import { absMod, traverseVoxels } from '@box-local/utils/helper';
-import type { VoxelView } from '@box-local/utils/voxel';
+import { absMod, traverseVoxels } from '@box/utils/helper';
+import type { VoxelView } from '@box/utils/voxel';
 
 export function translateVoxels(model: VoxelView, value: vec3) {
   if (vec3.equals(value, [0, 0, 0])) {

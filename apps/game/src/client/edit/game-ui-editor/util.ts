@@ -1,7 +1,7 @@
-import type { ProjectRDA } from '@box-local/schema/project/project-rda';
-import type { UINode } from '@box-local/schema/project/ui-rda/defs';
-import { isUIElement, isUIScreen } from '@box-local/schema/project/ui-rda/util';
-import { UITree } from '@box-local/schema/project/ui-rda/defs';
+import type { ProjectRDA } from '@box/schema/project/project-rda';
+import type { UINode } from '@box/schema/project/ui-rda/defs';
+import { isUIElement, isUIScreen } from '@box/schema/project/ui-rda/util';
+import { UITree } from '@box/schema/project/ui-rda/defs';
 
 /**
  * 辅助生成layout相关的action

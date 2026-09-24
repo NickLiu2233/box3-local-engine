@@ -1,12 +1,12 @@
-import { MuRDA, MuRDAStore, MuRDATypes } from '@box-local/mudb/rda';
-import { MuRDAActionMeta, MuRDABindableActionMeta } from '@box-local/mudb/rda/rda';
-import { MuArray, MuASCII, MuBoolean, MuDictionary, MuOption, MuSchema, MuSortedArray, MuStruct, MuUTF8 } from '@box-local/mudb/schema';
+import { MuRDA, MuRDAStore, MuRDATypes } from '@box/mudb/rda';
+import { MuRDAActionMeta, MuRDABindableActionMeta } from '@box/mudb/rda/rda';
+import { MuArray, MuASCII, MuBoolean, MuDictionary, MuOption, MuSchema, MuSortedArray, MuStruct, MuUTF8 } from '@box/mudb/schema';
 declare class MuRDATreeStore<ValueRDA extends MuRDA<any, any, any, any>> implements MuRDAStore<MuRDATree<ValueRDA>> {
     keyIndex: {
         [key: string]: MuRDATreeStoreElement<MuRDATree<ValueRDA>>;
     };
     constructor(elements: MuRDATreeStoreElement<MuRDATree<ValueRDA>>[]);
-    state(rda: MuRDATree<ValueRDA>, out: MuRDATypes<MuRDATree<ValueRDA>>['state']): import("@box-local/mudb/schema/dictionary").Dictionary<MuStruct<{
+    state(rda: MuRDATree<ValueRDA>, out: MuRDATypes<MuRDATree<ValueRDA>>['state']): import("@box/mudb/schema/dictionary").Dictionary<MuStruct<{
         id: MuASCII;
         type: MuSchema<TreeNodeType>;
         name: MuUTF8;
@@ -189,7 +189,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
     readonly storeSchema: StoreTypes<ValueRDA>['storeSchema'];
     readonly actionMeta: MuRDATreeMeta<ValueRDA>;
     readonly action: (store: MuRDATreeStore<ValueRDA>) => {
-        add: (node: TreeStructTypes<ValueRDA>["node"]["identity"]) => import("@box-local/mudb/schema/struct").Struct<{
+        add: (node: TreeStructTypes<ValueRDA>["node"]["identity"]) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -211,7 +211,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
                 action: ValueRDA["actionSchema"];
             }>>;
         }>;
-        release: (nodeId: string) => import("@box-local/mudb/schema/struct").Struct<{
+        release: (nodeId: string) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -233,7 +233,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
                 action: ValueRDA["actionSchema"];
             }>>;
         }>;
-        remove: (nodeIds: string[]) => import("@box-local/mudb/schema/struct").Struct<{
+        remove: (nodeIds: string[]) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -259,7 +259,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
             sourceNodeId: string;
             newNode: TreeStructTypes<ValueRDA>["node"]["identity"];
             newChildrenNodes: TreeStructTypes<ValueRDA>["node"]["identity"][];
-        }[]) => import("@box-local/mudb/schema/struct").Struct<{
+        }[]) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -285,7 +285,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
             moveIds: string[];
             insertParentId: string;
             insert?: InsertType;
-        }) => import("@box-local/mudb/schema/struct").Struct<{
+        }) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -310,7 +310,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
         rename: (data: {
             nodeId: string;
             newName: string;
-        }[]) => import("@box-local/mudb/schema/struct").Struct<{
+        }[]) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -332,7 +332,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
                 action: ValueRDA["actionSchema"];
             }>>;
         }>;
-        update: (nodeId: string) => import("@box-local/mudb/schema/struct").Struct<{
+        update: (nodeId: string) => import("@box/mudb/schema/struct").Struct<{
             add: MuArray<MuStruct<{
                 deleted: MuBoolean;
                 id: MuASCII;
@@ -356,7 +356,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
         }> | StripBindAndWrap<ValueRDA>;
     };
     readonly emptyStore: MuRDATreeStore<ValueRDA>;
-    getEmptyAction(): import("@box-local/mudb/schema/struct").Struct<{
+    getEmptyAction(): import("@box/mudb/schema/struct").Struct<{
         add: MuArray<MuStruct<{
             deleted: MuBoolean;
             id: MuASCII;
@@ -383,7 +383,7 @@ export declare class MuRDATree<ValueRDA extends MuRDA<any, any, any, any>> imple
     private _constructUpdateDispatcher;
     findChildElement(parent: StoreTypes<ValueRDA>['storeElementSchema']['identity'], childId: string): {
         index: number;
-        data: import("@box-local/mudb/schema/struct").Struct<{
+        data: import("@box/mudb/schema/struct").Struct<{
             sequence: MuASCII;
             value: MuASCII;
         }>;

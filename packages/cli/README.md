@@ -1,4 +1,4 @@
-# @box-local/cli
+# @box/cli
 
 Creator CLI 的稳定协议包。它提供 API 版本、URL 构造、权限范围、请求校验和项目脚本写入适配器，供 Creator HTTP 路由与外部 CLI 共用。
 

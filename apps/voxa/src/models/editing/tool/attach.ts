@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { EditingMode, inRange, traverseVoxels } from '@box-local/utils/helper';
+import { EditingMode, inRange, traverseVoxels } from '@box/utils/helper';
 import type { AttachPreview } from '../attach-preview';
 import { BoxBoundary, GetCamera, PointerDownSnapshot } from '../interfaces';
 import {
@@ -10,7 +10,7 @@ import {
 import { BasicTool, Params } from './base';
 import { BoxBuildingStep } from '../mode/box-builder';
 import type { Operation } from '../mode/interfaces';
-import type { VoxelView } from '@box-local/utils/voxel';
+import type { VoxelView } from '@box/utils/voxel';
 import { store } from '../../../redux/store';
 import { PointerAction } from '../../../redux/app-slice';
 

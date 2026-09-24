@@ -5,16 +5,16 @@ import {
   MuUint32,
   MuSchema,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { HashSchema } from '@box-local/content-server';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { VoxelView } from '@box-local/utils/voxel';
-import type { VoxelCollisionChunk } from '@box-local/schema/voxel/voxel-collision-schema';
+} from '@box/mudb/schema';
+import { HashSchema } from '@box/content-server';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { VoxelView } from '@box/utils/voxel';
+import type { VoxelCollisionChunk } from '@box/schema/voxel/voxel-collision-schema';
 import {
   VoxelWriteSchema,
   BatchWriteSchema,
-} from '@box-local/schema/voxel/voxel-protocol';
-import { VoxelCollisionBoxListSchema } from '@box-local/schema/utils/rbush-schema';
+} from '@box/schema/voxel/voxel-protocol';
+import { VoxelCollisionBoxListSchema } from '@box/schema/utils/rbush-schema';
 
 export const ServerVoxelPreloadDataSchema = new MuStruct({
   nx: new MuUint32(),

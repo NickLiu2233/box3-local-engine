@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoxelCollisionSchema = exports.VoxelCollisionChunkSchema = exports.CHUNK_MASK = exports.CHUNK_SIZE = exports.CHUNK_SHIFT = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const rbush_schema_1 = require("../utils/rbush-schema");
 exports.CHUNK_SHIFT = 5;
 exports.CHUNK_SIZE = 1 << exports.CHUNK_SHIFT;

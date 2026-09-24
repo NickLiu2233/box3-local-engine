@@ -1,4 +1,4 @@
-import { LogSink, LogLevel, LogMessage } from '@box-local/utils/logger';
+import { LogSink, LogLevel, LogMessage } from '@box/utils/logger';
 
 export function filterSink(
   filteredSink: LogSink,

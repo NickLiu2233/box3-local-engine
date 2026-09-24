@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Select, SelectProps } from '@box-local/box-design';
+import { Select, SelectProps } from '@box/box-design';
 import styles from './style.module.scss';
 import { InlineNamedInput } from '../inline-named-input';
 import { calc_class_name } from 'src/utils/classname';

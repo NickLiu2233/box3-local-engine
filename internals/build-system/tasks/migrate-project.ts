@@ -9,8 +9,8 @@ import {
 import {
   GroupProjectStateSchema,
   ProjectRDA,
-} from '@box-local/schema/project/project-rda';
-import { GroupProjectStateV26 } from '@box-local/schema/group-project/schema-v0-3-26';
+} from '@box/schema/project/project-rda';
+import { GroupProjectStateV26 } from '@box/schema/group-project/schema-v0-3-26';
 
 const CURRENT_VERSION = ProjectRDA.stateSchema.identity.version;
 

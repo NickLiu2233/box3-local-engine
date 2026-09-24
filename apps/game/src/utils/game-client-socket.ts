@@ -3,7 +3,7 @@ import {
   MuSocket,
   MuSocketSpec,
   MuSocketState,
-} from '@box-local/mudb/socket/socket';
+} from '@box/mudb/socket/socket';
 
 // wraps MuSocket to defer socket construction
 export class GameClientSocket implements MuSocket {

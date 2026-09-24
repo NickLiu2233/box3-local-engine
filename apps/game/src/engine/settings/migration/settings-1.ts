@@ -1,5 +1,5 @@
 import { Settings } from '../settings-schema';
-import { GameKeys } from '@box-local/schema/input/input-schema';
+import { GameKeys } from '@box/schema/input/input-schema';
 
 export default function (settings: Settings) {
   settings.masterMute = true;

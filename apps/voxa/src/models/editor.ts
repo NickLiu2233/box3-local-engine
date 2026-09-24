@@ -1,9 +1,9 @@
 import { nanoid } from 'nanoid';
 import type { IntlShape } from 'react-intl';
 import EventEmitter from 'events';
-import type { Regl } from '@box-local/regl';
-import { ContentType, ModelType, Permissions } from '@box-local/apis';
-import { Toast, Modal } from '@box-local/box-design';
+import type { Regl } from '@box/regl';
+import { ContentType, ModelType, Permissions } from '@box/apis';
+import { Toast, Modal } from '@box/box-design';
 import {
   AppMode,
   LaunchState,

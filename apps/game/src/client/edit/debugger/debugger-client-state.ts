@@ -7,9 +7,9 @@ import {
   MuUint32,
   MuArray,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { GameLogLevel } from '@box-local/schema/api/console';
-import { ParsedErrorSchema } from '@box-local/schema/debugger-console/schema';
+} from '@box/mudb/schema';
+import { GameLogLevel } from '@box/schema/api/console';
+import { ParsedErrorSchema } from '@box/schema/debugger-console/schema';
 
 export const LogEntrySchema = new MuStruct({
   level: <MuSchema<GameLogLevel>>new MuUint8(GameLogLevel.INFO),

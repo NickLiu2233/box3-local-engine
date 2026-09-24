@@ -1,4 +1,4 @@
-import { MuUnion, MuBoolean, MuVarint, MuStruct, MuASCII, MuUTF8, MuVoid, MuArray } from '@box-local/mudb/schema';
+import { MuUnion, MuBoolean, MuVarint, MuStruct, MuASCII, MuUTF8, MuVoid, MuArray } from '@box/mudb/schema';
 export declare const AdminCommandSchema: MuUnion<{
     pollUsers: MuVoid;
     ghost: MuBoolean;

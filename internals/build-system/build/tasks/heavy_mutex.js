@@ -4,7 +4,7 @@
 //  to run sequentially.
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BUILD_HEAVY_LOCK = void 0;
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 // another dumb hack.  used to force serial execution for heavy tasks to avoid too many concurrent allocations.
 exports.BUILD_HEAVY_LOCK = new semaphore_1.Semaphore(1);
 //# sourceMappingURL=heavy_mutex.js.map

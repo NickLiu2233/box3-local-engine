@@ -6,11 +6,11 @@ import {
   MuSortedArray,
   MuUTF8,
   MuASCII,
-} from '@box-local/mudb/schema';
-import { Vec3Schema, BoundsSchema } from '@box-local/schema/utils/math-schema';
-import { compareId } from '@box-local/utils/id';
-import { PlayerLoginState } from '@box-local/schema/player/player-schema';
-import { UserIdSchema } from '@box-local/schema/permissions/permission-rda';
+} from '@box/mudb/schema';
+import { Vec3Schema, BoundsSchema } from '@box/schema/utils/math-schema';
+import { compareId } from '@box/utils/id';
+import { PlayerLoginState } from '@box/schema/player/player-schema';
+import { UserIdSchema } from '@box/schema/permissions/permission-rda';
 
 // -----------------------------------------------------------
 // Server side player state

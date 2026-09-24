@@ -1,4 +1,4 @@
-import type { DrawCommand, Regl } from '@box-local/regl';
+import type { DrawCommand, Regl } from '@box/regl';
 import { Line } from './line';
 import { Object3DType } from './object3d';
 import { Geometry } from '../geometry';

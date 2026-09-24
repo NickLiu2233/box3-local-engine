@@ -1,4 +1,4 @@
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 
 export type DataRequest = {
   data: Uint8Array | null;

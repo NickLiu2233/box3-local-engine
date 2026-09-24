@@ -1,5 +1,5 @@
 import { ReactNode, memo, useMemo } from 'react';
-import { useClassName } from '@box-local/box-design';
+import { useClassName } from '@box/box-design';
 
 import { InlineNamedCheckbox } from '../inline-named-checkbox';
 

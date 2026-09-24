@@ -7,20 +7,20 @@ import {
   MuVarint,
   MuFloat64,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   NetStateSchema,
   NetInputSchema,
   TimestampedClientInputSchema,
-} from '@box-local/schema/net/net-schema';
+} from '@box/schema/net/net-schema';
 import {
   NetSecretSchema,
   NetPublicSetSchema,
-} from '@box-local/schema/net/net-schema';
-import { ContactIndexSchema } from '@box-local/schema/physics/physics-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/schema/net/net-schema';
+import { ContactIndexSchema } from '@box/schema/physics/physics-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
 
 export const SERVER_MAX_CLIENT_INPUTS = 100;
 export const SERVER_SECRET_PACKET_SIZE = 1 << 18;

@@ -13,8 +13,8 @@ import {
   UIScrollbarVertical,
   UIScrollbarVisibility,
   UITextFontFamily,
-} from '@box-local/schema/project/ui-rda/defs';
-import type { MenuItemOptions } from '@box-local/box-design';
+} from '@box/schema/project/ui-rda/defs';
+import type { MenuItemOptions } from '@box/box-design';
 import { CARD_ID_PREFIX, PropTabType, isPropTabType } from './defs';
 import type { AxisInputValue } from './inputs/axis-input';
 import { isEnumType } from 'src/engine/utils/enum-type-guard';

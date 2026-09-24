@@ -3,7 +3,7 @@
 const assert = require('node:assert/strict')
 const crypto = require('node:crypto')
 const test = require('node:test')
-const { verifyLicense } = require('@box-local/license')
+const { verifyLicense } = require('@box/license')
 const { createLicenseIssuer } = require('../issuer')
 
 test('offline issuer creates a device-bound non-commercial license without persistence', () => {

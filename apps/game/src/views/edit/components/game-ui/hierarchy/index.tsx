@@ -19,30 +19,30 @@ import {
   Tree,
   TreeHandle,
   TreeNode,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import {
   IconDropUp,
   IconInput,
   IconScreenUiSet,
   IconScrollBox,
-} from '@box-local/icons';
+} from '@box/icons';
 
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 
 import { ArenaEditorUIContext } from '../../../editor-ui-context';
-import { isUIElement, isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { isUIElement, isUIScreen } from '@box/schema/project/ui-rda/util';
 import {
   IconFrame,
   IconImageLabel,
   IconScreenUi,
   IconTextbox,
-} from '@box-local/icons';
+} from '@box/icons';
 import {
   DEFAULT_SCREEN_ID,
   UITree,
   UITreeRDA,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import styles from './style.module.scss';
 import {
   isValidName,
@@ -60,7 +60,7 @@ import {
 } from 'src/redux/edit/game-ui';
 import { useEdit } from 'src/client/edit/edit-context';
 import { Search } from 'src/views/edit/components/search';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
 import { DefaultTag } from 'src/views/edit/components/game-ui/screen-list/default-tag';
 
 type Props = {

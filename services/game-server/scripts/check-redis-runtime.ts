@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
-import type { BuildCacheAPI } from '@box-local/build-system/type';
-import { GameSessionDataSchema } from '@box-local/schema/session/schema';
+import type { BuildCacheAPI } from '@box/build-system/type';
+import { GameSessionDataSchema } from '@box/schema/session/schema';
 import { getFakeUser } from '../src/session/fake';
 import { GameSession } from '../src/session/server';
 import type { RuntimeRedisStore } from '../src/redis/runtime-redis';

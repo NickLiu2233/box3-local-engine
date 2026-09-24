@@ -1,4 +1,4 @@
-import type { IREWGPUBuffer, IREWGPUGroup, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUBuffer, IREWGPUGroup, ReWGPU } from '@box/rewgpu';
 import { mat4, vec2, vec3, vec4 } from 'gl-matrix';
 import { CommonUniformEntries, CommonUniformLayout } from './interface';
 import { GameClientState } from '../game-client-schema';

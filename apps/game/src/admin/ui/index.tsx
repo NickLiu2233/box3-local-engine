@@ -1,5 +1,5 @@
-import { AdminUser } from '@box-local/schema/admin/admin-protocol';
-import { AssetType, EntitySeedRDA } from '@box-local/schema/project/project-rda';
+import { AdminUser } from '@box/schema/admin/admin-protocol';
+import { AssetType, EntitySeedRDA } from '@box/schema/project/project-rda';
 import { quat, vec3, vec4 } from 'gl-matrix';
 import React, { useEffect } from 'react';
 import { createRoot, Root } from 'react-dom/client';

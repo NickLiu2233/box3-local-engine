@@ -6,7 +6,7 @@ exports.addBodyContactRecord = addBodyContactRecord;
 exports.addFluidContactRecord = addFluidContactRecord;
 exports.compactContactIndex = compactContactIndex;
 const physics_schema_1 = require("./physics-schema");
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 const CONTACT_TOLERANCE = 1e-3;
 function findContact(index, id) {
     const idx = (0, id_1.indexEq)(index, id);

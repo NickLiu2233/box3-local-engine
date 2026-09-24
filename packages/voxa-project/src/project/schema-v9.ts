@@ -4,7 +4,7 @@ import {
   MuSchema,
   MuStruct,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   VoxelsSchema,
   NodesSchema,

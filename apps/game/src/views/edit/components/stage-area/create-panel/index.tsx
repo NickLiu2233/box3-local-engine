@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
-import { IconTerrain, IconModel, IconScene } from '@box-local/icons';
+import { IconTerrain, IconModel, IconScene } from '@box/icons';
 
 import { EditorUIEvent } from 'src/client/edit/schema';
 import { RootState } from 'src/redux/edit';

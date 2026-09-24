@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameReplicaSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const environment_schema_1 = require("../environment/environment-schema");
 const model_schema_1 = require("../mesh/model-schema");
 const player_schema_1 = require("../player/player-schema");

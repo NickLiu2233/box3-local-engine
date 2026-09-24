@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuBoolean } from '@box/mudb/schema';
 import { Vec3Schema } from '../utils/math-schema';
 
 export const PlayerInputEventSchema = new MuStruct({

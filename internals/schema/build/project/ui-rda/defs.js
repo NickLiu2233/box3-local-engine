@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UITreeRDA = exports.PointerEventBehavior = exports.DEFAULT_SCREEN_NAME = exports.DEFAULT_SCREEN_ID = exports.UINodeRDA = exports.UINodeSpec = exports.UIElementRDA = exports.UIElementSpec = exports.UIScrollBoxRDA = exports.UIScrollbarVisibility = exports.UIScrollbarVertical = exports.UIScrollbarHorizontal = exports.UIScrollDirection = exports.UIImageRDA = exports.UIImageDisplayModeRDA = exports.ImageDisplayMode = exports.UITextRDA = exports.UIInputRDA = exports.UITextFontFamily = exports.UIBoxRDA = exports.UIScreenRDA = exports.UILayoutRDA = exports.UIAutoLayoutRDA = exports.AutoLayoutVerticalAlignType = exports.AutoLayoutHorizontalAlignType = exports.AutoLayoutFillDirection = exports.AutoLayoutStartCorner = exports.TextYAlignType = exports.TextXAlignType = exports.UIAutoResizeRDA = exports.AutoResizeType = exports.UICoord2RDA = void 0;
-const rda_1 = require("@box-local/mudb/rda");
-const schema_1 = require("@box-local/mudb/schema");
+const rda_1 = require("@box/mudb/rda");
+const schema_1 = require("@box/mudb/schema");
 const murda_union_1 = require("../murda-union");
 const murda_tree_1 = require("../murda-tree");
 const quantized_schema_1 = require("../../utils/quantized-schema");

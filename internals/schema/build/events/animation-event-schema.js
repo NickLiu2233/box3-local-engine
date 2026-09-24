@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AnimationEventSchema = exports.FlyEventSchema = exports.CrouchEventSchema = exports.LeaveWaterEventSchema = exports.EnterWaterEventSchema = exports.SwimStrokeEventSchema = exports.LandEventSchema = exports.DoubleJumpEventSchema = exports.JumpEventSchema = exports.FootStepEventSchema = exports.FootType = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("../utils/math-schema");
 var FootType;
 (function (FootType) {

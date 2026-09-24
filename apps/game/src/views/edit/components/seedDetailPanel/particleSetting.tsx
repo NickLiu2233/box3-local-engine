@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { vec3 } from 'gl-matrix';
-import { ParticleConfig } from '@box-local/schema/project/project-rda';
+import { ParticleConfig } from '@box/schema/project/project-rda';
 
 import { Vec3Slider } from '../basic/vec3Slider';
 import { ColorInput } from '../basic/inputColor';

@@ -6,9 +6,9 @@ import {
   UICoord2,
   UITextFontFamily,
   UITree,
-} from '@box-local/schema/project/ui-rda/defs';
-import { isUIElement } from '@box-local/schema/project/ui-rda/util';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
+} from '@box/schema/project/ui-rda/defs';
+import { isUIElement } from '@box/schema/project/ui-rda/util';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
 import type { GameUINode } from './nodes/base';
 import type { GameUIRenderable } from './nodes/renderable';
 import {

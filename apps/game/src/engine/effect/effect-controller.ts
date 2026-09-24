@@ -13,13 +13,13 @@ import {
 import { vec2, vec3 } from 'gl-matrix';
 import { sampleLightBox } from '../voxel/voxel-controller';
 import { LightQueryMask } from '../voxel/light-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { vibrateDevice } from './vibrate';
 import {
   playSoundEffectLocal,
   playSoundEffectSpatial,
 } from '../sound/client-sound-controller';
-import { PlayerButtonState } from '@box-local/schema/player/player-schema';
+import { PlayerButtonState } from '@box/schema/player/player-schema';
 
 function unpackTexCoord(coord: vec2, texCode: number) {
   vec2.set(coord, texCode & 0xff, (texCode >> 8) & 0xff);

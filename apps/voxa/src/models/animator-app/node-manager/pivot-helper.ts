@@ -1,4 +1,4 @@
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import type { WebGLRenderer } from '../../rendering/webgl-renderer';
 import type { SkinPart } from '../../skin-part';
 import { mat4, quat, vec2, vec3 } from 'gl-matrix';

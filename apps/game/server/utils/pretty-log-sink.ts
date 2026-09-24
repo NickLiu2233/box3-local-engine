@@ -1,4 +1,4 @@
-import { LogSink, LogLevel } from '@box-local/utils/logger';
+import { LogSink, LogLevel } from '@box/utils/logger';
 
 const logFunctions = {
   [LogLevel.ERROR]: console.error.bind(console),

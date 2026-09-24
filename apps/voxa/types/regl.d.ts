@@ -1,8 +1,8 @@
-import { REGL } from '@box-local/regl';
+import { REGL } from '@box/regl';
 
 // TODO Regl进仓库了，考虑后续搬过去
 // TODO 顺便改下DrawConfig里depth、cull的类型
-declare module '@box-local/regl' {
+declare module '@box/regl' {
   export interface Regl {
     prop<Props extends {}>(
       name: keyof Props,

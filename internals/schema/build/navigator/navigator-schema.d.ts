@@ -1,4 +1,4 @@
-import { MuStruct, MuUTF8, MuJSON, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuUTF8, MuJSON, MuBoolean } from '@box/mudb/schema';
 export declare const PostMessageScriptSchema: MuStruct<{
     type: MuUTF8;
     value: MuStruct<any>;

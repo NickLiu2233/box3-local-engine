@@ -1,6 +1,6 @@
 import * as http from 'http';
 import * as https from 'https';
-import { MuRemoteClient, MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuRemoteClient, MuServer, MuServerProtocol } from '@box/mudb/server';
 import { HttpScriptProtocol } from './http-protocol';
 
 export class HttpScriptController {

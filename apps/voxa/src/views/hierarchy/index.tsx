@@ -21,7 +21,7 @@ import {
   Tree,
   TreeHandle,
   TreeNode,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import styles from './style.module.scss';
 import { useAppSelector } from '../../redux/store';
 import {

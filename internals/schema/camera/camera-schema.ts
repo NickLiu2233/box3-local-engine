@@ -7,7 +7,7 @@ import {
   MuSchema,
   MuVarint,
   MuUint8,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Mat4Schema,
   Vec3Schema,

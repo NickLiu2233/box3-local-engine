@@ -1,4 +1,4 @@
-import { Id } from '@box-local/mudb/rda/_id';
+import { Id } from '@box/mudb/rda/_id';
 export interface AllocIdsData {
     beginId: Id;
     step: number;

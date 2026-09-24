@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/mudb",
+  "name": "@box/mudb",
   "version": "1.0.4",
   "description": "Real-time database for multiplayer games",
   "keywords": [

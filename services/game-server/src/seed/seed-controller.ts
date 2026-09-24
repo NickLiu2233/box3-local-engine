@@ -1,18 +1,18 @@
 import { GameServerState } from '../game-server-schema';
 import { destroyEntityId, createEntityId } from '../entity/entity-controller';
 import { SeedLinkSchema } from './seed-schema';
-import { Seed } from '@box-local/schema/project/hot-schema';
+import { Seed } from '@box/schema/project/hot-schema';
 import {
   RigidBodySchema,
   RigidBodyFlags,
-} from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/physics/physics-schema';
 import {
   NetModelSetSchema,
   NetModelSchema,
-} from '@box-local/schema/mesh/model-schema';
-import { DamageSchema } from '@box-local/schema/damage/damage-schema';
+} from '@box/schema/mesh/model-schema';
+import { DamageSchema } from '@box/schema/damage/damage-schema';
 import { copyConfigToDamage } from '../damage/damage-server';
-import { MAX_BODIES } from '@box-local/schema/physics/physics-solve';
+import { MAX_BODIES } from '@box/schema/physics/physics-solve';
 import { resolveActiveSeedMeshId } from './active-seed-mesh';
 
 function clearSeeds(state: GameServerState) {

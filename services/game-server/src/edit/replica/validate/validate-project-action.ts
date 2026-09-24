@@ -1,5 +1,5 @@
-import { PermissionSet } from '@box-local/schema/permissions/permission-rda';
-import { ProjectAction } from '@box-local/schema/replica/replica-schema';
+import { PermissionSet } from '@box/schema/permissions/permission-rda';
+import { ProjectAction } from '@box/schema/replica/replica-schema';
 
 export function checkProjectActionSequence(
   permissions: PermissionSet,

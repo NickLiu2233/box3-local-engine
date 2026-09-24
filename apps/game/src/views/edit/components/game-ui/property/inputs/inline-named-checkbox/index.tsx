@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Checkbox, CheckboxProps } from '@box-local/box-design';
+import { Checkbox, CheckboxProps } from '@box/box-design';
 import { InlineNamedInput } from '../inline-named-input';
 import styles from './style.module.scss';
 

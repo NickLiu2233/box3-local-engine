@@ -1,4 +1,4 @@
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 import {
   Vec3Schema,
   Vec4Schema,
@@ -8,8 +8,8 @@ import {
   Mat2Schema,
   QuatSchema,
 } from './math-schema';
-import { MuServer } from '@box-local/mudb/server';
-import { MuClient } from '@box-local/mudb/client';
+import { MuServer } from '@box/mudb/server';
+import { MuClient } from '@box/mudb/client';
 
 export class SchemaTraceEntry {
   public name: string;

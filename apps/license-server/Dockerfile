@@ -5,8 +5,8 @@ ENV CI=true RUSH_PNPM_STORE_PATH=/pnpm/store
 WORKDIR /workspace
 COPY . .
 RUN --mount=type=cache,id=box-license-server-pnpm,target=/pnpm/store \
-    node common/scripts/install-run-rush.js install --to @box-local/license-server \
-    && node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box-local/license-server --prod --legacy /opt/license-server
+    node common/scripts/install-run-rush.js install --to @box/license-server \
+    && node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy --filter @box/license-server --prod --legacy /opt/license-server
 
 FROM ${NODE_IMAGE}
 ENV NODE_ENV=production \

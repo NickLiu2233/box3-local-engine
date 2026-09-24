@@ -1,4 +1,4 @@
-import { GameKeys } from '@box-local/schema/input/input-schema';
+import { GameKeys } from '@box/schema/input/input-schema';
 import {
   A_IMG,
   B_IMG,

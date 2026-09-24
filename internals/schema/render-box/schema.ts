@@ -5,8 +5,8 @@ import {
   MuVarint,
   MuSortedArray,
   MuOption,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 
 /**
  * 摄像机到body中心点的距离产生的缩放

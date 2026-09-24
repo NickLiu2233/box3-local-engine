@@ -1,7 +1,7 @@
 import React, { useCallback, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
-import { ItemId } from '@box-local/box-design';
+import { ItemId } from '@box/box-design';
 
 import { ContextMenu, ContextmenuData } from '../context-menu';
 import { useEdit } from 'src/client/edit/edit-context';

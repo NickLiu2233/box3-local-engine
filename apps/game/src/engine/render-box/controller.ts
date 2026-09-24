@@ -4,7 +4,7 @@ import {
   RenderBoxSet,
   RenderBox,
   RenderBoxSchema,
-} from '@box-local/schema/render-box/schema';
+} from '@box/schema/render-box/schema';
 
 const MAT3 = mat3.create();
 

@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { useIntl } from 'react-intl';
-import { IconPositionX, IconPositionY } from '@box-local/icons';
+import { IconPositionX, IconPositionY } from '@box/icons';
 import {
   AnchorAxisInput,
   AnchorAxisValue,

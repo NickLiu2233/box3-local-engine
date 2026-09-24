@@ -7,7 +7,7 @@ import {
   createPlayerUserKey,
   signRuntimePlayerIdentity,
   verifyRuntimePlayerIdentity,
-} from '@box-local/utils/local-player-identity';
+} from '@box/utils/local-player-identity';
 
 import { LocalDataStorage } from '../src/storage/local-data-storage';
 

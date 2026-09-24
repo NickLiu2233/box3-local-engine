@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient, type PoolConfig, type QueryResultRow } from 'pg';
 
-import type { ListPageOptions } from '@box-local/schema/api/js/storage';
-import type { Logger } from '@box-local/utils/logger';
+import type { ListPageOptions } from '@box/schema/api/js/storage';
+import type { Logger } from '@box/utils/logger';
 import type {
   CommonGameDataServer,
   ReturnValue,

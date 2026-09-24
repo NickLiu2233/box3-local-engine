@@ -1,4 +1,4 @@
-import { MuStruct, MuUint32, MuFloat64, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuUint32, MuFloat64, MuBoolean } from '@box/mudb/schema';
 import { RigidBodySet } from '../physics/physics-schema';
 import { Vec3Schema } from '../utils/math-schema';
 import { boxRayIntersectRecip } from './box-collide';

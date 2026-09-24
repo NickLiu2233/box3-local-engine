@@ -10,7 +10,7 @@
     "declarationMap": true,
     "baseUrl": ".",
     "paths": {
-      "@box-local/*": ["../../internals/*"]
+      "@box/*": ["../../internals/*"]
     }
   },
   "include": ["./src"]

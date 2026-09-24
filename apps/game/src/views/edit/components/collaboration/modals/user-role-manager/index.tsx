@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ModalView } from '@box-local/box-design/build/modal';
+import { ModalView } from '@box/box-design/build/modal';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
 
@@ -15,7 +15,7 @@ import { throttle } from 'src/utils/debounce-throttle';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
 import { getRoleId } from 'src/views/edit/components/collaboration/transform';
-import { Toast } from '@box-local/box-design';
+import { Toast } from '@box/box-design';
 
 type UserRoleManagerProps = {
   currentPanel: PanelType;

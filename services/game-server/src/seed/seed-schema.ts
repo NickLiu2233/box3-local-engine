@@ -4,8 +4,8 @@ import {
   MuASCII,
   MuSortedArray,
   MuDictionary,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 
 export const SeedLinkSchema = new MuStruct({
   id: new MuInt32(0), // entity id

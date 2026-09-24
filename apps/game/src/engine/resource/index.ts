@@ -1,6 +1,6 @@
-import type { ContentResolver } from '@box-local/content-server/content-fetch';
-import type { RetrieveImageFunction } from '@box-local/content-server/image';
-import type { GLTFMetaData } from '@box-local/schema/mesh/model-schema';
+import type { ContentResolver } from '@box/content-server/content-fetch';
+import type { RetrieveImageFunction } from '@box/content-server/image';
+import type { GLTFMetaData } from '@box/schema/mesh/model-schema';
 import {
   ImageResourceSchema,
   ImageStatus,

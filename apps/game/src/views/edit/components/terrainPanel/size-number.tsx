@@ -1,4 +1,4 @@
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';

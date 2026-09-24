@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/box-design",
+  "name": "@box/box-design",
   "version": "1.0.6",
   "description": "An UI component library for box",
   "license": "UNLICENSED",
@@ -13,7 +13,7 @@
     "build:watch": "npm run build"
   },
   "dependencies": {
-    "@box-local/icons": "workspace:~1.0.0",
+    "@box/icons": "workspace:~1.0.0",
     "ramda": "0.28.0",
     "react": "19.2.1",
     "react-dom": "19.2.1",

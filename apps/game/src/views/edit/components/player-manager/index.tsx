@@ -8,9 +8,9 @@ import React, {
 import { useDispatch } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { IconProjectSkin, IconGame, IconInfo } from '@box-local/icons';
-import { TooltipTrigger } from '@box-local/box-design';
-import { CreativeMode, REQUEST_TIMEOUT, ModelType, SortOrder } from '@box-local/apis';
+import { IconProjectSkin, IconGame, IconInfo } from '@box/icons';
+import { TooltipTrigger } from '@box/box-design';
+import { CreativeMode, REQUEST_TIMEOUT, ModelType, SortOrder } from '@box/apis';
 
 import { MenuModal, Panel } from './menu-modal';
 import { setCenterPanel } from 'src/redux/edit/creator';

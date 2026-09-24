@@ -1,6 +1,6 @@
 import React from 'react';
-import { GameLogLevel } from '@box-local/schema/api/console';
-import type { ParsedError } from '@box-local/schema/debugger-console/schema';
+import { GameLogLevel } from '@box/schema/api/console';
+import type { ParsedError } from '@box/schema/debugger-console/schema';
 import { DebuggerClientStateSchema } from 'src/client/edit/debugger/debugger-client-state';
 import { InputPauseConsumer } from '../../../components/input-lock';
 import { editor } from 'src/client/edit/edit-client';

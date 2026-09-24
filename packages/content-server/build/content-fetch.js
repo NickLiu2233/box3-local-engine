@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContentResolver = void 0;
 const _1 = require(".");
-const stream_1 = require("@box-local/mudb/stream");
+const stream_1 = require("@box/mudb/stream");
 const image_1 = require("./image");
 const data_1 = require("./data");
-const loading_schema_1 = require("@box-local/utils/loading/loading-schema");
+const loading_schema_1 = require("@box/utils/loading/loading-schema");
 const XHR_TIMEOUT = 5000;
 const XHR_RETRY = 5;
 class ContentRequest {

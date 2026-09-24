@@ -18,8 +18,8 @@ import {
   TabPanel,
   Button,
   TooltipTrigger,
-} from '@box-local/box-design';
-import { IconPosition, IconRotation, IconScale, IconOpacity } from '@box-local/icons';
+} from '@box/box-design';
+import { IconPosition, IconRotation, IconScale, IconOpacity } from '@box/icons';
 import { VoxelEditorContext } from '../../internals';
 import { AnimatorMode, HitBoxMode, ToolAxis } from '../../redux/animator-slice';
 import { RootState, store, useAppSelector } from '../../redux/store';

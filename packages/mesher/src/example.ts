@@ -1,8 +1,8 @@
 import { voxelsToMeshes, unpackMeshData } from './index';
-import { MuArray, MuStruct } from '@box-local/mudb/schema';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuArray, MuStruct } from '@box/mudb/schema';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { MeshDataSchema, MeshTextureSchema } from './schema';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 
 const MeshSchema = new MuStruct({
   texture: MeshTextureSchema,

@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import type { ReWGPU } from '@box-local/rewgpu';
+import type { ReWGPU } from '@box/rewgpu';
 import type { ParsedGLTFMesh } from './interfaces';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import { GPUMeshSchema, type GPUMesh } from '../gpu-controller/gpu-mesh-schema';

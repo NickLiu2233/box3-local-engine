@@ -1,15 +1,15 @@
 import {
   CHUNK_MASK,
   CHUNK_SIZE,
-} from '@box-local/schema/voxel/voxel-collision-schema';
-import { MuWriteStream } from '@box-local/mudb/stream';
-import { VoxelView } from '@box-local/utils/voxel';
+} from '@box/schema/voxel/voxel-collision-schema';
+import { MuWriteStream } from '@box/mudb/stream';
+import { VoxelView } from '@box/utils/voxel';
 import {
   VoxelCollisionBox,
   VoxelCollisionBoxSchema,
   VoxelCollisionBoxList,
   VoxelCollisionBoxListSchema,
-} from '@box-local/schema/utils/rbush-schema';
+} from '@box/schema/utils/rbush-schema';
 
 function signEncode(x: number) {
   const y = x & CHUNK_MASK;

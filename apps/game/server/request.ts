@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Createra } from '@box-local/apis';
+import { Createra } from '@box/apis';
 import { getServerConfig } from '../configs/server';
 
 let _createraInstance: Createra;

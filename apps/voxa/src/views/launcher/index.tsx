@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { useIntl } from 'react-intl';
-import { Button } from '@box-local/box-design';
+import { Button } from '@box/box-design';
 import { LaunchState } from '../../redux/app-slice';
 import { useAppSelector } from '../../redux/store';
 import { RootContext } from '../../root-context';

@@ -1,5 +1,5 @@
 import type { mat3, vec3 } from 'gl-matrix';
-import type { VoxelView } from '@box-local/utils/voxel';
+import type { VoxelView } from '@box/utils/voxel';
 
 /**
  * TODO .vox文件的类型应该在parseMagicaVoxel中返回。

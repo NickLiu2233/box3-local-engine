@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { hashURL } from 'src/utils/hash-url';
-import { DB } from '@box-local/schema/backend/database-type';
+import { DB } from '@box/schema/backend/database-type';
 
 import { Card } from '../basic/card/index';
 import { notice } from '../../../components/common/notice';

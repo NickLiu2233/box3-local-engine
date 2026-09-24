@@ -5,7 +5,7 @@ import {
   TooltipTrigger,
   SharedTipsContext,
   TriggerOptions,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { VoxelEditorContext } from '../../../internals';
 import { LocateKeyframeType } from '../../../models/motion-player/const';
 import { useAppSelector } from '../../../redux/store';

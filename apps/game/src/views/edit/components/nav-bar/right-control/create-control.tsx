@@ -2,8 +2,8 @@ import React, { useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { IconListLeft } from '@box-local/icons';
-import { TooltipTrigger } from '@box-local/box-design';
+import { IconListLeft } from '@box/icons';
+import { TooltipTrigger } from '@box/box-design';
 
 import { RootState } from 'src/redux/edit';
 import { setIsShowRightPanel } from 'src/redux/edit/creator';

@@ -1,11 +1,11 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
-import { RemoteChannelProtocol } from '@box-local/schema/remote-channel/channel-protocol';
-import { RemoteChannelEventSchema } from '@box-local/schema/events/remote-channel-event-schema';
-import { getById } from '@box-local/utils/id';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
+import { RemoteChannelProtocol } from '@box/schema/remote-channel/channel-protocol';
+import { RemoteChannelEventSchema } from '@box/schema/events/remote-channel-event-schema';
+import { getById } from '@box/utils/id';
 
 import { RemoteChannelScriptProtocol } from './channel-script-protocol';
 import { GameServerState } from '../game-server-schema';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 
 export const SERVER_REWIND_TICKS = 4;
 export const SERVER_BUFFER_TICKS = 16;

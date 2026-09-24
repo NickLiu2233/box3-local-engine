@@ -1,4 +1,4 @@
-import { MuBoolean, MuStruct, MuUint32 } from '@box-local/mudb/schema';
+import { MuBoolean, MuStruct, MuUint32 } from '@box/mudb/schema';
 import {
   REWGPUGroupSchema,
   REWGPUTexture2DSchema,

@@ -1,5 +1,5 @@
-import { MuScheduler } from '@box-local/mudb/scheduler';
-import { MuLocalSocketServer, createLocalSocket } from '@box-local/mudb/socket/local';
+import { MuScheduler } from '@box/mudb/scheduler';
+import { MuLocalSocketServer, createLocalSocket } from '@box/mudb/socket/local';
 
 export class LocalScriptSocketServer extends MuLocalSocketServer {
   constructor(scheduler: MuScheduler) {

@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuDictionary, MuASCII, MuUTF8, MuArray, MuFloat32, MuSchema, MuOption } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuDictionary, MuASCII, MuUTF8, MuArray, MuFloat32, MuSchema, MuOption } from '@box/mudb/schema';
 import { ProjectNodeType } from '../util';
 import { VoxelsSchema, VoxelSchema, PaletteDataSchema, PaletteItemsSchema, PaletteItemSchema, PaletteGroupsSchema, PaletteGroupSchema, ProjectInterpolationType } from './schema-v4';
 export { VoxelsSchema, VoxelSchema, PaletteDataSchema, PaletteItemsSchema, PaletteItemSchema, PaletteGroupsSchema, PaletteGroupSchema, ProjectInterpolationType, };
@@ -12,11 +12,11 @@ export declare const NodeSchema: MuStruct<{
     skinId: MuASCII;
     boneId: MuASCII;
     alpha: MuFloat32;
-    pivot: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    position: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    quaternion: import("@box-local/mudb/schema").MuVector<"float32", 4>;
-    euler: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    flip: import("@box-local/mudb/schema").MuVector<"uint8", 3>;
+    pivot: import("@box/mudb/schema").MuVector<"float32", 3>;
+    position: import("@box/mudb/schema").MuVector<"float32", 3>;
+    quaternion: import("@box/mudb/schema").MuVector<"float32", 4>;
+    euler: import("@box/mudb/schema").MuVector<"float32", 3>;
+    flip: import("@box/mudb/schema").MuVector<"uint8", 3>;
 }>;
 export declare const NodesSchema: MuDictionary<MuStruct<{
     id: MuASCII;
@@ -28,23 +28,23 @@ export declare const NodesSchema: MuDictionary<MuStruct<{
     skinId: MuASCII;
     boneId: MuASCII;
     alpha: MuFloat32;
-    pivot: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    position: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    quaternion: import("@box-local/mudb/schema").MuVector<"float32", 4>;
-    euler: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    flip: import("@box-local/mudb/schema").MuVector<"uint8", 3>;
+    pivot: import("@box/mudb/schema").MuVector<"float32", 3>;
+    position: import("@box/mudb/schema").MuVector<"float32", 3>;
+    quaternion: import("@box/mudb/schema").MuVector<"float32", 4>;
+    euler: import("@box/mudb/schema").MuVector<"float32", 3>;
+    flip: import("@box/mudb/schema").MuVector<"uint8", 3>;
 }>>;
 export declare const KeyframeOffsetSchema: MuStruct<{
-    translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-    rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+    translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+    rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
     alpha: MuOption<MuFloat32>;
 }>;
 export declare const KeyframeSchema: MuStruct<{
     time: MuASCII;
     interpolation: MuSchema<ProjectInterpolationType>;
     offset: MuStruct<{
-        translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-        rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+        translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+        rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
         alpha: MuOption<MuFloat32>;
     }>;
 }>;
@@ -52,8 +52,8 @@ export declare const KeyframeListSchema: MuArray<MuStruct<{
     time: MuASCII;
     interpolation: MuSchema<ProjectInterpolationType>;
     offset: MuStruct<{
-        translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-        rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+        translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+        rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
         alpha: MuOption<MuFloat32>;
     }>;
 }>>;
@@ -63,8 +63,8 @@ export declare const MotionNodeSchema: MuStruct<{
         time: MuASCII;
         interpolation: MuSchema<ProjectInterpolationType>;
         offset: MuStruct<{
-            translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-            rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+            translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+            rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
             alpha: MuOption<MuFloat32>;
         }>;
     }>>;
@@ -75,8 +75,8 @@ export declare const MotionNodesSchema: MuDictionary<MuStruct<{
         time: MuASCII;
         interpolation: MuSchema<ProjectInterpolationType>;
         offset: MuStruct<{
-            translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-            rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+            translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+            rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
             alpha: MuOption<MuFloat32>;
         }>;
     }>>;
@@ -90,8 +90,8 @@ export declare const ProjectAnimationSchema: MuStruct<{
             time: MuASCII;
             interpolation: MuSchema<ProjectInterpolationType>;
             offset: MuStruct<{
-                translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-                rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+                translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+                rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
                 alpha: MuOption<MuFloat32>;
             }>;
         }>>;
@@ -109,11 +109,11 @@ export declare const ProjectDataV5Schema: MuStruct<{
         skinId: MuASCII;
         boneId: MuASCII;
         alpha: MuFloat32;
-        pivot: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-        position: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-        quaternion: import("@box-local/mudb/schema").MuVector<"float32", 4>;
-        euler: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-        flip: import("@box-local/mudb/schema").MuVector<"uint8", 3>;
+        pivot: import("@box/mudb/schema").MuVector<"float32", 3>;
+        position: import("@box/mudb/schema").MuVector<"float32", 3>;
+        quaternion: import("@box/mudb/schema").MuVector<"float32", 4>;
+        euler: import("@box/mudb/schema").MuVector<"float32", 3>;
+        flip: import("@box/mudb/schema").MuVector<"uint8", 3>;
     }>>;
     voxels: MuDictionary<MuStruct<{
         id: MuASCII;
@@ -122,8 +122,8 @@ export declare const ProjectDataV5Schema: MuStruct<{
     palette: MuStruct<{
         items: MuArray<MuStruct<{
             id: MuVarint;
-            rgb: import("@box-local/mudb/schema").MuVector<"uint8", 3>;
-            hsv: import("@box-local/mudb/schema").MuVector<"uint16", 3>;
+            rgb: import("@box/mudb/schema").MuVector<"uint8", 3>;
+            hsv: import("@box/mudb/schema").MuVector<"uint16", 3>;
             material: MuStruct<{
                 emissive: MuFloat32;
             }>;
@@ -131,7 +131,7 @@ export declare const ProjectDataV5Schema: MuStruct<{
         groups: MuDictionary<MuStruct<{
             id: MuASCII;
             name: MuUTF8;
-            itemIds: MuArray<import("@box-local/mudb/schema").MuUint16>;
+            itemIds: MuArray<import("@box/mudb/schema").MuUint16>;
         }>>;
         groupList: MuArray<MuASCII>;
     }>;
@@ -144,8 +144,8 @@ export declare const ProjectDataV5Schema: MuStruct<{
                 time: MuASCII;
                 interpolation: MuSchema<ProjectInterpolationType>;
                 offset: MuStruct<{
-                    translation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
-                    rotation: MuOption<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
+                    translation: MuOption<import("@box/mudb/schema").MuVector<"float32", 3>>;
+                    rotation: MuOption<import("@box/mudb/schema").MuVector<"float32", 4>>;
                     alpha: MuOption<MuFloat32>;
                 }>;
             }>>;

@@ -1,4 +1,4 @@
-import { MuStruct, MuUint32, MuUTF8, MuBoolean, MuASCII, MuSchema, MuFloat64, MuInt32 } from '@box-local/mudb/schema';
+import { MuStruct, MuUint32, MuUTF8, MuBoolean, MuASCII, MuSchema, MuFloat64, MuInt32 } from '@box/mudb/schema';
 import type { ProjectAction } from '../replica/replica-schema';
 export declare enum OPCode {
     /**

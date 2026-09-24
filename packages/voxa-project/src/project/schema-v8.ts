@@ -5,7 +5,7 @@ import {
   MuASCII,
   MuDictionary,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   PaletteDataSchema,
   PaletteItemsSchema,

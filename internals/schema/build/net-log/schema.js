@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NetLogSchema = exports.NetLogEventSchema = void 0;
-const logger_1 = require("@box-local/utils/logger");
-const schema_1 = require("@box-local/mudb/schema");
+const logger_1 = require("@box/utils/logger");
+const schema_1 = require("@box/mudb/schema");
 exports.NetLogEventSchema = new schema_1.MuJSON();
 exports.NetLogSchema = {
     name: 'net-log',

@@ -6,7 +6,7 @@ import {
   MuBoolean,
   MuASCII,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 /**
  * 容器类型

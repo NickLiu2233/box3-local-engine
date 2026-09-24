@@ -1,4 +1,4 @@
-import { MouseButton } from '@box-local/schema/input/input-schema';
+import { MouseButton } from '@box/schema/input/input-schema';
 import { SerializedVec2 } from '../interfaces';
 import { GUIMouseEvent } from './element';
 

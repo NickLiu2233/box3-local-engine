@@ -1,6 +1,6 @@
 import type { Camera } from '../../camera/base';
 import type { Object3D } from '../../objects/object3d';
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 
 import { Mesh } from '../../objects/mesh';
 import { Geometry } from '../../geometry';

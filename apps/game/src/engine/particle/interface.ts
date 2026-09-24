@@ -1,4 +1,4 @@
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import { GameClientState } from '../game-client-schema';
 
 export const PARTICLE_SIZE = 32;

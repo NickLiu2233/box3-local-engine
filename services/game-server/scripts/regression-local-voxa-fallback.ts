@@ -7,7 +7,7 @@ import {
   getLocalExtraProject,
   mergeExtraProjectInfo,
 } from '../src/project/project-extra';
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 
 const validModelHash = 'QmSKfrPgmkCoomW2tbpHkynGL5aCd4qRA2JSBG1QDhRJzJ';
 

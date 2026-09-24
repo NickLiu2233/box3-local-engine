@@ -1,12 +1,12 @@
-import { stableStringify } from '@box-local/mudb/util/stringify';
-import { VbFileData, parseVbFile } from '@box-local/vb-parser';
+import { stableStringify } from '@box/mudb/util/stringify';
+import { VbFileData, parseVbFile } from '@box/vb-parser';
 import {
   migrateModel,
   modelSchemaToBytes,
   getModelMetaData,
   ModelMetaData,
   VOXA_MODEL_VERSION,
-} from '@box-local/voxa-project';
+} from '@box/voxa-project';
 import { BuildSystem } from '../type';
 import { BUILD_HEAVY_LOCK } from './heavy_mutex';
 

@@ -1,7 +1,7 @@
 import type { vec3 } from 'gl-matrix';
-import { MeshTextureSchema } from '@box-local/mesher/schema';
-import { unpackMeshData } from '@box-local/mesher';
-import { migrateModel, ModelMetaData, modelV7 } from '@box-local/voxa-project';
+import { MeshTextureSchema } from '@box/mesher/schema';
+import { unpackMeshData } from '@box/mesher';
+import { migrateModel, ModelMetaData, modelV7 } from '@box/voxa-project';
 import {
   NodesInfoSchema,
   AnimationsSchema,
@@ -12,7 +12,7 @@ import {
   Vec3Schema,
   QuatSchema,
   Mat3Schema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import { parseModelAnimation } from './model-animation';
 
 type ModelData = typeof modelV7.ModelDataV7Schema.identity;

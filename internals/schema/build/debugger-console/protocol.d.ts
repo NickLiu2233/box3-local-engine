@@ -1,4 +1,4 @@
-import { MuBoolean, MuStruct, MuUTF8, MuUint8, MuVarint, MuVoid } from '@box-local/mudb/schema';
+import { MuBoolean, MuStruct, MuUTF8, MuUint8, MuVarint, MuVoid } from '@box/mudb/schema';
 export declare const DebuggerProtocol: {
     name: string;
     client: {
@@ -9,11 +9,11 @@ export declare const DebuggerProtocol: {
         scriptException: MuStruct<{
             name: MuUTF8;
             message: MuUTF8;
-            stack: import("@box-local/mudb/schema").MuArray<MuStruct<{
+            stack: import("@box/mudb/schema").MuArray<MuStruct<{
                 function: MuUTF8;
                 file: MuUTF8;
-                line: import("@box-local/mudb/schema").MuUint32;
-                column: import("@box-local/mudb/schema").MuUint32;
+                line: import("@box/mudb/schema").MuUint32;
+                column: import("@box/mudb/schema").MuUint32;
                 source: MuUTF8;
                 isolate: MuBoolean;
             }>>;
@@ -38,11 +38,11 @@ export declare const DebuggerProtocol: {
         clientException: MuStruct<{
             name: MuUTF8;
             message: MuUTF8;
-            stack: import("@box-local/mudb/schema").MuArray<MuStruct<{
+            stack: import("@box/mudb/schema").MuArray<MuStruct<{
                 function: MuUTF8;
                 file: MuUTF8;
-                line: import("@box-local/mudb/schema").MuUint32;
-                column: import("@box-local/mudb/schema").MuUint32;
+                line: import("@box/mudb/schema").MuUint32;
+                column: import("@box/mudb/schema").MuUint32;
                 source: MuUTF8;
                 isolate: MuBoolean;
             }>>;

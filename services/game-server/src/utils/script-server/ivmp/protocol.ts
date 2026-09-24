@@ -1,5 +1,5 @@
-import { MuASCII, MuVoid } from '@box-local/mudb/schema';
-import { ParsedErrorSchema } from '@box-local/schema/debugger-console/schema';
+import { MuASCII, MuVoid } from '@box/mudb/schema';
+import { ParsedErrorSchema } from '@box/schema/debugger-console/schema';
 
 /**
  * 当ScriptServer不处在同一进程时，用于控制ScriptServer的协议

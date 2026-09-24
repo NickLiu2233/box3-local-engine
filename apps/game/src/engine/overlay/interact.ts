@@ -1,6 +1,6 @@
 import { GameClientState } from '../game-client-schema';
-import { indexEqRange } from '@box-local/utils/id';
-import { InteractComponent } from '@box-local/schema/interact/interact-protocol';
+import { indexEqRange } from '@box/utils/id';
+import { InteractComponent } from '@box/schema/interact/interact-protocol';
 import {
   BASE_2D_OFFSET_Y,
   drawText3D,
@@ -14,7 +14,7 @@ import { isMobile } from '../../utils/mobile';
 import {
   OverlayInfoVisibleScaleEnum,
   RenderBox,
-} from '@box-local/schema/render-box/schema';
+} from '@box/schema/render-box/schema';
 import { raycastEye } from '../utils/raycast-eye';
 
 const worldPos = vec4.create();

@@ -4,14 +4,14 @@ import {
   MuSortedArray,
   MuBoolean,
   MuFloat64,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   ParticleParameterSchema,
   ParticleEntity,
   ParticleEmitterSchema,
-} from '@box-local/schema/particle/particle-schema';
-import { compareId } from '@box-local/utils/id';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/schema/particle/particle-schema';
+import { compareId } from '@box/utils/id';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 
 // server particle entities
 export const ServerParticleEntitySchema = new MuStruct({

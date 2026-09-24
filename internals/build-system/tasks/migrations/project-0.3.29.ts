@@ -1,5 +1,5 @@
 import { BuildSystem } from '../../type';
-import { isUITextNode } from '@box-local/schema/project/ui-rda/util';
+import { isUITextNode } from '@box/schema/project/ui-rda/util';
 
 export const name = 'project';
 export const fromVersion = '0.3.28';

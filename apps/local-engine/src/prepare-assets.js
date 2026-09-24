@@ -3,10 +3,10 @@
 const path = require('path')
 const fs = require('fs')
 
-const { MockBuildCache } = require('@box-local/build-system/build-cache-mock')
-const { BuildSystem } = require('@box-local/build-system/build-system')
-const { buildResources } = require('@box-local/build-system/utils/resource')
-const { FileSystemContentServer } = require('@box-local/content-server/file-system-store-node')
+const { MockBuildCache } = require('@box/build-system/build-cache-mock')
+const { BuildSystem } = require('@box/build-system/build-system')
+const { buildResources } = require('@box/build-system/utils/resource')
+const { FileSystemContentServer } = require('@box/content-server/file-system-store-node')
 
 const packageRoot = path.resolve(__dirname, '..')
 const repoRoot = path.resolve(packageRoot, '../..')

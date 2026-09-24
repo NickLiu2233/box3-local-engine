@@ -13,13 +13,13 @@
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "gl-matrix": "3.4.3",
-    "@box-local/rewgpu": "file:..",
-    "@box-local/voxa-project": "file:..",
-    "@box-local/mudb": "file:..",
-    "@box-local/content-server": "file:..",
-    "@box-local/mesher": "file:..",
-    "@box-local/schema": "file:..",
-    "@box-local/box-design": "file:.."
+    "@box/rewgpu": "file:..",
+    "@box/voxa-project": "file:..",
+    "@box/mudb": "file:..",
+    "@box/content-server": "file:..",
+    "@box/mesher": "file:..",
+    "@box/schema": "file:..",
+    "@box/box-design": "file:.."
   },
   "devDependencies": {
     "@webgpu/types": "0.1.40",

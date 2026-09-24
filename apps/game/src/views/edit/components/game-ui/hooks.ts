@@ -1,5 +1,5 @@
 import { createContext, useEffect, useState } from 'react';
-import { UITree } from '@box-local/schema/project/ui-rda/defs';
+import { UITree } from '@box/schema/project/ui-rda/defs';
 import { useEdit } from 'src/client/edit/edit-context';
 
 export type UITreeRef = { uiTree: UITree };

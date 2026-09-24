@@ -2,7 +2,7 @@ import type {
   ChannelNodePath as ChannelNodePathType,
   ProjectInterpolationType as InterpolationType,
   ProjectNodeType as NodeType,
-} from '@box-local/voxa-project';
+} from '@box/voxa-project';
 import {
   ProjectInterpolationType,
   ChannelNodePath,

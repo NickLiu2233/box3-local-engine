@@ -1,4 +1,4 @@
-import { MuStruct, MuUTF8, MuArray, MuVarint, MuDate, MuSchema, MuOption } from '@box-local/mudb/schema';
+import { MuStruct, MuUTF8, MuArray, MuVarint, MuDate, MuSchema, MuOption } from '@box/mudb/schema';
 import { UploadScene } from '../rpc/user-protocol';
 export declare enum AuditType {
     image = 0,

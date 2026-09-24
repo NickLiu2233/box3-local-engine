@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
-import { Tabs, TabPanel, Toast, ModalView } from '@box-local/box-design/build';
+import { Tabs, TabPanel, Toast, ModalView } from '@box/box-design/build';
 
 import { JoystickSkin } from './joystick-skin';
 import { ActionSkin } from './action-skin';

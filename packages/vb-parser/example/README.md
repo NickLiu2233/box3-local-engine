@@ -2,7 +2,7 @@ This is an example project for testing loading .vb/.vd file
 
 ## Getting Started
 
-### Build @box-local/vb-parser first
+### Build @box/vb-parser first
 
 ### Install
 

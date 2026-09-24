@@ -4,8 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MuRDATree = exports.ROOT_NAME = exports.ROOT_ID = exports.TreeNodeType = exports.MuRDATreeStoreElement = void 0;
-const _id_1 = require("@box-local/mudb/rda/_id");
-const schema_1 = require("@box-local/mudb/schema");
+const _id_1 = require("@box/mudb/rda/_id");
+const schema_1 = require("@box/mudb/schema");
 const debug_1 = __importDefault(require("debug"));
 const debug = (0, debug_1.default)('box:schema:project:murda-tree');
 // 真正操作的时候存储数据的东西

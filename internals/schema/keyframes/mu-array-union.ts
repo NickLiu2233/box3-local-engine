@@ -1,5 +1,5 @@
-import { isMuPrimitiveType } from '@box-local/mudb/schema/is-primitive';
-import { MuSchema } from '@box-local/mudb/schema/schema';
+import { isMuPrimitiveType } from '@box/mudb/schema/is-primitive';
+import { MuSchema } from '@box/mudb/schema/schema';
 import { CodeGenContext } from './codegen';
 
 export type ArrayUnionInstance<SubTypes extends [...MuSchema<unknown>[]]> = {

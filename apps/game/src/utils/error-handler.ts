@@ -1,4 +1,4 @@
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 
 export function installErrorHandler(logger: Logger) {
   if (typeof window === 'undefined') {

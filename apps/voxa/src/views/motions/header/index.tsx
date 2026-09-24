@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { useClassName } from '@box-local/box-design';
+import { useClassName } from '@box/box-design';
 import styles from './style.module.scss';
 
 export function MotionHeader(options: {

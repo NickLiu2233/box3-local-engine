@@ -1,4 +1,4 @@
-import { MuBoolean, MuSortedArray, MuStruct, MuUTF8, MuVarint } from '@box-local/mudb/schema';
+import { MuBoolean, MuSortedArray, MuStruct, MuUTF8, MuVarint } from '@box/mudb/schema';
 import { Gamepad } from '../api/js/api';
 export declare const PlayerGamepadSchema: MuStruct<{
     [K in keyof Gamepad]: MuUTF8;
@@ -6,23 +6,23 @@ export declare const PlayerGamepadSchema: MuStruct<{
 export type PlayerGamepad = typeof PlayerGamepadSchema['identity'];
 export declare const GamePrivateReplicaSchema: MuStruct<{
     id: MuVarint;
-    colorLUT: import("@box-local/mudb/schema").MuASCII;
+    colorLUT: import("@box/mudb/schema").MuASCII;
     enableCursor: MuBoolean;
     music: MuStruct<{
         sampleId: MuVarint;
-        radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-        gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-        gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-        pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-        pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+        radius: import("@box/mudb/schema").MuQuantizedFloat;
+        gain: import("@box/mudb/schema").MuQuantizedFloat;
+        gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+        pitch: import("@box/mudb/schema").MuQuantizedFloat;
+        pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
     }>;
     camera: MuStruct<{
-        mode: import("@box-local/mudb/schema").MuSchema<import("../camera/camera-schema").CameraMode>;
+        mode: import("@box/mudb/schema").MuSchema<import("../camera/camera-schema").CameraMode>;
         targetId: MuVarint;
         eye: import("../utils/quantized-schema").QuantizedVec3Schema;
         up: import("../utils/quantized-schema").QuantizedVec3Schema;
         target: import("../utils/quantized-schema").QuantizedVec3Schema;
-        freezedAxis: import("@box-local/mudb/schema").MuUint8;
+        freezedAxis: import("@box/mudb/schema").MuUint8;
         fovY: import("../utils/quantized-schema").QuantizedScalar;
         distance: import("../utils/quantized-schema").QuantizedScalar;
     }>;
@@ -41,23 +41,23 @@ export declare const GamePrivateReplicaSchema: MuStruct<{
 export type GamePrivateReplica = typeof GamePrivateReplicaSchema.identity;
 export declare const GamePrivateReplicaSetSchema: MuSortedArray<MuStruct<{
     id: MuVarint;
-    colorLUT: import("@box-local/mudb/schema").MuASCII;
+    colorLUT: import("@box/mudb/schema").MuASCII;
     enableCursor: MuBoolean;
     music: MuStruct<{
         sampleId: MuVarint;
-        radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-        gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-        gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-        pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-        pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+        radius: import("@box/mudb/schema").MuQuantizedFloat;
+        gain: import("@box/mudb/schema").MuQuantizedFloat;
+        gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+        pitch: import("@box/mudb/schema").MuQuantizedFloat;
+        pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
     }>;
     camera: MuStruct<{
-        mode: import("@box-local/mudb/schema").MuSchema<import("../camera/camera-schema").CameraMode>;
+        mode: import("@box/mudb/schema").MuSchema<import("../camera/camera-schema").CameraMode>;
         targetId: MuVarint;
         eye: import("../utils/quantized-schema").QuantizedVec3Schema;
         up: import("../utils/quantized-schema").QuantizedVec3Schema;
         target: import("../utils/quantized-schema").QuantizedVec3Schema;
-        freezedAxis: import("@box-local/mudb/schema").MuUint8;
+        freezedAxis: import("@box/mudb/schema").MuUint8;
         fovY: import("../utils/quantized-schema").QuantizedScalar;
         distance: import("../utils/quantized-schema").QuantizedScalar;
     }>;

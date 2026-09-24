@@ -1,5 +1,5 @@
-import { MuSchema } from '@box-local/mudb/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuSchema } from '@box/mudb/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 export declare class MuNullable<ValueSchema extends MuSchema<any>> implements MuSchema<ValueSchema['identity'] | null> {
     readonly muType = "nullable";
     readonly identity: ValueSchema['identity'] | null;

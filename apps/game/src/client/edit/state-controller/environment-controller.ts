@@ -7,7 +7,7 @@ import {
   EntitySoundEnum,
   XYZType,
   BakedShadow,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { ClientStateType } from '../edit-schema';
 import { EditActionLabel } from '../replica/replica-client-schema';
 

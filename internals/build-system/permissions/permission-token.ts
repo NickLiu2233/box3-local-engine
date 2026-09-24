@@ -1,8 +1,8 @@
 import {
   PermissionToken,
   PermissionTokenSchema,
-} from '@box-local/schema/permissions/permission-rda';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+} from '@box/schema/permissions/permission-rda';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 import crypto from 'crypto';
 
 const HMAC_LENGTH = 42;

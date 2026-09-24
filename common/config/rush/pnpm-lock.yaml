@@ -40,55 +40,55 @@ importers:
 
   ../../apps/game:
     dependencies:
-      '@box-local/apis':
+      '@box/apis':
         specifier: workspace:0.1.0
         version: link:../../internals/apis
-      '@box-local/box-design':
+      '@box/box-design':
         specifier: workspace:~1.0.6
         version: link:../../packages/box-design
-      '@box-local/build-system':
+      '@box/build-system':
         specifier: workspace:0.3.1
         version: link:../../internals/build-system
-      '@box-local/cli':
+      '@box/cli':
         specifier: workspace:*
         version: link:../../packages/cli
-      '@box-local/content-server':
+      '@box/content-server':
         specifier: workspace:*
         version: link:../../packages/content-server
-      '@box-local/env':
+      '@box/env':
         specifier: workspace:~0.3.0
         version: link:../../internals/env
-      '@box-local/icons':
+      '@box/icons':
         specifier: workspace:~1.0.0
         version: link:../../packages/icons
-      '@box-local/iframe-event-bus':
+      '@box/iframe-event-bus':
         specifier: workspace:~0.1.1
         version: link:../../packages/iframe-event-bus
-      '@box-local/mesher':
+      '@box/mesher':
         specifier: workspace:1.0.0
         version: link:../../packages/mesher
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
-      '@box-local/rewgpu':
+      '@box/rewgpu':
         specifier: workspace:~0.0.1
         version: link:../../packages/rewgpu
-      '@box-local/schema':
+      '@box/schema':
         specifier: workspace:~0.4.3
         version: link:../../internals/schema
-      '@box-local/script-api':
+      '@box/script-api':
         specifier: workspace:~0.3.0
         version: link:../../packages/script-api
-      '@box-local/sdk':
+      '@box/sdk':
         specifier: workspace:1.4.0
         version: link:../../packages/sdk
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../../packages/utils
-      '@box-local/vb-parser':
+      '@box/vb-parser':
         specifier: workspace:1.0.7
         version: link:../../packages/vb-parser
-      '@box-local/voxa-project':
+      '@box/voxa-project':
         specifier: workspace:1.3.5
         version: link:../../packages/voxa-project
       '@fingerprintjs/fingerprintjs':
@@ -494,7 +494,7 @@ importers:
 
   ../../apps/license-server:
     dependencies:
-      '@box-local/license':
+      '@box/license':
         specifier: workspace:*
         version: link:../../packages/license
       '@fastify/rate-limit':
@@ -509,25 +509,25 @@ importers:
 
   ../../apps/local-engine:
     dependencies:
-      '@box-local/build-system':
+      '@box/build-system':
         specifier: workspace:0.3.1
         version: link:../../internals/build-system
-      '@box-local/content-server':
+      '@box/content-server':
         specifier: workspace:*
         version: link:../../packages/content-server
 
   ../../apps/migrator:
     dependencies:
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
-      '@box-local/schema':
+      '@box/schema':
         specifier: workspace:~0.4.3
         version: link:../../internals/schema
-      '@box-local/vb-parser':
+      '@box/vb-parser':
         specifier: workspace:1.0.7
         version: link:../../packages/vb-parser
-      '@box-local/voxa-project':
+      '@box/voxa-project':
         specifier: workspace:1.3.5
         version: link:../../packages/voxa-project
       next:
@@ -600,43 +600,43 @@ importers:
       '@babel/runtime':
         specifier: 7.28.4
         version: 7.28.4
-      '@box-local/ao-mesher':
+      '@box/ao-mesher':
         specifier: workspace:0.2.10
         version: link:../../packages/ao-mesher
-      '@box-local/apis':
+      '@box/apis':
         specifier: workspace:0.1.0
         version: link:../../internals/apis
-      '@box-local/box-design':
+      '@box/box-design':
         specifier: workspace:~1.0.6
         version: link:../../packages/box-design
-      '@box-local/env':
+      '@box/env':
         specifier: workspace:~0.3.0
         version: link:../../internals/env
-      '@box-local/icons':
+      '@box/icons':
         specifier: workspace:~1.0.0
         version: link:../../packages/icons
-      '@box-local/mesher':
+      '@box/mesher':
         specifier: workspace:1.0.0
         version: link:../../packages/mesher
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
-      '@box-local/regl':
+      '@box/regl':
         specifier: workspace:2.1.0
         version: link:../../packages/regl
-      '@box-local/schema':
+      '@box/schema':
         specifier: workspace:~0.4.3
         version: link:../../internals/schema
-      '@box-local/sdk':
+      '@box/sdk':
         specifier: workspace:1.4.0
         version: link:../../packages/sdk
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../../packages/utils
-      '@box-local/vb':
+      '@box/vb':
         specifier: workspace:0.1.0
         version: link:../../internals/vb
-      '@box-local/voxa-project':
+      '@box/voxa-project':
         specifier: workspace:1.3.5
         version: link:../../packages/voxa-project
       '@reduxjs/toolkit':
@@ -858,28 +858,28 @@ importers:
 
   ../../internals/build-system:
     dependencies:
-      '@box-local/ao-mesher':
+      '@box/ao-mesher':
         specifier: workspace:0.2.10
         version: link:../../packages/ao-mesher
-      '@box-local/content-server':
+      '@box/content-server':
         specifier: workspace:*
         version: link:../../packages/content-server
-      '@box-local/mesher':
+      '@box/mesher':
         specifier: workspace:1.0.0
         version: link:../../packages/mesher
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
-      '@box-local/schema':
+      '@box/schema':
         specifier: workspace:~0.4.3
         version: link:../schema
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../../packages/utils
-      '@box-local/vb-parser':
+      '@box/vb-parser':
         specifier: workspace:1.0.7
         version: link:../../packages/vb-parser
-      '@box-local/voxa-project':
+      '@box/voxa-project':
         specifier: workspace:1.3.5
         version: link:../../packages/voxa-project
       '@types/node':
@@ -939,7 +939,7 @@ importers:
 
   ../../internals/env:
     dependencies:
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../../packages/utils
       '@types/node':
@@ -997,16 +997,16 @@ importers:
 
   ../../internals/schema:
     dependencies:
-      '@box-local/mesher':
+      '@box/mesher':
         specifier: workspace:1.0.0
         version: link:../../packages/mesher
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
-      '@box-local/script-api':
+      '@box/script-api':
         specifier: workspace:~0.3.0
         version: link:../../packages/script-api
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../../packages/utils
       '@types/node':
@@ -1034,7 +1034,7 @@ importers:
 
   ../../internals/vb:
     dependencies:
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
       typescript:
@@ -1058,7 +1058,7 @@ importers:
 
   ../../packages/box-design:
     dependencies:
-      '@box-local/icons':
+      '@box/icons':
         specifier: workspace:~1.0.0
         version: link:../icons
       ramda:
@@ -1149,10 +1149,10 @@ importers:
 
   ../../packages/content-server:
     dependencies:
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../mudb
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../utils
       '@types/node':
@@ -1226,10 +1226,10 @@ importers:
 
   ../../packages/mesher:
     dependencies:
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../mudb
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../utils
       ndarray:
@@ -1383,7 +1383,7 @@ importers:
 
   ../../packages/sdk:
     dependencies:
-      '@box-local/dsbridge':
+      '@box/dsbridge':
         specifier: workspace:0.0.1
         version: link:../dsbridge
       penpal:
@@ -1414,7 +1414,7 @@ importers:
 
   ../../packages/utils:
     dependencies:
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../mudb
       '@types/node':
@@ -1450,16 +1450,16 @@ importers:
       '@babel/preset-typescript':
         specifier: 7.18.6
         version: 7.18.6(@babel/core@7.17.8)
-      '@box-local/ao-mesher':
+      '@box/ao-mesher':
         specifier: workspace:0.2.10
         version: link:../ao-mesher
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../mudb
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../utils
-      '@box-local/vb':
+      '@box/vb':
         specifier: workspace:0.1.0
         version: link:../../internals/vb
       '@rollup/plugin-babel':
@@ -1498,7 +1498,7 @@ importers:
 
   ../../packages/voxa-project:
     dependencies:
-      '@box-local/mesher':
+      '@box/mesher':
         specifier: workspace:1.0.0
         version: link:../mesher
     devDependencies:
@@ -1508,16 +1508,16 @@ importers:
       '@babel/preset-typescript':
         specifier: 7.18.6
         version: 7.18.6(@babel/core@7.17.8)
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../mudb
-      '@box-local/schema':
+      '@box/schema':
         specifier: workspace:~0.4.3
         version: link:../../internals/schema
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../utils
-      '@box-local/vb':
+      '@box/vb':
         specifier: workspace:0.1.0
         version: link:../../internals/vb
       '@rollup/plugin-babel':
@@ -1553,34 +1553,34 @@ importers:
       '@ai-sdk/openai-compatible':
         specifier: 1.0.28
         version: 1.0.28(zod@4.1.12)
-      '@box-local/apis':
+      '@box/apis':
         specifier: workspace:0.1.0
         version: link:../../internals/apis
-      '@box-local/build-system':
+      '@box/build-system':
         specifier: workspace:0.3.1
         version: link:../../internals/build-system
-      '@box-local/content-server':
+      '@box/content-server':
         specifier: workspace:*
         version: link:../../packages/content-server
-      '@box-local/env':
+      '@box/env':
         specifier: workspace:~0.3.0
         version: link:../../internals/env
-      '@box-local/mudb':
+      '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
-      '@box-local/schema':
+      '@box/schema':
         specifier: workspace:~0.4.3
         version: link:../../internals/schema
-      '@box-local/script-api':
+      '@box/script-api':
         specifier: workspace:~0.3.0
         version: link:../../packages/script-api
-      '@box-local/utils':
+      '@box/utils':
         specifier: workspace:*
         version: link:../../packages/utils
-      '@box-local/vb-parser':
+      '@box/vb-parser':
         specifier: workspace:1.0.7
         version: link:../../packages/vb-parser
-      '@box-local/voxa-project':
+      '@box/voxa-project':
         specifier: workspace:1.3.5
         version: link:../../packages/voxa-project
       '@openrouter/ai-sdk-provider':

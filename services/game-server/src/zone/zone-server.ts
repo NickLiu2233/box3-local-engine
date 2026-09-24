@@ -1,12 +1,12 @@
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { GameServerState } from '../game-server-schema';
-import { RigidBodyFlags } from '@box-local/schema/physics/physics-schema';
+import { RigidBodyFlags } from '@box/schema/physics/physics-schema';
 import {
   EnvironmentZone,
   EnvironmentZoneSchema,
   PhysicsZoneSetSchema,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
+} from '@box/schema/zone/zone-schema';
 import { ServerEnvironmentZoneSetSchema } from './zone-server-state';
 
 export function getPlayerEnvironmentZones(

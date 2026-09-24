@@ -1,4 +1,4 @@
-import { SortOrder } from '@box-local/apis';
+import { SortOrder } from '@box/apis';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export type PlayerSkin = {

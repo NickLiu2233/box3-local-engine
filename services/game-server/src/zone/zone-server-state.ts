@@ -1,6 +1,6 @@
-import { MuSortedArray, MuStruct, MuVarint } from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
-import { EnvironmentZoneSchema } from '@box-local/schema/zone/zone-schema';
+import { MuSortedArray, MuStruct, MuVarint } from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
+import { EnvironmentZoneSchema } from '@box/schema/zone/zone-schema';
 
 export const MAX_ZONES = 128;
 

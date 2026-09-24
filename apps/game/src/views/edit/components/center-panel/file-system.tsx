@@ -5,7 +5,7 @@ import { RootState } from 'src/redux/edit';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCenterPanel, setNavMode } from 'src/redux/edit/creator';
 import { FileSystemPanel } from '../fileSystemPanel';
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
 import { LeftNavModeEnum, CenterPanelEnum } from '../../defs';
 import { ArenaEditorUIContext } from '../../editor-ui-context';
 

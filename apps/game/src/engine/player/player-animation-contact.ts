@@ -1,7 +1,7 @@
 import {
   ContactRecord,
   ContactRecordSchema,
-} from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/physics/physics-schema';
 export function resolvePlayerAnimationContact(
   contact: ContactRecord | undefined,
   id: number,

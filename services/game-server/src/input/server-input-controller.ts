@@ -1,7 +1,7 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
 import { GameServerState } from '../game-server-schema';
-import { getById } from '@box-local/utils/id';
-import { InputProtocolSchema } from '@box-local/schema/input/input-protocol';
+import { getById } from '@box/utils/id';
+import { InputProtocolSchema } from '@box/schema/input/input-protocol';
 
 export class InputServer {
   public protocol: MuServerProtocol<typeof InputProtocolSchema>;

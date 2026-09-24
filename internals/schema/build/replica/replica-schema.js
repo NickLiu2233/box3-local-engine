@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EditReplicaProtocol = exports.AddCollaboratorSchema = exports.EditRenameBranchSchema = exports.EditSwitchBranchSchema = exports.EditCreateBranchSchema = exports.EditCheckoutRequestSchema = exports.EditRequestPermissionTokenSchema = exports.EditReplicaInitSchema = exports.RPCResultSchema = exports.RPCTokenSchema = exports.VoxelWriteSequenceSchema = exports.ProjectActionSequenceSchema = exports.ProjectStoreSchema = exports.ProjectStateSchema = exports.ProjectActionSchema = void 0;
 const project_rda_1 = require("../project/project-rda");
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const voxel_protocol_1 = require("../voxel/voxel-protocol");
 const permission_rda_1 = require("../permissions/permission-rda");
 const hot_schema_1 = require("../project/hot-schema");

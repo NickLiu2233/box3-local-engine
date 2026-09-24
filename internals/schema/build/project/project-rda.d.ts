@@ -1,5 +1,5 @@
-import { MuRDAStruct, MuRDARegister, MuRDAConstant, MuRDATypes, MuRDAMap, MuRDAList } from '@box-local/mudb/rda';
-import { MuUTF8, MuStruct, MuUint16, MuArray, MuFloat32, MuFloat64, MuBoolean, MuASCII, MuVarint, MuSchema, MuQuantizedFloat, MuDate } from '@box-local/mudb/schema';
+import { MuRDAStruct, MuRDARegister, MuRDAConstant, MuRDATypes, MuRDAMap, MuRDAList } from '@box/mudb/rda';
+import { MuUTF8, MuStruct, MuUint16, MuArray, MuFloat32, MuFloat64, MuBoolean, MuASCII, MuVarint, MuSchema, MuQuantizedFloat, MuDate } from '@box/mudb/schema';
 import { vec3, quat } from 'gl-matrix';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 import { MuRDATree } from './murda-tree';
@@ -1405,7 +1405,7 @@ export declare const ProjectRDA: MuRDAStruct<{
         screen: MuRDAStruct<{
             enable: MuRDARegister<MuBoolean>;
             layout: import("./murda-union").MuRDAUnion<{
-                none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                 autoLayout: MuRDAStruct<{
                     cellSize: MuRDAStruct<{
                         offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -1445,7 +1445,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 layout: import("./murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -1486,7 +1486,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 layoutOrder: MuRDARegister<MuVarint>;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 layout: import("./murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -1534,7 +1534,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 layout: import("./murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -1556,7 +1556,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 }, "none">;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 textContent: MuRDARegister<MuUTF8>;
-                textFontSize: MuRDARegister<import("@box-local/mudb/schema").MuUint8>;
+                textFontSize: MuRDARegister<import("@box/mudb/schema").MuUint8>;
                 textColor: MuRDARegister<QuantizedVec3Schema>;
                 textOpacity: MuRDARegister<MuQuantizedFloat>;
                 textXAlignment: MuRDARegister<MuSchema<import("./ui-rda/defs").TextXAlignType>>;
@@ -1582,7 +1582,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 layoutOrder: MuRDARegister<MuVarint>;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 layout: import("./murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -1638,7 +1638,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 layout: import("./murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -1660,7 +1660,7 @@ export declare const ProjectRDA: MuRDAStruct<{
                 }, "none">;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 textContent: MuRDARegister<MuUTF8>;
-                textFontSize: MuRDARegister<import("@box-local/mudb/schema").MuUint8>;
+                textFontSize: MuRDARegister<import("@box/mudb/schema").MuUint8>;
                 textColor: MuRDARegister<QuantizedVec3Schema>;
                 textOpacity: MuRDARegister<MuQuantizedFloat>;
                 textXAlignment: MuRDARegister<MuSchema<import("./ui-rda/defs").TextXAlignType>>;

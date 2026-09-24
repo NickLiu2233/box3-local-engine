@@ -1,5 +1,5 @@
-import { ContentServer } from '@box-local/content-server';
-import { Logger } from '@box-local/utils/logger';
+import { ContentServer } from '@box/content-server';
+import { Logger } from '@box/utils/logger';
 export type UploadDirType = {
     [name: string]: string | UploadDirType;
 };

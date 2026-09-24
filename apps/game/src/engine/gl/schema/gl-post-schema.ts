@@ -5,13 +5,13 @@ import {
   MuArray,
   MuUint32,
   MuFloat32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   REGLFramebuffer2DSchema,
   REGLTexture2DSchema,
 } from '../../utils/regl-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { Vec2Schema } from '@box-local/schema/utils/math-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { Vec2Schema } from '@box/schema/utils/math-schema';
 
 export const GLPostSchema = new MuStruct({
   // If set, use post processing

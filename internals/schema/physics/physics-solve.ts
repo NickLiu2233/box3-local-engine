@@ -22,7 +22,7 @@ import {
   resolveSelfBodyCollisions,
 } from './body-rbush';
 import { BlockIndex } from '../voxel/block-schema';
-import { TaggedId } from '@box-local/utils/id';
+import { TaggedId } from '@box/utils/id';
 import { CollisionFilter } from './collision-filter';
 import { PhysicsZoneIndex } from './zone-index';
 

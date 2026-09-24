@@ -5,8 +5,8 @@ import {
   MuUTF8,
   MuQuantizedFloat,
   MuBoolean,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 import { vec3 } from 'gl-matrix';
 

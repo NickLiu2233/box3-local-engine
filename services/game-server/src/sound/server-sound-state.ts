@@ -1,10 +1,10 @@
-import { MuStruct, MuVarint, MuSortedArray, MuBoolean } from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+import { MuStruct, MuVarint, MuSortedArray, MuBoolean } from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 import {
   AmbientSoundRDA,
   EntitySoundRDA,
   PlayerSoundRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 
 export const ServerEntitySoundEffectSchema = new MuStruct({
   id: new MuVarint(),

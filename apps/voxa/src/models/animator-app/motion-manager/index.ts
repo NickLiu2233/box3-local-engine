@@ -1,8 +1,8 @@
 import { mat4, quat, vec3 } from 'gl-matrix';
 import { nanoid } from 'nanoid';
 import { clamp, pick } from 'ramda';
-import { calcEasing, lerp } from '@box-local/voxa-project';
-import { getStringWidth, popStringByWidth } from '@box-local/box-design';
+import { calcEasing, lerp } from '@box/voxa-project';
+import { getStringWidth, popStringByWidth } from '@box/box-design';
 import {
   InterpolationType,
   MotionKeyframe,

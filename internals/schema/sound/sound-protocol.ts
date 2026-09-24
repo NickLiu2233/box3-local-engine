@@ -8,9 +8,9 @@ import {
   MuQuantizedFloat,
   MuASCII,
   MuFloat32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 
 export const HashSchema = new MuASCII();
 export const SoundSetSchema = new MuArray(HashSchema, Infinity);

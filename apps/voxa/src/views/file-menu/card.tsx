@@ -1,6 +1,6 @@
 import React, { ReactNode, useContext, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { Toast, ModalView } from '@box-local/box-design';
+import { Toast, ModalView } from '@box/box-design';
 import { useAppSelector } from '../../redux/store';
 import { VoxelEditorContext } from '../../internals';
 import { getContentUrl } from '../../utils/url';

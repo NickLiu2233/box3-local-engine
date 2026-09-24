@@ -1,8 +1,8 @@
-import { MuStruct } from '@box-local/mudb/schema';
+import { MuStruct } from '@box/mudb/schema';
 import { SettingsSchema } from 'src/engine/settings/settings-schema';
 import { HyperLinkSchema } from 'src/engine/href/href-client-state';
-import { PostMessageSchema } from '@box-local/schema/navigator/navigator-schema';
-import { ChatSchema } from '@box-local/schema/chat/chat-schema';
+import { PostMessageSchema } from '@box/schema/navigator/navigator-schema';
+import { ChatSchema } from '@box/schema/chat/chat-schema';
 
 export enum GameClientPlayState {
   LOADING,

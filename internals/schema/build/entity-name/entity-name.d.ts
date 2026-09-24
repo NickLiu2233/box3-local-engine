@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuSortedArray, MuUTF8, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuSortedArray, MuUTF8, MuQuantizedFloat } from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 export declare const EntityNameComponentSchema: MuStruct<{
     id: MuVarint;

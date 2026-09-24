@@ -1,7 +1,7 @@
 import _REGL from 'regl';
 import { vec3, mat4, vec4, vec2, mat3 } from 'gl-matrix';
 
-import { Camera } from '@box-local/schema/camera/camera-schema';
+import { Camera } from '@box/schema/camera/camera-schema';
 
 import { initArray } from '../utils/init-array';
 import { setFrustumMatrix } from '../utils/frustum';
@@ -11,13 +11,13 @@ import {
   GPUShadowMap,
 } from '../gpu/schema/gpu-shadow-schema';
 import { GameClientState } from '../game-client-schema';
-import { MuArray, MuFloat32, MuSchema, MuStruct } from '@box-local/mudb/schema';
+import { MuArray, MuFloat32, MuSchema, MuStruct } from '@box/mudb/schema';
 import {
   Mat4Schema,
   Mat3Schema,
   Vec4Schema,
-} from '@box-local/schema/utils/math-schema';
-import { MuWriteStream } from '@box-local/mudb/stream';
+} from '@box/schema/utils/math-schema';
+import { MuWriteStream } from '@box/mudb/stream';
 
 // x, y, w, h
 export const CASCADE_LAYOUT = [

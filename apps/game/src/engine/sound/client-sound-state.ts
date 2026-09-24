@@ -7,10 +7,10 @@ import {
   MuFloat32,
   MuFloat64,
   MuUTF8,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { HashSchema } from '@box/schema/content-server/index';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import type { GameAudio } from './game-audio';
 
 export interface IGameAudio {

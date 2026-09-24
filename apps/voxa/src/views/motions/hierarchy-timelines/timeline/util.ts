@@ -1,5 +1,5 @@
 import { MouseEventHandler, useCallback, useContext, useRef } from 'react';
-import { isMetaKeyPressed } from '@box-local/box-design';
+import { isMetaKeyPressed } from '@box/box-design';
 import { TimelineContext } from '../context';
 
 export function useItemHandlers(

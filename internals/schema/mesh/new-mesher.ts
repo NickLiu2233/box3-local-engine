@@ -1,5 +1,5 @@
-import { Mesher } from '@box-local/mesher';
-import { VoxelView } from '@box-local/utils/voxel';
+import { Mesher } from '@box/mesher';
+import { VoxelView } from '@box/utils/voxel';
 import { NewMeshSchema } from './voxel';
 
 export async function generateNewMesh(

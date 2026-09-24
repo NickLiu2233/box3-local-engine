@@ -1,10 +1,10 @@
-import { GameReplica } from '@box-local/schema/replica/game-replica';
-import { GamePrivateReplicaSchema } from '@box-local/schema/replica/game-private-replica';
+import { GameReplica } from '@box/schema/replica/game-replica';
+import { GamePrivateReplicaSchema } from '@box/schema/replica/game-private-replica';
 import {
   NetModelSetSchema,
   NetModelSchema,
-} from '@box-local/schema/mesh/model-schema';
-import { deltaList, patchList } from '@box-local/utils/script/delta';
+} from '@box/schema/mesh/model-schema';
+import { deltaList, patchList } from '@box/utils/script/delta';
 import { GameClientState } from '../game-client-schema';
 
 // // 恢复secret的数据为服务端数据

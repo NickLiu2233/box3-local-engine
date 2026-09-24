@@ -45,7 +45,7 @@ const SCHEMA_MAP = {
   'box-api': BOX_API_SCHEMA,
 };
 
-const debug = defineDebug('@box-local/env');
+const debug = defineDebug('@box/env');
 const ajv = new Ajv();
 
 /**

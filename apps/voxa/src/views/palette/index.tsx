@@ -7,7 +7,7 @@ import {
   Modal,
   TooltipTrigger,
   SharedTipsContext,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { useAppSelector } from '../../redux/store';
 import { ColorItem, CustomColorGroup, DefaultColorGroup } from './group';
 import { Settings } from './settings';

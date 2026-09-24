@@ -1,5 +1,5 @@
 import { RigidBodySet, ContactIndex, RigidBodyFlags } from './physics-schema';
-import { indexEq } from '@box-local/utils/id';
+import { indexEq } from '@box/utils/id';
 import { MAX_BODIES } from './def';
 
 let FLAG_MASK =

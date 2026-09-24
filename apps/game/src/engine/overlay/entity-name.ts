@@ -1,4 +1,4 @@
-import { indexEqRange, getById, zipId } from '@box-local/utils/id';
+import { indexEqRange, getById, zipId } from '@box/utils/id';
 import { GameClientState } from '../game-client-schema';
 import {
   BASE_2D_OFFSET_Y,
@@ -9,7 +9,7 @@ import {
 } from './overlays';
 import { vec3 } from 'gl-matrix';
 import { raycastEye } from '../utils/raycast-eye';
-import { OverlayInfoVisibleScaleEnum } from '@box-local/schema/render-box/schema';
+import { OverlayInfoVisibleScaleEnum } from '@box/schema/render-box/schema';
 
 export function tickEntityName(state: GameClientState) {
   const nearbyEntityName = state.nearbyEntityName;

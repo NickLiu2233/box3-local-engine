@@ -8,10 +8,10 @@ import {
   MuVarint,
   MuUint8,
   MuASCII,
-} from '@box-local/mudb/schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/mudb/schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { ChunkVisibilityFlags } from '../visibility-flags';
 import {
   REWGPUBufferSchema,

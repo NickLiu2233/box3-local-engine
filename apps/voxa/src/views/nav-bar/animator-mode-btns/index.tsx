@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { useIntl } from 'react-intl';
-import { Button } from '@box-local/box-design';
-import { IconHitbox } from '@box-local/icons';
+import { Button } from '@box/box-design';
+import { IconHitbox } from '@box/icons';
 import { VoxelEditorContext } from '../../../internals';
 import { AnimatorMode } from '../../../redux/animator-slice';
 import { useAppSelector } from '../../../redux/store';

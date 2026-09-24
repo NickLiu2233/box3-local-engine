@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/icons",
+  "name": "@box/icons",
   "version": "1.0.0",
   "description": "An Icon component library for box",
   "main": "build/index.js",

@@ -1,4 +1,4 @@
-import { MuSortedArray, MuStruct, MuArray, MuUint32, MuSchema, MuBoolean } from '@box-local/mudb/schema';
+import { MuSortedArray, MuStruct, MuArray, MuUint32, MuSchema, MuBoolean } from '@box/mudb/schema';
 export declare function DeltaListSchema<ListSchema extends MuSortedArray<any>>(schema: ListSchema): MuStruct<{
     upserts: ListSchema;
     remove: MuArray<MuUint32>;

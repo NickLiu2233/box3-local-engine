@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RemoteClientEventsSchema = exports.RemoteClientEventSchema = exports.RemoteChannelEventsSchema = exports.RemoteChannelEventSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const REMOTE_EVENT_SPEC = {
     tick: new schema_1.MuVarint(),
     args: new schema_1.MuUTF8(),

@@ -9,21 +9,21 @@ import {
   MuUTF8,
   MuArray,
   MuDictionary,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   PhysicsParamsSchema,
   ContactIndexSchema,
   RigidBodySetSchema,
-} from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/physics/physics-schema';
 import {
   PlayerSetSchema,
   PlayerInputSetSchema,
   PlayerIndexSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import { SettingsSchema } from './settings/settings-schema';
-import { CameraSchema } from '@box-local/schema/camera/camera-schema';
+import { CameraSchema } from '@box/schema/camera/camera-schema';
 import { GLPostSchema } from './gl/schema/gl-post-schema';
-import { VoxelCollisionSchema } from '@box-local/schema/voxel/voxel-collision-schema';
+import { VoxelCollisionSchema } from '@box/schema/voxel/voxel-collision-schema';
 import { GLShadowStateSchema } from './gl/schema/gl-shadow-schema';
 import { LightStateSchema } from './voxel/light-schema';
 import { GLStateSchema } from './gl/schema/gl-schema';
@@ -31,60 +31,60 @@ import { GLVoxelStateSchema } from './voxel/gl-voxel/gl-voxel-schema';
 import { MeshCacheSchema } from './mesh/renderable-schema';
 import { GLSkySchema } from './environment/gl-sky-schema';
 import { GameLocalsSchema } from './game-local-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { ContentResolver } from '@box-local/content-server/content-fetch';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { ContentResolver } from '@box/content-server/content-fetch';
 import { OverlayStateSchema } from './overlay/overlay-schema';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 import { GameDOMSchema } from './overlay/dom-schema';
-import { ClientEventSchema } from '@box-local/schema/events/client-event-schema';
+import { ClientEventSchema } from '@box/schema/events/client-event-schema';
 import {
   IKAnimationListSchema,
   IKPaletteSchema,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 import { ClientClockStateSchema } from './clock/clock-client-schema';
 import { ClientVoxelStateSchema } from './voxel/voxel-client-schema';
-import { InputStateSchema } from '@box-local/schema/input/input-schema';
-import { GameReplicaSchema } from '@box-local/schema/replica/game-replica';
+import { InputStateSchema } from '@box/schema/input/input-schema';
+import { GameReplicaSchema } from '@box/schema/replica/game-replica';
 import { NetClientStateSchema } from './net/net-client-state';
 import {
   ClientScriptSrcSchema,
   NetSecretSchema,
-} from '@box-local/schema/net/net-schema';
+} from '@box/schema/net/net-schema';
 import { EffectSchema } from './effect/effect-schema';
 import {
   ClientModelListSchema,
   ClientModelStateSchema,
 } from './mesh/client-model-schema';
 import { UI3DStateSchema } from './ui3d/ui3d-schema';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { PerfSchema } from './perf/perf-client-schema';
 import {
   EnvironmentParamSchema,
   EnvironmentStateSchema,
-} from '@box-local/schema/environment/environment-schema';
+} from '@box/schema/environment/environment-schema';
 import { ChatBubbleListSchema } from './chat/chat-client-schema';
 import {
   BlockIndexSchema,
   BlockInfoSchema,
-} from '@box-local/schema/voxel/block-schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
+} from '@box/schema/voxel/block-schema';
+import { HashSchema } from '@box/schema/content-server/index';
 import type { ClientConfig } from '../config/client';
 import { ClientParticleStateSchema } from './particle/particle-client-state';
 import { ClientSoundStateSchema } from './sound/client-sound-state';
 import { InteractClientStateSchema } from './interact/interact-client-state';
 import { ClientDialogStateSchema } from './dialog/dialog-client-state';
-import { CollisionFilterSchema } from '@box-local/schema/physics/collision-filter';
-import { LoadingController } from '@box-local/utils/loading/loading-controller';
+import { CollisionFilterSchema } from '@box/schema/physics/collision-filter';
+import { LoadingController } from '@box/utils/loading/loading-controller';
 import { HyperLinkSchema } from './href/href-client-state';
 import {
   PhysicsZoneSetSchema,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
-import { ChatSchema, GlobalNoticeSchema } from '@box-local/schema/chat/chat-schema';
+} from '@box/schema/zone/zone-schema';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
+import { ChatSchema, GlobalNoticeSchema } from '@box/schema/chat/chat-schema';
 import { KeyframeClientStateSchema } from './keyframes/keyframe-client-schema';
 import { GUISchema } from './gui/gui-schema';
-import { NavigatorSchema } from '@box-local/schema/navigator/navigator-schema';
+import { NavigatorSchema } from '@box/schema/navigator/navigator-schema';
 import { GLOutlineStateSchema } from './gl/schema/gl-outline';
 import { ClientScriptStateSchema } from './script/schema';
 import { ResourcesSchema } from './resource/schema';
@@ -98,7 +98,7 @@ import { GLParticleSchema } from './particle/gl-particle/gl-particle-schema';
 import { GPUParticleSchema } from './particle/gpu-particle/gpu-particle-schema';
 import { GPUShadowStateSchema } from './gpu/schema/gpu-shadow-schema';
 import { GPUOutlineStateSchema } from './gpu/schema/gpu-outline';
-import { RenderBoxSetSchema } from '@box-local/schema/render-box/schema';
+import { RenderBoxSetSchema } from '@box/schema/render-box/schema';
 import type { ResourceController } from './resource';
 
 // Current state of application client

@@ -1,7 +1,7 @@
 import React, { useEffect, useContext, useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import Editor, { Monaco, OnMount } from '@monaco-editor/react';
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
 import { StyleMonaco } from './style';
 
 import { RootState } from 'src/redux/edit';

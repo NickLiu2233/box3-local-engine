@@ -1,7 +1,7 @@
 import { vec3 } from 'gl-matrix';
-import { IKState } from '@box-local/schema/animation/ik-schema';
-import { boxRayIntersectRecip } from '@box-local/schema/physics/box-collide';
-import { BodyRaycast } from '@box-local/schema/physics/raycast-bodies';
+import { IKState } from '@box/schema/animation/ik-schema';
+import { boxRayIntersectRecip } from '@box/schema/physics/box-collide';
+import { BodyRaycast } from '@box/schema/physics/raycast-bodies';
 
 const EPSILON = 1e-6;
 

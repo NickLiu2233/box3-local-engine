@@ -1,9 +1,9 @@
 {
-  "name": "@box-local/env",
+  "name": "@box/env",
   "entries": [
     {
       "version": "0.3.0",
-      "tag": "@box-local/env_v0.3.0",
+      "tag": "@box/env_v0.3.0",
       "date": "Wed, 03 Sep 2025 07:32:05 GMT",
       "comments": {
         "minor": [
@@ -13,14 +13,14 @@
         ],
         "dependency": [
           {
-            "comment": "Updating dependency \"@box-local/utils\" to `2.1.0`"
+            "comment": "Updating dependency \"@box/utils\" to `2.1.0`"
           }
         ]
       }
     },
     {
       "version": "0.2.0",
-      "tag": "@box-local/env_v0.2.0",
+      "tag": "@box/env_v0.2.0",
       "date": "Fri, 10 May 2024 07:02:16 GMT",
       "comments": {
         "none": [
@@ -37,7 +37,7 @@
     },
     {
       "version": "0.1.5",
-      "tag": "@box-local/env_v0.1.5",
+      "tag": "@box/env_v0.1.5",
       "date": "Thu, 18 Jan 2024 03:30:47 GMT",
       "comments": {
         "patch": [

@@ -2,7 +2,7 @@ import { vec3, mat3, vec4 } from 'gl-matrix';
 import { ClientStateType } from '../edit-schema';
 import { GameClientState } from 'src/engine/game-client-schema';
 import { drawText3D } from 'src/engine/overlay/overlays';
-import { EntitySeed } from '@box-local/schema/project/project-rda';
+import { EntitySeed } from '@box/schema/project/project-rda';
 import { raycastEye } from 'src/engine/utils/raycast-eye';
 import { computeEntitySeedRenderBox } from 'src/views/edit/components/transformHandler/util';
 

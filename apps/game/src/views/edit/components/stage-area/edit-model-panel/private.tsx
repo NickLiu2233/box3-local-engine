@@ -2,10 +2,10 @@ import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import style from './index.module.scss';
-import { ModelType } from '@box-local/apis';
+import { ModelType } from '@box/apis';
 import { Search } from 'src/views/edit/components/search';
 import { ModelList } from 'src/views/edit/components/stage-area/edit-model-panel/model-list';
-import { Button, ItemId, MenuItemOptions, Modal, Toast } from '@box-local/box-design';
+import { Button, ItemId, MenuItemOptions, Modal, Toast } from '@box/box-design';
 import {
   FETCH_LIMIT,
   fetchModelList,
@@ -20,7 +20,7 @@ import { editor } from 'src/client/edit/edit-client';
 import { RootState } from 'src/redux/edit';
 import { useDispatch, useSelector } from 'react-redux';
 import { setSelectedModel } from 'src/redux/edit/ui';
-import { IconRotate } from '@box-local/icons';
+import { IconRotate } from '@box/icons';
 import {
   ScrollAction,
   ScrollManage,

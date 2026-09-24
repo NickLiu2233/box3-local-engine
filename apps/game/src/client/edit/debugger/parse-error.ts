@@ -1,7 +1,7 @@
 import {
   ParsedErrorSchema,
   StackFrameSchema,
-} from '@box-local/schema/debugger-console/schema';
+} from '@box/schema/debugger-console/schema';
 
 const CHROME_IE_STACK_REGEXP = /^\s*at .*(\S+\:\d+|\(native\))/m;
 const SAFARI_NATIVE_CODE_REGEXP = /^(eval@)?(\[native code\])?$/;

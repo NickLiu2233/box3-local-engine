@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
 import { forEachAdjacent, onVoxelParams } from '../../../utils/forEachAdjacent';
-import type { VoxelView } from '@box-local/utils/voxel';
+import type { VoxelView } from '@box/utils/voxel';
 import type { Operation } from './interfaces';
 
 type ParseParams = {

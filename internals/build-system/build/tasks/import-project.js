@@ -11,9 +11,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.importProject = importProject;
 exports.exportProject = exportProject;
-const stream_1 = require("@box-local/mudb/stream");
-const voxel_collision_schema_1 = require("@box-local/schema/voxel/voxel-collision-schema");
-const project_rda_1 = require("@box-local/schema/project/project-rda");
+const stream_1 = require("@box/mudb/stream");
+const voxel_collision_schema_1 = require("@box/schema/voxel/voxel-collision-schema");
+const project_rda_1 = require("@box/schema/project/project-rda");
 const project_serialize_1 = require("../project/project-serialize");
 const FILE_TYPES = {
     js: project_rda_1.AssetType.JS_SCRIPT,

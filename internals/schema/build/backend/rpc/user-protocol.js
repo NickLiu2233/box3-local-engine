@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.EventChoseStatus = exports.UserRPCSchema = exports.UploadScene = exports.AVATARSIZE = exports.MAX_RETRY_RESET = exports.MAX_BLOCK_LIMIT = exports.UserFollowSchema = exports.UserSchema = exports.IllegalTab = exports.UserTag = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const nullable_schema_1 = require("./nullable-schema");
 var UserTag;
 (function (UserTag) {

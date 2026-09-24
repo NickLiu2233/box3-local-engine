@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 import { mergeExtraProjectInfo } from '../src/project/project-extra';
 
 function extra(defaultSkinName = '') {

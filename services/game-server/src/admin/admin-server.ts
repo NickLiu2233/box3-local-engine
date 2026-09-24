@@ -1,22 +1,22 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
 import { GameServer } from '../index';
-import { AdminProtocol } from '@box-local/schema/admin/admin-gateway-protocol';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { AdminProtocol } from '@box/schema/admin/admin-gateway-protocol';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import {
   AdminCommandSchema,
   AdminUserSetSchema,
   AdminUserSchema,
   AdminEvent,
   AdminEventSchema,
-} from '@box-local/schema/admin/admin-protocol';
-import { Logger } from '@box-local/utils/logger';
-import { getById } from '@box-local/utils/id';
+} from '@box/schema/admin/admin-protocol';
+import { Logger } from '@box/utils/logger';
+import { getById } from '@box/utils/id';
 import {
   PlayerFlags,
   PlayerDisplayFlags,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import util from 'util';
-import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
+import { BackendRPC } from '@box/schema/backend/rpc-interface';
 import type { EditServerState } from '../edit/edit-server-schema';
 
 export class GameAdminServer {

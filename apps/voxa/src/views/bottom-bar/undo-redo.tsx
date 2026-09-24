@@ -1,6 +1,6 @@
 import { memo, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
-import { Button, TooltipTrigger, TriggerOptions } from '@box-local/box-design';
+import { Button, TooltipTrigger, TriggerOptions } from '@box/box-design';
 import { VoxelEditorContext } from '../../internals';
 import { useAppSelector } from '../../redux/store';
 import { OFFSET_Y } from '.';

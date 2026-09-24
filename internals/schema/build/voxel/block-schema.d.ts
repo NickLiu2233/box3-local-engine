@@ -1,4 +1,4 @@
-import { MuArray, MuVarint, MuStruct, MuDictionary, MuUTF8, MuUint32, MuUint16, MuFloat64, MuBoolean, MuRelativeVarint, MuFloat32, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuArray, MuVarint, MuStruct, MuDictionary, MuUTF8, MuUint32, MuUint16, MuFloat64, MuBoolean, MuRelativeVarint, MuFloat32, MuQuantizedFloat } from '@box/mudb/schema';
 import { MuRefSchema } from '../utils/ref-schema';
 import { RelativeArray } from '../utils/relative-array';
 export declare enum BlockSoundGroup {
@@ -34,9 +34,9 @@ export declare const BlockInfoSchema: MuStruct<{
     atlasRadius: MuVarint;
     blockBumpShift: MuVarint;
     blockColorShift: MuVarint;
-    colorAtlas: MuArray<import("@box-local/mudb/schema").MuASCII>;
-    materialAtlas: MuArray<import("@box-local/mudb/schema").MuASCII>;
-    bumpAtlas: MuArray<import("@box-local/mudb/schema").MuASCII>;
+    colorAtlas: MuArray<import("@box/mudb/schema").MuASCII>;
+    materialAtlas: MuArray<import("@box/mudb/schema").MuASCII>;
+    bumpAtlas: MuArray<import("@box/mudb/schema").MuASCII>;
 }>;
 export type BlockInfo = typeof BlockInfoSchema.identity;
 export declare const BlockIndexSchema: MuStruct<{

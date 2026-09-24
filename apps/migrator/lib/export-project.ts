@@ -4,16 +4,16 @@ import os from 'os'
 import path from 'path'
 import { spawn } from 'child_process'
 import { once } from 'events'
-import { MuWriteStream } from '@box-local/mudb/stream'
-import { ExtraProjectInfoSchema, getMeshPath } from '@box-local/schema/project/hot-schema'
-import { parseVbFile, type VbFileData } from '@box-local/vb-parser'
+import { MuWriteStream } from '@box/mudb/stream'
+import { ExtraProjectInfoSchema, getMeshPath } from '@box/schema/project/hot-schema'
+import { parseVbFile, type VbFileData } from '@box/vb-parser'
 import {
   getModelMetaData,
   migrateModel,
   migrateProject,
   modelSchemaToBytes,
   projectSchemaToBytes,
-} from '@box-local/voxa-project'
+} from '@box/voxa-project'
 import {
   getCloudEngineData,
   migrateMapGroupProject,

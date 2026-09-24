@@ -5,7 +5,7 @@ import {
   AutoLayoutStartCorner,
   AutoLayoutVerticalAlignType,
   AutoResizeType,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import type { GameUINode } from '../nodes/base';
 import {
   calcByCoord2,

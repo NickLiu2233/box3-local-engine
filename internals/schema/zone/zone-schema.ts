@@ -4,9 +4,9 @@ import {
   MuSortedArray,
   MuStruct,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { FogRDA, RainRDA, SkyRDA, SnowRDA } from '../project/project-rda';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 
 // common zone stuff
 export const ZoneSchema = new MuStruct({

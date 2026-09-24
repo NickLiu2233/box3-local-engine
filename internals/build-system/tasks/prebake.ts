@@ -1,16 +1,16 @@
 import { ProjectBakeCache } from '../project/bake';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { PrebakeCacheSchema } from '../project/prebake-schema';
 import {
   HotProjectSchema,
   ExtraProjectInfoSchema,
-} from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/hot-schema';
 import {
   PermissionRDA,
   PermissionsSchema,
-} from '@box-local/schema/permissions/permission-rda';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
-import { ContentServer } from '@box-local/content-server';
+} from '@box/schema/permissions/permission-rda';
+import { ProjectRDA } from '@box/schema/project/project-rda';
+import { ContentServer } from '@box/content-server';
 import { retrievePermissions } from '../permissions/permission-serialize';
 import {
   retrieveProject,

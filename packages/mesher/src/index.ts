@@ -1,4 +1,4 @@
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 
 import {
   Texture,

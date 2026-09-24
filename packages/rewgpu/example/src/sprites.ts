@@ -1,4 +1,4 @@
-import { createREWGPU } from '@box-local/rewgpu';
+import { createREWGPU } from '@box/rewgpu';
 import { mat4, vec4 } from 'gl-matrix';
 
 const NUM_SPRITES = 1000;

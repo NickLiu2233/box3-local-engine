@@ -1,4 +1,4 @@
-import type { DrawConfig } from '@box-local/regl';
+import type { DrawConfig } from '@box/regl';
 import { Material, MaterialType } from './material';
 
 export interface Parameters {

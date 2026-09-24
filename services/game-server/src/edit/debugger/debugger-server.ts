@@ -1,9 +1,9 @@
-import { MuServerProtocol, MuServer, MuRemoteClient } from '@box-local/mudb/server';
-import { DebuggerProtocol } from '@box-local/schema/debugger-console/protocol';
-import type { ParsedError } from '@box-local/schema/debugger-console/schema';
+import { MuServerProtocol, MuServer, MuRemoteClient } from '@box/mudb/server';
+import { DebuggerProtocol } from '@box/schema/debugger-console/protocol';
+import type { ParsedError } from '@box/schema/debugger-console/schema';
 import { EditServerState } from '../edit-server-schema';
-import { GameLogLevel } from '@box-local/schema/api/console';
-import { EventBus } from '@box-local/utils/event';
+import { GameLogLevel } from '@box/schema/api/console';
+import { EventBus } from '@box/utils/event';
 
 export type CreatorConsoleEvent =
   | { type: 'log'; side: 'server' | 'client'; level: GameLogLevel; message: string; at: string }

@@ -1,6 +1,6 @@
 import { setSelectedId } from '../../../redux/palette-slice';
 import { store } from '../../../redux/store';
-import type { Actions, EditingMode } from '@box-local/utils/helper';
+import type { Actions, EditingMode } from '@box/utils/helper';
 import type { SetTool } from '../../voxel-app/interfaces';
 import { BasicTool, Params } from './base';
 

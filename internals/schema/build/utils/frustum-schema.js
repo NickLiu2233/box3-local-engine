@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.FrustumSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("./math-schema");
 exports.FrustumSchema = new schema_1.MuStruct({
     // Matrix

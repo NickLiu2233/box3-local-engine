@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { useClassName } from '@box-local/box-design';
+import { useClassName } from '@box/box-design';
 import style from './style.module.scss';
 
 export function FloatBtn(props: {

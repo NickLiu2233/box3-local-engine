@@ -10,7 +10,7 @@
  *
  * 使用示例:
  * ```typescript
- * import { BoxApiClient } from '@box-local/box-api-client';
+ * import { BoxApiClient } from '@box/box-api-client';
  *
  * // 初始化客户端
  * const client = new BoxApiClient({

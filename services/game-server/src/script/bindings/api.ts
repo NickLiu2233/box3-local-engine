@@ -1,13 +1,13 @@
-import { GameConsole } from '@box-local/schema/api/console';
-import * as GameAPI from '@box-local/schema/api/js/api';
-import * as GameMath from '@box-local/schema/api/js/math';
-import * as GameDB from '@box-local/schema/api/js/db';
-import * as GameHttp from '@box-local/schema/api/js/http';
-import * as GameURL from '@box-local/schema/api/js/url';
-import * as GameRTC from '@box-local/schema/api/js/rtc';
-import * as GameGUI from '@box-local/schema/api/js/gui';
-import * as GameStorage from '@box-local/schema/api/js/storage';
-import * as GameRemoteChannel from '@box-local/schema/api/js/remote-channel';
+import { GameConsole } from '@box/schema/api/console';
+import * as GameAPI from '@box/schema/api/js/api';
+import * as GameMath from '@box/schema/api/js/math';
+import * as GameDB from '@box/schema/api/js/db';
+import * as GameHttp from '@box/schema/api/js/http';
+import * as GameURL from '@box/schema/api/js/url';
+import * as GameRTC from '@box/schema/api/js/rtc';
+import * as GameGUI from '@box/schema/api/js/gui';
+import * as GameStorage from '@box/schema/api/js/storage';
+import * as GameRemoteChannel from '@box/schema/api/js/remote-channel';
 
 export function createScriptAPI(spec: {
   scheduler: {

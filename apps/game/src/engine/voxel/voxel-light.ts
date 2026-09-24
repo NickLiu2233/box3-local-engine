@@ -2,8 +2,8 @@
 
 import { alloc, free } from '../utils/pool';
 import { fillArray } from './fill';
-import { BlockIndex } from '@box-local/schema/voxel/block-schema';
-import { VoxelView } from '@box-local/utils/voxel';
+import { BlockIndex } from '@box/schema/voxel/block-schema';
+import { VoxelView } from '@box/utils/voxel';
 
 const STEP_SIZE = 1;
 

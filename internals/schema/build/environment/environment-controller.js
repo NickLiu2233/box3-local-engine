@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.calcEnvironmentState = calcEnvironmentState;
-const lightmap_1 = require("@box-local/utils/lightmap");
+const lightmap_1 = require("@box/utils/lightmap");
 const gl_matrix_1 = require("gl-matrix");
 const project_rda_1 = require("../project/project-rda");
 function getSkyColor(color, timeOfDay, direction, sunColor) {

@@ -1,8 +1,8 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
-import { InteractProtocol } from '@box-local/schema/interact/interact-protocol';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
+import { InteractProtocol } from '@box/schema/interact/interact-protocol';
 import { GameClientState } from '../game-client-schema';
-import { getById, zipId } from '@box-local/utils/id';
-import { GameKeys } from '@box-local/schema/input/input-schema';
+import { getById, zipId } from '@box/utils/id';
+import { GameKeys } from '@box/schema/input/input-schema';
 import { InputController } from '../input/input-controller';
 import {
   ElementRect,
@@ -13,16 +13,16 @@ import {
 import {
   BodyRaycastSchema,
   raycastBoxes,
-} from '@box-local/schema/physics/raycast-bodies';
-import { RigidBody } from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/physics/raycast-bodies';
+import { RigidBody } from '@box/schema/physics/physics-schema';
 import { playSoundEffectSpatial } from '../sound/client-sound-controller';
-import { IKState } from '@box-local/schema/animation/ik-schema';
+import { IKState } from '@box/schema/animation/ik-schema';
 import { raycastPlayersByMeshBound } from '../player/player-raycast';
 import { vec2, vec3 } from 'gl-matrix';
 import { messenger } from 'src/messenger';
 import { raycastEye } from '../utils/raycast-eye';
 import type { GameMouseEvent } from '../input/events';
-import type { RenderBox } from '@box-local/schema/render-box/schema';
+import type { RenderBox } from '@box/schema/render-box/schema';
 
 const INTERACT_TIME_LIMIT = 4;
 const CLIP_POS = vec3.create();

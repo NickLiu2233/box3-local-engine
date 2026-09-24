@@ -4,19 +4,19 @@ import {
   MuUTF8,
   MuArray,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   GameAssetType,
   GameAssetListEntry,
   GameResourceSystem,
   GameSkinValue,
   Gamepad,
-} from '@box-local/schema/api/js/api';
-import { HashSchema } from '@box-local/schema/content-server/index';
-import { AssetTypeSchema, AssetType } from '@box-local/schema/project/project-rda';
-import { MotionListSchema } from '@box-local/schema/project/hot-schema';
-import { PlayerGamepadSchema } from '@box-local/schema/replica/game-private-replica';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/schema/api/js/api';
+import { HashSchema } from '@box/schema/content-server/index';
+import { AssetTypeSchema, AssetType } from '@box/schema/project/project-rda';
+import { MotionListSchema } from '@box/schema/project/hot-schema';
+import { PlayerGamepadSchema } from '@box/schema/replica/game-private-replica';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
 // Initialscript resource state
 export const ScriptResourceEntrySchema = new MuStruct({

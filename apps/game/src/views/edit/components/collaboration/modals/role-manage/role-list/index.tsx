@@ -2,8 +2,8 @@ import { useState, useCallback } from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
 
-import { Button, Menu, Trigger, Modal, Toast } from '@box-local/box-design';
-import { IconMore } from '@box-local/icons';
+import { Button, Menu, Trigger, Modal, Toast } from '@box/box-design';
+import { IconMore } from '@box/icons';
 import { useEdit } from 'src/client/edit/edit-context';
 import { RootState } from 'src/redux/edit';
 import { InnerRoles } from '../../../index';

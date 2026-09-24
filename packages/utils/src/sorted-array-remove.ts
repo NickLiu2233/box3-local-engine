@@ -1,5 +1,5 @@
 import { TaggedId } from './id';
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 
 export function sortedArrayDelete<
   T extends TaggedId,

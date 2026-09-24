@@ -1,5 +1,5 @@
-import { MuRDARegister, MuRDAStruct } from '@box-local/mudb/rda';
-import { MuBoolean, MuQuantizedFloat, MuSchema, MuUTF8, MuUint8, MuVarint, MuVoid } from '@box-local/mudb/schema';
+import { MuRDARegister, MuRDAStruct } from '@box/mudb/rda';
+import { MuBoolean, MuQuantizedFloat, MuSchema, MuUTF8, MuUint8, MuVarint, MuVoid } from '@box/mudb/schema';
 import { MuRDAUnion } from '../murda-union';
 import { MuRDATree } from '../murda-tree';
 import { QuantizedVec2Schema, QuantizedVec3Schema } from '../../utils/quantized-schema';

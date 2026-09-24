@@ -1,6 +1,6 @@
-import { HotProject } from '@box-local/schema/project/hot-schema';
+import { HotProject } from '@box/schema/project/hot-schema';
 import { BuildSystemAPI } from '../type';
-import { GroupProjectMetaData, ProjectInfo } from '@box-local/schema/project/project-rda';
+import { GroupProjectMetaData, ProjectInfo } from '@box/schema/project/project-rda';
 export interface StoreProjectRes {
     projectHash: string;
     groupProjectMetaData: GroupProjectMetaData;

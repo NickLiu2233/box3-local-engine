@@ -1,6 +1,6 @@
 import ndarray, { NdArray } from 'ndarray';
-import { alloc, free } from '@box-local/utils/pool';
-import { VoxelView } from '@box-local/utils/voxel';
+import { alloc, free } from '@box/utils/pool';
+import { VoxelView } from '@box/utils/voxel';
 import { greedyComputeMesh } from '../rendering/objects/voxels/mesher';
 import { OPAQUE_BIT } from '../rendering/objects/voxels/mesher/def';
 import { VoxelDimensionType } from '../project/interfaces';

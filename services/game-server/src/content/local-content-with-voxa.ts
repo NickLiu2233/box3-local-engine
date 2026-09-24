@@ -3,7 +3,7 @@ import { createHash } from 'crypto';
 import { lookup } from 'dns/promises';
 import type { Logger } from 'pino';
 
-import type { ContentServer } from '@box-local/content-server';
+import type { ContentServer } from '@box/content-server';
 import { voxaInternalHeaders } from '../project/voxa-internal-auth';
 
 /**

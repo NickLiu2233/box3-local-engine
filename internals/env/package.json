@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/env",
+  "name": "@box/env",
   "version": "0.3.0",
   "description": "",
   "keywords": [],
@@ -36,7 +36,7 @@
     "build:watch": "npm run build"
   },
   "dependencies": {
-    "@box-local/utils": "workspace:*",
+    "@box/utils": "workspace:*",
     "@types/node": "20.16.15",
     "@types/ramda": "0.28.15",
     "ajv": "8.11.0",

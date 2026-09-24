@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameSessionDataSchema = exports.UserDetailSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const player_schema_1 = require("../player/player-schema");
 const math_schema_1 = require("../utils/math-schema");
 const nullable_schema_1 = require("../backend/rpc/nullable-schema");

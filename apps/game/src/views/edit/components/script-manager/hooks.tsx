@@ -1,8 +1,8 @@
 import { IntlShape } from 'react-intl';
-import { Toast } from '@box-local/box-design/';
-import { ShareScriptErrorCode } from '@box-local/apis/src/createra/data-contracts';
-import { FileState } from '@box-local/schema/code-editor/code-editor-common-state';
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { Toast } from '@box/box-design/';
+import { ShareScriptErrorCode } from '@box/apis/src/createra/data-contracts';
+import { FileState } from '@box/schema/code-editor/code-editor-common-state';
+import { AssetType } from '@box/schema/project/project-rda';
 
 import { editor } from 'src/client/edit/edit-client';
 import { ensureFileInFileList, transformName } from './utils';

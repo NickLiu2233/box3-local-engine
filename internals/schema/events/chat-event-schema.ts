@@ -7,7 +7,7 @@ import {
   MuUint8,
   MuSchema,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { MsgType } from '../chat/chat-schema';
 
 export const ChatLogEventSchema = new MuStruct({

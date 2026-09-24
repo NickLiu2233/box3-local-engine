@@ -2,9 +2,9 @@ import {
   BlockIndexSchema,
   BlockInfo,
   BlockInfoSchema,
-} from '@box-local/schema/voxel/block-schema';
+} from '@box/schema/voxel/block-schema';
 import { unpackBlockIndex } from 'src/engine/voxel/blocks';
-import { MuWriteStream } from '@box-local/mudb/stream';
+import { MuWriteStream } from '@box/mudb/stream';
 
 export const TEST_BLOCK_INFO: BlockInfo = {
   names: ['air', 'solid', 'liquid', 'ice', 'bounce'],

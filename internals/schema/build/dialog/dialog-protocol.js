@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DialogProtocol = exports.CloseDialogSchema = exports.OpenDialogSchema = exports.DialogResultSchema = exports.DialogConfigSchema = exports.SelectDialogConfigSchema = exports.InputDialogConfigSchema = exports.TextDialogConfigSchema = exports.DialogCommonConfigSchema = exports.XYZSchema = exports.RGBASchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 exports.RGBASchema = new schema_1.MuStruct({
     r: new schema_1.MuQuantizedFloat(1 / 256, 1),
     g: new schema_1.MuQuantizedFloat(1 / 256, 1),

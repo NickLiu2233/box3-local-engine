@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
-import { TeleportProtocol } from '@box-local/schema/teleport/teleport-protocol';
-import type { TELEPORT_ERROR_STATUS } from '@box-local/schema/api/js/api';
-import { getById } from '@box-local/utils/id';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
+import { TeleportProtocol } from '@box/schema/teleport/teleport-protocol';
+import type { TELEPORT_ERROR_STATUS } from '@box/schema/api/js/api';
+import { getById } from '@box/utils/id';
 
 import type { GameServerState } from '../game-server-schema';
 import { TeleportScriptProtocol } from './teleport-script-protocol';

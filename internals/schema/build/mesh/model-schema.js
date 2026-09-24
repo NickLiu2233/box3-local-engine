@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ModelProtocol = exports.NetSkinTableSchema = exports.NetSkinSchema = exports.NetModelSetSchema = exports.NetSkinPartTableSchema = exports.NetSkinPartSchema = exports.NetMeshTableSchema = exports.NetMeshTableEntrySchema = exports.NetModelSchema = exports.NetModelSchemaContent = exports.NetModelMotionSchema = exports.PlaybackSchema = exports.MotionsPlaybackSchema = exports.MotionPlaybackSchema = exports.HashSchema = void 0;
 const hot_schema_1 = require("../project/hot-schema");
-const schema_1 = require("@box-local/mudb/schema");
-const id_1 = require("@box-local/utils/id");
+const schema_1 = require("@box/mudb/schema");
+const id_1 = require("@box/utils/id");
 exports.HashSchema = new schema_1.MuASCII();
 exports.MotionPlaybackSchema = new schema_1.MuStruct({
     motionId: new schema_1.MuASCII(),

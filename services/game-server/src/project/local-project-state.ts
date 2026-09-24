@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
+import type { RetrievedGroupProjectMetaData } from '@box/build-system/group-project/index';
 
 type LocalProjectState = {
   formatVersion?: number;

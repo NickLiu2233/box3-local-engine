@@ -1,5 +1,5 @@
 import React from 'react';
-import { DB } from '@box-local/schema/backend/database-type';
+import { DB } from '@box/schema/backend/database-type';
 import { getIntlStatus } from './statusMessage';
 import { intlMessage } from 'src/utils/i18n';
 

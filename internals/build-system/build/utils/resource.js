@@ -40,7 +40,7 @@ const fs_1 = __importDefault(require("fs"));
 const fsext = __importStar(require("fs-extra"));
 const path_1 = __importDefault(require("path"));
 const build_system_1 = require("../build-system");
-const stream_1 = require("@box-local/mudb/stream");
+const stream_1 = require("@box/mudb/stream");
 const upload_dir_1 = require("./upload-dir");
 function inferType(json) {
     switch (typeof json) {

@@ -9,7 +9,7 @@ import {
   IKPose,
   IKPoints,
   IKConfiguration,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 
 export default function glRigMain(regl, requireREGL: REGLLoader) {
   const drawBox = requireREGL.require(glDebugBox);

@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/iframe-event-bus",
+  "name": "@box/iframe-event-bus",
   "version": "0.1.1",
   "description": "iframe-event-bus",
   "license": "MIT",

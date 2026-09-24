@@ -8,67 +8,67 @@ import {
   MuDictionary,
   MuSortedArray,
   MuFloat64,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   ContactIndexSchema,
   PhysicsParamsSchema,
   RigidBodySetSchema,
-} from '@box-local/schema/physics/physics-schema';
-import { EnvironmentStateSchema } from '@box-local/schema/environment/environment-schema';
+} from '@box/schema/physics/physics-schema';
+import { EnvironmentStateSchema } from '@box/schema/environment/environment-schema';
 import { ServerPlayerListSchema } from './player/player-server-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { VoxelView } from '@box-local/utils/voxel';
-import { VoxelCollisionSchema } from '@box-local/schema/voxel/voxel-collision-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { VoxelView } from '@box/utils/voxel';
+import { VoxelCollisionSchema } from '@box/schema/voxel/voxel-collision-schema';
 import {
   ServerVoxelStateSchema,
   ServerVoxelConnectionSchema,
 } from './voxel/voxel-server-schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
-import { ContentPerf } from '@box-local/content-server/content-perf';
-import { ServerEventSchema } from '@box-local/schema/events/server-event-schema';
-import { MuSessionId } from '@box-local/mudb/socket/socket';
+import { HashSchema } from '@box/schema/content-server/index';
+import { ContentPerf } from '@box/content-server/content-perf';
+import { ServerEventSchema } from '@box/schema/events/server-event-schema';
+import { MuSessionId } from '@box/mudb/socket/socket';
 import { ServerClockStateSchema } from './clock/clock-server-schema';
 import {
   PlayerSetSchema,
   PlayerInputSetSchema,
   PlayerLoginState,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   NetServerStateSchema,
   NetServerConnectionSchema,
 } from './net/net-server-state';
-import { GameReplicaSchema } from '@box-local/schema/replica/game-replica';
-import { GameSessionDataSchema } from '@box-local/schema/session/schema';
+import { GameReplicaSchema } from '@box/schema/replica/game-replica';
+import { GameSessionDataSchema } from '@box/schema/session/schema';
 import { SeedStateSchema } from './seed/seed-schema';
-import { HotProjectSchema } from '@box-local/schema/project/hot-schema';
-import { Logger } from '@box-local/utils/logger';
-import { compareId } from '@box-local/utils/id';
+import { HotProjectSchema } from '@box/schema/project/hot-schema';
+import { Logger } from '@box/utils/logger';
+import { compareId } from '@box/utils/id';
 import {
   GameServerScriptStateSchema,
   ScriptSrcSchema,
 } from './script/script-schema';
-import { EntityStateSchema } from '@box-local/schema/entity/entity-schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { EntityStateSchema } from '@box/schema/entity/entity-schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import { ServerSettingsSchema } from './settings/server-settings-schema';
 import {
   BlockInfoSchema,
   BlockIndexSchema,
-} from '@box-local/schema/voxel/block-schema';
+} from '@box/schema/voxel/block-schema';
 import { ServerParticleStateSchema } from './particle/particle-server-state';
 import { ServerModelStateSchema } from './mesh/server-model-schema';
 import { ServerSoundStateSchema } from './sound/server-sound-state';
 import { InteractServerStateSchema } from './interact/interact-server-state';
 import { DialogConnectionSchema } from './dialog/dialog-server-schema';
 import { StorageSchema } from './storage/storage-schema';
-import { CollisionFilterSchema } from '@box-local/schema/physics/collision-filter';
+import { CollisionFilterSchema } from '@box/schema/physics/collision-filter';
 import { ServerPerfSchema } from './perf/perf-server-schema';
 import { ServerEnvironmentZoneSetSchema } from './zone/zone-server-state';
 import {
   PhysicsZoneSetSchema,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
+} from '@box/schema/zone/zone-schema';
 import { KeyframeServerStateSchema } from './keyframes/keyframe-server-schema';
-import { GamePrivateReplicaSetSchema } from '@box-local/schema/replica/game-private-replica';
+import { GamePrivateReplicaSetSchema } from '@box/schema/replica/game-private-replica';
 import { ChatStateSchema } from './chat/chat-state';
 
 export enum GameConnectionState {

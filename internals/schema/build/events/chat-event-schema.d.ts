@@ -1,4 +1,4 @@
-import { MuStruct, MuArray, MuInt32, MuUTF8, MuBoolean, MuSchema } from '@box-local/mudb/schema';
+import { MuStruct, MuArray, MuInt32, MuUTF8, MuBoolean, MuSchema } from '@box/mudb/schema';
 import { MsgType } from '../chat/chat-schema';
 export declare const ChatLogEventSchema: MuStruct<{
     senderId: MuInt32;

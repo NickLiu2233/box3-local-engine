@@ -8,7 +8,7 @@ import {
   copyContent,
   DEFAULT_CONTENT_CACHE,
 } from './content-cache';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 
 function ipfsHash(data: Uint8Array): string {
   const digest = createHash('sha256').update(data).digest();

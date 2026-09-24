@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BufferSink = exports.Logger = exports.LogMessageSchema = exports.LogLevel = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 var LogLevel;
 (function (LogLevel) {
     LogLevel[LogLevel["ERROR"] = 0] = "ERROR";

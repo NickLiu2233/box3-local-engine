@@ -7,7 +7,7 @@ import {
   MuArray,
   MuVarint,
   MuFloat32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { Vec3Schema } from '../utils/math-schema';
 
 export enum FootType {

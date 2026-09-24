@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import { EventEmitter as NativeEventEmitter } from 'events';
 
 /**

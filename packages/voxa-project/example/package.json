@@ -12,9 +12,9 @@
     "next": "12.2.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "@box-local/voxa-project": "file:..",
-    "@box-local/mudb": "file:..",
-    "@box-local/vb-parser": "file:.."
+    "@box/voxa-project": "file:..",
+    "@box/mudb": "file:..",
+    "@box/vb-parser": "file:.."
   },
   "devDependencies": {
     "@types/node": "18.7.13",

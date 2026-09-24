@@ -1,7 +1,7 @@
 import { mat3, mat4, quat, vec3 } from 'gl-matrix';
 import { nanoid } from 'nanoid';
 import { getEuler } from '../math/quat';
-import type { DrawConfig } from '@box-local/regl';
+import type { DrawConfig } from '@box/regl';
 import type { Camera } from '../camera/base';
 import { OrthographicCamera } from '../camera/orthographic';
 import type { PerspectiveCamera } from '../camera/perspective';

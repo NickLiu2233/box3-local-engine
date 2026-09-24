@@ -2,7 +2,7 @@ import * as React from 'react';
 import { vec3 } from 'gl-matrix';
 import { UI3DMouseEvent } from 'src/engine/ui3d/ui3d-schema';
 import { UI3DBox, UI3DLine } from './index';
-import { MouseButton, MouseState } from '@box-local/schema/input/input-schema';
+import { MouseButton, MouseState } from '@box/schema/input/input-schema';
 
 interface UI3DCubeLineProps {
   color?: vec3;

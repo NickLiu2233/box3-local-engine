@@ -5,8 +5,8 @@ import {
   UseSliderOptions,
   UseSliderReturnValue,
   useSlider,
-} from '@box-local/box-design/build/hooks';
-import { SerializedVec2 } from '@box-local/box-design/build/interfaces';
+} from '@box/box-design/build/hooks';
+import { SerializedVec2 } from '@box/box-design/build/interfaces';
 
 // ref: https://usehooks-ts.com/react-hook/use-event-listener
 export function useEventListener<K extends keyof WindowEventMap>(

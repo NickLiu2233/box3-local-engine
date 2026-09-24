@@ -1,4 +1,4 @@
-import type { ReWGPU } from '@box-local/rewgpu';
+import type { ReWGPU } from '@box/rewgpu';
 import { GameClientState } from '../game-client-schema';
 
 export function gpuOutline(rewgpu: ReWGPU) {

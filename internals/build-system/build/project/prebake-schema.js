@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PrebakeCacheSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
-const project_rda_1 = require("@box-local/schema/project/project-rda");
-const hot_schema_1 = require("@box-local/schema/project/hot-schema");
-const permission_rda_1 = require("@box-local/schema/permissions/permission-rda");
+const schema_1 = require("@box/mudb/schema");
+const project_rda_1 = require("@box/schema/project/project-rda");
+const hot_schema_1 = require("@box/schema/project/hot-schema");
+const permission_rda_1 = require("@box/schema/permissions/permission-rda");
 exports.PrebakeCacheSchema = new schema_1.MuStruct({
     voxelBytes: new schema_1.MuArray(new schema_1.MuBytes(), Infinity),
     hotProject: hot_schema_1.HotProjectSchema,

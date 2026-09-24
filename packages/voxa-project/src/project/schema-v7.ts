@@ -7,7 +7,7 @@ import {
   MuArray,
   MuFloat32,
   MuSchema,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Mat3Schema,
   Uint8Vec3Schema,

@@ -1,6 +1,6 @@
 import { createContext } from 'react';
-import { MenuItemOptions } from '@box-local/box-design';
-import { AutoResizeType } from '@box-local/schema/project/ui-rda/defs';
+import { MenuItemOptions } from '@box/box-design';
+import { AutoResizeType } from '@box/schema/project/ui-rda/defs';
 import { isEnumType } from 'src/engine/utils/enum-type-guard';
 
 export enum PropTabType {

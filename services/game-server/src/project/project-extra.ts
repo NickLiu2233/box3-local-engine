@@ -5,8 +5,8 @@ import {
   ExtraProjectInfo,
   ExtraProjectInfoSchema,
   getMeshPath,
-} from '@box-local/schema/project/hot-schema';
-import { CreativeMode } from '@box-local/apis';
+} from '@box/schema/project/hot-schema';
+import { CreativeMode } from '@box/apis';
 import { isContentHash } from './content-hash';
 import { voxaInternalHeaders } from './voxa-internal-auth';
 

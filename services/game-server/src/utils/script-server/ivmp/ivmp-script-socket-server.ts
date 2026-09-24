@@ -1,10 +1,10 @@
-import { MuChildProcessSocket } from '@box-local/mudb/socket/child_process/client';
+import { MuChildProcessSocket } from '@box/mudb/socket/child_process/client';
 import {
   MuSocketServerSpec,
   MuSocketServerState,
-} from '@box-local/mudb/socket/socket';
-import type { ParsedError } from '@box-local/schema/debugger-console/schema';
-import { EventBus } from '@box-local/utils/event';
+} from '@box/mudb/socket/socket';
+import type { ParsedError } from '@box/schema/debugger-console/schema';
+import { EventBus } from '@box/utils/event';
 import { ChildProcess, fork } from 'child_process';
 import { extname, join } from 'path';
 import { Logger } from 'pino';

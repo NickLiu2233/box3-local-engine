@@ -1,5 +1,5 @@
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
-import { MuStruct, MuUint8, MuSchema } from '@box-local/mudb/schema';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
+import { MuStruct, MuUint8, MuSchema } from '@box/mudb/schema';
 import { BodyPart } from '../player/player-schema';
 import { Mat4Schema } from '../utils/math-schema';
 

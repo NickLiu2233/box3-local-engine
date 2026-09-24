@@ -1,5 +1,5 @@
 import { quat, vec3 } from 'gl-matrix';
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { Core } from '../../common/core';
 import {
   defaultMotions,
@@ -19,7 +19,7 @@ import { SkinPart } from './skin-part';
 import { BoneNode } from './bone';
 import { Background } from './background';
 import { IframeTool, ScreenshotMode } from './iframe';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 
 /**
  * 栅格适配数据，栅格最大宽度1200px

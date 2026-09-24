@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/mesher",
+  "name": "@box/mesher",
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
@@ -22,8 +22,8 @@
     "build:watch": "tsc"
   },
   "dependencies": {
-    "@box-local/mudb": "workspace:1.0.4",
-    "@box-local/utils": "workspace:*",
+    "@box/mudb": "workspace:1.0.4",
+    "@box/utils": "workspace:*",
     "ndarray": "1.0.19",
     "save-pixels": "2.3.6"
   },

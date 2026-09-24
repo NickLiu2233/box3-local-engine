@@ -1,4 +1,4 @@
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { AssetType } from '@box/schema/project/project-rda';
 
 export const AUDIO_EXTS = ['.mp3', '.m4a', '.wav', '.ogg', '.opus'];
 export const IMAGE_EXTS_WITHOUT_DOT = ['jpg', 'jpeg', 'png'];

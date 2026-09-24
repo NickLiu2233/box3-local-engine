@@ -1,7 +1,7 @@
 // Hacks to get typescript interface into webgl/regl state.  Kind of gross
 import REGL from 'regl';
-import { MuStruct, MuFloat64 } from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+import { MuStruct, MuFloat64 } from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { REGLLoader } from '../gl/regl';
 
 export const REGLSchema = new MuRefSchema<REGL.Regl>();

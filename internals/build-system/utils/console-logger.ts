@@ -1,4 +1,4 @@
-import { Logger, LogLevel } from '@box-local/utils/logger';
+import { Logger, LogLevel } from '@box/utils/logger';
 
 export function createConsoleLogger(
   startTime: number,

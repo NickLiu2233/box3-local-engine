@@ -1,4 +1,4 @@
-import { AppEdition } from '@box-local/schema/types/appEdition';
+import { AppEdition } from '@box/schema/types/appEdition';
 
 export function s(val: any) {
   if (typeof val !== 'string') {

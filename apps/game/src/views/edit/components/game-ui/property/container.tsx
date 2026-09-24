@@ -11,7 +11,7 @@ import {
   pickAutoLayoutProp,
   isUIElement,
   isUIScreen,
-} from '@box-local/schema/project/ui-rda/util';
+} from '@box/schema/project/ui-rda/util';
 import type { RootState } from 'src/redux/edit';
 import { PropertyTabs, TabsConfig } from './tabs';
 import { PropertyCards } from './cards';

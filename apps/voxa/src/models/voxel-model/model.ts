@@ -1,8 +1,8 @@
 import { nextPow2 } from 'bit-twiddle';
 import { vec3, vec4 } from 'gl-matrix';
-import type { Buffer, DrawCommand, Regl } from '@box-local/regl';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
-import { freeVoxels, getBoxBoundary, VoxelView } from '@box-local/utils/voxel';
+import type { Buffer, DrawCommand, Regl } from '@box/regl';
+import { allocEmptyVoxels } from '@box/utils/helper';
+import { freeVoxels, getBoxBoundary, VoxelView } from '@box/utils/voxel';
 import type { VEState } from '../voxel-app/state';
 import { BoxBoundary } from '../editing/interfaces';
 import { Axis } from '../rendering/def';

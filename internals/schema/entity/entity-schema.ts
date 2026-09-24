@@ -5,7 +5,7 @@ import {
   MuVarint,
   MuDictionary,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const EntitySetSchema = new MuSortedArray(
   new MuVarint(),

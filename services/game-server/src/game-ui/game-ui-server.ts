@@ -1,5 +1,5 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { GameUIProtocol } from '@box-local/schema/game-ui/game-ui-protocol';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
+import { GameUIProtocol } from '@box/schema/game-ui/game-ui-protocol';
 import type { GameServerState } from '../game-server-schema';
 
 export class GameUIServer {

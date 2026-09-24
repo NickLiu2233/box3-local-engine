@@ -1,7 +1,7 @@
 import { mat3, quat, vec3 } from 'gl-matrix';
 import type { IntlShape } from 'react-intl';
 import { nanoid } from 'nanoid';
-import { Modal } from '@box-local/box-design';
+import { Modal } from '@box/box-design';
 import { NodeSchema, Vec3Schema, Vec4Schema } from '../project/defs';
 import { store } from '../../redux/store';
 import { ValidPaletteItem, setSelectedId } from '../../redux/palette-slice';

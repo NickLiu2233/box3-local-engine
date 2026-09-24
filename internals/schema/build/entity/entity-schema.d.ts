@@ -1,4 +1,4 @@
-import { MuSortedArray, MuUint32, MuStruct, MuVarint, MuDictionary, MuBoolean } from '@box-local/mudb/schema';
+import { MuSortedArray, MuUint32, MuStruct, MuVarint, MuDictionary, MuBoolean } from '@box/mudb/schema';
 export declare const EntitySetSchema: MuSortedArray<MuVarint>;
 export declare const DeletedEntitiesSchema: MuDictionary<MuBoolean>;
 export declare const EntityStateSchema: MuStruct<{

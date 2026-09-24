@@ -7,45 +7,45 @@ import os from 'os';
 import path from 'path';
 import url from 'url';
 
-import { MockBuildCache } from '@box-local/build-system/build-cache-mock';
-import { BuildSystem } from '@box-local/build-system/build-system';
-import type { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project/index';
-import { createDefaultPermissions } from '@box-local/build-system/permissions/permission-init';
-import { PrebakeCacheSchema } from '@box-local/build-system/project/prebake-schema';
+import { MockBuildCache } from '@box/build-system/build-cache-mock';
+import { BuildSystem } from '@box/build-system/build-system';
+import type { RetrievedGroupProjectMetaData } from '@box/build-system/group-project/index';
+import { createDefaultPermissions } from '@box/build-system/permissions/permission-init';
+import { PrebakeCacheSchema } from '@box/build-system/project/prebake-schema';
 import { LocalBuildCache } from './utils/local-build-cache';
 import { LocalDerivedContentServer } from './content/local-derived-content';
 import { RedisBuildCache } from './utils/redis-build-cache';
-import { prebakeMap } from '@box-local/build-system/tasks/prebake';
-import { CachingContentServer } from '@box-local/content-server/caching-content-server';
-import { ContentSplitter } from '@box-local/content-server/content-split';
-import { createContentRouter } from '@box-local/content-server/content-host';
-import { FileSystemContentServer } from '@box-local/content-server/file-system-store-node';
-import { GoIPFSStore } from '@box-local/content-server/ipfs-http-store-node';
-import { ObjectStoreService } from '@box-local/content-server/object-store-service';
-import { MuSystemScheduler } from '@box-local/mudb/scheduler/system';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
-import { GroupProjectStore } from '@box-local/schema/group-project/rda';
-import { PermissionRDA } from '@box-local/schema/permissions/permission-rda';
+import { prebakeMap } from '@box/build-system/tasks/prebake';
+import { CachingContentServer } from '@box/content-server/caching-content-server';
+import { ContentSplitter } from '@box/content-server/content-split';
+import { createContentRouter } from '@box/content-server/content-host';
+import { FileSystemContentServer } from '@box/content-server/file-system-store-node';
+import { GoIPFSStore } from '@box/content-server/ipfs-http-store-node';
+import { ObjectStoreService } from '@box/content-server/object-store-service';
+import { MuSystemScheduler } from '@box/mudb/scheduler/system';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
+import { GroupProjectStore } from '@box/schema/group-project/rda';
+import { PermissionRDA } from '@box/schema/permissions/permission-rda';
 import {
   ExtraProjectInfoSchema,
   HotProjectSchema,
-} from '@box-local/schema/project/hot-schema';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
-import { ProjectAction } from '@box-local/schema/replica/replica-schema';
+} from '@box/schema/project/hot-schema';
+import { ProjectRDA } from '@box/schema/project/project-rda';
+import { ProjectAction } from '@box/schema/replica/replica-schema';
 import {
   SchemaTraceEntry,
   traceMathSchemas,
   traceSchema,
   trapDoubleFree,
-} from '@box-local/schema/utils/trace-schema';
-import { consoleSink } from '@box-local/utils/console-sink';
-import { EventBus } from '@box-local/utils/event';
-import { filterSink } from '@box-local/utils/filter-sink';
-import { NodeFetch } from '@box-local/utils/http-fetch/node';
-import { getRealIP } from '@box-local/utils/ip';
-import { Logger } from '@box-local/utils/logger';
-import { clearMemoryPool } from '@box-local/utils/pool';
-import { prettySink } from '@box-local/utils/pretty-log-sink';
+} from '@box/schema/utils/trace-schema';
+import { consoleSink } from '@box/utils/console-sink';
+import { EventBus } from '@box/utils/event';
+import { filterSink } from '@box/utils/filter-sink';
+import { NodeFetch } from '@box/utils/http-fetch/node';
+import { getRealIP } from '@box/utils/ip';
+import { Logger } from '@box/utils/logger';
+import { clearMemoryPool } from '@box/utils/pool';
+import { prettySink } from '@box/utils/pretty-log-sink';
 import { BackendSocket } from '../backendSocket';
 import { ServerRuntimeConfig } from '../config/server';
 import { BLOCK_INFO_RES } from './assets/block_info';

@@ -1,6 +1,6 @@
 import { memo, useCallback, useContext } from 'react';
 import { useIntl } from 'react-intl';
-import { Button } from '@box-local/box-design';
+import { Button } from '@box/box-design';
 import { VoxelEditorContext } from '../../internals';
 import { SaveState } from '../../redux/app-slice';
 import { useAppSelector } from '../../redux/store';

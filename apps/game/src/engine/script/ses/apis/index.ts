@@ -4,8 +4,8 @@ import {
   DeviceType,
   MediaError,
   MediaErrorCode,
-} from '@box-local/script-api';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+} from '@box/script-api';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 import type { GameUIClient } from 'src/engine/game-ui';
 import type { InputController } from 'src/engine/input/input-controller';
 import { ClientHttp } from 'src/engine/script/ses/apis/http';

@@ -1,7 +1,7 @@
 // FIXME: switch this to use squoosh
 
 import { BuildSystem } from '../type';
-import { Hash } from '@box-local/content-server';
+import { Hash } from '@box/content-server';
 import getPixels from 'get-pixels';
 import savePixels from 'save-pixels';
 import ndarray from 'ndarray';

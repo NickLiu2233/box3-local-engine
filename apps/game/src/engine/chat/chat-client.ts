@@ -1,9 +1,9 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { GameClientState } from '../game-client-schema';
-import { ChatProtocolSchema } from '@box-local/schema/chat/chat-schema';
-import { getById } from '@box-local/utils/id';
-import { ChatLogEventSchema } from '@box-local/schema/events/chat-event-schema';
-import { ChatSchema } from '@box-local/schema/chat/chat-schema';
+import { ChatProtocolSchema } from '@box/schema/chat/chat-schema';
+import { getById } from '@box/utils/id';
+import { ChatLogEventSchema } from '@box/schema/events/chat-event-schema';
+import { ChatSchema } from '@box/schema/chat/chat-schema';
 
 export class ChatClient {
   private _state: GameClientState;

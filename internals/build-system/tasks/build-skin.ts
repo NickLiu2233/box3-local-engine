@@ -1,5 +1,5 @@
 import { BuildSystem } from '../build-system';
-import { BodyPart } from '@box-local/schema/player/player-schema';
+import { BodyPart } from '@box/schema/player/player-schema';
 
 export async function invertSkinIndex(bs: BuildSystem, hash: string) {
   const skins = await bs.retrieveJSON(hash);

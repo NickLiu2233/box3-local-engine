@@ -1,5 +1,5 @@
 // non-serializable object reference helper type for muschema
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 
 const _noSerialize = () => {
   throw new Error('cannot serialize references');

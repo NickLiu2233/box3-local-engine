@@ -1,5 +1,5 @@
 import { GameEventChannel, GameEventFuture } from '../api/js/api';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 export declare let DISPATCHER_CREATE_COUNT: number;
 export declare let DISPATCHER_DESTROY_COUNT: number;
 export declare let DISPATCHER_EVENT_COUNT: number;

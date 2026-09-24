@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.retrieveData = retrieveData;
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 const LOCAL_RUNTIME_REQUEST_CONCURRENCY = 32;
 const localRuntimeRequests = new semaphore_1.Semaphore(LOCAL_RUNTIME_REQUEST_CONCURRENCY);
 function isLocalRuntimeURL(url) {

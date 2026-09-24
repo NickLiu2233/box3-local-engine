@@ -2,7 +2,7 @@ import { vec2, vec3 } from 'gl-matrix';
 
 import { Frustum } from './rendering/math/frustum';
 import { Controller } from './voxel-app/controller';
-import { traverseVoxels } from '@box-local/utils/helper';
+import { traverseVoxels } from '@box/utils/helper';
 import { composeSymmetryOperation } from './editing/util';
 import { store } from '../redux/store';
 import { screenPosToClipPos } from '../utils/coordinate';

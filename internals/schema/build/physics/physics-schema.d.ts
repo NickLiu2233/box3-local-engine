@@ -1,10 +1,10 @@
-import { MuStruct, MuSortedArray, MuSchema, MuVarint, MuInt8, MuArray, MuFloat32, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuSortedArray, MuSchema, MuVarint, MuInt8, MuArray, MuFloat32, MuQuantizedFloat } from '@box/mudb/schema';
 import { mat3, vec3 } from 'gl-matrix';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 export declare const PhysicsParamsSchema: MuStruct<{
-    gravity: import("@box-local/mudb/schema").MuFloat64;
-    velocityDamping: import("@box-local/mudb/schema").MuFloat64;
-    useOBB: import("@box-local/mudb/schema").MuBoolean;
+    gravity: import("@box/mudb/schema").MuFloat64;
+    velocityDamping: import("@box/mudb/schema").MuFloat64;
+    useOBB: import("@box/mudb/schema").MuBoolean;
 }>;
 export type PhysicsParams = typeof PhysicsParamsSchema.identity;
 export declare const PhysicsBoundsSchema: QuantizedVec3Schema;

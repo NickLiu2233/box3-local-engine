@@ -1,6 +1,6 @@
 import { RootState } from 'apps/voxa/src/redux/store';
 import { useCallback, useRef } from 'react';
-import { Slider, SliderOptions, useClassName } from '@box-local/box-design';
+import { Slider, SliderOptions, useClassName } from '@box/box-design';
 import { onAppSliderAbort, useDragAbort } from '../../hooks';
 import styles from './style.module.scss';
 

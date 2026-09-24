@@ -3,7 +3,7 @@ import { icosahedron } from './icosahedron';
 import { triangle } from './triangle';
 import { sprites } from './sprites';
 import style from './style.module.css';
-import { Button, Input, ModalView } from '@box-local/box-design';
+import { Button, Input, ModalView } from '@box/box-design';
 import { createMesh, loadGLMesh } from './model';
 import { cube } from './cube';
 

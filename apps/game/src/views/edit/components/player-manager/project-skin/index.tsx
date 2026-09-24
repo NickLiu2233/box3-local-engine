@@ -17,13 +17,13 @@ import {
   Toast,
   Select,
   ItemId,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import {
   ModelType,
   SortOrder,
   ModelErrorCode,
   REQUEST_TIMEOUT,
-} from '@box-local/apis';
+} from '@box/apis';
 
 import { Search } from '../../search';
 import { SkinList } from './skin-list';
@@ -34,7 +34,7 @@ import { fetchSkinData } from '..';
 import style from './index.module.scss';
 import { apis } from 'src/apis/api-java';
 import { RenameModal } from '../../rename-modal';
-import { IconSort } from '@box-local/icons';
+import { IconSort } from '@box/icons';
 import {
   setDefaultSkinId,
   setExtensionSkins,

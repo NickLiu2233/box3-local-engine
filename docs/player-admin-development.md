@@ -53,7 +53,7 @@
 改动后台页面至少执行：
 
 ```bash
-rush build --to @box-local/player-admin
+rush build --to @box/player-admin
 ```
 
 改动权限、路由或数据校验还应执行：

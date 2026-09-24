@@ -2,7 +2,7 @@ import {
   AssetEntry,
   AssetEntryRDA,
   AssetType,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 
 type ProjectAssetRecoveryAction = {
   deleteAssets: { splice(index: number, deleteCount: number): unknown };

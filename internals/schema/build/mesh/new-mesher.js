@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateNewMesh = generateNewMesh;
-const mesher_1 = require("@box-local/mesher");
+const mesher_1 = require("@box/mesher");
 const voxel_1 = require("./voxel");
 function generateNewMesh(voxel_2, palette_1, emissivePalette_1) {
     return __awaiter(this, arguments, void 0, function* (voxel, palette, emissivePalette, surfaceOnly = false) {

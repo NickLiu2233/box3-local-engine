@@ -6,8 +6,8 @@ import {
   MuDictionary,
   MuJSON,
   MuFloat64,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { CommonSQL, CommonDatabase } from './types';
 
 export enum StorageQueryState {

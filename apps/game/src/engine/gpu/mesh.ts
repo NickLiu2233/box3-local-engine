@@ -4,7 +4,7 @@ import type {
   IndexBufferDescriptor,
   IREWGPUGroup,
   PipelineDescriptor,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import { mat4 } from 'gl-matrix';
 import { CommonUniformEntries, CommonUniformLayout } from './interface';
 import { GameClientState } from '../game-client-schema';

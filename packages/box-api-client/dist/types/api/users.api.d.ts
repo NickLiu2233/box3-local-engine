@@ -1,4 +1,4 @@
-import { UsersRoutes } from '@box-local/box-api-types';
+import { UsersRoutes } from '@box/box-api-types';
 import { FetchRequestOptions, HttpClient } from '../core/http-client';
 /**
  * 用户 API 客户端

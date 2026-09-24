@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RBushSchema = exports.VoxelCollisionBoxListSchema = exports.VoxelCollisionBoxSchema = void 0;
 exports.compareBox = compareBox;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 exports.VoxelCollisionBoxSchema = new schema_1.MuStruct({
     minX: new schema_1.MuUint8(), // 5-bits
     minY: new schema_1.MuUint8(), // 5-bits

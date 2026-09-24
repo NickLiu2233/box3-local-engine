@@ -12,8 +12,8 @@ import {
   MuASCII,
   MuFloat64,
   MuInt32,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 export const HashSchema = new MuASCII();
 
 export const MotionPlaybackSchema = new MuStruct({

@@ -1,4 +1,4 @@
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import type { ModelDataV1 } from '../schema-v1';
 import type { ModelDataV2 } from '../schema-v2';
 import { ModelNodeSchema } from '../schema-v2';

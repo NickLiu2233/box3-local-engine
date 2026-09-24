@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuditSchema = exports.UploadHistorySchema = exports.AuditResultSchema = exports.AuditDetailSchema = exports.AuditStatus = exports.AuditType = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 var AuditType;
 (function (AuditType) {
     AuditType[AuditType["image"] = 0] = "image";

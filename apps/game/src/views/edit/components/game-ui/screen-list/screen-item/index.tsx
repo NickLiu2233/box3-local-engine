@@ -4,8 +4,8 @@ import {
   IconScreenUi,
   IconVisibility,
   IconVisibilityOff,
-} from '@box-local/icons';
-import { Button, PointerAction } from '@box-local/box-design';
+} from '@box/icons';
+import { Button, PointerAction } from '@box/box-design';
 
 import styles from './style.module.scss';
 import { useDispatch, useSelector } from 'react-redux';
@@ -14,7 +14,7 @@ import {
   setGameUIScreenListVisible,
   setScreenListMenuInfo,
 } from 'src/redux/edit/game-ui';
-import { UITreeNode } from '@box-local/schema/project/ui-rda/defs';
+import { UITreeNode } from '@box/schema/project/ui-rda/defs';
 import { useEdit } from 'src/client/edit/edit-context';
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';
 import { useIntl } from 'react-intl';

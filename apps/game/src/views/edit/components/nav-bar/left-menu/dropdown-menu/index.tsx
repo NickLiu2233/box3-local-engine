@@ -1,14 +1,14 @@
-import { Toast } from '@box-local/box-design';
-import type { MenuItemOptions } from '@box-local/box-design/build/menu';
-import { ModalView } from '@box-local/box-design/build/modal';
-import { FeatureFlag } from '@box-local/env/constants';
+import { Toast } from '@box/box-design';
+import type { MenuItemOptions } from '@box/box-design/build/menu';
+import { ModalView } from '@box/box-design/build/modal';
+import { FeatureFlag } from '@box/env/constants';
 import {
   IconFolder,
   IconHome,
   IconLock,
   IconSetting,
   IconUpdate,
-} from '@box-local/icons';
+} from '@box/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';

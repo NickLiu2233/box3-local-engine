@@ -7,7 +7,7 @@ import {
   MuSchema,
   MuBoolean,
   MuUint32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const LIGHTMAP_CACHE_AGE = 10000;
 

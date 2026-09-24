@@ -1,5 +1,5 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { AdminProtocol } from '@box-local/schema/admin/admin-gateway-protocol';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { AdminProtocol } from '@box/schema/admin/admin-gateway-protocol';
 
 /**
  * Player builds do not expose administrator or editor controls, but the

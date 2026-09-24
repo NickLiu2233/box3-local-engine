@@ -9,8 +9,8 @@ import {
   Toast,
   TooltipTrigger,
   Trigger,
-} from '@box-local/box-design';
-import { IconMore } from '@box-local/icons/build';
+} from '@box/box-design';
+import { IconMore } from '@box/icons/build';
 
 import { hashURL } from 'src/utils/hash-url';
 import { copyToClipboard } from 'src/utils/copy2clipboard';

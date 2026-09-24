@@ -2,13 +2,13 @@ import { useMemo, useContext } from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
 
-import { Button, Menu, Trigger } from '@box-local/box-design';
+import { Button, Menu, Trigger } from '@box/box-design';
 import {
   IconSetting,
   IconMore,
   IconNotifications,
   IconDropDown,
-} from '@box-local/icons';
+} from '@box/icons';
 import { RootState } from 'src/redux/edit';
 
 import { MenuItemType, InnerRoles } from '../index';

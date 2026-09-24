@@ -1,8 +1,8 @@
 import { useCallback, useContext, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
-import { ModalView, Toast } from '@box-local/box-design';
-import { ShareScriptErrorCode } from '@box-local/apis/src/createra/data-contracts';
+import { ModalView, Toast } from '@box/box-design';
+import { ShareScriptErrorCode } from '@box/apis/src/createra/data-contracts';
 
 import { RootState } from 'src/redux/edit';
 import { setUnshareScriptId } from 'src/redux/edit/script-manager';
@@ -10,7 +10,7 @@ import { CodeEditorStateContext } from '../script-container/hooks';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
 import { useEdit } from 'src/client/edit/edit-context';
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { AssetType } from '@box/schema/project/project-rda';
 import style from './index.module.scss';
 
 export const UnshareModal = () => {

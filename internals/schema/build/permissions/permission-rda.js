@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OWNER_PERMISSIONS = exports.PermissionTokenSchema = exports.PermissionActionSequenceSchema = exports.PermissionStoreSchema = exports.PermissionActionSchema = exports.PermissionsSchema = exports.PermissionRDA = exports.PermissionAccessLevel = exports.VersionControlRDA = exports.VersionControlBranchesSchema = exports.VersionControlBranchesRDA = exports.BanRDA = exports.PermissionUserRDA = exports.PermissionSetSchema = exports.PermissionGroupRDA = exports.PermissionSetRDA = exports.PermissionMemberRDA = exports.PermissionGroupMemberRDA = exports.UserIdSchema = void 0;
 exports.combinePermissionSet = combinePermissionSet;
-const schema_1 = require("@box-local/mudb/schema");
-const rda_1 = require("@box-local/mudb/rda");
+const schema_1 = require("@box/mudb/schema");
+const rda_1 = require("@box/mudb/rda");
 const index_1 = require("../content-server/index");
 exports.UserIdSchema = new schema_1.MuUTF8();
 exports.PermissionGroupMemberRDA = new rda_1.MuRDAStruct({

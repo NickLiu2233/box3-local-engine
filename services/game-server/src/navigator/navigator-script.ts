@@ -1,5 +1,5 @@
-import { NavigatorEventType } from '@box-local/schema/api/js/api';
-import { MuClientProtocol } from '@box-local/mudb/client';
+import { NavigatorEventType } from '@box/schema/api/js/api';
+import { MuClientProtocol } from '@box/mudb/client';
 import { ScriptEntityWrapper } from '../script/bindings/entity-synchronizer';
 import { ScriptShell } from '../script/script-shell';
 import {
@@ -7,7 +7,7 @@ import {
   MessageEventType,
   NavigatorEventListener,
   PostMessageScriptType,
-} from '@box-local/schema/navigator/navigator-schema';
+} from '@box/schema/navigator/navigator-schema';
 import { NavigatorScriptProtocol } from './navigator-script-protocol';
 
 export class NavigatorScriptShell {

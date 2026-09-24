@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint } from '@box/mudb/schema';
 export declare const ScriptPerfCounterSchema: MuStruct<{
     pqAllocCount: MuVarint;
     pqFreeCount: MuVarint;

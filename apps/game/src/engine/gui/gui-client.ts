@@ -1,11 +1,11 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
 import { copyToClipboard } from '../../utils/copy2clipboard';
 import { GameClientState } from '../game-client-schema';
 import { GUIStage } from './components/stage';
 import { GUIData, GUIElement, GUIMouseEvent } from './element';
 import { GUIEvent } from './event';
-import { GUIProtocol } from '@box-local/schema/gui/gui-protocol';
-import { GUIBindDefinition, GUIConfig } from '@box-local/schema/gui/types';
+import { GUIProtocol } from '@box/schema/gui/gui-protocol';
+import { GUIBindDefinition, GUIConfig } from '@box/schema/gui/types';
 import { updateMouseEventAttributes } from './utils';
 import { XMLParser } from './xml';
 import type { InputController } from '../input/input-controller';
@@ -17,7 +17,7 @@ import {
   type IntersectElementsFun,
 } from 'src/engine/input/events';
 import { SerializedVec2 } from '../interfaces';
-import { MouseButton } from '@box-local/schema/input/input-schema';
+import { MouseButton } from '@box/schema/input/input-schema';
 
 export class GUIClient {
   public protocol: MuClientProtocol<typeof GUIProtocol>;

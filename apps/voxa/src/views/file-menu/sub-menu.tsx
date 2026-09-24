@@ -12,7 +12,7 @@ import {
   useClassName,
   Menu,
   Toast,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { VoxelEditorContext } from '../../internals';
 import type { VoxelEditor } from '../../models/editor';
 import { CardLoad, CardNew, CardProps } from './card';

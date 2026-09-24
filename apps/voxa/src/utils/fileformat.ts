@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
 import parseMagicaVoxel from '../models/parse-magica-voxel/src';
-import { allocVoxels, VoxelView } from '@box-local/utils/voxel';
+import { allocVoxels, VoxelView } from '@box/utils/voxel';
 const URL_API =
   typeof window === 'undefined'
     ? null

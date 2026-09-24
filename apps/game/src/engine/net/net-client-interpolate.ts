@@ -1,8 +1,8 @@
 import {
   applyPlayerInputForces,
   updatePlayerPhysics,
-} from '@box-local/schema/player/player-move';
-import { VoxelCollision } from '@box-local/schema/voxel/voxel-collision-schema';
+} from '@box/schema/player/player-move';
+import { VoxelCollision } from '@box/schema/voxel/voxel-collision-schema';
 import {
   RigidBodySet,
   RigidBodySetSchema,
@@ -13,8 +13,8 @@ import {
   ContactIndex,
   PhysicsParamsSchema,
   ContactIndexSchema,
-} from '@box-local/schema/physics/physics-schema';
-import { compareId, getById } from '@box-local/utils/id';
+} from '@box/schema/physics/physics-schema';
+import { compareId, getById } from '@box/utils/id';
 import { NetErrorList, NetErrorAccumulatorSchema } from './net-client-state';
 import {
   PlayerSet,
@@ -23,7 +23,7 @@ import {
   PlayerInputSchema,
   PlayerSetSchema,
   PlayerInputSetSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import { getClientNetState } from './net-client-tick';
 import { GameClientState } from '../game-client-schema';
 import {
@@ -33,19 +33,19 @@ import {
   extractContactIndex,
   clearBodyLocks,
   propagateLocks,
-} from '@box-local/schema/physics/physics-solve';
-import { BlockIndex } from '@box-local/schema/voxel/block-schema';
+} from '@box/schema/physics/physics-solve';
+import { BlockIndex } from '@box/schema/voxel/block-schema';
 import {
   CollisionFilter,
   CollisionFilterSchema,
-} from '@box-local/schema/physics/collision-filter';
+} from '@box/schema/physics/collision-filter';
 import {
   PhysicsZone,
   PhysicsZoneSetSchema,
   ZoneSelectorGroup,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
+} from '@box/schema/zone/zone-schema';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
 import { tickClientPhysicsKeyframes } from '../keyframes/keyframe-client';
 
 const ERROR_DECAY = 0.125;

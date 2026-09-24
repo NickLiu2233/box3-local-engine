@@ -8,7 +8,7 @@ import {
   CodecName,
   CodecOption,
 } from './codecs';
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 
 export async function preprocessImage<P extends PreprocessorName>(spec: {
   content: ContentServer;

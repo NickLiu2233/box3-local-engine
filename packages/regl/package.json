@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/regl",
+  "name": "@box/regl",
   "version": "2.1.0",
   "description": "Vendored regl runtime used by the local VOXA editor.",
   "license": "MIT",

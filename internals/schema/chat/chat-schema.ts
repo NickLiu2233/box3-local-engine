@@ -8,7 +8,7 @@ import {
   MuFloat64,
   MuUint8,
   MuInt32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import type { ProjectAction } from '../replica/replica-schema';
 import type { GroupProjectStore } from '../group-project/rda';
 

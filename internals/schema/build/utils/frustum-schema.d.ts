@@ -1,7 +1,7 @@
-import { MuStruct, MuFloat64 } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64 } from '@box/mudb/schema';
 export declare const FrustumSchema: MuStruct<{
-    matrix: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").mat4>;
-    invMatrix: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").mat4>;
+    matrix: import("@box/mudb/schema").MuSchema<import("gl-matrix").mat4>;
+    invMatrix: import("@box/mudb/schema").MuSchema<import("gl-matrix").mat4>;
     lox: MuFloat64;
     loy: MuFloat64;
     loz: MuFloat64;

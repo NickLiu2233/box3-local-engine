@@ -1,8 +1,8 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
-import { PublishProtocol } from '@box-local/schema/publish/publish-schema';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
+import { PublishProtocol } from '@box/schema/publish/publish-schema';
 import { EditServerState } from '../edit-server-schema';
 import { EditReplicaServer } from '../replica/replica-server';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 
 const THUMBNAILSIZE = 512;
 

@@ -1,4 +1,4 @@
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { RenderOrder } from '../animator-app/util';
 import { PlaneGeometry } from '../rendering/geometries/plane-geometry';
 import { ShaderMaterial } from '../rendering/materials/shader';

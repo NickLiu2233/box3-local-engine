@@ -11,9 +11,9 @@ import {
   MuUnion,
   MuUTF8,
   MuUint8,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { DB } from '../database-type';
-import { MuRPCClient } from '@box-local/mudb/rpc/client';
+import { MuRPCClient } from '@box/mudb/rpc/client';
 import { MuNullable } from './nullable-schema';
 import { UserTag } from './user-protocol';
 import { AuditResultSchema } from '../service/audit-schema';

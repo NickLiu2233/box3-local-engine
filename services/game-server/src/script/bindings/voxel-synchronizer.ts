@@ -1,16 +1,16 @@
-import { VoxelView, allocVoxels, freeVoxels } from '@box-local/utils/voxel';
-import { VoxelWriteSchema } from '@box-local/schema/voxel/voxel-protocol';
+import { VoxelView, allocVoxels, freeVoxels } from '@box/utils/voxel';
+import { VoxelWriteSchema } from '@box/schema/voxel/voxel-protocol';
 import {
   ScriptVoxelResetSchema,
   ScriptVoxelPreTickSchema,
 } from '../script-protocol';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
-import { blitBoxesToChunk } from '@box-local/schema/voxel/box-decode';
-import { GameVector3 } from '@box-local/schema/api/js/math';
-import { MuArray } from '@box-local/mudb/schema';
-import { Logger } from '@box-local/utils/logger';
-import { GameVoxels } from '@box-local/schema/api/js/api';
-import { BlockIndex, BlockInfo } from '@box-local/schema/voxel/block-schema';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
+import { blitBoxesToChunk } from '@box/schema/voxel/box-decode';
+import { GameVector3 } from '@box/schema/api/js/math';
+import { MuArray } from '@box/mudb/schema';
+import { Logger } from '@box/utils/logger';
+import { GameVoxels } from '@box/schema/api/js/api';
+import { BlockIndex, BlockInfo } from '@box/schema/voxel/block-schema';
 
 export const VOXEL_ROTATION_SHIFT = 14;
 export const VOXEL_TYPE_MASK = ~(3 << VOXEL_ROTATION_SHIFT);

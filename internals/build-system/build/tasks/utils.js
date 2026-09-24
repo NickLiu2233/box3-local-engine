@@ -23,7 +23,7 @@ exports.addMeta = addMeta;
 exports.flatten = flatten;
 exports.replacePattern = replacePattern;
 exports.mapJSON = mapJSON;
-const stream_1 = require("@box-local/mudb/stream");
+const stream_1 = require("@box/mudb/stream");
 const build_system_1 = require("../build-system");
 function concat(bs, ...hashes) {
     return __awaiter(this, void 0, void 0, function* () {

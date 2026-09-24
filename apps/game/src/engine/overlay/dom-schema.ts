@@ -1,5 +1,5 @@
-import { MuStruct, MuUTF8, MuBoolean, MuFloat64 } from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+import { MuStruct, MuUTF8, MuBoolean, MuFloat64 } from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 
 export const GameDOMSchema = new MuStruct({
   // if true, enable some dumb hacks

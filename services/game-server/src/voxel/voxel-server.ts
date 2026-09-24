@@ -1,4 +1,4 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
 import { GameServerState } from '../game-server-schema';
 import {
   VoxelProtocol,
@@ -10,9 +10,9 @@ import {
   HashesResponseSchema,
   HashesResponse,
   ChunkIdsSchema,
-} from '@box-local/schema/voxel/voxel-protocol';
-import { VoxelInfo, VoxelRDA } from '@box-local/schema/project/project-rda';
-import { Hash, ContentServer } from '@box-local/content-server';
+} from '@box/schema/voxel/voxel-protocol';
+import { VoxelInfo, VoxelRDA } from '@box/schema/project/project-rda';
+import { Hash, ContentServer } from '@box/content-server';
 import {
   ServerVoxelChunk,
   ServerVoxelPreloadData,
@@ -21,28 +21,28 @@ import {
   ServerVoxelChunkSchema,
   PendingVoxelWriteSchema,
 } from './voxel-server-schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 import { boxCompress, meshChunkToBoxes, interleave3 } from './box-encode';
-import { freeVoxels, allocVoxels, VoxelView } from '@box-local/utils/voxel';
+import { freeVoxels, allocVoxels, VoxelView } from '@box/utils/voxel';
 import {
   CHUNK_SIZE,
   CHUNK_SHIFT,
   CHUNK_MASK,
-} from '@box-local/schema/voxel/voxel-collision-schema';
-import { boxDecompress, blitBoxesToChunk } from '@box-local/schema/voxel/box-decode';
+} from '@box/schema/voxel/voxel-collision-schema';
+import { boxDecompress, blitBoxesToChunk } from '@box/schema/voxel/box-decode';
 import {
   rebuildCollisionChunk,
   intializeCollision,
   setBlockIndex,
-} from '@box-local/schema/voxel/voxel-collision';
-import { VoxelChangeEventSchema } from '@box-local/schema/events/voxel-event-schema';
+} from '@box/schema/voxel/voxel-collision';
+import { VoxelChangeEventSchema } from '@box/schema/events/voxel-event-schema';
 import {
   compareBox,
   VoxelCollisionBoxListSchema,
-} from '@box-local/schema/utils/rbush-schema';
-import { BlockInfo, BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
-import { unpackBlockIndex } from '@box-local/schema/voxel/blocks';
-import { Semaphore } from '@box-local/utils/semaphore';
+} from '@box/schema/utils/rbush-schema';
+import { BlockInfo, BlockInfoSchema } from '@box/schema/voxel/block-schema';
+import { unpackBlockIndex } from '@box/schema/voxel/blocks';
+import { Semaphore } from '@box/utils/semaphore';
 
 const VOXEL_SEND_RATE = 64;
 

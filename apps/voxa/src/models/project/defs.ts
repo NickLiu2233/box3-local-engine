@@ -9,9 +9,9 @@ export {
   ProjectNodeType,
   VoxelDimension,
   HitBoxMode,
-} from '@box-local/voxa-project';
+} from '@box/voxa-project';
 
-import { modelV7, skinV3, projectV10 } from '@box-local/voxa-project';
+import { modelV7, skinV3, projectV10 } from '@box/voxa-project';
 
 export const {
   ProjectDataV10Schema: ProjectDataSchema,

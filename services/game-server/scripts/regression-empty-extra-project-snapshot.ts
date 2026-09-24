@@ -1,7 +1,7 @@
 import assert from 'assert';
 
-import { MuWriteStream } from '@box-local/mudb/stream';
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+import { MuWriteStream } from '@box/mudb/stream';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 import { decodeExtraProjectInfo } from '../src/project/decode-extra-project';
 
 const stream = new MuWriteStream(1);

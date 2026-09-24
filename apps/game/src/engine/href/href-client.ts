@@ -1,4 +1,4 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { GameClientState } from '../game-client-schema';
 import { HyperlinkProtocol } from './href-protocol';
 import { HyperLinkSchema } from './href-client-state';

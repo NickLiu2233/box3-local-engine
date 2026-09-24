@@ -1,5 +1,5 @@
 import type { StaticImageData } from 'next/legacy/image';
-import { ImageRequest, retrieveWithImage } from '@box-local/content-server/image';
+import { ImageRequest, retrieveWithImage } from '@box/content-server/image';
 
 /**
  * - next.js编译game时，会通过next-image-loader导入图片，生成对象（StaticImageData）

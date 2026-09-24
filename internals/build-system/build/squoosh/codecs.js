@@ -37,7 +37,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DEFAULT_CODEC = exports.codecs = exports.preprocessors = exports.SQUOOSH_RES = void 0;
 exports.squooshOxipng = squooshOxipng;
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 const emscripten_utils_1 = require("./emscripten-utils");
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // dumb hack for build system -- need these hashes for build system, has circular dependency

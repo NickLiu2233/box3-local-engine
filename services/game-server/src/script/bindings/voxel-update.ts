@@ -5,10 +5,10 @@ import {
 } from '../script-protocol';
 import { GameServerState } from '../../game-server-schema';
 import { getServerChunkBoxes, VoxelServer } from '../../voxel/voxel-server';
-import { VoxelCollisionBoxListSchema } from '@box-local/schema/utils/rbush-schema';
+import { VoxelCollisionBoxListSchema } from '@box/schema/utils/rbush-schema';
 import { ScriptVoxelUpdateSchema } from './voxel-synchronizer';
-import { VoxelWriteSchema, VoxelWrite } from '@box-local/schema/voxel/voxel-protocol';
-import { VoxelWriteSequenceSchema } from '@box-local/schema/replica/replica-schema';
+import { VoxelWriteSchema, VoxelWrite } from '@box/schema/voxel/voxel-protocol';
+import { VoxelWriteSequenceSchema } from '@box/schema/replica/replica-schema';
 
 export class EngineVoxelSync {
   constructor(private _state: GameServerState, private _voxels: VoxelServer) {}

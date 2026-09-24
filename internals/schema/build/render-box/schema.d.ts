@@ -1,4 +1,4 @@
-import { MuStruct, MuSchema, MuFloat64, MuVarint, MuSortedArray } from '@box-local/mudb/schema';
+import { MuStruct, MuSchema, MuFloat64, MuVarint, MuSortedArray } from '@box/mudb/schema';
 /**
  * 摄像机到body中心点的距离产生的缩放
  */

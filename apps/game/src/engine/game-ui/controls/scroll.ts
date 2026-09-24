@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { vec2 } from 'gl-matrix';
-import { UIScrollDirection } from '@box-local/schema/project/ui-rda/defs';
+import { UIScrollDirection } from '@box/schema/project/ui-rda/defs';
 import type { UIDragEvent, UIWheelEvent } from './drag';
 import {
   isScrollBox,

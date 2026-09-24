@@ -9,7 +9,7 @@ import {
   UIScrollbarHorizontal,
   UIScrollbarVertical,
   UIScrollbarVisibility,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import type { BaseSpec } from './base';
 import { GameUIRenderable } from './renderable';
 import { EventMode } from './defs';

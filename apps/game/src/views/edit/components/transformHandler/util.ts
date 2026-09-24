@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import type { EntitySeed } from '@box-local/schema/project/project-rda';
+import type { EntitySeed } from '@box/schema/project/project-rda';
 import {
   RenderBoxResult,
   renderBoxFromRenderable,

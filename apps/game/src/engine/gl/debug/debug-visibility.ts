@@ -6,7 +6,7 @@ import glArrow from './debug-arrow';
 import glLine from './debug-line';
 import glText from '../text';
 import { GameClientState } from '../../game-client-schema';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
 import { ChunkVisibilityFlags } from '../../voxel/visibility-flags';
 import { vec3 } from 'gl-matrix';
 

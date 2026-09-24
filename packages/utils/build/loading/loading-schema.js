@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaskSchema = exports.TaskTypeEnum = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 var TaskTypeEnum;
 (function (TaskTypeEnum) {
     TaskTypeEnum[TaskTypeEnum["Get"] = 0] = "Get";

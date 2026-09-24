@@ -1,4 +1,4 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { HyperlinkScriptProtocol } from './href-script-protocol';
 
 export class HrefScriptShell {

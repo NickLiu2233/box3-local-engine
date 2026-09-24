@@ -6,22 +6,22 @@ import {
   MuBoolean,
   MuUint32,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Vec3Schema,
   Vec4Schema,
   QuatSchema,
   BoundsSchema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import {
   GameVector3,
   GameRGBColor,
   GameRGBAColor,
   GameQuaternion,
   GameBounds3,
-} from '@box-local/schema/api/js/math';
+} from '@box/schema/api/js/math';
 import { vec3, vec4, quat } from 'gl-matrix';
-import { HashSchema } from '@box-local/schema/content-server/index';
+import { HashSchema } from '@box/schema/content-server/index';
 import {
   GameAssetType,
   GameEntity,
@@ -29,19 +29,19 @@ import {
   GameSoundEffect,
   GameSkin,
   Gamepad,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import { ScriptEntityWrapper } from './entity-synchronizer';
-import { AudioSampleRDA } from '@box-local/schema/project/project-rda';
+import { AudioSampleRDA } from '@box/schema/project/project-rda';
 import { CodeGenBlock } from '../codegen';
 import {
   PlayerSkinId,
   PlayerSkinIdSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   PlayerGamepad,
   PlayerGamepadSchema,
-} from '@box-local/schema/replica/game-private-replica';
-import type { RestrictObj, RestrictProps } from '@box-local/utils/script';
+} from '@box/schema/replica/game-private-replica';
+import type { RestrictObj, RestrictProps } from '@box/utils/script';
 
 export const WRAPPER_INDEX = new WeakMap<GameEntity, ScriptEntityWrapper>();
 export const WRAPPER_PLAYER_INDEX = new WeakMap<

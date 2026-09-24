@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { DEFAULT_SCREEN_ID } from '@box-local/schema/project/ui-rda/defs';
+import { DEFAULT_SCREEN_ID } from '@box/schema/project/ui-rda/defs';
 import { SerializedVec2 } from 'src/engine/interfaces';
 
 export type GameUIState = {

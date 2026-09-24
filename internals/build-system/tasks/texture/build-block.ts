@@ -17,7 +17,7 @@ import {
   BlockInfoSchema,
   BlockSoundGroup,
   BlockCategory,
-} from '@box-local/schema/voxel/block-schema';
+} from '@box/schema/voxel/block-schema';
 
 export async function buildBlocks(
   bs: BuildSystem,

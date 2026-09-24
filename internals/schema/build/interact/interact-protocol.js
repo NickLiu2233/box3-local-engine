@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InteractProtocol = exports.InteractMessageSchema = exports.InteractComponentSetSchema = exports.InteractComponentSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
-const id_1 = require("@box-local/utils/id");
+const schema_1 = require("@box/mudb/schema");
+const id_1 = require("@box/utils/id");
 const quantized_schema_1 = require("../utils/quantized-schema");
 const gl_matrix_1 = require("gl-matrix");
 const emote_event_schema_1 = require("../events/emote-event-schema");

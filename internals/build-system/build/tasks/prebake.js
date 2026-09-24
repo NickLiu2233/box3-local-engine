@@ -11,11 +11,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.prebakeMap = prebakeMap;
 const bake_1 = require("../project/bake");
-const stream_1 = require("@box-local/mudb/stream");
+const stream_1 = require("@box/mudb/stream");
 const prebake_schema_1 = require("../project/prebake-schema");
-const hot_schema_1 = require("@box-local/schema/project/hot-schema");
-const permission_rda_1 = require("@box-local/schema/permissions/permission-rda");
-const project_rda_1 = require("@box-local/schema/project/project-rda");
+const hot_schema_1 = require("@box/schema/project/hot-schema");
+const permission_rda_1 = require("@box/schema/permissions/permission-rda");
+const project_rda_1 = require("@box/schema/project/project-rda");
 const permission_serialize_1 = require("../permissions/permission-serialize");
 const project_serialize_1 = require("../project/project-serialize");
 const permission_init_1 = require("../permissions/permission-init");

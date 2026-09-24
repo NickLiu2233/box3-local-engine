@@ -1,11 +1,11 @@
-import { GamePlayerEntity } from '@box-local/schema/api/js/api';
-import { GameGUI, GameGUIEventListener } from '@box-local/schema/api/js/gui';
-import { MuClientProtocol } from '@box-local/mudb/client';
+import { GamePlayerEntity } from '@box/schema/api/js/api';
+import { GameGUI, GameGUIEventListener } from '@box/schema/api/js/gui';
+import { MuClientProtocol } from '@box/mudb/client';
 import { GameUIDEntity } from '../script/bindings/entity-synchronizer';
 import { ScriptShell } from '../script/script-shell';
 import { GUIScriptProtocol } from './gui-script-protocol';
-import { PromiseWrapper } from '@box-local/utils/promise-wrapper';
-import { GUIConfig, GUIData } from '@box-local/schema/gui/types';
+import { PromiseWrapper } from '@box/utils/promise-wrapper';
+import { GUIConfig, GUIData } from '@box/schema/gui/types';
 
 export class GUIScriptShell {
   public protocol: MuClientProtocol<typeof GUIScriptProtocol>;

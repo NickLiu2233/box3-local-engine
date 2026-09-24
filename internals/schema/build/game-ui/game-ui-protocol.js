@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameUIProtocol = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const hot_schema_1 = require("../project/hot-schema");
 const defs_1 = require("../project/ui-rda/defs");
 const ResetSchema = new schema_1.MuStruct({

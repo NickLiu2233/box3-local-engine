@@ -1,11 +1,11 @@
 import { GameServerState } from '../game-server-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import {
   PlayerDisplayFlags,
   PlayerFlags,
-} from '@box-local/schema/player/player-schema';
-import { DamageConfigRDA } from '@box-local/schema/project/project-rda';
-import { Damage, DamageSetSchema } from '@box-local/schema/damage/damage-schema';
+} from '@box/schema/player/player-schema';
+import { DamageConfigRDA } from '@box/schema/project/project-rda';
+import { Damage, DamageSetSchema } from '@box/schema/damage/damage-schema';
 
 export function copyConfigToDamage(
   damage: Damage,

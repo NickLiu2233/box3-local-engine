@@ -1,4 +1,4 @@
-import type { InputDialogConfig } from '@box-local/schema/dialog/dialog-protocol';
+import type { InputDialogConfig } from '@box/schema/dialog/dialog-protocol';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import type { HitArea } from 'src/engine/input/events';
 

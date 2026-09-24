@@ -1,4 +1,4 @@
-import { MuStruct, MuVarint, MuBoolean, MuSortedArray, MuQuantizedFloat } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuBoolean, MuSortedArray, MuQuantizedFloat } from '@box/mudb/schema';
 export declare const DamageSchema: MuStruct<{
     id: MuVarint;
     showHealthBar: MuBoolean;

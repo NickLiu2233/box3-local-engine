@@ -1,4 +1,4 @@
-import { URL } from '@box-local/schema/api/js/url';
+import { URL } from '@box/schema/api/js/url';
 
 export function getToken() {
   if (typeof window === 'undefined') {

@@ -11,7 +11,7 @@ import {
   MuBytes,
   MuUTF8,
   MuFloat64,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const EditRPCProtocol = {
   name: 'edit-rpc',

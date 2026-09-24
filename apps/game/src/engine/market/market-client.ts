@@ -1,6 +1,6 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { GameClientState } from '../game-client-schema';
-import { MarketProtocol } from '@box-local/schema/market/market-protocol';
+import { MarketProtocol } from '@box/schema/market/market-protocol';
 import { isCreatera } from 'src/utils/appEdition';
 import { messenger } from 'src/messenger';
 import { clientConfig } from 'src/config/client';

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { hashURL } from 'src/utils/hash-url';
-import { TooltipTrigger, Toast } from '@box-local/box-design';
-import { BlockInfo, BlockIndex } from '@box-local/schema/voxel/block-schema';
+import { TooltipTrigger, Toast } from '@box/box-design';
+import { BlockInfo, BlockIndex } from '@box/schema/voxel/block-schema';
 import style from './index.module.css';
 
 type BlockProps = {

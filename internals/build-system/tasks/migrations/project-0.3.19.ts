@@ -2,11 +2,11 @@ import {
   ROOT_ID,
   ROOT_NAME,
   TreeNodeType,
-} from '@box-local/schema/project/murda-tree';
+} from '@box/schema/project/murda-tree';
 import {
   DEFAULT_SCREEN_NAME,
   DEFAULT_SCREEN_ID,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

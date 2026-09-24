@@ -1,9 +1,9 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
 import type {
   TELEPORT_ERROR_STATUS,
   TeleportResult,
-} from '@box-local/schema/api/js/api';
-import type { CommonError } from '@box-local/schema/api/js/error';
+} from '@box/schema/api/js/api';
+import type { CommonError } from '@box/schema/api/js/error';
 
 import { PromiseWrapper } from '../utils/script-promise';
 import { TeleportScriptProtocol } from './teleport-script-protocol';

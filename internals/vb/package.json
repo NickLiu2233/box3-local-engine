@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/vb",
+  "name": "@box/vb",
   "version": "0.1.0",
   "description": "",
   "main": "src/index.ts",
@@ -9,7 +9,7 @@
     "build:watch": ""
   },
   "dependencies": {
-    "@box-local/mudb": "workspace:1.0.4",
+    "@box/mudb": "workspace:1.0.4",
     "typescript": "5.6.3"
   },
   "keywords": [],

@@ -1,7 +1,7 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { GameClientState } from '../game-client-schema';
-import { NavigatorProtocol } from '@box-local/schema/navigator/navigator-protocol';
-import { PostMessageSchema } from '@box-local/schema/navigator/navigator-schema';
+import { NavigatorProtocol } from '@box/schema/navigator/navigator-protocol';
+import { PostMessageSchema } from '@box/schema/navigator/navigator-schema';
 
 export class NavigatorClient {
   public protocol: MuClientProtocol<typeof NavigatorProtocol>;

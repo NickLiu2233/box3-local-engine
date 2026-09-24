@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserAuthType = exports.Action = exports.From = exports.Env = exports.Provider = exports.VerifyType = exports.VerifySituation = exports.AuthRPCSchema = exports.OnlineEntry = exports.UserDetailSchema = exports.UserBaseInfoSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const nullable_schema_1 = require("./nullable-schema");
 exports.UserBaseInfoSchema = new schema_1.MuStruct({
     id: new schema_1.MuVarint(),

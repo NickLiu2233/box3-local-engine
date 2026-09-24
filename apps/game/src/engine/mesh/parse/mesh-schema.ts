@@ -8,14 +8,14 @@ import {
   MuUTF8,
   MuFloat32,
   MuASCII,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Mat3Schema,
   Mat4Schema,
   QuatSchema,
   Vec3Schema,
-} from '@box-local/schema/utils/math-schema';
-import { ProjectInterpolationType } from '@box-local/voxa-project';
+} from '@box/schema/utils/math-schema';
+import { ProjectInterpolationType } from '@box/voxa-project';
 
 export enum RenderableType {
   GLMesh,

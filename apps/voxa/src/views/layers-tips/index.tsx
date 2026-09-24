@@ -1,5 +1,5 @@
 import React, { CSSProperties, useMemo } from 'react';
-import { Tooltip } from '@box-local/box-design';
+import { Tooltip } from '@box/box-design';
 import { useAppSelector } from '../../redux/store';
 
 /**

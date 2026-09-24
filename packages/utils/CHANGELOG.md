@@ -1,4 +1,4 @@
-# Change Log - @box-local/utils
+# Change Log - @box/utils
 
 This log was last generated on Wed, 03 Sep 2025 07:32:05 GMT and should not be manually modified.
 
@@ -33,5 +33,4 @@ Thu, 14 Dec 2023 09:45:52 GMT
 
 ### Breaking changes
 
-- 移动 DebuggerConsole 的内容分别到 game 以及 @box-local/schema 中 
-
+- 移动 DebuggerConsole 的内容分别到 game 以及 @box/schema 中

@@ -1,19 +1,19 @@
-import { MuServer } from '@box-local/mudb/server';
-import { MuScheduler } from '@box-local/mudb/scheduler/scheduler';
+import { MuServer } from '@box/mudb/server';
+import { MuScheduler } from '@box/mudb/scheduler/scheduler';
 import type { Logger } from 'pino';
 
 import { GameServer } from '../';
-import { ContentServer } from '@box-local/content-server';
-import { HotProject } from '@box-local/schema/project/hot-schema';
+import { ContentServer } from '@box/content-server';
+import { HotProject } from '@box/schema/project/hot-schema';
 import { ServerVoxelPreloadData } from '../voxel/voxel-server-schema';
-import { GameSessionInterface } from '@box-local/schema/session/type';
-import { Logger as LegacyLogger } from '@box-local/utils/logger';
+import { GameSessionInterface } from '@box/schema/session/type';
+import { Logger as LegacyLogger } from '@box/utils/logger';
 import { ServerSettings } from '../settings/server-settings-schema';
 import { GameAdminServer } from '../admin/admin-server';
 import { ScriptServer } from '../utils/script-server/type';
 import { PlayServerSchema } from './play-server-schema';
 import { CommonSQL } from '../storage/types';
-import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
+import { BackendRPC } from '@box/schema/backend/rpc-interface';
 import { BackendSocket } from '../../backendSocket';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

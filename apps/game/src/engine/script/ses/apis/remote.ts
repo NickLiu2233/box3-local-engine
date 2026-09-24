@@ -1,5 +1,5 @@
-import { EventBus } from '@box-local/utils/event';
-import * as I from '@box-local/script-api';
+import { EventBus } from '@box/utils/event';
+import * as I from '@box/script-api';
 import { ScriptClientRemoteChannel } from '../../remote';
 import { EventEmitter } from './events';
 

@@ -7,9 +7,9 @@ import React, {
   useRef,
 } from 'react';
 import { useSelector } from 'react-redux';
-import { Input } from '@box-local/box-design';
-import { IconPercentage } from '@box-local/icons';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { Input } from '@box/box-design';
+import { IconPercentage } from '@box/icons';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import { RootState } from 'src/redux/edit';
 import style from './index.module.scss';

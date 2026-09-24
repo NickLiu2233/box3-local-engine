@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NewMeshSchema = exports.modelMeshSchema = exports.meshBufferSchema = exports.MeshSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
-const schema_2 = require("@box-local/mesher/schema");
+const schema_1 = require("@box/mudb/schema");
+const schema_2 = require("@box/mesher/schema");
 const modelMeshSchema_1 = require("./modelMeshSchema");
 exports.MeshSchema = new modelMeshSchema_1.ModelMeshSchema();
 exports.meshBufferSchema = new schema_1.MuArray(new schema_1.MuUint8(), Infinity);

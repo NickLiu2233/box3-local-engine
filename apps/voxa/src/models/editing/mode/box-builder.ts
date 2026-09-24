@@ -2,7 +2,7 @@ import { quat, vec2, vec3 } from 'gl-matrix';
 import type { Pointer } from '../../pointer';
 import { DEFAULT_POS } from '../const';
 import { BoxBoundary, GetCamera } from '../interfaces';
-import { boundary } from '@box-local/utils/helper';
+import { boundary } from '@box/utils/helper';
 import { ControlsPlane } from '../../rendering/math/controls-plane';
 import { Axis } from '../../rendering/def';
 import { getCubeVertices, getSymmetryPoints, isEmptyCollection } from '../util';

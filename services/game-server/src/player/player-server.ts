@@ -1,11 +1,11 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { PlayerProtocolSchema } from '@box-local/schema/player/player-protocol';
-import { PlayerEventSchema } from '@box-local/schema/events/player-event-schema';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
+import { PlayerProtocolSchema } from '@box/schema/player/player-protocol';
+import { PlayerEventSchema } from '@box/schema/events/player-event-schema';
 import { setPlayerAvatarSkin } from './player-server-controller';
 import { GameServerState } from '../game-server-schema';
 import type { ModelServer } from '../mesh/server-model-controller';
 import { createBuiltInSkin } from './built-in-skins';
-import { PlayerSkinHashSchema } from '@box-local/schema/player/player-schema';
+import { PlayerSkinHashSchema } from '@box/schema/player/player-schema';
 
 export class PlayerServer {
   public protocol: MuServerProtocol<typeof PlayerProtocolSchema>;

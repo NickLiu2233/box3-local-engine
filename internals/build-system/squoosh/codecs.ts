@@ -1,5 +1,5 @@
 import { EmscriptenWasm } from './emscripten-types';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 import { instantiateEmscriptenWasm } from './emscripten-utils';
 
 //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -49,7 +49,7 @@ export const SQUOOSH_RES: {
 // Our decoders currently rely on a `ImageData` global.
 import ImageData from './image_data';
 
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 
 // MozJPEG
 import mozEnc from './codecs/mozjpeg/enc/mozjpeg_enc';

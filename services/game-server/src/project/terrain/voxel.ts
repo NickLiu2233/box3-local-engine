@@ -1,13 +1,13 @@
-import { VoxelInfo, VoxelRDA } from '@box-local/schema/project/project-rda';
-import { ContentServer } from '@box-local/content-server';
+import { VoxelInfo, VoxelRDA } from '@box/schema/project/project-rda';
+import { ContentServer } from '@box/content-server';
 import {
   ServerVoxelPreloadData,
   ServerVoxelPreloadDataSchema,
-} from '@box-local/schema/voxel/voxel-server-schema';
-import { MuWriteStream } from '@box-local/mudb/stream';
+} from '@box/schema/voxel/voxel-server-schema';
+import { MuWriteStream } from '@box/mudb/stream';
 import { boxCompress, meshChunkToBoxes } from '../../voxel/box-encode';
-import { VoxelView } from '@box-local/utils/voxel';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
+import { VoxelView } from '@box/utils/voxel';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
 
 export async function saveVoxelPreloadData(
   content: ContentServer,

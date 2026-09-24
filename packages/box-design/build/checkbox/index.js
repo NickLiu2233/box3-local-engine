@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from 'react';
-import { IconDone } from '@box-local/icons';
+import { IconDone } from '@box/icons';
 import styles from './style.module.scss.js';
 import { jsx } from 'react/jsx-runtime';
 

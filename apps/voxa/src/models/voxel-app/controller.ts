@@ -9,8 +9,8 @@ import {
   fillSpace,
   newBundle,
   traverseVoxels,
-} from '@box-local/utils/helper';
-import type { AxisType } from '@box-local/box-design';
+} from '@box/utils/helper';
+import type { AxisType } from '@box/box-design';
 import type { VEState } from './state';
 import { PointerAction } from '../../redux/app-slice';
 import { store } from '../../redux/store';
@@ -26,7 +26,7 @@ import {
   CLICK_OFFSET_THRESHOLD,
   DBL_CLICK_PRESERVE_TIME,
 } from '../editing/const';
-import { flipVoxels, getBoxBoundary } from '@box-local/utils/voxel';
+import { flipVoxels, getBoxBoundary } from '@box/utils/voxel';
 import type { IEvents } from '../events/interface';
 import type { TranslateTool } from './translate-tool';
 import type { UpdateSpaceSize } from './interfaces';

@@ -1,5 +1,5 @@
-import { MuArray, MuUint8, MuStruct } from '@box-local/mudb/schema';
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
+import { MuArray, MuUint8, MuStruct } from '@box/mudb/schema';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
 import { ModelMeshSchema } from './modelMeshSchema';
 
 export const MeshSchema = new ModelMeshSchema();

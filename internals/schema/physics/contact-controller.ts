@@ -8,7 +8,7 @@ import {
   VoxelContact,
   BodyContact,
 } from './physics-schema';
-import { indexEq } from '@box-local/utils/id';
+import { indexEq } from '@box/utils/id';
 
 const CONTACT_TOLERANCE = 1e-3;
 

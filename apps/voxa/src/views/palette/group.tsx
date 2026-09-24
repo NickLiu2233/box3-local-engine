@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useDispatch } from 'react-redux';
 import { useIntl } from 'react-intl';
-import { Icon, Button, Menu, Trigger, Modal } from '@box-local/box-design';
+import { Icon, Button, Menu, Trigger, Modal } from '@box/box-design';
 import { VoxelEditorContext } from '../../internals';
 import {
   PaletteRGB,

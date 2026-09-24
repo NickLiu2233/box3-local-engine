@@ -1,5 +1,5 @@
 import { VoxelCollisionBox } from '../../utils/rbush/schema';
-import type { VoxelView } from '@box-local/utils/voxel';
+import type { VoxelView } from '@box/utils/voxel';
 
 // more-or-less inverse of mesh3d
 export function blitBoxesToChunk(chunk: VoxelView, boxes: VoxelCollisionBox[]) {

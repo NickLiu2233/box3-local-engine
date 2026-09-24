@@ -1,6 +1,6 @@
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import { CHUNK_MASK } from './voxel-collision-schema';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 import {
   VoxelCollisionBox,
   VoxelCollisionBoxSchema,

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { Permissions } from '@box-local/apis';
+import { Permissions } from '@box/apis';
 
 import { getToken } from '../utils/token';
 

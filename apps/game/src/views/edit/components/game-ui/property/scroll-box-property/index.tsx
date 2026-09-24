@@ -2,16 +2,16 @@ import { vec2 } from 'gl-matrix';
 import { memo, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
 
-import type { ItemId, SelectProps } from '@box-local/box-design';
+import type { ItemId, SelectProps } from '@box/box-design';
 import {
   AutoResizeType,
   UIScrollDirection,
   UIScrollbarHorizontal,
   UIScrollbarVertical,
   UIScrollbarVisibility,
-} from '@box-local/schema/project/ui-rda/defs';
-import { isUIScrollBoxNode } from '@box-local/schema/project/ui-rda/util';
-import { IconPixel, IconSizeH, IconSizeW } from '@box-local/icons/build';
+} from '@box/schema/project/ui-rda/defs';
+import { isUIScrollBoxNode } from '@box/schema/project/ui-rda/util';
+import { IconPixel, IconSizeH, IconSizeW } from '@box/icons/build';
 
 import { InlineSelectInput } from '../inputs/select-input';
 import {

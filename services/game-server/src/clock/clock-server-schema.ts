@@ -1,4 +1,4 @@
-import { MuStruct, MuFloat64, MuUint32, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64, MuUint32, MuBoolean } from '@box/mudb/schema';
 
 export const ServerClockStateSchema = new MuStruct({
   // checks if server clock is ready

@@ -7,13 +7,13 @@ import {
   useContext,
 } from 'react';
 import { useIntl } from 'react-intl';
-import { SortOrder } from '@box-local/apis';
+import { SortOrder } from '@box/apis';
 import {
   AmbientSoundEnum,
   GroupAssetEntry,
   EntitySoundEnum,
   PlayerSoundEnum,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { useEdit } from 'src/client/edit/edit-context';
 import { AssetLibrary } from '../asset-library';
 import { ArenaEditorUIContext } from '../../editor-ui-context';

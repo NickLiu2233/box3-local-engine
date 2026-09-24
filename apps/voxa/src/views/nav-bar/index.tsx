@@ -23,8 +23,8 @@ import {
   useSharedTipsDelay,
   Tabs,
   TabPanel,
-} from '@box-local/box-design';
-import { IconAxisAnchor } from '@box-local/icons';
+} from '@box/box-design';
+import { IconAxisAnchor } from '@box/icons';
 import { VoxelEditorContext } from '../../internals';
 import { useAppSelector } from '../../redux/store';
 import { AppMode, EditType, setProjectName } from '../../redux/app-slice';

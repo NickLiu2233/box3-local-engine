@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, ReactNode, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ItemId, SerializedVec2 } from '@box-local/box-design/build/interfaces';
-import { Menu } from '@box-local/box-design/build';
-import { MenuItemOptions } from '@box-local/box-design/build/menu';
+import { ItemId, SerializedVec2 } from '@box/box-design/build/interfaces';
+import { Menu } from '@box/box-design/build';
+import { MenuItemOptions } from '@box/box-design/build/menu';
 
 export type ContextmenuData = MenuItemOptions;
 

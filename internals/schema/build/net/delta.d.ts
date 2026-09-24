@@ -1,5 +1,5 @@
-import { MuSchema } from '@box-local/mudb/schema';
-import { TaggedId } from '@box-local/utils/id';
+import { MuSchema } from '@box/mudb/schema';
+import { TaggedId } from '@box/utils/id';
 export declare function deltaList<Schema extends MuSchema<TaggedId>>(schema: Schema, out: {
     upserts: Schema['identity'][];
     remove: number[];

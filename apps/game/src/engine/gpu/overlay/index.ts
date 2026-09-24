@@ -1,4 +1,4 @@
-import type { ReWGPU } from '@box-local/rewgpu/build/types';
+import type { ReWGPU } from '@box/rewgpu/build/types';
 import type { GameClientState } from '../../game-client-schema';
 import type { CommonUniforms } from '../interface';
 import { gpuTextOverlay } from './text';

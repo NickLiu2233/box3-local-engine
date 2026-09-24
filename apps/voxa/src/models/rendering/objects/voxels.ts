@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
 import { clamp } from 'ramda';
-import type { VoxelView } from '@box-local/utils/voxel';
+import type { VoxelView } from '@box/utils/voxel';
 import type { Intersection, Raycaster } from '../raycast';
 import { Object3D, Object3DType } from './object3d';
 

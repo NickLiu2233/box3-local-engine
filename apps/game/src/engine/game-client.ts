@@ -1,11 +1,11 @@
-import { MuClient } from '@box-local/mudb/client';
-import { MuScheduler } from '@box-local/mudb/scheduler/scheduler';
-import type { ClientConsole } from '@box-local/script-api';
+import { MuClient } from '@box/mudb/client';
+import { MuScheduler } from '@box/mudb/scheduler/scheduler';
+import type { ClientConsole } from '@box/script-api';
 
 import type { Logger as PinoLogger } from 'pino';
 import { loadSettings } from './settings/settings-controller';
-import { ContentResolver } from '@box-local/content-server/content-fetch';
-import { CameraBindingMode } from '@box-local/schema/input/input-schema';
+import { ContentResolver } from '@box/content-server/content-fetch';
+import { CameraBindingMode } from '@box/schema/input/input-schema';
 import {
   CloseType,
   GameClientAppState,
@@ -20,7 +20,7 @@ import {
 import { destroyMesh } from './mesh/renderable-schema';
 import { tickCamera } from './camera/camera-controller';
 import { tickEnvironment } from './environment/environment-controller';
-import { ClientEventSchema } from '@box-local/schema/events/client-event-schema';
+import { ClientEventSchema } from '@box/schema/events/client-event-schema';
 import { NetClient } from './net/net-client-controller';
 import { ClockClient, tickClientClock } from './clock/clock-client-controller';
 import {
@@ -43,26 +43,26 @@ import {
   tickPlayerInputEvents,
   updatePlayerInput,
 } from './player/player-client-controller';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 import {
   initializePlayerAnimations,
   tickPlayerAnimations,
 } from './player/player-animations';
 import { ChatClient } from './chat/chat-client';
-import { NetClientInputSchema } from '@box-local/schema/net/net-schema';
+import { NetClientInputSchema } from '@box/schema/net/net-schema';
 import { tickChatBubbles } from './chat/bubble-controller';
 import { tickEffects } from './effect/effect-controller';
 import { ModelClient, tickClientModels } from './mesh/client-model-controller';
 import { processUI3DEvents } from './ui3d/ui3d-controller';
 import { processSeedEvents } from './seed/seeds-model-controller';
 import { interpolateClientNetState } from './net/net-client-interpolate';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { pollExtensions } from './gl/poll-extensions';
 import { tickPerf } from './perf/perf-client-controller';
 import { initializeElements } from './gl/quad';
 import { isIos, isMobile, touchable } from '../utils/mobile';
 import { clientConfig, type ClientConfig } from '../config/client';
-import { FeatureFlag } from '@box-local/env/constants';
+import { FeatureFlag } from '@box/env/constants';
 import {
   setupClientParticles,
   tickClientParticles,
@@ -71,13 +71,13 @@ import { SoundClient } from './sound/client-sound-controller';
 import { InteractClient } from './interact/interact-client';
 import { DialogClient } from './dialog/dialog-client';
 import { clearMemoryPool } from './utils/pool';
-import { clearBodyLocks } from '@box-local/schema/physics/physics-solve';
-import { LoadingController } from '@box-local/utils/loading/loading-controller';
-import { Semaphore } from '@box-local/utils/semaphore';
-import { TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
+import { clearBodyLocks } from '@box/schema/physics/physics-solve';
+import { LoadingController } from '@box/utils/loading/loading-controller';
+import { Semaphore } from '@box/utils/semaphore';
+import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 import { HrefClient } from './href/href-client';
 import { RTCClient } from './rtc/rtc-client';
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
 import { tickClientKeyframes } from './keyframes/keyframe-client';
 import { GUIClient } from './gui/gui-client';
 import { NavigatorClient } from './navigator/navigator-client';

@@ -16,10 +16,10 @@ import {
   PlayerInputSet,
   Player,
   PlayerOccupancyFlags,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import { GameClientState } from '../../game-client-schema';
-import { RigidBodySet } from '@box-local/schema/physics/physics-schema';
-import { zipId } from '@box-local/utils/id';
+import { RigidBodySet } from '@box/schema/physics/physics-schema';
+import { zipId } from '@box/utils/id';
 
 export default function (regl: REGL.Regl, loader: REGLLoader) {
   const text = loader.require(glText);

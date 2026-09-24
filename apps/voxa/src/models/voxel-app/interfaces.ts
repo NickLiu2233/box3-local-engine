@@ -1,7 +1,7 @@
-import type { Actions, EditingMode } from '@box-local/utils/helper';
+import type { Actions, EditingMode } from '@box/utils/helper';
 import type { vec3 } from 'gl-matrix';
-import type { VoxelView } from '@box-local/utils/voxel';
-import type { AxisType } from '@box-local/box-design';
+import type { VoxelView } from '@box/utils/voxel';
+import type { AxisType } from '@box/box-design';
 import type { VoxelDimensionType } from '../project/interfaces';
 
 export type SetTool = (options: {

@@ -1,8 +1,8 @@
 import {
   TextXAlignType,
   TextYAlignType,
-} from '@box-local/schema/project/ui-rda/defs';
-import type * as I from '@box-local/script-api';
+} from '@box/schema/project/ui-rda/defs';
+import type * as I from '@box/script-api';
 import { TEXT_STROKE_THICKNESS_RANGE } from 'src/engine/game-ui/nodes/defs';
 import { GameUIText } from 'src/engine/game-ui/nodes/text';
 import { isFontFamily } from 'src/views/edit/components/game-ui/property/util';

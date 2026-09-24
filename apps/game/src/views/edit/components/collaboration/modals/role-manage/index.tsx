@@ -1,11 +1,11 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
-import { Toast } from '@box-local/box-design';
+import { Toast } from '@box/box-design';
 import {
   PermissionSet,
   PermissionSetSchema,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 
 import { RootState } from 'src/redux/edit';
 import { useEdit } from 'src/client/edit/edit-context';
@@ -20,7 +20,7 @@ import {
   getRoleId,
   refreshNameIDMap,
 } from 'src/views/edit/components/collaboration/transform';
-import { mapPermissionToCreatera } from '@box-local/utils/createra-permissions';
+import { mapPermissionToCreatera } from '@box/utils/createra-permissions';
 
 type RoleManageProps = {
   close: () => void;

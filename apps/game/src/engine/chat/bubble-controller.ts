@@ -1,8 +1,8 @@
 import { GameClientState } from '../game-client-schema';
-import { getById, compareId } from '@box-local/utils/id';
+import { getById, compareId } from '@box/utils/id';
 import { ChatBubble, ChatBubbleSchema, GIFInfo } from './chat-client-schema';
 import { playSoundEffectSpatial } from '../sound/client-sound-controller';
-import { MsgType, StickMessage } from '@box-local/schema/chat/chat-schema';
+import { MsgType, StickMessage } from '@box/schema/chat/chat-schema';
 
 const CHAT_BUBBLE_TIME = 2000;
 

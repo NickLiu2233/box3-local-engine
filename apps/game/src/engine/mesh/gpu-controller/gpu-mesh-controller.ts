@@ -1,7 +1,7 @@
 import { mat4, vec3 } from 'gl-matrix';
-import type { IREWGPUBuffer, ReWGPU } from '@box-local/rewgpu';
-import { unpackTextureData } from '@box-local/mesher';
-import { ImageModel } from '@box-local/build-system/tasks/texture/img-process';
+import type { IREWGPUBuffer, ReWGPU } from '@box/rewgpu';
+import { unpackTextureData } from '@box/mesher';
+import { ImageModel } from '@box/build-system/tasks/texture/img-process';
 import {
   GPUModelTextureInstanceList,
   GPUModelTextureInstanceListSchema,
@@ -17,7 +17,7 @@ import {
   GPUMeshInstanceListDictSchema,
   GPUMeshInstanceListDict,
 } from './gpu-mesh-schema';
-import { Mat4Schema } from '@box-local/schema/utils/math-schema';
+import { Mat4Schema } from '@box/schema/utils/math-schema';
 import { GPUState } from '../../gpu/schema/gpu-schema';
 import { Meshes } from '../parse/mesh-controller';
 import { GameClientState } from '../../game-client-schema';
@@ -28,7 +28,7 @@ import {
   type MeshCache,
   type MeshMotionMatrix,
 } from '../renderable-schema';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import { LightProbe } from 'src/engine/voxel/light-schema';
 import { testFrustumBox } from '../../utils/frustum';
 import { sampleLightBox } from '../../voxel/voxel-controller';

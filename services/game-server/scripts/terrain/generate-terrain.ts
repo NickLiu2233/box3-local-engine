@@ -1,18 +1,18 @@
 import fs = require('fs');
 import path = require('path');
 
-import { MuReadStream, encodeUTF8 } from '@box-local/mudb/stream';
-import { GoIPFSStore } from '@box-local/content-server/ipfs-http-store-node';
-import { CachingContentServer } from '@box-local/content-server/caching-content-server';
-import { ContentSplitter } from '@box-local/content-server/content-split';
-import { ObjectStoreService } from '@box-local/content-server/object-store-service';
-import { restoreVoxels, VoxelView } from '@box-local/utils/voxel';
+import { MuReadStream, encodeUTF8 } from '@box/mudb/stream';
+import { GoIPFSStore } from '@box/content-server/ipfs-http-store-node';
+import { CachingContentServer } from '@box/content-server/caching-content-server';
+import { ContentSplitter } from '@box/content-server/content-split';
+import { ObjectStoreService } from '@box/content-server/object-store-service';
+import { restoreVoxels, VoxelView } from '@box/utils/voxel';
 import { getConfig } from '../../config/server';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
-import { storeProjectJSON } from '@box-local/build-system/project/project-serialize';
+import { ProjectRDA } from '@box/schema/project/project-rda';
+import { storeProjectJSON } from '@box/build-system/project/project-serialize';
 import { saveVoxelData } from '../../src/voxel/voxel-server';
-import { BuildSystem } from '@box-local/build-system/build-system';
-import { MockBuildCache } from '@box-local/build-system/build-cache-mock';
+import { BuildSystem } from '@box/build-system/build-system';
+import { MockBuildCache } from '@box/build-system/build-cache-mock';
 import { rootLogger } from '../../src/utils/logger';
 
 function mapVoxels(outVoxels: VoxelView, table: number[]) {

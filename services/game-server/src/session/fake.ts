@@ -1,4 +1,4 @@
-import { UserDetailSchema } from '@box-local/schema/session/schema';
+import { UserDetailSchema } from '@box/schema/session/schema';
 
 export function getFakeUser(displayname = 'fake user', id?: number) {
   const fakeUser = UserDetailSchema.alloc();

@@ -1,4 +1,4 @@
-import { MuUTF8, MuStruct, MuVarint, MuBoolean, MuSchema, MuArray, MuDate, MuOption, MuASCII } from '@box-local/mudb/schema';
+import { MuUTF8, MuStruct, MuVarint, MuBoolean, MuSchema, MuArray, MuDate, MuOption, MuASCII } from '@box/mudb/schema';
 import { PlayerSkinHash } from '../player/player-schema';
 import { MuNullable } from '../backend/rpc/nullable-schema';
 import { UserAuthType } from '../backend/rpc/auth-protocol';

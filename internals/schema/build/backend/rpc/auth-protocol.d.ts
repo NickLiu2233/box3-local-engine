@@ -1,5 +1,5 @@
-import { MuRPCClient } from '@box-local/mudb/rpc/client';
-import { MuArray, MuBoolean, MuDate, MuOption, MuSchema, MuStruct, MuUnion, MuUTF8, MuVarint, MuVoid } from '@box-local/mudb/schema';
+import { MuRPCClient } from '@box/mudb/rpc/client';
+import { MuArray, MuBoolean, MuDate, MuOption, MuSchema, MuStruct, MuUnion, MuUTF8, MuVarint, MuVoid } from '@box/mudb/schema';
 import { PlayerSkinHash } from '../../player/player-schema';
 import { DB } from '../database-type';
 import { MuNullable } from './nullable-schema';

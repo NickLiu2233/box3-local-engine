@@ -1,4 +1,4 @@
-import type { IREWGPUBuffer, RenderDescriptor, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUBuffer, RenderDescriptor, ReWGPU } from '@box/rewgpu';
 import { GameClientState } from '../game-client-schema';
 import mainStruct from './wgsl/main-struct.wgsl';
 import { CommonUniformEntries, CommonUniformLayout } from './interface';
@@ -18,7 +18,7 @@ import { UI3DElement } from '../ui3d/ui3d-schema';
 import { traverseUI3D } from '../ui3d/ui3d-controller';
 import { drawSeedsForward, drawSeedsShadowForward } from './seed';
 import { gpuSkybox } from './skybox';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import { gpuTexture } from './texture';
 import { gpuPlayer } from './player';
 import {
@@ -44,7 +44,7 @@ import {
   Vec4Schema,
   Vec2Schema,
   Mat4Schema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 
 export function gpuMain(rewgpu: ReWGPU) {
   const { data, struct } = new UniformStructF32({

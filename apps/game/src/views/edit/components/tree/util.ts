@@ -1,12 +1,12 @@
 import { sort } from 'ramda';
-import type { TreeNode as ProjectTreeNode } from '@box-local/schema/project/project-rda';
+import type { TreeNode as ProjectTreeNode } from '@box/schema/project/project-rda';
 import {
   ROOT_ID,
   TreeNodeType as MuRDATreeNodeType,
   MuRDATree,
   TreeStructTypes,
-} from '@box-local/schema/project/murda-tree';
-import { MuRDA } from '@box-local/mudb/rda';
+} from '@box/schema/project/murda-tree';
+import { MuRDA } from '@box/mudb/rda';
 
 /**
  * 基于MuRDATree的TreeNode的抽象，不需要value的部分

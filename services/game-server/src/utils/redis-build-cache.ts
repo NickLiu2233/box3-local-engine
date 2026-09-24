@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'crypto';
 
-import type { BuildCacheAPI } from '@box-local/build-system/type';
+import type { BuildCacheAPI } from '@box/build-system/type';
 import type { Logger } from 'pino';
 import type { RuntimeRedisStore } from '../redis/runtime-redis';
 

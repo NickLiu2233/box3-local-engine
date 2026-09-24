@@ -5,9 +5,9 @@ import {
   MuStruct,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { Mat3Schema, Vec3Schema } from '@box-local/schema/utils/math-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { Mat3Schema, Vec3Schema } from '@box/schema/utils/math-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import {
   REWGPUBufferSchema,
   REWGPUGroupSchema,

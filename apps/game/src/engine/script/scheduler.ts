@@ -1,5 +1,5 @@
-import * as pq from '@box-local/utils/script/pairing-heap';
-import { ScriptPerfCounter } from '@box-local/utils/script/scheduler-schema';
+import * as pq from '@box/utils/script/pairing-heap';
+import { ScriptPerfCounter } from '@box/utils/script/scheduler-schema';
 
 const MIN_TIMESTEP_MS = 0.7;
 

@@ -1,9 +1,9 @@
-import { MuClientProtocol } from '@box-local/mudb/client';
-import { GameRTC, GameRTCChannel } from '@box-local/schema/api/js/rtc';
+import { MuClientProtocol } from '@box/mudb/client';
+import { GameRTC, GameRTCChannel } from '@box/schema/api/js/rtc';
 import { RTCScriptProtocol } from './rtc-script-protocol';
 import { PromiseWrapper } from './promise-wrapper';
 import { ScriptShell } from '../script/script-shell';
-import { GamePlayerEntity } from '@box-local/schema/api/js/api';
+import { GamePlayerEntity } from '@box/schema/api/js/api';
 import { GameUIDEntity } from '../script/bindings/entity-synchronizer';
 
 function generateChannelId(len = 32) {

@@ -2,7 +2,7 @@ import {
   ListPageOptions,
   ListReturnValue,
   ResultValue,
-} from '@box-local/schema/api/js/storage';
+} from '@box/schema/api/js/storage';
 import { DBType } from './storage-protocol';
 
 /**

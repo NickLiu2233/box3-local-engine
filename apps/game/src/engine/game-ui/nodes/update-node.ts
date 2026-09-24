@@ -12,7 +12,7 @@ import {
   UIText,
   UITextRDA,
   UITreeNode,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import {
   isUIAutoLayout,
   isUIElement,
@@ -21,7 +21,7 @@ import {
   isUIScreen,
   isUIScrollBoxElement,
   isUITextElement,
-} from '@box-local/schema/project/ui-rda/util';
+} from '@box/schema/project/ui-rda/util';
 import { GameUINode } from './base';
 import { GameUIText } from './text';
 import { GameUIImage } from './image';

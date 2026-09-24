@@ -1,8 +1,8 @@
 'use client';
 
 import { UIMessage, useChat } from '@ai-sdk/react';
-import { CopyEvent, SourceType } from '@box-local/apis';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { CopyEvent, SourceType } from '@box/apis';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import { ToolUIPart } from 'ai';
 import { partition } from 'es-toolkit/array';
 import {

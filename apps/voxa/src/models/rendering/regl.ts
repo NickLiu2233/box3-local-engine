@@ -1,4 +1,4 @@
-import createREGL, { Regl } from '@box-local/regl';
+import createREGL, { Regl } from '@box/regl';
 
 export async function initRegl(canvas: HTMLCanvasElement): Promise<Regl> {
   return new Promise((res) => {

@@ -4,7 +4,7 @@ import { Input } from '../input';
 import { notice } from '../../common/notice';
 import { Modal } from '../modal';
 import { isMobile, isTablet } from 'src/utils/mobile';
-import { ContentResolver } from '@box-local/content-server/content-fetch';
+import { ContentResolver } from '@box/content-server/content-fetch';
 
 type BugReportProps = {
   bugReportSubject: string;

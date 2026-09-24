@@ -5,7 +5,7 @@ import type {
   IKPoints,
   IKConfiguration,
   IKPalette,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 
 export { IKRig, IKPose, IKPoints, IKConfiguration, IKPalette };
 

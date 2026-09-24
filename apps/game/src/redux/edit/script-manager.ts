@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { AssetEntry } from '@box-local/schema/project/project-rda';
+import { AssetEntry } from '@box/schema/project/project-rda';
 import { SerializedVec2 } from 'src/engine/interfaces';
 
 export type ScriptManagerState = {

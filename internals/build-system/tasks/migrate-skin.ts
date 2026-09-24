@@ -3,7 +3,7 @@ import {
   SkinMetaData,
   VOXA_SKIN_VERSION,
   bodyPartSchemaToBytes,
-} from '@box-local/voxa-project';
+} from '@box/voxa-project';
 import { BuildSystem } from '../type';
 import { BUILD_HEAVY_LOCK } from './heavy_mutex';
 

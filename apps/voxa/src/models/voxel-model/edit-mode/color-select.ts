@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { traverseVoxels } from '@box-local/utils/helper';
+import { traverseVoxels } from '@box/utils/helper';
 import { forEachAdjacent } from '../../../utils/forEachAdjacent';
 import type { Pointer } from '../../pointer';
 import type { Model } from '../model';

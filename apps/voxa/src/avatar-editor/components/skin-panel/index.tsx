@@ -7,8 +7,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { migrateProject } from '@box-local/voxa-project';
-import { Button, ModalView, Input } from '@box-local/box-design';
+import { migrateProject } from '@box/voxa-project';
+import { Button, ModalView, Input } from '@box/box-design';
 import type { SkinPart } from '../../../avatar/models/skin-part';
 import { setSelectedSkinId } from '../../redux/app';
 import { store, useAppSelector } from '../../redux/store';
@@ -21,7 +21,7 @@ import { voxelsToMeshes } from 'packages/mesher/build';
 import {
   BODY_PART_DEFAULT_ROTATIONS,
   BODY_PART_DEFAULT_SCALE,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import { migrateJSON } from '../../utils/migrate';
 import { VoxParser } from '../../../common/vox-parser';
 import {

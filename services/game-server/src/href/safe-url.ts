@@ -1,1 +1,1 @@
-export { isSafeHttpUrl as isSafeUrl } from '@box-local/utils/safe-url';
+export { isSafeHttpUrl as isSafeUrl } from '@box/utils/safe-url';

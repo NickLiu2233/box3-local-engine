@@ -17,8 +17,8 @@ import {
   updateLocalEmitters,
   updateParticlePendingList,
 } from 'src/engine/particle/particle-client-controller';
-import { packColor } from '@box-local/schema/particle/particle-schema';
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { packColor } from '@box/schema/particle/particle-schema';
+import { AssetType } from '@box/schema/project/project-rda';
 import { Renderable } from 'src/engine/mesh/renderable-schema';
 import { seedsDataController } from 'src/views/edit/components/stage-area/seedsData';
 import { computeEntitySeedRenderBox } from 'src/views/edit/components/transformHandler/util';

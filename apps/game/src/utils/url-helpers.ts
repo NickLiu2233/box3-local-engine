@@ -1,4 +1,4 @@
-import { URL, URLSearchParams } from '@box-local/schema/api/js/url';
+import { URL, URLSearchParams } from '@box/schema/api/js/url';
 
 export const OFFICIAL_URL = {
   codemaoDev: 'http://development.game-vpc.codemao.cn/',

@@ -1,5 +1,5 @@
 import { mat3, quat, vec3 } from 'gl-matrix';
-import type { Regl, Texture2D } from '@box-local/regl';
+import type { Regl, Texture2D } from '@box/regl';
 import type { Object3D } from '../../models/rendering/objects/object3d';
 import type {
   ModelMesh,
@@ -8,7 +8,7 @@ import type {
   ModelNodes,
   MeshTexture,
 } from '../interfaces';
-import { unpackMeshData, unpackTextureData } from '@box-local/mesher';
+import { unpackMeshData, unpackTextureData } from '@box/mesher';
 import { Group } from '../../models/rendering/objects/group';
 import { GLTexture, SkinPartMesh } from '../skin-part-mesh';
 

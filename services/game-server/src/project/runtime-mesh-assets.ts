@@ -1,5 +1,5 @@
-import type { ExtraProjectInfo } from '@box-local/schema/project/hot-schema';
-import type { RuntimeMeshInfo } from '@box-local/build-system/project/bake';
+import type { ExtraProjectInfo } from '@box/schema/project/hot-schema';
+import type { RuntimeMeshInfo } from '@box/build-system/project/bake';
 import { isContentHash } from './content-hash';
 
 /**

@@ -1,7 +1,7 @@
-import { MuSchema } from '@box-local/mudb/schema/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
-import { alloc, free } from '@box-local/utils/pool';
-import { fillArray } from '@box-local/utils/voxle-fill';
+import { MuSchema } from '@box/mudb/schema/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
+import { alloc, free } from '@box/utils/pool';
+import { fillArray } from '@box/utils/voxle-fill';
 
 const AO_TABLE = new Uint8Array([0, 153, 204, 255]);
 

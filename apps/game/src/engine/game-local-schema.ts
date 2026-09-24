@@ -6,8 +6,8 @@ import {
   MuArray,
   MuUTF8,
   MuUint8,
-} from '@box-local/mudb/schema';
-import { Vec3Schema, Vec2Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/mudb/schema';
+import { Vec3Schema, Vec2Schema } from '@box/schema/utils/math-schema';
 
 // -----------------------------------------------------------
 // Client specific private info

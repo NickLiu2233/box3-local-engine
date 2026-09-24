@@ -16,7 +16,7 @@ import { resolveEditor } from 'src/client/edit/edit-client';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
 import { setPermission } from 'src/redux/edit/permission';
-import { JavaPermissionsMap } from '@box-local/utils/createra-permissions';
+import { JavaPermissionsMap } from '@box/utils/createra-permissions';
 
 export type EngineStatus = 'preConnect' | 'loading' | 'started' | 'stop';
 

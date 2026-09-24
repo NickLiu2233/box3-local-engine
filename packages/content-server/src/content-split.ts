@@ -1,4 +1,4 @@
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { ContentServer } from '.';
 
 // This module splits large blocks into tiny pieces at regular sizes.

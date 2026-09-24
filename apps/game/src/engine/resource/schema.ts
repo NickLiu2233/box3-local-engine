@@ -5,8 +5,8 @@ import {
   MuFloat64,
   MuSchema,
   MuUint8,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import type { ParsedGLTFMesh } from '../mesh/gltf/interfaces';
 
 export enum ImageStatus {

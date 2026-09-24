@@ -1,4 +1,4 @@
-import { MuSchema, MuStruct, MuUint8, MuSortedArray, MuVarint } from '@box-local/mudb/schema';
+import { MuSchema, MuStruct, MuUint8, MuSortedArray, MuVarint } from '@box/mudb/schema';
 export declare const VoxelCollisionBoxSchema: MuStruct<{
     minX: MuUint8;
     minY: MuUint8;

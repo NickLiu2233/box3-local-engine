@@ -1,4 +1,4 @@
-import type { UITextFontFamily } from '@box-local/schema/project/ui-rda/defs';
+import type { UITextFontFamily } from '@box/schema/project/ui-rda/defs';
 import { UI_FONT_FACE_MAP } from '../defs';
 
 /**

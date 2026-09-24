@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 import { mat2d, vec2 } from 'gl-matrix';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import type { InputController } from 'src/engine/input/input-controller';
 import type { TextTransformUpdateCallback } from 'src/engine/game-ui/nodes/text';
 import type { GameUIRenderable } from 'src/engine/game-ui/nodes/renderable';

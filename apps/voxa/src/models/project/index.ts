@@ -7,8 +7,8 @@ import {
   projectSchemaToBytes,
   VOXA_SKIN_VERSION,
   projectV5,
-} from '@box-local/voxa-project';
-import type { ProjectDataTypes } from '@box-local/voxa-project/build/types/project/def';
+} from '@box/voxa-project';
+import type { ProjectDataTypes } from '@box/voxa-project/build/types/project/def';
 import { shouldSaveAsMapModel } from './save-target';
 import {
   BodyPartDataSchema,
@@ -25,18 +25,18 @@ import {
   Vec4Schema,
   Mat3Schema,
 } from './defs';
-import { Mesher } from '@box-local/mesher';
+import { Mesher } from '@box/mesher';
 import {
   BODY_PART_DEFAULT_SCALE,
   BodyPart,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   CreativeMode,
   ModelSnapshotResp,
   ModelType,
   ModelErrorCode,
   ModelResp,
-} from '@box-local/apis';
+} from '@box/apis';
 import { apis } from '../../apis';
 import {
   DEFAULT_GROUP_ID,

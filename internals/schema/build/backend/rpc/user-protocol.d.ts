@@ -1,5 +1,5 @@
-import { MuRPCClient } from '@box-local/mudb/rpc/client';
-import { MuUTF8, MuStruct, MuVarint, MuArray, MuJSON, MuSchema, MuBoolean, MuDate, MuOption } from '@box-local/mudb/schema';
+import { MuRPCClient } from '@box/mudb/rpc/client';
+import { MuUTF8, MuStruct, MuVarint, MuArray, MuJSON, MuSchema, MuBoolean, MuDate, MuOption } from '@box/mudb/schema';
 import { DB } from '../database-type';
 import { MuNullable } from './nullable-schema';
 export declare enum UserTag {

@@ -1,8 +1,8 @@
-import { MuRemoteClient, MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { AiProtocol } from '@box-local/schema/ai/ai-protocol.schema';
+import { MuRemoteClient, MuServer, MuServerProtocol } from '@box/mudb/server';
+import { AiProtocol } from '@box/schema/ai/ai-protocol.schema';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { FeatureFlag } from '@box-local/env/constants';
+import { FeatureFlag } from '@box/env/constants';
 import {
   Experimental_Agent as Agent,
   convertToModelMessages,

@@ -6,7 +6,7 @@ import {
   GameRGBAColor,
   GameRGBColor,
   GameVector3,
-} from '@box-local/schema/api/js/math';
+} from '@box/schema/api/js/math';
 
 function approxEqual(a, b) {
   return Math.abs(a - b) < 0.0000001;

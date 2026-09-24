@@ -1,10 +1,10 @@
-import { Mesher } from '@box-local/mesher';
-import { exportToGLTF } from '@box-local/mesher/gltf';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { MeshSchema } from '@box-local/schema/mesh/voxel';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
-import { decompress } from '@box-local/utils/rle-compress';
-import { VoxelView } from '@box-local/utils/voxel';
+import { Mesher } from '@box/mesher';
+import { exportToGLTF } from '@box/mesher/gltf';
+import { MuReadStream } from '@box/mudb/stream';
+import { MeshSchema } from '@box/schema/mesh/voxel';
+import { allocEmptyVoxels } from '@box/utils/helper';
+import { decompress } from '@box/utils/rle-compress';
+import { VoxelView } from '@box/utils/voxel';
 import fs from 'fs';
 import path from 'path';
 

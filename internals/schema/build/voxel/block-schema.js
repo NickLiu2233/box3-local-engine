@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BlockIndexSchema = exports.BlockInfoSchema = exports.BlockCategory = exports.BlockSoundGroup = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const index_1 = require("../content-server/index");
 const ref_schema_1 = require("../utils/ref-schema");
 const relative_array_1 = require("../utils/relative-array");

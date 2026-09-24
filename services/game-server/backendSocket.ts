@@ -1,4 +1,4 @@
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import WS = require('ws');
 
 type MessageHandler = (message: string) => void;

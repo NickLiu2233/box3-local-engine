@@ -13,8 +13,8 @@ exports.migrateProject = migrateProject;
 exports.migrateGroupProject = migrateGroupProject;
 const migrations_1 = require("../migrations");
 const group_project_1 = require("../group-project");
-const project_rda_1 = require("@box-local/schema/project/project-rda");
-const schema_v0_3_26_1 = require("@box-local/schema/group-project/schema-v0-3-26");
+const project_rda_1 = require("@box/schema/project/project-rda");
+const schema_v0_3_26_1 = require("@box/schema/group-project/schema-v0-3-26");
 const CURRENT_VERSION = project_rda_1.ProjectRDA.stateSchema.identity.version;
 /**
  * 将 project Hash 迁移至指定版本。默认为最新版本

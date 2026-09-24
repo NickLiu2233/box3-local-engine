@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { RuntimePlayerIdentity } from '@box-local/utils/local-player-identity';
+import type { RuntimePlayerIdentity } from '@box/utils/local-player-identity';
 import type { CreatorCapability } from '../shared/creator-policy';
 import { hasCreatorCapability } from '../shared/creator-policy';
 import type { CreatorCliCapability } from '../shared/creator-cli-policy';

@@ -1,4 +1,4 @@
-import { createConfig, initLocalEnv } from '@box-local/env';
+import { createConfig, initLocalEnv } from '@box/env';
 import { a, b, maybeS, s } from './builder';
 
 /**
@@ -6,7 +6,7 @@ import { a, b, maybeS, s } from './builder';
  * 包含 Server 与 Client 的配置
  */
 export interface EnvironmentConfig {
-  // 当前的项目名，例如：rush build --to @box-local/xxx 中的 @box-local/xxx
+  // 当前的项目名，例如：rush build --to @box/xxx 中的 @box/xxx
   projectId: string;
   logPrefixRegex?: string;
 

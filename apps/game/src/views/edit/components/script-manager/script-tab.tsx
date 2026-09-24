@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
-import { IconDropDown, IconAdd2, IconDropUp } from '@box-local/icons';
-import { Button } from '@box-local/box-design';
+import { IconDropDown, IconAdd2, IconDropUp } from '@box/icons';
+import { Button } from '@box/box-design';
 
 import style from './index.module.scss';
 

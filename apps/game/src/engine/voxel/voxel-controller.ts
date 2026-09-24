@@ -1,9 +1,9 @@
-import { MuBuffer, allocBuffer, freeBuffer } from '@box-local/mudb/stream';
+import { MuBuffer, allocBuffer, freeBuffer } from '@box/mudb/stream';
 import {
   CHUNK_SHIFT,
   CHUNK_SIZE,
-} from '@box-local/schema/voxel/voxel-collision-schema';
-import { TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
+} from '@box/schema/voxel/voxel-collision-schema';
+import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 import { levels, type Logger } from 'pino';
 import uniq from 'uniq';
 import { GameClientState } from '../game-client-schema';
@@ -26,12 +26,12 @@ import {
 } from './voxel-worker-schema';
 import { GLVoxelState } from './gl-voxel/gl-voxel-schema';
 import { GPUVoxelState } from './gpu-voxel/gpu-voxel-schema';
-import { EnvironmentState } from '@box-local/schema/environment/environment-schema';
-import { getById } from '@box-local/utils/id';
+import { EnvironmentState } from '@box/schema/environment/environment-schema';
+import { getById } from '@box/utils/id';
 import { calcStartIJK, VoxelClient } from './voxel-client';
-import { FetchHashesSchema } from '@box-local/schema/voxel/voxel-protocol';
+import { FetchHashesSchema } from '@box/schema/voxel/voxel-protocol';
 import { ClientVoxelStateSchema } from './voxel-client-schema';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 
 export const CHUNK_BUFFER_SIZE =
   6 * 4 * 8 * CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;

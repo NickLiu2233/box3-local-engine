@@ -1,4 +1,4 @@
-import { MuRDARegister, MuRDAStruct } from '@box-local/mudb/rda';
+import { MuRDARegister, MuRDAStruct } from '@box/mudb/rda';
 import {
   MuBoolean,
   MuQuantizedFloat,
@@ -11,7 +11,7 @@ import {
   MuFloat64,
   MuASCII,
   MuDictionary,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 import { MuRDAUnion } from '../project/murda-union';
 import {

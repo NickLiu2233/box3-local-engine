@@ -1,5 +1,5 @@
-import { MuStruct, MuBoolean, MuASCII, MuArray, MuUTF8, MuVarint, MuDate, MuSchema } from '@box-local/mudb/schema';
-import { MuRDAConstant, MuRDAStruct, MuRDAMap, MuRDARegister, MuRDAList } from '@box-local/mudb/rda';
+import { MuStruct, MuBoolean, MuASCII, MuArray, MuUTF8, MuVarint, MuDate, MuSchema } from '@box/mudb/schema';
+import { MuRDAConstant, MuRDAStruct, MuRDAMap, MuRDARegister, MuRDAList } from '@box/mudb/rda';
 export declare const UserIdSchema: MuUTF8;
 export declare const PermissionGroupMemberRDA: MuRDAStruct<{
     addedAt: MuRDAConstant<MuDate>;
@@ -96,7 +96,7 @@ export declare const VersionControlBranchesRDA: MuRDAMap<MuUTF8, MuRDAStruct<{
     name: MuRDARegister<MuUTF8>;
     headHash: MuRDARegister<MuASCII>;
 }>>;
-export declare const VersionControlBranchesSchema: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+export declare const VersionControlBranchesSchema: import("@box/mudb/schema").MuDictionary<MuStruct<{
     name: MuUTF8;
     headHash: MuASCII;
 }>>;
@@ -176,13 +176,13 @@ export declare const PermissionsSchema: MuStruct<{
     prevHash: MuASCII;
     timestamp: MuDate;
     versionControl: MuStruct<{
-        branches: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+        branches: import("@box/mudb/schema").MuDictionary<MuStruct<{
             name: MuUTF8;
             headHash: MuASCII;
         }>>;
         currentBranch: MuUTF8;
     }>;
-    groups: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+    groups: import("@box/mudb/schema").MuDictionary<MuStruct<{
         permissions: MuStruct<{
             publish: MuBoolean;
             playButton: MuBoolean;
@@ -202,31 +202,31 @@ export declare const PermissionsSchema: MuStruct<{
             editPublish: MuBoolean;
             editPlayer: MuBoolean;
         }>;
-        members: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+        members: import("@box/mudb/schema").MuDictionary<MuStruct<{
             addedAt: MuDate;
         }>>;
         defaultGroup: MuBoolean;
     }>>;
-    users: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+    users: import("@box/mudb/schema").MuDictionary<MuStruct<{
         createdAt: MuDate;
     }>>;
     collaborators: MuArray<MuUTF8>;
     owner: MuUTF8;
     accessLevel: MuSchema<PermissionAccessLevel>;
-    banned: import("@box-local/mudb/schema").MuDictionary<MuStruct<{
+    banned: import("@box/mudb/schema").MuDictionary<MuStruct<{
         reason: MuUTF8;
         bannedBy: MuUTF8;
     }>>;
 }>;
-export declare const PermissionActionSchema: import("@box-local/mudb/schema").MuUnion<{
-    type: import("@box-local/mudb/schema").MuVoid;
-    version: import("@box-local/mudb/schema").MuVoid;
+export declare const PermissionActionSchema: import("@box/mudb/schema").MuUnion<{
+    type: import("@box/mudb/schema").MuVoid;
+    version: import("@box/mudb/schema").MuVoid;
     prevHash: MuASCII;
     timestamp: MuDate;
-    versionControl: import("@box-local/mudb/schema").MuUnion<{
-        branches: import("@box-local/mudb/schema").MuUnion<{
+    versionControl: import("@box/mudb/schema").MuUnion<{
+        branches: import("@box/mudb/schema").MuUnion<{
             reset: MuStruct<{
-                upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                     id: MuVarint;
                     sequence: MuVarint;
                     deleted: MuBoolean;
@@ -236,8 +236,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                         headHash: MuASCII;
                     }>;
                 }>>;
-                deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-                undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+                deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+                undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
                 sequenceIds: MuArray<MuVarint>;
                 sequenceVals: MuArray<MuVarint>;
             }>;
@@ -253,7 +253,7 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
             }>;
             update: MuStruct<{
                 id: MuVarint;
-                action: import("@box-local/mudb/schema").MuUnion<{
+                action: import("@box/mudb/schema").MuUnion<{
                     name: MuUTF8;
                     headHash: MuASCII;
                 }>;
@@ -263,14 +263,14 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                 sequence: MuVarint;
                 key: MuUTF8;
             }>;
-            setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-            noop: import("@box-local/mudb/schema").MuVoid;
+            setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+            noop: import("@box/mudb/schema").MuVoid;
         }>;
         currentBranch: MuUTF8;
     }>;
-    groups: import("@box-local/mudb/schema").MuUnion<{
+    groups: import("@box/mudb/schema").MuUnion<{
         reset: MuStruct<{
-            upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -295,7 +295,7 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                         editPublish: MuBoolean;
                         editPlayer: MuBoolean;
                     }>;
-                    members: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                    members: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                         id: MuVarint;
                         sequence: MuVarint;
                         deleted: MuBoolean;
@@ -307,8 +307,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                     defaultGroup: MuBoolean;
                 }>;
             }>>;
-            deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-            undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+            deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+            undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
             sequenceIds: MuArray<MuVarint>;
             sequenceVals: MuArray<MuVarint>;
         }>;
@@ -337,7 +337,7 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                     editPublish: MuBoolean;
                     editPlayer: MuBoolean;
                 }>;
-                members: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                members: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                     id: MuVarint;
                     sequence: MuVarint;
                     deleted: MuBoolean;
@@ -351,8 +351,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
         }>;
         update: MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuUnion<{
-                permissions: import("@box-local/mudb/schema").MuUnion<{
+            action: import("@box/mudb/schema").MuUnion<{
+                permissions: import("@box/mudb/schema").MuUnion<{
                     publish: MuBoolean;
                     playButton: MuBoolean;
                     debugger: MuBoolean;
@@ -371,9 +371,9 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                     editPublish: MuBoolean;
                     editPlayer: MuBoolean;
                 }>;
-                members: import("@box-local/mudb/schema").MuUnion<{
+                members: import("@box/mudb/schema").MuUnion<{
                     reset: MuStruct<{
-                        upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                        upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                             id: MuVarint;
                             sequence: MuVarint;
                             deleted: MuBoolean;
@@ -382,8 +382,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                                 addedAt: MuDate;
                             }>;
                         }>>;
-                        deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-                        undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+                        deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+                        undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
                         sequenceIds: MuArray<MuVarint>;
                         sequenceVals: MuArray<MuVarint>;
                     }>;
@@ -398,8 +398,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                     }>;
                     update: MuStruct<{
                         id: MuVarint;
-                        action: import("@box-local/mudb/schema").MuUnion<{
-                            addedAt: import("@box-local/mudb/schema").MuVoid;
+                        action: import("@box/mudb/schema").MuUnion<{
+                            addedAt: import("@box/mudb/schema").MuVoid;
                         }>;
                     }>;
                     move: MuStruct<{
@@ -407,8 +407,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                         sequence: MuVarint;
                         key: MuUTF8;
                     }>;
-                    setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-                    noop: import("@box-local/mudb/schema").MuVoid;
+                    setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+                    noop: import("@box/mudb/schema").MuVoid;
                 }>;
                 defaultGroup: MuBoolean;
             }>;
@@ -418,12 +418,12 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
             sequence: MuVarint;
             key: MuUTF8;
         }>;
-        setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-        noop: import("@box-local/mudb/schema").MuVoid;
+        setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+        noop: import("@box/mudb/schema").MuVoid;
     }>;
-    users: import("@box-local/mudb/schema").MuUnion<{
+    users: import("@box/mudb/schema").MuUnion<{
         reset: MuStruct<{
-            upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -432,8 +432,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                     createdAt: MuDate;
                 }>;
             }>>;
-            deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-            undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+            deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+            undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
             sequenceIds: MuArray<MuVarint>;
             sequenceVals: MuArray<MuVarint>;
         }>;
@@ -448,8 +448,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
         }>;
         update: MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuUnion<{
-                createdAt: import("@box-local/mudb/schema").MuVoid;
+            action: import("@box/mudb/schema").MuUnion<{
+                createdAt: import("@box/mudb/schema").MuVoid;
             }>;
         }>;
         move: MuStruct<{
@@ -457,29 +457,29 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
             sequence: MuVarint;
             key: MuUTF8;
         }>;
-        setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-        noop: import("@box-local/mudb/schema").MuVoid;
+        setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+        noop: import("@box/mudb/schema").MuVoid;
     }>;
     collaborators: MuStruct<{
-        upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+        upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
             id: MuVarint;
             deleted: MuBoolean;
             key: MuASCII;
             value: MuUTF8;
         }>>;
-        deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-        undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-        moves: MuArray<import("@box-local/mudb/rda/list").MuRDAListTypes<RDA>["moveActionSchema"]>;
+        deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+        undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+        moves: MuArray<import("@box/mudb/rda/list").MuRDAListTypes<RDA>["moveActionSchema"]>;
         updates: MuArray<MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuVoid;
+            action: import("@box/mudb/schema").MuVoid;
         }>>;
     }>;
-    owner: import("@box-local/mudb/schema").MuVoid;
+    owner: import("@box/mudb/schema").MuVoid;
     accessLevel: MuSchema<PermissionAccessLevel>;
-    banned: import("@box-local/mudb/schema").MuUnion<{
+    banned: import("@box/mudb/schema").MuUnion<{
         reset: MuStruct<{
-            upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -489,8 +489,8 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
                     bannedBy: MuUTF8;
                 }>;
             }>>;
-            deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-            undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+            deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+            undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
             sequenceIds: MuArray<MuVarint>;
             sequenceVals: MuArray<MuVarint>;
         }>;
@@ -506,15 +506,15 @@ export declare const PermissionActionSchema: import("@box-local/mudb/schema").Mu
         }>;
         update: MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuVoid;
+            action: import("@box/mudb/schema").MuVoid;
         }>;
         move: MuStruct<{
             id: MuVarint;
             sequence: MuVarint;
             key: MuUTF8;
         }>;
-        setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-        noop: import("@box-local/mudb/schema").MuVoid;
+        setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+        noop: import("@box/mudb/schema").MuVoid;
     }>;
 }>;
 export declare const PermissionStoreSchema: MuStruct<{
@@ -523,7 +523,7 @@ export declare const PermissionStoreSchema: MuStruct<{
     prevHash: MuASCII;
     timestamp: MuDate;
     versionControl: MuStruct<{
-        branches: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+        branches: import("@box/mudb/schema").MuSortedArray<MuStruct<{
             id: MuVarint;
             sequence: MuVarint;
             deleted: MuBoolean;
@@ -535,7 +535,7 @@ export declare const PermissionStoreSchema: MuStruct<{
         }>>;
         currentBranch: MuUTF8;
     }>;
-    groups: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+    groups: import("@box/mudb/schema").MuSortedArray<MuStruct<{
         id: MuVarint;
         sequence: MuVarint;
         deleted: MuBoolean;
@@ -560,7 +560,7 @@ export declare const PermissionStoreSchema: MuStruct<{
                 editPublish: MuBoolean;
                 editPlayer: MuBoolean;
             }>;
-            members: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            members: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -572,7 +572,7 @@ export declare const PermissionStoreSchema: MuStruct<{
             defaultGroup: MuBoolean;
         }>;
     }>>;
-    users: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+    users: import("@box/mudb/schema").MuSortedArray<MuStruct<{
         id: MuVarint;
         sequence: MuVarint;
         deleted: MuBoolean;
@@ -581,7 +581,7 @@ export declare const PermissionStoreSchema: MuStruct<{
             createdAt: MuDate;
         }>;
     }>>;
-    collaborators: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+    collaborators: import("@box/mudb/schema").MuSortedArray<MuStruct<{
         id: MuVarint;
         deleted: MuBoolean;
         key: MuASCII;
@@ -589,7 +589,7 @@ export declare const PermissionStoreSchema: MuStruct<{
     }>>;
     owner: MuUTF8;
     accessLevel: MuSchema<PermissionAccessLevel>;
-    banned: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+    banned: import("@box/mudb/schema").MuSortedArray<MuStruct<{
         id: MuVarint;
         sequence: MuVarint;
         deleted: MuBoolean;
@@ -600,15 +600,15 @@ export declare const PermissionStoreSchema: MuStruct<{
         }>;
     }>>;
 }>;
-export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/mudb/schema").MuUnion<{
-    type: import("@box-local/mudb/schema").MuVoid;
-    version: import("@box-local/mudb/schema").MuVoid;
+export declare const PermissionActionSequenceSchema: MuArray<import("@box/mudb/schema").MuUnion<{
+    type: import("@box/mudb/schema").MuVoid;
+    version: import("@box/mudb/schema").MuVoid;
     prevHash: MuASCII;
     timestamp: MuDate;
-    versionControl: import("@box-local/mudb/schema").MuUnion<{
-        branches: import("@box-local/mudb/schema").MuUnion<{
+    versionControl: import("@box/mudb/schema").MuUnion<{
+        branches: import("@box/mudb/schema").MuUnion<{
             reset: MuStruct<{
-                upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                     id: MuVarint;
                     sequence: MuVarint;
                     deleted: MuBoolean;
@@ -618,8 +618,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                         headHash: MuASCII;
                     }>;
                 }>>;
-                deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-                undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+                deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+                undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
                 sequenceIds: MuArray<MuVarint>;
                 sequenceVals: MuArray<MuVarint>;
             }>;
@@ -635,7 +635,7 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
             }>;
             update: MuStruct<{
                 id: MuVarint;
-                action: import("@box-local/mudb/schema").MuUnion<{
+                action: import("@box/mudb/schema").MuUnion<{
                     name: MuUTF8;
                     headHash: MuASCII;
                 }>;
@@ -645,14 +645,14 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                 sequence: MuVarint;
                 key: MuUTF8;
             }>;
-            setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-            noop: import("@box-local/mudb/schema").MuVoid;
+            setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+            noop: import("@box/mudb/schema").MuVoid;
         }>;
         currentBranch: MuUTF8;
     }>;
-    groups: import("@box-local/mudb/schema").MuUnion<{
+    groups: import("@box/mudb/schema").MuUnion<{
         reset: MuStruct<{
-            upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -677,7 +677,7 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                         editPublish: MuBoolean;
                         editPlayer: MuBoolean;
                     }>;
-                    members: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                    members: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                         id: MuVarint;
                         sequence: MuVarint;
                         deleted: MuBoolean;
@@ -689,8 +689,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                     defaultGroup: MuBoolean;
                 }>;
             }>>;
-            deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-            undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+            deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+            undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
             sequenceIds: MuArray<MuVarint>;
             sequenceVals: MuArray<MuVarint>;
         }>;
@@ -719,7 +719,7 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                     editPublish: MuBoolean;
                     editPlayer: MuBoolean;
                 }>;
-                members: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                members: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                     id: MuVarint;
                     sequence: MuVarint;
                     deleted: MuBoolean;
@@ -733,8 +733,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
         }>;
         update: MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuUnion<{
-                permissions: import("@box-local/mudb/schema").MuUnion<{
+            action: import("@box/mudb/schema").MuUnion<{
+                permissions: import("@box/mudb/schema").MuUnion<{
                     publish: MuBoolean;
                     playButton: MuBoolean;
                     debugger: MuBoolean;
@@ -753,9 +753,9 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                     editPublish: MuBoolean;
                     editPlayer: MuBoolean;
                 }>;
-                members: import("@box-local/mudb/schema").MuUnion<{
+                members: import("@box/mudb/schema").MuUnion<{
                     reset: MuStruct<{
-                        upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+                        upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                             id: MuVarint;
                             sequence: MuVarint;
                             deleted: MuBoolean;
@@ -764,8 +764,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                                 addedAt: MuDate;
                             }>;
                         }>>;
-                        deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-                        undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+                        deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+                        undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
                         sequenceIds: MuArray<MuVarint>;
                         sequenceVals: MuArray<MuVarint>;
                     }>;
@@ -780,8 +780,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                     }>;
                     update: MuStruct<{
                         id: MuVarint;
-                        action: import("@box-local/mudb/schema").MuUnion<{
-                            addedAt: import("@box-local/mudb/schema").MuVoid;
+                        action: import("@box/mudb/schema").MuUnion<{
+                            addedAt: import("@box/mudb/schema").MuVoid;
                         }>;
                     }>;
                     move: MuStruct<{
@@ -789,8 +789,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                         sequence: MuVarint;
                         key: MuUTF8;
                     }>;
-                    setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-                    noop: import("@box-local/mudb/schema").MuVoid;
+                    setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+                    noop: import("@box/mudb/schema").MuVoid;
                 }>;
                 defaultGroup: MuBoolean;
             }>;
@@ -800,12 +800,12 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
             sequence: MuVarint;
             key: MuUTF8;
         }>;
-        setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-        noop: import("@box-local/mudb/schema").MuVoid;
+        setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+        noop: import("@box/mudb/schema").MuVoid;
     }>;
-    users: import("@box-local/mudb/schema").MuUnion<{
+    users: import("@box/mudb/schema").MuUnion<{
         reset: MuStruct<{
-            upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -814,8 +814,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                     createdAt: MuDate;
                 }>;
             }>>;
-            deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-            undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+            deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+            undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
             sequenceIds: MuArray<MuVarint>;
             sequenceVals: MuArray<MuVarint>;
         }>;
@@ -830,8 +830,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
         }>;
         update: MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuUnion<{
-                createdAt: import("@box-local/mudb/schema").MuVoid;
+            action: import("@box/mudb/schema").MuUnion<{
+                createdAt: import("@box/mudb/schema").MuVoid;
             }>;
         }>;
         move: MuStruct<{
@@ -839,29 +839,29 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
             sequence: MuVarint;
             key: MuUTF8;
         }>;
-        setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-        noop: import("@box-local/mudb/schema").MuVoid;
+        setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+        noop: import("@box/mudb/schema").MuVoid;
     }>;
     collaborators: MuStruct<{
-        upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+        upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
             id: MuVarint;
             deleted: MuBoolean;
             key: MuASCII;
             value: MuUTF8;
         }>>;
-        deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-        undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-        moves: MuArray<import("@box-local/mudb/rda/list").MuRDAListTypes<RDA>["moveActionSchema"]>;
+        deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+        undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+        moves: MuArray<import("@box/mudb/rda/list").MuRDAListTypes<RDA>["moveActionSchema"]>;
         updates: MuArray<MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuVoid;
+            action: import("@box/mudb/schema").MuVoid;
         }>>;
     }>;
-    owner: import("@box-local/mudb/schema").MuVoid;
+    owner: import("@box/mudb/schema").MuVoid;
     accessLevel: MuSchema<PermissionAccessLevel>;
-    banned: import("@box-local/mudb/schema").MuUnion<{
+    banned: import("@box/mudb/schema").MuUnion<{
         reset: MuStruct<{
-            upserts: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+            upserts: import("@box/mudb/schema").MuSortedArray<MuStruct<{
                 id: MuVarint;
                 sequence: MuVarint;
                 deleted: MuBoolean;
@@ -871,8 +871,8 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
                     bannedBy: MuUTF8;
                 }>;
             }>>;
-            deletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
-            undeletes: import("@box-local/mudb/schema").MuSortedArray<MuVarint>;
+            deletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
+            undeletes: import("@box/mudb/schema").MuSortedArray<MuVarint>;
             sequenceIds: MuArray<MuVarint>;
             sequenceVals: MuArray<MuVarint>;
         }>;
@@ -888,15 +888,15 @@ export declare const PermissionActionSequenceSchema: MuArray<import("@box-local/
         }>;
         update: MuStruct<{
             id: MuVarint;
-            action: import("@box-local/mudb/schema").MuVoid;
+            action: import("@box/mudb/schema").MuVoid;
         }>;
         move: MuStruct<{
             id: MuVarint;
             sequence: MuVarint;
             key: MuUTF8;
         }>;
-        setDeleted: import("@box-local/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
-        noop: import("@box-local/mudb/schema").MuVoid;
+        setDeleted: import("@box/mudb/rda/map").MuRDAMapTypes<KeySchema, ValueRDA>["setDeletedActionSchema"];
+        noop: import("@box/mudb/schema").MuVoid;
     }>;
 }>>;
 export type Permissions = typeof PermissionsSchema.identity;
@@ -907,7 +907,7 @@ export declare const PermissionTokenSchema: MuStruct<{
 }>;
 export type PermissionToken = typeof PermissionTokenSchema.identity;
 export declare function combinePermissionSet(target: PermissionSet, other: PermissionSet): void;
-export declare const OWNER_PERMISSIONS: import("@box-local/mudb/schema/struct").Struct<{
+export declare const OWNER_PERMISSIONS: import("@box/mudb/schema/struct").Struct<{
     publish: MuBoolean;
     playButton: MuBoolean;
     debugger: MuBoolean;

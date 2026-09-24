@@ -1,8 +1,8 @@
-import { MuServerProtocol, MuServer, MuRemoteClient } from '@box-local/mudb/server';
-import { GUIProtocol } from '@box-local/schema/gui/gui-protocol';
+import { MuServerProtocol, MuServer, MuRemoteClient } from '@box/mudb/server';
+import { GUIProtocol } from '@box/schema/gui/gui-protocol';
 import { GameServerState } from '../game-server-schema';
 import { GUIScriptProtocol } from './gui-script-protocol';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 
 export class GUIServer {
   public scriptProtocol: MuServerProtocol<typeof GUIScriptProtocol>;

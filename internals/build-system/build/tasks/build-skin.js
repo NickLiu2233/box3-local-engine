@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.invertSkinIndex = invertSkinIndex;
-const player_schema_1 = require("@box-local/schema/player/player-schema");
+const player_schema_1 = require("@box/schema/player/player-schema");
 function invertSkinIndex(bs, hash) {
     return __awaiter(this, void 0, void 0, function* () {
         const skins = yield bs.retrieveJSON(hash);

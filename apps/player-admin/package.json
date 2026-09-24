@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/player-admin",
+  "name": "@box/player-admin",
   "version": "0.2.0",
   "private": true,
   "scripts": {

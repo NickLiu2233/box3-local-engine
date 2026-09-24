@@ -8,10 +8,10 @@ import {
   MuBoolean,
   MuASCII,
   MuSchema,
-} from '@box-local/mudb/schema';
-import { DB } from '@box-local/schema/backend/database-type';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
-import { ModelType } from '@box-local/apis';
+} from '@box/mudb/schema';
+import { DB } from '@box/schema/backend/database-type';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
+import { ModelType } from '@box/apis';
 
 export enum EditorUIEvent {
   openMusicLibrary,

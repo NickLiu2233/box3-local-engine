@@ -1,4 +1,4 @@
-import { MuFloat64, MuStruct, MuVarint } from '@box-local/mudb/schema';
+import { MuFloat64, MuStruct, MuVarint } from '@box/mudb/schema';
 import { ScriptPerfCounterSchema } from '../script/script-protocol';
 
 export const ServerPerfSchema = new MuStruct({

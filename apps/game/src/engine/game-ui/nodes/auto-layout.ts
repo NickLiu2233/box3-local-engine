@@ -6,7 +6,7 @@ import {
   UIAutoLayoutRDA,
   UICoord2,
   UICoord2RDA,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import { GameUIComponent } from './component';
 import { GameUIComponentType } from './defs';
 

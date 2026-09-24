@@ -13,7 +13,7 @@ import {
   MuUint32,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { RelativeArray } from '../../utils/relative-array';
 export const HashSchema = new MuASCII();
 export const BlockInfoSchema = new MuStruct({

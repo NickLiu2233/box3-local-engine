@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { vec3, quat, vec2 } from 'gl-matrix';
 import { UI3DVoxelEventSchema } from 'src/engine/ui3d/ui3d-schema';
-import { MouseButton, MouseState } from '@box-local/schema/input/input-schema';
+import { MouseButton, MouseState } from '@box/schema/input/input-schema';
 import { UI3DContainer } from '../ui-3d';
 import { BoundBox } from '../ui-3d/boundbox';
 

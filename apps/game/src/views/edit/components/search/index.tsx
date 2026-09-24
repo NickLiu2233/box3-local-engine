@@ -7,11 +7,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import { InputPause, useInputPause } from '../../../components/input-lock';
 import style from './index.module.scss';
-import { IconSearch, IconCancel } from '@box-local/icons';
-import { Input, InputSizes } from '@box-local/box-design';
+import { IconSearch, IconCancel } from '@box/icons';
+import { Input, InputSizes } from '@box/box-design';
 import { useIntl } from 'react-intl';
 
 type Props = {

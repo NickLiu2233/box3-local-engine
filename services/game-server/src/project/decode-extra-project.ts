@@ -1,8 +1,8 @@
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import {
   ExtraProjectInfo,
   ExtraProjectInfoSchema,
-} from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/hot-schema';
 
 /**
  * Decodes the persisted shared project-resource index.

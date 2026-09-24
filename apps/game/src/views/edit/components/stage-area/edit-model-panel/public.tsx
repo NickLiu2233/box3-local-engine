@@ -2,8 +2,8 @@ import * as React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 
-import { Button, ItemId, Modal, Toast } from '@box-local/box-design';
-import { ModelType } from '@box-local/apis';
+import { Button, ItemId, Modal, Toast } from '@box/box-design';
+import { ModelType } from '@box/apis';
 
 import { Search } from 'src/views/edit/components/search';
 import { ModelList } from '../edit-model-panel/model-list';
@@ -23,7 +23,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from 'src/redux/edit';
 
 import style from './index.module.scss';
-import { IconRotate } from '@box-local/icons';
+import { IconRotate } from '@box/icons';
 import {
   ScrollAction,
   ScrollManage,

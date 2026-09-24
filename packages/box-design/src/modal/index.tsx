@@ -1,4 +1,4 @@
-import { IconArrowBack, IconCancel, IconLoading } from '@box-local/icons';
+import { IconArrowBack, IconCancel, IconLoading } from '@box/icons';
 import {
   CSSProperties,
   ReactNode,

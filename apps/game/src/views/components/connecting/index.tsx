@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { injectIntl, IntlShape } from 'react-intl';
 import { intlMessage } from 'src/utils/i18n';
-import { EventBus } from '@box-local/utils/event';
-import { Task, TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
+import { EventBus } from '@box/utils/event';
+import { Task, TaskTypeEnum } from '@box/utils/loading/loading-schema';
 import { Settings } from 'src/engine/settings/settings-schema';
 import style from './index.module.css';
 import lottie, { AnimationItem } from 'lottie-web';

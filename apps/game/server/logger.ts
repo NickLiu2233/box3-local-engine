@@ -1,6 +1,6 @@
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { filterSink } from './utils/filter-sink';
-import { consoleSink } from '@box-local/utils/console-sink';
+import { consoleSink } from '@box/utils/console-sink';
 import { prettySink } from './utils/pretty-log-sink';
 import { getServerConfig } from '../configs/server';
 

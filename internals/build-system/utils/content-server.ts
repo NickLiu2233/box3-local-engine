@@ -1,9 +1,9 @@
 import type { Logger } from 'pino';
 
-import { CachingContentServer } from '@box-local/content-server/caching-content-server';
-import { ContentSplitter } from '@box-local/content-server/content-split';
-import { ObjectStoreService } from '@box-local/content-server/object-store-service';
-import { GoIPFSStore } from '@box-local/content-server/ipfs-http-store-node';
+import { CachingContentServer } from '@box/content-server/caching-content-server';
+import { ContentSplitter } from '@box/content-server/content-split';
+import { ObjectStoreService } from '@box/content-server/object-store-service';
+import { GoIPFSStore } from '@box/content-server/ipfs-http-store-node';
 
 export function createContentServer(
   logger: Logger,

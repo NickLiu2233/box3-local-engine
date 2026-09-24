@@ -1,4 +1,4 @@
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 import type { vec3 } from 'gl-matrix';
 import type { VoxelView } from './voxel';
 export declare function compress(voxels: VoxelView, out: MuWriteStream): boolean;

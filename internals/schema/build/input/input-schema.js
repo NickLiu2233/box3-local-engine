@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.InputStateSchema = exports.InputTouchSetSchema = exports.InputTouchSchema = exports.CameraBindingMode = exports.InputPauseFlags = exports.MouseButton = exports.MouseState = exports.GameKeys = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("../utils/math-schema");
-const init_array_1 = require("@box-local/utils/init-array");
+const init_array_1 = require("@box/utils/init-array");
 // Bindable keys
 var GameKeys;
 (function (GameKeys) {

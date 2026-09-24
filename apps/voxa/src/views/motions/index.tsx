@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useMemo } from 'react';
-import { Button, useSharedTipsDelay, SharedTipsContext } from '@box-local/box-design';
+import { Button, useSharedTipsDelay, SharedTipsContext } from '@box/box-design';
 import { MotionControls } from './controls';
 import { MotionList } from './list';
 import styles from './style.module.scss';

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { Button } from '@box-local/box-design';
+import { Button } from '@box/box-design';
 import { FileMenuContext } from './context';
 import { HierarchyMenu } from './hierarchy-menu';
 import styles from './style.module.scss';

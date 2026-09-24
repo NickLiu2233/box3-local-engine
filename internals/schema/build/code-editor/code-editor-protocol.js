@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CodeEditorProtocol = exports.ShareScriptResSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const code_editor_common_state_1 = require("./code-editor-common-state");
 exports.ShareScriptResSchema = new schema_1.MuStruct({
     success: new schema_1.MuBoolean(false),

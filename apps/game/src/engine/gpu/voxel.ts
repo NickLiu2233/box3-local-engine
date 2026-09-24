@@ -5,7 +5,7 @@ import type {
   IndexBufferDescriptor,
   IREWGPUGroup,
   PipelineDescriptor,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import { CommonUniformEntries, CommonUniformLayout } from './interface';
 import { prepareVoxels, renderVoxelsShadow } from '../voxel/voxel-controller';
 import { GameClientState } from '../game-client-schema';
@@ -34,7 +34,7 @@ import postOut from './wgsl/post-out.wgsl';
 import oitStorePixels from './wgsl/oit-store-pixels.wgsl';
 import { GPUVoxelGeom } from '../voxel/gpu-voxel/gpu-voxel-schema';
 import { ENGINE_RES } from 'src/resource/engine';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import { BundleCache } from './render-bundle';
 
 const MIP_LEVEL_COUNT = 10;

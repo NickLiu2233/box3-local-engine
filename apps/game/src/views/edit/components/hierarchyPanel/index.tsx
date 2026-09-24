@@ -21,22 +21,22 @@ import {
   ItemId,
   Checkbox,
   Button,
-} from '@box-local/box-design';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+} from '@box/box-design';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
-import { IconDropUp, IconObject, IconGround, IconLock } from '@box-local/icons';
+import { IconDropUp, IconObject, IconGround, IconLock } from '@box/icons';
 
 import {
   TreeNodeType as MuRDATreeNodeType,
   ROOT_ID,
-} from '@box-local/schema/project/murda-tree';
+} from '@box/schema/project/murda-tree';
 import {
   EntitySeedRDA,
   TreeNodes as EntityTreeNodes,
   TreeNode as EntityTreeNode,
   EntitiesTreeRDA,
-} from '@box-local/schema/project/project-rda';
-import { Toast } from '@box-local/box-design';
+} from '@box/schema/project/project-rda';
+import { Toast } from '@box/box-design';
 
 import {
   setExpandedIds,

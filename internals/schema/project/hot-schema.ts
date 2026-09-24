@@ -11,7 +11,7 @@ import {
   MuFloat64,
   MuBoolean,
   MuUint32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 import * as ERDA from './project-rda';
 import { HashSchema } from '../content-server/index';

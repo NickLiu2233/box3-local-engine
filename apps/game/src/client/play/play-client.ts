@@ -1,8 +1,8 @@
-import { CameraBindingMode } from '@box-local/schema/input/input-schema';
+import { CameraBindingMode } from '@box/schema/input/input-schema';
 import {
   PostMessageSchema,
   PostMessageType,
-} from '@box-local/schema/navigator/navigator-schema';
+} from '@box/schema/navigator/navigator-schema';
 
 import { createGameClient } from '..';
 import { EngineClient } from '../client';
@@ -20,19 +20,19 @@ import {
 import { store } from 'src/redux/play';
 import { setUIConfig } from 'src/redux/slices/UIConfig';
 import { GameAdminClient } from 'src/entry/admin-client';
-import { LoadingController } from '@box-local/utils/loading/loading-controller';
-import { ContentResolver } from '@box-local/content-server/content-fetch';
+import { LoadingController } from '@box/utils/loading/loading-controller';
+import { ContentResolver } from '@box/content-server/content-fetch';
 import { clientConfig } from 'src/config/client';
 import { GameClientSocket } from 'src/utils/game-client-socket';
 import { connectGameServer } from '../../utils/connect-game-server';
-import { MuWebSocket } from '@box-local/mudb/socket/web/client';
-import { createMuLogger } from '@box-local/utils/mutracer';
-import { MuClient } from '@box-local/mudb';
+import { MuWebSocket } from '@box/mudb/socket/web/client';
+import { createMuLogger } from '@box/utils/mutracer';
+import { MuClient } from '@box/mudb';
 import { NetLogClient } from 'src/utils/net-log/client';
-import { consoleSink } from '@box-local/utils/console-sink';
-import { LogLevel, LogMessage } from '@box-local/utils/logger';
+import { consoleSink } from '@box/utils/console-sink';
+import { LogLevel, LogMessage } from '@box/utils/logger';
 import { GameClient } from 'src/engine/game-client';
-import { MuSystemScheduler } from '@box-local/mudb/scheduler';
+import { MuSystemScheduler } from '@box/mudb/scheduler';
 import { DISPOSED_WEAK_SET } from 'src/utils/performance-test';
 import { connectNetLog } from 'src/utils/logger';
 import { clearInteracted } from 'src/engine/utils/user-interact';

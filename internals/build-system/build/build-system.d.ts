@@ -1,7 +1,7 @@
 import type { Logger } from 'pino';
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 import { BuildSystemAPI, BuildCacheAPI, Tasks, TaskParams } from './type';
-import { ContentServer, OssCdnPath, OssStoreType } from '@box-local/content-server';
+import { ContentServer, OssCdnPath, OssStoreType } from '@box/content-server';
 export declare class BuildSystem implements BuildSystemAPI {
     cache: BuildCacheAPI;
     contentServer: ContentServer;

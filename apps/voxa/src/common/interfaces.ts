@@ -1,6 +1,6 @@
-import { modelV7 } from '@box-local/voxa-project';
-import { unpackMeshData } from '@box-local/mesher';
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
+import { modelV7 } from '@box/voxa-project';
+import { unpackMeshData } from '@box/mesher';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
 
 export type ModelData = typeof modelV7.ModelDataV7Schema.identity;
 

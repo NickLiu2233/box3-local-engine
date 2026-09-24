@@ -14,7 +14,7 @@ import {
   IconTipsExclamationCircleFill,
   IconTipsInfoCircleFill,
   IconLoading,
-} from '@box-local/icons';
+} from '@box/icons';
 
 export type ToastType =
   | 'default'

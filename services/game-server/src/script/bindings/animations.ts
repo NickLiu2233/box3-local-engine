@@ -6,25 +6,25 @@ import {
   GameAnimationPlaybackState,
   GameAssetType,
   GameEntity,
-} from '@box-local/schema/api/js/api';
-import { MuSchema } from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/schema/api/js/api';
+import { MuSchema } from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 import {
   AnimationBinding,
   animEndTick,
   GenericAnimationIndex,
   KeyframeScriptParserAPI,
   KeyframeType,
-} from '@box-local/schema/keyframes/keyframe-binding';
+} from '@box/schema/keyframes/keyframe-binding';
 import {
   AnimationPlaybackMode,
   GenericAnimation,
-} from '@box-local/schema/keyframes/type';
+} from '@box/schema/keyframes/type';
 import { ScriptConfig, ScriptPerfCounter } from '../script-protocol';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 import { ENTITY_INDEX, WRAPPER_INDEX } from './binding-factory';
 import { coerceNum, coerceObject } from './coerce';
-import { ScriptDispatcher } from '@box-local/schema/script/dispatcher';
+import { ScriptDispatcher } from '@box/schema/script/dispatcher';
 import { ScriptResourceSync } from './resource';
 import { GameUIDEntity } from './entity-synchronizer';
 

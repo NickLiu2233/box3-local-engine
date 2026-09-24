@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import { Vec3 } from '../math';
 import { ClientScriptContext } from '../context/const';
 import { UiText } from 'src/engine/script/ses/apis/gui/ui-text';

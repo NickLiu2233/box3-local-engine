@@ -1,5 +1,5 @@
-import { MuSchema } from '@box-local/mudb/schema';
-import { TaggedId, compareId } from '@box-local/utils/id';
+import { MuSchema } from '@box/mudb/schema';
+import { TaggedId, compareId } from '@box/utils/id';
 import { sortedArrayDelete } from '../utils/sorted-array-remove';
 
 export function deltaList<Schema extends MuSchema<TaggedId>>(

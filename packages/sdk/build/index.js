@@ -1,7 +1,7 @@
 'use strict';
 
 var penpal = require('penpal');
-var dsbridge = require('@box-local/dsbridge');
+var dsbridge = require('@box/dsbridge');
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.

@@ -3,7 +3,7 @@ import {
   getModelMetaData,
   isLatestSkin,
   bodyPartBytesToSchema,
-} from '@box-local/voxa-project';
+} from '@box/voxa-project';
 import { GameClientState } from '../game-client-schema';
 import {
   createGLMesh,
@@ -24,10 +24,10 @@ import {
   SkinRenderableSchema,
   TextureRenderable,
 } from './renderable-schema';
-import { ImageModel } from '@box-local/build-system/tasks/texture/img-process';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { PlayerSkinPartSchema } from '@box-local/schema/mesh/skin-schema';
-import { unpackMeshData } from '@box-local/mesher';
+import { ImageModel } from '@box/build-system/tasks/texture/img-process';
+import { MuReadStream } from '@box/mudb/stream';
+import { PlayerSkinPartSchema } from '@box/schema/mesh/skin-schema';
+import { unpackMeshData } from '@box/mesher';
 import { parseGLTFToGLMesh } from './gltf/gl';
 import { parseGLTFToGPUMesh } from './gltf/gpu';
 

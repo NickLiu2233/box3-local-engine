@@ -1,8 +1,8 @@
 import { ReactNode, memo, useCallback, useMemo } from 'react';
 import { useIntl } from 'react-intl';
-import { IconCancel, IconSort } from '@box-local/icons';
-import { Button, ItemId, MenuItemOptions, Select } from '@box-local/box-design';
-import { SortOrder } from '@box-local/apis';
+import { IconCancel, IconSort } from '@box/icons';
+import { Button, ItemId, MenuItemOptions, Select } from '@box/box-design';
+import { SortOrder } from '@box/apis';
 import ImgEmpty from './img-empty.png';
 import { Search } from '../search';
 

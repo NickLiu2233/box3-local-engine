@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ParticleReplicaSchema = exports.ParticlePrototypeSchema = exports.ParticleEntitySchema = exports.ParticleParameterSchema = exports.ParticleEmitterSchema = void 0;
 exports.packColor = packColor;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const quantized_schema_1 = require("../utils/quantized-schema");
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 function packColor(c) {
     const intensity = Math.floor(Math.min(256, Math.max(1, c.r, c.g, c.b))) - 1;
     const r = Math.max(0, Math.min(255, (255 * c.r) / intensity)) | 0;

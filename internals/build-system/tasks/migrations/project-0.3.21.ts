@@ -1,6 +1,6 @@
 import { BuildSystem } from '../../type';
-import type { UILayoutType, UITree } from '@box-local/schema/project/ui-rda/defs';
-import { isUIElement, isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import type { UILayoutType, UITree } from '@box/schema/project/ui-rda/defs';
+import { isUIElement, isUIScreen } from '@box/schema/project/ui-rda/util';
 
 export const name = 'project';
 export const fromVersion = '0.3.20';

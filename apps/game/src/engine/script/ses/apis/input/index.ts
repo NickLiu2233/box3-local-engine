@@ -1,5 +1,5 @@
-import type * as I from '@box-local/script-api';
-import { EventBus } from '@box-local/utils/event';
+import type * as I from '@box/script-api';
+import { EventBus } from '@box/utils/event';
 import type { GamePointerLockChangeEvent } from 'src/engine/input/events';
 import type { InputController } from 'src/engine/input/input-controller';
 import { EventEmitter } from '../events';

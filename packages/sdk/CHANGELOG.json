@@ -1,21 +1,21 @@
 {
-  "name": "@box-local/sdk",
+  "name": "@box/sdk",
   "entries": [
     {
       "version": "1.4.0",
-      "tag": "@box-local/sdk_v1.4.0",
+      "tag": "@box/sdk_v1.4.0",
       "date": "Thu, 20 Jun 2024 03:40:28 GMT",
       "comments": {
         "minor": [
           {
-            "comment": "@box-local/sdk add clipboard permissiosn for iframe"
+            "comment": "@box/sdk add clipboard permissiosn for iframe"
           }
         ]
       }
     },
     {
       "version": "1.3.0",
-      "tag": "@box-local/sdk_v1.3.0",
+      "tag": "@box/sdk_v1.3.0",
       "date": "Wed, 16 Nov 2022 07:12:23 GMT",
       "comments": {
         "minor": [
@@ -27,7 +27,7 @@
     },
     {
       "version": "1.2.1",
-      "tag": "@box-local/sdk_v1.2.1",
+      "tag": "@box/sdk_v1.2.1",
       "date": "Fri, 30 Sep 2022 08:22:35 GMT",
       "comments": {
         "patch": [
@@ -39,7 +39,7 @@
     },
     {
       "version": "1.2.0",
-      "tag": "@box-local/sdk_v1.2.0",
+      "tag": "@box/sdk_v1.2.0",
       "date": "Thu, 11 Aug 2022 08:08:28 GMT",
       "comments": {
         "minor": [
@@ -51,7 +51,7 @@
     },
     {
       "version": "1.1.4",
-      "tag": "@box-local/sdk_v1.1.4",
+      "tag": "@box/sdk_v1.1.4",
       "date": "Thu, 28 Jul 2022 08:16:23 GMT",
       "comments": {
         "patch": [
@@ -63,7 +63,7 @@
     },
     {
       "version": "1.1.3",
-      "tag": "@box-local/sdk_v1.1.3",
+      "tag": "@box/sdk_v1.1.3",
       "date": "Mon, 11 Jul 2022 08:15:41 GMT",
       "comments": {
         "patch": [

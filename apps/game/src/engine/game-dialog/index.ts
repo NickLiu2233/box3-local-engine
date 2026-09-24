@@ -2,7 +2,7 @@ import {
   InputDialogConfig,
   SelectDialogConfig,
   TextDialogConfig,
-} from '@box-local/schema/dialog/dialog-protocol';
+} from '@box/schema/dialog/dialog-protocol';
 import { GameClientState } from '../game-client-schema';
 import { InputController } from '../input/input-controller';
 import { Dialog, InteractivePanel, InteractiveType, Spec } from './interface';
@@ -39,7 +39,7 @@ import {
   setTransformByScale,
   wrapTextBreakAll,
 } from '../utils/canvas';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 
 class CloseButton extends InteractivePanel {
   public interactiveType: InteractiveType = InteractiveType.CloseButton;

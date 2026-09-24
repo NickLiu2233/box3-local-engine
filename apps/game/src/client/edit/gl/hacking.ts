@@ -1,8 +1,8 @@
 import { REGL, REGLLoader, safeProp } from 'src/engine/gl/regl';
-import { MuStruct } from '@box-local/mudb/schema';
-import { Mat4Schema } from '@box-local/schema/utils/math-schema';
-import { zipId } from '@box-local/utils/id';
-import { PlayerDisplayFlags } from '@box-local/schema/player/player-schema';
+import { MuStruct } from '@box/mudb/schema';
+import { Mat4Schema } from '@box/schema/utils/math-schema';
+import { zipId } from '@box/utils/id';
+import { PlayerDisplayFlags } from '@box/schema/player/player-schema';
 import { ClientStateType } from '../edit-schema';
 import { mat4 } from 'gl-matrix';
 import { GameClientState } from 'src/engine/game-client-schema';

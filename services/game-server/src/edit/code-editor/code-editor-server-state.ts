@@ -1,8 +1,8 @@
-import { MuDictionary, MuStruct, MuUTF8 } from '@box-local/mudb/schema';
+import { MuDictionary, MuStruct, MuUTF8 } from '@box/mudb/schema';
 import {
   CursorDictSchema,
   FileDictSchema,
-} from '@box-local/schema/code-editor/code-editor-common-state';
+} from '@box/schema/code-editor/code-editor-common-state';
 
 export const CodeEditorServerStateSchema = new MuStruct({
   cursorDict: CursorDictSchema,

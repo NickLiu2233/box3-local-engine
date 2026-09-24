@@ -2,8 +2,8 @@ import type { VoxelApp } from '.';
 import { vec3 } from 'gl-matrix';
 
 import { PointerAction } from '../../redux/app-slice';
-import { absMod } from '@box-local/utils/helper';
-import { getBoxBoundary } from '@box-local/utils/voxel';
+import { absMod } from '@box/utils/helper';
+import { getBoxBoundary } from '@box/utils/voxel';
 import {
   TransformControls,
   TransformDragEvent,

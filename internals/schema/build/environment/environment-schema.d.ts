@@ -1,4 +1,4 @@
-import { MuStruct, MuFloat64, MuBoolean, MuFloat32 } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64, MuBoolean, MuFloat32 } from '@box/mudb/schema';
 export declare const EnvironmentParamSchema: MuStruct<{
     fog: MuStruct<{
         fogColor: MuStruct<{
@@ -13,7 +13,7 @@ export declare const EnvironmentParamSchema: MuStruct<{
         maxFog: MuFloat64;
     }>;
     sky: MuStruct<{
-        skyType: import("@box-local/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
+        skyType: import("@box/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
         globalLight: MuFloat64;
         sunPhase: MuFloat64;
         sunFrequency: MuFloat64;
@@ -61,7 +61,7 @@ export declare const EnvironmentParamSchema: MuStruct<{
         gamma: MuFloat32;
     }>;
     snow: MuStruct<{
-        texture: import("@box-local/mudb/schema").MuUTF8;
+        texture: import("@box/mudb/schema").MuUTF8;
         density: MuFloat64;
         size: MuStruct<{
             w: MuFloat64;
@@ -98,9 +98,9 @@ export declare const EnvironmentParamSchema: MuStruct<{
     }>;
     drawDistance: MuFloat32;
     bakedShadow: MuStruct<{
-        texture: import("@box-local/mudb/schema").MuASCII;
-        data: import("@box-local/mudb/schema").MuASCII;
-        chunkShift: import("@box-local/mudb/schema").MuVarint;
+        texture: import("@box/mudb/schema").MuASCII;
+        data: import("@box/mudb/schema").MuASCII;
+        chunkShift: import("@box/mudb/schema").MuVarint;
     }>;
 }>;
 export type EnvironmentParams = typeof EnvironmentParamSchema.identity;
@@ -111,17 +111,17 @@ export declare const EnvironmentStateSchema: MuStruct<{
     gamma: MuFloat32;
     drawDistance: MuFloat32;
     freezeDrawDistance: MuBoolean;
-    sunDirection: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    sunColor: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    skyLeft: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    skyRight: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    skyTop: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    skyBottom: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    skyFront: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    skyBack: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec3>;
-    fogParams: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec4>;
-    fogParams2: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec4>;
-    fogParams3: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").vec4>;
+    sunDirection: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    sunColor: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    skyLeft: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    skyRight: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    skyTop: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    skyBottom: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    skyFront: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    skyBack: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec3>;
+    fogParams: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec4>;
+    fogParams2: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec4>;
+    fogParams3: import("@box/mudb/schema").MuSchema<import("gl-matrix").vec4>;
 }>;
 export type EnvironmentState = typeof EnvironmentStateSchema.identity;
 //# sourceMappingURL=environment-schema.d.ts.map

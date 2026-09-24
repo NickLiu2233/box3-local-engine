@@ -2,13 +2,13 @@ import { useCallback, useContext, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
-import { Input, ModalView, Toast } from '@box-local/box-design';
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
+import { Input, ModalView, Toast } from '@box/box-design';
+import { AssetType } from '@box/schema/project/project-rda';
 import {
   ScriptType,
   ShareScriptErrorCode,
-} from '@box-local/apis/src/createra/data-contracts';
+} from '@box/apis/src/createra/data-contracts';
 
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import { RootState } from 'src/redux/edit';

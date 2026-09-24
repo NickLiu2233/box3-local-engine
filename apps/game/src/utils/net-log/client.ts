@@ -1,6 +1,6 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { LogSink, LogMessage, LogMessageSchema } from '@box-local/utils/logger';
-import { NetLogEvent, NetLogSchema } from '@box-local/schema/net-log/schema';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { LogSink, LogMessage, LogMessageSchema } from '@box/utils/logger';
+import { NetLogEvent, NetLogSchema } from '@box/schema/net-log/schema';
 
 function isASCII(msg: string) {
   for (let i = 0; i < msg.length; ++i) {

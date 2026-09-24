@@ -1,7 +1,7 @@
 import {
   PlayerSkinHash,
   PlayerSkinHashSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import manifest from './default-avatar.json';
 
 const defaultAvatarParts = manifest.parts as PlayerSkinHash;

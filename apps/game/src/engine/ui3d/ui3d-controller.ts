@@ -4,7 +4,7 @@ import { vec3, vec2, mat4 } from 'gl-matrix';
 import {
   VoxelRaycastHitResult,
   raycast,
-} from '@box-local/schema/voxel/voxel-raycast';
+} from '@box/schema/voxel/voxel-raycast';
 import {
   UI3DEventSchema,
   UI3DVoxelHandler,
@@ -28,14 +28,14 @@ import {
   UI3DEventQueue,
   onContextMenuHandler,
 } from './ui3d-schema';
-import { boxRayIntersectRecip } from '@box-local/schema/physics/box-collide';
+import { boxRayIntersectRecip } from '@box/schema/physics/box-collide';
 import { raySphere } from '../utils/ray-sphere';
 import { intersectCone, TestCone } from '../utils/ray-cone';
 import { rayTriangle } from '../utils/ray-triangle';
 import { rayHitBox } from '../utils/ray';
 import { distanceLineToSegment, distanceLineToLine } from './line-distance';
-import { Vec2Schema } from '@box-local/schema/utils/math-schema';
-import { MouseState } from '@box-local/schema/input/input-schema';
+import { Vec2Schema } from '@box/schema/utils/math-schema';
+import { MouseState } from '@box/schema/input/input-schema';
 import { isGLMesh, isGPUMesh } from '../mesh/renderable-schema';
 
 export function traverseUI3D(

@@ -8,24 +8,24 @@ import {
   MuUTF8,
   MuDictionary,
   MuUint32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   ProjectActionSequenceSchema,
   VoxelWriteSequenceSchema,
   ProjectStateSchema,
   RPCTokenSchema,
-} from '@box-local/schema/replica/replica-schema';
-import { MuRDATypes } from '@box-local/mudb/rda';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/schema/replica/replica-schema';
+import { MuRDATypes } from '@box/mudb/rda';
+import { ProjectRDA } from '@box/schema/project/project-rda';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import {
   PermissionRDA,
   PermissionActionSequenceSchema,
   PermissionsSchema,
   PermissionSetSchema,
   UserIdSchema,
-} from '@box-local/schema/permissions/permission-rda';
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+} from '@box/schema/permissions/permission-rda';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 
 // locale string, should be used to mark actions in the undo/redo history label
 export enum EditActionLabel {

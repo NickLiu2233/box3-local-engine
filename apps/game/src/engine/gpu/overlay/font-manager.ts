@@ -1,6 +1,6 @@
 import { vec2, vec3 } from 'gl-matrix';
 import TinySDF from '@mapbox/tiny-sdf';
-import type { ReWGPU } from '@box-local/rewgpu';
+import type { ReWGPU } from '@box/rewgpu';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import {
   GlyphListSchema,

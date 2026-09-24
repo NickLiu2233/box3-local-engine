@@ -1,5 +1,5 @@
-import { MuSchema } from '@box-local/mudb/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuSchema } from '@box/mudb/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 
 enum TypeDiff {
   BECAME_NULL = 0,

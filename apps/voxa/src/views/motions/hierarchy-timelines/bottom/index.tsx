@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useDispatch } from 'react-redux';
-import type { SerializedVec2 } from '@box-local/box-design';
+import type { SerializedVec2 } from '@box/box-design';
 import { TimelineContext } from '../context';
 import { useAppSlider } from '../../../hooks';
 import { useAppSelector } from '../../../../redux/store';

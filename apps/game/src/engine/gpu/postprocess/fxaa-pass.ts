@@ -1,4 +1,4 @@
-import type { IREWGPUGroup, IREWGPUTexture, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUGroup, IREWGPUTexture, ReWGPU } from '@box/rewgpu';
 import { rootLogger } from 'src/utils/logger';
 import fxaaFrag from '../wgsl/fxaa-frag.wgsl';
 import fxaaStruct from '../wgsl/fxaa-struct.wgsl';

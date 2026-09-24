@@ -1,6 +1,6 @@
 // asset optimization/minification stuff goes in here
 import { BuildSystem } from '../build-system';
-import { Hash } from '@box-local/content-server';
+import { Hash } from '@box/content-server';
 import { BUILD_HEAVY_LOCK } from './heavy_mutex';
 import { squooshOxipng } from '../squoosh/codecs';
 import { decodeImage, encodeImage } from '../squoosh/squoosh';

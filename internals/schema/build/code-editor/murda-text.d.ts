@@ -1,6 +1,6 @@
-import { MuRDA, MuRDAStore } from '@box-local/mudb/rda';
-import { MuUTF8, MuStruct, MuUnion, MuVoid, MuVarint, MuSortedArray } from '@box-local/mudb/schema';
-import { Id } from '@box-local/mudb/rda/_id';
+import { MuRDA, MuRDAStore } from '@box/mudb/rda';
+import { MuUTF8, MuStruct, MuUnion, MuVoid, MuVarint, MuSortedArray } from '@box/mudb/schema';
+import { Id } from '@box/mudb/rda/_id';
 export declare const MuRDATextStateSchema: MuUTF8;
 export interface MatchedIdInfo {
     id: Id;
@@ -17,38 +17,38 @@ export interface MatchedIdInfo {
 export declare function findMatchingIdsInSortedArrays(listA: ReadonlyArray<Id>, listB: ReadonlyArray<Id>): MatchedIdInfo[];
 export declare const MuRDATextActionSchema: MuUnion<{
     insertCharacter: MuStruct<{
-        id: import("@box-local/mudb/schema").MuASCII;
+        id: import("@box/mudb/schema").MuASCII;
         character: MuUTF8;
     }>;
     insertString: MuStruct<{
-        beginId: import("@box-local/mudb/schema").MuASCII;
+        beginId: import("@box/mudb/schema").MuASCII;
         step: MuVarint;
         string: MuUTF8;
     }>;
     insertCharacterOnTombstone: MuStruct<{
-        id: import("@box-local/mudb/schema").MuASCII;
+        id: import("@box/mudb/schema").MuASCII;
         character: MuUTF8;
     }>;
     insertStringOnTombstone: MuStruct<{
-        beginId: import("@box-local/mudb/schema").MuASCII;
+        beginId: import("@box/mudb/schema").MuASCII;
         step: MuVarint;
         string: MuUTF8;
     }>;
     insertStringOnTombstoneWithIds: MuStruct<{
-        ids: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+        ids: MuSortedArray<import("@box/mudb/schema").MuASCII>;
         string: MuUTF8;
     }>;
-    remove: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
-    removeWithoutTombstone: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+    remove: MuSortedArray<import("@box/mudb/schema").MuASCII>;
+    removeWithoutTombstone: MuSortedArray<import("@box/mudb/schema").MuASCII>;
     noop: MuVoid;
 }>;
 type MuRDATextAction = typeof MuRDATextActionSchema.identity;
 export declare const MuRDATextStoreEntrySchema: MuStruct<{
-    id: import("@box-local/mudb/schema").MuASCII;
+    id: import("@box/mudb/schema").MuASCII;
     character: MuUTF8;
 }>;
 export declare const MuRDATextStoreSchema: MuSortedArray<MuStruct<{
-    id: import("@box-local/mudb/schema").MuASCII;
+    id: import("@box/mudb/schema").MuASCII;
     character: MuUTF8;
 }>>;
 type MuRDATextActionMeta = {
@@ -108,35 +108,35 @@ export declare class MuRDATextStore implements MuRDAStore<RDAType> {
     private _insertMultiple;
     private _remove;
     apply(rda: RDAType, action: MuRDATextAction): boolean;
-    inverse(rda: RDAType, action: MuRDATextAction): import("@box-local/mudb/schema/union").UnionInstance<{
+    inverse(rda: RDAType, action: MuRDATextAction): import("@box/mudb/schema/union").UnionInstance<{
         insertCharacter: MuStruct<{
-            id: import("@box-local/mudb/schema").MuASCII;
+            id: import("@box/mudb/schema").MuASCII;
             character: MuUTF8;
         }>;
         insertString: MuStruct<{
-            beginId: import("@box-local/mudb/schema").MuASCII;
+            beginId: import("@box/mudb/schema").MuASCII;
             step: MuVarint;
             string: MuUTF8;
         }>;
         insertCharacterOnTombstone: MuStruct<{
-            id: import("@box-local/mudb/schema").MuASCII;
+            id: import("@box/mudb/schema").MuASCII;
             character: MuUTF8;
         }>;
         insertStringOnTombstone: MuStruct<{
-            beginId: import("@box-local/mudb/schema").MuASCII;
+            beginId: import("@box/mudb/schema").MuASCII;
             step: MuVarint;
             string: MuUTF8;
         }>;
         insertStringOnTombstoneWithIds: MuStruct<{
-            ids: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+            ids: MuSortedArray<import("@box/mudb/schema").MuASCII>;
             string: MuUTF8;
         }>;
-        remove: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
-        removeWithoutTombstone: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+        remove: MuSortedArray<import("@box/mudb/schema").MuASCII>;
+        removeWithoutTombstone: MuSortedArray<import("@box/mudb/schema").MuASCII>;
         noop: MuVoid;
     }, "noop" | "remove" | "insertCharacter" | "insertString" | "insertCharacterOnTombstone" | "insertStringOnTombstone" | "insertStringOnTombstoneWithIds" | "removeWithoutTombstone">;
-    serialize(rda: RDAType, out: typeof MuRDATextStoreSchema.identity): import("@box-local/mudb/schema/struct").Struct<{
-        id: import("@box-local/mudb/schema").MuASCII;
+    serialize(rda: RDAType, out: typeof MuRDATextStoreSchema.identity): import("@box/mudb/schema/struct").Struct<{
+        id: import("@box/mudb/schema").MuASCII;
         character: MuUTF8;
     }>[];
     free(): void;
@@ -147,90 +147,90 @@ export declare const MuRDAText: {
     stateSchema: MuUTF8;
     actionSchema: MuUnion<{
         insertCharacter: MuStruct<{
-            id: import("@box-local/mudb/schema").MuASCII;
+            id: import("@box/mudb/schema").MuASCII;
             character: MuUTF8;
         }>;
         insertString: MuStruct<{
-            beginId: import("@box-local/mudb/schema").MuASCII;
+            beginId: import("@box/mudb/schema").MuASCII;
             step: MuVarint;
             string: MuUTF8;
         }>;
         insertCharacterOnTombstone: MuStruct<{
-            id: import("@box-local/mudb/schema").MuASCII;
+            id: import("@box/mudb/schema").MuASCII;
             character: MuUTF8;
         }>;
         insertStringOnTombstone: MuStruct<{
-            beginId: import("@box-local/mudb/schema").MuASCII;
+            beginId: import("@box/mudb/schema").MuASCII;
             step: MuVarint;
             string: MuUTF8;
         }>;
         insertStringOnTombstoneWithIds: MuStruct<{
-            ids: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+            ids: MuSortedArray<import("@box/mudb/schema").MuASCII>;
             string: MuUTF8;
         }>;
-        remove: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
-        removeWithoutTombstone: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+        remove: MuSortedArray<import("@box/mudb/schema").MuASCII>;
+        removeWithoutTombstone: MuSortedArray<import("@box/mudb/schema").MuASCII>;
         noop: MuVoid;
     }>;
     storeSchema: MuSortedArray<MuStruct<{
-        id: import("@box-local/mudb/schema").MuASCII;
+        id: import("@box/mudb/schema").MuASCII;
         character: MuUTF8;
     }>>;
     emptyStore: MuRDATextStore;
     actionMeta: MuRDATextActionMeta;
     action: (store: MuRDATextStore) => {
-        insert: (index: number, str: string) => import("@box-local/mudb/schema/union").UnionInstance<{
+        insert: (index: number, str: string) => import("@box/mudb/schema/union").UnionInstance<{
             insertCharacter: MuStruct<{
-                id: import("@box-local/mudb/schema").MuASCII;
+                id: import("@box/mudb/schema").MuASCII;
                 character: MuUTF8;
             }>;
             insertString: MuStruct<{
-                beginId: import("@box-local/mudb/schema").MuASCII;
+                beginId: import("@box/mudb/schema").MuASCII;
                 step: MuVarint;
                 string: MuUTF8;
             }>;
             insertCharacterOnTombstone: MuStruct<{
-                id: import("@box-local/mudb/schema").MuASCII;
+                id: import("@box/mudb/schema").MuASCII;
                 character: MuUTF8;
             }>;
             insertStringOnTombstone: MuStruct<{
-                beginId: import("@box-local/mudb/schema").MuASCII;
+                beginId: import("@box/mudb/schema").MuASCII;
                 step: MuVarint;
                 string: MuUTF8;
             }>;
             insertStringOnTombstoneWithIds: MuStruct<{
-                ids: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+                ids: MuSortedArray<import("@box/mudb/schema").MuASCII>;
                 string: MuUTF8;
             }>;
-            remove: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
-            removeWithoutTombstone: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+            remove: MuSortedArray<import("@box/mudb/schema").MuASCII>;
+            removeWithoutTombstone: MuSortedArray<import("@box/mudb/schema").MuASCII>;
             noop: MuVoid;
         }, "noop" | "remove" | "insertCharacter" | "insertString" | "insertCharacterOnTombstone" | "insertStringOnTombstone" | "insertStringOnTombstoneWithIds" | "removeWithoutTombstone">;
-        remove: (index: number, count?: number) => import("@box-local/mudb/schema/union").UnionInstance<{
+        remove: (index: number, count?: number) => import("@box/mudb/schema/union").UnionInstance<{
             insertCharacter: MuStruct<{
-                id: import("@box-local/mudb/schema").MuASCII;
+                id: import("@box/mudb/schema").MuASCII;
                 character: MuUTF8;
             }>;
             insertString: MuStruct<{
-                beginId: import("@box-local/mudb/schema").MuASCII;
+                beginId: import("@box/mudb/schema").MuASCII;
                 step: MuVarint;
                 string: MuUTF8;
             }>;
             insertCharacterOnTombstone: MuStruct<{
-                id: import("@box-local/mudb/schema").MuASCII;
+                id: import("@box/mudb/schema").MuASCII;
                 character: MuUTF8;
             }>;
             insertStringOnTombstone: MuStruct<{
-                beginId: import("@box-local/mudb/schema").MuASCII;
+                beginId: import("@box/mudb/schema").MuASCII;
                 step: MuVarint;
                 string: MuUTF8;
             }>;
             insertStringOnTombstoneWithIds: MuStruct<{
-                ids: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+                ids: MuSortedArray<import("@box/mudb/schema").MuASCII>;
                 string: MuUTF8;
             }>;
-            remove: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
-            removeWithoutTombstone: MuSortedArray<import("@box-local/mudb/schema").MuASCII>;
+            remove: MuSortedArray<import("@box/mudb/schema").MuASCII>;
+            removeWithoutTombstone: MuSortedArray<import("@box/mudb/schema").MuASCII>;
             noop: MuVoid;
         }, "noop" | "remove" | "insertCharacter" | "insertString" | "insertCharacterOnTombstone" | "insertStringOnTombstone" | "insertStringOnTombstoneWithIds" | "removeWithoutTombstone">;
     };

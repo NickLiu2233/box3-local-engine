@@ -1,5 +1,5 @@
-import { ExtraScriptAssets } from '@box-local/schema/project/hot-schema';
-import { ReceivedScriptShareData } from '@box-local/schema/chat/chat-schema';
+import { ExtraScriptAssets } from '@box/schema/project/hot-schema';
+import { ReceivedScriptShareData } from '@box/schema/chat/chat-schema';
 
 export function mapRemoteScriptToLocal(
   out: ExtraScriptAssets,

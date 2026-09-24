@@ -7,14 +7,14 @@ import {
   MuSchema,
   MuFloat64,
   MuUTF8,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { Vec4Schema, Vec3Schema } from '@box-local/schema/utils/math-schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { Vec4Schema, Vec3Schema } from '@box/schema/utils/math-schema';
+import { compareId } from '@box/utils/id';
 import {
   ParticleParameterSchema,
   ParticleEmitterSchema,
-} from '@box-local/schema/particle/particle-schema';
+} from '@box/schema/particle/particle-schema';
 
 export const ClientParticleGroupSchema = new MuStruct({
   // id of particle group

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button, Menu, Trigger } from '@box-local/box-design';
-import { IconMore } from '@box-local/icons';
+import { Button, Menu, Trigger } from '@box/box-design';
+import { IconMore } from '@box/icons';
 
 import style from '../index.module.scss';
 import { MenuItemType } from '../index';

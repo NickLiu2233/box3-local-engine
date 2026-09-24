@@ -1,19 +1,19 @@
 import { ScriptEntitySync, ScriptEntityWrapper } from './entity-synchronizer';
-import { MuStruct } from '@box-local/mudb/schema';
-import { ScriptDispatcher } from '@box-local/schema/script/dispatcher';
+import { MuStruct } from '@box/mudb/schema';
+import { ScriptDispatcher } from '@box/schema/script/dispatcher';
 import {
   ScriptPostTick,
   ScriptConfig,
   ScriptPerfCounter,
 } from '../script-protocol';
 import { ScriptStateSnapshot } from '../script-state-schema';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { ScriptVoxelSync } from './voxel-synchronizer';
-import { GameVector3, GameBounds3 } from '@box-local/schema/api/js/math';
+import { GameVector3, GameBounds3 } from '@box/schema/api/js/math';
 import {
   VoxelRaycastHitResult,
   raycast,
-} from '@box-local/schema/voxel/voxel-raycast';
+} from '@box/schema/voxel/voxel-raycast';
 import {
   coerceNum,
   coerceVec3,
@@ -26,7 +26,7 @@ import { vec3 } from 'gl-matrix';
 import {
   BodyRaycastSchema,
   raycastBoxes,
-} from '@box-local/schema/physics/raycast-bodies';
+} from '@box/schema/physics/raycast-bodies';
 import {
   GameWorld,
   GameRaycastOptions,
@@ -52,7 +52,7 @@ import {
   Sound,
   TeleportType,
   TeleportResult,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import {
   WorldPhysicsBinding,
   WorldSkyBinding,
@@ -62,26 +62,26 @@ import {
   WorldFogBinding,
 } from './world-bindings';
 import { ScriptResourceSync } from './resource';
-import { BlockInfo, BlockIndex } from '@box-local/schema/voxel/block-schema';
+import { BlockInfo, BlockIndex } from '@box/schema/voxel/block-schema';
 import { ScriptShell } from '../script-shell';
 import { ScriptZoneSystem } from './zone-synchronizer';
-import { PlaySoundPosition } from '@box-local/schema/sound/sound-protocol';
+import { PlaySoundPosition } from '@box/schema/sound/sound-protocol';
 import { ScriptSynchronizer } from './synchronizer';
 import { ScriptPhysicsSelectorManager } from './physics-selector';
-import * as GameURL from '@box-local/schema/api/js/url';
+import * as GameURL from '@box/schema/api/js/url';
 import {
   ScriptAnimationManager,
   ScriptAnimationTarget,
   ScriptParserAPI,
 } from './animations';
-import { WORLD_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/world-animation';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+import { WORLD_ANIM_BINDING } from '@box/schema/keyframes/bindings/world-animation';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 import { ParsedSelector } from './selectors';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import {
   NavigatorEventListener,
   PostMessageScriptType,
-} from '@box-local/schema/navigator/navigator-schema';
+} from '@box/schema/navigator/navigator-schema';
 
 export const ScriptWorldUpdateSchema = new MuStruct({
   physics: WorldPhysicsBinding,

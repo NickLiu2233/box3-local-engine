@@ -7,14 +7,14 @@ import {
   MuUint8,
   MuSortedArray,
   MuFloat64,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Vec3Schema,
   QuatSchema,
   Mat4Schema,
   Vec2Schema,
 } from '../utils/math-schema';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 import { PlayerMeshBoundSchema } from '../player/player-schema';
 import { MS_PER_TICK } from '../clock/clock-schema';
 

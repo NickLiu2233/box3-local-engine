@@ -1,5 +1,5 @@
-import { MuSchema, MuArray } from '@box-local/mudb/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuSchema, MuArray } from '@box/mudb/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 export declare class RelativeArray<TSchema extends MuSchema<any>> implements MuSchema<TSchema['identity'][]> {
     identity: TSchema['identity'][];
     muType: string;

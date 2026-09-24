@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatEventSchema = exports.ChatLogEventSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const chat_schema_1 = require("../chat/chat-schema");
 exports.ChatLogEventSchema = new schema_1.MuStruct({
     senderId: new schema_1.MuInt32(-1),

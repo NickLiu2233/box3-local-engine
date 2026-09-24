@@ -1,4 +1,4 @@
-import { MuStruct } from '@box-local/mudb/schema';
+import { MuStruct } from '@box/mudb/schema';
 import { GPUGameTextureSchema } from './gpu-texture';
 
 export const GPUSkySchema = new MuStruct({

@@ -4,9 +4,9 @@ import {
   MuStruct,
   MuUint8,
   MuSchema,
-} from '@box-local/mudb/schema';
-import { BodyPart } from '@box-local/schema/player/player-schema';
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
+} from '@box/mudb/schema';
+import { BodyPart } from '@box/schema/player/player-schema';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
 import { ModelNodesSchema } from '../model/schema-v5';
 import { Mat4Schema, Vec3Schema } from '../util';
 

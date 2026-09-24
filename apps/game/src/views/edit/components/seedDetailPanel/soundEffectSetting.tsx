@@ -5,14 +5,14 @@ import {
   AudioSampleRDA,
   EntitySoundEnum,
   AudioSampleEnum,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 
 import { Divider } from '../../../components/common/divider';
 import { NumberProperty } from '../../../components/edit/property';
 import { Button } from '../../../components/edit/button';
 import { Modal } from '../../../components/edit/modal';
 import { isMobile } from 'src/utils/mobile';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 
 import { EditorUIEvent } from 'src/client/edit/schema';
 import { editor } from 'src/client/edit/edit-client';

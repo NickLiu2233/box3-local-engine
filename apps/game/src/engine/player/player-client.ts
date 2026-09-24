@@ -1,8 +1,8 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { PlayerProtocolSchema } from '@box-local/schema/player/player-protocol';
-import { PlayerSkinHashSchema } from '@box-local/schema/player/player-schema';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { PlayerProtocolSchema } from '@box/schema/player/player-protocol';
+import { PlayerSkinHashSchema } from '@box/schema/player/player-schema';
 import { GameClientState } from '../game-client-schema';
-import { PlayerEventSchema } from '@box-local/schema/events/player-event-schema';
+import { PlayerEventSchema } from '@box/schema/events/player-event-schema';
 import { messenger } from 'src/messenger';
 
 export class PlayerClient {

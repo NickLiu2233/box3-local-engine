@@ -1,5 +1,5 @@
 import { memo, useMemo } from 'react';
-import { TabPanel, Tabs, TabPanelOptions } from '@box-local/box-design';
+import { TabPanel, Tabs, TabPanelOptions } from '@box/box-design';
 import styles from './style.module.scss';
 import { InlineNamedInput } from '../inline-named-input';
 

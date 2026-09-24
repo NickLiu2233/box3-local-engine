@@ -3,7 +3,7 @@ import defineDebug from 'debug';
 import FormData from 'form-data';
 import { axios } from './request';
 
-const debug = defineDebug('@box-local/env:nacos');
+const debug = defineDebug('@box/env:nacos');
 
 export interface NacosConfigParameters {
   namespace: string;

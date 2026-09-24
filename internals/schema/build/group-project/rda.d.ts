@@ -1,5 +1,5 @@
-import { MuRDAStruct, MuRDARegister, MuRDAConstant, MuRDAMap } from '@box-local/mudb/rda';
-import { MuUTF8, MuArray, MuFloat64, MuBoolean, MuASCII, MuVarint, MuSchema } from '@box-local/mudb/schema';
+import { MuRDAStruct, MuRDARegister, MuRDAConstant, MuRDAMap } from '@box/mudb/rda';
+import { MuUTF8, MuArray, MuFloat64, MuBoolean, MuASCII, MuVarint, MuSchema } from '@box/mudb/schema';
 export declare enum AssetType {
     JS_SCRIPT = 1,
     VOXEL_MODEL = 2,
@@ -68,7 +68,7 @@ export declare const GroupProjectRDA: {
         screen: MuRDAStruct<{
             enable: MuRDARegister<MuBoolean>;
             layout: import("../project/murda-union").MuRDAUnion<{
-                none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                 autoLayout: MuRDAStruct<{
                     cellSize: MuRDAStruct<{
                         offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -104,11 +104,11 @@ export declare const GroupProjectRDA: {
                 autoResize: MuRDARegister<MuSchema<import("../project/ui-rda/defs").AutoResizeType>>;
                 visible: MuRDARegister<MuBoolean>;
                 backgroundColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                backgroundOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                backgroundOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 layout: import("../project/murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -129,7 +129,7 @@ export declare const GroupProjectRDA: {
                     }>;
                 }, "none">;
                 clipsDescendants: MuRDARegister<MuBoolean>;
-                rotation: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                rotation: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
             }>;
             image: MuRDAStruct<{
                 anchor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -144,12 +144,12 @@ export declare const GroupProjectRDA: {
                 autoResize: MuRDARegister<MuSchema<import("../project/ui-rda/defs").AutoResizeType>>;
                 visible: MuRDARegister<MuBoolean>;
                 backgroundColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                backgroundOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                backgroundOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 layout: import("../project/murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -170,16 +170,16 @@ export declare const GroupProjectRDA: {
                     }>;
                 }, "none">;
                 image: MuRDARegister<MuUTF8>;
-                imageOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                imageOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 imageDisplayMode: MuRDARegister<MuSchema<import("../project/ui-rda/defs").ImageDisplayMode>>;
-                rotation: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                rotation: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
             }>;
             text: MuRDAStruct<{
                 richText: MuRDARegister<MuBoolean>;
-                rotation: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                rotation: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 textStrokeColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                textStrokeOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
-                textStrokeThickness: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                textStrokeOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
+                textStrokeThickness: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 textFontFamily: MuRDARegister<MuSchema<import("../project/ui-rda/defs").UITextFontFamily>>;
                 anchor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
                 position: MuRDAStruct<{
@@ -193,11 +193,11 @@ export declare const GroupProjectRDA: {
                 autoResize: MuRDARegister<MuSchema<import("../project/ui-rda/defs").AutoResizeType>>;
                 visible: MuRDARegister<MuBoolean>;
                 backgroundColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                backgroundOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                backgroundOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 layout: import("../project/murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -219,12 +219,12 @@ export declare const GroupProjectRDA: {
                 }, "none">;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 textContent: MuRDARegister<MuUTF8>;
-                textFontSize: MuRDARegister<import("@box-local/mudb/schema").MuUint8>;
+                textFontSize: MuRDARegister<import("@box/mudb/schema").MuUint8>;
                 textColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                textOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                textOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 textXAlignment: MuRDARegister<MuSchema<import("../project/ui-rda/defs").TextXAlignType>>;
                 textYAlignment: MuRDARegister<MuSchema<import("../project/ui-rda/defs").TextYAlignType>>;
-                textLineHeight: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                textLineHeight: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 autoWordWrap: MuRDARegister<MuBoolean>;
             }>;
             scrollBox: MuRDAStruct<{
@@ -240,12 +240,12 @@ export declare const GroupProjectRDA: {
                 autoResize: MuRDARegister<MuSchema<import("../project/ui-rda/defs").AutoResizeType>>;
                 visible: MuRDARegister<MuBoolean>;
                 backgroundColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                backgroundOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                backgroundOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 layout: import("../project/murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -271,19 +271,19 @@ export declare const GroupProjectRDA: {
                 scrollbarVisibility: MuRDARegister<MuSchema<import("../project/ui-rda/defs").UIScrollbarVisibility>>;
                 scrollbarThickness: MuRDARegister<MuVarint>;
                 scrollbarColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                scrollbarOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                scrollbarOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 scrollCanvasAutoResize: MuRDARegister<MuSchema<import("../project/ui-rda/defs").AutoResizeType>>;
                 scrollCanvasSize: MuRDAStruct<{
                     offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
                     ratio: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
                 }>;
                 scrollPosition: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
-                rotation: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                rotation: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
             }>;
             input: MuRDAStruct<{
                 textStrokeColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                textStrokeOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
-                textStrokeThickness: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                textStrokeOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
+                textStrokeThickness: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 textFontFamily: MuRDARegister<MuSchema<import("../project/ui-rda/defs").UITextFontFamily>>;
                 anchor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
                 position: MuRDAStruct<{
@@ -297,11 +297,11 @@ export declare const GroupProjectRDA: {
                 autoResize: MuRDARegister<MuSchema<import("../project/ui-rda/defs").AutoResizeType>>;
                 visible: MuRDARegister<MuBoolean>;
                 backgroundColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                backgroundOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                backgroundOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 zIndex: MuRDARegister<MuVarint>;
                 layoutOrder: MuRDARegister<MuVarint>;
                 layout: import("../project/murda-union").MuRDAUnion<{
-                    none: MuRDARegister<import("@box-local/mudb/schema").MuVoid>;
+                    none: MuRDARegister<import("@box/mudb/schema").MuVoid>;
                     autoLayout: MuRDAStruct<{
                         cellSize: MuRDAStruct<{
                             offset: MuRDARegister<import("../utils/quantized-schema").QuantizedVec2Schema>;
@@ -323,17 +323,17 @@ export declare const GroupProjectRDA: {
                 }, "none">;
                 clipsDescendants: MuRDARegister<MuBoolean>;
                 textContent: MuRDARegister<MuUTF8>;
-                textFontSize: MuRDARegister<import("@box-local/mudb/schema").MuUint8>;
+                textFontSize: MuRDARegister<import("@box/mudb/schema").MuUint8>;
                 textColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                textOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                textOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 textXAlignment: MuRDARegister<MuSchema<import("../project/ui-rda/defs").TextXAlignType>>;
                 textYAlignment: MuRDARegister<MuSchema<import("../project/ui-rda/defs").TextYAlignType>>;
-                textLineHeight: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                textLineHeight: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
                 autoWordWrap: MuRDARegister<MuBoolean>;
                 placeholder: MuRDARegister<MuUTF8>;
                 placeholderColor: MuRDARegister<import("../utils/quantized-schema").QuantizedVec3Schema>;
-                placeholderOpacity: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
-                rotation: MuRDARegister<import("@box-local/mudb/schema").MuQuantizedFloat>;
+                placeholderOpacity: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
+                rotation: MuRDARegister<import("@box/mudb/schema").MuQuantizedFloat>;
             }>;
         }, "text" | "input" | "image" | "box" | "scrollBox">;
     }, "element" | "screen">>;
@@ -364,24 +364,24 @@ export declare const GroupProjectRDA: {
         updateAt: MuRDARegister<MuFloat64>;
     }>>;
 };
-declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct<{
-    uiTree: MuArray<import("@box-local/mudb/schema").MuStruct<{
+declare const GroupProjectStoreSchema: import("@box/mudb/schema").MuStruct<{
+    uiTree: MuArray<import("@box/mudb/schema").MuStruct<{
         deleted: MuBoolean;
         id: MuASCII;
         type: MuSchema<import("../project/murda-tree").TreeNodeType>;
         name: MuUTF8;
         parentId: MuASCII;
-        children: import("@box-local/mudb/schema").MuSortedArray<import("@box-local/mudb/schema").MuStruct<{
+        children: import("@box/mudb/schema").MuSortedArray<import("@box/mudb/schema").MuStruct<{
             sequence: MuASCII;
             value: MuASCII;
         }>>;
-        value: import("@box-local/mudb/schema").MuOption<import("@box-local/mudb/schema").MuUnion<{
-            screen: import("@box-local/mudb/schema").MuStruct<{
+        value: import("@box/mudb/schema").MuOption<import("@box/mudb/schema").MuUnion<{
+            screen: import("@box/mudb/schema").MuStruct<{
                 enable: MuBoolean;
-                layout: import("@box-local/mudb/schema").MuUnion<{
-                    none: import("@box-local/mudb/schema").MuVoid;
-                    autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                        cellSize: import("@box-local/mudb/schema").MuStruct<{
+                layout: import("@box/mudb/schema").MuUnion<{
+                    none: import("@box/mudb/schema").MuVoid;
+                    autoLayout: import("@box/mudb/schema").MuStruct<{
+                        cellSize: import("@box/mudb/schema").MuStruct<{
                             offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                             ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                         }>;
@@ -391,7 +391,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                         fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                         maxCells: MuVarint;
                         maxCellsEnabled: MuBoolean;
-                        cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                        cellPadding: import("@box/mudb/schema").MuStruct<{
                             offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                             ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                         }>;
@@ -401,27 +401,27 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                 }>;
                 zIndex: MuVarint;
             }>;
-            element: import("@box-local/mudb/schema").MuUnion<{
-                box: import("@box-local/mudb/schema").MuStruct<{
+            element: import("@box/mudb/schema").MuUnion<{
+                box: import("@box/mudb/schema").MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -431,7 +431,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -440,29 +440,29 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                         }>;
                     }>;
                     clipsDescendants: MuBoolean;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
-                image: import("@box-local/mudb/schema").MuStruct<{
+                image: import("@box/mudb/schema").MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -472,7 +472,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -481,36 +481,36 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                         }>;
                     }>;
                     image: MuUTF8;
-                    imageOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    imageOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     imageDisplayMode: MuSchema<import("../project/ui-rda/defs").ImageDisplayMode>;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
-                text: import("@box-local/mudb/schema").MuStruct<{
+                text: import("@box/mudb/schema").MuStruct<{
                     richText: MuBoolean;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                     textStrokeColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textStrokeOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    textStrokeThickness: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textStrokeOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    textStrokeThickness: import("@box/mudb/schema").MuQuantizedFloat;
                     textFontFamily: MuSchema<import("../project/ui-rda/defs").UITextFontFamily>;
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -520,7 +520,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -530,35 +530,35 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                     }>;
                     clipsDescendants: MuBoolean;
                     textContent: MuUTF8;
-                    textFontSize: import("@box-local/mudb/schema").MuUint8;
+                    textFontSize: import("@box/mudb/schema").MuUint8;
                     textColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     textXAlignment: MuSchema<import("../project/ui-rda/defs").TextXAlignType>;
                     textYAlignment: MuSchema<import("../project/ui-rda/defs").TextYAlignType>;
-                    textLineHeight: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textLineHeight: import("@box/mudb/schema").MuQuantizedFloat;
                     autoWordWrap: MuBoolean;
                 }>;
-                scrollBox: import("@box-local/mudb/schema").MuStruct<{
+                scrollBox: import("@box/mudb/schema").MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -568,7 +568,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -582,39 +582,39 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                     scrollbarVisibility: MuSchema<import("../project/ui-rda/defs").UIScrollbarVisibility>;
                     scrollbarThickness: MuVarint;
                     scrollbarColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    scrollbarOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    scrollbarOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     scrollCanvasAutoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
-                    scrollCanvasSize: import("@box-local/mudb/schema").MuStruct<{
+                    scrollCanvasSize: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     scrollPosition: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
-                input: import("@box-local/mudb/schema").MuStruct<{
+                input: import("@box/mudb/schema").MuStruct<{
                     textStrokeColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textStrokeOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    textStrokeThickness: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textStrokeOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    textStrokeThickness: import("@box/mudb/schema").MuQuantizedFloat;
                     textFontFamily: MuSchema<import("../project/ui-rda/defs").UITextFontFamily>;
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -624,7 +624,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -634,27 +634,27 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                     }>;
                     clipsDescendants: MuBoolean;
                     textContent: MuUTF8;
-                    textFontSize: import("@box-local/mudb/schema").MuUint8;
+                    textFontSize: import("@box/mudb/schema").MuUint8;
                     textColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     textXAlignment: MuSchema<import("../project/ui-rda/defs").TextXAlignType>;
                     textYAlignment: MuSchema<import("../project/ui-rda/defs").TextYAlignType>;
-                    textLineHeight: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textLineHeight: import("@box/mudb/schema").MuQuantizedFloat;
                     autoWordWrap: MuBoolean;
                     placeholder: MuUTF8;
                     placeholderColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    placeholderOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    placeholderOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
             }>;
         }>>;
     }>>;
-    audioAssets: import("@box-local/mudb/schema").MuSortedArray<import("@box-local/mudb/schema").MuStruct<{
+    audioAssets: import("@box/mudb/schema").MuSortedArray<import("@box/mudb/schema").MuStruct<{
         id: MuVarint;
         sequence: MuVarint;
         deleted: MuBoolean;
         key: MuUTF8;
-        value: import("@box-local/mudb/schema").MuStruct<{
+        value: import("@box/mudb/schema").MuStruct<{
             type: MuSchema<AssetType>;
             hash: MuASCII;
             size: MuVarint;
@@ -663,12 +663,12 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
             updateAt: MuFloat64;
         }>;
     }>>;
-    pictureAssets: import("@box-local/mudb/schema").MuSortedArray<import("@box-local/mudb/schema").MuStruct<{
+    pictureAssets: import("@box/mudb/schema").MuSortedArray<import("@box/mudb/schema").MuStruct<{
         id: MuVarint;
         sequence: MuVarint;
         deleted: MuBoolean;
         key: MuUTF8;
-        value: import("@box-local/mudb/schema").MuStruct<{
+        value: import("@box/mudb/schema").MuStruct<{
             type: MuSchema<AssetType>;
             hash: MuASCII;
             size: MuVarint;
@@ -677,20 +677,20 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
             updateAt: MuFloat64;
         }>;
     }>>;
-}>, GroupProjectStateSchema: import("@box-local/mudb/schema").MuStruct<{
-    uiTree: import("@box-local/mudb/schema").MuDictionary<import("@box-local/mudb/schema").MuStruct<{
+}>, GroupProjectStateSchema: import("@box/mudb/schema").MuStruct<{
+    uiTree: import("@box/mudb/schema").MuDictionary<import("@box/mudb/schema").MuStruct<{
         id: MuASCII;
         type: MuSchema<import("../project/murda-tree").TreeNodeType>;
         name: MuUTF8;
         parentId: MuASCII;
         childrenIds: MuArray<MuASCII>;
-        value: import("@box-local/mudb/schema").MuOption<import("@box-local/mudb/schema").MuUnion<{
-            screen: import("@box-local/mudb/schema").MuStruct<{
+        value: import("@box/mudb/schema").MuOption<import("@box/mudb/schema").MuUnion<{
+            screen: import("@box/mudb/schema").MuStruct<{
                 enable: MuBoolean;
-                layout: import("@box-local/mudb/schema").MuUnion<{
-                    none: import("@box-local/mudb/schema").MuVoid;
-                    autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                        cellSize: import("@box-local/mudb/schema").MuStruct<{
+                layout: import("@box/mudb/schema").MuUnion<{
+                    none: import("@box/mudb/schema").MuVoid;
+                    autoLayout: import("@box/mudb/schema").MuStruct<{
+                        cellSize: import("@box/mudb/schema").MuStruct<{
                             offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                             ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                         }>;
@@ -700,7 +700,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                         fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                         maxCells: MuVarint;
                         maxCellsEnabled: MuBoolean;
-                        cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                        cellPadding: import("@box/mudb/schema").MuStruct<{
                             offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                             ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                         }>;
@@ -710,27 +710,27 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                 }>;
                 zIndex: MuVarint;
             }>;
-            element: import("@box-local/mudb/schema").MuUnion<{
-                box: import("@box-local/mudb/schema").MuStruct<{
+            element: import("@box/mudb/schema").MuUnion<{
+                box: import("@box/mudb/schema").MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -740,7 +740,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -749,29 +749,29 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                         }>;
                     }>;
                     clipsDescendants: MuBoolean;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
-                image: import("@box-local/mudb/schema").MuStruct<{
+                image: import("@box/mudb/schema").MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -781,7 +781,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -790,36 +790,36 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                         }>;
                     }>;
                     image: MuUTF8;
-                    imageOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    imageOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     imageDisplayMode: MuSchema<import("../project/ui-rda/defs").ImageDisplayMode>;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
-                text: import("@box-local/mudb/schema").MuStruct<{
+                text: import("@box/mudb/schema").MuStruct<{
                     richText: MuBoolean;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                     textStrokeColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textStrokeOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    textStrokeThickness: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textStrokeOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    textStrokeThickness: import("@box/mudb/schema").MuQuantizedFloat;
                     textFontFamily: MuSchema<import("../project/ui-rda/defs").UITextFontFamily>;
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -829,7 +829,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -839,35 +839,35 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                     }>;
                     clipsDescendants: MuBoolean;
                     textContent: MuUTF8;
-                    textFontSize: import("@box-local/mudb/schema").MuUint8;
+                    textFontSize: import("@box/mudb/schema").MuUint8;
                     textColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     textXAlignment: MuSchema<import("../project/ui-rda/defs").TextXAlignType>;
                     textYAlignment: MuSchema<import("../project/ui-rda/defs").TextYAlignType>;
-                    textLineHeight: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textLineHeight: import("@box/mudb/schema").MuQuantizedFloat;
                     autoWordWrap: MuBoolean;
                 }>;
-                scrollBox: import("@box-local/mudb/schema").MuStruct<{
+                scrollBox: import("@box/mudb/schema").MuStruct<{
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -877,7 +877,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -891,39 +891,39 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                     scrollbarVisibility: MuSchema<import("../project/ui-rda/defs").UIScrollbarVisibility>;
                     scrollbarThickness: MuVarint;
                     scrollbarColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    scrollbarOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    scrollbarOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     scrollCanvasAutoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
-                    scrollCanvasSize: import("@box-local/mudb/schema").MuStruct<{
+                    scrollCanvasSize: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     scrollPosition: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
-                input: import("@box-local/mudb/schema").MuStruct<{
+                input: import("@box/mudb/schema").MuStruct<{
                     textStrokeColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textStrokeOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    textStrokeThickness: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textStrokeOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    textStrokeThickness: import("@box/mudb/schema").MuQuantizedFloat;
                     textFontFamily: MuSchema<import("../project/ui-rda/defs").UITextFontFamily>;
                     anchor: import("../utils/quantized-schema").QuantizedVec2Schema;
-                    position: import("@box-local/mudb/schema").MuStruct<{
+                    position: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
-                    size: import("@box-local/mudb/schema").MuStruct<{
+                    size: import("@box/mudb/schema").MuStruct<{
                         offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                         ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                     }>;
                     autoResize: MuSchema<import("../project/ui-rda/defs").AutoResizeType>;
                     visible: MuBoolean;
                     backgroundColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    backgroundOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    backgroundOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
-                        none: import("@box-local/mudb/schema").MuVoid;
-                        autoLayout: import("@box-local/mudb/schema").MuStruct<{
-                            cellSize: import("@box-local/mudb/schema").MuStruct<{
+                    layout: import("@box/mudb/schema").MuUnion<{
+                        none: import("@box/mudb/schema").MuVoid;
+                        autoLayout: import("@box/mudb/schema").MuStruct<{
+                            cellSize: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -933,7 +933,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                             fillDirection: MuSchema<import("../project/ui-rda/defs").AutoLayoutFillDirection>;
                             maxCells: MuVarint;
                             maxCellsEnabled: MuBoolean;
-                            cellPadding: import("@box-local/mudb/schema").MuStruct<{
+                            cellPadding: import("@box/mudb/schema").MuStruct<{
                                 offset: import("../utils/quantized-schema").QuantizedVec2Schema;
                                 ratio: import("../utils/quantized-schema").QuantizedVec2Schema;
                             }>;
@@ -943,22 +943,22 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
                     }>;
                     clipsDescendants: MuBoolean;
                     textContent: MuUTF8;
-                    textFontSize: import("@box-local/mudb/schema").MuUint8;
+                    textFontSize: import("@box/mudb/schema").MuUint8;
                     textColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    textOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textOpacity: import("@box/mudb/schema").MuQuantizedFloat;
                     textXAlignment: MuSchema<import("../project/ui-rda/defs").TextXAlignType>;
                     textYAlignment: MuSchema<import("../project/ui-rda/defs").TextYAlignType>;
-                    textLineHeight: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    textLineHeight: import("@box/mudb/schema").MuQuantizedFloat;
                     autoWordWrap: MuBoolean;
                     placeholder: MuUTF8;
                     placeholderColor: import("../utils/quantized-schema").QuantizedVec3Schema;
-                    placeholderOpacity: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    rotation: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    placeholderOpacity: import("@box/mudb/schema").MuQuantizedFloat;
+                    rotation: import("@box/mudb/schema").MuQuantizedFloat;
                 }>;
             }>;
         }>>;
     }>>;
-    audioAssets: import("@box-local/mudb/schema").MuDictionary<import("@box-local/mudb/schema").MuStruct<{
+    audioAssets: import("@box/mudb/schema").MuDictionary<import("@box/mudb/schema").MuStruct<{
         type: MuSchema<AssetType>;
         hash: MuASCII;
         size: MuVarint;
@@ -966,7 +966,7 @@ declare const GroupProjectStoreSchema: import("@box-local/mudb/schema").MuStruct
         id: MuASCII;
         updateAt: MuFloat64;
     }>>;
-    pictureAssets: import("@box-local/mudb/schema").MuDictionary<import("@box-local/mudb/schema").MuStruct<{
+    pictureAssets: import("@box/mudb/schema").MuDictionary<import("@box/mudb/schema").MuStruct<{
         type: MuSchema<AssetType>;
         hash: MuASCII;
         size: MuVarint;

@@ -1,5 +1,5 @@
-import { AssetsRDA, DeleteAssetsRDA } from '@box-local/schema/project/project-rda';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { AssetsRDA, DeleteAssetsRDA } from '@box/schema/project/project-rda';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

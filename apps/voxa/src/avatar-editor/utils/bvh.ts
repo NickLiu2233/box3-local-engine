@@ -7,7 +7,7 @@ import {
   IKRigSchema,
   getTicksBySecond,
   rateKey,
-} from '@box-local/schema/animation/ik-schema';
+} from '@box/schema/animation/ik-schema';
 
 interface BVHSkeleton {
   transform: mat4;

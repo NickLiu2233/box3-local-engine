@@ -1,4 +1,4 @@
-import { MuStruct, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuBoolean } from '@box/mudb/schema';
 import {
   REGLFramebuffer2DSchema,
   REGLTexture2DSchema,

@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GROUP_VERSION_MAP = exports.MERGED_VERSION = void 0;
 exports.retrieveGroupProject = retrieveGroupProject;
-const rda_1 = require("@box-local/schema/group-project/rda");
+const rda_1 = require("@box/schema/group-project/rda");
 const migrations_1 = require("../migrations");
 /**
  * 当前后端做merge拼接的版本

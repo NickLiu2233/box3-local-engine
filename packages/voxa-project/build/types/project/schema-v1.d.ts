@@ -1,4 +1,4 @@
-import { MuArray, MuASCII, MuDictionary, MuFloat32, MuInt32, MuSchema, MuStruct, MuUint8, MuUTF8, MuVarint } from '@box-local/mudb/schema';
+import { MuArray, MuASCII, MuDictionary, MuFloat32, MuInt32, MuSchema, MuStruct, MuUint8, MuUTF8, MuVarint } from '@box/mudb/schema';
 import { ProjectNodeType } from '../util';
 export declare const NodeSchema: MuStruct<{
     id: MuASCII;
@@ -7,9 +7,9 @@ export declare const NodeSchema: MuStruct<{
     voxelId: MuASCII;
     parentId: MuASCII;
     childrenIds: MuArray<MuASCII>;
-    pivot: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    position: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    quaternion: import("@box-local/mudb/schema").MuVector<"float32", 4>;
+    pivot: import("@box/mudb/schema").MuVector<"float32", 3>;
+    position: import("@box/mudb/schema").MuVector<"float32", 3>;
+    quaternion: import("@box/mudb/schema").MuVector<"float32", 4>;
 }>;
 export declare const NodesSchema: MuDictionary<MuStruct<{
     id: MuASCII;
@@ -18,9 +18,9 @@ export declare const NodesSchema: MuDictionary<MuStruct<{
     voxelId: MuASCII;
     parentId: MuASCII;
     childrenIds: MuArray<MuASCII>;
-    pivot: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    position: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    quaternion: import("@box-local/mudb/schema").MuVector<"float32", 4>;
+    pivot: import("@box/mudb/schema").MuVector<"float32", 3>;
+    position: import("@box/mudb/schema").MuVector<"float32", 3>;
+    quaternion: import("@box/mudb/schema").MuVector<"float32", 4>;
 }>>;
 export declare const VoxelSchema: MuStruct<{
     id: MuASCII;
@@ -44,7 +44,7 @@ export declare const PaletteItemsSchema: MuStruct<{
         g: MuUint8;
         b: MuUint8;
     }>;
-    hsv: import("@box-local/mudb/schema").MuVector<"uint16", 3>;
+    hsv: import("@box/mudb/schema").MuVector<"uint16", 3>;
     material: MuStruct<{
         emissive: MuFloat32;
     }>;
@@ -62,7 +62,7 @@ export declare const PaletteDataSchema: MuStruct<{
             g: MuUint8;
             b: MuUint8;
         }>;
-        hsv: import("@box-local/mudb/schema").MuVector<"uint16", 3>;
+        hsv: import("@box/mudb/schema").MuVector<"uint16", 3>;
         material: MuStruct<{
             emissive: MuFloat32;
         }>;
@@ -83,9 +83,9 @@ export declare const ProjectDataV1Schema: MuStruct<{
         voxelId: MuASCII;
         parentId: MuASCII;
         childrenIds: MuArray<MuASCII>;
-        pivot: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-        position: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-        quaternion: import("@box-local/mudb/schema").MuVector<"float32", 4>;
+        pivot: import("@box/mudb/schema").MuVector<"float32", 3>;
+        position: import("@box/mudb/schema").MuVector<"float32", 3>;
+        quaternion: import("@box/mudb/schema").MuVector<"float32", 4>;
     }>>;
     voxels: MuDictionary<MuStruct<{
         id: MuASCII;
@@ -100,7 +100,7 @@ export declare const ProjectDataV1Schema: MuStruct<{
                 g: MuUint8;
                 b: MuUint8;
             }>;
-            hsv: import("@box-local/mudb/schema").MuVector<"uint16", 3>;
+            hsv: import("@box/mudb/schema").MuVector<"uint16", 3>;
             material: MuStruct<{
                 emissive: MuFloat32;
             }>;

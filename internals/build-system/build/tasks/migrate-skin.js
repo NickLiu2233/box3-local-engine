@@ -21,7 +21,7 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.migrateSkin = migrateSkin;
-const voxa_project_1 = require("@box-local/voxa-project");
+const voxa_project_1 = require("@box/voxa-project");
 const heavy_mutex_1 = require("./heavy_mutex");
 function migrateSkin(bs, hash, metaData) {
     return __awaiter(this, void 0, void 0, function* () {

@@ -2,8 +2,8 @@ import React, { memo, useContext, type JSX } from 'react';
 import { IntlShape, useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
 import { vec3, quat, vec4 } from 'gl-matrix';
-import type { EntitySeed } from '@box-local/schema/project/project-rda';
-import { Vec4Schema } from '@box-local/schema/utils/math-schema';
+import type { EntitySeed } from '@box/schema/project/project-rda';
+import { Vec4Schema } from '@box/schema/utils/math-schema';
 
 import { BasicSetting } from './basicSetting';
 import { PhysicsSetting } from './physicsSetting';
@@ -18,7 +18,7 @@ import {
   IconMusic,
   IconPrint,
   IconInfo,
-} from '@box-local/icons';
+} from '@box/icons';
 import { EditActionLabel } from 'src/client/edit/replica/replica-client-schema';
 import { EditorUIEvent } from 'src/client/edit/schema';
 import { editor } from 'src/client/edit/edit-client';
@@ -29,9 +29,9 @@ import { ArenaEditorUIContext } from '../../editor-ui-context';
 import { StageAreaContext } from '../stage-area/context';
 import { seedsDataController } from '../stage-area/seedsData';
 import { RadioProperty } from 'src/views/components/edit/property';
-import { TooltipTrigger } from '@box-local/box-design';
+import { TooltipTrigger } from '@box/box-design';
 import { clientConfig } from 'src/config/client';
-import { FeatureFlag } from '@box-local/env/constants';
+import { FeatureFlag } from '@box/env/constants';
 
 type Props = {
   intl: IntlShape;

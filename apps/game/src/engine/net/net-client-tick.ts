@@ -10,29 +10,29 @@ import {
   NetClientInput,
   NetClientInputSchema,
   NetPositionCorrectionSchema,
-} from '@box-local/schema/net/net-schema';
-import { netTick, mergeNetInput } from '@box-local/schema/net/net-tick';
+} from '@box/schema/net/net-schema';
+import { netTick, mergeNetInput } from '@box/schema/net/net-tick';
 import { GameClientState } from '../game-client-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import {
   PlayerSetSchema,
   PlayerInputSetSchema,
   PlayerInputSet,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   PhysicsParamsSchema,
   RigidBodySet,
   RigidBodySetSchema,
   RigidBodyFlags,
-} from '@box-local/schema/physics/physics-schema';
-import { VoxelCollision } from '@box-local/schema/voxel/voxel-collision-schema';
-import { BlockIndex } from '@box-local/schema/voxel/block-schema';
-import { clearBodyLocks } from '@box-local/schema/physics/physics-solve';
-import { CollisionFilterSchema } from '@box-local/schema/physics/collision-filter';
+} from '@box/schema/physics/physics-schema';
+import { VoxelCollision } from '@box/schema/voxel/voxel-collision-schema';
+import { BlockIndex } from '@box/schema/voxel/block-schema';
+import { clearBodyLocks } from '@box/schema/physics/physics-solve';
+import { CollisionFilterSchema } from '@box/schema/physics/collision-filter';
 import {
   PhysicsZoneSetSchema,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
+} from '@box/schema/zone/zone-schema';
 
 export function computeNetClientInput(
   state: GameClientState,

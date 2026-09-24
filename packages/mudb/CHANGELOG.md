@@ -1,4 +1,4 @@
-# Change Log - @box-local/mudb
+# Change Log - @box/mudb
 
 This log was last generated on Fri, 10 May 2024 07:02:16 GMT and should not be manually modified.
 

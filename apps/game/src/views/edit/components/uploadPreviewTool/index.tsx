@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Toast } from '@box-local/box-design';
-import { IconLoading, IconMusic, IconPlay } from '@box-local/icons';
+import { Toast } from '@box/box-design';
+import { IconLoading, IconMusic, IconPlay } from '@box/icons';
 import { IntlShape, injectIntl } from 'react-intl';
 import { RadioBtn } from '../../../components/basic/radioBtn';
 import { preloadSoundSample } from 'src/engine/sound/client-sound-controller';

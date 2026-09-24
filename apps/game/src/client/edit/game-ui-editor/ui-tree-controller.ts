@@ -28,8 +28,8 @@ import {
   UICoord2Keys,
   ImageDisplayMode,
   UITextFontFamily,
-} from '@box-local/schema/project/ui-rda/defs';
-import { ROOT_ID, TreeNodeType } from '@box-local/schema/project/murda-tree';
+} from '@box/schema/project/ui-rda/defs';
+import { ROOT_ID, TreeNodeType } from '@box/schema/project/murda-tree';
 import {
   isUIElement,
   isUIImageNode,
@@ -39,8 +39,8 @@ import {
   isUITextNode,
   pickAutoLayoutProp,
   pickLayoutProp,
-} from '@box-local/schema/project/ui-rda/util';
-import { DropType } from '@box-local/box-design';
+} from '@box/schema/project/ui-rda/util';
+import { DropType } from '@box/box-design';
 import type { GetUITree } from './defs';
 import { isChildren, sortTreeNodes } from 'src/views/edit/components/tree/util';
 import type { ClientProjectTransaction } from 'src/client/edit/replica/transaction/client-project-transaction';

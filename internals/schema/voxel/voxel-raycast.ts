@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 import { BlockIndex } from './block-schema';
 
 export class VoxelRaycastHitResult {

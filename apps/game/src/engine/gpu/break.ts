@@ -5,7 +5,7 @@ import type {
   IndexBufferDescriptor,
   ReWGPU,
   DrawCommand,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import type { GameClientState } from '../game-client-schema';
 import type { BreakEffect } from '../effect/effect-schema';
 import { CommonUniformEntries } from './interface';
@@ -32,7 +32,7 @@ import fog from './wgsl/fog.wgsl';
 import toneMapping from './wgsl/tone-mapping.wgsl';
 import { testFrustumBox } from '../utils/frustum';
 import { testChunkVisibility } from '../voxel/voxel-controller';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 
 const INSTANCE_NUM = 30;
 

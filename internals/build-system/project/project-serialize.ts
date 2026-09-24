@@ -1,4 +1,4 @@
-import { HotProject } from '@box-local/schema/project/hot-schema';
+import { HotProject } from '@box/schema/project/hot-schema';
 import { buildMigrate } from '../migrations';
 import { BuildSystemAPI } from '../type';
 import {
@@ -6,7 +6,7 @@ import {
   GroupProjectMetaData,
   ProjectInfo,
   ProjectRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 
 const CURRENT_VERSION = ProjectRDA.stateSchema.identity.version;
 

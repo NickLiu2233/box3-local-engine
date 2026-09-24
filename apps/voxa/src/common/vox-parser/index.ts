@@ -1,6 +1,6 @@
 import { mat3, vec3 } from 'gl-matrix';
 import { nanoid } from 'nanoid';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
+import { allocEmptyVoxels } from '@box/utils/helper';
 import parseMagicaVoxel from '../../models/parse-magica-voxel/src';
 import type {
   GroupNode,

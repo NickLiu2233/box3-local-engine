@@ -1,6 +1,6 @@
 import { PostgresDataStorage } from '../../../services/game-server/src/storage/postgres-data-storage';
 import type { TableType } from '../../../services/game-server/src/storage/types';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { getLocalProjectManager } from './local-project-manager';
 
 export type CreatorStorageScope = TableType;

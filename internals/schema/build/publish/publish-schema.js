@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PublishProtocol = exports.SaveGameRPCSchema = exports.CancelPublishRPCSchema = exports.PublishRPCSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const replica_schema_1 = require("../replica/replica-schema");
 exports.PublishRPCSchema = new schema_1.MuStruct({
     token: replica_schema_1.RPCTokenSchema,

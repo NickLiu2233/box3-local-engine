@@ -1,7 +1,7 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { MuSocket } from '@box-local/mudb/socket/socket';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { GameConsole, GameLogLevel } from '@box-local/schema/api/console';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { MuSocket } from '@box/mudb/socket/socket';
+import { MuReadStream } from '@box/mudb/stream';
+import { GameConsole, GameLogLevel } from '@box/schema/api/console';
 import {
   GameAssetType,
   GameButtonType,
@@ -23,30 +23,30 @@ import {
   GameTickEvent,
   GameVoxelContactEvent,
   Sound,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import {
   SendClientEventType,
   ServerRemoteChannel,
-} from '@box-local/schema/api/js/remote-channel';
+} from '@box/schema/api/js/remote-channel';
 import {
   GameBounds3,
   GameRGBAColor,
   GameRGBColor,
   GameVector3,
-} from '@box-local/schema/api/js/math';
-import * as GameURL from '@box-local/schema/api/js/url';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+} from '@box/schema/api/js/math';
+import * as GameURL from '@box/schema/api/js/url';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import {
   DialogCommonConfig,
   DialogConfig,
   DialogResult,
   DialogSelectResult,
-} from '@box-local/schema/dialog/dialog-protocol';
-import { HurtEventSchema } from '@box-local/schema/events/damage-event-schema';
-import { ScriptSentEventSchema } from '@box-local/schema/events/script-events';
-import { NetInputEvent, NetInputEventBits } from '@box-local/schema/net/net-schema';
-import { PlayerFlags } from '@box-local/schema/player/player-schema';
-import { EnvironmentSkyType } from '@box-local/schema/project/project-rda';
+} from '@box/schema/dialog/dialog-protocol';
+import { HurtEventSchema } from '@box/schema/events/damage-event-schema';
+import { ScriptSentEventSchema } from '@box/schema/events/script-events';
+import { NetInputEvent, NetInputEventBits } from '@box/schema/net/net-schema';
+import { PlayerFlags } from '@box/schema/player/player-schema';
+import { EnvironmentSkyType } from '@box/schema/project/project-rda';
 import {
   DISPATCHER_CREATE_COUNT,
   DISPATCHER_DESTROY_COUNT,
@@ -54,17 +54,17 @@ import {
   DISPATCHER_HANDLER_COUNT,
   DISPATCHER_PROMISE_COUNT,
   ScriptDispatcher,
-} from '@box-local/schema/script/dispatcher';
-import { PlaySoundPosition } from '@box-local/schema/sound/sound-protocol';
+} from '@box/schema/script/dispatcher';
+import { PlaySoundPosition } from '@box/schema/sound/sound-protocol';
 import {
   BlockIndexSchema,
   BlockInfoSchema,
-} from '@box-local/schema/voxel/block-schema';
-import { unpackBlockIndex } from '@box-local/schema/voxel/blocks';
-import { getById } from '@box-local/utils/id';
-import { LogMessage, LogMessageSchema, Logger } from '@box-local/utils/logger';
-import { createMuLogger } from '@box-local/utils/mutracer';
-import { createScriptScheduler } from '@box-local/utils/script/script-scheduler';
+} from '@box/schema/voxel/block-schema';
+import { unpackBlockIndex } from '@box/schema/voxel/blocks';
+import { getById } from '@box/utils/id';
+import { LogMessage, LogMessageSchema, Logger } from '@box/utils/logger';
+import { createMuLogger } from '@box/utils/mutracer';
+import { createScriptScheduler } from '@box/utils/script/script-scheduler';
 
 import { vec3 } from 'gl-matrix';
 import type { Level } from 'pino';

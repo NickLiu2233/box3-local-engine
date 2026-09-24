@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VoxelProtocol = exports.HashesResponseSchema = exports.FetchHashesSchema = exports.ChunkIdsSchema = exports.BatchWriteSchema = exports.BatchVoxelRunSchema = exports.VoxelResetSchema = exports.VoxelWriteSchema = exports.VOXEL_TYPE_MASK = exports.VOXEL_ROTATION_SHIFT = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const index_1 = require("../content-server/index");
 const rbush_schema_1 = require("../utils/rbush-schema");
 exports.VOXEL_ROTATION_SHIFT = 14;

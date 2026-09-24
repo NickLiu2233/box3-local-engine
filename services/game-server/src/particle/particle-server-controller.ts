@@ -5,7 +5,7 @@ import {
   ParticleParameterSchema,
   ParticlePrototypeSchema,
   packColor,
-} from '@box-local/schema/particle/particle-schema';
+} from '@box/schema/particle/particle-schema';
 import {
   ServerParticlePrototypeSchema,
   compareParticleParams,
@@ -13,8 +13,8 @@ import {
   ServerParticleEntitySchema,
 } from './particle-server-state';
 import { vec3 } from 'gl-matrix';
-import { compareId } from '@box-local/utils/id';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+import { compareId } from '@box/utils/id';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 
 export const MIN_PARTICLE_LIFETIME = 0;
 export const MAX_PARTICLE_LIFETIME = 60;

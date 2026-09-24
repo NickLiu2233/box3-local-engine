@@ -7,14 +7,14 @@ import type {
   OutputSchema,
   SamplerSchema,
   MotionMetaData,
-} from '@box-local/voxa-project';
-import type { Mesher } from '@box-local/mesher';
-import type { ModelResp, ModelType } from '@box-local/apis';
+} from '@box/voxa-project';
+import type { Mesher } from '@box/mesher';
+import type { ModelResp, ModelType } from '@box/apis';
 import type { SaveErrorType } from './defs';
 import type { SerializedVec3 } from '../../utils/math';
 import type { HierarchyNode } from '../../redux/animator-slice';
 
-export type { VoxelDimension as VoxelDimensionType } from '@box-local/voxa-project';
+export type { VoxelDimension as VoxelDimensionType } from '@box/voxa-project';
 export type ModelData = modelV7.ModelDataV7;
 export { ModelMetaData, MotionMetaData };
 

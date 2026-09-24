@@ -11,22 +11,22 @@ import {
   P2PDataMsg,
   P2PDataType,
   ReceivedMsg,
-} from '@box-local/schema/chat/chat-schema';
+} from '@box/schema/chat/chat-schema';
 import { getConfigSync } from '../config/server';
 import { clearTimeout } from 'timers';
-import { ProjectAction } from '@box-local/schema/replica/replica-schema';
+import { ProjectAction } from '@box/schema/replica/replica-schema';
 import {
   GroupProjectStateSchema,
   GroupProjectStore,
   GroupProjectStoreSchema,
-} from '@box-local/schema/group-project/rda';
-import { RetrievedGroupProjectMetaData } from '@box-local/build-system/group-project';
-import { GroupAssetsRDA, ProjectRDA } from '@box-local/schema/project/project-rda';
-import type { MuRDATypes } from '@box-local/mudb/rda';
-import { UITreeRDA } from '@box-local/schema/project/ui-rda/defs';
-import { BuildSystemAPI } from '@box-local/build-system/type';
-import { TEMP_OSS_CDN_PATH } from '@box-local/content-server';
-import { MuReadStream } from '@box-local/mudb/stream';
+} from '@box/schema/group-project/rda';
+import { RetrievedGroupProjectMetaData } from '@box/build-system/group-project';
+import { GroupAssetsRDA, ProjectRDA } from '@box/schema/project/project-rda';
+import type { MuRDATypes } from '@box/mudb/rda';
+import { UITreeRDA } from '@box/schema/project/ui-rda/defs';
+import { BuildSystemAPI } from '@box/build-system/type';
+import { TEMP_OSS_CDN_PATH } from '@box/content-server';
+import { MuReadStream } from '@box/mudb/stream';
 
 const GROUP_PROJECT_TIMEOUT = 30 * 1000;
 

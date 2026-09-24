@@ -1,5 +1,5 @@
 import type { IKPalette } from './interfaces';
-import { BodyPart } from '@box-local/schema/player/player-schema';
+import { BodyPart } from '@box/schema/player/player-schema';
 import extensionJSON from './animation/extension.json';
 import playerAnimJSON from './animation/player-anim.json';
 import { ScreenshotMode } from './iframe';

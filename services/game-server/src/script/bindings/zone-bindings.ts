@@ -1,8 +1,8 @@
-import { MuVarint } from '@box-local/mudb/schema';
-import { GameAssetType, GameZone } from '@box-local/schema/api/js/api';
-import { GameVector3 } from '@box-local/schema/api/js/math';
+import { MuVarint } from '@box/mudb/schema';
+import { GameAssetType, GameZone } from '@box/schema/api/js/api';
+import { GameVector3 } from '@box/schema/api/js/math';
 import { CodeGenBlock } from '../codegen';
-import { PhysicsZone, PhysicsZoneSchema } from '@box-local/schema/zone/zone-schema';
+import { PhysicsZone, PhysicsZoneSchema } from '@box/schema/zone/zone-schema';
 import {
   ServerEnvironmentZone,
   ServerEnvironmentZoneSchema,

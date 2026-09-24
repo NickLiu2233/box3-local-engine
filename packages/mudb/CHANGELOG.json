@@ -1,9 +1,9 @@
 {
-  "name": "@box-local/mudb",
+  "name": "@box/mudb",
   "entries": [
     {
       "version": "1.0.4",
-      "tag": "@box-local/mudb_v1.0.4",
+      "tag": "@box/mudb_v1.0.4",
       "date": "Fri, 10 May 2024 07:02:16 GMT",
       "comments": {
         "patch": [

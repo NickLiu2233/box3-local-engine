@@ -1,4 +1,4 @@
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import type { BuildSystem } from '../../../build-system';
 
 const fromVersion = '0.0.1';

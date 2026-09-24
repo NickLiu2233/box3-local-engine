@@ -3,8 +3,8 @@ import assert from 'assert';
 import {
   AssetType,
   DeleteAssetsRDA,
-} from '@box-local/schema/project/project-rda';
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/project-rda';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 import {
   moveProjectModelToTrash,
   purgeProjectModelFromTrash,

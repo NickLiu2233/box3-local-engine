@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
-import { modelV5, modelSchemaToBytes, migrateModel } from '@box-local/voxa-project';
-import type { Regl } from '@box-local/regl';
+import { modelV5, modelSchemaToBytes, migrateModel } from '@box/voxa-project';
+import type { Regl } from '@box/regl';
 import type { Core } from '../../../common/core';
 import { Loader } from '../../../common/loader';
 import { Object3D } from '../../..//models/rendering/objects/object3d';

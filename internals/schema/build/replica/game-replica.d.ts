@@ -1,172 +1,172 @@
-import { MuStruct, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuBoolean } from '@box/mudb/schema';
 export declare const GameReplicaSchema: MuStruct<{
     running: MuBoolean;
     sync: MuBoolean;
     environment: MuStruct<{
         fog: MuStruct<{
             fogColor: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
-            fogStartDistance: import("@box-local/mudb/schema").MuFloat64;
-            fogHeightOffset: import("@box-local/mudb/schema").MuFloat64;
-            fogHeightFalloff: import("@box-local/mudb/schema").MuFloat64;
-            fogDensity: import("@box-local/mudb/schema").MuFloat64;
-            maxFog: import("@box-local/mudb/schema").MuFloat64;
+            fogStartDistance: import("@box/mudb/schema").MuFloat64;
+            fogHeightOffset: import("@box/mudb/schema").MuFloat64;
+            fogHeightFalloff: import("@box/mudb/schema").MuFloat64;
+            fogDensity: import("@box/mudb/schema").MuFloat64;
+            maxFog: import("@box/mudb/schema").MuFloat64;
         }>;
         sky: MuStruct<{
-            skyType: import("@box-local/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
-            globalLight: import("@box-local/mudb/schema").MuFloat64;
-            sunPhase: import("@box-local/mudb/schema").MuFloat64;
-            sunFrequency: import("@box-local/mudb/schema").MuFloat64;
-            lunarPhase: import("@box-local/mudb/schema").MuFloat64;
+            skyType: import("@box/mudb/schema").MuSchema<import("../project/project-rda").EnvironmentSkyType>;
+            globalLight: import("@box/mudb/schema").MuFloat64;
+            sunPhase: import("@box/mudb/schema").MuFloat64;
+            sunFrequency: import("@box/mudb/schema").MuFloat64;
+            lunarPhase: import("@box/mudb/schema").MuFloat64;
             sunDirection: MuStruct<{
-                x: import("@box-local/mudb/schema").MuFloat64;
-                y: import("@box-local/mudb/schema").MuFloat64;
-                z: import("@box-local/mudb/schema").MuFloat64;
+                x: import("@box/mudb/schema").MuFloat64;
+                y: import("@box/mudb/schema").MuFloat64;
+                z: import("@box/mudb/schema").MuFloat64;
             }>;
             sunColor: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyLeft: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyRight: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyTop: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyBottom: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyFront: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyBack: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
-            gamma: import("@box-local/mudb/schema").MuFloat32;
+            gamma: import("@box/mudb/schema").MuFloat32;
         }>;
         snow: MuStruct<{
-            texture: import("@box-local/mudb/schema").MuUTF8;
-            density: import("@box-local/mudb/schema").MuFloat64;
+            texture: import("@box/mudb/schema").MuUTF8;
+            density: import("@box/mudb/schema").MuFloat64;
             size: MuStruct<{
-                w: import("@box-local/mudb/schema").MuFloat64;
-                h: import("@box-local/mudb/schema").MuFloat64;
+                w: import("@box/mudb/schema").MuFloat64;
+                h: import("@box/mudb/schema").MuFloat64;
             }>;
-            fallSpeed: import("@box-local/mudb/schema").MuFloat64;
-            spinSpeed: import("@box-local/mudb/schema").MuFloat64;
+            fallSpeed: import("@box/mudb/schema").MuFloat64;
+            spinSpeed: import("@box/mudb/schema").MuFloat64;
             color: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
-                a: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
+                a: import("@box/mudb/schema").MuFloat64;
             }>;
         }>;
         rain: MuStruct<{
-            density: import("@box-local/mudb/schema").MuFloat64;
+            density: import("@box/mudb/schema").MuFloat64;
             direction: MuStruct<{
-                x: import("@box-local/mudb/schema").MuFloat64;
-                y: import("@box-local/mudb/schema").MuFloat64;
-                z: import("@box-local/mudb/schema").MuFloat64;
+                x: import("@box/mudb/schema").MuFloat64;
+                y: import("@box/mudb/schema").MuFloat64;
+                z: import("@box/mudb/schema").MuFloat64;
             }>;
-            speed: import("@box-local/mudb/schema").MuFloat64;
+            speed: import("@box/mudb/schema").MuFloat64;
             size: MuStruct<{
-                w: import("@box-local/mudb/schema").MuFloat64;
-                h: import("@box-local/mudb/schema").MuFloat64;
+                w: import("@box/mudb/schema").MuFloat64;
+                h: import("@box/mudb/schema").MuFloat64;
             }>;
-            interference: import("@box-local/mudb/schema").MuFloat64;
+            interference: import("@box/mudb/schema").MuFloat64;
             color: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
-                a: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
+                a: import("@box/mudb/schema").MuFloat64;
             }>;
         }>;
-        drawDistance: import("@box-local/mudb/schema").MuFloat32;
+        drawDistance: import("@box/mudb/schema").MuFloat32;
         bakedShadow: MuStruct<{
-            texture: import("@box-local/mudb/schema").MuASCII;
-            data: import("@box-local/mudb/schema").MuASCII;
-            chunkShift: import("@box-local/mudb/schema").MuVarint;
+            texture: import("@box/mudb/schema").MuASCII;
+            data: import("@box/mudb/schema").MuASCII;
+            chunkShift: import("@box/mudb/schema").MuVarint;
         }>;
     }>;
-    models: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-        id: import("@box-local/mudb/schema").MuVarint;
-        meshId: import("@box-local/mudb/schema").MuVarint;
+    models: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+        id: import("@box/mudb/schema").MuVarint;
+        meshId: import("@box/mudb/schema").MuVarint;
         invisible: MuBoolean;
-        red: import("@box-local/mudb/schema").MuUint8;
-        green: import("@box-local/mudb/schema").MuUint8;
-        blue: import("@box-local/mudb/schema").MuUint8;
-        alpha: import("@box-local/mudb/schema").MuUint8;
-        emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-        shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-        metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
-        scaleX: import("@box-local/mudb/schema").MuQuantizedFloat;
-        scaleY: import("@box-local/mudb/schema").MuQuantizedFloat;
-        scaleZ: import("@box-local/mudb/schema").MuQuantizedFloat;
-        offsetX: import("@box-local/mudb/schema").MuQuantizedFloat;
-        offsetY: import("@box-local/mudb/schema").MuQuantizedFloat;
-        offsetZ: import("@box-local/mudb/schema").MuQuantizedFloat;
+        red: import("@box/mudb/schema").MuUint8;
+        green: import("@box/mudb/schema").MuUint8;
+        blue: import("@box/mudb/schema").MuUint8;
+        alpha: import("@box/mudb/schema").MuUint8;
+        emissive: import("@box/mudb/schema").MuQuantizedFloat;
+        shininess: import("@box/mudb/schema").MuQuantizedFloat;
+        metalness: import("@box/mudb/schema").MuQuantizedFloat;
+        scaleX: import("@box/mudb/schema").MuQuantizedFloat;
+        scaleY: import("@box/mudb/schema").MuQuantizedFloat;
+        scaleZ: import("@box/mudb/schema").MuQuantizedFloat;
+        offsetX: import("@box/mudb/schema").MuQuantizedFloat;
+        offsetY: import("@box/mudb/schema").MuQuantizedFloat;
+        offsetZ: import("@box/mudb/schema").MuQuantizedFloat;
         motion: MuStruct<{
-            defaultMotionId: import("@box-local/mudb/schema").MuASCII;
+            defaultMotionId: import("@box/mudb/schema").MuASCII;
             paused: MuBoolean;
-            pausedTick: import("@box-local/mudb/schema").MuFloat64;
-            startTick: import("@box-local/mudb/schema").MuFloat64;
+            pausedTick: import("@box/mudb/schema").MuFloat64;
+            startTick: import("@box/mudb/schema").MuFloat64;
             playback: MuStruct<{
-                motions: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                    motionId: import("@box-local/mudb/schema").MuASCII;
-                    cycleCount: import("@box-local/mudb/schema").MuInt32;
+                motions: import("@box/mudb/schema").MuArray<MuStruct<{
+                    motionId: import("@box/mudb/schema").MuASCII;
+                    cycleCount: import("@box/mudb/schema").MuInt32;
                 }>>;
-                startTick: import("@box-local/mudb/schema").MuFloat64;
-                cycleCount: import("@box-local/mudb/schema").MuInt32;
+                startTick: import("@box/mudb/schema").MuFloat64;
+                cycleCount: import("@box/mudb/schema").MuInt32;
             }>;
         }>;
         staticShadow: MuBoolean;
-        name: import("@box-local/mudb/schema").MuUTF8;
+        name: import("@box/mudb/schema").MuUTF8;
     }>>;
-    players: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-        id: import("@box-local/mudb/schema").MuVarint;
-        flags: import("@box-local/mudb/schema").MuSchema<import("../player/player-schema").PlayerDisplayFlags>;
-        name: import("@box-local/mudb/schema").MuUTF8;
-        tag: import("@box-local/mudb/schema").MuVarint;
+    players: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+        id: import("@box/mudb/schema").MuVarint;
+        flags: import("@box/mudb/schema").MuSchema<import("../player/player-schema").PlayerDisplayFlags>;
+        name: import("@box/mudb/schema").MuUTF8;
+        tag: import("@box/mudb/schema").MuVarint;
         avatarSkin: MuStruct<{
-            hips: import("@box-local/mudb/schema").MuVarint;
-            torso: import("@box-local/mudb/schema").MuVarint;
-            neck: import("@box-local/mudb/schema").MuVarint;
-            head: import("@box-local/mudb/schema").MuVarint;
-            leftShoulder: import("@box-local/mudb/schema").MuVarint;
-            leftUpperArm: import("@box-local/mudb/schema").MuVarint;
-            leftLowerArm: import("@box-local/mudb/schema").MuVarint;
-            leftHand: import("@box-local/mudb/schema").MuVarint;
-            rightShoulder: import("@box-local/mudb/schema").MuVarint;
-            rightUpperArm: import("@box-local/mudb/schema").MuVarint;
-            rightLowerArm: import("@box-local/mudb/schema").MuVarint;
-            rightHand: import("@box-local/mudb/schema").MuVarint;
-            leftUpperLeg: import("@box-local/mudb/schema").MuVarint;
-            leftLowerLeg: import("@box-local/mudb/schema").MuVarint;
-            leftFoot: import("@box-local/mudb/schema").MuVarint;
-            rightUpperLeg: import("@box-local/mudb/schema").MuVarint;
-            rightLowerLeg: import("@box-local/mudb/schema").MuVarint;
-            rightFoot: import("@box-local/mudb/schema").MuVarint;
+            hips: import("@box/mudb/schema").MuVarint;
+            torso: import("@box/mudb/schema").MuVarint;
+            neck: import("@box/mudb/schema").MuVarint;
+            head: import("@box/mudb/schema").MuVarint;
+            leftShoulder: import("@box/mudb/schema").MuVarint;
+            leftUpperArm: import("@box/mudb/schema").MuVarint;
+            leftLowerArm: import("@box/mudb/schema").MuVarint;
+            leftHand: import("@box/mudb/schema").MuVarint;
+            rightShoulder: import("@box/mudb/schema").MuVarint;
+            rightUpperArm: import("@box/mudb/schema").MuVarint;
+            rightLowerArm: import("@box/mudb/schema").MuVarint;
+            rightHand: import("@box/mudb/schema").MuVarint;
+            leftUpperLeg: import("@box/mudb/schema").MuVarint;
+            leftLowerLeg: import("@box/mudb/schema").MuVarint;
+            leftFoot: import("@box/mudb/schema").MuVarint;
+            rightUpperLeg: import("@box/mudb/schema").MuVarint;
+            rightLowerLeg: import("@box/mudb/schema").MuVarint;
+            rightFoot: import("@box/mudb/schema").MuVarint;
         }>;
-        userId: import("@box-local/mudb/schema").MuUTF8;
-        avatar_hash: import("@box-local/mudb/schema").MuASCII;
+        userId: import("@box/mudb/schema").MuUTF8;
+        avatar_hash: import("@box/mudb/schema").MuASCII;
         skinInvisible: MuStruct<{
             hips: MuBoolean;
             torso: MuBoolean;
@@ -188,583 +188,583 @@ export declare const GameReplicaSchema: MuStruct<{
             rightFoot: MuBoolean;
         }>;
         mapSkin: MuStruct<{
-            hips: import("@box-local/mudb/schema").MuVarint;
-            torso: import("@box-local/mudb/schema").MuVarint;
-            neck: import("@box-local/mudb/schema").MuVarint;
-            head: import("@box-local/mudb/schema").MuVarint;
-            leftShoulder: import("@box-local/mudb/schema").MuVarint;
-            leftUpperArm: import("@box-local/mudb/schema").MuVarint;
-            leftLowerArm: import("@box-local/mudb/schema").MuVarint;
-            leftHand: import("@box-local/mudb/schema").MuVarint;
-            rightShoulder: import("@box-local/mudb/schema").MuVarint;
-            rightUpperArm: import("@box-local/mudb/schema").MuVarint;
-            rightLowerArm: import("@box-local/mudb/schema").MuVarint;
-            rightHand: import("@box-local/mudb/schema").MuVarint;
-            leftUpperLeg: import("@box-local/mudb/schema").MuVarint;
-            leftLowerLeg: import("@box-local/mudb/schema").MuVarint;
-            leftFoot: import("@box-local/mudb/schema").MuVarint;
-            rightUpperLeg: import("@box-local/mudb/schema").MuVarint;
-            rightLowerLeg: import("@box-local/mudb/schema").MuVarint;
-            rightFoot: import("@box-local/mudb/schema").MuVarint;
+            hips: import("@box/mudb/schema").MuVarint;
+            torso: import("@box/mudb/schema").MuVarint;
+            neck: import("@box/mudb/schema").MuVarint;
+            head: import("@box/mudb/schema").MuVarint;
+            leftShoulder: import("@box/mudb/schema").MuVarint;
+            leftUpperArm: import("@box/mudb/schema").MuVarint;
+            leftLowerArm: import("@box/mudb/schema").MuVarint;
+            leftHand: import("@box/mudb/schema").MuVarint;
+            rightShoulder: import("@box/mudb/schema").MuVarint;
+            rightUpperArm: import("@box/mudb/schema").MuVarint;
+            rightLowerArm: import("@box/mudb/schema").MuVarint;
+            rightHand: import("@box/mudb/schema").MuVarint;
+            leftUpperLeg: import("@box/mudb/schema").MuVarint;
+            leftLowerLeg: import("@box/mudb/schema").MuVarint;
+            leftFoot: import("@box/mudb/schema").MuVarint;
+            rightUpperLeg: import("@box/mudb/schema").MuVarint;
+            rightLowerLeg: import("@box/mudb/schema").MuVarint;
+            rightFoot: import("@box/mudb/schema").MuVarint;
         }>;
         color: import("../utils/quantized-schema").QuantizedVec3Schema;
-        metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
-        emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-        shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-        scale: import("@box-local/mudb/schema").MuQuantizedFloat;
+        metalness: import("@box/mudb/schema").MuQuantizedFloat;
+        emissive: import("@box/mudb/schema").MuQuantizedFloat;
+        shininess: import("@box/mudb/schema").MuQuantizedFloat;
+        scale: import("@box/mudb/schema").MuQuantizedFloat;
         attachments: MuStruct<{
-            hips: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            hips: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            torso: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            torso: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            neck: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            neck: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            head: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            head: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftShoulder: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftShoulder: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftUpperArm: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftUpperArm: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftLowerArm: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftLowerArm: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftHand: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftHand: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightShoulder: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightShoulder: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightUpperArm: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightUpperArm: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightLowerArm: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightLowerArm: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightHand: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightHand: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftUpperLeg: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftUpperLeg: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftLowerLeg: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftLowerLeg: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            leftFoot: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            leftFoot: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightUpperLeg: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightUpperLeg: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightLowerLeg: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightLowerLeg: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
-            rightFoot: import("@box-local/mudb/schema").MuArray<MuStruct<{
-                meshId: import("@box-local/mudb/schema").MuVarint;
-                red: import("@box-local/mudb/schema").MuQuantizedFloat;
-                green: import("@box-local/mudb/schema").MuQuantizedFloat;
-                blue: import("@box-local/mudb/schema").MuQuantizedFloat;
-                emissive: import("@box-local/mudb/schema").MuQuantizedFloat;
-                shininess: import("@box-local/mudb/schema").MuQuantizedFloat;
-                metalness: import("@box-local/mudb/schema").MuQuantizedFloat;
+            rightFoot: import("@box/mudb/schema").MuArray<MuStruct<{
+                meshId: import("@box/mudb/schema").MuVarint;
+                red: import("@box/mudb/schema").MuQuantizedFloat;
+                green: import("@box/mudb/schema").MuQuantizedFloat;
+                blue: import("@box/mudb/schema").MuQuantizedFloat;
+                emissive: import("@box/mudb/schema").MuQuantizedFloat;
+                shininess: import("@box/mudb/schema").MuQuantizedFloat;
+                metalness: import("@box/mudb/schema").MuQuantizedFloat;
                 offset: import("../utils/quantized-schema").QuantizedVec3Schema;
                 scale: import("../utils/quantized-schema").QuantizedVec3Schema;
-                orientation: import("@box-local/mudb/schema").MuSchema<import("gl-matrix").quat>;
+                orientation: import("@box/mudb/schema").MuSchema<import("gl-matrix").quat>;
             }>>;
         }>;
     }>>;
     particles: MuStruct<{
-        emitters: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-            countLimit: import("@box-local/mudb/schema").MuVarint;
-            emitRate: import("@box-local/mudb/schema").MuQuantizedFloat;
-            emitSpread: import("@box-local/mudb/schema").MuQuantizedFloat;
-            lifetime: import("@box-local/mudb/schema").MuQuantizedFloat;
-            lifetimeSpread: import("@box-local/mudb/schema").MuQuantizedFloat;
+        emitters: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+            countLimit: import("@box/mudb/schema").MuVarint;
+            emitRate: import("@box/mudb/schema").MuQuantizedFloat;
+            emitSpread: import("@box/mudb/schema").MuQuantizedFloat;
+            lifetime: import("@box/mudb/schema").MuQuantizedFloat;
+            lifetimeSpread: import("@box/mudb/schema").MuQuantizedFloat;
             velocity: import("../utils/quantized-schema").QuantizedVec3Schema;
             velocitySpread: import("../utils/quantized-schema").QuantizedVec3Schema;
-            id: import("@box-local/mudb/schema").MuVarint;
-            particleId: import("@box-local/mudb/schema").MuVarint;
+            id: import("@box/mudb/schema").MuVarint;
+            particleId: import("@box/mudb/schema").MuVarint;
         }>>;
-        prototypes: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
+        prototypes: import("@box/mudb/schema").MuSortedArray<MuStruct<{
             acceleration: import("../utils/quantized-schema").QuantizedVec3Schema;
-            noiseAmpl: import("@box-local/mudb/schema").MuQuantizedFloat;
-            noiseFreq: import("@box-local/mudb/schema").MuQuantizedFloat;
-            targetId: import("@box-local/mudb/schema").MuVarint;
-            targetWeight: import("@box-local/mudb/schema").MuQuantizedFloat;
-            color0: import("@box-local/mudb/schema").MuUint32;
-            color1: import("@box-local/mudb/schema").MuUint32;
-            color2: import("@box-local/mudb/schema").MuUint32;
-            color3: import("@box-local/mudb/schema").MuUint32;
-            color4: import("@box-local/mudb/schema").MuUint32;
-            size0: import("@box-local/mudb/schema").MuQuantizedFloat;
-            size1: import("@box-local/mudb/schema").MuQuantizedFloat;
-            size2: import("@box-local/mudb/schema").MuQuantizedFloat;
-            size3: import("@box-local/mudb/schema").MuQuantizedFloat;
-            size4: import("@box-local/mudb/schema").MuQuantizedFloat;
-            sizeSpread: import("@box-local/mudb/schema").MuQuantizedFloat;
-            damping: import("@box-local/mudb/schema").MuQuantizedFloat;
-            id: import("@box-local/mudb/schema").MuVarint;
+            noiseAmpl: import("@box/mudb/schema").MuQuantizedFloat;
+            noiseFreq: import("@box/mudb/schema").MuQuantizedFloat;
+            targetId: import("@box/mudb/schema").MuVarint;
+            targetWeight: import("@box/mudb/schema").MuQuantizedFloat;
+            color0: import("@box/mudb/schema").MuUint32;
+            color1: import("@box/mudb/schema").MuUint32;
+            color2: import("@box/mudb/schema").MuUint32;
+            color3: import("@box/mudb/schema").MuUint32;
+            color4: import("@box/mudb/schema").MuUint32;
+            size0: import("@box/mudb/schema").MuQuantizedFloat;
+            size1: import("@box/mudb/schema").MuQuantizedFloat;
+            size2: import("@box/mudb/schema").MuQuantizedFloat;
+            size3: import("@box/mudb/schema").MuQuantizedFloat;
+            size4: import("@box/mudb/schema").MuQuantizedFloat;
+            sizeSpread: import("@box/mudb/schema").MuQuantizedFloat;
+            damping: import("@box/mudb/schema").MuQuantizedFloat;
+            id: import("@box/mudb/schema").MuVarint;
         }>>;
     }>;
-    damage: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-        id: import("@box-local/mudb/schema").MuVarint;
+    damage: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+        id: import("@box/mudb/schema").MuVarint;
         showHealthBar: MuBoolean;
-        hp: import("@box-local/mudb/schema").MuQuantizedFloat;
-        maxHp: import("@box-local/mudb/schema").MuQuantizedFloat;
+        hp: import("@box/mudb/schema").MuQuantizedFloat;
+        maxHp: import("@box/mudb/schema").MuQuantizedFloat;
     }>>;
-    interactive: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-        id: import("@box-local/mudb/schema").MuVarint;
-        radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-        hint: import("@box-local/mudb/schema").MuUTF8;
+    interactive: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+        id: import("@box/mudb/schema").MuVarint;
+        radius: import("@box/mudb/schema").MuQuantizedFloat;
+        hint: import("@box/mudb/schema").MuUTF8;
         color: import("../utils/quantized-schema").QuantizedVec3Schema;
     }>>;
-    entityName: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-        id: import("@box-local/mudb/schema").MuVarint;
-        radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-        name: import("@box-local/mudb/schema").MuUTF8;
+    entityName: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+        id: import("@box/mudb/schema").MuVarint;
+        radius: import("@box/mudb/schema").MuQuantizedFloat;
+        name: import("@box/mudb/schema").MuUTF8;
         color: import("../utils/quantized-schema").QuantizedVec3Schema;
     }>>;
     sound: MuStruct<{
         ambientSound: MuStruct<{
             ambient: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             breakVoxel: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             placeVoxel: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             playerJoin: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             playerLeave: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
         }>;
-        entitySound: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-            id: import("@box-local/mudb/schema").MuVarint;
+        entitySound: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+            id: import("@box/mudb/schema").MuVarint;
             chat: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             hurt: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             die: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             interact: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
         }>>;
-        playerSound: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-            id: import("@box-local/mudb/schema").MuVarint;
+        playerSound: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+            id: import("@box/mudb/schema").MuVarint;
             spawn: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             jump: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             doubleJump: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             land: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             crouch: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             step: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             swim: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             action0: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             action1: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             enterWater: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             leaveWater: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             startFly: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
             endFly: MuStruct<{
-                sampleId: import("@box-local/mudb/schema").MuVarint;
-                radius: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gain: import("@box-local/mudb/schema").MuQuantizedFloat;
-                gainRange: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitch: import("@box-local/mudb/schema").MuQuantizedFloat;
-                pitchRange: import("@box-local/mudb/schema").MuQuantizedFloat;
+                sampleId: import("@box/mudb/schema").MuVarint;
+                radius: import("@box/mudb/schema").MuQuantizedFloat;
+                gain: import("@box/mudb/schema").MuQuantizedFloat;
+                gainRange: import("@box/mudb/schema").MuQuantizedFloat;
+                pitch: import("@box/mudb/schema").MuQuantizedFloat;
+                pitchRange: import("@box/mudb/schema").MuQuantizedFloat;
             }>;
         }>>;
     }>;
     keyframes: MuStruct<{
-        entity: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-            id: import("@box-local/mudb/schema").MuVarint;
-            targetId: import("@box-local/mudb/schema").MuVarint;
-            startTick: import("@box-local/mudb/schema").MuQuantizedFloat;
-            endTicks: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cycleTicks: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cyclePhase: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cycleCount: import("@box-local/mudb/schema").MuQuantizedFloat;
-            playbackMode: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").AnimationPlaybackMode>;
-            keyframes: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-                tick: import("@box-local/mudb/schema").MuQuantizedFloat;
-                easeIn: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
-                easeOut: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
-                components: import("../keyframes/mu-array-union").MuArrayUnion<[import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuVarint, MuBoolean, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, MuStruct<{}>, MuStruct<{}>, import("@box-local/mudb/schema").MuUint32]>, import("../keyframes/mu-array-union").MuArrayUnion<[MuStruct<{}>, MuStruct<{} | {
-                    [x: string]: import("@box-local/mudb/schema").MuQuantizedFloat;
+        entity: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+            id: import("@box/mudb/schema").MuVarint;
+            targetId: import("@box/mudb/schema").MuVarint;
+            startTick: import("@box/mudb/schema").MuQuantizedFloat;
+            endTicks: import("@box/mudb/schema").MuQuantizedFloat;
+            cycleTicks: import("@box/mudb/schema").MuQuantizedFloat;
+            cyclePhase: import("@box/mudb/schema").MuQuantizedFloat;
+            cycleCount: import("@box/mudb/schema").MuQuantizedFloat;
+            playbackMode: import("@box/mudb/schema").MuSchema<import("../keyframes/type").AnimationPlaybackMode>;
+            keyframes: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+                tick: import("@box/mudb/schema").MuQuantizedFloat;
+                easeIn: import("@box/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
+                easeOut: import("@box/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
+                components: import("../keyframes/mu-array-union").MuArrayUnion<[import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuVarint, MuBoolean, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, MuStruct<{}>, MuStruct<{}>, import("@box/mudb/schema").MuUint32]>, import("../keyframes/mu-array-union").MuArrayUnion<[MuStruct<{}>, MuStruct<{} | {
+                    [x: string]: import("@box/mudb/schema").MuQuantizedFloat;
                 }>, MuStruct<{} | {
-                    [x: string]: import("@box-local/mudb/schema").MuQuantizedFloat;
-                }>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, MuStruct<{
-                    x: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    [x: string]: import("@box/mudb/schema").MuQuantizedFloat;
+                }>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, MuStruct<{
+                    x: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    y: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    y: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    z: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    z: import("@box/mudb/schema").MuQuantizedFloat;
                 }>, MuStruct<{
-                    x: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    x: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    y: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    y: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    z: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    z: import("@box/mudb/schema").MuQuantizedFloat;
                 }>]>, import("../keyframes/mu-array-union").MuArrayUnion<[MuStruct<{
-                    color0: import("@box-local/mudb/schema").MuUint32;
-                    color1: import("@box-local/mudb/schema").MuUint32;
-                    color2: import("@box-local/mudb/schema").MuUint32;
-                    color3: import("@box-local/mudb/schema").MuUint32;
-                    color4: import("@box-local/mudb/schema").MuUint32;
+                    color0: import("@box/mudb/schema").MuUint32;
+                    color1: import("@box/mudb/schema").MuUint32;
+                    color2: import("@box/mudb/schema").MuUint32;
+                    color3: import("@box/mudb/schema").MuUint32;
+                    color4: import("@box/mudb/schema").MuUint32;
                 }>, MuStruct<{
-                    size0: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    size1: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    size2: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    size3: import("@box-local/mudb/schema").MuQuantizedFloat;
-                    size4: import("@box-local/mudb/schema").MuQuantizedFloat;
-                }>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, MuStruct<{
-                    x: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    size0: import("@box/mudb/schema").MuQuantizedFloat;
+                    size1: import("@box/mudb/schema").MuQuantizedFloat;
+                    size2: import("@box/mudb/schema").MuQuantizedFloat;
+                    size3: import("@box/mudb/schema").MuQuantizedFloat;
+                    size4: import("@box/mudb/schema").MuQuantizedFloat;
+                }>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, MuStruct<{
+                    x: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    y: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    y: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    z: import("@box-local/mudb/schema").MuQuantizedFloat;
-                }>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuVarint, import("@box-local/mudb/schema").MuSchema<number>]>, import("../keyframes/mu-array-union").MuArrayUnion<[MuStruct<{
-                    r: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    z: import("@box/mudb/schema").MuQuantizedFloat;
+                }>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuVarint, import("@box/mudb/schema").MuSchema<number>]>, import("../keyframes/mu-array-union").MuArrayUnion<[MuStruct<{
+                    r: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    g: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    g: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    b: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    b: import("@box/mudb/schema").MuQuantizedFloat;
                 }>]>]>;
             }>>;
         }>>;
-        player: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-            id: import("@box-local/mudb/schema").MuVarint;
-            targetId: import("@box-local/mudb/schema").MuVarint;
-            startTick: import("@box-local/mudb/schema").MuQuantizedFloat;
-            endTicks: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cycleTicks: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cyclePhase: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cycleCount: import("@box-local/mudb/schema").MuQuantizedFloat;
-            playbackMode: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").AnimationPlaybackMode>;
-            keyframes: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-                tick: import("@box-local/mudb/schema").MuQuantizedFloat;
-                easeIn: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
-                easeOut: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
-                components: import("../keyframes/mu-array-union").MuArrayUnion<[import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>, MuStruct<{
-                    r: import("@box-local/mudb/schema").MuQuantizedFloat;
+        player: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+            id: import("@box/mudb/schema").MuVarint;
+            targetId: import("@box/mudb/schema").MuVarint;
+            startTick: import("@box/mudb/schema").MuQuantizedFloat;
+            endTicks: import("@box/mudb/schema").MuQuantizedFloat;
+            cycleTicks: import("@box/mudb/schema").MuQuantizedFloat;
+            cyclePhase: import("@box/mudb/schema").MuQuantizedFloat;
+            cycleCount: import("@box/mudb/schema").MuQuantizedFloat;
+            playbackMode: import("@box/mudb/schema").MuSchema<import("../keyframes/type").AnimationPlaybackMode>;
+            keyframes: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+                tick: import("@box/mudb/schema").MuQuantizedFloat;
+                easeIn: import("@box/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
+                easeOut: import("@box/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
+                components: import("../keyframes/mu-array-union").MuArrayUnion<[import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>, MuStruct<{
+                    r: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    g: import("@box-local/mudb/schema").MuQuantizedFloat;
+                    g: import("@box/mudb/schema").MuQuantizedFloat;
                 } & {
-                    b: import("@box-local/mudb/schema").MuQuantizedFloat;
-                }>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuASCII]>]>;
+                    b: import("@box/mudb/schema").MuQuantizedFloat;
+                }>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuASCII]>]>;
             }>>;
         }>>;
-        world: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-            id: import("@box-local/mudb/schema").MuVarint;
-            targetId: import("@box-local/mudb/schema").MuVarint;
-            startTick: import("@box-local/mudb/schema").MuQuantizedFloat;
-            endTicks: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cycleTicks: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cyclePhase: import("@box-local/mudb/schema").MuQuantizedFloat;
-            cycleCount: import("@box-local/mudb/schema").MuQuantizedFloat;
-            playbackMode: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").AnimationPlaybackMode>;
-            keyframes: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-                tick: import("@box-local/mudb/schema").MuQuantizedFloat;
-                easeIn: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
-                easeOut: import("@box-local/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
-                components: import("../keyframes/mu-array-union").MuArrayUnion<[import("../keyframes/mu-array-union").MuArrayUnion<[]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuSchema<number>, import("@box-local/mudb/schema").MuSchema<number>]>]>;
+        world: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+            id: import("@box/mudb/schema").MuVarint;
+            targetId: import("@box/mudb/schema").MuVarint;
+            startTick: import("@box/mudb/schema").MuQuantizedFloat;
+            endTicks: import("@box/mudb/schema").MuQuantizedFloat;
+            cycleTicks: import("@box/mudb/schema").MuQuantizedFloat;
+            cyclePhase: import("@box/mudb/schema").MuQuantizedFloat;
+            cycleCount: import("@box/mudb/schema").MuQuantizedFloat;
+            playbackMode: import("@box/mudb/schema").MuSchema<import("../keyframes/type").AnimationPlaybackMode>;
+            keyframes: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+                tick: import("@box/mudb/schema").MuQuantizedFloat;
+                easeIn: import("@box/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
+                easeOut: import("@box/mudb/schema").MuSchema<import("../keyframes/type").KeyframeEaseMode>;
+                components: import("../keyframes/mu-array-union").MuArrayUnion<[import("../keyframes/mu-array-union").MuArrayUnion<[]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuSchema<number>, import("@box/mudb/schema").MuSchema<number>]>]>;
             }>>;
         }>>;
     }>;
-    entities: import("@box-local/mudb/schema").MuSortedArray<import("@box-local/mudb/schema").MuVarint>;
+    entities: import("@box/mudb/schema").MuSortedArray<import("@box/mudb/schema").MuVarint>;
 }>;
 export type GameReplica = typeof GameReplicaSchema.identity;
 //# sourceMappingURL=game-replica.d.ts.map

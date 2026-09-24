@@ -1,4 +1,4 @@
-import { MuUTF8, MuUint32, MuStruct, MuArray, MuBoolean } from '@box-local/mudb/schema';
+import { MuUTF8, MuUint32, MuStruct, MuArray, MuBoolean } from '@box/mudb/schema';
 export declare const StackFrameSchema: MuStruct<{
     function: MuUTF8;
     file: MuUTF8;

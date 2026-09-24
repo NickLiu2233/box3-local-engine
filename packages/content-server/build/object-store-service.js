@@ -32,7 +32,7 @@ const https = __importStar(require("https"));
 const url = __importStar(require("url"));
 const form_data_1 = __importDefault(require("form-data"));
 const index_1 = require("./index");
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 class ObjectStoreService {
     constructor(spec) {
         this.retryCount = 10;

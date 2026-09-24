@@ -1,13 +1,13 @@
 import { ReactNode, memo, useCallback, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
-import { AutoResizeType, UICoord2Keys } from '@box-local/schema/project/ui-rda/defs';
+import { AutoResizeType, UICoord2Keys } from '@box/schema/project/ui-rda/defs';
 import {
   isUIElement,
   pickAutoLayoutProp,
-} from '@box-local/schema/project/ui-rda/util';
-import { IconSizeW, IconSizeH, IconPositionY, IconPositionX } from '@box-local/icons';
-import type { ItemId, MenuItemOptions, SelectProps } from '@box-local/box-design';
+} from '@box/schema/project/ui-rda/util';
+import { IconSizeW, IconSizeH, IconPositionY, IconPositionX } from '@box/icons';
+import type { ItemId, MenuItemOptions, SelectProps } from '@box/box-design';
 import { RootState } from 'src/redux/edit';
 import { useEdit } from 'src/client/edit/edit-context';
 import { UICoord2Input, Props as UICoord2Props } from '../inputs/coord2-input';

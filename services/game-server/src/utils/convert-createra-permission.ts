@@ -1,10 +1,10 @@
-import { PrebakeCache } from '@box-local/build-system/project/prebake-schema';
-import { CollaborationMigrationVO } from '@box-local/apis/dist/createra/data-contracts';
+import { PrebakeCache } from '@box/build-system/project/prebake-schema';
+import { CollaborationMigrationVO } from '@box/apis/dist/createra/data-contracts';
 import {
   JavaPermissionsMap,
   mapPermissionToCreatera,
-} from '@box-local/utils/createra-permissions';
-import { PermissionMemberRDA } from '@box-local/schema/permissions/permission-rda';
+} from '@box/utils/createra-permissions';
+import { PermissionMemberRDA } from '@box/schema/permissions/permission-rda';
 
 /**
  * 转换prebake的权限到java接口入参

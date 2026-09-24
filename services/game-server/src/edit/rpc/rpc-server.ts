@@ -1,9 +1,9 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
 import { EditRPCProtocol } from './rpc-schema';
 import { EditServerState } from '../edit-server-schema';
 import { setPlayerHacking } from '../../player/player-server-controller';
-import { Logger } from '@box-local/utils/logger';
-import { MuStruct, MuVarint, MuArray, MuUTF8 } from '@box-local/mudb/schema';
+import { Logger } from '@box/utils/logger';
+import { MuStruct, MuVarint, MuArray, MuUTF8 } from '@box/mudb/schema';
 
 export class EditRPCServer {
   private _protocol: MuServerProtocol<typeof EditRPCProtocol>;

@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
 import { useIntl } from 'react-intl';
 
-import { Trigger } from '@box-local/box-design/build/trigger';
-import { TooltipTrigger } from '@box-local/box-design';
-import { Menu, MenuItemOptions } from '@box-local/box-design/build/menu';
+import { Trigger } from '@box/box-design/build/trigger';
+import { TooltipTrigger } from '@box/box-design';
+import { Menu, MenuItemOptions } from '@box/box-design/build/menu';
 
 import { CenterPanelEnum } from 'src/views/edit/defs';
 

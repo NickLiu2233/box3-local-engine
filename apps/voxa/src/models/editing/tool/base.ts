@@ -2,7 +2,7 @@ import type { Pointer } from '../../pointer';
 import type { EditingCollector } from '../collector';
 import type { Model } from '../../voxel-model/model';
 import type { EditModes, ModelsDict } from '../interfaces';
-import { EditingMode } from '@box-local/utils/helper';
+import { EditingMode } from '@box/utils/helper';
 import { Stage } from '../../stage';
 
 export type Params = {

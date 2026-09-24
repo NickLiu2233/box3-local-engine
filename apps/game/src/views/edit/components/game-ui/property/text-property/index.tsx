@@ -9,14 +9,14 @@ import {
 } from 'react';
 import { nanoid } from '@reduxjs/toolkit';
 import { useIntl } from 'react-intl';
-import { isUITextNode } from '@box-local/schema/project/ui-rda/util';
-import { ItemId, MenuItemOptions, TextArea } from '@box-local/box-design';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
+import { isUITextNode } from '@box/schema/project/ui-rda/util';
+import { ItemId, MenuItemOptions, TextArea } from '@box/box-design';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
 import {
   TextXAlignType,
   TextYAlignType,
   UITextFontFamily,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import { useEdit } from 'src/client/edit/edit-context';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import { OnAlignmentChange, TextAlignments } from './alignment';

@@ -1,5 +1,5 @@
 import type { EmitEventType, EventObject } from './event-types';
-import dsbridge from '@box-local/dsbridge';
+import dsbridge from '@box/dsbridge';
 import { Events } from './events';
 
 /**

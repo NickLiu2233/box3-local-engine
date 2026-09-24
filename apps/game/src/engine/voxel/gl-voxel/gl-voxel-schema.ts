@@ -8,12 +8,12 @@ import {
   MuVarint,
   MuUint8,
   MuASCII,
-} from '@box-local/mudb/schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+} from '@box/mudb/schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import { VERTEX_SIZE } from '../voxel-mesher';
 
 import REGL from 'regl';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { REGLVAOSchema, REGLTexture2DSchema } from '../../utils/regl-schema';
 import { GLTextureSchema } from '../../gl/schema/gl-texture';
 import { ChunkVisibilityFlags } from '../visibility-flags';

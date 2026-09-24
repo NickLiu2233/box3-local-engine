@@ -1,4 +1,4 @@
-import { MuArray, MuOption, MuStruct, MuVarint } from '@box-local/mudb/schema';
+import { MuArray, MuOption, MuStruct, MuVarint } from '@box/mudb/schema';
 import {
   HitBoxSchema,
   NodesSchema,

@@ -1,4 +1,4 @@
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { AssetType } from '@box/schema/project/project-rda';
 import type { EditClient } from 'src/client/edit/edit-client';
 import type { PlayClient } from 'src/client/play/play-client';
 import type {

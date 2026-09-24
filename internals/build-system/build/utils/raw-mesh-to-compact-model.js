@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rawMeshToCompactModel = rawMeshToCompactModel;
-const pool_1 = require("@box-local/utils/pool");
-const fill_1 = require("@box-local/utils/fill");
-const modelMeshSchema_1 = require("@box-local/schema/mesh/modelMeshSchema");
+const pool_1 = require("@box/utils/pool");
+const fill_1 = require("@box/utils/fill");
+const modelMeshSchema_1 = require("@box/schema/mesh/modelMeshSchema");
 function rawMeshToCompactModel(rawMesh, palette, MSE) {
     const vertexCount = rawMesh.length / 8;
     const surfaceCount = vertexCount / 6;

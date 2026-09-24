@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { IconPlay, IconLoading, IconStop } from '@box-local/icons';
-import { TooltipTrigger } from '@box-local/box-design';
+import { IconPlay, IconLoading, IconStop } from '@box/icons';
+import { TooltipTrigger } from '@box/box-design';
 
 import { RootState } from 'src/redux/edit';
 import { useEdit } from 'src/client/edit/edit-context';

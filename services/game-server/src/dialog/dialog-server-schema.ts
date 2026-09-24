@@ -6,11 +6,11 @@ import {
   MuSchema,
   MuFloat64,
   MuArray,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   DialogConfig,
   DialogResultSchema,
-} from '@box-local/schema/dialog/dialog-protocol';
+} from '@box/schema/dialog/dialog-protocol';
 
 export const PendingDialogSchema = new MuStruct({
   promiseId: new MuVarint(),

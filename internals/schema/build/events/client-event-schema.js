@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClientEventSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("../utils/math-schema");
-const init_array_1 = require("@box-local/utils/init-array");
+const init_array_1 = require("@box/utils/init-array");
 const input_schema_1 = require("../input/input-schema");
 const animation_event_schema_1 = require("./animation-event-schema");
 const chat_event_schema_1 = require("./chat-event-schema");

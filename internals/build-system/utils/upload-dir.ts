@@ -1,9 +1,9 @@
 import chokidar from 'chokidar';
 import fs from 'fs';
 import path from 'path';
-import { ContentServer } from '@box-local/content-server';
-import { Logger } from '@box-local/utils/logger';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { ContentServer } from '@box/content-server';
+import { Logger } from '@box/utils/logger';
+import { Semaphore } from '@box/utils/semaphore';
 
 export type UploadDirType = {
   [name: string]: string | UploadDirType;

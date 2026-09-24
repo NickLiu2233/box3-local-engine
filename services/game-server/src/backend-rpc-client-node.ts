@@ -1,19 +1,19 @@
-import { MuRPCClient } from '@box-local/mudb/rpc/client';
-import { MuRPCHttpClientTransport } from '@box-local/mudb/rpc/http/client';
+import { MuRPCClient } from '@box/mudb/rpc/client';
+import { MuRPCHttpClientTransport } from '@box/mudb/rpc/http/client';
 import {
   MuRPCClientTransport,
   MuRPCProtocol,
   MuRPCSchemas,
-} from '@box-local/mudb/rpc/protocol';
-import { Logger } from '@box-local/utils/logger';
-import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
-import { AuthAPI, AuthRPCSchema } from '@box-local/schema/backend/rpc/auth-protocol';
+} from '@box/mudb/rpc/protocol';
+import { Logger } from '@box/utils/logger';
+import { BackendRPC } from '@box/schema/backend/rpc-interface';
+import { AuthAPI, AuthRPCSchema } from '@box/schema/backend/rpc/auth-protocol';
 import {
   ContentAPI,
   ContentRPCSchema,
-} from '@box-local/schema/backend/rpc/content-protocol';
+} from '@box/schema/backend/rpc/content-protocol';
 
-import { UserAPI, UserRPCSchema } from '@box-local/schema/backend/rpc/user-protocol';
+import { UserAPI, UserRPCSchema } from '@box/schema/backend/rpc/user-protocol';
 
 export class BackendClientRPCNode implements BackendRPC {
   public user: UserAPI;

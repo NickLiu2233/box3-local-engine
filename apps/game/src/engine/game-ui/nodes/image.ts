@@ -5,7 +5,7 @@ import { GameUIRenderable } from './renderable';
 import EmptyImage from './photo-image.png';
 import { ImageStatus } from 'src/engine/resource/schema';
 import { createCanvas2DImageSource } from 'src/engine/utils/image';
-import { ImageDisplayMode } from '@box-local/schema/project/ui-rda/defs';
+import { ImageDisplayMode } from '@box/schema/project/ui-rda/defs';
 import EventEmitter from 'events';
 
 const EMPTY_IMAGE = createCanvas2DImageSource(EmptyImage);

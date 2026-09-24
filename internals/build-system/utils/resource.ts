@@ -4,8 +4,8 @@ import path from 'path';
 import type { Logger } from 'pino';
 
 import { BuildSystem } from '../build-system';
-import { ContentServer } from '@box-local/content-server';
-import { decodeUTF8 } from '@box-local/mudb/stream';
+import { ContentServer } from '@box/content-server';
+import { decodeUTF8 } from '@box/mudb/stream';
 import { uploadDirectory, UploadDirType } from './upload-dir';
 
 function inferType(json: any) {

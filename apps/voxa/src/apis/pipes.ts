@@ -1,4 +1,4 @@
-import { LoginUserInfoVO } from '@box-local/apis';
+import { LoginUserInfoVO } from '@box/apis';
 
 export const pipes = {
   userInfoToUserDetail(res: LoginUserInfoVO) {

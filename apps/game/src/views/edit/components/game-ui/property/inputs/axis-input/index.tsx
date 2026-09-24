@@ -9,11 +9,11 @@ import React, {
 } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from 'src/redux/edit';
-import { Input } from '@box-local/box-design';
-import { IconPercentage, IconPixel } from '@box-local/icons';
-import { InputPauseFlags } from '@box-local/schema/input/input-schema';
-import { UICoord2Keys } from '@box-local/schema/project/ui-rda/defs';
-import { isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { Input } from '@box/box-design';
+import { IconPercentage, IconPixel } from '@box/icons';
+import { InputPauseFlags } from '@box/schema/input/input-schema';
+import { UICoord2Keys } from '@box/schema/project/ui-rda/defs';
+import { isUIScreen } from '@box/schema/project/ui-rda/util';
 import { InputPause, useInputPause } from 'src/views/components/input-lock';
 import style from './index.module.scss';
 import { UITreeContext } from '../../../hooks';

@@ -1,5 +1,5 @@
 import { isMobile } from './mobile';
-import { fetch } from '@box-local/utils/http-fetch/browser';
+import { fetch } from '@box/utils/http-fetch/browser';
 
 type WechatSDKConfig = {
   nonceStr: string;

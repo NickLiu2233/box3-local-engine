@@ -30,7 +30,7 @@ import {
 import { destroyMesh } from '../mesh/renderable-schema';
 import { glTexture } from './texture';
 import { restoreVoxelWebGL } from '../voxel/voxel-controller';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 import {
   drawModelsShadow,
   drawModelsForward,
@@ -40,7 +40,7 @@ import {
   compareMeshInstanceList,
   compareTransparentMeshInstanceList,
 } from '../mesh/gl-controller/gl-mesh-schema';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import { drawSeedsForward, drawSeedsShadowForward } from './seed';
 import { traverseUI3D } from '../ui3d/ui3d-controller';
 import { UI3DElement } from '../ui3d/ui3d-schema';

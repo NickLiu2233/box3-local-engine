@@ -11,8 +11,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.buildResource = buildResource;
 const build_system_1 = require("../build-system");
-const stream_1 = require("@box-local/mudb/stream");
-const stringify_1 = require("@box-local/mudb/util/stringify");
+const stream_1 = require("@box/mudb/stream");
+const stringify_1 = require("@box/mudb/util/stringify");
 function isFileResource(spec) {
     return 'file' in spec;
 }

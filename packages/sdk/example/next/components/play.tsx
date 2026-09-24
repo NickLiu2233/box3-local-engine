@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { create, EventsType } from '@box-local/sdk';
+import { create, EventsType } from '@box/sdk';
 import style from '../styles/index.module.scss';
 interface OnEvents extends EventsType {
   custom: any;

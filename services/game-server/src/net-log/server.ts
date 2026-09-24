@@ -1,11 +1,11 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
 import {
   LogSink,
   LogMessage,
   LogMessageSchema,
   LogLevel,
-} from '@box-local/utils/logger';
-import { NetLogEvent, NetLogSchema } from '@box-local/schema/net-log/schema';
+} from '@box/utils/logger';
+import { NetLogEvent, NetLogSchema } from '@box/schema/net-log/schema';
 import { levels, Logger } from 'pino';
 
 export class NetLogServer {

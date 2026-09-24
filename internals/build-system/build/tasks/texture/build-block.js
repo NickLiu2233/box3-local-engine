@@ -16,7 +16,7 @@ exports.buildBlocks = buildBlocks;
 const ndarray_1 = __importDefault(require("ndarray"));
 const voxel_utils_1 = require("./voxel-utils");
 const voxel_atlas_1 = require("./voxel-atlas");
-const block_schema_1 = require("@box-local/schema/voxel/block-schema");
+const block_schema_1 = require("@box/schema/voxel/block-schema");
 function buildBlocks(bs, blockSpecHash, voxelsIndexHash) {
     return __awaiter(this, void 0, void 0, function* () {
         const data = yield readVoxelData(bs, blockSpecHash, voxelsIndexHash);

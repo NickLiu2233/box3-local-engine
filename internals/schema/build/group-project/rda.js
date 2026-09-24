@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GroupProjectStateSchema = exports.GroupProjectStoreSchema = exports.GroupProjectRDA = exports.GroupAssetsRDA = exports.GroupAssetEntryRDA = exports.CommonAssets = exports.AssetTypeSchema = exports.AssetType = void 0;
-const rda_1 = require("@box-local/mudb/rda");
-const schema_1 = require("@box-local/mudb/schema");
+const rda_1 = require("@box/mudb/rda");
+const schema_1 = require("@box/mudb/schema");
 const index_1 = require("../content-server/index");
 const defs_1 = require("../project/ui-rda/defs");
 var AssetType;

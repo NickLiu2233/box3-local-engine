@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.KeyBoardEventType = exports.ClientKeyboardEventsSchema = exports.ClientKeyboardEventSchema = void 0;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 exports.ClientKeyboardEventSchema = new schema_1.MuStruct({
     id: new schema_1.MuVarint(),
     tick: new schema_1.MuVarint(),

@@ -1,5 +1,5 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
-import { PublishProtocol } from '@box-local/schema/publish/publish-schema';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
+import { PublishProtocol } from '@box/schema/publish/publish-schema';
 import { ClientStateType } from '../edit-schema';
 
 export class PublishClient {

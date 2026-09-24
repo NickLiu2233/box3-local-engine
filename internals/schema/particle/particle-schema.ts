@@ -4,9 +4,9 @@ import {
   MuVarint,
   MuSortedArray,
   MuQuantizedFloat,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 
 export function packColor(c: { r: number; g: number; b: number }) {
   const intensity = Math.floor(Math.min(256, Math.max(1, c.r, c.g, c.b))) - 1;

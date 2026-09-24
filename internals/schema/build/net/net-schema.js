@@ -2,11 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.NetPublicSetSchema = exports.NetPublicSchema = exports.NetSecretSchema = exports.NetProtocolSchema = exports.ClientScriptSrcSchema = exports.NetMessageType = exports.NetInputSchema = exports.TaggedNetClientInputSchema = exports.TimestampedClientInputSchema = exports.NetClientInputSchema = exports.NetInputEventSchema = exports.NetInputEventBits = exports.NetPositionCorrectionSetSchema = exports.NetPositionCorrectionSchema = exports.NetStateSchema = exports.PUBLIC_BUFFER_DIVISOR = exports.MAX_INPUT_EVENTS = exports.MAX_CLIENT_INPUT_ENTITIES = void 0;
 exports.compareNetPublic = compareNetPublic;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const physics_schema_1 = require("../physics/physics-schema");
 const player_schema_1 = require("../player/player-schema");
 const delta_schema_1 = require("./delta-schema");
-const id_1 = require("@box-local/utils/id");
+const id_1 = require("@box/utils/id");
 const quantized_schema_1 = require("../utils/quantized-schema");
 const script_events_1 = require("../events/script-events");
 const collision_filter_schema_1 = require("../physics/collision-filter-schema");

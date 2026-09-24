@@ -8,14 +8,14 @@ import {
   MuSchema,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Mat3Schema,
   Mat4Schema,
   Vec2Schema,
   Vec3Schema,
-} from '@box-local/schema/utils/math-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/schema/utils/math-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { LightProbe } from '../../voxel/light-schema';
 import {
   REGLBufferSchema,

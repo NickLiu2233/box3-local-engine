@@ -1,8 +1,8 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { IconMore } from '@box-local/icons';
-import { Button } from '@box-local/box-design';
-import { FileState } from '@box-local/schema/code-editor/code-editor-common-state';
+import { IconMore } from '@box/icons';
+import { Button } from '@box/box-design';
+import { FileState } from '@box/schema/code-editor/code-editor-common-state';
 
 import { RootState } from 'src/redux/edit';
 import { setScriptMenuInfo } from 'src/redux/edit/script-manager';

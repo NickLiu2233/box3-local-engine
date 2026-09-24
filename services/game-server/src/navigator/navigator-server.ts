@@ -1,13 +1,13 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { getById } from '@box-local/utils/id';
-import { Logger } from '@box-local/utils/logger';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
+import { getById } from '@box/utils/id';
+import { Logger } from '@box/utils/logger';
 import { GameServerState } from '../game-server-schema';
-import { NavigatorProtocol } from '@box-local/schema/navigator/navigator-protocol';
+import { NavigatorProtocol } from '@box/schema/navigator/navigator-protocol';
 import {
   PostMessageSchema,
   PostMessageType,
-} from '@box-local/schema/navigator/navigator-schema';
-import { filterSwear } from '@box-local/utils/swears/index';
+} from '@box/schema/navigator/navigator-schema';
+import { filterSwear } from '@box/utils/swears/index';
 import { NavigatorScriptProtocol } from './navigator-script-protocol';
 import { getConfigSync } from '../../config/server';
 

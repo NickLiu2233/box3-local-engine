@@ -1,11 +1,11 @@
 import type { Logger } from 'pino';
 
-import { MuSchema } from '@box-local/mudb/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
-import { stableStringify } from '@box-local/mudb/util/stringify';
+import { MuSchema } from '@box/mudb/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
+import { stableStringify } from '@box/mudb/util/stringify';
 
 import { BuildSystemAPI, BuildCacheAPI, Tasks, TaskParams } from './type';
-import { ContentServer, OssCdnPath, OssStoreType } from '@box-local/content-server';
+import { ContentServer, OssCdnPath, OssStoreType } from '@box/content-server';
 import { tasks } from './task-index';
 
 export class BuildSystem implements BuildSystemAPI {

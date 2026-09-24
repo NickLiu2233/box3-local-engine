@@ -1,4 +1,4 @@
-# Change Log - @box-local/box-design
+# Change Log - @box/box-design
 
 This log was last generated on Wed, 25 Dec 2024 07:21:20 GMT and should not be manually modified.
 

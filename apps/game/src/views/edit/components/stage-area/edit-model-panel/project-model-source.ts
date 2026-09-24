@@ -1,4 +1,4 @@
-import { ModelType } from '@box-local/apis';
+import { ModelType } from '@box/apis';
 
 import type { EditClient } from 'src/client/edit/edit-client';
 import { clientConfig } from 'src/config/client';

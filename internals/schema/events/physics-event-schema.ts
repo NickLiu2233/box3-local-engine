@@ -1,4 +1,4 @@
-import { MuStruct, MuArray, MuVarint } from '@box-local/mudb/schema';
+import { MuStruct, MuArray, MuVarint } from '@box/mudb/schema';
 import {
   BodyContactSchema,
   VoxelContactSchema,

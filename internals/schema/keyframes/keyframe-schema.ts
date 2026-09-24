@@ -1,4 +1,4 @@
-import { MuStruct } from '@box-local/mudb/schema';
+import { MuStruct } from '@box/mudb/schema';
 import { ENTITY_ANIM_BINDING } from './bindings/entity-animation';
 import { PLAYER_ANIM_BINDING } from './bindings/player-animation';
 import { WORLD_ANIM_BINDING } from './bindings/world-animation';

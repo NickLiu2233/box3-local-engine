@@ -1,6 +1,6 @@
 import { vec3 } from 'gl-matrix';
 import type { Logger } from 'pino';
-import { MuRemoteClient, MuServer, MuServerProtocol } from '@box-local/mudb/server';
+import { MuRemoteClient, MuServer, MuServerProtocol } from '@box/mudb/server';
 import {
   EditReplicaInitSchema,
   EditReplicaProtocol,
@@ -10,7 +10,7 @@ import {
   ProjectStateSchema,
   ProjectStoreSchema,
   VoxelWriteSequenceSchema,
-} from '@box-local/schema/replica/replica-schema';
+} from '@box/schema/replica/replica-schema';
 import { EditServerState } from '../edit-server-schema';
 import {
   AmbientSoundRDA,
@@ -23,7 +23,7 @@ import {
   PlayerRDA,
   ProjectRDA,
   VoxelRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import {
   combinePermissionSet,
   OWNER_PERMISSIONS,
@@ -34,10 +34,10 @@ import {
   Permissions,
   PermissionSetSchema,
   PermissionTokenSchema,
-} from '@box-local/schema/permissions/permission-rda';
-import { Semaphore } from '@box-local/utils/semaphore';
+} from '@box/schema/permissions/permission-rda';
+import { Semaphore } from '@box/utils/semaphore';
 import { RDATransaction } from './transaction/transaction';
-import { VoxelWrite, VoxelWriteSchema } from '@box-local/schema/voxel/voxel-protocol';
+import { VoxelWrite, VoxelWriteSchema } from '@box/schema/voxel/voxel-protocol';
 import { checkProjectActionSequence } from './validate/validate-project-action';
 import { checkVoxelWriteSequence } from './validate/validate-voxel-action';
 import { checkPermissionActionSequence } from './validate/validate-permission-action';
@@ -50,31 +50,31 @@ import { recordVoxelInfo } from '../../voxel/voxel-server';
 import {
   generatePermissionToken,
   parsePermissionToken,
-} from '@box-local/build-system/permissions/permission-token';
+} from '@box/build-system/permissions/permission-token';
 import { CodeEditorServerController } from '../code-editor/code-editor-server-controller';
 import {
   copySoundAssets,
   updateHotProjectAssets,
-} from '@box-local/build-system/project/bake';
-import { CHUNK_SHIFT } from '@box-local/schema/voxel/voxel-collision-schema';
+} from '@box/build-system/project/bake';
+import { CHUNK_SHIFT } from '@box/schema/voxel/voxel-collision-schema';
 import {
   storeProject,
   StoreProjectRes,
-} from '@box-local/build-system/project/project-serialize';
-import { storePermissions } from '@box-local/build-system/permissions/permission-serialize';
-import { CloseType } from '@box-local/schema/types/game';
+} from '@box/build-system/project/project-serialize';
+import { storePermissions } from '@box/build-system/permissions/permission-serialize';
+import { CloseType } from '@box/schema/types/game';
 import {
   ExtraProjectInfo,
   ExtraProjectInfoSchema,
   getMeshPath,
-} from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/hot-schema';
 import {
   applyLocalSharedScriptMutation,
   canPersistLocalSharedScript,
   isSharedAfterLocalScriptAction,
   localSharedScriptLockOwnerId,
 } from './local-shared-script-state';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { getExtraProject } from '../../project/project-extra';
 import { getConfigSync } from '../../../config/server';
 import {
@@ -83,7 +83,7 @@ import {
   OPCode,
   P2PDataType,
   ReceivedMsg,
-} from '@box-local/schema/chat/chat-schema';
+} from '@box/schema/chat/chat-schema';
 import {
   filterGroupProjectActions,
   generateBroadcastMsg,
@@ -93,8 +93,8 @@ import {
   serializeGroupProjectStoreByProject,
   updateProjectStoreByGroupProject,
 } from '../../group-project';
-import { GroupProjectStore } from '@box-local/schema/group-project/rda';
-import { OssStoreType } from '@box-local/content-server';
+import { GroupProjectStore } from '@box/schema/group-project/rda';
+import { OssStoreType } from '@box/content-server';
 import {
   getLocalExtraProjectMode,
   getLocalExtraProjectStateHash,

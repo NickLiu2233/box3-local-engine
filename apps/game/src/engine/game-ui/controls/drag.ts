@@ -1,5 +1,5 @@
 import { vec2 } from 'gl-matrix';
-import { MouseButton } from '@box-local/schema/input/input-schema';
+import { MouseButton } from '@box/schema/input/input-schema';
 import EventEmitter from 'events';
 import type { GameUINode } from '../nodes/base';
 import {

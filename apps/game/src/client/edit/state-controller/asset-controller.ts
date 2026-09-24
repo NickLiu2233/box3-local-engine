@@ -7,7 +7,7 @@ import {
   AssetEntry,
   AssetEntryRDA,
   DeleteAssetsRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { ClientStateType } from '../edit-schema';
 import { CodeEditorClientController } from '../code-editor/code-editor-client-controller';
 import { clientConfig, getConfig } from 'src/config/client';

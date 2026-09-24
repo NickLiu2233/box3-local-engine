@@ -11,26 +11,26 @@ import {
   getRenderableGLTF,
 } from '../mesh/controller';
 import { testFrustumBox } from '../utils/frustum';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import { LightQueryMask } from '../voxel/light-schema';
-import { RigidBody } from '@box-local/schema/physics/physics-schema';
+import { RigidBody } from '@box/schema/physics/physics-schema';
 import {
   PlayerDisplay,
   PlayerAttachment,
   MeshBound,
   PlayerSkinHash,
   BodyPart as BodyPartEnum,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import { testChunkVisibility } from '../voxel/voxel-controller';
-import { FrustumSchema } from '@box-local/schema/utils/frustum-schema';
-import { IKState } from '@box-local/schema/animation/ik-schema';
+import { FrustumSchema } from '@box/schema/utils/frustum-schema';
+import { IKState } from '@box/schema/animation/ik-schema';
 import {
   GPUMeshInstanceList,
   GPUMeshInstanceListDict,
 } from '../mesh/gpu-controller/gpu-mesh-schema';
 import { pushGPUMesh } from '../mesh/gpu-controller/gpu-mesh-controller';
-import { RenderBox } from '@box-local/schema/render-box/schema';
-import { HashType } from '@box-local/schema/project/hot-schema';
+import { RenderBox } from '@box/schema/render-box/schema';
+import { HashType } from '@box/schema/project/hot-schema';
 
 function hurtFlash(phase: number) {
   const pf = phase * 3;

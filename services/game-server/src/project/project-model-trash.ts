@@ -1,8 +1,8 @@
 import {
   AssetEntry,
   AssetType,
-} from '@box-local/schema/project/project-rda';
-import type { ExtraProjectInfo } from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/project-rda';
+import type { ExtraProjectInfo } from '@box/schema/project/hot-schema';
 
 export type DeletedAsset = { key: string; value: AssetEntry };
 

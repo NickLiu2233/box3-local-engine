@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { BuildCacheAPI } from './type';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 
 export class MockBuildCache implements BuildCacheAPI {
   private cache: { [token: string]: string } = {};

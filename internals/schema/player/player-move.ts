@@ -22,7 +22,7 @@ import {
   PlayerFlags,
   PlayerOccupancyFlags,
 } from './player-schema';
-import { zipId, getById, indexEqRange } from '@box-local/utils/id';
+import { zipId, getById, indexEqRange } from '@box/utils/id';
 import { VoxelCollision } from '../voxel/voxel-collision-schema';
 import { BodyRBushNode, testBodyRBush } from '../physics/body-rbush';
 import { testCollideSolid } from '../voxel/voxel-collision';

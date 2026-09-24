@@ -1,11 +1,11 @@
-import { MuUnion, MuVoid } from '@box-local/mudb/schema';
-import type { MuRDA } from '@box-local/mudb/rda';
+import { MuUnion, MuVoid } from '@box/mudb/schema';
+import type { MuRDA } from '@box/mudb/rda';
 import type {
   MuRDAActionMeta,
   MuRDABindableActionMeta,
   MuRDAStore,
   MuRDATypes,
-} from '@box-local/mudb/rda/rda';
+} from '@box/mudb/rda/rda';
 
 export type MuRDAUnionSpec = { [type: string]: MuRDA<any, any, any, any> };
 

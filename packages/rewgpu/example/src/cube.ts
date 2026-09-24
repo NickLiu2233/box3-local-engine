@@ -1,5 +1,5 @@
 import { mat4 } from 'gl-matrix';
-import { createREWGPU } from '@box-local/rewgpu';
+import { createREWGPU } from '@box/rewgpu';
 
 export async function cube(canvas: HTMLCanvasElement) {
   const rewgpu = await createREWGPU(canvas);

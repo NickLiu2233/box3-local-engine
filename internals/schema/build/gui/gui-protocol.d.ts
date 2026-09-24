@@ -1,4 +1,4 @@
-import { MuBoolean, MuStruct, MuUTF8, MuVarint, MuVoid } from '@box-local/mudb/schema';
+import { MuBoolean, MuStruct, MuUTF8, MuVarint, MuVoid } from '@box/mudb/schema';
 export declare const GUIProtocol: {
     name: string;
     client: {

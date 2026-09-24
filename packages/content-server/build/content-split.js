@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContentSplitter = void 0;
-const stream_1 = require("@box-local/mudb/stream");
+const stream_1 = require("@box/mudb/stream");
 class ContentSplitter {
     constructor(content, blockSize = Infinity, hashLength = 46) {
         this.content = content;

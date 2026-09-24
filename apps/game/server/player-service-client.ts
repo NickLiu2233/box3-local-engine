@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { RuntimePlayerIdentity } from '@box-local/utils/local-player-identity';
+import type { RuntimePlayerIdentity } from '@box/utils/local-player-identity';
 import { requestClientAddress } from './client-address';
 
 type RuntimeIdentityResponse = {

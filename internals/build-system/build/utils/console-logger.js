@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createConsoleLogger = createConsoleLogger;
-const logger_1 = require("@box-local/utils/logger");
+const logger_1 = require("@box/utils/logger");
 function createConsoleLogger(startTime, level = logger_1.LogLevel.INFO) {
     // set up build stuff
     const startDate = +new Date(startTime);

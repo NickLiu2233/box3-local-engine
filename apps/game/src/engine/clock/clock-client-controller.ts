@@ -1,18 +1,18 @@
 import { GameClientState } from '../game-client-schema';
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { MuScheduler } from '@box-local/mudb/scheduler';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { MuScheduler } from '@box/mudb/scheduler';
 import {
   ClockProtocol,
   TICK_RATE,
   MS_PER_TICK,
-} from '@box-local/schema/clock/clock-schema';
+} from '@box/schema/clock/clock-schema';
 import { estimateDelay } from './ping-filter';
 import {
   ClientClockStateSchema,
   ClientClockState,
 } from './clock-client-schema';
-import { Logger } from '@box-local/utils/logger';
-import { TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
+import { Logger } from '@box/utils/logger';
+import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 
 // minimum number of ping samples
 const MIN_PING_SAMPLES = 10;

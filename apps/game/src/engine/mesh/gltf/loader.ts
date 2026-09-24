@@ -1,5 +1,5 @@
 import { mat3, quat, vec3 } from 'gl-matrix';
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import {
   ACCESSOR_TYPE_TO_NUM,
   AccessorComponentType,

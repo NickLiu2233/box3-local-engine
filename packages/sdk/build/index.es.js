@@ -1,5 +1,5 @@
 import { connectToChild, connectToParent } from 'penpal';
-import dsbridge from '@box-local/dsbridge';
+import dsbridge from '@box/dsbridge';
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.

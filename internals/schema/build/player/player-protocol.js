@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PlayerProtocolSchema = void 0;
 const player_event_schema_1 = require("../events/player-event-schema");
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 exports.PlayerProtocolSchema = {
     name: 'player-protocol',
     client: {

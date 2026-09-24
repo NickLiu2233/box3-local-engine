@@ -12,7 +12,7 @@ import {
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
-import { MenuItemOptions, Modal, Toast } from '@box-local/box-design';
+import { MenuItemOptions, Modal, Toast } from '@box/box-design';
 
 import { useEdit } from 'src/client/edit/edit-context';
 import { ArenaEditorUIContext } from 'src/views/edit/editor-ui-context';

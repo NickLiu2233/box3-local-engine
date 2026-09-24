@@ -1,5 +1,5 @@
 // Hacks to get typescript interface into webgpu/rewgpu
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import type {
   IREWGPUBuffer,
   IREWGPUCube,
@@ -8,7 +8,7 @@ import type {
   IREWGPUTexture,
   IndexBufferDescriptor,
   ReWGPU,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 
 export const REWGPUSchema = new MuRefSchema<ReWGPU>();
 export const REWGPUTexture2DSchema = new MuRefSchema<IREWGPUTexture>();

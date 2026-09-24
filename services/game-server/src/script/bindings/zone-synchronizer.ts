@@ -3,9 +3,9 @@ import {
   GameTriggerEvent,
   GameZoneConfig,
   GameEntity,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import { NumSetSchema, ScriptEntityWrapper } from './entity-synchronizer';
-import { ScriptDispatcher } from '@box-local/schema/script/dispatcher';
+import { ScriptDispatcher } from '@box/schema/script/dispatcher';
 import {
   coerceObject,
   coerceBounds,
@@ -21,8 +21,8 @@ import {
   ScriptPhysicsSelector,
   ScriptPhysicsSelectorManager,
 } from './physics-selector';
-import { MuBoolean, MuSchema, MuSortedArray, MuStruct } from '@box-local/mudb/schema';
-import { compareId, TaggedId } from '@box-local/utils/id';
+import { MuBoolean, MuSchema, MuSortedArray, MuStruct } from '@box/mudb/schema';
+import { compareId, TaggedId } from '@box/utils/id';
 import {
   PhysicsZoneBinding,
   EnvironmentZoneBinding,
@@ -31,15 +31,15 @@ import {
 import {
   PhysicsZone,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
+} from '@box/schema/zone/zone-schema';
 import { ScriptSynchronizer, ScriptSyncPatch } from './synchronizer';
 import { ScriptResourceSync } from './resource';
-import { sortedArrayDelete } from '@box-local/utils/sorted-array-remove';
+import { sortedArrayDelete } from '@box/utils/sorted-array-remove';
 import { synchronizeComponent } from './entity-update';
 import { MAX_ZONES, ServerEnvironmentZone } from '../../zone/zone-server-state';
-import { GameVector3 } from '@box-local/schema/api/js/math';
+import { GameVector3 } from '@box/schema/api/js/math';
 import { ScriptPerfCounter } from '../script-protocol';
-import { ScriptScheduler } from '@box-local/utils/script/script-scheduler';
+import { ScriptScheduler } from '@box/utils/script/script-scheduler';
 
 export const ScriptZoneUpdateSchema = new MuStruct({
   // physics zones

@@ -5,21 +5,21 @@ import {
   AssetEntryRDA,
   AssetType,
   ProjectInfo,
-} from '@box-local/schema/project/project-rda';
-import { GroupAssetEntryRDA } from '@box-local/schema/group-project/rda';
-import { ContentServer } from '@box-local/content-server';
-import { encodeUTF8, MuReadStream } from '@box-local/mudb/stream';
-import { Logger } from '@box-local/utils/logger';
-import { BuildSystemAPI } from '@box-local/build-system/type';
+} from '@box/schema/project/project-rda';
+import { GroupAssetEntryRDA } from '@box/schema/group-project/rda';
+import { ContentServer } from '@box/content-server';
+import { encodeUTF8, MuReadStream } from '@box/mudb/stream';
+import { Logger } from '@box/utils/logger';
+import { BuildSystemAPI } from '@box/build-system/type';
 import { initTerrain } from './terrain/init-terrain';
 import { TerrainTheme } from './terrain';
 import { LUT_RES } from '../assets/lut';
 import { WEATHER_RES } from '../assets/weather';
 import { DEFAULT_SOUNDS_RES } from '../assets/default_sounds';
 import { BLOCK_INFO_RES } from '../assets/block_info';
-import { BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
-import { storeProject } from '@box-local/build-system/project/project-serialize';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { BlockInfoSchema } from '@box/schema/voxel/block-schema';
+import { storeProject } from '@box/build-system/project/project-serialize';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
 function initialTerrainTheme() {
   const terrain = String(process.env.BOX_INITIAL_TERRAIN_THEME || '').trim();

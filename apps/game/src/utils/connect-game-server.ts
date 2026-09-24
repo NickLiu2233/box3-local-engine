@@ -1,8 +1,8 @@
-import { retrieveData, type DataRequest } from '@box-local/content-server/data';
-import { retrieveImage, type ImageRequest } from '@box-local/content-server/image';
-import type { LoadingController } from '@box-local/utils/loading/loading-controller';
-import { TaskTypeEnum } from '@box-local/utils/loading/loading-schema';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { retrieveData, type DataRequest } from '@box/content-server/data';
+import { retrieveImage, type ImageRequest } from '@box/content-server/image';
+import type { LoadingController } from '@box/utils/loading/loading-controller';
+import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
+import { Semaphore } from '@box/utils/semaphore';
 import axios from 'axios';
 import { clientConfig } from 'src/config/client';
 import { getToken } from 'src/utils/token';

@@ -12,8 +12,8 @@ import {
   TooltipTrigger,
   Select,
   useSharedTipsDelay,
-} from '@box-local/box-design';
-import { IconAnalytics, IconBigbox } from '@box-local/icons';
+} from '@box/box-design';
+import { IconAnalytics, IconBigbox } from '@box/icons';
 import { useAppSelector } from '../../redux/store';
 import { VoxelEditorContext } from '../../internals';
 import { UndoRedoButtons } from './undo-redo';

@@ -1,5 +1,5 @@
 import { BindingFactory } from './binding-factory';
-import { GameWorld, GameAssetType } from '@box-local/schema/api/js/api';
+import { GameWorld, GameAssetType } from '@box/schema/api/js/api';
 import {
   PhysicsRDA,
   SkyRDA,
@@ -7,7 +7,7 @@ import {
   RainRDA,
   AmbientSoundRDA,
   FogRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { ScriptSynchronizer } from './synchronizer';
 
 const bindPhys = new BindingFactory<

@@ -5,7 +5,7 @@ import {
   ReturnValue,
 } from './types';
 import { GameServerState } from '../game-server-schema';
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
 import { StorageProtocol } from './storage-protocol';
 import {
   StorageClientSchema,
@@ -13,13 +13,13 @@ import {
   StorageQueryState,
   StorageClientSetSchema,
 } from './storage-schema';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 import { PostgresDataStorage } from './postgres-data-storage';
 import { DisabledDataStorage } from './disabled-data-storage';
-import { DB_ERROR_STATUS, ListReturnValue } from '@box-local/schema/api/js/storage';
+import { DB_ERROR_STATUS, ListReturnValue } from '@box/schema/api/js/storage';
 import { StorageLimiters } from './limiters';
 import { getConfigSync } from '../../config/server';
-import { FeatureFlag } from '@box-local/env/constants';
+import { FeatureFlag } from '@box/env/constants';
 import { resolveGroupStorageNamespace } from './storage-namespace';
 
 type DbFetchResultType = ReturnValue | ListReturnValue | undefined | number;

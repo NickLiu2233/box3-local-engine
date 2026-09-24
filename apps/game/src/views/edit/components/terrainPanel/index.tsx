@@ -1,5 +1,5 @@
-import { MouseButton, MouseState } from '@box-local/schema/input/input-schema';
-import { BlockCategory } from '@box-local/schema/voxel/block-schema';
+import { MouseButton, MouseState } from '@box/schema/input/input-schema';
+import { BlockCategory } from '@box/schema/voxel/block-schema';
 import { vec3 } from 'gl-matrix';
 import * as React from 'react';
 import { IntlShape, injectIntl } from 'react-intl';
@@ -41,7 +41,7 @@ import {
   IconBlockRecently,
   IconFill,
   IconSub,
-} from '@box-local/icons';
+} from '@box/icons';
 import style from './index.module.scss';
 
 const RECENT_TAB = -1;

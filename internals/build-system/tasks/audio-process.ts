@@ -1,5 +1,5 @@
 import { BuildSystem } from '../type';
-import { Hash } from '@box-local/content-server';
+import { Hash } from '@box/content-server';
 import { EventEmitter } from 'events';
 
 let audioWorker;

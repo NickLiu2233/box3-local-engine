@@ -8,8 +8,8 @@ import React, {
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
-import { IconRight } from '@box-local/icons';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
+import { IconRight } from '@box/icons';
 
 import { ScriptTab } from './script-tab';
 import { ScriptItem } from './script-item';
@@ -30,8 +30,8 @@ import { LeftNavModeEnum } from 'src/views/edit/defs';
 import { clientConfig } from 'src/config/client';
 import { usesCloudMapGroupAPIs } from 'configs/client';
 import { apis } from 'src/apis/api-java';
-import { Toast } from '@box-local/box-design';
-import { ScriptType } from '@box-local/apis/src/createra/data-contracts';
+import { Toast } from '@box/box-design';
+import { ScriptType } from '@box/apis/src/createra/data-contracts';
 import { ShareModal } from './share-modal';
 import { UnshareModal } from './unshare-modal';
 import { ensureFileInFileList } from 'src/views/edit/components/script-manager/utils';

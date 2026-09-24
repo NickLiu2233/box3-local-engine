@@ -1,4 +1,4 @@
-import type { IREWGPUTexture, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUTexture, ReWGPU } from '@box/rewgpu';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import type { PostprocessResources } from './resources';
 import oitFrag from '../wgsl/oit-frag.wgsl';

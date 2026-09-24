@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/local-engine",
+  "name": "@box/local-engine",
   "version": "0.2.0",
   "private": true,
   "description": "Offline-first local runner for the Box engine",
@@ -14,7 +14,7 @@
     "start:play": "node src/launcher.js --production --play"
   },
   "dependencies": {
-    "@box-local/build-system": "workspace:0.3.1",
-    "@box-local/content-server": "workspace:*"
+    "@box/build-system": "workspace:0.3.1",
+    "@box/content-server": "workspace:*"
   }
 }

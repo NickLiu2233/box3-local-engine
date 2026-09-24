@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import type { GameUINode } from 'src/engine/game-ui/nodes/base';
 import { EventEmitter } from '../events';
 import { COMPONENT_TO_GAME_UI } from './ui-component';

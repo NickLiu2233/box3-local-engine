@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import pino from 'pino';
-import { MuServer } from '@box-local/mudb';
-import { MuChildProcessSocketServer } from '@box-local/mudb/socket/child_process/server';
+import { MuServer } from '@box/mudb';
+import { MuChildProcessSocketServer } from '@box/mudb/socket/child_process/server';
 import { IsolateVmController } from './ivmp-vm-controller';
 import { RemoteScriptProtocol } from './protocol';
 import { parseIvmError } from '../ivm2/parse-error';

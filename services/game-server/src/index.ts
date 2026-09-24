@@ -1,22 +1,22 @@
-import { MuServer } from '@box-local/mudb/server';
-import { MuScheduler } from '@box-local/mudb/scheduler/scheduler';
-import { ContentServer, Hash } from '@box-local/content-server';
-import { ContentPerf } from '@box-local/content-server/content-perf';
-import { Semaphore } from '@box-local/utils/semaphore';
-import { Logger as LegacyLogger } from '@box-local/utils/logger';
-import { compareId } from '@box-local/utils/id';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
-import { PlayerLoginState } from '@box-local/schema/player/player-schema';
+import { MuServer } from '@box/mudb/server';
+import { MuScheduler } from '@box/mudb/scheduler/scheduler';
+import { ContentServer, Hash } from '@box/content-server';
+import { ContentPerf } from '@box/content-server/content-perf';
+import { Semaphore } from '@box/utils/semaphore';
+import { Logger as LegacyLogger } from '@box/utils/logger';
+import { compareId } from '@box/utils/id';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
+import { PlayerLoginState } from '@box/schema/player/player-schema';
 import {
   ExtraProjectInfo,
   HotProject,
   HotProjectSchema,
-} from '@box-local/schema/project/hot-schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
-import { CloseType } from '@box-local/schema/types/game';
-import { ServerEventSchema } from '@box-local/schema/events/server-event-schema';
-import { GameSessionDataSchema } from '@box-local/schema/session/schema';
-import { GameSessionInterface } from '@box-local/schema/session/type';
+} from '@box/schema/project/hot-schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
+import { CloseType } from '@box/schema/types/game';
+import { ServerEventSchema } from '@box/schema/events/server-event-schema';
+import { GameSessionDataSchema } from '@box/schema/session/schema';
+import { GameSessionInterface } from '@box/schema/session/type';
 import type { Logger } from 'pino';
 
 import { CommonSQL } from './storage/types';
@@ -50,7 +50,7 @@ import {
   synchronizeServerNetState,
   clearServerNetState,
 } from './net/net-server-tick';
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 import { ChatServer } from './chat/chat-server';
 import {
   tickServerModels,
@@ -77,7 +77,7 @@ import {
   tickServerKeyframes,
   clearServerKeyframes,
 } from './keyframes/keyframe-server';
-import { BackendRPC } from '@box-local/schema/backend/rpc-interface';
+import { BackendRPC } from '@box/schema/backend/rpc-interface';
 import { InputServer } from './input/server-input-controller';
 import { PlayerServer } from './player/player-server';
 import { GameUIServer } from './game-ui/game-ui-server';

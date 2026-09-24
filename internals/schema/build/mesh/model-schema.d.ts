@@ -1,5 +1,5 @@
 import { HashType } from '../project/hot-schema';
-import { MuStruct, MuSortedArray, MuUTF8, MuUint8, MuVarint, MuBoolean, MuArray, MuQuantizedFloat, MuSchema, MuASCII, MuFloat64, MuInt32 } from '@box-local/mudb/schema';
+import { MuStruct, MuSortedArray, MuUTF8, MuUint8, MuVarint, MuBoolean, MuArray, MuQuantizedFloat, MuSchema, MuASCII, MuFloat64, MuInt32 } from '@box/mudb/schema';
 export declare const HashSchema: MuASCII;
 export declare const MotionPlaybackSchema: MuStruct<{
     motionId: MuASCII;

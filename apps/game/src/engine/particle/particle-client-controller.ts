@@ -16,14 +16,14 @@ import {
   ParticleWorkerGroupInfo,
   ParticleWorkerGroupSchema,
 } from './particle-worker-protocol';
-import { zipId, compareId, getById, indexEqRange } from '@box-local/utils/id';
+import { zipId, compareId, getById, indexEqRange } from '@box/utils/id';
 import {
   MuWriteStream,
   MuBuffer,
   freeBuffer,
   MuReadStream,
-} from '@box-local/mudb/stream';
-import { MS_PER_TICK } from '@box-local/schema/clock/clock-schema';
+} from '@box/mudb/stream';
+import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
 import { ParticleRenderer } from './interface';
 import { GLParticleRenderer } from './gl-particle/gl-particle-controller';
 import { GPUParticleRenderer } from './gpu-particle/gpu-particle-controller';

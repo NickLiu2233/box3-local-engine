@@ -1,7 +1,7 @@
 import { CodeEditorStateSchema } from '../schema';
 import { CodeEditorRPCProtocol } from './schema';
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { Logger } from '@box-local/utils/logger';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { Logger } from '@box/utils/logger';
 
 export class CodeEditorRPCClient {
   public protocol: MuClientProtocol<typeof CodeEditorRPCProtocol>;

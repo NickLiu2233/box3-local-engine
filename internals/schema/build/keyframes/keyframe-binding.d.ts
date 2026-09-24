@@ -1,10 +1,10 @@
 import { GameAssetType, GameEasing, GameEntity } from '../api/js/api';
 import { GameRGBColor, GameRGBAColor, GameVector3, GameQuaternion } from '../api/js/math';
-import { MuArray, MuBoolean, MuQuantizedFloat, MuSchema, MuSortedArray, MuStruct, MuUint32, MuVarint } from '@box-local/mudb/schema/index';
+import { MuArray, MuBoolean, MuQuantizedFloat, MuSchema, MuSortedArray, MuStruct, MuUint32, MuVarint } from '@box/mudb/schema/index';
 import { MuRefSchema } from '../utils/ref-schema';
 import { CodeGenBlock, CodeGenContext } from './codegen';
 import { MuArrayUnion } from './mu-array-union';
-import { RestrictProps, RestrictObj } from '@box-local/utils/script';
+import { RestrictProps, RestrictObj } from '@box/utils/script';
 import { KeyframeTrackIndex } from './track-index';
 import { AnimationPlaybackMode, GenericAnimation, KeyframeEaseMode } from './type';
 export declare const MAX_ANIMATIONS: number;
@@ -222,7 +222,7 @@ export declare class KeyframeComponentBindingFactory<KeyframeType, ComponentType
     };
     mesh<ScriptProp extends RestrictProps<KeyframeType, string>, EngineProp extends RestrictProps<ComponentType, number>>(scriptProp: ScriptProp, engineProp: EngineProp): KeyframePropBinding<KeyframeType, ComponentType, MuVarint>;
     asset<ScriptProp extends RestrictProps<KeyframeType, string>, EngineProp extends RestrictProps<ComponentType, string>>(scriptProp: ScriptProp, engineProp: EngineProp, type: GameAssetType): {
-        schema: import("@box-local/mudb/schema/ascii").MuASCII;
+        schema: import("@box/mudb/schema/ascii").MuASCII;
         emitParse: (block: CodeGenBlock, id: number, idEntries: string, dataEntries: string, keyframe: string, parseAPI: string) => void;
         emitSerialize: (block: CodeGenBlock, prop: string, keyframe: string, parseAPI: string) => void;
         emitInterpolate0: (block: CodeGenBlock, component: string, prop: string) => void;
@@ -303,59 +303,59 @@ export declare class AnimationBindingFactory<KeyframeType extends {
         tracker: MuStruct<{
             targetId: MuArray<MuVarint>;
             wrapMode: MuArray<MuSchema<AnimationPlaybackMode>>;
-            cycleLength: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            loopCount: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            loopPhase: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            cycleLength: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            loopCount: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            loopPhase: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             tickOffset: MuArray<MuQuantizedFloat>;
-            tickScale: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            tickScale: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             dataOffset: MuArray<MuVarint>;
-            data: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            data: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             inEasing: MuArray<MuSchema<KeyframeEaseMode>>;
             outEasing: MuArray<MuSchema<KeyframeEaseMode>>;
             prevFrame: MuArray<MuVarint>;
             nextFrame: MuArray<MuVarint>;
-            prevWeight: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            nextWeight: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            prevWeight: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            nextWeight: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
         }>;
         components: MuStruct<UnwrapComponentIndex<ComponentSpec>>;
-    }>, UnwrapInterpolators<Singleton, import("@box-local/mudb/schema/struct").Struct<{
+    }>, UnwrapInterpolators<Singleton, import("@box/mudb/schema/struct").Struct<{
         dirty: MuBoolean;
         tracker: MuStruct<{
             targetId: MuArray<MuVarint>;
             wrapMode: MuArray<MuSchema<AnimationPlaybackMode>>;
-            cycleLength: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            loopCount: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            loopPhase: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            cycleLength: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            loopCount: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            loopPhase: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             tickOffset: MuArray<MuQuantizedFloat>;
-            tickScale: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            tickScale: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             dataOffset: MuArray<MuVarint>;
-            data: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            data: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             inEasing: MuArray<MuSchema<KeyframeEaseMode>>;
             outEasing: MuArray<MuSchema<KeyframeEaseMode>>;
             prevFrame: MuArray<MuVarint>;
             nextFrame: MuArray<MuVarint>;
-            prevWeight: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            nextWeight: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            prevWeight: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            nextWeight: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
         }>;
         components: MuStruct<UnwrapComponentIndex<ComponentSpec>>;
-    }>, ComponentSpec>, UnwrapResettor<Singleton, import("@box-local/mudb/schema/struct").Struct<{
+    }>, ComponentSpec>, UnwrapResettor<Singleton, import("@box/mudb/schema/struct").Struct<{
         dirty: MuBoolean;
         tracker: MuStruct<{
             targetId: MuArray<MuVarint>;
             wrapMode: MuArray<MuSchema<AnimationPlaybackMode>>;
-            cycleLength: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            loopCount: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            loopPhase: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            cycleLength: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            loopCount: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            loopPhase: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             tickOffset: MuArray<MuQuantizedFloat>;
-            tickScale: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            tickScale: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             dataOffset: MuArray<MuVarint>;
-            data: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            data: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
             inEasing: MuArray<MuSchema<KeyframeEaseMode>>;
             outEasing: MuArray<MuSchema<KeyframeEaseMode>>;
             prevFrame: MuArray<MuVarint>;
             nextFrame: MuArray<MuVarint>;
-            prevWeight: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
-            nextWeight: MuArray<import("@box-local/mudb/schema/float64").MuFloat64>;
+            prevWeight: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
+            nextWeight: MuArray<import("@box/mudb/schema/float64").MuFloat64>;
         }>;
         components: MuStruct<UnwrapComponentIndex<ComponentSpec>>;
     }>, ComponentSpec>, MuStruct<UnwrapFlagSchema<ComponentSpec>>>;

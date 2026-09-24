@@ -7,7 +7,7 @@ import { volcano } from './volcano';
 import { smallPool } from './small-pool';
 import { arena } from './arena';
 import { raceway } from './raceway';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 
 export enum TerrainTheme {
   bigPool,

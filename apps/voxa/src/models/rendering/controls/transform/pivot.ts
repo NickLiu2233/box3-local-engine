@@ -1,4 +1,4 @@
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import type { Camera } from '../../camera/base';
 import { quat } from 'gl-matrix';
 

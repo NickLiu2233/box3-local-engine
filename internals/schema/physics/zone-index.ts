@@ -1,4 +1,4 @@
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { PhysicsZone, ZoneSelectorGroup } from '../zone/zone-schema';
 
 const MAX_ENTRIES = 16;

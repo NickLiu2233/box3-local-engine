@@ -9,8 +9,8 @@ import {
 } from 'react';
 import { useIntl } from 'react-intl';
 import { clamp } from 'ramda';
-import { Modal } from '@box-local/box-design';
-import { IconDropUp } from '@box-local/icons';
+import { Modal } from '@box/box-design';
+import { IconDropUp } from '@box/icons';
 import { VoxelEditorContext } from './internals';
 import styles from './container.module.scss';
 import { Sidebar } from './views/sidebar';

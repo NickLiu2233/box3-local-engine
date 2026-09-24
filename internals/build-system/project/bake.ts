@@ -1,18 +1,18 @@
 import { BuildSystemAPI } from '../type';
-import * as Cold from '@box-local/schema/project/project-rda';
-import * as Hot from '@box-local/schema/project/hot-schema';
-import { ContentServer, Hash } from '@box-local/content-server';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { BlockInfo, BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
+import * as Cold from '@box/schema/project/project-rda';
+import * as Hot from '@box/schema/project/hot-schema';
+import { ContentServer, Hash } from '@box/content-server';
+import { MuReadStream } from '@box/mudb/stream';
+import { BlockInfo, BlockInfoSchema } from '@box/schema/voxel/block-schema';
 import { IntBoundsSchema } from './bounds-schema';
-import { MuSchema } from '@box-local/mudb/schema';
-import { SciptCollisionFilterSpecSchema } from '@box-local/schema/script/script-protocol';
-import { TreeNodeType } from '@box-local/schema/project/murda-tree';
-import type { ModelMetaData } from '@box-local/voxa-project';
-import { getSkinMetaData } from '@box-local/voxa-project';
+import { MuSchema } from '@box/mudb/schema';
+import { SciptCollisionFilterSpecSchema } from '@box/schema/script/script-protocol';
+import { TreeNodeType } from '@box/schema/project/murda-tree';
+import type { ModelMetaData } from '@box/voxa-project';
+import { getSkinMetaData } from '@box/voxa-project';
 
-import { UITreeRDA } from '@box-local/schema/project/ui-rda/defs';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { UITreeRDA } from '@box/schema/project/ui-rda/defs';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 
 export function copySoundAssets(hp: Hot.HotProject) {
   Hot.SoundTableSchema.assign(hp.soundAssets, Hot.SoundTableSchema.identity);

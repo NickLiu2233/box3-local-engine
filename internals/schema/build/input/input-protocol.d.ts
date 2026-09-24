@@ -1,4 +1,4 @@
-import { MuUint8 } from '@box-local/mudb/schema';
+import { MuUint8 } from '@box/mudb/schema';
 export declare const InputProtocolSchema: {
     name: string;
     client: {

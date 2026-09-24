@@ -1,8 +1,8 @@
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { vec3 } from 'gl-matrix';
 import { assoc, clone } from 'ramda';
 import { nanoid } from 'nanoid';
-import { allocEmptyVoxels } from '@box-local/utils/helper';
+import { allocEmptyVoxels } from '@box/utils/helper';
 import {
   cloneVoxels,
   flipVoxels,
@@ -10,8 +10,8 @@ import {
   restoreVoxels,
   storeVoxels,
   VoxelView,
-} from '@box-local/utils/voxel';
-import { getVertexCount, voxelToRectangles } from '@box-local/mesher';
+} from '@box/utils/voxel';
+import { getVertexCount, voxelToRectangles } from '@box/mesher';
 import { ObjSizeToVoxelShape, SerializedVec3 } from '../../utils/math';
 import type { Models } from '../voxel-model';
 import { bakeMesh } from '../voxel-model/bake';
@@ -82,7 +82,7 @@ export interface VoxelModelProp {
    */
   meshes: Record<string, MeshResource>;
   /**
-   * 通过@box-local/mesher计算的面数
+   * 通过@box/mesher计算的面数
    * - 翻转不会真正改变体素的“内容”，顶点数不会变，因此一个体素存一个值即可
    */
   mesherFaces?: number;

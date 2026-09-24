@@ -1,15 +1,15 @@
 import { memo, useContext, useMemo } from 'react';
 import { useIntl } from 'react-intl';
-import { pickAutoLayoutProp } from '@box-local/schema/project/ui-rda/util';
+import { pickAutoLayoutProp } from '@box/schema/project/ui-rda/util';
 import {
   AutoLayoutFillDirection,
   AutoLayoutHorizontalAlignType,
   AutoLayoutStartCorner,
   AutoLayoutVerticalAlignType,
   UIAutoLayoutType,
-} from '@box-local/schema/project/ui-rda/defs';
-import { IconPositionX, IconPositionY } from '@box-local/icons';
-import { MenuItemOptions } from '@box-local/box-design';
+} from '@box/schema/project/ui-rda/defs';
+import { IconPositionX, IconPositionY } from '@box/icons';
+import { MenuItemOptions } from '@box/box-design';
 import { useEdit } from 'src/client/edit/edit-context';
 import { CheckboxSwitch, CheckboxSwitchProps } from '../inputs/checkbox-switch';
 import {

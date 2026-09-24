@@ -2,11 +2,11 @@ import {
   GameEventChannel,
   GameEventHandlerToken,
   GameEventFuture,
-} from '@box-local/schema/api/js/api';
+} from '@box/schema/api/js/api';
 import {
   createScriptScheduler,
   ScriptScheduler,
-} from '@box-local/utils/script/script-scheduler';
+} from '@box/utils/script/script-scheduler';
 
 export let DISPATCHER_CREATE_COUNT = 0;
 export let DISPATCHER_DESTROY_COUNT = 0;

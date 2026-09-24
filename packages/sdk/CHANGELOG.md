@@ -1,4 +1,4 @@
-# Change Log - @box-local/sdk
+# Change Log - @box/sdk
 
 This log was last generated on Thu, 20 Jun 2024 03:40:28 GMT and should not be manually modified.
 
@@ -7,7 +7,7 @@ Thu, 20 Jun 2024 03:40:28 GMT
 
 ### Minor changes
 
-- @box-local/sdk add clipboard permissiosn for iframe
+- @box/sdk add clipboard permissiosn for iframe
 
 ## 1.3.0
 Wed, 16 Nov 2022 07:12:23 GMT

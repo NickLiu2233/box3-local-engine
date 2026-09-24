@@ -1,4 +1,4 @@
-import { MuArray, MuStruct, MuVarint, MuSortedArray, MuUnion, MuVoid, MuQuantizedFloat, MuASCII, MuFloat32 } from '@box-local/mudb/schema';
+import { MuArray, MuStruct, MuVarint, MuSortedArray, MuUnion, MuVoid, MuQuantizedFloat, MuASCII, MuFloat32 } from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 export declare const HashSchema: MuASCII;
 export declare const SoundSetSchema: MuArray<MuASCII>;

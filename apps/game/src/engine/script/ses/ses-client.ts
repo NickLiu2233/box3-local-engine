@@ -1,10 +1,10 @@
-import { ClientScriptSrcSchema } from '@box-local/schema/net/net-schema';
+import { ClientScriptSrcSchema } from '@box/schema/net/net-schema';
 import type {
   ClientConsole,
   EventEmitter,
   UiEvent,
   UiNodeEvents,
-} from '@box-local/script-api';
+} from '@box/script-api';
 import type { Logger } from 'pino';
 import { GetGlobalsSpec, getGlobals } from './apis';
 import { ScriptClientConsole } from './apis/console';

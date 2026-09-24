@@ -1,4 +1,4 @@
-import { MuStruct, MuArray, MuUTF8, MuVarint } from '@box-local/mudb/schema';
+import { MuStruct, MuArray, MuUTF8, MuVarint } from '@box/mudb/schema';
 export declare const RemoteChannelEventSchema: MuStruct<{
     tick: MuVarint;
     args: MuUTF8;

@@ -1,9 +1,9 @@
 import { Logger } from './logger';
-import { MuLogger } from '@box-local/mudb/logger';
+import { MuLogger } from '@box/mudb/logger';
 
 export function createMuLogger(
   baseLogger: Logger,
-  prefix = '@box-local/mudb/src',
+  prefix = '@box/mudb/src',
 ): MuLogger {
   const logger = baseLogger.create(prefix);
   return {

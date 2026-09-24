@@ -6,7 +6,7 @@ import type {
   IREWGPUBuffer,
   IREWGPUGroup,
   ReWGPU,
-} from '@box-local/rewgpu';
+} from '@box/rewgpu';
 import type { GameClientState } from '../../game-client-schema';
 import type { CommonUniforms } from '../interface';
 import sdfStruct from '../wgsl/text/sdf-struct.wgsl';

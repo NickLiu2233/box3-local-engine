@@ -21,9 +21,9 @@ var __rest = (this && this.__rest) || function (s, e) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.migrateVoxel = migrateVoxel;
-const stringify_1 = require("@box-local/mudb/util/stringify");
-const vb_parser_1 = require("@box-local/vb-parser");
-const voxa_project_1 = require("@box-local/voxa-project");
+const stringify_1 = require("@box/mudb/util/stringify");
+const vb_parser_1 = require("@box/vb-parser");
+const voxa_project_1 = require("@box/voxa-project");
 const heavy_mutex_1 = require("./heavy_mutex");
 function migrateVoxel(bs, hash) {
     return __awaiter(this, void 0, void 0, function* () {

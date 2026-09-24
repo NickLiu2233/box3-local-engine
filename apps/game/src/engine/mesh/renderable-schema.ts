@@ -5,8 +5,8 @@ import {
   MuArray,
   MuUTF8,
   MuSchema,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
 import { GLTexture } from '../gl/schema/gl-texture';
 import {
   GLMesh,
@@ -21,7 +21,7 @@ import {
 } from './gpu-controller/gpu-mesh-schema';
 import { RenderableType } from './parse/mesh-schema';
 import { GameClientState } from '../game-client-schema';
-import { Mat4Schema } from '@box-local/schema/utils/math-schema';
+import { Mat4Schema } from '@box/schema/utils/math-schema';
 
 export type MeshRenderable = GLMesh | GPUMesh;
 

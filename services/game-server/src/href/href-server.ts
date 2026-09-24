@@ -1,6 +1,6 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { getById } from '@box-local/utils/id';
-import { Logger } from '@box-local/utils/logger';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
+import { getById } from '@box/utils/id';
+import { Logger } from '@box/utils/logger';
 import { GameServerState } from '../game-server-schema';
 import { HyperlinkProtocol } from './href-protocol';
 import { HyperlinkScriptProtocol } from './href-script-protocol';

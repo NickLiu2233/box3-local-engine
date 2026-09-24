@@ -5,7 +5,7 @@ import {
   MuUint32,
   MuSchema,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { TaggedId, compareId } from '../id';
 import { sortedArrayDelete } from '../sorted-array-remove';
 

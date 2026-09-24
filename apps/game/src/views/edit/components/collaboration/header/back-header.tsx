@@ -1,5 +1,5 @@
-import { Button } from '@box-local/box-design';
-import { IconArrowBack } from '@box-local/icons';
+import { Button } from '@box/box-design';
+import { IconArrowBack } from '@box/icons';
 
 import style from '../index.module.scss';
 

@@ -1,4 +1,4 @@
-import { MuStruct, MuUTF8, MuVarint, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuUTF8, MuVarint, MuBoolean } from '@box/mudb/schema';
 
 export const HyperlinkScriptProtocol = {
   name: 'hyperlink-script',

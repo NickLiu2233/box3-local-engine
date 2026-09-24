@@ -1,4 +1,4 @@
-import { MuRDA, MuRDAStore } from '@box-local/mudb/rda';
+import { MuRDA, MuRDAStore } from '@box/mudb/rda';
 import {
   MuUTF8,
   MuStruct,
@@ -6,7 +6,7 @@ import {
   MuVoid,
   MuVarint,
   MuSortedArray,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Id,
   ID_MIN,
@@ -15,7 +15,7 @@ import {
   IdSchema,
   compareTaggedId,
   compareId,
-} from '@box-local/mudb/rda/_id';
+} from '@box/mudb/rda/_id';
 import { preAllocIds, allocIdsEx, allocIds, allocId, subII } from './murda-id';
 
 export const MuRDATextStateSchema = new MuUTF8();

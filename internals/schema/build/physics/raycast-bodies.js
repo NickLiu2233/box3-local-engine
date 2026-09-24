@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.BodyRaycastSchema = void 0;
 exports.raycastBoxes = raycastBoxes;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const math_schema_1 = require("../utils/math-schema");
 const box_collide_1 = require("./box-collide");
 const gl_matrix_1 = require("gl-matrix");

@@ -14,31 +14,31 @@ import {
   MuFloat32,
   MuUint8,
   MuInt32,
-} from '@box-local/mudb/schema';
-import { ParsedErrorSchema } from '@box-local/schema/debugger-console/schema';
-import { VoxelCollisionBoxListSchema } from '@box-local/schema/utils/rbush-schema';
-import { VoxelWriteSchema } from '@box-local/schema/voxel/voxel-protocol';
+} from '@box/mudb/schema';
+import { ParsedErrorSchema } from '@box/schema/debugger-console/schema';
+import { VoxelCollisionBoxListSchema } from '@box/schema/utils/rbush-schema';
+import { VoxelWriteSchema } from '@box/schema/voxel/voxel-protocol';
 import { ScriptEntityUpdateSchema } from './bindings/entity-synchronizer';
-import { GameLogLevel } from '@box-local/schema/api/console';
+import { GameLogLevel } from '@box/schema/api/console';
 import { ScriptWorldUpdateSchema } from './bindings/world-synchronizer';
 import {
   ScriptStateSnapshotSchema,
   ScriptEventsSchema,
 } from './script-state-schema';
-import { LogMessageSchema } from '@box-local/utils/logger';
+import { LogMessageSchema } from '@box/utils/logger';
 import { ScriptVoxelUpdateSchema } from './bindings/voxel-synchronizer';
-import { compareId } from '@box-local/utils/id';
+import { compareId } from '@box/utils/id';
 import { ScriptResourceSchema } from './bindings/resource';
-import { ScriptSentEventSchema } from '@box-local/schema/events/script-events';
-import { BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
-import { DialogConfigSchema } from '@box-local/schema/dialog/dialog-protocol';
-import { PlaySoundPositionSchema } from '@box-local/schema/sound/sound-protocol';
-import { MAX_BODIES } from '@box-local/schema/physics/physics-solve';
-import { ZoneSetRDA } from '@box-local/schema/project/project-rda';
+import { ScriptSentEventSchema } from '@box/schema/events/script-events';
+import { BlockInfoSchema } from '@box/schema/voxel/block-schema';
+import { DialogConfigSchema } from '@box/schema/dialog/dialog-protocol';
+import { PlaySoundPositionSchema } from '@box/schema/sound/sound-protocol';
+import { MAX_BODIES } from '@box/schema/physics/physics-solve';
+import { ZoneSetRDA } from '@box/schema/project/project-rda';
 import { ScriptZoneUpdateSchema } from './bindings/zone-synchronizer';
-import { WORLD_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/world-animation';
-import { ENTITY_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/entity-animation';
-import { PLAYER_ANIM_BINDING } from '@box-local/schema/keyframes/bindings/player-animation';
+import { WORLD_ANIM_BINDING } from '@box/schema/keyframes/bindings/world-animation';
+import { ENTITY_ANIM_BINDING } from '@box/schema/keyframes/bindings/entity-animation';
+import { PLAYER_ANIM_BINDING } from '@box/schema/keyframes/bindings/player-animation';
 
 export const ScriptPerfCounterSchema = new MuStruct({
   // entities

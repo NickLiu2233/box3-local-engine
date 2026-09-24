@@ -1,5 +1,5 @@
 import { PreprocessorName, PreprocessorOption, CodecName, CodecOption } from './codecs';
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 export declare function preprocessImage<P extends PreprocessorName>(spec: {
     content: ContentServer;
     data: Uint8ClampedArray;

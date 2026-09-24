@@ -1,5 +1,5 @@
-import { MuArray, MuFloat64, MuStruct, MuVarint } from '@box-local/mudb/schema';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { MuArray, MuFloat64, MuStruct, MuVarint } from '@box/mudb/schema';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import { GlyphListSchema } from '../gpu/schema/gpu-overlay';
 
 export const GPUOverlayInstanceSchema = new MuStruct({

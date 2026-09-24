@@ -1,7 +1,7 @@
 import { GameClientState } from '../game-client-schema';
-import { getById, zipId } from '@box-local/utils/id';
+import { getById, zipId } from '@box/utils/id';
 import { vec3, vec2 } from 'gl-matrix';
-import { GameKeys } from '@box-local/schema/input/input-schema';
+import { GameKeys } from '@box/schema/input/input-schema';
 import {
   playerWalkState,
   PlayerWalkState,
@@ -14,24 +14,24 @@ import {
   PlayerJumpState,
   PlayerInputSetSchema,
   InputDirectionState,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   NetInputEventSchema,
   NetInputEventBits,
-} from '@box-local/schema/net/net-schema';
+} from '@box/schema/net/net-schema';
 import {
   raycast,
   VoxelRaycastHitResult,
-} from '@box-local/schema/voxel/voxel-raycast';
+} from '@box/schema/voxel/voxel-raycast';
 import {
   raycastBoxes,
   BodyRaycastSchema,
-} from '@box-local/schema/physics/raycast-bodies';
+} from '@box/schema/physics/raycast-bodies';
 import { screenToRay } from '../camera/camera-controller';
-import { PlayerInputEventSchema } from '@box-local/schema/events/player-event-schema';
-import { CameraMode } from '@box-local/schema/camera/camera-schema';
+import { PlayerInputEventSchema } from '@box/schema/events/player-event-schema';
+import { CameraMode } from '@box/schema/camera/camera-schema';
 import { isEqual } from 'src/engine/utils/array';
-import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
+import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
 
 const TURN_RATE = 0.0025;
 const LOOK_RATE = 0.0025;

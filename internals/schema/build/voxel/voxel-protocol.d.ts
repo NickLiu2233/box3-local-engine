@@ -1,4 +1,4 @@
-import { MuStruct, MuUint16, MuArray, MuUint32, MuVarint, MuRelativeVarint, MuBoolean, MuFloat64 } from '@box-local/mudb/schema';
+import { MuStruct, MuUint16, MuArray, MuUint32, MuVarint, MuRelativeVarint, MuBoolean, MuFloat64 } from '@box/mudb/schema';
 export declare const VOXEL_ROTATION_SHIFT = 14;
 export declare const VOXEL_TYPE_MASK: number;
 export declare const VoxelWriteSchema: MuStruct<{
@@ -13,8 +13,8 @@ export declare const VoxelResetSchema: MuStruct<{
     nx: MuUint16;
     ny: MuUint16;
     nz: MuUint16;
-    blocks: import("@box-local/mudb/schema").MuASCII;
-    hashes: MuArray<import("@box-local/mudb/schema").MuASCII>;
+    blocks: import("@box/mudb/schema").MuASCII;
+    hashes: MuArray<import("@box/mudb/schema").MuASCII>;
     innerAO: MuBoolean;
     positionX: MuFloat64;
     positionY: MuFloat64;
@@ -48,7 +48,7 @@ export declare const HashesResponseSchema: MuStruct<{
     dirtyChunks: MuArray<MuVarint>;
     chunksInfo: MuArray<MuStruct<{
         idx: MuVarint;
-        hash: import("@box-local/mudb/schema").MuASCII;
+        hash: import("@box/mudb/schema").MuASCII;
     }>>;
 }>;
 export type HashesResponse = typeof HashesResponseSchema.identity;
@@ -60,8 +60,8 @@ export declare const VoxelProtocol: {
             nx: MuUint16;
             ny: MuUint16;
             nz: MuUint16;
-            blocks: import("@box-local/mudb/schema").MuASCII;
-            hashes: MuArray<import("@box-local/mudb/schema").MuASCII>;
+            blocks: import("@box/mudb/schema").MuASCII;
+            hashes: MuArray<import("@box/mudb/schema").MuASCII>;
             innerAO: MuBoolean;
             positionX: MuFloat64;
             positionY: MuFloat64;
@@ -74,14 +74,14 @@ export declare const VoxelProtocol: {
         }>>;
         chunkResponse: MuStruct<{
             rpcId: MuVarint;
-            boxes: import("@box-local/mudb/schema").MuSortedArray<MuStruct<{
-                minX: import("@box-local/mudb/schema").MuUint8;
-                minY: import("@box-local/mudb/schema").MuUint8;
-                minZ: import("@box-local/mudb/schema").MuUint8;
-                maxX: import("@box-local/mudb/schema").MuUint8;
-                maxY: import("@box-local/mudb/schema").MuUint8;
-                maxZ: import("@box-local/mudb/schema").MuUint8;
-                faces: import("@box-local/mudb/schema").MuUint8;
+            boxes: import("@box/mudb/schema").MuSortedArray<MuStruct<{
+                minX: import("@box/mudb/schema").MuUint8;
+                minY: import("@box/mudb/schema").MuUint8;
+                minZ: import("@box/mudb/schema").MuUint8;
+                maxX: import("@box/mudb/schema").MuUint8;
+                maxY: import("@box/mudb/schema").MuUint8;
+                maxZ: import("@box/mudb/schema").MuUint8;
+                faces: import("@box/mudb/schema").MuUint8;
                 block: MuVarint;
             }>>;
         }>;
@@ -93,7 +93,7 @@ export declare const VoxelProtocol: {
             dirtyChunks: MuArray<MuVarint>;
             chunksInfo: MuArray<MuStruct<{
                 idx: MuVarint;
-                hash: import("@box-local/mudb/schema").MuASCII;
+                hash: import("@box/mudb/schema").MuASCII;
             }>>;
         }>;
     };

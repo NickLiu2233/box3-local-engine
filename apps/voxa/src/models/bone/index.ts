@@ -1,6 +1,6 @@
 import { mat4, vec3, quat } from 'gl-matrix';
 import { nanoid } from 'nanoid';
-import type { Regl } from '@box-local/regl';
+import type { Regl } from '@box/regl';
 import { TorusGeometry } from '../rendering/geometries/torus-geometry';
 import { ShaderMaterial } from '../rendering/materials/shader';
 import { basicFragmentShader, basicVertexShader } from '../rendering/shaders';

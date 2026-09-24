@@ -1,4 +1,4 @@
-import { MuStruct, MuInt32, MuArray, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuInt32, MuArray, MuBoolean } from '@box/mudb/schema';
 import { RBushSchema } from '../utils/rbush-schema';
 
 export const CHUNK_SHIFT = 5;

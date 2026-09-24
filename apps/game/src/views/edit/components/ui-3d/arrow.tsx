@@ -2,7 +2,7 @@ import * as React from 'react';
 import { vec3 } from 'gl-matrix';
 import { UI3DMouseEvent } from 'src/engine/ui3d/ui3d-schema';
 import { UI3DBox, UI3DCone, UI3DLine } from '.';
-import { MouseButton, MouseState } from '@box-local/schema/input/input-schema';
+import { MouseButton, MouseState } from '@box/schema/input/input-schema';
 
 export enum ArrowDir {
   x = 'x',

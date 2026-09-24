@@ -1,6 +1,6 @@
 import { vec2, vec3, vec4, quat, mat2, mat3, mat4 } from 'gl-matrix';
-import { MuFloat32, MuVector, MuSchema, MuStruct } from '@box-local/mudb/schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
+import { MuFloat32, MuVector, MuSchema, MuStruct } from '@box/mudb/schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 
 export const NumSchema = new MuFloat32();
 

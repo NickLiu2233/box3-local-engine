@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/vb-parser",
+  "name": "@box/vb-parser",
   "version": "1.0.7",
   "description": "A parser for .vb/.vd project file",
   "license": "UNLICENSED",
@@ -17,10 +17,10 @@
   "devDependencies": {
     "@babel/core": "7.17.8",
     "@babel/preset-typescript": "7.18.6",
-    "@box-local/ao-mesher": "workspace:0.2.10",
-    "@box-local/mudb": "workspace:1.0.4",
-    "@box-local/utils": "workspace:*",
-    "@box-local/vb": "workspace:0.1.0",
+    "@box/ao-mesher": "workspace:0.2.10",
+    "@box/mudb": "workspace:1.0.4",
+    "@box/utils": "workspace:*",
+    "@box/vb": "workspace:0.1.0",
     "@rollup/plugin-babel": "6.0.4",
     "@rollup/plugin-commonjs": "28.0.3",
     "@rollup/plugin-node-resolve": "16.0.1",

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { vec3 } from 'gl-matrix';
 import { UI3DRingMouseEvent } from 'src/engine/ui3d/ui3d-schema';
 import { UI3DRing } from '.';
-import { MouseState, MouseButton } from '@box-local/schema/input/input-schema';
+import { MouseState, MouseButton } from '@box/schema/input/input-schema';
 import { touchable } from 'src/utils/mobile';
 
 interface UI3DRingProps {

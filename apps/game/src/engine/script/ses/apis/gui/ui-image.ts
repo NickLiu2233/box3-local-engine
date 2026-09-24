@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import { GameUIImage } from 'src/engine/game-ui/nodes/image';
 import { UiRenderable } from './ui-renderable';
 import { ClientScriptContext } from '../context/const';

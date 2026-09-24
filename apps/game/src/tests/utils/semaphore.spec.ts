@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 
 async function sleep(ticks: number) {
   for (let i = 0; i < ticks; ++i) {

@@ -1,8 +1,8 @@
-import { MuRDA, MuRDATypes } from '@box-local/mudb/rda';
+import { MuRDA, MuRDATypes } from '@box/mudb/rda';
 import { rdaProtocol, RDAProtocol } from './schema';
-import { MuStruct, MuArray } from '@box-local/mudb/schema';
-import { MuSystemScheduler, MuScheduler } from '@box-local/mudb/scheduler';
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
+import { MuStruct, MuArray } from '@box/mudb/schema';
+import { MuSystemScheduler, MuScheduler } from '@box/mudb/scheduler';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
 
 export class MuCodeEditorReplicaClient<RDA extends MuRDA<any, any, any, any>> {
   public protocol: MuClientProtocol<RDAProtocol<RDA>>;

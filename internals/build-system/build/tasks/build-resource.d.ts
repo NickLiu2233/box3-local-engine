@@ -1,6 +1,6 @@
 import { BuildSystem } from '../build-system';
 import { Tasks } from '../type';
-import { Hash } from '@box-local/content-server';
+import { Hash } from '@box/content-server';
 export type RetType = 'hash' | 'json' | 'bin' | 'text';
 export type FileResource = {
     file: string;

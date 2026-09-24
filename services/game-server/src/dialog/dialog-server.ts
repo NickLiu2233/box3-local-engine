@@ -1,20 +1,20 @@
-import { MuServerProtocol, MuServer } from '@box-local/mudb/server';
+import { MuServerProtocol, MuServer } from '@box/mudb/server';
 import {
   DialogProtocol,
   DialogConfig,
   OpenDialogSchema,
   DialogConfigSchema,
   DialogResultSchema,
-} from '@box-local/schema/dialog/dialog-protocol';
+} from '@box/schema/dialog/dialog-protocol';
 import {
   DialogConnectionSchema,
   PendingDialogSchema,
   DialogEventSchema,
 } from './dialog-server-schema';
 import { GameServerState } from '../game-server-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import { GameScriptRunState, scriptRunState } from '../script/script-schema';
-import { filterSwear } from '@box-local/utils/swears/index';
+import { filterSwear } from '@box/utils/swears/index';
 import { getConfigSync } from '../../config/server';
 
 function censorDialog(configs: DialogConfig) {

@@ -5,7 +5,7 @@ import { ProjectModelPanel } from './project';
 import { PublicModelPanel } from './public';
 import { PrivateModelPanel } from './private';
 import { calc_class_name } from 'src/utils/classname';
-import { CreativeMode, ModelType, REQUEST_TIMEOUT, SortOrder } from '@box-local/apis';
+import { CreativeMode, ModelType, REQUEST_TIMEOUT, SortOrder } from '@box/apis';
 import { apis } from 'src/apis/api-java';
 import { clientConfig } from 'src/config/client';
 import { editor } from 'src/client/edit/edit-client';

@@ -1,4 +1,4 @@
-import { MuUTF8, MuStruct } from '@box-local/mudb/schema';
+import { MuUTF8, MuStruct } from '@box/mudb/schema';
 
 export const SciptCollisionFilterSpecSchema = new MuStruct({
   a: new MuUTF8(),

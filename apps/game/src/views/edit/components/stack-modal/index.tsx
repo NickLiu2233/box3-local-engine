@@ -3,7 +3,7 @@ import {
   BaseModalOptions,
   ModalOptions,
   ModalView,
-} from '@box-local/box-design/build/modal';
+} from '@box/box-design/build/modal';
 
 type StackFnsType = {
   handleBack: () => void;

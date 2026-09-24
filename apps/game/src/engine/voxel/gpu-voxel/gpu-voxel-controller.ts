@@ -1,4 +1,4 @@
-import { ReWGPU } from '@box-local/rewgpu';
+import { ReWGPU } from '@box/rewgpu';
 import { VoxelRenderer } from '../interface';
 import { FLUID_VERTEX_SIZE, VERTEX_SIZE } from '../voxel-mesher';
 import {

@@ -1,13 +1,13 @@
-import { MuRDAList } from '@box-local/mudb/rda';
-import { FileDictRDA } from '@box-local/schema/code-editor/code-editor-common-state';
-import { getMeshPath } from '@box-local/schema/project/hot-schema';
-import { ROOT_ID, TreeNodeType } from '@box-local/schema/project/murda-tree';
+import { MuRDAList } from '@box/mudb/rda';
+import { FileDictRDA } from '@box/schema/code-editor/code-editor-common-state';
+import { getMeshPath } from '@box/schema/project/hot-schema';
+import { ROOT_ID, TreeNodeType } from '@box/schema/project/murda-tree';
 import {
   AssetType,
   EntitiesTreeRDA,
   EntitySeedRDA,
   TreeNode,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { tool } from 'ai';
 import { vec3 } from 'gl-matrix';
 import { Logger } from 'pino';

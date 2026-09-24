@@ -1,7 +1,7 @@
 import { vec3 } from 'gl-matrix';
 import { store } from '../../../redux/store';
-import { EditingMode } from '@box-local/utils/helper';
-import { VoxelView } from '@box-local/utils/voxel';
+import { EditingMode } from '@box/utils/helper';
+import { VoxelView } from '@box/utils/voxel';
 import type { Model } from '../../voxel-model/model';
 import type { Operation } from '../mode/interfaces';
 import { composeSymmetryOperation, isEmptyVoxel } from '../util';

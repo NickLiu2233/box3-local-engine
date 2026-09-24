@@ -1,5 +1,5 @@
 import React, { ReactNode, memo, useMemo } from 'react';
-import { IconPositionX, IconPositionY } from '@box-local/icons';
+import { IconPositionX, IconPositionY } from '@box/icons';
 import {
   AnchorAxisInput,
   AnchorAxisValue,

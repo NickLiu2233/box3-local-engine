@@ -1,7 +1,7 @@
 import { VoxelCollision } from '../voxel/voxel-collision-schema';
 import { RigidBody, ContactIndex, PhysicsParams, RigidBodySet } from './physics-schema';
 import { BlockIndex } from '../voxel/block-schema';
-import { TaggedId } from '@box-local/utils/id';
+import { TaggedId } from '@box/utils/id';
 import { CollisionFilter } from './collision-filter';
 import { PhysicsZoneIndex } from './zone-index';
 export * from './def';

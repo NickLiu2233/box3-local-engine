@@ -1,4 +1,4 @@
-import { EnvironmentParams } from '@box-local/schema/environment/environment-schema';
+import { EnvironmentParams } from '@box/schema/environment/environment-schema';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

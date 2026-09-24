@@ -1,8 +1,8 @@
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
-import { JSONValue } from '@box-local/schema/api/common';
-import { ServerEvent } from '@box-local/schema/api/js/remote-channel';
-import { ScriptDispatcher } from '@box-local/schema/script/dispatcher';
-import { Logger } from '@box-local/utils/logger';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
+import { JSONValue } from '@box/schema/api/common';
+import { ServerEvent } from '@box/schema/api/js/remote-channel';
+import { ScriptDispatcher } from '@box/schema/script/dispatcher';
+import { Logger } from '@box/utils/logger';
 
 import { RemoteChannelScriptProtocol } from './channel-script-protocol';
 

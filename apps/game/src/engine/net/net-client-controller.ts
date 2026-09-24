@@ -1,4 +1,4 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import { GameClientState, CloseType } from '../game-client-schema';
 import {
   NetProtocolSchema,
@@ -17,18 +17,18 @@ import {
   MAX_INPUT_EVENTS,
   PUBLIC_BUFFER_DIVISOR,
   ClientScriptSrcSchema,
-} from '@box-local/schema/net/net-schema';
-import { GameReplicaSchema } from '@box-local/schema/replica/game-replica';
+} from '@box/schema/net/net-schema';
+import { GameReplicaSchema } from '@box/schema/replica/game-replica';
 import { setAuthoritativeClientNetState } from './net-client-tick';
-import { MuReadStream } from '@box-local/mudb/stream';
+import { MuReadStream } from '@box/mudb/stream';
 import {
   CLIENT_UNRELIABLE,
   CLIENT_DELTA_BUFFER as CLIENT_PUBLIC_BUFFER_SIZE,
 } from './net-client-state';
-import { Logger } from '@box-local/utils/logger';
-import { HurtEventSchema } from '@box-local/schema/events/damage-event-schema';
-import { MuSocket } from '@box-local/mudb/socket/socket';
-import { PhysicsZoneIndex } from '@box-local/schema/physics/zone-index';
+import { Logger } from '@box/utils/logger';
+import { HurtEventSchema } from '@box/schema/events/damage-event-schema';
+import { MuSocket } from '@box/mudb/socket/socket';
+import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
 import { setClientKeyframeDirty } from '../keyframes/keyframe-client';
 
 function compareTick(a: NetInputEvent, b: NetInputEvent) {

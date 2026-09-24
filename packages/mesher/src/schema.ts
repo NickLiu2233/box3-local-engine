@@ -4,7 +4,7 @@ import {
   MuVarint,
   MuUint8,
   MuUint32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const MeshTextureSchema = new MuStruct({
   palette: new MuArray(new MuUint32(), Infinity),

@@ -1,39 +1,39 @@
 import {
   PhysicsZoneSetSchema,
   ZoneSelectorGroupSetSchema,
-} from '@box-local/schema/zone/zone-schema';
+} from '@box/schema/zone/zone-schema';
 import {
   NetStateSchema,
   NetInputSchema,
   NetState,
-} from '@box-local/schema/net/net-schema';
+} from '@box/schema/net/net-schema';
 import {
   PlayerSetSchema,
   PlayerSchema,
   PlayerInputSetSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import {
   PhysicsParamsSchema,
   RigidBodySetSchema,
   RigidBodySchema,
   ContactIndexSchema,
   ContactIndex,
-} from '@box-local/schema/physics/physics-schema';
-import { VoxelCollision } from '@box-local/schema/voxel/voxel-collision-schema';
-import { BlockIndex } from '@box-local/schema/voxel/block-schema';
+} from '@box/schema/physics/physics-schema';
+import { VoxelCollision } from '@box/schema/voxel/voxel-collision-schema';
+import { BlockIndex } from '@box/schema/voxel/block-schema';
 
 import {
   NetServerState,
   NetServerStateSchema,
   SERVER_MAX_NET_BUFFER,
 } from './net-server-state';
-import { netTick } from '@box-local/schema/net/net-tick';
-import { deltaList, deltaItem } from '@box-local/schema/net/delta';
+import { netTick } from '@box/schema/net/net-tick';
+import { deltaList, deltaItem } from '@box/schema/net/delta';
 import { GameServerState } from '../game-server-schema';
-import { generateContactEvents } from '@box-local/schema/physics/contact-events';
-import { clearBodyLocks } from '@box-local/schema/physics/physics-solve';
-import { CollisionFilterSchema } from '@box-local/schema/physics/collision-filter';
-import { EntitySetSchema } from '@box-local/schema/entity/entity-schema';
+import { generateContactEvents } from '@box/schema/physics/contact-events';
+import { clearBodyLocks } from '@box/schema/physics/physics-solve';
+import { CollisionFilterSchema } from '@box/schema/physics/collision-filter';
+import { EntitySetSchema } from '@box/schema/entity/entity-schema';
 
 // -----------------------------------------------------------------------------
 //  called once per tick.  copies state from netState into the server state

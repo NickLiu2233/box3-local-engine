@@ -1,4 +1,4 @@
-import { MuStruct, MuBoolean } from '@box-local/mudb/schema';
+import { MuStruct, MuBoolean } from '@box/mudb/schema';
 import { EnvironmentParamSchema } from '../environment/environment-schema';
 import { NetModelSetSchema } from '../mesh/model-schema';
 import { PlayerDisplaySetSchema } from '../player/player-schema';

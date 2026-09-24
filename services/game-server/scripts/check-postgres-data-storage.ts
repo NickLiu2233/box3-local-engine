@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { DataType, newDb } from 'pg-mem';
 
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 import { PostgresDataStorage } from '../src/storage/postgres-data-storage';
 
 function hashText(value: string) {

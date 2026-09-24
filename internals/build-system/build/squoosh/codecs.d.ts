@@ -35,7 +35,7 @@ export declare const SQUOOSH_RES: {
     'wp2_node_enc.wasm': string;
 };
 import ImageData from './image_data';
-import { ContentServer } from '@box-local/content-server';
+import { ContentServer } from '@box/content-server';
 export interface ResizeOptions {
     width?: number;
     height?: number;

@@ -1,7 +1,7 @@
 'use strict';
 
-var schema$1 = require('@box-local/mesher/schema');
-var mesher = require('@box-local/mesher');
+var schema$1 = require('@box/mesher/schema');
+var mesher = require('@box/mesher');
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 

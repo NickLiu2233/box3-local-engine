@@ -5,7 +5,7 @@ import {
   PermissionGroupRDA,
   PermissionAccessLevel,
   VersionControlBranches,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 import { GameClientState } from 'src/engine/game-client-schema';
 import { ClientStateType } from '../edit-schema';
 

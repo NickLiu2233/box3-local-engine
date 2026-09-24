@@ -7,7 +7,7 @@ exports.CachingContentServer = void 0;
 const bs58_1 = __importDefault(require("bs58"));
 const crypto_1 = require("crypto");
 const content_cache_1 = require("./content-cache");
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 function ipfsHash(data) {
     const digest = (0, crypto_1.createHash)('sha256').update(data).digest();
     const digestSize = Buffer.from(digest.byteLength.toString(16), 'hex');

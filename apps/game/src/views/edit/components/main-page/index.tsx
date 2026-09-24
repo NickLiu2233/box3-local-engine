@@ -1,6 +1,6 @@
-import { FeatureFlag } from '@box-local/env/constants';
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
+import { FeatureFlag } from '@box/env/constants';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
 import React, {
   useCallback,
   useEffect,

@@ -1,5 +1,5 @@
-import { createConfig, initLocalEnv } from '@box-local/env';
-import { maybeN, maybeS, removeConfigUndefined } from '@box-local/utils/config-check';
+import { createConfig, initLocalEnv } from '@box/env';
+import { maybeN, maybeS, removeConfigUndefined } from '@box/utils/config-check';
 import { maybeStringArray } from './builder';
 import { config } from './index';
 

@@ -1,4 +1,4 @@
-import { createREWGPU } from '@box-local/rewgpu';
+import { createREWGPU } from '@box/rewgpu';
 
 export async function triangle(canvas: HTMLCanvasElement) {
   const rewgpu = await createREWGPU(canvas);

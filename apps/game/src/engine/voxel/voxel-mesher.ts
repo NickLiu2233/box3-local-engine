@@ -1,5 +1,5 @@
-import { VoxelView } from '@box-local/utils/voxel';
-import { BlockIndex } from '@box-local/schema/voxel/block-schema';
+import { VoxelView } from '@box/utils/voxel';
+import { BlockIndex } from '@box/schema/voxel/block-schema';
 import { VOXEL_TYPE_MASK } from '../../defs/script';
 
 enum CubeFace {

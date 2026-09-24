@@ -16,7 +16,7 @@ import {
   type LocalPlayerRole,
   type LocalPlayerStatus,
   type RuntimePlayerIdentity,
-} from '@box-local/utils/local-player-identity';
+} from '@box/utils/local-player-identity';
 import {
   normalizePlayerAdminCapabilities,
   type PlayerAdminCapability,

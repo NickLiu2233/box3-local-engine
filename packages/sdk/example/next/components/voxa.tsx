@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { create } from '@box-local/sdk';
+import { create } from '@box/sdk';
 
 export default function Voxa() {
   const ref = useRef<HTMLDivElement>();

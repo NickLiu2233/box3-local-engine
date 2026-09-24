@@ -1,5 +1,5 @@
-import type { Regl } from '@box-local/regl';
-import { lerp } from '@box-local/voxa-project';
+import type { Regl } from '@box/regl';
+import { lerp } from '@box/voxa-project';
 import { vec3 } from 'gl-matrix';
 import { Mesh } from '../rendering/objects/mesh';
 import { ShaderMaterial } from '../rendering/materials/shader';

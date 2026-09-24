@@ -1,5 +1,5 @@
 import path from 'path';
-import { start } from '@box-local/build-system/build';
+import { start } from '@box/build-system/build';
 import { getConfig } from '../config/server';
 const Paths = {
   targetDir: path.join(__dirname, '../src/assets'),

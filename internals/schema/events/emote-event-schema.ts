@@ -4,7 +4,7 @@ import {
   MuStruct,
   MuUint8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { GroundEmote } from '../animation/ik-schema';
 
 export const EmoteSchema = <MuSchema<GroundEmote>>new MuUint8(GroundEmote.none);

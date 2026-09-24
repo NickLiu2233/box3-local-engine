@@ -1,5 +1,5 @@
 import { BuildSystem } from '../type';
-import { IKPaletteSchema } from '@box-local/schema/animation/ik-schema';
+import { IKPaletteSchema } from '@box/schema/animation/ik-schema';
 
 export async function buildAnim(bs: BuildSystem, hash: string) {
   const playerJSON = await bs.retrieveJSON(hash);

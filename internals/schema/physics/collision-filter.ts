@@ -1,4 +1,4 @@
-import { MuArray, MuSortedArray, MuVarint } from '@box-local/mudb/schema';
+import { MuArray, MuSortedArray, MuVarint } from '@box/mudb/schema';
 
 export const CollisionGroupSchema = new MuSortedArray(
   new MuVarint(),

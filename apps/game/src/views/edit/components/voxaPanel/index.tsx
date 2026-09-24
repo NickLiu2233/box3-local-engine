@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { Parent, create, EventsType, ErrorType } from '@box-local/sdk';
-import { Toast, ModalView } from '@box-local/box-design';
-import { ModelMetaData } from '@box-local/voxa-project';
-import { ModelResp, ModelType } from '@box-local/apis';
+import { Parent, create, EventsType, ErrorType } from '@box/sdk';
+import { Toast, ModalView } from '@box/box-design';
+import { ModelMetaData } from '@box/voxa-project';
+import { ModelResp, ModelType } from '@box/apis';
 import { useEdit } from 'src/client/edit/edit-context';
 
 import { clientConfig, getConfig } from 'src/config/client';

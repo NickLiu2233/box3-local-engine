@@ -8,8 +8,8 @@ import React, {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Actions as ActionsType, EditingMode } from '@box-local/utils/helper';
-import type { SerializedVec2 } from '@box-local/box-design';
+import { Actions as ActionsType, EditingMode } from '@box/utils/helper';
+import type { SerializedVec2 } from '@box/box-design';
 import { useAppSelector } from '../../../redux/store';
 import { AppMode, PointerAction } from '../../../redux/app-slice';
 import { useEventListener } from '../../hooks';

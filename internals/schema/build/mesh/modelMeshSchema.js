@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ModelMeshSchema = exports.CompactModel = void 0;
-const stream_1 = require("@box-local/mudb/stream");
-const pool_1 = require("@box-local/utils/pool");
-const voxle_fill_1 = require("@box-local/utils/voxle-fill");
+const stream_1 = require("@box/mudb/stream");
+const pool_1 = require("@box/utils/pool");
+const voxle_fill_1 = require("@box/utils/voxle-fill");
 const AO_TABLE = new Uint8Array([0, 153, 204, 255]);
 class CompactModel {
     constructor(data, sliceInfo, material, surfaceCount) {

@@ -1,8 +1,8 @@
 import { ContentServer, OssCdnPath } from '.';
-import { MuSchema } from '@box-local/mudb/schema';
+import { MuSchema } from '@box/mudb/schema';
 import { ImageRequest, RetrieveImageFunction } from './image';
 import { DataRequest } from './data';
-import { LoadingController } from '@box-local/utils/loading/loading-controller';
+import { LoadingController } from '@box/utils/loading/loading-controller';
 export type PrefetchCachesType = {
     xhr: {
         [hash: string]: DataRequest;

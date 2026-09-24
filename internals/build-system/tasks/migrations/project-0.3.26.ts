@@ -1,4 +1,4 @@
-import { AssetType } from '@box-local/schema/project/project-rda';
+import { AssetType } from '@box/schema/project/project-rda';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

@@ -2,7 +2,7 @@ import {
   AssetsRDA,
   TreeNodes,
   DeleteAssetsRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

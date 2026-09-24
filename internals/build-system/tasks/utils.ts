@@ -1,4 +1,4 @@
-import { decodeUTF8 } from '@box-local/mudb/stream';
+import { decodeUTF8 } from '@box/mudb/stream';
 import { BuildSystem } from '../build-system';
 
 export async function concat(bs: BuildSystem, ...hashes: string[]) {

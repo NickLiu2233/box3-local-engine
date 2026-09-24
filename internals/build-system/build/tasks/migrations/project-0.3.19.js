@@ -11,8 +11,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toVersion = exports.fromVersion = exports.name = void 0;
 exports.migration = migration;
-const murda_tree_1 = require("@box-local/schema/project/murda-tree");
-const defs_1 = require("@box-local/schema/project/ui-rda/defs");
+const murda_tree_1 = require("@box/schema/project/murda-tree");
+const defs_1 = require("@box/schema/project/ui-rda/defs");
 exports.name = 'project';
 exports.fromVersion = '0.3.18';
 exports.toVersion = '0.3.19';

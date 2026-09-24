@@ -29,7 +29,7 @@ import type {
 import { serializeVec3 } from '../../utils/math';
 
 /**
- * @box-local/ao-mesher能够支持的texture长度。
+ * @box/ao-mesher能够支持的texture长度。
  */
 export const MAX_PALETTE_LENGTH = TEXTURE_MASK;
 /**

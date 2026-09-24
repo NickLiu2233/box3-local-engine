@@ -1,4 +1,4 @@
-import { MuBoolean, MuQuantizedFloat, MuSchema, MuUTF8, MuUint8, MuVarint, MuVoid, MuStruct, MuFloat64, MuASCII, MuDictionary } from '@box-local/mudb/schema';
+import { MuBoolean, MuQuantizedFloat, MuSchema, MuUTF8, MuUint8, MuVarint, MuVoid, MuStruct, MuFloat64, MuASCII, MuDictionary } from '@box/mudb/schema';
 import { TreeNodeType } from '../project/murda-tree';
 import { QuantizedVec2Schema, QuantizedVec3Schema } from '../utils/quantized-schema';
 declare enum AutoResizeType {
@@ -108,11 +108,11 @@ export declare const GroupProjectStateV26: MuStruct<{
         type: MuSchema<TreeNodeType>;
         name: MuUTF8;
         parentId: MuASCII;
-        childrenIds: import("@box-local/mudb/schema").MuArray<MuASCII>;
-        value: import("@box-local/mudb/schema").MuOption<import("@box-local/mudb/schema").MuUnion<{
+        childrenIds: import("@box/mudb/schema").MuArray<MuASCII>;
+        value: import("@box/mudb/schema").MuOption<import("@box/mudb/schema").MuUnion<{
             screen: MuStruct<{
                 enable: MuBoolean;
-                layout: import("@box-local/mudb/schema").MuUnion<{
+                layout: import("@box/mudb/schema").MuUnion<{
                     none: MuVoid;
                     autoLayout: MuStruct<{
                         cellSize: MuStruct<{
@@ -135,7 +135,7 @@ export declare const GroupProjectStateV26: MuStruct<{
                 }>;
                 zIndex: MuVarint;
             }>;
-            element: import("@box-local/mudb/schema").MuUnion<{
+            element: import("@box/mudb/schema").MuUnion<{
                 box: MuStruct<{
                     anchor: QuantizedVec2Schema;
                     position: MuStruct<{
@@ -152,7 +152,7 @@ export declare const GroupProjectStateV26: MuStruct<{
                     backgroundOpacity: MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
+                    layout: import("@box/mudb/schema").MuUnion<{
                         none: MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
@@ -192,7 +192,7 @@ export declare const GroupProjectStateV26: MuStruct<{
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
+                    layout: import("@box/mudb/schema").MuUnion<{
                         none: MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
@@ -232,7 +232,7 @@ export declare const GroupProjectStateV26: MuStruct<{
                     backgroundOpacity: MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
+                    layout: import("@box/mudb/schema").MuUnion<{
                         none: MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
@@ -280,7 +280,7 @@ export declare const GroupProjectStateV26: MuStruct<{
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
                     clipsDescendants: MuBoolean;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
+                    layout: import("@box/mudb/schema").MuUnion<{
                         none: MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{
@@ -331,7 +331,7 @@ export declare const GroupProjectStateV26: MuStruct<{
                     backgroundOpacity: MuQuantizedFloat;
                     zIndex: MuVarint;
                     layoutOrder: MuVarint;
-                    layout: import("@box-local/mudb/schema").MuUnion<{
+                    layout: import("@box/mudb/schema").MuUnion<{
                         none: MuVoid;
                         autoLayout: MuStruct<{
                             cellSize: MuStruct<{

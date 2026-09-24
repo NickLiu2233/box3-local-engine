@@ -11,7 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.toVersion = exports.fromVersion = exports.name = void 0;
 exports.migration = migration;
-const math_schema_1 = require("@box-local/schema/utils/math-schema");
+const math_schema_1 = require("@box/schema/utils/math-schema");
 exports.name = 'project';
 exports.fromVersion = '0.3.12';
 exports.toVersion = '0.3.13';

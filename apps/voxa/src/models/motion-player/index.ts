@@ -1,5 +1,5 @@
 import { vec2 } from 'gl-matrix';
-import type { SerializedVec2 } from '@box-local/box-design';
+import type { SerializedVec2 } from '@box/box-design';
 import type { AnimatorApp } from '../animator-app';
 import { setCurrentTime, setPlaying } from '../../redux/app-slice';
 import { store } from '../../redux/store';

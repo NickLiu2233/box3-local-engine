@@ -5,8 +5,8 @@ import {
   MuStruct,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { compareId } from '@box-local/utils/id';
+} from '@box/mudb/schema';
+import { compareId } from '@box/utils/id';
 import { CameraConfigurationSchema } from '../camera/camera-schema';
 import { SoundEffectSchema } from '../sound/sound-protocol';
 import { Gamepad } from '../api/js/api';

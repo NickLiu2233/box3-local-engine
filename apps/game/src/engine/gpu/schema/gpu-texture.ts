@@ -1,7 +1,7 @@
-import { MuStruct, MuArray, MuVarint, MuUint16 } from '@box-local/mudb/schema';
-import { HashSchema } from '@box-local/schema/content-server/index';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { Vec2Schema } from '@box-local/schema/utils/math-schema';
+import { MuStruct, MuArray, MuVarint, MuUint16 } from '@box/mudb/schema';
+import { HashSchema } from '@box/schema/content-server/index';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { Vec2Schema } from '@box/schema/utils/math-schema';
 import {
   REWGPUTexture2DSchema,
   REWGPUCubeSchema,

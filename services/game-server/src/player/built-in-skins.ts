@@ -1,7 +1,7 @@
 import {
   PlayerSkinHash,
   PlayerSkinHashSchema,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 
 /**
  * Curated, offline player skins. Every hash is the original 3D body-part

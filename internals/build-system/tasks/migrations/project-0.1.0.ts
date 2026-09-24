@@ -1,5 +1,5 @@
 import { BuildSystem } from '../../type';
-import { decodeUTF8, encodeUTF8 } from '@box-local/mudb/stream';
+import { decodeUTF8, encodeUTF8 } from '@box/mudb/stream';
 
 const DEFAULT_LUT: {
   lut: {

@@ -2,12 +2,12 @@ import { BuildSystem } from '../../type';
 import {
   ImageDisplayMode,
   UITextFontFamily,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import {
   isUIImageNode,
   isUIInputNode,
   isUITextNode,
-} from '@box-local/schema/project/ui-rda/util';
+} from '@box/schema/project/ui-rda/util';
 
 export const name = 'project';
 export const fromVersion = '0.3.27';

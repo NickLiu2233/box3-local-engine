@@ -9,8 +9,8 @@ import { GUIClient } from './gui-client';
 import {
   createLocalSocket,
   createLocalSocketServer,
-} from '@box-local/mudb/socket/local';
-import { MuClient, MuServer } from '@box-local/mudb';
+} from '@box/mudb/socket/local';
+import { MuClient, MuServer } from '@box/mudb';
 import { GUIProtocol } from './gui-protocol';
 
 const socketServer = createLocalSocketServer();

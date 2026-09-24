@@ -4,7 +4,7 @@ import {
   MuUint16,
   MuArray,
   MuBoolean,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 export const VoxelChangeEventSchema = new MuStruct({
   x: new MuUint32(),

@@ -5,7 +5,7 @@ import {
   readCreatorProjectScript,
   writeCreatorProjectScript,
   type CreatorProjectScriptStore,
-} from '@box-local/cli';
+} from '@box/cli';
 import { allowAuthenticatedCreatorCliApi } from '../../../../../../../../server/creator-api-security';
 import { getLocalProjectManager } from '../../../../../../../../server/local-project-manager';
 

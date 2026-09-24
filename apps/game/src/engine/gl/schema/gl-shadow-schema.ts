@@ -6,15 +6,15 @@ import {
   MuVarint,
   MuASCII,
   MuFloat32,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import {
   Vec2Schema,
   Mat4Schema,
   Vec4Schema,
   Vec3Schema,
   Mat3Schema,
-} from '@box-local/schema/utils/math-schema';
-import { FrustumSchema } from '@box-local/schema/utils/frustum-schema';
+} from '@box/schema/utils/math-schema';
+import { FrustumSchema } from '@box/schema/utils/frustum-schema';
 import {
   REGLViewportSchema,
   REGLFramebuffer2DSchema,

@@ -2,7 +2,7 @@ import REGL from 'regl';
 import { REGLLoader } from '../regl';
 import glBox from './debug-box';
 import { mat4, vec3 } from 'gl-matrix';
-import { RenderBoxSet } from '@box-local/schema/render-box/schema';
+import { RenderBoxSet } from '@box/schema/render-box/schema';
 
 export default function (regl: REGL.Regl, loader: REGLLoader) {
   const drawBox = loader.require(glBox);

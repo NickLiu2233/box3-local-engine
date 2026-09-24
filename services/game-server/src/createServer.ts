@@ -1,26 +1,26 @@
-import { ProjectBakeCache } from '@box-local/build-system/project/bake';
-import { CreativeMode, ModelType } from '@box-local/apis';
-import { PrebakeCache } from '@box-local/build-system/project/prebake-schema';
-import { BuildSystemAPI } from '@box-local/build-system/type';
-import { ContentServer } from '@box-local/content-server';
-import { MuSystemScheduler } from '@box-local/mudb/scheduler/system';
-import { MuServer } from '@box-local/mudb/server';
-import { MuWebSocketServer } from '@box-local/mudb/socket/web/server';
-import { DB } from '@box-local/schema/backend/database-type';
-import type { GroupProjectStore } from '@box-local/schema/group-project/rda';
-import type { ProjectAction } from '@box-local/schema/replica/replica-schema';
-import { getMeshPath } from '@box-local/schema/project/hot-schema';
-import { GameSessionData, UserDetailSchema } from '@box-local/schema/session/schema';
+import { ProjectBakeCache } from '@box/build-system/project/bake';
+import { CreativeMode, ModelType } from '@box/apis';
+import { PrebakeCache } from '@box/build-system/project/prebake-schema';
+import { BuildSystemAPI } from '@box/build-system/type';
+import { ContentServer } from '@box/content-server';
+import { MuSystemScheduler } from '@box/mudb/scheduler/system';
+import { MuServer } from '@box/mudb/server';
+import { MuWebSocketServer } from '@box/mudb/socket/web/server';
+import { DB } from '@box/schema/backend/database-type';
+import type { GroupProjectStore } from '@box/schema/group-project/rda';
+import type { ProjectAction } from '@box/schema/replica/replica-schema';
+import { getMeshPath } from '@box/schema/project/hot-schema';
+import { GameSessionData, UserDetailSchema } from '@box/schema/session/schema';
 import {
   SchemaTraceEntry,
   traceProtocols,
   trapDoubleFree,
-} from '@box-local/schema/utils/trace-schema';
-import { bodyParse } from '@box-local/utils/backend';
-import { EventBus } from '@box-local/utils/event';
-import { getRealIP } from '@box-local/utils/ip';
-import { Logger as LegacyLogger } from '@box-local/utils/logger';
-import { verifyRuntimePlayerIdentity } from '@box-local/utils/local-player-identity';
+} from '@box/schema/utils/trace-schema';
+import { bodyParse } from '@box/utils/backend';
+import { EventBus } from '@box/utils/event';
+import { getRealIP } from '@box/utils/ip';
+import { Logger as LegacyLogger } from '@box/utils/logger';
+import { verifyRuntimePlayerIdentity } from '@box/utils/local-player-identity';
 import * as http from 'http';
 import * as https from 'https';
 import type { Logger } from 'pino';

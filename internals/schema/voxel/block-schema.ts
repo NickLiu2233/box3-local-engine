@@ -11,7 +11,7 @@ import {
   MuRelativeVarint,
   MuFloat32,
   MuQuantizedFloat,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { HashSchema } from '../content-server/index';
 import { MuRefSchema } from '../utils/ref-schema';
 import { RelativeArray } from '../utils/relative-array';

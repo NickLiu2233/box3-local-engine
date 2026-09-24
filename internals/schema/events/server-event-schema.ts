@@ -1,5 +1,5 @@
-import { MuStruct, MuArray, MuUTF8, MuSchema } from '@box-local/mudb/schema';
-import { MuSessionId } from '@box-local/mudb/socket/socket';
+import { MuStruct, MuArray, MuUTF8, MuSchema } from '@box/mudb/schema';
+import { MuSessionId } from '@box/mudb/socket/socket';
 import { PhysicsEventSchema } from './physics-event-schema';
 import { ChatEventSchema } from './chat-event-schema';
 import { VoxelEventSchema } from './voxel-event-schema';

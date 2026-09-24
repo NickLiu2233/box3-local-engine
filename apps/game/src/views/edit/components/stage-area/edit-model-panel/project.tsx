@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useIntl } from 'react-intl';
 
-import { ItemId, MenuItemOptions } from '@box-local/box-design';
-import { ModelType } from '@box-local/apis';
+import { ItemId, MenuItemOptions } from '@box/box-design';
+import { ModelType } from '@box/apis';
 
 import { RootState } from 'src/redux/edit';
 import { ModelAction, ModelData, ModelPanelTab } from '.';

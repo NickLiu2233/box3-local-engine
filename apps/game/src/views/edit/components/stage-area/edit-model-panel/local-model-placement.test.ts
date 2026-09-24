@@ -2,11 +2,11 @@ import { describe, expect, it, jest } from '@jest/globals';
 import {
   EntitySeedRDA,
   ProjectRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import {
   ROOT_ID,
   TreeNodeType,
-} from '@box-local/schema/project/murda-tree';
+} from '@box/schema/project/murda-tree';
 
 import {
   createProjectModelSeedReplacement,

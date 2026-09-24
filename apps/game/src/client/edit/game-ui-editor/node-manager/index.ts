@@ -1,5 +1,5 @@
-import { type UITree } from '@box-local/schema/project/ui-rda/defs';
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
+import { type UITree } from '@box/schema/project/ui-rda/defs';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
 import { GameUINode } from '../../../../engine/game-ui/nodes/base';
 import { GameUINodeLoader } from 'src/engine/game-ui/node-loader';
 import { isRenderable } from 'src/engine/game-ui/util';

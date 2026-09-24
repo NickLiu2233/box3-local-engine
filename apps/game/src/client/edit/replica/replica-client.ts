@@ -1,9 +1,9 @@
 import querystring from 'querystring';
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { VoxelWriteSchema, VoxelWrite } from '@box-local/schema/voxel/voxel-protocol';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
+import { MuReadStream } from '@box/mudb/stream';
+import { VoxelWriteSchema, VoxelWrite } from '@box/schema/voxel/voxel-protocol';
 import { GameClient } from 'src/engine/game-client';
-import { ProjectRDA } from '@box-local/schema/project/project-rda';
+import { ProjectRDA } from '@box/schema/project/project-rda';
 import {
   PermissionRDA,
   PermissionSetSchema,
@@ -15,7 +15,7 @@ import {
   PermissionGroupRDA,
   PermissionUserRDA,
   PermissionsSchema,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 import { clientConfig } from 'src/config/client';
 
 import {
@@ -23,7 +23,7 @@ import {
   ProjectActionSchema,
   ProjectAction,
   RPCResult,
-} from '@box-local/schema/replica/replica-schema';
+} from '@box/schema/replica/replica-schema';
 import { ClientStateType } from '../edit-schema';
 import {
   ClientEditActionSchema,
@@ -36,12 +36,12 @@ import {
 import { ClientProjectTransaction } from './transaction/client-project-transaction';
 import { ClientVoxelTransaction } from './transaction/client-voxel-transaction';
 import { ClientPermissionTransaction } from './transaction/client-permission-transaction';
-import { Logger } from '@box-local/utils/logger';
-import { EventBus } from '@box-local/utils/event';
+import { Logger } from '@box/utils/logger';
+import { EventBus } from '@box/utils/event';
 import { VoxelMessageType } from 'src/engine/voxel/voxel-worker-schema';
 import { reduxDispatch } from 'src/redux/edit';
 import { setPermission } from 'src/redux/edit/permission';
-import { ExtraProjectInfoSchema } from '@box-local/schema/project/hot-schema';
+import { ExtraProjectInfoSchema } from '@box/schema/project/hot-schema';
 import {
   ExtraProjectChange,
   summarizeExtraProjectChange,

@@ -9,7 +9,7 @@
 
     "baseUrl": ".",
     "paths": {
-      "@box-local/*": ["internals/*/src", "internals/*", "@box-local/*"]
+      "@box/*": ["internals/*/src", "internals/*", "@box/*"]
     }
   }
 }

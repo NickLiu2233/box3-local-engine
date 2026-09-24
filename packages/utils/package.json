@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/utils",
+  "name": "@box/utils",
   "version": "2.1.0",
   "license": "UNLICENSED",
   "author": "Box Engine",
@@ -24,7 +24,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@box-local/mudb": "workspace:1.0.4",
+    "@box/mudb": "workspace:1.0.4",
     "@types/node": "10.17.60",
     "bit-twiddle": "1.0.2",
     "gl-matrix": "3.4.3",

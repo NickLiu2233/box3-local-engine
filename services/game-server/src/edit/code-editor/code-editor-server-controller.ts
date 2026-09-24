@@ -1,11 +1,11 @@
-import { MuServerProtocol } from '@box-local/mudb/server';
+import { MuServerProtocol } from '@box/mudb/server';
 import { CodeEditorServerState } from './code-editor-server-state';
-import { CodeEditorProtocol } from '@box-local/schema/code-editor/code-editor-protocol';
+import { CodeEditorProtocol } from '@box/schema/code-editor/code-editor-protocol';
 import {
   FileState,
   CursorSchema,
   FileDictRDA,
-} from '@box-local/schema/code-editor/code-editor-common-state';
+} from '@box/schema/code-editor/code-editor-common-state';
 import { EditServerState } from '../edit-server-schema';
 import { v4 } from 'uuid';
 import {
@@ -13,7 +13,7 @@ import {
   OssCdnPath,
   OssStoreType,
   SCRIPT_OSS_CDN_PATH,
-} from '@box-local/content-server';
+} from '@box/content-server';
 import { MuCodeEditorReplicaServer } from './replica/server';
 import { EditServer } from '../edit-server';
 import { clearTimeout } from 'timers';
@@ -21,8 +21,8 @@ import { getConfigSync } from '../../../config/server';
 import {
   ExtraProjectInfo,
   ExtraProjectInfoSchema,
-} from '@box-local/schema/project/hot-schema';
-import { AssetType } from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/hot-schema';
+import { AssetType } from '@box/schema/project/project-rda';
 import { localSharedScriptLockOwnerId } from '../replica/local-shared-script-state';
 
 const HEART_BEAT_DURATION = 30 * 1000;

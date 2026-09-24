@@ -1,10 +1,10 @@
-import { MuClient, MuClientProtocol } from '@box-local/mudb/client';
+import { MuClient, MuClientProtocol } from '@box/mudb/client';
 import {
   GameHttpAPI,
   GameHttpFetchRequestOptions,
   GameHttpFetchResponse,
   GameHttpHandler,
-} from '@box-local/schema/api/js/http';
+} from '@box/schema/api/js/http';
 import { HttpScriptProtocol } from './http-protocol';
 import { isSafeUrl } from '../href/safe-url';
 

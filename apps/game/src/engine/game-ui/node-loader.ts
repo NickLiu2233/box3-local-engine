@@ -1,6 +1,6 @@
-import { ROOT_ID } from '@box-local/schema/project/murda-tree';
-import { type UITree, type UITreeNode } from '@box-local/schema/project/ui-rda/defs';
-import { isUIElement, isUIScreen } from '@box-local/schema/project/ui-rda/util';
+import { ROOT_ID } from '@box/schema/project/murda-tree';
+import { type UITree, type UITreeNode } from '@box/schema/project/ui-rda/defs';
+import { isUIElement, isUIScreen } from '@box/schema/project/ui-rda/util';
 import type { GameUINode } from './nodes/base';
 import { GameUIImage, type GetImageData } from './nodes/image';
 import type { GetContext } from './nodes/interface';

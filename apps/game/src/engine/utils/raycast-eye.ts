@@ -3,7 +3,7 @@ import type { GameClientState } from '../game-client-schema';
 import {
   raycast,
   VoxelRaycastHitResult,
-} from '@box-local/schema/voxel/voxel-raycast';
+} from '@box/schema/voxel/voxel-raycast';
 
 export const CUTOFF_FAR = 60;
 export const CUTOFF_NEAR = 30;

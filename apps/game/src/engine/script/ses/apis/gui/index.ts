@@ -10,7 +10,7 @@ import {
   UIScrollBoxRDA,
   UITextFontFamily,
   UITextRDA,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 import { nanoid } from 'nanoid/non-secure';
 import type { GameUIClient } from 'src/engine/game-ui';
 import { GameUIBox } from 'src/engine/game-ui/nodes/box';

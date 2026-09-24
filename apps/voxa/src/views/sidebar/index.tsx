@@ -7,7 +7,7 @@ import {
   ToolItem,
   ToolItemOptions,
   Menu,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import {
   animatorStateToSection,
   editingStateToSelection,

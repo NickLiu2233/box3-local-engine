@@ -1,6 +1,6 @@
-import { BlockInfo } from '@box-local/schema/voxel/block-schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { VoxelCollisionBox } from '@box-local/schema/utils/rbush-schema';
+import { BlockInfo } from '@box/schema/voxel/block-schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { VoxelCollisionBox } from '@box/schema/utils/rbush-schema';
 
 export const WorkerSchema = new MuRefSchema<Worker>();
 export enum VoxelMessageType {

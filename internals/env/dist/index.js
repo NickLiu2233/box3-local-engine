@@ -433,7 +433,7 @@ const SCHEMA_MAP = {
     'voxa': VOXA_SCHEMA,
     'box-api': BOX_API_SCHEMA
 };
-const debug = defineDebug('@box-local/env');
+const debug = defineDebug('@box/env');
 const ajv = new Ajv();
 /**
  * 注入 .env.local 文件到环境变量中（如果有的话

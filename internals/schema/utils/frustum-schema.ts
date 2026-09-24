@@ -1,4 +1,4 @@
-import { MuStruct, MuFloat64 } from '@box-local/mudb/schema';
+import { MuStruct, MuFloat64 } from '@box/mudb/schema';
 import { Mat4Schema } from './math-schema';
 
 export const FrustumSchema = new MuStruct({

@@ -1,4 +1,4 @@
-import type { AttributeConfig, Elements, Regl, Texture2D } from '@box-local/regl';
+import type { AttributeConfig, Elements, Regl, Texture2D } from '@box/regl';
 import { MeshGeometry } from '../../models/rendering/geometries/mesh-geometry';
 import { ShaderMaterial } from '../../models/rendering/materials/shader';
 import { Mesh } from '../../models/rendering/objects/mesh';

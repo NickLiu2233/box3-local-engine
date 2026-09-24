@@ -1,13 +1,13 @@
 import type { Logger } from 'pino';
 
-import { FetchAPI } from '@box-local/utils/http-fetch/type';
-import { BuildSystemAPI, Hash } from '@box-local/build-system/type';
-import { Tasks, TaskParams } from '@box-local/build-system/type';
-import { Semaphore } from '@box-local/utils/semaphore';
-import { ContentServer, OssCdnPath, OssStoreType } from '@box-local/content-server';
-import { stableStringify } from '@box-local/mudb/util/stringify';
-import { BuildSystem } from '@box-local/build-system/build-system';
-import { MockBuildCache } from '@box-local/build-system/build-cache-mock';
+import { FetchAPI } from '@box/utils/http-fetch/type';
+import { BuildSystemAPI, Hash } from '@box/build-system/type';
+import { Tasks, TaskParams } from '@box/build-system/type';
+import { Semaphore } from '@box/utils/semaphore';
+import { ContentServer, OssCdnPath, OssStoreType } from '@box/content-server';
+import { stableStringify } from '@box/mudb/util/stringify';
+import { BuildSystem } from '@box/build-system/build-system';
+import { MockBuildCache } from '@box/build-system/build-cache-mock';
 
 export class BuildSystemRemote implements BuildSystemAPI {
   public mutex: { [token: string]: Semaphore } = {};

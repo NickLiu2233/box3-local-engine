@@ -31,7 +31,7 @@ const http = __importStar(require("http"));
 const https = __importStar(require("https"));
 const url = __importStar(require("url"));
 const form_data_1 = __importDefault(require("form-data"));
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 class GoIPFSStore {
     constructor(spec) {
         this.retryCount = 10;

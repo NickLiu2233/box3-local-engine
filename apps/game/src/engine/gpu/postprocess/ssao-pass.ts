@@ -1,4 +1,4 @@
-import type { IREWGPUTexture, ReWGPU } from '@box-local/rewgpu';
+import type { IREWGPUTexture, ReWGPU } from '@box/rewgpu';
 import type { GameClientState } from 'src/engine/game-client-schema';
 import { rootLogger } from 'src/utils/logger';
 import ssaoFragWgsl from '../wgsl/ssao-frag.wgsl';

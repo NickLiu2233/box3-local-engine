@@ -1,5 +1,5 @@
-import { encodeUTF8 } from '@box-local/mudb/stream';
-import { CHUNK_SHIFT } from '@box-local/schema/voxel/voxel-collision-schema';
+import { encodeUTF8 } from '@box/mudb/stream';
+import { CHUNK_SHIFT } from '@box/schema/voxel/voxel-collision-schema';
 import {
   AssetsRDA,
   AssetType,
@@ -8,7 +8,7 @@ import {
   VoxelInfo,
   ProjectRDA,
   DeleteAssetsRDA,
-} from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/project-rda';
 import {
   retrieveProject,
   storeProjectJSON,

@@ -1,8 +1,8 @@
 // Some helper tools for creating declarative databinding
 // Currently used in the script system to synchronize script objects with the engine across a socket.
 //
-import { MuSchema } from '@box-local/mudb/schema';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+import { MuSchema } from '@box/mudb/schema';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { ScriptResourceSync } from './resource';
 import { CodeGenContext, CodeGenFunc, CodeGenBlock } from '../codegen';
 

@@ -1,6 +1,6 @@
 import { useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { ModalView, Input } from '@box-local/box-design';
+import { ModalView, Input } from '@box/box-design';
 import {
   DEFAULT_EXTENSION,
   DEFAULT_IK_PALETTE,

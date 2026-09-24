@@ -1,4 +1,4 @@
-import { EventBus } from '@box-local/utils/event';
+import { EventBus } from '@box/utils/event';
 import type { RemoteChannelClient } from '../remote-channel/channel-client';
 
 /**

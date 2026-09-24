@@ -5,7 +5,7 @@ import {
   MuRDATypes,
   MuRDAMap,
   MuRDAList,
-} from '@box-local/mudb/rda';
+} from '@box/mudb/rda';
 import {
   MuUTF8,
   MuStruct,
@@ -19,7 +19,7 @@ import {
   MuSchema,
   MuQuantizedFloat,
   MuDate,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { HashSchema } from '../content-server/index';
 import { vec3, quat } from 'gl-matrix';
 import {

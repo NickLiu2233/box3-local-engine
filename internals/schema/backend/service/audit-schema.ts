@@ -6,7 +6,7 @@ import {
   MuDate,
   MuSchema,
   MuOption,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 import { UploadScene } from '../rpc/user-protocol';
 
 export enum AuditType {

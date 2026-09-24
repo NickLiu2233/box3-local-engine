@@ -1,5 +1,5 @@
 import React, { ReactNode, memo } from 'react';
-import { UICoord2Keys } from '@box-local/schema/project/ui-rda/defs';
+import { UICoord2Keys } from '@box/schema/project/ui-rda/defs';
 
 import { AxisInput, AxisInputValue } from '../axis-input';
 

@@ -1,6 +1,6 @@
 import { useCallback, useContext, useMemo } from 'react';
 import { IntlShape, useIntl } from 'react-intl';
-import { Button, SerializedVec2 } from '@box-local/box-design';
+import { Button, SerializedVec2 } from '@box/box-design';
 import {
   InterpolationType,
   MotionKeyframe,

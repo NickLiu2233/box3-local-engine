@@ -1,11 +1,11 @@
-import type { UILayoutType, UITree } from '@box-local/schema/project/ui-rda/defs';
+import type { UILayoutType, UITree } from '@box/schema/project/ui-rda/defs';
 import type { BuildSystem } from '../../../build-system';
 import {
   isUIElement,
   isUIScreen,
   isUITextElement,
   pickAutoLayoutProp,
-} from '@box-local/schema/project/ui-rda/util';
+} from '@box/schema/project/ui-rda/util';
 
 const fromVersion = '0.0.0';
 const toVersion = '0.0.1';

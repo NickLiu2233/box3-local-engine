@@ -1,7 +1,7 @@
 import { hashURL } from 'src/utils/hash-url';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
-import { IconDrag } from '@box-local/icons';
+import { IconDrag } from '@box/icons';
 import { RootState } from 'src/redux/edit';
 import { userInfoType, InnerRoles } from '../index';
 import style from '../index.module.scss';

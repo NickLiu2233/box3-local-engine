@@ -1,8 +1,8 @@
-import { MuStruct, MuVarint, MuVoid } from '@box-local/mudb/schema';
+import { MuStruct, MuVarint, MuVoid } from '@box/mudb/schema';
 import {
   MessageEventSchema,
   PostMessageSchema,
-} from '@box-local/schema/navigator/navigator-schema';
+} from '@box/schema/navigator/navigator-schema';
 
 export const NavigatorScriptProtocol = {
   name: 'navigator-script',

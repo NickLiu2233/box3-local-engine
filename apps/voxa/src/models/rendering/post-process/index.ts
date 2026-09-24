@@ -7,7 +7,7 @@ import {
   ReglProps,
   Texture2D,
   VertexArrayObject,
-} from '@box-local/regl';
+} from '@box/regl';
 import { prevPow2 } from 'bit-twiddle';
 import { RenderConfig } from '../webgl-renderer';
 

@@ -11,7 +11,7 @@ import {
   OssCdnPath,
   OssStoreType,
 } from './index';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { Semaphore } from '@box/utils/semaphore';
 
 interface ParsedURL {
   protocol: string;

@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
 
-import type { OssCdnPath, OssStoreType } from '@box-local/content-server';
+import type { OssCdnPath, OssStoreType } from '@box/content-server';
 import { tasks } from './task-index';
 import { BuildSystem } from './build-system';
 export { BuildSystem } from './build-system';

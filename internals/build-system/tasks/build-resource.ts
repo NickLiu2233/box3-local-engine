@@ -1,8 +1,8 @@
 import { BuildSystem } from '../build-system';
 import { Tasks } from '../type';
-import { Hash } from '@box-local/content-server';
-import { decodeUTF8, encodeUTF8 } from '@box-local/mudb/stream';
-import { stableStringify } from '@box-local/mudb/util/stringify';
+import { Hash } from '@box/content-server';
+import { decodeUTF8, encodeUTF8 } from '@box/mudb/stream';
+import { stableStringify } from '@box/mudb/util/stringify';
 
 // Return type of resulting resource.
 // 'hash' is the default value

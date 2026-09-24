@@ -25,7 +25,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ExtraProjectInfoSchema = exports.ScriptAssetSetsSchema = exports.ScriptAssetsSchema = exports.MeshPathSetsSchema = exports.MeshPathSchema = exports.SkinNameSetsSchema = exports.HotProjectSchema = exports.SkinAssetSetSchema = exports.SkinAssetSchema = exports.SkinAssetContent = exports.PictureAssetSetSchema = exports.PictureAssetSchema = exports.HotCollisionRules = exports.SoundTableSchema = exports.ScriptIndexSchema = exports.ScriptAssetSetSchema = exports.ScriptAssetSchema = exports.MeshAssetSetSchema = exports.MeshAssetSchema = exports.CustomBoundsSchema = exports.MotionListSchema = exports.MotionSchema = exports.HashType = exports.SeedSetSchema = exports.SeedSchema = exports.GamepadSchema = exports.VoxelSchema = exports.PhysicsSchema = exports.EnvironmentSchema = exports.PlayerSchema = exports.PrevHashSchema = exports.DisplayNameSchema = void 0;
 exports.getMeshPath = getMeshPath;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const ERDA = __importStar(require("./project-rda"));
 const index_1 = require("../content-server/index");
 const math_schema_1 = require("../utils/math-schema");

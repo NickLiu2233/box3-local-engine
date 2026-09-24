@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.optimise = optimise;
 exports.optimiseNoCopy = optimiseNoCopy;
 exports.free = free;
-const stream_1 = require("@box-local/mudb/stream");
+const stream_1 = require("@box/mudb/stream");
 let wasm;
 let cachegetUint8Memory0 = null;
 function getUint8Memory0() {

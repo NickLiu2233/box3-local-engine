@@ -1,5 +1,5 @@
 import { IntlShape } from 'react-intl';
-import { IconAddObject, IconAddObjectPic, IconSize } from '@box-local/icons';
+import { IconAddObject, IconAddObjectPic, IconSize } from '@box/icons';
 import {
   AddType,
   AnimatorMode,
@@ -10,12 +10,12 @@ import {
   ToolType,
 } from '../../redux/animator-slice';
 import { AppMode, EditType } from '../../redux/app-slice';
-import { Actions, colorSelectOptions, EditingMode } from '@box-local/utils/helper';
+import { Actions, colorSelectOptions, EditingMode } from '@box/utils/helper';
 import type {
   MenuItemOptions,
   ToolItemOptions,
   VideoMedia,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { VoxelDimension } from '../../models/project/defs';
 import { store } from '../../redux/store';
 import type { VoxelEditor } from '../../models/editor';

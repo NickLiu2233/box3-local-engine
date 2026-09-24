@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import styles from './index.module.css';
 import { intlMessage } from 'src/utils/i18n';
-import { Button, Modal } from '@box-local/box-design';
+import { Button, Modal } from '@box/box-design';
 
 export const EditConnectError = React.memo(() => {
   useEffect(() => {

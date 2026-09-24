@@ -5,9 +5,9 @@ import {
   MuArray,
   MuASCII,
   MuOption,
-} from '@box-local/mudb/schema';
-import type { MuSchema } from '@box-local/mudb/schema';
-import type { TELEPORT_ERROR_STATUS } from '@box-local/schema/api/js/api';
+} from '@box/mudb/schema';
+import type { MuSchema } from '@box/mudb/schema';
+import type { TELEPORT_ERROR_STATUS } from '@box/schema/api/js/api';
 
 export const TeleportScriptProtocol = {
   name: 'teleport-api',

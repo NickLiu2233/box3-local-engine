@@ -7,7 +7,7 @@ import {
 import { updateTexture, restoreTexture } from './texture';
 import { ENGINE_RES } from '../../resource/engine';
 import { prepareVoxels, renderVoxelsShadow } from '../voxel/voxel-controller';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 
 const TRIVIAL_FRAG = `void main() { gl_FragColor = vec4(1); }`;
 

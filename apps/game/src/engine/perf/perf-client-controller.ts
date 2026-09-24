@@ -1,4 +1,4 @@
-import { MuClient } from '@box-local/mudb/client';
+import { MuClient } from '@box/mudb/client';
 import { GameClientState } from '../game-client-schema';
 import {
   ProtocolPerfSchema,

@@ -1,6 +1,6 @@
-import { MuUnion, MuVoid } from '@box-local/mudb/schema';
-import type { MuRDA } from '@box-local/mudb/rda';
-import type { MuRDAActionMeta, MuRDABindableActionMeta, MuRDAStore, MuRDATypes } from '@box-local/mudb/rda/rda';
+import { MuUnion, MuVoid } from '@box/mudb/schema';
+import type { MuRDA } from '@box/mudb/rda';
+import type { MuRDAActionMeta, MuRDABindableActionMeta, MuRDAStore, MuRDATypes } from '@box/mudb/rda/rda';
 export type MuRDAUnionSpec = {
     [type: string]: MuRDA<any, any, any, any>;
 };
@@ -118,7 +118,7 @@ export declare class MuRDAUnion<Spec extends MuRDAUnionSpec, SubTypes extends ke
     private _savedUpdate;
     constructor(specs: Spec, identityType?: SubTypes);
     action: (store: MuRDAUnionStore<Spec, this>) => {
-        set: (newState: this["stateSchema"]["identity"]) => import("@box-local/mudb/schema/union").UnionInstance<{
+        set: (newState: this["stateSchema"]["identity"]) => import("@box/mudb/schema/union").UnionInstance<{
             /**
              * 全量设置当前数据
              */

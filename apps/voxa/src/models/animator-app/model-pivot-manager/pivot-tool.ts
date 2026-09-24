@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import type { DrawCommand, Regl } from '@box-local/regl/regl';
+import type { DrawCommand, Regl } from '@box/regl/regl';
 import { Pivot } from '../../rendering/controls/transform/pivot';
 import {
   ShaderMaterial,

@@ -3,8 +3,8 @@ import { useIntl } from 'react-intl';
 import {
   AutoLayoutHorizontalAlignType,
   AutoLayoutVerticalAlignType,
-} from '@box-local/schema/project/ui-rda/defs';
-import { TooltipTrigger } from '@box-local/box-design';
+} from '@box/schema/project/ui-rda/defs';
+import { TooltipTrigger } from '@box/box-design';
 import {
   IconLayoutAlignTopLeft,
   IconLayoutAlignTopCenter,
@@ -16,7 +16,7 @@ import {
   IconLayoutAlignBottomRight,
   IconLayoutAlignBottomCenter,
   IconLayoutDefault,
-} from '@box-local/icons';
+} from '@box/icons';
 import type {
   HorizontalAlignmentConfig,
   VerticalAlignmentConfig,

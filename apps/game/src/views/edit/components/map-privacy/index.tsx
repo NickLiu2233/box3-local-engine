@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useIntl } from 'react-intl';
 import { useSelector } from 'react-redux';
-import { PermissionAccessLevel } from '@box-local/schema/permissions/permission-rda';
+import { PermissionAccessLevel } from '@box/schema/permissions/permission-rda';
 
 import { RootState } from 'src/redux/edit';
 import { RadioBtn } from 'src/views/components/basic/radioBtn';

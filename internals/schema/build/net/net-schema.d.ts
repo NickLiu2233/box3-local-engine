@@ -1,4 +1,4 @@
-import { MuStruct, MuUint32, MuSortedArray, MuUint16, MuUint8, MuSchema, MuUTF8, MuArray, MuVoid, MuBoolean, MuVarint, MuRelativeVarint, MuQuantizedFloat, MuDictionary } from '@box-local/mudb/schema';
+import { MuStruct, MuUint32, MuSortedArray, MuUint16, MuUint8, MuSchema, MuUTF8, MuArray, MuVoid, MuBoolean, MuVarint, MuRelativeVarint, MuQuantizedFloat, MuDictionary } from '@box/mudb/schema';
 import { QuantizedVec3Schema } from '../utils/quantized-schema';
 import { PlayerLoginState } from '../player/player-schema';
 export declare const MAX_CLIENT_INPUT_ENTITIES = 32;
@@ -40,8 +40,8 @@ export declare const NetStateSchema: MuStruct<{
         pitch: MuUint8;
     }>>;
     physics: MuStruct<{
-        gravity: import("@box-local/mudb/schema").MuFloat64;
-        velocityDamping: import("@box-local/mudb/schema").MuFloat64;
+        gravity: import("@box/mudb/schema").MuFloat64;
+        velocityDamping: import("@box/mudb/schema").MuFloat64;
         useOBB: MuBoolean;
     }>;
     bodies: MuSortedArray<MuSchema<import("../physics/physics-schema").RigidBody> & {
@@ -241,8 +241,8 @@ export declare const NetInputSchema: MuStruct<{
     }>;
     physicsDelta: MuStruct<{
         patch: MuStruct<{
-            gravity: import("@box-local/mudb/schema").MuFloat64;
-            velocityDamping: import("@box-local/mudb/schema").MuFloat64;
+            gravity: import("@box/mudb/schema").MuFloat64;
+            velocityDamping: import("@box/mudb/schema").MuFloat64;
             useOBB: MuBoolean;
         }>;
         changed: MuBoolean;
@@ -347,24 +347,24 @@ export declare const NetSecretSchema: MuStruct<{
     userName: MuUTF8;
     userAvatar: MuUTF8;
     avatarSkin: MuStruct<{
-        hips: import("@box-local/mudb/schema").MuASCII;
-        torso: import("@box-local/mudb/schema").MuASCII;
-        neck: import("@box-local/mudb/schema").MuASCII;
-        head: import("@box-local/mudb/schema").MuASCII;
-        leftShoulder: import("@box-local/mudb/schema").MuASCII;
-        leftUpperArm: import("@box-local/mudb/schema").MuASCII;
-        leftLowerArm: import("@box-local/mudb/schema").MuASCII;
-        leftHand: import("@box-local/mudb/schema").MuASCII;
-        rightShoulder: import("@box-local/mudb/schema").MuASCII;
-        rightUpperArm: import("@box-local/mudb/schema").MuASCII;
-        rightLowerArm: import("@box-local/mudb/schema").MuASCII;
-        rightHand: import("@box-local/mudb/schema").MuASCII;
-        leftUpperLeg: import("@box-local/mudb/schema").MuASCII;
-        leftLowerLeg: import("@box-local/mudb/schema").MuASCII;
-        leftFoot: import("@box-local/mudb/schema").MuASCII;
-        rightUpperLeg: import("@box-local/mudb/schema").MuASCII;
-        rightLowerLeg: import("@box-local/mudb/schema").MuASCII;
-        rightFoot: import("@box-local/mudb/schema").MuASCII;
+        hips: import("@box/mudb/schema").MuASCII;
+        torso: import("@box/mudb/schema").MuASCII;
+        neck: import("@box/mudb/schema").MuASCII;
+        head: import("@box/mudb/schema").MuASCII;
+        leftShoulder: import("@box/mudb/schema").MuASCII;
+        leftUpperArm: import("@box/mudb/schema").MuASCII;
+        leftLowerArm: import("@box/mudb/schema").MuASCII;
+        leftHand: import("@box/mudb/schema").MuASCII;
+        rightShoulder: import("@box/mudb/schema").MuASCII;
+        rightUpperArm: import("@box/mudb/schema").MuASCII;
+        rightLowerArm: import("@box/mudb/schema").MuASCII;
+        rightHand: import("@box/mudb/schema").MuASCII;
+        leftUpperLeg: import("@box/mudb/schema").MuASCII;
+        leftLowerLeg: import("@box/mudb/schema").MuASCII;
+        leftFoot: import("@box/mudb/schema").MuASCII;
+        rightUpperLeg: import("@box/mudb/schema").MuASCII;
+        rightLowerLeg: import("@box/mudb/schema").MuASCII;
+        rightFoot: import("@box/mudb/schema").MuASCII;
     }>;
     loginState: MuSchema<PlayerLoginState>;
     onlineInfo: MuStruct<{
@@ -383,107 +383,107 @@ export declare const NetSecretSchema: MuStruct<{
         overrideFog: MuBoolean;
         fog: MuStruct<{
             fogColor: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
-            fogStartDistance: import("@box-local/mudb/schema").MuFloat64;
-            fogHeightOffset: import("@box-local/mudb/schema").MuFloat64;
-            fogHeightFalloff: import("@box-local/mudb/schema").MuFloat64;
-            fogDensity: import("@box-local/mudb/schema").MuFloat64;
-            maxFog: import("@box-local/mudb/schema").MuFloat64;
+            fogStartDistance: import("@box/mudb/schema").MuFloat64;
+            fogHeightOffset: import("@box/mudb/schema").MuFloat64;
+            fogHeightFalloff: import("@box/mudb/schema").MuFloat64;
+            fogDensity: import("@box/mudb/schema").MuFloat64;
+            maxFog: import("@box/mudb/schema").MuFloat64;
         }>;
         overrideSky: MuBoolean;
         sky: MuStruct<{
             skyType: MuSchema<import("../project/project-rda").EnvironmentSkyType>;
-            globalLight: import("@box-local/mudb/schema").MuFloat64;
-            sunPhase: import("@box-local/mudb/schema").MuFloat64;
-            sunFrequency: import("@box-local/mudb/schema").MuFloat64;
-            lunarPhase: import("@box-local/mudb/schema").MuFloat64;
+            globalLight: import("@box/mudb/schema").MuFloat64;
+            sunPhase: import("@box/mudb/schema").MuFloat64;
+            sunFrequency: import("@box/mudb/schema").MuFloat64;
+            lunarPhase: import("@box/mudb/schema").MuFloat64;
             sunDirection: MuStruct<{
-                x: import("@box-local/mudb/schema").MuFloat64;
-                y: import("@box-local/mudb/schema").MuFloat64;
-                z: import("@box-local/mudb/schema").MuFloat64;
+                x: import("@box/mudb/schema").MuFloat64;
+                y: import("@box/mudb/schema").MuFloat64;
+                z: import("@box/mudb/schema").MuFloat64;
             }>;
             sunColor: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyLeft: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyRight: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyTop: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyBottom: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyFront: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
             skyBack: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
             }>;
-            gamma: import("@box-local/mudb/schema").MuFloat32;
+            gamma: import("@box/mudb/schema").MuFloat32;
         }>;
         overrideSnow: MuBoolean;
         snow: MuStruct<{
             texture: MuUTF8;
-            density: import("@box-local/mudb/schema").MuFloat64;
+            density: import("@box/mudb/schema").MuFloat64;
             size: MuStruct<{
-                w: import("@box-local/mudb/schema").MuFloat64;
-                h: import("@box-local/mudb/schema").MuFloat64;
+                w: import("@box/mudb/schema").MuFloat64;
+                h: import("@box/mudb/schema").MuFloat64;
             }>;
-            fallSpeed: import("@box-local/mudb/schema").MuFloat64;
-            spinSpeed: import("@box-local/mudb/schema").MuFloat64;
+            fallSpeed: import("@box/mudb/schema").MuFloat64;
+            spinSpeed: import("@box/mudb/schema").MuFloat64;
             color: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
-                a: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
+                a: import("@box/mudb/schema").MuFloat64;
             }>;
         }>;
         overrideRain: MuBoolean;
         rain: MuStruct<{
-            density: import("@box-local/mudb/schema").MuFloat64;
+            density: import("@box/mudb/schema").MuFloat64;
             direction: MuStruct<{
-                x: import("@box-local/mudb/schema").MuFloat64;
-                y: import("@box-local/mudb/schema").MuFloat64;
-                z: import("@box-local/mudb/schema").MuFloat64;
+                x: import("@box/mudb/schema").MuFloat64;
+                y: import("@box/mudb/schema").MuFloat64;
+                z: import("@box/mudb/schema").MuFloat64;
             }>;
-            speed: import("@box-local/mudb/schema").MuFloat64;
+            speed: import("@box/mudb/schema").MuFloat64;
             size: MuStruct<{
-                w: import("@box-local/mudb/schema").MuFloat64;
-                h: import("@box-local/mudb/schema").MuFloat64;
+                w: import("@box/mudb/schema").MuFloat64;
+                h: import("@box/mudb/schema").MuFloat64;
             }>;
-            interference: import("@box-local/mudb/schema").MuFloat64;
+            interference: import("@box/mudb/schema").MuFloat64;
             color: MuStruct<{
-                r: import("@box-local/mudb/schema").MuFloat64;
-                g: import("@box-local/mudb/schema").MuFloat64;
-                b: import("@box-local/mudb/schema").MuFloat64;
-                a: import("@box-local/mudb/schema").MuFloat64;
+                r: import("@box/mudb/schema").MuFloat64;
+                g: import("@box/mudb/schema").MuFloat64;
+                b: import("@box/mudb/schema").MuFloat64;
+                a: import("@box/mudb/schema").MuFloat64;
             }>;
         }>;
     }>>;
     replica: MuStruct<{
         id: MuVarint;
-        colorLUT: import("@box-local/mudb/schema").MuASCII;
+        colorLUT: import("@box/mudb/schema").MuASCII;
         enableCursor: MuBoolean;
         music: MuStruct<{
             sampleId: MuVarint;
@@ -555,8 +555,8 @@ export declare const NetPublicSchema: MuStruct<{
             pitch: MuUint8;
         }>>;
         physics: MuStruct<{
-            gravity: import("@box-local/mudb/schema").MuFloat64;
-            velocityDamping: import("@box-local/mudb/schema").MuFloat64;
+            gravity: import("@box/mudb/schema").MuFloat64;
+            velocityDamping: import("@box/mudb/schema").MuFloat64;
             useOBB: MuBoolean;
         }>;
         bodies: MuSortedArray<MuSchema<import("../physics/physics-schema").RigidBody> & {
@@ -589,104 +589,104 @@ export declare const NetPublicSchema: MuStruct<{
         environment: MuStruct<{
             fog: MuStruct<{
                 fogColor: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
-                fogStartDistance: import("@box-local/mudb/schema").MuFloat64;
-                fogHeightOffset: import("@box-local/mudb/schema").MuFloat64;
-                fogHeightFalloff: import("@box-local/mudb/schema").MuFloat64;
-                fogDensity: import("@box-local/mudb/schema").MuFloat64;
-                maxFog: import("@box-local/mudb/schema").MuFloat64;
+                fogStartDistance: import("@box/mudb/schema").MuFloat64;
+                fogHeightOffset: import("@box/mudb/schema").MuFloat64;
+                fogHeightFalloff: import("@box/mudb/schema").MuFloat64;
+                fogDensity: import("@box/mudb/schema").MuFloat64;
+                maxFog: import("@box/mudb/schema").MuFloat64;
             }>;
             sky: MuStruct<{
                 skyType: MuSchema<import("../project/project-rda").EnvironmentSkyType>;
-                globalLight: import("@box-local/mudb/schema").MuFloat64;
-                sunPhase: import("@box-local/mudb/schema").MuFloat64;
-                sunFrequency: import("@box-local/mudb/schema").MuFloat64;
-                lunarPhase: import("@box-local/mudb/schema").MuFloat64;
+                globalLight: import("@box/mudb/schema").MuFloat64;
+                sunPhase: import("@box/mudb/schema").MuFloat64;
+                sunFrequency: import("@box/mudb/schema").MuFloat64;
+                lunarPhase: import("@box/mudb/schema").MuFloat64;
                 sunDirection: MuStruct<{
-                    x: import("@box-local/mudb/schema").MuFloat64;
-                    y: import("@box-local/mudb/schema").MuFloat64;
-                    z: import("@box-local/mudb/schema").MuFloat64;
+                    x: import("@box/mudb/schema").MuFloat64;
+                    y: import("@box/mudb/schema").MuFloat64;
+                    z: import("@box/mudb/schema").MuFloat64;
                 }>;
                 sunColor: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyLeft: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyRight: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyTop: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyBottom: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyFront: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyBack: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
-                gamma: import("@box-local/mudb/schema").MuFloat32;
+                gamma: import("@box/mudb/schema").MuFloat32;
             }>;
             snow: MuStruct<{
                 texture: MuUTF8;
-                density: import("@box-local/mudb/schema").MuFloat64;
+                density: import("@box/mudb/schema").MuFloat64;
                 size: MuStruct<{
-                    w: import("@box-local/mudb/schema").MuFloat64;
-                    h: import("@box-local/mudb/schema").MuFloat64;
+                    w: import("@box/mudb/schema").MuFloat64;
+                    h: import("@box/mudb/schema").MuFloat64;
                 }>;
-                fallSpeed: import("@box-local/mudb/schema").MuFloat64;
-                spinSpeed: import("@box-local/mudb/schema").MuFloat64;
+                fallSpeed: import("@box/mudb/schema").MuFloat64;
+                spinSpeed: import("@box/mudb/schema").MuFloat64;
                 color: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
-                    a: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
+                    a: import("@box/mudb/schema").MuFloat64;
                 }>;
             }>;
             rain: MuStruct<{
-                density: import("@box-local/mudb/schema").MuFloat64;
+                density: import("@box/mudb/schema").MuFloat64;
                 direction: MuStruct<{
-                    x: import("@box-local/mudb/schema").MuFloat64;
-                    y: import("@box-local/mudb/schema").MuFloat64;
-                    z: import("@box-local/mudb/schema").MuFloat64;
+                    x: import("@box/mudb/schema").MuFloat64;
+                    y: import("@box/mudb/schema").MuFloat64;
+                    z: import("@box/mudb/schema").MuFloat64;
                 }>;
-                speed: import("@box-local/mudb/schema").MuFloat64;
+                speed: import("@box/mudb/schema").MuFloat64;
                 size: MuStruct<{
-                    w: import("@box-local/mudb/schema").MuFloat64;
-                    h: import("@box-local/mudb/schema").MuFloat64;
+                    w: import("@box/mudb/schema").MuFloat64;
+                    h: import("@box/mudb/schema").MuFloat64;
                 }>;
-                interference: import("@box-local/mudb/schema").MuFloat64;
+                interference: import("@box/mudb/schema").MuFloat64;
                 color: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
-                    a: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
+                    a: import("@box/mudb/schema").MuFloat64;
                 }>;
             }>;
-            drawDistance: import("@box-local/mudb/schema").MuFloat32;
+            drawDistance: import("@box/mudb/schema").MuFloat32;
             bakedShadow: MuStruct<{
-                texture: import("@box-local/mudb/schema").MuASCII;
-                data: import("@box-local/mudb/schema").MuASCII;
+                texture: import("@box/mudb/schema").MuASCII;
+                data: import("@box/mudb/schema").MuASCII;
                 chunkShift: MuVarint;
             }>;
         }>;
@@ -708,17 +708,17 @@ export declare const NetPublicSchema: MuStruct<{
             offsetY: MuQuantizedFloat;
             offsetZ: MuQuantizedFloat;
             motion: MuStruct<{
-                defaultMotionId: import("@box-local/mudb/schema").MuASCII;
+                defaultMotionId: import("@box/mudb/schema").MuASCII;
                 paused: MuBoolean;
-                pausedTick: import("@box-local/mudb/schema").MuFloat64;
-                startTick: import("@box-local/mudb/schema").MuFloat64;
+                pausedTick: import("@box/mudb/schema").MuFloat64;
+                startTick: import("@box/mudb/schema").MuFloat64;
                 playback: MuStruct<{
                     motions: MuArray<MuStruct<{
-                        motionId: import("@box-local/mudb/schema").MuASCII;
-                        cycleCount: import("@box-local/mudb/schema").MuInt32;
+                        motionId: import("@box/mudb/schema").MuASCII;
+                        cycleCount: import("@box/mudb/schema").MuInt32;
                     }>>;
-                    startTick: import("@box-local/mudb/schema").MuFloat64;
-                    cycleCount: import("@box-local/mudb/schema").MuInt32;
+                    startTick: import("@box/mudb/schema").MuFloat64;
+                    cycleCount: import("@box/mudb/schema").MuInt32;
                 }>;
             }>;
             staticShadow: MuBoolean;
@@ -750,7 +750,7 @@ export declare const NetPublicSchema: MuStruct<{
                 rightFoot: MuVarint;
             }>;
             userId: MuUTF8;
-            avatar_hash: import("@box-local/mudb/schema").MuASCII;
+            avatar_hash: import("@box/mudb/schema").MuASCII;
             skinInvisible: MuStruct<{
                 hips: MuBoolean;
                 torso: MuBoolean;
@@ -1328,7 +1328,7 @@ export declare const NetPublicSchema: MuStruct<{
                         g: MuQuantizedFloat;
                     } & {
                         b: MuQuantizedFloat;
-                    }>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuASCII]>]>;
+                    }>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuASCII]>]>;
                 }>>;
             }>>;
             world: MuSortedArray<MuStruct<{
@@ -1392,8 +1392,8 @@ export declare const NetPublicSetSchema: MuSortedArray<MuStruct<{
             pitch: MuUint8;
         }>>;
         physics: MuStruct<{
-            gravity: import("@box-local/mudb/schema").MuFloat64;
-            velocityDamping: import("@box-local/mudb/schema").MuFloat64;
+            gravity: import("@box/mudb/schema").MuFloat64;
+            velocityDamping: import("@box/mudb/schema").MuFloat64;
             useOBB: MuBoolean;
         }>;
         bodies: MuSortedArray<MuSchema<import("../physics/physics-schema").RigidBody> & {
@@ -1426,104 +1426,104 @@ export declare const NetPublicSetSchema: MuSortedArray<MuStruct<{
         environment: MuStruct<{
             fog: MuStruct<{
                 fogColor: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
-                fogStartDistance: import("@box-local/mudb/schema").MuFloat64;
-                fogHeightOffset: import("@box-local/mudb/schema").MuFloat64;
-                fogHeightFalloff: import("@box-local/mudb/schema").MuFloat64;
-                fogDensity: import("@box-local/mudb/schema").MuFloat64;
-                maxFog: import("@box-local/mudb/schema").MuFloat64;
+                fogStartDistance: import("@box/mudb/schema").MuFloat64;
+                fogHeightOffset: import("@box/mudb/schema").MuFloat64;
+                fogHeightFalloff: import("@box/mudb/schema").MuFloat64;
+                fogDensity: import("@box/mudb/schema").MuFloat64;
+                maxFog: import("@box/mudb/schema").MuFloat64;
             }>;
             sky: MuStruct<{
                 skyType: MuSchema<import("../project/project-rda").EnvironmentSkyType>;
-                globalLight: import("@box-local/mudb/schema").MuFloat64;
-                sunPhase: import("@box-local/mudb/schema").MuFloat64;
-                sunFrequency: import("@box-local/mudb/schema").MuFloat64;
-                lunarPhase: import("@box-local/mudb/schema").MuFloat64;
+                globalLight: import("@box/mudb/schema").MuFloat64;
+                sunPhase: import("@box/mudb/schema").MuFloat64;
+                sunFrequency: import("@box/mudb/schema").MuFloat64;
+                lunarPhase: import("@box/mudb/schema").MuFloat64;
                 sunDirection: MuStruct<{
-                    x: import("@box-local/mudb/schema").MuFloat64;
-                    y: import("@box-local/mudb/schema").MuFloat64;
-                    z: import("@box-local/mudb/schema").MuFloat64;
+                    x: import("@box/mudb/schema").MuFloat64;
+                    y: import("@box/mudb/schema").MuFloat64;
+                    z: import("@box/mudb/schema").MuFloat64;
                 }>;
                 sunColor: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyLeft: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyRight: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyTop: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyBottom: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyFront: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
                 skyBack: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
                 }>;
-                gamma: import("@box-local/mudb/schema").MuFloat32;
+                gamma: import("@box/mudb/schema").MuFloat32;
             }>;
             snow: MuStruct<{
                 texture: MuUTF8;
-                density: import("@box-local/mudb/schema").MuFloat64;
+                density: import("@box/mudb/schema").MuFloat64;
                 size: MuStruct<{
-                    w: import("@box-local/mudb/schema").MuFloat64;
-                    h: import("@box-local/mudb/schema").MuFloat64;
+                    w: import("@box/mudb/schema").MuFloat64;
+                    h: import("@box/mudb/schema").MuFloat64;
                 }>;
-                fallSpeed: import("@box-local/mudb/schema").MuFloat64;
-                spinSpeed: import("@box-local/mudb/schema").MuFloat64;
+                fallSpeed: import("@box/mudb/schema").MuFloat64;
+                spinSpeed: import("@box/mudb/schema").MuFloat64;
                 color: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
-                    a: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
+                    a: import("@box/mudb/schema").MuFloat64;
                 }>;
             }>;
             rain: MuStruct<{
-                density: import("@box-local/mudb/schema").MuFloat64;
+                density: import("@box/mudb/schema").MuFloat64;
                 direction: MuStruct<{
-                    x: import("@box-local/mudb/schema").MuFloat64;
-                    y: import("@box-local/mudb/schema").MuFloat64;
-                    z: import("@box-local/mudb/schema").MuFloat64;
+                    x: import("@box/mudb/schema").MuFloat64;
+                    y: import("@box/mudb/schema").MuFloat64;
+                    z: import("@box/mudb/schema").MuFloat64;
                 }>;
-                speed: import("@box-local/mudb/schema").MuFloat64;
+                speed: import("@box/mudb/schema").MuFloat64;
                 size: MuStruct<{
-                    w: import("@box-local/mudb/schema").MuFloat64;
-                    h: import("@box-local/mudb/schema").MuFloat64;
+                    w: import("@box/mudb/schema").MuFloat64;
+                    h: import("@box/mudb/schema").MuFloat64;
                 }>;
-                interference: import("@box-local/mudb/schema").MuFloat64;
+                interference: import("@box/mudb/schema").MuFloat64;
                 color: MuStruct<{
-                    r: import("@box-local/mudb/schema").MuFloat64;
-                    g: import("@box-local/mudb/schema").MuFloat64;
-                    b: import("@box-local/mudb/schema").MuFloat64;
-                    a: import("@box-local/mudb/schema").MuFloat64;
+                    r: import("@box/mudb/schema").MuFloat64;
+                    g: import("@box/mudb/schema").MuFloat64;
+                    b: import("@box/mudb/schema").MuFloat64;
+                    a: import("@box/mudb/schema").MuFloat64;
                 }>;
             }>;
-            drawDistance: import("@box-local/mudb/schema").MuFloat32;
+            drawDistance: import("@box/mudb/schema").MuFloat32;
             bakedShadow: MuStruct<{
-                texture: import("@box-local/mudb/schema").MuASCII;
-                data: import("@box-local/mudb/schema").MuASCII;
+                texture: import("@box/mudb/schema").MuASCII;
+                data: import("@box/mudb/schema").MuASCII;
                 chunkShift: MuVarint;
             }>;
         }>;
@@ -1545,17 +1545,17 @@ export declare const NetPublicSetSchema: MuSortedArray<MuStruct<{
             offsetY: MuQuantizedFloat;
             offsetZ: MuQuantizedFloat;
             motion: MuStruct<{
-                defaultMotionId: import("@box-local/mudb/schema").MuASCII;
+                defaultMotionId: import("@box/mudb/schema").MuASCII;
                 paused: MuBoolean;
-                pausedTick: import("@box-local/mudb/schema").MuFloat64;
-                startTick: import("@box-local/mudb/schema").MuFloat64;
+                pausedTick: import("@box/mudb/schema").MuFloat64;
+                startTick: import("@box/mudb/schema").MuFloat64;
                 playback: MuStruct<{
                     motions: MuArray<MuStruct<{
-                        motionId: import("@box-local/mudb/schema").MuASCII;
-                        cycleCount: import("@box-local/mudb/schema").MuInt32;
+                        motionId: import("@box/mudb/schema").MuASCII;
+                        cycleCount: import("@box/mudb/schema").MuInt32;
                     }>>;
-                    startTick: import("@box-local/mudb/schema").MuFloat64;
-                    cycleCount: import("@box-local/mudb/schema").MuInt32;
+                    startTick: import("@box/mudb/schema").MuFloat64;
+                    cycleCount: import("@box/mudb/schema").MuInt32;
                 }>;
             }>;
             staticShadow: MuBoolean;
@@ -1587,7 +1587,7 @@ export declare const NetPublicSetSchema: MuSortedArray<MuStruct<{
                 rightFoot: MuVarint;
             }>;
             userId: MuUTF8;
-            avatar_hash: import("@box-local/mudb/schema").MuASCII;
+            avatar_hash: import("@box/mudb/schema").MuASCII;
             skinInvisible: MuStruct<{
                 hips: MuBoolean;
                 torso: MuBoolean;
@@ -2165,7 +2165,7 @@ export declare const NetPublicSetSchema: MuSortedArray<MuStruct<{
                         g: MuQuantizedFloat;
                     } & {
                         b: MuQuantizedFloat;
-                    }>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box-local/mudb/schema").MuASCII]>]>;
+                    }>, MuBoolean, MuBoolean, MuBoolean]>, import("../keyframes/mu-array-union").MuArrayUnion<[import("@box/mudb/schema").MuASCII]>]>;
                 }>>;
             }>>;
             world: MuSortedArray<MuStruct<{

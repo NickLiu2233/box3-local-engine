@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CursorDictSchema = exports.CursorSchema = exports.FileDictSchema = exports.FileSchema = exports.FileDictRDA = exports.FileRDA = void 0;
-const schema_1 = require("@box-local/mudb/schema");
-const rda_1 = require("@box-local/mudb/rda");
+const schema_1 = require("@box/mudb/schema");
+const rda_1 = require("@box/mudb/rda");
 const murda_text_1 = require("./murda-text");
 exports.FileRDA = new rda_1.MuRDAStruct({
     fileId: new rda_1.MuRDARegister(new schema_1.MuUTF8()),

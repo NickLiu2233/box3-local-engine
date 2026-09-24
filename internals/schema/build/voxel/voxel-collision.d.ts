@@ -1,7 +1,7 @@
 import { VoxelCollisionChunk, VoxelCollision } from './voxel-collision-schema';
 import { BlockIndex } from './block-schema';
 import { VoxelCollisionBox } from '../utils/rbush-schema';
-import { VoxelView } from '@box-local/utils/voxel';
+import { VoxelView } from '@box/utils/voxel';
 export declare function setBlockIndex(blockIndex: BlockIndex): void;
 export declare function rebuildCollisionChunk(voxels: VoxelView, chunk: VoxelCollisionChunk): void;
 export declare function intializeCollision(blockIndex: BlockIndex, collision: VoxelCollision, voxels: VoxelView): void;

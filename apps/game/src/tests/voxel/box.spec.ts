@@ -1,14 +1,14 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { VoxelView, allocVoxels, freeVoxels } from '@box-local/utils/voxel';
+import { VoxelView, allocVoxels, freeVoxels } from '@box/utils/voxel';
 import { meshChunkToBoxes, boxCompress } from 'src/engine/voxel/box-encode';
-import { CHUNK_SIZE } from '@box-local/schema/voxel/voxel-collision-schema';
-import { MuWriteStream, MuReadStream } from '@box-local/mudb/stream';
-import { blitBoxesToChunk, boxDecompress } from '@box-local/schema/voxel/box-decode';
+import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
+import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
+import { blitBoxesToChunk, boxDecompress } from '@box/schema/voxel/box-decode';
 import {
   VoxelCollisionBoxListSchema,
   VoxelCollisionBoxSchema,
-} from '@box-local/schema/utils/rbush-schema';
+} from '@box/schema/utils/rbush-schema';
 
 function randomVoxels(nx: number, ny: number, nz: number, count: number) {
   const result = allocVoxels(nx, ny, nz);

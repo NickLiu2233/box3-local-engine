@@ -5,7 +5,7 @@ import type {
   AutoLayoutStartCorner,
   AutoLayoutVerticalAlignType,
   UICoord2,
-} from '@box-local/schema/project/ui-rda/defs';
+} from '@box/schema/project/ui-rda/defs';
 
 /**
  * 获取context

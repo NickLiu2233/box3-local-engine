@@ -1,4 +1,4 @@
-import { LogLevel } from '@box-local/utils/logger';
+import { LogLevel } from '@box/utils/logger';
 import path from 'path';
 import { rootLogger } from '../src/utils/logger';
 

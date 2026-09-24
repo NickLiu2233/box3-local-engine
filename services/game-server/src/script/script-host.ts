@@ -1,5 +1,5 @@
-import { MuServer, MuServerProtocol } from '@box-local/mudb/server';
-import { Logger as LegacyLogger, LogMessageSchema } from '@box-local/utils/logger';
+import { MuServer, MuServerProtocol } from '@box/mudb/server';
+import { Logger as LegacyLogger, LogMessageSchema } from '@box/utils/logger';
 import { Logger } from 'pino';
 
 import { GameServerState } from '../game-server-schema';
@@ -17,30 +17,30 @@ import {
 } from './script-protocol';
 import { ScriptServer } from '../utils/script-server/type';
 import { VoxelServer } from '../voxel/voxel-server';
-import { NetState, NetStateSchema } from '@box-local/schema/net/net-schema';
-import { EntitySetSchema } from '@box-local/schema/entity/entity-schema';
-import { GamePrivateReplicaSetSchema } from '@box-local/schema/replica/game-private-replica';
+import { NetState, NetStateSchema } from '@box/schema/net/net-schema';
+import { EntitySetSchema } from '@box/schema/entity/entity-schema';
+import { GamePrivateReplicaSetSchema } from '@box/schema/replica/game-private-replica';
 import { getServerNetState } from '../net/net-server-tick';
 import { applyScriptEntityUpdates } from './bindings/entity-update';
 import { applyScriptWorldUpdates } from './bindings/world-update';
-import { EventBus } from '@box-local/utils/event';
-import { GameLogLevel } from '@box-local/schema/api/console';
+import { EventBus } from '@box/utils/event';
+import { GameLogLevel } from '@box/schema/api/console';
 import {
   ScriptStateSnapshot,
   ScriptStateSnapshotSchema,
   ScriptEventsSchema,
 } from './script-state-schema';
-import { MuSchema } from '@box-local/mudb/schema';
-import { decodeUTF8 } from '@box-local/mudb/stream';
+import { MuSchema } from '@box/mudb/schema';
+import { decodeUTF8 } from '@box/mudb/stream';
 import {
   VoxelContactEventSchema,
   BodyContactEventSchema,
   FluidContactEventSchema,
-} from '@box-local/schema/events/physics-event-schema';
-import { ChatLogEventSchema } from '@box-local/schema/events/chat-event-schema';
+} from '@box/schema/events/physics-event-schema';
+import { ChatLogEventSchema } from '@box/schema/events/chat-event-schema';
 import { EngineVoxelSync } from './bindings/voxel-update';
 import { ServerPlayerListSchema } from '../player/player-server-schema';
-import { ScriptNetInputSchema } from '@box-local/schema/events/net-events';
+import { ScriptNetInputSchema } from '@box/schema/events/net-events';
 import { ChatServer } from '../chat/chat-server';
 import {
   GameScriptRunState,
@@ -53,35 +53,35 @@ import {
   parseError,
   ParsedErrorSchema,
 } from './parse-error';
-import { ScriptSentEventSchema } from '@box-local/schema/events/script-events';
+import { ScriptSentEventSchema } from '@box/schema/events/script-events';
 import { NetServer } from '../net/net-server-controller';
 import { respawnPlayer } from '../player/player-server-controller';
-import { EnvironmentParamSchema } from '@box-local/schema/environment/environment-schema';
-import { NetModelSetSchema } from '@box-local/schema/mesh/model-schema';
-import { PlayerDisplaySetSchema } from '@box-local/schema/player/player-schema';
-import { DamageSetSchema } from '@box-local/schema/damage/damage-schema';
-import { ContactIndexSchema } from '@box-local/schema/physics/physics-schema';
-import { BlockInfoSchema } from '@box-local/schema/voxel/block-schema';
-import { Semaphore } from '@box-local/utils/semaphore';
-import { getById } from '@box-local/utils/id';
-import { MuWriteStream } from '@box-local/mudb/stream';
+import { EnvironmentParamSchema } from '@box/schema/environment/environment-schema';
+import { NetModelSetSchema } from '@box/schema/mesh/model-schema';
+import { PlayerDisplaySetSchema } from '@box/schema/player/player-schema';
+import { DamageSetSchema } from '@box/schema/damage/damage-schema';
+import { ContactIndexSchema } from '@box/schema/physics/physics-schema';
+import { BlockInfoSchema } from '@box/schema/voxel/block-schema';
+import { Semaphore } from '@box/utils/semaphore';
+import { getById } from '@box/utils/id';
+import { MuWriteStream } from '@box/mudb/stream';
 import {
   ScriptResourceEntrySchema,
   ScriptResourceSchema,
 } from './bindings/resource';
 import { ServerParticleSetSchema } from '../particle/particle-server-state';
-import { InteractComponentSetSchema } from '@box-local/schema/interact/interact-protocol';
+import { InteractComponentSetSchema } from '@box/schema/interact/interact-protocol';
 import { DialogServer } from '../dialog/dialog-server';
 import { StorageController } from '../storage/storage-controller';
 import { resolveGroupStorageNamespace } from '../storage/storage-namespace';
 import { CommonSQL } from '../storage/types';
 import { ServerSoundStateSchema } from '../sound/server-sound-state';
 import { SoundServer } from '../sound/server-sound-controller';
-import { MAX_BODIES } from '@box-local/schema/physics/physics-solve';
-import { filterSwear } from '@box-local/utils/swears/index';
+import { MAX_BODIES } from '@box/schema/physics/physics-solve';
+import { filterSwear } from '@box/utils/swears/index';
 import { HrefServer } from '../href/href-server';
 import { HttpScriptController } from '../http/http-controller';
-import { AssetType, ZoneSetRDA } from '@box-local/schema/project/project-rda';
+import { AssetType, ZoneSetRDA } from '@box/schema/project/project-rda';
 import { applyScriptZoneUpdates } from './bindings/zone-updates';
 import {
   clearServerKeyframes,
@@ -90,21 +90,21 @@ import {
 import { RTCServer } from '../rtc/rtc-server';
 import { NavigatorServer } from '../navigator/navigator-server';
 import { GUIServer } from '../gui/gui-server';
-import { MarketProtocol } from '@box-local/schema/market/market-protocol';
+import { MarketProtocol } from '@box/schema/market/market-protocol';
 import { InputServer } from '../input/server-input-controller';
 import {
   HashType,
   HotProject,
   MotionListSchema,
-} from '@box-local/schema/project/hot-schema';
+} from '@box/schema/project/hot-schema';
 import { getConfigSync } from '../../config/server';
 import { RemoteChannelServer } from '../remote-channel/channel-server';
 import { PlayerServer } from '../player/player-server';
 import { TeleportServer } from '../teleport/teleport-server';
-import { ClientKeyboardEventSchema } from '@box-local/schema/events/client-keyboard-event-schema';
-import { EntityNameComponentSetSchema } from '@box-local/schema/entity-name/entity-name';
-import { SCRIPT_OSS_CDN_PATH } from '@box-local/content-server/index';
-import { Vec3Schema } from '@box-local/schema/utils/math-schema';
+import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
+import { EntityNameComponentSetSchema } from '@box/schema/entity-name/entity-name';
+import { SCRIPT_OSS_CDN_PATH } from '@box/content-server/index';
+import { Vec3Schema } from '@box/schema/utils/math-schema';
 import { resolveRuntimeScriptEntry } from './script-entry';
 
 function appendSchema<T, Schema extends MuSchema<T>>(

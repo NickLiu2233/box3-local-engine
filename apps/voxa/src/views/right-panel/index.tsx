@@ -9,7 +9,7 @@ import {
   Collapse,
   SharedTipsContext,
   useSharedTipsDelay,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { AnimatorMode, PivotMode } from '../../redux/animator-slice';
 import { AppMode } from '../../redux/app-slice';
 import { useAppSelector } from '../../redux/store';

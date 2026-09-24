@@ -1,4 +1,4 @@
-import { DialogCommonConfig } from '@box-local/schema/dialog/dialog-protocol';
+import { DialogCommonConfig } from '@box/schema/dialog/dialog-protocol';
 import { drawRoundRect, nowrapEllipsisText } from '../utils/canvas';
 import { Scrollbar } from './interface';
 import { SerializedVec2 } from '../interfaces';

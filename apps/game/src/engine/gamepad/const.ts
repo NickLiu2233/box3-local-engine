@@ -1,4 +1,4 @@
-import { PlayerFlags } from '@box-local/schema/player/player-schema';
+import { PlayerFlags } from '@box/schema/player/player-schema';
 import { ImageAssetSource, createCanvas2DImageSource } from '../utils/image';
 
 import arrow from 'src/assets/gamepad/arrow.png';

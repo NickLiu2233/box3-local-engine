@@ -2,7 +2,7 @@ import { vec3 } from 'gl-matrix';
 import {
   PlayerDisplayFlags,
   type PlayerDisplay,
-} from '@box-local/schema/player/player-schema';
+} from '@box/schema/player/player-schema';
 import type { GameClientState } from '../game-client-schema';
 import { CUTOFF_NEAR, raycastEye } from '../utils/raycast-eye';
 import {
@@ -17,7 +17,7 @@ import {
 import {
   OverlayInfoVisibleScaleEnum,
   RenderBox,
-} from '@box-local/schema/render-box/schema';
+} from '@box/schema/render-box/schema';
 
 const TMP = vec3.create();
 

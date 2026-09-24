@@ -7,7 +7,7 @@ exports.patchListDelta = patchListDelta;
 exports.DeltaSchema = DeltaSchema;
 exports.deltaItem = deltaItem;
 exports.patchItem = patchItem;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 const id_1 = require("../id");
 const sorted_array_remove_1 = require("../sorted-array-remove");
 function DeltaListSchema(schema) {

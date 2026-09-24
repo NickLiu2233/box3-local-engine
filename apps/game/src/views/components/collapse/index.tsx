@@ -1,4 +1,4 @@
-import { IconListRight, IconRight } from '@box-local/icons';
+import { IconListRight, IconRight } from '@box/icons';
 import style from './index.module.css';
 import React from 'react';
 

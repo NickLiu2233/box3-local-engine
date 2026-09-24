@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.DeltaListSchema = DeltaListSchema;
 exports.DeltaSchema = DeltaSchema;
-const schema_1 = require("@box-local/mudb/schema");
+const schema_1 = require("@box/mudb/schema");
 function DeltaListSchema(schema) {
     return new schema_1.MuStruct({
         upserts: schema,

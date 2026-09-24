@@ -1,5 +1,5 @@
 import { vec3 } from 'gl-matrix';
-import { Actions, EditingMode } from '@box-local/utils/helper';
+import { Actions, EditingMode } from '@box/utils/helper';
 import type { Pointer } from '../pointer';
 import { EditingCollector } from './collector';
 import { ModelsDict, EditModes, PointerDownSnapshot } from './interfaces';

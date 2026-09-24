@@ -17,7 +17,7 @@ import {
   TreeNodeType,
   isMetaKeyPressed,
   MousePosEvent,
-} from '@box-local/box-design';
+} from '@box/box-design';
 import { VoxelEditorContext } from '../../../internals';
 import {
   Motion,

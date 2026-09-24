@@ -1,5 +1,5 @@
-import { MuStruct, MuArray } from '@box-local/mudb/schema';
-import { OpenDialogSchema } from '@box-local/schema/dialog/dialog-protocol';
+import { MuStruct, MuArray } from '@box/mudb/schema';
+import { OpenDialogSchema } from '@box/schema/dialog/dialog-protocol';
 
 export const ClientDialogStateSchema = new MuStruct({
   dialogQueue: new MuArray(OpenDialogSchema, Infinity),

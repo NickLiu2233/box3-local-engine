@@ -1,5 +1,5 @@
 {
-  "name": "@box-local/license-server",
+  "name": "@box/license-server",
   "version": "0.2.0",
   "private": true,
   "description": "BOX3 Engine local offline license issuer",
@@ -9,7 +9,7 @@
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
-    "@box-local/license": "workspace:*",
+    "@box/license": "workspace:*",
     "@fastify/rate-limit": "10.3.0",
     "fastify": "5.6.2",
     "zod": "4.1.12"

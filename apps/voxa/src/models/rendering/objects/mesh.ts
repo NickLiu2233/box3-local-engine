@@ -4,7 +4,7 @@ import type {
   NDArrayLike,
   Regl,
   VertexArrayObject,
-} from '@box-local/regl';
+} from '@box/regl';
 import type { TypedArray } from 'ndarray';
 import { Geometry } from '../geometry';
 import { Material } from '../materials/material';

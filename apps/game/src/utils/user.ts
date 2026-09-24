@@ -1,4 +1,4 @@
-import { UserInfoPermissions, UserInfoVO } from '@box-local/apis';
+import { UserInfoPermissions, UserInfoVO } from '@box/apis';
 import { localeMap } from 'src/apis/createra';
 
 export type UserState = {

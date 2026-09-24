@@ -9,7 +9,7 @@ ENV CI=true RUSH_PNPM_STORE_PATH=/pnpm/store
 WORKDIR /source
 COPY . .
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
-    node common/scripts/install-run-rush.js install --to @box-local/deployment-manager
+    node common/scripts/install-run-rush.js install --to @box/deployment-manager
 RUN cd apps/deployment-manager && node ../../common/scripts/install-run-rushx.js build
 
 FROM ${RUST_IMAGE} AS rust-build

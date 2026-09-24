@@ -1,5 +1,5 @@
 import { IntlConfig } from 'react-intl';
-import { LocaleFullType } from '@box-local/apis';
+import { LocaleFullType } from '@box/apis';
 
 export const enum LanguageTag {
   en = 'en',

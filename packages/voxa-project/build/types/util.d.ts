@@ -1,4 +1,4 @@
-import { MuFloat32, MuVector, MuArray, MuSchema, MuStruct, MuUnion } from '@box-local/mudb/schema';
+import { MuFloat32, MuVector, MuArray, MuSchema, MuStruct, MuUnion } from '@box/mudb/schema';
 export declare const Vec3Schema: MuVector<"float32", 3>;
 export declare const Vec4Schema: MuVector<"float32", 4>;
 export declare const Uint8Vec3Schema: MuVector<"uint8", 3>;

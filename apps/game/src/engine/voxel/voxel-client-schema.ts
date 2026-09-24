@@ -5,11 +5,11 @@ import {
   MuInt32,
   MuSchema,
   MuVarint,
-} from '@box-local/mudb/schema';
-import { MuRefSchema } from '@box-local/schema/utils/ref-schema';
-import { VoxelView } from '@box-local/utils/voxel';
-import { VoxelCollisionChunk } from '@box-local/schema/voxel/voxel-collision-schema';
-import { VoxelWriteSchema } from '@box-local/schema/voxel/voxel-protocol';
+} from '@box/mudb/schema';
+import { MuRefSchema } from '@box/schema/utils/ref-schema';
+import { VoxelView } from '@box/utils/voxel';
+import { VoxelCollisionChunk } from '@box/schema/voxel/voxel-collision-schema';
+import { VoxelWriteSchema } from '@box/schema/voxel/voxel-protocol';
 
 export const ClientVoxelChunkSchema = new MuStruct({
   dirty: new MuBoolean(false),

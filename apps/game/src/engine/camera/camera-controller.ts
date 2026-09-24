@@ -7,24 +7,24 @@ import {
   CameraConfiguration,
   CameraMode,
   CameraFreezedAxis,
-} from '@box-local/schema/camera/camera-schema';
+} from '@box/schema/camera/camera-schema';
 import { mat4, vec3, quat, mat3, vec4, vec2 } from 'gl-matrix';
 import { setFrustumMatrix } from '../utils/frustum';
 import { GameClientState } from '../game-client-schema';
-import { getById } from '@box-local/utils/id';
+import { getById } from '@box/utils/id';
 import {
   Mat3Schema,
   Mat4Schema,
   Vec3Schema,
-} from '@box-local/schema/utils/math-schema';
+} from '@box/schema/utils/math-schema';
 import { fromPolar } from './polar';
 import {
   VoxelRaycastHitResult,
   raycast,
-} from '@box-local/schema/voxel/voxel-raycast';
-import { PLAYER_HEIGHT } from '@box-local/schema/player/player-move';
-import { PlayerButtonState } from '@box-local/schema/player/player-schema';
-import { DialogCommonConfig } from '@box-local/schema/dialog/dialog-protocol';
+} from '@box/schema/voxel/voxel-raycast';
+import { PLAYER_HEIGHT } from '@box/schema/player/player-move';
+import { PlayerButtonState } from '@box/schema/player/player-schema';
+import { DialogCommonConfig } from '@box/schema/dialog/dialog-protocol';
 
 const scratchVec4 = vec4.create();
 export function screenToRay(

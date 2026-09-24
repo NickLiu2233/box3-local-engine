@@ -1,4 +1,4 @@
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
 import {
   MuArray,
   MuASCII,
@@ -6,7 +6,7 @@ import {
   MuStruct,
   MuUTF8,
   MuVarint,
-} from '@box-local/mudb/schema';
+} from '@box/mudb/schema';
 
 import { ChannelNodePath, SamplerSchema } from '../util';
 

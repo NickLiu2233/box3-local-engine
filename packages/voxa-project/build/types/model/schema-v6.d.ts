@@ -1,5 +1,5 @@
-import { MeshTextureSchema, MeshDataSchema } from '@box-local/mesher/schema';
-import { MuArray, MuASCII, MuFloat32, MuInt32, MuSchema, MuStruct, MuUTF8, MuVarint } from '@box-local/mudb/schema';
+import { MeshTextureSchema, MeshDataSchema } from '@box/mesher/schema';
+import { MuArray, MuASCII, MuFloat32, MuInt32, MuSchema, MuStruct, MuUTF8, MuVarint } from '@box/mudb/schema';
 import { ChannelNodePath } from '../util';
 export { MeshTextureSchema, MeshDataSchema };
 export declare const ChannelSchema: MuStruct<{
@@ -21,29 +21,29 @@ export declare const AnimationSchema: MuStruct<{
     }>>;
     samplers: MuArray<MuStruct<{
         input: MuArray<MuFloat32>;
-        output: import("@box-local/mudb/schema").MuUnion<{
-            rotation: MuArray<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
-            translation: MuArray<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
+        output: import("@box/mudb/schema").MuUnion<{
+            rotation: MuArray<import("@box/mudb/schema").MuVector<"float32", 4>>;
+            translation: MuArray<import("@box/mudb/schema").MuVector<"float32", 3>>;
             alpha: MuArray<MuFloat32>;
-            scale: MuArray<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
+            scale: MuArray<import("@box/mudb/schema").MuVector<"float32", 3>>;
         }>;
         interpolation: MuSchema<import("../util").ProjectInterpolationType>;
     }>>;
 }>;
 export declare const ModelNodeSchema: MuStruct<{
     mesh: MuInt32;
-    rotation: import("@box-local/mudb/schema").MuVector<"float32", 4>;
-    translation: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    scale: import("@box-local/mudb/schema").MuVector<"float32", 3>;
+    rotation: import("@box/mudb/schema").MuVector<"float32", 4>;
+    translation: import("@box/mudb/schema").MuVector<"float32", 3>;
+    scale: import("@box/mudb/schema").MuVector<"float32", 3>;
     children: MuArray<MuVarint>;
     alpha: MuFloat32;
 }>;
 export type ModelNode = typeof ModelNodeSchema.identity;
 export declare const ModelNodesSchema: MuArray<MuStruct<{
     mesh: MuInt32;
-    rotation: import("@box-local/mudb/schema").MuVector<"float32", 4>;
-    translation: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-    scale: import("@box-local/mudb/schema").MuVector<"float32", 3>;
+    rotation: import("@box/mudb/schema").MuVector<"float32", 4>;
+    translation: import("@box/mudb/schema").MuVector<"float32", 3>;
+    scale: import("@box/mudb/schema").MuVector<"float32", 3>;
     children: MuArray<MuVarint>;
     alpha: MuFloat32;
 }>>;
@@ -51,14 +51,14 @@ export declare const ModelDataV6Schema: MuStruct<{
     version: MuVarint;
     nodes: MuArray<MuStruct<{
         mesh: MuInt32;
-        rotation: import("@box-local/mudb/schema").MuVector<"float32", 4>;
-        translation: import("@box-local/mudb/schema").MuVector<"float32", 3>;
-        scale: import("@box-local/mudb/schema").MuVector<"float32", 3>;
+        rotation: import("@box/mudb/schema").MuVector<"float32", 4>;
+        translation: import("@box/mudb/schema").MuVector<"float32", 3>;
+        scale: import("@box/mudb/schema").MuVector<"float32", 3>;
         children: MuArray<MuVarint>;
         alpha: MuFloat32;
     }>>;
     texture: MuStruct<{
-        palette: MuArray<import("@box-local/mudb/schema").MuUint32>;
+        palette: MuArray<import("@box/mudb/schema").MuUint32>;
         data: MuArray<MuVarint>;
         width: MuVarint;
     }>;
@@ -66,7 +66,7 @@ export declare const ModelDataV6Schema: MuStruct<{
         vertices: MuArray<MuVarint>;
         sizes: MuArray<MuVarint>;
         uvs: MuArray<MuVarint>;
-        uvFlags: MuArray<import("@box-local/mudb/schema").MuUint8>;
+        uvFlags: MuArray<import("@box/mudb/schema").MuUint8>;
     }>>>;
     animations: MuArray<MuStruct<{
         id: MuASCII;
@@ -80,11 +80,11 @@ export declare const ModelDataV6Schema: MuStruct<{
         }>>;
         samplers: MuArray<MuStruct<{
             input: MuArray<MuFloat32>;
-            output: import("@box-local/mudb/schema").MuUnion<{
-                rotation: MuArray<import("@box-local/mudb/schema").MuVector<"float32", 4>>;
-                translation: MuArray<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
+            output: import("@box/mudb/schema").MuUnion<{
+                rotation: MuArray<import("@box/mudb/schema").MuVector<"float32", 4>>;
+                translation: MuArray<import("@box/mudb/schema").MuVector<"float32", 3>>;
                 alpha: MuArray<MuFloat32>;
-                scale: MuArray<import("@box-local/mudb/schema").MuVector<"float32", 3>>;
+                scale: MuArray<import("@box/mudb/schema").MuVector<"float32", 3>>;
             }>;
             interpolation: MuSchema<import("../util").ProjectInterpolationType>;
         }>>;

@@ -2,8 +2,8 @@ import {
   ROOT_ID,
   ROOT_NAME,
   TreeNodeType,
-} from '@box-local/schema/project/murda-tree';
-import { TreeNode } from '@box-local/schema/project/project-rda';
+} from '@box/schema/project/murda-tree';
+import { TreeNode } from '@box/schema/project/project-rda';
 import { BuildSystem } from '../../type';
 
 export const name = 'project';

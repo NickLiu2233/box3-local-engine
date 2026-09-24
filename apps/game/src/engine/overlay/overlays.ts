@@ -13,13 +13,13 @@ import {
   PlayerIndicatorOverlay,
   InteractUIOverlay,
 } from './overlay-schema';
-import { zipId } from '@box-local/utils/id';
+import { zipId } from '@box/utils/id';
 import { ENGINE_RES } from '../../resource/engine';
 import {
   retrieveWithImage,
   type ImageRequest,
-} from '@box-local/content-server/image';
-import { MsgType, StickMessage } from '@box-local/schema/chat/chat-schema';
+} from '@box/content-server/image';
+import { MsgType, StickMessage } from '@box/schema/chat/chat-schema';
 import { isMobile } from '../../utils/mobile';
 import { INDICATOR_RES } from '../../resource/indicator';
 import { INTERACTIVE_RES } from '../../resource/interactive';
@@ -45,7 +45,7 @@ import { isShowPlayerName } from './player-overlay';
 import {
   RenderBox,
   OverlayInfoVisibleScaleEnum,
-} from '@box-local/schema/render-box/schema';
+} from '@box/schema/render-box/schema';
 
 const style_number: ImageRequest[] = [];
 const indicators: { [key: string]: ImageRequest } = {};

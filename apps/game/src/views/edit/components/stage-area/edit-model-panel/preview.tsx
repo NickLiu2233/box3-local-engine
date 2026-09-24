@@ -11,13 +11,13 @@ import { useIntl } from 'react-intl';
 import * as uuid from 'uuid';
 import { mat4, quat, vec3, vec4 } from 'gl-matrix';
 
-import { Toast } from '@box-local/box-design';
-import { EntitySeedRDA } from '@box-local/schema/project/project-rda';
-import { MouseButton, MouseState } from '@box-local/schema/input/input-schema';
-import { getMeshPath } from '@box-local/schema/project/hot-schema';
+import { Toast } from '@box/box-design';
+import { EntitySeedRDA } from '@box/schema/project/project-rda';
+import { MouseButton, MouseState } from '@box/schema/input/input-schema';
+import { getMeshPath } from '@box/schema/project/hot-schema';
 import { getProjectModelDisplayName } from './project-model-membership';
-import { CopyEvent, ModelType, SourceType } from '@box-local/apis';
-import { getModelMetaData } from '@box-local/voxa-project';
+import { CopyEvent, ModelType, SourceType } from '@box/apis';
+import { getModelMetaData } from '@box/voxa-project';
 
 import { UI3DContainer } from 'src/views/edit/components/ui-3d';
 import { UI3DVoxelEvent } from 'src/engine/ui3d/ui3d-schema';

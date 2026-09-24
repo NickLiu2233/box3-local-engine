@@ -16,8 +16,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProjectRDA = exports.ProjectFeatureRDA = exports.ProjectMetaRDA = exports.GamepadRDA = exports.GamepadButtonsTextureRDA = exports.GamepadFlyTextureRDA = exports.JoystickTextureRDA = exports.ZoneSetRDA = exports.ZoneRDA = exports.PhysicsRDA = exports.CollisionFilterRDA = exports.CollisionRuleRDA = exports.EntitiesTreeRDA = exports.EntitySeedRDA = exports.PlayerRDA = exports.MovementBoundsRDA = exports.InitialPositionRDA = exports.PlayerSoundEnum = exports.PlayerSoundRDA = exports.EntitySoundEnum = exports.EntitySoundRDA = exports.AmbientSoundEnum = exports.AmbientSoundRDA = exports.ParticleConfigRDA = exports.DamageConfigRDA = exports.EnvironmentRDA = exports.BakedShadowRDA = exports.RainRDA = exports.SnowRDA = exports.FogRDA = exports.SkyRDA = exports.EnvironmentSkyType = exports.AudioSampleEnum = exports.AudioSampleRDA = exports.DimsSchema = exports.XYZSchema = exports.RGBASchema = exports.RGBSchema = exports.XYSchema = exports.VoxelRDA = exports.VoxelShape = exports.DeleteAssetsRDA = exports.AssetsRDA = exports.AssetEntryRDA = void 0;
 exports.sizeLimitedStringRDA = sizeLimitedStringRDA;
-const rda_1 = require("@box-local/mudb/rda");
-const schema_1 = require("@box-local/mudb/schema");
+const rda_1 = require("@box/mudb/rda");
+const schema_1 = require("@box/mudb/schema");
 const index_1 = require("../content-server/index");
 const gl_matrix_1 = require("gl-matrix");
 const quantized_schema_1 = require("../utils/quantized-schema");

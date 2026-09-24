@@ -1,10 +1,10 @@
-import { GameDatabase, GameQueryResult } from '@box-local/schema/api/js/db';
-import { GameStorage } from '@box-local/schema/api/js/storage';
+import { GameDatabase, GameQueryResult } from '@box/schema/api/js/db';
+import { GameStorage } from '@box/schema/api/js/storage';
 import { StorageProtocol, QueryParam } from './storage-protocol';
-import { MuClientProtocol, MuClient } from '@box-local/mudb/client';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { MuClientProtocol, MuClient } from '@box/mudb/client';
+import { Semaphore } from '@box/utils/semaphore';
 import { StorageScriptDB } from './storage-db-script';
-import { Logger } from '@box-local/utils/logger';
+import { Logger } from '@box/utils/logger';
 
 export class QueryWrapper {
   public query: GameQueryResult;

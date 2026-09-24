@@ -5,7 +5,7 @@ ENV CI=true NEXT_TELEMETRY_DISABLED=1 RUSH_PNPM_STORE_PATH=/pnpm/store
 WORKDIR /app
 COPY . .
 RUN --mount=type=cache,id=box-local-engine-migrator-pnpm,target=/pnpm/store \
-    node common/scripts/install-run-rush.js install --to @box-local/migrator
+    node common/scripts/install-run-rush.js install --to @box/migrator
 RUN cd apps/migrator && node ../../common/scripts/install-run-rushx.js build
 
 FROM ${NODE_IMAGE} AS runtime

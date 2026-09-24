@@ -1,6 +1,6 @@
 import { GameServerState } from '../game-server-schema';
-import { calcEnvironmentState } from '@box-local/schema/environment/environment-controller';
-import { EnvironmentParamSchema } from '@box-local/schema/environment/environment-schema';
+import { calcEnvironmentState } from '@box/schema/environment/environment-controller';
+import { EnvironmentParamSchema } from '@box/schema/environment/environment-schema';
 
 function saturate(x: number) {
   return Math.min(1, Math.max(0, x)) || 0;

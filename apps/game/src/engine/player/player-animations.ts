@@ -6,9 +6,9 @@ import {
   GroundEmote,
   IKStateSchema,
   IKPalette,
-} from '@box-local/schema/animation/ik-schema';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { getById, indexEqRange } from '@box-local/utils/id';
+} from '@box/schema/animation/ik-schema';
+import { MuReadStream } from '@box/mudb/stream';
+import { getById, indexEqRange } from '@box/utils/id';
 import {
   PlayerInput,
   playerWalkState,
@@ -21,8 +21,8 @@ import {
   PlayerDisplayFlags,
   Player,
   PlayerDisplay,
-} from '@box-local/schema/player/player-schema';
-import { RigidBody, ContactRecord } from '@box-local/schema/physics/physics-schema';
+} from '@box/schema/player/player-schema';
+import { RigidBody, ContactRecord } from '@box/schema/physics/physics-schema';
 import { vec3 } from 'gl-matrix';
 import {
   initializeIKState,
@@ -41,10 +41,10 @@ import {
   EnterWaterEventSchema,
   LeaveWaterEventSchema,
   FlyEventSchema,
-} from '@box-local/schema/events/animation-event-schema';
+} from '@box/schema/events/animation-event-schema';
 import { ENGINE_RES } from '../../resource/engine';
-import { PLAYER_HEIGHT } from '@box-local/schema/player/player-move';
-import { Frustum } from '@box-local/schema/utils/frustum-schema';
+import { PLAYER_HEIGHT } from '@box/schema/player/player-move';
+import { Frustum } from '@box/schema/utils/frustum-schema';
 import { testFrustumBox } from '../utils/frustum';
 import { resolvePlayerAnimationContact } from './player-animation-contact';
 

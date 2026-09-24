@@ -1,7 +1,7 @@
 import {
   PermissionAction,
   PermissionRDA,
-} from '@box-local/schema/permissions/permission-rda';
+} from '@box/schema/permissions/permission-rda';
 import { ClientStateType } from '../../edit-schema';
 import {
   ClientEditAction,

@@ -1,4 +1,4 @@
-import { GroupProjectState, GroupProjectMetaData } from '@box-local/schema/group-project/rda';
+import { GroupProjectState, GroupProjectMetaData } from '@box/schema/group-project/rda';
 import type { BuildSystemAPI } from '../type';
 /**
  * 在retrieveGroupProject时，某些数据的hash可能为undefined，因为之前的作品并没有这类数据

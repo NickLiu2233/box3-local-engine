@@ -1,4 +1,4 @@
-import { MuRDA, MuRDATypes } from '@box-local/mudb/rda';
+import { MuRDA, MuRDATypes } from '@box/mudb/rda';
 
 // transactions must be constructed and dispatched within a single tick or else stuff can fuck up
 export class RDATransaction<RDA extends MuRDA<any, any, any, any>> {

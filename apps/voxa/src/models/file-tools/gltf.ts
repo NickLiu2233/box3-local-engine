@@ -1,4 +1,4 @@
-import { exportToGLTF, GLTFNode } from '@box-local/mesher/gltf';
+import { exportToGLTF, GLTFNode } from '@box/mesher/gltf';
 import { store } from '../../redux/store';
 import type { ProjectManager } from '../project';
 import type { IResult } from '../result/interfaces';

@@ -1,6 +1,6 @@
 import REGL from 'regl';
 import { REGLLoader } from '../regl';
-import { RigidBodySet } from '@box-local/schema/physics/physics-schema';
+import { RigidBodySet } from '@box/schema/physics/physics-schema';
 import glBox from './debug-box';
 import glArrow from './debug-arrow';
 import { mat4, vec3 } from 'gl-matrix';

@@ -1,4 +1,4 @@
-import type * as I from '@box-local/script-api';
+import type * as I from '@box/script-api';
 import type { GameUIComponent } from 'src/engine/game-ui/nodes/component';
 
 /**

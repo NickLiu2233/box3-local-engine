@@ -1,5 +1,5 @@
-import { ContentServer } from '@box-local/content-server';
-import { Semaphore } from '@box-local/utils/semaphore';
+import { ContentServer } from '@box/content-server';
+import { Semaphore } from '@box/utils/semaphore';
 import { EmscriptenWasm } from './emscripten-types';
 
 import * as path from 'path';

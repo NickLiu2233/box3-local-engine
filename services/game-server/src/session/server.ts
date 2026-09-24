@@ -1,14 +1,14 @@
-import { DB } from '@box-local/schema/backend/database-type';
-import { PlayerSkinHashSchema } from '@box-local/schema/player/player-schema';
+import { DB } from '@box/schema/backend/database-type';
+import { PlayerSkinHashSchema } from '@box/schema/player/player-schema';
 import {
   GameSessionData,
   GameSessionDataSchema,
   UserDetail,
   UserDetailSchema,
-} from '@box-local/schema/session/schema';
-import { GameSessionInterface } from '@box-local/schema/session/type';
-import { Logger } from '@box-local/utils/logger';
-import { MuReadStream, MuWriteStream } from '@box-local/mudb/stream';
+} from '@box/schema/session/schema';
+import { GameSessionInterface } from '@box/schema/session/type';
+import { Logger } from '@box/utils/logger';
+import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
 import { createHash } from 'crypto';
 import { createDefaultAvatarSkin } from '../player/default-avatar-skin';
 import type { RuntimeRedisStore } from '../redis/runtime-redis';

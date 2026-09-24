@@ -1,10 +1,10 @@
-import { greedyComputeMesh } from '@box-local/ao-mesher';
-import { CompactModel, compactModelToVbBytes } from '@box-local/vb';
-import { MuReadStream } from '@box-local/mudb/stream';
-import { fillArray } from '@box-local/utils/fill';
-import { alloc, free } from '@box-local/utils/pool';
-import { decompress } from '@box-local/utils/rle-compress';
-import { allocVoxels, type VoxelView } from '@box-local/utils/voxel';
+import { greedyComputeMesh } from '@box/ao-mesher';
+import { CompactModel, compactModelToVbBytes } from '@box/vb';
+import { MuReadStream } from '@box/mudb/stream';
+import { fillArray } from '@box/utils/fill';
+import { alloc, free } from '@box/utils/pool';
+import { decompress } from '@box/utils/rle-compress';
+import { allocVoxels, type VoxelView } from '@box/utils/voxel';
 import { vec3 } from 'gl-matrix';
 import { nanoid } from 'nanoid';
 import ndarray from 'ndarray';

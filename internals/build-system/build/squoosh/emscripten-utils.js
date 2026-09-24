@@ -33,7 +33,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.instantiateEmscriptenWasm = instantiateEmscriptenWasm;
-const semaphore_1 = require("@box-local/utils/semaphore");
+const semaphore_1 = require("@box/utils/semaphore");
 const path = __importStar(require("path"));
 function instantiateEmscriptenWasm(factory, hash) {
     const mutex = new semaphore_1.Semaphore(1);
