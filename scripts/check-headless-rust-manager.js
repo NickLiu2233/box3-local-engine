@@ -44,9 +44,9 @@ assert.equal(
   'the Compose plugin must not be duplicated in the runtime image',
 )
 assert.match(adapter, /#\[tokio::main\(flavor = "current_thread"\)\]/)
-assert.match(transport, /\/api\/commands\/\$\{encodeURIComponent\(command\)\}/)
-assert.match(transport, /\/api\/backups\/upload/)
-assert.match(transport, /\/api\/diagnostics\/\$\{encodeURIComponent\(archive\)\}\/download/)
+assert.match(transport, /postApiCommandsNameRaw\([\s\S]*?path: \{ name: command \}/)
+assert.match(transport, /postApiBackupsUploadRaw\(/)
+assert.match(transport, /getApiDiagnosticsArchiveDownloadRaw\([\s\S]*?path: \{ archive \}/)
 assert.match(consoleSource, /id="web-logout"/, 'Web console must expose an explicit logout action')
 assert.match(consoleSource, /navItem\('web-login', 'device', '管理登录'\)/)
 assert.match(consoleSource, /<h1>Box Engine 管理界面<\/h1>/)
@@ -61,7 +61,7 @@ assert.match(
   /initialize_license_storage\(&app\)[\s\S]*?before serving requests/,
   'the manager must create the device bind-mount file before business containers can start',
 )
-assert.match(transport, /command === 'get_legal_notices' \? publicFetch : authenticatedFetch/)
+assert.match(transport, /managerApi\(command !== 'get_legal_notices'\)/)
 assert.match(
   consoleSource,
   /#web-logout'[\s\S]*setWebManagerToken\(''\)[\s\S]*state\.page = 'web-login'/,

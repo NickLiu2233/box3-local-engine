@@ -65,7 +65,10 @@ assert.match(trustedTime, /检测到系统时间回拨/)
 assert.match(serverManagerCommands, /"get_license_status" => license/)
 assert.match(serverManagerCommands, /"install_license" => license/)
 assert.match(serverManager, /请先安装有效许可证/)
-assert.match(serverManagerTransport, /\/api\/commands\/\$\{encodeURIComponent\(command\)\}/)
+assert.match(
+  serverManagerTransport,
+  /postApiCommandsNameRaw\([\s\S]*?path: \{ name: command \}/,
+)
 assert.match(headlessInstaller, /up -d --no-build --remove-orphans(?: --wait)? server-manager/)
 assert.match(headlessInstaller, /\/etc\/machine-id/)
 assert.doesNotMatch(headlessInstaller, /up -d --no-build --remove-orphans\s*$/m)
