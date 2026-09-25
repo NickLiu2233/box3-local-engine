@@ -44,6 +44,8 @@ env:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    outputs:
+      package_matrix: ${{ steps.package-matrix.outputs.value }}
     steps:
       - name: Validate inputs and OSS configuration
         run: |
@@ -75,18 +77,31 @@ jobs:
               exit 1
               ;;
           esac
+      - id: package-matrix
+        name: Select native package runners
+        run: |
+          case '${{ inputs.architecture }}' in
+            all)
+              value='{"include":[{"architecture":"amd64","runner":"ubuntu-latest"},{"architecture":"arm64","runner":"ubuntu-24.04-arm"}]}'
+              ;;
+            amd64)
+              value='{"include":[{"architecture":"amd64","runner":"ubuntu-latest"}]}'
+              ;;
+            arm64)
+              value='{"include":[{"architecture":"arm64","runner":"ubuntu-24.04-arm"}]}'
+              ;;
+            *)
+              echo 'Unsupported architecture selection.' >&2
+              exit 1
+              ;;
+          esac
+          echo "value=$value" >> "$GITHUB_OUTPUT"
 
   package:
     needs: validate
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - architecture: amd64
-            runner: ubuntu-latest
-          - architecture: arm64
-            runner: ubuntu-24.04-arm
-    if: ${{ inputs.architecture == 'all' || inputs.architecture == matrix.architecture }}
+      matrix: ${{ fromJSON(needs.validate.outputs.package_matrix) }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
