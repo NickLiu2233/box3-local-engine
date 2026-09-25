@@ -110,7 +110,7 @@ jobs:
           node-version-file: .node-version
       - name: Confirm selected version matches this revision
         run: |
-          package_version="$(node -p \"require('./package.json').version\")"
+          package_version="$(node -p "require('./package.json').version")"
           if [ "$package_version" != '${{ inputs.version }}' ]; then
             echo "Selected version ${{ inputs.version }} does not match package.json version $package_version." >&2
             echo 'Run this workflow from the matching release tag or release branch.' >&2
