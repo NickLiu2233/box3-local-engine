@@ -67,11 +67,13 @@ function check() {
     'scripts/build-desktop-offline-installer.test.js',
     'scripts/verify-desktop-offline-package.test.js',
     'scripts/linux-bootstrap-installer.test.js',
+    'scripts/server-installation-contract.test.js',
   ])
   node('scripts/check-desktop-deployment-manager.js')
   node('scripts/check-headless-rust-manager.js')
   run(process.execPath, ['--test', 'scripts/deployment-manager-transport.test.js'])
   node('scripts/check-release-workflow.js')
+  node('scripts/check-server-package-workflow.js')
   node('scripts/check-documentation.js')
   run(
     process.execPath,

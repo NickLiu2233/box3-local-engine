@@ -806,6 +806,10 @@ for (const [label, pattern] of [
     /\$\{BOX_SERVER_MANAGER_BIND_IP:-127\.0\.0\.1\}:\$\{BOX_SERVER_MANAGER_PORT:-3130\}:3130/,
   ],
   ['independent management token', /BOX_SERVER_MANAGER_TOKEN: \$\{BOX_SERVER_MANAGER_TOKEN:-\}/],
+  [
+    'internal runtime manager token',
+    /BOX_RUNTIME_MANAGER_TOKEN: \$\{BOX_RUNTIME_MANAGER_TOKEN:-\}/,
+  ],
   ['read-only root filesystem', /read_only: true/],
   ['no-new-privileges', /no-new-privileges:true/],
   ['all capabilities dropped', /cap_drop:\s*\n\s*- ALL/],

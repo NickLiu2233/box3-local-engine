@@ -1,0 +1,169 @@
+name: Package BOX3 Engine Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the v prefix (for example 0.2.0)
+        required: true
+        type: string
+      architecture:
+        description: Server package architecture
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - amd64
+          - arm64
+      publish_stable:
+        description: Update the stable CDN package, install.sh, and latest.txt (requires all architectures)
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-server-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
+  OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+  OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
+  OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
+  AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+  AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+  # This prefix contains the image archives produced by the release workflow.
+  OSS_BUILD_PREFIX: box-local-engine/v${{ inputs.version }}
+  # This directory is the origin behind https://assets.box3.fun/local-engine/.
+  OSS_SERVER_RELEASE_PREFIX: local-engine
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate inputs and OSS configuration
+        run: |
+          case "${{ inputs.version }}" in
+            ''|*[!0-9A-Za-z.-]*|.*|*.)
+              echo 'Version must be a release version such as 0.2.0, without a v prefix.' >&2
+              exit 1
+              ;;
+          esac
+          if [ "${{ inputs.publish_stable }}" = 'true' ] && [ "${{ inputs.architecture }}" != 'all' ]; then
+            echo 'Updating the stable CDN requires both amd64 and arm64 packages.' >&2
+            exit 1
+          fi
+          for variable_name in OSS_BUCKET OSS_ENDPOINT OSS_ACCESS_KEY_ID OSS_ACCESS_KEY_SECRET; do
+            if [ -z "${!variable_name:-}" ]; then
+              echo "Missing required GitHub Actions secret for $variable_name." >&2
+              exit 1
+            fi
+          done
+          case "$OSS_BUCKET" in
+            oss://*|*/*)
+              echo 'ALIYUN_OSS_BUCKET must contain only the bucket name.' >&2
+              exit 1
+              ;;
+          esac
+          case "$OSS_ENDPOINT" in
+            http://*|https://*|*/*)
+              echo 'ALIYUN_OSS_ENDPOINT must be an OSS endpoint hostname without a protocol or path.' >&2
+              exit 1
+              ;;
+          esac
+
+  package:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-latest
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    if: ${{ inputs.architecture == 'all' || inputs.architecture == matrix.architecture }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Confirm selected version matches this revision
+        run: |
+          package_version="$(node -p \"require('./package.json').version\")"
+          if [ "$package_version" != '${{ inputs.version }}' ]; then
+            echo "Selected version ${{ inputs.version }} does not match package.json version $package_version." >&2
+            echo 'Run this workflow from the matching release tag or release branch.' >&2
+            exit 1
+          fi
+      - name: Install server package tools
+        run: sudo apt-get update && sudo apt-get install -y zip
+      - name: Configure Aliyun OSS client
+        run: |
+          if ! command -v ossutil >/dev/null 2>&1; then
+            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          fi
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+      - name: Download existing offline images from Aliyun OSS
+        run: |
+          mkdir -p apps/local-engine/dist/images
+          archive="box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz"
+          ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" apps/local-engine/dist/images/
+      - name: Assemble and verify Linux server package
+        env:
+          BOX_BUILD_COMMIT: ${{ github.sha }}
+          BOX_BUILD_SOURCE: github-actions-server-package
+        run: |
+          export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
+          source_archive="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz"
+          server_archive="apps/local-engine/dist/images/box3-engine-play-server-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz"
+          test -f "$source_archive"
+          docker load -i "$source_archive"
+          docker image save \
+            "box-local-engine-player-service:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-player-auth-portal:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-server-manager:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-creator:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-play:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
+            "box-local-engine-voxa:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
+            | gzip -1 > "$server_archive"
+          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
+          node scripts/verify-headless-server-package.js \
+            "apps/local-engine/dist/server-packages/BOX3-Engine-Server-${{ inputs.version }}-linux-${{ matrix.architecture }}"
+      - name: Upload versioned server package to Aliyun OSS
+        run: |
+          package="apps/local-engine/dist/server-packages/BOX3-Engine-Server-${{ inputs.version }}-linux-${{ matrix.architecture }}.zip"
+          test -f "$package"
+          ossutil cp "$package" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
+      - name: Publish stable server package to Aliyun OSS
+        if: ${{ inputs.publish_stable }}
+        run: |
+          package="apps/local-engine/dist/server-packages/BOX3-Engine-Server-${{ inputs.version }}-linux-${{ matrix.architecture }}.zip"
+          ossutil cp "$package" "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/" --update
+
+  publish-stable-bootstrap:
+    needs: package
+    if: ${{ inputs.publish_stable }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure Aliyun OSS client
+        run: |
+          if ! command -v ossutil >/dev/null 2>&1; then
+            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          fi
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+      - name: Publish stable bootstrap installer and version pointer
+        run: |
+          cp distribution/server/bootstrap.sh install.sh
+          chmod +x install.sh
+          printf '%s\n' '${{ inputs.version }}' > latest.txt
+          ossutil cp install.sh "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/install.sh" --update
+          # Upload the pointer last: install clients then only see a version
+          # after both native-architecture server packages are available.
+          ossutil cp latest.txt "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/latest.txt" --update

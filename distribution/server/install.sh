@@ -30,12 +30,33 @@ random_hex() {
   fi
 }
 
+# New versions can add required internal tokens. Keep valid operator-provided
+# values, but provision an absent, placeholder or too-short value for both
+# first installs and upgrades from an older .env.
+ensure_secret() {
+  key=$1
+  placeholder=$2
+  current=$(sed -n "s/^${key}=//p" .env | tail -n 1)
+  if [ "$current" != "$placeholder" ] && [ "${#current}" -ge 32 ]; then
+    return
+  fi
+  secret=$(random_hex)
+  if grep -q "^${key}=" .env; then
+    sed -i.bak "s|^${key}=.*|${key}=${secret}|" .env
+    rm -f .env.bak
+  else
+    printf '%s=%s\n' "$key" "$secret" >>.env
+  fi
+  echo "Generated a required secret for ${key}."
+}
+
 if [ ! -f .env ]; then
   cp .env.example .env
   permission_secret=$(random_hex)
   auth_secret=$(random_hex)
   admin_secret=$(random_hex)
   manager_secret=$(random_hex)
+  runtime_manager_secret=$(random_hex)
   # Bind the license device identity to the operator's .env so unpacking a new
   # package version does not silently invalidate an installed license.
   license_secret=$(random_hex)
@@ -53,12 +74,16 @@ if [ ! -f .env ]; then
     -e "s/CHANGE_ME_PLAYER_AUTH_API_KEY/$auth_secret/" \
     -e "s/CHANGE_ME_PLAY_ADMIN_TOKEN/$admin_secret/" \
     -e "s/CHANGE_ME_SERVER_MANAGER_TOKEN/$manager_secret/" \
+    -e "s/CHANGE_ME_RUNTIME_MANAGER_TOKEN/$runtime_manager_secret/" \
     -e "s/^BOX_LICENSE_INSTALL_SECRET=.*/BOX_LICENSE_INSTALL_SECRET=$license_secret/" \
     -e "s/^BOX_LAN_IP=.*/BOX_LAN_IP=$lan_ip/" .env
   rm -f .env.bak
   chmod 600 .env
   echo 'Created .env. Review it before exposing any service to a LAN or the internet.'
 fi
+
+ensure_secret BOX_SERVER_MANAGER_TOKEN CHANGE_ME_SERVER_MANAGER_TOKEN
+ensure_secret BOX_RUNTIME_MANAGER_TOKEN CHANGE_ME_RUNTIME_MANAGER_TOKEN
 
 archive='__IMAGE_ARCHIVE__'
 if [ ! -f "$archive" ]; then

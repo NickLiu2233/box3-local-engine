@@ -172,6 +172,17 @@ fn fail(message: impl Into<String>) -> Response {
     )
         .into_response()
 }
+
+fn validate_startup_token(key: &str, value: Option<String>) -> Result<String, String> {
+    let value = value.unwrap_or_default();
+    if value.len() >= 32 {
+        return Ok(value);
+    }
+    Err(format!(
+        "配置错误：{key} 必须设置为至少 32 个字符的密钥。请在服务器部署目录的 .env 中设置该值后重新创建 server-manager 容器。 Configuration error: {key} must be a secret of at least 32 characters; set it in .env and recreate server-manager."
+    ))
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     if env::args().nth(1).as_deref() == Some("--healthcheck") {
@@ -183,17 +194,26 @@ async fn main() {
     }
     let root = env::var("BOX_SERVER_MANAGER_ROOT").unwrap_or_else(|_| "/workspace".into());
     let root_path = PathBuf::from(&root);
-    let token = env::var("BOX_SERVER_MANAGER_TOKEN").expect("BOX_SERVER_MANAGER_TOKEN is required");
-    let runtime_token =
-        env::var("BOX_RUNTIME_MANAGER_TOKEN").expect("BOX_RUNTIME_MANAGER_TOKEN is required");
-    assert!(
-        token.len() >= 32,
-        "BOX_SERVER_MANAGER_TOKEN must be at least 32 characters"
-    );
-    assert!(
-        runtime_token.len() >= 32,
-        "BOX_RUNTIME_MANAGER_TOKEN must be at least 32 characters"
-    );
+    let token = match validate_startup_token(
+        "BOX_SERVER_MANAGER_TOKEN",
+        env::var("BOX_SERVER_MANAGER_TOKEN").ok(),
+    ) {
+        Ok(value) => value,
+        Err(message) => {
+            eprintln!("{message}");
+            std::process::exit(2);
+        }
+    };
+    let runtime_token = match validate_startup_token(
+        "BOX_RUNTIME_MANAGER_TOKEN",
+        env::var("BOX_RUNTIME_MANAGER_TOKEN").ok(),
+    ) {
+        Ok(value) => value,
+        Err(message) => {
+            eprintln!("{message}");
+            std::process::exit(2);
+        }
+    };
     let app = Arc::new(App {
         root: root_path.clone(),
         token,

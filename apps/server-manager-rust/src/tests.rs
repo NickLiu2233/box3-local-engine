@@ -8,6 +8,18 @@ use crate::runtime::runtime::{
 };
 
 #[test]
+fn startup_tokens_require_a_real_secret_and_explain_the_configuration_fix() {
+    assert_eq!(
+        validate_startup_token("BOX_RUNTIME_MANAGER_TOKEN", Some("a".repeat(32))).unwrap(),
+        "a".repeat(32)
+    );
+    let error = validate_startup_token("BOX_RUNTIME_MANAGER_TOKEN", None).unwrap_err();
+    assert!(error.contains("BOX_RUNTIME_MANAGER_TOKEN"));
+    assert!(error.contains(".env"));
+    assert!(error.contains("至少 32"));
+}
+
+#[test]
 fn private_runtime_container_name_preserves_the_room_identifier() {
     let request = RuntimeEnsureRequest {
         permanent_map_id: "4dffa49240b57b50ad2c".into(),

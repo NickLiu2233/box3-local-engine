@@ -61,6 +61,19 @@ function main() {
     assert.ok(fs.existsSync(path.join(packageRoot, file)), `package file missing: ${file}`)
   }
 
+  const environmentTemplate = fs.readFileSync(path.join(packageRoot, '.env.example'), 'utf8')
+  assert.match(
+    environmentTemplate,
+    /^BOX_RUNTIME_MANAGER_TOKEN=CHANGE_ME_RUNTIME_MANAGER_TOKEN$/m,
+    'server manager runtime token template is missing',
+  )
+  const installer = fs.readFileSync(path.join(packageRoot, 'install.sh'), 'utf8')
+  assert.match(
+    installer,
+    /ensure_secret BOX_RUNTIME_MANAGER_TOKEN CHANGE_ME_RUNTIME_MANAGER_TOKEN/,
+    'installer must provision the runtime manager token for new and upgraded environments',
+  )
+
   // The README asks the operator to run ./install.sh, so the packaged script
   // must already carry the executable bit.
   for (const file of ['install.sh', 'status.sh', 'logs.sh', 'stop.sh', 'verify.sh']) {
