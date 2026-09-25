@@ -544,8 +544,8 @@ services:
           create_host_path: true
       # Per-map play policies are managed by the Desktop launcher and must be
       # visible to the Play launcher before it starts each game-server child.
-      # Keep this mount read-only: Play only consumes the owner-managed file.
-      # Play runtimes persist local content blobs while loading a map.
+      # Play consumes the owner-managed profiles and persists local content
+      # blobs while loading a map, so this directory must remain writable.
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - box-play-runtime-cache:/app/play-runtime-cache
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"

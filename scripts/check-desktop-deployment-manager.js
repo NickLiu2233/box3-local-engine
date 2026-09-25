@@ -225,8 +225,8 @@ assert.match(
 assert.match(compose, /BOX_MANAGED_POSTGRES_MEMORY_LIMIT:-512m/)
 assert.match(
   compose.match(/ {2}play:[\s\S]*?\n {2}voxa:/)?.[0] || '',
-  /apps\/local-engine\/data:\/app\/apps\/local-engine\/data:ro/,
-  'Play must read the Desktop-managed per-map runtime profiles',
+  /apps\/local-engine\/data:\/app\/apps\/local-engine\/data(?:"|\s)/,
+  'Play must mount the Desktop-managed runtime data directory',
 )
 const playService = compose.match(/ {2}play:[\s\S]*?\n {2}voxa:/)?.[0] || ''
 assert.match(playService, /server-manager:[\s\S]*?condition: service_healthy/)
