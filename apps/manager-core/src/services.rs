@@ -37,6 +37,39 @@ pub fn scope_services(scope: &str) -> Result<&'static [&'static str], String> {
     }
 }
 
+/// One-shot storage ownership jobs must run before their application, but
+/// applications must not follow Compose `depends_on` from inside the Web
+/// manager: that graph includes server-manager itself.
+fn storage_initializers(services: &[&str]) -> Vec<&'static str> {
+    [
+        ("creator", "creator-storage-init"),
+        ("play", "play-storage-init"),
+        ("voxa", "voxa-storage-init"),
+    ]
+    .into_iter()
+    .filter_map(|(service, initializer)| services.contains(&service).then_some(initializer))
+    .collect()
+}
+
+fn start_applications(runtime: &impl Runtime, services: &[&str]) -> Result<(), String> {
+    for initializer in storage_initializers(services) {
+        // Run the ownership job in the foreground. Compose `wait` rejects an
+        // already-exited one-shot container; `--exit-code-from` preserves the
+        // job's actual exit status without following server-manager.
+        runtime.compose(&[
+            "up",
+            "--no-build",
+            "--no-deps",
+            "--exit-code-from",
+            initializer,
+            initializer,
+        ])?;
+    }
+    let mut args = vec!["up", "-d", "--no-build", "--no-deps"];
+    args.extend_from_slice(services);
+    runtime.compose(&args)
+}
+
 pub fn start(runtime: &impl Runtime, scope: &str) -> Result<(), String> {
     // Validate before touching licenses, images or containers.
     let targets = scope_services(scope)?;
@@ -59,12 +92,7 @@ pub fn start(runtime: &impl Runtime, scope: &str) -> Result<(), String> {
         }
     }
     runtime.progress("start", "正在启动服务…", 65);
-    let mut args = vec!["up", "-d", "--no-build", "--force-recreate"];
-    if scope == "all" {
-        args.push("--remove-orphans");
-    }
-    args.extend_from_slice(targets);
-    runtime.compose(&args)?;
+    start_applications(runtime, targets)?;
     runtime.progress("complete", "服务已启动", 100);
     Ok(())
 }
@@ -86,7 +114,7 @@ pub fn control(runtime: &impl Runtime, service: &str, action: &str) -> Result<()
             runtime.compose(&["up", "-d", "--no-build", "--wait", service])?;
         } else {
             runtime.prepare_images()?;
-            runtime.compose(&["up", "-d", "--no-build", "--force-recreate", service])?;
+            start_applications(runtime, &[service])?;
         }
     } else {
         runtime.compose(&[action, service])?;
@@ -153,7 +181,7 @@ mod tests {
         assert!(host.calls.borrow().is_empty());
     }
     #[test]
-    fn dependencies_are_ready_before_selected_apps_are_recreated() {
+    fn dependencies_are_ready_before_selected_apps_are_started() {
         let host = Fake {
             licensed: true,
             ..Fake::default()
@@ -166,17 +194,61 @@ mod tests {
         );
         assert_eq!(calls[2].last().unwrap(), "managed-redis");
         assert_eq!(
-            calls[3],
+            calls[4],
             [
                 "up",
                 "-d",
                 "--no-build",
-                "--force-recreate",
+                "--no-deps",
                 "play",
                 "player-service",
                 "player-auth-portal"
             ]
         );
+    }
+    #[test]
+    fn starting_apps_never_recreates_the_web_manager_dependency() {
+        let host = Fake {
+            licensed: true,
+            ..Fake::default()
+        };
+        start(&host, "creator").unwrap();
+        let calls = host.calls.borrow();
+        let application_start = calls.last().unwrap();
+        assert!(!application_start.contains(&"--force-recreate".into()));
+        assert!(!application_start.contains(&"--remove-orphans".into()));
+        assert!(application_start.contains(&"--no-deps".into()));
+    }
+    #[test]
+    fn starting_one_app_never_recreates_the_web_manager_dependency() {
+        let host = Fake {
+            licensed: true,
+            ..Fake::default()
+        };
+        control(&host, "creator", "start").unwrap();
+        let calls = host.calls.borrow();
+        assert_eq!(calls[2], ["up", "-d", "--no-build", "--no-deps", "creator"]);
+    }
+    #[test]
+    fn starting_creator_runs_its_initializer_then_starts_without_dependencies() {
+        let host = Fake {
+            licensed: true,
+            ..Fake::default()
+        };
+        start(&host, "creator").unwrap();
+        let calls = host.calls.borrow();
+        assert_eq!(
+            calls[3],
+            [
+                "up",
+                "--no-build",
+                "--no-deps",
+                "--exit-code-from",
+                "creator-storage-init",
+                "creator-storage-init",
+            ]
+        );
+        assert!(calls[5].contains(&"--no-deps".into()));
     }
     #[test]
     fn failed_dependency_never_starts_applications() {
@@ -367,9 +439,11 @@ mod existing_tests {
     #[test]
     fn inspection_errors_are_not_empty_inventories() {
         assert_eq!(
-            control_existing(&["ps"], "box-local-engine", |_| Err("daemon unavailable".into()))
-                .unwrap()
-                .unwrap_err(),
+            control_existing(&["ps"], "box-local-engine", |_| Err(
+                "daemon unavailable".into()
+            ))
+            .unwrap()
+            .unwrap_err(),
             "daemon unavailable"
         );
     }

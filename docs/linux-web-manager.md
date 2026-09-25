@@ -11,9 +11,9 @@
 | `x86_64`          | `linux-amd64.zip` |
 | `aarch64`/`arm64` | `linux-arm64.zip` |
 
-推荐 Linux 使用仍在安全支持期内的 Ubuntu LTS 或 Debian 。
+推荐 Linux 使用仍在安全支持期内的 Ubuntu LTS（22.04、24.04 或 26.04）或 Debian。
 
-一键安装器也支持 Alibaba Cloud Linux 2/3。版本 3 使用系统的 `alinux3-plus` 仓库，版本 2 使用阿里云 Docker CE 镜像仓库；安装结束前会验证 Docker Engine 与 Compose v2。
+Ubuntu 一键安装会优先使用阿里云 Docker CE 镜像源，镜像源不可用时回退 Docker 官方安装源。一键安装器也支持 Alibaba Cloud Linux 2/3/4。版本 3/4 使用对应的 `alinuxN-plus` 仓库，版本 2 使用阿里云 Docker CE 镜像仓库；安装结束前会验证 Docker Engine 与 Compose v2。
 
 | 使用范围                      | CPU      | 内存       | 可用磁盘 |
 | ----------------------------- | -------- | ---------- | -------- |

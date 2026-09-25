@@ -89,19 +89,68 @@ install_compose_plugin_binary() {
   chmod +x "$compose_directory/docker-compose"
 }
 
+install_ubuntu_docker_from_aliyun_mirror() {
+  command -v apt-get >/dev/null 2>&1 || return 1
+  command -v dpkg >/dev/null 2>&1 || return 1
+
+  ubuntu_codename=$(sed -n 's/^VERSION_CODENAME=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
+  case "$ubuntu_codename" in
+    ''|*[!a-z0-9-]*) return 1 ;;
+  esac
+
+  info '使用阿里云 Docker CE 镜像源安装 Docker Engine 与 Compose'
+  docker_keyring=/etc/apt/keyrings/docker.asc
+  docker_source=/etc/apt/sources.list.d/docker-ce.list
+  install -m 0755 -d /etc/apt/keyrings
+  if ! curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-delay 2 \
+    https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg -o "$docker_keyring"; then
+    rm -f "$docker_keyring"
+    return 1
+  fi
+  chmod a+r "$docker_keyring"
+  printf '%s\n' \
+    "deb [arch=$(dpkg --print-architecture) signed-by=$docker_keyring] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $ubuntu_codename stable" \
+    >"$docker_source"
+
+  if apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+    return 0
+  fi
+
+  # Leave no broken third-party source behind before trying Docker's official
+  # installer. Existing OS sources remain untouched.
+  rm -f "$docker_source" "$docker_keyring"
+  apt-get update || true
+  return 1
+}
+
+install_docker_from_official_source() {
+  info '阿里云 Docker CE 镜像源不可用，回退到 Docker 官方安装源'
+  docker_installer=$(mktemp)
+  if ! curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-delay 2 \
+    https://get.docker.com -o "$docker_installer"; then
+    rm -f "$docker_installer"
+    fail '无法从阿里云或 Docker 官方源下载 Docker 安装器。请检查服务器网络后重试。'
+  fi
+  sh "$docker_installer"
+  rm -f "$docker_installer"
+}
+
 install_alibaba_cloud_linux_docker() {
   alinux_version=${VERSION_ID:-}
   alinux_major=${alinux_version%%.*}
   info "检测到 Alibaba Cloud Linux ${alinux_version:-未知版本}，使用专用 Docker 安装流程"
 
   case "$alinux_major" in
-    3)
-      command -v dnf >/dev/null 2>&1 || fail 'Alibaba Cloud Linux 3 缺少 dnf。'
-      # Alibaba Cloud Linux 3 uses the release-version adapter when packages
-      # from the alinux3-plus repository resolve CentOS-compatible metadata.
-      dnf install -y dnf-plugin-releasever-adapter --repo alinux3-plus
+    3|4)
+      command -v dnf >/dev/null 2>&1 || fail "Alibaba Cloud Linux ${alinux_major} 缺少 dnf。"
+      # Alibaba Cloud Linux 3 and 4 use the release-version adapter when
+      # Docker CE packages from their matching alinuxN-plus repository resolve
+      # CentOS-compatible metadata.
+      alinux_repository="alinux${alinux_major}-plus"
+      dnf install -y dnf-plugin-releasever-adapter --repo "$alinux_repository"
       if ! dnf install -y --nobest docker-ce; then
-        fail '无法从 alinux3-plus 安装 Docker CE。'
+        fail "无法从 ${alinux_repository} 安装 Docker CE。"
       fi
       if ! dnf install -y docker-compose-plugin; then
         info '仓库未提供 Compose 插件，改用 Docker Compose 官方二进制'
@@ -122,7 +171,7 @@ install_alibaba_cloud_linux_docker() {
       fi
       ;;
     *)
-      fail "暂不支持 Alibaba Cloud Linux ${alinux_version:-未知版本}，当前支持 2 和 3。"
+      fail "暂不支持 Alibaba Cloud Linux ${alinux_version:-未知版本}，当前支持 2、3 和 4。"
       ;;
   esac
 }
@@ -140,11 +189,10 @@ install_docker() {
     fi
     if [ "$distribution_id" = 'alinux' ]; then
       install_alibaba_cloud_linux_docker
+    elif [ "$distribution_id" = 'ubuntu' ] && install_ubuntu_docker_from_aliyun_mirror; then
+      :
     else
-      docker_installer=$(mktemp)
-      curl --proto '=https' --tlsv1.2 -fsSL https://get.docker.com -o "$docker_installer"
-      sh "$docker_installer"
-      rm -f "$docker_installer"
+      install_docker_from_official_source
     fi
   fi
 
@@ -182,6 +230,32 @@ resolve_github_version() {
     -o /dev/null -w '%{url_effective}' "$REPOSITORY_URL/releases/latest")
   version=${latest_url##*/}
   version=${version#v}
+}
+
+is_ipv4_address() {
+  printf '%s\n' "$1" | awk -F. '
+    NF == 4 {
+      for (field = 1; field <= 4; field++) {
+        if ($field !~ /^[0-9]+$/ || $field > 255) exit 1
+      }
+      exit 0
+    }
+    { exit 1 }
+  '
+}
+
+detect_public_ipv4() {
+  for endpoint in \
+    https://api-ipv4.ip.sb/ip \
+    https://ipv4.icanhazip.com; do
+    candidate=$(curl --proto '=https' --tlsv1.2 --fail --location --retry 2 --retry-delay 1 \
+      --max-time 5 "$endpoint" 2>/dev/null | tr -d '\r\n' || true)
+    if is_ipv4_address "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+  return 1
 }
 
 set_env_value() {
@@ -232,6 +306,22 @@ open_manager_firewall() {
   fi
 }
 
+existing_installation_matches_target() {
+  [ -f "$INSTALL_DIRECTORY/.env" ] || return 1
+  [ -f "$INSTALL_DIRECTORY/compose.yml" ] || return 1
+  [ -x "$INSTALL_DIRECTORY/start.sh" ] || return 1
+
+  installed_image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' "$INSTALL_DIRECTORY/.env" | tail -n 1)
+  installed_platform=$(sed -n 's/^BOX_PLAY_PLATFORM=//p' "$INSTALL_DIRECTORY/.env" | tail -n 1)
+  expected_image_tag="v${version}-linux-${architecture}"
+  [ "$installed_image_tag" = "$expected_image_tag" ] || return 1
+  [ "$installed_platform" = "linux/${architecture}" ] || return 1
+
+  for service in player-service player-auth-portal server-manager creator play voxa; do
+    docker image inspect "box-local-engine-${service}:${expected_image_tag}" >/dev/null 2>&1 || return 1
+  done
+}
+
 install_download_tools
 install_docker
 
@@ -240,6 +330,12 @@ if [ ! -s "$MACHINE_ID_FILE" ]; then
 fi
 
 resolve_version
+if existing_installation_matches_target; then
+  info "检测到已安装的 BOX3 Engine ${version}（linux/${architecture}），跳过下载和更新，直接启动服务"
+  "$INSTALL_DIRECTORY/start.sh"
+  exit 0
+fi
+
 package_name="BOX3-Engine-Server-$version-linux-$architecture"
 if [ -n "$RELEASE_CDN_URL" ]; then
   package_url="${RELEASE_CDN_URL%/}/$package_name.zip"
@@ -328,8 +424,7 @@ if [ -z "$lan_ip" ] && command -v hostname >/dev/null 2>&1; then
 fi
 public_ip=${BOX3_PUBLIC_IP:-}
 if [ -z "$public_ip" ]; then
-  public_ip=$(curl --proto '=https' --tlsv1.2 -fsSL --max-time 5 \
-    https://api.ipify.org 2>/dev/null || true)
+  public_ip=$(detect_public_ipv4 || true)
 fi
 manager_token=$(read_env_value BOX_SERVER_MANAGER_TOKEN)
 owner_token=$(read_env_value BOX_PLAY_ADMIN_TOKEN)
@@ -353,8 +448,6 @@ if [ "$MANAGER_BIND_IP" = '0.0.0.0' ]; then
     "$COLOR_LABEL" "$manager_port" "$COLOR_RESET"
   if [ -n "$public_ip" ]; then
     printf '外网 IPv4 面板地址：http://%s:%s\n' "$public_ip" "$manager_port"
-  else
-    printf '外网 IPv4 面板地址：http://<服务器公网 IP>:%s\n' "$manager_port"
   fi
   if [ -n "$lan_ip" ]; then
     printf '内网面板地址：     http://%s:%s\n' "$lan_ip" "$manager_port"

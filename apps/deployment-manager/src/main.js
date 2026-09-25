@@ -182,6 +182,28 @@ function escapeHtml(value = '') {
     .replaceAll('"', '&quot;')
 }
 
+async function copyText(value) {
+  const text = String(value || '')
+  if (!text) throw new Error('没有可复制的内容。')
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return
+    } catch {
+      // HTTP 管理端通常没有 Clipboard API 权限，继续使用兼容回退。
+    }
+  }
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.cssText = 'position:fixed;opacity:0;pointer-events:none'
+  document.body.append(textarea)
+  textarea.select()
+  const copied = document.execCommand('copy')
+  textarea.remove()
+  if (!copied) throw new Error('浏览器未允许复制到剪贴板。')
+}
+
 function navItem(page, iconName, label) {
   return `<button class="nav-item ${state.page === page ? 'active' : ''}" data-page="${page}">${icon(iconName)}<span>${label}</span></button>`
 }
@@ -1298,8 +1320,12 @@ function bindEvents() {
   })
   document.querySelector('#copy-license-device')?.addEventListener('click', async () => {
     if (!state.license?.deviceId) return
-    await navigator.clipboard.writeText(state.license.deviceId)
-    state.notice = '设备 ID 已复制。'
+    try {
+      await copyText(state.license.deviceId)
+      state.notice = '设备 ID 已复制。'
+    } catch (error) {
+      state.error = `复制失败：${String(error)}`
+    }
     render()
   })
   document.querySelectorAll('[data-runtime-submaps]').forEach((node) =>
@@ -1471,7 +1497,7 @@ function bindEvents() {
     )
   document.querySelectorAll('[data-copy-managed]').forEach((node) =>
     node.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(node.dataset.copyManaged)
+      await copyText(node.dataset.copyManaged)
       node.classList.add('copied')
       node.title = '已复制'
     }),
@@ -1489,7 +1515,7 @@ function bindEvents() {
   )
   document.querySelectorAll('[data-copy-url]').forEach((node) =>
     node.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(node.dataset.copyUrl)
+      await copyText(node.dataset.copyUrl)
       node.title = '已复制'
     }),
   )
@@ -1975,7 +2001,7 @@ async function copyOwnerSecret(name) {
     return
   }
   try {
-    await navigator.clipboard.writeText(secret)
+    await copyText(secret)
     state.ownerSecretCopied = name
     render()
     window.setTimeout(() => {
@@ -2412,6 +2438,10 @@ async function saveConfiguration(event) {
   // an empty value. Existing saved secrets remain server-side when no new
   // password has been entered.
   const config = { ...(state.config || {}), ...submitted }
+  // The single access-range field represents both Play and Creator when the
+  // form is submitted. `creatorHost` is hidden in this layout, so its rendered
+  // value can otherwise lag behind a just-edited public host.
+  config.creatorHost = submitted.publicHost
   if (!submitted.databasePassword && state.config?.databasePassword) {
     config.databasePassword = state.config.databasePassword
   }

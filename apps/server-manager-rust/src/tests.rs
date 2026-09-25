@@ -470,7 +470,11 @@ fn startup_initialization_creates_the_device_file_before_containers_start() {
     assert!(first_device.starts_with("dev_"));
     #[cfg(unix)]
     {
-        use std::os::unix::fs::MetadataExt;
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        assert_eq!(
+            fs::metadata(&device).unwrap().permissions().mode() & 0o777,
+            0o640
+        );
         let inode = fs::metadata(&device).unwrap().ino();
         let changed_hardware = root.join("changed-machine-id");
         fs::write(&changed_hardware, "different-machine-id\n").unwrap();

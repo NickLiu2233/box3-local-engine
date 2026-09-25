@@ -113,6 +113,13 @@ for (const value of [
 }
 assert.match(frontend, /内置数据库/)
 assert.match(frontend, /外部数据库/)
+assert.match(
+  frontend,
+  /async function copyText\(value\)/,
+  'deployment manager needs a Web-compatible clipboard helper',
+)
+assert.match(frontend, /document\.execCommand\('copy'\)/)
+assert.match(frontend, /await copyText\(state\.license\.deviceId\)/)
 assert.match(frontend, /databaseMode/)
 assert.match(frontend, /启用并启动/)
 assert.match(frontend, /PostgreSQL 16/)
@@ -180,6 +187,11 @@ const saveConfigurationBody = frontend.match(
 )?.[0]
 assert.ok(saveConfigurationBody, 'missing saveConfiguration implementation')
 assert.match(saveConfigurationBody, /normalizeInactiveServicePorts\(config\)/)
+assert.match(
+  saveConfigurationBody,
+  /config\.creatorHost = submitted\.publicHost/,
+  'public access submissions must keep the hidden creator host in sync with the public host',
+)
 const numericConfigFields = frontend.match(/const numericConfigFields = \[[\s\S]*?\n\]/)?.[0]
 assert.ok(numericConfigFields, 'missing numericConfigFields contract')
 const snakeToCamel = (value) => value.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
@@ -886,7 +898,11 @@ for (const name of ['start', 'control', 'stop', 'statuses', 'compose_rows', 'ena
 // Keep the license guard as a security invariant, but leave scope selection,
 // dependency order and exact Compose argv to the shared runtime behavior tests.
 assert.match(core.services, /runtime\.require_license\(\)\?;/)
-assert.match(core.services, /--force-recreate/)
+assert.match(
+  core.services,
+  /start_applications\(runtime, &\[service\]\)\?;/,
+  'individual application starts must preserve the Web manager dependency',
+)
 assert.doesNotMatch(
   core.services,
   /COMPOSE_PROFILES/,

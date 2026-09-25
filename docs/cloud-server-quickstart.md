@@ -65,7 +65,7 @@ CDN 的 `latest.txt` 或当前架构 ZIP 返回错误时，安装器会自动回
 
 完整运行 Play、Creator 和 VOXA，建议至少 8 核 CPU、16 GB 内存和 50 GB 可用磁盘。只运行游玩端时可以适当降低配置。
 
-一键安装器完整支持 Ubuntu 22.04/24.04、Debian 12、Alibaba Cloud Linux 2/3，以及 Docker 官方安装脚本支持的 CentOS、RHEL 和 Rocky Linux。Alibaba Cloud Linux 3 使用 `alinux3-plus`，Alibaba Cloud Linux 2 使用阿里云 Docker CE 镜像仓库，均会安装并验证 Compose v2。
+一键安装器完整支持 Ubuntu 22.04/24.04/26.04、Debian 12、Alibaba Cloud Linux 2/3/4，以及 Docker 官方安装脚本支持的 CentOS、RHEL 和 Rocky Linux。Ubuntu 优先使用阿里云 Docker CE 镜像源，镜像源不可用时自动回退 Docker 官方安装源；Alibaba Cloud Linux 3/4 使用对应的 `alinuxN-plus` 仓库，版本 2 使用阿里云 Docker CE 镜像仓库，均会安装并验证 Compose v2。
 
 确认服务器架构与下载包一致：
 

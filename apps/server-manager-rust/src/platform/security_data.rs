@@ -165,6 +165,7 @@ pub(crate) fn device(app: &App) -> Result<String, String> {
     if let Ok(existing) = fs::read_to_string(&path) {
         let existing = existing.trim();
         if is_device_id(existing) {
+            grant_runtime_read(&path)?;
             return Ok(existing.to_string());
         }
     }
@@ -177,7 +178,26 @@ pub(crate) fn device(app: &App) -> Result<String, String> {
         .map_err(|_| "无法读取 Linux 设备标识")?;
     let id = shared_license::derive_web_device_id(&hw, &value);
     private(&path, &id)?;
+    grant_runtime_read(&path)?;
     Ok(id)
+}
+
+/// Licensed services run as the unprivileged `node` user, while the Web
+/// manager writes bind-mounted files as root. Keep the owner private but grant
+/// that fixed runtime group read-only access. On a local non-root test/desktop
+/// process the file owner cannot be changed, so only the restrictive mode is
+/// applied; Linux server manager containers always run as root.
+fn grant_runtime_read(path: &FsPath) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        fs::set_permissions(path, fs::Permissions::from_mode(0o640))
+            .map_err(|error| error.to_string())?;
+        if fs::metadata(path).map_err(|error| error.to_string())?.uid() == 0 {
+            std::os::unix::fs::chown(path, None, Some(1000)).map_err(|error| error.to_string())?;
+        }
+    }
+    Ok(())
 }
 /// Create the bind-mounted device file before any Compose operation can create
 /// a business container. Docker preserves a missing-file bind mount as a
@@ -214,6 +234,9 @@ pub(crate) fn license(app: &App, install: Option<&str>) -> Result<Value, String>
     if let Some(token) = install {
         shared_license::verify_token(token, KEY, &id, now)?;
         private(&path, &format!("{}\n", token.trim()))?;
+        grant_runtime_read(&path)?;
+    } else if token.is_some() {
+        grant_runtime_read(&path)?;
     }
     serde_json::to_value(shared_license::status_from_token(
         token.as_deref(),

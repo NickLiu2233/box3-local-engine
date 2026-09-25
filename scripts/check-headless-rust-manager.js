@@ -114,7 +114,7 @@ assert.match(service, /DefaultBodyLimit::max\(512 \* 1024 \* 1024\)/)
 
 // Parity with the desktop launcher backend. The headless manager must derive
 // the Docker runtime environment instead of handing the raw .env to Compose,
-// must recreate containers when starting services, and must expose the same
+// must preserve the running Web manager when starting services, and must expose the same
 // configuration keys the launcher writes.
 assert.match(service, /fn generate_runtime_environment\(app: &App\)/)
 assert.match(service, /fn runtime_env_path\(app: &App\)/)
@@ -123,7 +123,11 @@ assert.match(service, /BOX_CREATOR_ALLOWED_HOSTS/)
 assert.match(service, /BOX_PLAYER_AUTH_ALLOWED_ORIGINS/)
 assert.match(service, /BOX_PLAYER_LOGIN_URL/)
 assert.match(service, /BOX_PLAYER_SERVICE_INTERNAL_URL/)
-assert.match(service, /--force-recreate/)
+assert.match(
+  sharedBackend,
+  /let mut args = vec!\["up", "-d", "--no-build", "--no-deps"\];/,
+  'bulk starts must preserve the running Web manager dependency',
+)
 assert.match(service, /desktop-postgres/)
 assert.match(service, /desktop-redis/)
 assert.match(service, /BOX_SCRIPT_HEAP_MB/)
@@ -242,7 +246,11 @@ for (const name of ['start', 'control', 'stop', 'statuses', 'compose_rows', 'ena
 // Keep the license guard as a security invariant, but leave scope selection,
 // dependency order and exact Compose argv to the shared runtime behavior tests.
 assert.match(core.services, /runtime\.require_license\(\)\?;/)
-assert.match(core.services, /--force-recreate/)
+assert.match(
+  core.services,
+  /start_applications\(runtime, &\[service\]\)\?;/,
+  'individual application starts must preserve the Web manager dependency',
+)
 assert.doesNotMatch(
   core.services,
   /COMPOSE_PROFILES/,

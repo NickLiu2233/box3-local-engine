@@ -12,7 +12,7 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 
 ## 一、准备一台纯 Linux 服务器
 
-推荐 Ubuntu 24.04 LTS 或 Debian 12。运行 `uname -m`：`x86_64` 使用 `linux-amd64` 包，`aarch64`/`arm64` 使用 `linux-arm64` 包。服务器必须有稳定的 `/etc/machine-id`。
+推荐 Ubuntu 24.04/26.04 LTS 或 Debian 12。运行 `uname -m`：`x86_64` 使用 `linux-amd64` 包，`aarch64`/`arm64` 使用 `linux-arm64` 包。服务器必须有稳定的 `/etc/machine-id`。
 
 硬件建议：
 
