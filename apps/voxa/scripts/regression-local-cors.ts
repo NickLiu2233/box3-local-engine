@@ -44,10 +44,20 @@ try {
     'an allowed Creator origin must be able to send the player session cookie',
   );
 
+  const configuredPublicResponse = response();
   assert.equal(
-    setLocalCors(request('https://voxa.example.test') as any, response() as any),
+    setLocalCors(request('https://voxa.example.test') as any, configuredPublicResponse as any),
+    true,
+    'an explicitly configured public VOXA origin must be able to save models',
+  );
+  assert.equal(
+    configuredPublicResponse.headers.get('Access-Control-Allow-Origin'),
+    'https://voxa.example.test',
+  );
+  assert.equal(
+    setLocalCors(request('https://untrusted.example.test') as any, response() as any),
     false,
-    'public origins must remain rejected even when an .env value was edited manually',
+    'an undeclared public origin must remain rejected',
   );
   assert.equal(
     setLocalCors(request('http://10.240.28.132:3221') as any, response() as any),

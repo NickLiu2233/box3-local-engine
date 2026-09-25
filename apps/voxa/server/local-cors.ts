@@ -44,7 +44,11 @@ function configuredOrigins() {
     .flatMap((value) => {
       try {
         const origin = new URL(value).origin;
-        return isPrivateOrigin(origin) ? [origin] : [];
+        // An origin here is an explicit host-owner allow-list entry.  Local
+        // deployments normally contain loopback/LAN addresses, while a
+        // public deployment must be able to use its configured HTTPS/domain
+        // address for the editor's same-origin write APIs.
+        return origin.startsWith('http:') || origin.startsWith('https:') ? [origin] : [];
       } catch {
         return [];
       }
@@ -53,7 +57,7 @@ function configuredOrigins() {
 
 function isAllowedOrigin(origin: string) {
   if (localOriginPattern.test(origin)) return true;
-  return isPrivateOrigin(origin) && configuredOrigins().includes(origin);
+  return configuredOrigins().includes(origin);
 }
 
 function originForRequestHost(req: NextApiRequest) {
@@ -81,6 +85,9 @@ export function setLocalCors(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Vary', 'Origin');
   if (!origin) return true;
   if (Array.isArray(origin)) return false;
+  // Directly opening a public IP must not implicitly allow cross-origin API
+  // writes.  Public origins must be declared through BOX_VOXA_PUBLIC_URL or
+  // BOX_VOXA_ALLOWED_ORIGINS; private/LAN direct access remains ergonomic.
   const sameVoxaHost = origin === originForRequestHost(req) && isPrivateOrigin(origin);
   if (!sameVoxaHost && !isAllowedOrigin(origin)) return false;
   res.setHeader('Access-Control-Allow-Origin', origin);

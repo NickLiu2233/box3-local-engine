@@ -217,6 +217,7 @@ services:
     # Creator's per-map runtime scheduler depends on this service.  Keep it
     # outside an optional profile: `docker compose --profile creator up`
     # otherwise removes it from the project and makes Creator invalid.
+    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
     image: box-local-engine-server-manager:${BOX_IMAGE_TAG:-0.2.0}
     build:
       context: .
@@ -276,6 +277,7 @@ services:
 
   creator:
     profiles: [creator]
+    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
     image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.2.0}
     build:
       context: .
@@ -382,7 +384,9 @@ services:
     volumes:
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/dist:/app/apps/local-engine/dist"
-      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data:ro"
+      # Creator edit runtimes persist local content blobs here.  This mount
+      # must remain writable; the runtime itself still runs as UID 1000.
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/backups:/app/apps/local-engine/backups"
       - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data:ro"
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
@@ -407,7 +411,9 @@ services:
         (chown -R 1000:1000 /app/apps/local-engine/projects 2>/dev/null || true)
         && (chown -R 1000:1000 /app/apps/local-engine/dist 2>/dev/null || true)
         && (chown -R 1000:1000 /app/apps/local-engine/backups 2>/dev/null || true)
-        && chown 1000:1000 /app/apps/local-engine/projects /app/apps/local-engine/dist /app/apps/local-engine/backups
+        && mkdir -p /app/apps/local-engine/data/blobs
+        && (chown -R 1000:1000 /app/apps/local-engine/data 2>/dev/null || true)
+        && chown 1000:1000 /app/apps/local-engine/projects /app/apps/local-engine/dist /app/apps/local-engine/backups /app/apps/local-engine/data
     restart: "no"
     network_mode: none
     read_only: true
@@ -421,6 +427,7 @@ services:
     volumes:
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/dist:/app/apps/local-engine/dist"
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/backups:/app/apps/local-engine/backups"
 
   play-storage-init:
@@ -431,7 +438,10 @@ services:
     command:
       - sh
       - -c
-      - mkdir -p /app/play-runtime-cache && chown -R 1000:1000 /app/play-runtime-cache
+      - >-
+        mkdir -p /app/play-runtime-cache /app/play-worlds
+        && mkdir -p /app/apps/local-engine/data/blobs
+        && chown -R 1000:1000 /app/play-runtime-cache /app/play-worlds /app/apps/local-engine/data
     restart: "no"
     network_mode: none
     read_only: true
@@ -443,6 +453,12 @@ services:
       - CHOWN
     volumes:
       - box-play-runtime-cache:/app/play-runtime-cache
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
+      - type: bind
+        source: "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/play-worlds"
+        target: /app/play-worlds
+        bind:
+          create_host_path: true
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
@@ -529,13 +545,15 @@ services:
       # Per-map play policies are managed by the Desktop launcher and must be
       # visible to the Play launcher before it starts each game-server child.
       # Keep this mount read-only: Play only consumes the owner-managed file.
-      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data:ro"
+      # Play runtimes persist local content blobs while loading a map.
+      - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - box-play-runtime-cache:/app/play-runtime-cache
       - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
       - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   voxa:
     profiles: [voxa]
+    platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
     image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.2.0}
     build:
       context: .

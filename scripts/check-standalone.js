@@ -906,6 +906,12 @@ requirePattern(
   'play waits for storage initialization',
   /play-storage-init:\s*\n\s*condition: service_completed_successfully/,
 )
+requirePattern(
+  playStorageInitCompose,
+  composeFile,
+  'play storage initialization owns the writable map library',
+  /\/app\/play-worlds[\s\S]*?chown -R 1000:1000[\s\S]*?\/app\/play-worlds/,
+)
 requirePattern(voxaCompose, composeFile, 'VOXA profile', /profiles: \[voxa\]/)
 requirePattern(
   voxaCompose,

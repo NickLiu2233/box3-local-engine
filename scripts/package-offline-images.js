@@ -49,12 +49,33 @@ const environment = {
 }
 
 for (const service of packagedServices) {
-  const result = spawnSync('docker', ['compose', 'build', service], {
-    cwd: root,
-    env: environment,
-    stdio: 'inherit',
-  })
+  // `docker compose build` on an ARM desktop may still build the host
+  // architecture even when DOCKER_DEFAULT_PLATFORM is set. Bake receives an
+  // explicit target platform and loads that single-platform image locally so
+  // the exported archive always matches its filename.
+  const result = spawnSync(
+    'docker',
+    ['buildx', 'bake', '--load', '--set', `${service}.platform=linux/${architecture}`, service],
+    {
+      cwd: root,
+      env: environment,
+      stdio: 'inherit',
+    },
+  )
   if (result.status !== 0) fail(`构建 ${service} 镜像失败，退出码 ${result.status ?? 'unknown'}`)
+
+  const image = `box-local-engine-${service}:${tag}`
+  const inspectedArchitecture = spawnSync(
+    'docker',
+    ['image', 'inspect', image, '--format', '{{.Architecture}}'],
+    { cwd: root, env: environment, encoding: 'utf8' },
+  )
+  if (inspectedArchitecture.status !== 0) fail(`无法检查 ${service} 镜像架构`)
+  if (inspectedArchitecture.stdout.trim() !== architecture) {
+    fail(
+      `${service} 镜像实际为 ${inspectedArchitecture.stdout.trim() || 'unknown'}，期望 ${architecture}；已拒绝导出错误架构的归档`,
+    )
+  }
 }
 
 fs.mkdirSync(outputDirectory, { recursive: true })
