@@ -5,7 +5,9 @@
 //! installation secrets, paths and private file handling stay in this adapter.
 
 use chrono::{DateTime, Utc};
-use std::{fs, path::PathBuf, process::Command};
+#[cfg(any(target_os = "macos", target_os = "windows"))]
+use std::process::Command;
+use std::{fs, path::PathBuf};
 use tauri::AppHandle;
 
 use super::config::{random_hex, runtime_root, write_private_file};

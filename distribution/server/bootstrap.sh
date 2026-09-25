@@ -89,6 +89,20 @@ install_compose_plugin_binary() {
   chmod +x "$compose_directory/docker-compose"
 }
 
+install_alibaba_docker_ce() {
+  info '从阿里云 Docker CE 仓库安装 Docker Engine'
+  docker_repo=/etc/yum.repos.d/docker-ce.repo
+  if ! curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-delay 2 \
+    https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -o "$docker_repo"; then
+    rm -f "$docker_repo"
+    return 1
+  fi
+  if ! dnf install -y --nobest docker-ce docker-ce-cli containerd.io docker-buildx-plugin; then
+    rm -f "$docker_repo"
+    return 1
+  fi
+}
+
 install_ubuntu_docker_from_aliyun_mirror() {
   command -v apt-get >/dev/null 2>&1 || return 1
   command -v dpkg >/dev/null 2>&1 || return 1
@@ -150,7 +164,11 @@ install_alibaba_cloud_linux_docker() {
       alinux_repository="alinux${alinux_major}-plus"
       dnf install -y dnf-plugin-releasever-adapter --repo "$alinux_repository"
       if ! dnf install -y --nobest docker-ce; then
-        fail "无法从 ${alinux_repository} 安装 Docker CE。"
+        info "${alinux_repository} 未提供 docker-ce，改用阿里云 Docker CE 仓库"
+        if ! install_alibaba_docker_ce; then
+          info '阿里云 Docker CE 仓库不可用，回退到 Docker 官方安装源'
+          install_docker_from_official_source
+        fi
       fi
       if ! dnf install -y docker-compose-plugin; then
         info '仓库未提供 Compose 插件，改用 Docker Compose 官方二进制'
@@ -177,7 +195,19 @@ install_alibaba_cloud_linux_docker() {
 }
 
 install_docker() {
-  if ! command -v docker >/dev/null 2>&1; then
+  docker_command=''
+  if command -v docker >/dev/null 2>&1; then
+    docker_command=$(docker --version 2>&1 || true)
+  fi
+  if ! command -v docker >/dev/null 2>&1 || printf '%s' "$docker_command" | grep -qi podman; then
+    if printf '%s' "$docker_command" | grep -qi podman; then
+      info '检测到 podman-docker 兼容命令，BOX3 需要真实 Docker Engine，将重新安装 Docker'
+      if command -v dnf >/dev/null 2>&1; then
+        dnf remove -y podman-docker podman || true
+      elif command -v yum >/dev/null 2>&1; then
+        yum remove -y podman-docker podman || true
+      fi
+    fi
     info '安装 Docker Engine 与 Docker Compose'
     distribution_id=''
     VERSION_ID=''
