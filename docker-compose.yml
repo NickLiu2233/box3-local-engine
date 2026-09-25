@@ -238,6 +238,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # The manager creates the shared license/device-id file in the bind mount
+    # before any licensed service starts, then grants UID 1000 read access.
+    cap_add:
+      - CHOWN
     mem_limit: ${BOX_SERVER_MANAGER_MEMORY_LIMIT:-128m}
     cpus: ${BOX_SERVER_MANAGER_CPU_LIMIT:-0.5}
     pids_limit: 64

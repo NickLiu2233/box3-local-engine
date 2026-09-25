@@ -158,6 +158,11 @@ assert.match(service, /许可证与当前设备不匹配/)
 assert.match(serverEnvExample, /^BOX_LICENSE_INSTALL_SECRET=/m)
 assert.match(serverInstall, /BOX_LICENSE_INSTALL_SECRET=\$license_secret\//)
 assert.match(compose, /BOX_LICENSE_INSTALL_SECRET: \$\{BOX_LICENSE_INSTALL_SECRET:-\}/)
+assert.match(
+  compose.match(/ {2}server-manager:[\s\S]*?\n {2}creator:/)?.[0] || '',
+  /cap_add:\s+- CHOWN/,
+  'server-manager must be able to grant the runtime user read access to the license device file',
+)
 assert.match(serverInstall, /--remove-orphans --wait server-manager/)
 assert.match(serverEnvExample, /^BOX_DOCKER_SOCKET=\/var\/run\/docker\.sock$/m)
 assert.match(serverEnvExample, /^BOX_MANAGED_POSTGRES_MEMORY_LIMIT=512m$/m)
