@@ -49,6 +49,42 @@ type CreatorDialogState = {
   mode: 'creator-access' | 'creator-tokens'
 }
 
+async function copyText(text: string): Promise<boolean> {
+  if (!text) return false
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    // Clipboard API requires a secure context in most browsers. Try the
+    // legacy document command below for local HTTP deployments.
+  }
+
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.setAttribute('readonly', '')
+  textarea.style.position = 'fixed'
+  textarea.style.top = '0'
+  textarea.style.left = '-9999px'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  textarea.setSelectionRange(0, textarea.value.length)
+
+  let copied = false
+  try {
+    copied = document.execCommand('copy')
+  } catch {
+    copied = false
+  } finally {
+    document.body.removeChild(textarea)
+  }
+  return copied
+}
+
 export type CreatorDialogController = {
   state?: CreatorDialogState
   close: () => void
@@ -267,8 +303,12 @@ export function CreatorDialog({ controller: c }: { controller: CreatorDialogCont
         <Button
           style={{ marginTop: 12 }}
           onClick={async () => {
-            await navigator.clipboard?.writeText(c.issuedCliToken?.token || '')
-            message.success('Token 已复制')
+            const copied = await copyText(c.issuedCliToken?.token || '')
+            if (copied) {
+              message.success('Token 已复制')
+            } else {
+              message.error('浏览器禁止自动复制，请在上方文本框中手动选择并复制 Token')
+            }
           }}
         >
           复制 Token
