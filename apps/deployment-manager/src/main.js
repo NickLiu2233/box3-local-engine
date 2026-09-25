@@ -1089,7 +1089,7 @@ function about() {
     : `<div class="about-image-empty">${managementAvailable ? '正在读取组件镜像信息…' : '登录管理平台后可查看组件镜像信息。'}</div>`
   const changelogRows = releaseNotes
     .map(
-      (release, index) => `<details class="about-changelog-row" ${index === 0 ? 'open' : ''}>
+      (release) => `<details class="about-changelog-row">
         <summary>
           <span class="about-changelog-summary"><strong>v${escapeHtml(release.version)}</strong><small>${escapeHtml(release.date)} · ${escapeHtml(release.summary)}</small></span>
           <span class="about-image-disclosure">详情</span>

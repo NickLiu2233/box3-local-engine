@@ -207,17 +207,22 @@ jobs:
               echo "cache-hit=false" >> "$GITHUB_OUTPUT"
               echo "No cached desktop installer found: $installer"
             fi
-          elif ossutil stat "$object" >/tmp/desktop-stat.txt 2>&1; then
-            echo "cache-hit=true" >> "$GITHUB_OUTPUT"
-            echo "Found cached desktop installer: $installer"
-          elif ossutil cp "$object" "$RUNNER_TEMP/$installer" >/tmp/desktop-cache-download.txt 2>&1; then
-            echo "cache-hit=true" >> "$GITHUB_OUTPUT"
-            echo "Found cached desktop installer by download: $installer"
           else
-            echo "No cached desktop installer found: $installer"
-            cat /tmp/desktop-stat.txt || true
-            cat /tmp/desktop-cache-download.txt || true
-            echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+            ossutil config -i "$OSS_ACCESS_KEY_ID" \
+              -k "$OSS_ACCESS_KEY_SECRET" \
+              -e "https://$OSS_ENDPOINT"
+            if ossutil stat "$object" >/tmp/desktop-stat.txt 2>&1; then
+              echo "cache-hit=true" >> "$GITHUB_OUTPUT"
+              echo "Found cached desktop installer: $installer"
+            elif ossutil cp "$object" "$RUNNER_TEMP/$installer" >/tmp/desktop-cache-download.txt 2>&1; then
+              echo "cache-hit=true" >> "$GITHUB_OUTPUT"
+              echo "Found cached desktop installer by download: $installer"
+            else
+              echo "No cached desktop installer found: $installer"
+              cat /tmp/desktop-stat.txt || true
+              cat /tmp/desktop-cache-download.txt || true
+              echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
       - name: Install desktop dependencies
         if: steps.desktop-cache.outputs.cache-hit != 'true'
