@@ -73,6 +73,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
+      - name: Free temporary runner disk space
+        run: |
+          echo 'Disk usage before cleanup:'
+          df -h
+          # GitHub-hosted runners are disposable. Remove preinstalled SDKs and
+          # stale Docker data so Rush/pnpm can unpack production dependencies.
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/powershell /usr/local/lib/heroku
+          docker system prune --all --force --volumes || true
+          docker builder prune --all --force || true
+          echo 'Disk usage after cleanup:'
+          df -h
       - name: Check cached image archive in Aliyun OSS
         id: image-cache
         run: |
