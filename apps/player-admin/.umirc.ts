@@ -27,5 +27,5 @@ export default defineConfig({
   // 图标位于本应用的 public 目录；不要传构建机上的绝对文件路径，
   // 否则浏览器会把它当成无法访问的 HTTP 地址。
   favicons: ['/player-admin/favicon.png'],
-  title: '玩家账号管理',
+  title: '后台管理',
 })

@@ -16,7 +16,7 @@ const services = [
   ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
   ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
   ['play', '游玩端', '作品游玩与地图服务', 'playPort', 3121, '/'],
-  ['player-service', '玩家管理', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
+  ['player-service', '后台管理', '账号、权限与封禁', 'playerServicePort', 3124, '/'],
   ['player-auth-portal', '登录页面', '玩家登录与注册', 'authPortalPort', 3125, '/'],
 ]
 
@@ -849,7 +849,7 @@ function setup() {
               <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section>
               <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section>
             </div>
-            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用统一访问范围</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '玩家管理', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section>
+            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用统一访问范围</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '后台管理', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section>
           </div>${setupExplanation('配置说明：访问地址和端口有什么影响？', [
             [
               '统一访问范围',

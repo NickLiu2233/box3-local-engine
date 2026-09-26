@@ -5,7 +5,7 @@
  * signature and every downloaded blob before it reaches Cache Storage. Script
  * blobs are excluded by the server before this worker receives the manifest.
  */
-const CACHE_PREFIX = 'box3-play-static:'
+const CACHE_PREFIX = 'box-play-static:'
 // Map loads have their own critical requests. Keep the optional warm-up small
 // enough that it does not occupy every browser connection to the Play host.
 const PREFETCH_CONCURRENCY = 6

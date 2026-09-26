@@ -70,7 +70,7 @@ export function PlayResourceCachePage({ canManage }: { canManage: boolean }) {
         <p className="player-admin-resource-cache-storage-note">
           资源会按地图发布版本保存到玩家当前浏览器的受管缓存中，不会生成可直接浏览的地图文件。开发者可在游玩页面打开开发者工具，依次进入
           <code>Application</code> → <code>Cache Storage</code>，查看以{' '}
-          <code>box3-play-static:</code>{' '}
+          <code>box-play-static:</code>{' '}
           开头的缓存；清除该站点数据后，资源会在下次进入地图时重新下载。
         </p>
       </div>

@@ -45,7 +45,7 @@ export function LoginPage({ onSuccess }: Props) {
         <div className="player-admin-brand player-admin-login-brand">
           <span className="player-admin-brand-mark">B</span>BOX3 Engine
         </div>
-        <h1 className="player-admin-login-title">玩家账号管理</h1>
+        <h1 className="player-admin-login-title">后台管理</h1>
         <div className="player-admin-login-tabs">
           <button className={mode === 'admin' ? 'active' : ''} onClick={() => selectMode('admin')}>
             管理员登录
