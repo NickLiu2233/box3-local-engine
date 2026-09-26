@@ -650,11 +650,7 @@ function serviceCard([id, name, description, portKey, defaultPort], options = {}
   const openable = options.openable !== false
   const url = openable ? getServiceUrl(id) : ''
   const port = portKey ? Number(state.config?.[portKey]) || defaultPort : null
-  const host = portKey
-    ? id === 'creator' || id === 'voxa'
-      ? state.config?.creatorHost
-      : state.config?.publicHost
-    : ''
+  const host = portKey ? state.config?.publicHost : ''
   const endpoint = options.endpoint || (port ? `${host || '127.0.0.1'}:${port}` : '')
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
@@ -668,10 +664,7 @@ function getServiceUrl(serviceId) {
   const service = services.find(([id]) => id === serviceId)
   if (!service) return ''
   const [, , , portKey, defaultPort, path] = service
-  const host =
-    serviceId === 'creator' || serviceId === 'voxa'
-      ? state.config?.creatorHost || '127.0.0.1'
-      : state.config?.publicHost || '127.0.0.1'
+  const host = state.config?.publicHost || '127.0.0.1'
   const port = Number(state.config?.[portKey]) || defaultPort
   return `http://${host}:${port}${path}`
 }

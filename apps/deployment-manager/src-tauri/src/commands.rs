@@ -477,7 +477,7 @@ fn emit_progress(app: &AppHandle, stage: &str, message: &str, percent: u8) {
 
 use shared_config::validate_host;
 
-use shared_config::validate_creator_host;
+use shared_config::{validate_creator_host, validate_public_host};
 
 use shared_config::validate_network_mode as validate_creator_network_mode;
 
@@ -782,6 +782,14 @@ fn validate_install_configuration(config: &InstallConfigInput) -> Result<(), Str
     shared_config::validate_configuration(value.as_object().ok_or("配置格式无效")?)
 }
 
+/// The setup UI exposes one access-range choice for both Play and Creator.
+/// Normalize legacy independent values before validation so an old
+/// `BOX_CREATOR_HOST` can never reject an otherwise valid unified setting.
+fn normalize_unified_access_settings(config: &mut InstallConfigInput) {
+    config.creator_host = config.public_host.clone();
+    config.creator_network_mode = config.play_network_mode.clone();
+}
+
 /// Compare the migrated owner values before the submitted fields overwrite them.
 fn configuration_document_for_save(
     source: &str,
@@ -796,12 +804,13 @@ fn configuration_document_for_save(
     Ok(content)
 }
 
-fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<(), String> {
+fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result<(), String> {
     ensure_runtime_files(app)?;
+    normalize_unified_access_settings(&mut config);
     let database_mode = validate_database_mode(&config.database_mode)?;
     let redis_mode = validate_redis_mode(&config.redis_mode)?;
-    validate_install_configuration(config)?;
-    let public_host = validate_host(&config.public_host, "公开访问地址")?;
+    validate_install_configuration(&config)?;
+    let public_host = validate_public_host(&config.public_host)?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_creator_network_mode(&config.creator_network_mode)?;
 
@@ -811,7 +820,7 @@ fn save_configuration(app: &AppHandle, config: &InstallConfigInput) -> Result<()
     } else {
         ENV_TEMPLATE.to_string()
     };
-    let mut content = configuration_document_for_save(&source, config)?;
+    let mut content = configuration_document_for_save(&source, &config)?;
     let existing = parse_env(&content);
 
     set_env(
@@ -3263,7 +3272,7 @@ async fn save_configuration_command(
             check_remote_endpoint(" Redis", &redis_host, redis_port)?;
         }
         emit_progress(&app, "config", "正在保存安全配置…", 70);
-        save_configuration(&app, &config)?;
+        save_configuration(&app, config)?;
         emit_progress(&app, "complete", "配置已保存，请在总览选择启动范围", 100);
         Ok(())
     })
@@ -3763,6 +3772,21 @@ mod tests {
             host_from_http_url("https://[fd00::10]:3002/path"),
             Some("fd00::10".into())
         );
+    }
+
+    #[test]
+    fn unified_access_settings_replace_stale_creator_values_before_validation() {
+        let mut config = test_install_config();
+        config.public_host = "123.123.213.123".into();
+        config.play_network_mode = "public".into();
+        config.creator_host = "not a host".into();
+        config.creator_network_mode = "local".into();
+
+        normalize_unified_access_settings(&mut config);
+
+        assert_eq!(config.creator_host, config.public_host);
+        assert_eq!(config.creator_network_mode, config.play_network_mode);
+        assert!(validate_install_configuration(&config).is_ok());
     }
 
     #[test]

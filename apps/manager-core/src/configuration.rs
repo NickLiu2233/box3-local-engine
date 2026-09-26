@@ -73,6 +73,14 @@ pub fn validate_creator_host(value: &str) -> Result<String, String> {
     Ok(host)
 }
 
+pub fn validate_public_host(value: &str) -> Result<String, String> {
+    let host = validate_host(value, "公开访问地址")?;
+    if host.parse::<IpAddr>().is_ok_and(|ip| ip.is_unspecified()) {
+        return Err("公开访问地址不能使用监听地址".into());
+    }
+    Ok(host)
+}
+
 pub fn validate_network_mode(value: &str) -> Result<&str, String> {
     match value {
         "local" | "lan" | "public" => Ok(value),
@@ -342,7 +350,7 @@ pub fn resolve_network(
     let play_host = if play_mode == "lan" {
         lan()?
     } else {
-        validate_creator_host(get("BOX_PLAY_PUBLIC_HOST", "127.0.0.1"))?
+        validate_public_host(get("BOX_PLAY_PUBLIC_HOST", "127.0.0.1"))?
     };
     let creator_host = match creator_mode {
         "local" => "127.0.0.1".into(),
@@ -586,7 +594,10 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                 "playNetworkMode" | "creatorNetworkMode" => {
                     validate_network_mode(value)?;
                 }
-                "publicHost" | "creatorHost" => {
+                "publicHost" => {
+                    validate_public_host(value)?;
+                }
+                "creatorHost" => {
                     validate_creator_host(value)?;
                 }
                 "databasePort" => {

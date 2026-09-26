@@ -938,7 +938,7 @@ const desktopLicense = productionRust(
 assert.match(desktopCommands, /use box_manager_core::configuration as shared_config;/)
 assert.match(desktopCommands, /shared_config::runtime_environment\(/)
 assert.match(desktopCommands, /shared_config::validate_configuration\(/)
-assert.match(desktopCommands, /validate_install_configuration\(config\)\?;/)
+assert.match(desktopCommands, /validate_install_configuration\(&config\)\?;/)
 assert.match(desktopConfig, /use box_manager_core::configuration::validate_raw_environment;/)
 assert.match(desktopCommands, /validate_raw_environment\(&content\)\?;/)
 assert.match(desktopCommands, /web_manager:\s*false/)
