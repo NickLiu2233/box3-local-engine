@@ -2016,13 +2016,40 @@ function listProjectSharedScripts(id) {
 
 function selectCreatorModelAssets(assets, groupState, projectId) {
   // Older projects store models in the map's general assets index. Modern
-  // Creator imports store per-map mesh paths in shared map-group state, so
-  // combine both representations for the CLI manifest.
+  // Creator imports keep the full project model library in shared map-group
+  // metadata. The CLI is used to author scripts, so it must expose every
+  // project model rather than only the paths already referenced by this map.
   const legacyModels = Object.fromEntries(
     Object.entries(assets || {}).filter(([assetPath]) => assetPath.startsWith('mesh/')),
   )
+  const deletedPaths = new Set(
+    Array.isArray(groupState?.deletedProjectModelPaths)
+      ? groupState.deletedProjectModelPaths.filter((assetPath) => typeof assetPath === 'string')
+      : [],
+  )
+  const projectModels = Object.fromEntries(
+    Object.entries(groupState?.modelProjects || {})
+      .filter(
+        ([modelName, hash]) =>
+          typeof modelName === 'string' &&
+          modelName &&
+          typeof hash === 'string' &&
+          hash,
+      )
+      .map(([modelName, hash]) => {
+        const assetPath = `mesh/${modelName}.vb`
+        return [
+          assetPath,
+          {
+            hash,
+            previewImage: groupState.modelPreviews?.[modelName] || '',
+          },
+        ]
+      })
+      .filter(([assetPath]) => !deletedPaths.has(assetPath)),
+  )
   const groupPaths = groupState?.projectModelPathsByMap?.[projectId]
-  if (!Array.isArray(groupPaths)) return legacyModels
+  if (!Array.isArray(groupPaths)) return { ...legacyModels, ...projectModels }
 
   const groupModels = Object.fromEntries(
     groupPaths
@@ -2038,7 +2065,7 @@ function selectCreatorModelAssets(assets, groupState, projectId) {
         ]
       }),
   )
-  return { ...legacyModels, ...groupModels }
+  return { ...legacyModels, ...projectModels, ...groupModels }
 }
 
 function selectCreatorAssetIndex(projectIndex, groupState, indexName, readGroupIndex) {

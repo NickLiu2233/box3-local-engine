@@ -16,14 +16,17 @@ const modelAssets = selectCreatorModelAssets(
   {
     projectModelPathsByMap: {
       'map-demo': ['mesh/New-model.vb', 'mesh/吉吉喵哭.vb'],
+      'another-map': ['mesh/椰子树.vb'],
     },
     modelProjects: {
       'New-model': 'new-model-hash',
       '吉吉喵哭': 'cat-model-hash',
+      '椰子树': 'palm-model-hash',
     },
     modelPreviews: {
       'New-model': 'new-model-preview',
       '吉吉喵哭': 'cat-model-preview',
+      '椰子树': 'palm-model-preview',
     },
   },
   'map-demo',
@@ -33,6 +36,7 @@ assert.deepEqual(Object.keys(modelAssets).sort(), [
   'mesh/New-model.vb',
   'mesh/legacy.vb',
   'mesh/吉吉喵哭.vb',
+  'mesh/椰子树.vb',
 ])
 assert.deepEqual(modelAssets['mesh/New-model.vb'], {
   hash: 'new-model-hash',
@@ -41,6 +45,10 @@ assert.deepEqual(modelAssets['mesh/New-model.vb'], {
 assert.deepEqual(modelAssets['mesh/吉吉喵哭.vb'], {
   hash: 'cat-model-hash',
   previewImage: 'cat-model-preview',
+})
+assert.deepEqual(modelAssets['mesh/椰子树.vb'], {
+  hash: 'palm-model-hash',
+  previewImage: 'palm-model-preview',
 })
 assert.equal(modelAssets['lut/Filmic.lut'], undefined)
 
