@@ -40,7 +40,7 @@ function requestOriginAllowed(origin, allowedOrigins) {
 }
 function createContentRouter(contentServer, options = {}) {
     const endpointRegex = /^\/block\/?/;
-    const argRegex = /^\/\w+\/(\w+)\/?/;
+    const argRegex = /^\/block\/([^/?]+)\/?/;
     const deniedHashes = options.deniedHashes || new Set();
     const allowedOrigins = options.allowedOrigins || new Set();
     const getArg = (pathname) => {

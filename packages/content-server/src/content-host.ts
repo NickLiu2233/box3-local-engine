@@ -65,7 +65,11 @@ export function createContentRouter(
   options: ContentRouterOptions = {},
 ) {
   const endpointRegex = /^\/block\/?/;
-  const argRegex = /^\/\w+\/(\w+)\/?/;
+  // Modern content hashes use URL-safe base64 and therefore legitimately
+  // contain `-` and `_`. The old `\w` matcher rejected those resources before
+  // the content store could look them up, which also prevented browser cache
+  // prefetching from storing them.
+  const argRegex = /^\/block\/([^/?]+)\/?/;
   const deniedHashes = options.deniedHashes || new Set<string>();
   const allowedOrigins = options.allowedOrigins || new Set<string>();
   const getArg = (pathname) => {

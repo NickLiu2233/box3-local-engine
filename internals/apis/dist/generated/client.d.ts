@@ -151,10 +151,6 @@ export declare const apiOperations: {
         readonly path: "/api/diagnostics/{archive}/download";
         readonly method: "GET";
     };
-    readonly getApiDocsAsset: {
-        readonly path: "/api/docs/{asset}";
-        readonly method: "GET";
-    };
     readonly getApiGetMapInfo: {
         readonly path: "/api/getMapInfo";
         readonly method: "GET";
@@ -213,10 +209,6 @@ export declare const apiOperations: {
     };
     readonly getApiLocalProjectsIdSnapshots: {
         readonly path: "/api/local-projects/{id}/snapshots";
-        readonly method: "GET";
-    };
-    readonly getApiOpenapi: {
-        readonly path: "/api/openapi";
         readonly method: "GET";
     };
     readonly getApiOperationsId: {
@@ -283,6 +275,10 @@ export declare const apiOperations: {
         readonly path: "/api/play-admin/players/{subjectId}";
         readonly method: "GET";
     };
+    readonly getApiPlayAdminResourceCache: {
+        readonly path: "/api/play-admin/resource-cache";
+        readonly method: "GET";
+    };
     readonly getApiPlayAdminStatus: {
         readonly path: "/api/play-admin/status";
         readonly method: "GET";
@@ -321,6 +317,10 @@ export declare const apiOperations: {
     };
     readonly getApiPlayPresence: {
         readonly path: "/api/play-presence";
+        readonly method: "GET";
+    };
+    readonly getApiPlayResourceCacheWorld: {
+        readonly path: "/api/play-resource-cache/{world}";
         readonly method: "GET";
     };
     readonly getApiPlayWorlds: {
@@ -413,6 +413,10 @@ export declare const apiOperations: {
     };
     readonly patchApiPlayAdminPlayersSubjectId: {
         readonly path: "/api/play-admin/players/{subjectId}";
+        readonly method: "PATCH";
+    };
+    readonly patchApiPlayAdminResourceCache: {
+        readonly path: "/api/play-admin/resource-cache";
         readonly method: "PATCH";
     };
     readonly patchApiPlayAdminWorldsId: {
@@ -5220,120 +5224,6 @@ export declare class ApiClient {
     getApiDiagnosticsArchiveDownload(...init: Parameters<PathBasedClient<paths>["/api/diagnostics/{archive}/download"]["GET"]>): Promise<{
         [x: string]: unknown;
     }>;
-    getApiDocsAssetRaw(...init: Parameters<PathBasedClient<paths>["/api/docs/{asset}"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                asset: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": import("./openapi").components["schemas"]["ApiError"];
-                };
-            };
-        };
-    }, {
-        params: {
-            query?: never;
-            header?: never;
-            path: {
-                asset: string;
-            };
-            cookie?: never;
-        };
-    } & {
-        body?: undefined;
-    } & {
-        baseUrl?: string;
-        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    asset: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                default: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": import("./openapi").components["schemas"]["ApiError"];
-                    };
-                };
-            };
-        }> | undefined;
-        bodySerializer?: import("openapi-fetch").BodySerializer<{
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    asset: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                default: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": import("./openapi").components["schemas"]["ApiError"];
-                    };
-                };
-            };
-        }> | undefined;
-        pathSerializer?: import("openapi-fetch").PathSerializer;
-        parseAs?: import("openapi-fetch").ParseAs;
-        fetch?: ClientOptions["fetch"];
-        headers?: import("openapi-fetch").HeadersOptions;
-        middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
-    getApiDocsAsset(...init: Parameters<PathBasedClient<paths>["/api/docs/{asset}"]["GET"]>): Promise<{
-        [x: string]: unknown;
-    }>;
     getApiGetMapInfoRaw(...init: Parameters<PathBasedClient<paths>["/api/getMapInfo"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -7048,114 +6938,6 @@ export declare class ApiClient {
         middleware?: import("openapi-fetch").Middleware[];
     } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     getApiLocalProjectsIdSnapshots(...init: Parameters<PathBasedClient<paths>["/api/local-projects/{id}/snapshots"]["GET"]>): Promise<{
-        [x: string]: unknown;
-    }>;
-    getApiOpenapiRaw(...init: Parameters<PathBasedClient<paths>["/api/openapi"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": import("./openapi").components["schemas"]["ApiError"];
-                };
-            };
-        };
-    }, ({
-        params?: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        } | undefined;
-    } & {
-        body?: undefined;
-    } & {
-        baseUrl?: string;
-        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                default: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": import("./openapi").components["schemas"]["ApiError"];
-                    };
-                };
-            };
-        }> | undefined;
-        bodySerializer?: import("openapi-fetch").BodySerializer<{
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-                default: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": import("./openapi").components["schemas"]["ApiError"];
-                    };
-                };
-            };
-        }> | undefined;
-        pathSerializer?: import("openapi-fetch").PathSerializer;
-        parseAs?: import("openapi-fetch").ParseAs;
-        fetch?: ClientOptions["fetch"];
-        headers?: import("openapi-fetch").HeadersOptions;
-        middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body"> & {
-        [key: string]: unknown;
-    }) | undefined, `${string}/${string}`>>;
-    getApiOpenapi(...init: Parameters<PathBasedClient<paths>["/api/openapi"]["GET"]>): Promise<{
         [x: string]: unknown;
     }>;
     getApiOperationsIdRaw(...init: Parameters<PathBasedClient<paths>["/api/operations/{id}"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
@@ -9157,6 +8939,114 @@ export declare class ApiClient {
     getApiPlayAdminPlayersSubjectId(...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["GET"]>): Promise<{
         [x: string]: unknown;
     }>;
+    getApiPlayAdminResourceCacheRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    getApiPlayAdminResourceCache(...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["GET"]>): Promise<{
+        [x: string]: unknown;
+    }>;
     getApiPlayAdminStatusRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/status"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -10269,6 +10159,120 @@ export declare class ApiClient {
         [key: string]: unknown;
     }) | undefined, `${string}/${string}`>>;
     getApiPlayPresence(...init: Parameters<PathBasedClient<paths>["/api/play-presence"]["GET"]>): Promise<{
+        [x: string]: unknown;
+    }>;
+    getApiPlayResourceCacheWorldRaw(...init: Parameters<PathBasedClient<paths>["/api/play-resource-cache/{world}"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                world: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params: {
+            query?: never;
+            header?: never;
+            path: {
+                world: string;
+            };
+            cookie?: never;
+        };
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    world: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    world: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    getApiPlayResourceCacheWorld(...init: Parameters<PathBasedClient<paths>["/api/play-resource-cache/{world}"]["GET"]>): Promise<{
         [x: string]: unknown;
     }>;
     getApiPlayWorldsRaw(...init: Parameters<PathBasedClient<paths>["/api/play-worlds"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
@@ -13002,6 +13006,134 @@ export declare class ApiClient {
         middleware?: import("openapi-fetch").Middleware[];
     } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     patchApiPlayAdminPlayersSubjectId(...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["PATCH"]>): Promise<{
+        [x: string]: unknown;
+    }>;
+    patchApiPlayAdminResourceCacheRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: ({
+            [x: string]: unknown;
+        } & {}) | undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    patchApiPlayAdminResourceCache(...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["PATCH"]>): Promise<{
         [x: string]: unknown;
     }>;
     patchApiPlayAdminWorldsIdRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/worlds/{id}"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{

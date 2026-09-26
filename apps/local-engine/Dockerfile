@@ -145,8 +145,6 @@ RUN rm -rf apps/game/public/player-admin \
     && cd apps/player-admin \
     && node ../../common/scripts/install-run-rushx.js build \
     && cd ../.. \
-    && cp -a apps/game/public/player-admin/. apps/game/public/ \
-    && rm -rf apps/game/public/player-admin \
     && NODE_OPTIONS=--max-old-space-size=3072 \
     BOX_DEPLOYMENT_MODE=player-service \
     NEXT_PUBLIC_APP_ENV=development \

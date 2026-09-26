@@ -4,10 +4,11 @@ import { defineConfig } from '@umijs/max'
 export default defineConfig({
   antd: {},
   hash: true,
-  // The Player Service mounts this application at its origin. Keeping asset
-  // URLs root-relative lets administrators use http://host:port directly.
+  // The Player Service rewrites its origin to this static entry point. Keep
+  // assets under the same directory, otherwise root-relative Umi bundles are
+  // handled by Next.js and return its 404 HTML page instead of CSS/JavaScript.
   base: '/',
-  publicPath: '/',
+  publicPath: '/player-admin/',
   proxy: {
     '/api': {
       target: process.env.PLAYER_ADMIN_DEV_API_URL || 'http://127.0.0.1:3124',
@@ -25,6 +26,6 @@ export default defineConfig({
   ],
   // 图标位于本应用的 public 目录；不要传构建机上的绝对文件路径，
   // 否则浏览器会把它当成无法访问的 HTTP 地址。
-  favicons: ['/favicon.png'],
+  favicons: ['/player-admin/favicon.png'],
   title: '玩家账号管理',
 })

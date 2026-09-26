@@ -32,6 +32,7 @@ import { LoginPage } from '../auth/login-page'
 import { SelfPasswordDialog } from '../auth/self-password-dialog'
 import { OverviewPage } from '../dashboard/overview-page'
 import { PlayMapsPage } from '../maps/play-maps-page'
+import { PlayResourceCachePage } from '../maps/play-resource-cache-page'
 import { SecurityActivityPage } from '../security/security-activity-page'
 import { IdentityBansPage } from '../security/identity-bans-page'
 import { AdminAccountsPage } from '../access/admin-accounts-page'
@@ -78,7 +79,10 @@ export default function PlayerAdminPage() {
   const owner = useOwnerManagement()
   const security = useSecurityManagement()
   const isOwner = actor?.role === 'owner'
-  const can = (permission: string) => isOwner || Boolean(actor?.permissions.includes(permission))
+  const can = (permission: string) =>
+    actor?.role === 'owner' ||
+    actor?.role === 'admin' ||
+    Boolean(actor?.permissions.includes(permission))
   const directory = usePlayerDirectory(view, can('players.export'))
   const allowedViews = useMemo(() => allowedPlayerAdminViews(actor), [actor])
   const fallbackView = useMemo(() => playerAdminFallbackView(actor), [actor])
@@ -341,6 +345,8 @@ export default function PlayerAdminPage() {
   if (view === 'creator-access' || view === 'creator-tokens')
     body = <CreatorManagementPage mode={view} controller={creatorPageController} />
   else if (view === 'play-maps') body = <PlayMapsPage canManage={can('play-maps.manage')} />
+  else if (view === 'play-resource-cache')
+    body = <PlayResourceCachePage canManage={can('play-resource-cache.manage')} />
   else if (view === 'container-play')
     body = <ContainerManagementPage mode="play" canManage={can('containers.manage')} />
   else if (view === 'container-creator')

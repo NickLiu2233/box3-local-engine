@@ -8,6 +8,7 @@ import { LoadingStage } from 'src/defs/loading-stage';
 import { EngineApp, EngineAppProps } from '../../../components/engine-app';
 import { Error, ErrorProps } from '../../../components/error';
 import { PlayLoading } from '../../../components/play-loading';
+import { PlayResourceCacheBootstrap } from '../../../components/play-resource-cache-bootstrap';
 import { getArenaServerRenderProps } from '../../../server/server-render';
 import { hashToUrl } from '../../../server/utils/hash';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../../server/player-service-client';
@@ -135,9 +136,13 @@ function Home(props: SSRProps) {
 
   const isCreatera =
     !props.loadingConfig && props.clientConfig.APP_EDITION === 'createra';
+  const world = typeof router.query.gameName === 'string' ? router.query.gameName : '';
+  const shouldBootstrapResourceCache =
+    !props.loadingConfig && props.clientConfig.localRuntimeInfo?.deploymentMode === 'play';
 
   return (
     <div id="__next__root">
+      {shouldBootstrapResourceCache && <PlayResourceCacheBootstrap world={world} />}
       {(props.loadingConfig ||
         (isCreatera && loadingStage !== LoadingStage.close)) && (
         <IntlProvider

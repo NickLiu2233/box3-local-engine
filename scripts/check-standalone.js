@@ -6,6 +6,7 @@ const path = require('path')
 
 const root = path.resolve(__dirname, '..')
 const failures = []
+const gameNextConfig = fs.readFileSync(path.join(root, 'apps/game/next.config.js'), 'utf8')
 
 function fail(message) {
   failures.push(message)
@@ -537,6 +538,25 @@ const launcherBootstrapSource = readRequired('apps/local-engine/src/launcher.js'
 const launcherBootstrapModules = [
   ...launcherBootstrapSource.matchAll(/require\(['"](\.\/[^'"]+)['"]\)/g),
 ].map((match) => `${match[1].slice(2)}.js`)
+
+requirePattern(
+  gameNextConfig,
+  'apps/game/next.config.js',
+  'Player Service root route must target the Player Admin asset directory',
+  /source: '\/', destination: '\/player-admin\/index\.html'/,
+)
+requirePattern(
+  playerServiceBuildStage,
+  dockerFile,
+  'player service preserves the Player Admin public directory',
+  /cd apps\/player-admin[\s\S]*?build[\s\S]*?cd \.\.\/\.\.[\s\S]*?BOX_DEPLOYMENT_MODE=player-service/,
+)
+forbidPattern(
+  playerServiceBuildStage,
+  dockerFile,
+  'player service must not flatten Player Admin static assets into the game public root',
+  /cp -a apps\/game\/public\/player-admin\/\. apps\/game\/public\//,
+)
 
 for (const [name, stage] of [
   ['creator', creatorDockerStage],

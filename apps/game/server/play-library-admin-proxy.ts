@@ -66,9 +66,17 @@ export const playLibraryAdminRoute = playerAdminRoute({
   // Reading maps is safe for delegated map operators; every mutation still
   // requires the paired management capability before the owner token is used
   // to reach Play's internal API.
-  requirement: (req) => ['GET', 'HEAD'].includes(req.method || 'GET')
-    ? 'play-maps.view'
-    : 'play-maps.manage',
+  requirement: (req) => {
+    const section = Array.isArray(req.query.section) ? req.query.section[0] : req.query.section
+    if (section === 'resource-cache') {
+      return ['GET', 'HEAD'].includes(req.method || 'GET')
+        ? 'play-resource-cache.view'
+        : 'play-resource-cache.manage'
+    }
+    return ['GET', 'HEAD'].includes(req.method || 'GET')
+      ? 'play-maps.view'
+      : 'play-maps.manage'
+  },
   errorContext: 'Play library administration proxy failed',
 }, async ({ req, res }) => {
   const section = Array.isArray(req.query.section) ? req.query.section[0] : req.query.section;
@@ -77,6 +85,8 @@ export const playLibraryAdminRoute = playerAdminRoute({
     ? id ? `/api/play-admin/worlds/${encodeURIComponent(id)}` : '/api/play-admin/worlds'
     : section === 'world-status'
       ? '/api/play-admin/worlds/status'
+      : section === 'resource-cache'
+        ? '/api/play-admin/resource-cache'
       : section === 'import-resource'
         ? '/api/play-admin/import-resource'
         : '/api/play-admin/import';

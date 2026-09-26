@@ -7419,6 +7419,106 @@
         ]
       }
     },
+    "/api/play-admin/resource-cache": {
+      "get": {
+        "operationId": "getApiPlayAdminResourceCache",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      },
+      "patch": {
+        "operationId": "patchApiPlayAdminResourceCache",
+        "summary": "更新接口数据",
+        "description": "此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“更新接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
     "/api/play-admin/self-password": {
       "post": {
         "operationId": "postApiPlayAdminSelfPassword",
@@ -8215,6 +8315,57 @@
             }
           },
           "description": "执行“更新玩家资料”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/play-resource-cache/{world}": {
+      "get": {
+        "operationId": "getApiPlayResourceCacheWorld",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口用于读取游玩内容并维护当前玩家的游玩会话。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "游玩端"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "play"
+        ],
+        "parameters": [
+          {
+            "name": "world",
+            "in": "path",
+            "required": true,
+            "description": "接口参数：world。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         },
         "x-box-services": [
           "engine-web"
@@ -11197,6 +11348,15 @@
       "source": "apps/game/pages/api/play-admin/players/overview.ts"
     },
     {
+      "path": "/api/play-admin/resource-cache",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-admin/resource-cache.ts"
+    },
+    {
       "path": "/api/play-admin/self-password",
       "methods": [
         "POST"
@@ -11280,6 +11440,14 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/play-profile.ts"
+    },
+    {
+      "path": "/api/play-resource-cache/{world}",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-resource-cache/[world].ts"
     },
     {
       "path": "/api/play-worlds",

@@ -66,9 +66,10 @@ const config = {
     return {
       beforeFiles: [
         // Player Service is a standalone administration site. Serve its Umi
-        // entry at the origin without changing the address bar to /index.html.
+        // entry at the origin without changing the address bar. Umi publishes
+        // its HTML and static assets together under public/player-admin.
         ...(playerAdminAtRoot
-          ? [{ source: '/', destination: '/index.html' }]
+          ? [{ source: '/', destination: '/player-admin/index.html' }]
           : []),
         // The play landing page is rendered by Next.js, while lifecycle
         // control for an installed world belongs to the play-library server.

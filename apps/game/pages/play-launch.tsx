@@ -3,6 +3,7 @@ import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { IntlProvider } from 'react-intl';
 import { PlayLoading } from '../components/play-loading';
+import { PlayResourceCacheBootstrap } from '../components/play-resource-cache-bootstrap';
 import { LoadingStage } from '../src/defs/loading-stage';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../server/player-service-client';
 import { findPlayWorld } from '../server/play-worlds';
@@ -83,6 +84,7 @@ export default function PlayLaunchPage({ cover, worldName }: PlayLaunchProps) {
       ? LoadingStage.game
       : LoadingStage.file;
   return <IntlProvider locale="zh-CN" messages={{ playLoadingTip: '搭建世界需要大量的披萨和可乐...' }}>
+    <PlayResourceCacheBootstrap world={world} />
     <PlayLoading
       stage={stage}
       loadingConfig={false}

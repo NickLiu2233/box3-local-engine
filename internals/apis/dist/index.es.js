@@ -275,10 +275,6 @@ const apiOperations = {
         "path": "/api/diagnostics/{archive}/download",
         "method": "GET"
     },
-    "getApiDocsAsset": {
-        "path": "/api/docs/{asset}",
-        "method": "GET"
-    },
     "getApiGetMapInfo": {
         "path": "/api/getMapInfo",
         "method": "GET"
@@ -337,10 +333,6 @@ const apiOperations = {
     },
     "getApiLocalProjectsIdSnapshots": {
         "path": "/api/local-projects/{id}/snapshots",
-        "method": "GET"
-    },
-    "getApiOpenapi": {
-        "path": "/api/openapi",
         "method": "GET"
     },
     "getApiOperationsId": {
@@ -407,6 +399,10 @@ const apiOperations = {
         "path": "/api/play-admin/players/{subjectId}",
         "method": "GET"
     },
+    "getApiPlayAdminResourceCache": {
+        "path": "/api/play-admin/resource-cache",
+        "method": "GET"
+    },
     "getApiPlayAdminStatus": {
         "path": "/api/play-admin/status",
         "method": "GET"
@@ -445,6 +441,10 @@ const apiOperations = {
     },
     "getApiPlayPresence": {
         "path": "/api/play-presence",
+        "method": "GET"
+    },
+    "getApiPlayResourceCacheWorld": {
+        "path": "/api/play-resource-cache/{world}",
         "method": "GET"
     },
     "getApiPlayWorlds": {
@@ -537,6 +537,10 @@ const apiOperations = {
     },
     "patchApiPlayAdminPlayersSubjectId": {
         "path": "/api/play-admin/players/{subjectId}",
+        "method": "PATCH"
+    },
+    "patchApiPlayAdminResourceCache": {
+        "path": "/api/play-admin/resource-cache",
         "method": "PATCH"
     },
     "patchApiPlayAdminWorldsId": {
@@ -1046,12 +1050,6 @@ class ApiClient {
     getApiDiagnosticsArchiveDownload(...init) {
         return this.unwrap(this.getApiDiagnosticsArchiveDownloadRaw(...init));
     }
-    getApiDocsAssetRaw(...init) {
-        return this.paths["/api/docs/{asset}"].GET(...init);
-    }
-    getApiDocsAsset(...init) {
-        return this.unwrap(this.getApiDocsAssetRaw(...init));
-    }
     getApiGetMapInfoRaw(...init) {
         return this.paths["/api/getMapInfo"].GET(...init);
     }
@@ -1141,12 +1139,6 @@ class ApiClient {
     }
     getApiLocalProjectsIdSnapshots(...init) {
         return this.unwrap(this.getApiLocalProjectsIdSnapshotsRaw(...init));
-    }
-    getApiOpenapiRaw(...init) {
-        return this.paths["/api/openapi"].GET(...init);
-    }
-    getApiOpenapi(...init) {
-        return this.unwrap(this.getApiOpenapiRaw(...init));
     }
     getApiOperationsIdRaw(...init) {
         return this.paths["/api/operations/{id}"].GET(...init);
@@ -1244,6 +1236,12 @@ class ApiClient {
     getApiPlayAdminPlayersSubjectId(...init) {
         return this.unwrap(this.getApiPlayAdminPlayersSubjectIdRaw(...init));
     }
+    getApiPlayAdminResourceCacheRaw(...init) {
+        return this.paths["/api/play-admin/resource-cache"].GET(...init);
+    }
+    getApiPlayAdminResourceCache(...init) {
+        return this.unwrap(this.getApiPlayAdminResourceCacheRaw(...init));
+    }
     getApiPlayAdminStatusRaw(...init) {
         return this.paths["/api/play-admin/status"].GET(...init);
     }
@@ -1303,6 +1301,12 @@ class ApiClient {
     }
     getApiPlayPresence(...init) {
         return this.unwrap(this.getApiPlayPresenceRaw(...init));
+    }
+    getApiPlayResourceCacheWorldRaw(...init) {
+        return this.paths["/api/play-resource-cache/{world}"].GET(...init);
+    }
+    getApiPlayResourceCacheWorld(...init) {
+        return this.unwrap(this.getApiPlayResourceCacheWorldRaw(...init));
     }
     getApiPlayWorldsRaw(...init) {
         return this.paths["/api/play-worlds"].GET(...init);
@@ -1441,6 +1445,12 @@ class ApiClient {
     }
     patchApiPlayAdminPlayersSubjectId(...init) {
         return this.unwrap(this.patchApiPlayAdminPlayersSubjectIdRaw(...init));
+    }
+    patchApiPlayAdminResourceCacheRaw(...init) {
+        return this.paths["/api/play-admin/resource-cache"].PATCH(...init);
+    }
+    patchApiPlayAdminResourceCache(...init) {
+        return this.unwrap(this.patchApiPlayAdminResourceCacheRaw(...init));
     }
     patchApiPlayAdminWorldsIdRaw(...init) {
         return this.paths["/api/play-admin/worlds/{id}"].PATCH(...init);

@@ -282,6 +282,10 @@ export const apiOperations = {
     "path": "/api/play-admin/players/{subjectId}",
     "method": "GET"
   },
+  "getApiPlayAdminResourceCache": {
+    "path": "/api/play-admin/resource-cache",
+    "method": "GET"
+  },
   "getApiPlayAdminStatus": {
     "path": "/api/play-admin/status",
     "method": "GET"
@@ -320,6 +324,10 @@ export const apiOperations = {
   },
   "getApiPlayPresence": {
     "path": "/api/play-presence",
+    "method": "GET"
+  },
+  "getApiPlayResourceCacheWorld": {
+    "path": "/api/play-resource-cache/{world}",
     "method": "GET"
   },
   "getApiPlayWorlds": {
@@ -412,6 +420,10 @@ export const apiOperations = {
   },
   "patchApiPlayAdminPlayersSubjectId": {
     "path": "/api/play-admin/players/{subjectId}",
+    "method": "PATCH"
+  },
+  "patchApiPlayAdminResourceCache": {
+    "path": "/api/play-admin/resource-cache",
     "method": "PATCH"
   },
   "patchApiPlayAdminWorldsId": {
@@ -1559,6 +1571,18 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayAdminPlayersSubjectIdRaw(...init));
   }
 
+  getApiPlayAdminResourceCacheRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["GET"]>
+  ) {
+    return this.paths["/api/play-admin/resource-cache"].GET(...init);
+  }
+
+  getApiPlayAdminResourceCache(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayAdminResourceCacheRaw(...init));
+  }
+
   getApiPlayAdminStatusRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/status"]["GET"]>
   ) {
@@ -1677,6 +1701,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-presence"]["GET"]>
   ) {
     return this.unwrap(this.getApiPlayPresenceRaw(...init));
+  }
+
+  getApiPlayResourceCacheWorldRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-resource-cache/{world}"]["GET"]>
+  ) {
+    return this.paths["/api/play-resource-cache/{world}"].GET(...init);
+  }
+
+  getApiPlayResourceCacheWorld(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-resource-cache/{world}"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayResourceCacheWorldRaw(...init));
   }
 
   getApiPlayWorldsRaw(
@@ -1953,6 +1989,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["PATCH"]>
   ) {
     return this.unwrap(this.patchApiPlayAdminPlayersSubjectIdRaw(...init));
+  }
+
+  patchApiPlayAdminResourceCacheRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["PATCH"]>
+  ) {
+    return this.paths["/api/play-admin/resource-cache"].PATCH(...init);
+  }
+
+  patchApiPlayAdminResourceCache(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["PATCH"]>
+  ) {
+    return this.unwrap(this.patchApiPlayAdminResourceCacheRaw(...init));
   }
 
   patchApiPlayAdminWorldsIdRaw(

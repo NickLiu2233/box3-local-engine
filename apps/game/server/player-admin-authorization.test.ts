@@ -29,12 +29,14 @@ describe('player administration role policy', () => {
     expect(roleHasPlayerAdminPermission('moderator', 'play-maps.manage', ['play-maps.view'])).toBe(false);
     expect(roleHasPlayerAdminPermission('moderator', 'containers.view', ['containers.manage'])).toBe(true);
     expect(roleHasPlayerAdminPermission('moderator', 'containers.manage', ['containers.view'])).toBe(false);
+    expect(roleHasPlayerAdminPermission('moderator', 'play-resource-cache.view', ['play-resource-cache.view'])).toBe(false);
     expect(roleHasPlayerAdminPermission('moderator', 'owner')).toBe(false);
   });
 
   test('advanced administrators keep player-management capabilities but not owner operations', () => {
     expect(roleHasPlayerAdminPermission('admin', 'players.view')).toBe(true);
     expect(roleHasPlayerAdminPermission('admin', 'identity-bans.manage')).toBe(true);
+    expect(roleHasPlayerAdminPermission('admin', 'play-resource-cache.manage')).toBe(true);
     expect(roleHasPlayerAdminPermission('admin', 'owner')).toBe(false);
     expect(roleHasPlayerAdminPermission('owner', 'owner')).toBe(false);
     expect(actorHasPlayerAdminPermission({
