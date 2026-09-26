@@ -1,6 +1,6 @@
-# 玩家管理后台开发说明
+# 后台管理开发说明
 
-玩家管理后台是 Umi + Ant Design 单页应用，入口为 `apps/player-admin/`。它管理玩家、后台账号、权限组、创作授权、游玩地图和地图运行容器；它不是游戏运行时，也不替代 Player Service 的服务端授权。
+后台管理是 Umi + Ant Design 单页应用，入口为 `apps/player-admin/`。它管理玩家、后台账号、权限组、创作授权、游玩地图和地图运行容器；它不是游戏运行时，也不替代 Player Service 的服务端授权。
 
 ## 模块地图
 
@@ -22,7 +22,7 @@
 
 ## 启动开发环境
 
-玩家管理前端和服务端是两个进程。推荐从仓库根目录启动 Player Service 与开发数据库：
+后台管理前端和服务端是两个进程。推荐从仓库根目录启动 Player Service 与开发数据库：
 
 ```bash
 rush dev-creator --infra
@@ -57,7 +57,7 @@ npm run dev
 3. 在 `player-admin-navigation.ts` 为页面声明最小查看能力；
 4. 在服务端路由声明相同的查看或编辑能力；
 5. 添加前端可见性与服务端拒绝测试；
-6. 更新 [Player Service API](./player-service-api.md) 和 [玩家身份与管理后台](./player-identity.md)。
+6. 更新 [Player Service API](./player-service-api.md) 和 [玩家身份与后台管理](./player-identity.md)。
 
 编辑能力依赖对应查看能力。前端选择器会保留查看项；服务端也会为旧权限组中仅存的编辑项补齐查看项，避免升级时意外收回访问权。
 

@@ -214,7 +214,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 - `status.sh` 显示容器是否正在运行以及健康状态，不会启动或停止服务。
 - `logs.sh server-manager` 显示 Web 管理端最近的日志，适合排查管理页面打不开或操作失败。
 
-根据“访问设置”中的地址和端口打开 Play 或 Creator。游玩地图通过玩家管理后台的“游玩管理 → 游玩地图”审查并导入 `.boxplay`；Creator 工程使用 `.boxproject`，两种文件不能混用。
+根据“访问设置”中的地址和端口打开 Play 或 Creator。游玩地图通过后台管理的“游玩管理 → 游玩地图”审查并导入 `.boxplay`；Creator 工程使用 `.boxproject`，两种文件不能混用。
 
 常用命令：
 

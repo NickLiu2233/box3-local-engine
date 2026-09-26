@@ -8,7 +8,7 @@
 - **Player Service**：玩家、Creator 权限和 CLI Token 的身份服务。开发模式默认是 `http://127.0.0.1:3124`。
 - **本地工程 ID**：项目目录 key，例如 `my-map`；可用于 Local Engine 管理接口。
 - **永久地图 ID**：创建地图时生成、不会因目录或公开名称变化而改变的 ID。外部 CLI 配置应优先保存它。
-- **CLI Token**：以 `bxc_` 开头的长期 Bearer Token。只在玩家管理中显示一次，服务端仅保存其 HMAC，不保存明文。
+- **CLI Token**：以 `bxc_` 开头的长期 Bearer Token。只在后台管理中显示一次，服务端仅保存其 HMAC，不保存明文。
 
 `@box/cli`（`packages/cli`）是协议契约包：它定义 API 前缀、脚本路径、输入校验和 20 MiB 上限。它不保存 Token、不发 HTTP 请求，也不维护权限枚举；CLI Token 的授权由 Player Service 独立管理。
 
@@ -49,9 +49,9 @@ CLI Token 必须先通过基本资料中的总开关“允许进入创作端”�
 | `runtime.control` | 启动或停止地图预览运行                                   |
 | `scene.capture`   | 从当前已授权的 Creator 编辑会话截取完整、3D 或 2D 场景图 |
 
-### 3.1 在玩家管理中签发／撤销
+### 3.1 在后台管理中签发／撤销
 
-以下是 Player Service 的管理接口，供玩家管理 UI 或受信任的管理客户端调用；普通 Creator CLI 不需要持有服主管理凭据。
+以下是 Player Service 的管理接口，供后台管理 UI 或受信任的管理客户端调用；普通 Creator CLI 不需要持有服主管理凭据。
 
 ```http
 POST /api/play-admin/players/:subjectId
@@ -301,7 +301,7 @@ Authorization: Bearer bxc_...
 | 状态  | 常见 code / message             | 处理建议                                                    |
 | ----- | ------------------------------- | ----------------------------------------------------------- |
 | `401` | 身份验证失败                    | 检查 Token 是否遗漏、失效或已撤销                           |
-| `403` | `CREATOR_CLI_PERMISSION_DENIED` | Token 未授予当前接口所需 Scope；在玩家管理中编辑其 CLI 权限 |
+| `403` | `CREATOR_CLI_PERMISSION_DENIED` | Token 未授予当前接口所需 Scope；在后台管理中编辑其 CLI 权限 |
 | `404` | 路由或工程不存在                | 检查 endpoint、永久地图 ID 与脚本路径                       |
 | `405` | 仅允许 `PUT`                    | 使用正确 HTTP method                                        |
 | `422` | `SCRIPT_SIDE_INVALID`           | `side` 不是 `client`/`server`                               |

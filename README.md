@@ -12,7 +12,7 @@ BOX3 Local Engine 是一个本地优先的多人联机 3D 创作与游玩发行�
 | 无桌面的 Linux 服务器            | [Linux Web 管理端](docs/linux-web-manager.md)            |
 | 云服务器一键安装                 | [云服务器快速部署](docs/cloud-server-quickstart.md)      |
 | 创建、导入和发布地图             | [地图、地图组与发布包](docs/projects.md)                 |
-| 玩家账号、权限组和后台管理       | [玩家身份与管理后台](docs/player-identity.md)            |
+| 玩家账号、权限组和后台管理       | [玩家身份与后台管理](docs/player-identity.md)            |
 | 配置端口、数据库和资源限制       | [配置参考](docs/configuration-reference.md)              |
 | 开发、测试或提交代码             | [贡献者指南](CONTRIBUTING.md)                            |
 | 查看或开发 HTTP API              | [Local Engine API 与 Swagger](docs/local-engine-api.md)  |
@@ -35,13 +35,13 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 | Play               | 地图大厅、公开房间和 Teleport 私有房间 | `http://127.0.0.1:3121/` |
 | VOXA               | 模型、皮肤和动画编辑                   | `http://127.0.0.1:3123/` |
 | Player Service     | 玩家登录、后台 API、权限和审计         | `http://127.0.0.1:3124/` |
-| Player Admin       | 玩家管理后台前端（仅源码开发时独立）   | `http://127.0.0.1:8000/` |
+| Player Admin       | 后台管理前端（仅源码开发时独立）       | `http://127.0.0.1:8000/` |
 | Player Auth Portal | 可替换的参考登录/注册门户              | `http://127.0.0.1:3125/` |
 | Server Manager     | Linux 无桌面环境的 Web 管理端          | `http://127.0.0.1:3130/` |
 
 Player Admin 在发行镜像中构建进 Player Service，不是第七个业务镜像；只有源码开发时才由 Umi 在 `8000` 端口独立提供热更新，并把 `/api` 代理到 `3124`。桌面版本使用 Tauri 启动器管理五个业务服务；Linux 服务器版本使用 Server Manager 提供同一套配置和运维能力。完整离线镜像归档包含六个镜像。无桌面服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Server Manager。关闭桌面启动器窗口不会停止已经运行的容器。
 
-玩家管理后台由 Player Service 在根路径提供，当前主要功能包括：
+后台管理由 Player Service 在根路径提供，当前主要功能包括：
 
 - 玩家账号、会话、标签、备注、封禁、密码重置和 CSV 导出；
 - 独立后台账号、权限组、查看/编辑能力和安全审计；
@@ -51,7 +51,7 @@ Player Admin 在发行镜像中构建进 Player Service，不是第七个业务�
 - 创作端/游玩端运行时、地图容器配置及资源组；
 - 独立 Docker 地图容器的 CPU、内存、进程、网络和出网带宽限制。
 
-Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理统一在玩家管理后台的“游玩管理”中完成。
+Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理统一在后台管理的“游玩管理”中完成。
 
 ## 技术栈
 
@@ -61,7 +61,7 @@ Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理
 | API 契约与交互文档   | OpenAPI 3.1、Swagger UI、openapi-typescript、openapi-fetch |
 | Creator 与 Play      | Next.js、React、TypeScript、WebGL                          |
 | VOXA                 | Next.js、React、TypeScript、WebGL                          |
-| 玩家管理后台         | Umi Max、React、Ant Design、LESS                           |
+| 后台管理             | Umi Max、React、Ant Design、LESS                           |
 | 游戏服务端           | Node.js、TypeScript、WebSocket、自研 MuDB 协议             |
 | 桌面启动器           | Tauri 2、Rust、Vite                                        |
 | Linux 管理端         | Rust、Axum、Tokio                                          |
@@ -113,7 +113,7 @@ npm run dev:infra
 npm run dev:creator
 ```
 
-玩家管理后台前端需要另开终端启动：
+后台管理前端需要另开终端启动：
 
 ```bash
 cd apps/player-admin
@@ -130,7 +130,7 @@ npm run dev
 | `rush dev --infra`                          | 启动开发栈并启动开发 PostgreSQL/Redis  |
 | `rush dev-creator`                          | 启动 Creator 相关开发服务              |
 | `rush dev-creator --infra`                  | 启动 Creator 开发服务及基础设施        |
-| `cd apps/player-admin && npm run dev`       | 启动玩家管理前端热更新服务             |
+| `cd apps/player-admin && npm run dev`       | 启动后台管理前端热更新服务             |
 | `npm run api:docs`                          | 独立启动只读 Swagger API 文档          |
 | `rush build --to <项目名>`                  | 按依赖顺序增量构建指定项目             |
 | `rush package-images --architecture <架构>` | 构建六个 Linux 镜像并导出归档          |
@@ -189,7 +189,7 @@ docker compose --profile infra stop postgres redis
 | 路径                        | 职责                                           |
 | --------------------------- | ---------------------------------------------- |
 | `apps/game/`                | Creator、Play、Player Service 页面与引擎客户端 |
-| `apps/player-admin/`        | 玩家管理后台 Umi 前端                          |
+| `apps/player-admin/`        | 后台管理 Umi 前端                              |
 | `apps/local-engine/`        | 工程、地图组、发布包和运行时生命周期           |
 | `apps/voxa/`                | VOXA 模型、皮肤和动画编辑器                    |
 | `apps/deployment-manager/`  | Vite + Tauri 桌面启动器                        |

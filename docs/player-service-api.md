@@ -98,7 +98,7 @@
 
 `role`、`adminPermissions`、`avatar` 等字段会被拒绝。
 
-## 玩家管理 API
+## 后台管理 API
 
 以下接口位于 `/api/play-admin/`，使用独立后台 Cookie 或服主临时会话；普通玩家 Cookie 无效。未授权为 `401/403`，参数错误为 `400`。
 

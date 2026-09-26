@@ -121,7 +121,7 @@ rush dev --infra
 | Creator         | `http://127.0.0.1:3127/` | 地图工程、编辑和发布 |
 | Play            | `http://127.0.0.1:3121/` | 地图大厅、房间和游玩 |
 | VOXA            | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑 |
-| Player Service  | `http://127.0.0.1:3124/` | 登录与玩家管理 API   |
+| Player Service  | `http://127.0.0.1:3124/` | 登录与后台管理 API   |
 | 参考登录门户    | `http://127.0.0.1:3125/` | 注册、登录和回跳示例 |
 | Creator Runtime | `9966/9967`              | Creator 游戏运行时   |
 | Play Runtime    | `9971`                   | Play 游戏运行时      |
@@ -136,9 +136,9 @@ rush dev-creator
 rush dev-creator --infra
 ```
 
-### 玩家管理后台前端
+### 后台管理前端
 
-玩家管理的 Umi 前端为了保持独立热更新，不包含在 `rush dev` 进程中。先保持 Player Service 和 PostgreSQL 运行，再另开终端：
+后台管理的 Umi 前端为了保持独立热更新，不包含在 `rush dev` 进程中。先保持 Player Service 和 PostgreSQL 运行，再另开终端：
 
 ```bash
 cd apps/player-admin
@@ -156,7 +156,7 @@ npm run dev
 | 功能                                           | 主要目录                    |
 | ---------------------------------------------- | --------------------------- |
 | Creator、Play、Player Service 页面与引擎客户端 | `apps/game/`                |
-| 玩家管理后台                                   | `apps/player-admin/`        |
+| 后台管理                                       | `apps/player-admin/`        |
 | 工程、地图组、发布包和运行时生命周期           | `apps/local-engine/src/`    |
 | 权威游戏服务器与脚本运行时                     | `services/game-server/src/` |
 | VOXA 模型、皮肤和动画编辑                      | `apps/voxa/`                |
@@ -168,7 +168,7 @@ npm run dev
 
 Creator 编辑可变 `.boxproject` 工程，Play 只运行发布后的只读 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口，修改前应阅读[系统架构](./architecture.md)和[与 boxes 的对齐基线](./boxes-parity.md)。
 
-玩家管理菜单和服务端 API 必须使用同一套 capability。增加页面、按钮或写操作时，要同时完成：
+后台管理菜单和服务端 API 必须使用同一套 capability。增加页面、按钮或写操作时，要同时完成：
 
 1. 前端菜单和控件可见性；
 2. API 服务端授权；

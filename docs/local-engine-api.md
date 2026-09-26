@@ -80,7 +80,7 @@ const players = await api.getApiPlayAdminPlayers({
 
 6. 调用端改用 `@box/apis` 的 `ApiClient`、`createApiClient` 和生成类型。
 7. 验证 Swagger Try it out、未登录响应、权限不足响应、非法参数和正常结果。
-8. 若修改玩家管理功能，同步验证菜单 capability、只读/编辑权限和服务端拒绝测试。
+8. 若修改后台管理功能，同步验证菜单 capability、只读/编辑权限和服务端拒绝测试。
 
 仓库级 `rush verify` 会重新生成并检查 OpenAPI。生成结果有差异时应随源码提交；CI 不接受只修改路由而不更新契约。
 

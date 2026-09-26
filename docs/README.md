@@ -12,10 +12,10 @@
 | 创建和发布地图               | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                                                                    |
 | 部署 Play 或公开服务器       | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                                                            |
 | 部署 VOXA                    | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                                                                      |
-| 接入登录、玩家账号或后台管理 | [玩家身份与管理后台](./player-identity.md)            | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
+| 接入登录、玩家账号或后台管理 | [玩家身份与后台管理](./player-identity.md)            | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
 | 配置 PostgreSQL/Redis        | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md)                                           |
 | 开发或修复代码               | [开发者与协作手册](./developer-guide.md)              | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                                                              |
-| 开发玩家管理后台             | [管理后台开发说明](./player-admin-development.md)     | [Local Engine API 与 Swagger](./local-engine-api.md)、[玩家身份与管理后台](./player-identity.md)                                         |
+| 开发后台管理                 | [管理后台开发说明](./player-admin-development.md)     | [Local Engine API 与 Swagger](./local-engine-api.md)、[玩家身份与后台管理](./player-identity.md)                                         |
 | 查看、调用或新增 HTTP API    | [Local Engine API 与 Swagger](./local-engine-api.md)  | [Player Service API](./player-service-api.md)、[Creator CLI HTTP API](./creator-cli-http-api.md)                                         |
 | Fork、提交 PR 和构建贡献包   | [贡献者指南](../CONTRIBUTING.md)                      | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)                                               |
 | 构建镜像和发行包             | [构建、分发与 CI](./release-and-distribution.md)      | [安全审计](./security-audit.md)                                                                                                          |
@@ -32,7 +32,7 @@
 - [配置参考](./configuration-reference.md)：环境变量来源、端口、数据库、容量、备份、安全项和修改后的生效方式。
 - [部署与联机](./deployment.md)：本机、局域网、公网反向代理和服务暴露边界。
 - [创作端部署](./creator-deployment.md)：Creator 工程目录、镜像、更新和排错。
-- [游玩端部署](./play-deployment.md)：`.boxplay` 导入、地图开关、更新和公网部署；地图日常管理统一在玩家管理后台完成。
+- [游玩端部署](./play-deployment.md)：`.boxplay` 导入、地图开关、更新和公网部署；地图日常管理统一在后台管理完成。
 - [VOXA 部署](./voxa-deployment.md)：模型工程、地图引用和本地数据备份。
 - [地图作品、地图组与发布包](./projects.md)：主地图/副地图、`.boxproject`、`.boxplay` 和共享资源。
 - [Creator CLI HTTP API](./creator-cli-http-api.md)：当前 Creator CLI Token、九项可授权能力和服务端调用契约。
@@ -40,7 +40,7 @@
 
 ### 玩家身份与数据
 
-- [玩家身份与管理后台](./player-identity.md)：玩家账号、预置皮肤、单设备会话、独立管理账号、权限组、游玩地图与容器管理边界。
+- [玩家身份与后台管理](./player-identity.md)：玩家账号、预置皮肤、单设备会话、独立管理账号、权限组、游玩地图与容器管理边界。
 - [管理后台开发说明](./player-admin-development.md)：后台前端模块地图、请求与权限 seam、页面开发约定和验收清单。
 - [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
 - [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。

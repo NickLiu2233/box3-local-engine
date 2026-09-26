@@ -375,7 +375,7 @@ ArenaPro CLI 是已经存在的、真实可运行的 CLI 基座；BOX 的工作�
 当前应先打通的纵向链路：
 
     apc creator profile add local --endpoint 127.0.0.1:3127
-      → 在玩家管理中签发 scripts.update Token
+      → 在后台管理中签发 scripts.update Token
       → 将 Token 保存到 CLI 的全局凭据配置
       → apc creator script push ... --profile local
       → 审计事件
