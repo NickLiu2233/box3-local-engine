@@ -11,6 +11,7 @@
 | 云服务器快速安装             | [云服务器快速部署](./cloud-server-quickstart.md)      | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                                                                |
 | 创建和发布地图               | [地图作品、地图组与发布包](./projects.md)             | [创作端部署](./creator-deployment.md)                                                                                                    |
 | 部署 Play 或公开服务器       | [游玩端部署](./play-deployment.md)                    | [部署与联机](./deployment.md)                                                                                                            |
+| 设计启动器本地地图包         | [启动器本地地图包与严格资源门禁](./launcher-local-map-packs-design.md) | [游玩端部署](./play-deployment.md)、[地图作品、地图组与发布包](./projects.md) |
 | 部署 VOXA                    | [VOXA 部署](./voxa-deployment.md)                     | [地图作品与资源边界](./projects.md)                                                                                                      |
 | 接入登录、玩家账号或后台管理 | [玩家身份与后台管理](./player-identity.md)            | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
 | 配置 PostgreSQL/Redis        | [配置参考](./configuration-reference.md)              | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md)                                           |
@@ -57,6 +58,7 @@
 - [贡献者指南](../CONTRIBUTING.md)：从 fork、分支、源码开发到测试、镜像和桌面 App 构建的完整流程。
 - [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
 - [图形化与 Web 启动器统一记录](./launcher-parity-audit.md)：共用 Rust 核心、平台适配、修复与验证范围。
+- [启动器本地地图包与严格资源门禁](./launcher-local-map-packs-design.md)：未来的玩家启动器本地地图包设计；与当前浏览器 Service Worker 缓存独立。
 - [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
 - [稳定地图存储 ID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
 - [业务方案对比](./business-comparison.md)：面向管理层的本地部署、在线平台、Unity 与 Minecraft 对比。
