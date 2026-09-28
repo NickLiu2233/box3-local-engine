@@ -8,6 +8,7 @@ const state = {
   selectedId: '',
   page: 'home',
   busy: false,
+  endpointInput: '',
   error: '',
   notice: '',
   theme: readTheme(),
@@ -23,11 +24,27 @@ async function playerInvoke(command, payload = {}) {
   }
   if (command === 'add_server') {
     const raw = String(payload.endpoint || '').trim().replace(/\/$/, '')
-    if (!raw || /\s/.test(raw)) throw new Error('请输入有效的服务器域名或 IP')
+    if (!raw || /\s/.test(raw)) throw new Error('请输入有效的游玩端服务器 IP 或域名')
     const endpoint = raw.includes('://') ? raw : `https://${raw}`
-    if (!/^https?:\/\//.test(endpoint)) throw new Error('服务器地址需要使用 HTTP 或 HTTPS')
-    const host = endpoint.replace(/^https?:\/\//, '').split('/')[0]
-    if (!host) throw new Error('服务器地址无效')
+    let parsed
+    try { parsed = new URL(endpoint) } catch { throw new Error('请输入有效的游玩端服务器 IP 或域名') }
+    if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) {
+      throw new Error('请输入有效的游玩端服务器 IP 或域名（支持 HTTP/HTTPS）')
+    }
+    const healthUrl = new URL(`${parsed.pathname.replace(/\/$/, '')}/api/health-check`, parsed.origin)
+    let response
+    try {
+      response = await fetch(healthUrl, { signal: AbortSignal.timeout(6000) })
+    } catch {
+      throw new Error('无法连接到游玩端服务器，请检查 IP/域名、端口和网络后重试（浏览器预览可能受跨域限制）')
+    }
+    if (!response.ok) throw new Error(`服务器已响应（HTTP ${response.status}），但没有通过 BOX3 游玩端检查`)
+    let health
+    try { health = await response.json() } catch { throw new Error('服务器可连接，但未返回 BOX3 游玩端检查信息') }
+    if (health?.status !== 'ok' || (health.runtime && health.runtime !== 'ready')) {
+      throw new Error('游玩端尚未就绪，请稍后重试')
+    }
+    const host = parsed.host
     const server = { id: endpoint.toLowerCase(), endpoint, name: host }
     const index = previewServers.findIndex((item) => item.id === server.id)
     if (index >= 0) previewServers.splice(index, 1)
@@ -120,12 +137,12 @@ function serverPage() {
 
   if (state.page === 'add-server') return `
     <section class="page narrow">
-      <div class="page-heading"><span class="eyebrow">服务器</span><h1>添加服务器</h1><p>输入服主提供的游玩地址。添加后，启动器会显示该服务器开放的地图。</p></div>
+      <div class="page-heading"><h1>添加服务器</h1><p>输入服主提供的游玩地址。添加后，启动器会显示该服务器开放的地图。</p></div>
       <form id="server-form" class="surface add-form">
         <label for="server-endpoint">服务器地址</label>
-        <div class="input-row"><span class="input-icon">${icon('globe')}</span><input id="server-endpoint" name="endpoint" placeholder="play.example.com 或 https://play.example.com" autocomplete="url" required autofocus /></div>
+        <div class="input-row"><span class="input-icon">${icon('globe')}</span><input id="server-endpoint" name="endpoint" value="${escapeHtml(state.endpointInput)}" placeholder="请输入游玩端服务器 IP 或域名" autocomplete="url" required autofocus ${state.busy ? 'disabled' : ''} /></div>
         <p class="field-help">支持域名、IP 和端口。HTTPS 会自动作为默认连接方式。</p>
-        <div class="form-actions"><button type="button" class="button secondary" data-nav="home">取消</button><button class="button primary" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在添加…' : '添加服务器'}${icon('arrow')}</button></div>
+        <div class="form-actions"><button type="button" class="button secondary" data-nav="home">取消</button><button class="button primary" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在检查服务器…' : '添加服务器'}${icon('arrow')}</button></div>
       </form>
     </section>`
 
@@ -180,7 +197,7 @@ function render() {
       <section class="main-area">
         ${state.error ? `<div class="message error">${escapeHtml(state.error)}</div>` : ''}
         ${state.notice ? `<div class="message notice">${escapeHtml(state.notice)}</div>` : ''}
-        <main class="content ${state.page === 'home' || (state.page === 'servers' && !selectedServer()) ? 'welcome-content' : ''}">${state.page === 'packages' ? packagesPage() : serverPage()}</main>
+        <main class="content ${state.page === 'home' || (state.page === 'servers' && !selectedServer()) ? 'welcome-content' : ''} ${state.page === 'add-server' ? 'add-server-content' : ''}">${state.page === 'packages' ? packagesPage() : serverPage()}</main>
       </section>
     </main>`
   bindEvents()
@@ -235,6 +252,7 @@ function bindEvents() {
   document.querySelector('#server-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     const endpoint = new FormData(event.currentTarget).get('endpoint')
+    state.endpointInput = String(endpoint || '')
     state.busy = true
     state.error = ''
     state.notice = ''
@@ -244,6 +262,7 @@ function bindEvents() {
       state.servers = [server, ...state.servers.filter((item) => item.id !== server.id)]
       state.selectedId = server.id
       state.page = 'servers'
+      state.endpointInput = ''
       state.notice = '服务器已添加。地图列表准备接入后，就可以从这里开始游玩。'
     } catch (error) {
       state.error = String(error)

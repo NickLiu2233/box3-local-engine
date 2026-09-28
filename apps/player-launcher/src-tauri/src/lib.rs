@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, time::Duration};
 use tauri::{AppHandle, Manager};
+use url::Url;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,7 +23,8 @@ fn state_path(app: &AppHandle) -> Result<PathBuf, String> {
         .path()
         .app_data_dir()
         .map_err(|error| format!("无法定位玩家启动器数据目录：{error}"))?;
-    fs::create_dir_all(&directory).map_err(|error| format!("无法创建玩家启动器数据目录：{error}"))?;
+    fs::create_dir_all(&directory)
+        .map_err(|error| format!("无法创建玩家启动器数据目录：{error}"))?;
     Ok(directory.join("servers.json"))
 }
 
@@ -31,7 +33,8 @@ fn load_state(app: &AppHandle) -> Result<LauncherState, String> {
     if !path.exists() {
         return Ok(LauncherState::default());
     }
-    let contents = fs::read_to_string(path).map_err(|error| format!("无法读取服务器列表：{error}"))?;
+    let contents =
+        fs::read_to_string(path).map_err(|error| format!("无法读取服务器列表：{error}"))?;
     serde_json::from_str(&contents).map_err(|error| format!("服务器列表格式无效：{error}"))
 }
 
@@ -39,7 +42,8 @@ fn save_state(app: &AppHandle, state: &LauncherState) -> Result<(), String> {
     let path = state_path(app)?;
     let temporary = path.with_extension("json.tmp");
     let contents = serde_json::to_string_pretty(state).map_err(|error| error.to_string())?;
-    fs::write(&temporary, format!("{contents}\n")).map_err(|error| format!("无法保存服务器列表：{error}"))?;
+    fs::write(&temporary, format!("{contents}\n"))
+        .map_err(|error| format!("无法保存服务器列表：{error}"))?;
     fs::rename(temporary, path).map_err(|error| format!("无法提交服务器列表：{error}"))
 }
 
@@ -50,15 +54,70 @@ fn normalize_endpoint(value: &str) -> Result<String, String> {
     } else {
         format!("https://{trimmed}")
     };
-    let valid_scheme = endpoint.starts_with("https://") || endpoint.starts_with("http://");
-    let authority = endpoint.split_once("://").map(|(_, rest)| rest.split('/').next().unwrap_or(""));
-    if !valid_scheme
-        || authority.map_or(true, str::is_empty)
-        || endpoint.chars().any(char::is_whitespace)
-    {
-        return Err("请输入有效的游玩服务器地址，例如 https://play.example.com".into());
+    if endpoint.chars().any(char::is_whitespace) {
+        return Err("请输入有效的游玩端服务器 IP 或域名".into());
     }
-    Ok(endpoint)
+    let parsed =
+        Url::parse(&endpoint).map_err(|_| "请输入有效的游玩端服务器 IP 或域名".to_string())?;
+    if !matches!(parsed.scheme(), "http" | "https")
+        || parsed.host_str().is_none()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return Err("请输入有效的游玩端服务器 IP 或域名（支持 HTTP/HTTPS）".into());
+    }
+    Ok(parsed.to_string().trim_end_matches('/').to_owned())
+}
+
+fn health_check_url(endpoint: &str) -> Result<Url, String> {
+    let mut url = Url::parse(endpoint).map_err(|_| "服务器地址无效".to_string())?;
+    let base_path = url.path().trim_end_matches('/');
+    url.set_path(&format!("{base_path}/api/health-check"));
+    url.set_query(None);
+    url.set_fragment(None);
+    Ok(url)
+}
+
+async fn verify_server_endpoint(endpoint: &str) -> Result<(), String> {
+    let health_url = health_check_url(endpoint)?;
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(6))
+        .build()
+        .map_err(|_| "启动器无法初始化网络连接".to_string())?;
+    let response = client.get(health_url).send().await.map_err(|error| {
+        if error.is_timeout() {
+            "连接游玩端超时，请检查服务器地址、端口和网络后重试".to_string()
+        } else {
+            "无法连接到游玩端服务器，请检查 IP/域名、端口和网络后重试".to_string()
+        }
+    })?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "服务器已响应（HTTP {}），但没有通过 BOX3 游玩端检查；请确认填写的是游玩端地址",
+            response.status().as_u16()
+        ));
+    }
+
+    #[derive(Deserialize)]
+    struct HealthCheckResponse {
+        status: String,
+        #[serde(default)]
+        runtime: Option<String>,
+    }
+
+    let health = response.json::<HealthCheckResponse>().await.map_err(|_| {
+        "服务器可连接，但未返回 BOX3 游玩端检查信息；请确认地址指向游玩端".to_string()
+    })?;
+    if health.status != "ok"
+        || health
+            .runtime
+            .as_deref()
+            .is_some_and(|runtime| runtime != "ready")
+    {
+        return Err("游玩端尚未就绪，请稍后重试".into());
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -67,8 +126,9 @@ fn launcher_state(app: AppHandle) -> Result<LauncherState, String> {
 }
 
 #[tauri::command]
-fn add_server(app: AppHandle, endpoint: String) -> Result<PlayerServer, String> {
+async fn add_server(app: AppHandle, endpoint: String) -> Result<PlayerServer, String> {
     let endpoint = normalize_endpoint(&endpoint)?;
+    verify_server_endpoint(&endpoint).await?;
     let id = endpoint.to_ascii_lowercase();
     let name = endpoint
         .split_once("://")
@@ -107,14 +167,19 @@ fn remove_server(app: AppHandle, server_id: String) -> Result<LauncherState, Str
 
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![launcher_state, add_server, select_server, remove_server])
+        .invoke_handler(tauri::generate_handler![
+            launcher_state,
+            add_server,
+            select_server,
+            remove_server
+        ])
         .run(tauri::generate_context!())
         .expect("error while running BOX3 Player Launcher");
 }
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_endpoint;
+    use super::{health_check_url, normalize_endpoint};
 
     #[test]
     fn normalizes_player_server_addresses() {
@@ -128,5 +193,16 @@ mod tests {
         );
         assert!(normalize_endpoint("https://bad host").is_err());
         assert!(normalize_endpoint("ftp://play.example.com").is_err());
+        assert!(normalize_endpoint("https://user:pass@play.example.com").is_err());
+    }
+
+    #[test]
+    fn health_check_uses_the_server_base_path() {
+        assert_eq!(
+            health_check_url("https://play.example.com/base")
+                .unwrap()
+                .as_str(),
+            "https://play.example.com/base/api/health-check"
+        );
     }
 }

@@ -108,7 +108,7 @@ svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width:
 button:disabled { cursor: default; opacity: .42; transform: none; }
 .content { min-width: 0; min-height: 0; flex: 1 1 auto; padding: 32px 38px; overflow: auto; overscroll-behavior: contain; scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent; scrollbar-width: thin; }
 .page { width: 100%; max-width: 1440px; margin: 0 auto; }
-.page.narrow { max-width: 720px; margin: 16px 0; }
+.page.narrow { width: min(100%, 680px); max-width: 680px; margin: 0; }
 .page-heading { margin-bottom: 28px; }
 .page-heading h1 { margin: 5px 0 0; font-size: 25px; line-height: 1.15; letter-spacing: -.025em; }
 .page-heading > p, .page-heading > div > p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
@@ -133,13 +133,16 @@ button:disabled { cursor: default; opacity: .42; transform: none; }
 .import-copy { min-width: 0; flex: 1; }
 .import-copy h2 { margin: 0; font-size: 14px; }
 .import-copy p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
-.add-form { display: grid; gap: 10px; padding: 20px; }
-.add-form > label { font-size: 12px; font-weight: 620; }
+.add-form { display: grid; gap: 12px; padding: 24px; border-radius: 12px; }
+.add-form > label { font-size: 13px; font-weight: 620; }
 .input-row { position: relative; }
-.input-row input { height: 40px; padding-left: 38px; }
-.input-icon { position: absolute; top: 11px; left: 11px; display: flex; color: var(--muted); pointer-events: none; }
-.field-help { margin: 0; color: var(--muted); font-size: 11px; }
-.form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.input-row input { width: 100%; height: 44px; padding: 0 14px 0 40px; border: 1px solid var(--border); border-radius: var(--radius-control); outline: none; background: var(--panel-soft); color: var(--text); font-size: 13px; transition: border-color 140ms ease, box-shadow 140ms ease; }
+.input-row input:focus { border-color: color-mix(in srgb, var(--accent) 70%, var(--border)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.input-icon { position: absolute; inset-block: 0; left: 12px; display: flex; align-items: center; color: var(--muted); pointer-events: none; }
+.field-help { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 8px; }
+.form-actions .button { min-height: 40px; padding-inline: 15px; }
+.add-server-content { display: grid; place-items: center; }
 .content.welcome-content { display: block; }
 .welcome-content > .welcome-page { width: 100%; max-width: none; min-height: 100%; display: grid; align-content: center; justify-items: center; gap: 16px; margin: 0; padding: 32px 38px; text-align: center; }
 .welcome-page h1 { margin: 0; font-size: 32px; letter-spacing: -.025em; }
