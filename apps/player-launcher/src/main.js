@@ -3,12 +3,16 @@ import brandIcon from '../../deployment-manager/src-tauri/icons/icon.png'
 import './styles.css'
 
 const app = document.querySelector('#app')
+document.addEventListener('contextmenu', (event) => event.preventDefault(), { capture: true })
 const state = {
   servers: [],
   selectedId: '',
   page: 'home',
   busy: false,
   endpointInput: '',
+  editingServerId: '',
+  serverNameInput: '',
+  confirmRemoveServerId: '',
   error: '',
   notice: '',
   theme: readTheme(),
@@ -25,11 +29,17 @@ async function playerInvoke(command, payload = {}) {
   if (command === 'add_server') {
     const raw = String(payload.endpoint || '').trim().replace(/\/$/, '')
     if (!raw || /\s/.test(raw)) throw new Error('请输入有效的游玩端服务器 IP 或域名')
-    const endpoint = raw.includes('://') ? raw : `https://${raw}`
+    const hasExplicitScheme = raw.includes('://')
+    let endpoint = hasExplicitScheme ? raw : `https://${raw}`
     let parsed
     try { parsed = new URL(endpoint) } catch { throw new Error('请输入有效的游玩端服务器 IP 或域名') }
     if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) {
       throw new Error('请输入有效的游玩端服务器 IP 或域名（支持 HTTP/HTTPS）')
+    }
+    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
+    if (!hasExplicitScheme && (hostname === 'localhost' || hostname.endsWith('.localhost') || /^127(?:\.\d{1,3}){3}$/.test(hostname) || hostname === '::1')) {
+      parsed.protocol = 'http:'
+      endpoint = parsed.toString().replace(/\/$/, '')
     }
     const healthUrl = new URL(`${parsed.pathname.replace(/\/$/, '')}/api/health-check`, parsed.origin)
     let response
@@ -52,6 +62,15 @@ async function playerInvoke(command, payload = {}) {
     return server
   }
   if (command === 'select_server') return { servers: previewServers, selectedServerId: payload.serverId }
+  if (command === 'rename_server') {
+    const name = String(payload.name || '').trim()
+    if (!name) throw new Error('服务器昵称不能为空')
+    if ([...name].length > 40) throw new Error('服务器昵称不能超过 40 个字符')
+    const server = previewServers.find((item) => item.id === payload.serverId)
+    if (!server) throw new Error('这个服务器已不在列表中')
+    server.name = name
+    return { ...server }
+  }
   if (command === 'remove_server') {
     const index = previewServers.findIndex((server) => server.id === payload.serverId)
     if (index >= 0) previewServers.splice(index, 1)
@@ -113,6 +132,9 @@ function icon(name) {
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>',
     moon: '<path d="M20.8 13A8.5 8.5 0 0 1 11 3.2 8.5 8.5 0 1 0 20.8 13Z"/>',
     chevron: '<path d="m9 18 6-6-6-6"/>',
+    edit: '<path d="m15 5 4 4M4 20l4-.8L19 8a2.12 2.12 0 0 0-3-3L5 16l-1 4Z"/>',
+    check: '<path d="m5 12 4 4L19 6"/>',
+    close: '<path d="m6 6 12 12M18 6 6 18"/>',
   }
   return `<svg aria-hidden="true" viewBox="0 0 24 24">${paths[name] || ''}</svg>`
 }
@@ -128,12 +150,15 @@ function serverRows() {
 }
 
 function serverPage() {
-  if (state.page === 'home') return `
-    <section class="page welcome-page">
-      <h1>准备好开始游玩了吗？</h1>
-      <p>添加一个私服地址。启动器会为你找到可玩的地图，并在进入前自动准备好所需资源。</p>
-      <button class="button primary" data-nav="add-server">${icon('plus')}添加服务器</button>
-    </section>`
+  if (state.page === 'home') {
+    const hasServers = state.servers.length > 0
+    return `
+      <section class="page welcome-page">
+        <h1>准备好开始游玩了吗？</h1>
+        <p>${hasServers ? '你已添加服务器，从左侧选择一个服务器开始游玩。' : '添加一个私服地址。启动器会为你找到可玩的地图，并在进入前自动准备好所需资源。'}</p>
+        ${hasServers ? '' : `<button class="button primary" data-nav="add-server">${icon('plus')}添加服务器</button>`}
+      </section>`
+  }
 
   if (state.page === 'add-server') return `
     <section class="page narrow">
@@ -141,7 +166,7 @@ function serverPage() {
       <form id="server-form" class="surface add-form">
         <label for="server-endpoint">服务器地址</label>
         <div class="input-row"><span class="input-icon">${icon('globe')}</span><input id="server-endpoint" name="endpoint" value="${escapeHtml(state.endpointInput)}" placeholder="请输入游玩端服务器 IP 或域名" autocomplete="url" required autofocus ${state.busy ? 'disabled' : ''} /></div>
-        <p class="field-help">支持域名、IP 和端口。HTTPS 会自动作为默认连接方式。</p>
+        <p class="field-help">支持域名、IP 和端口；域名默认 HTTPS，本机地址默认 HTTP。</p>
         <div class="form-actions"><button type="button" class="button secondary" data-nav="home">取消</button><button class="button primary" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在检查服务器…' : '添加服务器'}${icon('arrow')}</button></div>
       </form>
     </section>`
@@ -153,20 +178,42 @@ function serverPage() {
       <p>从左侧选择一个服务器，或添加新的服务器开始游玩。</p>
     </section>`
 
+  const editingName = state.editingServerId === server.id
+
   return `
     <section class="page">
       <div class="page-heading server-heading">
-        <div class="server-heading-icon">${icon('globe')}</div>
-        <div><span class="eyebrow">游玩服务器</span><h1>${escapeHtml(server.name || server.endpoint)}</h1><p>${escapeHtml(server.endpoint)}</p></div>
+        ${editingName ? `
+          <form id="server-name-form" class="server-name-edit">
+            <input id="server-name-input" name="name" value="${escapeHtml(state.serverNameInput)}" maxlength="40" aria-label="服务器昵称" required autofocus ${state.busy ? 'disabled' : ''} />
+            <button class="title-icon-button save-name" type="submit" title="保存昵称" aria-label="保存昵称" ${state.busy ? 'disabled' : ''}>${icon('check')}</button>
+            <button class="title-icon-button" type="button" data-action="cancel-server-name" title="取消编辑" aria-label="取消编辑">${icon('close')}</button>
+          </form>` : `
+          <div class="server-title-row">
+            <h1>${escapeHtml(server.name || server.endpoint)}</h1>
+            <button class="title-icon-button" type="button" data-action="edit-server-name" title="编辑服务器昵称" aria-label="编辑服务器昵称">${icon('edit')}</button>
+          </div>`}
+        <p>${escapeHtml(server.endpoint)}</p>
       </div>
-      <div class="section-heading"><div><h2>可游玩的地图</h2><p>选择地图后，启动器会自动准备资源并连接服务器。</p></div><button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>刷新列表</button></div>
+      <div class="section-heading"><h2>可游玩的地图</h2><button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>刷新列表</button></div>
       <div class="empty-maps surface">
         <div class="empty-map-icon">${icon('packages')}</div>
         <h3>地图列表尚未加载</h3>
         <p>这个服务器的在线地图发现接口还未接入启动器。连接功能完成后，地图会显示在这里。</p>
       </div>
-      <div class="server-footer"><span class="status-dot"></span>服务器已添加，等待连接</div>
     </section>`
+}
+
+function removeServerDialog() {
+  const server = state.servers.find((item) => item.id === state.confirmRemoveServerId)
+  if (!server) return ''
+  return `
+    <div class="confirm-backdrop" data-remove-server-dialog-dismiss>
+      <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="remove-server-title" aria-describedby="remove-server-description">
+        <header><div><h2 id="remove-server-title">从列表移除服务器？</h2><p id="remove-server-description">“${escapeHtml(server.name || server.endpoint)}”将从本机启动器列表中移除，不会删除服务器或地图数据。</p></div></header>
+        <div class="confirm-actions"><button class="button" type="button" data-cancel-remove-server autofocus>取消</button><button class="button danger" type="button" data-confirm-remove-server ${state.busy ? 'disabled' : ''}>确认移除</button></div>
+      </section>
+    </div>`
 }
 
 function packagesPage() {
@@ -195,15 +242,20 @@ function render() {
         <div class="sidebar-bottom">${themeControl()}<span class="launcher-copyright">©深圳奇梦岛科技有限公司 版权所有</span></div>
       </aside>
       <section class="main-area">
-        ${state.error ? `<div class="message error">${escapeHtml(state.error)}</div>` : ''}
-        ${state.notice ? `<div class="message notice">${escapeHtml(state.notice)}</div>` : ''}
+        ${(state.error || state.notice) ? `<div class="toast ${state.error ? 'danger' : 'success'}" role="status"><span>${state.error ? '操作未完成' : '操作完成'}</span><small>${escapeHtml(state.error || state.notice)}</small><button type="button" data-dismiss-feedback aria-label="关闭提示">×</button></div>` : ''}
         <main class="content ${state.page === 'home' || (state.page === 'servers' && !selectedServer()) ? 'welcome-content' : ''} ${state.page === 'add-server' ? 'add-server-content' : ''}">${state.page === 'packages' ? packagesPage() : serverPage()}</main>
       </section>
     </main>`
+    + removeServerDialog()
   bindEvents()
 }
 
 function bindEvents() {
+  document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', () => {
+    state.error = ''
+    state.notice = ''
+    render()
+  })
   document.querySelector('#theme-trigger')?.addEventListener('click', () => {
     state.themeMenuOpen = !state.themeMenuOpen
     render()
@@ -215,6 +267,8 @@ function bindEvents() {
   }))
   document.querySelectorAll('[data-nav]').forEach((node) => node.addEventListener('click', () => {
     state.page = node.dataset.nav || 'servers'
+    state.editingServerId = ''
+    state.serverNameInput = ''
     state.error = ''
     state.notice = ''
     render()
@@ -224,6 +278,8 @@ function bindEvents() {
     const serverId = node.dataset.selectServer || ''
     state.selectedId = serverId
     state.page = 'servers'
+    state.editingServerId = ''
+    state.serverNameInput = ''
     state.error = ''
     state.notice = ''
     render()
@@ -234,21 +290,93 @@ function bindEvents() {
       render()
     }
   }))
-  document.querySelectorAll('[data-remove-server]').forEach((node) => node.addEventListener('click', async (event) => {
+  document.querySelectorAll('[data-remove-server]').forEach((node) => node.addEventListener('click', (event) => {
     event.stopPropagation()
-    const serverId = node.dataset.removeServer || ''
+    state.confirmRemoveServerId = node.dataset.removeServer || ''
+    state.error = ''
+    state.notice = ''
+    render()
+    document.querySelector('[data-cancel-remove-server]')?.focus()
+  }))
+  document.querySelector('[data-cancel-remove-server]')?.addEventListener('click', () => {
+    state.confirmRemoveServerId = ''
+    render()
+  })
+  document.querySelector('[data-remove-server-dialog-dismiss]')?.addEventListener('click', (event) => {
+    if (event.target !== event.currentTarget) return
+    state.confirmRemoveServerId = ''
+    render()
+  })
+  document.querySelector('.confirm-dialog')?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || state.busy) return
+    state.confirmRemoveServerId = ''
+    render()
+  })
+  document.querySelector('[data-confirm-remove-server]')?.addEventListener('click', async () => {
+    const serverId = state.confirmRemoveServerId
+    if (!serverId || state.busy) return
+    state.busy = true
+    state.error = ''
+    state.notice = ''
+    render()
     try {
       const result = await playerInvoke('remove_server', { serverId })
       state.servers = result.servers || []
       state.selectedId = result.selectedServerId || ''
       state.page = 'home'
+      state.editingServerId = ''
+      state.serverNameInput = ''
+      state.confirmRemoveServerId = ''
       state.notice = '服务器已从列表移除。'
-      render()
     } catch (error) {
       state.error = String(error)
+      state.confirmRemoveServerId = ''
+    } finally {
+      state.busy = false
       render()
     }
-  }))
+  })
+  document.querySelector('[data-action="edit-server-name"]')?.addEventListener('click', () => {
+    const server = selectedServer()
+    if (!server) return
+    state.editingServerId = server.id
+    state.serverNameInput = server.name || server.endpoint
+    state.error = ''
+    state.notice = ''
+    render()
+    const input = document.querySelector('#server-name-input')
+    input?.focus()
+    input?.select()
+  })
+  document.querySelector('[data-action="cancel-server-name"]')?.addEventListener('click', () => {
+    state.editingServerId = ''
+    state.serverNameInput = ''
+    state.error = ''
+    render()
+  })
+  document.querySelector('#server-name-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    const name = String(new FormData(event.currentTarget).get('name') || '')
+    const serverId = state.editingServerId
+    state.serverNameInput = name
+    state.busy = true
+    state.error = ''
+    state.notice = ''
+    render()
+    try {
+      const updated = await playerInvoke('rename_server', { serverId, name })
+      state.servers = state.servers.map((server) => server.id === updated.id ? updated : server)
+      state.selectedId = updated.id
+      state.editingServerId = ''
+      state.serverNameInput = ''
+      state.notice = '服务器备注已更新。'
+    } catch (error) {
+      state.error = String(error)
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
   document.querySelector('#server-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     const endpoint = new FormData(event.currentTarget).get('endpoint')

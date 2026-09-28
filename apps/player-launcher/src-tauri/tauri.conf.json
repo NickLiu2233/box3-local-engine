@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "BOX3 玩家启动器",
+  "productName": "BOX3 Player Launcher",
   "version": "0.2.0",
   "identifier": "com.box.player.launcher",
   "build": {
@@ -11,7 +11,7 @@
   },
   "app": {
     "windows": [{
-      "title": "BOX3 玩家启动器",
+      "title": "BOX3 Player Launcher",
       "width": 1180,
       "height": 760,
       "minWidth": 900,

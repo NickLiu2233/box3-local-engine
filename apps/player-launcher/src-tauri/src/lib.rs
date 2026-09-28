@@ -1,7 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, time::Duration};
+use std::{fs, net::IpAddr, path::PathBuf, time::Duration};
 use tauri::{AppHandle, Manager};
 use url::Url;
+
+const ROOT_VERSION: &str = match option_env!("BOX_ROOT_VERSION") {
+    Some(version) if !version.is_empty() => version,
+    _ => env!("CARGO_PKG_VERSION"),
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,7 +62,7 @@ fn normalize_endpoint(value: &str) -> Result<String, String> {
     if endpoint.chars().any(char::is_whitespace) {
         return Err("请输入有效的游玩端服务器 IP 或域名".into());
     }
-    let parsed =
+    let mut parsed =
         Url::parse(&endpoint).map_err(|_| "请输入有效的游玩端服务器 IP 或域名".to_string())?;
     if !matches!(parsed.scheme(), "http" | "https")
         || parsed.host_str().is_none()
@@ -66,7 +71,35 @@ fn normalize_endpoint(value: &str) -> Result<String, String> {
     {
         return Err("请输入有效的游玩端服务器 IP 或域名（支持 HTTP/HTTPS）".into());
     }
+    if !trimmed.contains("://") && parsed.host_str().is_some_and(is_loopback_host) {
+        parsed
+            .set_scheme("http")
+            .map_err(|_| "本机游玩端地址无效".to_string())?;
+    }
     Ok(parsed.to_string().trim_end_matches('/').to_owned())
+}
+
+fn normalize_server_name(value: &str) -> Result<String, String> {
+    let name = value.trim();
+    if name.is_empty() {
+        return Err("服务器昵称不能为空".into());
+    }
+    if name.chars().count() > 40 {
+        return Err("服务器昵称不能超过 40 个字符".into());
+    }
+    if name.chars().any(char::is_control) {
+        return Err("服务器昵称不能包含控制字符".into());
+    }
+    Ok(name.to_owned())
+}
+
+fn is_loopback_host(host: &str) -> bool {
+    host.eq_ignore_ascii_case("localhost")
+        || host.to_ascii_lowercase().ends_with(".localhost")
+        || host
+            .parse::<IpAddr>()
+            .map(|address| address.is_loopback())
+            .unwrap_or(false)
 }
 
 fn health_check_url(endpoint: &str) -> Result<Url, String> {
@@ -165,13 +198,35 @@ fn remove_server(app: AppHandle, server_id: String) -> Result<LauncherState, Str
     Ok(state)
 }
 
+#[tauri::command]
+fn rename_server(app: AppHandle, server_id: String, name: String) -> Result<PlayerServer, String> {
+    let name = normalize_server_name(&name)?;
+    let mut state = load_state(&app)?;
+    let server = state
+        .servers
+        .iter_mut()
+        .find(|server| server.id == server_id)
+        .ok_or_else(|| "这个服务器已不在列表中".to_string())?;
+    server.name = name;
+    let renamed = server.clone();
+    save_state(&app, &state)?;
+    Ok(renamed)
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                window.set_title(&format!("BOX3 Player Launcher v{ROOT_VERSION}"))?;
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             launcher_state,
             add_server,
             select_server,
-            remove_server
+            remove_server,
+            rename_server
         ])
         .run(tauri::generate_context!())
         .expect("error while running BOX3 Player Launcher");
@@ -179,13 +234,25 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-    use super::{health_check_url, normalize_endpoint};
+    use super::{health_check_url, normalize_endpoint, normalize_server_name};
 
     #[test]
     fn normalizes_player_server_addresses() {
         assert_eq!(
             normalize_endpoint("play.example.com/").unwrap(),
             "https://play.example.com"
+        );
+        assert_eq!(
+            normalize_endpoint("127.0.0.1:3492").unwrap(),
+            "http://127.0.0.1:3492"
+        );
+        assert_eq!(
+            normalize_endpoint("localhost:3492").unwrap(),
+            "http://localhost:3492"
+        );
+        assert_eq!(
+            normalize_endpoint("https://127.0.0.1:3492").unwrap(),
+            "https://127.0.0.1:3492"
         );
         assert_eq!(
             normalize_endpoint("http://127.0.0.1:3492/").unwrap(),
@@ -204,5 +271,16 @@ mod tests {
                 .as_str(),
             "https://play.example.com/base/api/health-check"
         );
+    }
+
+    #[test]
+    fn validates_server_nicknames() {
+        assert_eq!(
+            normalize_server_name("  我的服务器  ").unwrap(),
+            "我的服务器"
+        );
+        assert!(normalize_server_name("  ").is_err());
+        assert!(normalize_server_name(&"a".repeat(41)).is_err());
+        assert!(normalize_server_name("name\nwith newline").is_err());
     }
 }
