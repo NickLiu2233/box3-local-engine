@@ -1,0 +1,20 @@
+{
+  "name": "@box/player-launcher",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Standalone BOX3 player launcher for locally prepared online maps",
+  "scripts": {
+    "dev": "vite --port 1421",
+    "build": "vite build",
+    "check": "vite build",
+    "tauri": "tauri",
+    "bundle": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.0",
+    "vite": "^7.1.0"
+  }
+}

@@ -1,0 +1,23 @@
+[package]
+name = "box-player-launcher"
+version = "0.2.0"
+description = "Standalone player launcher for BOX3 maps"
+authors = ["BOX Local Engine contributors"]
+edition = "2021"
+license = "UNLICENSED"
+
+[lib]
+name = "box_player_launcher_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+
+[profile.release]
+debug = false
+strip = "symbols"
