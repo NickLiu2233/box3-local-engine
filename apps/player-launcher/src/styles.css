@@ -127,6 +127,8 @@ button:disabled { cursor: default; opacity: .42; transform: none; }
 .page-heading > p, .page-heading > div > p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
 .eyebrow { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .11em; }
 .server-heading { display: block; }
+.server-heading-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.server-heading-copy { min-width: 0; flex: 1 1 auto; }
 .server-heading > .eyebrow { display: block; }
 .server-title-row { display: flex; align-items: center; gap: 8px; }
 .server-title-row h1 { min-width: 0; overflow-wrap: anywhere; }
@@ -171,17 +173,60 @@ button:disabled { cursor: default; opacity: .42; transform: none; }
 .account-avatar { width: 28px; height: 28px; display: grid; flex: 0 0 auto; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--text); font-size: 12px; font-weight: 700; }
 .text-button { margin-left: auto; padding: 5px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); cursor: pointer; font: inherit; font-size: 11px; }
 .text-button:hover { background: var(--panel-soft); color: var(--text); }
+.player-account-control { position: relative; flex: 0 0 auto; margin-top: 2px; }
+.player-account-trigger { min-height: 40px; display: flex; align-items: center; gap: 9px; padding: 4px 10px 4px 5px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--text); cursor: pointer; text-align: left; transition: background-color 140ms ease, border-color 140ms ease, transform 100ms var(--ease-out); }
+.player-account-trigger:hover, .player-account-trigger[aria-expanded='true'] { border-color: var(--border); background: var(--panel); }
+.player-account-trigger:active { transform: scale(.97); }
+.player-account-trigger > svg { width: 14px; height: 14px; color: var(--muted); }
+.player-account-avatar { width: 30px; height: 30px; flex: 0 0 auto; object-fit: contain; border-radius: 50%; background: var(--panel-soft); }
+.player-account-copy { min-width: 0; display: grid; gap: 2px; }
+.player-account-copy strong { max-width: 150px; overflow: hidden; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.player-account-copy small { color: var(--muted); font-size: 10px; }
+.player-account-menu { position: absolute; z-index: 12; top: calc(100% + 7px); right: 0; width: 220px; display: grid; gap: 3px; padding: 7px; border: 1px solid var(--border); border-radius: 9px; background: var(--panel); box-shadow: 0 14px 34px rgb(0 0 0 / 30%); transform-origin: top right; animation: account-menu-in 150ms var(--ease-out) both; }
+.player-account-menu-identity { display: grid; gap: 3px; padding: 9px 9px 11px; border-bottom: 1px solid var(--border); }
+.player-account-menu-identity strong { color: var(--text); font-size: 12px; }
+.player-account-menu-identity small { color: var(--muted); font-size: 10px; }
+.player-account-menu button { min-height: 34px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; font: inherit; font-size: 12px; text-align: left; }
+.player-account-menu button:hover { background: var(--panel-soft); }
+.player-account-menu button[data-action='logout'] { color: var(--danger); }
+@keyframes account-menu-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.player-account-trigger:focus-visible, .player-account-menu button:focus-visible, .player-profile-skin:focus-visible, .player-profile-close:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 78%, white); outline-offset: 2px; }
+.player-profile-backdrop { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; padding: 20px; overflow: auto; background: rgb(0 0 0 / 66%); backdrop-filter: blur(3px); }
+.player-profile-dialog { width: min(408px, 100%); max-height: calc(100% - 40px); overflow: auto; border: 1px solid color-mix(in srgb, var(--text) 14%, var(--border)); border-radius: 10px; background: var(--panel); color: var(--muted); box-shadow: 0 24px 70px rgb(0 0 0 / 42%); }
+.player-profile-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 20px 17px; border-bottom: 1px solid var(--border); }
+.player-profile-heading h2 { margin: 0 0 4px; color: var(--text); font-size: 18px; }
+.player-profile-heading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.player-profile-close { width: 30px; height: 30px; display: grid; flex: 0 0 auto; place-items: center; margin: -4px -4px 0 0; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.player-profile-close:hover { background: var(--panel-soft); color: var(--text); }
+.player-profile-close svg { width: 17px; height: 17px; }
+.player-profile-content { display: grid; gap: 18px; padding: 18px 20px 20px; }
+.player-profile-field { display: grid; gap: 7px; }
+.player-profile-field > span, .player-profile-skin-field legend { color: var(--muted); font-size: 12px; font-weight: 600; }
+.player-profile-field input { width: 100%; height: 38px; padding: 0 11px; border: 1px solid var(--border); border-radius: 7px; outline: none; background: var(--panel-soft); color: var(--text); font: inherit; font-size: 13px; }
+.player-profile-field input:focus { border-color: color-mix(in srgb, var(--accent) 75%, var(--border)); }
+.player-profile-field input:disabled { color: var(--muted); }
+.player-profile-field small { color: var(--muted); font-size: 11px; }
+.player-profile-skin-field { min-width: 0; margin: 0; padding: 0; border: 0; }
+.player-profile-skin-field legend { margin-bottom: 8px; padding: 0; }
+.player-profile-skins { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.player-profile-skin { display: grid; min-width: 0; gap: 5px; padding: 6px 4px 7px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-soft); color: var(--muted); cursor: pointer; font: inherit; font-size: 10px; }
+.player-profile-skin img { width: 100%; aspect-ratio: 1; object-fit: contain; border-radius: 4px; background: var(--panel); }
+.player-profile-skin:hover { border-color: color-mix(in srgb, var(--accent) 58%, var(--border)); color: var(--text); }
+.player-profile-skin.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); color: var(--accent); }
+.player-profile-error { margin: 0; color: var(--danger); font-size: 11px; line-height: 1.45; }
+.player-profile-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--border); background: var(--panel-soft); }
+.player-profile-actions .button { height: 36px; padding-inline: 14px; }
 .world-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
-.world-card { min-width: 0; overflow: hidden; }
-.world-cover, .world-cover-placeholder { width: 100%; height: 132px; display: grid; place-items: center; object-fit: cover; background: var(--panel-soft); color: var(--muted); }
+.world-card { min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+.world-cover, .world-cover-placeholder { width: 100%; height: 132px; flex: 0 0 132px; display: grid; place-items: center; object-fit: cover; background: var(--panel-soft); color: var(--muted); }
 .world-cover-placeholder svg { width: 28px; height: 28px; }
-.world-copy { display: grid; gap: 8px; padding: 13px; }
+.world-copy { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; padding: 13px; }
 .world-copy h3, .world-copy p { margin: 0; }
 .world-copy h3 { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .world-copy p { display: -webkit-box; min-height: 34px; overflow: hidden; color: var(--muted); font-size: 11px; line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .world-copy small { color: var(--muted); font-size: 10px; }
 .world-copy .prepared-hint { color: var(--success); }
-.world-copy .button { justify-self: end; margin-top: 2px; }
+.world-copy .button { align-self: flex-end; margin-top: auto; }
 .install-progress { display: grid; gap: 4px; margin-top: 2px; }
 .install-progress progress { width: 100%; height: 5px; overflow: hidden; border: 0; border-radius: 999px; background: var(--panel-soft); accent-color: var(--accent); }
 .install-progress small { color: var(--muted); font-size: 10px; text-align: right; }

@@ -18,6 +18,11 @@ const state = {
   serverNameInput: '',
   serverBootstrap: null,
   player: null,
+  playerMenuOpen: false,
+  playerSettingsOpen: false,
+  playerProfileName: '',
+  playerProfileSkinId: 'explorer',
+  playerProfileError: '',
   worlds: [],
   packageStates: {},
   preparingMapId: '',
@@ -30,6 +35,13 @@ const state = {
   theme: readTheme(),
   themeMenuOpen: false,
 }
+
+document.addEventListener('click', (event) => {
+  if (!state.playerMenuOpen) return
+  if (event.target instanceof Element && event.target.closest('.player-account-control')) return
+  state.playerMenuOpen = false
+  render()
+})
 
 const previewServers = []
 const remoteApi = createPlayerApi({ invoke, isNative: () => Boolean(window.__TAURI_INTERNALS__) })

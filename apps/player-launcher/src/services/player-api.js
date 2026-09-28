@@ -99,6 +99,9 @@ export function createPlayerApi({ invoke, isNative }) {
     getMaps(endpoint) {
       return client(endpoint).getApiPlayerLauncherMapsRaw()
     },
+    updateProfile(endpoint, changes) {
+      return client(endpoint).patchApiPlayProfileRaw({ body: changes })
+    },
     getDescriptor(endpoint, mapId) {
       return client(endpoint).getApiPlayerLauncherMapsMapIdDescriptorRaw({
         params: { path: { mapId } },
@@ -147,12 +150,13 @@ export function createPlayerApi({ invoke, isNative }) {
         trustedSigningKey: JSON.stringify(trustedSigningKey),
       })
     },
-    launchMap(serverId, descriptor, trustedSigningKey) {
+    launchMap(serverId, descriptor, trustedSigningKey, mapName) {
       if (!isNative()) return Promise.reject(new Error('安全启动地图只能从 BOX3 玩家启动器进行'))
       return invoke('launch_map', {
         serverId,
         descriptor: JSON.stringify(descriptor),
         trustedSigningKey: JSON.stringify(trustedSigningKey),
+        mapName,
       })
     },
     login(endpoint, bootstrap, username, password) {

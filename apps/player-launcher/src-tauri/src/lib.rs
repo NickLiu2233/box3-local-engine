@@ -3,6 +3,7 @@ mod api_transport;
 mod map_packages;
 mod package_descriptor;
 mod package_index;
+mod window_title;
 
 use api_transport::{api_request, clear_player_cookie, clear_server_auth, player_auth_cookies};
 use map_packages::{get_map_asset_resume_offset, install_map_asset, prepare_map_package};
@@ -257,6 +258,7 @@ async fn launch_map(
     server_id: String,
     descriptor: String,
     trusted_signing_key: String,
+    map_name: String,
 ) -> Result<(), String> {
     let state = load_state(&app)?;
     if state.selected_server_id.as_deref() != Some(server_id.as_str()) {
@@ -268,6 +270,7 @@ async fn launch_map(
         .find(|server| server.id == server_id)
         .ok_or_else(|| "这个服务器已不在列表中".to_string())?;
     let package = verify_installed_map_package(&app, &descriptor, &trusted_signing_key)?;
+    let window_title = window_title::map_window_title(&map_name, &package.release_version);
     let descriptor: serde_json::Value =
         serde_json::from_str(&descriptor).map_err(|_| "地图资源描述符格式无效".to_string())?;
     let access_id = descriptor
@@ -293,6 +296,9 @@ async fn launch_map(
     if let Some(game_window) = app.get_webview_window("player-game") {
         sync_webview_player_cookies(&game_window, &server.endpoint)?;
         game_window
+            .set_title(&window_title)
+            .map_err(|_| "无法更新游玩窗口标题".to_string())?;
+        game_window
             .navigate(game_url)
             .map_err(|_| "无法打开游玩地图".to_string())?;
         return game_window
@@ -301,7 +307,7 @@ async fn launch_map(
     }
     let game_window =
         WebviewWindowBuilder::new(&app, "player-game", WebviewUrl::External(game_url.clone()))
-            .title(format!("BOX3 Player · {}", package.release_version))
+            .title(&window_title)
             .inner_size(1280.0, 800.0)
             .min_inner_size(900.0, 620.0)
             .resizable(true)

@@ -10,6 +10,80 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.notice = ''
     render()
   })
+  document.querySelector('[data-action="toggle-player-menu"]')?.addEventListener('click', () => {
+    state.playerMenuOpen = !state.playerMenuOpen
+    render()
+  })
+  document.querySelector('[data-action="open-player-settings"]')?.addEventListener('click', () => {
+    if (!state.player || state.busy) return
+    state.playerMenuOpen = false
+    state.playerSettingsOpen = true
+    state.playerProfileName = state.player.displayName || state.player.username || ''
+    state.playerProfileSkinId = state.player.avatarSkinId || 'explorer'
+    state.playerProfileError = ''
+    render()
+    document.querySelector('#player-profile-name')?.focus()
+    document.querySelector('#player-profile-name')?.select()
+  })
+  document.querySelectorAll('[data-close-player-settings]').forEach((node) => node.addEventListener('click', () => {
+    if (state.busy) return
+    state.playerSettingsOpen = false
+    state.playerProfileError = ''
+    render()
+  }))
+  document.querySelector('[data-player-profile-backdrop]')?.addEventListener('click', (event) => {
+    if (event.target !== event.currentTarget || state.busy) return
+    state.playerSettingsOpen = false
+    state.playerProfileError = ''
+    render()
+  })
+  document.querySelector('.player-profile-dialog')?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || state.busy) return
+    state.playerSettingsOpen = false
+    state.playerProfileError = ''
+    render()
+  })
+  document.querySelectorAll('[data-player-skin]').forEach((node) => node.addEventListener('click', () => {
+    state.playerProfileSkinId = node.dataset.playerSkin || 'explorer'
+    render()
+  }))
+  document.querySelector('#player-profile-name')?.addEventListener('input', (event) => {
+    state.playerProfileName = event.currentTarget.value
+  })
+  document.querySelector('#player-profile-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    const server = selectedServer()
+    const displayName = String(new FormData(event.currentTarget).get('displayName') || '').trim()
+    if (!server || !state.player || state.busy) return
+    if (!displayName || [...displayName].length > 32) {
+      state.playerProfileError = '显示昵称需要为 1 到 32 个字符。'
+      render()
+      return
+    }
+
+    state.busy = true
+    state.playerProfileError = ''
+    render()
+    try {
+      const result = await remoteApi.updateProfile(server.endpoint, {
+        displayName,
+        avatarSkinId: state.playerProfileSkinId,
+      })
+      if (!result.response.ok || !result.data?.player) {
+        throw new Error(result.error?.message || '保存账号设置失败，请稍后重试。')
+      }
+      state.player = result.data.player
+      state.playerProfileName = state.player.displayName || displayName
+      state.playerProfileSkinId = state.player.avatarSkinId || state.playerProfileSkinId
+      state.playerSettingsOpen = false
+      state.notice = '账号设置已保存。'
+    } catch (error) {
+      state.playerProfileError = error.message || '保存账号设置失败，请稍后重试。'
+    } finally {
+      state.busy = false
+      render()
+    }
+  })
   document.querySelector('#theme-trigger')?.addEventListener('click', () => {
     state.themeMenuOpen = !state.themeMenuOpen
     render()
@@ -34,6 +108,8 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.page = 'servers'
     state.player = null
     state.worlds = []
+    state.playerMenuOpen = false
+    state.playerSettingsOpen = false
     state.editingServerId = ''
     state.serverNameInput = ''
     state.serverBootstrap = { loading: true }
@@ -209,7 +285,9 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       if (!maps.response.ok || !maps.data?.worlds?.some((world) => world.id === mapId || world.publicId === mapId)) {
         throw new Error('资源已准备，但当前账号暂时不能进入这张地图。')
       }
-      await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey)
+      const mapName = state.worlds.find((world) => world.id === mapId || world.publicId === mapId)?.name
+        || descriptor.accessId
+      await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey, mapName)
       state.notice = `“${descriptor.accessId}”的资源已验证，正在连接服务器…`
     } catch (error) {
       state.error = error.message || '地图资源准备失败，请稍后重试。'
@@ -245,6 +323,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
         return
       }
       state.player = data.player
+      state.playerMenuOpen = false
       const maps = await remoteApi.getMaps(server.endpoint)
       if (maps.response.status === 401) {
         state.player = null
@@ -285,6 +364,9 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       try { await playerInvoke('clear_player_session', { serverId: server.id }) } catch { /* Always clear the UI session. */ }
       state.player = null
       state.worlds = []
+      state.playerMenuOpen = false
+      state.playerSettingsOpen = false
+      state.playerProfileError = ''
       state.busy = false
       render()
     }
@@ -324,7 +406,9 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
         onProgress: (progress) => { state.prepareProgress = progress; render() },
       })
       state.packageStates[packageKey] = { ready: true, manifestDigest: installed.manifestDigest }
-      await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey)
+      const mapName = state.worlds.find((world) => world.id === mapId || world.publicId === mapId)?.name
+        || descriptor.accessId
+      await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey, mapName)
       state.notice = `正在连接“${descriptor.accessId}”…`
     } catch (error) {
       state.error = error.message || '无法启动地图，请稍后重试。'
