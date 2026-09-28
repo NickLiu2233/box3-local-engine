@@ -90,19 +90,34 @@ function getOrCreateSigningKey(): SigningKey {
   return key
 }
 
+export function getPlayResourceSigningIdentity() {
+  const key = getOrCreateSigningKey()
+  const keyId = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(key.publicKey))
+    .digest('base64url')
+  return { keyId, publicKey: key.publicKey }
+}
+
+export function signPlayResourcePayload(payload: string) {
+  const key = getOrCreateSigningKey()
+  const signer = crypto.createSign('SHA256')
+  signer.update(payload)
+  signer.end()
+  return signer.sign({ key: key.privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url')
+}
+
 function manifestPayload(worldId: string, version: string, hashes: string[]) {
   return JSON.stringify({ worldId, version, hashes })
 }
 
 function signManifest(worldId: string, version: string, hashes: string[]) {
-  const key = getOrCreateSigningKey()
-  const signer = crypto.createSign('SHA256')
-  signer.update(manifestPayload(worldId, version, hashes))
-  signer.end()
+  const { keyId, publicKey } = getPlayResourceSigningIdentity()
   return {
     algorithm: 'ES256' as const,
-    publicKey: key.publicKey,
-    value: signer.sign({ key: key.privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url'),
+    keyId,
+    publicKey,
+    value: signPlayResourcePayload(manifestPayload(worldId, version, hashes)),
   }
 }
 

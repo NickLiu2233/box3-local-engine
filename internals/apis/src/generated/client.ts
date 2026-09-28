@@ -266,6 +266,10 @@ export const apiOperations = {
     "path": "/api/play-admin/permission-groups",
     "method": "GET"
   },
+  "getApiPlayAdminPlayerLauncherAccess": {
+    "path": "/api/play-admin/player-launcher-access",
+    "method": "GET"
+  },
   "getApiPlayAdminPlayers": {
     "path": "/api/play-admin/players",
     "method": "GET"
@@ -316,6 +320,26 @@ export const apiOperations = {
   },
   "getApiPlayerInternalRevocations": {
     "path": "/api/player-internal/revocations",
+    "method": "GET"
+  },
+  "getApiPlayerLauncherBootstrap": {
+    "path": "/api/player-launcher/bootstrap",
+    "method": "GET"
+  },
+  "getApiPlayerLauncherMaps": {
+    "path": "/api/player-launcher/maps",
+    "method": "GET"
+  },
+  "getApiPlayerLauncherMapsMapIdBlobsHash": {
+    "path": "/api/player-launcher/maps/{mapId}/blobs/{hash}",
+    "method": "GET"
+  },
+  "getApiPlayerLauncherMapsMapIdDescriptor": {
+    "path": "/api/player-launcher/maps/{mapId}/descriptor",
+    "method": "GET"
+  },
+  "getApiPlayerLauncherMapsMapIdDownloadPlan": {
+    "path": "/api/player-launcher/maps/{mapId}/download-plan",
     "method": "GET"
   },
   "getApiPlayLibrary": {
@@ -416,6 +440,10 @@ export const apiOperations = {
   },
   "patchApiPlayAdminPermissionGroupsId": {
     "path": "/api/play-admin/permission-groups/{id}",
+    "method": "PATCH"
+  },
+  "patchApiPlayAdminPlayerLauncherAccess": {
+    "path": "/api/play-admin/player-launcher-access",
     "method": "PATCH"
   },
   "patchApiPlayAdminPlayersSubjectId": {
@@ -1523,6 +1551,18 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayAdminPermissionGroupsRaw(...init));
   }
 
+  getApiPlayAdminPlayerLauncherAccessRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["GET"]>
+  ) {
+    return this.paths["/api/play-admin/player-launcher-access"].GET(...init);
+  }
+
+  getApiPlayAdminPlayerLauncherAccess(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayAdminPlayerLauncherAccessRaw(...init));
+  }
+
   getApiPlayAdminPlayersRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players"]["GET"]>
   ) {
@@ -1677,6 +1717,66 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/player-internal/revocations"]["GET"]>
   ) {
     return this.unwrap(this.getApiPlayerInternalRevocationsRaw(...init));
+  }
+
+  getApiPlayerLauncherBootstrapRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/bootstrap"]["GET"]>
+  ) {
+    return this.paths["/api/player-launcher/bootstrap"].GET(...init);
+  }
+
+  getApiPlayerLauncherBootstrap(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/bootstrap"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLauncherBootstrapRaw(...init));
+  }
+
+  getApiPlayerLauncherMapsRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps"]["GET"]>
+  ) {
+    return this.paths["/api/player-launcher/maps"].GET(...init);
+  }
+
+  getApiPlayerLauncherMaps(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLauncherMapsRaw(...init));
+  }
+
+  getApiPlayerLauncherMapsMapIdBlobsHashRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/blobs/{hash}"]["GET"]>
+  ) {
+    return this.paths["/api/player-launcher/maps/{mapId}/blobs/{hash}"].GET(...init);
+  }
+
+  getApiPlayerLauncherMapsMapIdBlobsHash(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/blobs/{hash}"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLauncherMapsMapIdBlobsHashRaw(...init));
+  }
+
+  getApiPlayerLauncherMapsMapIdDescriptorRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/descriptor"]["GET"]>
+  ) {
+    return this.paths["/api/player-launcher/maps/{mapId}/descriptor"].GET(...init);
+  }
+
+  getApiPlayerLauncherMapsMapIdDescriptor(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/descriptor"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLauncherMapsMapIdDescriptorRaw(...init));
+  }
+
+  getApiPlayerLauncherMapsMapIdDownloadPlanRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/download-plan"]["GET"]>
+  ) {
+    return this.paths["/api/player-launcher/maps/{mapId}/download-plan"].GET(...init);
+  }
+
+  getApiPlayerLauncherMapsMapIdDownloadPlan(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/download-plan"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLauncherMapsMapIdDownloadPlanRaw(...init));
   }
 
   getApiPlayLibraryRaw(
@@ -1977,6 +2077,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/permission-groups/{id}"]["PATCH"]>
   ) {
     return this.unwrap(this.patchApiPlayAdminPermissionGroupsIdRaw(...init));
+  }
+
+  patchApiPlayAdminPlayerLauncherAccessRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["PATCH"]>
+  ) {
+    return this.paths["/api/play-admin/player-launcher-access"].PATCH(...init);
+  }
+
+  patchApiPlayAdminPlayerLauncherAccess(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["PATCH"]>
+  ) {
+    return this.unwrap(this.patchApiPlayAdminPlayerLauncherAccessRaw(...init));
   }
 
   patchApiPlayAdminPlayersSubjectIdRaw(

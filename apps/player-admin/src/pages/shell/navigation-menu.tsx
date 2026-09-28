@@ -20,7 +20,7 @@ const groups: Record<MenuGroup, readonly PlayerAdminView[]> = {
   'player-center': ['players', 'online-sessions'],
   'security-center': ['account-bans', 'identity-bans', 'security'],
   'creator-center': ['creator-access', 'creator-tokens'],
-  'play-center': ['play-maps', 'play-resource-cache'],
+  'play-center': ['play-maps', 'play-resource-cache', 'play-launcher-access'],
   'container-center': [
     'container-play',
     'container-creator',
@@ -41,6 +41,7 @@ const labels: Record<PlayerAdminView, string> = {
   'permission-groups': '权限组',
   'play-maps': '游玩地图',
   'play-resource-cache': '本地资源加速',
+  'play-launcher-access': '玩家启动器访问',
   'container-play': '游玩端',
   'container-creator': '创作端',
   'container-profiles': '容器配置',

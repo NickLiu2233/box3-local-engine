@@ -7,6 +7,17 @@ const object = (properties, required = Object.keys(properties)) => ({
 })
 
 const contracts = {
+  'get /api/health-check': object({ status: { type: 'string' }, runtime: { type: 'string' } }, ['status']),
+  'get /api/player-launcher/bootstrap': ref('PlayerLauncherBootstrap'),
+  'get /api/player-launcher/maps': object({ worlds: array('PlayerLauncherWorld') }),
+  'get /api/player-launcher/maps/{mapId}/descriptor': ref('PlayerLauncherPackageDescriptor'),
+  'get /api/player-launcher/maps/{mapId}/download-plan': ref('PlayerLauncherDownloadPlan'),
+  'post /api/auth/login': object({ player: ref('PlayerLauncherSessionPlayer') }),
+  'get /api/auth/session': object({
+    player: { oneOf: [ref('PlayerLauncherSessionPlayer'), { type: 'null' }] },
+    registrationEnabled: { type: 'boolean' },
+  }, ['player']),
+  'post /api/auth/logout': object({ loggedOut: { type: 'boolean' } }),
   'get /api/play-admin/activity': object({
     events: array('PlayerAdminActivity'),
     total: { type: 'integer' },
@@ -35,6 +46,9 @@ const contracts = {
 }
 
 const requestContracts = {
+  'post /api/auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
+  'post /api/auth/logout': object({}),
+  'post /api/player-auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/play-admin/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/play-admin/admins': object({
     username: { type: 'string' },
@@ -66,6 +80,22 @@ export function applyOperationContracts(paths) {
     operation.requestBody = {
       required: true,
       content: { 'application/json': { schema } },
+    }
+  }
+  const blobDownload = paths['/api/player-launcher/maps/{mapId}/blobs/{hash}']?.get
+  if (blobDownload?.responses?.['200']) {
+    blobDownload.parameters = [
+      ...(blobDownload.parameters || []),
+      {
+        name: 'Range',
+        in: 'header',
+        required: false,
+        description: '续传公开地图资源时使用的字节起始偏移。',
+        schema: { type: 'string', pattern: '^bytes=[0-9]+-$' },
+      },
+    ]
+    blobDownload.responses['200'].content = {
+      'application/octet-stream': { schema: { type: 'string', format: 'binary' } },
     }
   }
 }

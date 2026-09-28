@@ -73,6 +73,11 @@ export const playLibraryAdminRoute = playerAdminRoute({
         ? 'play-resource-cache.view'
         : 'play-resource-cache.manage'
     }
+    if (section === 'player-launcher-access') {
+      return ['GET', 'HEAD'].includes(req.method || 'GET')
+        ? 'play-launcher-resources.view'
+        : 'play-launcher-resources.manage'
+    }
     return ['GET', 'HEAD'].includes(req.method || 'GET')
       ? 'play-maps.view'
       : 'play-maps.manage'
@@ -87,6 +92,8 @@ export const playLibraryAdminRoute = playerAdminRoute({
       ? '/api/play-admin/worlds/status'
       : section === 'resource-cache'
         ? '/api/play-admin/resource-cache'
+      : section === 'player-launcher-access'
+        ? '/api/play-admin/player-launcher-access'
       : section === 'import-resource'
         ? '/api/play-admin/import-resource'
         : '/api/play-admin/import';

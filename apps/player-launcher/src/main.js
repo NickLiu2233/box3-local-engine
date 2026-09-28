@@ -1,5 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import brandIcon from '../../deployment-manager/src-tauri/icons/icon.png'
+import { createPlayerApi } from './services/player-api.js'
+import { bindEvents } from './events.js'
+import { renderPackagesPage, renderServerPage } from './views/server-pages.js'
 import './styles.css'
 
 const app = document.querySelector('#app')
@@ -12,6 +16,14 @@ const state = {
   endpointInput: '',
   editingServerId: '',
   serverNameInput: '',
+  serverBootstrap: null,
+  player: null,
+  worlds: [],
+  packageStates: {},
+  preparingMapId: '',
+  prepareProgress: null,
+  authError: '',
+  mapsError: '',
   confirmRemoveServerId: '',
   error: '',
   notice: '',
@@ -20,11 +32,56 @@ const state = {
 }
 
 const previewServers = []
+const remoteApi = createPlayerApi({ invoke, isNative: () => Boolean(window.__TAURI_INTERNALS__) })
+
+async function refreshPlayerSession(server = selectedServer()) {
+  state.player = null
+  state.worlds = []
+  state.authError = ''
+  state.mapsError = ''
+  if (!server || !state.serverBootstrap?.resourceAccessEnabled) return
+  if (state.serverBootstrap.loginRequired) {
+    let result
+    try {
+      result = await remoteApi.readSession(server.endpoint, state.serverBootstrap)
+    } catch (error) {
+      state.authError = error.message || '无法连接玩家账号服务。'
+      return
+    }
+    if (!result.response.ok) {
+      state.authError = '无法检查当前服务器的登录状态，请稍后重试。'
+      return
+    }
+    state.player = result.data?.player || null
+    if (!state.player) return
+  }
+  try {
+    const { data, response } = await remoteApi.getMaps(server.endpoint)
+    if (response.status === 401) {
+      state.player = null
+      state.worlds = []
+      state.authError = '服务器未接受当前登录状态，请重新登录。'
+      return
+    }
+    if (response.status === 403) {
+      state.mapsError = '服务器未开放玩家启动器资源访问。'
+      return
+    }
+    if (!response.ok) throw new Error(data?.message || `读取可玩地图失败（HTTP ${response.status}）`)
+    state.worlds = Array.isArray(data?.worlds) ? data.worlds : []
+    state.mapsError = ''
+  } catch (error) {
+    state.mapsError = error.message || '读取可玩地图失败。'
+  }
+}
 
 async function playerInvoke(command, payload = {}) {
-  if (window.__TAURI_INTERNALS__) return invoke(command, payload)
-  if (command === 'launcher_state') {
-    return { servers: previewServers, selectedServerId: previewServers[0]?.id || null }
+  if (command === 'get_server_bootstrap') {
+    try {
+      return await remoteApi.readBootstrap(String(payload.endpoint || ''))
+    } catch (error) {
+      throw new Error(error.message || '无法读取服务器开放状态（浏览器预览可能受跨域限制）')
+    }
   }
   if (command === 'add_server') {
     const raw = String(payload.endpoint || '').trim().replace(/\/$/, '')
@@ -41,25 +98,21 @@ async function playerInvoke(command, payload = {}) {
       parsed.protocol = 'http:'
       endpoint = parsed.toString().replace(/\/$/, '')
     }
-    const healthUrl = new URL(`${parsed.pathname.replace(/\/$/, '')}/api/health-check`, parsed.origin)
-    let response
-    try {
-      response = await fetch(healthUrl, { signal: AbortSignal.timeout(6000) })
-    } catch {
-      throw new Error('无法连接到游玩端服务器，请检查 IP/域名、端口和网络后重试（浏览器预览可能受跨域限制）')
+    try { await remoteApi.verifyServer(endpoint) } catch (error) {
+      throw new Error(error.message || '无法连接到游玩端服务器，请检查 IP/域名、端口和网络后重试')
     }
-    if (!response.ok) throw new Error(`服务器已响应（HTTP ${response.status}），但没有通过 BOX3 游玩端检查`)
-    let health
-    try { health = await response.json() } catch { throw new Error('服务器可连接，但未返回 BOX3 游玩端检查信息') }
-    if (health?.status !== 'ok' || (health.runtime && health.runtime !== 'ready')) {
-      throw new Error('游玩端尚未就绪，请稍后重试')
-    }
+    if (window.__TAURI_INTERNALS__) return invoke(command, { endpoint })
     const host = parsed.host
     const server = { id: endpoint.toLowerCase(), endpoint, name: host }
     const index = previewServers.findIndex((item) => item.id === server.id)
     if (index >= 0) previewServers.splice(index, 1)
     previewServers.unshift(server)
     return server
+  }
+  if (command === 'clear_player_session' && !window.__TAURI_INTERNALS__) return undefined
+  if (window.__TAURI_INTERNALS__) return invoke(command, payload)
+  if (command === 'launcher_state') {
+    return { servers: previewServers, selectedServerId: previewServers[0]?.id || null }
   }
   if (command === 'select_server') return { servers: previewServers, selectedServerId: payload.serverId }
   if (command === 'rename_server') {
@@ -150,58 +203,7 @@ function serverRows() {
 }
 
 function serverPage() {
-  if (state.page === 'home') {
-    const hasServers = state.servers.length > 0
-    return `
-      <section class="page welcome-page">
-        <h1>准备好开始游玩了吗？</h1>
-        <p>${hasServers ? '你已添加服务器，从左侧选择一个服务器开始游玩。' : '添加一个私服地址。启动器会为你找到可玩的地图，并在进入前自动准备好所需资源。'}</p>
-        ${hasServers ? '' : `<button class="button primary" data-nav="add-server">${icon('plus')}添加服务器</button>`}
-      </section>`
-  }
-
-  if (state.page === 'add-server') return `
-    <section class="page narrow">
-      <div class="page-heading"><h1>添加服务器</h1><p>输入服主提供的游玩地址。添加后，启动器会显示该服务器开放的地图。</p></div>
-      <form id="server-form" class="surface add-form">
-        <label for="server-endpoint">服务器地址</label>
-        <div class="input-row"><span class="input-icon">${icon('globe')}</span><input id="server-endpoint" name="endpoint" value="${escapeHtml(state.endpointInput)}" placeholder="请输入游玩端服务器 IP 或域名" autocomplete="url" required autofocus ${state.busy ? 'disabled' : ''} /></div>
-        <p class="field-help">支持域名、IP 和端口；域名默认 HTTPS，本机地址默认 HTTP。</p>
-        <div class="form-actions"><button type="button" class="button secondary" data-nav="home">取消</button><button class="button primary" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在检查服务器…' : '添加服务器'}${icon('arrow')}</button></div>
-      </form>
-    </section>`
-
-  const server = selectedServer()
-  if (!server) return `
-    <section class="page welcome-page">
-      <h1>准备好开始游玩了吗？</h1>
-      <p>从左侧选择一个服务器，或添加新的服务器开始游玩。</p>
-    </section>`
-
-  const editingName = state.editingServerId === server.id
-
-  return `
-    <section class="page">
-      <div class="page-heading server-heading">
-        ${editingName ? `
-          <form id="server-name-form" class="server-name-edit">
-            <input id="server-name-input" name="name" value="${escapeHtml(state.serverNameInput)}" maxlength="40" aria-label="服务器昵称" required autofocus ${state.busy ? 'disabled' : ''} />
-            <button class="title-icon-button save-name" type="submit" title="保存昵称" aria-label="保存昵称" ${state.busy ? 'disabled' : ''}>${icon('check')}</button>
-            <button class="title-icon-button" type="button" data-action="cancel-server-name" title="取消编辑" aria-label="取消编辑">${icon('close')}</button>
-          </form>` : `
-          <div class="server-title-row">
-            <h1>${escapeHtml(server.name || server.endpoint)}</h1>
-            <button class="title-icon-button" type="button" data-action="edit-server-name" title="编辑服务器昵称" aria-label="编辑服务器昵称">${icon('edit')}</button>
-          </div>`}
-        <p>${escapeHtml(server.endpoint)}</p>
-      </div>
-      <div class="section-heading"><h2>可游玩的地图</h2><button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>刷新列表</button></div>
-      <div class="empty-maps surface">
-        <div class="empty-map-icon">${icon('packages')}</div>
-        <h3>地图列表尚未加载</h3>
-        <p>这个服务器的在线地图发现接口还未接入启动器。连接功能完成后，地图会显示在这里。</p>
-      </div>
-    </section>`
+  return renderServerPage(state, selectedServer(), { icon, escapeHtml })
 }
 
 function removeServerDialog() {
@@ -214,20 +216,6 @@ function removeServerDialog() {
         <div class="confirm-actions"><button class="button" type="button" data-cancel-remove-server autofocus>取消</button><button class="button danger" type="button" data-confirm-remove-server ${state.busy ? 'disabled' : ''}>确认移除</button></div>
       </section>
     </div>`
-}
-
-function packagesPage() {
-  return `
-    <section class="page">
-      <div class="page-heading"><span class="eyebrow">本机资源</span><h1>本地资源包</h1><p>可导入服主提供的签名资源包。连接对应服务器后，启动器会自动复用本地资源。</p></div>
-      <div class="surface import-card">
-        <div class="import-icon">${icon('packages')}</div>
-        <div class="import-copy"><h2>导入资源包</h2><p>资源包必须由服务器签名。启动器会校验内容后保存到本地。</p></div>
-        <button class="button primary" data-action="import">选择资源包</button>
-      </div>
-      <div class="section-heading"><div><h2>已准备的地图资源</h2><p>地图资源安装和完整性状态会显示在这里。</p></div></div>
-      <div class="empty-maps surface compact"><div class="empty-map-icon">${icon('packages')}</div><p>还没有导入或下载地图资源。</p></div>
-    </section>`
 }
 
 function render() {
@@ -243,174 +231,28 @@ function render() {
       </aside>
       <section class="main-area">
         ${(state.error || state.notice) ? `<div class="toast ${state.error ? 'danger' : 'success'}" role="status"><span>${state.error ? '操作未完成' : '操作完成'}</span><small>${escapeHtml(state.error || state.notice)}</small><button type="button" data-dismiss-feedback aria-label="关闭提示">×</button></div>` : ''}
-        <main class="content ${state.page === 'home' || (state.page === 'servers' && !selectedServer()) ? 'welcome-content' : ''} ${state.page === 'add-server' ? 'add-server-content' : ''}">${state.page === 'packages' ? packagesPage() : serverPage()}</main>
+        <main class="content ${state.page === 'home' || (state.page === 'servers' && !selectedServer()) ? 'welcome-content' : ''} ${state.page === 'add-server' ? 'add-server-content' : ''}">${state.page === 'packages' ? renderPackagesPage(icon) : serverPage()}</main>
       </section>
     </main>`
     + removeServerDialog()
-  bindEvents()
-}
-
-function bindEvents() {
-  document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', () => {
-    state.error = ''
-    state.notice = ''
-    render()
-  })
-  document.querySelector('#theme-trigger')?.addEventListener('click', () => {
-    state.themeMenuOpen = !state.themeMenuOpen
-    render()
-  })
-  document.querySelectorAll('[data-theme-choice]').forEach((node) => node.addEventListener('click', () => {
-    applyTheme(node.dataset.themeChoice)
-    state.themeMenuOpen = false
-    render()
-  }))
-  document.querySelectorAll('[data-nav]').forEach((node) => node.addEventListener('click', () => {
-    state.page = node.dataset.nav || 'servers'
-    state.editingServerId = ''
-    state.serverNameInput = ''
-    state.error = ''
-    state.notice = ''
-    render()
-  }))
-  document.querySelectorAll('[data-select-server]').forEach((node) => node.addEventListener('click', async (event) => {
-    if (event.target.closest('[data-remove-server]')) return
-    const serverId = node.dataset.selectServer || ''
-    state.selectedId = serverId
-    state.page = 'servers'
-    state.editingServerId = ''
-    state.serverNameInput = ''
-    state.error = ''
-    state.notice = ''
-    render()
-    try {
-      await playerInvoke('select_server', { serverId })
-    } catch (error) {
-      state.error = String(error)
-      render()
-    }
-  }))
-  document.querySelectorAll('[data-remove-server]').forEach((node) => node.addEventListener('click', (event) => {
-    event.stopPropagation()
-    state.confirmRemoveServerId = node.dataset.removeServer || ''
-    state.error = ''
-    state.notice = ''
-    render()
-    document.querySelector('[data-cancel-remove-server]')?.focus()
-  }))
-  document.querySelector('[data-cancel-remove-server]')?.addEventListener('click', () => {
-    state.confirmRemoveServerId = ''
-    render()
-  })
-  document.querySelector('[data-remove-server-dialog-dismiss]')?.addEventListener('click', (event) => {
-    if (event.target !== event.currentTarget) return
-    state.confirmRemoveServerId = ''
-    render()
-  })
-  document.querySelector('.confirm-dialog')?.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || state.busy) return
-    state.confirmRemoveServerId = ''
-    render()
-  })
-  document.querySelector('[data-confirm-remove-server]')?.addEventListener('click', async () => {
-    const serverId = state.confirmRemoveServerId
-    if (!serverId || state.busy) return
-    state.busy = true
-    state.error = ''
-    state.notice = ''
-    render()
-    try {
-      const result = await playerInvoke('remove_server', { serverId })
-      state.servers = result.servers || []
-      state.selectedId = result.selectedServerId || ''
-      state.page = 'home'
-      state.editingServerId = ''
-      state.serverNameInput = ''
-      state.confirmRemoveServerId = ''
-      state.notice = '服务器已从列表移除。'
-    } catch (error) {
-      state.error = String(error)
-      state.confirmRemoveServerId = ''
-    } finally {
-      state.busy = false
-      render()
-    }
-  })
-  document.querySelector('[data-action="edit-server-name"]')?.addEventListener('click', () => {
-    const server = selectedServer()
-    if (!server) return
-    state.editingServerId = server.id
-    state.serverNameInput = server.name || server.endpoint
-    state.error = ''
-    state.notice = ''
-    render()
-    const input = document.querySelector('#server-name-input')
-    input?.focus()
-    input?.select()
-  })
-  document.querySelector('[data-action="cancel-server-name"]')?.addEventListener('click', () => {
-    state.editingServerId = ''
-    state.serverNameInput = ''
-    state.error = ''
-    render()
-  })
-  document.querySelector('#server-name-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault()
-    const name = String(new FormData(event.currentTarget).get('name') || '')
-    const serverId = state.editingServerId
-    state.serverNameInput = name
-    state.busy = true
-    state.error = ''
-    state.notice = ''
-    render()
-    try {
-      const updated = await playerInvoke('rename_server', { serverId, name })
-      state.servers = state.servers.map((server) => server.id === updated.id ? updated : server)
-      state.selectedId = updated.id
-      state.editingServerId = ''
-      state.serverNameInput = ''
-      state.notice = '服务器备注已更新。'
-    } catch (error) {
-      state.error = String(error)
-    } finally {
-      state.busy = false
-      render()
-    }
-  })
-  document.querySelector('#server-form')?.addEventListener('submit', async (event) => {
-    event.preventDefault()
-    const endpoint = new FormData(event.currentTarget).get('endpoint')
-    state.endpointInput = String(endpoint || '')
-    state.busy = true
-    state.error = ''
-    state.notice = ''
-    render()
-    try {
-      const server = await playerInvoke('add_server', { endpoint })
-      state.servers = [server, ...state.servers.filter((item) => item.id !== server.id)]
-      state.selectedId = server.id
-      state.page = 'servers'
-      state.endpointInput = ''
-      state.notice = '服务器已添加。地图列表准备接入后，就可以从这里开始游玩。'
-    } catch (error) {
-      state.error = String(error)
-      state.page = 'add-server'
-    } finally {
-      state.busy = false
-      render()
-    }
-  })
-  document.querySelector('[data-action="discover"]')?.addEventListener('click', () => {
-    state.notice = '地图发现协议尚未接入。启动器只会列出服务器明确开放给玩家启动器的地图。'
-    render()
-  })
-  document.querySelector('[data-action="import"]')?.addEventListener('click', () => {
-    state.notice = '本地资源包导入器将在签名描述符协议接入后启用。'
-    render()
-  })
+  bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, applyTheme, render })
 }
 
 async function bootstrap() {
+  if (window.__TAURI_INTERNALS__) {
+    try {
+      await listen('box-player-map-download-progress', ({ payload }) => {
+        const progress = state.prepareProgress
+        if (!progress || payload.hash !== progress.currentHash) return
+        progress.currentBytes = payload.currentBytes
+        progress.receivedBytes = Math.min(
+          progress.totalBytes,
+          (progress.completedBytes || 0) + Math.max(0, payload.currentBytes - (progress.resumeFrom || 0)),
+        )
+        render()
+      })
+    } catch { /* Progress events are optional; the transfer still completes safely. */ }
+  }
   try {
     const launcher = await playerInvoke('launcher_state')
     state.servers = launcher.servers || []

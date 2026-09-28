@@ -81,6 +81,7 @@ const METHOD_OVERRIDES = new Map([
 ])
 const QUERY_PARAMETER_OVERRIDES = new Map([
   ['/api/creator-models', ['modelType', 'mapId', 'creativeMode', 'modelName']],
+  ['/api/player-launcher/maps/{mapId}/blobs/{hash}', ['digest', 'ticket']],
 ])
 
 function routeFiles(directory) {

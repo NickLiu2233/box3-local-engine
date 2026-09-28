@@ -12,6 +12,96 @@ export const localEngineSchemas = {
       details: { type: 'array', items: {} },
     },
   },
+  PlayerLauncherBootstrap: {
+    type: 'object',
+    required: ['protocolVersion', 'serverName', 'resourceAccessEnabled', 'loginRequired', 'loginApiUrl', 'signingKey'],
+    properties: {
+      protocolVersion: { type: 'integer', enum: [1] },
+      serverName: string,
+      resourceAccessEnabled: { type: 'boolean' },
+      loginRequired: { type: 'boolean' },
+      loginApiUrl: string,
+      signingKey: { oneOf: [{ $ref: '#/components/schemas/PlayerLauncherSigningKey' }, { type: 'null' }] },
+    },
+  },
+  PlayerLauncherSigningKey: {
+    type: 'object',
+    required: ['keyId', 'publicKey'],
+    properties: {
+      keyId: string,
+      publicKey: { type: 'object', additionalProperties: { type: 'string' } },
+    },
+  },
+  PlayerLauncherWorld: {
+    type: 'object',
+    required: ['id', 'permanentMapId', 'publicId', 'name', 'author', 'description', 'version'],
+    properties: {
+      id: string,
+      permanentMapId: string,
+      publicId: string,
+      name: string,
+      author: string,
+      description: string,
+      cover: optionalString,
+      loadingCover: optionalString,
+      version: string,
+    },
+  },
+  PlayerLauncherPackageAsset: {
+    type: 'object',
+    required: ['hash', 'size', 'kind', 'contentType'],
+    properties: {
+      hash: string,
+      size: { type: 'integer', minimum: 0 },
+      kind: { type: 'string', enum: ['static'] },
+      contentType: { type: 'string', enum: ['application/octet-stream'] },
+    },
+  },
+  PlayerLauncherPackageDescriptor: {
+    type: 'object',
+    required: ['formatVersion', 'permanentMapId', 'accessId', 'releaseVersion', 'manifestDigest', 'required', 'optional', 'signature'],
+    properties: {
+      formatVersion: { type: 'integer', enum: [1] },
+      permanentMapId: string,
+      accessId: string,
+      releaseVersion: string,
+      manifestDigest: string,
+      required: { type: 'array', items: { $ref: '#/components/schemas/PlayerLauncherPackageAsset' } },
+      optional: { type: 'array', items: { $ref: '#/components/schemas/PlayerLauncherPackageAsset' } },
+      signature: {
+        type: 'object',
+        required: ['algorithm', 'keyId', 'publicKey', 'value'],
+        properties: {
+          algorithm: { type: 'string', enum: ['ES256'] },
+          keyId: string,
+          publicKey: { type: 'object', additionalProperties: { type: 'string' } },
+          value: string,
+        },
+      },
+    },
+  },
+  PlayerLauncherDownloadPlan: {
+    type: 'object',
+    required: ['permanentMapId', 'manifestDigest', 'ticket', 'expiresAt'],
+    properties: {
+      permanentMapId: string,
+      manifestDigest: string,
+      ticket: string,
+      expiresAt: { type: 'integer' },
+    },
+  },
+  PlayerLauncherSessionPlayer: {
+    type: 'object',
+    required: ['subjectId', 'username', 'displayName', 'role', 'status'],
+    properties: {
+      subjectId: string,
+      username: string,
+      displayName: string,
+      role: string,
+      status: string,
+      avatarSkinId: optionalString,
+    },
+  },
   PlayerAdminActor: {
     type: 'object',
     required: ['displayName', 'role', 'credential', 'permissions'],
@@ -255,4 +345,3 @@ export const localEngineSchemas = {
     properties: { id: string, bytes: { type: 'number' }, importedAt: string },
   },
 }
-

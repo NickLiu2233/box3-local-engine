@@ -620,6 +620,9 @@ importers:
 
   ../../apps/player-launcher:
     dependencies:
+      '@box/apis':
+        specifier: workspace:0.2.0
+        version: link:../../internals/apis
       '@tauri-apps/api':
         specifier: ^2.12.0
         version: 2.12.0
@@ -29322,7 +29325,7 @@ snapshots:
       postcss: 8.5.23
       react: 19.2.1
       react-dom: 19.2.1(react@19.2.1)
-      styled-jsx: 5.1.6(@babel/core@7.17.8)(react@19.2.1)
+      styled-jsx: 5.1.6(@babel/core@7.28.5)(react@19.2.1)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.24
       '@next/swc-darwin-x64': 15.5.24

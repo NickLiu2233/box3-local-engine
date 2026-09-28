@@ -129,6 +129,7 @@
 | `PATCH/DELETE`          | `/library/worlds/:id`            | `play-maps.manage`                 | 设置、开放或删除游玩地图                      |
 | `GET`                   | `/library/world-status`          | `play-maps.view`                   | 查询游玩地图资源状态                          |
 | `GET/PATCH`             | `/library/resource-cache`        | `play-resource-cache.view/manage`  | 查询或开关服务器级本地资源加速                |
+| `GET/PATCH`             | `/library/player-launcher-access` | `play-launcher-resources.view/manage` | 查询或开关 BOX3 Player 在线发现与资源访问   |
 | `GET/POST/DELETE`       | `/library/import`                | `play-maps.view/manage`            | 预览、确认导入或取消 `.boxplay` 审查          |
 
 `/library/*` 由 Player Service 先完成后台身份与能力检查，再代理到 Play 管理服务；浏览器不直接持有 Play 内部管理凭据。`/containers` 的 `POST` 使用 `action=restart|destroy` 时返回异步接受或无内容响应；保存配置时返回保存后的 profile。

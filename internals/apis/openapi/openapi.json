@@ -310,7 +310,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                    }
+                  }
                 }
               }
             }
@@ -327,12 +334,23 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
@@ -363,7 +381,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "loggedOut"
+                  ],
+                  "properties": {
+                    "loggedOut": {
+                      "type": "boolean"
+                    }
+                  }
                 }
               }
             }
@@ -380,12 +405,13 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [],
+                "properties": {}
               }
             }
           },
@@ -469,7 +495,24 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "registrationEnabled": {
+                      "type": "boolean"
+                    }
+                  }
                 }
               }
             }
@@ -2677,7 +2720,17 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "status"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "runtime": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
             }
@@ -6853,6 +6906,106 @@
         ]
       }
     },
+    "/api/play-admin/player-launcher-access": {
+      "get": {
+        "operationId": "getApiPlayAdminPlayerLauncherAccess",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      },
+      "patch": {
+        "operationId": "patchApiPlayAdminPlayerLauncherAccess",
+        "summary": "更新接口数据",
+        "description": "此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“更新接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
     "/api/play-admin/players": {
       "get": {
         "operationId": "getApiPlayAdminPlayers",
@@ -8450,12 +8603,23 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
@@ -8993,6 +9157,285 @@
             }
           },
           "description": "执行“签发运行时玩家身份”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-launcher/bootstrap": {
+      "get": {
+        "operationId": "getApiPlayerLauncherBootstrap",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "引擎公共接口"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerLauncherBootstrap"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-launcher/maps": {
+      "get": {
+        "operationId": "getApiPlayerLauncherMaps",
+        "summary": "查询工程地图",
+        "description": "此操作用于“查询工程地图”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "引擎公共接口"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询工程地图”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "worlds"
+                  ],
+                  "properties": {
+                    "worlds": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PlayerLauncherWorld"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-launcher/maps/{mapId}/blobs/{hash}": {
+      "get": {
+        "operationId": "getApiPlayerLauncherMapsMapIdBlobsHash",
+        "summary": "查询二进制资源",
+        "description": "此操作用于“查询二进制资源”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "引擎公共接口"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [
+          {
+            "name": "mapId",
+            "in": "path",
+            "required": true,
+            "description": "地图 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hash",
+            "in": "path",
+            "required": true,
+            "description": "内容寻址资源的哈希值。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "digest",
+            "in": "query",
+            "required": false,
+            "description": "接口参数：digest。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ticket",
+            "in": "query",
+            "required": false,
+            "description": "接口参数：ticket。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "description": "续传公开地图资源时使用的字节起始偏移。",
+            "schema": {
+              "type": "string",
+              "pattern": "^bytes=[0-9]+-$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询二进制资源”的处理结果。",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-launcher/maps/{mapId}/descriptor": {
+      "get": {
+        "operationId": "getApiPlayerLauncherMapsMapIdDescriptor",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "引擎公共接口"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [
+          {
+            "name": "mapId",
+            "in": "path",
+            "required": true,
+            "description": "地图 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerLauncherPackageDescriptor"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-launcher/maps/{mapId}/download-plan": {
+      "get": {
+        "operationId": "getApiPlayerLauncherMapsMapIdDownloadPlan",
+        "summary": "下载接口数据",
+        "description": "此操作用于“下载接口数据”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "引擎公共接口"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [
+          {
+            "name": "mapId",
+            "in": "path",
+            "required": true,
+            "description": "地图 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“下载接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerLauncherDownloadPlan"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         },
         "x-box-services": [
           "engine-web"
@@ -10134,6 +10577,263 @@
           "details": {
             "type": "array",
             "items": {}
+          }
+        }
+      },
+      "PlayerLauncherBootstrap": {
+        "type": "object",
+        "required": [
+          "protocolVersion",
+          "serverName",
+          "resourceAccessEnabled",
+          "loginRequired",
+          "loginApiUrl",
+          "signingKey"
+        ],
+        "properties": {
+          "protocolVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "serverName": {
+            "type": "string"
+          },
+          "resourceAccessEnabled": {
+            "type": "boolean"
+          },
+          "loginRequired": {
+            "type": "boolean"
+          },
+          "loginApiUrl": {
+            "type": "string"
+          },
+          "signingKey": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PlayerLauncherSigningKey"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "PlayerLauncherSigningKey": {
+        "type": "object",
+        "required": [
+          "keyId",
+          "publicKey"
+        ],
+        "properties": {
+          "keyId": {
+            "type": "string"
+          },
+          "publicKey": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PlayerLauncherWorld": {
+        "type": "object",
+        "required": [
+          "id",
+          "permanentMapId",
+          "publicId",
+          "name",
+          "author",
+          "description",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "permanentMapId": {
+            "type": "string"
+          },
+          "publicId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "cover": {
+            "type": "string"
+          },
+          "loadingCover": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "PlayerLauncherPackageAsset": {
+        "type": "object",
+        "required": [
+          "hash",
+          "size",
+          "kind",
+          "contentType"
+        ],
+        "properties": {
+          "hash": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "static"
+            ]
+          },
+          "contentType": {
+            "type": "string",
+            "enum": [
+              "application/octet-stream"
+            ]
+          }
+        }
+      },
+      "PlayerLauncherPackageDescriptor": {
+        "type": "object",
+        "required": [
+          "formatVersion",
+          "permanentMapId",
+          "accessId",
+          "releaseVersion",
+          "manifestDigest",
+          "required",
+          "optional",
+          "signature"
+        ],
+        "properties": {
+          "formatVersion": {
+            "type": "integer",
+            "enum": [
+              1
+            ]
+          },
+          "permanentMapId": {
+            "type": "string"
+          },
+          "accessId": {
+            "type": "string"
+          },
+          "releaseVersion": {
+            "type": "string"
+          },
+          "manifestDigest": {
+            "type": "string"
+          },
+          "required": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerLauncherPackageAsset"
+            }
+          },
+          "optional": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlayerLauncherPackageAsset"
+            }
+          },
+          "signature": {
+            "type": "object",
+            "required": [
+              "algorithm",
+              "keyId",
+              "publicKey",
+              "value"
+            ],
+            "properties": {
+              "algorithm": {
+                "type": "string",
+                "enum": [
+                  "ES256"
+                ]
+              },
+              "keyId": {
+                "type": "string"
+              },
+              "publicKey": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "PlayerLauncherDownloadPlan": {
+        "type": "object",
+        "required": [
+          "permanentMapId",
+          "manifestDigest",
+          "ticket",
+          "expiresAt"
+        ],
+        "properties": {
+          "permanentMapId": {
+            "type": "string"
+          },
+          "manifestDigest": {
+            "type": "string"
+          },
+          "ticket": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "integer"
+          }
+        }
+      },
+      "PlayerLauncherSessionPlayer": {
+        "type": "object",
+        "required": [
+          "subjectId",
+          "username",
+          "displayName",
+          "role",
+          "status"
+        ],
+        "properties": {
+          "subjectId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "avatarSkinId": {
+            "type": "string"
           }
         }
       },
@@ -11304,6 +12004,15 @@
       "source": "apps/game/pages/api/play-admin/permission-groups/index.ts"
     },
     {
+      "path": "/api/play-admin/player-launcher-access",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-admin/player-launcher-access.ts"
+    },
+    {
       "path": "/api/play-admin/players/{subjectId}",
       "methods": [
         "GET",
@@ -11537,6 +12246,46 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/player-internal/runtime-identity.ts"
+    },
+    {
+      "path": "/api/player-launcher/bootstrap",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-launcher/bootstrap.ts"
+    },
+    {
+      "path": "/api/player-launcher/maps/{mapId}/blobs/{hash}",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-launcher/maps/[mapId]/blobs/[hash].ts"
+    },
+    {
+      "path": "/api/player-launcher/maps/{mapId}/descriptor",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-launcher/maps/[mapId]/descriptor.ts"
+    },
+    {
+      "path": "/api/player-launcher/maps/{mapId}/download-plan",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-launcher/maps/[mapId]/download-plan.ts"
+    },
+    {
+      "path": "/api/player-launcher/maps",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-launcher/maps.ts"
     },
     {
       "path": "/api/system/backups/{projectId}/{name}",

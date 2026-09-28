@@ -33,6 +33,7 @@ import { SelfPasswordDialog } from '../auth/self-password-dialog'
 import { OverviewPage } from '../dashboard/overview-page'
 import { PlayMapsPage } from '../maps/play-maps-page'
 import { PlayResourceCachePage } from '../maps/play-resource-cache-page'
+import { PlayLauncherAccessPage } from '../maps/play-launcher-access-page'
 import { SecurityActivityPage } from '../security/security-activity-page'
 import { IdentityBansPage } from '../security/identity-bans-page'
 import { AdminAccountsPage } from '../access/admin-accounts-page'
@@ -347,6 +348,8 @@ export default function PlayerAdminPage() {
   else if (view === 'play-maps') body = <PlayMapsPage canManage={can('play-maps.manage')} />
   else if (view === 'play-resource-cache')
     body = <PlayResourceCachePage canManage={can('play-resource-cache.manage')} />
+  else if (view === 'play-launcher-access')
+    body = <PlayLauncherAccessPage canManage={can('play-launcher-resources.manage')} />
   else if (view === 'container-play')
     body = <ContainerManagementPage mode="play" canManage={can('containers.manage')} />
   else if (view === 'container-creator')

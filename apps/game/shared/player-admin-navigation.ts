@@ -1,4 +1,4 @@
-import type { PlayerAdminCapability } from './player-admin-policy';
+import { roleHasPlayerAdminPermission, type PlayerAdminCapability } from './player-admin-policy';
 
 export const PLAYER_ADMIN_VIEWS = [
   'overview',
@@ -11,6 +11,7 @@ export const PLAYER_ADMIN_VIEWS = [
   'permission-groups',
   'play-maps',
   'play-resource-cache',
+  'play-launcher-access',
   'container-play',
   'container-creator',
   'container-profiles',
@@ -41,6 +42,7 @@ export const PLAYER_ADMIN_VIEW_REQUIREMENTS: Record<
   'permission-groups': 'owner',
   'play-maps': 'play-maps.view',
   'play-resource-cache': 'play-resource-cache.view',
+  'play-launcher-access': 'play-launcher-resources.view',
   'container-play': 'containers.view',
   'container-creator': 'containers.view',
   'container-profiles': 'containers.view',
@@ -59,7 +61,7 @@ export function canOpenPlayerAdminView(
   // delegable permission group.
   if (actor.role === 'owner' || actor.role === 'admin') return true;
   const requirement = PLAYER_ADMIN_VIEW_REQUIREMENTS[view];
-  return requirement !== 'owner' && actor.permissions.includes(requirement);
+  return requirement !== 'owner' && roleHasPlayerAdminPermission(actor.role, requirement, actor.permissions);
 }
 
 export function allowedPlayerAdminViews(actor: PlayerAdminNavigationActor | undefined) {

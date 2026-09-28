@@ -259,6 +259,10 @@ export declare const apiOperations: {
         readonly path: "/api/play-admin/permission-groups";
         readonly method: "GET";
     };
+    readonly getApiPlayAdminPlayerLauncherAccess: {
+        readonly path: "/api/play-admin/player-launcher-access";
+        readonly method: "GET";
+    };
     readonly getApiPlayAdminPlayers: {
         readonly path: "/api/play-admin/players";
         readonly method: "GET";
@@ -309,6 +313,26 @@ export declare const apiOperations: {
     };
     readonly getApiPlayerInternalRevocations: {
         readonly path: "/api/player-internal/revocations";
+        readonly method: "GET";
+    };
+    readonly getApiPlayerLauncherBootstrap: {
+        readonly path: "/api/player-launcher/bootstrap";
+        readonly method: "GET";
+    };
+    readonly getApiPlayerLauncherMaps: {
+        readonly path: "/api/player-launcher/maps";
+        readonly method: "GET";
+    };
+    readonly getApiPlayerLauncherMapsMapIdBlobsHash: {
+        readonly path: "/api/player-launcher/maps/{mapId}/blobs/{hash}";
+        readonly method: "GET";
+    };
+    readonly getApiPlayerLauncherMapsMapIdDescriptor: {
+        readonly path: "/api/player-launcher/maps/{mapId}/descriptor";
+        readonly method: "GET";
+    };
+    readonly getApiPlayerLauncherMapsMapIdDownloadPlan: {
+        readonly path: "/api/player-launcher/maps/{mapId}/download-plan";
         readonly method: "GET";
     };
     readonly getApiPlayLibrary: {
@@ -409,6 +433,10 @@ export declare const apiOperations: {
     };
     readonly patchApiPlayAdminPermissionGroupsId: {
         readonly path: "/api/play-admin/permission-groups/{id}";
+        readonly method: "PATCH";
+    };
+    readonly patchApiPlayAdminPlayerLauncherAccess: {
+        readonly path: "/api/play-admin/player-launcher-access";
         readonly method: "PATCH";
     };
     readonly patchApiPlayAdminPlayersSubjectId: {
@@ -3043,7 +3071,8 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"] | null;
+                        registrationEnabled?: boolean;
                     };
                 };
             };
@@ -3082,7 +3111,8 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"] | null;
+                            registrationEnabled?: boolean;
                         };
                     };
                 };
@@ -3111,7 +3141,8 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"] | null;
+                            registrationEnabled?: boolean;
                         };
                     };
                 };
@@ -3134,7 +3165,15 @@ export declare class ApiClient {
         [key: string]: unknown;
     }) | undefined, `${string}/${string}`>>;
     getApiAuthSession(...init: Parameters<PathBasedClient<paths>["/api/auth/session"]["GET"]>): Promise<{
-        [x: string]: unknown;
+        player: {
+            subjectId: string;
+            username: string;
+            displayName: string;
+            role: string;
+            status: string;
+            avatarSkinId?: string | undefined;
+        } | null;
+        registrationEnabled?: boolean | undefined;
     }>;
     getApiBackupsArchiveDownloadRaw(...init: Parameters<PathBasedClient<paths>["/api/backups/{archive}/download"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -5455,7 +5494,8 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        status: string;
+                        runtime?: string;
                     };
                 };
             };
@@ -5494,7 +5534,8 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            status: string;
+                            runtime?: string;
                         };
                     };
                 };
@@ -5523,7 +5564,8 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            status: string;
+                            runtime?: string;
                         };
                     };
                 };
@@ -5546,7 +5588,8 @@ export declare class ApiClient {
         [key: string]: unknown;
     }) | undefined, `${string}/${string}`>>;
     getApiHealthCheck(...init: Parameters<PathBasedClient<paths>["/api/health-check"]["GET"]>): Promise<{
-        [x: string]: unknown;
+        status: string;
+        runtime?: string | undefined;
     }>;
     getApiLocalBlobsHashRaw(...init: Parameters<PathBasedClient<paths>["/api/local/blobs/{hash}"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -8451,6 +8494,114 @@ export declare class ApiClient {
             createdAt?: string | undefined;
         }[];
     }>;
+    getApiPlayAdminPlayerLauncherAccessRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    getApiPlayAdminPlayerLauncherAccess(...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["GET"]>): Promise<{
+        [x: string]: unknown;
+    }>;
     getApiPlayAdminPlayersRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/players"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: {
@@ -9936,6 +10087,609 @@ export declare class ApiClient {
     }) | undefined, `${string}/${string}`>>;
     getApiPlayerInternalRevocations(...init: Parameters<PathBasedClient<paths>["/api/player-internal/revocations"]["GET"]>): Promise<{
         [x: string]: unknown;
+    }>;
+    getApiPlayerLauncherBootstrapRaw(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/bootstrap"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["PlayerLauncherBootstrap"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["PlayerLauncherBootstrap"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["PlayerLauncherBootstrap"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    getApiPlayerLauncherBootstrap(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/bootstrap"]["GET"]>): Promise<{
+        protocolVersion: 1;
+        serverName: string;
+        resourceAccessEnabled: boolean;
+        loginRequired: boolean;
+        loginApiUrl: string;
+        signingKey: {
+            keyId: string;
+            publicKey: {
+                [x: string]: string;
+            };
+        } | null;
+    }>;
+    getApiPlayerLauncherMapsRaw(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        worlds: import("./openapi").components["schemas"]["PlayerLauncherWorld"][];
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            worlds: import("./openapi").components["schemas"]["PlayerLauncherWorld"][];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            worlds: import("./openapi").components["schemas"]["PlayerLauncherWorld"][];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    getApiPlayerLauncherMaps(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps"]["GET"]>): Promise<{
+        worlds: {
+            id: string;
+            permanentMapId: string;
+            publicId: string;
+            name: string;
+            author: string;
+            description: string;
+            cover?: string | undefined;
+            loadingCover?: string | undefined;
+            version: string;
+        }[];
+    }>;
+    getApiPlayerLauncherMapsMapIdBlobsHashRaw(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/blobs/{hash}"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: {
+                digest?: string;
+                ticket?: string;
+            };
+            header?: {
+                Range?: string;
+            };
+            path: {
+                mapId: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params: {
+            query?: {
+                digest?: string;
+                ticket?: string;
+            };
+            header?: {
+                Range?: string;
+            };
+            path: {
+                mapId: string;
+                hash: string;
+            };
+            cookie?: never;
+        };
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: {
+                    digest?: string;
+                    ticket?: string;
+                };
+                header?: {
+                    Range?: string;
+                };
+                path: {
+                    mapId: string;
+                    hash: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: {
+                    digest?: string;
+                    ticket?: string;
+                };
+                header?: {
+                    Range?: string;
+                };
+                path: {
+                    mapId: string;
+                    hash: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    getApiPlayerLauncherMapsMapIdBlobsHash(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/blobs/{hash}"]["GET"]>): Promise<string>;
+    getApiPlayerLauncherMapsMapIdDescriptorRaw(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/descriptor"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mapId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["PlayerLauncherPackageDescriptor"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params: {
+            query?: never;
+            header?: never;
+            path: {
+                mapId: string;
+            };
+            cookie?: never;
+        };
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mapId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["PlayerLauncherPackageDescriptor"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mapId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["PlayerLauncherPackageDescriptor"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    getApiPlayerLauncherMapsMapIdDescriptor(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/descriptor"]["GET"]>): Promise<{
+        formatVersion: 1;
+        permanentMapId: string;
+        accessId: string;
+        releaseVersion: string;
+        manifestDigest: string;
+        required: {
+            hash: string;
+            size: number;
+            kind: "static";
+            contentType: "application/octet-stream";
+        }[];
+        optional: {
+            hash: string;
+            size: number;
+            kind: "static";
+            contentType: "application/octet-stream";
+        }[];
+        signature: {
+            algorithm: "ES256";
+            keyId: string;
+            publicKey: {
+                [x: string]: string;
+            };
+            value: string;
+        };
+    }>;
+    getApiPlayerLauncherMapsMapIdDownloadPlanRaw(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/download-plan"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mapId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["PlayerLauncherDownloadPlan"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params: {
+            query?: never;
+            header?: never;
+            path: {
+                mapId: string;
+            };
+            cookie?: never;
+        };
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mapId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["PlayerLauncherDownloadPlan"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    mapId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["PlayerLauncherDownloadPlan"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    getApiPlayerLauncherMapsMapIdDownloadPlan(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/download-plan"]["GET"]>): Promise<{
+        permanentMapId: string;
+        manifestDigest: string;
+        ticket: string;
+        expiresAt: number;
     }>;
     getApiPlayLibraryRaw(...init: Parameters<PathBasedClient<paths>["/api/play-library"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -12874,6 +13628,134 @@ export declare class ApiClient {
     patchApiPlayAdminPermissionGroupsId(...init: Parameters<PathBasedClient<paths>["/api/play-admin/permission-groups/{id}"]["PATCH"]>): Promise<{
         [x: string]: unknown;
     }>;
+    patchApiPlayAdminPlayerLauncherAccessRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: ({
+            [x: string]: unknown;
+        } & {}) | undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    patchApiPlayAdminPlayerLauncherAccess(...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["PATCH"]>): Promise<{
+        [x: string]: unknown;
+    }>;
     patchApiPlayAdminPlayersSubjectIdRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -13789,10 +14671,11 @@ export declare class ApiClient {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    username: string;
+                    password: string;
                 };
             };
         };
@@ -13803,7 +14686,7 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
                     };
                 };
             };
@@ -13816,7 +14699,7 @@ export declare class ApiClient {
                 };
             };
         };
-    }, ({
+    }, {
         params?: {
             query?: never;
             header?: never;
@@ -13824,9 +14707,10 @@ export declare class ApiClient {
             cookie?: never;
         } | undefined;
     } & {
-        body?: ({
-            [x: string]: unknown;
-        } & {}) | undefined;
+        body: {
+            username: string;
+            password: string;
+        } & {};
     } & {
         baseUrl?: string;
         querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
@@ -13836,10 +14720,11 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        username: string;
+                        password: string;
                     };
                 };
             };
@@ -13850,7 +14735,7 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
                         };
                     };
                 };
@@ -13871,10 +14756,11 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        username: string;
+                        password: string;
                     };
                 };
             };
@@ -13885,7 +14771,7 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
                         };
                     };
                 };
@@ -13904,11 +14790,16 @@ export declare class ApiClient {
         fetch?: ClientOptions["fetch"];
         headers?: import("openapi-fetch").HeadersOptions;
         middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body"> & {
-        [key: string]: unknown;
-    }) | undefined, `${string}/${string}`>>;
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     postApiAuthLogin(...init: Parameters<PathBasedClient<paths>["/api/auth/login"]["POST"]>): Promise<{
-        [x: string]: unknown;
+        player: {
+            subjectId: string;
+            username: string;
+            displayName: string;
+            role: string;
+            status: string;
+            avatarSkinId?: string | undefined;
+        };
     }>;
     postApiAuthLogoutRaw(...init: Parameters<PathBasedClient<paths>["/api/auth/logout"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -13917,11 +14808,9 @@ export declare class ApiClient {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": Record<string, never>;
             };
         };
         responses: {
@@ -13931,7 +14820,7 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        loggedOut: boolean;
                     };
                 };
             };
@@ -13944,7 +14833,7 @@ export declare class ApiClient {
                 };
             };
         };
-    }, ({
+    }, {
         params?: {
             query?: never;
             header?: never;
@@ -13952,9 +14841,9 @@ export declare class ApiClient {
             cookie?: never;
         } | undefined;
     } & {
-        body?: ({
-            [x: string]: unknown;
-        } & {}) | undefined;
+        body: {} & {
+            [x: string]: undefined;
+        };
     } & {
         baseUrl?: string;
         querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
@@ -13964,11 +14853,9 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
             responses: {
@@ -13978,7 +14865,7 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            loggedOut: boolean;
                         };
                     };
                 };
@@ -13999,11 +14886,9 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": Record<string, never>;
                 };
             };
             responses: {
@@ -14013,7 +14898,7 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            loggedOut: boolean;
                         };
                     };
                 };
@@ -14032,11 +14917,9 @@ export declare class ApiClient {
         fetch?: ClientOptions["fetch"];
         headers?: import("openapi-fetch").HeadersOptions;
         middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body"> & {
-        [key: string]: unknown;
-    }) | undefined, `${string}/${string}`>>;
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     postApiAuthLogout(...init: Parameters<PathBasedClient<paths>["/api/auth/logout"]["POST"]>): Promise<{
-        [x: string]: unknown;
+        loggedOut: boolean;
     }>;
     postApiAuthRegisterRaw(...init: Parameters<PathBasedClient<paths>["/api/auth/register"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -18998,10 +19881,11 @@ export declare class ApiClient {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    username: string;
+                    password: string;
                 };
             };
         };
@@ -19025,7 +19909,7 @@ export declare class ApiClient {
                 };
             };
         };
-    }, ({
+    }, {
         params?: {
             query?: never;
             header?: never;
@@ -19033,9 +19917,10 @@ export declare class ApiClient {
             cookie?: never;
         } | undefined;
     } & {
-        body?: ({
-            [x: string]: unknown;
-        } & {}) | undefined;
+        body: {
+            username: string;
+            password: string;
+        } & {};
     } & {
         baseUrl?: string;
         querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
@@ -19045,10 +19930,11 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        username: string;
+                        password: string;
                     };
                 };
             };
@@ -19080,10 +19966,11 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        username: string;
+                        password: string;
                     };
                 };
             };
@@ -19113,9 +20000,7 @@ export declare class ApiClient {
         fetch?: ClientOptions["fetch"];
         headers?: import("openapi-fetch").HeadersOptions;
         middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body"> & {
-        [key: string]: unknown;
-    }) | undefined, `${string}/${string}`>>;
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     postApiPlayerAuthLogin(...init: Parameters<PathBasedClient<paths>["/api/player-auth/login"]["POST"]>): Promise<{
         [x: string]: unknown;
     }>;
