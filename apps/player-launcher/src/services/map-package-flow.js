@@ -1,14 +1,18 @@
-export async function prepareMapResources({ server, mapId, bootstrap, remoteApi, onProgress }) {
+export async function prepareMapResources({ server, mapId, bootstrap, remoteApi, onProgress, onStage }) {
   if (!bootstrap?.resourceAccessEnabled || !bootstrap.signingKey) {
     throw new Error('该服务器当前没有开放带签名的地图资源。')
   }
+  onStage?.('读取地图资源描述符')
   const descriptorResult = await remoteApi.getDescriptor(server.endpoint, mapId)
   if (!descriptorResult.response.ok || !descriptorResult.data) {
     throw new Error(descriptorResult.data?.message || `读取地图资源清单失败（HTTP ${descriptorResult.response.status}）`)
   }
   const descriptor = descriptorResult.data
   const trustedSigningKey = bootstrap.signingKey
-  const installPlan = await remoteApi.preparePackage(server.id, descriptor, trustedSigningKey)
+  onStage?.('验证签名并检查本机资源缓存')
+  const installPlan = await remoteApi.preparePackage(server.id, descriptor, trustedSigningKey).catch((error) => {
+    throw stageError('本机校验签名清单失败', error)
+  })
   if (installPlan.insufficientStorage) {
     const required = (installPlan.missingBytes / 1024 / 1024 / 1024).toFixed(1)
     const available = (installPlan.availableBytes / 1024 / 1024 / 1024).toFixed(1)
@@ -18,6 +22,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
   let completedBytes = 0
   let downloadPlan
   const getDownloadPlan = async () => {
+    onStage?.('获取地图下载授权')
     const result = await remoteApi.getDownloadPlan(server.endpoint, descriptor.accessId)
     if (!result.response.ok || !result.data?.ticket) {
       throw new Error(result.data?.message || `获取下载授权失败（HTTP ${result.response.status}）`)
@@ -37,10 +42,13 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
     totalBytes: installPlan.missingBytes,
   })
   for (let index = 0; index < installPlan.missingHashes.length; index += 1) {
+    onStage?.(`下载并校验地图资源 ${index + 1}/${installPlan.missingHashes.length}`)
     const hash = installPlan.missingHashes[index]
     const asset = descriptor.required.find((entry) => entry.hash === hash)
     if (!asset) throw new Error('签名资源清单与下载计划不一致。')
-    const resumeFrom = await remoteApi.getAssetResumeOffset(server.id, descriptor, trustedSigningKey, hash)
+    const resumeFrom = await remoteApi
+      .getAssetResumeOffset(server.id, descriptor, trustedSigningKey, hash)
+      .catch((error) => { throw stageError('检查本机资源缓存失败', error) })
     onProgress({
       done: index,
       total: installPlan.missingHashes.length,
@@ -67,7 +75,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
       if (!result.response.ok) throw new Error(`下载地图资源失败（HTTP ${result.response.status}）`)
     } catch (error) {
       const message = String(error?.message || error)
-      if (!message.includes('授权已失效')) throw error
+      if (!message.includes('授权已失效')) throw stageError('下载或校验地图资源失败', error)
       downloadPlan = await getDownloadPlan()
       const retry = await downloadAsset()
       if (!retry.response.ok) throw new Error(`下载地图资源失败（HTTP ${retry.response.status}）`)
@@ -86,7 +94,16 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
     })
   }
 
-  const installed = await remoteApi.commitPackage(server.id, descriptor, trustedSigningKey)
+  onStage?.('校验并提交本机地图包')
+  const installed = await remoteApi
+    .commitPackage(server.id, descriptor, trustedSigningKey)
+    .catch((error) => { throw stageError('提交本机地图包失败', error) })
+  onStage?.('获取安全启动授权')
   const launchPlan = await getDownloadPlan()
   return { descriptor, trustedSigningKey, installed, launchTicket: launchPlan.ticket }
+}
+
+function stageError(stage, error) {
+  const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
+  return new Error(message ? `${stage}：${message}` : `${stage}（本机命令未返回错误说明）`)
 }

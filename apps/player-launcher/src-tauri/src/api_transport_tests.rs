@@ -28,6 +28,15 @@ fn serve_once(
     extra_headers: String,
     body: Vec<u8>,
 ) -> (String, thread::JoinHandle<Vec<u8>>) {
+    serve_once_with_content_type(status, extra_headers, body, "application/octet-stream")
+}
+
+fn serve_once_with_content_type(
+    status: u16,
+    extra_headers: String,
+    body: Vec<u8>,
+    content_type: &'static str,
+) -> (String, thread::JoinHandle<Vec<u8>>) {
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     let task = thread::spawn(move || {
@@ -46,7 +55,7 @@ fn serve_once(
         }
         write!(
                 stream,
-                "HTTP/1.1 {status} Test\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\nConnection: close\r\n{extra_headers}\r\n",
+                "HTTP/1.1 {status} Test\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n{extra_headers}\r\n",
                 body.len(),
             ).unwrap();
         stream.write_all(&body).unwrap();
@@ -81,6 +90,7 @@ fn streams_binary_api_assets_to_disk_without_loading_the_body_into_json() {
         contents.len() as u64,
         0,
         "hash",
+        "application/octet-stream",
     ))
     .unwrap();
     assert_eq!(response.status, 200);
@@ -113,6 +123,7 @@ fn resumes_from_an_existing_partial_file_using_range_responses() {
         contents.len() as u64,
         prefix.len() as u64,
         "hash",
+        "application/octet-stream",
     ))
     .unwrap();
     assert_eq!(response.status, 206);
@@ -123,4 +134,46 @@ fn resumes_from_an_existing_partial_file_using_range_responses() {
         .to_ascii_lowercase()
         .contains(&format!("range: {range}")));
     fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn streams_assets_using_their_signed_mime_type_and_rejects_mismatches() {
+    let contents = b"png bytes".to_vec();
+    let (endpoint, server) =
+        serve_once_with_content_type(200, String::new(), contents.clone(), "image/png");
+    let path = temp_file();
+    let response = tauri::async_runtime::block_on(stream_api_to_file_inner(
+        None,
+        request(&endpoint, None),
+        &path,
+        contents.len() as u64,
+        0,
+        "hash",
+        "image/png",
+    ))
+    .unwrap();
+    assert_eq!(response.status, 200);
+    assert_eq!(fs::read(&path).unwrap(), contents);
+    server.join().unwrap();
+    fs::remove_file(&path).unwrap();
+
+    let (endpoint, server) =
+        serve_once_with_content_type(200, String::new(), b"png bytes".to_vec(), "image/png");
+    let path = temp_file();
+    let result = tauri::async_runtime::block_on(stream_api_to_file_inner(
+        None,
+        request(&endpoint, None),
+        &path,
+        9,
+        0,
+        "hash",
+        "application/octet-stream",
+    ));
+    let error = match result {
+        Ok(_) => panic!("expected mismatched MIME type to fail"),
+        Err(error) => error,
+    };
+    assert!(error.contains("image/png"));
+    server.join().unwrap();
+    let _ = fs::remove_file(path);
 }

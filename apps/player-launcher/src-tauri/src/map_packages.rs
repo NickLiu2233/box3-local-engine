@@ -295,6 +295,7 @@ async fn install_blob_from_api(
                 asset.size,
                 partial_size,
                 &asset.hash,
+                &asset.content_type,
             )
             .await?
         }
@@ -306,6 +307,7 @@ async fn install_blob_from_api(
                 asset.size,
                 partial_size,
                 &asset.hash,
+                &asset.content_type,
             )
             .await?
         }

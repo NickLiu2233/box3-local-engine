@@ -195,31 +195,45 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.error = ''
     state.notice = ''
     render()
+    let stage = '检查服务器开放状态'
     try {
       const bootstrap = await remoteApi.readBootstrap(server.endpoint)
       if (!bootstrap.supported || !bootstrap.resourceAccessEnabled || !bootstrap.signingKey) {
         throw new Error('该服务器当前未开放带签名的玩家地图资源。')
       }
       state.serverBootstrap = bootstrap
+      stage = '准备签名资源包'
       const { descriptor, installed, launchTicket } = await prepareMapResources({
         server,
         mapId,
         bootstrap,
         remoteApi,
+        onStage: (value) => { stage = value },
         onProgress: (progress) => { state.prepareProgress = progress; render() },
       })
       const key = `${server.id}:${mapId}`
       state.packageStates[key] = { ready: true, manifestDigest: installed.manifestDigest }
+      stage = '检查当前账号的地图进入权限'
       const maps = await remoteApi.getMaps(server.endpoint)
       if (!maps.response.ok || !maps.data?.worlds?.some((world) => world.id === mapId || world.publicId === mapId)) {
         throw new Error('资源已准备，但当前账号暂时不能进入这张地图。')
       }
       const mapName = state.worlds.find((world) => world.id === mapId || world.publicId === mapId)?.name
         || descriptor.accessId
-      await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey, mapName, launchTicket)
+      stage = '安全启动地图窗口'
+      try {
+        await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey, mapName, launchTicket)
+      } catch (error) {
+        const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
+        throw new Error(message ? `安全启动地图失败：${message}` : '安全启动地图失败（本机命令未返回错误说明）')
+      }
       state.notice = `“${descriptor.accessId}”的资源已验证，正在连接服务器…`
     } catch (error) {
-      state.error = error.message || '地图资源准备失败，请稍后重试。'
+      const message = typeof error === 'string' ? error : error?.message
+      const details = message || (error == null ? '' : String(error))
+      state.error = details && details !== '地图资源准备失败，请稍后重试。'
+        ? details
+        : `${stage}阶段失败（没有收到详细错误信息）。`
     } finally {
       state.busy = false
       state.preparingMapId = ''

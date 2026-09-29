@@ -94,6 +94,53 @@ fn valid_path_component(value: &str, max_length: usize) -> bool {
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 }
 
+fn valid_mime_token(value: &str) -> bool {
+    !value.is_empty()
+        && value.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric()
+                || matches!(
+                    byte,
+                    b'!' | b'#' | b'$' | b'&' | b'^' | b'_' | b'.' | b'+' | b'-'
+                )
+        })
+}
+
+pub(crate) fn valid_content_type(value: &str) -> bool {
+    if value.is_empty()
+        || value.len() > 128
+        || !value.is_ascii()
+        || value.bytes().any(|b| b < 0x20 || b == 0x7f)
+    {
+        return false;
+    }
+    let mut parts = value.split(';');
+    let media_type = parts.next().unwrap_or_default().trim();
+    let mut components = media_type.split('/');
+    let top_level = components.next().unwrap_or_default().trim();
+    let subtype = components.next().unwrap_or_default().trim();
+    if components.next().is_some()
+        || top_level == "*"
+        || subtype == "*"
+        || !valid_mime_token(top_level)
+        || !valid_mime_token(subtype)
+    {
+        return false;
+    }
+
+    parts.all(|parameter| {
+        let Some((name, value)) = parameter.trim().split_once('=') else {
+            return false;
+        };
+        let value = value.trim();
+        valid_mime_token(name.trim())
+            && !value.is_empty()
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_graphic() || byte == b' ')
+            && !value.contains(';')
+    })
+}
+
 fn json_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, String> {
     serde_json::to_vec(value).map_err(|_| "地图资源描述符无法序列化".to_string())
 }
@@ -176,7 +223,7 @@ fn validate_asset(asset: &PackageAsset) -> Result<(), String> {
         || asset.size == 0
         || asset.size > MAX_ASSET_BYTES
         || asset.kind != "static"
-        || asset.content_type != "application/octet-stream"
+        || !valid_content_type(&asset.content_type)
     {
         return Err("签名资源清单中包含无效或不受支持的资源".into());
     }
@@ -271,8 +318,8 @@ pub(crate) fn validate_descriptor(
 mod tests {
     use super::BASE58_ALPHABET;
     use super::{
-        sha256, valid_content_hash, validate_descriptor, verify_hash_bytes, verify_hash_file,
-        DescriptorDigestPayload, DescriptorSignaturePayload, PackageAsset,
+        sha256, valid_content_hash, valid_content_type, validate_descriptor, verify_hash_bytes,
+        verify_hash_file, DescriptorDigestPayload, DescriptorSignaturePayload, PackageAsset,
     };
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
     use ring::{
@@ -308,6 +355,34 @@ mod tests {
                 .map(|digit| BASE58_ALPHABET.as_bytes()[*digit as usize] as char),
         );
         result
+    }
+
+    #[test]
+    fn allows_safe_signed_mime_types_and_rejects_header_injection() {
+        for mime in [
+            "application/octet-stream",
+            "application/json",
+            "text/plain; charset=utf-8",
+            "image/png",
+            "image/jpeg",
+            "audio/mpeg",
+            "model/gltf-binary",
+        ] {
+            assert!(valid_content_type(mime), "expected {mime} to be accepted");
+        }
+        for mime in [
+            "",
+            "image",
+            "/png",
+            "image/",
+            "image/*",
+            "text/plain\r\nX-Evil: yes",
+        ] {
+            assert!(
+                !valid_content_type(mime),
+                "expected {mime:?} to be rejected"
+            );
+        }
     }
 
     #[test]
@@ -354,12 +429,20 @@ mod tests {
             "y": URL_SAFE_NO_PAD.encode(&public[33..65]),
         });
         let content_hash = URL_SAFE_NO_PAD.encode(sha256(b"map block"));
-        let required = vec![PackageAsset {
-            hash: content_hash,
-            size: 9,
-            kind: "static".into(),
-            content_type: "application/octet-stream".into(),
-        }];
+        let required = vec![
+            PackageAsset {
+                hash: content_hash,
+                size: 9,
+                kind: "static".into(),
+                content_type: "application/octet-stream".into(),
+            },
+            PackageAsset {
+                hash: URL_SAFE_NO_PAD.encode(sha256(b"image data")),
+                size: 10,
+                kind: "static".into(),
+                content_type: "image/png".into(),
+            },
+        ];
         let digest_payload = DescriptorDigestPayload {
             format_version: 1,
             permanent_map_id: "permanent-map",

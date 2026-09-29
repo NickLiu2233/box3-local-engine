@@ -2,6 +2,7 @@ use crate::api_transport::{
     read_api_text, response_headers, send_api_request, update_player_cookies, ApiRequest,
     ApiResponse,
 };
+use crate::package_descriptor::valid_content_type;
 use std::{
     fs::File,
     io::Write,
@@ -17,6 +18,7 @@ pub(crate) async fn stream_api_to_file(
     expected_size: u64,
     existing_bytes: u64,
     hash: &str,
+    expected_content_type: &str,
 ) -> Result<ApiResponse, String> {
     stream_api_to_file_inner(
         Some(app),
@@ -25,6 +27,7 @@ pub(crate) async fn stream_api_to_file(
         expected_size,
         existing_bytes,
         hash,
+        expected_content_type,
     )
     .await
 }
@@ -36,6 +39,7 @@ pub(crate) async fn stream_api_to_file_inner(
     expected_size: u64,
     existing_bytes: u64,
     hash: &str,
+    expected_content_type: &str,
 ) -> Result<ApiResponse, String> {
     let (endpoint, current_cookies, _, mut response) =
         send_api_request(request, Duration::from_secs(900)).await?;
@@ -55,8 +59,20 @@ pub(crate) async fn stream_api_to_file_inner(
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
-    if !content_type.starts_with("application/octet-stream") {
-        return Err("服务器返回的地图资源类型无效".into());
+    let content_type_matches = |left: &str, right: &str| {
+        left.split(';')
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .eq_ignore_ascii_case(right.split(';').next().unwrap_or_default().trim())
+    };
+    if !valid_content_type(content_type)
+        || !content_type_matches(content_type, expected_content_type)
+    {
+        return Err(format!(
+            "服务器返回的地图资源类型与签名清单不符（收到 {}，预期 {}）",
+            content_type, expected_content_type
+        ));
     }
     let append = if status == 206 {
         if existing_bytes == 0 {
