@@ -1,25 +1,15 @@
 use crate::{
     map_packages::{package_blob_root, store_root},
     package_descriptor::{validate_descriptor, verify_hash_file, PackageDescriptor},
+    package_ownership::{add_package_server, server_storage_key, VerifiedPackage},
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::AppHandle;
-
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct VerifiedPackage {
-    format_version: u32,
-    permanent_map_id: String,
-    release_version: String,
-    manifest_digest: String,
-    required: Vec<String>,
-    verified_at: u64,
-}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,22 +35,7 @@ fn installed_package(descriptor: &PackageDescriptor) -> InstalledPackage {
     }
 }
 
-fn verify_package_record(
-    package_path: &Path,
-    descriptor: &PackageDescriptor,
-    trusted_signing_key: &str,
-) -> bool {
-    let Ok(stored_descriptor_json) = fs::read_to_string(package_path.join("descriptor.json"))
-    else {
-        return false;
-    };
-    let Ok(stored_descriptor) = validate_descriptor(&stored_descriptor_json, trusted_signing_key)
-    else {
-        return false;
-    };
-    if stored_descriptor.manifest_digest != descriptor.manifest_digest {
-        return false;
-    }
+fn verify_package_record(package_path: &Path, descriptor: &PackageDescriptor) -> bool {
     let Ok(verified_bytes) = fs::read(package_path.join("verified.json")) else {
         return false;
     };
@@ -83,16 +58,24 @@ pub(crate) fn verify_installed_map_package(
     app: &AppHandle,
     descriptor_json: &str,
     trusted_signing_key: &str,
+    server_id: &str,
 ) -> Result<InstalledPackage, String> {
+    crate::server_endpoint_for_id(app, server_id)?;
     let descriptor = validate_descriptor(descriptor_json, trusted_signing_key)?;
     let root = store_root(app)?;
     let installed_path = package_path(&root, &descriptor);
     let metadata = fs::symlink_metadata(&installed_path)
         .map_err(|_| "本地地图资源包尚未准备完成".to_string())?;
-    if !metadata.file_type().is_dir()
-        || !verify_package_record(&installed_path, &descriptor, trusted_signing_key)
-    {
+    if !metadata.file_type().is_dir() || !verify_package_record(&installed_path, &descriptor) {
         return Err("本地地图包状态损坏，请重新准备地图".into());
+    }
+    let verified_path = installed_path.join("verified.json");
+    let verified: VerifiedPackage = serde_json::from_slice(
+        &fs::read(&verified_path).map_err(|_| "无法读取地图包服务器关联信息".to_string())?,
+    )
+    .map_err(|_| "地图包服务器关联信息损坏".to_string())?;
+    if !verified.servers.contains(&server_storage_key(server_id)) {
+        return Err("该服务器尚未关联这份地图资源，请重新准备地图".into());
     }
     let blobs = package_blob_root(&root);
     for asset in &descriptor.required {
@@ -106,12 +89,15 @@ pub(crate) fn verify_installed_map_package(
 #[tauri::command]
 pub(crate) fn commit_map_package(
     app: AppHandle,
+    server_id: String,
     descriptor: String,
     trusted_signing_key: String,
 ) -> Result<InstalledPackage, String> {
+    crate::server_endpoint_for_id(&app, &server_id)?;
     let descriptor = validate_descriptor(&descriptor, &trusted_signing_key)?;
     let root = store_root(&app)?;
     let blobs = package_blob_root(&root);
+    let server_key = server_storage_key(&server_id);
     for asset in &descriptor.required {
         if !verify_hash_file(&asset.hash, &blobs.join(&asset.hash), asset.size)? {
             return Err("地图资源尚未完整校验，暂不能标记为已准备".into());
@@ -119,7 +105,8 @@ pub(crate) fn commit_map_package(
     }
     let final_path = package_path(&root, &descriptor);
     if fs::symlink_metadata(&final_path).is_ok() {
-        if verify_package_record(&final_path, &descriptor, &trusted_signing_key) {
+        if verify_package_record(&final_path, &descriptor) {
+            add_package_server(&final_path, &server_key)?;
             return Ok(installed_package(&descriptor));
         }
         let metadata =
@@ -145,7 +132,7 @@ pub(crate) fn commit_map_package(
         nonce
     ));
     fs::create_dir(&temporary).map_err(|_| "无法创建地图包临时目录".to_string())?;
-    let result = write_package_metadata(&temporary, &descriptor).and_then(|()| {
+    let result = write_package_metadata(&temporary, &descriptor, &server_key).and_then(|()| {
         fs::rename(&temporary, &final_path).map_err(|_| "无法原子提交地图包".to_string())
     });
     if result.is_err() {
@@ -155,7 +142,11 @@ pub(crate) fn commit_map_package(
     Ok(installed_package(&descriptor))
 }
 
-fn write_package_metadata(path: &Path, descriptor: &PackageDescriptor) -> Result<(), String> {
+fn write_package_metadata(
+    path: &Path,
+    descriptor: &PackageDescriptor,
+    server_key: &str,
+) -> Result<(), String> {
     let descriptor_path = path.join("descriptor.json");
     let descriptor_bytes =
         serde_json::to_vec_pretty(descriptor).map_err(|_| "无法序列化地图包描述符".to_string())?;
@@ -174,6 +165,7 @@ fn write_package_metadata(path: &Path, descriptor: &PackageDescriptor) -> Result
             .iter()
             .map(|asset| asset.hash.clone())
             .collect(),
+        servers: vec![server_key.to_owned()],
         verified_at: SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()

@@ -8,7 +8,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
   }
   const descriptor = descriptorResult.data
   const trustedSigningKey = bootstrap.signingKey
-  const installPlan = await remoteApi.preparePackage(descriptor, trustedSigningKey)
+  const installPlan = await remoteApi.preparePackage(server.id, descriptor, trustedSigningKey)
   if (installPlan.insufficientStorage) {
     const required = (installPlan.missingBytes / 1024 / 1024 / 1024).toFixed(1)
     const available = (installPlan.availableBytes / 1024 / 1024 / 1024).toFixed(1)
@@ -40,7 +40,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
     const hash = installPlan.missingHashes[index]
     const asset = descriptor.required.find((entry) => entry.hash === hash)
     if (!asset) throw new Error('签名资源清单与下载计划不一致。')
-    const resumeFrom = await remoteApi.getAssetResumeOffset(descriptor, trustedSigningKey, hash)
+    const resumeFrom = await remoteApi.getAssetResumeOffset(server.id, descriptor, trustedSigningKey, hash)
     onProgress({
       done: index,
       total: installPlan.missingHashes.length,
@@ -54,6 +54,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
 
     const downloadAsset = () => remoteApi.installAsset(
       server.endpoint,
+      server.id,
       descriptor.accessId,
       asset,
       descriptor,
@@ -85,6 +86,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
     })
   }
 
-  const installed = await remoteApi.commitPackage(descriptor, trustedSigningKey)
-  return { descriptor, trustedSigningKey, installed }
+  const installed = await remoteApi.commitPackage(server.id, descriptor, trustedSigningKey)
+  const launchPlan = await getDownloadPlan()
+  return { descriptor, trustedSigningKey, installed, launchTicket: launchPlan.ticket }
 }

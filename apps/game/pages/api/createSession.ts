@@ -14,6 +14,24 @@ import {
   resolvePlayerServiceIdentity,
 } from '../../server/player-service-client';
 import { prepareLocalRuntimeSession } from '../../server/local-runtime-session';
+import { getPlayLauncherAccessSettings } from '../../server/play-launcher-access';
+import {
+  getPlayerLauncherPackageDescriptor,
+  verifyPlayerLauncherDownloadTicket,
+} from '../../server/player-launcher-map-packages';
+
+class LauncherPackageRejectedError extends Error {
+  constructor(readonly code: string, message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+type LauncherPackageIdentity = {
+  permanentMapId: string;
+  releaseVersion: string;
+  manifestDigest: string;
+  launchTicket: string;
+};
 
 export type CreateSessionResult =
   | RedirectData
@@ -61,7 +79,15 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(405).end();
   }
 
-  const { mode, contentId, containerName, fingerPrint, serverId } = req.body || {};
+  const {
+    mode,
+    contentId,
+    containerName,
+    fingerPrint,
+    serverId,
+    launcherLocalAssetMode,
+    launcherPackage,
+  } = req.body || {};
   if (mode !== 'play' && mode !== 'edit') {
     return res.status(400).json({ message: 'Invalid session mode' });
   }
@@ -81,6 +107,25 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     return res.status(400).json({ message: 'Invalid session parameters' });
   }
 
+  let launcherPackageIdentity: LauncherPackageIdentity | undefined;
+  if (launcherLocalAssetMode === true) {
+    if (
+      !launcherPackage ||
+      typeof launcherPackage.permanentMapId !== 'string' ||
+      typeof launcherPackage.releaseVersion !== 'string' ||
+      typeof launcherPackage.manifestDigest !== 'string' ||
+      typeof launcherPackage.launchTicket !== 'string' ||
+      launcherPackage.launchTicket.length > 2048 ||
+      !/^[A-Za-z0-9_-]{43}$/.test(launcherPackage.manifestDigest)
+    ) {
+      return res.status(400).json({
+        code: 'LAUNCHER_PACKAGE_INVALID',
+        message: '启动器地图资源版本信息无效，请返回启动器重新启动。',
+      });
+    }
+    launcherPackageIdentity = launcherPackage as LauncherPackageIdentity;
+  }
+
   try {
     const data = await getSessionData(
       req,
@@ -90,6 +135,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       fingerPrint,
       serverId,
       containerName,
+      launcherPackageIdentity,
     );
 
     if (!data) {
@@ -107,6 +153,9 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       });
     }
   } catch (err) {
+    if (err instanceof LauncherPackageRejectedError) {
+      return res.status(err.status).json({ code: err.code, message: err.message });
+    }
     if (err instanceof PlayerAuthenticationRequiredError) {
       const from = process.env.BOX_DEPLOYMENT_MODE === 'creator' ? 'creator' : 'play';
       try {
@@ -175,6 +224,7 @@ async function getSessionData(
   fingerPrint: string = '',
   serverId: string = '',
   containerName: string = '',
+  launcherPackage?: LauncherPackageIdentity,
 ) {
   const ServerConfig = await getServerConfig();
   const configuredTimeout = Number(process.env.BOX_CREATE_SESSION_TIMEOUT_MS);
@@ -208,6 +258,55 @@ async function getSessionData(
       runtimeAuth = resolved.assertion;
       runtimeFingerPrint = identity.subjectId;
       authenticatedSubjectId = identity.subjectId;
+    }
+    if (launcherPackage) {
+      if (process.env.BOX_DEPLOYMENT_MODE !== 'play' || !authenticatedSubjectId) {
+        throw new PlayerAuthenticationRequiredError();
+      }
+      let accessEnabled = false;
+      let currentPackage: ReturnType<typeof getPlayerLauncherPackageDescriptor> | undefined;
+      try {
+        accessEnabled = getPlayLauncherAccessSettings().enabled;
+        if (accessEnabled) currentPackage = getPlayerLauncherPackageDescriptor(containerName);
+      } catch {
+        throw new LauncherPackageRejectedError(
+          'LAUNCHER_PACKAGE_UNAVAILABLE',
+          '无法验证服务器当前地图资源版本，请稍后重试。',
+          503,
+        );
+      }
+      if (!accessEnabled) {
+        throw new LauncherPackageRejectedError(
+          'PLAYER_LAUNCHER_RESOURCES_DISABLED',
+          '该服务器未开放玩家启动器资源访问。',
+          403,
+        );
+      }
+      if (
+        !currentPackage ||
+        currentPackage.permanentMapId !== launcherPackage.permanentMapId ||
+        currentPackage.releaseVersion !== launcherPackage.releaseVersion ||
+        currentPackage.manifestDigest !== launcherPackage.manifestDigest
+      ) {
+        throw new LauncherPackageRejectedError(
+          'LAUNCHER_PACKAGE_OUTDATED',
+          '服务器地图版本已更新，请返回启动器重新准备地图资源。',
+          409,
+        );
+      }
+      if (
+        !verifyPlayerLauncherDownloadTicket(launcherPackage.launchTicket, {
+          subjectId: authenticatedSubjectId,
+          permanentMapId: launcherPackage.permanentMapId,
+          manifestDigest: launcherPackage.manifestDigest,
+        })
+      ) {
+        throw new LauncherPackageRejectedError(
+          'LAUNCHER_TICKET_INVALID',
+          '服务器启动授权已失效或与当前账号不匹配，请返回启动器重新开始。',
+          403,
+        );
+      }
     }
     if (mode === 'play' && serverId && serverId !== 'public') {
       const controlURL = process.env.BOX_PLAY_TELEPORT_CONTROL_URL || '';

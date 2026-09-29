@@ -23,6 +23,7 @@ COPY . .
 FROM source-base AS engine-build-base
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    npm_config_registry=https://registry.npmmirror.com \
     node common/scripts/install-run-rush.js install \
       --to @box/game \
       --to @box/player-admin \

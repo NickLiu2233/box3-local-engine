@@ -24,6 +24,7 @@ export function createPlayerApi({ invoke, isNative }) {
       const install = activeInstallContext
       const result = await invoke('install_map_asset', {
         payload: {
+          serverId: install.serverId,
           request: {
             endpoint,
             url: request.url,
@@ -112,16 +113,17 @@ export function createPlayerApi({ invoke, isNative }) {
         params: { path: { mapId } },
       })
     },
-    getAssetResumeOffset(descriptor, trustedSigningKey, hash) {
+    getAssetResumeOffset(serverId, descriptor, trustedSigningKey, hash) {
       if (!isNative()) return Promise.resolve(0)
       return invoke('get_map_asset_resume_offset', {
+        serverId,
         descriptor: JSON.stringify(descriptor),
         trustedSigningKey: JSON.stringify(trustedSigningKey),
         hash,
       })
     },
-    installAsset(endpoint, mapId, asset, descriptor, trustedSigningKey, plan, resumeFrom = 0) {
-      activeInstallContext = { descriptor, trustedSigningKey, hash: asset.hash }
+    installAsset(endpoint, serverId, mapId, asset, descriptor, trustedSigningKey, plan, resumeFrom = 0) {
+      activeInstallContext = { serverId, descriptor, trustedSigningKey, hash: asset.hash }
       return client(endpoint)
         .getApiPlayerLauncherMapsMapIdBlobsHashRaw({
           params: {
@@ -136,27 +138,30 @@ export function createPlayerApi({ invoke, isNative }) {
         })
         .finally(() => { activeInstallContext = null })
     },
-    preparePackage(descriptor, trustedSigningKey) {
+    preparePackage(serverId, descriptor, trustedSigningKey) {
       if (!isNative()) return Promise.reject(new Error('地图资源只能在 BOX3 玩家启动器中保存'))
       return invoke('prepare_map_package', {
+        serverId,
         descriptor: JSON.stringify(descriptor),
         trustedSigningKey: JSON.stringify(trustedSigningKey),
       })
     },
-    commitPackage(descriptor, trustedSigningKey) {
+    commitPackage(serverId, descriptor, trustedSigningKey) {
       if (!isNative()) return Promise.reject(new Error('地图资源只能在 BOX3 玩家启动器中保存'))
       return invoke('commit_map_package', {
+        serverId,
         descriptor: JSON.stringify(descriptor),
         trustedSigningKey: JSON.stringify(trustedSigningKey),
       })
     },
-    launchMap(serverId, descriptor, trustedSigningKey, mapName) {
+    launchMap(serverId, descriptor, trustedSigningKey, mapName, launchTicket) {
       if (!isNative()) return Promise.reject(new Error('安全启动地图只能从 BOX3 玩家启动器进行'))
       return invoke('launch_map', {
         serverId,
         descriptor: JSON.stringify(descriptor),
         trustedSigningKey: JSON.stringify(trustedSigningKey),
         mapName,
+        launchTicket,
       })
     },
     login(endpoint, bootstrap, username, password) {

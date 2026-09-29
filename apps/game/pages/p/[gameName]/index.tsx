@@ -88,8 +88,36 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
   if ('error' in serverProps.props || 'loadingConfig' in serverProps.props) {
     return serverProps;
   }
+  const successfulProps = serverProps.props as SSRSuccessProps;
 
-  return serverProps;
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play' && context.query.box3LocalAssets === '1') {
+    const permanentMapId = context.query.box3PermanentMapId;
+    const releaseVersion = context.query.box3ReleaseVersion;
+    const manifestDigest = context.query.box3ManifestDigest;
+    if (
+      typeof permanentMapId !== 'string' ||
+      typeof releaseVersion !== 'string' ||
+      typeof manifestDigest !== 'string' ||
+      !/^[A-Za-z0-9_-]{43}$/.test(manifestDigest)
+    ) {
+      return {
+        props: {
+          error: { code: 400, info: '启动器地图资源版本信息无效，请返回启动器重新启动。' },
+          locale: successfulProps.locale,
+          userInfo: undefined,
+        },
+      };
+    }
+    successfulProps.clientConfig = {
+      ...successfulProps.clientConfig,
+      CDN_PATH: '',
+      OSS_CDN_URL: '',
+      launcherLocalAssetMode: true,
+      launcherPackage: { permanentMapId, releaseVersion, manifestDigest },
+    };
+  }
+
+  return { props: successfulProps };
 };
 
 function Home(props: SSRProps) {
@@ -98,6 +126,39 @@ function Home(props: SSRProps) {
   const [locale, setLocale] = useState<LangType>(() =>
     props.loadingConfig ? 'en' : props.locale,
   );
+  const launcherLocalAssetMode =
+    'clientConfig' in props && props.clientConfig.launcherLocalAssetMode === true;
+  const [launcherAssetSession, setLauncherAssetSession] = useState<string | null>(null);
+  const [launcherLaunchTicket, setLauncherLaunchTicket] = useState<string | null>(null);
+  const [launcherAssetBootstrapResolved, setLauncherAssetBootstrapResolved] = useState(false);
+  const [launcherAssetBootstrapError, setLauncherAssetBootstrapError] = useState('');
+
+  useEffect(() => {
+    if (!launcherLocalAssetMode) {
+      setLauncherAssetBootstrapResolved(true);
+      return;
+    }
+    const address = new URL(window.location.href);
+    const fragment = new URLSearchParams(address.hash.slice(1));
+    const session = fragment.get('box3LocalAsset');
+    const launchTicket = fragment.get('box3LaunchTicket');
+    if (
+      !session ||
+      !/^[A-Za-z0-9_-]{43}$/.test(session) ||
+      !launchTicket ||
+      launchTicket.length > 2048 ||
+      !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(launchTicket)
+    ) {
+      setLauncherAssetBootstrapError('地图资源会话或服务器启动授权无效，请返回启动器重新启动地图。');
+    } else {
+      setLauncherAssetSession(session);
+      setLauncherLaunchTicket(launchTicket);
+    }
+    address.hash = '';
+    address.searchParams.delete('box3LocalAssets');
+    window.history.replaceState(null, '', `${address.pathname}${address.search}`);
+    setLauncherAssetBootstrapResolved(true);
+  }, [launcherLocalAssetMode]);
 
   useEffect(() => {
     if (loadingStage === LoadingStage.done) {
@@ -134,11 +195,31 @@ function Home(props: SSRProps) {
     return <Error code={props.error.code} info={props.error.info} />;
   }
 
+  if (launcherLocalAssetMode && launcherAssetBootstrapResolved && launcherAssetBootstrapError) {
+    return <Error code={400} info={launcherAssetBootstrapError} />;
+  }
+
+  const activeClientConfig = !props.loadingConfig && launcherLocalAssetMode
+    ? {
+        ...props.clientConfig,
+        CDN_PATH: launcherAssetSession ? `boxplay://localhost/${launcherAssetSession}` : '',
+        OSS_CDN_URL: launcherAssetSession ? `boxplay://localhost/${launcherAssetSession}` : '',
+        launcherLocalAssetMode: true,
+        launcherPackage: props.clientConfig.launcherPackage && launcherLaunchTicket
+          ? { ...props.clientConfig.launcherPackage, launchTicket: launcherLaunchTicket }
+          : undefined,
+      }
+    : !props.loadingConfig
+      ? props.clientConfig
+      : undefined;
+
   const isCreatera =
     !props.loadingConfig && props.clientConfig.APP_EDITION === 'createra';
   const world = typeof router.query.gameName === 'string' ? router.query.gameName : '';
   const shouldBootstrapResourceCache =
-    !props.loadingConfig && props.clientConfig.localRuntimeInfo?.deploymentMode === 'play';
+    !props.loadingConfig &&
+    !launcherLocalAssetMode &&
+    props.clientConfig.localRuntimeInfo?.deploymentMode === 'play';
 
   return (
     <div id="__next__root">
@@ -153,24 +234,24 @@ function Home(props: SSRProps) {
             loadingConfig={!!props.loadingConfig}
             stage={loadingStage}
             gameCover={
-              props.loadingConfig
+              props.loadingConfig || (launcherLocalAssetMode && !launcherAssetSession)
                 ? undefined
                 : hashToUrl(
                     props.clientConfig.mapInfo.backgroundImage,
-                    props.clientConfig.CDN_PATH,
+                    activeClientConfig?.CDN_PATH || props.clientConfig.CDN_PATH,
                   )
             }
           />
         </IntlProvider>
       )}
       {!props.loadingConfig && (
-        <EngineApp {...props} locale={locale} message={props.message}>
+        <EngineApp {...props} clientConfig={activeClientConfig!} locale={locale} message={props.message}>
           <div className="play-react">
-            <DynamicPlayUi
+            {launcherAssetBootstrapResolved && (!launcherLocalAssetMode || (launcherAssetSession && launcherLaunchTicket)) && <DynamicPlayUi
               userInfo={props.userInfo}
               setLoadingStage={setLoadingStage}
               setLocale={setLocale}
-            />
+            />}
           </div>
         </EngineApp>
       )}

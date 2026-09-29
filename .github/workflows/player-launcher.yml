@@ -1,0 +1,79 @@
+name: Player Launcher
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/player-launcher.yml'
+      - 'apps/player-launcher/**'
+      - 'internals/apis/**'
+      - 'common/config/rush/**'
+      - 'package.json'
+      - 'rush.json'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/player-launcher.yml'
+      - 'apps/player-launcher/**'
+      - 'internals/apis/**'
+      - 'common/config/rush/**'
+      - 'package.json'
+      - 'rush.json'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Install Linux Tauri system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential curl file libayatana-appindicator3-dev libssl-dev \
+            libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev patchelf
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt
+
+      - name: Install launcher workspace dependencies
+        run: node common/scripts/install-run-rush.js install --to @box/player-launcher --to @box/apis
+
+      - name: Build generated API client
+        run: npm --prefix internals/apis run build
+
+      - name: Verify OpenAPI artifacts
+        run: npm run api:check
+
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path apps/player-launcher/src-tauri/Cargo.toml -- --check
+
+      - name: Test launcher core
+        run: cargo test --manifest-path apps/player-launcher/src-tauri/Cargo.toml
+
+      - name: Build launcher frontend
+        run: npm --prefix apps/player-launcher run build
+
+      - name: Compile native launcher
+        run: npm --prefix apps/player-launcher run tauri -- build --no-bundle --ci

@@ -182,4 +182,13 @@ export function extractServerConfigForClient(
  */
 export type ClientRuntimeConfig = ServerConfigForClient & {
   mapInfo: MapInfoConfig;
+  /** Present only when a native player launcher has prepared a verified local map package. */
+  launcherLocalAssetMode?: boolean;
+  /** Signed package identity supplied by the native launcher for server-side version gating. */
+  launcherPackage?: {
+    permanentMapId: string;
+    releaseVersion: string;
+    manifestDigest: string;
+    launchTicket?: string;
+  };
 } & ClientModeConfig;

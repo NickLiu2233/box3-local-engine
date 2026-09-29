@@ -212,8 +212,11 @@ export class PlayClient extends EngineClient {
         ? `/__room/${encodeURIComponent(serverId)}`
         : '';
       const runtimeBase = `/runtime/play/${encodeURIComponent(hash)}${roomPath}`;
-      clientConfig.CDN_PATH = runtimeBase;
-      clientConfig.OSS_CDN_URL = runtimeBase;
+      const assetBase = clientConfig.launcherLocalAssetMode
+        ? clientConfig.CDN_PATH
+        : runtimeBase;
+      clientConfig.CDN_PATH = assetBase;
+      clientConfig.OSS_CDN_URL = assetBase;
       clientConfig.BACKEND_SERVER_URL = runtimeBase;
       clientConfig.MAAS_BACKEND_SERVER_URL = runtimeBase;
       clientConfig.JAVA_BACKEND_SERVER_URL = runtimeBase;

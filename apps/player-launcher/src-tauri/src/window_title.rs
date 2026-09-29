@@ -32,7 +32,10 @@ mod tests {
 
     #[test]
     fn includes_map_name_and_version() {
-        assert_eq!(map_window_title("云端迁移地图", "1.0.0"), "云端迁移地图 · v1.0.0");
+        assert_eq!(
+            map_window_title("云端迁移地图", "1.0.0"),
+            "云端迁移地图 · v1.0.0"
+        );
     }
 
     #[test]

@@ -82,6 +82,17 @@ async function refreshPlayerSession(server = selectedServer()) {
     if (!response.ok) throw new Error(data?.message || `读取可玩地图失败（HTTP ${response.status}）`)
     state.worlds = Array.isArray(data?.worlds) ? data.worlds : []
     state.mapsError = ''
+    if (state.serverBootstrap?.signingKey && state.worlds.length) {
+      try {
+        await playerInvoke('associate_map_packages_with_server', {
+          serverId: server.id,
+          accessIds: state.worlds.flatMap((world) => [world.id, world.publicId]).filter(Boolean),
+          trustedSigningKey: state.serverBootstrap.signingKey,
+        })
+      } catch {
+        // Migration is best-effort; signed descriptor verification stays authoritative on launch.
+      }
+    }
   } catch (error) {
     state.mapsError = error.message || '读取可玩地图失败。'
   }
@@ -94,6 +105,14 @@ async function playerInvoke(command, payload = {}) {
     } catch (error) {
       throw new Error(error.message || '无法读取服务器开放状态（浏览器预览可能受跨域限制）')
     }
+  }
+  if (command === 'associate_map_packages_with_server') {
+    if (!window.__TAURI_INTERNALS__) return 0
+    return invoke(command, {
+      serverId: payload.serverId,
+      accessIds: payload.accessIds || [],
+      trustedSigningKey: JSON.stringify(payload.trustedSigningKey),
+    })
   }
   if (command === 'add_server') {
     const raw = String(payload.endpoint || '').trim().replace(/\/$/, '')
@@ -224,7 +243,7 @@ function removeServerDialog() {
   return `
     <div class="confirm-backdrop" data-remove-server-dialog-dismiss>
       <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="remove-server-title" aria-describedby="remove-server-description">
-        <header><div><h2 id="remove-server-title">从列表移除服务器？</h2><p id="remove-server-description">“${escapeHtml(server.name || server.endpoint)}”将从本机启动器列表中移除，不会删除服务器或地图数据。</p></div></header>
+        <header><div><h2 id="remove-server-title">移除服务器并删除本地地图数据？</h2><p id="remove-server-description">“${escapeHtml(server.name || server.endpoint)}”将从本机启动器列表中移除，同时会删除本机为该服务器保存的地图数据。</p></div></header>
         <div class="confirm-actions"><button class="button" type="button" data-cancel-remove-server autofocus>取消</button><button class="button danger" type="button" data-confirm-remove-server ${state.busy ? 'disabled' : ''}>确认移除</button></div>
       </section>
     </div>`

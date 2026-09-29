@@ -106,6 +106,12 @@ export async function connectGameServer(
           containerName: clientConfig.name,
           fingerPrint: visitorId,
           serverId,
+          ...(clientConfig.launcherLocalAssetMode && clientConfig.launcherPackage
+            ? {
+                launcherLocalAssetMode: true,
+                launcherPackage: clientConfig.launcherPackage,
+              }
+            : {}),
         },
         {
           headers: {
@@ -166,7 +172,21 @@ export async function connectGameServer(
         timeout *= 2;
         await sleep(SLEEP_TIME);
       }
-    } catch {
+    } catch (error) {
+      const response = axios.isAxiosError(error) ? error.response : undefined;
+      const responseCode = response?.data?.code;
+      if (
+        typeof responseCode === 'string' &&
+        [
+          'LAUNCHER_PACKAGE_INVALID',
+          'LAUNCHER_PACKAGE_UNAVAILABLE',
+          'PLAYER_LAUNCHER_RESOURCES_DISABLED',
+          'LAUNCHER_PACKAGE_OUTDATED',
+          'LAUNCHER_TICKET_INVALID',
+        ].includes(responseCode)
+      ) {
+        throw new Error(response?.data?.message || '无法验证启动器地图版本，请返回启动器重试。');
+      }
       await sleep(SLEEP_TIME);
     }
     controller.endTask('loadingStart', TaskTypeEnum.Normal);

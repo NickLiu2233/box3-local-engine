@@ -1,7 +1,8 @@
 use crate::{
-    api_download::stream_api_to_file,
+    api_download::{stream_api_to_file, stream_api_to_file_inner},
     api_transport::ApiRequest,
-    package_descriptor::{validate_descriptor, verify_hash_file, PackageDescriptor},
+    package_descriptor::{validate_descriptor, verify_hash_file, PackageAsset, PackageDescriptor},
+    package_ownership::server_storage_key,
 };
 use fs2::FileExt;
 use serde::{Deserialize, Serialize};
@@ -47,8 +48,14 @@ pub(crate) fn package_blob_root(root: &Path) -> PathBuf {
     root.join("blobs")
 }
 
-fn partial_blob_path(root: &Path, descriptor: &PackageDescriptor, hash: &str) -> PathBuf {
+fn partial_blob_path(
+    root: &Path,
+    server_key: &str,
+    descriptor: &PackageDescriptor,
+    hash: &str,
+) -> PathBuf {
     root.join("downloads")
+        .join(server_key)
         .join(&descriptor.manifest_digest)
         .join(format!("{hash}.partial"))
 }
@@ -69,10 +76,11 @@ fn partial_blob_size(path: &Path, expected_size: u64) -> Result<u64, String> {
 
 fn adopt_complete_partial(
     root: &Path,
+    server_key: &str,
     descriptor: &PackageDescriptor,
     asset: &crate::package_descriptor::PackageAsset,
 ) -> Result<bool, String> {
-    let partial = partial_blob_path(root, descriptor, &asset.hash);
+    let partial = partial_blob_path(root, server_key, descriptor, &asset.hash);
     let target = package_blob_root(root).join(&asset.hash);
     let partial_size = partial_blob_size(&partial, asset.size)?;
     if partial_size != asset.size || !verify_hash_file(&asset.hash, &partial, asset.size)? {
@@ -88,36 +96,33 @@ fn adopt_complete_partial(
     Ok(true)
 }
 
-#[tauri::command]
-pub(crate) fn prepare_map_package(
-    app: AppHandle,
-    descriptor: String,
-    trusted_signing_key: String,
+fn plan_map_package_install(
+    root: &Path,
+    server_key: &str,
+    descriptor: &PackageDescriptor,
 ) -> Result<InstallPlan, String> {
-    let descriptor = validate_descriptor(&descriptor, &trusted_signing_key)?;
-    let root = store_root(&app)?;
-    let blob_root = package_blob_root(&root);
+    let blob_root = package_blob_root(root);
     fs::create_dir_all(&blob_root).map_err(|_| "无法创建地图资源内容库".to_string())?;
     let mut missing_hashes = Vec::new();
     let mut missing_bytes = 0u64;
     for asset in &descriptor.required {
         if verify_hash_file(&asset.hash, &blob_root.join(&asset.hash), asset.size)?
-            || adopt_complete_partial(&root, &descriptor, asset)?
+            || adopt_complete_partial(root, server_key, descriptor, asset)?
         {
             continue;
         }
         missing_hashes.push(asset.hash.clone());
         let partial_size = partial_blob_size(
-            &partial_blob_path(&root, &descriptor, &asset.hash),
+            &partial_blob_path(root, server_key, descriptor, &asset.hash),
             asset.size,
         )?;
         missing_bytes = missing_bytes.saturating_add(asset.size.saturating_sub(partial_size));
     }
     let available_bytes =
-        fs2::available_space(&root).map_err(|_| "无法检查设备可用磁盘空间".to_string())?;
+        fs2::available_space(root).map_err(|_| "无法检查设备可用磁盘空间".to_string())?;
     Ok(InstallPlan {
-        permanent_map_id: descriptor.permanent_map_id,
-        manifest_digest: descriptor.manifest_digest,
+        permanent_map_id: descriptor.permanent_map_id.clone(),
+        manifest_digest: descriptor.manifest_digest.clone(),
         required_count: descriptor.required.len(),
         missing_hashes,
         missing_bytes,
@@ -127,24 +132,41 @@ pub(crate) fn prepare_map_package(
 }
 
 #[tauri::command]
+pub(crate) fn prepare_map_package(
+    app: AppHandle,
+    server_id: String,
+    descriptor: String,
+    trusted_signing_key: String,
+) -> Result<InstallPlan, String> {
+    crate::server_endpoint_for_id(&app, &server_id)?;
+    let descriptor = validate_descriptor(&descriptor, &trusted_signing_key)?;
+    let server_key = server_storage_key(&server_id);
+    let root = store_root(&app)?;
+    plan_map_package_install(&root, &server_key, &descriptor)
+}
+
+#[tauri::command]
 pub(crate) fn get_map_asset_resume_offset(
     app: AppHandle,
+    server_id: String,
     descriptor: String,
     trusted_signing_key: String,
     hash: String,
 ) -> Result<u64, String> {
+    crate::server_endpoint_for_id(&app, &server_id)?;
     let descriptor = validate_descriptor(&descriptor, &trusted_signing_key)?;
+    let server_key = server_storage_key(&server_id);
     let asset = descriptor
         .required
         .iter()
         .find(|asset| asset.hash == hash)
         .ok_or_else(|| "资源不在签名描述符的必需资源清单中".to_string())?;
     let root = store_root(&app)?;
-    if adopt_complete_partial(&root, &descriptor, asset)? {
+    if adopt_complete_partial(&root, &server_key, &descriptor, asset)? {
         return Ok(0);
     }
     partial_blob_size(
-        &partial_blob_path(&root, &descriptor, &asset.hash),
+        &partial_blob_path(&root, &server_key, &descriptor, &asset.hash),
         asset.size,
     )
 }
@@ -153,6 +175,7 @@ pub(crate) fn get_map_asset_resume_offset(
 #[serde(rename_all = "camelCase")]
 pub(crate) struct InstallAssetRequest {
     request: ApiRequest,
+    server_id: String,
     descriptor: String,
     trusted_signing_key: String,
     hash: String,
@@ -199,22 +222,20 @@ fn api_error_message(body: &str, status: u16) -> String {
         .unwrap_or_else(|| format!("地图资源下载失败（HTTP {status}）"))
 }
 
-#[tauri::command]
-pub(crate) async fn install_map_asset(
-    app: AppHandle,
-    payload: InstallAssetRequest,
+async fn install_blob_from_api(
+    app: Option<&AppHandle>,
+    root: &Path,
+    server_key: &str,
+    descriptor: &PackageDescriptor,
+    asset: &PackageAsset,
+    request: ApiRequest,
 ) -> Result<InstalledAsset, String> {
-    let descriptor = validate_descriptor(&payload.descriptor, &payload.trusted_signing_key)?;
-    validate_blob_request(&payload.request, &descriptor, &payload.hash)?;
-    let asset = descriptor
-        .required
-        .iter()
-        .find(|asset| asset.hash == payload.hash)
-        .ok_or_else(|| "资源不在签名描述符的必需资源清单中".to_string())?;
-    let root = store_root(&app)?;
-    let blob_root = package_blob_root(&root);
+    let blob_root = package_blob_root(root);
     let lock_root = root.join("locks");
-    let download_root = root.join("downloads").join(&descriptor.manifest_digest);
+    let download_root = root
+        .join("downloads")
+        .join(server_key)
+        .join(&descriptor.manifest_digest);
     fs::create_dir_all(&blob_root).map_err(|_| "无法创建地图资源内容库".to_string())?;
     fs::create_dir_all(&lock_root).map_err(|_| "无法创建地图资源锁目录".to_string())?;
     fs::create_dir_all(&download_root).map_err(|_| "无法创建地图下载临时目录".to_string())?;
@@ -236,23 +257,22 @@ pub(crate) async fn install_map_asset(
             bytes_written: 0,
         });
     }
-    if adopt_complete_partial(&root, &descriptor, asset)? {
+    if adopt_complete_partial(root, server_key, descriptor, asset)? {
         return Ok(InstalledAsset {
             hash: asset.hash.clone(),
             already_present: true,
             bytes_written: 0,
         });
     }
-    let temporary = partial_blob_path(&root, &descriptor, &asset.hash);
+    let temporary = partial_blob_path(root, server_key, descriptor, &asset.hash);
     let partial_size = partial_blob_size(&temporary, asset.size)?;
     let available_bytes =
-        fs2::available_space(&root).map_err(|_| "无法检查设备可用磁盘空间".to_string())?;
+        fs2::available_space(root).map_err(|_| "无法检查设备可用磁盘空间".to_string())?;
     if available_bytes < asset.size.saturating_sub(partial_size) {
         return Err("设备可用空间不足，无法安全准备该地图".into());
     }
 
-    let range = payload
-        .request
+    let range = request
         .headers
         .iter()
         .find(|(name, _)| name.eq_ignore_ascii_case("range"))
@@ -266,15 +286,30 @@ pub(crate) async fn install_map_asset(
             return Err("地图资源续传位置与本地临时文件不一致".into());
         }
     }
-    let response = stream_api_to_file(
-        &app,
-        payload.request,
-        &temporary,
-        asset.size,
-        partial_size,
-        &asset.hash,
-    )
-    .await?;
+    let response = match app {
+        Some(app) => {
+            stream_api_to_file(
+                app,
+                request,
+                &temporary,
+                asset.size,
+                partial_size,
+                &asset.hash,
+            )
+            .await?
+        }
+        None => {
+            stream_api_to_file_inner(
+                None,
+                request,
+                &temporary,
+                asset.size,
+                partial_size,
+                &asset.hash,
+            )
+            .await?
+        }
+    };
     if !matches!(response.status, 200 | 206) {
         return Err(api_error_message(&response.body, response.status));
     }
@@ -294,52 +329,35 @@ pub(crate) async fn install_map_asset(
     })
 }
 
-#[cfg(test)]
-mod tests {
-    use super::validate_blob_request;
-    use crate::{api_transport::ApiRequest, package_descriptor::PackageDescriptor};
-
-    fn descriptor() -> PackageDescriptor {
-        serde_json::from_value(serde_json::json!({
-            "formatVersion": 1,
-            "permanentMapId": "permanent-map-1",
-            "accessId": "world-one",
-            "releaseVersion": "v1",
-            "required": [],
-            "optional": [],
-            "manifestDigest": "digest-1",
-            "signature": { "algorithm": "ES256", "keyId": "key", "publicKey": {}, "value": "sig" }
-        }))
-        .unwrap()
+#[tauri::command]
+pub(crate) async fn install_map_asset(
+    app: AppHandle,
+    payload: InstallAssetRequest,
+) -> Result<InstalledAsset, String> {
+    let server_endpoint = crate::server_endpoint_for_id(&app, &payload.server_id)?;
+    if crate::normalize_endpoint(&payload.request.endpoint)? != server_endpoint {
+        return Err("地图资源下载服务器与已选择的服务器不匹配".into());
     }
-
-    fn request(url: &str) -> ApiRequest {
-        ApiRequest {
-            endpoint: "https://play.example.test".into(),
-            url: url.into(),
-            method: "GET".into(),
-            headers: Vec::new(),
-            body: None,
-        }
-    }
-
-    #[test]
-    fn blob_download_url_must_bind_map_hash_digest_and_ticket() {
-        let descriptor = descriptor();
-        assert!(validate_blob_request(
-            &request("https://play.example.test/api/player-launcher/maps/world-one/blobs/abc?digest=digest-1&ticket=short-ticket"),
-            &descriptor,
-            "abc",
-        ).is_ok());
-        assert!(validate_blob_request(
-            &request("https://play.example.test/api/player-launcher/maps/other-map/blobs/abc?digest=digest-1&ticket=short-ticket"),
-            &descriptor,
-            "abc",
-        ).is_err());
-        assert!(validate_blob_request(
-            &request("https://play.example.test/api/player-launcher/maps/world-one/blobs/abc?digest=other&ticket=short-ticket"),
-            &descriptor,
-            "abc",
-        ).is_err());
-    }
+    let descriptor = validate_descriptor(&payload.descriptor, &payload.trusted_signing_key)?;
+    let server_key = server_storage_key(&payload.server_id);
+    validate_blob_request(&payload.request, &descriptor, &payload.hash)?;
+    let asset = descriptor
+        .required
+        .iter()
+        .find(|asset| asset.hash == payload.hash)
+        .ok_or_else(|| "资源不在签名描述符的必需资源清单中".to_string())?;
+    let root = store_root(&app)?;
+    install_blob_from_api(
+        Some(&app),
+        &root,
+        &server_key,
+        &descriptor,
+        asset,
+        payload.request,
+    )
+    .await
 }
+
+#[cfg(test)]
+#[path = "map_packages_tests.rs"]
+mod tests;

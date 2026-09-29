@@ -1,18 +1,27 @@
 mod api_download;
 mod api_transport;
+mod local_resource_protocol;
 mod map_packages;
 mod package_descriptor;
 mod package_index;
+mod package_ownership;
+mod webview_session;
 mod window_title;
 
-use api_transport::{api_request, clear_player_cookie, clear_server_auth, player_auth_cookies};
+use api_transport::{api_request, clear_player_cookie, clear_server_auth};
+use local_resource_protocol::LocalResourceProtocolState;
 use map_packages::{get_map_asset_resume_offset, install_map_asset, prepare_map_package};
+use package_descriptor::validate_descriptor;
 use package_index::{commit_map_package, verify_installed_map_package};
+use package_ownership::{associate_map_packages_with_server, remove_server_map_data};
 use serde::{Deserialize, Serialize};
 use std::{fs, net::IpAddr, path::PathBuf};
-use tauri::webview::cookie::{time::Duration as CookieDuration, Cookie, SameSite};
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 use url::Url;
+use webview_session::{
+    clear_player_cookies as clear_webview_player_cookies,
+    sync_player_cookies as sync_webview_player_cookies,
+};
 
 const ROOT_VERSION: &str = match option_env!("BOX_ROOT_VERSION") {
     Some(version) if !version.is_empty() => version,
@@ -54,6 +63,15 @@ fn load_state(app: &AppHandle) -> Result<LauncherState, String> {
     serde_json::from_str(&contents).map_err(|error| format!("服务器列表格式无效：{error}"))
 }
 
+pub(crate) fn server_endpoint_for_id(app: &AppHandle, server_id: &str) -> Result<String, String> {
+    load_state(app)?
+        .servers
+        .into_iter()
+        .find(|server| server.id == server_id)
+        .map(|server| server.endpoint)
+        .ok_or_else(|| "这个服务器已不在列表中".to_string())
+}
+
 fn save_state(app: &AppHandle, state: &LauncherState) -> Result<(), String> {
     let path = state_path(app)?;
     let temporary = path.with_extension("json.tmp");
@@ -72,7 +90,7 @@ fn is_loopback_host(host: &str) -> bool {
             .unwrap_or(false)
 }
 
-fn normalize_endpoint(value: &str) -> Result<String, String> {
+pub(crate) fn normalize_endpoint(value: &str) -> Result<String, String> {
     let trimmed = value.trim().trim_end_matches('/');
     let endpoint = if trimmed.contains("://") {
         trimmed.to_owned()
@@ -162,15 +180,17 @@ fn select_server(app: AppHandle, server_id: String) -> Result<LauncherState, Str
 async fn remove_server(app: AppHandle, server_id: String) -> Result<LauncherState, String> {
     let mut state = load_state(&app)?;
     if let Some(server) = state.servers.iter().find(|server| server.id == server_id) {
-        clear_server_auth(&server.endpoint);
-        clear_webview_player_cookies(&app, &server.endpoint)?;
         if state.selected_server_id.as_deref() == Some(server_id.as_str()) {
             if let Some(game_window) = app.get_webview_window("player-game") {
                 game_window
                     .close()
                     .map_err(|_| "无法关闭当前游玩窗口".to_string())?;
             }
+            app.state::<LocalResourceProtocolState>().clear();
         }
+        remove_server_map_data(&app, &server_id)?;
+        clear_server_auth(&server.endpoint);
+        clear_webview_player_cookies(&app, &server.endpoint)?;
     }
     state.servers.retain(|server| server.id != server_id);
     if state.selected_server_id.as_deref() == Some(server_id.as_str()) {
@@ -180,78 +200,6 @@ async fn remove_server(app: AppHandle, server_id: String) -> Result<LauncherStat
     Ok(state)
 }
 
-fn player_cookies_for_webview(
-    endpoint: &str,
-) -> Result<(String, bool, Vec<(String, String)>), String> {
-    let url =
-        Url::parse(&normalize_endpoint(endpoint)?).map_err(|_| "游玩服务器地址无效".to_string())?;
-    let host = url
-        .host_str()
-        .ok_or_else(|| "游玩服务器地址无效".to_string())?
-        .to_owned();
-    let secure = url.scheme() == "https";
-    let cookies = player_auth_cookies(endpoint)?;
-    if !cookies
-        .iter()
-        .any(|(name, _)| name == "box_local_player_session")
-    {
-        return Err("当前服务器尚未登录玩家账号".into());
-    }
-    Ok((host, secure, cookies))
-}
-
-fn sync_webview_player_cookies(
-    window: &tauri::WebviewWindow,
-    endpoint: &str,
-) -> Result<(), String> {
-    let (host, secure, cookies) = player_cookies_for_webview(endpoint)?;
-    for (name, value) in cookies {
-        let lifetime = if name == "box_local_player_session" {
-            14
-        } else {
-            365
-        };
-        let cookie = Cookie::build((name, value))
-            .domain(host.clone())
-            .path("/")
-            .http_only(true)
-            .secure(secure)
-            .same_site(SameSite::Lax)
-            .max_age(CookieDuration::days(lifetime))
-            .build();
-        window
-            .set_cookie(cookie)
-            .map_err(|_| "无法安全地将当前服务器登录态交给游玩窗口".to_string())?;
-    }
-    Ok(())
-}
-
-fn clear_webview_player_cookies(app: &AppHandle, endpoint: &str) -> Result<(), String> {
-    let url =
-        Url::parse(&normalize_endpoint(endpoint)?).map_err(|_| "游玩服务器地址无效".to_string())?;
-    let host = url
-        .host_str()
-        .ok_or_else(|| "游玩服务器地址无效".to_string())?
-        .to_owned();
-    let windows = ["main", "player-game"]
-        .into_iter()
-        .filter_map(|label| app.get_webview_window(label));
-    for window in windows {
-        for name in ["box_local_player_session", "box_local_player_device"] {
-            let cookie = Cookie::build((name, ""))
-                .domain(host.clone())
-                .path("/")
-                .secure(url.scheme() == "https")
-                .removal()
-                .build();
-            window
-                .delete_cookie(cookie)
-                .map_err(|_| "无法清除当前服务器的游玩登录态".to_string())?;
-        }
-    }
-    Ok(())
-}
-
 #[tauri::command]
 async fn launch_map(
     app: AppHandle,
@@ -259,6 +207,7 @@ async fn launch_map(
     descriptor: String,
     trusted_signing_key: String,
     map_name: String,
+    launch_ticket: String,
 ) -> Result<(), String> {
     let state = load_state(&app)?;
     if state.selected_server_id.as_deref() != Some(server_id.as_str()) {
@@ -269,7 +218,21 @@ async fn launch_map(
         .iter()
         .find(|server| server.id == server_id)
         .ok_or_else(|| "这个服务器已不在列表中".to_string())?;
-    let package = verify_installed_map_package(&app, &descriptor, &trusted_signing_key)?;
+    let package =
+        verify_installed_map_package(&app, &descriptor, &trusted_signing_key, &server_id)?;
+    let verified_descriptor = validate_descriptor(&descriptor, &trusted_signing_key)?;
+    if launch_ticket.len() > 2048
+        || !launch_ticket.bytes().all(|byte| {
+            byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-' || byte == b'.'
+        })
+        || launch_ticket
+            .split_once('.')
+            .map_or(true, |(payload, signature)| {
+                payload.is_empty() || signature.is_empty() || signature.contains('.')
+            })
+    {
+        return Err("服务器启动授权无效，请重新点击开始游玩。".into());
+    }
     let window_title = window_title::map_window_title(&map_name, &package.release_version);
     let descriptor: serde_json::Value =
         serde_json::from_str(&descriptor).map_err(|_| "地图资源描述符格式无效".to_string())?;
@@ -288,7 +251,17 @@ async fn launch_map(
     let base_path = game_url.path().trim_end_matches('/');
     game_url.set_path(&format!("{base_path}/p/{access_id}"));
     game_url.set_query(None);
-    game_url.set_fragment(None);
+    game_url
+        .query_pairs_mut()
+        .append_pair("box3LocalAssets", "1")
+        .append_pair("box3PermanentMapId", &verified_descriptor.permanent_map_id)
+        .append_pair("box3ReleaseVersion", &verified_descriptor.release_version)
+        .append_pair("box3ManifestDigest", &verified_descriptor.manifest_digest);
+    let local_protocol = app.state::<LocalResourceProtocolState>();
+    let local_session_id = local_protocol.activate(&app, &verified_descriptor)?;
+    game_url.set_fragment(Some(&format!(
+        "box3LocalAsset={local_session_id}&box3LaunchTicket={launch_ticket}"
+    )));
 
     if let Some(main_window) = app.get_webview_window("main") {
         sync_webview_player_cookies(&main_window, &server.endpoint)?;
@@ -298,9 +271,10 @@ async fn launch_map(
         game_window
             .set_title(&window_title)
             .map_err(|_| "无法更新游玩窗口标题".to_string())?;
-        game_window
-            .navigate(game_url)
-            .map_err(|_| "无法打开游玩地图".to_string())?;
+        if game_window.navigate(game_url).is_err() {
+            local_protocol.clear();
+            return Err("无法打开游玩地图".into());
+        }
         return game_window
             .set_focus()
             .map_err(|_| "无法切换到游玩窗口".to_string());
@@ -312,7 +286,10 @@ async fn launch_map(
             .min_inner_size(900.0, 620.0)
             .resizable(true)
             .build()
-            .map_err(|_| "无法创建游玩窗口".to_string())?;
+            .map_err(|_| {
+                local_protocol.clear();
+                "无法创建游玩窗口".to_string()
+            })?;
     sync_webview_player_cookies(&game_window, &server.endpoint)?;
     game_window
         .navigate(game_url)
@@ -338,7 +315,19 @@ fn rename_server(app: AppHandle, server_id: String, name: String) -> Result<Play
 }
 
 pub fn run() {
+    let local_protocol = LocalResourceProtocolState::default();
+    let request_protocol = local_protocol.clone();
+    let close_protocol = local_protocol.clone();
     tauri::Builder::default()
+        .manage(local_protocol)
+        .register_asynchronous_uri_scheme_protocol("boxplay", move |context, request, responder| {
+            request_protocol.dispatch(context.webview_label().to_owned(), request, responder);
+        })
+        .on_window_event(move |window, event| {
+            if window.label() == "player-game" && matches!(event, WindowEvent::Destroyed) {
+                close_protocol.clear();
+            }
+        })
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_title(&format!("BOX3 Player Launcher v{ROOT_VERSION}"))?;
@@ -353,6 +342,7 @@ pub fn run() {
             get_map_asset_resume_offset,
             install_map_asset,
             commit_map_package,
+            associate_map_packages_with_server,
             launch_map,
             add_server,
             select_server,

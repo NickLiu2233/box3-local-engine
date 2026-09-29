@@ -19,7 +19,7 @@ pub(crate) struct PackageAsset {
     pub(crate) hash: String,
     pub(crate) size: u64,
     kind: String,
-    content_type: String,
+    pub(crate) content_type: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -74,7 +74,7 @@ struct DescriptorSignaturePayload<'a> {
     manifest_digest: &'a str,
 }
 
-fn valid_content_hash(hash: &str) -> bool {
+pub(crate) fn valid_content_hash(hash: &str) -> bool {
     (hash.len() == 43
         && hash
             .bytes()

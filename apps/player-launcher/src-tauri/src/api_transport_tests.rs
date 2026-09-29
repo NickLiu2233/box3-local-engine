@@ -4,18 +4,22 @@ use std::{
     io::{Read, Write},
     net::TcpListener,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     thread,
     time::{SystemTime, UNIX_EPOCH},
 };
 
+static NEXT_TEMP_FILE_ID: AtomicU64 = AtomicU64::new(0);
+
 fn temp_file() -> PathBuf {
     std::env::temp_dir().join(format!(
-        "box-player-download-test-{}-{}",
+        "box-player-download-test-{}-{}-{}",
         std::process::id(),
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos(),
+        NEXT_TEMP_FILE_ID.fetch_add(1, Ordering::Relaxed),
     ))
 }
 
