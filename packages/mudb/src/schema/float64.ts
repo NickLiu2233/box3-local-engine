@@ -19,4 +19,3 @@ export class MuFloat64 extends MuNumber<'float64'> {
         return inp.readFloat64();
     }
 }
-5551
