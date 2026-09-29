@@ -184,6 +184,8 @@ export type ClientRuntimeConfig = ServerConfigForClient & {
   mapInfo: MapInfoConfig;
   /** Present only when a native player launcher has prepared a verified local map package. */
   launcherLocalAssetMode?: boolean;
+  /** Original server asset route for live player-skin data omitted from map packages. */
+  launcherAvatarCdnURL?: string;
   /** Signed package identity supplied by the native launcher for server-side version gating. */
   launcherPackage?: {
     permanentMapId: string;

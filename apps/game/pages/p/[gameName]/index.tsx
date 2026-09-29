@@ -110,6 +110,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
     }
     successfulProps.clientConfig = {
       ...successfulProps.clientConfig,
+      launcherAvatarCdnURL: successfulProps.clientConfig.OSS_CDN_URL,
       CDN_PATH: '',
       OSS_CDN_URL: '',
       launcherLocalAssetMode: true,
@@ -204,6 +205,7 @@ function Home(props: SSRProps) {
         ...props.clientConfig,
         CDN_PATH: launcherAssetSession ? `boxplay://localhost/${launcherAssetSession}` : '',
         OSS_CDN_URL: launcherAssetSession ? `boxplay://localhost/${launcherAssetSession}` : '',
+        launcherAvatarCdnURL: props.clientConfig.launcherAvatarCdnURL,
         launcherLocalAssetMode: true,
         launcherPackage: props.clientConfig.launcherPackage && launcherLaunchTicket
           ? { ...props.clientConfig.launcherPackage, launchTicket: launcherLaunchTicket }

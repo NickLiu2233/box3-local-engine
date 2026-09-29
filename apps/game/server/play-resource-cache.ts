@@ -185,6 +185,14 @@ function readDerivedHashList(mapId: string) {
   }
 }
 
+export function getPlayResourceCacheDerivedAssets(mapId: string) {
+  const blobs = derivedRuntimePath(mapId)
+  return readDerivedHashList(mapId).map((hash) => ({
+    hash,
+    path: path.join(blobs, hash),
+  }))
+}
+
 /**
  * Builds a strict static-resource whitelist for a published world. Every
  * script and publication-control blob is listed in private-blobs.json and is
@@ -205,7 +213,7 @@ export function getPlayResourceCacheManifest(reference: string): PlayResourceCac
   // the same read-only content router. Include them after a runtime has loaded
   // the world, while preserving the private publication deny-list as a hard
   // boundary for every browser cache manifest.
-  const derived = readDerivedHashList(mapId)
+  const derived = getPlayResourceCacheDerivedAssets(mapId).map(({ hash }) => hash)
   const hashes = [...new Set([...runtime, ...derived].filter((hash) => !privateHashes.has(hash)))].sort()
   const version = crypto
     .createHash('sha256')

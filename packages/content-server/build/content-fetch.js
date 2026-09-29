@@ -90,6 +90,7 @@ class ContentResolver {
         this._urlPrefix = spec.cdnPath + '/block/';
         this._cacheIPFS = spec.cacheIPFS;
         this.ossCdnURL = spec.ossCdnURL;
+        this.avatarCdnURL = spec.avatarCdnURL;
         if (spec.contentServer) {
             this._contentServer = spec.contentServer;
         }
@@ -210,7 +211,10 @@ class ContentResolver {
     }
     retrieveFromS3(hashOrURL, options) {
         const cdnPath = (options === null || options === void 0 ? void 0 : options.ossCdnPath) || _1.DEFAULT_OSS_CDN_PATH;
-        const request = this._createRequest(hashOrURL, `${this.ossCdnURL}${cdnPath}`, this._ossContent, this._ossContentServer);
+        const ossCdnURL = cdnPath === '/avatar/m/' && this.avatarCdnURL
+            ? this.avatarCdnURL
+            : this.ossCdnURL;
+        const request = this._createRequest(hashOrURL, `${ossCdnURL}${cdnPath}`, this._ossContent, this._ossContentServer);
         return new Promise((resolve, reject) => {
             if (request.done) {
                 if (request.error) {

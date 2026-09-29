@@ -21,11 +21,13 @@ export declare class ContentResolver {
     private _urlPrefix;
     cdnPath: string;
     ossCdnURL: string;
+    avatarCdnURL?: string;
     loadingController: LoadingController | null;
     constructor(spec: {
         cacheIPFS: boolean;
         cdnPath: string;
         ossCdnURL: string;
+        avatarCdnURL?: string;
         contentServer?: ContentServer;
         ossContentServer?: ContentServer;
         loadingController?: LoadingController;

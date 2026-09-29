@@ -156,10 +156,10 @@ impl LocalResourceProtocolState {
             if session.expires_at <= Instant::now() || session.id != session_id {
                 return error_response(StatusCode::NOT_FOUND, "resource not found");
             }
-            let Some(asset) = session.assets.get(hash) else {
+            let Some((asset_hash, asset)) = find_allowed_asset(&session.assets, hash) else {
                 return error_response(StatusCode::NOT_FOUND, "resource not found");
             };
-            (session.blob_root.join(hash), asset.clone())
+            (session.blob_root.join(asset_hash), asset.clone())
         };
         let (path, asset) = allowed;
         if request.method() == Method::OPTIONS {
@@ -238,6 +238,25 @@ fn resource_route<'a>(segments: &[&'a str]) -> Option<(&'a str, &'a str)> {
         [session, "block", hash] | [session, "engine", "m", hash] => Some((session, hash)),
         _ => None,
     }
+}
+
+fn find_allowed_asset<'a>(
+    assets: &'a HashMap<String, AllowedAsset>,
+    requested_hash: &str,
+) -> Option<(&'a str, &'a AllowedAsset)> {
+    if let Some((hash, asset)) = assets.get_key_value(requested_hash) {
+        return Some((hash.as_str(), asset));
+    }
+    [
+        ".mp3", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ogg", ".wav",
+    ]
+    .into_iter()
+    .find_map(|suffix| {
+        requested_hash
+            .strip_suffix(suffix)
+            .and_then(|hash| assets.get_key_value(hash))
+            .map(|(hash, asset)| (hash.as_str(), asset))
+    })
 }
 
 fn parse_range(value: &str, total_size: u64) -> Result<(u64, u64), ()> {
@@ -320,7 +339,8 @@ fn range_error(total_size: u64) -> Response<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_range, resource_route};
+    use super::{find_allowed_asset, parse_range, resource_route, AllowedAsset};
+    use std::collections::HashMap;
 
     #[test]
     fn resource_routes_are_limited_to_allowed_asset_namespaces() {
@@ -346,6 +366,26 @@ mod tests {
         assert_eq!(parse_range("bytes=-3", 10), Ok((7, 9)));
         assert!(parse_range("bytes=10-", 10).is_err());
         assert!(parse_range("bytes=0-1,4-5", 10).is_err());
+    }
+
+    #[test]
+    fn extension_urls_resolve_only_to_an_exact_manifest_hash() {
+        let hash = format!("Qm{}", "a".repeat(44));
+        let assets = HashMap::from([(
+            hash.clone(),
+            AllowedAsset {
+                size: 12,
+                content_type: "audio/mpeg".into(),
+            },
+        )]);
+
+        assert!(find_allowed_asset(&assets, &hash).is_some());
+        assert_eq!(
+            find_allowed_asset(&assets, &format!("{hash}.mp3"))
+                .map(|(canonical_hash, _)| canonical_hash),
+            Some(hash.as_str())
+        );
+        assert!(find_allowed_asset(&assets, &format!("{hash}.private")).is_none());
     }
 
     #[test]
@@ -389,6 +429,14 @@ mod tests {
         let response = state.respond("player-game", request);
         assert_eq!(response.status(), StatusCode::PARTIAL_CONTENT);
         assert_eq!(response.body(), b"cdef");
+
+        let extension_url = Request::builder()
+            .uri("boxplay://localhost/launch-session/block/public-hash.mp3")
+            .body(Vec::new())
+            .unwrap();
+        let extension_response = state.respond("player-game", extension_url);
+        assert_eq!(extension_response.status(), StatusCode::OK);
+        assert_eq!(extension_response.body(), b"abcdefghij");
 
         let forbidden = Request::builder()
             .uri("boxplay://localhost/launch-session/block/private-hash")

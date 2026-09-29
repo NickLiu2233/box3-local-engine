@@ -3,7 +3,11 @@ import fs from 'fs'
 import path from 'path'
 
 import { findPlayWorld } from './play-worlds'
-import { getPlayResourceSigningIdentity, signPlayResourcePayload } from './play-resource-cache'
+import {
+  getPlayResourceCacheDerivedAssets,
+  getPlayResourceSigningIdentity,
+  signPlayResourcePayload,
+} from './play-resource-cache'
 
 const HASH_PATTERN = /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|[A-Za-z0-9_-]{43})$/
 const MAX_REQUIRED_ASSETS = 20_000
@@ -14,7 +18,7 @@ export type PlayerLauncherPackageAsset = {
   hash: string
   size: number
   kind: 'static'
-  contentType: 'application/octet-stream'
+  contentType: string
 }
 
 export type PlayerLauncherPackageDescriptor = {
@@ -60,6 +64,42 @@ function canonicalJson(value: unknown) {
   return JSON.stringify(value)
 }
 
+function detectContentType(filePath: string) {
+  const fd = fs.openSync(filePath, 'r')
+  const header = Buffer.alloc(512)
+  let bytesRead = 0
+  try {
+    bytesRead = fs.readSync(fd, header, 0, header.length, 0)
+  } finally {
+    fs.closeSync(fd)
+  }
+  const bytes = header.subarray(0, bytesRead)
+  const startsWith = (...signature: number[]) =>
+    signature.every((value, index) => bytes[index] === value)
+
+  if (startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a)) return 'image/png'
+  if (startsWith(0xff, 0xd8, 0xff)) return 'image/jpeg'
+  if (bytes.subarray(0, 6).toString('ascii').match(/^GIF8[79]a$/)) return 'image/gif'
+  if (
+    bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) return 'image/webp'
+  if (bytes.subarray(4, 12).toString('ascii').match(/^ftyp(avif|avis)$/)) return 'image/avif'
+  if (bytes.subarray(0, 4).toString('ascii') === 'glTF') return 'model/gltf-binary'
+  if (bytes.subarray(0, 4).toString('ascii') === 'OggS') return 'audio/ogg'
+  if (bytes.subarray(0, 3).toString('ascii') === 'ID3') return 'audio/mpeg'
+  if (
+    bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('ascii') === 'WAVE'
+  ) return 'audio/wav'
+
+  const text = bytes.toString('utf8').replace(/^\uFEFF/, '').trimStart().toLowerCase()
+  if (text.startsWith('<svg') || (text.startsWith('<?xml') && text.includes('<svg'))) {
+    return 'image/svg+xml'
+  }
+  return 'application/octet-stream'
+}
+
 export function getPlayerLauncherPackageDescriptor(reference: string): PlayerLauncherPackageDescriptor {
   const libraryRoot = playLibraryRoot()
   const cacheKey = `${libraryRoot}\0${reference}`
@@ -72,13 +112,26 @@ export function getPlayerLauncherPackageDescriptor(reference: string): PlayerLau
   const dataRoot = path.join(worldRoot, 'data')
   const runtimeHashes = readManifestHashes(path.join(dataRoot, 'runtime-blobs.json'))
   const privateHashes = new Set(readManifestHashes(path.join(dataRoot, 'private-blobs.json')))
-  const hashes = [...new Set(runtimeHashes)].filter((hash) => !privateHashes.has(hash)).sort()
+  const derivedAssets = getPlayResourceCacheDerivedAssets(world.permanentMapId)
+    .filter(({ hash }) => HASH_PATTERN.test(hash))
+  const derivedByHash = new Map(derivedAssets.map((asset) => [asset.hash, asset.path]))
+  const hashes = [...new Set([...runtimeHashes, ...derivedByHash.keys()])]
+    .filter((hash) => !privateHashes.has(hash))
+    .sort()
   if (hashes.length > MAX_REQUIRED_ASSETS) throw new Error('地图公开资源数量超出启动器上限')
 
   let totalBytes = 0
   const required = hashes.map((hash) => {
-    const blobPath = path.join(dataRoot, 'blobs', hash)
-    const stat = fs.statSync(blobPath)
+    const runtimeBlobPath = path.join(dataRoot, 'blobs', hash)
+    let blobPath = runtimeBlobPath
+    try {
+      if (!fs.lstatSync(runtimeBlobPath).isFile()) {
+        blobPath = derivedByHash.get(hash) || runtimeBlobPath
+      }
+    } catch {
+      blobPath = derivedByHash.get(hash) || runtimeBlobPath
+    }
+    const stat = fs.lstatSync(blobPath)
     if (!stat.isFile() || stat.size > MAX_REQUIRED_BLOB_BYTES) {
       throw new Error('地图包含无效或过大的公开资源')
     }
@@ -88,7 +141,7 @@ export function getPlayerLauncherPackageDescriptor(reference: string): PlayerLau
       hash,
       size: stat.size,
       kind: 'static' as const,
-      contentType: 'application/octet-stream' as const,
+      contentType: detectContentType(blobPath),
     }
   })
 
@@ -124,11 +177,20 @@ export function getPlayerLauncherBlobPath(reference: string, hash: string) {
   const descriptor = getPlayerLauncherPackageDescriptor(reference)
   const asset = descriptor.required.find((entry) => entry.hash === hash)
   if (!asset) throw new Error('该资源不属于此地图的公开资源清单')
-  return {
-    descriptor,
-    path: path.join(playLibraryRoot(), findPlayWorld(reference)!.id, 'data', 'blobs', hash),
-    asset,
+  const world = findPlayWorld(reference)!
+  const runtimeBlobPath = path.join(playLibraryRoot(), world.id, 'data', 'blobs', hash)
+  let blobPath = runtimeBlobPath
+  try {
+    if (!fs.lstatSync(runtimeBlobPath).isFile()) throw new Error('not a regular runtime blob')
+  } catch {
+    const derivedAsset = getPlayResourceCacheDerivedAssets(world.permanentMapId)
+      .find((entry) => entry.hash === hash)
+    if (!derivedAsset || !fs.lstatSync(derivedAsset.path).isFile()) {
+      throw new Error('地图运行时资源暂不可用')
+    }
+    blobPath = derivedAsset.path
   }
+  return { descriptor, path: blobPath, asset }
 }
 
 export function getPlayerLauncherSigningPublicKey() {

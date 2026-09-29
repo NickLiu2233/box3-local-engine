@@ -15,9 +15,10 @@ import {
 const roots: string[] = []
 const previousLibraryPath = process.env.BOX_PLAY_LIBRARY_PATH
 const previousPermissionSecret = process.env.PERMISSION_TOKEN_SECRET
+const previousRuntimeCachePath = process.env.BOX_RUNTIME_CACHE_PATH
 
-function writeBlob(root: string, contents: string) {
-  const bytes = Buffer.from(contents)
+function writeBlob(root: string, contents: string | Buffer) {
+  const bytes = Buffer.isBuffer(contents) ? contents : Buffer.from(contents)
   const hash = crypto.createHash('sha256').update(bytes).digest('base64url')
   fs.writeFileSync(path.join(root, hash), bytes)
   return { hash, bytes }
@@ -30,7 +31,24 @@ function createPublishedWorld() {
   const blobs = path.join(data, 'blobs')
   fs.mkdirSync(blobs, { recursive: true })
   const publicAsset = writeBlob(blobs, 'public terrain fixture')
+  const uiImage = writeBlob(
+    blobs,
+    Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLhiAAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  )
   const privateAsset = writeBlob(blobs, 'private script fixture')
+  const runtimeCacheRoot = path.join(root, 'runtime-cache')
+  const derivedRoot = path.join(
+    runtimeCacheRoot,
+    'play',
+    crypto.createHash('sha256').update('play\0permanent-map-001').digest('hex').slice(0, 32),
+    'blobs',
+  )
+  fs.mkdirSync(derivedRoot, { recursive: true })
+  const derivedAsset = writeBlob(derivedRoot, 'derived runtime model metadata')
+  fs.writeFileSync(path.join(derivedRoot, privateAsset.hash), privateAsset.bytes)
   const permissionHash = 'permission-fixture'
   fs.writeFileSync(path.join(root, 'launch-map', 'manifest.json'), JSON.stringify({
     id: 'launch-map',
@@ -41,10 +59,11 @@ function createPublishedWorld() {
     permissionHash,
   }))
   fs.writeFileSync(path.join(data, 'project-state.json'), JSON.stringify({ permissionHash }))
-  fs.writeFileSync(path.join(data, 'runtime-blobs.json'), JSON.stringify({ hashes: [publicAsset.hash, privateAsset.hash] }))
+  fs.writeFileSync(path.join(data, 'runtime-blobs.json'), JSON.stringify({ hashes: [publicAsset.hash, uiImage.hash, privateAsset.hash] }))
   fs.writeFileSync(path.join(data, 'private-blobs.json'), JSON.stringify({ hashes: [privateAsset.hash] }))
   process.env.BOX_PLAY_LIBRARY_PATH = root
-  return { root, publicAsset, privateAsset }
+  process.env.BOX_RUNTIME_CACHE_PATH = runtimeCacheRoot
+  return { root, publicAsset, privateAsset, derivedAsset, uiImage }
 }
 
 afterEach(() => {
@@ -53,9 +72,19 @@ afterEach(() => {
   else process.env.BOX_PLAY_LIBRARY_PATH = previousLibraryPath
   if (previousPermissionSecret === undefined) delete process.env.PERMISSION_TOKEN_SECRET
   else process.env.PERMISSION_TOKEN_SECRET = previousPermissionSecret
+  if (previousRuntimeCachePath === undefined) delete process.env.BOX_RUNTIME_CACHE_PATH
+  else process.env.BOX_RUNTIME_CACHE_PATH = previousRuntimeCachePath
 })
 
 describe('player launcher map package descriptors', () => {
+  test('describes image resources with an image MIME type for native WebViews', () => {
+    const fixture = createPublishedWorld()
+    const descriptor = getPlayerLauncherPackageDescriptor('public-map')
+    const image = descriptor.required.find(({ hash }) => hash === fixture.uiImage.hash)
+
+    expect(image?.contentType).toBe('image/png')
+  })
+
   test('signs a stable public-asset allowlist and rejects private hashes', () => {
     const fixture = createPublishedWorld()
     const descriptor = getPlayerLauncherPackageDescriptor('public-map')
@@ -74,7 +103,10 @@ describe('player launcher map package descriptors', () => {
     expect(descriptor.manifestDigest).toBe(digest)
     expect(descriptor.permanentMapId).toBe('permanent-map-001')
     expect(descriptor.releaseVersion).toBe('v4')
-    expect(descriptor.required).toEqual([expect.objectContaining({ hash: fixture.publicAsset.hash, size: fixture.publicAsset.bytes.length })])
+    expect(descriptor.required).toEqual(expect.arrayContaining([
+      expect.objectContaining({ hash: fixture.publicAsset.hash, size: fixture.publicAsset.bytes.length }),
+      expect.objectContaining({ hash: fixture.derivedAsset.hash, size: fixture.derivedAsset.bytes.length }),
+    ]))
     expect(descriptor.required.map(({ hash }) => hash)).not.toContain(fixture.privateAsset.hash)
     expect(descriptor.signature.keyId).toBe(keyId)
     expect(crypto.verify(
@@ -84,6 +116,9 @@ describe('player launcher map package descriptors', () => {
       Buffer.from(descriptor.signature.value, 'base64url'),
     )).toBe(true)
     expect(getPlayerLauncherBlobPath('launch-map', fixture.publicAsset.hash).asset.size).toBe(fixture.publicAsset.bytes.length)
+    expect(getPlayerLauncherBlobPath('launch-map', fixture.derivedAsset.hash).path)
+      .toBe(path.join(fixture.root, 'runtime-cache', 'play', crypto.createHash('sha256')
+        .update('play\0permanent-map-001').digest('hex').slice(0, 32), 'blobs', fixture.derivedAsset.hash))
     expect(() => getPlayerLauncherBlobPath('launch-map', fixture.privateAsset.hash)).toThrow('该资源不属于此地图的公开资源清单')
   })
 

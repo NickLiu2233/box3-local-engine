@@ -60,6 +60,7 @@ export class ContentResolver {
 
   public cdnPath: string;
   public ossCdnURL: string;
+  public avatarCdnURL?: string;
 
   public loadingController: LoadingController | null = null;
 
@@ -67,6 +68,7 @@ export class ContentResolver {
     cacheIPFS: boolean;
     cdnPath: string;
     ossCdnURL: string;
+    avatarCdnURL?: string;
     contentServer?: ContentServer;
     ossContentServer?: ContentServer;
     loadingController?: LoadingController;
@@ -76,6 +78,7 @@ export class ContentResolver {
     this._cacheIPFS = spec.cacheIPFS;
 
     this.ossCdnURL = spec.ossCdnURL;
+    this.avatarCdnURL = spec.avatarCdnURL;
 
     if (spec.contentServer) {
       this._contentServer = spec.contentServer;
@@ -224,9 +227,13 @@ export class ContentResolver {
     options?: { ossCdnPath?: OssCdnPath },
   ): Promise<Uint8Array | void> {
     const cdnPath: OssCdnPath = options?.ossCdnPath || DEFAULT_OSS_CDN_PATH;
+    const ossCdnURL =
+      cdnPath === '/avatar/m/' && this.avatarCdnURL
+        ? this.avatarCdnURL
+        : this.ossCdnURL;
     const request = this._createRequest(
       hashOrURL,
-      `${this.ossCdnURL}${cdnPath}`,
+      `${ossCdnURL}${cdnPath}`,
       this._ossContent,
       this._ossContentServer,
     );
