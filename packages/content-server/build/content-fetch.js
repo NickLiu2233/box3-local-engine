@@ -1,11 +1,20 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContentResolver = void 0;
+exports.isAbsoluteContentURL = isAbsoluteContentURL;
+exports.resolveContentURL = resolveContentURL;
 const _1 = require(".");
 const stream_1 = require("@box/mudb/stream");
 const image_1 = require("./image");
 const data_1 = require("./data");
 const loading_schema_1 = require("@box/utils/loading/loading-schema");
+function isAbsoluteContentURL(hashOrURL) {
+    return /^(?:https?:\/\/|boxplay:\/\/|\/\/|\/)/i.test(hashOrURL);
+}
+function resolveContentURL(hashOrURL, urlPrefix) {
+    const isAbsoluteURL = isAbsoluteContentURL(hashOrURL);
+    return isAbsoluteURL ? hashOrURL : `${urlPrefix}${hashOrURL}`;
+}
 const XHR_TIMEOUT = 5000;
 const XHR_RETRY = 5;
 class ContentRequest {
@@ -170,8 +179,7 @@ class ContentResolver {
             return request;
         }
         else {
-            const isURL = hashOrURL.indexOf('http') >= 0;
-            const url = isURL ? hashOrURL : urlPrefix + hashOrURL;
+            const url = resolveContentURL(hashOrURL, urlPrefix);
             const data = {
                 data: null,
                 loaded: false,
@@ -237,7 +245,7 @@ class ContentResolver {
         return schema.patch(schema.identity, new stream_1.MuReadStream(data));
     }
     fetchImage(hashOrURL, retrieveFunction = image_1.retrieveImage) {
-        const isURL = hashOrURL.indexOf('http') >= 0;
+        const isURL = isAbsoluteContentURL(hashOrURL);
         const taggedKey = isURL
             ? hashOrURL
             : hashOrURL.indexOf('.') < 0
@@ -271,7 +279,7 @@ class ContentResolver {
         return this._images[taggedKey];
     }
     removeImageCache(hashOrURL) {
-        const isURL = hashOrURL.indexOf('http') >= 0;
+        const isURL = isAbsoluteContentURL(hashOrURL);
         const taggedKey = isURL
             ? hashOrURL
             : hashOrURL.indexOf('.') < 0

@@ -3,6 +3,8 @@ import { MuSchema } from '@box/mudb/schema';
 import { ImageRequest, RetrieveImageFunction } from './image';
 import { DataRequest } from './data';
 import { LoadingController } from '@box/utils/loading/loading-controller';
+export declare function isAbsoluteContentURL(hashOrURL: string): boolean;
+export declare function resolveContentURL(hashOrURL: string, urlPrefix: string): string;
 export type PrefetchCachesType = {
     xhr: {
         [hash: string]: DataRequest;

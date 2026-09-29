@@ -4,6 +4,7 @@ import IconSvg from '../../assets/icons.svg';
 import { ClientRuntimeConfig } from '../../configs/client';
 import { IntlProvider } from 'react-intl';
 import { LangType } from 'src/apis/createra';
+import { syncClientConfig } from 'src/config/client';
 import { UserState } from 'src/utils/user';
 
 export type EngineAppProps = {
@@ -33,6 +34,10 @@ export const EngineApp = (
   }, [locale, loadMsgOnDemand]);
 
   if (typeof window !== 'undefined') {
+    // Legacy engine clients read this singleton. Keep it aligned with the
+    // page-specific config (not only window.CLIENT_CONFIG), especially when
+    // the launcher swaps the asset base to its signed local resource protocol.
+    syncClientConfig(clientConfig);
     window['CLIENT_CONFIG'] = clientConfig;
   }
 

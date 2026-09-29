@@ -15,6 +15,15 @@ import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 
 type RequestHandler = [(data: Uint8Array | void) => void, (error: any) => void];
 
+export function isAbsoluteContentURL(hashOrURL: string) {
+  return /^(?:https?:\/\/|boxplay:\/\/|\/\/|\/)/i.test(hashOrURL);
+}
+
+export function resolveContentURL(hashOrURL: string, urlPrefix: string) {
+  const isAbsoluteURL = isAbsoluteContentURL(hashOrURL);
+  return isAbsoluteURL ? hashOrURL : `${urlPrefix}${hashOrURL}`;
+}
+
 const XHR_TIMEOUT = 5000;
 const XHR_RETRY = 5;
 
@@ -172,9 +181,7 @@ export class ContentResolver {
         });
       return request;
     } else {
-      const isURL = hashOrURL.indexOf('http') >= 0;
-
-      const url = isURL ? hashOrURL : urlPrefix + hashOrURL;
+      const url = resolveContentURL(hashOrURL, urlPrefix);
 
       const data: DataRequest = {
         data: null,
@@ -270,7 +277,7 @@ export class ContentResolver {
     hashOrURL: string,
     retrieveFunction: RetrieveImageFunction = retrieveImage,
   ): ImageRequest {
-    const isURL = hashOrURL.indexOf('http') >= 0;
+    const isURL = isAbsoluteContentURL(hashOrURL);
     const taggedKey = isURL
       ? hashOrURL
       : hashOrURL.indexOf('.') < 0
@@ -309,7 +316,7 @@ export class ContentResolver {
   }
 
   public removeImageCache(hashOrURL: string) {
-    const isURL = hashOrURL.indexOf('http') >= 0;
+    const isURL = isAbsoluteContentURL(hashOrURL);
     const taggedKey = isURL
       ? hashOrURL
       : hashOrURL.indexOf('.') < 0

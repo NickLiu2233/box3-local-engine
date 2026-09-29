@@ -23,4 +23,8 @@ export const clientConfig: ClientConfig = Object.assign(
   getConfig(),
 );
 
+export function syncClientConfig(config: ClientConfig) {
+  Object.assign(clientConfig, config);
+}
+
 export const webClientConfig: ClientConfig = getConfig();
