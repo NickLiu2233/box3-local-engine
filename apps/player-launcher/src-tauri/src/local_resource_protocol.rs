@@ -116,39 +116,9 @@ impl LocalResourceProtocolState {
         request: Request<Vec<u8>>,
         responder: tauri::UriSchemeResponder,
     ) {
-        let request_method = request.method().to_string();
-        let path_segments = request
-            .uri()
-            .path()
-            .split('/')
-            .filter(|part| !part.is_empty())
-            .collect::<Vec<_>>();
-        let request_hash = path_segments.last().copied().unwrap_or_default().to_owned();
-        let route = if path_segments
-            .windows(2)
-            .any(|parts| parts == ["engine", "m"])
-        {
-            "engine/m"
-        } else if path_segments.len() >= 2 && path_segments[path_segments.len() - 2] == "block" {
-            "block"
-        } else {
-            "other"
-        };
         let state = self.clone();
         let job = Box::new(move || {
-            let response = state.respond(&webview_label, request);
-            let status = response.status().as_u16();
-            let content_type = response
-                .headers()
-                .get(header::CONTENT_TYPE)
-                .and_then(|value| value.to_str().ok())
-                .unwrap_or("");
-            if status >= 400 || content_type.starts_with("image/") {
-                eprintln!(
-                    "boxplay-resource method={request_method} status={status} type={content_type} route={route} asset={request_hash}"
-                );
-            }
-            responder.respond(response);
+            responder.respond(state.respond(&webview_label, request));
         });
         let _ = self.jobs.send(job);
     }
@@ -162,7 +132,6 @@ impl LocalResourceProtocolState {
             .host()
             .is_some_and(|host| host.eq_ignore_ascii_case("localhost"))
         {
-            eprintln!("boxplay-resource-reject reason=host");
             return error_response(StatusCode::NOT_FOUND, "resource not found");
         }
         let segments = request
@@ -172,15 +141,6 @@ impl LocalResourceProtocolState {
             .filter(|part| !part.is_empty())
             .collect::<Vec<_>>();
         let Some((session_id, hash)) = resource_route(&segments) else {
-            eprintln!(
-                "boxplay-resource-reject reason=route path={}",
-                segments
-                    .iter()
-                    .skip(1)
-                    .copied()
-                    .collect::<Vec<_>>()
-                    .join("/")
-            );
             return error_response(StatusCode::NOT_FOUND, "resource not found");
         };
         let allowed = {
@@ -191,15 +151,12 @@ impl LocalResourceProtocolState {
                 );
             };
             let Some(session) = active.as_ref() else {
-                eprintln!("boxplay-resource-reject reason=no-session");
                 return error_response(StatusCode::NOT_FOUND, "resource not found");
             };
             if session.expires_at <= Instant::now() || session.id != session_id {
-                eprintln!("boxplay-resource-reject reason=session-mismatch-or-expired");
                 return error_response(StatusCode::NOT_FOUND, "resource not found");
             }
             let Some((asset_hash, asset)) = find_allowed_asset(&session.assets, hash) else {
-                eprintln!("boxplay-resource-reject reason=not-in-manifest");
                 return error_response(StatusCode::NOT_FOUND, "resource not found");
             };
             (session.blob_root.join(asset_hash), asset.clone())
@@ -222,10 +179,7 @@ impl LocalResourceProtocolState {
             Ok(metadata) if metadata.file_type().is_file() && metadata.len() == asset.size => {
                 metadata
             }
-            _ => {
-                eprintln!("boxplay-resource-reject reason=blob-missing-or-size-mismatch");
-                return error_response(StatusCode::NOT_FOUND, "resource not found");
-            }
+            _ => return error_response(StatusCode::NOT_FOUND, "resource not found"),
         };
         let total_size = metadata.len();
         let range = match request.headers().get(header::RANGE) {
