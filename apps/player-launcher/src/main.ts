@@ -1,6 +1,7 @@
 import { invoke, isDesktopLauncher } from './platform/launcher-bridge'
 import brandIcon from '../resources/brand-icon.png'
 import { createPlayerApi } from './services/player-api'
+import { getServerAddressNotice } from './services/server-address-notice'
 import { bindEvents } from './events'
 import { renderPackagesPage, renderServerPage } from './views/server-pages'
 import type { PlayerLauncherState, PlayerServer } from './types'
@@ -29,6 +30,8 @@ const state: PlayerLauncherState = {
   authError: '',
   mapsError: '',
   confirmRemoveServerId: '',
+  pendingServerEndpoint: '',
+  serverAddressNotice: null,
   error: '',
   notice: '',
   theme: readTheme(),
@@ -235,6 +238,18 @@ function removeServerDialog(): string {
     </div>`
 }
 
+function serverAddressNoticeDialog(): string {
+  const notice = state.serverAddressNotice
+  if (!notice || !state.pendingServerEndpoint) return ''
+  return `
+    <div class="confirm-backdrop" data-server-address-dismiss>
+      <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="server-address-notice-title" aria-describedby="server-address-notice-description" data-server-address-dialog>
+        <header><div><h2 id="server-address-notice-title">${escapeHtml(notice.title)}</h2><p id="server-address-notice-description">${escapeHtml(notice.message)}<br><br>地址：${escapeHtml(state.pendingServerEndpoint)}<br>确认后仍可添加。</p></div></header>
+        <div class="confirm-actions"><button class="button" type="button" data-cancel-server-address autofocus>返回修改</button><button class="button danger" type="button" data-confirm-server-address>仍然添加</button></div>
+      </section>
+    </div>`
+}
+
 function render(): void {
   app.innerHTML = `
     <main class="shell">
@@ -251,6 +266,7 @@ function render(): void {
         <main class="content ${state.page === 'home' || (state.page === 'servers' && !selectedServer()) ? 'welcome-content' : ''} ${state.page === 'add-server' ? 'add-server-content' : ''}">${state.page === 'packages' ? renderPackagesPage(icon) : serverPage()}</main>
       </section>
     </main>`
+    + serverAddressNoticeDialog()
     + removeServerDialog()
   bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, applyTheme, render })
 }

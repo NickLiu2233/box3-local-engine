@@ -1,4 +1,5 @@
 import { prepareMapLaunch } from './services/map-launch-flow'
+import { getServerAddressNotice } from './services/server-address-notice'
 import { bindPlayerAccountEvents } from './events/player-account-events'
 import {
   playerLoginConnectionError,
@@ -148,6 +149,45 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     event.preventDefault()
     const endpoint = new FormData(event.currentTarget as HTMLFormElement).get('endpoint')
     state.endpointInput = String(endpoint || '')
+    const notice = getServerAddressNotice(state.endpointInput)
+    if (notice) {
+      state.pendingServerEndpoint = state.endpointInput
+      state.serverAddressNotice = notice
+      state.error = ''
+      state.notice = ''
+      render()
+      document.querySelector<HTMLElement>('[data-cancel-server-address]')?.focus()
+      return
+    }
+    await addServer(state.endpointInput)
+  })
+  document.querySelector('[data-cancel-server-address]')?.addEventListener('click', () => {
+    state.pendingServerEndpoint = ''
+    state.serverAddressNotice = null
+    render()
+    document.querySelector<HTMLInputElement>('#server-endpoint')?.focus()
+  })
+  document.querySelector('[data-server-address-dismiss]')?.addEventListener('click', (event) => {
+    if (event.target !== event.currentTarget) return
+    state.pendingServerEndpoint = ''
+    state.serverAddressNotice = null
+    render()
+  })
+  document.querySelector('[data-server-address-dialog]')?.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || state.busy) return
+    state.pendingServerEndpoint = ''
+    state.serverAddressNotice = null
+    render()
+  })
+  document.querySelector('[data-confirm-server-address]')?.addEventListener('click', async () => {
+    const endpoint = state.pendingServerEndpoint
+    if (!endpoint || state.busy) return
+    state.pendingServerEndpoint = ''
+    state.serverAddressNotice = null
+    await addServer(endpoint)
+  })
+
+  async function addServer(endpoint: string): Promise<void> {
     state.busy = true
     state.error = ''
     state.notice = ''
@@ -173,7 +213,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       state.busy = false
       render()
     }
-  })
+  }
   document.querySelector('[data-action="discover"]')?.addEventListener('click', () => {
     const server = selectedServer()
     if (!server || state.busy) return

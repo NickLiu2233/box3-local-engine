@@ -250,4 +250,7 @@ self.addEventListener('fetch', (event) => {
 if (self.__BOX3_RESOURCE_CACHE_TEST__) {
   self.__BOX3_RESOURCE_CACHE_TEST__.resourceDescriptor = resourceDescriptor
   self.__BOX3_RESOURCE_CACHE_TEST__.runWithConcurrency = runWithConcurrency
+  self.__BOX3_RESOURCE_CACHE_TEST__.hashMatches = hashMatches
+  self.__BOX3_RESOURCE_CACHE_TEST__.signatureIsValid = signatureIsValid
+  self.__BOX3_RESOURCE_CACHE_TEST__.cacheVerifiedResponse = cacheVerifiedResponse
 }

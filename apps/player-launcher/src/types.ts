@@ -60,6 +60,8 @@ export interface PlayerLauncherState {
   authError: string
   mapsError: string
   confirmRemoveServerId: string
+  pendingServerEndpoint: string
+  serverAddressNotice: { title: string; message: string } | null
   error: string
   notice: string
   theme: string

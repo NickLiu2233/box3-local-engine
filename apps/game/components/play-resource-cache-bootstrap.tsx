@@ -28,6 +28,7 @@ export interface BootstrapPlayResourceCacheOptions {
   fetchManifest?: (url: string) => Promise<Response>
   serviceWorkerContainer?: Pick<ServiceWorkerContainer, 'register'> & Partial<Pick<ServiceWorkerContainer, 'controller' | 'addEventListener' | 'removeEventListener'>>
   cacheStorage?: Pick<CacheStorage, 'open'>
+  isSecureContext?: boolean
   isCancelled?: () => boolean
   waitForCompletion?: boolean
   onProgress?: (progress: number) => void
@@ -67,11 +68,19 @@ export async function bootstrapPlayResourceCache({
   fetchManifest,
   serviceWorkerContainer,
   cacheStorage,
+  isSecureContext = typeof window === 'undefined' || window.isSecureContext,
   isCancelled = () => false,
   waitForCompletion = false,
   onProgress,
 }: BootstrapPlayResourceCacheOptions): Promise<void> {
-  if (!world || !serviceWorkerContainer) {
+  if (!world) {
+    if (waitForCompletion) throw new Error('当前客户端不支持 Service Worker，无法离线准备地图资源')
+    return
+  }
+  if (waitForCompletion && !isSecureContext) {
+    throw new Error('启动器本地资源缓存需要安全连接：请使用 HTTPS 地址；本机 localhost 或 127.0.0.1 可以继续使用 HTTP。')
+  }
+  if (!serviceWorkerContainer) {
     if (waitForCompletion) throw new Error('当前客户端不支持 Service Worker，无法离线准备地图资源')
     return
   }

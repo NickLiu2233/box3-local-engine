@@ -19,6 +19,15 @@ function worker(state: ServiceWorkerState) {
 }
 
 describe('Play resource cache worker activation', () => {
+  test('explains that non-loopback HTTP servers need HTTPS for launcher caching', async () => {
+    await expect(bootstrapPlayResourceCache({
+      world: 'map-one',
+      launcherServiceWorkerMode: true,
+      waitForCompletion: true,
+      isSecureContext: false,
+    })).rejects.toThrow('请使用 HTTPS 地址')
+  })
+
   test('registers the Service Worker and primes launcher maps before runtime startup', async () => {
     const calls: string[] = []
     const activeWorker = {
