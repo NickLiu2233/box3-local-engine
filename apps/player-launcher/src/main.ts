@@ -245,7 +245,7 @@ function serverAddressNoticeDialog(): string {
     <div class="confirm-backdrop" data-server-address-dismiss>
       <section class="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="server-address-notice-title" aria-describedby="server-address-notice-description" data-server-address-dialog>
         <header><div><h2 id="server-address-notice-title">${escapeHtml(notice.title)}</h2><p id="server-address-notice-description">${escapeHtml(notice.message)}<br><br>地址：${escapeHtml(state.pendingServerEndpoint)}<br>确认后仍可添加。</p></div></header>
-        <div class="confirm-actions"><button class="button" type="button" data-cancel-server-address autofocus>返回修改</button><button class="button danger" type="button" data-confirm-server-address>仍然添加</button></div>
+        <div class="confirm-actions"><button class="button" type="button" data-cancel-server-address autofocus>返回修改</button><button class="button primary" type="button" data-confirm-server-address>仍然添加</button></div>
       </section>
     </div>`
 }

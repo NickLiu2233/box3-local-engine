@@ -152,6 +152,10 @@ export function createApiTransport({ fetchImpl = globalThis.fetch, timeoutMs = 8
     clear(endpoint) {
       const normalized = normalizeEndpoint(endpoint).toString().replace(/\/$/, '')
       playerCookies.delete(normalized)
+    },
+    forget(endpoint) {
+      const normalized = normalizeEndpoint(endpoint).toString().replace(/\/$/, '')
+      playerCookies.delete(normalized)
       authOrigins.delete(normalized)
     },
     cookies(endpoint) {

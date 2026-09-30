@@ -37,3 +37,28 @@ test('transport sends and clears server-scoped session cookies', async () => {
   transport.clear('play.example.com')
   assert.deepEqual(transport.cookies('play.example.com'), [])
 })
+
+test('forgetting a removed server revokes its advertised login portal', async () => {
+  let fetchCalls = 0
+  const transport = createApiTransport({
+    fetchImpl: async () => {
+      fetchCalls += 1
+      return Response.json({ loginApiUrl: 'https://accounts.example.com/api/auth/login' })
+    },
+  })
+  await transport.request({
+    endpoint: 'play.example.com',
+    url: 'https://play.example.com/api/player-launcher/bootstrap',
+    method: 'GET',
+  })
+
+  transport.forget('play.example.com')
+
+  await assert.rejects(transport.request({
+    endpoint: 'play.example.com',
+    url: 'https://accounts.example.com/api/auth/login',
+    method: 'POST',
+    body: '{}',
+  }), /API 请求必须指向当前游玩服务器的 \/api\/ 接口/)
+  assert.equal(fetchCalls, 1)
+})

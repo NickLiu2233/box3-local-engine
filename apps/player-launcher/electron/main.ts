@@ -140,7 +140,7 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
     if (!server) throw new Error('这个服务器已不在列表中')
     if (gameWindowManager.isActiveFor(server.id)) await gameWindowManager.close()
     await gameWindowManager.clearServerCache(server.id)
-    apiTransport.clear(server.endpoint)
+    apiTransport.forget(server.endpoint)
     await clearWebSessionCookies(server.endpoint)
     const next = await store.remove(server.id)
     return next

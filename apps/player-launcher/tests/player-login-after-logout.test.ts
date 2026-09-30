@@ -1,0 +1,53 @@
+import assert from 'node:assert/strict'
+import { test } from 'node:test'
+import { createApiTransport } from '../electron/services/api-transport'
+import { createPlayerApi } from '../src/services/player-api'
+import { playerLoginConnectionError } from '../src/services/player-auth-errors'
+
+test('a player can log in again after logout clears the local session', async () => {
+  const endpoint = 'https://play.example.test'
+  const loginApiUrl = 'https://accounts.example.test/api/auth/login'
+  let loginAttempts = 0
+  const transport = createApiTransport({
+    fetchImpl: async (input) => {
+      const url = new URL(String(input))
+      if (url.pathname === '/api/player-launcher/bootstrap') {
+        return Response.json({ loginApiUrl, loginRequired: true })
+      }
+      if (url.pathname === '/api/auth/login') {
+        loginAttempts += 1
+        return Response.json({ player: { username: 'test-player' } }, {
+          headers: { 'set-cookie': 'box_local_player_session=test-session; Path=/; HttpOnly' },
+        })
+      }
+      if (url.pathname === '/api/auth/logout') {
+        return new Response('{}', {
+          status: 200,
+          headers: { 'set-cookie': 'box_local_player_session=; Path=/; Max-Age=0' },
+        })
+      }
+      return new Response('{}', { status: 404 })
+    },
+  })
+  const playerApi = createPlayerApi({
+    isNative: () => true,
+    invoke: async (_command, payload) => transport.request(payload.request),
+  })
+
+  const bootstrap = await playerApi.readBootstrap(endpoint)
+  assert.equal(bootstrap.supported, true)
+  assert.equal((await playerApi.login(endpoint, bootstrap, 'test-player', 'fixture-password')).response.ok, true)
+  assert.equal((await playerApi.logout(endpoint, bootstrap)).response.ok, true)
+  transport.clear(endpoint)
+
+  let secondLoginError = ''
+  try {
+    const result = await playerApi.login(endpoint, bootstrap, 'test-player', 'fixture-password')
+    assert.equal(result.response.ok, true)
+  } catch (error) {
+    secondLoginError = playerLoginConnectionError(error)
+  }
+
+  assert.equal(secondLoginError, '')
+  assert.equal(loginAttempts, 2)
+})

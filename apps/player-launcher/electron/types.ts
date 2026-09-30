@@ -25,7 +25,10 @@ export interface ApiResponse {
 
 export interface ApiTransport {
   request(request: ApiRequest): Promise<ApiResponse>
+  /** Clear player session cookies while retaining the server-advertised login portal. */
   clear(endpoint: string): void
+  /** Forget both session cookies and the server-advertised login portal. */
+  forget(endpoint: string): void
   cookies(endpoint: string): Array<[string, string]>
 }
 
