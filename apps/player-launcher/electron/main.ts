@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { createApiTransport } from './services/api-transport'
+import { createPublicImageTransport } from './services/public-image-transport'
 import { createGameWindowManager } from './services/game-window-manager'
 import { validateDescriptor } from './services/package-descriptor'
 import { createServerStore } from './services/server-store'
@@ -19,6 +20,7 @@ const COMMANDS = new Set<string>([
   'rename_server',
   'clear_player_session',
   'api_request',
+  'fetch_public_image',
   'verify_map_descriptor',
   'launch_map',
 ])
@@ -26,6 +28,7 @@ const COMMANDS = new Set<string>([
 let mainWindow: Electron.BrowserWindow | undefined
 let devServer: ViteDevServer | undefined
 const apiTransport = createApiTransport()
+const publicImageTransport = createPublicImageTransport()
 
 app.setName('BOX3 Player Launcher')
 const dataRoot = process.platform === 'linux'
@@ -121,6 +124,12 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
   if (command === 'api_request') {
     if (!payload.request) throw new Error('API 请求参数缺失')
     return apiTransport.request(payload.request)
+  }
+  if (command === 'fetch_public_image') {
+    return publicImageTransport.fetch(
+      requireString(payload.endpoint, '服务器地址无效'),
+      requireString(payload.url, '地图封面地址无效'),
+    )
   }
   if (command === 'verify_map_descriptor') {
     return validateDescriptor(

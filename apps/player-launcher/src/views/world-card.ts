@@ -3,12 +3,14 @@ import type { PlayWorld } from '../types'
 export function renderWorldCard(world: PlayWorld, state, { escapeHtml }) {
   const preparing = state.preparingMapId === world.id
   const label = preparing ? '正在检查并连接…' : '开始游玩'
-  const cover = world.cover || '/map-templates/blank-template.png'
+  const cover = world.cover || ''
   const onlineCount = Math.max(0, Number(world.onlineCount) || 0)
 
   return `<article class="world-card surface">
     <div class="world-cover-frame">
-      <img class="world-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">
+      ${cover
+    ? `<img class="world-cover" src="${escapeHtml(cover)}" alt="" loading="lazy">`
+    : '<div class="world-cover-placeholder" aria-hidden="true">◇</div>'}
       <span class="world-online">${onlineCount} 人在线</span>
     </div>
     <div class="world-copy">

@@ -32,6 +32,10 @@ export interface ApiTransport {
   cookies(endpoint: string): Array<[string, string]>
 }
 
+export interface PublicImageTransport {
+  fetch(endpoint: string, url: string): Promise<string>
+}
+
 export interface PackageAsset {
   hash: string
   size: number
@@ -62,6 +66,7 @@ export interface TrustedSigningKey {
 
 export interface ElectronCommandPayload extends Record<string, any> {
   endpoint?: string
+  url?: string
   serverId?: string
   name?: string
   request?: ApiRequest

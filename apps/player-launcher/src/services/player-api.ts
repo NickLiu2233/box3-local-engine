@@ -8,16 +8,29 @@ export interface PlayerApiOptions {
 
 const BOOTSTRAP_NOT_FOUND_RETRY_DELAY_MS = 250
 
-export function resolveMapCoverUrl(endpoint: string, value: unknown): string {
+export function resolveMapCoverUrl(endpoint: string, value: unknown, publicMapId: string): string {
   const base = new URL(endpoint)
   const fallback = new URL('/map-templates/blank-template.png', base).toString()
   const cover = typeof value === 'string' ? value.trim() : ''
   if (!cover) return fallback
   try {
-    const url = new URL(cover, base)
-    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return fallback
-    if (url.protocol === 'http:' && url.origin !== base.origin) return fallback
-    return url.toString()
+    if (/^data:image\/(?:png|jpeg|webp);base64,/i.test(cover)) return cover
+    if (/^https?:\/\//i.test(cover)) {
+      const url = new URL(cover)
+      if (url.username || url.password) return fallback
+      if (url.protocol === 'http:' && base.protocol === 'https:' && url.origin !== base.origin) return fallback
+      return url.toString()
+    }
+    if (cover.startsWith('/') && !cover.startsWith('//')) return new URL(cover, base).toString()
+
+    // Play manifests store covers as content hashes, not server-root paths.
+    // Match the website's hashToUrl convention so files resolve through the
+    // map-scoped Play block endpoint.
+    if (!publicMapId) return fallback
+    return new URL(
+      `/runtime/play/${encodeURIComponent(publicMapId)}/block/${encodeURIComponent(cover)}`,
+      base,
+    ).toString()
   } catch {
     return fallback
   }
@@ -96,14 +109,25 @@ export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
     async getMaps(endpoint) {
       const result = await client(endpoint).getApiPlayerLauncherMapsRaw()
       if (!Array.isArray(result.data?.worlds)) return result
+      const worlds = await Promise.all(result.data.worlds.map(async (world) => {
+        const coverUrl = resolveMapCoverUrl(endpoint, world.cover, world.publicId)
+        if (!isNative() || !coverUrl.startsWith(`${new URL(endpoint).origin}/`)) {
+          return { ...world, cover: coverUrl }
+        }
+        try {
+          return {
+            ...world,
+            cover: await invoke('fetch_public_image', { endpoint, url: coverUrl }),
+          }
+        } catch {
+          return { ...world, cover: '' }
+        }
+      }))
       return {
         ...result,
         data: {
           ...result.data,
-          worlds: result.data.worlds.map((world) => ({
-            ...world,
-            cover: resolveMapCoverUrl(endpoint, world.cover),
-          })),
+          worlds,
         },
       }
     },
