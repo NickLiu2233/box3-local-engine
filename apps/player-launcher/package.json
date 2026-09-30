@@ -21,6 +21,7 @@
     "appId": "com.box.player.launcher",
     "productName": "BOX3 Player Launcher",
     "asar": true,
+    "electronLanguages": ["en-US", "zh-CN"],
     "files": [
       "dist/**/*",
       "dist-electron/**/*",

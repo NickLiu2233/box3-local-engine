@@ -72,6 +72,7 @@ apps/player-launcher/dist/
 apps/player-launcher/dist-electron/
 apps/player-launcher/release-electron/
 apps/player-launcher/release-electron-ts/
+apps/player-launcher/release-electron-next/
 apps/player-launcher/src-tauri/gen/
 apps/player-launcher/src-tauri/target/
 

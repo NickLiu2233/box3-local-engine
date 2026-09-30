@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { test } from 'node:test'
-import { createGameWindowManager } from './game-window-manager'
+import { createGameWindowManager, isAllowedGamePermission } from './game-window-manager'
 import { createSignedPackageFixture } from '../testing/signed-package-fixture'
 import type { GameSession, GameWindow, GameWindowManagerOptions, GameWindowOptions } from './game-window-manager'
 
@@ -15,6 +15,7 @@ test('binds the resource protocol and player cookies to one ephemeral game sessi
   let capturedUrl
   let handlerRegistered = false
   let handlerRemoved = false
+  let permissionHandlersInstalled = false
   let cookiesSyncedTo
   let closedHandler: (() => void) | undefined
   const gameSession = {
@@ -23,6 +24,8 @@ test('binds the resource protocol and player cookies to one ephemeral game sessi
       unhandle(scheme) { assert.equal(scheme, 'boxplay'); handlerRemoved = true },
     },
     cookies: {},
+    setPermissionCheckHandler(handler) { permissionHandlersInstalled = typeof handler === 'function' },
+    setPermissionRequestHandler(handler) { permissionHandlersInstalled &&= typeof handler === 'function' },
   } as unknown as GameSession
   const sessions: GameWindowManagerOptions['sessions'] = { fromPartition(partition, options) {
     assert.match(partition, /^boxplay-launch-/)
@@ -60,6 +63,7 @@ test('binds the resource protocol and player cookies to one ephemeral game sessi
     title: 'Town · v1.0.0',
   })
   assert.equal(handlerRegistered, true)
+  assert.equal(permissionHandlersInstalled, true)
   assert.equal(cookiesSyncedTo, gameSession)
   assert.equal(capturedOptions.webPreferences.session, gameSession)
   assert.equal(capturedOptions.webPreferences.nodeIntegration, false)
@@ -74,4 +78,14 @@ test('binds the resource protocol and player cookies to one ephemeral game sessi
   assert.equal(handlerRemoved, true)
   assert.equal(manager.isActiveFor('server-1'), false)
   assert.deepEqual(manager.playerSessions(), [])
+})
+
+test('grants pointer lock only to the main game page from its server origin', () => {
+  const origin = 'https://play.example.com'
+  assert.equal(isAllowedGamePermission('pointerLock', 'https://play.example.com/p/town', true, origin), true)
+  assert.equal(isAllowedGamePermission('fullscreen', 'https://play.example.com/p/town', true, origin), true)
+  assert.equal(isAllowedGamePermission('pointerLock', 'https://attacker.example/p/town', true, origin), false)
+  assert.equal(isAllowedGamePermission('pointerLock', 'https://play.example.com/iframe', false, origin), false)
+  assert.equal(isAllowedGamePermission('media', 'https://play.example.com/p/town', true, origin), false)
+  assert.equal(isAllowedGamePermission('notifications', 'https://play.example.com/p/town', true, origin), false)
 })

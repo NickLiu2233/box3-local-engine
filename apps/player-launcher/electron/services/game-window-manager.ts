@@ -66,6 +66,15 @@ export function makeGameUrl(server: PlayerServerRecord, descriptor: PackageDescr
   return url
 }
 
+export function isAllowedGamePermission(permission: string, requestingUrl: string, isMainFrame: boolean, allowedOrigin: string): boolean {
+  if (!isMainFrame || !['pointerLock', 'fullscreen'].includes(permission)) return false
+  try {
+    return new URL(requestingUrl).origin === allowedOrigin
+  } catch {
+    return false
+  }
+}
+
 export function createGameWindowManager({ createBrowserWindow, sessions, handleLocalResource, syncCookies, blobRoot }: GameWindowManagerOptions): GameWindowManager {
   let window: GameWindow | undefined
   let gameSession: GameSession | undefined
@@ -109,6 +118,14 @@ export function createGameWindowManager({ createBrowserWindow, sessions, handleL
         const nextSession = sessions.fromPartition(`boxplay-launch-${sessionId}`, { cache: false })
         gameSession = nextSession
         playerSessions.add(nextSession)
+        nextSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin, details) => (
+          isAllowedGamePermission(permission, requestingOrigin, details.isMainFrame, origin)
+        ))
+        nextSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+          const allowed = 'requestingUrl' in details && 'isMainFrame' in details
+            && isAllowedGamePermission(permission, details.requestingUrl, details.isMainFrame, origin)
+          callback(allowed)
+        })
         await nextSession.protocol.handle('boxplay', handleLocalResource)
         await syncCookies(server.endpoint, nextSession)
 
