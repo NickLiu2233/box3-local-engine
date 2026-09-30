@@ -51,11 +51,6 @@ export const PLAYER_ADMIN_PERMISSION_MENU: readonly PlayerAdminPermissionMenuCat
     title: '游玩管理',
     sections: [
       { key: 'play-maps', title: '游玩地图', capabilities: ['play-maps.view', 'play-maps.manage'] },
-      {
-        key: 'play-resource-cache',
-        title: '本地资源加速',
-        capabilities: ['play-resource-cache.view', 'play-resource-cache.manage'],
-      },
     ],
   },
   {

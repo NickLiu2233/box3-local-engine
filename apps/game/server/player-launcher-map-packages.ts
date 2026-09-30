@@ -172,27 +172,6 @@ export function getPlayerLauncherPackageDescriptor(reference: string): PlayerLau
   return descriptor
 }
 
-export function getPlayerLauncherBlobPath(reference: string, hash: string) {
-  if (!HASH_PATTERN.test(hash)) throw new Error('资源标识无效')
-  const descriptor = getPlayerLauncherPackageDescriptor(reference)
-  const asset = descriptor.required.find((entry) => entry.hash === hash)
-  if (!asset) throw new Error('该资源不属于此地图的公开资源清单')
-  const world = findPlayWorld(reference)!
-  const runtimeBlobPath = path.join(playLibraryRoot(), world.id, 'data', 'blobs', hash)
-  let blobPath = runtimeBlobPath
-  try {
-    if (!fs.lstatSync(runtimeBlobPath).isFile()) throw new Error('not a regular runtime blob')
-  } catch {
-    const derivedAsset = getPlayResourceCacheDerivedAssets(world.permanentMapId)
-      .find((entry) => entry.hash === hash)
-    if (!derivedAsset || !fs.lstatSync(derivedAsset.path).isFile()) {
-      throw new Error('地图运行时资源暂不可用')
-    }
-    blobPath = derivedAsset.path
-  }
-  return { descriptor, path: blobPath, asset }
-}
-
 export function getPlayerLauncherSigningPublicKey() {
   return getPlayResourceSigningIdentity()
 }

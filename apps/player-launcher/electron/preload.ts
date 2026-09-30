@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-const allowedEvents = new Set<string>(['box-player-map-download-progress'])
+const allowedEvents = new Set<string>()
 
 contextBridge.exposeInMainWorld('boxPlayerLauncher', Object.freeze({
   invoke(command: string, payload: unknown = {}): Promise<unknown> {

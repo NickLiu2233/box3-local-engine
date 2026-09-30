@@ -1,6 +1,9 @@
 import { describe, expect, test } from '@jest/globals'
 
-import { getActiveResourceCacheWorker } from './play-resource-cache-bootstrap'
+import {
+  bootstrapPlayResourceCache,
+  getActiveResourceCacheWorker,
+} from './play-resource-cache-bootstrap'
 
 function worker(state: ServiceWorkerState) {
   const listeners = new Set<() => void>()
@@ -16,6 +19,52 @@ function worker(state: ServiceWorkerState) {
 }
 
 describe('Play resource cache worker activation', () => {
+  test('registers the Service Worker and primes launcher maps before runtime startup', async () => {
+    const calls: string[] = []
+    const activeWorker = {
+      state: 'activated',
+      postMessage(message: unknown) { calls.push((message as { type: string }).type) },
+    } as unknown as ServiceWorker
+    await bootstrapPlayResourceCache({
+      world: 'map-one',
+      launcherServiceWorkerMode: true,
+      fetchManifest: async (input) => {
+        const url = String(input)
+        calls.push(url.includes('bootstrap') ? 'trusted-key' : 'manifest')
+        if (url.includes('bootstrap')) {
+          return new Response(JSON.stringify({ signingKey: { keyId: 'key-1', publicKey: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' } } }), { status: 200 })
+        }
+        return new Response(JSON.stringify({
+          worldId: 'permanent-map-one',
+          version: 'v1',
+          hashes: ['Qm' + '1'.repeat(44)],
+          signature: { algorithm: 'ES256', keyId: 'key-1', publicKey: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' }, value: 'signature' },
+        }), { status: 200 })
+      },
+      serviceWorkerContainer: {
+        async register() {
+          calls.push('register')
+          return { active: activeWorker } as ServiceWorkerRegistration
+        },
+      } as unknown as ServiceWorkerContainer,
+      cacheStorage: {
+        async open(name: string) {
+          calls.push(`open:${name}`)
+          return { async match() { return new Response('cached') } } as unknown as Cache
+        },
+      },
+      waitForCompletion: true,
+      isCancelled: () => false,
+    })
+    expect(calls).toEqual([
+      'manifest',
+      'trusted-key',
+      'register',
+      'BOX3_PREFETCH_STATIC_RESOURCES',
+      'open:box-play-static:permanent-map-one:v1',
+    ])
+  })
+
   test('waits for a newly installed worker before sending its first cache request', async () => {
     const installing = worker('installing')
     const active = getActiveResourceCacheWorker({ active: null, waiting: null, installing } as never)

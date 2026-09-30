@@ -4,16 +4,10 @@ import path from 'path'
 
 import { findPlayWorld } from './play-worlds'
 
-const SETTINGS_FILE = 'resource-cache.json'
 const SIGNING_KEY_FILE = 'resource-cache-signing-key.json'
 const HASH_PATTERN = /^(?:Qm[1-9A-HJ-NP-Za-km-z]{44}|[A-Za-z0-9_-]{32,128})$/
 
-export type PlayResourceCacheSettings = {
-  enabled: boolean
-  updatedAt?: string
-}
-
-export type PlayResourceCacheManifest = PlayResourceCacheSettings & {
+export type PlayResourceCacheManifest = {
   worldId: string
   version: string
   hashes: string[]
@@ -28,10 +22,6 @@ function libraryRoot() {
   const root = String(process.env.BOX_PLAY_LIBRARY_PATH || '').trim()
   if (!root) throw new Error('游玩地图库未配置')
   return root
-}
-
-function settingsPath() {
-  return path.join(libraryRoot(), SETTINGS_FILE)
 }
 
 function signingKeyPath() {
@@ -121,27 +111,6 @@ function signManifest(worldId: string, version: string, hashes: string[]) {
   }
 }
 
-/** The default is deliberately off: the server owner must opt in. */
-export function getPlayResourceCacheSettings(): PlayResourceCacheSettings {
-  try {
-    const raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) as Partial<PlayResourceCacheSettings>
-    return {
-      enabled: raw.enabled === true,
-      ...(typeof raw.updatedAt === 'string' ? { updatedAt: raw.updatedAt } : {}),
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { enabled: false }
-    throw new Error(`无法读取本地资源加速设置：${(error as Error).message}`)
-  }
-}
-
-export function updatePlayResourceCacheSettings(enabled: unknown): PlayResourceCacheSettings {
-  if (typeof enabled !== 'boolean') throw new Error('enabled 必须是布尔值')
-  const next = { enabled, updatedAt: new Date().toISOString() }
-  atomicWrite(settingsPath(), next)
-  return next
-}
-
 function readHashList(file: string) {
   try {
     const value = JSON.parse(fs.readFileSync(file, 'utf8')) as { hashes?: unknown }
@@ -199,7 +168,6 @@ export function getPlayResourceCacheDerivedAssets(mapId: string) {
  * removed here before the browser is ever told what it may persist locally.
  */
 export function getPlayResourceCacheManifest(reference: string): PlayResourceCacheManifest {
-  const settings = getPlayResourceCacheSettings()
   const world = findPlayWorld(reference)
   if (!world) throw new Error('地图不存在')
   const dataRoot = path.join(libraryRoot(), world.id, 'data')
@@ -220,5 +188,5 @@ export function getPlayResourceCacheManifest(reference: string): PlayResourceCac
     .update(JSON.stringify({ worldId: mapId, version: world.version, hashes }))
     .digest('hex')
     .slice(0, 24)
-  return { ...settings, worldId: mapId, version, hashes, signature: signManifest(mapId, version, hashes) }
+  return { worldId: mapId, version, hashes, signature: signManifest(mapId, version, hashes) }
 }

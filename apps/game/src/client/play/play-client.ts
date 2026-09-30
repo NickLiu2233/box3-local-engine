@@ -212,7 +212,7 @@ export class PlayClient extends EngineClient {
         ? `/__room/${encodeURIComponent(serverId)}`
         : '';
       const runtimeBase = `/runtime/play/${encodeURIComponent(hash)}${roomPath}`;
-      const assetBase = clientConfig.launcherLocalAssetMode
+      const assetBase = clientConfig.launcherServiceWorkerMode
         ? clientConfig.CDN_PATH
         : runtimeBase;
       clientConfig.CDN_PATH = assetBase;
@@ -232,7 +232,7 @@ export class PlayClient extends EngineClient {
     const content = new ContentResolver({
       cdnPath: gameServerTarget.assetBaseURL,
       ossCdnURL: gameServerTarget.assetBaseURL,
-      avatarCdnURL: clientConfig.launcherLocalAssetMode
+      avatarCdnURL: clientConfig.launcherServiceWorkerMode
         ? clientConfig.launcherAvatarCdnURL
         : undefined,
       cacheIPFS: clientConfig.cacheIPFS,

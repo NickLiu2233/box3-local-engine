@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 
 import {
   getPlayResourceCacheManifest,
-  getPlayResourceCacheSettings,
 } from '../../../server/play-resource-cache'
 
 /** Public, non-sensitive static-resource manifest consumed by the Play loader. */
@@ -14,7 +13,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   }
   res.setHeader('Cache-Control', 'no-store')
   try {
-    if (!getPlayResourceCacheSettings().enabled) return res.status(200).json({ enabled: false })
     const manifest = getPlayResourceCacheManifest(String(req.query.world || ''))
     return res.status(200).json(manifest)
   } catch (error) {

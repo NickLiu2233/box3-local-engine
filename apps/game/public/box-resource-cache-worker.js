@@ -5,6 +5,8 @@
  * signature and every downloaded blob before it reaches Cache Storage. Script
  * blobs are excluded by the server before this worker receives the manifest.
  */
+importScripts('/box-resource-cache-range.js')
+
 const CACHE_PREFIX = 'box-play-static:'
 // Map loads have their own critical requests. Keep the optional warm-up small
 // enough that it does not occupy every browser connection to the Play host.
@@ -219,7 +221,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     const resource = resourceDescriptor(event.request)
     const cached = resource ? await caches.match(staticResourceCacheKey(resource.hash)) : undefined
-    if (cached) return cachedResponseForRequest(cached, resource.extension)
+    if (cached) {
+      const response = cachedResponseForRequest(cached, resource.extension)
+      return self.__BOX3_CACHE_RANGE__
+        ? self.__BOX3_CACHE_RANGE__.serveCachedRange(response, event.request)
+        : response
+    }
     // The warm-up may already be verifying this same immutable hash. Waiting
     // for it avoids issuing a second request when the map asks for the asset
     // during its initial load.
@@ -227,7 +234,12 @@ self.addEventListener('fetch', (event) => {
     if (warming) {
       await warming
       const warmed = await caches.match(staticResourceCacheKey(resource.hash))
-      if (warmed) return cachedResponseForRequest(warmed, resource.extension)
+      if (warmed) {
+        const response = cachedResponseForRequest(warmed, resource.extension)
+        return self.__BOX3_CACHE_RANGE__
+          ? self.__BOX3_CACHE_RANGE__.serveCachedRange(response, event.request)
+          : response
+      }
     }
     return fetch(event.request)
   })())

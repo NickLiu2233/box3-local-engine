@@ -5,19 +5,19 @@ describe('resolveGameServerTarget', () => {
     delete (globalThis as typeof globalThis & { window?: unknown }).window
   })
 
-  test('keeps session and socket remote while routing launcher map assets locally', () => {
+  test('keeps session and socket remote while routing launcher map assets through same-origin SW URLs', () => {
     Object.defineProperty(globalThis, 'window', { value: {}, configurable: true })
     const target = resolveGameServerTarget({
       mode: 'play',
       ARENA_URL: 'https://play.example.test',
-      CDN_PATH: 'boxplay://localhost/opaque-launch-session',
+      CDN_PATH: 'http://play.example.test/runtime/play/map-one',
       remoteGameServerURL: 'https://runtime.example.test',
-      launcherLocalAssetMode: true,
+      launcherServiceWorkerMode: true,
     })
 
     expect(target.sessionURL).toBe('https://runtime.example.test/api/session')
     expect(target.socketServerURL).toBe('wss://runtime.example.test')
-    expect(target.assetBaseURL).toBe('boxplay://localhost/opaque-launch-session')
+    expect(target.assetBaseURL).toBe('http://play.example.test/runtime/play/map-one')
     expect(target.isRemote).toBe(true)
   })
 
@@ -28,7 +28,7 @@ describe('resolveGameServerTarget', () => {
       ARENA_URL: 'https://play.example.test',
       CDN_PATH: '/runtime/play/map-one',
       remoteGameServerURL: 'https://runtime.example.test',
-      launcherLocalAssetMode: false,
+      launcherServiceWorkerMode: false,
     })
 
     expect(target.assetBaseURL).toBe('https://runtime.example.test')

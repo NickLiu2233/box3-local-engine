@@ -25,31 +25,8 @@ export interface ApiResponse {
 
 export interface ApiTransport {
   request(request: ApiRequest): Promise<ApiResponse>
-  downloadAsset(options: AssetDownloadOptions): Promise<AssetDownloadResult>
   clear(endpoint: string): void
   cookies(endpoint: string): Array<[string, string]>
-}
-
-export interface AssetDownloadOptions {
-  request: ApiRequest
-  filename: string
-  expectedSize: number
-  expectedContentType: string
-  existingBytes: number
-  hash: string
-  onProgress?: (progress: AssetDownloadProgress) => void
-}
-
-export interface AssetDownloadProgress {
-  hash: string
-  currentBytes: number
-  totalBytes: number
-}
-
-export interface AssetDownloadResult {
-  status: number
-  body: string
-  downloadedBytes?: number
 }
 
 export interface PackageAsset {
@@ -80,43 +57,6 @@ export interface TrustedSigningKey {
   publicKey: { kty: string; crv: string; x: string; y: string }
 }
 
-export interface VerifiedPackageRecord {
-  formatVersion: 1
-  permanentMapId: string
-  releaseVersion: string
-  manifestDigest: string
-  required: string[]
-  servers: string[]
-  verifiedAt: number
-}
-
-export interface InstallPlan {
-  permanentMapId: string
-  manifestDigest: string
-  requiredCount: number
-  missingHashes: string[]
-  missingBytes: number
-  availableBytes: number
-  insufficientStorage: boolean
-}
-
-export interface InstalledPackage {
-  permanentMapId: string
-  releaseVersion: string
-  manifestDigest: string
-  requiredCount: number
-}
-
-export interface InstallAssetPayload {
-  payload: {
-    serverId: string
-    request: ApiRequest
-    descriptor: string
-    trustedSigningKey: string
-    hash: string
-  }
-}
-
 export interface ElectronCommandPayload extends Record<string, any> {
   endpoint?: string
   serverId?: string
@@ -124,7 +64,4 @@ export interface ElectronCommandPayload extends Record<string, any> {
   request?: ApiRequest
   descriptor?: string
   trustedSigningKey?: string
-  hash?: string
-  accessIds?: string[]
-  payload?: InstallAssetPayload['payload']
 }

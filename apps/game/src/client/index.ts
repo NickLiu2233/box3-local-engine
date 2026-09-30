@@ -47,7 +47,7 @@ export const createGameClient = (
   const content = new ContentResolver({
     cdnPath: gameServerTarget.assetBaseURL,
     ossCdnURL: gameServerTarget.assetBaseURL,
-    avatarCdnURL: clientConfig.launcherLocalAssetMode
+    avatarCdnURL: clientConfig.launcherServiceWorkerMode
       ? clientConfig.launcherAvatarCdnURL
       : undefined,
     cacheIPFS: clientConfig.cacheIPFS,

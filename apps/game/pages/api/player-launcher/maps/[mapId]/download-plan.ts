@@ -1,11 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { PlayerAuthenticationRequiredError, requestPlayerServiceIp, resolvePlayerServiceIdentity } from '../../../../../server/player-service-client'
-import { getPlayLauncherAccessSettings, getPlayerLauncherWorlds } from '../../../../../server/play-launcher-access'
+import { getPlayerLauncherWorlds } from '../../../../../server/player-launcher-worlds'
 import { createPlayerLauncherDownloadTicket, getPlayerLauncherPackageDescriptor } from '../../../../../server/player-launcher-map-packages'
 
 export function createPlayerLauncherDownloadPlanHandler(dependencies = {
-  readSettings: getPlayLauncherAccessSettings,
   getWorlds: getPlayerLauncherWorlds,
   getDescriptor: getPlayerLauncherPackageDescriptor,
   resolveIdentity: resolvePlayerServiceIdentity,
@@ -18,11 +17,6 @@ export function createPlayerLauncherDownloadPlanHandler(dependencies = {
       res.setHeader('Allow', 'GET')
       return res.status(405).end()
     }
-    let enabled: boolean
-    try { enabled = dependencies.readSettings().enabled } catch {
-      return res.status(503).json({ message: '无法读取玩家启动器开放状态' })
-    }
-    if (!enabled) return res.status(403).json({ code: 'PLAYER_LAUNCHER_RESOURCES_DISABLED', message: '该服务器未开放玩家启动器资源访问' })
     let identity
     try { ({ identity } = await dependencies.resolveIdentity(req, res, dependencies.getPlayerIp(req))) } catch (error) {
       if (error instanceof PlayerAuthenticationRequiredError) return res.status(401).json({ code: 'AUTH_REQUIRED', message: '请先登录后准备地图资源' })

@@ -1643,30 +1643,6 @@ export interface paths {
         patch: operations["patchApiPlayAdminPermissionGroupsId"];
         trace?: never;
     };
-    "/api/play-admin/player-launcher-access": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 查询接口数据
-         * @description 此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。
-         */
-        get: operations["getApiPlayAdminPlayerLauncherAccess"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * 更新接口数据
-         * @description 此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。
-         */
-        patch: operations["patchApiPlayAdminPlayerLauncherAccess"];
-        trace?: never;
-    };
     "/api/play-admin/players": {
         parameters: {
             query?: never;
@@ -1781,30 +1757,6 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
-        trace?: never;
-    };
-    "/api/play-admin/resource-cache": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 查询接口数据
-         * @description 此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。
-         */
-        get: operations["getApiPlayAdminResourceCache"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * 更新接口数据
-         * @description 此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。
-         */
-        patch: operations["patchApiPlayAdminResourceCache"];
         trace?: never;
     };
     "/api/play-admin/self-password": {
@@ -2311,26 +2263,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/player-launcher/maps/{mapId}/blobs/{hash}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * 查询二进制资源
-         * @description 此操作用于“查询二进制资源”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
-         */
-        get: operations["getApiPlayerLauncherMapsMapIdBlobsHash"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/player-launcher/maps/{mapId}/descriptor": {
         parameters: {
             query?: never;
@@ -2760,7 +2692,6 @@ export interface components {
             /** @enum {integer} */
             protocolVersion: 1;
             serverName: string;
-            resourceAccessEnabled: boolean;
             loginRequired: boolean;
             loginApiUrl: string;
             signingKey: components["schemas"]["PlayerLauncherSigningKey"] | null;
@@ -7196,75 +7127,6 @@ export interface operations {
             };
         };
     };
-    getApiPlayAdminPlayerLauncherAccess: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    patchApiPlayAdminPlayerLauncherAccess: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description 执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description 操作成功，返回“更新接口数据”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
     getApiPlayAdminPlayers: {
         parameters: {
             query?: {
@@ -7590,75 +7452,6 @@ export interface operations {
                         totals: {
                             [key: string]: number;
                         };
-                    };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getApiPlayAdminResourceCache: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    patchApiPlayAdminResourceCache: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** @description 执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
-            content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
-            };
-        };
-        responses: {
-            /** @description 操作成功，返回“更新接口数据”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
                     };
                 };
             };
@@ -8727,48 +8520,6 @@ export interface operations {
                     "application/json": {
                         worlds: components["schemas"]["PlayerLauncherWorld"][];
                     };
-                };
-            };
-            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiError"];
-                };
-            };
-        };
-    };
-    getApiPlayerLauncherMapsMapIdBlobsHash: {
-        parameters: {
-            query?: {
-                /** @description 接口参数：digest。 */
-                digest?: string;
-                /** @description 接口参数：ticket。 */
-                ticket?: string;
-            };
-            header?: {
-                /** @description 续传公开地图资源时使用的字节起始偏移。 */
-                Range?: string;
-            };
-            path: {
-                /** @description 地图 ID。 */
-                mapId: string;
-                /** @description 内容寻址资源的哈希值。 */
-                hash: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description 操作成功，返回“查询二进制资源”的处理结果。 */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/octet-stream": string;
                 };
             };
             /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */

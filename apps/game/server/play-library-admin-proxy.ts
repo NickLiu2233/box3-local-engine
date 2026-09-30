@@ -68,16 +68,6 @@ export const playLibraryAdminRoute = playerAdminRoute({
   // to reach Play's internal API.
   requirement: (req) => {
     const section = Array.isArray(req.query.section) ? req.query.section[0] : req.query.section
-    if (section === 'resource-cache') {
-      return ['GET', 'HEAD'].includes(req.method || 'GET')
-        ? 'play-resource-cache.view'
-        : 'play-resource-cache.manage'
-    }
-    if (section === 'player-launcher-access') {
-      return ['GET', 'HEAD'].includes(req.method || 'GET')
-        ? 'play-launcher-resources.view'
-        : 'play-launcher-resources.manage'
-    }
     return ['GET', 'HEAD'].includes(req.method || 'GET')
       ? 'play-maps.view'
       : 'play-maps.manage'
@@ -90,10 +80,6 @@ export const playLibraryAdminRoute = playerAdminRoute({
     ? id ? `/api/play-admin/worlds/${encodeURIComponent(id)}` : '/api/play-admin/worlds'
     : section === 'world-status'
       ? '/api/play-admin/worlds/status'
-      : section === 'resource-cache'
-        ? '/api/play-admin/resource-cache'
-      : section === 'player-launcher-access'
-        ? '/api/play-admin/player-launcher-access'
       : section === 'import-resource'
         ? '/api/play-admin/import-resource'
         : '/api/play-admin/import';

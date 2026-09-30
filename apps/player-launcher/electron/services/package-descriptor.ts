@@ -1,5 +1,4 @@
 import * as crypto from 'node:crypto'
-import { openRegularFile } from './fs-safe'
 import type { PackageAsset, PackageDescriptor, TrustedSigningKey } from '../types'
 
 export const MAX_ASSET_COUNT = 20_000
@@ -148,23 +147,6 @@ export function validateDescriptor(descriptorInput: string | PackageDescriptor, 
 export function verifyHashBytes(hash: string, bytes: Buffer, expectedSize: number): boolean {
   if (!Buffer.isBuffer(bytes) || bytes.byteLength !== expectedSize) return false
   return verifyDigest(hash, crypto.createHash('sha256').update(bytes).digest())
-}
-
-export async function verifyHashFile(hash: string, filename: string, expectedSize: number): Promise<boolean> {
-  let opened
-  try { opened = await openRegularFile(filename, expectedSize) } catch {
-    throw new Error('无法检查本地地图资源')
-  }
-  if (!opened) return false
-  const digest = crypto.createHash('sha256')
-  try {
-    for await (const chunk of opened.handle.createReadStream({ autoClose: false })) digest.update(chunk)
-  } catch {
-    throw new Error('读取本地地图资源失败')
-  } finally {
-    await opened.handle.close().catch(() => undefined)
-  }
-  return verifyDigest(hash, digest.digest())
 }
 
 export {

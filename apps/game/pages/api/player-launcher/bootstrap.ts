@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
-import { getPlayLauncherAccessSettings } from '../../../server/play-launcher-access'
 import { getPlayResourceSigningIdentity } from '../../../server/play-resource-cache'
 
 function playerLoginApiUrl() {
@@ -15,7 +14,6 @@ function playerLoginApiUrl() {
 
 /** Safe, unauthenticated handshake: disclose no maps or resource URLs here. */
 export function createPlayerLauncherBootstrapHandler(
-  readSettings: typeof getPlayLauncherAccessSettings = getPlayLauncherAccessSettings,
   readSigningIdentity: typeof getPlayResourceSigningIdentity = getPlayResourceSigningIdentity,
 ) {
   return function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -26,17 +24,15 @@ export function createPlayerLauncherBootstrapHandler(
       return res.status(405).end()
     }
     try {
-      const access = readSettings()
       return res.status(200).json({
         protocolVersion: 1,
         serverName: String(process.env.BOX_PLAYER_LAUNCHER_SERVER_NAME || '').trim(),
-        resourceAccessEnabled: access.enabled,
         loginRequired: true,
         loginApiUrl: playerLoginApiUrl(),
-        signingKey: access.enabled ? readSigningIdentity() : null,
+        signingKey: readSigningIdentity(),
       })
     } catch {
-      return res.status(503).json({ message: '无法读取玩家启动器开放状态' })
+      return res.status(503).json({ message: '无法读取玩家启动器支持信息' })
     }
   }
 }

@@ -9,6 +9,8 @@
     "build-apis": "node -r ts-node/register --max-old-space-size=4096 ./scripts/build-apis.ts",
     "build-ipfs": "ts-node -r tsconfig-paths/register ./scripts/build-ipfs.ts",
     "build-llm-context": "node -r ts-node/register --max-old-space-size=4096 ./scripts/build-llm-context.ts",
+    "build-service-worker-cache": "node -r ts-node/register ./scripts/build-service-worker-cache-range.ts",
+    "prebuild-next": "npm run build-service-worker-cache",
     "build-next": "NODE_ENV=production next build",
     "build-player:dev": "NODE_ENV=development webpack --config rusty/webpack.config.js",
     "build-player:prod": "NODE_ENV=production webpack --config rusty/webpack.config.js",

@@ -17,12 +17,6 @@ export const PLAYER_ADMIN_CAPABILITIES = [
   'creator-tokens.manage',
   'play-maps.view',
   'play-maps.manage',
-  // Resource packages change what is stored on every player's device. Keep
-  // this server-wide switch out of delegable moderator permission groups.
-  'play-resource-cache.view',
-  'play-resource-cache.manage',
-  'play-launcher-resources.view',
-  'play-launcher-resources.manage',
   'containers.view',
   'containers.manage',
   'audit.view',
@@ -32,13 +26,7 @@ export type PlayerAdminCapability = typeof PLAYER_ADMIN_CAPABILITIES[number];
 export type PlayerAdminRequirement = PlayerAdminCapability | 'owner';
 export type PlayerAdminRole = 'owner' | 'admin' | 'moderator';
 
-export const PLAYER_ADMIN_GRANTABLE_CAPABILITIES = PLAYER_ADMIN_CAPABILITIES.filter(
-  (capability) =>
-    capability !== 'play-resource-cache.view' &&
-    capability !== 'play-resource-cache.manage' &&
-    capability !== 'play-launcher-resources.view' &&
-    capability !== 'play-launcher-resources.manage',
-);
+export const PLAYER_ADMIN_GRANTABLE_CAPABILITIES = PLAYER_ADMIN_CAPABILITIES;
 
 export const PLAYER_ADMIN_CAPABILITY_META: Record<PlayerAdminCapability, {
   label: string;
@@ -62,10 +50,6 @@ export const PLAYER_ADMIN_CAPABILITY_META: Record<PlayerAdminCapability, {
   'creator-tokens.manage': { label: '管理 Creator CLI Token', description: '为已获创作权限的玩家签发或撤销 CLI Token，不会提升其创作权限' },
   'play-maps.view': { label: '查看游玩地图', description: '查看已导入的游玩地图、状态和资源统计' },
   'play-maps.manage': { label: '管理游玩地图', description: '导入、设置、开放或删除游玩地图' },
-  'play-resource-cache.view': { label: '查看本地资源加速', description: '查看服务器是否允许玩家缓存地图静态资源' },
-  'play-resource-cache.manage': { label: '管理本地资源加速', description: '开启或关闭服务器级玩家资源缓存，仅服主和管理员拥有' },
-  'play-launcher-resources.view': { label: '查看玩家启动器访问', description: '查看服务器是否允许玩家启动器发现地图和下载本地资源包' },
-  'play-launcher-resources.manage': { label: '管理玩家启动器访问', description: '开启或关闭服务器级玩家启动器地图与资源访问，仅服主和管理员拥有' },
   'containers.view': { label: '查看容器运行状态', description: '查看创作端和游玩端当前已启动的地图运行时' },
   'containers.manage': { label: '管理地图容器', description: '配置游玩地图容量或销毁异常运行时' },
   'audit.view': { label: '查看安全审计', description: '查看登录风险、关联线索和管理操作记录' },

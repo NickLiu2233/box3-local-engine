@@ -1,4 +1,4 @@
-import { prepareMapResources } from './services/map-package-flow'
+import { prepareMapLaunch } from './services/map-launch-flow'
 import { bindPlayerAccountEvents } from './events/player-account-events'
 import {
   playerLoginConnectionError,
@@ -191,32 +191,28 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     if (!server || !mapId || state.busy || !state.serverBootstrap?.signingKey) return
     state.busy = true
     state.preparingMapId = mapId
-    state.prepareProgress = { done: 0, total: 0 }
     state.error = ''
     state.notice = ''
     render()
-    let stage = '检查服务器开放状态'
+    let stage = '检查服务器支持信息'
     try {
       const bootstrap = await remoteApi.readBootstrap(server.endpoint)
-      if (!bootstrap.supported || !bootstrap.resourceAccessEnabled || !bootstrap.signingKey) {
-        throw new Error('该服务器当前未开放带签名的玩家地图资源。')
+      if (!bootstrap.supported || !bootstrap.signingKey) {
+        throw new Error('服务器未提供有效的地图资源签名信息。')
       }
       state.serverBootstrap = bootstrap
-      stage = '准备签名资源包'
-      const { descriptor, installed, launchTicket } = await prepareMapResources({
+      stage = '验证地图并准备启动授权'
+      const { descriptor, launchTicket } = await prepareMapLaunch({
         server,
         mapId,
         bootstrap,
         remoteApi,
         onStage: (value) => { stage = value },
-        onProgress: (progress) => { state.prepareProgress = progress; render() },
       })
-      const key = `${server.id}:${mapId}`
-      state.packageStates[key] = { ready: true, manifestDigest: installed.manifestDigest }
       stage = '检查当前账号的地图进入权限'
       const maps = await remoteApi.getMaps(server.endpoint)
       if (!maps.response.ok || !maps.data?.worlds?.some((world) => world.id === mapId || world.publicId === mapId)) {
-        throw new Error('资源已准备，但当前账号暂时不能进入这张地图。')
+        throw new Error('当前账号暂时不能进入这张地图。')
       }
       const mapName = state.worlds.find((world) => world.id === mapId || world.publicId === mapId)?.name
         || descriptor.accessId
@@ -227,17 +223,16 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
         const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
         throw new Error(message ? `安全启动地图失败：${message}` : '安全启动地图失败（本机命令未返回错误说明）')
       }
-      state.notice = `“${descriptor.accessId}”的资源已验证，正在连接服务器…`
+      state.notice = `“${descriptor.accessId}”已验证，游戏将通过本机 Service Worker 缓存静态资源…`
     } catch (error) {
       const message = typeof error === 'string' ? error : error?.message
       const details = message || (error == null ? '' : String(error))
-      state.error = details && details !== '地图资源准备失败，请稍后重试。'
+      state.error = details && details !== '地图启动准备失败，请稍后重试。'
         ? details
         : `${stage}阶段失败（没有收到详细错误信息）。`
     } finally {
       state.busy = false
       state.preparingMapId = ''
-      state.prepareProgress = null
       render()
     }
   }))
@@ -292,52 +287,4 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       render()
     }
   })
-  document.querySelectorAll<HTMLElement>('[data-action="launch-map"]').forEach((node) => node.addEventListener('click', async () => {
-    const server = selectedServer()
-    const mapId = node.dataset.mapId || ''
-    const packageKey = `${server?.id || ''}:${mapId}`
-    if (!server || !mapId || state.busy || !state.packageStates[packageKey]?.ready) return
-    state.busy = true
-    state.preparingMapId = mapId
-    state.prepareProgress = { done: 0, total: 0 }
-    state.error = ''
-    state.notice = ''
-    render()
-    try {
-      const bootstrap = await remoteApi.readBootstrap(server.endpoint)
-      if (!bootstrap.supported || !bootstrap.resourceAccessEnabled) {
-        throw new Error('该服务器当前未开放玩家启动器资源访问，无法从启动器开始游玩。')
-      }
-      state.serverBootstrap = bootstrap
-      const session = await remoteApi.readSession(server.endpoint, bootstrap)
-      if (!session.response.ok || !session.data?.player) {
-        state.player = null
-        throw new Error('当前服务器登录已失效，请重新登录后再开始游玩。')
-      }
-      state.player = session.data.player
-      const maps = await remoteApi.getMaps(server.endpoint)
-      if (!maps.response.ok || !maps.data?.worlds?.some((world) => world.id === mapId || world.publicId === mapId)) {
-        throw new Error('该地图当前不再对你的账号开放。')
-      }
-      const { descriptor, installed, launchTicket } = await prepareMapResources({
-        server,
-        mapId,
-        bootstrap,
-        remoteApi,
-        onProgress: (progress) => { state.prepareProgress = progress; render() },
-      })
-      state.packageStates[packageKey] = { ready: true, manifestDigest: installed.manifestDigest }
-      const mapName = state.worlds.find((world) => world.id === mapId || world.publicId === mapId)?.name
-        || descriptor.accessId
-      await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey, mapName, launchTicket)
-      state.notice = `正在连接“${descriptor.accessId}”…`
-    } catch (error) {
-      state.error = error.message || '无法启动地图，请稍后重试。'
-    } finally {
-      state.busy = false
-      state.preparingMapId = ''
-      state.prepareProgress = null
-      render()
-    }
-  }))
 }

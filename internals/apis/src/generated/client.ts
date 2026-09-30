@@ -266,10 +266,6 @@ export const apiOperations = {
     "path": "/api/play-admin/permission-groups",
     "method": "GET"
   },
-  "getApiPlayAdminPlayerLauncherAccess": {
-    "path": "/api/play-admin/player-launcher-access",
-    "method": "GET"
-  },
   "getApiPlayAdminPlayers": {
     "path": "/api/play-admin/players",
     "method": "GET"
@@ -284,10 +280,6 @@ export const apiOperations = {
   },
   "getApiPlayAdminPlayersSubjectId": {
     "path": "/api/play-admin/players/{subjectId}",
-    "method": "GET"
-  },
-  "getApiPlayAdminResourceCache": {
-    "path": "/api/play-admin/resource-cache",
     "method": "GET"
   },
   "getApiPlayAdminStatus": {
@@ -328,10 +320,6 @@ export const apiOperations = {
   },
   "getApiPlayerLauncherMaps": {
     "path": "/api/player-launcher/maps",
-    "method": "GET"
-  },
-  "getApiPlayerLauncherMapsMapIdBlobsHash": {
-    "path": "/api/player-launcher/maps/{mapId}/blobs/{hash}",
     "method": "GET"
   },
   "getApiPlayerLauncherMapsMapIdDescriptor": {
@@ -442,16 +430,8 @@ export const apiOperations = {
     "path": "/api/play-admin/permission-groups/{id}",
     "method": "PATCH"
   },
-  "patchApiPlayAdminPlayerLauncherAccess": {
-    "path": "/api/play-admin/player-launcher-access",
-    "method": "PATCH"
-  },
   "patchApiPlayAdminPlayersSubjectId": {
     "path": "/api/play-admin/players/{subjectId}",
-    "method": "PATCH"
-  },
-  "patchApiPlayAdminResourceCache": {
-    "path": "/api/play-admin/resource-cache",
     "method": "PATCH"
   },
   "patchApiPlayAdminWorldsId": {
@@ -1551,18 +1531,6 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayAdminPermissionGroupsRaw(...init));
   }
 
-  getApiPlayAdminPlayerLauncherAccessRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["GET"]>
-  ) {
-    return this.paths["/api/play-admin/player-launcher-access"].GET(...init);
-  }
-
-  getApiPlayAdminPlayerLauncherAccess(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiPlayAdminPlayerLauncherAccessRaw(...init));
-  }
-
   getApiPlayAdminPlayersRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players"]["GET"]>
   ) {
@@ -1609,18 +1577,6 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["GET"]>
   ) {
     return this.unwrap(this.getApiPlayAdminPlayersSubjectIdRaw(...init));
-  }
-
-  getApiPlayAdminResourceCacheRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["GET"]>
-  ) {
-    return this.paths["/api/play-admin/resource-cache"].GET(...init);
-  }
-
-  getApiPlayAdminResourceCache(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiPlayAdminResourceCacheRaw(...init));
   }
 
   getApiPlayAdminStatusRaw(
@@ -1741,18 +1697,6 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps"]["GET"]>
   ) {
     return this.unwrap(this.getApiPlayerLauncherMapsRaw(...init));
-  }
-
-  getApiPlayerLauncherMapsMapIdBlobsHashRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/blobs/{hash}"]["GET"]>
-  ) {
-    return this.paths["/api/player-launcher/maps/{mapId}/blobs/{hash}"].GET(...init);
-  }
-
-  getApiPlayerLauncherMapsMapIdBlobsHash(
-    ...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/blobs/{hash}"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiPlayerLauncherMapsMapIdBlobsHashRaw(...init));
   }
 
   getApiPlayerLauncherMapsMapIdDescriptorRaw(
@@ -2079,18 +2023,6 @@ export class ApiClient {
     return this.unwrap(this.patchApiPlayAdminPermissionGroupsIdRaw(...init));
   }
 
-  patchApiPlayAdminPlayerLauncherAccessRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["PATCH"]>
-  ) {
-    return this.paths["/api/play-admin/player-launcher-access"].PATCH(...init);
-  }
-
-  patchApiPlayAdminPlayerLauncherAccess(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/player-launcher-access"]["PATCH"]>
-  ) {
-    return this.unwrap(this.patchApiPlayAdminPlayerLauncherAccessRaw(...init));
-  }
-
   patchApiPlayAdminPlayersSubjectIdRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["PATCH"]>
   ) {
@@ -2101,18 +2033,6 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["PATCH"]>
   ) {
     return this.unwrap(this.patchApiPlayAdminPlayersSubjectIdRaw(...init));
-  }
-
-  patchApiPlayAdminResourceCacheRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["PATCH"]>
-  ) {
-    return this.paths["/api/play-admin/resource-cache"].PATCH(...init);
-  }
-
-  patchApiPlayAdminResourceCache(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/resource-cache"]["PATCH"]>
-  ) {
-    return this.unwrap(this.patchApiPlayAdminResourceCacheRaw(...init));
   }
 
   patchApiPlayAdminWorldsIdRaw(

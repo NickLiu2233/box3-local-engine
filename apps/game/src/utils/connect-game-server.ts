@@ -106,9 +106,9 @@ export async function connectGameServer(
           containerName: clientConfig.name,
           fingerPrint: visitorId,
           serverId,
-          ...(clientConfig.launcherLocalAssetMode && clientConfig.launcherPackage
+          ...(clientConfig.launcherServiceWorkerMode && clientConfig.launcherPackage
             ? {
-                launcherLocalAssetMode: true,
+                launcherServiceWorkerMode: true,
                 launcherPackage: clientConfig.launcherPackage,
               }
             : {}),
@@ -180,7 +180,6 @@ export async function connectGameServer(
         [
           'LAUNCHER_PACKAGE_INVALID',
           'LAUNCHER_PACKAGE_UNAVAILABLE',
-          'PLAYER_LAUNCHER_RESOURCES_DISABLED',
           'LAUNCHER_PACKAGE_OUTDATED',
           'LAUNCHER_TICKET_INVALID',
         ].includes(responseCode)

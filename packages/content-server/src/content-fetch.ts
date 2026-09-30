@@ -16,10 +16,13 @@ import { TaskTypeEnum } from '@box/utils/loading/loading-schema';
 type RequestHandler = [(data: Uint8Array | void) => void, (error: any) => void];
 
 export function isAbsoluteContentURL(hashOrURL: string) {
-  return /^(?:https?:\/\/|boxplay:\/\/|\/\/|\/)/i.test(hashOrURL);
+  return /^(?:https?:\/\/|\/\/|\/)/i.test(hashOrURL);
 }
 
-export function resolveContentURL(hashOrURL: string, urlPrefix: string) {
+export function resolveContentURL(
+  hashOrURL: string,
+  urlPrefix: string,
+) {
   const isAbsoluteURL = isAbsoluteContentURL(hashOrURL);
   return isAbsoluteURL ? hashOrURL : `${urlPrefix}${hashOrURL}`;
 }
@@ -283,7 +286,9 @@ export class ContentResolver {
       : hashOrURL.indexOf('.') < 0
       ? hashOrURL + '.png'
       : hashOrURL;
-    const src = isURL ? hashOrURL : `${this._urlPrefix}${taggedKey}`;
+    const src = isURL
+      ? resolveContentURL(hashOrURL, this._urlPrefix)
+      : `${this._urlPrefix}${taggedKey}`;
     if (taggedKey in this._images) {
       return this._images[taggedKey];
     }

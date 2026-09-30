@@ -1,7 +1,5 @@
 import * as crypto from 'node:crypto'
 import type { Session } from 'electron'
-import { createLaunchSession } from './local-resource-protocol'
-import type { ActiveLaunchSession, ProtocolRequest } from './local-resource-protocol'
 import type { PackageDescriptor, PlayerServerRecord } from '../types'
 
 export type GameSession = Session
@@ -40,29 +38,27 @@ export interface GameWindowOptions {
 export interface GameWindowManagerOptions {
   createBrowserWindow: (options: GameWindowOptions) => GameWindow
   sessions: { fromPartition(partition: string, options: { cache: boolean }): GameSession }
-  handleLocalResource: (request: ProtocolRequest) => Promise<Response>
   syncCookies: (endpoint: string, targetSession: GameSession) => Promise<void>
-  blobRoot: string
 }
 
 export interface GameWindowManager {
-  launch(options: { server: PlayerServerRecord; descriptor: PackageDescriptor; launchTicket: string; title: string }): Promise<{ sessionId: string; window: GameWindow }>
+  launch(options: { server: PlayerServerRecord; descriptor: PackageDescriptor; launchTicket: string; title: string }): Promise<{ window: GameWindow }>
   close(): Promise<void>
+  clearServerCache(serverId: string): Promise<void>
   isActiveFor(serverId: string): boolean
   playerSessions(): GameSession[]
-  getLaunchSession(sessionId: string): ActiveLaunchSession | undefined
 }
 
-export function makeGameUrl(server: PlayerServerRecord, descriptor: PackageDescriptor, sessionId: string, launchTicket: string): URL {
+export function makeGameUrl(server: PlayerServerRecord, descriptor: PackageDescriptor, launchTicket: string): URL {
   const url = new URL(server.endpoint)
   const basePath = url.pathname.replace(/\/$/, '')
   url.pathname = `${basePath}/p/${descriptor.accessId}`
   url.search = ''
-  url.searchParams.set('box3LocalAssets', '1')
+  url.searchParams.set('box3ServiceWorkerCache', '1')
   url.searchParams.set('box3PermanentMapId', descriptor.permanentMapId)
   url.searchParams.set('box3ReleaseVersion', descriptor.releaseVersion)
   url.searchParams.set('box3ManifestDigest', descriptor.manifestDigest)
-  url.hash = new URLSearchParams({ box3LocalAsset: sessionId, box3LaunchTicket: launchTicket }).toString()
+  url.hash = new URLSearchParams({ box3LaunchTicket: launchTicket }).toString()
   return url
 }
 
@@ -75,47 +71,45 @@ export function isAllowedGamePermission(permission: string, requestingUrl: strin
   }
 }
 
-export function createGameWindowManager({ createBrowserWindow, sessions, handleLocalResource, syncCookies, blobRoot }: GameWindowManagerOptions): GameWindowManager {
+function cachePartition(serverId: string): string {
+  const id = crypto.createHash('sha256').update(serverId).digest('hex').slice(0, 32)
+  return `persist:box-player-${id}`
+}
+
+export function createGameWindowManager({ createBrowserWindow, sessions, syncCookies }: GameWindowManagerOptions): GameWindowManager {
   let window: GameWindow | undefined
   let gameSession: GameSession | undefined
-  let activeLaunchSession: string | undefined
   let activeServerId: string | undefined
-  const launchSessions = new Map<string, ActiveLaunchSession>()
   const playerSessions = new Set<GameSession>()
 
   async function close(): Promise<void> {
     const currentWindow = window
     const currentSession = gameSession
-    const launchSession = activeLaunchSession
     window = undefined
     gameSession = undefined
-    activeLaunchSession = undefined
     activeServerId = undefined
-    if (launchSession) launchSessions.delete(launchSession)
     if (currentSession) {
       playerSessions.delete(currentSession)
-      try { currentSession.protocol.unhandle('boxplay') } catch { /* The session may already be shutting down. */ }
     }
     if (currentWindow && !currentWindow.isDestroyed()) currentWindow.destroy()
   }
 
+  async function clearServerCache(serverId: string): Promise<void> {
+    if (activeServerId === serverId) await close()
+    const target = sessions.fromPartition(cachePartition(serverId), { cache: true })
+    await target.clearStorageData({ storages: ['cookies', 'serviceworkers', 'cachestorage'] })
+  }
+
   return Object.freeze({
-    async launch({ server, descriptor, launchTicket, title }): Promise<{ sessionId: string; window: GameWindow }> {
+    async launch({ server, descriptor, launchTicket, title }): Promise<{ window: GameWindow }> {
       await close()
-      const sessionId = crypto.randomBytes(32).toString('base64url')
       const origin = new URL(server.endpoint).origin
-      launchSessions.set(sessionId, createLaunchSession(
-        descriptor,
-        blobRoot,
-        origin,
-        sessionId,
-        Date.now() + 24 * 60 * 60 * 1000,
-      ))
-      activeLaunchSession = sessionId
-      const url = makeGameUrl(server, descriptor, sessionId, launchTicket)
+      const url = makeGameUrl(server, descriptor, launchTicket)
 
       try {
-        const nextSession = sessions.fromPartition(`boxplay-launch-${sessionId}`, { cache: false })
+        // Keep one persistent origin partition per server so Service Worker
+        // Cache Storage survives relaunches and is shared across its maps.
+        const nextSession = sessions.fromPartition(cachePartition(server.id), { cache: true })
         gameSession = nextSession
         playerSessions.add(nextSession)
         nextSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin, details) => (
@@ -126,7 +120,6 @@ export function createGameWindowManager({ createBrowserWindow, sessions, handleL
             && isAllowedGamePermission(permission, details.requestingUrl, details.isMainFrame, origin)
           callback(allowed)
         })
-        await nextSession.protocol.handle('boxplay', handleLocalResource)
         await syncCookies(server.endpoint, nextSession)
 
         const nextWindow = createBrowserWindow({
@@ -160,21 +153,19 @@ export function createGameWindowManager({ createBrowserWindow, sessions, handleL
         })
         await nextWindow.loadURL(url.toString())
         nextWindow.setTitle(title)
-        return { sessionId, window: nextWindow }
+        return { window: nextWindow }
       } catch (error) {
         await close()
         throw new Error(`无法打开游玩地图：${error.message}`)
       }
     },
     close,
+    clearServerCache,
     isActiveFor(serverId: string): boolean {
       return activeServerId === serverId
     },
     playerSessions(): GameSession[] {
       return [...playerSessions]
-    },
-    getLaunchSession(sessionId: string): ActiveLaunchSession | undefined {
-      return launchSessions.get(sessionId)
     },
   })
 }

@@ -14,7 +14,6 @@ import {
   resolvePlayerServiceIdentity,
 } from '../../server/player-service-client';
 import { prepareLocalRuntimeSession } from '../../server/local-runtime-session';
-import { getPlayLauncherAccessSettings } from '../../server/play-launcher-access';
 import {
   getPlayerLauncherPackageDescriptor,
   verifyPlayerLauncherDownloadTicket,
@@ -85,7 +84,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
     containerName,
     fingerPrint,
     serverId,
-    launcherLocalAssetMode,
+    launcherServiceWorkerMode,
     launcherPackage,
   } = req.body || {};
   if (mode !== 'play' && mode !== 'edit') {
@@ -108,7 +107,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   let launcherPackageIdentity: LauncherPackageIdentity | undefined;
-  if (launcherLocalAssetMode === true) {
+  if (launcherServiceWorkerMode === true) {
     if (
       !launcherPackage ||
       typeof launcherPackage.permanentMapId !== 'string' ||
@@ -263,23 +262,14 @@ async function getSessionData(
       if (process.env.BOX_DEPLOYMENT_MODE !== 'play' || !authenticatedSubjectId) {
         throw new PlayerAuthenticationRequiredError();
       }
-      let accessEnabled = false;
       let currentPackage: ReturnType<typeof getPlayerLauncherPackageDescriptor> | undefined;
       try {
-        accessEnabled = getPlayLauncherAccessSettings().enabled;
-        if (accessEnabled) currentPackage = getPlayerLauncherPackageDescriptor(containerName);
+        currentPackage = getPlayerLauncherPackageDescriptor(containerName);
       } catch {
         throw new LauncherPackageRejectedError(
           'LAUNCHER_PACKAGE_UNAVAILABLE',
           '无法验证服务器当前地图资源版本，请稍后重试。',
           503,
-        );
-      }
-      if (!accessEnabled) {
-        throw new LauncherPackageRejectedError(
-          'PLAYER_LAUNCHER_RESOURCES_DISABLED',
-          '该服务器未开放玩家启动器资源访问。',
-          403,
         );
       }
       if (

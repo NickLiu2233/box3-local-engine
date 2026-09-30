@@ -1,11 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 
 import { requestPlayerServiceIp, resolvePlayerServiceIdentity, PlayerAuthenticationRequiredError } from '../../../server/player-service-client'
-import { getPlayLauncherAccessSettings, getPlayerLauncherWorlds } from '../../../server/play-launcher-access'
+import { getPlayerLauncherWorlds } from '../../../server/player-launcher-worlds'
 
-/** Map discovery is gated separately from the existing browser resource cache. */
 export function createPlayerLauncherMapsHandler(dependencies = {
-  readSettings: getPlayLauncherAccessSettings,
   getWorlds: getPlayerLauncherWorlds,
   resolveIdentity: resolvePlayerServiceIdentity,
   getPlayerIp: requestPlayerServiceIp,
@@ -16,19 +14,6 @@ export function createPlayerLauncherMapsHandler(dependencies = {
     if (req.method !== 'GET') {
       res.setHeader('Allow', 'GET')
       return res.status(405).end()
-    }
-
-    let enabled: boolean
-    try {
-      enabled = dependencies.readSettings().enabled
-    } catch {
-      return res.status(503).json({ message: '无法读取玩家启动器开放状态' })
-    }
-    if (!enabled) {
-      return res.status(403).json({
-        code: 'PLAYER_LAUNCHER_RESOURCES_DISABLED',
-        message: '该服务器未开放玩家启动器资源访问',
-      })
     }
 
     try {

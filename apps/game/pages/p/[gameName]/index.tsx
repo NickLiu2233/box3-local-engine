@@ -2,13 +2,14 @@ import { GetServerSideProps } from 'next';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import { apiClient } from 'src/apis/client';
 import { IntlProvider } from 'react-intl';
 import { LangType } from 'src/apis/createra';
 import { LoadingStage } from 'src/defs/loading-stage';
 import { EngineApp, EngineAppProps } from '../../../components/engine-app';
 import { Error, ErrorProps } from '../../../components/error';
 import { PlayLoading } from '../../../components/play-loading';
-import { PlayResourceCacheBootstrap } from '../../../components/play-resource-cache-bootstrap';
+import { bootstrapPlayResourceCache, PlayResourceCacheBootstrap } from '../../../components/play-resource-cache-bootstrap';
 import { getArenaServerRenderProps } from '../../../server/server-render';
 import { hashToUrl } from '../../../server/utils/hash';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../../server/player-service-client';
@@ -90,7 +91,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
   }
   const successfulProps = serverProps.props as SSRSuccessProps;
 
-  if (process.env.BOX_DEPLOYMENT_MODE === 'play' && context.query.box3LocalAssets === '1') {
+  if (process.env.BOX_DEPLOYMENT_MODE === 'play' && context.query.box3ServiceWorkerCache === '1') {
     const permanentMapId = context.query.box3PermanentMapId;
     const releaseVersion = context.query.box3ReleaseVersion;
     const manifestDigest = context.query.box3ManifestDigest;
@@ -113,7 +114,7 @@ export const getServerSideProps: GetServerSideProps<SSRProps> = async (
       launcherAvatarCdnURL: successfulProps.clientConfig.OSS_CDN_URL,
       CDN_PATH: '',
       OSS_CDN_URL: '',
-      launcherLocalAssetMode: true,
+      launcherServiceWorkerMode: true,
       launcherPackage: { permanentMapId, releaseVersion, manifestDigest },
     };
   }
@@ -127,39 +128,63 @@ function Home(props: SSRProps) {
   const [locale, setLocale] = useState<LangType>(() =>
     props.loadingConfig ? 'en' : props.locale,
   );
-  const launcherLocalAssetMode =
-    'clientConfig' in props && props.clientConfig.launcherLocalAssetMode === true;
-  const [launcherAssetSession, setLauncherAssetSession] = useState<string | null>(null);
+  const launcherServiceWorkerMode =
+    'clientConfig' in props && props.clientConfig.launcherServiceWorkerMode === true;
+  const world = typeof router.query.gameName === 'string' ? router.query.gameName : '';
   const [launcherLaunchTicket, setLauncherLaunchTicket] = useState<string | null>(null);
   const [launcherAssetBootstrapResolved, setLauncherAssetBootstrapResolved] = useState(false);
   const [launcherAssetBootstrapError, setLauncherAssetBootstrapError] = useState('');
+  const [launcherAssetProgress, setLauncherAssetProgress] = useState(0);
 
   useEffect(() => {
-    if (!launcherLocalAssetMode) {
+    if (!launcherServiceWorkerMode) {
       setLauncherAssetBootstrapResolved(true);
       return;
     }
+    if (!world) return;
+    setLauncherAssetBootstrapResolved(false);
+    setLauncherAssetBootstrapError('');
+    setLauncherAssetProgress(0);
     const address = new URL(window.location.href);
     const fragment = new URLSearchParams(address.hash.slice(1));
-    const session = fragment.get('box3LocalAsset');
     const launchTicket = fragment.get('box3LaunchTicket');
     if (
-      !session ||
-      !/^[A-Za-z0-9_-]{43}$/.test(session) ||
       !launchTicket ||
       launchTicket.length > 2048 ||
       !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(launchTicket)
     ) {
-      setLauncherAssetBootstrapError('地图资源会话或服务器启动授权无效，请返回启动器重新启动地图。');
-    } else {
-      setLauncherAssetSession(session);
-      setLauncherLaunchTicket(launchTicket);
+      setLauncherAssetBootstrapError('服务器启动授权无效，请返回启动器重新启动地图。');
+      setLauncherAssetBootstrapResolved(true);
+      address.hash = '';
+      window.history.replaceState(null, '', `${address.pathname}${address.search}`);
+      return;
     }
     address.hash = '';
-    address.searchParams.delete('box3LocalAssets');
+    address.searchParams.delete('box3ServiceWorkerCache');
     window.history.replaceState(null, '', `${address.pathname}${address.search}`);
-    setLauncherAssetBootstrapResolved(true);
-  }, [launcherLocalAssetMode]);
+    setLauncherLaunchTicket(launchTicket);
+    let cancelled = false;
+    void bootstrapPlayResourceCache({
+      world,
+      launcherServiceWorkerMode: true,
+      serviceWorkerContainer: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
+      cacheStorage: 'caches' in window ? window.caches : undefined,
+      isCancelled: () => cancelled,
+      waitForCompletion: true,
+      onProgress: setLauncherAssetProgress,
+    }).then(() => {
+      if (!cancelled) {
+        setLauncherAssetProgress(100);
+        setLauncherAssetBootstrapResolved(true);
+      }
+    }).catch((error) => {
+      if (!cancelled) {
+        setLauncherAssetBootstrapError(error instanceof globalThis.Error ? error.message : '无法准备本地地图资源缓存');
+        setLauncherAssetBootstrapResolved(true);
+      }
+    });
+    return () => { cancelled = true };
+  }, [launcherServiceWorkerMode, world]);
 
   useEffect(() => {
     if (loadingStage === LoadingStage.done) {
@@ -172,17 +197,15 @@ function Home(props: SSRProps) {
   useEffect(() => {
     const mapId = typeof router.query.gameName === 'string' ? router.query.gameName : '';
     if (!mapId || process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'creator') return;
-    const send = (method: 'POST' | 'DELETE', keepalive = false) =>
-      fetch('/api/play-presence', {
-        method,
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mapId }),
-        keepalive,
-      }).catch(() => undefined);
+    const send = (method: 'POST' | 'DELETE') => {
+      const request = method === 'POST'
+        ? apiClient.postApiPlayPresenceRaw({ body: { mapId } })
+        : apiClient.deleteApiPlayPresenceRaw({ body: { mapId } })
+      return request.catch(() => undefined)
+    }
     void send('POST');
     const timer = window.setInterval(() => void send('POST'), 25_000);
-    const leave = () => void send('DELETE', true);
+    const leave = () => void send('DELETE');
     window.addEventListener('pagehide', leave);
     return () => {
       window.clearInterval(timer);
@@ -196,17 +219,20 @@ function Home(props: SSRProps) {
     return <Error code={props.error.code} info={props.error.info} />;
   }
 
-  if (launcherLocalAssetMode && launcherAssetBootstrapResolved && launcherAssetBootstrapError) {
+  if (launcherServiceWorkerMode && launcherAssetBootstrapResolved && launcherAssetBootstrapError) {
     return <Error code={400} info={launcherAssetBootstrapError} />;
   }
 
-  const activeClientConfig = !props.loadingConfig && launcherLocalAssetMode
+  const launcherAssetBase = launcherServiceWorkerMode && typeof window !== 'undefined' && world
+    ? `${window.location.origin}/runtime/play/${encodeURIComponent(world)}`
+    : '';
+  const activeClientConfig = !props.loadingConfig && launcherServiceWorkerMode
     ? {
         ...props.clientConfig,
-        CDN_PATH: launcherAssetSession ? `boxplay://localhost/${launcherAssetSession}` : '',
-        OSS_CDN_URL: launcherAssetSession ? `boxplay://localhost/${launcherAssetSession}` : '',
+        CDN_PATH: launcherAssetBase,
+        OSS_CDN_URL: launcherAssetBase,
         launcherAvatarCdnURL: props.clientConfig.launcherAvatarCdnURL,
-        launcherLocalAssetMode: true,
+        launcherServiceWorkerMode: true,
         launcherPackage: props.clientConfig.launcherPackage && launcherLaunchTicket
           ? { ...props.clientConfig.launcherPackage, launchTicket: launcherLaunchTicket }
           : undefined,
@@ -217,17 +243,17 @@ function Home(props: SSRProps) {
 
   const isCreatera =
     !props.loadingConfig && props.clientConfig.APP_EDITION === 'createra';
-  const world = typeof router.query.gameName === 'string' ? router.query.gameName : '';
   const shouldBootstrapResourceCache =
     !props.loadingConfig &&
-    !launcherLocalAssetMode &&
+    !launcherServiceWorkerMode &&
     props.clientConfig.localRuntimeInfo?.deploymentMode === 'play';
 
   return (
     <div id="__next__root">
-      {shouldBootstrapResourceCache && <PlayResourceCacheBootstrap world={world} />}
+      {shouldBootstrapResourceCache && <PlayResourceCacheBootstrap world={world} launcherServiceWorkerMode={launcherServiceWorkerMode} />}
       {(props.loadingConfig ||
-        (isCreatera && loadingStage !== LoadingStage.close)) && (
+        (isCreatera && loadingStage !== LoadingStage.close) ||
+        (launcherServiceWorkerMode && !launcherAssetBootstrapResolved)) && (
         <IntlProvider
           messages={props.loadingConfig ? {} : props.message}
           locale={locale}
@@ -236,20 +262,22 @@ function Home(props: SSRProps) {
             loadingConfig={!!props.loadingConfig}
             stage={loadingStage}
             gameCover={
-              props.loadingConfig || (launcherLocalAssetMode && !launcherAssetSession)
-                ? undefined
+              props.loadingConfig || (launcherServiceWorkerMode && (!launcherLaunchTicket || !launcherAssetBootstrapResolved))
+              ? undefined
                 : hashToUrl(
                     props.clientConfig.mapInfo.backgroundImage,
                     activeClientConfig?.CDN_PATH || props.clientConfig.CDN_PATH,
                   )
             }
+            progress={launcherServiceWorkerMode && !launcherAssetBootstrapResolved ? launcherAssetProgress : undefined}
+            message={launcherServiceWorkerMode && !launcherAssetBootstrapResolved ? '正在下载并校验地图资源，完成后将从本机缓存读取…' : undefined}
           />
         </IntlProvider>
       )}
       {!props.loadingConfig && (
         <EngineApp {...props} clientConfig={activeClientConfig!} locale={locale} message={props.message}>
           <div className="play-react">
-            {launcherAssetBootstrapResolved && (!launcherLocalAssetMode || (launcherAssetSession && launcherLaunchTicket)) && <DynamicPlayUi
+            {launcherAssetBootstrapResolved && (!launcherServiceWorkerMode || launcherLaunchTicket) && <DynamicPlayUi
               userInfo={props.userInfo}
               setLoadingStage={setLoadingStage}
               setLocale={setLocale}

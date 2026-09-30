@@ -36,19 +36,6 @@ describe('player-admin navigation permissions', () => {
     }, 'play-maps')).toBe(true);
   });
 
-  test('keeps the server-wide resource cache switch out of delegated groups', () => {
-    expect(canOpenPlayerAdminView({
-      role: 'moderator',
-      permissions: ['players.view', 'play-maps.manage'],
-    }, 'play-resource-cache')).toBe(false);
-    expect(canOpenPlayerAdminView({ role: 'admin', permissions: [] }, 'play-resource-cache')).toBe(true);
-    expect(canOpenPlayerAdminView({
-      role: 'moderator',
-      permissions: ['players.view', 'play-launcher-resources.view'],
-    }, 'play-launcher-access')).toBe(false);
-    expect(canOpenPlayerAdminView({ role: 'owner', permissions: [] }, 'play-launcher-access')).toBe(true);
-  });
-
   test('delegates both container views only to groups with container visibility', () => {
     expect(canOpenPlayerAdminView(moderator, 'container-play')).toBe(false);
     expect(canOpenPlayerAdminView({

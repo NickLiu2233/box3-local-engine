@@ -1,15 +1,12 @@
 import { clientConfig } from 'src/config/client';
+import { resolveContentURL } from '@box/content-server/content-fetch';
 
 export function resolveHashURL(cdnPath: string, value: string) {
   if (!value) {
     return '';
   }
-  // Callers also use this helper for already-resolved runtime/static URLs.
-  // Only a bare content hash should be routed through /block/.
-  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|\/)/i.test(value)) {
-    return value;
-  }
-  return `${cdnPath.replace(/\/$/, '')}/block/${value}`;
+  const urlPrefix = `${cdnPath.replace(/\/$/, '')}/block/`;
+  return resolveContentURL(value, urlPrefix);
 }
 
 export function hashURL(hash: string) {

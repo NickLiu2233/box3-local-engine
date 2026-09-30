@@ -14,11 +14,10 @@ export const localEngineSchemas = {
   },
   PlayerLauncherBootstrap: {
     type: 'object',
-    required: ['protocolVersion', 'serverName', 'resourceAccessEnabled', 'loginRequired', 'loginApiUrl', 'signingKey'],
+    required: ['protocolVersion', 'serverName', 'loginRequired', 'loginApiUrl', 'signingKey'],
     properties: {
       protocolVersion: { type: 'integer', enum: [1] },
       serverName: string,
-      resourceAccessEnabled: { type: 'boolean' },
       loginRequired: { type: 'boolean' },
       loginApiUrl: string,
       signingKey: { oneOf: [{ $ref: '#/components/schemas/PlayerLauncherSigningKey' }, { type: 'null' }] },

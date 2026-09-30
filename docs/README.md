@@ -58,7 +58,7 @@
 - [贡献者指南](../CONTRIBUTING.md)：从 fork、分支、源码开发到测试、镜像和桌面 App 构建的完整流程。
 - [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
 - [图形化与 Web 启动器统一记录](./launcher-parity-audit.md)：共用 Rust 核心、平台适配、修复与验证范围。
-- [启动器本地地图包与严格资源门禁](./launcher-local-map-packs-design.md)：未来的玩家启动器本地地图包设计；与当前浏览器 Service Worker 缓存独立。
+- [玩家启动器 Service Worker 资源缓存](./launcher-service-worker-cache.md)：通过同源 Service Worker 缓存公开静态地图资源；无自定义协议、无手动离线导入。
 - [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
 - [稳定地图存储 ID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
 - [业务方案对比](./business-comparison.md)：面向管理层的本地部署、在线平台、Unity 与 Minecraft 对比。

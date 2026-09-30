@@ -1,4 +1,4 @@
-import { invoke, isDesktopLauncher, listen } from './platform/launcher-bridge'
+import { invoke, isDesktopLauncher } from './platform/launcher-bridge'
 import brandIcon from '../../deployment-manager/src-tauri/icons/icon.png'
 import { createPlayerApi } from './services/player-api'
 import { bindEvents } from './events'
@@ -25,9 +25,7 @@ const state: PlayerLauncherState = {
   playerProfileSkinId: 'explorer',
   playerProfileError: '',
   worlds: [],
-  packageStates: {},
   preparingMapId: '',
-  prepareProgress: null,
   authError: '',
   mapsError: '',
   confirmRemoveServerId: '',
@@ -52,7 +50,7 @@ async function refreshPlayerSession(server: PlayerServer | null = selectedServer
   state.worlds = []
   state.authError = ''
   state.mapsError = ''
-  if (!server || !state.serverBootstrap?.resourceAccessEnabled) return
+  if (!server || !state.serverBootstrap?.supported) return
   if (state.serverBootstrap.loginRequired) {
     let result
     try {
@@ -77,7 +75,7 @@ async function refreshPlayerSession(server: PlayerServer | null = selectedServer
       return
     }
     if (response.status === 403) {
-      state.mapsError = '服务器未开放玩家启动器资源访问。'
+      state.mapsError = '服务器拒绝了地图列表请求，请检查当前账号权限。'
       return
     }
     if (!response.ok) {
@@ -89,17 +87,6 @@ async function refreshPlayerSession(server: PlayerServer | null = selectedServer
     }
     state.worlds = Array.isArray(data?.worlds) ? data.worlds : []
     state.mapsError = ''
-    if (state.serverBootstrap?.signingKey && state.worlds.length) {
-      try {
-        await playerInvoke('associate_map_packages_with_server', {
-          serverId: server.id,
-          accessIds: state.worlds.flatMap((world) => [world.id, world.publicId]).filter(Boolean),
-          trustedSigningKey: state.serverBootstrap.signingKey,
-        })
-      } catch {
-        // Migration is best-effort; signed descriptor verification stays authoritative on launch.
-      }
-    }
   } catch (error) {
     state.mapsError = error.message || '读取可玩地图失败。'
   }
@@ -110,16 +97,8 @@ async function playerInvoke(command: string, payload: Record<string, any> = {}):
     try {
       return await remoteApi.readBootstrap(String(payload.endpoint || ''))
     } catch (error) {
-      throw new Error(error.message || '无法读取服务器开放状态（浏览器预览可能受跨域限制）')
+      throw new Error(error.message || '无法读取服务器启动器支持信息（浏览器预览可能受跨域限制）')
     }
-  }
-  if (command === 'associate_map_packages_with_server') {
-    if (!isDesktopLauncher()) return 0
-    return invoke(command, {
-      serverId: payload.serverId,
-      accessIds: payload.accessIds || [],
-      trustedSigningKey: JSON.stringify(payload.trustedSigningKey),
-    })
   }
   if (command === 'add_server') {
     const raw = String(payload.endpoint || '').trim().replace(/\/$/, '')
@@ -277,20 +256,6 @@ function render(): void {
 }
 
 async function bootstrap() {
-  if (isDesktopLauncher()) {
-    try {
-      await listen<{ hash: string; currentBytes: number }>('box-player-map-download-progress', ({ payload }) => {
-        const progress = state.prepareProgress
-        if (!progress || payload.hash !== progress.currentHash) return
-        progress.currentBytes = payload.currentBytes
-        progress.receivedBytes = Math.min(
-          progress.totalBytes,
-          (progress.completedBytes || 0) + Math.max(0, payload.currentBytes - (progress.resumeFrom || 0)),
-        )
-        render()
-      })
-    } catch { /* Progress events are optional; the transfer still completes safely. */ }
-  }
   try {
     const launcher = await playerInvoke('launcher_state')
     state.servers = launcher.servers || []

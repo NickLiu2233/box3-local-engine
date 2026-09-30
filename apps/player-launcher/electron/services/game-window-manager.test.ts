@@ -7,29 +7,25 @@ import { createGameWindowManager, isAllowedGamePermission } from './game-window-
 import { createSignedPackageFixture } from '../testing/signed-package-fixture'
 import type { GameSession, GameWindow, GameWindowManagerOptions, GameWindowOptions } from './game-window-manager'
 
-test('binds the resource protocol and player cookies to one ephemeral game session', async (context) => {
+test('uses a persistent isolated origin session so the Service Worker cache survives relaunches', async (context) => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-player-window-'))
   context.after(() => fs.rmSync(root, { recursive: true, force: true }))
   const { descriptor } = createSignedPackageFixture(Buffer.from('resource'), { mapId: 'map-1', releaseVersion: 'v1.0.0' })
   let capturedOptions
   let capturedUrl
-  let handlerRegistered = false
-  let handlerRemoved = false
   let permissionHandlersInstalled = false
   let cookiesSyncedTo
+  let clearedStorage
   let closedHandler: (() => void) | undefined
   const gameSession = {
-    protocol: {
-      async handle(scheme) { assert.equal(scheme, 'boxplay'); handlerRegistered = true },
-      unhandle(scheme) { assert.equal(scheme, 'boxplay'); handlerRemoved = true },
-    },
     cookies: {},
+    async clearStorageData(options) { clearedStorage = options },
     setPermissionCheckHandler(handler) { permissionHandlersInstalled = typeof handler === 'function' },
     setPermissionRequestHandler(handler) { permissionHandlersInstalled &&= typeof handler === 'function' },
   } as unknown as GameSession
   const sessions: GameWindowManagerOptions['sessions'] = { fromPartition(partition, options) {
-    assert.match(partition, /^boxplay-launch-/)
-    assert.equal(options.cache, false)
+    assert.match(partition, /^persist:box-player-/)
+    assert.equal(options.cache, true)
     return gameSession
   } }
   const window = {
@@ -51,8 +47,6 @@ test('binds the resource protocol and player cookies to one ephemeral game sessi
   const manager = createGameWindowManager({
     createBrowserWindow,
     sessions,
-    handleLocalResource: async () => new Response(),
-    blobRoot: path.join(root, 'blobs'),
     async syncCookies(_endpoint, targetSession) { cookiesSyncedTo = targetSession },
   })
 
@@ -62,22 +56,22 @@ test('binds the resource protocol and player cookies to one ephemeral game sessi
     launchTicket: 'payload.signature',
     title: 'Town · v1.0.0',
   })
-  assert.equal(handlerRegistered, true)
   assert.equal(permissionHandlersInstalled, true)
   assert.equal(cookiesSyncedTo, gameSession)
   assert.equal(capturedOptions.webPreferences.session, gameSession)
   assert.equal(capturedOptions.webPreferences.nodeIntegration, false)
   assert.equal(capturedOptions.webPreferences.contextIsolation, true)
   assert.equal(capturedUrl.pathname, '/base/p/town')
-  assert.equal(capturedUrl.searchParams.get('box3LocalAssets'), '1')
-  assert.equal(capturedUrl.hash.includes(launched.sessionId), true)
+  assert.equal(capturedUrl.searchParams.get('box3ServiceWorkerCache'), '1')
+  assert.match(capturedUrl.hash, /box3LaunchTicket=/)
   assert.equal(manager.isActiveFor('server-1'), true)
   assert.deepEqual(manager.playerSessions(), [gameSession])
 
   await manager.close()
-  assert.equal(handlerRemoved, true)
   assert.equal(manager.isActiveFor('server-1'), false)
   assert.deepEqual(manager.playerSessions(), [])
+  await manager.clearServerCache('server-1')
+  assert.deepEqual(clearedStorage, { storages: ['cookies', 'serviceworkers', 'cachestorage'] })
 })
 
 test('grants pointer lock only to the main game page from its server origin', () => {

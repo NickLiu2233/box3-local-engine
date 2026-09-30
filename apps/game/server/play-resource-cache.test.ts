@@ -6,8 +6,6 @@ import { afterEach, describe, expect, test } from '@jest/globals'
 
 import {
   getPlayResourceCacheManifest,
-  getPlayResourceCacheSettings,
-  updatePlayResourceCacheSettings,
 } from './play-resource-cache'
 
 const roots: string[] = []
@@ -67,14 +65,10 @@ afterEach(() => {
 })
 
 describe('Play resource cache manifest', () => {
-  test('defaults off and never publishes private script blobs to browser storage', () => {
+  test('publishes signed static blobs by default but never private script blobs', () => {
     const world = createWorld()
-    expect(getPlayResourceCacheSettings()).toEqual({ enabled: false })
-
-    updatePlayResourceCacheSettings(true)
     const manifest = getPlayResourceCacheManifest(world.id)
 
-    expect(manifest.enabled).toBe(true)
     expect(manifest.worldId).toBe('10000000000000000001')
     expect(manifest.hashes).toEqual(world.staticHashes)
     expect(manifest.hashes).not.toContain(world.privateHash)

@@ -37,7 +37,7 @@ export function normalizeRemoteServerURL(value: string): string {
 export function resolveGameServerTarget(
   config: Pick<
     ClientConfig,
-    'mode' | 'ARENA_URL' | 'CDN_PATH' | 'remoteGameServerURL' | 'launcherLocalAssetMode'
+    'mode' | 'ARENA_URL' | 'CDN_PATH' | 'remoteGameServerURL' | 'launcherServiceWorkerMode'
   >,
 ): GameServerTarget {
   const localTarget = (): GameServerTarget => {
@@ -65,7 +65,7 @@ export function resolveGameServerTarget(
   const baseURL = normalizeRemoteServerURL(configuredValue);
   return {
     sessionURL: `${baseURL}/api/session`,
-    assetBaseURL: config.launcherLocalAssetMode ? config.CDN_PATH : baseURL,
+    assetBaseURL: config.launcherServiceWorkerMode ? config.CDN_PATH : baseURL,
     socketServerURL: baseURL.replace(/^http/, 'ws'),
     isRemote: true,
   };

@@ -48,6 +48,14 @@ MyApp.getInitialProps = async (
   appContext: AppContext,
 ): Promise<AppOwnProps & AppInitialProps> => {
   const appProps = await App.getInitialProps(appContext);
+  if (typeof window !== 'undefined') {
+    const pageClientConfig = (appProps.pageProps as { clientConfig?: ServerConfigForClient })?.clientConfig;
+    const windowClientConfig = (window as Window & { CLIENT_CONFIG?: ServerConfigForClient }).CLIENT_CONFIG;
+    return {
+      ...appProps,
+      clientConfig: pageClientConfig || windowClientConfig || ({} as ServerConfigForClient),
+    };
+  }
   // The independent player service owns only account and administration UI.
   // It must not initialize the arena/engine configuration stack or contact
   // Nacos just to render those local pages.

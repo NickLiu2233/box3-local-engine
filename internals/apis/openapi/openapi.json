@@ -6906,106 +6906,6 @@
         ]
       }
     },
-    "/api/play-admin/player-launcher-access": {
-      "get": {
-        "operationId": "getApiPlayAdminPlayerLauncherAccess",
-        "summary": "查询接口数据",
-        "description": "此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。",
-        "tags": [
-          "玩家管理"
-        ],
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "x-box-deployment-modes": [
-          "player-service"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“查询接口数据”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "x-box-services": [
-          "engine-web"
-        ]
-      },
-      "patch": {
-        "operationId": "patchApiPlayAdminPlayerLauncherAccess",
-        "summary": "更新接口数据",
-        "description": "此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。",
-        "tags": [
-          "玩家管理"
-        ],
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "x-box-deployment-modes": [
-          "player-service"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“更新接口数据”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          },
-          "description": "执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。"
-        },
-        "x-box-services": [
-          "engine-web"
-        ]
-      }
-    },
     "/api/play-admin/players": {
       "get": {
         "operationId": "getApiPlayAdminPlayers",
@@ -7566,106 +7466,6 @@
               }
             }
           }
-        },
-        "x-box-services": [
-          "engine-web"
-        ]
-      }
-    },
-    "/api/play-admin/resource-cache": {
-      "get": {
-        "operationId": "getApiPlayAdminResourceCache",
-        "summary": "查询接口数据",
-        "description": "此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。",
-        "tags": [
-          "玩家管理"
-        ],
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "x-box-deployment-modes": [
-          "player-service"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“查询接口数据”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "x-box-services": [
-          "engine-web"
-        ]
-      },
-      "patch": {
-        "operationId": "patchApiPlayAdminResourceCache",
-        "summary": "更新接口数据",
-        "description": "此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。",
-        "tags": [
-          "玩家管理"
-        ],
-        "security": [
-          {
-            "adminSession": []
-          }
-        ],
-        "x-box-deployment-modes": [
-          "player-service"
-        ],
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“更新接口数据”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          },
-          "description": "执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。"
         },
         "x-box-services": [
           "engine-web"
@@ -9254,94 +9054,6 @@
         ]
       }
     },
-    "/api/player-launcher/maps/{mapId}/blobs/{hash}": {
-      "get": {
-        "operationId": "getApiPlayerLauncherMapsMapIdBlobsHash",
-        "summary": "查询二进制资源",
-        "description": "此操作用于“查询二进制资源”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
-        "tags": [
-          "引擎公共接口"
-        ],
-        "security": [],
-        "x-box-deployment-modes": [
-          "player-service"
-        ],
-        "parameters": [
-          {
-            "name": "mapId",
-            "in": "path",
-            "required": true,
-            "description": "地图 ID。",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "hash",
-            "in": "path",
-            "required": true,
-            "description": "内容寻址资源的哈希值。",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "digest",
-            "in": "query",
-            "required": false,
-            "description": "接口参数：digest。",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "ticket",
-            "in": "query",
-            "required": false,
-            "description": "接口参数：ticket。",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "Range",
-            "in": "header",
-            "required": false,
-            "description": "续传公开地图资源时使用的字节起始偏移。",
-            "schema": {
-              "type": "string",
-              "pattern": "^bytes=[0-9]+-$"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "操作成功，返回“查询二进制资源”的处理结果。",
-            "content": {
-              "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiError"
-                }
-              }
-            }
-          }
-        },
-        "x-box-services": [
-          "engine-web"
-        ]
-      }
-    },
     "/api/player-launcher/maps/{mapId}/descriptor": {
       "get": {
         "operationId": "getApiPlayerLauncherMapsMapIdDescriptor",
@@ -10585,7 +10297,6 @@
         "required": [
           "protocolVersion",
           "serverName",
-          "resourceAccessEnabled",
           "loginRequired",
           "loginApiUrl",
           "signingKey"
@@ -10599,9 +10310,6 @@
           },
           "serverName": {
             "type": "string"
-          },
-          "resourceAccessEnabled": {
-            "type": "boolean"
           },
           "loginRequired": {
             "type": "boolean"
@@ -12004,15 +11712,6 @@
       "source": "apps/game/pages/api/play-admin/permission-groups/index.ts"
     },
     {
-      "path": "/api/play-admin/player-launcher-access",
-      "methods": [
-        "GET",
-        "PATCH"
-      ],
-      "service": "engine-web",
-      "source": "apps/game/pages/api/play-admin/player-launcher-access.ts"
-    },
-    {
       "path": "/api/play-admin/players/{subjectId}",
       "methods": [
         "GET",
@@ -12055,15 +11754,6 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/play-admin/players/overview.ts"
-    },
-    {
-      "path": "/api/play-admin/resource-cache",
-      "methods": [
-        "GET",
-        "PATCH"
-      ],
-      "service": "engine-web",
-      "source": "apps/game/pages/api/play-admin/resource-cache.ts"
     },
     {
       "path": "/api/play-admin/self-password",
@@ -12254,14 +11944,6 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/player-launcher/bootstrap.ts"
-    },
-    {
-      "path": "/api/player-launcher/maps/{mapId}/blobs/{hash}",
-      "methods": [
-        "GET"
-      ],
-      "service": "engine-web",
-      "source": "apps/game/pages/api/player-launcher/maps/[mapId]/blobs/[hash].ts"
     },
     {
       "path": "/api/player-launcher/maps/{mapId}/descriptor",

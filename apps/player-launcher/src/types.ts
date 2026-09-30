@@ -14,7 +14,6 @@ export interface SigningKey {
 export interface ServerBootstrap {
   supported?: boolean
   serverName?: string
-  resourceAccessEnabled?: boolean
   loginRequired?: boolean
   loginApiUrl?: string
   signingKey?: SigningKey
@@ -41,24 +40,6 @@ export interface PlayWorld {
   [key: string]: unknown
 }
 
-export interface PackageState {
-  ready?: boolean
-  manifestDigest?: string
-  status?: string
-  [key: string]: unknown
-}
-
-export interface MapPrepareProgress {
-  done: number
-  total: number
-  completedBytes?: number
-  receivedBytes?: number
-  totalBytes?: number
-  currentHash?: string
-  currentBytes?: number
-  resumeFrom?: number
-}
-
 export interface PlayerLauncherState {
   servers: PlayerServer[]
   selectedId: string
@@ -75,9 +56,7 @@ export interface PlayerLauncherState {
   playerProfileSkinId: string
   playerProfileError: string
   worlds: PlayWorld[]
-  packageStates: Record<string, PackageState>
   preparingMapId: string
-  prepareProgress: MapPrepareProgress | null
   authError: string
   mapsError: string
   confirmRemoveServerId: string

@@ -128,8 +128,6 @@
 | `GET`                   | `/library/worlds`                | `play-maps.view`                   | 查询已导入游玩地图                            |
 | `PATCH/DELETE`          | `/library/worlds/:id`            | `play-maps.manage`                 | 设置、开放或删除游玩地图                      |
 | `GET`                   | `/library/world-status`          | `play-maps.view`                   | 查询游玩地图资源状态                          |
-| `GET/PATCH`             | `/library/resource-cache`        | `play-resource-cache.view/manage`  | 查询或开关服务器级本地资源加速                |
-| `GET/PATCH`             | `/library/player-launcher-access` | `play-launcher-resources.view/manage` | 查询或开关 BOX3 Player 在线发现与资源访问   |
 | `GET/POST/DELETE`       | `/library/import`                | `play-maps.view/manage`            | 预览、确认导入或取消 `.boxplay` 审查          |
 
 `/library/*` 由 Player Service 先完成后台身份与能力检查，再代理到 Play 管理服务；浏览器不直接持有 Play 内部管理凭据。`/containers` 的 `POST` 使用 `action=restart|destroy` 时返回异步接受或无内容响应；保存配置时返回保存后的 profile。
@@ -179,7 +177,7 @@
 
 `POST /players/batch` 的 `subjectIds` 为 1–100 个身份 ID；支持 `revoke-sessions`、`ban`、`unban`、`add-tag`、`remove-tag`。
 
-可分配权限覆盖玩家、会话、账号/IP/设备封禁、创作权限、Creator CLI Token、游玩地图、地图容器和审计。每个功能都有独立查看能力，编辑/管理能力自动包含其对应查看能力。新建管理账号必须选择权限组，菜单可见性和 API 授权都由该组决定。服主身份不可授予。“本地资源加速”会影响所有玩家的设备存储，因此 `play-resource-cache.*` 只内建给服主和管理员，不可授予权限组。
+可分配权限覆盖玩家、会话、账号/IP/设备封禁、创作权限、Creator CLI Token、游玩地图、地图容器和审计。每个功能都有独立查看能力，编辑/管理能力自动包含其对应查看能力。新建管理账号必须选择权限组，菜单可见性和 API 授权都由该组决定。服主身份不可授予。玩家启动器资源缓存不提供后台开关或权限项；它只缓存清单签名允许的公开静态地图资源。
 
 创作者权限与后台权限相互独立：
 

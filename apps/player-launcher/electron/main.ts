@@ -1,27 +1,14 @@
-import { app, BrowserWindow, ipcMain, protocol, session } from 'electron'
+import { app, BrowserWindow, ipcMain, session } from 'electron'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { createApiTransport } from './services/api-transport'
-import { createLocalResourceProtocol } from './services/local-resource-protocol'
 import { createGameWindowManager } from './services/game-window-manager'
-import { createMapPackageManager } from './services/map-package-manager'
+import { validateDescriptor } from './services/package-descriptor'
 import { createServerStore } from './services/server-store'
 import type { ElectronCommandPayload } from './types'
 import type { ServerStore } from './services/server-store'
-import type { MapPackageManager } from './services/map-package-manager'
 import type { GameWindow, GameWindowManager, GameWindowOptions } from './services/game-window-manager'
 import type { ViteDevServer } from 'vite'
-
-protocol.registerSchemesAsPrivileged([{
-  scheme: 'boxplay',
-  privileges: {
-    standard: true,
-    secure: true,
-    supportFetchAPI: true,
-    corsEnabled: true,
-    stream: true,
-  },
-}])
 
 const COMMANDS = new Set<string>([
   'launcher_state',
@@ -31,11 +18,7 @@ const COMMANDS = new Set<string>([
   'rename_server',
   'clear_player_session',
   'api_request',
-  'prepare_map_package',
-  'get_map_asset_resume_offset',
-  'install_map_asset',
-  'commit_map_package',
-  'associate_map_packages_with_server',
+  'verify_map_descriptor',
   'launch_map',
 ])
 
@@ -55,26 +38,11 @@ function getServerStore(): ServerStore {
 }
 
 const serverStore: ServerStore = getServerStore()
-const packageManager: MapPackageManager = createMapPackageManager({
-  root: path.join(app.getPath('userData'), 'map-packages'),
-  serverStore,
-  apiTransport,
-  onProgress(progress) {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('launcher:event:box-player-map-download-progress', progress)
-    }
-  },
-})
 let gameWindowManager: GameWindowManager
-const handleLocalResource = createLocalResourceProtocol({
-  getSession: (id) => gameWindowManager?.getLaunchSession(id),
-})
 gameWindowManager = createGameWindowManager({
   createBrowserWindow: (options: GameWindowOptions) => new BrowserWindow(options as Electron.BrowserWindowConstructorOptions) as unknown as GameWindow,
   sessions: session,
-  handleLocalResource,
   syncCookies: syncPlayerCookies,
-  blobRoot: path.join(app.getPath('userData'), 'map-packages', 'blobs'),
 })
 
 async function syncPlayerCookies(endpoint: string, targetSession: Electron.Session): Promise<void> {
@@ -124,15 +92,14 @@ async function launchMap(payload: ElectronCommandPayload): Promise<void> {
   const server = state.servers.find((item) => item.id === serverId)
   if (!server) throw new Error('这个服务器已不在列表中')
   if (!validateLaunchTicket(payload.launchTicket)) throw new Error('服务器启动授权无效，请重新点击开始游玩。')
-  const installed = await packageManager.verifyInstalled(
-    serverId,
+  const descriptor = validateDescriptor(
     requireString(payload.descriptor, '地图资源描述符格式无效'),
     requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
   )
-  const releaseVersion = installed.releaseVersion.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 128) || '未知版本'
+  const releaseVersion = descriptor.releaseVersion.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 128) || '未知版本'
   const mapName = String(payload.mapName || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80) || 'BOX3 Player'
   const title = `${mapName} · ${releaseVersion}`
-  await gameWindowManager.launch({ server, descriptor: installed.descriptor, launchTicket: payload.launchTicket, title })
+  await gameWindowManager.launch({ server, descriptor, launchTicket: payload.launchTicket, title })
 }
 
 function requireString(value: unknown, message: string): string {
@@ -154,6 +121,12 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
     if (!payload.request) throw new Error('API 请求参数缺失')
     return apiTransport.request(payload.request)
   }
+  if (command === 'verify_map_descriptor') {
+    return validateDescriptor(
+      requireString(payload.descriptor, '地图资源描述符格式无效'),
+      requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
+    )
+  }
   if (command === 'clear_player_session') {
     const server = store.load().servers.find((item) => item.id === payload.serverId)
     if (!server) throw new Error('这个服务器已不在列表中')
@@ -165,34 +138,12 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
     const server = store.load().servers.find((item) => item.id === payload.serverId)
     if (!server) throw new Error('这个服务器已不在列表中')
     if (gameWindowManager.isActiveFor(server.id)) await gameWindowManager.close()
-    await packageManager.removeServer(server.id)
+    await gameWindowManager.clearServerCache(server.id)
     apiTransport.clear(server.endpoint)
     await clearWebSessionCookies(server.endpoint)
     const next = await store.remove(server.id)
     return next
   }
-  if (command === 'prepare_map_package') return packageManager.prepare(
-    requireString(payload.serverId, '这个服务器已不在列表中'),
-    requireString(payload.descriptor, '地图资源描述符格式无效'),
-    requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
-  )
-  if (command === 'get_map_asset_resume_offset') return packageManager.resumeOffset(
-    requireString(payload.serverId, '这个服务器已不在列表中'),
-    requireString(payload.descriptor, '地图资源描述符格式无效'),
-    requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
-    requireString(payload.hash, '资源 hash 无效'),
-  )
-  if (command === 'install_map_asset') return packageManager.install({ payload: payload.payload as NonNullable<ElectronCommandPayload['payload']> })
-  if (command === 'commit_map_package') return packageManager.commit(
-    requireString(payload.serverId, '这个服务器已不在列表中'),
-    requireString(payload.descriptor, '地图资源描述符格式无效'),
-    requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
-  )
-  if (command === 'associate_map_packages_with_server') return packageManager.associate(
-    requireString(payload.serverId, '这个服务器已不在列表中'),
-    payload.accessIds || [],
-    requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
-  )
   if (command === 'launch_map') return launchMap(payload)
   throw new Error(`Electron 迁移尚未接入 ${command}，请勿用此构建进行地图或账号操作。`)
 }

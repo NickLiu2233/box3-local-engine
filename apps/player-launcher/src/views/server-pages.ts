@@ -66,30 +66,19 @@ function renderPlayerSettings(state, { icon, escapeHtml }) {
     </div>`
 }
 
-function renderWorldCard(world, state, server, { icon, escapeHtml }) {
-  const packageKey = `${server.id}:${world.id}`
-  const progress = state.packageStates?.[packageKey]
+function renderWorldCard(world, state, { icon, escapeHtml }) {
   const preparing = state.preparingMapId === world.id
-  const action = preparing || !progress?.ready ? 'prepare-map' : 'launch-map'
-  const label = preparing
-    ? `正在准备 ${state.prepareProgress?.done || 0}/${state.prepareProgress?.total || 0}`
-    : progress?.ready ? '开始游玩' : '准备地图并游玩'
+  const label = preparing ? '正在检查并连接…' : '开始游玩'
   const image = world.cover
     ? `<img class="world-cover" src="${escapeHtml(world.cover)}" alt="" loading="lazy">`
     : `<div class="world-cover-placeholder">${icon('packages')}</div>`
-  const installProgress = preparing && state.prepareProgress?.totalBytes
-    ? `<div class="install-progress"><progress max="${state.prepareProgress.totalBytes}" value="${state.prepareProgress.receivedBytes || 0}"></progress><small>${(state.prepareProgress.receivedBytes / 1024 / 1024).toFixed(1)} / ${(state.prepareProgress.totalBytes / 1024 / 1024).toFixed(1)} MB</small></div>`
-    : ''
-
   return `<article class="world-card surface">
     ${image}
     <div class="world-copy">
       <h3>${escapeHtml(world.name || '未命名地图')}</h3>
       <p>${escapeHtml(world.description || '由服务器提供的可游玩地图。')}</p>
       ${world.author ? `<small>作者：${escapeHtml(world.author)}</small>` : ''}
-      ${progress?.ready ? '<small class="prepared-hint">本地资源已验证，开始后仍由服务器负责联机与实时数据。</small>' : ''}
-      ${installProgress}
-      <button class="button ${preparing ? 'secondary' : 'primary'}" type="button" data-action="${action}" data-map-id="${escapeHtml(world.id)}" ${state.busy || preparing ? 'disabled' : ''}>${label}</button>
+      <button class="button ${preparing ? 'secondary' : 'primary'}" type="button" data-action="prepare-map" data-map-id="${escapeHtml(world.id)}" ${state.busy || preparing ? 'disabled' : ''}>${label}</button>
     </div>
   </article>`
 }
@@ -125,17 +114,15 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
   const editingName = state.editingServerId === server.id
   const bootstrap = state.serverBootstrap
   const mapStatus = bootstrap?.loading
-    ? ['正在检查服务器…', '正在读取服务器的玩家启动器开放状态。']
+    ? ['正在检查服务器…', '正在读取服务器支持信息。']
     : bootstrap?.error
       ? ['无法读取服务器状态', bootstrap.error]
       : !bootstrap?.supported
         ? ['服务器暂不支持玩家启动器', '请服主升级 Play 服务后，再从启动器导入地图。']
-        : !bootstrap.resourceAccessEnabled
-          ? ['服务器未开放玩家启动器', '请联系服主在后台开启玩家启动器资源访问。']
-          : ['玩家启动器已开放', '']
-  const loginRequired = bootstrap?.supported && bootstrap.resourceAccessEnabled && bootstrap.loginRequired
+        : ['', '']
+  const loginRequired = bootstrap?.supported && bootstrap.loginRequired
   const needsLogin = loginRequired && !state.player
-  const mapContent = bootstrap?.loading || bootstrap?.error || !bootstrap?.supported || !bootstrap?.resourceAccessEnabled
+  const mapContent = bootstrap?.loading || bootstrap?.error || !bootstrap?.supported
     ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>${escapeHtml(mapStatus[0])}</h3><p>${escapeHtml(mapStatus[1])}</p></div>`
     : needsLogin
       ? `<div class="login-layout">
@@ -161,7 +148,7 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
       : state.mapsError
         ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂时无法读取地图</h3><p>${escapeHtml(state.mapsError)}</p></div>`
         : state.worlds.length
-          ? `<div class="world-grid">${state.worlds.map((world) => renderWorldCard(world, state, server, { icon, escapeHtml })).join('')}</div>`
+          ? `<div class="world-grid">${state.worlds.map((world) => renderWorldCard(world, state, { icon, escapeHtml })).join('')}</div>`
           : `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂无可游玩的地图</h3><p>该服务器目前没有向你开放的地图。</p></div>`
 
   return `
@@ -193,12 +180,11 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
 export function renderPackagesPage(icon) {
   return `
     <section class="page">
-      <div class="page-heading"><span class="eyebrow">本机资源</span><h1>已准备的地图资源</h1><p>地图资源只从已添加且已授权的服务器获取，并在开始游玩前自动校验。</p></div>
+      <div class="page-heading"><span class="eyebrow">资源缓存</span><h1>地图资源自动缓存</h1><p>开始游玩时，Service Worker 会校验并缓存地图静态资源；下次启动优先从本机缓存读取。</p></div>
       <div class="surface import-card">
         <div class="import-icon">${icon('packages')}</div>
-        <div class="import-copy"><h2>通过服务器准备地图</h2><p>选择左侧服务器，登录玩家账号后即可下载、校验并进入地图。</p></div>
+        <div class="import-copy"><h2>不需要手动导入</h2><p>地图仅从已添加服务器获取。资源缓存随地图启动自动完成，不会保存服务端脚本或登录信息。</p></div>
         <button class="button primary" data-nav="servers">选择服务器</button>
       </div>
-      <div class="empty-maps surface compact"><div class="empty-map-icon">${icon('packages')}</div><p>地图资源会在从服务器准备时自动下载并校验。</p></div>
     </section>`
 }

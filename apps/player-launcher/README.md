@@ -6,14 +6,14 @@
 
 - 本机保存玩家选择的游玩服务器；
 - “添加服务器 → 选择地图 → 开始游玩”的玩家界面；
-- Electron 主进程通过白名单 IPC 管理服务器、登录 API、地图包存储和受限本地资源协议；
+- Electron 主进程通过白名单 IPC 管理服务器、玩家登录、地图签名验证和游戏窗口；
 - Chromium 游戏窗口使用浏览器 Pointer Lock，静态资源继续从已校验的本地内容库读取；
 - 独立的 macOS、Windows 和 Linux Electron 打包配置；
 - 校验服务器签名描述符、下载断点续传并验证本地 Blob；按内容 hash 去重，删除服务器时保留仍被其他服务器引用的资源；
-- 复用本机历史服务器列表与地图包数据；
-- 只向当前游戏窗口开放清单内必需资源，Range 音频读取通过 Electron `boxplay://` 协议提供。
+- 复用本机服务器列表；地图静态资源由游戏页面同源 Service Worker 写入持久 Cache Storage；
+- 启动地图前通过 Service Worker 预热签名清单内的静态资源；后续启动优先从本机 Cache Storage 读取，不另建地图资源目录。
 
-离线 `.boxplay` 导入仍按产品决定暂不实现；服务器脚本、账号密码和实时游戏状态不会进入地图包。
+不支持离线 `.boxplay` 导入；服务器脚本、账号密码和实时游戏状态不会写入 Service Worker 缓存。
 
 ## 开发
 
@@ -32,4 +32,4 @@ npm run package:player-launcher:windows-amd64
 npm run package:player-launcher:linux-amd64
 ```
 
-玩家地图资源协议与严格资源门禁的设计见 [启动器本地地图包与严格资源门禁](../../docs/launcher-local-map-packs-design.md)。Electron 迁移期间的 Tauri 配置保留作回归对照；发行入口以 `bundle:electron` 为准。
+资源缓存与安全边界见 [玩家启动器 Service Worker 资源缓存](../../docs/launcher-service-worker-cache.md)。Electron 是发行入口，使用 `bundle:electron`。

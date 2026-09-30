@@ -1,6 +1,5 @@
 mod api_download;
 mod api_transport;
-mod local_resource_protocol;
 mod map_packages;
 mod package_descriptor;
 mod package_index;
@@ -9,14 +8,13 @@ mod webview_session;
 mod window_title;
 
 use api_transport::{api_request, clear_player_cookie, clear_server_auth};
-use local_resource_protocol::LocalResourceProtocolState;
 use map_packages::{get_map_asset_resume_offset, install_map_asset, prepare_map_package};
 use package_descriptor::validate_descriptor;
 use package_index::{commit_map_package, verify_installed_map_package};
 use package_ownership::{associate_map_packages_with_server, remove_server_map_data};
 use serde::{Deserialize, Serialize};
 use std::{fs, net::IpAddr, path::PathBuf};
-use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use url::Url;
 use webview_session::{
     clear_player_cookies as clear_webview_player_cookies,
@@ -186,7 +184,6 @@ async fn remove_server(app: AppHandle, server_id: String) -> Result<LauncherStat
                     .close()
                     .map_err(|_| "无法关闭当前游玩窗口".to_string())?;
             }
-            app.state::<LocalResourceProtocolState>().clear();
         }
         remove_server_map_data(&app, &server_id)?;
         clear_server_auth(&server.endpoint);
@@ -253,15 +250,11 @@ async fn launch_map(
     game_url.set_query(None);
     game_url
         .query_pairs_mut()
-        .append_pair("box3LocalAssets", "1")
+        .append_pair("box3ServiceWorkerCache", "1")
         .append_pair("box3PermanentMapId", &verified_descriptor.permanent_map_id)
         .append_pair("box3ReleaseVersion", &verified_descriptor.release_version)
         .append_pair("box3ManifestDigest", &verified_descriptor.manifest_digest);
-    let local_protocol = app.state::<LocalResourceProtocolState>();
-    let local_session_id = local_protocol.activate(&app, &verified_descriptor)?;
-    game_url.set_fragment(Some(&format!(
-        "box3LocalAsset={local_session_id}&box3LaunchTicket={launch_ticket}"
-    )));
+    game_url.set_fragment(Some(&format!("box3LaunchTicket={launch_ticket}")));
 
     if let Some(main_window) = app.get_webview_window("main") {
         sync_webview_player_cookies(&main_window, &server.endpoint)?;
@@ -272,7 +265,6 @@ async fn launch_map(
             .set_title(&window_title)
             .map_err(|_| "无法更新游玩窗口标题".to_string())?;
         if game_window.navigate(game_url).is_err() {
-            local_protocol.clear();
             return Err("无法打开游玩地图".into());
         }
         return game_window
@@ -315,19 +307,7 @@ fn rename_server(app: AppHandle, server_id: String, name: String) -> Result<Play
 }
 
 pub fn run() {
-    let local_protocol = LocalResourceProtocolState::default();
-    let request_protocol = local_protocol.clone();
-    let close_protocol = local_protocol.clone();
     tauri::Builder::default()
-        .manage(local_protocol)
-        .register_asynchronous_uri_scheme_protocol("boxplay", move |context, request, responder| {
-            request_protocol.dispatch(context.webview_label().to_owned(), request, responder);
-        })
-        .on_window_event(move |window, event| {
-            if window.label() == "player-game" && matches!(event, WindowEvent::Destroyed) {
-                close_protocol.clear();
-            }
-        })
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_title(&format!("BOX3 Player Launcher v{ROOT_VERSION}"))?;

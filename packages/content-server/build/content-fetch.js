@@ -9,7 +9,7 @@ const image_1 = require("./image");
 const data_1 = require("./data");
 const loading_schema_1 = require("@box/utils/loading/loading-schema");
 function isAbsoluteContentURL(hashOrURL) {
-    return /^(?:https?:\/\/|boxplay:\/\/|\/\/|\/)/i.test(hashOrURL);
+    return /^(?:https?:\/\/|\/\/|\/)/i.test(hashOrURL);
 }
 function resolveContentURL(hashOrURL, urlPrefix) {
     const isAbsoluteURL = isAbsoluteContentURL(hashOrURL);
@@ -251,7 +251,9 @@ class ContentResolver {
             : hashOrURL.indexOf('.') < 0
                 ? hashOrURL + '.png'
                 : hashOrURL;
-        const src = isURL ? hashOrURL : `${this._urlPrefix}${taggedKey}`;
+        const src = isURL
+            ? resolveContentURL(hashOrURL, this._urlPrefix)
+            : `${this._urlPrefix}${taggedKey}`;
         if (taggedKey in this._images) {
             return this._images[taggedKey];
         }
