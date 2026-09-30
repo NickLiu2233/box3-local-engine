@@ -35,10 +35,25 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     if (event.target instanceof Element && event.target.closest('[data-remove-server]')) return
     const serverId = node.dataset.selectServer || ''
     if (serverId === state.selectedId) {
-      if (state.page !== 'servers') {
-        state.page = 'servers'
-        state.playerMenuOpen = false
-        state.playerSettingsOpen = false
+      if (state.page === 'servers') return
+      const server = selectedServer()
+      state.page = 'servers'
+      state.playerMenuOpen = false
+      state.playerSettingsOpen = false
+      if (state.serverBootstrap?.supported && !state.serverBootstrap.error) {
+        render()
+        return
+      }
+      state.serverBootstrap = { loading: true }
+      state.error = ''
+      state.notice = ''
+      render()
+      try {
+        state.serverBootstrap = await playerInvoke('get_server_bootstrap', { endpoint: server?.endpoint || '' })
+        await refreshPlayerSession(server)
+      } catch (error) {
+        state.serverBootstrap = { error: String(error) }
+      } finally {
         render()
       }
       return
@@ -273,7 +288,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
         const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
         throw new Error(message ? `安全启动地图失败：${message}` : '安全启动地图失败（本机命令未返回错误说明）')
       }
-      state.notice = `“${descriptor.accessId}”已验证，游戏将通过本机 Service Worker 缓存静态资源…`
+      state.notice = `“${mapName}”已验证，游戏将通过本机 Service Worker 缓存静态资源…`
     } catch (error) {
       const message = typeof error === 'string' ? error : error?.message
       const details = message || (error == null ? '' : String(error))

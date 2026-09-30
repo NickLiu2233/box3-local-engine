@@ -1,5 +1,6 @@
 import { playerSkinOptions } from '../services/player-skins'
 import { SERVER_ADDRESS_HELP_TEXT } from '../services/server-address-notice'
+import { renderWorldCard } from './world-card'
 
 function renderPlayerAccountControl(state, { icon, escapeHtml }) {
   if (!state.player) return ''
@@ -67,23 +68,6 @@ function renderPlayerSettings(state, { icon, escapeHtml }) {
     </div>`
 }
 
-function renderWorldCard(world, state, { icon, escapeHtml }) {
-  const preparing = state.preparingMapId === world.id
-  const label = preparing ? '正在检查并连接…' : '开始游玩'
-  const image = world.cover
-    ? `<img class="world-cover" src="${escapeHtml(world.cover)}" alt="" loading="lazy">`
-    : `<div class="world-cover-placeholder">${icon('packages')}</div>`
-  return `<article class="world-card surface">
-    ${image}
-    <div class="world-copy">
-      <h3>${escapeHtml(world.name || '未命名地图')}</h3>
-      <p>${escapeHtml(world.description || '由服务器提供的可游玩地图。')}</p>
-      ${world.author ? `<small>作者：${escapeHtml(world.author)}</small>` : ''}
-      <button class="button ${preparing ? 'secondary' : 'primary'}" type="button" data-action="prepare-map" data-map-id="${escapeHtml(world.id)}" ${state.busy || preparing ? 'disabled' : ''}>${label}</button>
-    </div>
-  </article>`
-}
-
 export function renderServerPage(state, server, { icon, escapeHtml }) {
   if (state.page === 'home') {
     const hasServers = state.servers.length > 0
@@ -149,7 +133,7 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
       : state.mapsError
         ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂时无法读取地图</h3><p>${escapeHtml(state.mapsError)}</p></div>`
         : state.worlds.length
-          ? `<div class="world-grid">${state.worlds.map((world) => renderWorldCard(world, state, { icon, escapeHtml })).join('')}</div>`
+          ? `<div class="world-grid">${state.worlds.map((world) => renderWorldCard(world, state, { escapeHtml })).join('')}</div>`
           : `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂无可游玩的地图</h3><p>该服务器目前没有向你开放的地图。</p></div>`
 
   return `

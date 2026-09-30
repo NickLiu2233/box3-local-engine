@@ -68,3 +68,68 @@ test('clicking the server that is already selected on its page does not refresh 
   assert.equal(state.error, 'existing error')
   assert.equal(state.notice, 'existing notice')
 })
+
+test('opening the already-selected server from home loads its missing bootstrap', async () => {
+  const originalDocument = Reflect.get(globalThis, 'document')
+  const originalElement = Reflect.get(globalThis, 'Element')
+  const server = { id: 'server-one', endpoint: 'http://127.0.0.1:3121', name: '本机' }
+  let clickHandler: ((event: { target: Element }) => Promise<void>) | undefined
+  const serverButton = {
+    dataset: { selectServer: server.id },
+    addEventListener(_name: string, listener: (event: { target: Element }) => Promise<void>) {
+      clickHandler = listener
+    },
+  }
+  class TestElement {
+    closest() { return null }
+  }
+  Reflect.set(globalThis, 'Element', TestElement)
+  Reflect.set(globalThis, 'document', {
+    querySelector: () => null,
+    querySelectorAll: (selector: string) => selector === '[data-select-server]' ? [serverButton] : [],
+  })
+
+  const state = {
+    servers: [server],
+    selectedId: server.id,
+    page: 'home',
+    busy: false,
+    player: null,
+    worlds: [],
+    playerMenuOpen: false,
+    playerSettingsOpen: false,
+    editingServerId: '',
+    serverNameInput: '',
+    serverBootstrap: null,
+    error: '',
+    notice: '',
+  }
+  const commands: string[] = []
+  let refreshCount = 0
+  try {
+    bindEvents({
+      state,
+      playerInvoke: async (command: string) => {
+        commands.push(command)
+        return { supported: true, loginRequired: true }
+      },
+      remoteApi: {},
+      selectedServer: () => server,
+      refreshPlayerSession: async () => { refreshCount += 1 },
+      applyTheme: () => {},
+      render: () => {},
+    })
+    assert.ok(clickHandler, 'server row click handler should be bound')
+    await clickHandler?.({ target: new TestElement() as unknown as Element })
+  } finally {
+    if (originalDocument === undefined) Reflect.deleteProperty(globalThis, 'document')
+    else Reflect.set(globalThis, 'document', originalDocument)
+    if (originalElement === undefined) Reflect.deleteProperty(globalThis, 'Element')
+    else Reflect.set(globalThis, 'Element', originalElement)
+  }
+
+  assert.equal(state.page, 'servers')
+  assert.deepEqual(commands, ['get_server_bootstrap'])
+  assert.equal(state.serverBootstrap?.supported, true)
+  assert.equal(refreshCount, 1)
+})

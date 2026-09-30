@@ -10079,6 +10079,7 @@ export declare class ApiClient {
             cover?: string | undefined;
             loadingCover?: string | undefined;
             version: string;
+            onlineCount: number;
         }[];
     }>;
     getApiPlayerLauncherMapsMapIdDescriptorRaw(...init: Parameters<PathBasedClient<paths>["/api/player-launcher/maps/{mapId}/descriptor"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{

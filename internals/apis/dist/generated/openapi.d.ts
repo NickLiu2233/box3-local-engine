@@ -2712,6 +2712,7 @@ export interface components {
             cover?: string;
             loadingCover?: string;
             version: string;
+            onlineCount: number;
         };
         PlayerLauncherPackageAsset: {
             hash: string;

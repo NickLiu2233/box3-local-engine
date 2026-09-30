@@ -6,6 +6,23 @@ export interface PlayerApiOptions {
   isNative: () => boolean
 }
 
+const BOOTSTRAP_NOT_FOUND_RETRY_DELAY_MS = 250
+
+export function resolveMapCoverUrl(endpoint: string, value: unknown): string {
+  const base = new URL(endpoint)
+  const fallback = new URL('/map-templates/blank-template.png', base).toString()
+  const cover = typeof value === 'string' ? value.trim() : ''
+  if (!cover) return fallback
+  try {
+    const url = new URL(cover, base)
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return fallback
+    if (url.protocol === 'http:' && url.origin !== base.origin) return fallback
+    return url.toString()
+  } catch {
+    return fallback
+  }
+}
+
 export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
   async function fetchApi(endpoint: string, request: Request, authPortalBase = ''): Promise<Response> {
     if (!isNative()) return fetch(request)
@@ -55,7 +72,13 @@ export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
 
   return {
     async readBootstrap(endpoint) {
-      const { data, response } = await client(endpoint).getApiPlayerLauncherBootstrapRaw()
+      const bootstrapClient = client(endpoint)
+      let result = await bootstrapClient.getApiPlayerLauncherBootstrapRaw()
+      if (result.response.status === 404) {
+        await new Promise((resolve) => setTimeout(resolve, BOOTSTRAP_NOT_FOUND_RETRY_DELAY_MS))
+        result = await bootstrapClient.getApiPlayerLauncherBootstrapRaw()
+      }
+      const { data, response } = result
       if (response.status === 404) return { supported: false, serverName: '', loginRequired: false }
       if (!response.ok) throw new Error(`读取服务器启动器支持信息失败（HTTP ${response.status}）`)
       return { supported: true, ...(data || {}) }
@@ -70,8 +93,19 @@ export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
     readSession(endpoint, bootstrap) {
       return authClient(endpoint, bootstrap).getApiAuthSessionRaw()
     },
-    getMaps(endpoint) {
-      return client(endpoint).getApiPlayerLauncherMapsRaw()
+    async getMaps(endpoint) {
+      const result = await client(endpoint).getApiPlayerLauncherMapsRaw()
+      if (!Array.isArray(result.data?.worlds)) return result
+      return {
+        ...result,
+        data: {
+          ...result.data,
+          worlds: result.data.worlds.map((world) => ({
+            ...world,
+            cover: resolveMapCoverUrl(endpoint, world.cover),
+          })),
+        },
+      }
     },
     updateProfile(endpoint, changes) {
       return client(endpoint).patchApiPlayProfileRaw({ body: changes })

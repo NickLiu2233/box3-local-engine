@@ -91,6 +91,8 @@ describe('Player Launcher Play endpoints', () => {
     const handler = createPlayerLauncherMapsHandler({
       getPlayerIp: () => '127.0.0.1',
       resolveIdentity: async () => ({ identity: {} as never, assertion: 'signed' }),
+      getAllWorlds: () => [{ id: 'map-one', publicId: 'map-one', mapGroupId: 'map-group', mainProjectId: 'map-one' }] as never,
+      getPresenceCounts: () => ({ 'map-one': { onlineCount: 3 } }),
       getWorlds: () => [{
         id: 'map-one',
         permanentMapId: 'permanent-one',
@@ -109,7 +111,7 @@ describe('Player Launcher Play endpoints', () => {
     const res = response()
     await handler(request(), res)
     expect(res.statusCode).toBe(200)
-    expect(res.body).toMatchObject({ worlds: [{ permanentMapId: 'permanent-one', name: '地图一' }] })
+    expect(res.body).toMatchObject({ worlds: [{ permanentMapId: 'permanent-one', name: '地图一', onlineCount: 3 }] })
   })
 
   test('descriptor endpoint checks player session and map visibility', async () => {

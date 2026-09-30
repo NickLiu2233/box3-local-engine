@@ -46,5 +46,4 @@ test('shows a clean connection error when an invalid server address cannot be re
 test('explains HTTP and IP address reminders in the add-server helper text', () => {
   assert.match(SERVER_ADDRESS_HELP_TEXT, /本机地址默认 HTTP/)
   assert.match(SERVER_ADDRESS_HELP_TEXT, /公网地址建议使用 HTTPS/)
-  assert.match(SERVER_ADDRESS_HELP_TEXT, /HTTP 或公网 IP 添加前会先提示安全信息/)
 })

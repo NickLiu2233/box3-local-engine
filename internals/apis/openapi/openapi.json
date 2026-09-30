@@ -10356,7 +10356,8 @@
           "name",
           "author",
           "description",
-          "version"
+          "version",
+          "onlineCount"
         ],
         "properties": {
           "id": {
@@ -10385,6 +10386,10 @@
           },
           "version": {
             "type": "string"
+          },
+          "onlineCount": {
+            "type": "integer",
+            "minimum": 0
           }
         }
       },

@@ -33,7 +33,7 @@ export const localEngineSchemas = {
   },
   PlayerLauncherWorld: {
     type: 'object',
-    required: ['id', 'permanentMapId', 'publicId', 'name', 'author', 'description', 'version'],
+    required: ['id', 'permanentMapId', 'publicId', 'name', 'author', 'description', 'version', 'onlineCount'],
     properties: {
       id: string,
       permanentMapId: string,
@@ -44,6 +44,7 @@ export const localEngineSchemas = {
       cover: optionalString,
       loadingCover: optionalString,
       version: string,
+      onlineCount: { type: 'integer', minimum: 0 },
     },
   },
   PlayerLauncherPackageAsset: {

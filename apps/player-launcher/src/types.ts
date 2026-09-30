@@ -37,6 +37,7 @@ export interface PlayWorld {
   cover?: string
   loadingCover?: string
   version?: string
+  onlineCount?: number
   [key: string]: unknown
 }
 
