@@ -1,4 +1,5 @@
 import { playerSkinOptions } from '../services/player-skins'
+import { SERVER_ADDRESS_HELP_TEXT } from '../services/server-address-notice'
 
 function renderPlayerAccountControl(state, { icon, escapeHtml }) {
   if (!state.player) return ''
@@ -100,7 +101,7 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
       <form id="server-form" class="surface add-form">
         <label for="server-endpoint">服务器地址</label>
         <div class="input-row"><span class="input-icon">${icon('globe')}</span><input id="server-endpoint" name="endpoint" value="${escapeHtml(state.endpointInput)}" placeholder="请输入游玩端服务器 IP 或域名" autocomplete="url" required autofocus ${state.busy ? 'disabled' : ''} /></div>
-        <p class="field-help">支持域名、IP 和端口；域名默认 HTTPS，本机地址默认 HTTP。</p>
+        <p class="field-help">${escapeHtml(SERVER_ADDRESS_HELP_TEXT)}</p>
         <div class="form-actions"><button type="button" class="button secondary" data-nav="home">取消</button><button class="button primary" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在检查服务器…' : '添加服务器'}${icon('arrow')}</button></div>
       </form>
     </section>`

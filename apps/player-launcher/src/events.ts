@@ -1,5 +1,6 @@
 import { prepareMapLaunch } from './services/map-launch-flow'
 import { getServerAddressNotice } from './services/server-address-notice'
+import { playerServerAddError } from './services/server-errors'
 import { bindPlayerAccountEvents } from './events/player-account-events'
 import {
   playerLoginConnectionError,
@@ -33,6 +34,15 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
   document.querySelectorAll<HTMLElement>('[data-select-server]').forEach((node) => node.addEventListener('click', async (event) => {
     if (event.target instanceof Element && event.target.closest('[data-remove-server]')) return
     const serverId = node.dataset.selectServer || ''
+    if (serverId === state.selectedId) {
+      if (state.page !== 'servers') {
+        state.page = 'servers'
+        state.playerMenuOpen = false
+        state.playerSettingsOpen = false
+        render()
+      }
+      return
+    }
     state.selectedId = serverId
     state.page = 'servers'
     state.player = null
@@ -207,7 +217,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
         state.serverBootstrap = { error: String(error) }
       }
     } catch (error) {
-      state.error = String(error)
+      state.error = playerServerAddError(error)
       state.page = 'add-server'
     } finally {
       state.busy = false

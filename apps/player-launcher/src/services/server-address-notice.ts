@@ -3,6 +3,8 @@ export interface ServerAddressNotice {
   message: string
 }
 
+export const SERVER_ADDRESS_HELP_TEXT = '支持域名、IP 和端口。本机地址默认 HTTP。公网地址建议使用 HTTPS。'
+
 function isLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '')
   return host === 'localhost'
