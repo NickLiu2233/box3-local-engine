@@ -70,15 +70,12 @@ apps/deployment-manager/dist/
 apps/deployment-manager/src-tauri/gen/
 apps/deployment-manager/src-tauri/target/
 
-# Player launcher has its own Tauri build output. Keep its source and Cargo
-# lockfile, but never commit generated Web assets, schemas or native artifacts.
+# Player launcher Electron build output.
 apps/player-launcher/dist/
 apps/player-launcher/dist-electron/
 apps/player-launcher/release-electron/
 apps/player-launcher/release-electron-ts/
 apps/player-launcher/release-electron-next/
-apps/player-launcher/src-tauri/gen/
-apps/player-launcher/src-tauri/target/
 
 # Rust headless server manager build output.
 apps/server-manager-rust/target/

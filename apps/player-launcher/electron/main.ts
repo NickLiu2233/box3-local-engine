@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, session } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeImage, session } from 'electron'
+import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { createApiTransport } from './services/api-transport'
@@ -175,7 +176,7 @@ async function startVite(): Promise<string> {
       host: '127.0.0.1',
       port: 1421,
       strictPort: true,
-      watch: { ignored: ['**/release-electron/**', '**/src-tauri/target/**'] },
+      watch: { ignored: ['**/release-electron*/**'] },
     },
   })
   await devServer.listen()
@@ -222,6 +223,10 @@ app.whenReady().then(async () => {
   if (!hasSingleInstanceLock) {
     app.quit()
     return
+  }
+  if (process.platform === 'darwin' && app.dock) {
+    const iconPath = path.join(app.getAppPath(), 'resources/icons/icon.png')
+    app.dock.setIcon(nativeImage.createFromBuffer(fs.readFileSync(iconPath)))
   }
   await createMainWindow()
 }).catch((error) => {

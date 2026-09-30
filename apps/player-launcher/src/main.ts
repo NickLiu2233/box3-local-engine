@@ -1,5 +1,5 @@
 import { invoke, isDesktopLauncher } from './platform/launcher-bridge'
-import brandIcon from '../../deployment-manager/src-tauri/icons/icon.png'
+import brandIcon from '../resources/brand-icon.png'
 import { createPlayerApi } from './services/player-api'
 import { bindEvents } from './events'
 import { renderPackagesPage, renderServerPage } from './views/server-pages'
