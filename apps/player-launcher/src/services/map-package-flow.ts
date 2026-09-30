@@ -1,4 +1,15 @@
-export async function prepareMapResources({ server, mapId, bootstrap, remoteApi, onProgress, onStage }) {
+import type { MapPrepareProgress, PlayerServer, RemoteApi, ServerBootstrap } from '../types'
+
+export interface PrepareMapResourcesOptions {
+  server: PlayerServer
+  mapId: string
+  bootstrap: ServerBootstrap
+  remoteApi: RemoteApi
+  onProgress: (progress: MapPrepareProgress) => void
+  onStage?: (stage: string) => void
+}
+
+export async function prepareMapResources({ server, mapId, bootstrap, remoteApi, onProgress, onStage }: PrepareMapResourcesOptions) {
   if (!bootstrap?.resourceAccessEnabled || !bootstrap.signingKey) {
     throw new Error('该服务器当前没有开放带签名的地图资源。')
   }
@@ -103,7 +114,7 @@ export async function prepareMapResources({ server, mapId, bootstrap, remoteApi,
   return { descriptor, trustedSigningKey, installed, launchTicket: launchPlan.ticket }
 }
 
-function stageError(stage, error) {
-  const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
+function stageError(stage: string, error: unknown): Error {
+  const message = typeof error === 'string' ? error : error instanceof Error ? error.message : String(error ?? '')
   return new Error(message ? `${stage}：${message}` : `${stage}（本机命令未返回错误说明）`)
 }

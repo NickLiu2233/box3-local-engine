@@ -69,6 +69,9 @@ apps/deployment-manager/src-tauri/target/
 # Player launcher has its own Tauri build output. Keep its source and Cargo
 # lockfile, but never commit generated Web assets, schemas or native artifacts.
 apps/player-launcher/dist/
+apps/player-launcher/dist-electron/
+apps/player-launcher/release-electron/
+apps/player-launcher/release-electron-ts/
 apps/player-launcher/src-tauri/gen/
 apps/player-launcher/src-tauri/target/
 

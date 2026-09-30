@@ -1,4 +1,4 @@
-import { playerSkinOptions } from '../services/player-skins.js'
+import { playerSkinOptions } from '../services/player-skins'
 
 function renderPlayerAccountControl(state, { icon, escapeHtml }) {
   if (!state.player) return ''

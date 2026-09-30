@@ -1,4 +1,14 @@
-export function bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render }) {
+import type { PlayerInvoke, PlayerLauncherState, PlayerServer, RemoteApi } from '../types'
+
+export interface PlayerAccountEventOptions {
+  state: PlayerLauncherState
+  playerInvoke: PlayerInvoke
+  remoteApi: RemoteApi
+  selectedServer: () => PlayerServer | null
+  render: () => void
+}
+
+export function bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render }: PlayerAccountEventOptions): void {
   document.querySelector('[data-action="toggle-player-menu"]')?.addEventListener('click', () => {
     state.playerMenuOpen = !state.playerMenuOpen
     render()
@@ -12,8 +22,8 @@ export function bindPlayerAccountEvents({ state, playerInvoke, remoteApi, select
     state.playerProfileSkinId = state.player.avatarSkinId || 'explorer'
     state.playerProfileError = ''
     render()
-    document.querySelector('#player-profile-name')?.focus()
-    document.querySelector('#player-profile-name')?.select()
+    document.querySelector<HTMLInputElement>('#player-profile-name')?.focus()
+    document.querySelector<HTMLInputElement>('#player-profile-name')?.select()
   })
 
   const closeProfile = () => {
@@ -22,28 +32,28 @@ export function bindPlayerAccountEvents({ state, playerInvoke, remoteApi, select
     state.playerProfileError = ''
     render()
   }
-  document.querySelectorAll('[data-close-player-settings]').forEach((node) => {
+  document.querySelectorAll<HTMLElement>('[data-close-player-settings]').forEach((node) => {
     node.addEventListener('click', closeProfile)
   })
   document.querySelector('[data-player-profile-backdrop]')?.addEventListener('click', (event) => {
     if (event.target === event.currentTarget) closeProfile()
   })
-  document.querySelector('.player-profile-dialog')?.addEventListener('keydown', (event) => {
+  document.querySelector('.player-profile-dialog')?.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.key === 'Escape') closeProfile()
   })
-  document.querySelectorAll('[data-player-skin]').forEach((node) => {
+  document.querySelectorAll<HTMLElement>('[data-player-skin]').forEach((node) => {
     node.addEventListener('click', () => {
       state.playerProfileSkinId = node.dataset.playerSkin || 'explorer'
       render()
     })
   })
   document.querySelector('#player-profile-name')?.addEventListener('input', (event) => {
-    state.playerProfileName = event.currentTarget.value
+    state.playerProfileName = (event.currentTarget as HTMLInputElement).value
   })
   document.querySelector('#player-profile-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     const server = selectedServer()
-    const displayName = String(new FormData(event.currentTarget).get('displayName') || '').trim()
+    const displayName = String(new FormData(event.currentTarget as HTMLFormElement).get('displayName') || '').trim()
     if (!server || !state.player || state.busy) return
     if (!displayName || [...displayName].length > 32) {
       state.playerProfileError = '显示昵称需要为 1 到 32 个字符。'

@@ -10,7 +10,13 @@ const KNOWN_MESSAGES = new Map([
 ])
 
 /** Convert generated OpenAPI error responses into safe, actionable player copy. */
-export function playerLoginErrorMessage(status, payload = {}) {
+export interface PlayerLoginErrorPayload {
+  code?: string
+  message?: string
+  banReason?: string
+}
+
+export function playerLoginErrorMessage(status: number, payload: PlayerLoginErrorPayload = {}): string {
   const code = typeof payload?.code === 'string' ? payload.code : ''
   const serverMessage = typeof payload?.message === 'string' ? payload.message.trim() : ''
 
@@ -53,8 +59,8 @@ export function playerLoginErrorMessage(status, payload = {}) {
   return '登录暂未成功，请检查账号信息或稍后重试。'
 }
 
-export function playerLoginConnectionError(error) {
-  const message = typeof error?.message === 'string' ? error.message : ''
+export function playerLoginConnectionError(error: unknown): string {
+  const message = error instanceof Error ? error.message : ''
   if (message === '该服务器未配置玩家账号登录服务' || message === '服务器提供的玩家登录地址无效') {
     return message
   }

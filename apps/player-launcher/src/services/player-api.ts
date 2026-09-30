@@ -1,9 +1,15 @@
 import { createApiClient } from '@box/apis'
+import type { PlayerInvoke, ServerBootstrap } from '../types'
 
-export function createPlayerApi({ invoke, isNative }) {
+export interface PlayerApiOptions {
+  invoke: PlayerInvoke
+  isNative: () => boolean
+}
+
+export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
   let activeInstallContext = null
 
-  async function fetchApi(endpoint, request, authPortalBase = '') {
+  async function fetchApi(endpoint: string, request: Request, authPortalBase = ''): Promise<Response> {
     if (!isNative()) return fetch(request)
     const base = new URL(endpoint)
     const target = new URL(request.url)
@@ -63,14 +69,14 @@ export function createPlayerApi({ invoke, isNative }) {
     })
   }
 
-  function client(endpoint, baseUrl = endpoint) {
+  function client(endpoint: string, baseUrl = endpoint) {
     return createApiClient({
       baseUrl,
       fetch: (request) => fetchApi(endpoint, request, baseUrl !== endpoint ? baseUrl : ''),
     })
   }
 
-  function authClient(endpoint, bootstrap) {
+  function authClient(endpoint: string, bootstrap: ServerBootstrap) {
     const loginUrl = String(bootstrap?.loginApiUrl || '')
     if (!loginUrl) throw new Error('该服务器未配置玩家账号登录服务')
     const url = new URL(loginUrl)

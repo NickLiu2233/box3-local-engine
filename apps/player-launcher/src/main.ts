@@ -1,14 +1,15 @@
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { invoke, isDesktopLauncher, listen } from './platform/launcher-bridge'
 import brandIcon from '../../deployment-manager/src-tauri/icons/icon.png'
-import { createPlayerApi } from './services/player-api.js'
-import { bindEvents } from './events.js'
-import { renderPackagesPage, renderServerPage } from './views/server-pages.js'
+import { createPlayerApi } from './services/player-api'
+import { bindEvents } from './events'
+import { renderPackagesPage, renderServerPage } from './views/server-pages'
+import type { PlayerLauncherState, PlayerServer } from './types'
 import './styles.css'
 
-const app = document.querySelector('#app')
+const app = document.querySelector<HTMLDivElement>('#app')
+if (!app) throw new Error('启动器界面根节点缺失')
 document.addEventListener('contextmenu', (event) => event.preventDefault(), { capture: true })
-const state = {
+const state: PlayerLauncherState = {
   servers: [],
   selectedId: '',
   page: 'home',
@@ -43,10 +44,10 @@ document.addEventListener('click', (event) => {
   render()
 })
 
-const previewServers = []
-const remoteApi = createPlayerApi({ invoke, isNative: () => Boolean(window.__TAURI_INTERNALS__) })
+const previewServers: PlayerServer[] = []
+const remoteApi = createPlayerApi({ invoke, isNative: isDesktopLauncher })
 
-async function refreshPlayerSession(server = selectedServer()) {
+async function refreshPlayerSession(server: PlayerServer | null = selectedServer()): Promise<void> {
   state.player = null
   state.worlds = []
   state.authError = ''
@@ -79,7 +80,13 @@ async function refreshPlayerSession(server = selectedServer()) {
       state.mapsError = '服务器未开放玩家启动器资源访问。'
       return
     }
-    if (!response.ok) throw new Error(data?.message || `读取可玩地图失败（HTTP ${response.status}）`)
+    if (!response.ok) {
+      const responseMessage = (data as unknown as { message?: unknown } | undefined)?.message
+      const message = typeof responseMessage === 'string'
+        ? responseMessage
+        : ''
+      throw new Error(message || `读取可玩地图失败（HTTP ${response.status}）`)
+    }
     state.worlds = Array.isArray(data?.worlds) ? data.worlds : []
     state.mapsError = ''
     if (state.serverBootstrap?.signingKey && state.worlds.length) {
@@ -98,7 +105,7 @@ async function refreshPlayerSession(server = selectedServer()) {
   }
 }
 
-async function playerInvoke(command, payload = {}) {
+async function playerInvoke(command: string, payload: Record<string, any> = {}): Promise<any> {
   if (command === 'get_server_bootstrap') {
     try {
       return await remoteApi.readBootstrap(String(payload.endpoint || ''))
@@ -107,7 +114,7 @@ async function playerInvoke(command, payload = {}) {
     }
   }
   if (command === 'associate_map_packages_with_server') {
-    if (!window.__TAURI_INTERNALS__) return 0
+    if (!isDesktopLauncher()) return 0
     return invoke(command, {
       serverId: payload.serverId,
       accessIds: payload.accessIds || [],
@@ -132,7 +139,7 @@ async function playerInvoke(command, payload = {}) {
     try { await remoteApi.verifyServer(endpoint) } catch (error) {
       throw new Error(error.message || '无法连接到游玩端服务器，请检查 IP/域名、端口和网络后重试')
     }
-    if (window.__TAURI_INTERNALS__) return invoke(command, { endpoint })
+    if (isDesktopLauncher()) return invoke(command, { endpoint })
     const host = parsed.host
     const server = { id: endpoint.toLowerCase(), endpoint, name: host }
     const index = previewServers.findIndex((item) => item.id === server.id)
@@ -140,8 +147,8 @@ async function playerInvoke(command, payload = {}) {
     previewServers.unshift(server)
     return server
   }
-  if (command === 'clear_player_session' && !window.__TAURI_INTERNALS__) return undefined
-  if (window.__TAURI_INTERNALS__) return invoke(command, payload)
+  if (command === 'clear_player_session' && !isDesktopLauncher()) return undefined
+  if (isDesktopLauncher()) return invoke(command, payload)
   if (command === 'launcher_state') {
     return { servers: previewServers, selectedServerId: previewServers[0]?.id || null }
   }
@@ -163,7 +170,7 @@ async function playerInvoke(command, payload = {}) {
   throw new Error('此操作只能在 BOX3 玩家启动器中执行')
 }
 
-function escapeHtml(value) {
+function escapeHtml(value: unknown): string {
   return String(value || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -172,7 +179,7 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;')
 }
 
-function readTheme() {
+function readTheme(): string {
   try {
     const saved = localStorage.getItem('box-player-launcher-theme')
     return ['system', 'light', 'dark'].includes(saved) ? saved : 'system'
@@ -183,14 +190,14 @@ function readTheme() {
 
 const themes = [['system', '跟随系统'], ['light', '亮色'], ['dark', '暗色']]
 
-function applyTheme(theme) {
+function applyTheme(theme: string): void {
   state.theme = themes.some(([id]) => id === theme) ? theme : 'system'
   if (state.theme === 'system') document.documentElement.removeAttribute('data-theme')
   else document.documentElement.dataset.theme = state.theme
   try { localStorage.setItem('box-player-launcher-theme', state.theme) } catch { /* WebView storage may be disabled. */ }
 }
 
-function themeControl() {
+function themeControl(): string {
   const currentLabel = themes.find(([id]) => id === state.theme)?.[1] || '跟随系统'
   const themeIcon = (id) => icon(id === 'system' ? 'device' : id === 'light' ? 'sun' : 'moon')
   return `<div class="theme-picker">
@@ -199,11 +206,11 @@ function themeControl() {
   </div>`
 }
 
-function selectedServer() {
+function selectedServer(): PlayerServer | null {
   return state.servers.find((server) => server.id === state.selectedId) || null
 }
 
-function icon(name) {
+function icon(name: string): string {
   const paths = {
     servers: '<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01M11 7h6M11 17h6"/>',
     packages: '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4.5 7.8 7.5 4.3 7.5-4.3M12 12v9"/>',
@@ -223,7 +230,7 @@ function icon(name) {
   return `<svg aria-hidden="true" viewBox="0 0 24 24">${paths[name] || ''}</svg>`
 }
 
-function serverRows() {
+function serverRows(): string {
   if (!state.servers.length) return '<div class="nav-empty">还没有添加服务器</div>'
   return state.servers.map((server) => `
     <button class="server-nav ${state.selectedId === server.id && state.page === 'servers' ? 'active' : ''}" data-select-server="${escapeHtml(server.id)}">
@@ -233,11 +240,11 @@ function serverRows() {
     </button>`).join('')
 }
 
-function serverPage() {
+function serverPage(): string {
   return renderServerPage(state, selectedServer(), { icon, escapeHtml })
 }
 
-function removeServerDialog() {
+function removeServerDialog(): string {
   const server = state.servers.find((item) => item.id === state.confirmRemoveServerId)
   if (!server) return ''
   return `
@@ -249,7 +256,7 @@ function removeServerDialog() {
     </div>`
 }
 
-function render() {
+function render(): void {
   app.innerHTML = `
     <main class="shell">
       <aside class="sidebar">
@@ -270,9 +277,9 @@ function render() {
 }
 
 async function bootstrap() {
-  if (window.__TAURI_INTERNALS__) {
+  if (isDesktopLauncher()) {
     try {
-      await listen('box-player-map-download-progress', ({ payload }) => {
+      await listen<{ hash: string; currentBytes: number }>('box-player-map-download-progress', ({ payload }) => {
         const progress = state.prepareProgress
         if (!progress || payload.hash !== progress.currentHash) return
         progress.currentBytes = payload.currentBytes

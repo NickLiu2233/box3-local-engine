@@ -1,9 +1,9 @@
-import { prepareMapResources } from './services/map-package-flow.js'
-import { bindPlayerAccountEvents } from './events/player-account-events.js'
+import { prepareMapResources } from './services/map-package-flow'
+import { bindPlayerAccountEvents } from './events/player-account-events'
 import {
   playerLoginConnectionError,
   playerLoginErrorMessage,
-} from './services/player-auth-errors.mjs'
+} from './services/player-auth-errors'
 
 export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, applyTheme, render }) {
   bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render })
@@ -16,12 +16,12 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.themeMenuOpen = !state.themeMenuOpen
     render()
   })
-  document.querySelectorAll('[data-theme-choice]').forEach((node) => node.addEventListener('click', () => {
+  document.querySelectorAll<HTMLElement>('[data-theme-choice]').forEach((node) => node.addEventListener('click', () => {
     applyTheme(node.dataset.themeChoice)
     state.themeMenuOpen = false
     render()
   }))
-  document.querySelectorAll('[data-nav]').forEach((node) => node.addEventListener('click', () => {
+  document.querySelectorAll<HTMLElement>('[data-nav]').forEach((node) => node.addEventListener('click', () => {
     state.page = node.dataset.nav || 'servers'
     state.editingServerId = ''
     state.serverNameInput = ''
@@ -29,8 +29,8 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.notice = ''
     render()
   }))
-  document.querySelectorAll('[data-select-server]').forEach((node) => node.addEventListener('click', async (event) => {
-    if (event.target.closest('[data-remove-server]')) return
+  document.querySelectorAll<HTMLElement>('[data-select-server]').forEach((node) => node.addEventListener('click', async (event) => {
+    if (event.target instanceof Element && event.target.closest('[data-remove-server]')) return
     const serverId = node.dataset.selectServer || ''
     state.selectedId = serverId
     state.page = 'servers'
@@ -55,14 +55,14 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       render()
     }
   }))
-  document.querySelectorAll('[data-remove-server]').forEach((node) => node.addEventListener('click', (event) => {
+  document.querySelectorAll<HTMLElement>('[data-remove-server]').forEach((node) => node.addEventListener('click', (event) => {
     event.stopPropagation()
     if (state.busy) return
     state.confirmRemoveServerId = node.dataset.removeServer || ''
     state.error = ''
     state.notice = ''
     render()
-    document.querySelector('[data-cancel-remove-server]')?.focus()
+    document.querySelector<HTMLElement>('[data-cancel-remove-server]')?.focus()
   }))
   document.querySelector('[data-cancel-remove-server]')?.addEventListener('click', () => {
     state.confirmRemoveServerId = ''
@@ -73,7 +73,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.confirmRemoveServerId = ''
     render()
   })
-  document.querySelector('.confirm-dialog')?.addEventListener('keydown', (event) => {
+  document.querySelector('.confirm-dialog')?.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || state.busy) return
     state.confirmRemoveServerId = ''
     render()
@@ -111,7 +111,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     state.error = ''
     state.notice = ''
     render()
-    const input = document.querySelector('#server-name-input')
+    const input = document.querySelector<HTMLInputElement>('#server-name-input')
     input?.focus()
     input?.select()
   })
@@ -123,7 +123,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
   })
   document.querySelector('#server-name-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
-    const name = String(new FormData(event.currentTarget).get('name') || '')
+    const name = String(new FormData(event.currentTarget as HTMLFormElement).get('name') || '')
     const serverId = state.editingServerId
     state.serverNameInput = name
     state.busy = true
@@ -146,7 +146,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
   })
   document.querySelector('#server-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
-    const endpoint = new FormData(event.currentTarget).get('endpoint')
+    const endpoint = new FormData(event.currentTarget as HTMLFormElement).get('endpoint')
     state.endpointInput = String(endpoint || '')
     state.busy = true
     state.error = ''
@@ -185,7 +185,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       .catch((error) => { state.serverBootstrap = { error: String(error) } })
       .finally(() => { state.busy = false; render() })
   })
-  document.querySelectorAll('[data-action="prepare-map"]').forEach((node) => node.addEventListener('click', async () => {
+  document.querySelectorAll<HTMLElement>('[data-action="prepare-map"]').forEach((node) => node.addEventListener('click', async () => {
     const server = selectedServer()
     const mapId = node.dataset.mapId || ''
     if (!server || !mapId || state.busy || !state.serverBootstrap?.signingKey) return
@@ -244,8 +244,8 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
   document.querySelector('#player-login-form')?.addEventListener('submit', async (event) => {
     event.preventDefault()
     const form = event.currentTarget
-    const username = String(new FormData(form).get('username') || '').trim()
-    const password = String(new FormData(form).get('password') || '')
+    const username = String(new FormData(form as HTMLFormElement).get('username') || '').trim()
+    const password = String(new FormData(form as HTMLFormElement).get('password') || '')
     const server = selectedServer()
     if (!server || state.busy) return
     state.busy = true
@@ -292,7 +292,7 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       render()
     }
   })
-  document.querySelectorAll('[data-action="launch-map"]').forEach((node) => node.addEventListener('click', async () => {
+  document.querySelectorAll<HTMLElement>('[data-action="launch-map"]').forEach((node) => node.addEventListener('click', async () => {
     const server = selectedServer()
     const mapId = node.dataset.mapId || ''
     const packageKey = `${server?.id || ''}:${mapId}`
