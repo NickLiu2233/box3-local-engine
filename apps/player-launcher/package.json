@@ -9,7 +9,7 @@
     "dev": "vite --port 1421",
     "build": "vite build",
     "check": "npm run typecheck && npm run build && npm test && npm run build:electron-main",
-    "test": "tsx --test electron/network/*.test.ts electron/runtime/*.test.ts electron/security/*.test.ts electron/storage/*.test.ts tests/*.test.ts",
+    "test": "tsx --test electron/network/*.test.ts electron/runtime/*.test.ts electron/security/*.test.ts electron/storage/*.test.ts tests/*.test.ts scripts/*.test.mts",
     "build:desktop-smoke": "esbuild electron/testing/launcher-smoke.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/launcher-smoke.cjs",
     "test:desktop": "npm run build:desktop-smoke && electron dist-electron/launcher-smoke.cjs",
     "test:cache": "esbuild electron/testing/cache-smoke.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/cache-smoke.cjs && electron dist-electron/cache-smoke.cjs",
@@ -53,6 +53,7 @@
       "target": ["nsis"]
     },
     "linux": {
+      "executableName": "box3-player-launcher",
       "category": "Game",
       "icon": "resources/icons/icon.png",
       "target": ["AppImage"]

@@ -51,7 +51,14 @@ Electron 发行包建议在对应的目标操作系统上构建（尤其 Windows
 ```bash
 npm run package:player-launcher:macos-arm64
 npm run package:player-launcher:windows-amd64
+npm run package:player-launcher:windows-arm64
 npm run package:player-launcher:linux-amd64
+npm run package:player-launcher:linux-arm64
 ```
 
 资源缓存与安全边界见 [玩家启动器 Service Worker 资源缓存](../../docs/launcher-service-worker-cache.md)。Electron 是发行入口，使用 `bundle:electron`。
+
+## 独立发布
+
+推送 `player-v<版本>` 标签时，独立流水线生成 Windows AMD64、Windows ARM64、macOS ARM64、Linux AMD64 和 Linux ARM64 安装包；Linux 采用 AppImage。先检查 OSS 中同版本产物，缺失的再构建，并上传到 OSS 与 GitHub Release。
+版本取本目录 `package.json`，不与引擎版本同步。普通 PR/main 只执行 Electron 检查。配置与操作见 [发布说明](./docs/release.md)。

@@ -76,6 +76,7 @@ apps/player-launcher/dist-electron/
 apps/player-launcher/release-electron/
 apps/player-launcher/release-electron-ts/
 apps/player-launcher/release-electron-next/
+player-release-files/
 
 # Rust headless server manager build output.
 apps/server-manager-rust/target/

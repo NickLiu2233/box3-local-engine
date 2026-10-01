@@ -1,19 +1,18 @@
-name: Player Launcher
+name: Verify Player Launcher
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/player-launcher.yml'
+      - '.github/workflows/player-launcher*.yml'
       - 'apps/player-launcher/**'
       - 'internals/apis/**'
       - 'common/config/rush/**'
       - 'package.json'
       - 'rush.json'
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - '.github/workflows/player-launcher.yml'
+      - '.github/workflows/player-launcher*.yml'
       - 'apps/player-launcher/**'
       - 'internals/apis/**'
       - 'common/config/rush/**'
@@ -23,57 +22,62 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: player-check-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
-    name: Build (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+  check:
+    name: Verify (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-24.04
-          - windows-latest
-          - macos-latest
-
+        include:
+          - runner: windows-2022
+            architecture: x64
+          - runner: windows-11-arm
+            architecture: arm64
+          - runner: macos-14
+            architecture: arm64
+          - runner: ubuntu-22.04
+            architecture: x64
+          - runner: ubuntu-22.04-arm
+            architecture: arm64
     steps:
-      - name: Check out source
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-
-      - name: Install Linux Tauri system dependencies
+          architecture: ${{ matrix.architecture }}
+      - name: Install Linux Electron dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            build-essential curl file libayatana-appindicator3-dev libssl-dev \
-            libwebkit2gtk-4.1-dev librsvg2-dev libxdo-dev patchelf
-
-      - name: Set up Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          components: rustfmt
-
-      - name: Install launcher workspace dependencies
-        run: node common/scripts/install-run-rush.js install --to @box/player-launcher --to @box/apis
-
-      - name: Build generated API client
-        run: npm --prefix internals/apis run build
-
-      - name: Verify OpenAPI artifacts
-        run: npm run api:check
-
-      - name: Check Rust formatting
-        run: cargo fmt --manifest-path apps/player-launcher/src-tauri/Cargo.toml -- --check
-
-      - name: Test launcher core
-        run: cargo test --manifest-path apps/player-launcher/src-tauri/Cargo.toml
-
-      - name: Build launcher frontend
-        run: npm --prefix apps/player-launcher run build
-
-      - name: Compile native launcher
-        run: npm --prefix apps/player-launcher run tauri -- build --no-bundle --ci
+            xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 \
+            libatk-bridge2.0-0 libdrm2 libx11-xcb1 libxtst6 libfuse2
+      - name: Install player workspace dependencies
+        run: node common/scripts/install-run-rush.js install --to @box/player-launcher
+      - name: Build and verify OpenAPI client
+        run: |
+          npm --prefix internals/apis run build
+          npm --prefix internals/apis run check:openapi
+      - name: Check player TypeScript, builds and regressions
+        run: npm --prefix apps/player-launcher run check
+      - name: Test Electron desktop interactions
+        if: runner.os != 'Linux'
+        run: npm --prefix apps/player-launcher run test:desktop
+      - name: Test real Service Worker cache
+        if: runner.os != 'Linux'
+        run: npm --prefix apps/player-launcher run test:cache
+      - name: Test Linux Electron desktop and real cache
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a npm --prefix apps/player-launcher run test:desktop
+          xvfb-run -a npm --prefix apps/player-launcher run test:cache
