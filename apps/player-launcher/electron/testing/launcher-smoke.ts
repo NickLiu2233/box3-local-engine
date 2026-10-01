@@ -20,7 +20,7 @@ if (root.endsWith('.asar')) {
       throw new Error(`Unexpected packaged development files: ${excluded}`)
   }
 }
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'box-launcher-smoke-'))
+const temp = process.env.BOX_LAUNCHER_TEST_USER_DATA || fs.mkdtempSync(path.join(os.tmpdir(), 'box-launcher-smoke-'))
 app.setPath('userData', temp)
 nativeTheme.themeSource = 'light'
 const server = { id: 'smoke-server', name: '测试服务器', endpoint: 'http://127.0.0.1:3121' }
@@ -286,11 +286,12 @@ app
     if (errors.length) throw new Error(errors.join('\n'))
     window.destroy()
     console.log('Desktop smoke passed: login expiry/relogin, Chinese IME, library sync, independent cache clearing and packaged assets')
-    app.quit()
+    app.exit(0)
   })
   .catch((error) => {
     console.error(error)
     app.exit(1)
   })
 
-app.on('will-quit', () => fs.rmSync(temp, { recursive: true, force: true }))
+// Cleanup belongs to the parent runner, after Chromium has released profile files.
+process.on('uncaughtException', (error) => { console.error(error); app.exit(1) })

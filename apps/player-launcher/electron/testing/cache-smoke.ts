@@ -6,7 +6,7 @@ import * as http from 'node:http'
 import { readResourceCache, clearResourceCache } from '../runtime/resource-cache'
 import { inspectMapCaches } from '../runtime/map-cache'
 
-const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'box-real-cache-'))
+const temp = process.env.BOX_LAUNCHER_TEST_USER_DATA || fs.mkdtempSync(path.join(os.tmpdir(), 'box-real-cache-'))
 app.setPath('userData', temp)
 const worker = `self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open('box-play-static:cache-test:v1');await cache.add('/resource');await self.skipWaiting()})()));self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));`
 const fixture = http.createServer((request, response) => {
@@ -99,7 +99,7 @@ app
     )
     window.destroy()
     fixture.close()
-    app.quit()
+    app.exit(0)
   })
   .catch((error) => {
     console.error(error)
@@ -107,4 +107,5 @@ app
     app.exit(1)
   })
 
-app.on('will-quit', () => fs.rmSync(temp, { recursive: true, force: true }))
+// Cleanup belongs to the parent runner, after Chromium has released profile files.
+process.on('uncaughtException', (error) => { console.error(error); app.exit(1) })

@@ -7,10 +7,10 @@ import { afterEach, describe, expect, test } from '@jest/globals'
 
 import {
   createPlayerLauncherDownloadTicket,
-  getPlayerLauncherBlobPath,
   getPlayerLauncherPackageDescriptor,
   verifyPlayerLauncherDownloadTicket,
 } from './player-launcher-map-packages'
+import { getPlayResourceCacheManifest } from './play-resource-cache'
 
 const roots: string[] = []
 const previousLibraryPath = process.env.BOX_PLAY_LIBRARY_PATH
@@ -115,11 +115,11 @@ describe('player launcher map package descriptors', () => {
       { key: crypto.createPublicKey({ key: descriptor.signature.publicKey, format: 'jwk' }), dsaEncoding: 'ieee-p1363' },
       Buffer.from(descriptor.signature.value, 'base64url'),
     )).toBe(true)
-    expect(getPlayerLauncherBlobPath('launch-map', fixture.publicAsset.hash).asset.size).toBe(fixture.publicAsset.bytes.length)
-    expect(getPlayerLauncherBlobPath('launch-map', fixture.derivedAsset.hash).path)
-      .toBe(path.join(fixture.root, 'runtime-cache', 'play', crypto.createHash('sha256')
-        .update('play\0permanent-map-001').digest('hex').slice(0, 32), 'blobs', fixture.derivedAsset.hash))
-    expect(() => getPlayerLauncherBlobPath('launch-map', fixture.privateAsset.hash)).toThrow('该资源不属于此地图的公开资源清单')
+    const manifest = getPlayResourceCacheManifest('public-map')
+    expect(manifest.hashes).toEqual(expect.arrayContaining([
+      fixture.publicAsset.hash, fixture.derivedAsset.hash, fixture.uiImage.hash,
+    ]))
+    expect(manifest.hashes).not.toContain(fixture.privateAsset.hash)
   })
 
   test('refuses unsafe and oversized package indexes', () => {

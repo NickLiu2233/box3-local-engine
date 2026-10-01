@@ -65,7 +65,7 @@ async function build(target: PlayerTarget): Promise<void> {
   verifyExecutableHeader(await packagedBinaryHeader(binary), target)
   const resources = path.join(application, mac ? 'Resources' : 'resources', 'app.asar')
   // The test harness was built by test:desktop before packaging. It stays out of app.asar.
-  await run(require('electron') as string, [path.join(appRoot, 'dist-electron/launcher-smoke.cjs')], {
+  await run(process.execPath, ['--experimental-strip-types', path.join(appRoot, 'scripts/run-smoke.mts'), 'desktop'], {
     ...process.env, BOX_LAUNCHER_SMOKE_ROOT: resources,
   })
   const manifest: ArtifactManifest = { formatVersion: 1, ...info, target, file: filename, ...(await fileDigest(path.join(outputDirectory, filename))) }

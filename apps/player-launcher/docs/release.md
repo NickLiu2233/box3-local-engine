@@ -89,6 +89,8 @@ git push origin player-v0.1.1
 
 脚本使用 Node 22 的 `--experimental-strip-types` 执行 TypeScript，因此 OSS 预检查不需要先安装项目依赖。测试随 `npm run check` 执行。
 
+Electron 桌面与缓存冒烟测试通过 `scripts/run-smoke.mts` 启动。每次使用独立临时用户目录，断言完成后测试 Electron 明确退出，父进程确认退出后再清理文件；不在 `will-quit` 中删除仍被 Chromium 锁定的文件。单次冒烟测试最多 120 秒，超时会终止该测试进程及其子进程并返回失败。CI 测试步骤另有 6 分钟上限。
+
 ## 首次公开发布前
 
 优先完成 Windows 两种架构的实际安装、启动和卸载验证，以及 macOS 拖入 Applications 后的启动验证。重点检查图标与名称、登录过期后重新登录、地图封面/音频、鼠标锁定，以及缓存清理后的再次游玩。

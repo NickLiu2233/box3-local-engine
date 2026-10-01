@@ -67,7 +67,6 @@ export const playLibraryAdminRoute = playerAdminRoute({
   // requires the paired management capability before the owner token is used
   // to reach Play's internal API.
   requirement: (req) => {
-    const section = Array.isArray(req.query.section) ? req.query.section[0] : req.query.section
     return ['GET', 'HEAD'].includes(req.method || 'GET')
       ? 'play-maps.view'
       : 'play-maps.manage'
@@ -75,6 +74,9 @@ export const playLibraryAdminRoute = playerAdminRoute({
   errorContext: 'Play library administration proxy failed',
 }, async ({ req, res }) => {
   const section = Array.isArray(req.query.section) ? req.query.section[0] : req.query.section;
+  if (!['worlds', 'world-status', 'import-resource', 'import'].includes(String(section || ''))) {
+    return res.status(404).json({ message: '管理接口不存在' });
+  }
   const id = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   const path = section === 'worlds'
     ? id ? `/api/play-admin/worlds/${encodeURIComponent(id)}` : '/api/play-admin/worlds'
