@@ -46,6 +46,12 @@ export function bindServerEvents({
       state.page = 'servers'
       state.player = null
       state.worlds = []
+      state.recentWorlds = []
+      state.favoriteMapIds = []
+      state.libraryEnabled = false
+      state.libraryLoading = false
+      state.libraryError = ''
+      state.pendingFavoriteMapIds = []
       state.playerMenuOpen = false
       state.playerSettingsOpen = false
       state.editingServerId = ''

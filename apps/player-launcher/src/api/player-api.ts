@@ -172,6 +172,12 @@ export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
     updateProfile(endpoint, changes) {
       return client(endpoint).patchApiPlayProfileRaw({ body: changes })
     },
+    readLibrary(endpoint: string) {
+      return client(endpoint).getApiPlayLibraryRaw()
+    },
+    updateLibrary(endpoint: string, mapId: string, changes: { favorite?: boolean; played?: boolean }) {
+      return client(endpoint).patchApiPlayLibraryRaw({ body: { mapId, ...changes } })
+    },
     getDescriptor(endpoint, mapId) {
       return client(endpoint).getApiPlayerLauncherMapsMapIdDescriptorRaw({
         params: { path: { mapId } },

@@ -52,6 +52,15 @@ export const localEngineSchemas = {
       onlineCount: { type: 'integer', minimum: 0 },
     },
   },
+  PlayerMapLibraryEntry: {
+    type: 'object',
+    required: ['mapId', 'favorite', 'lastPlayedAt'],
+    properties: {
+      mapId: string,
+      favorite: { type: 'boolean' },
+      lastPlayedAt: { oneOf: [{ type: 'string', format: 'date-time' }, { type: 'null' }] },
+    },
+  },
   PlayerLauncherPackageAsset: {
     type: 'object',
     required: ['hash', 'size', 'kind', 'contentType'],

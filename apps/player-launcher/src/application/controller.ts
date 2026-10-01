@@ -1,4 +1,5 @@
 import { normalizeServerAddress } from '../../shared/server-address'
+import { mapLibraryCollections } from '../features/maps/library'
 import type { PlayerLauncherState, PlayerServer, RemoteApi, PlayerInvoke } from '../types'
 
 interface ControllerOptions {
@@ -7,6 +8,7 @@ interface ControllerOptions {
   invoke: PlayerInvoke
   isDesktopLauncher: () => boolean
   selectedServer: () => PlayerServer | null
+  onLibraryChange?: () => void
 }
 
 export function createLauncherController({
@@ -15,12 +17,18 @@ export function createLauncherController({
   invoke,
   isDesktopLauncher,
   selectedServer,
+  onLibraryChange,
 }: ControllerOptions) {
   const previewServers: PlayerServer[] = []
   async function refreshPlayerSession(server: PlayerServer | null = selectedServer()): Promise<void> {
     state.player = null
     state.worlds = []
-    state.recentWorld = undefined
+    state.recentWorlds = []
+    state.favoriteMapIds = []
+    state.libraryEnabled = false
+    state.libraryLoading = false
+    state.libraryError = ''
+    state.pendingFavoriteMapIds = []
     state.authError = ''
     state.mapsError = ''
     if (!server || !state.serverBootstrap?.supported) return
@@ -57,22 +65,43 @@ export function createLauncherController({
       }
       state.worlds = Array.isArray(data?.worlds) ? data.worlds : []
       state.mapsError = ''
-      await refreshRecentMap(server)
+      void refreshMapLibrary(server)
     } catch (error) {
       state.mapsError = error.message || '读取可玩地图失败。'
     }
   }
 
-  async function refreshRecentMap(server: PlayerServer): Promise<void> {
-    if (!isDesktopLauncher()) return
+  async function refreshMapLibrary(server: PlayerServer): Promise<void> {
+    const playerId = state.player?.subjectId || state.player?.username || ''
+    const isCurrent = () => state.selectedId === server.id && (state.player?.subjectId || state.player?.username || '') === playerId
+    state.libraryLoading = true
     try {
-      const recent = (await invoke('recent_map', { serverId: server.id })) as
-        | { permanentMapId: string; name: string; releaseVersion: string }
-        | null
-      const world = recent && state.worlds.find((item) => item.permanentMapId === recent.permanentMapId)
-      if (world) state.recentWorld = { serverId: server.id, mapId: world.id, name: world.name, version: world.version || recent.releaseVersion }
-    } catch {
-      state.recentWorld = undefined
+      const result = await remoteApi.readLibrary(server.endpoint)
+      if (!isCurrent()) return
+      if (!result.response.ok || !result.data) {
+        state.libraryEnabled = false
+        state.libraryError = result.response.status === 401
+          ? '登录状态已过期，请重新登录后查看收藏和最近游玩。'
+          : result.response.status === 404
+            ? '服务器暂未提供收藏和最近游玩，请联系服主更新服务。'
+            : '暂时无法读取收藏和最近游玩，请稍后重新检查。'
+        return
+      }
+      if (!Array.isArray(result.data.entries)) throw new Error('服务器返回的收藏和最近游玩记录无效。')
+      Object.assign(state, mapLibraryCollections(state.worlds, result.data.entries))
+      state.libraryEnabled = result.data.libraryEnabled === true
+      state.libraryError = ''
+    } catch (error) {
+      if (!isCurrent()) return
+      state.libraryEnabled = false
+      state.libraryError = String(error.message).includes('超时')
+        ? '同步收藏和最近游玩超时，请稍后重新检查。'
+        : '暂时无法读取收藏和最近游玩，请稍后重新检查。'
+    } finally {
+      if (isCurrent()) {
+        state.libraryLoading = false
+        onLibraryChange?.()
+      }
     }
   }
 
@@ -123,5 +152,5 @@ export function createLauncherController({
     throw new Error('此操作只能在 BOX3 玩家启动器中执行')
   }
 
-  return { refreshPlayerSession, refreshRecentMap, playerInvoke }
+  return { refreshPlayerSession, refreshMapLibrary, playerInvoke }
 }

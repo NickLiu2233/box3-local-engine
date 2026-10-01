@@ -2719,6 +2719,11 @@ export interface components {
             version: string;
             onlineCount: number;
         };
+        PlayerMapLibraryEntry: {
+            mapId: string;
+            favorite: boolean;
+            lastPlayedAt: string | null;
+        };
         PlayerLauncherPackageAsset: {
             hash: string;
             size: number;
@@ -7768,7 +7773,9 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: components["schemas"]["PlayerLauncherSessionPlayer"];
+                        entries: components["schemas"]["PlayerMapLibraryEntry"][];
+                        libraryEnabled: boolean;
                     };
                 };
             };
@@ -7791,24 +7798,22 @@ export interface operations {
             cookie?: never;
         };
         /** @description 执行“更新可游玩地图库”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    mapId: string;
+                    favorite?: boolean;
+                    played?: boolean;
                 };
             };
         };
         responses: {
-            /** @description 操作成功，返回“更新可游玩地图库”的处理结果。 */
-            200: {
+            /** @description 玩家收藏或最近游玩记录已更新。 */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
+                content?: never;
             };
             /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
             default: {

@@ -19,6 +19,11 @@ const contracts = {
   }, ['player']),
   'post /api/auth/logout': object({ loggedOut: { type: 'boolean' } }),
   'patch /api/play-profile': object({ player: ref('PlayerLauncherSessionPlayer') }),
+  'get /api/play-library': object({
+    player: ref('PlayerLauncherSessionPlayer'),
+    entries: array('PlayerMapLibraryEntry'),
+    libraryEnabled: { type: 'boolean' },
+  }),
   'get /api/play-admin/activity': object({
     events: array('PlayerAdminActivity'),
     total: { type: 'integer' },
@@ -47,6 +52,11 @@ const contracts = {
 }
 
 const requestContracts = {
+  'patch /api/play-library': object({
+    mapId: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$' },
+    favorite: { type: 'boolean' },
+    played: { type: 'boolean' },
+  }, ['mapId']),
   'patch /api/play-profile': object({ displayName: { type: 'string' }, avatarSkinId: { type: 'string' } }, []),
   'post /api/auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/auth/logout': object({}),
@@ -83,6 +93,11 @@ export function applyOperationContracts(paths) {
       required: true,
       content: { 'application/json': { schema } },
     }
+  }
+  const libraryUpdate = paths['/api/play-library']?.patch
+  if (libraryUpdate) {
+    delete libraryUpdate.responses[200]
+    libraryUpdate.responses[204] = { description: '玩家收藏或最近游玩记录已更新。' }
   }
   const blobDownload = paths['/api/player-launcher/maps/{mapId}/blobs/{hash}']?.get
   if (blobDownload?.responses?.['200']) {

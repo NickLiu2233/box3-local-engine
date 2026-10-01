@@ -28,7 +28,13 @@ export type PlayWorld = Pick<components['schemas']['PlayerLauncherWorld'], 'id' 
 
 export interface PlayerLauncherState {
   loginDraft?: { serverId: string; username: string; password: string; passwordVisible: boolean }
-  recentWorld?: { serverId: string; mapId: string; name: string; version: string }
+  recentWorlds: PlayWorld[]
+  favoriteMapIds: string[]
+  mapFilter: 'all' | 'recent' | 'favorites'
+  libraryEnabled: boolean
+  libraryLoading: boolean
+  libraryError: string
+  pendingFavoriteMapIds: string[]
   mapSearch?: string
   launchStage?: string
   activeGame?: { serverId: string; mapId: string } | null

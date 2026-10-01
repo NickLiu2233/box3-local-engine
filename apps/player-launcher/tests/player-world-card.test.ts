@@ -12,12 +12,13 @@ test('world cards show the Play cover ratio, author, version and online player c
     version: 'v1.2.3',
     cover: 'https://play.example.test/covers/map.png',
     onlineCount: 7,
-  }, { busy: false, preparingMapId: '' }, { escapeHtml: (value: string) => value })
+  }, { busy: false, preparingMapId: '', libraryEnabled: true }, { escapeHtml: (value: string) => value })
   const styles = fs.readFileSync(path.join(process.cwd(), 'src/styles.css'), 'utf8')
 
   assert.match(html, /world-cover-frame/)
   assert.match(html, /星梦小镇/)
   assert.match(html, /作者甲 · v1\.2\.3/)
   assert.match(html, /7 人在线/)
-  assert.match(styles, /\.world-cover-frame\s*\{[^}]*aspect-ratio:\s*16\s*\/\s*9/s)
+  assert.match(styles, /\.world-cover-frame\s*\{[^}]*aspect-ratio:\s*1\s*\/\s*1/s)
+  assert.match(html, /data-action="toggle-favorite"/)
 })

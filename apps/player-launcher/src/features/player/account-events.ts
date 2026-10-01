@@ -5,7 +5,7 @@ export interface PlayerAccountEventOptions {
   playerInvoke: PlayerInvoke
   remoteApi: RemoteApi
   selectedServer: () => PlayerServer | null
-  refreshRecentMap?: (server: PlayerServer) => Promise<void>
+  refreshMapLibrary?: (server: PlayerServer) => Promise<void>
   render: () => void
 }
 
@@ -116,6 +116,12 @@ export function bindPlayerAccountEvents({
       state.player = null
       state.loginDraft = undefined
       state.worlds = []
+      state.recentWorlds = []
+      state.favoriteMapIds = []
+      state.libraryEnabled = false
+      state.libraryLoading = false
+      state.libraryError = ''
+      state.pendingFavoriteMapIds = []
       state.playerMenuOpen = false
       state.playerSettingsOpen = false
       state.playerProfileError = ''

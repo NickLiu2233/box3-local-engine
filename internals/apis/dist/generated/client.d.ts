@@ -10346,7 +10346,9 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
+                        entries: import("./openapi").components["schemas"]["PlayerMapLibraryEntry"][];
+                        libraryEnabled: boolean;
                     };
                 };
             };
@@ -10385,7 +10387,9 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
+                            entries: import("./openapi").components["schemas"]["PlayerMapLibraryEntry"][];
+                            libraryEnabled: boolean;
                         };
                     };
                 };
@@ -10414,7 +10418,9 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
+                            entries: import("./openapi").components["schemas"]["PlayerMapLibraryEntry"][];
+                            libraryEnabled: boolean;
                         };
                     };
                 };
@@ -10437,7 +10443,20 @@ export declare class ApiClient {
         [key: string]: unknown;
     }) | undefined, `${string}/${string}`>>;
     getApiPlayLibrary(...init: Parameters<PathBasedClient<paths>["/api/play-library"]["GET"]>): Promise<{
-        [x: string]: unknown;
+        player: {
+            subjectId: string;
+            username: string;
+            displayName: string;
+            role: string;
+            status: string;
+            avatarSkinId?: string | undefined;
+        };
+        entries: {
+            mapId: string;
+            favorite: boolean;
+            lastPlayedAt: string | null;
+        }[];
+        libraryEnabled: boolean;
     }>;
     getApiPlayPresenceRaw(...init: Parameters<PathBasedClient<paths>["/api/play-presence"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -13799,23 +13818,21 @@ export declare class ApiClient {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    mapId: string;
+                    favorite?: boolean;
+                    played?: boolean;
                 };
             };
         };
         responses: {
-            200: {
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
+                content?: never;
             };
             default: {
                 headers: {
@@ -13826,7 +13843,7 @@ export declare class ApiClient {
                 };
             };
         };
-    }, ({
+    }, {
         params?: {
             query?: never;
             header?: never;
@@ -13834,9 +13851,11 @@ export declare class ApiClient {
             cookie?: never;
         } | undefined;
     } & {
-        body?: ({
-            [x: string]: unknown;
-        } & {}) | undefined;
+        body: {
+            mapId: string;
+            favorite?: boolean | undefined;
+            played?: boolean | undefined;
+        } & {};
     } & {
         baseUrl?: string;
         querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
@@ -13846,23 +13865,21 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        mapId: string;
+                        favorite?: boolean;
+                        played?: boolean;
                     };
                 };
             };
             responses: {
-                200: {
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
+                    content?: never;
                 };
                 default: {
                     headers: {
@@ -13881,23 +13898,21 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        mapId: string;
+                        favorite?: boolean;
+                        played?: boolean;
                     };
                 };
             };
             responses: {
-                200: {
+                204: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
+                    content?: never;
                 };
                 default: {
                     headers: {
@@ -13914,12 +13929,8 @@ export declare class ApiClient {
         fetch?: ClientOptions["fetch"];
         headers?: import("openapi-fetch").HeadersOptions;
         middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body"> & {
-        [key: string]: unknown;
-    }) | undefined, `${string}/${string}`>>;
-    patchApiPlayLibrary(...init: Parameters<PathBasedClient<paths>["/api/play-library"]["PATCH"]>): Promise<{
-        [x: string]: unknown;
-    }>;
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    patchApiPlayLibrary(...init: Parameters<PathBasedClient<paths>["/api/play-library"]["PATCH"]>): Promise<undefined>;
     patchApiPlayProfileRaw(...init: Parameters<PathBasedClient<paths>["/api/play-profile"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;

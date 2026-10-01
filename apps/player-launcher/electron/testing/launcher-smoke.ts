@@ -32,20 +32,13 @@ let authenticated = false
 let loginAttempts = 0
 let browserCleared = false
 let cacheReads = 0
+const favoriteMapIds = new Set<string>()
 const emptyServer = { id: 'empty-server', name: '空缓存服务器', endpoint: 'http://127.0.0.1:9999' }
 
 ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
   if (command === 'launcher_state') return { servers: [server, emptyServer], selectedServerId: server.id }
   if (command === 'remember_maps') return
   if (command === 'game_status') return null
-  if (command === 'recent_map') return {
-    serverId: server.id,
-    permanentMapId: 'permanent-town',
-    accessId: 'town',
-    name: '星梦小镇',
-    releaseVersion: 'v1.0.0',
-    playedAt: Date.now(),
-  }
   if (command === 'fetch_public_image') return cover
   if (command === 'clear_resource_cache') cleared = true
   if (command === 'clear_map_cache') mapCleared = true
@@ -77,6 +70,20 @@ ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
   }
   if (command === 'api_request') {
     const url = new URL(payload.request.url)
+    if (url.pathname.endsWith('/play-library')) {
+      if (!authenticated) return { status: 401, body: '{"message":"AUTH_REQUIRED"}', headers: [] }
+      if (payload.request.method === 'PATCH') {
+        const changes = JSON.parse(payload.request.body)
+        if (!['town', 'arena'].includes(changes.mapId)) throw new Error('Library must use the webpage public map ID')
+        if (changes.favorite === true) favoriteMapIds.add(changes.mapId)
+        if (changes.favorite === false) favoriteMapIds.delete(changes.mapId)
+        return { status: 204, body: '', headers: [] }
+      }
+      return { status: 200, headers: [['content-type', 'application/json']], body: JSON.stringify({
+        player, libraryEnabled: true,
+        entries: ['town', 'arena'].map(mapId => ({ mapId, favorite: favoriteMapIds.has(mapId), lastPlayedAt: mapId === 'town' ? '2026-10-01T00:00:00.000Z' : null })),
+      }) }
+    }
     if (url.pathname.endsWith('/auth/login')) {
       const credentials = JSON.parse(payload.request.body)
       if (credentials.username !== 'test-player' || credentials.password !== 'fixture<&"password')
@@ -195,12 +202,24 @@ app
     await waitFor(
       'document.querySelectorAll(".world-card").length === 2 && [...document.querySelectorAll(".world-cover, .brand-icon, .player-account-avatar")].every(image => image.naturalWidth > 0)',
     )
-    await waitFor('document.querySelector(".recent-world")?.textContent.includes("星梦小镇")')
+    await waitFor('document.querySelector("[data-map-filter=recent]")?.textContent === "最近游玩"')
+    await run('document.querySelector("[data-map-filter=recent]").click()')
+    await waitFor('document.querySelectorAll(".world-card").length === 1 && document.querySelector(".world-card h3")?.textContent === "星梦小镇" && Boolean(document.querySelector(".world-favorite:not(:disabled)"))')
+    await run('document.querySelector("[data-map-filter=all]").click(); document.querySelector(".world-favorite").click()')
+    await waitFor('document.querySelector(".world-favorite")?.getAttribute("aria-pressed") === "true"')
+    await run('document.querySelector("[data-map-filter=favorites]").click()')
+    await waitFor('document.querySelectorAll(".world-card").length === 1 && document.querySelector(".world-card h3")?.textContent === "星梦小镇" && Boolean(document.querySelector(".world-favorite:not(:disabled)"))')
+    await run('document.querySelector("[data-map-filter=all]").click()')
     await run(
-      'const input = document.querySelector("#map-search"); input.focus(); input.value = "星梦"; input.dispatchEvent(new Event("input", { bubbles: true }))',
+      'const input = document.querySelector("#map-search"); globalThis.smokeImeInput = input; input.focus(); input.dispatchEvent(new CompositionEvent("compositionstart", { bubbles: true })); input.value = "xing"; input.dispatchEvent(new InputEvent("input", { bubbles: true, isComposing: true }))',
     )
+    window.webContents.send('launcher:event:game-state', null)
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    if (!(await run('document.querySelector("#map-search") === globalThis.smokeImeInput && globalThis.smokeImeInput.value === "xing"')))
+      throw new Error('A background update interrupted Chinese IME input')
+    await run('globalThis.smokeImeInput.value = "星梦"; globalThis.smokeImeInput.dispatchEvent(new CompositionEvent("compositionend", { bubbles: true })); globalThis.smokeImeInput.dispatchEvent(new InputEvent("input", { bubbles: true })); delete globalThis.smokeImeInput')
     await waitFor(
-      'document.querySelectorAll(".world-card").length === 1 && document.activeElement.id === "map-search"',
+      'document.querySelectorAll(".world-card").length === 1 && document.activeElement.id === "map-search" && document.activeElement.value === "星梦"',
     )
     await run('document.querySelector("[data-nav=packages]").click()')
     await waitFor('document.querySelector(".storage-row small")?.textContent.includes("1.0 MB")')

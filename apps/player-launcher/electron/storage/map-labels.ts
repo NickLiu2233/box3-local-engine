@@ -1,93 +1,67 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 
-export interface RecentPlayerMap {
-  serverId: string
-  permanentMapId: string
-  accessId: string
-  name: string
-  releaseVersion: string
-  playedAt: number
-}
-
+type MapNames = Record<string, { name: string }>
 interface ServerLabels {
-  maps: Record<string, { name: string; publicId?: string; releaseVersion?: string }>
-  recent?: RecentPlayerMap
+  maps: MapNames
+  [legacyField: string]: unknown
 }
 
-function safeText(value: unknown, limit: number): string {
-  return typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, limit) : ''
-}
+const validMapId = (value: unknown): value is string =>
+  typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value) &&
+  !['__proto__', 'constructor', 'prototype'].includes(value)
+const safeName = (value: unknown): string =>
+  typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80) : ''
 
-/** Small public-name/recent-play index only; all map resources remain in CacheStorage. */
+/** Cache display names only. Favorites/recent play are managed by Play's player library. */
 export function createMapLabels(filename: string) {
-  let labels: Record<string, ServerLabels> = {}
+  const labels: Record<string, ServerLabels> = Object.create(null)
+  let legacyFields: Record<string, unknown> = {}
   try {
     const stored = JSON.parse(fs.readFileSync(filename, 'utf8')) as Record<string, unknown>
-    for (const [serverId, value] of Object.entries(stored)) {
-      if (!value || typeof value !== 'object') continue
-      const entry = value as { maps?: Record<string, unknown>; recent?: RecentPlayerMap }
-      const oldMap = value as Record<string, unknown>
-      const maps: ServerLabels['maps'] = {}
-      for (const [mapId, mapValue] of Object.entries(entry.maps || oldMap)) {
-        if (!/^[A-Za-z0-9_-]{1,128}$/.test(mapId) || ['__proto__', 'constructor', 'prototype'].includes(mapId)) continue
-        const record = typeof mapValue === 'string' ? { name: mapValue } : mapValue as Record<string, unknown>
-        const name = safeText(record?.name, 80)
-        if (name) maps[mapId] = { name, publicId: safeText(record?.publicId, 64), releaseVersion: safeText(record?.releaseVersion, 128) }
+    const versioned = stored.version === 2 && stored.servers && typeof stored.servers === 'object'
+    const servers = (versioned ? stored.servers : stored) as Record<string, unknown>
+    if (versioned) {
+      const { servers: _servers, ...fields } = stored
+      legacyFields = fields
+    }
+    for (const [serverId, value] of Object.entries(servers)) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) continue
+      const entry = value as Record<string, unknown>
+      const maps: MapNames = Object.create(null)
+      const source = entry.maps && typeof entry.maps === 'object' ? entry.maps : entry
+      for (const [mapId, record] of Object.entries(source)) {
+        if (!validMapId(mapId)) continue
+        const name = safeName(typeof record === 'string' ? record : record?.name)
+        if (name) maps[mapId] = { name }
       }
-      const recent = entry.recent
-      labels[serverId] = {
-        maps,
-        ...(recent && typeof recent === 'object' && /^[A-Za-z0-9_-]{1,128}$/.test(recent.permanentMapId)
-          ? { recent: { ...recent, name: safeText(recent.name, 80), accessId: safeText(recent.accessId, 64), releaseVersion: safeText(recent.releaseVersion, 128), playedAt: Number(recent.playedAt) || 0 } }
-          : {}),
-      }
+      // Preserve legacy local preferences on disk, without using them as player data
+      // or importing them into an account whose ownership cannot be established.
+      labels[serverId] = { ...(entry.maps ? entry : {}), maps }
     }
   } catch {
-    /* Existing caches may predate this index. */
+    /* A public-name index is optional and older caches may not have one. */
   }
+
   function persist(): void {
     fs.mkdirSync(path.dirname(filename), { recursive: true })
-    fs.writeFileSync(filename, JSON.stringify(labels), { mode: 0o600 })
+    fs.writeFileSync(filename, JSON.stringify({ ...legacyFields, version: 2, servers: labels }), { mode: 0o600 })
   }
 
   return {
-    remember(serverId: string, maps: Array<{ permanentMapId?: string; publicId?: string; name?: string; version?: string }>): void {
-      const names = labels[serverId]?.maps || {}
-      for (const map of maps.slice(0, 1000)) {
-        if (
-          !map ||
-          typeof map !== 'object' ||
-          ['__proto__', 'constructor', 'prototype'].includes(map.permanentMapId || '')
-        )
-          continue
-        if (
-          typeof map.permanentMapId === 'string' &&
-          /^[A-Za-z0-9_-]{1,128}$/.test(map.permanentMapId) &&
-          typeof map.name === 'string'
-        ) {
-          names[map.permanentMapId] = {
-            name: safeText(map.name, 80),
-            publicId: safeText(map.publicId, 64),
-            releaseVersion: safeText(map.version, 128),
-          }
-        }
+    remember(serverId: string, worlds: Array<{ permanentMapId?: string; name?: string }>): void {
+      const maps = labels[serverId]?.maps || Object.create(null)
+      for (const world of worlds.slice(0, 1000)) {
+        if (!world || !validMapId(world.permanentMapId)) continue
+        const name = safeName(world.name)
+        if (name) maps[world.permanentMapId] = { name }
       }
-      labels[serverId] = { ...labels[serverId], maps: names }
+      labels[serverId] = { ...labels[serverId], maps }
       persist()
-    },
-    rememberPlayed(serverId: string, map: Omit<RecentPlayerMap, 'playedAt' | 'serverId'>): void {
-      if (!/^[A-Za-z0-9_-]{1,128}$/.test(map.permanentMapId) || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(map.accessId)) return
-      labels[serverId] = { ...labels[serverId], maps: labels[serverId]?.maps || {}, recent: { ...map, serverId, name: safeText(map.name, 80), releaseVersion: safeText(map.releaseVersion, 128), playedAt: Date.now() } }
-      persist()
-    },
-    recent(serverId: string): RecentPlayerMap | null { return labels[serverId]?.recent || null },
-    nameIndex(serverId: string): Map<string, string> {
-      return new Map(Object.entries(labels[serverId]?.maps || {}).map(([mapId, item]) => [mapId, item.name]))
     },
     forget(serverId: string): void {
       delete labels[serverId]
-      try { persist() } catch { /* A public-name index must not prevent server removal. */ }
+      try { persist() } catch { /* Cache names must not prevent server removal. */ }
     },
     name(serverId: string, mapId: string): string {
       return labels[serverId]?.maps[mapId]?.name || `地图 ${mapId}`

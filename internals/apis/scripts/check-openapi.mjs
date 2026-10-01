@@ -27,7 +27,9 @@ for (const route of routes) {
     if (operation.requestBody) {
       assert.ok(operation.requestBody.description, `Missing request body description: ${method} ${route.path}`)
     }
-    assert.ok(operation.responses?.[200]?.description, `Missing success description: ${method} ${route.path}`)
+    const successes = Object.entries(operation.responses || {}).filter(([status]) => /^2\d\d$/.test(status))
+    assert.ok(successes.length && successes.every(([, response]) => response.description),
+      `Missing success description: ${method} ${route.path}`)
     assert.ok(operation.responses?.default?.description, `Missing error description: ${method} ${route.path}`)
   }
 }

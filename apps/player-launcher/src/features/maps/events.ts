@@ -7,8 +7,44 @@ export function bindMapEvents({
   playerInvoke,
   remoteApi,
   selectedServer,
+  refreshMapLibrary,
   render,
 }: PlayerAccountEventOptions): void {
+  document.querySelectorAll<HTMLButtonElement>('[data-action="toggle-favorite"]').forEach((node) =>
+    node.addEventListener('click', async (event) => {
+      event.stopPropagation()
+      const server = selectedServer()
+      const mapId = node.dataset.mapId || ''
+      if (!server || !mapId || state.busy || state.libraryLoading || !state.libraryEnabled || state.pendingFavoriteMapIds.includes(mapId)) return
+      const playerId = state.player?.subjectId || state.player?.username || ''
+      const isCurrent = () => state.selectedId === server.id && (state.player?.subjectId || state.player?.username || '') === playerId
+      const favorite = !state.favoriteMapIds.includes(mapId)
+      state.pendingFavoriteMapIds.push(mapId)
+      state.error = ''
+      render()
+      try {
+        const result = await remoteApi.updateLibrary(server.endpoint, mapId, { favorite })
+        if (!isCurrent()) return
+        if (!result.response.ok) throw new Error(result.response.status === 401
+          ? '登录状态已过期，请重新登录后收藏地图。'
+          : '收藏未能保存到服务器，请稍后重试。')
+        state.favoriteMapIds = favorite
+          ? [...new Set([...state.favoriteMapIds, mapId])]
+          : state.favoriteMapIds.filter((id) => id !== mapId)
+      } catch (error) {
+        if (isCurrent()) state.error = String(error.message).includes('登录状态已过期')
+          ? '登录状态已过期，请重新登录后收藏地图。'
+          : String(error.message).includes('超时')
+            ? '保存收藏超时，请稍后重试。'
+            : '收藏未能保存到服务器，请稍后重试。'
+      } finally {
+        if (isCurrent()) {
+          state.pendingFavoriteMapIds = state.pendingFavoriteMapIds.filter((id) => id !== mapId)
+          render()
+        }
+      }
+    }),
+  )
   document.querySelectorAll<HTMLElement>('[data-action="prepare-map"]').forEach((node) =>
     node.addEventListener('click', async () => {
       const server = selectedServer()
@@ -70,6 +106,23 @@ export function bindMapEvents({
           canUseMapResourceCache(server.endpoint)
             ? `“${mapName}”已验证，游戏将通过本机缓存静态资源…`
         : `“${mapName}”已验证并启动。当前连接为 HTTP，资源按需在线加载，不启用地图预下载缓存。`
+        if (state.libraryEnabled) {
+          const playerId = state.player?.subjectId || state.player?.username || ''
+          const isCurrent = () => state.selectedId === server.id && (state.player?.subjectId || state.player?.username || '') === playerId
+          // Library synchronization is metadata-only and must not delay opening the game.
+          void remoteApi.updateLibrary(server.endpoint, accessId, { played: true })
+            .then(async (result) => {
+              if (!isCurrent()) return
+              if (!result.response.ok) throw new Error('游戏已启动，但最近游玩记录暂未同步，请稍后重新检查。')
+              await refreshMapLibrary?.(server)
+              if (isCurrent()) render()
+            })
+            .catch(() => {
+              if (!isCurrent()) return
+              state.libraryError = '游戏已启动，但最近游玩记录暂未同步，请稍后重新检查。'
+              render()
+            })
+        }
       } catch (error) {
         const message = typeof error === 'string' ? error : error?.message
         const details = message || (error == null ? '' : String(error))

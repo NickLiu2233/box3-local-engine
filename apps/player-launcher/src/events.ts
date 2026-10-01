@@ -6,11 +6,27 @@ import { bindStorageEvents, refreshStorage } from './features/storage/events'
 import { bindMapSearch } from './features/maps/search-events'
 import type { PlayerServer } from './types'
 
-export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshRecentMap = async (_server: PlayerServer) => undefined, render }) {
+export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshMapLibrary = async (_server: PlayerServer) => undefined, render }) {
   bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render })
   bindStorageEvents({ state, playerInvoke, render })
   const mapSearch = document.querySelector<HTMLInputElement>('#map-search')
   if (mapSearch) bindMapSearch(mapSearch, state, render)
+  document.querySelectorAll<HTMLButtonElement>('[data-map-filter]').forEach((button) =>
+    button.addEventListener('click', async () => {
+      const filter = button.dataset.mapFilter
+      if ((filter === 'all' || filter === 'recent' || filter === 'favorites') && state.mapFilter !== filter) {
+        state.mapFilter = filter
+        render()
+        const server = selectedServer()
+        if (server && filter !== 'all' && !state.busy && !state.libraryLoading && !state.pendingFavoriteMapIds.length) {
+          const pending = refreshMapLibrary(server)
+          render()
+          await pending
+          if (state.selectedId === server.id) render()
+        }
+      }
+    }),
+  )
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', () => {
     state.error = ''
     state.notice = ''
@@ -33,6 +49,6 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
     }),
   )
   bindServerEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, render })
-  bindMapEvents({ state, playerInvoke, remoteApi, selectedServer, render })
-  bindLoginEvents({ state, remoteApi, selectedServer, refreshRecentMap, render })
+  bindMapEvents({ state, playerInvoke, remoteApi, selectedServer, refreshMapLibrary, render })
+  bindLoginEvents({ state, remoteApi, selectedServer, refreshMapLibrary, render })
 }

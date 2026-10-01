@@ -9,6 +9,8 @@ const playerOperations = [
   apiOperations.getApiPlayerLauncherMapsMapIdDescriptor,
   apiOperations.getApiPlayerLauncherMapsMapIdDownloadPlan,
   apiOperations.patchApiPlayProfile,
+  apiOperations.getApiPlayLibrary,
+  apiOperations.patchApiPlayLibrary,
 ]
 const authOperations = [
   apiOperations.postApiAuthLogin,

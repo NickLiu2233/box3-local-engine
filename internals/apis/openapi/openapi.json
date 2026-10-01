@@ -7923,7 +7923,25 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "player",
+                    "entries",
+                    "libraryEnabled"
+                  ],
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                    },
+                    "entries": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PlayerMapLibraryEntry"
+                      }
+                    },
+                    "libraryEnabled": {
+                      "type": "boolean"
+                    }
+                  }
                 }
               }
             }
@@ -7956,16 +7974,8 @@
         ],
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "操作成功，返回“更新可游玩地图库”的处理结果。",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true
-                }
-              }
-            }
+          "204": {
+            "description": "玩家收藏或最近游玩记录已更新。"
           },
           "default": {
             "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
@@ -7979,12 +7989,26 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "mapId"
+                ],
+                "properties": {
+                  "mapId": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$"
+                  },
+                  "favorite": {
+                    "type": "boolean"
+                  },
+                  "played": {
+                    "type": "boolean"
+                  }
+                }
               }
             }
           },
@@ -10425,6 +10449,33 @@
           "onlineCount": {
             "type": "integer",
             "minimum": 0
+          }
+        }
+      },
+      "PlayerMapLibraryEntry": {
+        "type": "object",
+        "required": [
+          "mapId",
+          "favorite",
+          "lastPlayedAt"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string"
+          },
+          "favorite": {
+            "type": "boolean"
+          },
+          "lastPlayedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },

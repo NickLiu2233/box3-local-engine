@@ -18,6 +18,15 @@ const app = document.querySelector<HTMLDivElement>('#app')
 if (!app) throw new Error('启动器界面根节点缺失')
 document.addEventListener('contextmenu', (event) => event.preventDefault(), { capture: true })
 const state = createInitialState()
+let composingInput: Element | null = null
+let renderAfterComposition = false
+document.addEventListener('compositionstart', (event) => {
+  composingInput = event.target instanceof Element ? event.target : null
+}, true)
+document.addEventListener('compositionend', () => {
+  composingInput = null
+  if (renderAfterComposition) setTimeout(render, 0)
+}, true)
 const { serverRows, removeServerDialog, serverAddressNoticeDialog } = createShellViews(state)
 
 document.addEventListener('click', (event) => {
@@ -28,14 +37,29 @@ document.addEventListener('click', (event) => {
 })
 
 const remoteApi = createPlayerApi({ invoke, isNative: isDesktopLauncher })
-const { playerInvoke, refreshPlayerSession, refreshRecentMap } = createLauncherController({
+const { playerInvoke, refreshPlayerSession, refreshMapLibrary } = createLauncherController({
   state,
   remoteApi,
   invoke,
   isDesktopLauncher,
   selectedServer,
+  onLibraryChange: render,
 })
 let lastContentKey = ''
+let lastLibraryFocusAt = 0
+
+window.addEventListener('focus', () => {
+  const server = selectedServer()
+  if (!server || state.page !== 'servers' || !state.serverBootstrap?.supported || state.busy || state.libraryLoading || state.pendingFavoriteMapIds.length) return
+  if (state.serverBootstrap.loginRequired && !state.player) return
+  // Avoid replacing an input while the player is typing with an IME.
+  if (document.activeElement instanceof HTMLInputElement) return
+  if (Date.now() - lastLibraryFocusAt < 750) return
+  lastLibraryFocusAt = Date.now()
+  void refreshMapLibrary(server).then(() => {
+    if (state.page === 'servers' && state.selectedId === server.id) render()
+  })
+})
 
 document.addEventListener('keydown', (event) => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
@@ -70,6 +94,12 @@ function serverPage(): string {
 }
 
 function render(): void {
+  // Metadata may arrive while an input method still owns the focused input.
+  if (composingInput?.isConnected) {
+    renderAfterComposition = true
+    return
+  }
+  renderAfterComposition = false
   const focused = document.activeElement instanceof HTMLInputElement ? document.activeElement : null
   const focusId = focused?.id
   const selection =
@@ -97,7 +127,7 @@ function render(): void {
     </main>` +
     serverAddressNoticeDialog() +
     removeServerDialog()
-  bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshRecentMap, render })
+  bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshMapLibrary, render })
   bindDialogFocus()
   if (focusId) {
     const next = document.getElementById(focusId) as HTMLInputElement | null

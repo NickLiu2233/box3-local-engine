@@ -8,6 +8,7 @@ function internalURL() {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.setHeader('Cache-Control', 'no-store');
   if (process.env.BOX_DEPLOYMENT_MODE !== 'play') return res.status(404).end();
   if (!['GET', 'PATCH'].includes(req.method || '')) {
     res.setHeader('Allow', 'GET, PATCH');
@@ -25,6 +26,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       },
       body: req.method === 'PATCH' ? JSON.stringify(req.body || {}) : undefined,
     });
+    const responseHeaders = response.headers as Headers & { getSetCookie?: () => string[] };
+    const setCookies = responseHeaders.getSetCookie?.() || [];
+    if (setCookies.length) res.setHeader('Set-Cookie', setCookies);
+    else {
+      const setCookie = response.headers.get('set-cookie');
+      if (setCookie) res.setHeader('Set-Cookie', setCookie);
+    }
+    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
     const body = await response.text();
     res.status(response.status);
     if (body) return res.send(body);

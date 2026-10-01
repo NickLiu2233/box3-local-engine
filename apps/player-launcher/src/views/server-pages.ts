@@ -1,8 +1,6 @@
-import { renderLoginCard } from '../features/player/login-form'
 import { playerSkinOptions } from '../features/player/skins'
 import { SERVER_ADDRESS_HELP_TEXT } from '../features/servers/address-notice'
-import { renderWorldCard } from '../features/maps/card'
-import { filterWorlds } from '../features/maps/search'
+import { renderMapBrowser } from '../features/maps/browser'
 
 function renderPlayerAccountControl(state, { icon, escapeHtml }) {
   if (!state.player) return ''
@@ -111,31 +109,8 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
 
   const editingName = state.editingServerId === server.id
   const bootstrap = state.serverBootstrap
-  const mapStatus = bootstrap?.loading
-    ? ['正在检查服务器…', '正在读取服务器支持信息。']
-    : bootstrap?.error
-      ? ['无法读取服务器状态', bootstrap.error]
-      : !bootstrap?.supported
-        ? ['服务器暂不支持玩家启动器', '请服主升级 Play 服务后，再从启动器导入地图。']
-        : ['', '']
   const loginRequired = bootstrap?.supported && bootstrap.loginRequired
   const needsLogin = loginRequired && !state.player
-  const worlds = filterWorlds(state.worlds, state.mapSearch)
-  const recentWorld = !needsLogin && !state.mapsError && state.recentWorld?.serverId === server.id
-    ? state.recentWorld
-    : undefined
-  const mapContent =
-    bootstrap?.loading || bootstrap?.error || !bootstrap?.supported
-      ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>${escapeHtml(mapStatus[0])}</h3><p>${escapeHtml(mapStatus[1])}</p></div>`
-      : needsLogin
-        ? renderLoginCard(state, server, { icon, escapeHtml })
-        : state.mapsError
-          ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂时无法读取地图</h3><p>${escapeHtml(state.mapsError)}</p></div>`
-          : worlds.length
-            ? `<div class="world-grid">${worlds.map((world) => renderWorldCard(world, state, { escapeHtml })).join('')}</div>`
-            : state.worlds.length
-              ? '<div class="empty-maps surface"><h3>没有找到匹配的地图</h3><p>试试其他地图名称或作者。</p></div>'
-              : `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂无可游玩的地图</h3><p>该服务器目前没有向你开放的地图。</p></div>`
 
   return `
     <section class="page ${needsLogin ? 'login-required-page' : ''}">
@@ -161,9 +136,7 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
           ${renderPlayerAccountControl(state, { icon, escapeHtml })}
         </div>
       </div>
-      ${needsLogin ? '' : `<div class="section-heading"><h2>可游玩的地图</h2><div class="map-tools">${state.worlds.length ? `<input id="map-search" type="search" placeholder="搜索地图或作者" aria-label="搜索地图或作者" value="${escapeHtml(state.mapSearch || '')}" />` : ''}<button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>重新检查</button></div></div>`}
-      ${recentWorld ? `<section class="recent-world"><div class="recent-world-copy"><small>上次游玩</small><strong>${escapeHtml(recentWorld.name)}</strong><span>${escapeHtml(recentWorld.version)}</span></div><button class="button primary" data-action="prepare-map" data-map-id="${escapeHtml(recentWorld.mapId)}" ${state.busy ? 'disabled' : ''}>${state.activeGame?.serverId === server.id && state.activeGame?.mapId === (state.worlds.find((world) => world.id === recentWorld.mapId)?.publicId || recentWorld.mapId) ? '返回游戏' : '继续游玩'}${icon('arrow')}</button></section>` : ''}
-      ${mapContent}
+      ${renderMapBrowser(state, server, { icon, escapeHtml })}
       ${renderPlayerSettings(state, { icon, escapeHtml })}
     </section>`
 }
