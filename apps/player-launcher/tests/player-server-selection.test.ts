@@ -47,7 +47,6 @@ test('clicking the server that is already selected on its page does not refresh 
       remoteApi: {},
       selectedServer: () => state.servers[0],
       refreshPlayerSession: async () => { refreshCount += 1 },
-      applyTheme: () => {},
       render: () => { renderCount += 1 },
     })
     assert.ok(clickHandler, 'server row click handler should be bound')
@@ -116,7 +115,6 @@ test('opening the already-selected server from home loads its missing bootstrap'
       remoteApi: {},
       selectedServer: () => server,
       refreshPlayerSession: async () => { refreshCount += 1 },
-      applyTheme: () => {},
       render: () => {},
     })
     assert.ok(clickHandler, 'server row click handler should be bound')

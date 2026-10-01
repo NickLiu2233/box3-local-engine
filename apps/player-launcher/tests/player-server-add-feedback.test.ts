@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { bindEvents } from '../src/events'
-import { SERVER_ADDRESS_HELP_TEXT } from '../src/services/server-address-notice'
+import { SERVER_ADDRESS_HELP_TEXT } from '../src/features/servers/address-notice'
 
 test('shows a clean connection error when an invalid server address cannot be reached', async () => {
   const originalDocument = Reflect.get(globalThis, 'document')
@@ -27,7 +27,6 @@ test('shows a clean connection error when an invalid server address cannot be re
       remoteApi: {},
       selectedServer: () => null,
       refreshPlayerSession: async () => {},
-      applyTheme: () => {},
       render: () => {},
     })
     assert.ok(submit, 'server address form should bind its submit handler')

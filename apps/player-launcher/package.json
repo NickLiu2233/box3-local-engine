@@ -9,11 +9,14 @@
     "dev": "vite --port 1421",
     "build": "vite build",
     "check": "npm run typecheck && npm run build && npm test && npm run build:electron-main",
-    "test": "tsx --test electron/services/*.test.ts tests/*.test.ts",
+    "test": "tsx --test electron/network/*.test.ts electron/runtime/*.test.ts electron/security/*.test.ts electron/storage/*.test.ts tests/*.test.ts",
+    "build:desktop-smoke": "esbuild electron/testing/launcher-smoke.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/launcher-smoke.cjs",
+    "test:desktop": "npm run build:desktop-smoke && electron dist-electron/launcher-smoke.cjs",
+    "test:cache": "esbuild electron/testing/cache-smoke.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/cache-smoke.cjs && electron dist-electron/cache-smoke.cjs",
     "typecheck": "tsc --noEmit",
     "bundle": "npm run bundle:electron",
     "dev:electron": "npm run build:electron-main && electron . --dev",
-    "build:electron-main": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --target=node22 --format=cjs --outdir=dist-electron --out-extension:.js=.cjs --external:electron --external:vite",
+    "build:electron-main": "esbuild electron/main.ts electron/preload.ts electron/build/after-pack.ts --bundle --platform=node --target=node22 --format=cjs --outdir=dist-electron --out-extension:.js=.cjs --external:electron --external:vite",
     "build:electron": "npm run typecheck && npm run build && npm run build:electron-main",
     "bundle:electron": "npm run build:electron && electron-builder"
   },
@@ -21,10 +24,14 @@
     "appId": "com.box.player.launcher",
     "productName": "BOX3 Player Launcher",
     "asar": true,
+    "npmRebuild": false,
+    "afterPack": "./dist-electron/build/after-pack.cjs",
+    "compression": "maximum",
     "electronLanguages": ["en-US", "zh-CN"],
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
+      "dist-electron/main.cjs",
+      "dist-electron/preload.cjs",
       "resources/icons/icon.png",
       "package.json"
     ],
@@ -51,10 +58,8 @@
       "target": ["AppImage"]
     }
   },
-  "dependencies": {
-    "@box/apis": "workspace:0.2.0"
-  },
   "devDependencies": {
+    "@box/apis": "workspace:0.2.0",
     "@types/node": "22.20.4",
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3",

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
-import { renderWorldCard } from '../src/views/world-card'
+import { renderWorldCard } from '../src/features/maps/card'
 
 test('world cards show the Play cover ratio, author, version and online player count', () => {
   const html = renderWorldCard({

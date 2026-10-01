@@ -619,11 +619,10 @@ importers:
         version: 0.28.2
 
   ../../apps/player-launcher:
-    dependencies:
+    devDependencies:
       '@box/apis':
         specifier: workspace:0.2.0
         version: link:../../internals/apis
-    devDependencies:
       '@types/node':
         specifier: 22.20.4
         version: 22.20.4

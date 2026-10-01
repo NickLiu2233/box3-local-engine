@@ -28,8 +28,13 @@ export const localEngineSchemas = {
     required: ['keyId', 'publicKey'],
     properties: {
       keyId: string,
-      publicKey: { type: 'object', additionalProperties: { type: 'string' } },
+      publicKey: { $ref: '#/components/schemas/PlayerLauncherPublicKey' },
     },
+  },
+  PlayerLauncherPublicKey: {
+    type: 'object',
+    required: ['kty', 'crv', 'x', 'y'],
+    properties: { kty: string, crv: string, x: string, y: string },
   },
   PlayerLauncherWorld: {
     type: 'object',
@@ -74,7 +79,7 @@ export const localEngineSchemas = {
         properties: {
           algorithm: { type: 'string', enum: ['ES256'] },
           keyId: string,
-          publicKey: { type: 'object', additionalProperties: { type: 'string' } },
+          publicKey: { $ref: '#/components/schemas/PlayerLauncherPublicKey' },
           value: string,
         },
       },

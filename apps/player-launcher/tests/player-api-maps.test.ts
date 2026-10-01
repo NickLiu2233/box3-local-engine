@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPlayerApi, resolveMapCoverUrl } from '../src/services/player-api'
+import { createPlayerApi, resolveMapCoverUrl } from '../src/api/player-api'
 
 test('normalizes map covers for the standalone file-based launcher window', async () => {
   const endpoint = 'http://127.0.0.1:3121'

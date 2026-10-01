@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { playerServerAddError } from '../src/services/server-errors'
+import { playerServerAddError } from '../src/features/servers/errors'
 
 test('removes Electron IPC wrappers while preserving the player-facing network error', () => {
   assert.equal(

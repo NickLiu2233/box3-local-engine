@@ -1,13 +1,13 @@
-import { playerSkinOptions } from '../services/player-skins'
-import { SERVER_ADDRESS_HELP_TEXT } from '../services/server-address-notice'
-import { renderWorldCard } from './world-card'
+import { playerSkinOptions } from '../features/player/skins'
+import { SERVER_ADDRESS_HELP_TEXT } from '../features/servers/address-notice'
+import { renderWorldCard } from '../features/maps/card'
+import { filterWorlds } from '../features/maps/search'
 
 function renderPlayerAccountControl(state, { icon, escapeHtml }) {
   if (!state.player) return ''
   const displayName = state.player.displayName || state.player.username || '已登录用户'
   const username = state.player.username || ''
-  const skin = playerSkinOptions.find((item) => item.id === state.player.avatarSkinId)
-    || playerSkinOptions[0]
+  const skin = playerSkinOptions.find((item) => item.id === state.player.avatarSkinId) || playerSkinOptions[0]
 
   return `
     <div class="player-account-control">
@@ -16,11 +16,15 @@ function renderPlayerAccountControl(state, { icon, escapeHtml }) {
         <span class="player-account-copy"><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(username)}</small></span>
         ${icon('chevron')}
       </button>
-      ${state.playerMenuOpen ? `<div class="player-account-menu" role="menu">
+      ${
+        state.playerMenuOpen
+          ? `<div class="player-account-menu" role="menu">
         <div class="player-account-menu-identity"><strong>${escapeHtml(displayName)}</strong><small>${escapeHtml(username)}</small></div>
         <button type="button" role="menuitem" data-action="open-player-settings">账号设置</button>
         <button type="button" role="menuitem" data-action="logout">退出登录</button>
-      </div>` : ''}
+      </div>`
+          : ''
+      }
     </div>`
 }
 
@@ -51,10 +55,16 @@ function renderPlayerSettings(state, { icon, escapeHtml }) {
             <fieldset class="player-profile-skin-field">
               <legend>角色皮肤</legend>
               <div class="player-profile-skins">
-                ${playerSkinOptions.map((skin) => `<button class="player-profile-skin ${state.playerProfileSkinId === skin.id ? 'selected' : ''}" type="button" data-player-skin="${skin.id}" aria-pressed="${state.playerProfileSkinId === skin.id}" ${state.busy ? 'disabled' : ''}>
+                ${playerSkinOptions
+                  .map(
+                    (
+                      skin,
+                    ) => `<button class="player-profile-skin ${state.playerProfileSkinId === skin.id ? 'selected' : ''}" type="button" data-player-skin="${skin.id}" aria-pressed="${state.playerProfileSkinId === skin.id}" ${state.busy ? 'disabled' : ''}>
                   <img src="${skin.preview}" alt="">
                   <span>${skin.name}</span>
-                </button>`).join('')}
+                </button>`,
+                  )
+                  .join('')}
               </div>
             </fieldset>
             ${state.playerProfileError ? `<p class="player-profile-error" role="alert">${escapeHtml(state.playerProfileError)}</p>` : ''}
@@ -79,7 +89,8 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
       </section>`
   }
 
-  if (state.page === 'add-server') return `
+  if (state.page === 'add-server')
+    return `
     <section class="page narrow">
       <div class="page-heading"><h1>添加服务器</h1><p>输入服主提供的游玩地址。添加后，启动器会显示该服务器开放的地图。</p></div>
       <form id="server-form" class="surface add-form">
@@ -90,7 +101,8 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
       </form>
     </section>`
 
-  if (!server) return `
+  if (!server)
+    return `
     <section class="page welcome-page">
       <h1>准备好开始游玩了吗？</h1>
       <p>从左侧选择一个服务器，或添加新的服务器开始游玩。</p>
@@ -107,10 +119,12 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
         : ['', '']
   const loginRequired = bootstrap?.supported && bootstrap.loginRequired
   const needsLogin = loginRequired && !state.player
-  const mapContent = bootstrap?.loading || bootstrap?.error || !bootstrap?.supported
-    ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>${escapeHtml(mapStatus[0])}</h3><p>${escapeHtml(mapStatus[1])}</p></div>`
-    : needsLogin
-      ? `<div class="login-layout">
+  const worlds = filterWorlds(state.worlds, state.mapSearch)
+  const mapContent =
+    bootstrap?.loading || bootstrap?.error || !bootstrap?.supported
+      ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>${escapeHtml(mapStatus[0])}</h3><p>${escapeHtml(mapStatus[1])}</p></div>`
+      : needsLogin
+        ? `<div class="login-layout">
           <section class="surface login-card" aria-labelledby="player-login-title">
             <div class="login-card-heading">
               <h3 id="player-login-title">登录后查看地图</h3>
@@ -130,46 +144,40 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
             </form>
           </section>
         </div>`
-      : state.mapsError
-        ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂时无法读取地图</h3><p>${escapeHtml(state.mapsError)}</p></div>`
-        : state.worlds.length
-          ? `<div class="world-grid">${state.worlds.map((world) => renderWorldCard(world, state, { escapeHtml })).join('')}</div>`
-          : `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂无可游玩的地图</h3><p>该服务器目前没有向你开放的地图。</p></div>`
+        : state.mapsError
+          ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂时无法读取地图</h3><p>${escapeHtml(state.mapsError)}</p></div>`
+          : worlds.length
+            ? `<div class="world-grid">${worlds.map((world) => renderWorldCard(world, state, { escapeHtml })).join('')}</div>`
+            : state.worlds.length
+              ? '<div class="empty-maps surface"><h3>没有找到匹配的地图</h3><p>试试其他地图名称或作者。</p></div>'
+              : `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂无可游玩的地图</h3><p>该服务器目前没有向你开放的地图。</p></div>`
 
   return `
     <section class="page ${needsLogin ? 'login-required-page' : ''}">
       <div class="page-heading server-heading">
         <div class="server-heading-top">
           <div class="server-heading-copy">
-            ${editingName ? `
+            ${
+              editingName
+                ? `
               <form id="server-name-form" class="server-name-edit">
                 <input id="server-name-input" name="name" value="${escapeHtml(state.serverNameInput)}" maxlength="40" aria-label="服务器昵称" required autofocus ${state.busy ? 'disabled' : ''} />
                 <button class="title-icon-button save-name" type="submit" title="保存昵称" aria-label="保存昵称" ${state.busy ? 'disabled' : ''}>${icon('check')}</button>
                 <button class="title-icon-button" type="button" data-action="cancel-server-name" title="取消编辑" aria-label="取消编辑">${icon('close')}</button>
-              </form>` : `
+              </form>`
+                : `
               <div class="server-title-row">
                 <h1>${escapeHtml(server.name || server.endpoint)}</h1>
                 <button class="title-icon-button" type="button" data-action="edit-server-name" title="编辑服务器昵称" aria-label="编辑服务器昵称">${icon('edit')}</button>
-              </div>`}
+              </div>`
+            }
             <p>${escapeHtml(server.endpoint)}</p>
           </div>
           ${renderPlayerAccountControl(state, { icon, escapeHtml })}
         </div>
       </div>
-      ${needsLogin ? '' : `<div class="section-heading"><h2>可游玩的地图</h2><button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>重新检查</button></div>`}
+      ${needsLogin ? '' : `<div class="section-heading"><h2>可游玩的地图</h2><div class="map-tools">${state.worlds.length ? `<input id="map-search" type="search" placeholder="搜索地图或作者" aria-label="搜索地图或作者" value="${escapeHtml(state.mapSearch || '')}" />` : ''}<button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>重新检查</button></div></div>`}
       ${mapContent}
       ${renderPlayerSettings(state, { icon, escapeHtml })}
-    </section>`
-}
-
-export function renderPackagesPage(icon) {
-  return `
-    <section class="page">
-      <div class="page-heading"><span class="eyebrow">资源缓存</span><h1>地图资源自动缓存</h1><p>开始游玩时，Service Worker 会校验并缓存地图静态资源；下次启动优先从本机缓存读取。</p></div>
-      <div class="surface import-card">
-        <div class="import-icon">${icon('packages')}</div>
-        <div class="import-copy"><h2>不需要手动导入</h2><p>地图仅从已添加服务器获取。资源缓存随地图启动自动完成，不会保存服务端脚本或登录信息。</p></div>
-        <button class="button primary" data-nav="servers">选择服务器</button>
-      </div>
     </section>`
 }

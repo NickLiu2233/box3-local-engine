@@ -1,15 +1,17 @@
-import { app, BrowserWindow, ipcMain, nativeImage, session } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, session } from 'electron'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { createApiTransport } from './services/api-transport'
-import { createPublicImageTransport } from './services/public-image-transport'
-import { createGameWindowManager } from './services/game-window-manager'
-import { validateDescriptor } from './services/package-descriptor'
-import { createServerStore } from './services/server-store'
+import { createApiTransport } from './network/api-transport'
+import { createPublicImageTransport } from './network/public-image-transport'
+import { createWindowStateStore } from './storage/window-state'
+import { createMapLabels } from './storage/map-labels'
+import { createGameWindowManager } from './runtime/game-window-manager'
+import { validateDescriptor } from './security/package-descriptor'
+import { createServerStore } from './storage/server-store'
 import type { ElectronCommandPayload } from './types'
-import type { ServerStore } from './services/server-store'
-import type { GameWindow, GameWindowManager, GameWindowOptions } from './services/game-window-manager'
+import type { ServerStore } from './storage/server-store'
+import type { GameWindow, GameWindowManager, GameWindowOptions } from './runtime/game-window-manager'
 import type { ViteDevServer } from 'vite'
 
 const COMMANDS = new Set<string>([
@@ -23,6 +25,12 @@ const COMMANDS = new Set<string>([
   'fetch_public_image',
   'verify_map_descriptor',
   'launch_map',
+  'game_status',
+  'focus_game',
+  'cache_status',
+  'clear_resource_cache',
+  'clear_map_cache',
+  'remember_maps',
 ])
 
 let mainWindow: Electron.BrowserWindow | undefined
@@ -31,9 +39,11 @@ const apiTransport = createApiTransport()
 const publicImageTransport = createPublicImageTransport()
 
 app.setName('BOX3 Player Launcher')
-const dataRoot = process.platform === 'linux'
-  ? (process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'))
-  : app.getPath('appData')
+nativeTheme.themeSource = 'dark'
+const dataRoot =
+  process.platform === 'linux'
+    ? process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
+    : app.getPath('appData')
 app.setPath('userData', path.join(dataRoot, 'com.box.player.launcher'))
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
@@ -42,11 +52,31 @@ function getServerStore(): ServerStore {
 }
 
 const serverStore: ServerStore = getServerStore()
+const windowStates = createWindowStateStore(path.join(app.getPath('userData'), 'window-state.json'))
+const mapLabels = createMapLabels(path.join(app.getPath('userData'), 'map-labels.json'))
+function createRememberedWindow(
+  key: string,
+  options: Electron.BrowserWindowConstructorOptions,
+): Electron.BrowserWindow {
+  const size = windowStates.read(key, { width: options.width || 1180, height: options.height || 760 })
+  const created = new BrowserWindow({ ...options, width: size.width, height: size.height })
+  if (size.maximized) created.maximize()
+  created.on('close', () => {
+    const bounds = created.getNormalBounds()
+    windowStates.save(key, { width: bounds.width, height: bounds.height, maximized: created.isMaximized() })
+  })
+  return created
+}
 let gameWindowManager: GameWindowManager
 gameWindowManager = createGameWindowManager({
-  createBrowserWindow: (options: GameWindowOptions) => new BrowserWindow(options as Electron.BrowserWindowConstructorOptions) as unknown as GameWindow,
+  createBrowserWindow: (options: GameWindowOptions) =>
+    createRememberedWindow('game', options) as unknown as GameWindow,
   sessions: session,
   syncCookies: syncPlayerCookies,
+  onStateChange: (game) => {
+    if (mainWindow && !mainWindow.isDestroyed())
+      mainWindow.webContents.send('launcher:event:game-state', game)
+  },
 })
 
 async function syncPlayerCookies(endpoint: string, targetSession: Electron.Session): Promise<void> {
@@ -82,11 +112,13 @@ async function clearWebSessionCookies(endpoint: string): Promise<void> {
 }
 
 function validateLaunchTicket(ticket: unknown): ticket is string {
-  return typeof ticket === 'string'
-    && ticket.length > 0
-    && ticket.length <= 2048
-    && /^[A-Za-z0-9_.-]+$/.test(ticket)
-    && /^[^.]+\.[^.]+$/.test(ticket)
+  return (
+    typeof ticket === 'string' &&
+    ticket.length > 0 &&
+    ticket.length <= 2048 &&
+    /^[A-Za-z0-9_.-]+$/.test(ticket) &&
+    /^[^.]+\.[^.]+$/.test(ticket)
+  )
 }
 
 async function launchMap(payload: ElectronCommandPayload): Promise<void> {
@@ -100,9 +132,19 @@ async function launchMap(payload: ElectronCommandPayload): Promise<void> {
     requireString(payload.descriptor, '地图资源描述符格式无效'),
     requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
   )
-  const releaseVersion = descriptor.releaseVersion.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 128) || '未知版本'
-  const mapName = String(payload.mapName || '').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80) || 'BOX3 Player'
+  const releaseVersion =
+    descriptor.releaseVersion.replace(/[\u0000-\u001f\u007f]/g, '').slice(0, 128) || '未知版本'
+  const mapName =
+    String(payload.mapName || '')
+      .replace(/[\u0000-\u001f\u007f]/g, '')
+      .trim()
+      .slice(0, 80) || 'BOX3 Player'
   const title = `${mapName} · ${releaseVersion}`
+  try {
+    mapLabels.remember(server.id, [{ permanentMapId: descriptor.permanentMapId, name: mapName }])
+  } catch {
+    /* A label preference must not block play. */
+  }
   await gameWindowManager.launch({ server, descriptor, launchTicket: payload.launchTicket, title })
 }
 
@@ -115,12 +157,42 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
   if (!COMMANDS.has(command)) throw new Error('不允许的启动器命令')
   const store = serverStore
   if (command === 'launcher_state') return store.load()
-  if (command === 'add_server') return store.add(requireString(payload.endpoint, '请输入有效的游玩端服务器 IP 或域名'))
-  if (command === 'select_server') return store.select(requireString(payload.serverId, '这个服务器已不在列表中'))
-  if (command === 'rename_server') return store.rename(
-    requireString(payload.serverId, '这个服务器已不在列表中'),
-    requireString(payload.name, '服务器昵称不能为空'),
-  )
+  if (command === 'game_status') return gameWindowManager.currentGame()
+  if (command === 'focus_game')
+    return gameWindowManager.focusCurrent(
+      requireString(payload.serverId, '服务器地址无效'),
+      requireString(payload.mapId, '地图无效'),
+    )
+  if (command === 'remember_maps') {
+    const server = store.load().servers.find((item) => item.endpoint === payload.endpoint)
+    if (server && Array.isArray(payload.maps)) mapLabels.remember(server.id, payload.maps)
+    return
+  }
+  if (command === 'cache_status' || command === 'clear_resource_cache' || command === 'clear_map_cache') {
+    const server = store.load().servers.find((item) => item.id === payload.serverId)
+    if (!server) throw new Error('这个服务器已不在列表中')
+    if (command === 'clear_resource_cache') await gameWindowManager.clearResources(server.id)
+    if (command === 'clear_map_cache')
+      await gameWindowManager.clearMapResources(
+        server.id,
+        server.endpoint,
+        requireString(payload.mapId, '地图缓存无效'),
+      )
+    const usage = await gameWindowManager.cacheStatus(server.id, server.endpoint)
+    return {
+      ...usage,
+      maps: usage.maps.map((map) => ({ ...map, name: mapLabels.name(server.id, map.mapId) })),
+    }
+  }
+  if (command === 'add_server')
+    return store.add(requireString(payload.endpoint, '请输入有效的游玩端服务器 IP 或域名'))
+  if (command === 'select_server')
+    return store.select(requireString(payload.serverId, '这个服务器已不在列表中'))
+  if (command === 'rename_server')
+    return store.rename(
+      requireString(payload.serverId, '这个服务器已不在列表中'),
+      requireString(payload.name, '服务器昵称不能为空'),
+    )
   if (command === 'api_request') {
     if (!payload.request) throw new Error('API 请求参数缺失')
     return apiTransport.request(payload.request)
@@ -171,10 +243,13 @@ function isLauncherWindow(event: Electron.IpcMainInvokeEvent): boolean {
   }
 }
 
-ipcMain.handle('launcher:invoke', (event: Electron.IpcMainInvokeEvent, command: string, payload: ElectronCommandPayload) => {
-  if (!isLauncherWindow(event)) throw new Error('启动器 IPC 来源无效')
-  return dispatch(command, payload)
-})
+ipcMain.handle(
+  'launcher:invoke',
+  (event: Electron.IpcMainInvokeEvent, command: string, payload: ElectronCommandPayload) => {
+    if (!isLauncherWindow(event)) throw new Error('启动器 IPC 来源无效')
+    return dispatch(command, payload)
+  },
+)
 
 async function startVite(): Promise<string> {
   if (devServer) return 'http://127.0.0.1:1421'
@@ -193,7 +268,7 @@ async function startVite(): Promise<string> {
 }
 
 async function createMainWindow(): Promise<void> {
-  mainWindow = new BrowserWindow({
+  mainWindow = createRememberedWindow('launcher', {
     width: 1180,
     height: 760,
     minWidth: 900,
@@ -228,20 +303,23 @@ app.on('second-instance', () => {
   mainWindow.focus()
 })
 
-app.whenReady().then(async () => {
-  if (!hasSingleInstanceLock) {
+app
+  .whenReady()
+  .then(async () => {
+    if (!hasSingleInstanceLock) {
+      app.quit()
+      return
+    }
+    if (process.platform === 'darwin' && app.dock) {
+      const iconPath = path.join(app.getAppPath(), 'resources/icons/icon.png')
+      app.dock.setIcon(nativeImage.createFromBuffer(fs.readFileSync(iconPath)))
+    }
+    await createMainWindow()
+  })
+  .catch((error) => {
+    console.error(error)
     app.quit()
-    return
-  }
-  if (process.platform === 'darwin' && app.dock) {
-    const iconPath = path.join(app.getAppPath(), 'resources/icons/icon.png')
-    app.dock.setIcon(nativeImage.createFromBuffer(fs.readFileSync(iconPath)))
-  }
-  await createMainWindow()
-}).catch((error) => {
-  console.error(error)
-  app.quit()
-})
+  })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

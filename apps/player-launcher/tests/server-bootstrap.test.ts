@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPlayerApi } from '../src/services/player-api'
+import { createPlayerApi } from '../src/api/player-api'
 
 test('retries a transient missing launcher bootstrap before marking the server unsupported', async () => {
   const responses = [

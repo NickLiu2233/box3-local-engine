@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { getServerAddressNotice } from '../src/services/server-address-notice'
+import { getServerAddressNotice } from '../src/features/servers/address-notice'
 
 test('keeps local HTTP addresses quiet', () => {
   assert.equal(getServerAddressNotice('127.0.0.1:3492'), null)

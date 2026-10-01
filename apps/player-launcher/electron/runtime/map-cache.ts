@@ -1,0 +1,95 @@
+import { BrowserWindow } from 'electron'
+import type { Session } from 'electron'
+import type { CachedMap } from '../../shared/cache-types'
+
+interface CacheEntry {
+  requestURL: string
+  requestHeaders: Array<{ name: string; value: string }>
+}
+interface CacheInfo {
+  cacheId: string
+  cacheName: string
+}
+const prefix = 'box-play-static:'
+
+/** Uses Chromium's CacheStorage API so caches stay manageable even offline. */
+export async function inspectMapCaches(
+  target: Session,
+  endpoint: string,
+  removeMapId?: string,
+): Promise<CachedMap[]> {
+  const window = new BrowserWindow({
+    show: false,
+    webPreferences: { session: target, sandbox: true, nodeIntegration: false, contextIsolation: true },
+  })
+  const debuggerClient = window.webContents.debugger
+  try {
+    await window.loadURL('about:blank')
+    debuggerClient.attach('1.3')
+    // CacheStorage requires a frame with the matching storage origin. Fulfill
+    // this inspector's blank document locally; never load the server's page.
+    debuggerClient.on('message', (_event, method, params) => {
+      if (method !== 'Fetch.requestPaused') return
+      void debuggerClient
+        .sendCommand('Fetch.fulfillRequest', {
+          requestId: params.requestId,
+          responseCode: 200,
+          responseHeaders: [
+            { name: 'Content-Type', value: 'text/html' },
+            { name: 'Cache-Control', value: 'no-store' },
+          ],
+          body: Buffer.from('<!doctype html><title>Local cache inspection</title>').toString('base64'),
+        })
+        .catch(() => window.webContents.stop())
+    })
+    await debuggerClient.sendCommand('Fetch.enable', {
+      patterns: [{ urlPattern: '*', requestStage: 'Request' }],
+    })
+    await window.loadURL(`${new URL(endpoint).origin}/__box_launcher_cache_inspection__`)
+    const { caches } = (await debuggerClient.sendCommand('CacheStorage.requestCacheNames', {
+      securityOrigin: new URL(endpoint).origin,
+    })) as { caches: CacheInfo[] }
+    const maps = new Map<string, CachedMap>()
+    for (const cache of caches) {
+      if (!cache.cacheName.startsWith(prefix)) continue
+      const suffix = cache.cacheName.slice(prefix.length)
+      const separator = suffix.indexOf(':')
+      if (separator < 1) continue
+      const mapId = suffix.slice(0, separator)
+      const version = suffix.slice(separator + 1)
+      if (removeMapId) {
+        if (mapId === removeMapId)
+          await debuggerClient.sendCommand('CacheStorage.deleteCache', { cacheId: cache.cacheId })
+        continue
+      }
+      const map = maps.get(mapId) || { mapId, name: '', versions: [], bytes: 0, resources: 0 }
+      let skipCount = 0
+      while (true) {
+        const result = (await debuggerClient.sendCommand('CacheStorage.requestEntries', {
+          cacheId: cache.cacheId,
+          skipCount,
+          pageSize: 100,
+        })) as { cacheDataEntries: CacheEntry[]; returnCount: number }
+        for (const entry of result.cacheDataEntries) {
+          const response = (await debuggerClient.sendCommand('CacheStorage.requestCachedResponse', {
+            cacheId: cache.cacheId,
+            requestURL: entry.requestURL,
+            requestHeaders: entry.requestHeaders,
+          })) as { response: { body: string } }
+          map.bytes += Buffer.byteLength(response.response.body, 'base64')
+          map.resources += 1
+        }
+        skipCount += result.cacheDataEntries.length
+        if (!result.cacheDataEntries.length || skipCount >= result.returnCount) break
+      }
+      if (map.resources && map.bytes > 0) {
+        map.versions.push(version)
+        maps.set(mapId, map)
+      }
+    }
+    return [...maps.values()]
+  } finally {
+    if (debuggerClient.isAttached()) debuggerClient.detach()
+    window.destroy()
+  }
+}

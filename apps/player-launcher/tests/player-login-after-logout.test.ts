@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createApiTransport } from '../electron/services/api-transport'
-import { createPlayerApi } from '../src/services/player-api'
-import { playerLoginConnectionError } from '../src/services/player-auth-errors'
+import { createApiTransport } from '../electron/network/api-transport'
+import { createPlayerApi } from '../src/api/player-api'
+import { playerLoginConnectionError } from '../src/features/player/auth-errors'
 
 test('a player can log in again after logout clears the local session', async () => {
   const endpoint = 'https://play.example.test'

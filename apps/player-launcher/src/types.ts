@@ -1,3 +1,7 @@
+import type { components } from '@box/apis'
+import type { createPlayerApi } from './api/player-api'
+import type { ServerCacheUsage } from '../shared/cache-types'
+
 export type LauncherPage = 'home' | 'servers' | 'add-server' | 'packages'
 
 export interface PlayerServer {
@@ -6,42 +10,34 @@ export interface PlayerServer {
   name: string
 }
 
-export interface SigningKey {
-  keyId: string
-  publicKey: { kty: string; crv: string; x: string; y: string }
-}
+export type SigningKey = components['schemas']['PlayerLauncherSigningKey']
 
-export interface ServerBootstrap {
+export interface ServerBootstrap extends Partial<components['schemas']['PlayerLauncherBootstrap']> {
   supported?: boolean
-  serverName?: string
-  loginRequired?: boolean
-  loginApiUrl?: string
-  signingKey?: SigningKey
   loading?: boolean
   error?: string
 }
 
-export interface PlayerAccount {
-  username: string
-  displayName?: string
-  avatarSkinId?: string
-  [key: string]: unknown
-}
+export type PlayerAccount = Pick<components['schemas']['PlayerLauncherSessionPlayer'], 'username'> &
+  Partial<components['schemas']['PlayerLauncherSessionPlayer']> &
+  Record<string, unknown>
 
-export interface PlayWorld {
-  id: string
-  publicId?: string
-  name: string
-  description?: string
-  author?: string
-  cover?: string
-  loadingCover?: string
-  version?: string
-  onlineCount?: number
-  [key: string]: unknown
-}
+export type PlayWorld = Pick<components['schemas']['PlayerLauncherWorld'], 'id' | 'name'> &
+  Partial<components['schemas']['PlayerLauncherWorld']> &
+  Record<string, unknown>
 
 export interface PlayerLauncherState {
+  mapSearch?: string
+  launchStage?: string
+  activeGame?: { serverId: string; mapId: string } | null
+  storage?: {
+    loading: boolean
+    error: string
+    rows: ServerCacheUsage[]
+    confirmServerId: string
+    selectedServerId?: string
+    confirmMapId?: string
+  }
   servers: PlayerServer[]
   selectedId: string
   page: LauncherPage
@@ -65,9 +61,7 @@ export interface PlayerLauncherState {
   serverAddressNotice: { title: string; message: string } | null
   error: string
   notice: string
-  theme: string
-  themeMenuOpen: boolean
 }
 
 export type PlayerInvoke = (command: string, payload?: Record<string, any>) => Promise<any>
-export type RemoteApi = Record<string, any>
+export type RemoteApi = ReturnType<typeof createPlayerApi>

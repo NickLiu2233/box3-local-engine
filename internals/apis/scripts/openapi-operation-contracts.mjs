@@ -18,6 +18,7 @@ const contracts = {
     registrationEnabled: { type: 'boolean' },
   }, ['player']),
   'post /api/auth/logout': object({ loggedOut: { type: 'boolean' } }),
+  'patch /api/play-profile': object({ player: ref('PlayerLauncherSessionPlayer') }),
   'get /api/play-admin/activity': object({
     events: array('PlayerAdminActivity'),
     total: { type: 'integer' },
@@ -46,6 +47,7 @@ const contracts = {
 }
 
 const requestContracts = {
+  'patch /api/play-profile': object({ displayName: { type: 'string' }, avatarSkinId: { type: 'string' } }, []),
   'post /api/auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/auth/logout': object({}),
   'post /api/player-auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),

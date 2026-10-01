@@ -9959,7 +9959,10 @@ export declare class ApiClient {
         signingKey: {
             keyId: string;
             publicKey: {
-                [x: string]: string;
+                kty: string;
+                crv: string;
+                x: string;
+                y: string;
             };
         } | null;
     }>;
@@ -10209,7 +10212,10 @@ export declare class ApiClient {
             algorithm: "ES256";
             keyId: string;
             publicKey: {
-                [x: string]: string;
+                kty: string;
+                crv: string;
+                x: string;
+                y: string;
             };
             value: string;
         };
@@ -13921,10 +13927,11 @@ export declare class ApiClient {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    displayName?: string;
+                    avatarSkinId?: string;
                 };
             };
         };
@@ -13935,7 +13942,7 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
                     };
                 };
             };
@@ -13948,7 +13955,7 @@ export declare class ApiClient {
                 };
             };
         };
-    }, ({
+    }, {
         params?: {
             query?: never;
             header?: never;
@@ -13956,9 +13963,10 @@ export declare class ApiClient {
             cookie?: never;
         } | undefined;
     } & {
-        body?: ({
-            [x: string]: unknown;
-        } & {}) | undefined;
+        body: {
+            displayName?: string | undefined;
+            avatarSkinId?: string | undefined;
+        } & {};
     } & {
         baseUrl?: string;
         querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
@@ -13968,10 +13976,11 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        displayName?: string;
+                        avatarSkinId?: string;
                     };
                 };
             };
@@ -13982,7 +13991,7 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
                         };
                     };
                 };
@@ -14003,10 +14012,11 @@ export declare class ApiClient {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        displayName?: string;
+                        avatarSkinId?: string;
                     };
                 };
             };
@@ -14017,7 +14027,7 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
-                            [key: string]: unknown;
+                            player: import("./openapi").components["schemas"]["PlayerLauncherSessionPlayer"];
                         };
                     };
                 };
@@ -14036,11 +14046,16 @@ export declare class ApiClient {
         fetch?: ClientOptions["fetch"];
         headers?: import("openapi-fetch").HeadersOptions;
         middleware?: import("openapi-fetch").Middleware[];
-    } & Omit<RequestInit, "headers" | "body"> & {
-        [key: string]: unknown;
-    }) | undefined, `${string}/${string}`>>;
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     patchApiPlayProfile(...init: Parameters<PathBasedClient<paths>["/api/play-profile"]["PATCH"]>): Promise<{
-        [x: string]: unknown;
+        player: {
+            subjectId: string;
+            username: string;
+            displayName: string;
+            role: string;
+            status: string;
+            avatarSkinId?: string | undefined;
+        };
     }>;
     postApiAuthLoginRaw(...init: Parameters<PathBasedClient<paths>["/api/auth/login"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {

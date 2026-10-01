@@ -4,7 +4,7 @@ import test from 'node:test'
 import {
   playerLoginConnectionError,
   playerLoginErrorMessage,
-} from '../src/services/player-auth-errors'
+} from '../src/features/player/auth-errors'
 
 test('401 explains the credential issue without revealing whether an account exists', () => {
   const message = playerLoginErrorMessage(401, { message: '用户名或密码错误' })

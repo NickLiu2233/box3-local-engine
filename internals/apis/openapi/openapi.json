@@ -8241,7 +8241,14 @@
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                    }
+                  }
                 }
               }
             }
@@ -8258,12 +8265,20 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [],
+                "properties": {
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "avatarSkinId": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },
@@ -10340,10 +10355,30 @@
             "type": "string"
           },
           "publicKey": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
+            "$ref": "#/components/schemas/PlayerLauncherPublicKey"
+          }
+        }
+      },
+      "PlayerLauncherPublicKey": {
+        "type": "object",
+        "required": [
+          "kty",
+          "crv",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "kty": {
+            "type": "string"
+          },
+          "crv": {
+            "type": "string"
+          },
+          "x": {
+            "type": "string"
+          },
+          "y": {
+            "type": "string"
           }
         }
       },
@@ -10485,10 +10520,7 @@
                 "type": "string"
               },
               "publicKey": {
-                "type": "object",
-                "additionalProperties": {
-                  "type": "string"
-                }
+                "$ref": "#/components/schemas/PlayerLauncherPublicKey"
               },
               "value": {
                 "type": "string"

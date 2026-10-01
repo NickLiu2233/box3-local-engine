@@ -2698,9 +2698,13 @@ export interface components {
         };
         PlayerLauncherSigningKey: {
             keyId: string;
-            publicKey: {
-                [key: string]: string;
-            };
+            publicKey: components["schemas"]["PlayerLauncherPublicKey"];
+        };
+        PlayerLauncherPublicKey: {
+            kty: string;
+            crv: string;
+            x: string;
+            y: string;
         };
         PlayerLauncherWorld: {
             id: string;
@@ -2735,9 +2739,7 @@ export interface components {
                 /** @enum {string} */
                 algorithm: "ES256";
                 keyId: string;
-                publicKey: {
-                    [key: string]: string;
-                };
+                publicKey: components["schemas"]["PlayerLauncherPublicKey"];
                 value: string;
             };
         };
@@ -7980,10 +7982,11 @@ export interface operations {
             cookie?: never;
         };
         /** @description 执行“更新玩家资料”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    displayName?: string;
+                    avatarSkinId?: string;
                 };
             };
         };
@@ -7995,7 +7998,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: components["schemas"]["PlayerLauncherSessionPlayer"];
                     };
                 };
             };
