@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { artifactName, fileDigest, releaseInfo, targetConfiguration, targets, validateManifest, verifyArtifact, verifyExecutableHeader } from './release-contract.mts'
 import { cachedInstaller, manifestMetadata } from './release-cache.mts'
 import { isMissingObject, ossConfiguration } from './oss-client.mts'
-import { builderEnvironment } from './signing-environment.mts'
+import { builderEnvironment, macSigningArguments } from './signing-environment.mts'
 
 const info = releaseInfo('player-v0.1.0', 'a'.repeat(40), '0.1.0')
 
@@ -27,7 +27,7 @@ test('player tags are independently versioned and validate semantic versions', (
 })
 
 test('OSS cache uses installer object metadata without requiring checksum or JSON objects', async () => {
-  const manifest = validateManifest({ formatVersion: 1, ...info, target: 'macos-arm64', file: artifactName(info, 'macos-arm64'), size: 10, sha256: 'b'.repeat(64) }, info, 'macos-arm64')
+  const manifest = validateManifest({ formatVersion: 1, ...info, target: 'macos-arm64', file: artifactName(info, 'macos-arm64'), size: 10, sha256: 'b'.repeat(64), macSignatureRevision: 1 }, info, 'macos-arm64')
   let exists = false
   let metadata: Record<string, string> = {}
   let size = 10
@@ -40,8 +40,9 @@ test('OSS cache uses installer object metadata without requiring checksum or JSO
   }
   assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), false)
   exists = true
-  // Existing Linux installers from the first attempt have no new object metadata.
-  assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), true)
+  // macOS files from before the signature repair must be rebuilt even if present.
+  assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), false)
+  assert.equal(await cachedInstaller({ head: async () => ({ ContentLength: 10 }) }, info, 'linux-arm64'), true)
   metadata = manifestMetadata(manifest)
   assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), true)
   size = 11
@@ -64,6 +65,8 @@ test('empty optional signing secrets do not become certificate file paths', () =
   const configured = builderEnvironment({ CSC_LINK: 'certificate.p12', CSC_KEY_PASSWORD: '' })
   assert.equal(configured.CSC_LINK, 'certificate.p12')
   assert.equal(configured.CSC_KEY_PASSWORD, '', 'a configured certificate may have an empty password')
+  assert.deepEqual(macSigningArguments(clean), ['--config.mac.identity=-', '--config.mac.hardenedRuntime=false', '--config.mac.notarize=false'])
+  assert.deepEqual(macSigningArguments(configured), [], 'configured Developer ID signing is not replaced by ad-hoc signing')
 })
 
 test('installer checksums prevent publishing corrupted downloads', async (context) => {

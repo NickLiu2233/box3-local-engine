@@ -1,13 +1,14 @@
 import { spawn } from 'node:child_process'
-import { appendFile, mkdir, open, readFile, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, mkdtemp, open, readFile, rmdir, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { artifactName, fileDigest, playerTarget, releaseInfo, targetConfiguration, targets, validateManifest, verifyArtifact, verifyExecutableHeader } from './release-contract.mts'
+import { artifactName, fileDigest, MAC_SIGNATURE_REVISION, playerTarget, releaseInfo, targetConfiguration, targets, validateManifest, verifyArtifact, verifyExecutableHeader } from './release-contract.mts'
 import type { ArtifactManifest, PlayerTarget } from './release-contract.mts'
 import { createOssClient, ossConfiguration } from './oss-client.mts'
 import { cachedInstaller, manifestFromHead, manifestMetadata } from './release-cache.mts'
-import { builderEnvironment } from './signing-environment.mts'
+import { builderEnvironment, macSigningArguments } from './signing-environment.mts'
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = path.resolve(appRoot, '../..')
@@ -42,6 +43,21 @@ async function packagedBinaryHeader(file: string): Promise<Buffer> {
   } finally { await handle.close() }
 }
 
+async function verifyMacDmg(file: string, product: string): Promise<void> {
+  await run('hdiutil', ['verify', file])
+  const mountPoint = await mkdtemp(path.join(tmpdir(), 'box-player-dmg-verify-'))
+  let mounted = false
+  try {
+    await run('hdiutil', ['attach', '-readonly', '-nobrowse', '-noautoopen', '-mountpoint', mountPoint, file])
+    mounted = true
+    await run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', path.join(mountPoint, `${product}.app`)])
+  } finally {
+    if (mounted) await run('hdiutil', ['detach', mountPoint])
+    // Only remove an empty mount directory; never recursively delete a mounted volume.
+    await rmdir(mountPoint).catch(() => undefined)
+  }
+}
+
 async function build(target: PlayerTarget): Promise<void> {
   const windows = target.startsWith('windows-')
   const mac = target.startsWith('macos-')
@@ -51,10 +67,11 @@ async function build(target: PlayerTarget): Promise<void> {
   }
   const filename = artifactName(info, target)
   const args = [require.resolve('electron-builder/cli.js'), builderFlag, `--${architecture}`, '--publish', 'never', `--config.artifactName=${filename}`]
+  const signingEnv = builderEnvironment(process.env)
+  if (mac) args.push(...macSigningArguments(signingEnv))
   if (windows) args.push(`--config.nsis.artifactName=${filename}`)
   if (process.env.PLAYER_ELECTRON_DIST) args.push(`--config.electronDist=${path.resolve(process.env.PLAYER_ELECTRON_DIST)}`)
-  await run(process.execPath, args, builderEnvironment(process.env))
-  if (mac) await run('hdiutil', ['verify', path.join(outputDirectory, filename)])
+  await run(process.execPath, args, signingEnv)
   const product = packageInfo.build.productName
   const application = mac
     ? path.join(outputDirectory, directory, `${product}.app`, 'Contents')
@@ -63,12 +80,20 @@ async function build(target: PlayerTarget): Promise<void> {
     : mac ? path.join(application, 'MacOS', product)
       : path.join(application, packageInfo.build.linux.executableName)
   verifyExecutableHeader(await packagedBinaryHeader(binary), target)
+  if (mac) {
+    await run('codesign', ['--verify', '--deep', '--strict', '--verbose=2', path.dirname(application)])
+    // Execute the packaged Mach-O without loading the player's real profile.
+    await run(binary, ['-e', "console.log('Packaged macOS runtime executable verified: ' + process.arch)"], { ...signingEnv, ELECTRON_RUN_AS_NODE: '1' })
+    await verifyMacDmg(path.join(outputDirectory, filename), product)
+  }
   const resources = path.join(application, mac ? 'Resources' : 'resources', 'app.asar')
   // The test harness was built by test:desktop before packaging. It stays out of app.asar.
   await run(process.execPath, ['--experimental-strip-types', path.join(appRoot, 'scripts/run-smoke.mts'), 'desktop'], {
     ...process.env, BOX_LAUNCHER_SMOKE_ROOT: resources,
   })
-  const manifest: ArtifactManifest = { formatVersion: 1, ...info, target, file: filename, ...(await fileDigest(path.join(outputDirectory, filename))) }
+  const manifest: ArtifactManifest = { formatVersion: 1, ...info, target, file: filename,
+    ...(mac ? { macSignatureRevision: MAC_SIGNATURE_REVISION } : {}),
+    ...(await fileDigest(path.join(outputDirectory, filename))) }
   await writeFile(path.join(outputDirectory, `${filename}.sha256`), `${manifest.sha256}  ${filename}\n`)
   await writeFile(path.join(outputDirectory, `${filename}.build.json`), `${JSON.stringify(manifest, null, 2)}\n`)
   console.log(`Verified ${target}: ${filename}, SHA256 ${manifest.sha256}`)
@@ -109,6 +134,9 @@ async function downloadAll(): Promise<void> {
       const manifestPath = path.join(directory, `${filename}.build.json`)
       const head = await oss.head(`${prefix}/${filename}`)
       if (!head) throw new Error(`Missing required OSS installer: ${filename}`)
+      if (target === 'macos-arm64' && head.Metadata?.['player-mac-signature-revision'] !== String(MAC_SIGNATURE_REVISION)) {
+        throw new Error('Cached macOS installer predates the signature fix; rebuild macOS before publishing')
+      }
       const expected = manifestFromHead(head, info, target)
       await oss.download(`${prefix}/${filename}`, path.join(directory, filename))
       const actual = await fileDigest(path.join(directory, filename))

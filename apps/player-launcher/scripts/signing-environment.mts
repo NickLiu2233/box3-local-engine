@@ -10,3 +10,9 @@ export function builderEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv
   }
   return env
 }
+
+/** Re-seal the modified ARM64 app instead of retaining Electron's stale linker signature. */
+export function macSigningArguments(env: NodeJS.ProcessEnv): string[] {
+  if (env.CSC_LINK?.trim()) return []
+  return ['--config.mac.identity=-', '--config.mac.hardenedRuntime=false', '--config.mac.notarize=false']
+}

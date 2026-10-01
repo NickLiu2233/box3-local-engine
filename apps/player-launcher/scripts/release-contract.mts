@@ -4,6 +4,7 @@ import { lstat } from 'node:fs/promises'
 
 export const targets = ['windows-amd64', 'windows-arm64', 'macos-arm64', 'linux-amd64', 'linux-arm64'] as const
 export type PlayerTarget = typeof targets[number]
+export const MAC_SIGNATURE_REVISION = 1
 export interface ReleaseInfo { tag: string; version: string; commit: string; prerelease: boolean }
 export interface ArtifactManifest {
   formatVersion: 1
@@ -14,6 +15,7 @@ export interface ArtifactManifest {
   file: string
   size: number
   sha256: string
+  macSignatureRevision?: number
 }
 
 export function releaseInfo(tag: string, commit: string, packageVersion: string): ReleaseInfo {
