@@ -11,7 +11,12 @@ export interface OssProcessOptions {
 }
 
 export class OssProcessError extends Error {
-  constructor(message: string, public stderr: string) { super(message) }
+  stderr: string
+
+  constructor(message: string, stderr: string) {
+    super(message)
+    this.stderr = stderr
+  }
 }
 
 /** Stream transfer status while retaining JSON output for HEAD calls. No AWS debug headers are logged. */
