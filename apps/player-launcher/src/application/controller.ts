@@ -37,6 +37,7 @@ export function createLauncherController({
       }
       state.player = result.data?.player || null
       if (!state.player) return
+      state.loginDraft = undefined
     }
     try {
       const { data, response, error: apiError } = await remoteApi.getMaps(server.endpoint)

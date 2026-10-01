@@ -4,14 +4,7 @@ import { bindLoginEvents } from './features/player/login-events'
 import { bindMapEvents } from './features/maps/events'
 import { bindStorageEvents, refreshStorage } from './features/storage/events'
 
-export function bindEvents({
-  state,
-  playerInvoke,
-  remoteApi,
-  selectedServer,
-  refreshPlayerSession,
-  render,
-}) {
+export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, render }) {
   bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render })
   bindStorageEvents({ state, playerInvoke, render })
   document.querySelector('#map-search')?.addEventListener('input', (event) => {
@@ -25,7 +18,11 @@ export function bindEvents({
   })
   document.querySelectorAll<HTMLElement>('[data-nav]').forEach((node) =>
     node.addEventListener('click', async () => {
-      state.page = node.dataset.nav || 'servers'
+      if (state.busy) return
+      const nextPage = node.dataset.nav || 'servers'
+      if (state.page === nextPage) return
+      state.loginDraft = undefined
+      state.page = nextPage
       state.editingServerId = ''
       state.serverNameInput = ''
       state.error = ''

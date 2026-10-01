@@ -11,6 +11,7 @@ export async function refreshStorage({ state, playerInvoke, render }: StorageOpt
     selectedServerId: state.storage?.selectedServerId || '',
     confirmServerId: '',
     confirmMapId: '',
+    confirmBrowser: false,
   }
   render()
   try {
@@ -20,8 +21,10 @@ export async function refreshStorage({ state, playerInvoke, render }: StorageOpt
         ...(await playerInvoke('cache_status', { serverId: server.id })),
       })),
     )
-    state.storage.rows = rows.filter((row) => row.maps?.length || row.httpBytes > 0)
-    if (!state.storage.rows.some((row) => row.serverId === state.storage.selectedServerId))
+    state.storage.rows = rows
+    if (
+      !state.storage.rows.some((row) => row.serverId === state.storage.selectedServerId && row.maps?.length)
+    )
       state.storage.selectedServerId = ''
   } catch (error) {
     state.storage.error = error.message || '暂时无法统计本机缓存。'
@@ -45,6 +48,7 @@ export function bindStorageEvents(options: StorageOptions): void {
       state.storage.selectedServerId = ''
       state.storage.confirmServerId = ''
       state.storage.confirmMapId = ''
+      state.storage.confirmBrowser = false
     }
     render()
   })
@@ -79,9 +83,8 @@ export function bindStorageEvents(options: StorageOptions): void {
       state.busy = true
       render()
       try {
-        await playerInvoke('clear_resource_cache', { serverId: node.dataset.confirmCache })
-        const server = state.servers.find((item) => item.id === node.dataset.confirmCache)
-        state.notice = server ? cacheClearedMessage(server.endpoint) : '本机缓存已清理。'
+        await playerInvoke('clear_server_map_cache', { serverId: node.dataset.confirmCache })
+        state.notice = cacheClearedMessage()
       } catch (error) {
         state.error = error.message || '清理缓存失败，请稍后重试。'
       } finally {
@@ -108,4 +111,22 @@ export function bindStorageEvents(options: StorageOptions): void {
       }
     }),
   )
+  document.querySelector('[data-clear-browser-cache]')?.addEventListener('click', () => {
+    if (state.storage && !state.busy) state.storage.confirmBrowser = true
+    render()
+  })
+  document.querySelector('[data-confirm-browser-cache]')?.addEventListener('click', async () => {
+    if (state.busy) return
+    state.busy = true
+    render()
+    try {
+      await playerInvoke('clear_browser_cache')
+      state.notice = '浏览器缓存已清理，地图缓存和账号已保留。'
+    } catch (error) {
+      state.error = error.message || '清理浏览器缓存失败，请稍后重试。'
+    } finally {
+      state.busy = false
+      await refreshStorage(options)
+    }
+  })
 }

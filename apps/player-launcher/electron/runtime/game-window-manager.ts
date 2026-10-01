@@ -64,7 +64,8 @@ export interface GameWindowManager {
   focusCurrent(serverId: string, mapId: string): boolean
   cacheStatus(serverId: string, endpoint: string): Promise<ServerCacheUsage>
   clearResources(serverId: string): Promise<void>
-  clearMapResources(serverId: string, endpoint: string, mapId: string): Promise<void>
+  clearMapResources(serverId: string, endpoint: string, mapId?: string): Promise<void>
+  clearBrowserResources(serverId: string): Promise<void>
 }
 
 export function makeGameUrl(
@@ -256,7 +257,12 @@ export function createGameWindowManager({
     async clearMapResources(serverId, endpoint, mapId) {
       if (activeServerId === serverId) throw new Error('请先关闭此服务器的游戏窗口，再清理地图缓存。')
       const target = sessions.fromPartition(cachePartition(serverId), { cache: true })
-      await inspectMapCaches(target, endpoint, mapId)
+      await inspectMapCaches(target, endpoint, mapId, !mapId)
+    },
+    async clearBrowserResources(serverId) {
+      if (activeServerId === serverId) throw new Error('请先关闭游戏窗口，再清理浏览器缓存。')
+      const target = sessions.fromPartition(cachePartition(serverId), { cache: true })
+      await target.clearCache()
     },
   })
 }

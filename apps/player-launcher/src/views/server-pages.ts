@@ -1,3 +1,4 @@
+import { renderLoginCard } from '../features/player/login-form'
 import { playerSkinOptions } from '../features/player/skins'
 import { SERVER_ADDRESS_HELP_TEXT } from '../features/servers/address-notice'
 import { renderWorldCard } from '../features/maps/card'
@@ -124,26 +125,7 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
     bootstrap?.loading || bootstrap?.error || !bootstrap?.supported
       ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>${escapeHtml(mapStatus[0])}</h3><p>${escapeHtml(mapStatus[1])}</p></div>`
       : needsLogin
-        ? `<div class="login-layout">
-          <section class="surface login-card" aria-labelledby="player-login-title">
-            <div class="login-card-heading">
-              <h3 id="player-login-title">登录后查看地图</h3>
-              <p>账号仅在此服务器下有效，密码不会保存在本机。</p>
-            </div>
-            ${state.authError ? `<p class="inline-error" role="alert">${escapeHtml(state.authError)}</p>` : ''}
-            <form id="player-login-form">
-              <div class="login-field">
-                <label for="player-username">玩家账号</label>
-                <input id="player-username" name="username" autocomplete="username" placeholder="输入此服务器的玩家账号" autocapitalize="none" spellcheck="false" required ${state.busy ? 'disabled' : ''}>
-              </div>
-              <div class="login-field">
-                <label for="player-password">密码</label>
-                <input id="player-password" name="password" type="password" autocomplete="current-password" placeholder="输入密码" required ${state.busy ? 'disabled' : ''}>
-              </div>
-              <button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>${state.busy ? '正在登录…' : '登录并查看地图'}${icon('arrow')}</button>
-            </form>
-          </section>
-        </div>`
+        ? renderLoginCard(state, server, { icon, escapeHtml })
         : state.mapsError
           ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>暂时无法读取地图</h3><p>${escapeHtml(state.mapsError)}</p></div>`
           : worlds.length

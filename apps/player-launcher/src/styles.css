@@ -122,6 +122,10 @@ button:disabled { cursor: default; opacity: .42; transform: none; }
 .login-card-heading p { margin-top: 6px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .login-card form { display: grid; gap: 13px; }
 .login-field { display: grid; gap: 6px; }
+.password-input-row { position: relative; }
+.password-input-row input { width: 100%; padding-right: 64px; }
+.password-visibility { position: absolute; right: 10px; top: 0; bottom: 0; border: 0; padding: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+.password-visibility:hover { color: var(--text); }
 .login-card form label { color: var(--text); font-size: 11px; font-weight: 620; }
 .login-card form input { width: 100%; height: 40px; padding: 0 11px; border: 1px solid var(--border); border-radius: 7px; outline: none; background: var(--panel-soft); color: var(--text); transition: border-color 140ms ease, box-shadow 140ms ease; }
 .login-card form input::placeholder { color: color-mix(in srgb, var(--muted) 75%, transparent); }
@@ -197,7 +201,8 @@ button:disabled { cursor: default; opacity: .42; transform: none; }
 .storage-server-trigger:hover { background: var(--panel-soft); }
 .storage-server-trigger > span { font-size: 24px; color: var(--muted); }
 .storage-back { margin-bottom: 22px; }
-.storage-browser-cache { margin-top: 20px; }
+.storage-browser-cache { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); }
+.browser-cache-size { font-size: 14px; font-weight: 500; color: var(--muted); }
 .world-cover-placeholder { display: grid; width: 100%; height: 100%; place-items: center; color: var(--muted); font-size: 52px; }
 .world-online { position: absolute; bottom: 9px; left: 9px; padding: 5px 8px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 999px; color: rgb(255 255 255 / 86%); background: rgb(38 38 38 / 76%); font-size: 11px; line-height: 1; }
 .world-copy { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; padding: 13px; }

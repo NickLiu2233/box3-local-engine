@@ -33,12 +33,12 @@ Electron 入口 `electron/main.ts` 负责 app/window 生命周期与 IPC 分发�
 
 ## 缓存统计口径
 
-每个服务器使用启动器独立的 Chromium Session。`electron/runtime/map-cache.ts` 从 Chromium CacheStorage 读取 `box-play-static:<永久地图ID>:<版本>` 缓存，按响应体实际字节数统计每张地图；空缓存不展示。页面、字体等普通 HTTP 缓存不强行分配给某张地图，继续使用 `Session.getCacheSize()` 在服务器详情中单独展示。`resource-cache.ts` 保留缓存目录文件大小统计（含索引开销）用于诊断。以上都不是下载流量或系统 Chrome 浏览器缓存。
+每个服务器使用启动器独立的 Chromium Session。`electron/runtime/map-cache.ts` 从 Chromium CacheStorage 读取 `box-play-static:<永久地图ID>:<版本>` 缓存，按响应体实际字节数统计每张地图；空缓存不展示。页面、字体等普通 HTTP 缓存不分配给某张地图，使用 `Session.getCacheSize()` 汇总到本机存储首页的独立浏览器缓存区域。`resource-cache.ts` 保留缓存目录文件大小统计（含索引开销）用于诊断。以上都不是下载流量或系统 Chrome 浏览器缓存。
 
-本机存储采用服务器列表与地图详情两级页面，进入页面、清理后、游戏关闭时自动更新，不提供“重新统计”按钮。无地图资源且无浏览器缓存的服务器隐藏，地图资源清空后自动移除对应条目。只清理一张地图时删除其 CacheStorage 版本缓存，不影响其他地图、Cookie 和普通浏览器缓存；“清理全部缓存”才会清整个服务器的缓存。
+本机存储采用服务器列表与地图详情两级页面，进入页面、清理后、游戏关闭时自动更新，不提供“重新统计”按钮；重复点击已选中入口保持当前页面。无地图资源的服务器隐藏，地图资源清空后自动移除对应条目。清理一张或整个服务器的地图缓存只删除其 CacheStorage 版本缓存，保留 Cookie 和 HTTP 缓存；浏览器缓存的独立按钮仅清理所有已添加服务器 Session 的 HTTP 缓存，不删除地图缓存。
 
 `electron/storage/map-labels.ts` 仅保存公开地图 ID 与名称，便于离线显示；API 地图列表仍统一来自 `@box/apis`，所有资源仍保存在 Chromium CacheStorage。旧缓存尚无名称记录时，读取服务器地图列表或再次启动该地图后会补上名称。
 
-清理调用 `clearStorageData` 删除 serviceworkers/cachestorage，再调用 `clearCache` 清普通 HTTP 缓存，保留 Cookie。HTTPS 和本机 HTTP（127.0.0.1、localhost、::1）进入地图资源预热流程；其他 HTTP 地址随游玩按需请求资源，不显示预下载进度。判断规则集中在 `shared/server-address.ts`，显示文案在 `src/features/storage/copy.ts`。
+底层整合清理 helper `clearResourceCache` 调用 `clearStorageData` 删除 serviceworkers/cachestorage，再调用 `clearCache` 清 HTTP 缓存并保留 Cookie；它与界面上的独立地图/浏览器清理操作不同。HTTPS 和本机 HTTP（127.0.0.1、localhost、::1）进入地图资源预热流程；其他 HTTP 地址随游玩按需请求资源，不显示预下载进度。判断规则集中在 `shared/server-address.ts`。
 
 `npm run test:cache` 在临时 profile 中用真实 loopback HTTP 页面注册 Service Worker、缓存公开测试资源，检查磁盘统计非零，并验证清理后两类缓存为零且 Cookie 保留；不读取或清理玩家的真实缓存。

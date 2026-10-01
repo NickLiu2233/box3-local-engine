@@ -60,11 +60,23 @@ app
       maps.find((map) => map.mapId === 'second-map')?.bytes !== 64
     )
       throw new Error(`Incorrect per-map cache statistics: ${JSON.stringify(maps)}`)
+    await target.clearCache()
+    const afterBrowser = await readResourceCache(target)
+    const mapsAfterBrowser = await inspectMapCaches(target, origin)
+    if (afterBrowser.httpBytes !== 0 || mapsAfterBrowser.length !== 2)
+      throw new Error('Browser cache clearing affected map caches')
     await inspectMapCaches(target, origin, 'cache-test')
     const retained = await inspectMapCaches(target, origin)
     if (retained.length !== 1 || retained[0].mapId !== 'second-map')
       throw new Error('Clearing one map affected other maps')
     await target.cookies.set({ url: origin, name: 'cache-check-account', value: 'fixture' })
+    await window.webContents.executeJavaScript(
+      "fetch('/resource', { cache: 'reload' }).then(response => response.arrayBuffer()).then(() => true)",
+    )
+    const httpBefore = await target.getCacheSize()
+    await inspectMapCaches(target, origin, undefined, true)
+    if ((await inspectMapCaches(target, origin)).length || (await target.getCacheSize()) !== httpBefore)
+      throw new Error('Server map clearing affected browser cache')
     await clearResourceCache(target)
     const remaining = await window.webContents.executeJavaScript('caches.keys()')
     const after = await readResourceCache(target)
@@ -73,7 +85,15 @@ app
     if (!(await target.cookies.get({ name: 'cache-check-account' })).length)
       throw new Error('Account cookie was removed')
     console.log(
-      JSON.stringify({ loopbackSecure: true, before, maps, retained, after, accountRetained: true }),
+      JSON.stringify({
+        loopbackSecure: true,
+        before,
+        maps,
+        afterBrowser,
+        retained,
+        after,
+        accountRetained: true,
+      }),
     )
     window.destroy()
     fixture.close()

@@ -28,20 +28,30 @@ const player = { username: 'test-player', displayName: '测试玩家', avatarSki
 const cover = `data:image/png;base64,${fs.readFileSync(path.resolve(__dirname, '../../game/public/map-templates/blank-template.png')).toString('base64')}`
 let cleared = false
 let mapCleared = false
+let authenticated = false
+let loginAttempts = 0
+let browserCleared = false
+let cacheReads = 0
 const emptyServer = { id: 'empty-server', name: '空缓存服务器', endpoint: 'http://127.0.0.1:9999' }
 
-ipcMain.handle('launcher:invoke', (_event, command, payload) => {
+ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
   if (command === 'launcher_state') return { servers: [server, emptyServer], selectedServerId: server.id }
   if (command === 'remember_maps') return
   if (command === 'game_status') return null
   if (command === 'fetch_public_image') return cover
   if (command === 'clear_resource_cache') cleared = true
   if (command === 'clear_map_cache') mapCleared = true
+  if (command === 'clear_server_map_cache') mapCleared = true
+  if (command === 'clear_browser_cache') {
+    browserCleared = true
+    return
+  }
+  if (command === 'cache_status') cacheReads += 1
   if (['cache_status', 'clear_resource_cache', 'clear_map_cache'].includes(command)) {
     const empty = cleared || payload.serverId === emptyServer.id
     return {
       staticBytes: empty || mapCleared ? 0 : 1024 * 1024,
-      httpBytes: empty ? 0 : 256,
+      httpBytes: empty || browserCleared ? 0 : 256,
       inUse: false,
       maps:
         empty || mapCleared
@@ -59,6 +69,19 @@ ipcMain.handle('launcher:invoke', (_event, command, payload) => {
   }
   if (command === 'api_request') {
     const url = new URL(payload.request.url)
+    if (url.pathname.endsWith('/auth/login')) {
+      const credentials = JSON.parse(payload.request.body)
+      if (credentials.username !== 'test-player' || credentials.password !== 'fixture<&"password')
+        throw new Error('Fixture credentials were changed')
+      loginAttempts += 1
+      await new Promise((resolve) => setTimeout(resolve, 700))
+      authenticated = loginAttempts > 1
+      return {
+        status: authenticated ? 200 : 401,
+        headers: [['content-type', 'application/json']],
+        body: JSON.stringify(authenticated ? { player } : { message: '用户名或密码错误' }),
+      }
+    }
     let data: unknown
     if (url.pathname.endsWith('/bootstrap'))
       data = {
@@ -68,7 +91,7 @@ ipcMain.handle('launcher:invoke', (_event, command, payload) => {
         loginApiUrl: `${server.endpoint}/api/auth/login`,
         signingKey: null,
       }
-    else if (url.pathname.endsWith('/session')) data = { player }
+    else if (url.pathname.endsWith('/session')) data = { player: authenticated ? player : null }
     else if (url.pathname.endsWith('/maps'))
       data = {
         worlds: [
@@ -134,6 +157,31 @@ app
       throw new Error('Launcher must stay dark even when the system uses light appearance')
     }
     await run('document.querySelector("[data-select-server]").click()')
+    await waitFor('Boolean(document.querySelector("#player-login-form"))')
+    await run(
+      `const account=document.querySelector('#player-username');const password=document.querySelector('#player-password');account.value='test-player';password.value='fixture<&"password';account.dispatchEvent(new Event('input',{bubbles:true}));password.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#player-login-form').requestSubmit()`,
+    )
+    await waitFor('document.querySelector("#player-login-form button[type=submit]")?.disabled')
+    if (
+      !(await run(
+        `document.querySelector('#player-username').value==='test-player' && document.querySelector('#player-password').value==='fixture<&"password' && document.querySelector('#player-password').type==='password'`,
+      ))
+    )
+      throw new Error('Login submission erased the typed account or password')
+    await waitFor(
+      'Boolean(document.querySelector(".login-card .inline-error")) && !document.querySelector("#player-login-form button[type=submit]").disabled',
+    )
+    if (
+      !(await run(
+        `document.querySelector('#player-username').value==='test-player' && document.querySelector('#player-password').value==='fixture<&"password'`,
+      ))
+    )
+      throw new Error('Failed login erased the credentials needed for retry')
+    await run('document.querySelector("[data-toggle-password]").click()')
+    await waitFor('document.querySelector("#player-password").type === "text"')
+    await run('document.querySelector("[data-toggle-password]").click()')
+    await waitFor('document.querySelector("#player-password").type === "password"')
+    await run('document.querySelector("#player-login-form").requestSubmit()')
     await waitFor(
       'document.querySelectorAll(".world-card").length === 2 && [...document.querySelectorAll(".world-cover, .brand-icon, .player-account-avatar")].every(image => image.naturalWidth > 0)',
     )
@@ -151,18 +199,32 @@ app
       ))
     )
       throw new Error('Empty servers or manual refresh are still displayed')
+    const reads = cacheReads
+    await run('document.querySelector("[data-nav=packages]").click()')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    if (cacheReads !== reads) throw new Error('Clicking the active storage page reloaded its data')
+    await run(
+      'document.querySelector("[data-clear-browser-cache]").click(); document.querySelector("[data-confirm-browser-cache]").click()',
+    )
+    await waitFor(
+      '!document.querySelector(".storage-browser-cache") && Boolean(document.querySelector(".storage-server-trigger"))',
+    )
     await run('document.querySelector("[data-open-storage-server]").click()')
     await waitFor(
       'document.querySelector("[data-map-cache=permanent-town]")?.textContent.includes("星梦小镇")',
     )
+    if (await run('Boolean(document.querySelector(".storage-browser-cache"))'))
+      throw new Error('Browser cache is still inside the map detail')
+    const detailReads = cacheReads
+    await run('document.querySelector("[data-nav=packages]").click()')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    if (
+      cacheReads !== detailReads ||
+      !(await run('Boolean(document.querySelector("[data-map-cache=permanent-town]"))'))
+    )
+      throw new Error('Active storage navigation changed the detail page')
     await run(
       'document.querySelector("[data-clear-map-cache]").click(); document.querySelector("[data-confirm-map-cache]").click()',
-    )
-    await waitFor(
-      '!document.querySelector("[data-map-cache=permanent-town]") && Boolean(document.querySelector(".storage-browser-cache"))',
-    )
-    await run(
-      'document.querySelector("[data-clear-cache]").click(); document.querySelector("[data-confirm-cache]").click()',
     )
     await waitFor(
       'Boolean(document.querySelector(".empty-maps")) && !document.querySelector(".storage-server-trigger")',
@@ -177,7 +239,7 @@ app
       throw new Error('Clearing resources removed account cookies')
     if (errors.length) throw new Error(errors.join('\n'))
     window.destroy()
-    console.log('Desktop smoke passed: packaged assets, covers, search focus, cache usage and clearing')
+    console.log('Desktop smoke passed: login drafts, password visibility, storage navigation, independent cache clearing and packaged assets')
     app.quit()
   })
   .catch((error) => {

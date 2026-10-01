@@ -12,6 +12,7 @@ export function bindServerEvents({
   document.querySelectorAll<HTMLElement>('[data-select-server]').forEach((node) =>
     node.addEventListener('click', async (event) => {
       if (event.target instanceof Element && event.target.closest('[data-remove-server]')) return
+      if (state.busy) return
       const serverId = node.dataset.selectServer || ''
       if (serverId === state.selectedId) {
         if (state.page === 'servers') return
@@ -40,6 +41,7 @@ export function bindServerEvents({
         return
       }
       state.selectedId = serverId
+      state.loginDraft = undefined
       state.mapSearch = ''
       state.page = 'servers'
       state.player = null

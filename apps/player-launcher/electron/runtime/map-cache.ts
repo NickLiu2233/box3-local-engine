@@ -17,6 +17,7 @@ export async function inspectMapCaches(
   target: Session,
   endpoint: string,
   removeMapId?: string,
+  removeAll = false,
 ): Promise<CachedMap[]> {
   const window = new BrowserWindow({
     show: false,
@@ -57,8 +58,8 @@ export async function inspectMapCaches(
       if (separator < 1) continue
       const mapId = suffix.slice(0, separator)
       const version = suffix.slice(separator + 1)
-      if (removeMapId) {
-        if (mapId === removeMapId)
+      if (removeMapId || removeAll) {
+        if (removeAll || mapId === removeMapId)
           await debuggerClient.sendCommand('CacheStorage.deleteCache', { cacheId: cache.cacheId })
         continue
       }

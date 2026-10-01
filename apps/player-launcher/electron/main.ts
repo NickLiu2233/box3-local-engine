@@ -30,6 +30,8 @@ const COMMANDS = new Set<string>([
   'cache_status',
   'clear_resource_cache',
   'clear_map_cache',
+  'clear_server_map_cache',
+  'clear_browser_cache',
   'remember_maps',
 ])
 
@@ -168,10 +170,21 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
     if (server && Array.isArray(payload.maps)) mapLabels.remember(server.id, payload.maps)
     return
   }
-  if (command === 'cache_status' || command === 'clear_resource_cache' || command === 'clear_map_cache') {
+  if (command === 'clear_browser_cache') {
+    if (gameWindowManager.currentGame()) throw new Error('请先关闭游戏窗口，再清理浏览器缓存。')
+    await Promise.all(
+      store.load().servers.map((server) => gameWindowManager.clearBrowserResources(server.id)),
+    )
+    return
+  }
+  if (
+    ['cache_status', 'clear_resource_cache', 'clear_map_cache', 'clear_server_map_cache'].includes(command)
+  ) {
     const server = store.load().servers.find((item) => item.id === payload.serverId)
     if (!server) throw new Error('这个服务器已不在列表中')
     if (command === 'clear_resource_cache') await gameWindowManager.clearResources(server.id)
+    if (command === 'clear_server_map_cache')
+      await gameWindowManager.clearMapResources(server.id, server.endpoint)
     if (command === 'clear_map_cache')
       await gameWindowManager.clearMapResources(
         server.id,

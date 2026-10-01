@@ -113,6 +113,7 @@ export function bindPlayerAccountEvents({
         /* Always clear the UI session. */
       }
       state.player = null
+      state.loginDraft = undefined
       state.worlds = []
       state.playerMenuOpen = false
       state.playerSettingsOpen = false

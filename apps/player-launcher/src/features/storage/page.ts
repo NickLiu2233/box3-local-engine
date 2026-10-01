@@ -17,7 +17,18 @@ export function renderStoragePage(
   escapeHtml: (value: unknown) => string,
 ): string {
   const storage = state.storage
-  const rows = (storage?.rows || []).filter((row) => row.maps?.length || row.httpBytes > 0)
+  const rows = (storage?.rows || []).filter((row) => row.maps?.length)
+  const browserBytes = (storage?.rows || []).reduce((sum, row) => sum + row.httpBytes, 0)
+  const browserBusy = (storage?.rows || []).some((row) => row.inUse)
+  const browserCache =
+    browserBytes > 0
+      ? `<section class="storage-browser-cache" aria-labelledby="browser-cache-title">
+    <div class="section-heading"><h2 id="browser-cache-title">浏览器缓存</h2><strong class="browser-cache-size">${formatBytes(browserBytes)}</strong></div>
+    <p class="field-help">页面、字体等普通浏览器缓存统一管理。清理这里不会影响地图缓存和账号。</p>
+    ${storage?.confirmBrowser ? `<div class="storage-confirm"><span>清理浏览器缓存？</span><button class="button" data-cancel-cache>取消</button><button class="button danger" data-confirm-browser-cache ${state.busy ? 'disabled' : ''}>确认清理</button></div>` : `<button class="button secondary" data-clear-browser-cache ${browserBusy || state.busy ? 'disabled' : ''}>清理浏览器缓存</button>`}
+    ${browserBusy ? '<p class="field-help">关闭游戏窗口后即可清理。</p>' : ''}
+  </section>`
+      : ''
   const selected = rows.find((row) => row.serverId === storage?.selectedServerId)
   const server = state.servers.find((item) => item.id === selected?.serverId)
   const feedback = storage?.error
@@ -26,8 +37,9 @@ export function renderStoragePage(
   const loading = storage?.loading ? '<p role="status">正在读取本机缓存…</p>' : ''
   if (!selected || !server)
     return `<section class="page">
-    <div class="page-heading"><h1>本机存储</h1><p>选择一个服务器，查看或清理各地图的本机缓存。这里只显示有缓存的服务器。</p></div>
+    <div class="page-heading"><h1>本机存储</h1><p>地图缓存按服务器管理，浏览器缓存单独管理。这里只显示有地图缓存的服务器。</p></div>
     ${feedback}${loading}
+    <div class="section-heading"><h2>地图缓存</h2></div>
     <div class="storage-list">${
       rows
         .map((usage) => {
@@ -36,15 +48,16 @@ export function renderStoragePage(
           const bytes = usage.maps.reduce((sum, map) => sum + map.bytes, 0)
           return `<button class="surface storage-row storage-server-trigger" data-open-storage-server="${escapeHtml(item.id)}">
         <div><h3>${escapeHtml(item.name || item.endpoint)}</h3><p>${escapeHtml(item.endpoint)}</p>
-        <small>${usage.maps.length} 张缓存地图 · 地图资源 ${formatBytes(bytes)}${usage.httpBytes ? ` · 浏览器缓存 ${formatBytes(usage.httpBytes)}` : ''}</small></div>
+        <small>${usage.maps.length} 张缓存地图 · 地图资源 ${formatBytes(bytes)}</small></div>
         <span aria-hidden="true">›</span>
       </button>`
         })
         .join('') ||
       (!storage?.loading
-        ? '<div class="empty-maps surface"><h3>暂无本机缓存</h3><p>游玩地图后，有缓存的服务器会显示在这里。</p></div>'
+        ? '<div class="empty-maps surface"><h3>暂无地图缓存</h3><p>游玩地图后，有缓存的服务器会显示在这里。</p></div>'
         : '')
     }</div>
+    ${browserCache}
   </section>`
   const confirmingAll = storage?.confirmServerId === server.id
   return `<section class="page">
@@ -52,7 +65,7 @@ export function renderStoragePage(
     <div class="page-heading"><h1>${escapeHtml(server.name || server.endpoint)}</h1><p>${escapeHtml(server.endpoint)}</p></div>
     ${feedback}${loading}
     <div class="section-heading"><h2>已缓存的地图</h2>
-      ${confirmingAll ? `<div class="storage-confirm"><span>清理此服务器的全部缓存？</span><button class="button" data-cancel-cache>取消</button><button class="button danger" data-confirm-cache="${escapeHtml(server.id)}" ${state.busy ? 'disabled' : ''}>确认清理</button></div>` : `<button class="button secondary" data-clear-cache="${escapeHtml(server.id)}" ${selected.inUse || state.busy ? 'disabled' : ''}>清理全部缓存</button>`}
+      ${confirmingAll ? `<div class="storage-confirm"><span>清理此服务器的全部地图缓存？</span><button class="button" data-cancel-cache>取消</button><button class="button danger" data-confirm-cache="${escapeHtml(server.id)}" ${state.busy ? 'disabled' : ''}>确认清理</button></div>` : `<button class="button secondary" data-clear-cache="${escapeHtml(server.id)}" ${selected.inUse || state.busy ? 'disabled' : ''}>清理全部地图缓存</button>`}
     </div>
     ${selected.inUse ? '<p class="field-help">游戏正在运行，关闭游戏窗口后即可清理缓存。</p>' : ''}
     <div class="storage-list">${selected.maps
@@ -63,6 +76,5 @@ export function renderStoragePage(
     </article>`,
       )
       .join('')}</div>
-    ${selected.httpBytes > 0 ? `<div class="surface storage-row storage-browser-cache"><div><h3>浏览器缓存 · ${formatBytes(selected.httpBytes)}</h3><p>页面、字体等共享内容不按地图拆分，可通过“清理全部缓存”移除。</p></div></div>` : ''}
   </section>`
 }
