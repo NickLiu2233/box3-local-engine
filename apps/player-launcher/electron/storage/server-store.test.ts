@@ -32,5 +32,8 @@ test('persists server selection, nickname and removal atomically', async (contex
     servers: [{ ...first, name: '本地测试' }],
     selectedServerId: first.id,
   })
-  assert.equal(fs.statSync(path.join(directory, 'data', 'servers.json')).mode & 0o777, 0o600)
+  // Windows reports synthesized POSIX mode bits; its file access is controlled by ACLs.
+  if (process.platform !== 'win32') {
+    assert.equal(fs.statSync(path.join(directory, 'data', 'servers.json')).mode & 0o777, 0o600)
+  }
 })

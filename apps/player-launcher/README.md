@@ -61,4 +61,4 @@ npm run package:player-launcher:linux-arm64
 ## 独立发布
 
 推送 `player-v<版本>` 标签时，独立流水线生成 Windows AMD64、Windows ARM64、macOS ARM64、Linux AMD64 和 Linux ARM64 安装包；Linux 采用 AppImage。先检查 OSS 中同版本产物，缺失的再构建，并上传到 OSS 与 GitHub Release。
-版本取本目录 `package.json`，不与引擎版本同步。普通 PR/main 只执行 Electron 检查。配置与操作见 [发布说明](./docs/release.md)。
+版本取本目录 `package.json`，不与引擎版本同步。OSS 只保存安装包，校验文件在本地生成并附到 GitHub Release。配置与操作见 [发布说明](./docs/release.md)。

@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url'
 import { artifactName, fileDigest, playerTarget, releaseInfo, targetConfiguration, targets, validateManifest, verifyArtifact, verifyExecutableHeader } from './release-contract.mts'
 import type { ArtifactManifest, PlayerTarget } from './release-contract.mts'
 import { createOssClient, ossConfiguration } from './oss-client.mts'
-import { cachedInstaller } from './release-cache.mts'
+import { cachedInstaller, manifestFromHead, manifestMetadata } from './release-cache.mts'
+import { builderEnvironment } from './signing-environment.mts'
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = path.resolve(appRoot, '../..')
@@ -52,7 +53,7 @@ async function build(target: PlayerTarget): Promise<void> {
   const args = [require.resolve('electron-builder/cli.js'), builderFlag, `--${architecture}`, '--publish', 'never', `--config.artifactName=${filename}`]
   if (windows) args.push(`--config.nsis.artifactName=${filename}`)
   if (process.env.PLAYER_ELECTRON_DIST) args.push(`--config.electronDist=${path.resolve(process.env.PLAYER_ELECTRON_DIST)}`)
-  await run(process.execPath, args)
+  await run(process.execPath, args, builderEnvironment(process.env))
   if (mac) await run('hdiutil', ['verify', path.join(outputDirectory, filename)])
   const product = packageInfo.build.productName
   const application = mac
@@ -83,7 +84,7 @@ async function probe(target: PlayerTarget): Promise<void> {
     const filename = artifactName(info, target)
     const hit = await cachedInstaller(oss, info, target)
     await output({ 'cache-hit': String(hit) })
-    console.log(hit ? `Reusing OSS installer: ${filename}` : `Installer or completion metadata missing; build required: ${filename}`)
+    console.log(hit ? `Reusing OSS installer: ${filename}` : `Installer missing; build required: ${filename}`)
   })
 }
 
@@ -93,10 +94,7 @@ async function upload(target: PlayerTarget): Promise<void> {
   const manifest = validateManifest(JSON.parse(await readFile(manifestPath, 'utf8')), info, target)
   await verifyArtifact(path.join(outputDirectory, filename), manifest)
   await withOss(async (oss) => {
-    await oss.upload(`${prefix}/${filename}`, path.join(outputDirectory, filename))
-    await oss.upload(`${prefix}/${filename}.sha256`, path.join(outputDirectory, `${filename}.sha256`), 'text/plain')
-    // Publish completion metadata last so a partial upload is never a cache hit.
-    await oss.upload(`${prefix}/${filename}.build.json`, manifestPath, 'application/json')
+    await oss.upload(`${prefix}/${filename}`, path.join(outputDirectory, filename), 'application/octet-stream', manifestMetadata(manifest))
   })
   console.log(`Uploaded verified player installer: ${filename}`)
 }
@@ -109,19 +107,22 @@ async function downloadAll(): Promise<void> {
     for (const target of targets) {
       const filename = artifactName(info, target)
       const manifestPath = path.join(directory, `${filename}.build.json`)
-      await oss.download(`${prefix}/${filename}.build.json`, manifestPath)
-      const manifest = validateManifest(JSON.parse(await readFile(manifestPath, 'utf8')), info, target)
+      const head = await oss.head(`${prefix}/${filename}`)
+      if (!head) throw new Error(`Missing required OSS installer: ${filename}`)
+      const expected = manifestFromHead(head, info, target)
       await oss.download(`${prefix}/${filename}`, path.join(directory, filename))
-      await verifyArtifact(path.join(directory, filename), manifest)
+      const actual = await fileDigest(path.join(directory, filename))
+      const manifest: ArtifactManifest = expected || { formatVersion: 1, ...info, target, file: filename, ...actual }
+      if (expected) await verifyArtifact(path.join(directory, filename), expected)
+      else if (head.ContentLength !== actual.size) throw new Error(`Incomplete OSS installer download: ${filename}`)
+      await writeFile(manifestPath, `${JSON.stringify({ ...manifest, commit: expected?.commit ?? null, source: expected ? 'oss-object-metadata' : 'legacy-oss-object' }, null, 2)}\n`)
       await writeFile(path.join(directory, `${filename}.sha256`), `${manifest.sha256}  ${filename}\n`)
       manifests.push(manifest)
     }
     const sums = path.join(directory, 'SHA256SUMS.txt')
     await writeFile(sums, manifests.map((item) => `${item.sha256}  ${item.file}\n`).join(''))
     const notes = path.join(directory, 'release-notes.md')
-    await writeFile(notes, `BOX3 玩家启动器 ${info.version}\n\n支持服务器登录、地图浏览、收藏和最近游玩，以及本机地图资源缓存管理。\n\n| 系统 | 安装包 |\n| --- | --- |\n${manifests.map(item => `| ${item.target} | \`${item.file}\` |`).join('\n')}\n\n校验文件：\`SHA256SUMS.txt\`\n\n构建提交：\`${info.commit}\`\n`)
-    await oss.upload(`${prefix}/SHA256SUMS.txt`, sums, 'text/plain')
-    await oss.upload(`${prefix}/release-notes.md`, notes, 'text/markdown')
+    await writeFile(notes, `BOX3 玩家启动器 ${info.version}\n\n支持服务器登录、地图浏览、收藏和最近游玩，以及本机地图资源缓存管理。\n\n| 系统 | 安装包 |\n| --- | --- |\n${manifests.map(item => `| ${item.target} | \`${item.file}\` |`).join('\n')}\n\n校验文件：\`SHA256SUMS.txt\`\n\n发布提交：\`${info.commit}\`\n`)
   })
   console.log(`Collected and verified all player installers in ${directory}`)
 }

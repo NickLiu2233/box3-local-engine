@@ -6,6 +6,7 @@ import * as path from 'node:path'
 
 const execute = promisify(execFile)
 export interface OssConfig { bucket: string; endpoint: string; accessKeyId: string; accessKeySecret: string }
+export interface OssObjectHead { ContentLength: number; Metadata?: Record<string, string> }
 
 export function ossConfiguration(env: NodeJS.ProcessEnv): OssConfig {
   for (const name of ['OSS_BUCKET', 'OSS_ENDPOINT', 'OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET']) {
@@ -53,13 +54,13 @@ export async function createOssClient(config: OssConfig) {
   }
   return {
     directory,
-    async head(key: string): Promise<{ ContentLength: number } | null> {
+    async head(key: string): Promise<OssObjectHead | null> {
       const result = await call('head-object', key, [], true)
       return result === null ? null : JSON.parse(result)
     },
     async download(key: string, file: string): Promise<void> { await call('get-object', key, [file]) },
-    async upload(key: string, file: string, contentType = 'application/octet-stream'): Promise<void> {
-      await call('put-object', key, ['--body', file, '--content-type', contentType])
+    async upload(key: string, file: string, contentType = 'application/octet-stream', metadata: Record<string, string> = {}): Promise<void> {
+      await call('put-object', key, ['--body', file, '--content-type', contentType, '--metadata', JSON.stringify(metadata)])
     },
     async close(): Promise<void> { await rm(directory, { recursive: true, force: true }) },
   }

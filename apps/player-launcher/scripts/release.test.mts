@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { artifactName, fileDigest, releaseInfo, targetConfiguration, targets, validateManifest, verifyArtifact, verifyExecutableHeader } from './release-contract.mts'
-import { cachedInstaller } from './release-cache.mts'
+import { cachedInstaller, manifestMetadata } from './release-cache.mts'
 import { isMissingObject, ossConfiguration } from './oss-client.mts'
+import { builderEnvironment } from './signing-environment.mts'
 
 const info = releaseInfo('player-v0.1.0', 'a'.repeat(40), '0.1.0')
 
@@ -25,31 +26,44 @@ test('player tags are independently versioned and validate semantic versions', (
   ])
 })
 
-test('OSS cache reuses complete installers but rejects moved tags and mismatched sizes', async (context) => {
-  const directory = await mkdtemp(path.join(tmpdir(), 'player-release-test-'))
-  context.after(() => rm(directory, { recursive: true, force: true }))
-  const manifest = { formatVersion: 1, ...info, target: 'macos-arm64', file: artifactName(info, 'macos-arm64'), size: 10, sha256: 'b'.repeat(64) }
+test('OSS cache uses installer object metadata without requiring checksum or JSON objects', async () => {
+  const manifest = validateManifest({ formatVersion: 1, ...info, target: 'macos-arm64', file: artifactName(info, 'macos-arm64'), size: 10, sha256: 'b'.repeat(64) }, info, 'macos-arm64')
   let exists = false
-  let metadataExists = false
+  let metadata: Record<string, string> = {}
   let size = 10
+  const keys: string[] = []
   const oss = {
-    directory,
-    head: async (key: string) => key.endsWith('.build.json')
-      ? (metadataExists ? { ContentLength: 100 } : null)
-      : (exists ? { ContentLength: size } : null),
-    download: async (_key: string, file: string) => { await writeFile(file, JSON.stringify(manifest)) },
+    head: async (key: string) => {
+      keys.push(key)
+      return exists ? { ContentLength: size, Metadata: metadata } : null
+    },
   }
   assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), false)
   exists = true
-  assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), false)
-  metadataExists = true
+  // Existing Linux installers from the first attempt have no new object metadata.
+  assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), true)
+  metadata = manifestMetadata(manifest)
   assert.equal(await cachedInstaller(oss, info, 'macos-arm64'), true)
   size = 11
   await assert.rejects(cachedInstaller(oss, info, 'macos-arm64'), /size differs/)
   size = 10
-  manifest.commit = 'c'.repeat(40)
+  metadata['player-commit'] = 'c'.repeat(40)
   await assert.rejects(cachedInstaller(oss, info, 'macos-arm64'), /do not move/)
   await assert.rejects(cachedInstaller({ ...oss, head: async () => { throw new Error('AccessDenied') } }, info, 'macos-arm64'), /AccessDenied/)
+  assert.ok(keys.every((key) => key.endsWith('.dmg')), 'cache probes only the installer, not JSON/sha256 sidecars')
+})
+
+test('empty optional signing secrets do not become certificate file paths', () => {
+  const source = { CSC_LINK: '', CSC_KEY_PASSWORD: '', APPLE_ID: '', APPLE_APP_SPECIFIC_PASSWORD: '', APPLE_TEAM_ID: '' }
+  const clean = builderEnvironment(source)
+  assert.equal(clean.CSC_LINK, undefined)
+  assert.equal(clean.CSC_KEY_PASSWORD, undefined)
+  assert.equal(clean.APPLE_ID, undefined)
+  assert.equal(clean.CSC_IDENTITY_AUTO_DISCOVERY, 'false')
+  assert.equal(source.CSC_LINK, '', 'does not modify the parent process environment')
+  const configured = builderEnvironment({ CSC_LINK: 'certificate.p12', CSC_KEY_PASSWORD: '' })
+  assert.equal(configured.CSC_LINK, 'certificate.p12')
+  assert.equal(configured.CSC_KEY_PASSWORD, '', 'a configured certificate may have an empty password')
 })
 
 test('installer checksums prevent publishing corrupted downloads', async (context) => {
@@ -104,7 +118,10 @@ test('only missing OSS objects are cache misses; authentication/network failures
 test('player release workflow is tag-only, checks OSS before installing and leaves engine Latest untouched', async () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
   const release = await readFile(path.join(root, '.github/workflows/player-launcher-release.yml'), 'utf8')
-  const ci = await readFile(path.join(root, '.github/workflows/player-launcher.yml'), 'utf8')
+  const ci = await readFile(path.join(root, '.github/workflows/player-launcher.yml'), 'utf8').catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return '' // The ordinary CI workflow is optional.
+    throw error
+  })
   assert.match(release, /tags:\s*\n\s*- 'player-v\*'/)
   assert.doesNotMatch(release, /workflow_dispatch|branches:|package-images|package-desktop|docker/)
   assert.ok(release.indexOf('release.mts probe') < release.indexOf('install --to @box/player-launcher'))

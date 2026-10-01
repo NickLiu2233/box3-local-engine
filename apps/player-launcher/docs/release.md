@@ -5,7 +5,7 @@
 安装包发布只由推送 `player-v<版本号>` 标签触发，例如 `player-v0.1.0`、`player-v0.2.0-beta.1`。
 标签版本必须与 `apps/player-launcher/package.json` 的 `version` 一致。它不依赖根目录或引擎版本，`sync-root-version.js` 不会修改玩家启动器版本。
 
-普通 main/PR 运行 `.github/workflows/player-launcher.yml` 的 Electron 检查，不生成发行安装包。
+发行安装包只通过玩家标签流水线生成，与 main/PR 检查隔离。
 `.github/workflows/player-launcher-release.yml` 独立生成以下五个安装包：
 
 | 目标 | 原生 runner | 文件 |
@@ -35,12 +35,12 @@ Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安
 发布顺序：
 
 1. 检查玩家标签、版本和 OSS 配置。
-2. 每个平台在安装 Rush/Electron 依赖前检查 OSS 中的安装包与 `.build.json`。
-3. 文件完整、大小相符且元数据中的版本/目标/提交一致，则跳过依赖安装和构建。
-4. 缺失或未完成上传的产物才重新构建；鉴权失败、网络失败或标签被移动时直接报错。
+2. 每个平台在安装 Rush/Electron 依赖前检查 OSS 中的安装包。
+3. 安装包已存在则复用；新上传对象自带版本/目标/提交/大小/SHA256 元数据，检查这些值一致后跳过依赖安装和构建。兼容前一次流程已上传、尚无对象元数据的安装包，不要求额外 JSON 或 SHA256 文件存在。
+4. 缺失的安装包才重新构建；鉴权失败、网络失败或新对象的标签/提交不一致时直接报错。
 5. 构建执行类型检查、回归测试、桌面与真实缓存测试；打包后检查应用二进制架构，并验证 app.asar 内的界面和资源。
-6. 上传安装包、SHA256 文件，最后上传 `.build.json` 作为完成标记。
-7. 汇总 job 从 OSS 下载五个目标的安装包，重新核对大小和 SHA256，上传总校验文件及说明到 OSS，然后创建/更新当前玩家标签的 GitHub Release。
+6. OSS 只上传安装包，并在同一次上传中设置对象元数据；不上传独立 `.sha256`、`.json`、总校验文件或发布说明。
+7. 汇总 job 从 OSS 下载五个目标的安装包，核对对象元数据中的大小和 SHA256，在本地生成校验文件及构建记录，然后创建/更新当前玩家标签的 GitHub Release。旧对象没有元数据时按实际下载内容生成 SHA256，并将记录中的来源提交标为未知。
 
 GitHub Release 包含安装包、单文件 `.sha256`、`.build.json` 和 `SHA256SUMS.txt`。GitHub Actions artifact 服务不参与产物传递。
 
@@ -58,6 +58,8 @@ GitHub Release 包含安装包、单文件 `.sha256`、`.build.json` 和 `SHA256
 | `PLAYER_APPLE_ID` / `PLAYER_APPLE_APP_SPECIFIC_PASSWORD` / `PLAYER_APPLE_TEAM_ID` | macOS 公证凭据 |
 
 这些可选值只传给构建步骤，不影响 OSS 缓存和普通 PR 检查。流水线不会自动申请证书。
+
+发布脚本会清除未配置的空证书变量：electron-builder 将空 `CSC_LINK` 解释为当前目录而不是“未签名”，因此不能直接把空 Secrets 传给子进程。有效证书及其密码会保留；不提供证书时关闭自动证书发现。
 
 ## 发布操作
 
@@ -83,6 +85,7 @@ git push origin player-v0.1.1
 - `scripts/release-cache.mts`：判断 OSS 是否有可复用的完整产物。
 - `scripts/oss-client.mts`：跨平台 OSS 传输、错误分类与凭据隔离。
 - `scripts/release.mts`：validate/probe/build/upload/download 命令编排。
+- `scripts/signing-environment.mts`：可选签名环境变量的归一化。
 
 脚本使用 Node 22 的 `--experimental-strip-types` 执行 TypeScript，因此 OSS 预检查不需要先安装项目依赖。测试随 `npm run check` 执行。
 
