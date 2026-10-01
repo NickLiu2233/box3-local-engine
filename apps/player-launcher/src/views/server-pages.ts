@@ -121,6 +121,9 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
   const loginRequired = bootstrap?.supported && bootstrap.loginRequired
   const needsLogin = loginRequired && !state.player
   const worlds = filterWorlds(state.worlds, state.mapSearch)
+  const recentWorld = !needsLogin && !state.mapsError && state.recentWorld?.serverId === server.id
+    ? state.recentWorld
+    : undefined
   const mapContent =
     bootstrap?.loading || bootstrap?.error || !bootstrap?.supported
       ? `<div class="empty-maps surface"><div class="empty-map-icon">${icon('packages')}</div><h3>${escapeHtml(mapStatus[0])}</h3><p>${escapeHtml(mapStatus[1])}</p></div>`
@@ -159,6 +162,7 @@ export function renderServerPage(state, server, { icon, escapeHtml }) {
         </div>
       </div>
       ${needsLogin ? '' : `<div class="section-heading"><h2>可游玩的地图</h2><div class="map-tools">${state.worlds.length ? `<input id="map-search" type="search" placeholder="搜索地图或作者" aria-label="搜索地图或作者" value="${escapeHtml(state.mapSearch || '')}" />` : ''}<button class="button secondary" data-action="discover" ${state.busy ? 'disabled' : ''}>重新检查</button></div></div>`}
+      ${recentWorld ? `<section class="recent-world"><div class="recent-world-copy"><small>上次游玩</small><strong>${escapeHtml(recentWorld.name)}</strong><span>${escapeHtml(recentWorld.version)}</span></div><button class="button primary" data-action="prepare-map" data-map-id="${escapeHtml(recentWorld.mapId)}" ${state.busy ? 'disabled' : ''}>${state.activeGame?.serverId === server.id && state.activeGame?.mapId === (state.worlds.find((world) => world.id === recentWorld.mapId)?.publicId || recentWorld.mapId) ? '返回游戏' : '继续游玩'}${icon('arrow')}</button></section>` : ''}
       ${mapContent}
       ${renderPlayerSettings(state, { icon, escapeHtml })}
     </section>`

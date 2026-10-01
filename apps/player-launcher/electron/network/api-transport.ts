@@ -1,4 +1,5 @@
 import type { ApiRequest, ApiResponse, ApiTransport } from '../types'
+import type { ApiRequestTiming } from './request-diagnostics'
 import { normalizeServerAddress } from '../../shared/server-address'
 import { isAllowedPlayerApi, playerBootstrapPath, playerLoginPath } from '../../shared/api-policy'
 
@@ -102,8 +103,15 @@ function rememberAuthPortal(endpoint: string, body: string, origins: Map<string,
 
 export function createApiTransport({
   fetchImpl = globalThis.fetch,
-  timeoutMs = 8_000,
-}: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}): ApiTransport {
+  timeoutMs = 15_000,
+  loginTimeoutMs = 30_000,
+  onTiming,
+}: {
+  fetchImpl?: typeof fetch
+  timeoutMs?: number
+  loginTimeoutMs?: number
+  onTiming?: (record: ApiRequestTiming) => void
+} = {}): ApiTransport {
   const playerCookies = new Map<string, string>()
   const authOrigins = new Map<string, string>()
 
@@ -118,71 +126,114 @@ export function createApiTransport({
       const endpointUrl = normalizeEndpoint(rawEndpoint)
       const endpoint = endpointUrl.toString().replace(/\/$/, '')
       const method = String(rawMethod || '').toUpperCase()
-      const targetUrl = validateRequestUrl(endpointUrl, requestUrl, authOrigins.get(endpoint), method)
-      if (!ALLOWED_METHODS.has(method)) throw new Error('不支持的 API 请求方法')
-      const requestHeaders = new Headers()
-      for (const [name, value] of headers) {
-        if (!BLOCKED_REQUEST_HEADERS.has(String(name).toLowerCase())) requestHeaders.set(name, value)
-      }
-      const existingCookies = playerCookies.get(endpoint) || ''
-      if (existingCookies) requestHeaders.set('cookie', existingCookies)
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), timeoutMs)
-      let response: Response
+      const startedAt = Date.now()
+      let budget = timeoutMs
+      let targetUrl: URL | undefined
+      let status: number | undefined
+      let contentType: string | undefined
+      let outcome: ApiRequestTiming['outcome'] = 'blocked'
+      let controller: AbortController | undefined
+      let timer: ReturnType<typeof setTimeout> | undefined
       try {
-        response = await fetchImpl(targetUrl, {
+        targetUrl = validateRequestUrl(endpointUrl, requestUrl, authOrigins.get(endpoint), method)
+        if (!ALLOWED_METHODS.has(method)) throw new Error('不支持的 API 请求方法')
+        if (method === 'POST' && targetUrl.pathname === playerLoginPath) budget = loginTimeoutMs
+        const requestHeaders = new Headers()
+        for (const [name, value] of headers) {
+          if (!BLOCKED_REQUEST_HEADERS.has(String(name).toLowerCase())) requestHeaders.set(name, value)
+        }
+        const existingCookies = playerCookies.get(endpoint) || ''
+        if (existingCookies) requestHeaders.set('cookie', existingCookies)
+        controller = new AbortController()
+        timer = setTimeout(() => controller.abort(), budget)
+        outcome = 'connection-error'
+        const response = await fetchImpl(targetUrl, {
           method,
           headers: requestHeaders,
           body: ['GET', 'HEAD'].includes(method) ? undefined : body,
           redirect: 'manual',
           signal: controller.signal,
         })
+        status = response.status
+        contentType = response.headers.get('content-type')?.slice(0, 80)
+        outcome = 'response-error'
+        if (Number(response.headers.get('content-length')) > MAX_API_RESPONSE_BYTES) {
+          await response.body?.cancel()
+          throw new Error('服务器 API 响应超过启动器安全上限')
+        }
+        const chunks: Uint8Array[] = []
+        let responseBytes = 0
+        if (response.body) {
+          const reader = response.body.getReader()
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            responseBytes += value.byteLength
+            if (responseBytes > MAX_API_RESPONSE_BYTES) {
+              await reader.cancel()
+              throw new Error('服务器 API 响应超过启动器安全上限')
+            }
+            chunks.push(value)
+          }
+        }
+        const bytes = new Uint8Array(responseBytes)
+        let offset = 0
+        for (const chunk of chunks) {
+          bytes.set(chunk, offset)
+          offset += chunk.byteLength
+        }
+        let text: string
+        try {
+          text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+        } catch {
+          throw new Error('服务器 API 响应不是有效文本')
+        }
+        const setCookieHeaders = response.headers.getSetCookie?.() || []
+        if (setCookieHeaders.length) {
+          const merged = mergeCookies(existingCookies, setCookieHeaders)
+          if (merged) playerCookies.set(endpoint, merged)
+          else playerCookies.delete(endpoint)
+        }
+        if (targetUrl.pathname.endsWith(playerBootstrapPath)) rememberAuthPortal(endpoint, text, authOrigins)
+        const responseHeaders = [...response.headers.entries()].filter(([name]) => name !== 'set-cookie')
+        outcome = response.ok ? 'ok' : 'http-error'
+        return { status: response.status, headers: responseHeaders, body: text }
       } catch (error) {
-        if (error.name === 'AbortError') throw new Error('API 请求超时，请稍后重试')
+        if (controller?.signal.aborted || error.name === 'AbortError') {
+          outcome = 'timeout'
+          throw new Error('API 请求超时，请稍后重试')
+        }
+        if (
+          outcome === 'blocked' ||
+          (outcome === 'response-error' && String(error.message).startsWith('服务器 API'))
+        )
+          throw error
+        outcome = 'connection-error'
+        const code = error.cause?.code || error.code
+        if (code === 'ECONNREFUSED') throw new Error('服务器服务未启动或连接端口不可用')
+        if (code === 'ENOTFOUND' || code === 'EAI_AGAIN')
+          throw new Error('无法解析服务器地址，请检查地址后重试')
+        if (code === 'ECONNRESET' || code === 'UND_ERR_SOCKET')
+          throw new Error('服务器连接被中断，请重新尝试')
         throw new Error('无法连接到游玩端服务器，请检查地址和网络')
       } finally {
         clearTimeout(timer)
-      }
-      if (Number(response.headers.get('content-length')) > MAX_API_RESPONSE_BYTES) {
-        await response.body?.cancel()
-        throw new Error('服务器 API 响应超过启动器安全上限')
-      }
-      const chunks: Uint8Array[] = []
-      let responseBytes = 0
-      if (response.body) {
-        const reader = response.body.getReader()
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          responseBytes += value.byteLength
-          if (responseBytes > MAX_API_RESPONSE_BYTES) {
-            await reader.cancel()
-            throw new Error('服务器 API 响应超过启动器安全上限')
-          }
-          chunks.push(value)
+        try {
+          onTiming?.({
+            at: new Date(startedAt).toISOString(),
+            origin: targetUrl?.origin || endpointUrl.origin,
+            path: targetUrl?.pathname || '(blocked)',
+            method: ALLOWED_METHODS.has(method) ? method : 'INVALID',
+            elapsedMs: Date.now() - startedAt,
+            timeoutMs: budget,
+            status,
+            contentType,
+            outcome,
+          })
+        } catch {
+          /* Diagnostic recording cannot fail a player request. */
         }
       }
-      const bytes = new Uint8Array(responseBytes)
-      let offset = 0
-      for (const chunk of chunks) {
-        bytes.set(chunk, offset)
-        offset += chunk.byteLength
-      }
-      let text: string
-      try {
-        text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
-      } catch {
-        throw new Error('服务器 API 响应不是有效文本')
-      }
-      const setCookieHeaders = response.headers.getSetCookie?.() || []
-      if (setCookieHeaders.length) {
-        const merged = mergeCookies(existingCookies, setCookieHeaders)
-        if (merged) playerCookies.set(endpoint, merged)
-        else playerCookies.delete(endpoint)
-      }
-      if (targetUrl.pathname.endsWith(playerBootstrapPath)) rememberAuthPortal(endpoint, text, authOrigins)
-      const responseHeaders = [...response.headers.entries()].filter(([name]) => name !== 'set-cookie')
-      return { status: response.status, headers: responseHeaders, body: text }
     },
     clear(endpoint) {
       const normalized = normalizeEndpoint(endpoint).toString().replace(/\/$/, '')

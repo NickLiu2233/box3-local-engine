@@ -28,7 +28,7 @@ document.addEventListener('click', (event) => {
 })
 
 const remoteApi = createPlayerApi({ invoke, isNative: isDesktopLauncher })
-const { playerInvoke, refreshPlayerSession } = createLauncherController({
+const { playerInvoke, refreshPlayerSession, refreshRecentMap } = createLauncherController({
   state,
   remoteApi,
   invoke,
@@ -97,7 +97,7 @@ function render(): void {
     </main>` +
     serverAddressNoticeDialog() +
     removeServerDialog()
-  bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, render })
+  bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshRecentMap, render })
   bindDialogFocus()
   if (focusId) {
     const next = document.getElementById(focusId) as HTMLInputElement | null

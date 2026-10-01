@@ -3,14 +3,14 @@ import { bindPlayerAccountEvents } from './features/player/account-events'
 import { bindLoginEvents } from './features/player/login-events'
 import { bindMapEvents } from './features/maps/events'
 import { bindStorageEvents, refreshStorage } from './features/storage/events'
+import { bindMapSearch } from './features/maps/search-events'
+import type { PlayerServer } from './types'
 
-export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, render }) {
+export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshRecentMap = async (_server: PlayerServer) => undefined, render }) {
   bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render })
   bindStorageEvents({ state, playerInvoke, render })
-  document.querySelector('#map-search')?.addEventListener('input', (event) => {
-    state.mapSearch = (event.currentTarget as HTMLInputElement).value
-    render()
-  })
+  const mapSearch = document.querySelector<HTMLInputElement>('#map-search')
+  if (mapSearch) bindMapSearch(mapSearch, state, render)
   document.querySelector('[data-dismiss-feedback]')?.addEventListener('click', () => {
     state.error = ''
     state.notice = ''
@@ -34,5 +34,5 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
   )
   bindServerEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, render })
   bindMapEvents({ state, playerInvoke, remoteApi, selectedServer, render })
-  bindLoginEvents({ state, remoteApi, selectedServer, render })
+  bindLoginEvents({ state, remoteApi, selectedServer, refreshRecentMap, render })
 }

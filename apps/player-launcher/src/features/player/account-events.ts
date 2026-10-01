@@ -5,6 +5,7 @@ export interface PlayerAccountEventOptions {
   playerInvoke: PlayerInvoke
   remoteApi: RemoteApi
   selectedServer: () => PlayerServer | null
+  refreshRecentMap?: (server: PlayerServer) => Promise<void>
   render: () => void
 }
 

@@ -3,6 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { createApiTransport } from './network/api-transport'
+import { createRequestDiagnostics } from './network/request-diagnostics'
 import { createPublicImageTransport } from './network/public-image-transport'
 import { createWindowStateStore } from './storage/window-state'
 import { createMapLabels } from './storage/map-labels'
@@ -33,11 +34,11 @@ const COMMANDS = new Set<string>([
   'clear_server_map_cache',
   'clear_browser_cache',
   'remember_maps',
+  'recent_map',
 ])
 
 let mainWindow: Electron.BrowserWindow | undefined
 let devServer: ViteDevServer | undefined
-const apiTransport = createApiTransport()
 const publicImageTransport = createPublicImageTransport()
 
 app.setName('BOX3 Player Launcher')
@@ -47,6 +48,9 @@ const dataRoot =
     ? process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
     : app.getPath('appData')
 app.setPath('userData', path.join(dataRoot, 'com.box.player.launcher'))
+const apiTransport = createApiTransport({
+  onTiming: createRequestDiagnostics(path.join(app.getPath('userData'), 'network-diagnostics.json')),
+})
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
 function getServerStore(): ServerStore {
@@ -142,12 +146,17 @@ async function launchMap(payload: ElectronCommandPayload): Promise<void> {
       .trim()
       .slice(0, 80) || 'BOX3 Player'
   const title = `${mapName} · ${releaseVersion}`
-  try {
-    mapLabels.remember(server.id, [{ permanentMapId: descriptor.permanentMapId, name: mapName }])
-  } catch {
-    /* A label preference must not block play. */
-  }
   await gameWindowManager.launch({ server, descriptor, launchTicket: payload.launchTicket, title })
+  try {
+    mapLabels.rememberPlayed(server.id, {
+      permanentMapId: descriptor.permanentMapId,
+      accessId: descriptor.accessId,
+      name: mapName,
+      releaseVersion: descriptor.releaseVersion,
+    })
+  } catch {
+    /* A recent-play preference must not block map launch. */
+  }
 }
 
 function requireString(value: unknown, message: string): string {
@@ -170,6 +179,9 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
     if (server && Array.isArray(payload.maps)) mapLabels.remember(server.id, payload.maps)
     return
   }
+  if (command === 'recent_map') return mapLabels.recent(
+    requireString(payload.serverId, '这个服务器已不在列表中'),
+  )
   if (command === 'clear_browser_cache') {
     if (gameWindowManager.currentGame()) throw new Error('请先关闭游戏窗口，再清理浏览器缓存。')
     await Promise.all(

@@ -5,6 +5,7 @@ export function bindLoginEvents({
   state,
   remoteApi,
   selectedServer,
+  refreshRecentMap = async () => undefined,
   render,
 }: Omit<PlayerAccountEventOptions, 'playerInvoke'>): void {
   const saveDraft = () => {
@@ -68,6 +69,7 @@ export function bindLoginEvents({
       }
       state.worlds = Array.isArray(maps.data?.worlds) ? maps.data.worlds : []
       state.mapsError = ''
+      await refreshRecentMap(server)
       state.notice = `已登录到 ${server.name || server.endpoint}。`
     } catch (error) {
       if (state.player) {

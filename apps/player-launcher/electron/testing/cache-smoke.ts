@@ -73,9 +73,11 @@ app
     await window.webContents.executeJavaScript(
       "fetch('/resource', { cache: 'reload' }).then(response => response.arrayBuffer()).then(() => true)",
     )
-    const httpBefore = await target.getCacheSize()
     await inspectMapCaches(target, origin, undefined, true)
-    if ((await inspectMapCaches(target, origin)).length || (await target.getCacheSize()) !== httpBefore)
+    const browserResponseSurvivedMapClear = await window.webContents.executeJavaScript(
+      "fetch('/resource', { cache: 'only-if-cached', mode: 'same-origin' }).then(response => response.ok && response.arrayBuffer()).then(body => body instanceof ArrayBuffer && body.byteLength === 128 * 1024).catch(() => false)",
+    )
+    if ((await inspectMapCaches(target, origin)).length || !browserResponseSurvivedMapClear)
       throw new Error('Server map clearing affected browser cache')
     await clearResourceCache(target)
     const remaining = await window.webContents.executeJavaScript('caches.keys()')

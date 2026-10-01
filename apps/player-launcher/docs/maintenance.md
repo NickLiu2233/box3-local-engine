@@ -37,8 +37,14 @@ Electron 入口 `electron/main.ts` 负责 app/window 生命周期与 IPC 分发�
 
 本机存储采用服务器列表与地图详情两级页面，进入页面、清理后、游戏关闭时自动更新，不提供“重新统计”按钮；重复点击已选中入口保持当前页面。无地图资源的服务器隐藏，地图资源清空后自动移除对应条目。清理一张或整个服务器的地图缓存只删除其 CacheStorage 版本缓存，保留 Cookie 和 HTTP 缓存；浏览器缓存的独立按钮仅清理所有已添加服务器 Session 的 HTTP 缓存，不删除地图缓存。
 
-`electron/storage/map-labels.ts` 仅保存公开地图 ID 与名称，便于离线显示；API 地图列表仍统一来自 `@box/apis`，所有资源仍保存在 Chromium CacheStorage。旧缓存尚无名称记录时，读取服务器地图列表或再次启动该地图后会补上名称。
+`electron/storage/map-labels.ts` 仅保存服务器 ID、永久地图 ID、公开访问 ID、地图名称、发布版本和最近游玩时间；不保存玩家账号或密码，也不保存资源。重启后须先从有效地图列表找到相同永久地图 ID 才显示“继续上次游玩”，地图已不再开放时不会依记录直接启动。旧资源缓存的名称会在读取服务器地图列表时补上。
 
 底层整合清理 helper `clearResourceCache` 调用 `clearStorageData` 删除 serviceworkers/cachestorage，再调用 `clearCache` 清 HTTP 缓存并保留 Cookie；它与界面上的独立地图/浏览器清理操作不同。HTTPS 和本机 HTTP（127.0.0.1、localhost、::1）进入地图资源预热流程；其他 HTTP 地址随游玩按需请求资源，不显示预下载进度。判断规则集中在 `shared/server-address.ts`。
 
 `npm run test:cache` 在临时 profile 中用真实 loopback HTTP 页面注册 Service Worker、缓存公开测试资源，检查磁盘统计非零，并验证清理后两类缓存为零且 Cookie 保留；不读取或清理玩家的真实缓存。
+
+## 请求等待与排查
+
+普通 API 的完整请求期限为 15 秒，登录为 30 秒；期限覆盖收到响应头以及读取响应体，登录请求不自动重试。`api-transport.ts` 的 `onTiming` 只记录地址来源、无查询串的接口路径、HTTP 方法、耗时、状态和结果类型。主进程将最近 100 次记录写入用户数据目录的 `network-diagnostics.json`，不包含用户名、密码、请求/响应正文、Cookie 或启动票据。
+
+客户端等待超时、服务器返回的 504、服务未启动和连接断开分别显示对应提示。收到通用连接反馈时先检查实际接口、响应耗时及状态，不能仅因服务器在本机就排除服务启动、数据库等待或连接中断的问题。

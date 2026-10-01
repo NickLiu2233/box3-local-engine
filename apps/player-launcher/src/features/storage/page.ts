@@ -23,10 +23,10 @@ export function renderStoragePage(
   const browserCache =
     browserBytes > 0
       ? `<section class="storage-browser-cache" aria-labelledby="browser-cache-title">
-    <div class="section-heading"><h2 id="browser-cache-title">浏览器缓存</h2><strong class="browser-cache-size">${formatBytes(browserBytes)}</strong></div>
-    <p class="field-help">页面、字体等普通浏览器缓存统一管理。清理这里不会影响地图缓存和账号。</p>
-    ${storage?.confirmBrowser ? `<div class="storage-confirm"><span>清理浏览器缓存？</span><button class="button" data-cancel-cache>取消</button><button class="button danger" data-confirm-browser-cache ${state.busy ? 'disabled' : ''}>确认清理</button></div>` : `<button class="button secondary" data-clear-browser-cache ${browserBusy || state.busy ? 'disabled' : ''}>清理浏览器缓存</button>`}
-    ${browserBusy ? '<p class="field-help">关闭游戏窗口后即可清理。</p>' : ''}
+    <div class="browser-cache-copy"><h2 id="browser-cache-title">浏览器缓存</h2><p>网页和字体等通用数据，不包含地图资源或账号。</p>${browserBusy ? '<small class="browser-cache-warning">关闭游戏窗口后即可清理。</small>' : ''}</div>
+    <div class="browser-cache-actions"><strong class="browser-cache-size">${formatBytes(browserBytes)}</strong>
+      ${storage?.confirmBrowser ? `<div class="storage-confirm"><span>确定清理？</span><button class="button" data-cancel-cache>取消</button><button class="button danger" data-confirm-browser-cache ${state.busy ? 'disabled' : ''}>确认</button></div>` : `<button class="button secondary" data-clear-browser-cache ${browserBusy || state.busy ? 'disabled' : ''}>清理缓存</button>`}
+    </div>
   </section>`
       : ''
   const selected = rows.find((row) => row.serverId === storage?.selectedServerId)

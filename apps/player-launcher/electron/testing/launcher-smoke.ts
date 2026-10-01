@@ -38,6 +38,14 @@ ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
   if (command === 'launcher_state') return { servers: [server, emptyServer], selectedServerId: server.id }
   if (command === 'remember_maps') return
   if (command === 'game_status') return null
+  if (command === 'recent_map') return {
+    serverId: server.id,
+    permanentMapId: 'permanent-town',
+    accessId: 'town',
+    name: '星梦小镇',
+    releaseVersion: 'v1.0.0',
+    playedAt: Date.now(),
+  }
   if (command === 'fetch_public_image') return cover
   if (command === 'clear_resource_cache') cleared = true
   if (command === 'clear_map_cache') mapCleared = true
@@ -97,6 +105,7 @@ ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
         worlds: [
           {
             id: 'town',
+            permanentMapId: 'permanent-town',
             publicId: 'town',
             name: '星梦小镇',
             author: '作者甲',
@@ -106,6 +115,7 @@ ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
           },
           {
             id: 'arena',
+            permanentMapId: 'permanent-arena',
             publicId: 'arena',
             name: '竞技场',
             author: '作者乙',
@@ -185,6 +195,7 @@ app
     await waitFor(
       'document.querySelectorAll(".world-card").length === 2 && [...document.querySelectorAll(".world-cover, .brand-icon, .player-account-avatar")].every(image => image.naturalWidth > 0)',
     )
+    await waitFor('document.querySelector(".recent-world")?.textContent.includes("星梦小镇")')
     await run(
       'const input = document.querySelector("#map-search"); input.focus(); input.value = "星梦"; input.dispatchEvent(new Event("input", { bubbles: true }))',
     )

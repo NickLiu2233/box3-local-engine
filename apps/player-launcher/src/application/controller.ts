@@ -20,6 +20,7 @@ export function createLauncherController({
   async function refreshPlayerSession(server: PlayerServer | null = selectedServer()): Promise<void> {
     state.player = null
     state.worlds = []
+    state.recentWorld = undefined
     state.authError = ''
     state.mapsError = ''
     if (!server || !state.serverBootstrap?.supported) return
@@ -56,8 +57,22 @@ export function createLauncherController({
       }
       state.worlds = Array.isArray(data?.worlds) ? data.worlds : []
       state.mapsError = ''
+      await refreshRecentMap(server)
     } catch (error) {
       state.mapsError = error.message || '读取可玩地图失败。'
+    }
+  }
+
+  async function refreshRecentMap(server: PlayerServer): Promise<void> {
+    if (!isDesktopLauncher()) return
+    try {
+      const recent = (await invoke('recent_map', { serverId: server.id })) as
+        | { permanentMapId: string; name: string; releaseVersion: string }
+        | null
+      const world = recent && state.worlds.find((item) => item.permanentMapId === recent.permanentMapId)
+      if (world) state.recentWorld = { serverId: server.id, mapId: world.id, name: world.name, version: world.version || recent.releaseVersion }
+    } catch {
+      state.recentWorld = undefined
     }
   }
 
@@ -108,5 +123,5 @@ export function createLauncherController({
     throw new Error('此操作只能在 BOX3 玩家启动器中执行')
   }
 
-  return { refreshPlayerSession, playerInvoke }
+  return { refreshPlayerSession, refreshRecentMap, playerInvoke }
 }

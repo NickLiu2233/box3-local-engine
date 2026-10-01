@@ -1,10 +1,23 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import {
-  playerLoginConnectionError,
-  playerLoginErrorMessage,
-} from '../src/features/player/auth-errors'
+import { playerLoginConnectionError, playerLoginErrorMessage } from '../src/features/player/auth-errors'
+
+test('desktop transport timeouts and stopped services have distinct player feedback', () => {
+  assert.match(
+    playerLoginConnectionError(
+      new Error("Error invoking remote method 'launcher:invoke': Error: API 请求超时，请稍后重试"),
+    ),
+    /等待超时/,
+  )
+  assert.match(
+    playerLoginConnectionError(
+      new Error("Error invoking remote method 'launcher:invoke': Error: 服务器服务未启动或连接端口不可用"),
+    ),
+    /未启动或正在重启/,
+  )
+  assert.match(playerLoginConnectionError(new Error('服务器连接被中断，请重新尝试')), /连接被服务器中断/)
+})
 
 test('401 explains the credential issue without revealing whether an account exists', () => {
   const message = playerLoginErrorMessage(401, { message: '用户名或密码错误' })
