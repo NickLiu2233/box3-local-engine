@@ -117,9 +117,16 @@ async function upload(target: PlayerTarget): Promise<void> {
   const filename = artifactName(info, target)
   const manifestPath = path.join(outputDirectory, `${filename}.build.json`)
   const manifest = validateManifest(JSON.parse(await readFile(manifestPath, 'utf8')), info, target)
+  console.log(`Checking installer SHA256 before upload: ${filename} (${(manifest.size / 1024 / 1024).toFixed(1)} MiB)`)
   await verifyArtifact(path.join(outputDirectory, filename), manifest)
   await withOss(async (oss) => {
     await oss.upload(`${prefix}/${filename}`, path.join(outputDirectory, filename), 'application/octet-stream', manifestMetadata(manifest))
+    const head = await oss.head(`${prefix}/${filename}`)
+    if (!head) throw new Error(`Uploaded installer is not visible in OSS: ${filename}`)
+    const uploaded = manifestFromHead(head, info, target)
+    if (!uploaded || uploaded.sha256 !== manifest.sha256 || head.ContentLength !== manifest.size) {
+      throw new Error(`OSS upload verification failed: ${filename}`)
+    }
   })
   console.log(`Uploaded verified player installer: ${filename}`)
 }

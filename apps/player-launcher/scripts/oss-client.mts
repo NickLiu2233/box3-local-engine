@@ -1,10 +1,8 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 
-const execute = promisify(execFile)
+import { runOssProcess } from './oss-process.mts'
 export interface OssConfig { bucket: string; endpoint: string; accessKeyId: string; accessKeySecret: string }
 export interface OssObjectHead { ContentLength: number; Metadata?: Record<string, string> }
 
@@ -22,10 +20,10 @@ export function isMissingObject(error: string): boolean {
 }
 
 /** Uses the same OSS S3 compatibility as release.yml's Windows transfer steps. */
-export async function createOssClient(config: OssConfig) {
+export async function createOssClient(config: OssConfig, execute = runOssProcess) {
   const directory = await mkdtemp(path.join(tmpdir(), 'box-player-oss-'))
   const configFile = path.join(directory, 'aws-config')
-  await writeFile(configFile, '[default]\nregion = us-east-1\ns3 =\n    addressing_style = virtual\n    payload_signing_enabled = false\n', { mode: 0o600 })
+  await writeFile(configFile, '[default]\nregion = us-east-1\ns3 =\n    addressing_style = virtual\n    payload_signing_enabled = false\n    multipart_threshold = 16MB\n    multipart_chunksize = 16MB\n    max_concurrent_requests = 4\n', { mode: 0o600 })
   const env = {
     ...process.env,
     AWS_CONFIG_FILE: configFile,
@@ -36,17 +34,27 @@ export async function createOssClient(config: OssConfig) {
     AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required',
     AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '4', PYTHONUTF8: '1',
   }
-  async function call(operation: string, key: string, extra: string[] = [], allowMissing = false): Promise<string | null> {
+  async function call(operation: 'head' | 'upload' | 'download', key: string, extra: string[] = [], allowMissing = false): Promise<string | null> {
     if (!key.startsWith('box-player-launcher/player-v') || key.includes('..') || key.includes('\\')) throw new Error('OSS key must stay in the player release directory')
     try {
-      const { stdout } = await execute('python', [
-        '-m', 'awscli', 's3api', operation, '--bucket', config.bucket, '--key', key,
-        '--endpoint-url', `https://${config.endpoint}`, '--output', 'json', ...extra,
-      ], { env, timeout: 600_000, maxBuffer: 4 * 1024 * 1024, windowsHide: true })
+      const transfer = operation !== 'head'
+      const uri = `s3://${config.bucket}/${key}`
+      const command = operation === 'head'
+        ? ['s3api', 'head-object', '--bucket', config.bucket, '--key', key, '--output', 'json']
+        : operation === 'upload'
+          ? ['s3', 'cp', extra[0], uri, ...extra.slice(1)]
+          : ['s3', 'cp', uri, extra[0]]
+      const { stdout } = await execute({
+        command: 'python',
+        args: ['-m', 'awscli', ...command, '--endpoint-url', `https://${config.endpoint}`, '--cli-connect-timeout', '20', '--cli-read-timeout', '60'],
+        env, timeoutMs: transfer ? 600_000 : 90_000,
+        description: `OSS ${operation} ${path.posix.basename(key)}`,
+        progress: transfer,
+      })
       return stdout
     } catch (error) {
       const failure = error as Error & { stderr?: string }
-      const stderr = failure.stderr || failure.message
+      const stderr = [failure.message, failure.stderr].filter(Boolean).join('\n')
       if (allowMissing && isMissingObject(stderr)) return null
       const redacted = stderr.split(config.accessKeyId).join('[redacted]').split(config.accessKeySecret).join('[redacted]')
       throw new Error(`OSS ${operation} failed for ${key}: ${redacted.trim()}`)
@@ -55,12 +63,12 @@ export async function createOssClient(config: OssConfig) {
   return {
     directory,
     async head(key: string): Promise<OssObjectHead | null> {
-      const result = await call('head-object', key, [], true)
+      const result = await call('head', key, [], true)
       return result === null ? null : JSON.parse(result)
     },
-    async download(key: string, file: string): Promise<void> { await call('get-object', key, [file]) },
+    async download(key: string, file: string): Promise<void> { await call('download', key, [file]) },
     async upload(key: string, file: string, contentType = 'application/octet-stream', metadata: Record<string, string> = {}): Promise<void> {
-      await call('put-object', key, ['--body', file, '--content-type', contentType, '--metadata', JSON.stringify(metadata)])
+      await call('upload', key, [file, '--content-type', contentType, '--metadata', JSON.stringify(metadata)])
     },
     async close(): Promise<void> { await rm(directory, { recursive: true, force: true }) },
   }
