@@ -32,6 +32,7 @@ let authenticated = false
 let loginAttempts = 0
 let browserCleared = false
 let cacheReads = 0
+let expireNextLibraryPatch = false
 const favoriteMapIds = new Set<string>()
 const emptyServer = { id: 'empty-server', name: '空缓存服务器', endpoint: 'http://127.0.0.1:9999' }
 
@@ -73,6 +74,11 @@ ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
     if (url.pathname.endsWith('/play-library')) {
       if (!authenticated) return { status: 401, body: '{"message":"AUTH_REQUIRED"}', headers: [] }
       if (payload.request.method === 'PATCH') {
+        if (expireNextLibraryPatch) {
+          expireNextLibraryPatch = false
+          authenticated = false
+          return { status: 401, body: '{"message":"AUTH_REQUIRED"}', headers: [] }
+        }
         const changes = JSON.parse(payload.request.body)
         if (!['town', 'arena'].includes(changes.mapId)) throw new Error('Library must use the webpage public map ID')
         if (changes.favorite === true) favoriteMapIds.add(changes.mapId)
@@ -259,6 +265,16 @@ app
     await waitFor(
       'Boolean(document.querySelector(".empty-maps")) && !document.querySelector(".storage-server-trigger")',
     )
+    authenticated = false
+    await run('document.querySelector("[data-select-server]").click(); document.querySelector("[data-map-filter=recent]").click()')
+    await waitFor('document.querySelector(".login-card [role=alert]")?.textContent === "登录状态已过期，请重新登录。"')
+    if (!(await run('!document.querySelector(".map-filter-tabs, .world-card, .player-account-control") && document.querySelector("#player-username").value === "test-player" && document.querySelector("#player-password").value === ""')))
+      throw new Error('Expired sessions must show login only and retain the account name without a password')
+    await run(`document.querySelector('#player-password').value='fixture<&"password'; document.querySelector('#player-login-form').requestSubmit()`)
+    await waitFor('document.querySelectorAll(".world-card").length === 2 && Boolean(document.querySelector(".world-favorite:not(:disabled)"))')
+    expireNextLibraryPatch = true
+    await run('document.querySelector(".world-favorite").click()')
+    await waitFor('document.querySelector(".login-card [role=alert]")?.textContent === "登录状态已过期，请重新登录。"')
     const nativeSession = window.webContents.session
     const usage = await readResourceCache(nativeSession)
     if (!Number.isFinite(usage.staticBytes) || !Number.isFinite(usage.httpBytes))
@@ -269,7 +285,7 @@ app
       throw new Error('Clearing resources removed account cookies')
     if (errors.length) throw new Error(errors.join('\n'))
     window.destroy()
-    console.log('Desktop smoke passed: login drafts, password visibility, storage navigation, independent cache clearing and packaged assets')
+    console.log('Desktop smoke passed: login expiry/relogin, Chinese IME, library sync, independent cache clearing and packaged assets')
     app.quit()
   })
   .catch((error) => {

@@ -21,11 +21,14 @@ export function renderStoragePage(
   const browserBytes = (storage?.rows || []).reduce((sum, row) => sum + row.httpBytes, 0)
   const browserBusy = (storage?.rows || []).some((row) => row.inUse)
   const browserCache =
-    browserBytes > 0
-      ? `<section class="storage-browser-cache" aria-labelledby="browser-cache-title">
-    <div class="browser-cache-copy"><h2 id="browser-cache-title">浏览器缓存</h2><p>网页和字体等通用数据，不包含地图资源或账号。</p>${browserBusy ? '<small class="browser-cache-warning">关闭游戏窗口后即可清理。</small>' : ''}</div>
+    browserBytes > 0 && !storage?.loading
+      ? `<section class="storage-browser-section" aria-labelledby="browser-cache-title">
+    <div class="section-heading"><h2 id="browser-cache-title">浏览器缓存</h2></div>
+    <div class="storage-browser-cache">
+    <div class="browser-cache-copy"><h3>网页与字体</h3><p>网页和字体等通用数据，不包含地图资源或账号。</p>${browserBusy ? '<small class="browser-cache-warning">关闭游戏窗口后即可清理。</small>' : ''}</div>
     <div class="browser-cache-actions"><strong class="browser-cache-size">${formatBytes(browserBytes)}</strong>
       ${storage?.confirmBrowser ? `<div class="storage-confirm"><span>确定清理？</span><button class="button" data-cancel-cache>取消</button><button class="button danger" data-confirm-browser-cache ${state.busy ? 'disabled' : ''}>确认</button></div>` : `<button class="button secondary" data-clear-browser-cache ${browserBusy || state.busy ? 'disabled' : ''}>清理缓存</button>`}
+    </div>
     </div>
   </section>`
       : ''
@@ -39,7 +42,7 @@ export function renderStoragePage(
     return `<section class="page">
     <div class="page-heading"><h1>本机存储</h1><p>地图缓存按服务器管理，浏览器缓存单独管理。这里只显示有地图缓存的服务器。</p></div>
     ${feedback}${loading}
-    <div class="section-heading"><h2>地图缓存</h2></div>
+    ${storage?.loading ? '' : '<div class="section-heading"><h2>地图缓存</h2></div>'}
     <div class="storage-list">${
       rows
         .map((usage) => {

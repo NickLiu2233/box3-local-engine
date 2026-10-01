@@ -1,10 +1,11 @@
-import { createApiClient } from '@box/apis'
+import { apiOperations, createApiClient } from '@box/apis'
 import type { PlayerInvoke, ServerBootstrap } from '../types'
 import { isAllowedPlayerApi, playerLoginPath } from '../../shared/api-policy'
 
 export interface PlayerApiOptions {
   invoke: PlayerInvoke
   isNative: () => boolean
+  onSessionExpired?: (endpoint: string) => void
 }
 
 const BOOTSTRAP_NOT_FOUND_RETRY_DELAY_MS = 250
@@ -38,7 +39,9 @@ export function resolveMapCoverUrl(endpoint: string, value: unknown, publicMapId
   }
 }
 
-export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
+export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerApiOptions) {
+  const sessionVersions = new Map<string, number>()
+  const advanceSession = (endpoint: string) => sessionVersions.set(endpoint, (sessionVersions.get(endpoint) || 0) + 1)
   const coverRequests = new Map<string, { expires: number; pending: Promise<string> }>()
   function fetchCover(endpoint: string, url: string): Promise<string> {
     const key = `${endpoint}:${url}`
@@ -91,7 +94,18 @@ export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
   function client(endpoint: string, baseUrl = endpoint) {
     return createApiClient({
       baseUrl,
-      fetch: (request) => fetchApi(endpoint, request, baseUrl !== endpoint ? baseUrl : ''),
+      fetch: async (request) => {
+        const version = sessionVersions.get(endpoint) || 0
+        const response = await fetchApi(endpoint, request, baseUrl !== endpoint ? baseUrl : '')
+        const path = new URL(request.url).pathname
+        const loginOrPublic = [apiOperations.postApiAuthLogin, apiOperations.postApiAuthLogout,
+          apiOperations.getApiHealthCheck, apiOperations.getApiPlayerLauncherBootstrap]
+          .some((operation) => path.endsWith(operation.path))
+        if (response.status === 401 && !loginOrPublic && version === (sessionVersions.get(endpoint) || 0)) {
+          onSessionExpired?.(endpoint)
+        }
+        return response
+      },
     })
   }
 
@@ -206,9 +220,11 @@ export function createPlayerApi({ invoke, isNative }: PlayerApiOptions) {
       })
     },
     login(endpoint, bootstrap, username, password) {
+      advanceSession(endpoint)
       return authClient(endpoint, bootstrap).postApiAuthLoginRaw({ body: { username, password } })
     },
     logout(endpoint, bootstrap) {
+      advanceSession(endpoint)
       return authClient(endpoint, bootstrap).postApiAuthLogoutRaw({ body: {} })
     },
   }

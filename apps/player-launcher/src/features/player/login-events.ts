@@ -1,5 +1,6 @@
 import { playerLoginConnectionError, playerLoginErrorMessage } from './auth-errors'
 import type { PlayerAccountEventOptions } from './account-events'
+import { expirePlayerSession } from './session'
 
 export function bindLoginEvents({
   state,
@@ -58,9 +59,7 @@ export function bindLoginEvents({
       state.playerMenuOpen = false
       const maps = await remoteApi.getMaps(server.endpoint)
       if (maps.response.status === 401) {
-        state.player = null
-        state.worlds = []
-        state.authError = '服务器没有接受此登录状态，请重新登录。'
+        expirePlayerSession(state, server.id)
         return
       }
       if (!maps.response.ok) {

@@ -39,6 +39,8 @@ Electron 入口 `electron/main.ts` 负责 app/window 生命周期与 IPC 分发�
 
 收藏、最近游玩与 Play 网页端共用 `/api/play-library`，通过 `@box/apis` 的 GET/PATCH 方法和当前服务器玩家 Cookie 读写。地图记录使用 `publicId`，按当前玩家身份保存；收藏发送明确的 `favorite` 值，成功启动后异步记录 `played`，同步失败不阻止游戏启动。登录、切换分类和回到启动器时读取服务器记录。错误会显示在对应分类中，不回退到另一套本地收藏。
 
+受保护的玩家接口返回 401 时，`features/player/session.ts` 统一切换当前服务器到登录表单，清除旧账号的地图/收藏/搜索及资料编辑状态，保留账号名并清空密码，在表单内显示过期提示。登录接口的 401 仍表示账号或密码错误；服务故障不触发退出。API 客户端为每次登录/退出更新请求代次，旧请求迟到的 401 不会使新登录失效。
+
 `electron/storage/map-labels.ts` 仅为缓存管理维护永久地图 ID 到公开名称的索引。历史版本留下的本地收藏和最近记录保留在原文件内，但不用于界面，也不自动导入玩家账号。有效地图列表决定可见作品，服务器已下线的地图不会因收藏或最近记录重新出现。
 
 底层整合清理 helper `clearResourceCache` 调用 `clearStorageData` 删除 serviceworkers/cachestorage，再调用 `clearCache` 清 HTTP 缓存并保留 Cookie；它与界面上的独立地图/浏览器清理操作不同。HTTPS 和本机 HTTP（127.0.0.1、localhost、::1）进入地图资源预热流程；其他 HTTP 地址随游玩按需请求资源，不显示预下载进度。判断规则集中在 `shared/server-address.ts`。

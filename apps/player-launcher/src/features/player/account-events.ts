@@ -1,4 +1,5 @@
 import type { PlayerInvoke, PlayerLauncherState, PlayerServer, RemoteApi } from '../../types'
+import { expirePlayerSession } from './session'
 
 export interface PlayerAccountEventOptions {
   state: PlayerLauncherState
@@ -72,12 +73,18 @@ export function bindPlayerAccountEvents({
 
     state.busy = true
     state.playerProfileError = ''
+    const playerAtStart = state.player
     render()
     try {
       const result = await remoteApi.updateProfile(server.endpoint, {
         displayName,
         avatarSkinId: state.playerProfileSkinId,
       })
+      if (state.selectedId !== server.id || state.player !== playerAtStart) return
+      if (result.response.status === 401) {
+        expirePlayerSession(state, server.id)
+        return
+      }
       if (!result.response.ok || !result.data?.player) {
         throw new Error(result.error?.message || '保存账号设置失败，请稍后重试。')
       }
@@ -87,10 +94,13 @@ export function bindPlayerAccountEvents({
       state.playerSettingsOpen = false
       state.notice = '账号设置已保存。'
     } catch (error) {
+      if (state.selectedId !== server.id || state.player !== playerAtStart) return
       state.playerProfileError = error.message || '保存账号设置失败，请稍后重试。'
     } finally {
-      state.busy = false
-      render()
+      if (state.selectedId === server.id && (state.player === playerAtStart || !state.player)) {
+        state.busy = false
+        render()
+      }
     }
   })
 

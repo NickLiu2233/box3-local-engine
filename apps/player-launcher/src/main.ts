@@ -11,6 +11,7 @@ import { renderServerPage } from './views/server-pages'
 import { renderStoragePage } from './features/storage/page'
 import { bindDialogFocus } from './platform/ui-interactions'
 import { refreshStorage } from './features/storage/events'
+import { expirePlayerSession } from './features/player/session'
 import type { PlayerLauncherState, PlayerServer } from './types'
 import './styles.css'
 
@@ -36,7 +37,16 @@ document.addEventListener('click', (event) => {
   render()
 })
 
-const remoteApi = createPlayerApi({ invoke, isNative: isDesktopLauncher })
+const remoteApi = createPlayerApi({
+  invoke,
+  isNative: isDesktopLauncher,
+  onSessionExpired: (endpoint) => {
+    const server = selectedServer()
+    if (!server || server.endpoint !== endpoint || !expirePlayerSession(state, server.id)) return
+    render()
+    document.querySelector<HTMLInputElement>(state.loginDraft?.username ? '#player-password' : '#player-username')?.focus()
+  },
+})
 const { playerInvoke, refreshPlayerSession, refreshMapLibrary } = createLauncherController({
   state,
   remoteApi,

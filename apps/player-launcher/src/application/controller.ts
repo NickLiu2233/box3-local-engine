@@ -1,5 +1,6 @@
 import { normalizeServerAddress } from '../../shared/server-address'
 import { mapLibraryCollections } from '../features/maps/library'
+import { expirePlayerSession } from '../features/player/session'
 import type { PlayerLauncherState, PlayerServer, RemoteApi, PlayerInvoke } from '../types'
 
 interface ControllerOptions {
@@ -41,6 +42,10 @@ export function createLauncherController({
         return
       }
       if (!result.response.ok) {
+        if (result.response.status === 401) {
+          expirePlayerSession(state, server.id)
+          return
+        }
         state.authError = '无法检查当前服务器的登录状态，请稍后重试。'
         return
       }
@@ -51,9 +56,7 @@ export function createLauncherController({
     try {
       const { data, response, error: apiError } = await remoteApi.getMaps(server.endpoint)
       if (response.status === 401) {
-        state.player = null
-        state.worlds = []
-        state.authError = '服务器未接受当前登录状态，请重新登录。'
+        expirePlayerSession(state, server.id)
         return
       }
       if (response.status === 403) {
@@ -78,11 +81,14 @@ export function createLauncherController({
     try {
       const result = await remoteApi.readLibrary(server.endpoint)
       if (!isCurrent()) return
+      if (result.response.status === 401) {
+        expirePlayerSession(state, server.id)
+        onLibraryChange?.()
+        return
+      }
       if (!result.response.ok || !result.data) {
         state.libraryEnabled = false
-        state.libraryError = result.response.status === 401
-          ? '登录状态已过期，请重新登录后查看收藏和最近游玩。'
-          : result.response.status === 404
+        state.libraryError = result.response.status === 404
             ? '服务器暂未提供收藏和最近游玩，请联系服主更新服务。'
             : '暂时无法读取收藏和最近游玩，请稍后重新检查。'
         return

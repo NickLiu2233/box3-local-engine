@@ -1,6 +1,7 @@
 import { prepareMapLaunch } from './launch-flow'
 import { canUseMapResourceCache } from '../../../shared/server-address'
 import type { PlayerAccountEventOptions } from '../player/account-events'
+import { expirePlayerSession, SESSION_EXPIRED_MESSAGE } from '../player/session'
 
 export function bindMapEvents({
   state,
@@ -25,6 +26,11 @@ export function bindMapEvents({
       try {
         const result = await remoteApi.updateLibrary(server.endpoint, mapId, { favorite })
         if (!isCurrent()) return
+        if (result.response.status === 401) {
+          expirePlayerSession(state, server.id)
+          render()
+          return
+        }
         if (!result.response.ok) throw new Error(result.response.status === 401
           ? '登录状态已过期，请重新登录后收藏地图。'
           : '收藏未能保存到服务器，请稍后重试。')
@@ -51,6 +57,8 @@ export function bindMapEvents({
       const mapId = node.dataset.mapId || ''
       if (!server || !mapId || state.busy || !state.serverBootstrap?.signingKey) return
       const accessId = state.worlds.find((world) => world.id === mapId)?.publicId || mapId
+      const playerAtLaunch = state.player
+      const isCurrentLaunch = () => state.selectedId === server.id && state.player === playerAtLaunch && state.authError !== SESSION_EXPIRED_MESSAGE
       if (state.activeGame?.serverId === server.id && state.activeGame.mapId === accessId) {
         if (await playerInvoke('focus_game', { serverId: server.id, mapId: accessId })) return
         state.activeGame = null
@@ -64,6 +72,7 @@ export function bindMapEvents({
       let stage = '检查服务器支持信息'
       try {
         const bootstrap = await remoteApi.readBootstrap(server.endpoint)
+        if (!isCurrentLaunch()) return
         if (!bootstrap.supported || !bootstrap.signingKey) {
           throw new Error('服务器未提供有效的地图资源签名信息。')
         }
@@ -75,13 +84,21 @@ export function bindMapEvents({
           bootstrap,
           remoteApi,
           onStage: (value) => {
+            if (!isCurrentLaunch()) return
             stage = value
             state.launchStage = value
             render()
           },
         })
+        if (!isCurrentLaunch()) return
         stage = '检查当前账号的地图进入权限'
         const maps = await remoteApi.getMaps(server.endpoint, { includeCovers: false })
+        if (!isCurrentLaunch()) return
+        if (maps.response.status === 401) {
+          expirePlayerSession(state, server.id)
+          render()
+          return
+        }
         if (
           !maps.response.ok ||
           !maps.data?.worlds?.some((world) => world.id === mapId || world.publicId === mapId)
@@ -96,6 +113,7 @@ export function bindMapEvents({
         render()
         try {
           await remoteApi.launchMap(server.id, descriptor, bootstrap.signingKey, mapName, launchTicket)
+          if (!isCurrentLaunch()) return
         } catch (error) {
           const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
           throw new Error(
@@ -113,6 +131,11 @@ export function bindMapEvents({
           void remoteApi.updateLibrary(server.endpoint, accessId, { played: true })
             .then(async (result) => {
               if (!isCurrent()) return
+              if (result.response.status === 401) {
+                expirePlayerSession(state, server.id)
+                render()
+                return
+              }
               if (!result.response.ok) throw new Error('游戏已启动，但最近游玩记录暂未同步，请稍后重新检查。')
               await refreshMapLibrary?.(server)
               if (isCurrent()) render()
@@ -124,6 +147,7 @@ export function bindMapEvents({
             })
         }
       } catch (error) {
+        if (!isCurrentLaunch()) return
         const message = typeof error === 'string' ? error : error?.message
         const details = message || (error == null ? '' : String(error))
         state.error =
@@ -131,10 +155,12 @@ export function bindMapEvents({
             ? details
             : `${stage}阶段失败（没有收到详细错误信息）。`
       } finally {
-        state.busy = false
-        state.preparingMapId = ''
-        state.launchStage = ''
-        render()
+        if (isCurrentLaunch()) {
+          state.busy = false
+          state.preparingMapId = ''
+          state.launchStage = ''
+          render()
+        }
       }
     }),
   )
