@@ -1,3 +1,5 @@
+import { isIPv4, isLoopback, normalizeServerAddress } from './server-address'
+
 export interface ServerAddressNotice {
   title: string
   message: string
@@ -5,30 +7,14 @@ export interface ServerAddressNotice {
 
 export const SERVER_ADDRESS_HELP_TEXT = '支持域名、IP 和端口。本机地址默认 HTTP。公网地址建议使用 HTTPS。'
 
-function isLoopbackHost(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '')
-  return host === 'localhost'
-    || host.endsWith('.localhost')
-    || host === '::1'
-    || /^127(?:\.\d{1,3}){3}$/.test(host)
-}
-
-function isIpAddress(hostname: string): boolean {
-  const host = hostname.replace(/^\[|\]$/g, '')
-  return host.includes(':') || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)
-}
-
 /** Returns a confirmation notice for endpoints that may not support safe local caching. */
 export function getServerAddressNotice(value: string): ServerAddressNotice | null {
-  const raw = String(value || '').trim().replace(/\/+$/, '')
-  if (!raw || /\s/.test(raw)) return null
-
   let url: URL
-  try { url = new URL(raw.includes('://') ? raw : `https://${raw}`) } catch { return null }
-  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) return null
+  try { url = new URL(normalizeServerAddress(value)) } catch { return null }
 
-  const loopback = isLoopbackHost(url.hostname)
-  const nonLoopbackIp = isIpAddress(url.hostname) && !loopback
+  const loopback = isLoopback(url.hostname)
+  const host = url.hostname.replace(/^\[|\]$/g, '')
+  const nonLoopbackIp = (host.includes(':') || isIPv4(host)) && !loopback
   const insecureHttp = url.protocol === 'http:' && !loopback
   if (!nonLoopbackIp && !insecureHttp) return null
 

@@ -54,11 +54,18 @@ export function makeGameUrl(server: PlayerServerRecord, descriptor: PackageDescr
   const basePath = url.pathname.replace(/\/$/, '')
   url.pathname = `${basePath}/p/${descriptor.accessId}`
   url.search = ''
-  url.searchParams.set('box3ServiceWorkerCache', '1')
-  url.searchParams.set('box3PermanentMapId', descriptor.permanentMapId)
-  url.searchParams.set('box3ReleaseVersion', descriptor.releaseVersion)
-  url.searchParams.set('box3ManifestDigest', descriptor.manifestDigest)
-  url.hash = new URLSearchParams({ box3LaunchTicket: launchTicket }).toString()
+  if (url.protocol === 'https:') {
+    url.searchParams.set('box3ServiceWorkerCache', '1')
+    url.searchParams.set('box3PermanentMapId', descriptor.permanentMapId)
+    url.searchParams.set('box3ReleaseVersion', descriptor.releaseVersion)
+    url.searchParams.set('box3ManifestDigest', descriptor.manifestDigest)
+    url.hash = new URLSearchParams({ box3LaunchTicket: launchTicket }).toString()
+  } else {
+    // HTTP is supported for direct play, but it is not a safe Service Worker
+    // context. Explicitly skip Play's optional background cache as well.
+    url.searchParams.set('box3DisableResourceCache', '1')
+    url.hash = ''
+  }
   return url
 }
 

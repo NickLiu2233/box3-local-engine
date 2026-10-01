@@ -7,6 +7,11 @@ test('keeps local HTTP addresses quiet', () => {
   assert.equal(getServerAddressNotice('http://localhost:3492'), null)
 })
 
+test('does not treat malformed numeric input as a public IP confirmation', () => {
+  assert.equal(getServerAddressNotice('122111222'), null)
+  assert.equal(getServerAddressNotice('256.1.1.1'), null)
+})
+
 test('warns before adding a public server over HTTP in player-friendly language', () => {
   const notice = getServerAddressNotice('http://play.example.com')
   assert.equal(notice?.title, '这个服务器连接不安全')

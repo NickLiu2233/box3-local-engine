@@ -9,7 +9,7 @@ import { LoadingStage } from 'src/defs/loading-stage';
 import { EngineApp, EngineAppProps } from '../../../components/engine-app';
 import { Error, ErrorProps } from '../../../components/error';
 import { PlayLoading } from '../../../components/play-loading';
-import { bootstrapPlayResourceCache, PlayResourceCacheBootstrap } from '../../../components/play-resource-cache-bootstrap';
+import { bootstrapPlayResourceCache, PlayResourceCacheBootstrap, shouldBootstrapPlayResourceCache } from '../../../components/play-resource-cache-bootstrap';
 import { getArenaServerRenderProps } from '../../../server/server-render';
 import { hashToUrl } from '../../../server/utils/hash';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../../server/player-service-client';
@@ -243,10 +243,11 @@ function Home(props: SSRProps) {
 
   const isCreatera =
     !props.loadingConfig && props.clientConfig.APP_EDITION === 'createra';
-  const shouldBootstrapResourceCache =
-    !props.loadingConfig &&
-    !launcherServiceWorkerMode &&
-    props.clientConfig.localRuntimeInfo?.deploymentMode === 'play';
+  const shouldBootstrapResourceCache = !props.loadingConfig && shouldBootstrapPlayResourceCache({
+    deploymentMode: props.clientConfig.localRuntimeInfo?.deploymentMode,
+    launcherServiceWorkerMode,
+    disableResourceCache: router.query.box3DisableResourceCache === '1',
+  });
 
   return (
     <div id="__next__root">

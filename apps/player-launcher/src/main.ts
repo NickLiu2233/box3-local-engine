@@ -2,6 +2,7 @@ import { invoke, isDesktopLauncher } from './platform/launcher-bridge'
 import brandIcon from '../resources/brand-icon.png'
 import { createPlayerApi } from './services/player-api'
 import { getServerAddressNotice } from './services/server-address-notice'
+import { normalizeServerAddress } from './services/server-address'
 import { bindEvents } from './events'
 import { renderPackagesPage, renderServerPage } from './views/server-pages'
 import type { PlayerLauncherState, PlayerServer } from './types'
@@ -104,20 +105,8 @@ async function playerInvoke(command: string, payload: Record<string, any> = {}):
     }
   }
   if (command === 'add_server') {
-    const raw = String(payload.endpoint || '').trim().replace(/\/$/, '')
-    if (!raw || /\s/.test(raw)) throw new Error('请输入有效的游玩端服务器 IP 或域名')
-    const hasExplicitScheme = raw.includes('://')
-    let endpoint = hasExplicitScheme ? raw : `https://${raw}`
-    let parsed
-    try { parsed = new URL(endpoint) } catch { throw new Error('请输入有效的游玩端服务器 IP 或域名') }
-    if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname || parsed.username || parsed.password) {
-      throw new Error('请输入有效的游玩端服务器 IP 或域名（支持 HTTP/HTTPS）')
-    }
-    const hostname = parsed.hostname.toLowerCase().replace(/^\[|\]$/g, '')
-    if (!hasExplicitScheme && (hostname === 'localhost' || hostname.endsWith('.localhost') || /^127(?:\.\d{1,3}){3}$/.test(hostname) || hostname === '::1')) {
-      parsed.protocol = 'http:'
-      endpoint = parsed.toString().replace(/\/$/, '')
-    }
+    const endpoint = normalizeServerAddress(String(payload.endpoint || ''))
+    const parsed = new URL(endpoint)
     try { await remoteApi.verifyServer(endpoint) } catch (error) {
       throw new Error(error.message || '无法连接到游玩端服务器，请检查 IP/域名、端口和网络后重试')
     }

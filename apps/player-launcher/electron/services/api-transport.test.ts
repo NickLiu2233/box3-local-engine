@@ -11,6 +11,22 @@ test('API requests are restricted to server API and advertised login routes', ()
   assert.throws(() => validateRequestUrl(base, 'https://accounts.example.com/api/private', 'https://accounts.example.com'))
 })
 
+test('transport rejects non-address server identifiers before making network requests', async () => {
+  let fetchCalls = 0
+  const transport = createApiTransport({
+    fetchImpl: async () => {
+      fetchCalls += 1
+      return Response.json({})
+    },
+  })
+  await assert.rejects(transport.request({
+    endpoint: '122111222',
+    url: 'https://7.62.213.222/api/health-check',
+    method: 'GET',
+  }), /有效的服务器网址、IPv4 或 IPv6/)
+  assert.equal(fetchCalls, 0)
+})
+
 test('only player session cookies are retained and logout expires them', () => {
   assert.equal(
     mergeCookies('box_local_player_device=device; unrelated=value', [

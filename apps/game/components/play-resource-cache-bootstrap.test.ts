@@ -3,7 +3,25 @@ import { describe, expect, test } from '@jest/globals'
 import {
   bootstrapPlayResourceCache,
   getActiveResourceCacheWorker,
+  shouldBootstrapPlayResourceCache,
 } from './play-resource-cache-bootstrap'
+
+describe('Play resource cache selection', () => {
+  test('skips all browser caching when the launcher explicitly starts over HTTP', () => {
+    expect(shouldBootstrapPlayResourceCache({
+      deploymentMode: 'play',
+      launcherServiceWorkerMode: false,
+      disableResourceCache: true,
+    })).toBe(false)
+  })
+
+  test('keeps browser caching enabled for ordinary Play visits', () => {
+    expect(shouldBootstrapPlayResourceCache({
+      deploymentMode: 'play',
+      launcherServiceWorkerMode: false,
+    })).toBe(true)
+  })
+})
 
 function worker(state: ServiceWorkerState) {
   const listeners = new Set<() => void>()

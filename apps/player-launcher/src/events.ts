@@ -288,7 +288,9 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
         const message = typeof error === 'string' ? error : error?.message || String(error ?? '')
         throw new Error(message ? `安全启动地图失败：${message}` : '安全启动地图失败（本机命令未返回错误说明）')
       }
-      state.notice = `“${mapName}”已验证，游戏将通过本机 Service Worker 缓存静态资源…`
+      state.notice = new URL(server.endpoint).protocol === 'https:'
+        ? `“${mapName}”已验证，游戏将通过本机缓存静态资源…`
+        : `“${mapName}”已验证并启动。当前连接为 HTTP，地图资源将直接从服务器读取，不会保存到本机缓存。`
     } catch (error) {
       const message = typeof error === 'string' ? error : error?.message
       const details = message || (error == null ? '' : String(error))

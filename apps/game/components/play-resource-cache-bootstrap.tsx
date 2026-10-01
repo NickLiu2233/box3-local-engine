@@ -34,6 +34,18 @@ export interface BootstrapPlayResourceCacheOptions {
   onProgress?: (progress: number) => void
 }
 
+export function shouldBootstrapPlayResourceCache({
+  deploymentMode,
+  launcherServiceWorkerMode,
+  disableResourceCache,
+}: {
+  deploymentMode?: string
+  launcherServiceWorkerMode?: boolean
+  disableResourceCache?: boolean
+}): boolean {
+  return deploymentMode === 'play' && !launcherServiceWorkerMode && !disableResourceCache
+}
+
 function waitForActivation(worker: ServiceWorker | null): Promise<ServiceWorker | null> {
   if (!worker || worker.state === 'activated') return Promise.resolve(worker)
   return new Promise((resolve) => {
@@ -78,7 +90,7 @@ export async function bootstrapPlayResourceCache({
     return
   }
   if (waitForCompletion && !isSecureContext) {
-    throw new Error('启动器本地资源缓存需要安全连接：请使用 HTTPS 地址；本机 localhost 或 127.0.0.1 可以继续使用 HTTP。')
+    throw new Error('启动器本地资源缓存需要安全连接：请使用 HTTPS 地址')
   }
   if (!serviceWorkerContainer) {
     if (waitForCompletion) throw new Error('当前客户端不支持 Service Worker，无法离线准备地图资源')

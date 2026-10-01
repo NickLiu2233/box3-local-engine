@@ -1,4 +1,5 @@
 import type { ApiRequest, ApiResponse, ApiTransport } from '../types'
+import { normalizeServerAddress } from '../../src/services/server-address'
 
 const MAX_API_RESPONSE_BYTES = 16 * 1024 * 1024
 const PLAYER_COOKIE_NAMES = new Set(['box_local_player_session', 'box_local_player_device'])
@@ -11,18 +12,7 @@ function isLoopback(host: string): boolean {
 }
 
 function normalizeEndpoint(value: string): URL {
-  const raw = String(value || '').trim().replace(/\/+$/, '')
-  if (!raw || /\s/.test(raw)) throw new Error('请输入有效的游玩端服务器 IP 或域名')
-  const hasScheme = raw.includes('://')
-  let endpoint: URL
-  try { endpoint = new URL(hasScheme ? raw : `https://${raw}`) } catch {
-    throw new Error('请输入有效的游玩端服务器 IP 或域名')
-  }
-  if (!['http:', 'https:'].includes(endpoint.protocol) || !endpoint.hostname || endpoint.username || endpoint.password) {
-    throw new Error('游玩端服务器地址无效')
-  }
-  if (!hasScheme && isLoopback(endpoint.hostname)) endpoint.protocol = 'http:'
-  return endpoint
+  return new URL(normalizeServerAddress(value))
 }
 
 function cookieChanges(setCookieHeaders: string[]): Map<string, string | null> {

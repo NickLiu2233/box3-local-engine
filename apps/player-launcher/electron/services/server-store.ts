@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import * as crypto from 'node:crypto'
 import { ensureDirectory, readRegularFileSync } from './fs-safe'
 import type { PlayerServerRecord, PlayerServerState } from '../types'
+import { normalizeServerAddress } from '../../src/services/server-address'
 
 export interface ServerStore {
   load(): PlayerServerState
@@ -13,20 +14,7 @@ export interface ServerStore {
 }
 
 export function normalizeEndpoint(value: string): string {
-  const raw = String(value || '').trim().replace(/\/+$/, '')
-  if (!raw || /\s/.test(raw)) throw new Error('请输入有效的游玩端服务器 IP 或域名')
-  const hasScheme = raw.includes('://')
-  let url
-  try { url = new URL(hasScheme ? raw : `https://${raw}`) } catch {
-    throw new Error('请输入有效的游玩端服务器 IP 或域名')
-  }
-  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) {
-    throw new Error('请输入有效的游玩端服务器 IP 或域名（支持 HTTP/HTTPS）')
-  }
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '')
-  const localHost = host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127(?:\.\d{1,3}){3}$/.test(host)
-  if (!hasScheme && localHost) url.protocol = 'http:'
-  return url.toString().replace(/\/$/, '')
+  return normalizeServerAddress(value)
 }
 
 export function normalizeName(value: string): string {

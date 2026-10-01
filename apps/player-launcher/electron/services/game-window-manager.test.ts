@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { test } from 'node:test'
-import { createGameWindowManager, isAllowedGamePermission } from './game-window-manager'
+import { createGameWindowManager, isAllowedGamePermission, makeGameUrl } from './game-window-manager'
 import { createSignedPackageFixture } from '../testing/signed-package-fixture'
 import type { GameSession, GameWindow, GameWindowManagerOptions, GameWindowOptions } from './game-window-manager'
 
@@ -82,4 +82,17 @@ test('grants pointer lock only to the main game page from its server origin', ()
   assert.equal(isAllowedGamePermission('pointerLock', 'https://play.example.com/iframe', false, origin), false)
   assert.equal(isAllowedGamePermission('media', 'https://play.example.com/p/town', true, origin), false)
   assert.equal(isAllowedGamePermission('notifications', 'https://play.example.com/p/town', true, origin), false)
+})
+
+test('launches HTTP servers directly and disables the Service Worker resource cache', () => {
+  const { descriptor } = createSignedPackageFixture(Buffer.from('resource'), { mapId: 'map-1', releaseVersion: 'v1.0.0' })
+  const url = makeGameUrl(
+    { id: 'server-http', endpoint: 'http://127.0.0.1:3121/base', name: 'Local Play' },
+    descriptor,
+    'payload.signature',
+  )
+
+  assert.equal(url.toString(), 'http://127.0.0.1:3121/base/p/town?box3DisableResourceCache=1')
+  assert.equal(url.searchParams.has('box3ServiceWorkerCache'), false)
+  assert.equal(url.hash, '')
 })

@@ -8,6 +8,12 @@ import { createServerStore, normalizeEndpoint } from './server-store'
 test('normalizes loopback and public endpoints while rejecting unsafe schemes', () => {
   assert.equal(normalizeEndpoint('127.0.0.1:3492'), 'http://127.0.0.1:3492')
   assert.equal(normalizeEndpoint('play.example.com/'), 'https://play.example.com')
+  assert.equal(normalizeEndpoint('192.168.1.20:3121'), 'https://192.168.1.20:3121')
+  assert.equal(normalizeEndpoint('[2001:db8::1]:3121'), 'https://[2001:db8::1]:3121')
+  assert.equal(normalizeEndpoint('::1'), 'http://[::1]')
+  assert.throws(() => normalizeEndpoint('122111222'))
+  assert.throws(() => normalizeEndpoint('256.1.1.1'))
+  assert.throws(() => normalizeEndpoint('不是服务器地址'))
   assert.throws(() => normalizeEndpoint('ftp://play.example.com'))
   assert.throws(() => normalizeEndpoint('https://user:pass@play.example.com'))
 })
