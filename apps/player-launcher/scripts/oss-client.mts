@@ -32,7 +32,7 @@ export async function createOssClient(config: OssConfig, execute = runOssProcess
     AWS_EC2_METADATA_DISABLED: 'true',
     AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
     AWS_RESPONSE_CHECKSUM_VALIDATION: 'when_required',
-    AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '4', PYTHONUTF8: '1',
+    AWS_RETRY_MODE: 'standard', AWS_MAX_ATTEMPTS: '8', PYTHONUTF8: '1',
   }
   async function call(operation: 'head' | 'upload' | 'download', key: string, extra: string[] = [], allowMissing = false): Promise<string | null> {
     if (!key.startsWith('box-player-launcher/player-v') || key.includes('..') || key.includes('\\')) throw new Error('OSS key must stay in the player release directory')
@@ -46,8 +46,9 @@ export async function createOssClient(config: OssConfig, execute = runOssProcess
           : ['s3', 'cp', uri, extra[0]]
       const { stdout } = await execute({
         command: 'python',
-        args: ['-m', 'awscli', ...command, '--endpoint-url', `https://${config.endpoint}`, '--cli-connect-timeout', '20', '--cli-read-timeout', '60'],
-        env, timeoutMs: transfer ? 600_000 : 90_000,
+        args: ['-m', 'awscli', ...command, '--endpoint-url', `https://${config.endpoint}`, '--cli-connect-timeout', '30', '--cli-read-timeout', '120'],
+        // A slow but progressing multipart transfer must not be cut off at an arbitrary 10-minute mark.
+        env, timeoutMs: transfer ? 1_800_000 : 90_000,
         description: `OSS ${operation} ${path.posix.basename(key)}`,
         progress: transfer,
       })

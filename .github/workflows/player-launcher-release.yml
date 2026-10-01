@@ -125,7 +125,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
         run: xvfb-run -a node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{ matrix.target }}
       - name: Upload verified player installer to Aliyun OSS
-        timeout-minutes: 12
+        timeout-minutes: 35
         if: steps.cache.outputs.cache-hit != 'true'
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts upload ${{ matrix.target }}
 
