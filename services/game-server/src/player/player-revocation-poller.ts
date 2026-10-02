@@ -1,5 +1,6 @@
 import type { Logger } from 'pino';
 import { ApiClient } from '@box/apis';
+import { ModerationClient } from '../moderation/moderation-client';
 
 import type { GameServer } from '../index';
 
@@ -35,6 +36,7 @@ export function startPlayerRevocationPoller(game: GameServer, logger: Logger) {
   const startedAt = new Date(Date.now() - identityTtlMs - intervalMs).toISOString();
   let cursor = '0';
   let polling = false;
+  const moderation = new ModerationClient();
 
   const poll = async () => {
     if (polling) return;
@@ -66,6 +68,13 @@ export function startPlayerRevocationPoller(game: GameServer, logger: Logger) {
           );
           game.net.kickSession(connection.sessionId);
         }
+      }
+      // Scoped bans must not enter the global revocation stream: only kick rooms of this map.
+      const connections=game.state.connectionSet.slice();
+      for (let offset=0;moderation.mapId && process.env.MODE !== 'edit' && offset<connections.length;offset+=100) {
+        const batch=connections.slice(offset,offset+100);
+        const denied=await moderation.deniedPlayers(batch.map(c=>({userId:c.sessionData.user.id,ipAddress:c.sessionData.ipAddress})));
+        for (const index of denied) game.net.kickSession(batch[index].sessionId);
       }
     } catch (error) {
       logger.warn(`Player revocation poll failed: ${(error as Error).message}`);

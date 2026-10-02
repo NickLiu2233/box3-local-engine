@@ -1800,6 +1800,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/play-admin/script-moderation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查看地图脚本授权与地图封禁（仅服主）
+         * @description 此操作用于“查看地图脚本授权与地图封禁（仅服主）”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。
+         */
+        get: operations["getApiPlayAdminScriptModeration"];
+        put?: never;
+        /**
+         * 维护地图脚本授权与地图封禁（仅服主）
+         * @description 此操作用于“维护地图脚本授权与地图封禁（仅服主）”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作可能创建资源、更新状态或触发后台任务。 需要有效的玩家管理会话及对应查看或编辑权限。
+         */
+        post: operations["postApiPlayAdminScriptModeration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/play-admin/self-password": {
         parameters: {
             query?: never;
@@ -2220,6 +2244,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/player-internal/map-admission": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 检查地图账号与 IP 封禁（仅可信运行时）
+         * @description 此操作用于“检查地图账号与 IP 封禁（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。
+         */
+        post: operations["postApiPlayerInternalMapAdmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/player-internal/map-library": {
         parameters: {
             query?: never;
@@ -2298,6 +2342,26 @@ export interface paths {
          * @description 此操作用于“签发运行时玩家身份”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。
          */
         post: operations["postApiPlayerInternalRuntimeIdentity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/player-internal/script-moderation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 执行已授权地图脚本的管理操作（仅可信运行时）
+         * @description 此操作用于“执行已授权地图脚本的管理操作（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。
+         */
+        post: operations["postApiPlayerInternalScriptModeration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2910,6 +2974,8 @@ export interface components {
             role: "admin" | "moderator";
             /** @enum {string} */
             status: "active" | "disabled";
+            /** @default true */
+            consoleLoginEnabled: boolean;
             permissionGroupId?: string;
             permissionGroupName?: string;
             lastLoginAt?: string;
@@ -6030,10 +6096,12 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
+                    /** @default true */
+                    consoleLoginEnabled?: boolean;
                     username: string;
                     displayName: string;
                     password: string;
-                    permissionGroupId?: string;
+                    permissionGroupId: string;
                 };
             };
         };
@@ -6112,10 +6180,15 @@ export interface operations {
             cookie?: never;
         };
         /** @description 执行“更新管理员账号”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    displayName?: string;
+                    password?: string;
+                    permissionGroupId?: string | null;
+                    /** @enum {string} */
+                    status?: "active" | "disabled";
+                    consoleLoginEnabled?: boolean;
                 };
             };
         };
@@ -7735,6 +7808,127 @@ export interface operations {
             };
         };
     };
+    getApiPlayAdminScriptModeration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查看地图脚本授权与地图封禁（仅服主）”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        keys: {
+                            id: string;
+                            adminId: string;
+                            adminName: string;
+                            name: string;
+                            /** @enum {string} */
+                            scope: "map" | "server";
+                            maximumBanSeconds: number;
+                            expiresAt: string;
+                            revokedAt: string | null;
+                        }[];
+                        bindings: {
+                            mapId: string;
+                            keyId: string;
+                            scriptFingerprint: string;
+                        }[];
+                        bans: {
+                            id: string;
+                            mapId: string;
+                            subjectId: string;
+                            kind: string;
+                            reason: string;
+                            expiresAt: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiPlayAdminScriptModeration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“维护地图脚本授权与地图封禁（仅服主）”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @constant */
+                    action: "create";
+                    values: {
+                        adminId: string;
+                        name: string;
+                        /** @enum {string} */
+                        scope?: "map" | "server";
+                        maximumBanSeconds?: number;
+                        expiresAt: string;
+                    };
+                } | {
+                    /** @constant */
+                    action: "bind";
+                    values: {
+                        mapId: string;
+                        keyId: string;
+                        scriptFingerprint: string;
+                    };
+                } | {
+                    /** @constant */
+                    action: "revoke";
+                    keyId: string;
+                } | {
+                    /** @constant */
+                    action: "unbind";
+                    mapId: string;
+                } | {
+                    /** @constant */
+                    action: "revoke-map-ban";
+                    banId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“维护地图脚本授权与地图封禁（仅服主）”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postApiPlayAdminSelfPassword: {
         parameters: {
             query?: never;
@@ -8736,6 +8930,53 @@ export interface operations {
             };
         };
     };
+    postApiPlayerInternalMapAdmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“检查地图账号与 IP 封禁（仅可信运行时）”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    mapId: string;
+                    userId: string;
+                    ipAddress: string;
+                } | {
+                    mapId: string;
+                    players: {
+                        userId: string;
+                        ipAddress: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“检查地图账号与 IP 封禁（仅可信运行时）”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        allowed?: boolean;
+                        denied?: number[];
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     getApiPlayerInternalMapLibrary: {
         parameters: {
             query?: never;
@@ -8903,6 +9144,79 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiPlayerInternalScriptModeration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“执行已授权地图脚本的管理操作（仅可信运行时）”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    mapId: string;
+                    scriptFingerprint: string;
+                    /** @enum {string} */
+                    action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                    userId?: string;
+                    ipAddress?: string;
+                    /** @enum {string} */
+                    scope?: "map" | "server";
+                    durationSeconds?: number;
+                    reason?: string;
+                    banId?: string;
+                    requestId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“执行已授权地图脚本的管理操作（仅可信运行时）”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        id: string;
+                        /** @enum {string} */
+                        scope: "map" | "server";
+                        /** Format: date-time */
+                        expiresAt: string;
+                        replayed: boolean;
+                    } | {
+                        /** Format: uuid */
+                        id: string;
+                        revoked: boolean;
+                        replayed: boolean;
+                    } | {
+                        /** @enum {string} */
+                        status: "active" | "banned";
+                        replayed: boolean;
+                        bans: {
+                            id: string;
+                            /** @enum {string} */
+                            kind: "account" | "ip";
+                            /** @enum {string} */
+                            scope: "map" | "server";
+                            reason: string;
+                            expiresAt: string;
+                        }[];
                     };
                 };
             };

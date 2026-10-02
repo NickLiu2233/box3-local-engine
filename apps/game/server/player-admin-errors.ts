@@ -4,12 +4,13 @@ export type PlayerAdminErrorCode =
   | 'ADMIN_SESSION_MISMATCH'
   | 'ADMIN_CSRF_INVALID'
   | 'ADMIN_RATE_LIMITED'
+  | 'SCRIPT_RATE_LIMITED'
   | 'OWNER_SESSION_REQUIRED';
 
 export class PlayerAdminRequestError extends Error {
   constructor(
     message: string,
-    readonly status: 400 | 401 | 403 | 404 | 409 | 429 = 400,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 429 | 503 = 400,
     readonly code: PlayerAdminErrorCode = 'ADMIN_REQUEST_INVALID',
     readonly retryAfterSeconds?: number,
   ) {

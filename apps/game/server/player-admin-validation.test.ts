@@ -22,6 +22,10 @@ function expectRequestError(callback: () => unknown, message?: string) {
 }
 
 describe('player administration request validation', () => {
+  test('console login policy is a strict boolean, independent of account status', () => {
+    expect(parseUpdateAdminAccount({consoleLoginEnabled:false})).toEqual({consoleLoginEnabled:false});
+    expectRequestError(()=>parseUpdateAdminAccount({consoleLoginEnabled:'false'}));
+  });
   test('normalizes supported player fields and rejects unknown fields', () => {
     expect(parsePlayerItemOperation('PATCH', subjectId, {
       displayName: '  测试玩家  ',
@@ -174,10 +178,10 @@ describe('player administration request validation', () => {
       name: '日常管理',
       permissions: ['players.manage', 'audit.view'],
     });
-    expectRequestError(() => parseCreatePermissionGroup({
-      name: '越权权限组',
+    expect(parseCreatePermissionGroup({
+      name: '只读权限组',
       permissions: ['players.view'],
-    }));
+    })).toEqual({name:'只读权限组',permissions:['players.view']});
     expectRequestError(() => parseCreatePermissionGroup({
       name: '服主权限组',
       permissions: ['owner'],

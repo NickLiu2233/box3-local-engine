@@ -4,6 +4,7 @@ import { Button, Card, Col, Modal, Row, Space, Table, Tag } from 'antd'
 import { playerAdminApi as api } from '../../player-admin-api'
 import { dateTime } from '../../player-admin-format'
 import type { Admin } from '../../player-admin-types'
+import { ScriptModerationDialog } from './script-moderation-dialog'
 
 type Props = {
   admins: Admin[]
@@ -40,6 +41,7 @@ export function AdminAccountsPage({ admins, loading, refresh, edit, remove }: Pr
         </Col>
         <Col>
           <Space>
+            <ScriptModerationDialog admins={admins}/>
             <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
               刷新
             </Button>
@@ -84,6 +86,7 @@ export function AdminAccountsPage({ admins, loading, refresh, edit, remove }: Pr
               ),
             },
             { title: '最近登录', dataIndex: 'lastLoginAt', render: dateTime },
+            { title: '后台登录', render: (_, row) => row.consoleLoginEnabled === false ? '禁止' : '允许' },
             {
               title: '操作',
               render: (_, row) => (

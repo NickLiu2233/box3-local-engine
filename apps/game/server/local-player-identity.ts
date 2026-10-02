@@ -2133,6 +2133,7 @@ export async function createIdentityBan(
   subjectId: string,
   values: { kind?: unknown; value?: unknown; reason?: unknown; bannedUntil?: unknown },
   context?: AdminActionContext,
+  transaction?: PoolClient,
 ) {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
@@ -2158,9 +2159,9 @@ export async function createIdentityBan(
   }
   const valueHash = identityBanHash(kind, value);
   const displayValue = kind === 'device' ? value.slice(0, 16) : value;
-  const client = await database.connect();
+  const client = transaction || await database.connect();
   try {
-    await client.query('BEGIN');
+    if (!transaction) await client.query('BEGIN');
     await client.query(`
       UPDATE ${table('identity_bans')} SET revoked_at = NOW(), revoked_by = 'system-expired'
       WHERE kind = $1 AND value_hash = $2 AND revoked_at IS NULL
@@ -2191,7 +2192,7 @@ export async function createIdentityBan(
       affectedSessions: affected.rowCount || 0,
       affectedPlayers: subjects.length,
     }, context);
-    await client.query('COMMIT');
+    if (!transaction) await client.query('COMMIT');
     return {
       id: inserted.rows[0]?.id || '', kind, displayValue, reason,
       bannedUntil: bannedUntil?.toISOString(),
@@ -2199,22 +2200,22 @@ export async function createIdentityBan(
       affectedPlayers: subjects.length,
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transaction) await client.query('ROLLBACK');
     if ((error as { code?: string }).code === '23505') throw new Error('该 IP 或设备已经处于封禁状态');
     throw error;
   } finally {
-    client.release();
+    if (!transaction) client.release();
   }
 }
 
-export async function revokeIdentityBan(subjectId: string, banId: unknown, context?: AdminActionContext) {
+export async function revokeIdentityBan(subjectId: string, banId: unknown, context?: AdminActionContext, transaction?: PoolClient) {
   if (!/^\d+$/.test(String(banId || ''))) throw new Error('封禁记录无效');
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
   await initialize();
-  const client = await database.connect();
+  const client = transaction || await database.connect();
   try {
-    await client.query('BEGIN');
+    if (!transaction) await client.query('BEGIN');
     const result = await client.query<{ kind: string; display_value: string }>(`
       UPDATE ${table('identity_bans')}
       SET revoked_at = NOW(), revoked_by = $3
@@ -2225,13 +2226,13 @@ export async function revokeIdentityBan(subjectId: string, banId: unknown, conte
     await audit(client, `identity.${result.rows[0].kind}.unban`, subjectId, {
       banId: String(banId), displayValue: result.rows[0].display_value,
     }, context);
-    await client.query('COMMIT');
+    if (!transaction) await client.query('COMMIT');
     return { revoked: true };
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transaction) await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (!transaction) client.release();
   }
 }
 
@@ -2272,6 +2273,7 @@ export async function updateManagedPlayer(
   boxId?: unknown; userKey?: unknown; adminPermissions?: unknown; creatorAccess?: unknown; creatorPermissions?: unknown;
   },
   context?: AdminActionContext,
+  transaction?: PoolClient,
 ) {
   const database = getPool();
   if (!database) throw new Error('玩家管理需要配置 PostgreSQL');
@@ -2333,9 +2335,9 @@ export async function updateManagedPlayer(
   if (userKey !== undefined && userKey !== null && (userKey.length > 128 || !/^[\x20-\x7e]*$/.test(userKey))) {
     throw new Error('用户 Key 只能包含 128 个以内的可打印 ASCII 字符');
   }
-  const client = await database.connect();
+  const client = transaction || await database.connect();
   try {
-    await client.query('BEGIN');
+    if (!transaction) await client.query('BEGIN');
     const previous = await client.query<{
       display_name: string;
       avatar_hash: string | null;
@@ -2433,9 +2435,9 @@ export async function updateManagedPlayer(
         outcome: 'success',
       }, context);
     }
-    await client.query('COMMIT');
+    if (!transaction) await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transaction) await client.query('ROLLBACK');
     if ((error as { code?: string; constraint?: string }).code === '23505' &&
       ['local_users_box_id', 'local_users_user_key'].includes((error as { constraint?: string }).constraint || '')) {
       throw new Error((error as { constraint?: string }).constraint === 'local_users_user_key'
@@ -2444,7 +2446,18 @@ export async function updateManagedPlayer(
     }
     throw error;
   } finally {
-    client.release();
+    if (!transaction) client.release();
+  }
+  if (transaction) {
+    // Read our own write on the caller's connection. Opening another connection
+    // here can observe stale state or deadlock against our uncommitted user lock.
+    const result = await transaction.query<IdentityRow>(`
+      SELECT u.*, u.id AS user_id, u.created_at AS registered_at,
+        p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip
+      FROM ${table('users')} u JOIN ${table('principals')} p ON p.id=u.principal_id
+      WHERE p.id=$1
+    `,[subjectId]);
+    return toView(rowToIdentity(result.rows[0]),result.rows[0]);
   }
   return (await getManagedPlayerDetails(subjectId)).player;
 }

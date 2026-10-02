@@ -201,6 +201,8 @@ docker compose --profile infra stop postgres redis
 
 ## 参与开发
 
+希望在地图里自动处理违规玩家，可以参考[地图脚本管理接口](docs/script-moderation.md)。授权由服主在后台绑定，脚本不需要保存管理员密钥。
+
 新人建议先阅读[开发者与协作手册](docs/developer-guide.md)，它完整说明环境准备、Rush 依赖管理、源码启动、模块定位、测试、镜像与发行包构建、部署验证和常见故障。准备提交代码时，再按[贡献者指南](CONTRIBUTING.md)完成分支同步、提交检查和 Pull Request。
 
 最短开发流程：

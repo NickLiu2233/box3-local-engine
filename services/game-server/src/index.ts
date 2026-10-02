@@ -1,4 +1,5 @@
 import { MuServer } from '@box/mudb/server';
+import { ModerationClient } from './moderation/moderation-client';
 import { MuScheduler } from '@box/mudb/scheduler/scheduler';
 import { ContentServer, Hash } from '@box/content-server';
 import { ContentPerf } from '@box/content-server/content-perf';
@@ -359,6 +360,16 @@ export class GameServer {
           return false;
         }
 
+        // Map-scoped bans are checked before allocating a connection, including reconnects.
+        try {
+          if (!await new ModerationClient().admission(data.user.id,data.ipAddress)) {
+            this.net.kickSession(sessionId,CloseType.NoAuth);
+            return false;
+          }
+        } catch {
+          this.net.kickSession(sessionId,CloseType.Server);
+          return false;
+        }
         // test if user is valid
         const userId = data.user.id;
         const ipAddress = data.ipAddress;

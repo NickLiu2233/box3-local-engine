@@ -252,6 +252,7 @@ export function playerBatchRequirement(value: unknown): PlayerAdminRequirement {
 }
 
 const createAdminAccountSchema = z.object({
+  consoleLoginEnabled: z.boolean().optional(),
   username: usernameSchema,
   displayName: adminDisplayNameSchema,
   password: adminPasswordSchema,
@@ -259,6 +260,7 @@ const createAdminAccountSchema = z.object({
 }).strict();
 
 const updateAdminAccountSchema = z.object({
+  consoleLoginEnabled: z.boolean().optional(),
   displayName: adminDisplayNameSchema.optional(),
   password: adminPasswordSchema.optional(),
   permissionGroupId: uuidSchema.nullable().optional(),

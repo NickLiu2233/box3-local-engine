@@ -275,6 +275,10 @@ export declare const apiOperations: {
         readonly path: "/api/play-admin/players/{subjectId}";
         readonly method: "GET";
     };
+    readonly getApiPlayAdminScriptModeration: {
+        readonly path: "/api/play-admin/script-moderation";
+        readonly method: "GET";
+    };
     readonly getApiPlayAdminStatus: {
         readonly path: "/api/play-admin/status";
         readonly method: "GET";
@@ -607,6 +611,10 @@ export declare const apiOperations: {
         readonly path: "/api/play-admin/players/{subjectId}";
         readonly method: "POST";
     };
+    readonly postApiPlayAdminScriptModeration: {
+        readonly path: "/api/play-admin/script-moderation";
+        readonly method: "POST";
+    };
     readonly postApiPlayAdminSelfPassword: {
         readonly path: "/api/play-admin/self-password";
         readonly method: "POST";
@@ -635,8 +643,16 @@ export declare const apiOperations: {
         readonly path: "/api/player-internal/logout";
         readonly method: "POST";
     };
+    readonly postApiPlayerInternalMapAdmission: {
+        readonly path: "/api/player-internal/map-admission";
+        readonly method: "POST";
+    };
     readonly postApiPlayerInternalRuntimeIdentity: {
         readonly path: "/api/player-internal/runtime-identity";
+        readonly method: "POST";
+    };
+    readonly postApiPlayerInternalScriptModeration: {
+        readonly path: "/api/player-internal/script-moderation";
         readonly method: "POST";
     };
     readonly postApiPlayLogout: {
@@ -7332,6 +7348,7 @@ export declare class ApiClient {
             displayName: string;
             role: "admin" | "moderator";
             status: "active" | "disabled";
+            consoleLoginEnabled: boolean;
             permissionGroupId?: string | undefined;
             permissionGroupName?: string | undefined;
             lastLoginAt?: string | undefined;
@@ -8977,6 +8994,202 @@ export declare class ApiClient {
     } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     getApiPlayAdminPlayersSubjectId(...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["GET"]>): Promise<{
         [x: string]: unknown;
+    }>;
+    getApiPlayAdminScriptModerationRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/script-moderation"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        keys: {
+                            id: string;
+                            adminId: string;
+                            adminName: string;
+                            name: string;
+                            scope: "map" | "server";
+                            maximumBanSeconds: number;
+                            expiresAt: string;
+                            revokedAt: string | null;
+                        }[];
+                        bindings: {
+                            mapId: string;
+                            keyId: string;
+                            scriptFingerprint: string;
+                        }[];
+                        bans: {
+                            id: string;
+                            mapId: string;
+                            subjectId: string;
+                            kind: string;
+                            reason: string;
+                            expiresAt: string;
+                        }[];
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, ({
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body?: undefined;
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            keys: {
+                                id: string;
+                                adminId: string;
+                                adminName: string;
+                                name: string;
+                                scope: "map" | "server";
+                                maximumBanSeconds: number;
+                                expiresAt: string;
+                                revokedAt: string | null;
+                            }[];
+                            bindings: {
+                                mapId: string;
+                                keyId: string;
+                                scriptFingerprint: string;
+                            }[];
+                            bans: {
+                                id: string;
+                                mapId: string;
+                                subjectId: string;
+                                kind: string;
+                                reason: string;
+                                expiresAt: string;
+                            }[];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            keys: {
+                                id: string;
+                                adminId: string;
+                                adminName: string;
+                                name: string;
+                                scope: "map" | "server";
+                                maximumBanSeconds: number;
+                                expiresAt: string;
+                                revokedAt: string | null;
+                            }[];
+                            bindings: {
+                                mapId: string;
+                                keyId: string;
+                                scriptFingerprint: string;
+                            }[];
+                            bans: {
+                                id: string;
+                                mapId: string;
+                                subjectId: string;
+                                kind: string;
+                                reason: string;
+                                expiresAt: string;
+                            }[];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body"> & {
+        [key: string]: unknown;
+    }) | undefined, `${string}/${string}`>>;
+    getApiPlayAdminScriptModeration(...init: Parameters<PathBasedClient<paths>["/api/play-admin/script-moderation"]["GET"]>): Promise<{
+        keys: {
+            id: string;
+            adminId: string;
+            adminName: string;
+            name: string;
+            scope: "map" | "server";
+            maximumBanSeconds: number;
+            expiresAt: string;
+            revokedAt: string | null;
+        }[];
+        bindings: {
+            mapId: string;
+            keyId: string;
+            scriptFingerprint: string;
+        }[];
+        bans: {
+            id: string;
+            mapId: string;
+            subjectId: string;
+            kind: string;
+            reason: string;
+            expiresAt: string;
+        }[];
     }>;
     getApiPlayAdminStatusRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/status"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -12891,10 +13104,14 @@ export declare class ApiClient {
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    displayName?: string;
+                    password?: string;
+                    permissionGroupId?: string | null;
+                    status?: "active" | "disabled";
+                    consoleLoginEnabled?: boolean;
                 };
             };
         };
@@ -12928,9 +13145,13 @@ export declare class ApiClient {
             cookie?: never;
         };
     } & {
-        body?: ({
-            [x: string]: unknown;
-        } & {}) | undefined;
+        body: {
+            displayName?: string | undefined;
+            password?: string | undefined;
+            permissionGroupId?: (string | null) | undefined;
+            status?: ("active" | "disabled") | undefined;
+            consoleLoginEnabled?: boolean | undefined;
+        } & {};
     } & {
         baseUrl?: string;
         querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
@@ -12942,10 +13163,14 @@ export declare class ApiClient {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        displayName?: string;
+                        password?: string;
+                        permissionGroupId?: string | null;
+                        status?: "active" | "disabled";
+                        consoleLoginEnabled?: boolean;
                     };
                 };
             };
@@ -12979,10 +13204,14 @@ export declare class ApiClient {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        displayName?: string;
+                        password?: string;
+                        permissionGroupId?: string | null;
+                        status?: "active" | "disabled";
+                        consoleLoginEnabled?: boolean;
                     };
                 };
             };
@@ -17638,10 +17867,11 @@ export declare class ApiClient {
         requestBody: {
             content: {
                 "application/json": {
+                    consoleLoginEnabled?: boolean;
                     username: string;
                     displayName: string;
                     password: string;
-                    permissionGroupId?: string;
+                    permissionGroupId: string;
                 };
             };
         };
@@ -17674,10 +17904,11 @@ export declare class ApiClient {
         } | undefined;
     } & {
         body: {
+            consoleLoginEnabled?: boolean | undefined;
             username: string;
             displayName: string;
             password: string;
-            permissionGroupId?: string | undefined;
+            permissionGroupId: string;
         } & {};
     } & {
         baseUrl?: string;
@@ -17691,10 +17922,11 @@ export declare class ApiClient {
             requestBody: {
                 content: {
                     "application/json": {
+                        consoleLoginEnabled?: boolean;
                         username: string;
                         displayName: string;
                         password: string;
-                        permissionGroupId?: string;
+                        permissionGroupId: string;
                     };
                 };
             };
@@ -17729,10 +17961,11 @@ export declare class ApiClient {
             requestBody: {
                 content: {
                     "application/json": {
+                        consoleLoginEnabled?: boolean;
                         username: string;
                         displayName: string;
                         password: string;
-                        permissionGroupId?: string;
+                        permissionGroupId: string;
                     };
                 };
             };
@@ -19803,6 +20036,224 @@ export declare class ApiClient {
     postApiPlayAdminPlayersSubjectId(...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/{subjectId}"]["POST"]>): Promise<{
         [x: string]: unknown;
     }>;
+    postApiPlayAdminScriptModerationRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/script-moderation"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    action: "create";
+                    values: {
+                        adminId: string;
+                        name: string;
+                        scope?: "map" | "server";
+                        maximumBanSeconds?: number;
+                        expiresAt: string;
+                    };
+                } | {
+                    action: "bind";
+                    values: {
+                        mapId: string;
+                        keyId: string;
+                        scriptFingerprint: string;
+                    };
+                } | {
+                    action: "revoke";
+                    keyId: string;
+                } | {
+                    action: "unbind";
+                    mapId: string;
+                } | {
+                    action: "revoke-map-ban";
+                    banId: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: ({
+            action: "create";
+            values: {
+                adminId: string;
+                name: string;
+                scope?: ("map" | "server") | undefined;
+                maximumBanSeconds?: number | undefined;
+                expiresAt: string;
+            } & {};
+        } & {}) | ({
+            action: "bind";
+            values: {
+                mapId: string;
+                keyId: string;
+                scriptFingerprint: string;
+            } & {};
+        } & {}) | ({
+            action: "revoke";
+            keyId: string;
+        } & {}) | ({
+            action: "unbind";
+            mapId: string;
+        } & {}) | ({
+            action: "revoke-map-ban";
+            banId: string;
+        } & {});
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        action: "create";
+                        values: {
+                            adminId: string;
+                            name: string;
+                            scope?: "map" | "server";
+                            maximumBanSeconds?: number;
+                            expiresAt: string;
+                        };
+                    } | {
+                        action: "bind";
+                        values: {
+                            mapId: string;
+                            keyId: string;
+                            scriptFingerprint: string;
+                        };
+                    } | {
+                        action: "revoke";
+                        keyId: string;
+                    } | {
+                        action: "unbind";
+                        mapId: string;
+                    } | {
+                        action: "revoke-map-ban";
+                        banId: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        action: "create";
+                        values: {
+                            adminId: string;
+                            name: string;
+                            scope?: "map" | "server";
+                            maximumBanSeconds?: number;
+                            expiresAt: string;
+                        };
+                    } | {
+                        action: "bind";
+                        values: {
+                            mapId: string;
+                            keyId: string;
+                            scriptFingerprint: string;
+                        };
+                    } | {
+                        action: "revoke";
+                        keyId: string;
+                    } | {
+                        action: "unbind";
+                        mapId: string;
+                    } | {
+                        action: "revoke-map-ban";
+                        banId: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    postApiPlayAdminScriptModeration(...init: Parameters<PathBasedClient<paths>["/api/play-admin/script-moderation"]["POST"]>): Promise<{
+        [x: string]: unknown;
+    }>;
     postApiPlayAdminSelfPasswordRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/self-password"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -20830,6 +21281,168 @@ export declare class ApiClient {
     postApiPlayerInternalLogout(...init: Parameters<PathBasedClient<paths>["/api/player-internal/logout"]["POST"]>): Promise<{
         [x: string]: unknown;
     }>;
+    postApiPlayerInternalMapAdmissionRaw(...init: Parameters<PathBasedClient<paths>["/api/player-internal/map-admission"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    mapId: string;
+                    userId: string;
+                    ipAddress: string;
+                } | {
+                    mapId: string;
+                    players: {
+                        userId: string;
+                        ipAddress: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        allowed?: boolean;
+                        denied?: number[];
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: ({
+            mapId: string;
+            userId: string;
+            ipAddress: string;
+        } & {}) | ({
+            mapId: string;
+            players: ({
+                userId: string;
+                ipAddress: string;
+            } & {})[];
+        } & {});
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        mapId: string;
+                        userId: string;
+                        ipAddress: string;
+                    } | {
+                        mapId: string;
+                        players: {
+                            userId: string;
+                            ipAddress: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            allowed?: boolean;
+                            denied?: number[];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        mapId: string;
+                        userId: string;
+                        ipAddress: string;
+                    } | {
+                        mapId: string;
+                        players: {
+                            userId: string;
+                            ipAddress: string;
+                        }[];
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            allowed?: boolean;
+                            denied?: number[];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    postApiPlayerInternalMapAdmission(...init: Parameters<PathBasedClient<paths>["/api/player-internal/map-admission"]["POST"]>): Promise<{
+        allowed?: boolean | undefined;
+        denied?: number[] | undefined;
+    }>;
     postApiPlayerInternalRuntimeIdentityRaw(...init: Parameters<PathBasedClient<paths>["/api/player-internal/runtime-identity"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -20957,6 +21570,236 @@ export declare class ApiClient {
     }) | undefined, `${string}/${string}`>>;
     postApiPlayerInternalRuntimeIdentity(...init: Parameters<PathBasedClient<paths>["/api/player-internal/runtime-identity"]["POST"]>): Promise<{
         [x: string]: unknown;
+    }>;
+    postApiPlayerInternalScriptModerationRaw(...init: Parameters<PathBasedClient<paths>["/api/player-internal/script-moderation"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    mapId: string;
+                    scriptFingerprint: string;
+                    action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                    userId?: string;
+                    ipAddress?: string;
+                    scope?: "map" | "server";
+                    durationSeconds?: number;
+                    reason?: string;
+                    banId?: string;
+                    requestId?: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        id: string;
+                        scope: "map" | "server";
+                        expiresAt: string;
+                        replayed: boolean;
+                    } | {
+                        id: string;
+                        revoked: boolean;
+                        replayed: boolean;
+                    } | {
+                        status: "active" | "banned";
+                        replayed: boolean;
+                        bans: {
+                            id: string;
+                            kind: "account" | "ip";
+                            scope: "map" | "server";
+                            reason: string;
+                            expiresAt: string;
+                        }[];
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: {
+            mapId: string;
+            scriptFingerprint: string;
+            action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+            userId?: string | undefined;
+            ipAddress?: string | undefined;
+            scope?: ("map" | "server") | undefined;
+            durationSeconds?: number | undefined;
+            reason?: string | undefined;
+            banId?: string | undefined;
+            requestId?: string | undefined;
+        } & {};
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        mapId: string;
+                        scriptFingerprint: string;
+                        action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                        userId?: string;
+                        ipAddress?: string;
+                        scope?: "map" | "server";
+                        durationSeconds?: number;
+                        reason?: string;
+                        banId?: string;
+                        requestId?: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            scope: "map" | "server";
+                            expiresAt: string;
+                            replayed: boolean;
+                        } | {
+                            id: string;
+                            revoked: boolean;
+                            replayed: boolean;
+                        } | {
+                            status: "active" | "banned";
+                            replayed: boolean;
+                            bans: {
+                                id: string;
+                                kind: "account" | "ip";
+                                scope: "map" | "server";
+                                reason: string;
+                                expiresAt: string;
+                            }[];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        mapId: string;
+                        scriptFingerprint: string;
+                        action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                        userId?: string;
+                        ipAddress?: string;
+                        scope?: "map" | "server";
+                        durationSeconds?: number;
+                        reason?: string;
+                        banId?: string;
+                        requestId?: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            scope: "map" | "server";
+                            expiresAt: string;
+                            replayed: boolean;
+                        } | {
+                            id: string;
+                            revoked: boolean;
+                            replayed: boolean;
+                        } | {
+                            status: "active" | "banned";
+                            replayed: boolean;
+                            bans: {
+                                id: string;
+                                kind: "account" | "ip";
+                                scope: "map" | "server";
+                                reason: string;
+                                expiresAt: string;
+                            }[];
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    postApiPlayerInternalScriptModeration(...init: Parameters<PathBasedClient<paths>["/api/player-internal/script-moderation"]["POST"]>): Promise<{
+        id: string;
+        scope: "map" | "server";
+        expiresAt: string;
+        replayed: boolean;
+    } | {
+        id: string;
+        revoked: boolean;
+        replayed: boolean;
+    } | {
+        status: "active" | "banned";
+        replayed: boolean;
+        bans: {
+            id: string;
+            kind: "account" | "ip";
+            scope: "map" | "server";
+            reason: string;
+            expiresAt: string;
+        }[];
     }>;
     postApiPlayLogoutRaw(...init: Parameters<PathBasedClient<paths>["/api/play-logout"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {

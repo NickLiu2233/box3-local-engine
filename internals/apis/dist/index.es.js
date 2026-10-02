@@ -399,6 +399,10 @@ const apiOperations = {
         "path": "/api/play-admin/players/{subjectId}",
         "method": "GET"
     },
+    "getApiPlayAdminScriptModeration": {
+        "path": "/api/play-admin/script-moderation",
+        "method": "GET"
+    },
     "getApiPlayAdminStatus": {
         "path": "/api/play-admin/status",
         "method": "GET"
@@ -731,6 +735,10 @@ const apiOperations = {
         "path": "/api/play-admin/players/{subjectId}",
         "method": "POST"
     },
+    "postApiPlayAdminScriptModeration": {
+        "path": "/api/play-admin/script-moderation",
+        "method": "POST"
+    },
     "postApiPlayAdminSelfPassword": {
         "path": "/api/play-admin/self-password",
         "method": "POST"
@@ -759,8 +767,16 @@ const apiOperations = {
         "path": "/api/player-internal/logout",
         "method": "POST"
     },
+    "postApiPlayerInternalMapAdmission": {
+        "path": "/api/player-internal/map-admission",
+        "method": "POST"
+    },
     "postApiPlayerInternalRuntimeIdentity": {
         "path": "/api/player-internal/runtime-identity",
+        "method": "POST"
+    },
+    "postApiPlayerInternalScriptModeration": {
+        "path": "/api/player-internal/script-moderation",
         "method": "POST"
     },
     "postApiPlayLogout": {
@@ -1260,6 +1276,12 @@ class ApiClient {
     getApiPlayAdminPlayersSubjectId(...init) {
         return this.unwrap(this.getApiPlayAdminPlayersSubjectIdRaw(...init));
     }
+    getApiPlayAdminScriptModerationRaw(...init) {
+        return this.paths["/api/play-admin/script-moderation"].GET(...init);
+    }
+    getApiPlayAdminScriptModeration(...init) {
+        return this.unwrap(this.getApiPlayAdminScriptModerationRaw(...init));
+    }
     getApiPlayAdminStatusRaw(...init) {
         return this.paths["/api/play-admin/status"].GET(...init);
     }
@@ -1758,6 +1780,12 @@ class ApiClient {
     postApiPlayAdminPlayersSubjectId(...init) {
         return this.unwrap(this.postApiPlayAdminPlayersSubjectIdRaw(...init));
     }
+    postApiPlayAdminScriptModerationRaw(...init) {
+        return this.paths["/api/play-admin/script-moderation"].POST(...init);
+    }
+    postApiPlayAdminScriptModeration(...init) {
+        return this.unwrap(this.postApiPlayAdminScriptModerationRaw(...init));
+    }
     postApiPlayAdminSelfPasswordRaw(...init) {
         return this.paths["/api/play-admin/self-password"].POST(...init);
     }
@@ -1800,11 +1828,23 @@ class ApiClient {
     postApiPlayerInternalLogout(...init) {
         return this.unwrap(this.postApiPlayerInternalLogoutRaw(...init));
     }
+    postApiPlayerInternalMapAdmissionRaw(...init) {
+        return this.paths["/api/player-internal/map-admission"].POST(...init);
+    }
+    postApiPlayerInternalMapAdmission(...init) {
+        return this.unwrap(this.postApiPlayerInternalMapAdmissionRaw(...init));
+    }
     postApiPlayerInternalRuntimeIdentityRaw(...init) {
         return this.paths["/api/player-internal/runtime-identity"].POST(...init);
     }
     postApiPlayerInternalRuntimeIdentity(...init) {
         return this.unwrap(this.postApiPlayerInternalRuntimeIdentityRaw(...init));
+    }
+    postApiPlayerInternalScriptModerationRaw(...init) {
+        return this.paths["/api/player-internal/script-moderation"].POST(...init);
+    }
+    postApiPlayerInternalScriptModeration(...init) {
+        return this.unwrap(this.postApiPlayerInternalScriptModerationRaw(...init));
     }
     postApiPlayLogoutRaw(...init) {
         return this.paths["/api/play-logout"].POST(...init);

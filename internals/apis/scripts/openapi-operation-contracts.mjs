@@ -7,6 +7,17 @@ const object = (properties, required = Object.keys(properties)) => ({
 })
 
 const contracts = {
+  'post /api/player-internal/script-moderation': {oneOf:[
+    object({id:{type:'string',format:'uuid'},scope:{type:'string',enum:['map','server']},expiresAt:{type:'string',format:'date-time'},replayed:{type:'boolean'}}),
+    object({id:{type:'string',format:'uuid'},revoked:{type:'boolean'},replayed:{type:'boolean'}}),
+    object({status:{type:'string',enum:['active','banned']},replayed:{type:'boolean'},bans:{type:'array',items:object({id:{type:'string'},kind:{type:'string',enum:['account','ip']},scope:{type:'string',enum:['map','server']},reason:{type:'string'},expiresAt:{type:'string'}})}}),
+  ]},
+  'post /api/player-internal/map-admission': object({ allowed: { type: 'boolean' }, denied:{type:'array',items:{type:'integer'}} },[]),
+  'get /api/play-admin/script-moderation': object({
+    keys: { type:'array', items: object({id:{type:'string'},adminId:{type:'string'},adminName:{type:'string'},name:{type:'string'},scope:{type:'string',enum:['map','server']},maximumBanSeconds:{type:'integer'},expiresAt:{type:'string'},revokedAt:{type:['string','null']}}) },
+    bindings: { type:'array', items: object({mapId:{type:'string'},keyId:{type:'string'},scriptFingerprint:{type:'string'}}) },
+    bans:{type:'array',items:object({id:{type:'string'},mapId:{type:'string'},subjectId:{type:'string'},kind:{type:'string'},reason:{type:'string'},expiresAt:{type:'string'}})},
+  }),
   'patch /api/auth/profile': object({ player: ref('PlayerSelfProfile') }),
   'patch /api/player-auth/profile': object({ player: ref('PlayerSelfProfile') }),
   'post /api/auth/password': object({ changed: { type: 'boolean', const: true }, reloginRequired: { type: 'boolean', const: true } }),
@@ -56,6 +67,21 @@ const contracts = {
 }
 
 const requestContracts = {
+  'post /api/player-internal/map-admission': {oneOf:[
+    {...object({mapId:{type:'string'},userId:{type:'string'},ipAddress:{type:'string'}}),additionalProperties:false},
+    {...object({mapId:{type:'string'},players:{type:'array',minItems:1,maxItems:100,items:object({userId:{type:'string'},ipAddress:{type:'string'}})}}),additionalProperties:false},
+  ]},
+  'post /api/player-internal/script-moderation': {...object({
+    mapId:{type:'string'},scriptFingerprint:{type:'string'},action:{type:'string',enum:['banPlayer','banCurrentIP','revokeBan','getPlayerStatus']},
+    userId:{type:'string'},ipAddress:{type:'string'},scope:{type:'string',enum:['map','server']},durationSeconds:{type:'integer'},reason:{type:'string'},banId:{type:'string'},requestId:{type:'string'},
+  },['mapId','scriptFingerprint','action']),additionalProperties:false},
+  'post /api/play-admin/script-moderation': {oneOf:[
+    object({action:{type:'string',const:'create'},values:object({adminId:{type:'string'},name:{type:'string'},scope:{type:'string',enum:['map','server']},maximumBanSeconds:{type:'integer'},expiresAt:{type:'string'}},['adminId','name','expiresAt'])}),
+    object({action:{type:'string',const:'bind'},values:object({mapId:{type:'string'},keyId:{type:'string'},scriptFingerprint:{type:'string'}})}),
+    object({action:{type:'string',const:'revoke'},keyId:{type:'string'}}),
+    object({action:{type:'string',const:'unbind'},mapId:{type:'string'}}),
+    object({action:{type:'string',const:'revoke-map-ban'},banId:{type:'string'}}),
+  ]},
   'patch /api/auth/profile': { ...object({ displayName: { type: 'string', minLength: 1, maxLength: 32 } }), additionalProperties: false },
   'patch /api/player-auth/profile': { ...object({ displayName: { type: 'string', minLength: 1, maxLength: 32 } }), additionalProperties: false },
   'post /api/auth/password': { ...object({
@@ -77,11 +103,16 @@ const requestContracts = {
   'post /api/player-auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/play-admin/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/play-admin/admins': object({
+    consoleLoginEnabled: { type: 'boolean', default: true },
     username: { type: 'string' },
     displayName: { type: 'string' },
     password: { type: 'string' },
     permissionGroupId: { type: 'string' },
-  }, ['username', 'displayName', 'password']),
+  }, ['username', 'displayName', 'password', 'permissionGroupId']),
+  'patch /api/play-admin/admins/{id}': object({
+    displayName: { type: 'string' }, password: { type: 'string' }, permissionGroupId: { type: ['string', 'null'] },
+    status: { type: 'string', enum: ['active', 'disabled'] }, consoleLoginEnabled: { type: 'boolean' },
+  }, []),
   'post /api/play-admin/permission-groups': object({
     name: { type: 'string' },
     permissions: { type: 'array', items: { type: 'string' } },

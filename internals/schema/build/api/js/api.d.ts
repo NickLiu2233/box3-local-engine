@@ -1,5 +1,7 @@
 import { GameVector3, GameQuaternion, GameRGBAColor, GameRGBColor, GameBounds3 } from './math';
 import { URL } from './url';
+import type { GameModeration } from './moderation';
+export type { GameModeration, ModerationOptions, ModerationBan } from './moderation';
 export type TELEPORT_ERROR_STATUS = 'PLAYER_OFFLINE' | 'ACCESS_DENIED' | 'UNKNOWN';
 export type TeleportType = (mapId: string, players: GameEntity[], serverId?: string) => Promise<TeleportResult>;
 export type TeleportResult = {
@@ -585,6 +587,8 @@ export declare class GameWorld {
      * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
      */
     serverId: string;
+    /** 服务端地图管理能力，由服主在后台授权；脚本不持有管理员密钥。 */
+    moderation: GameModeration;
     /**
      * The name of the project (read only)
      */

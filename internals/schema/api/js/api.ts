@@ -6,6 +6,7 @@ import {
   GameBounds3,
 } from './math';
 import { URL } from './url';
+import type { GameModeration } from './moderation';
 
 export type TELEPORT_ERROR_STATUS =
   | 'PLAYER_OFFLINE'
@@ -406,6 +407,8 @@ export class Sound {
  * which exist in the world.
  */
 export class GameWorld {
+  /** 服务端地图管理能力，由服主在后台授权；脚本不持有管理员密钥。 */
+  public moderation!: GameModeration;
   /**
    * The name of the project (read only)
    */

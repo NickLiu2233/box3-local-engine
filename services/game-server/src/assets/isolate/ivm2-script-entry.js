@@ -24143,6 +24143,103 @@ class TeleportScriptShell {
     }
 }
 
+const ModerationProtocol = {
+    name: 'script-moderation',
+    server: {
+        request: new schemaExports.MuStruct({
+            handle: new schemaExports.MuUint32(),
+            playerId: new schemaExports.MuUint32(),
+            payload: new schemaExports.MuUTF8()
+        })
+    },
+    client: {
+        reply: new schemaExports.MuStruct({
+            handle: new schemaExports.MuUint32(),
+            success: new schemaExports.MuBoolean(),
+            payload: new schemaExports.MuUTF8()
+        })
+    }
+};
+
+class ModerationScript {
+    get mapId() {
+        return this.info().mapId;
+    }
+    get scriptFingerprint() {
+        return this.info().scriptFingerprint;
+    }
+    request(action, player, options) {
+        if (this.pending.size >= 8) return Promise.reject(new Error('地图管理请求过多'));
+        const playerId = player ? this.playerId(player) : 0;
+        const payload = JSON.stringify(Object.assign(Object.assign({}, options), {
+            action
+        }));
+        if (payload.length > 2048) return Promise.reject(new Error('地图管理参数过长'));
+        const handle = this.sequence++ >>> 0;
+        const wrapper = new PromiseWrapper(this.schedule);
+        const timer = this.timers.setTimeout(()=>{
+            this.pending.delete(handle);
+            wrapper.notifyError(new Error('地图管理请求超时；重试请复用 requestId'));
+        }, 12000);
+        this.pending.set(handle, {
+            wrapper,
+            timer
+        });
+        try {
+            this.protocol.server.message.request({
+                handle,
+                playerId,
+                payload
+            });
+        } catch (error) {
+            this.timers.clearTimeout(timer);
+            this.pending.delete(handle);
+            wrapper.notifyError(error);
+        }
+        return wrapper.query;
+    }
+    banPlayer(player, options) {
+        return this.request('banPlayer', player, options);
+    }
+    banCurrentIP(player, options) {
+        return this.request('banCurrentIP', player, options);
+    }
+    revokeBan(banId, options) {
+        return this.request('revokeBan', undefined, Object.assign(Object.assign({}, options), {
+            banId
+        }));
+    }
+    getPlayerStatus(player) {
+        return this.request('getPlayerStatus', player, {});
+    }
+    constructor(client, schedule, playerId, info, timers){
+        this.schedule = schedule;
+        this.playerId = playerId;
+        this.info = info;
+        this.timers = timers;
+        this.pending = new Map();
+        this.sequence = 0;
+        this.protocol = client.protocol(ModerationProtocol);
+        this.protocol.configure({
+            message: {
+                reply: (message)=>{
+                    const item = this.pending.get(message.handle);
+                    if (!item) return;
+                    this.pending.delete(message.handle);
+                    this.timers.clearTimeout(item.timer);
+                    try {
+                        const result = JSON.parse(message.payload);
+                        if (message.success) item.wrapper.notifyDone(result);
+                        else item.wrapper.notifyError(new Error(result.message || '地图管理操作失败'));
+                    } catch (_a) {
+                        item.wrapper.notifyError(new Error('地图管理响应无效'));
+                    }
+                }
+            }
+        });
+    }
+}
+
 function warnDeprecate(f, prev, cur) {
     return function() {
         return f.apply(this, Array.prototype.slice.call(arguments));
@@ -32924,7 +33021,9 @@ const ScriptConfigSchema = new schemaExports.MuStruct({
     entityLimit: new schemaExports.MuFloat64(MAX_BODIES - 100),
     animationLimit: new schemaExports.MuFloat64(500),
     keyframeLimit: new schemaExports.MuFloat64(16),
-    serverId: new schemaExports.MuUTF8()
+    serverId: new schemaExports.MuUTF8(),
+    moderationMapId: new schemaExports.MuUTF8(),
+    moderationFingerprint: new schemaExports.MuUTF8()
 });
 const SciptCollisionFilterSpecSchema = new schemaExports.MuStruct({
     a: new schemaExports.MuUTF8(),
@@ -33742,6 +33841,14 @@ class ScriptShell {
         this.rtc = new RTCScriptShell(this);
         this.gui = new GUIScriptShell(this);
         this.teleport = new TeleportScriptShell(this.client, this.scheduler.schedule);
+        const moderation = new ModerationScript(this.client, this.scheduler.schedule, (entity)=>{
+            const wrapper = this.world.entity.getEntityWrapper(entity);
+            if (!wrapper || !wrapper.isPlayer) throw new Error('目标不是当前地图的玩家');
+            return wrapper.id;
+        }, ()=>({
+                mapId: this.config.moderationMapId,
+                scriptFingerprint: this.config.moderationFingerprint
+            }), this.scheduler.scheduler);
         this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
         this.console = new GameConsole(this.log, this.clearLog);
         this.resource = new ScriptResourceSync(this._eval);
@@ -33773,6 +33880,7 @@ class ScriptShell {
             setCameraYaw: this.setCameraYaw,
             teleport: this.teleport.teleport
         });
+        this.world.world.moderation = moderation;
         this.api = createScriptAPI({
             scheduler: this.scheduler.scheduler,
             console: this.console,

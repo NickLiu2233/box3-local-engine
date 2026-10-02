@@ -76,6 +76,7 @@ import { NavigatorScriptShell } from '../navigator/navigator-script';
 import { RTCScriptShell } from '../rtc/rtc-script';
 import { StorageSynchronizer } from '../storage/storage-script';
 import { TeleportScriptShell } from '../teleport/teleport-script';
+import { ModerationScript } from '../moderation/moderation-script';
 import { warnDeprecate } from '../utils/deprecate';
 import { PromiseWrapper } from '../utils/script-promise';
 import { ScriptParserAPI } from './bindings/animations';
@@ -939,6 +940,11 @@ export class ScriptShell {
       this.client,
       this.scheduler.schedule,
     );
+    const moderation = new ModerationScript(this.client,this.scheduler.schedule, entity => {
+      const wrapper = this.world.entity.getEntityWrapper(entity);
+      if (!wrapper || !wrapper.isPlayer) throw new Error('目标不是当前地图的玩家');
+      return wrapper.id;
+    }, () => ({mapId:this.config.moderationMapId,scriptFingerprint:this.config.moderationFingerprint}),this.scheduler.scheduler);
     this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
 
     this.console = new GameConsole(this.log, this.clearLog);
@@ -977,7 +983,9 @@ export class ScriptShell {
       setCameraYaw: this.setCameraYaw,
       teleport: this.teleport.teleport,
     });
+    this.world.world.moderation = moderation;
     this.api = createScriptAPI({
+      // world.moderation is installed before any user code is evaluated.
       scheduler: this.scheduler.scheduler,
       console: this.console,
       world: this.world.world,
