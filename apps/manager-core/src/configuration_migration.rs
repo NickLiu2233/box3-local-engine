@@ -96,6 +96,14 @@ fn http_url(value: &str, key: &str) -> Result<HttpUrl, String> {
     })
 }
 
+pub fn normalize_public_url(value: &str, key: &str) -> Result<String, String> {
+    http_url(value, key).map(|url| url.value)
+}
+
+pub fn public_url_parts(value: &str, key: &str) -> Result<(String, u16, bool, String), String> {
+    http_url(value, key).map(|url| (url.host, url.port, url.secure, url.suffix))
+}
+
 fn loopback(host: &str) -> bool {
     host.trim_end_matches('.').eq_ignore_ascii_case("localhost")
         || host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback())

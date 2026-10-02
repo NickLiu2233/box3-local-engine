@@ -659,8 +659,20 @@ function serviceCard([id, name, description, portKey, defaultPort], options = {}
   const openable = options.openable !== false
   const url = openable ? getServiceUrl(id) : ''
   const port = portKey ? Number(state.config?.[portKey]) || defaultPort : null
-  const host = portKey ? state.config?.publicHost : ''
-  const endpoint = options.endpoint || (port ? `${host || '127.0.0.1'}:${port}` : '')
+  const host = portKey ? sharedNetworkHost() : ''
+  const hostOverrideKey = {
+    creator: 'creatorPublicAddressOverride',
+    voxa: 'voxaPublicAddressOverride',
+    play: 'playPublicAddressOverride',
+    'player-service': 'playerServicePublicAddressOverride',
+    'player-auth-portal': 'authPortalPublicAddressOverride',
+  }[id]
+  const serviceHostOverride = state.config?.[hostOverrideKey]
+  const endpoint = options.endpoint || (port
+    ? state.config?.playNetworkMode === 'public' && serviceHostOverride
+      ? publicEndpointUrl(serviceHostOverride, port)
+      : `${host || '127.0.0.1'}:${port}`
+    : '')
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
     state.serviceMenu === id
@@ -673,9 +685,57 @@ function getServiceUrl(serviceId) {
   const service = services.find(([id]) => id === serviceId)
   if (!service) return ''
   const [, , , portKey, defaultPort, path] = service
-  const host = state.config?.publicHost || '127.0.0.1'
+  const host = sharedNetworkHost()
   const port = Number(state.config?.[portKey]) || defaultPort
-  return `http://${host}:${port}${path}`
+  const hostOverrideKey = {
+    creator: 'creatorPublicAddressOverride',
+    voxa: 'voxaPublicAddressOverride',
+    play: 'playPublicAddressOverride',
+    'player-service': 'playerServicePublicAddressOverride',
+    'player-auth-portal': 'authPortalPublicAddressOverride',
+  }[serviceId]
+  const serviceHostOverride = state.config?.[hostOverrideKey]
+  if (state.config?.playNetworkMode === 'public' && serviceHostOverride) {
+    return `${publicEndpointUrl(serviceHostOverride, port)}${path}`
+  }
+  const authority = host.includes(':') ? `[${host.replace(/^\[|\]$/g, '')}]` : host
+  const scheme = state.config?.playNetworkMode === 'public' ? publicAddressScheme() : 'http'
+  return `${scheme}://${authority}:${port}${path}`
+}
+
+function sharedNetworkHost() {
+  const mode = state.config?.playNetworkMode || 'local'
+  if (mode === 'lan') return state.config?.lanIp || '127.0.0.1'
+  if (mode === 'public') return state.config?.publicHost || '127.0.0.1'
+  return '127.0.0.1'
+}
+
+function publicAddressScheme() {
+  const match = String(state.config?.publicAddress || '').match(/^(https?):\/\//i)
+  return match ? match[1].toLowerCase() : 'http'
+}
+
+function publicEndpointUrl(address, port) {
+  const normalized = String(address).trim()
+  if (/^https?:\/\//i.test(normalized)) return normalized
+  const host = normalized.replace(/^\[|\]$/g, '')
+  const isIpAddress = host.includes(':') || /^(?:\d{1,3}\.){3}\d{1,3}$/.test(host)
+  if (!isIpAddress) return `http://${host}:${port}`
+  const authority = host.includes(':') ? `[${host}]` : host
+  return `http://${authority}:${port}`
+}
+
+function hostFromAddress(address) {
+  const value = String(address || '').trim()
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      return new URL(value).hostname.replace(/^\[|\]$/g, '')
+    } catch {
+      return ''
+    }
+  }
+  if (value.startsWith('[')) return value.slice(1, value.indexOf(']'))
+  return value.includes(':') ? value : value.split(':')[0]
 }
 
 function progressPanel() {
@@ -726,12 +786,27 @@ function setup() {
         ? 'lan'
         : 'public')
   const accessMode = state.accessMode || inferredAccessMode
-  const sharedHost =
-    accessMode === 'local'
-      ? '127.0.0.1'
-      : accessMode === 'lan'
-        ? config.lanIp || '127.0.0.1'
-        : config.publicHost || legacyCreatorPublicHost
+  const storedPublicAddress = config.publicAddress || (config.publicHost
+    ? config.publicHost.includes('://')
+      ? config.publicHost
+      : config.publicHost.includes('.') && !/^\d+(?:\.\d+){3}$/.test(config.publicHost)
+        ? `http://${config.publicHost}`
+        : config.publicHost
+    : legacyCreatorPublicHost)
+  const publicAddressHost = hostFromAddress(storedPublicAddress)
+  const publicAddressValue = ['127.0.0.1', 'localhost', config.lanIp].includes(publicAddressHost)
+    ? ''
+    : storedPublicAddress
+  const endpointAddressInput = (name, label) =>
+    accessMode === 'public'
+      ? input(
+          name,
+          `${label} 公网地址`,
+          config[name] || '',
+          'text',
+          'IP 可不带协议；域名必须带协议，例如 https://play.example.com 或 http://play.example.com:3121',
+        )
+      : `<input name="${name}" type="hidden" value="${escapeHtml(config[name] || '')}"/>`
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
   const secretCard = (name, label, configured) => {
@@ -845,19 +920,20 @@ function setup() {
               <input name="playNetworkMode" type="hidden" value="${accessMode}"/>
               <input name="creatorNetworkMode" type="hidden" value="${accessMode}"/>
               <div class="access-choice"><button type="button" class="${accessMode === 'local' ? 'active' : ''}" data-network-mode="local">本机</button><button type="button" class="${accessMode === 'lan' ? 'active' : ''}" data-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${accessMode === 'public' ? 'active' : ''}" data-network-mode="public">公网</button></div>
-              ${accessMode === 'public' ? `<div class="network-access-address">${input('publicHost', '公网地址（IP 或域名）', sharedHost, 'text', '例如 engine.example.com；不填写协议')}<input name="creatorHost" type="hidden" value="${escapeHtml(sharedHost)}"/></div>` : `<input name="publicHost" type="hidden" value="${escapeHtml(sharedHost)}"/><input name="creatorHost" type="hidden" value="${escapeHtml(sharedHost)}"/>`}
+              ${accessMode === 'public' ? `<div class="network-access-address">${input('publicAddress', '共用公网地址（IP 或域名）', publicAddressValue, 'text', 'IP 可不带协议；域名必须填写 http:// 或 https://，各端口在下方设置', true)}<input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/></div>` : `<input name="publicAddress" type="hidden" value="${escapeHtml(config.publicAddress || '')}"/><input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/>`}
             </section>
             <div class="network-primary-grid">
-              <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play', config.playPort || 3121, 'number')}</div></section>
-              <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA', config.voxaPort || 3123, 'number')}</div></section>
+              <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play 端口', config.playPort || 3121, 'number')}${endpointAddressInput('playPublicAddressOverride', 'Play')}</div></section>
+              <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA 端口', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA 端口', config.voxaPort || 3123, 'number')}${endpointAddressInput('creatorPublicAddressOverride', 'ARENA')}${endpointAddressInput('voxaPublicAddressOverride', 'VOXA')}</div></section>
             </div>
-            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>沿用统一访问范围</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '后台管理', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面', config.authPortalPort || 3125, 'number')}</div></section>
+            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2><span>留空时沿用共用地址</span></div><div class="form-grid player-port-grid">${input('playerServicePort', '后台管理端口', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面端口', config.authPortalPort || 3125, 'number')}${endpointAddressInput('playerServicePublicAddressOverride', '后台管理')}${endpointAddressInput('authPortalPublicAddressOverride', '登录页面')}</div></section>
           </div>${setupExplanation('配置说明：访问地址和端口有什么影响？', [
             [
               '统一访问范围',
               'Play、ARENA、VOXA、账号服务和登录页面统一使用本机、局域网或公网模式，避免监听地址互相冲突。',
             ],
-            ['公网地址', '所有服务统一使用同一个公网 IP 或域名；生产环境建议配置 HTTPS 反向代理。'],
+            ['公网地址优先级', '先填写共用公网地址；某个服务填写了自己的公网地址后，就优先使用该地址。留空的服务继续使用共用地址。'],
+            ['公网地址', 'IP 可只填写地址；域名必须显式填写 http:// 或 https://。单端地址可带自己的端口，例如 https://play.example.com 或 http://play.example.com:3121。'],
             ['端口', '每个服务使用独立端口，不能重复；修改后访问链接也会随之改变。'],
           ])}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
@@ -1610,26 +1686,6 @@ function bindEvents() {
       if (!mode) return
       state.config.playNetworkMode = mode
       state.config.creatorNetworkMode = mode
-      if (mode === 'local') {
-        state.config.publicHost = '127.0.0.1'
-        state.config.creatorHost = '127.0.0.1'
-      }
-      if (mode === 'lan' && state.config.lanIp) {
-        state.config.publicHost = state.config.lanIp
-        state.config.creatorHost = state.config.lanIp
-      }
-      if (
-        mode === 'public' &&
-        ['127.0.0.1', 'localhost', state.config.lanIp].includes(state.config.publicHost)
-      ) {
-        state.config.publicHost = ''
-      }
-      if (
-        mode === 'public' &&
-        ['127.0.0.1', 'localhost', state.config.lanIp].includes(state.config.creatorHost)
-      ) {
-        state.config.creatorHost = ''
-      }
       state.accessMode = mode
       render()
     }),
@@ -1896,7 +1952,6 @@ function captureSetupForm() {
     ...values,
     playNetworkMode: state.accessMode || state.config?.playNetworkMode || 'local',
     creatorNetworkMode: state.accessMode || state.config?.playNetworkMode || 'local',
-    creatorHost: values.publicHost,
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,
@@ -2443,10 +2498,6 @@ async function saveConfiguration(event) {
   // an empty value. Existing saved secrets remain server-side when no new
   // password has been entered.
   const config = { ...(state.config || {}), ...submitted }
-  // The single access-range field represents both Play and Creator when the
-  // form is submitted. `creatorHost` is hidden in this layout, so its rendered
-  // value can otherwise lag behind a just-edited public host.
-  config.creatorHost = submitted.publicHost
   if (!submitted.databasePassword && state.config?.databasePassword) {
     config.databasePassword = state.config.databasePassword
   }

@@ -14,7 +14,7 @@ export function renderLoginCard(
   const draft = state.loginDraft?.serverId === server.id ? state.loginDraft : undefined
   return `<div class="login-layout">
     <section class="surface login-card" aria-labelledby="player-login-title">
-      <div class="login-card-heading"><h3 id="player-login-title">登录后查看地图</h3><p>账号仅在此服务器下有效，密码不会保存在本机。</p></div>
+      <div class="login-card-heading"><h3 id="player-login-title">登录后查看地图</h3><p>账号仅在此服务器下有效。</p></div>
       ${state.authError ? `<p class="inline-error" role="alert">${escapeHtml(state.authError)}</p>` : ''}
       <form id="player-login-form" aria-busy="${state.busy}">
         <div class="login-field"><label for="player-username">玩家账号</label>

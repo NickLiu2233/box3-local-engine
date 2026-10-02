@@ -17,7 +17,7 @@ use std::{
     collections::BTreeMap,
     fs,
     io::{Read, Write},
-    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    net::{IpAddr, SocketAddr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -87,6 +87,12 @@ struct InstallConfigView {
     auto_backup_retention_count: u32,
     auto_backup_retention_days: u32,
     public_host: String,
+    public_address: String,
+    play_public_address_override: String,
+    creator_public_address_override: String,
+    voxa_public_address_override: String,
+    player_service_public_address_override: String,
+    auth_portal_public_address_override: String,
     play_network_mode: String,
     creator_network_mode: String,
     creator_host: String,
@@ -173,6 +179,12 @@ impl Default for InstallConfigView {
             auto_backup_retention_count: 24,
             auto_backup_retention_days: 30,
             public_host: "127.0.0.1".into(),
+            public_address: "127.0.0.1".into(),
+            play_public_address_override: String::new(),
+            creator_public_address_override: String::new(),
+            voxa_public_address_override: String::new(),
+            player_service_public_address_override: String::new(),
+            auth_portal_public_address_override: String::new(),
             play_network_mode: "local".into(),
             creator_network_mode: "local".into(),
             creator_host: "127.0.0.1".into(),
@@ -255,6 +267,18 @@ struct InstallConfigInput {
     auto_backup_retention_days: u32,
     #[serde(default = "default_public_host")]
     public_host: String,
+    #[serde(default)]
+    public_address: String,
+    #[serde(default)]
+    play_public_address_override: String,
+    #[serde(default)]
+    creator_public_address_override: String,
+    #[serde(default)]
+    voxa_public_address_override: String,
+    #[serde(default)]
+    player_service_public_address_override: String,
+    #[serde(default)]
+    auth_portal_public_address_override: String,
     #[serde(default = "default_play_network_mode")]
     play_network_mode: String,
     #[serde(default = "default_creator_host")]
@@ -477,7 +501,7 @@ fn emit_progress(app: &AppHandle, stage: &str, message: &str, percent: u8) {
 
 use shared_config::validate_host;
 
-use shared_config::{validate_creator_host, validate_public_host};
+use shared_config::validate_creator_host;
 
 use shared_config::validate_network_mode as validate_creator_network_mode;
 
@@ -782,6 +806,11 @@ fn validate_install_configuration(config: &InstallConfigInput) -> Result<(), Str
     shared_config::validate_configuration(value.as_object().ok_or("配置格式无效")?)
 }
 
+fn validate_optional_public_address(value: &str, label: &str) -> Result<String, String> {
+    shared_config::validate_public_address_override(value, label)
+        .map_err(|error| format!("{label}：{error}"))
+}
+
 /// The setup UI exposes one access-range choice for both Play and Creator.
 /// Normalize legacy independent values before validation so an old
 /// `BOX_CREATOR_HOST` can never reject an otherwise valid unified setting.
@@ -809,10 +838,35 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     normalize_unified_access_settings(&mut config);
     let database_mode = validate_database_mode(&config.database_mode)?;
     let redis_mode = validate_redis_mode(&config.redis_mode)?;
+    if config.public_address.trim().is_empty() {
+        if config.play_network_mode == "public" {
+            return Err("公网模式请填写共用公网地址；域名必须填写 http:// 或 https://".into());
+        }
+        config.public_address = config.public_host.clone();
+    }
+    let (public_host, public_scheme) =
+        shared_config::parse_public_address(&config.public_address, "共用公网地址")?;
+    config.public_host = public_host.clone();
+    config.creator_host = public_host.clone();
     validate_install_configuration(&config)?;
-    let public_host = validate_public_host(&config.public_host)?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_creator_network_mode(&config.creator_network_mode)?;
+    config.play_public_address_override =
+        validate_optional_public_address(&config.play_public_address_override, "Play 公网地址")?;
+    config.player_service_public_address_override = validate_optional_public_address(
+        &config.player_service_public_address_override,
+        "后台管理公网地址",
+    )?;
+    config.auth_portal_public_address_override = validate_optional_public_address(
+        &config.auth_portal_public_address_override,
+        "登录页面公网地址",
+    )?;
+    config.creator_public_address_override = validate_optional_public_address(
+        &config.creator_public_address_override,
+        "ARENA 公网地址",
+    )?;
+    config.voxa_public_address_override =
+        validate_optional_public_address(&config.voxa_public_address_override, "VOXA 公网地址")?;
 
     let existing_file = env_path(app)?;
     let source = if existing_file.exists() {
@@ -877,6 +931,48 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
         },
     )?;
     set_env(&mut content, "BOX_PLAY_PUBLIC_HOST", &public_host)?;
+    set_env(&mut content, "BOX_PUBLIC_SCHEME", public_scheme)?;
+    for (key, host_key, url_key, address) in [
+        (
+            "BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_PLAY_PUBLIC_HOST_OVERRIDE",
+            "BOX_PLAY_PUBLIC_URL_OVERRIDE",
+            &config.play_public_address_override,
+        ),
+        (
+            "BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_CREATOR_PUBLIC_HOST_OVERRIDE",
+            "BOX_CREATOR_PUBLIC_URL_OVERRIDE",
+            &config.creator_public_address_override,
+        ),
+        (
+            "BOX_VOXA_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_VOXA_PUBLIC_HOST_OVERRIDE",
+            "BOX_VOXA_PUBLIC_URL_OVERRIDE",
+            &config.voxa_public_address_override,
+        ),
+        (
+            "BOX_PLAYER_SERVICE_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_PLAYER_SERVICE_PUBLIC_HOST_OVERRIDE",
+            "BOX_PLAYER_SERVICE_PUBLIC_URL_OVERRIDE",
+            &config.player_service_public_address_override,
+        ),
+        (
+            "BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_AUTH_PORTAL_PUBLIC_HOST_OVERRIDE",
+            "BOX_AUTH_PORTAL_PUBLIC_URL_OVERRIDE",
+            &config.auth_portal_public_address_override,
+        ),
+    ] {
+        remove_env(&mut content, host_key);
+        remove_env(&mut content, url_key);
+        if address.is_empty() {
+            remove_env(&mut content, key);
+        } else {
+            set_env(&mut content, key, address)?;
+        }
+    }
+    remove_env(&mut content, "BOX_PLAYER_LOGIN_URL_OVERRIDE");
     set_env(
         &mut content,
         "BOX_PLAY_NETWORK_MODE",
@@ -1678,6 +1774,35 @@ async fn start_managed_service(app: AppHandle, service: String) -> Result<(), St
     .map_err(|error| format!("内置服务启动任务异常结束：{error}"))?
 }
 
+fn saved_public_address_override(
+    values: &BTreeMap<String, String>,
+    address_key: &str,
+    host_key: &str,
+    url_key: &str,
+    fallback_url_key: Option<&str>,
+) -> String {
+    if let Some(address) = values.get(address_key) {
+        return address.clone();
+    }
+    if let Some(url) = values
+        .get(url_key)
+        .or_else(|| fallback_url_key.and_then(|key| values.get(key)))
+    {
+        return url.clone();
+    }
+    values
+        .get(host_key)
+        .map(|host| {
+            if host.parse::<IpAddr>().is_ok() {
+                host.clone()
+            } else {
+                // The previous launcher treated custom DNS hosts as HTTPS.
+                format!("https://{host}")
+            }
+        })
+        .unwrap_or_default()
+}
+
 #[tauri::command]
 fn get_install_config(app: AppHandle) -> InstallConfigView {
     // Loading configuration is also a policy boundary: a manually edited
@@ -1721,6 +1846,20 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
             })
             .filter(|minutes| *minutes > 0)
             .unwrap_or(fallback_minutes)
+    };
+    let public_host = values
+        .get("BOX_PLAY_PUBLIC_HOST")
+        .cloned()
+        .unwrap_or_else(default_public_host);
+    let public_scheme = values
+        .get("BOX_PUBLIC_SCHEME")
+        .filter(|scheme| matches!(scheme.as_str(), "http" | "https"))
+        .map(String::as_str)
+        .unwrap_or("http");
+    let public_address = if public_host.parse::<IpAddr>().is_ok() {
+        shared_config::origin_host(&public_host).unwrap_or(public_host.clone())
+    } else {
+        format!("{public_scheme}://{public_host}")
     };
     InstallConfigView {
         database_mode: values
@@ -1797,10 +1936,43 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         auto_backup_interval_minutes: number_u32("BOX_AUTO_BACKUP_INTERVAL_MINUTES", 60),
         auto_backup_retention_count: number_u32("BOX_AUTO_BACKUP_RETENTION_COUNT", 24),
         auto_backup_retention_days: number_u32("BOX_AUTO_BACKUP_RETENTION_DAYS", 30),
-        public_host: values
-            .get("BOX_PLAY_PUBLIC_HOST")
-            .cloned()
-            .unwrap_or_else(default_public_host),
+        public_host,
+        public_address,
+        play_public_address_override: saved_public_address_override(
+            &values,
+            "BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_PLAY_PUBLIC_HOST_OVERRIDE",
+            "BOX_PLAY_PUBLIC_URL_OVERRIDE",
+            None,
+        ),
+        creator_public_address_override: saved_public_address_override(
+            &values,
+            "BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_CREATOR_PUBLIC_HOST_OVERRIDE",
+            "BOX_CREATOR_PUBLIC_URL_OVERRIDE",
+            None,
+        ),
+        voxa_public_address_override: saved_public_address_override(
+            &values,
+            "BOX_VOXA_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_VOXA_PUBLIC_HOST_OVERRIDE",
+            "BOX_VOXA_PUBLIC_URL_OVERRIDE",
+            None,
+        ),
+        player_service_public_address_override: saved_public_address_override(
+            &values,
+            "BOX_PLAYER_SERVICE_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_PLAYER_SERVICE_PUBLIC_HOST_OVERRIDE",
+            "BOX_PLAYER_SERVICE_PUBLIC_URL_OVERRIDE",
+            None,
+        ),
+        auth_portal_public_address_override: saved_public_address_override(
+            &values,
+            "BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_AUTH_PORTAL_PUBLIC_HOST_OVERRIDE",
+            "BOX_AUTH_PORTAL_PUBLIC_URL_OVERRIDE",
+            Some("BOX_PLAYER_LOGIN_URL_OVERRIDE"),
+        ),
         play_network_mode: values
             .get("BOX_PLAY_NETWORK_MODE")
             .cloned()
@@ -3523,6 +3695,12 @@ mod tests {
             auto_backup_retention_count: 24,
             auto_backup_retention_days: 30,
             public_host: default_public_host(),
+            public_address: "127.0.0.1".into(),
+            play_public_address_override: String::new(),
+            creator_public_address_override: String::new(),
+            voxa_public_address_override: String::new(),
+            player_service_public_address_override: String::new(),
+            auth_portal_public_address_override: String::new(),
             play_network_mode: default_play_network_mode(),
             creator_host: default_creator_host(),
             creator_network_mode: default_creator_network_mode(),

@@ -81,6 +81,55 @@ pub fn validate_public_host(value: &str) -> Result<String, String> {
     Ok(host)
 }
 
+pub fn parse_public_address(value: &str, label: &str) -> Result<(String, &'static str), String> {
+    let value = value.trim();
+    if value.contains("://") {
+        let (host, port, secure, suffix) =
+            crate::configuration_migration::public_url_parts(value, label)?;
+        let default_port = if secure { 443 } else { 80 };
+        if port != default_port || !matches!(suffix.as_str(), "" | "/") {
+            return Err(format!(
+                "{label}只填写协议和 IP 或域名，端口请在各服务中设置"
+            ));
+        }
+        return Ok((host, if secure { "https" } else { "http" }));
+    }
+
+    let host = validate_public_host(value)?;
+    if host.parse::<IpAddr>().is_ok() {
+        return Ok((host, "http"));
+    }
+    Err(format!("{label}填写域名时必须带 http:// 或 https://"))
+}
+
+pub fn validate_public_address_override(value: &str, label: &str) -> Result<String, String> {
+    let value = value.trim();
+    if value.is_empty() {
+        return Ok(String::new());
+    }
+    if value.contains("://") {
+        return crate::configuration_migration::normalize_public_url(value, label);
+    }
+    let host = validate_public_host(value)?;
+    if host.parse::<IpAddr>().is_ok() {
+        return Ok(host);
+    }
+    Err(format!("{label}填写域名时必须带 http:// 或 https://"))
+}
+
+pub fn normalize_public_endpoint_address(
+    value: &str,
+    label: &str,
+    port: u16,
+) -> Result<String, String> {
+    let address = validate_public_address_override(value, label)?;
+    if address.is_empty() || address.contains("://") {
+        return Ok(address);
+    }
+    let host = origin_host(&address)?;
+    Ok(format!("http://{host}:{port}"))
+}
+
 pub fn validate_network_mode(value: &str) -> Result<&str, String> {
     match value {
         "local" | "lan" | "public" => Ok(value),
@@ -392,6 +441,22 @@ pub fn runtime_environment(
     let migrated = crate::configuration_migration::migrate(values)?;
     let values = &migrated;
     let network = resolve_network(values, input.lan_ip)?;
+    let public_scheme = if values
+        .get("BOX_PLAY_NETWORK_MODE")
+        .map(String::as_str)
+        .unwrap_or("local")
+        == "public"
+    {
+        values
+            .get("BOX_PUBLIC_SCHEME")
+            .map(String::as_str)
+            .unwrap_or("http")
+    } else {
+        "http"
+    };
+    if !matches!(public_scheme, "http" | "https") {
+        return Err("共用公网地址协议只能是 HTTP 或 HTTPS".into());
+    }
     let db = match database_url(values) {
         Ok(url) => url,
         Err(error) if input.database_required => return Err(error),
@@ -455,7 +520,7 @@ pub fn runtime_environment(
         result.insert(key, port.to_string());
         result.insert(
             format!("BOX_{name}_PUBLIC_URL"),
-            format!("http://{host}:{port}"),
+            format!("{public_scheme}://{host}:{port}"),
         );
     }
     let origins = format!(
@@ -480,7 +545,75 @@ pub fn runtime_environment(
     if result.values().any(|v| v.chars().any(char::is_control)) {
         return Err("运行时配置不能包含控制字符".into());
     }
-    crate::configuration_migration::apply_url_overrides(values, &mut result)?;
+    let mut url_override_values = values.clone();
+    for (address_key, legacy_host_key, url_key, port_key, port_default, mode_key) in [
+        (
+            "BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_PLAY_PUBLIC_HOST_OVERRIDE",
+            "BOX_PLAY_PUBLIC_URL",
+            "BOX_PLAY_PORT",
+            3121,
+            "BOX_PLAY_NETWORK_MODE",
+        ),
+        (
+            "BOX_PLAYER_SERVICE_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_PLAYER_SERVICE_PUBLIC_HOST_OVERRIDE",
+            "BOX_PLAYER_SERVICE_PUBLIC_URL",
+            "BOX_PLAYER_SERVICE_PORT",
+            3124,
+            "BOX_PLAY_NETWORK_MODE",
+        ),
+        (
+            "BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_AUTH_PORTAL_PUBLIC_HOST_OVERRIDE",
+            "BOX_AUTH_PORTAL_PUBLIC_URL",
+            "BOX_AUTH_PORTAL_PORT",
+            3125,
+            "BOX_PLAY_NETWORK_MODE",
+        ),
+        (
+            "BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_CREATOR_PUBLIC_HOST_OVERRIDE",
+            "BOX_CREATOR_PUBLIC_URL",
+            "BOX_CREATOR_PORT",
+            3127,
+            "BOX_CREATOR_NETWORK_MODE",
+        ),
+        (
+            "BOX_VOXA_PUBLIC_ADDRESS_OVERRIDE",
+            "BOX_VOXA_PUBLIC_HOST_OVERRIDE",
+            "BOX_VOXA_PUBLIC_URL",
+            "BOX_VOXA_PORT",
+            3123,
+            "BOX_CREATOR_NETWORK_MODE",
+        ),
+    ] {
+        if values.get(mode_key).map(String::as_str).unwrap_or("local") != "public" {
+            continue;
+        }
+        let legacy_address = values.get(legacy_host_key).map(|host| {
+            if host.parse::<IpAddr>().is_ok() {
+                host.clone()
+            } else {
+                format!("https://{host}")
+            }
+        });
+        let Some(address) = values
+            .get(address_key)
+            .or(legacy_address.as_ref())
+            .map(String::as_str)
+            .filter(|address| !address.trim().is_empty())
+        else {
+            continue;
+        };
+        let port = env_port(values, port_key, port_default)?;
+        let url = normalize_public_endpoint_address(address, address_key, port)?;
+        url_override_values.insert(format!("{url_key}_OVERRIDE"), url.clone());
+        if url_key == "BOX_AUTH_PORTAL_PUBLIC_URL" {
+            url_override_values.insert("BOX_PLAYER_LOGIN_URL_OVERRIDE".into(), url);
+        }
+    }
+    crate::configuration_migration::apply_url_overrides(&url_override_values, &mut result)?;
     Ok(result)
 }
 
@@ -574,7 +707,13 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
         "playNetworkMode",
         "creatorNetworkMode",
         "publicHost",
+        "publicAddress",
         "creatorHost",
+        "playPublicAddressOverride",
+        "creatorPublicAddressOverride",
+        "voxaPublicAddressOverride",
+        "playerServicePublicAddressOverride",
+        "authPortalPublicAddressOverride",
         "databaseHost",
         "redisHost",
         "databasePort",
@@ -597,8 +736,18 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                 "publicHost" => {
                     validate_public_host(value)?;
                 }
+                "publicAddress" => {
+                    parse_public_address(value, "共用公网地址")?;
+                }
                 "creatorHost" => {
                     validate_creator_host(value)?;
+                }
+                "playPublicAddressOverride"
+                | "playerServicePublicAddressOverride"
+                | "authPortalPublicAddressOverride"
+                | "creatorPublicAddressOverride"
+                | "voxaPublicAddressOverride" => {
+                    validate_public_address_override(value, key)?;
                 }
                 "databasePort" => {
                     let required =
