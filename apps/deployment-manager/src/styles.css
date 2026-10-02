@@ -2216,6 +2216,10 @@ input.storage-path {
   grid-template-rows: 15px 34px minmax(15px, auto);
 }
 
+.network-service-card .field.no-hint {
+  grid-template-rows: 15px 34px;
+}
+
 .network-service-card .field small {
   min-height: 15px;
   overflow: visible;

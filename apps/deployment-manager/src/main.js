@@ -747,7 +747,8 @@ function input(name, label, value = '', type = 'text', hint = '', required = fal
     type === 'number'
       ? `min="${limits.min ?? 0}"${limits.max === undefined ? '' : ` max="${limits.max}"`} step="${limits.step ?? 1}"`
       : ''
-  return `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${numberLimits} ${required ? 'required' : ''} ${limits.disabled ? 'disabled' : ''}/><small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small></label>`
+  const hintMarkup = limits.hideHint ? '' : `<small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small>`
+  return `<label class="field ${limits.hideHint ? 'no-hint' : ''}"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${numberLimits} ${required ? 'required' : ''} ${limits.disabled ? 'disabled' : ''}/>${hintMarkup}</label>`
 }
 
 function formatDuration(milliseconds) {
@@ -804,7 +805,9 @@ function setup() {
           `${label} 公网地址`,
           config[name] || '',
           'text',
-          'IP 可不带协议；域名必须带协议，例如 https://play.example.com 或 http://play.example.com:3121',
+          '',
+          false,
+          { hideHint: true },
         )
       : `<input name="${name}" type="hidden" value="${escapeHtml(config[name] || '')}"/>`
   const tab = (id, label) =>
@@ -920,7 +923,7 @@ function setup() {
               <input name="playNetworkMode" type="hidden" value="${accessMode}"/>
               <input name="creatorNetworkMode" type="hidden" value="${accessMode}"/>
               <div class="access-choice"><button type="button" class="${accessMode === 'local' ? 'active' : ''}" data-network-mode="local">本机</button><button type="button" class="${accessMode === 'lan' ? 'active' : ''}" data-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${accessMode === 'public' ? 'active' : ''}" data-network-mode="public">公网</button></div>
-              ${accessMode === 'public' ? `<div class="network-access-address">${input('publicAddress', '共用公网地址（IP 或域名）', publicAddressValue, 'text', 'IP 可不带协议；域名必须填写 http:// 或 https://，各端口在下方设置', true)}<input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/></div>` : `<input name="publicAddress" type="hidden" value="${escapeHtml(config.publicAddress || '')}"/><input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/>`}
+              ${accessMode === 'public' ? `<div class="network-access-address">${input('publicAddress', '共用公网地址（IP 或域名）', publicAddressValue, 'text', '域名需带 http:// 或 https://；IP 可直接填写', true)}<input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/></div>` : `<input name="publicAddress" type="hidden" value="${escapeHtml(config.publicAddress || '')}"/><input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/>`}
             </section>
             <div class="network-primary-grid">
               <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play 端口', config.playPort || 3121, 'number')}${endpointAddressInput('playPublicAddressOverride', 'Play')}</div></section>
