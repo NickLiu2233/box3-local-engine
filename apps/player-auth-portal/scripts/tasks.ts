@@ -132,17 +132,18 @@ export class PortalDevelopment {
   async start(live: boolean): Promise<void> {
     process.chdir(this.project.root)
     if (existsSync('.env')) process.loadEnvFile('.env')
-    const config = await this.config(live)
-    await this.watch()
-    this.portal = new PortalServer(config)
-    await this.portal.listen()
-    console.log(
-      `页面：http://${config.host}:${config.port}；保存后刷新。${live ? '真实联调，仅用测试账号。' : '不连接引擎。'}`,
-    )
-    for (const signal of ['SIGINT', 'SIGTERM'] as const)
-      process.once(signal, () => {
-        void this.close().then(() => process.exit(0))
-      })
+    try {
+      const config = await this.config(live)
+      await this.watch()
+      this.portal = new PortalServer(config)
+      await this.portal.listen()
+      console.log(`页面：http://${config.host}:${config.port}；保存后刷新。${live ? '真实联调，仅用测试账号。' : '不连接引擎。'}`)
+      for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { void this.close().then(() => process.exit(0)) })
+    } catch (error) {
+      // 端口冲突或配置错误也必须释放 watcher/模拟器，不能挂着后台进程。
+      await this.close()
+      throw error
+    }
   }
   async close(): Promise<void> {
     await Promise.all(this.builds.map((target) => target.dispose()))
