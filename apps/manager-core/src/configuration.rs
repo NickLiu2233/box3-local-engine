@@ -396,10 +396,10 @@ pub fn resolve_network(
         }
         Ok(ip.to_string())
     };
-    let play_host = if play_mode == "lan" {
-        lan()?
-    } else {
-        validate_public_host(get("BOX_PLAY_PUBLIC_HOST", "127.0.0.1"))?
+    let play_host = match play_mode {
+        "local" => "127.0.0.1".into(),
+        "lan" => lan()?,
+        _ => validate_public_host(get("BOX_PLAY_PUBLIC_HOST", "127.0.0.1"))?,
     };
     let creator_host = match creator_mode {
         "local" => "127.0.0.1".into(),
@@ -494,6 +494,9 @@ pub fn runtime_environment(
         ("BOX_LICENSE_FILE", input.license_file.into()),
         ("BOX_LICENSE_DEVICE_FILE", input.license_device_file.into()),
         ("BOX_BIND_IP", network.play_bind_ip.into()),
+        ("BOX_PUBLIC_SCHEME", public_scheme.into()),
+        ("BOX_PLAY_PUBLIC_HOST", network.play_host.clone()),
+        ("BOX_CREATOR_HOST", network.creator_host.clone()),
         ("BOX_CREATOR_BIND_IP", network.creator_bind_ip.into()),
         ("BOX_VOXA_BIND_IP", network.creator_bind_ip.into()),
         ("BOX_DATABASE_URL", db),
@@ -742,7 +745,9 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                     validate_public_host(value)?;
                 }
                 "publicAddress" => {
-                    parse_public_address(value, "共用公网地址")?;
+                    if !value.trim().is_empty() || config.get("playNetworkMode").and_then(Value::as_str) == Some("public") {
+                        parse_public_address(value, "共用公网地址")?;
+                    }
                 }
                 "authPortalImage" => {
                     crate::auth_portal::validate_image(value)?;
@@ -1116,6 +1121,20 @@ mod tests {
         );
         values.insert("BOX_PLAY_NETWORK_MODE".into(), "typo".into());
         assert!(resolve_network(&values, Some("fd00::1")).is_err());
+    }
+
+    #[test]
+    fn local_mode_does_not_use_the_previous_public_domain_for_play_or_creator() {
+        let values = BTreeMap::from([
+            ("BOX_PLAY_NETWORK_MODE".into(), "local".into()),
+            ("BOX_CREATOR_NETWORK_MODE".into(), "local".into()),
+            ("BOX_PLAY_PUBLIC_HOST".into(), "user.box3lab.com".into()),
+            ("BOX_CREATOR_HOST".into(), "user.box3lab.com".into()),
+        ]);
+        let network = resolve_network(&values, Some("192.168.1.20")).unwrap();
+        assert_eq!(network.play_host, "127.0.0.1");
+        assert_eq!(network.creator_host, "127.0.0.1");
+        assert_eq!(network.play_bind_ip, "127.0.0.1");
     }
 
     #[test]

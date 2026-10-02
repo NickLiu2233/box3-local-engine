@@ -83,7 +83,7 @@
 | Compose 的 `BOX_AUTH_PORTAL_REQUEST_TIMEOUT_MS` | `AUTH_DEMO_REQUEST_TIMEOUT_MS` | 默认 10000 ms，默认后端允许 1000–60000 ms |
 | Compose 的 `BOX_TRUST_PROXY` | `AUTH_DEMO_TRUST_PROXY` | 只有明确为 `true` 才信任代理头 |
 
-当前默认 `server.js` 实际读取 `AUTH_DEMO_*`，不会自动改读 `BOX_*`。不要只给默认后端设置标准变量而删除兼容变量。
+当前模板由 `server/config.js` 读取配置：优先使用标准 `BOX_*`、`HOST`、`PORT`，同时兼容 `AUTH_DEMO_*`。旧镜像可能只读取兼容变量，因此启动器仍同时注入两套名称；不要据此移除旧部署所需配置。
 
 完全自建后端读取示例：
 
@@ -581,12 +581,12 @@ COPY --chown=node:node public/ /app/public/
 
 继承默认后端、非 root 用户、端口、健康检查、许可证流程和代理。不要覆盖 ENTRYPOINT/CMD 绕过已有启动流程。
 
-默认服务器不是通用静态目录服务，只提供 `/`、`/app.js`、`/styles.css`、`/theme.js`：
+当前模板默认入口为 `/`，并从 `public/` 安全提供 JS、CSS、图片与字体资源。旧镜像可能只提供 `/`、`/app.js`、`/styles.css`、`/theme.js` 四个路径：
 
-- Vite 的 /assets/xxx.js、额外图片/字体不会因为 COPY 就能访问。构建为平铺文件，或采用方式 B。
+- 当前模板允许 public 下的 js/css/png/jpg/jpeg/webp/gif/svg/ico/woff/woff2；可以直接添加 logo、字体等资源。隐藏文件、其他扩展名、目录遍历和越界符号链接被拒绝。若继承旧镜像，请使用平铺产物或先升级基础镜像。
 - /account、/login 等 HTML history 路由不会回退 index.html，使用页面状态/hash 路由，或自行实现路由。
 - 默认 CSP 只允许同源脚本和样式，禁止内联脚本/样式，不依赖第三方 CDN。
-- 图片策略允许同源/data URL，但新增路径仍需服务器支持；字体也需相应 CSP。
+- 当前默认 CSP 允许同源/data URL 图片和字体，默认不加载第三方 CDN。资源必须放在 public；不提供任意文件下载或上传接口。
 - theme.js 可保留或替换，删除资源要同步改 HTML 引用。
 - 更新 JS/CSS 时更新 HTML 资源版本 query，避免旧缓存；默认 HTML no-store、静态资源缓存 300 秒并重新校验。
 
@@ -727,7 +727,7 @@ curl -i -b /tmp/box-login-test.cookies http://127.0.0.1:3125/api/auth/session
 | 会话频繁 null | 设备绑定、其他设备登录、撤销、Cookie 到期 |
 | 镜像更新仍旧页面 | tag、容器是否重建、资源版本/缓存 |
 | 健康失败 | HEALTHCHECK、监听、只读路径、用户权限、运行依赖 |
-| /assets 404 | 默认只支持四个静态路径，平铺或自建服务 |
+| /assets 404 | 确认文件位于 public、扩展名被允许，及基础镜像是否仍为只支持四个路径的旧版本 |
 
 ## 14. 可直接交给其他 AI 的任务说明
 
@@ -754,7 +754,7 @@ my-login/
 
 以上已覆盖独立实现所需契约，以下只用于有仓库时进一步核对，不是阅读前置条件：
 
-- 默认门户：apps/player-auth-portal/server.js 与 src/app.jsx。
+- 默认门户：apps/player-auth-portal/server.js、server/、src/app.jsx 与 src/pages/。
 - 模板：apps/player-auth-portal/examples/custom-image/Dockerfile。
 - 底层路由：apps/game/pages/api/player-auth/。
 - 鉴权/账号：apps/game/server/player-auth-security.ts、local-player-identity.ts、player-self-service-handler.ts、player-self-password.ts。

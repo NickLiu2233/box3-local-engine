@@ -1,0 +1,149 @@
+//! Keep the public-address draft separate from the hosts selected by the access modes.
+use std::collections::BTreeMap;
+use std::net::IpAddr;
+
+use crate::configuration::{origin_host, parse_public_address, resolve_network};
+use crate::environment::set_env;
+
+/// Old configurations store the draft only in the host/scheme pair.
+pub fn public_address(values: &BTreeMap<String, String>) -> String {
+    if let Some(address) = values.get("BOX_PUBLIC_ADDRESS") {
+        return address.clone();
+    }
+    let host = values
+        .get("BOX_PLAY_PUBLIC_HOST")
+        .map(String::as_str)
+        .unwrap_or("127.0.0.1");
+    if host.parse::<IpAddr>().is_ok() {
+        return origin_host(host).unwrap_or_else(|_| host.into());
+    }
+    let scheme = values
+        .get("BOX_PUBLIC_SCHEME")
+        .map(String::as_str)
+        .unwrap_or("http");
+    format!("{scheme}://{host}")
+}
+
+/// Pure transformation used by both launchers. LAN IP comes from the host adapter,
+/// never a browser-supplied address. Validate everything before modifying the document.
+pub fn save(
+    content: &str,
+    address: &str,
+    play_mode: &str,
+    creator_mode: &str,
+    lan_ip: Option<&str>,
+) -> Result<String, String> {
+    let address = address.trim();
+    let (host, scheme) = if address.is_empty() {
+        if play_mode == "public" || creator_mode == "public" {
+            return Err("公网模式请填写共用公网地址".into());
+        }
+        ("127.0.0.1".into(), "http")
+    } else {
+        parse_public_address(address, "共用公网地址")?
+    };
+    let network = resolve_network(
+        &BTreeMap::from([
+            ("BOX_PLAY_PUBLIC_HOST".into(), host.clone()),
+            ("BOX_CREATOR_HOST".into(), host),
+            ("BOX_PLAY_NETWORK_MODE".into(), play_mode.into()),
+            ("BOX_CREATOR_NETWORK_MODE".into(), creator_mode.into()),
+        ]),
+        lan_ip,
+    )?;
+    let mut result = content.to_string();
+    for (key, value) in [
+        ("BOX_PUBLIC_ADDRESS", address),
+        ("BOX_PUBLIC_SCHEME", scheme),
+        ("BOX_PLAY_NETWORK_MODE", play_mode),
+        ("BOX_CREATOR_NETWORK_MODE", creator_mode),
+        ("BOX_PLAY_PUBLIC_HOST", network.play_host.as_str()),
+        ("BOX_CREATOR_HOST", network.creator_host.as_str()),
+    ] {
+        set_env(&mut result, key, value)?;
+    }
+    Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::environment::parse_env;
+
+    #[test]
+    fn save_local_lan_public_changes_real_hosts_without_losing_public_draft() {
+        let original = "# preserve\nBOX_PLAY_PUBLIC_HOST=user.box3lab.com\nBOX_CREATOR_HOST=user.box3lab.com\nBOX_AUTH_PORTAL_IMAGE=my-login:1.0\n";
+        let address = "https://user.box3lab.com";
+        let local = save(original, address, "local", "local", None).unwrap();
+        let values = parse_env(&local);
+        assert_eq!(values["BOX_PLAY_PUBLIC_HOST"], "127.0.0.1");
+        assert_eq!(values["BOX_CREATOR_HOST"], "127.0.0.1");
+        assert_eq!(public_address(&values), address);
+        let lan = save(&local, address, "lan", "lan", Some("192.168.1.20")).unwrap();
+        let values = parse_env(&lan);
+        assert_eq!(values["BOX_PLAY_PUBLIC_HOST"], "192.168.1.20");
+        assert_eq!(values["BOX_CREATOR_HOST"], "192.168.1.20");
+        let public = save(&lan, &public_address(&values), "public", "public", None).unwrap();
+        let values = parse_env(&public);
+        assert_eq!(values["BOX_PLAY_PUBLIC_HOST"], "user.box3lab.com");
+        assert_eq!(values["BOX_CREATOR_HOST"], "user.box3lab.com");
+        assert_eq!(values["BOX_AUTH_PORTAL_IMAGE"], "my-login:1.0");
+        assert!(public.starts_with("# preserve\n"));
+    }
+
+    #[test]
+    fn unavailable_lan_does_not_silently_reuse_public_domain() {
+        assert!(save("", "http://user.box3lab.com", "lan", "lan", None).is_err());
+        assert!(save("", "", "public", "public", None).is_err());
+    }
+
+    #[test]
+    fn runtime_hosts_urls_and_scheme_match_the_saved_access_mode() {
+        for (mode, expected, scheme) in [
+            ("local", "127.0.0.1", "http"),
+            ("lan", "192.168.1.20", "http"),
+            ("public", "user.box3lab.com", "https"),
+        ] {
+            let saved = save(
+                "",
+                "https://user.box3lab.com",
+                mode,
+                mode,
+                Some("192.168.1.20"),
+            )
+            .unwrap();
+            let runtime = crate::configuration::runtime_environment(
+                &parse_env(&saved),
+                &crate::configuration::RuntimeInputs {
+                    lan_ip: Some("192.168.1.20"),
+                    image_tag: "0.2.0",
+                    platform: "linux/arm64",
+                    license_file: "fixture",
+                    license_device_file: "fixture-device",
+                    database_required: false,
+                    web_manager: false,
+                },
+            )
+            .unwrap();
+            assert_eq!(runtime["BOX_PLAY_PUBLIC_HOST"], expected);
+            assert_eq!(runtime["BOX_CREATOR_HOST"], expected);
+            assert_eq!(runtime["BOX_PUBLIC_SCHEME"], scheme);
+            assert_eq!(
+                runtime["BOX_PLAY_PUBLIC_URL"],
+                format!("{scheme}://{expected}:3121")
+            );
+            assert_eq!(
+                runtime["BOX_CREATOR_PUBLIC_URL"],
+                format!("{scheme}://{expected}:3127")
+            );
+            assert_eq!(
+                runtime["BOX_BIND_IP"],
+                if mode == "local" {
+                    "127.0.0.1"
+                } else {
+                    "0.0.0.0"
+                }
+            );
+        }
+    }
+}

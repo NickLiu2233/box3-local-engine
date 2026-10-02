@@ -792,6 +792,18 @@ pub(crate) fn configuration_document_for_save(
     if database_mode == "managed" {
         box_manager_core::environment::remove_env(&mut source, "BOX_DATABASE_QUERY");
     }
+    // New GUI requests include the public draft separately. Older partial public
+    // requests keep their independent host fields for backwards compatibility.
+    let mode = config.get("playNetworkMode").and_then(Value::as_str);
+    if config.contains_key("publicAddress") || matches!(mode, Some("local" | "lan")) {
+        let current = parse_env(&source);
+        let address = config.get("publicAddress").and_then(Value::as_str)
+            .map(str::to_string)
+            .unwrap_or_else(|| box_manager_core::access_settings::public_address(&existing));
+        let play_mode = current.get("BOX_PLAY_NETWORK_MODE").map(String::as_str).unwrap_or("local");
+        let creator_mode = current.get("BOX_CREATOR_NETWORK_MODE").map(String::as_str).unwrap_or(play_mode);
+        source = box_manager_core::access_settings::save(&source, &address, play_mode, creator_mode, detect_lan_ip().as_deref())?;
+    }
     Ok(source)
 }
 

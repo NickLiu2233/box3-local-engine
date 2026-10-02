@@ -8,6 +8,18 @@ use crate::runtime::runtime::{
 };
 
 #[test]
+fn saving_local_access_replaces_public_hosts_but_preserves_the_public_draft() {
+    let owner = "BOX_DATABASE_MODE=external\nBOX_PLAY_PUBLIC_HOST=user.box3lab.com\nBOX_CREATOR_HOST=user.box3lab.com\nBOX_PLAY_NETWORK_MODE=public\nBOX_CREATOR_NETWORK_MODE=public\nBOX_AUTH_PORTAL_IMAGE=my-login:1.0\n";
+    let form = json!({ "publicAddress":"https://user.box3lab.com", "playNetworkMode":"local", "creatorNetworkMode":"local", "publicHost":"user.box3lab.com", "creatorHost":"user.box3lab.com" });
+    let source = configuration_document_for_save(owner, form.as_object().unwrap()).unwrap();
+    let values = parse_env(&source);
+    assert_eq!(values["BOX_PLAY_PUBLIC_HOST"], "127.0.0.1");
+    assert_eq!(values["BOX_CREATOR_HOST"], "127.0.0.1");
+    assert_eq!(values["BOX_PUBLIC_ADDRESS"], "https://user.box3lab.com");
+    assert_eq!(values["BOX_AUTH_PORTAL_IMAGE"], "my-login:1.0");
+}
+
+#[test]
 fn login_image_configuration_is_persisted_cleared_and_validated() {
     let owner = "BOX_DATABASE_MODE=external\nBOX_DATABASE_HOST=db\nBOX_DATABASE_PORT=5432\nBOX_DATABASE_NAME=box\nBOX_DATABASE_USER=owner\nBOX_DATABASE_PASSWORD=fixture\n";
     let form = json!({"authPortalImage":"registry.test/login:1.0"});

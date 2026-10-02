@@ -136,6 +136,7 @@ pub(crate) async fn command(
                     "autoBackupRetentionCount": number("BOX_AUTO_BACKUP_RETENTION_COUNT", 24),
                     "autoBackupRetentionDays": number("BOX_AUTO_BACKUP_RETENTION_DAYS", 30),
                     "publicHost": values.get("BOX_PLAY_PUBLIC_HOST").cloned().unwrap_or_else(|| url_host(values.get("BOX_PLAY_PUBLIC_URL"), "127.0.0.1")),
+                    "publicAddress": box_manager_core::access_settings::public_address(&values),
                     "playNetworkMode": values.get("BOX_PLAY_NETWORK_MODE").cloned().unwrap_or_else(|| "local".into()),
                     "creatorNetworkMode": values.get("BOX_CREATOR_NETWORK_MODE").cloned().unwrap_or_else(|| "local".into()),
                     "creatorHost": values.get("BOX_CREATOR_HOST").cloned().unwrap_or_else(|| url_host(values.get("BOX_CREATOR_PUBLIC_URL"), "127.0.0.1")),

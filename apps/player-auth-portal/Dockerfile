@@ -23,6 +23,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 COPY --chown=node:node apps/player-auth-portal/server.js ./server.js
+COPY --chown=node:node apps/player-auth-portal/server ./server
 COPY --chown=node:node apps/player-auth-portal/public ./public
 RUN mkdir -p /app/license && chown node:node /app/license
 COPY --chown=node:node packages/license/index.js packages/license/runtime-gate.js packages/license/process-guard.js packages/license/trusted-time.js /app/license/

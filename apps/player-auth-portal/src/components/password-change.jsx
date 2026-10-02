@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 
 export function PasswordChange({ api, PasswordField, Notice, PendingLabel, onCancel, onRelogin }) {
+  // 密码只在提交的局部变量/输入节点中短暂存在，不保存到 localStorage 或全局状态。
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const pending = useRef(false)
@@ -28,6 +29,7 @@ export function PasswordChange({ api, PasswordField, Notice, PendingLabel, onCan
     try {
       await api('/api/auth/password', {
         method: 'POST',
+        // 不发送确认密码、用户 ID 或导航参数，底层通过当前会话确定修改者。
         body: JSON.stringify({ currentPassword: values.currentPassword, newPassword: values.newPassword }),
       })
       form.reset()

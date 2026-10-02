@@ -1312,6 +1312,13 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     if database_mode == "managed" {
         remove_env(&mut content, "BOX_DATABASE_QUERY");
     }
+    content = box_manager_core::access_settings::save(
+        &content,
+        &config.public_address,
+        &config.play_network_mode,
+        &config.creator_network_mode,
+        detect_lan_ip().as_deref(),
+    )?;
     write_private_file(&existing_file, content, "部署配置")?;
     generate_runtime_environment(app)?;
     Ok(())
@@ -1866,16 +1873,7 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         .get("BOX_PLAY_PUBLIC_HOST")
         .cloned()
         .unwrap_or_else(default_public_host);
-    let public_scheme = values
-        .get("BOX_PUBLIC_SCHEME")
-        .filter(|scheme| matches!(scheme.as_str(), "http" | "https"))
-        .map(String::as_str)
-        .unwrap_or("http");
-    let public_address = if public_host.parse::<IpAddr>().is_ok() {
-        shared_config::origin_host(&public_host).unwrap_or(public_host.clone())
-    } else {
-        format!("{public_scheme}://{public_host}")
-    };
+    let public_address = box_manager_core::access_settings::public_address(&values);
     InstallConfigView {
         database_mode: values
             .get("BOX_DATABASE_MODE")

@@ -1,25 +1,29 @@
 'use strict'
 
 const assert = require('node:assert/strict')
-const { readFileSync } = require('node:fs')
+const { readFileSync, existsSync, readdirSync } = require('node:fs')
 const path = require('node:path')
 const { test } = require('node:test')
 
 const portalRoot = path.resolve(__dirname, '..')
 const repositoryRoot = path.resolve(portalRoot, '../..')
-const dockerfile = readFileSync(path.join(portalRoot, 'Dockerfile'), 'utf8')
-const dockerignore = readFileSync(path.join(repositoryRoot, '.dockerignore'), 'utf8')
-const compose = readFileSync(path.join(repositoryRoot, 'docker-compose.yml'), 'utf8')
+// 官方集成检查在引擎仓库里运行；导出的独立模板不依赖父目录。
+const integrated = existsSync(path.join(repositoryRoot, 'docker-compose.yml'))
+const dockerfile = integrated ? readFileSync(path.join(portalRoot, 'Dockerfile'), 'utf8') : ''
+const dockerignore = integrated ? readFileSync(path.join(repositoryRoot, '.dockerignore'), 'utf8') : ''
+const compose = integrated ? readFileSync(path.join(repositoryRoot, 'docker-compose.yml'), 'utf8') : ''
 const browserApp = readFileSync(path.join(portalRoot, 'public/app.js'), 'utf8')
-const browserSource = readFileSync(path.join(portalRoot, 'src/app.jsx'), 'utf8')
+const readSource = directory => readdirSync(directory, { withFileTypes: true }).map(entry => entry.isDirectory() ? readSource(path.join(directory, entry.name)) : /\.(js|jsx)$/.test(entry.name) ? readFileSync(path.join(directory, entry.name), 'utf8') : '').join('\n')
+const browserSource = readSource(path.join(portalRoot, 'src'))
 const portalHtml = readFileSync(path.join(portalRoot, 'public/index.html'), 'utf8')
 
-test('container image copies only runtime source and never an env file', () => {
+test('official container keeps the license gate and copies only runtime source', { skip: !integrated }, () => {
   assert.match(
     dockerfile,
     /COPY --chown=node:node apps\/player-auth-portal\/server\.js \.\/server\.js/,
   )
   assert.match(dockerfile, /COPY --chown=node:node apps\/player-auth-portal\/public \.\/public/)
+  assert.match(dockerfile, /COPY --chown=node:node apps\/player-auth-portal\/server \.\/server/)
   assert.match(dockerfile, /COPY --chown=node:node packages\/license\/index\.js/)
   assert.match(dockerfile, /COPY --chown=node:node distribution\/license-public-key\.pem/)
   assert.doesNotMatch(dockerfile, /COPY[^\n]*\.env/i)
@@ -31,7 +35,7 @@ test('container image copies only runtime source and never an env file', () => {
   assert.doesNotMatch(dockerignore, /^!apps\/license-server\/\*\*$/m)
 })
 
-test('Compose keeps the auth key server-side and uses Player Service over its internal URL', () => {
+test('Compose keeps the auth key server-side and uses Player Service over its internal URL', { skip: !integrated }, () => {
   const service = compose.slice(
     compose.indexOf('  player-auth-portal:'),
     compose.indexOf('\n  server-manager:', compose.indexOf('  player-auth-portal:')),
@@ -45,6 +49,18 @@ test('Compose keeps the auth key server-side and uses Player Service over its in
   assert.match(service, /BOX_PLAYER_AUTH_API_KEY: \$\{BOX_PLAYER_AUTH_API_KEY:-\}/)
   assert.match(service, /BOX_PLAYER_SERVICE_INTERNAL_URL: http:\/\/player-service:3213/)
   assert.doesNotMatch(browserSource + browserApp, /AUTH_DEMO_API_KEY|BOX_PLAYER_AUTH_API_KEY/)
+})
+
+test('standalone image is buildable without engine sources and excludes development mocks and credentials', () => {
+  const standalone = readFileSync(path.join(portalRoot, 'Dockerfile.standalone'), 'utf8')
+  assert.match(standalone, /npm ci --include=dev --ignore-scripts/)
+  assert.match(standalone, /COPY --chown=node:node server \.\/server/)
+  assert.match(standalone, /HEALTHCHECK/)
+  assert.match(standalone, /USER node/)
+  assert.doesNotMatch(standalone, /COPY[^\n]*(?:\.env|mock-player-service|packages\/license|\. \.|node_modules)/)
+  const ignore = readFileSync(path.join(portalRoot, '.dockerignore'), 'utf8')
+  assert.ok(ignore.startsWith('*\n'))
+  assert.doesNotMatch(ignore, /!\.env/)
 })
 
 test('disabled registration removes the redundant authentication tabs', () => {

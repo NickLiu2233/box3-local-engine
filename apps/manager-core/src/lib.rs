@@ -1,6 +1,7 @@
 //! Runtime-independent rules shared by the desktop and HTTP launchers.
 pub mod backup;
 pub mod auth_portal;
+pub mod access_settings;
 pub mod backup_store;
 pub mod configuration;
 pub mod configuration_migration;
