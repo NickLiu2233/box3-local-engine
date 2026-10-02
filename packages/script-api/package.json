@@ -20,7 +20,7 @@
   "scripts": {
     "build": "npm run build:dist && npm run rollup && node ./scripts/fix-dts.js",
     "build:cjs": "tsc --module CommonJS --outDir dist/cjs",
-    "build:dist": "rm -rf dist && npm run build:es && npm run build:cjs",
+    "build:dist": "node scripts/sync-moderation-types.js && rm -rf dist && npm run build:es && npm run build:cjs",
     "build:es": "tsc --module ESNext --outDir dist/es",
     "build:watch": "npm run build",
     "dev": "npm run wiki --watch",

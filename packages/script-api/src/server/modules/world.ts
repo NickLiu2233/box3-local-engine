@@ -6,6 +6,7 @@ import type { GameEntity } from './entity';
 import type { GameEventChannel, GameEventFuture } from './events';
 import type { GameVector3 } from './math';
 import type { GamePlayer, GamePlayerEntity } from './player';
+import type { GameModeration } from './moderation';
 
 export declare class GameWorld {
   /**
@@ -28,6 +29,8 @@ export declare class GameWorld {
    * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
    */
   readonly serverId: string;
+  /** 服务端地图管理能力，须先由服主在后台授权。 */
+  readonly moderation: GameModeration;
 
   /**
    * Shared scene-light intensity. This updates the existing renderer uniform

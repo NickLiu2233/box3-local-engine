@@ -544,4 +544,3 @@ declare function sleep(ms: number): Promise<void>;
  */
 declare function call(key: string, value: any, callback?: () => void): any;
 declare function callAsync(key: string, value: any): Promise<any>;
-

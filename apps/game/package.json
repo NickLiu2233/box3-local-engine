@@ -7,6 +7,8 @@
   "scripts": {
     "build": "npm run build-apis && npm run build-ipfs && npm run build-next",
     "build-apis": "node -r ts-node/register --max-old-space-size=4096 ./scripts/build-apis.ts",
+    "build:script-types": "npm run build-apis && npm --prefix ../../packages/script-api run build && npm --prefix ../local-engine run prepare-assets && npm run test:script-types",
+    "test:script-types": "node -r ts-node/register scripts/check-editor-types.ts",
     "build-ipfs": "ts-node -r tsconfig-paths/register ./scripts/build-ipfs.ts",
     "build-llm-context": "node -r ts-node/register --max-old-space-size=4096 ./scripts/build-llm-context.ts",
     "build-service-worker-cache": "node -r ts-node/register ./scripts/build-service-worker-cache-range.ts",

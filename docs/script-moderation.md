@@ -81,6 +81,38 @@ await world.moderation.banCurrentIP(playerEntity, {
 
 ## 维护与部署
 
+### 编辑器补全与声明文件
+
+在仓库根目录运行：
+
+```sh
+npm --prefix apps/game run build:script-types
+```
+
+这个命令会生成声明、使用现有的 `rollup-plugin-dts` 更新服务端 SDK，并更新本地编辑器内置的类型资源。最后会检查方法补全、参数字段、中文说明和类型约束，不需要增加新的依赖。
+
+如果在 VS Code 中写地图脚本，把 `packages/script-api/dts/box3-server-api.d.ts` 复制到地图工程目录即可。这是标准的 `.d.ts` 文件，包含 `world` 等全局对象，不需要给地图安装运行时包。
+
+需要开启脚本类型检查时，可以在工程里加入 `jsconfig.json`：
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "checkJs": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.js", "box3-server-api.d.ts"]
+}
+```
+
+`world.moderation.` 会提示可用方法，调用时会提示参数类型，填写选项时会提示 `reason`、`durationSeconds`、`scope` 和 `requestId`。把鼠标放到方法或字段上可以查看说明。声明只用于开发提示，不会给地图增加管理权限。
+
+管理接口的类型以 `internals/schema/api/js/moderation.ts` 为准，SDK 的对应类型由构建自动同步，不需要手动维护两份。
+
+### 服务更新
+
 管理界面和运行时请求都使用 `@box/apis` 生成的 OpenAPI 客户端。浏览器的授权配置接口只接受服主会话，并沿用后台的来源与 CSRF 校验。
 
 运行时接口是 `/api/player-internal/script-moderation` 和 `/api/player-internal/map-admission`，使用现有内部 Bearer 鉴权。密钥只保存在可信引擎进程里，不能给地图脚本，也不能放进自定义登录门户的前端。反向代理应限制这些内部路径；这项设计不防御服主机器或可信引擎进程本身被攻破。
