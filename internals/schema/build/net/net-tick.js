@@ -37,7 +37,7 @@ function scaleTarget(t, w) {
     t.py *= w;
     t.pz *= w;
     t.vx *= w;
-    t.vz *= w;
+    t.vy *= w;
     t.vz *= w;
 }
 function accumTarget(dst, nt) {

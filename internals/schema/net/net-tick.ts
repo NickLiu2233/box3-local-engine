@@ -83,7 +83,7 @@ function scaleTarget(t: NetCorrectionTarget, w: number) {
   t.py *= w;
   t.pz *= w;
   t.vx *= w;
-  t.vz *= w;
+  t.vy *= w;
   t.vz *= w;
 }
 
