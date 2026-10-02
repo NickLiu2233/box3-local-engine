@@ -61,13 +61,13 @@ const manualRoutes = [
   ['server-manager', '/api/commands/{name}', ['POST'], 'apps/server-manager-rust/src/main.rs'],
   ['server-manager', '/api/operations/{id}', ['GET'], 'apps/server-manager-rust/src/main.rs'],
   // Public player login portal proxy.
-  ['auth-portal', '/api/health-check', ['GET'], 'apps/player-auth-portal/server.js'],
-  ['auth-portal', '/api/auth/login', ['POST'], 'apps/player-auth-portal/server.js'],
-  ['auth-portal', '/api/auth/register', ['POST'], 'apps/player-auth-portal/server.js'],
-  ['auth-portal', '/api/auth/session', ['GET'], 'apps/player-auth-portal/server.js'],
-  ['auth-portal', '/api/auth/logout', ['POST'], 'apps/player-auth-portal/server.js'],
-  ['auth-portal', '/api/auth/profile', ['PATCH'], 'apps/player-auth-portal/server.js'],
-  ['auth-portal', '/api/auth/password', ['POST'], 'apps/player-auth-portal/server.js'],
+  ['auth-portal', '/api/health-check', ['GET'], 'apps/player-auth-portal/server/portal.ts'],
+  ['auth-portal', '/api/auth/login', ['POST'], 'apps/player-auth-portal/server/auth.ts'],
+  ['auth-portal', '/api/auth/register', ['POST'], 'apps/player-auth-portal/server/auth.ts'],
+  ['auth-portal', '/api/auth/session', ['GET'], 'apps/player-auth-portal/server/auth.ts'],
+  ['auth-portal', '/api/auth/logout', ['POST'], 'apps/player-auth-portal/server/auth.ts'],
+  ['auth-portal', '/api/auth/profile', ['PATCH'], 'apps/player-auth-portal/server/auth.ts'],
+  ['auth-portal', '/api/auth/password', ['POST'], 'apps/player-auth-portal/server/auth.ts'],
 ]
 const outputFile = path.join(packageRoot, 'openapi/openapi.json')
 

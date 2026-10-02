@@ -83,7 +83,7 @@
 | Compose 的 `BOX_AUTH_PORTAL_REQUEST_TIMEOUT_MS` | `AUTH_DEMO_REQUEST_TIMEOUT_MS` | 默认 10000 ms，默认后端允许 1000–60000 ms |
 | Compose 的 `BOX_TRUST_PROXY` | `AUTH_DEMO_TRUST_PROXY` | 只有明确为 `true` 才信任代理头 |
 
-当前模板由 `server/config.js` 读取配置：优先使用标准 `BOX_*`、`HOST`、`PORT`，同时兼容 `AUTH_DEMO_*`。旧镜像可能只读取兼容变量，因此启动器仍同时注入两套名称；不要据此移除旧部署所需配置。
+当前模板由 `server/config.ts` 读取配置：优先使用标准 `BOX_*`、`HOST`、`PORT`，同时兼容 `AUTH_DEMO_*`。旧镜像可能只读取兼容变量，因此启动器仍同时注入两套名称；不要据此移除旧部署所需配置。
 
 完全自建后端读取示例：
 
@@ -403,49 +403,25 @@ function trustedReturnUrl(source, requested, config) {
 
 登录/输入错误留在表单；会话失效立即回登录页；改密成功清空全部密码和 player 内存状态。中文组合输入不重建、不截断；显示昵称用文本插值/textContent，不用不可信 HTML。页面兼容字段缺失，昵称可回退 username，不增加头像占位功能。
 
-### 8.1 浏览器封装示例
+### 8.1 复用 TypeScript 客户端
 
-仅调用门户，不含密钥：
+当前模板使用 PortalClient 类集中处理 Cookie、JSON、超时和错误，不让每个页面复制请求流程。
 
-```js
-async function portalApi(path, method = 'GET', body) {
-  const controller = new AbortController()
-  // 比默认门户 10 秒上游超时略长，让服务端先返回明确错误。
-  const timeout = setTimeout(() => controller.abort(), 15000)
-  try {
-    const response = await fetch(path, {
-      method, credentials: 'same-origin', cache: 'no-store',
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-      body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal,
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok || !data || typeof data !== 'object' || Array.isArray(data)) {
-      const error = new Error(data?.message || `请求失败（HTTP ${response.status}）`)
-      error.status = response.status
-      error.code = data?.code
-      error.retryAfter = response.headers.get('retry-after')
-      throw error
-    }
-    return data
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-// 独立操作示例，不是让页面顺序执行所有操作。
-const querySession = (source = '', returnUrl = '') =>
-  portalApi(`/api/auth/session?${new URLSearchParams({ source, returnUrl })}`)
-const login = (username, password, source, returnUrl) =>
-  portalApi('/api/auth/login', 'POST', { username, password, source, returnUrl })
-const register = (username, displayName, password, source, returnUrl) =>
-  portalApi('/api/auth/register', 'POST', { username, displayName, password, source, returnUrl })
-const logout = () => portalApi('/api/auth/logout', 'POST', {})
-const changeNickname = displayName => portalApi('/api/auth/profile', 'PATCH', { displayName })
-const changePassword = (currentPassword, newPassword) =>
-  portalApi('/api/auth/password', 'POST', { currentPassword, newPassword })
+```ts
+import { PortalClient, PortalError } from './src/client'
+const client = new PortalClient()
+const session = await client.session()
+// 独立操作示例，不要一次执行所有写请求。
+const login = (username: string, password: string) => client.login(username, password)
+const register = (username: string, nickname: string, password: string) => client.register(username, nickname, password)
+const logout = () => client.logout()
+const nickname = (value: string) => client.updateNickname(value)
+const password = (current: string, next: string) => client.changePassword(current, next)
 ```
 
-同源请求用 same-origin 即可；include 不能解决 Cookie 域、SameSite 或后端 CORS 配置问题。
+异常为 PortalError 时，可读取 status、code、retryAfter；用户提示使用 PortalClient.message(error)。浏览器调用门户，不把服务密钥放进构造参数。source/returnUrl 只随登录、注册、会话查询传递，不混入昵称/改密正文。
+
+同源请求使用 same-origin 足够；include 不会自动解决 Cookie 域、SameSite 或 CORS 配置问题。
 
 ### 8.2 @box/apis 客户端
 
@@ -484,47 +460,21 @@ const changePassword = (currentPassword, newPassword) => client.postApiAuthPassw
 11. 连接、超时、非 JSON 异常映射为安全错误，不泄露堆栈或配置。
 12. 添加门户级注册与必要速率限制，不绕过底层登录/自助限流。
 
-核心转发片段：调用前已经完成上述路由、来源和正文校验。
+当前 TypeScript 模板已把上述要求实现成可复用的类，不需要其他开发者重新拼装一套流程：
 
-```js
-async function forwardValidatedOperation(request, response, config, operation, upstreamBody) {
-  const methods = new Map([
-    ['login', 'POST'], ['register', 'POST'], ['session', 'GET'],
-    ['logout', 'POST'], ['profile', 'PATCH'], ['password', 'POST'],
-  ])
-  const method = methods.get(operation)
-  if (!method || request.method !== method) throw new Error('Invalid operation')
-  const headers = {
-    Accept: 'application/json', 'X-Box-Player-Auth-Key': config.apiKey,
-    Cookie: String(request.headers.cookie || ''),
-    'User-Agent': String(request.headers['user-agent'] || '').slice(0, 512),
-  }
-  if (upstreamBody !== undefined) headers['Content-Type'] = 'application/json'
-  // 生产实现还须补充可信客户端 IP / 外部协议，不能照抄未验证的代理头。
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs)
-  try {
-    const upstream = await fetch(new URL(`/api/player-auth/${operation}`, config.serviceUrl), {
-      method, headers, redirect: 'manual', signal: controller.signal,
-      body: upstreamBody === undefined ? undefined : JSON.stringify(upstreamBody),
-    })
-    const data = await upstream.json()
-    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('Invalid upstream JSON')
-    response.setHeader('Cache-Control', 'no-store')
-    response.setHeader('Content-Type', 'application/json; charset=utf-8')
-    const cookies = upstream.headers.getSetCookie()
-    if (cookies.length) response.setHeader('Set-Cookie', cookies)
-    const retryAfter = upstream.headers.get('retry-after')
-    if (retryAfter) response.setHeader('Retry-After', retryAfter)
-    response.statusCode = upstream.status
-    response.end(JSON.stringify(data))
-  } finally {
-    clearTimeout(timeout)
-  }
-}
+```ts
+import { PortalConfig, PortalServer } from './server'
+const config = PortalConfig.fromEnvironment()
+const portal = new PortalServer(config)
+await portal.listen()
+// 程序停止时 await portal.close()
 ```
 
-这不是完整可上线服务器：调用者仍需实现来源/Host 校验、注册开关、白名单、可信转发头、导航、静态文件服务和异常映射。外层将上游解析失败映射为 502，不将片段异常原样暴露。
+类的职责：AuthOperation 保存操作名/方法/允许字段；AuthPolicy 校验方法、来源、注册开关并处理导航；PlayerServiceClient 管理请求头、超时、上游正文及多条 Cookie；AuthProxy 只协调这些类。JsonBody 管正文限制，StaticFiles 管 public 与真实路径检查，PortalServer 组合路由和生命周期。
+
+复用已有 Node HTTP 服务器时，可以调用 portal.handle(request, response) 接管门户请求。它会处理账号、静态资源与 404，不应放在任意业务请求之前吞掉其他路由。如果应用工作目录不同，请配置 publicDirectory 为自己的静态产物目录。
+
+生产 build 后可从 build/library.cjs 导入同样的类，类型声明在 build/types/server/index.d.ts。源代码和脚本是 TS/TSX，生成的 CJS/JS 是 Node/浏览器需要的运行产物，不是手写脚本。
 
 ### 9.1 错误与限流
 
@@ -754,7 +704,7 @@ my-login/
 
 以上已覆盖独立实现所需契约，以下只用于有仓库时进一步核对，不是阅读前置条件：
 
-- 默认门户：apps/player-auth-portal/server.js、server/、src/app.jsx 与 src/pages/。
+- 默认门户：apps/player-auth-portal/server/portal.ts、server/auth.ts、src/app.tsx、src/forms.tsx。
 - 模板：apps/player-auth-portal/examples/custom-image/Dockerfile。
 - 底层路由：apps/game/pages/api/player-auth/。
 - 鉴权/账号：apps/game/server/player-auth-security.ts、local-player-identity.ts、player-self-service-handler.ts、player-self-password.ts。

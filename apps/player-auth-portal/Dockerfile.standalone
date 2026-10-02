@@ -6,18 +6,19 @@ COPY package.json package-lock.json ./
 RUN npm ci --include=dev --ignore-scripts
 COPY src ./src
 COPY public ./public
-COPY scripts/build.mjs ./scripts/build.mjs
+COPY scripts/tasks.ts scripts/mock.ts ./scripts/
+COPY server ./server
+COPY tsconfig.json tsconfig.library.json ./
 RUN npm run build
 
 FROM ${NODE_IMAGE}
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3214
 WORKDIR /app
-COPY --chown=node:node server.js ./server.js
-COPY --chown=node:node server ./server
+COPY --from=build --chown=node:node /build/build/server.cjs ./build/server.cjs
 COPY --from=build --chown=node:node /build/public ./public
 # 后端只用 Node 内置模块，运行镜像无需 node_modules、开发工具或模拟账号。
 USER node
 EXPOSE 3214
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3214/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
-CMD ["node", "server.js"]
+CMD ["node", "build/server.cjs"]

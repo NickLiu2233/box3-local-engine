@@ -1,13 +1,1 @@
-'use strict'
-;(() => {
-  const themeKey = 'box-player-admin-theme'
-  let theme = 'system'
-  try {
-    const saved = localStorage.getItem(themeKey)
-    if (saved === 'light' || saved === 'dark' || saved === 'system') theme = saved
-  } catch {
-    // Storage can be unavailable in hardened browser contexts. System theme is
-    // a complete fallback and does not prevent authentication.
-  }
-  document.documentElement.dataset.theme = theme
-})()
+"use strict";(()=>{var e=class{static key="box-player-admin-theme";static order=["system","light","dark"];static current(){return document.documentElement.dataset.theme||"system"}static apply(t){document.documentElement.dataset.theme=this.order.some(s=>s===t)?t:"system"}static initialize(){try{this.apply(localStorage.getItem(this.key)||"system")}catch{this.apply("system")}}static next(){let t=this.order[(this.order.findIndex(s=>s===this.current())+1)%this.order.length];this.apply(t);try{localStorage.setItem(this.key,t)}catch{}return t}};e.initialize();})();

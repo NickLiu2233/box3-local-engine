@@ -13010,7 +13010,7 @@
         "GET"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/portal.ts"
     },
     {
       "path": "/api/auth/login",
@@ -13018,7 +13018,7 @@
         "POST"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/auth.ts"
     },
     {
       "path": "/api/auth/register",
@@ -13026,7 +13026,7 @@
         "POST"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/auth.ts"
     },
     {
       "path": "/api/auth/session",
@@ -13034,7 +13034,7 @@
         "GET"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/auth.ts"
     },
     {
       "path": "/api/auth/logout",
@@ -13042,7 +13042,7 @@
         "POST"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/auth.ts"
     },
     {
       "path": "/api/auth/profile",
@@ -13050,7 +13050,7 @@
         "PATCH"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/auth.ts"
     },
     {
       "path": "/api/auth/password",
@@ -13058,7 +13058,7 @@
         "POST"
       ],
       "service": "auth-portal",
-      "source": "apps/player-auth-portal/server.js"
+      "source": "apps/player-auth-portal/server/auth.ts"
     }
   ]
 }

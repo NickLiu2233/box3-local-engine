@@ -1,212 +1,160 @@
-# BOX3 自定义登录门户示例模板
+# BOX3 登录门户 TypeScript 示例
 
-这是可以单独复制到 Git 仓库、clone 后直接修改的登录门户示例。前端使用 React + Radix，后端只依赖 Node.js 内置模块。它复用 BOX3 Player Service 的账号，不另建数据库，不让浏览器持有服务密钥。
+一个可以独立 clone、修改、构建的登录门户。**少量文件，按职责组织类，不另建账号体系。**
 
-推荐工作流：**clone → npm ci → npm run dev → 改页面 → npm run package → docker load → 启动器选择镜像**。
+前端与工具使用 TypeScript/TSX；生产后端编译为一个 Node.js 文件，不携带 TypeScript、tsx、前端开发工具或运行时 node_modules。public 的 JS/CSS、build 的 CJS/类型声明是自动生成产物，不手工维护。
 
-## 1. 三分钟开始修改
+## 快速开始
 
-要求 Node.js 22.17 或更高版本。开发页面不需要 Docker、不需要引擎运行、不需要密钥或数据库：
+Node.js 22.17 或更新版本：
 
 ```sh
 npm ci
 npm run dev
 ```
 
-打开终端显示的地址，默认是 http://127.0.0.1:4325。
+访问终端显示的地址，默认 http://127.0.0.1:4325。演示账号 `demo`，密码 `demo-password-123`。不需要 Docker、数据库、引擎或真实密钥。保存源码后自动重建，刷新页面；后端变化由 Node watch 重启。
 
-- 演示账号：`demo`，密码：`demo-password-123`。
-- 保存 JS/JSX/CSS 后自动重新构建，刷新浏览器看效果；修改后端时 Node 自动重启。
-- 模拟注册、登录、昵称接口、改密与退出可用；所有演示数据只在内存里，进程重启即重置。
-- 开发 Cookie 使用专用名称，不覆盖同主机上真实引擎的登录 Cookie。
-- 模拟器不模拟完整的设备绑定、封禁、限流、数据库和审计；上线前仍要做真实联调。
-- 默认 dev 即使发现已有 .env 也不会切换为真实账号服务，必须主动使用 dev:live。
-- 端口冲突时用环境变量 `PORTAL_DEV_PORT` 换端口。
+模拟数据只存在于内存，使用专用 Cookie 名，不覆盖同主机的引擎会话。它不模拟真实设备绑定、封禁、限流、数据库和审计。真实联调必须主动运行 `npm run dev:live`，并使用服主提供的测试配置；默认 dev 不会自动连接真实账号服务。
 
-生产镜像不包含模拟器，也不能因为没有配置而降级到演示账号。
-
-## 2. 改哪里，不改哪里
+## 代码结构：改页面无需读全部后端
 
 ```text
 src/
-  main.jsx                 浏览器入口
-  app.jsx                  loading/auth/account/password 页面状态协调
-  api/
-    client.js              同源请求、错误信息与超时
-    navigation.js          读取导航参数，不决定授权
-  pages/
-    auth-forms.jsx         登录/注册表单
-    authentication.jsx    登录/注册提交与页签
-    account.jsx           已登录账号页
-  components/
-    brand.jsx             品牌名称与标记：从这里开始改
-    theme-button.jsx      主题偏好
-    forms.jsx             密码输入、提示、提交状态
-    password-change.jsx   原密码/新密码/确认与重新登录
-  styles/
-    theme.css             主题颜色变量
-    layout.css            布局与品牌
-    forms.css             表单、焦点、提示、禁用状态
-    account.css           账号布局、响应式与减少动画
-    index.css             样式聚合入口
-public/
-  index.html               HTML 壳，可改标题
-  theme.js                 首次绘制前设置主题，避免闪白
-  app.js / styles.css      构建产物，不直接修改
-  images/、fonts/          可自行增加，安全静态服务会提供
+  app.tsx             PortalApp：页面状态、登录/账号视图
+  forms.tsx           密码输入、提示、提交状态、PasswordChange
+  client.ts           PortalClient：六种账号调用、PortalError
+  theme.ts            Theme：只保存主题偏好
+  main.tsx            浏览器启动入口
+  theme-main.ts       首次绘制前设置主题
+  styles/app.css      页面、表单、响应式样式
+  styles/theme.css    主题变量
 server/
-  config.js                运行时环境配置与校验
-  create-server.js         HTTP 路由组装
-  auth/operations.js       固定六个账号操作，不是通用代理
-  auth/proxy.js            账号代理与 Cookie/状态/限流头转发
-  security/request.js      来源、外部协议、可信客户端 IP
-  security/navigation.js   安全回跳白名单
-  http/body.js             JSON 类型和大小限制
-  http/response.js         no-store JSON 响应
-  http/assets.js           public 内资源与防越界检查
-server.js                   生产启动入口及测试兼容导出
-scripts/                    开发、检查、构建、镜像与源码导出
-test/                       真实 HTTP 测试、安全与模板检查
-docs/API.md                 完整接口/部署契约，可独立交给其他 AI
+  config.ts           PortalConfig：运行时配置、可信网络与导航规则
+  auth.ts             AuthOperation / AuthPolicy / PlayerServiceClient / AuthProxy
+  http.ts             HttpError / Http / JsonBody / StaticFiles
+  portal.ts           PortalServer：组合路由、生命周期
+  index.ts            对外类与类型导出
+  main.ts             生产启动入口
+scripts/
+  tasks.ts            构建、开发、打包、源码导出各自的类与 CLI
+  mock.ts             MockPlayerService：仅开发/测试
+  ui-smoke.ts         可选浏览器交互回归
+test/*.test.ts        类型检查和 HTTP/安全回归
+docs/API.md           可独立阅读的完整接口与部署契约
+public/               HTML、品牌资源及自动构建产物
 ```
 
-只改外观通常只需要动 src、public/index.html 和 public 的品牌资源。默认保留所有账号流程和安全模块，不必学习引擎源码、Rush、Tauri 或 Docker Compose。
+通常只改 app.tsx、forms.tsx、styles 和 public/index.html。图片与字体放 public；当前静态服务允许常见图片、js/css、woff/woff2，不开放隐藏文件或任意文件下载。默认是单页状态，不提供 HTML history 子路由回退。
 
-图片和字体放 public，使用同源 URL，例如 `/images/logo.svg`；默认允许 JS/CSS、常见图片、woff/woff2。隐藏文件、未知扩展名、目录遍历和越界符号链接被拒绝。当前没有 HTML history 子路由回退，保持单页面状态或使用 hash 路由。
+## 类如何合作，为什么不是把函数塞进 class
 
-## 3. 为什么这样设计
+| 类 | 持有的数据 | 主要职责/方法 |
+| --- | --- | --- |
+| PortalConfig | 外部地址、开关、私有 Key | fromEnvironment 校验；可信协议/IP；安全回跳。Key 不被 JSON 序列化 |
+| AuthOperation | 操作名、方法、字段白名单 | payload 只提取允许字段，自助请求拒绝额外身份字段 |
+| AuthPolicy | 当前配置 | validate 分别检查方法、注册与来源；decorate 补充安全导航和注册策略 |
+| PlayerServiceClient | 上游配置 | headers、responseHeaders、response、failure、send，统一网络与响应处理 |
+| AuthProxy | policy、client、JsonBody | handle 仅协调操作，不堆叠请求和安全细节 |
+| JsonBody | 字节上限 | requireJson、bytes、parse、read，各自处理请求限制 |
+| StaticFiles | public 目录、MIME 白名单 | asset、file、headers、serve，分别检查类型和真实路径 |
+| PortalServer | 代理、静态服务、HTTP server | handle、listen、close；既可独立启动也可接入已有服务器 |
+| PortalClient | 浏览器导航参数 | login/register/session/logout/updateNickname/changePassword，共用带超时的请求方法 |
+| PortalApp / PasswordChange | 页面状态、提交状态 | 明确状态切换，错误留表单，改密/过期回登录 |
 
-| 设计 | 为什么 |
-| --- | --- |
-| 页面与账号代理分开 | 改品牌不会误改密钥、Cookie、注册策略或权限流程 |
-| 一个固定代理流程 | 六个接口共用来源、超时、Cookie 和错误处理，避免某个接口漏安全检查 |
-| 后端只用 Node 内置模块 | 无数据库、ORM、服务端框架或运行时 node_modules，镜像轻、可读、容易维护 |
-| React + Radix 保留现有实现 | 不换开发者需要重新学习的框架，保留键盘、页签与表单行为 |
-| 单个本地 JS/CSS 产物 | 不依赖 CDN；没有动态资源服务器或前端开发工具链运行在生产 |
-| 模拟开发必须显式区分真实联调 | clone 即可改样式，又不会误操作真实玩家账号 |
-| 配置在启动时读取 | 打包一次后可用于不同服主，密钥不写进镜像或前端构建变量 |
-| 标准变量 + 旧名称兼容 | 启动器已配置好即可运行，不要求其他开发者配置两套值 |
-| 会话与设备 Cookie 一起转发 | 设备绑定由 Player Service 检查，不能自己签 token 或只保留一个 Cookie |
-| 密码只在提交时短暂存在 | 不把明文密码保存在 URL、localStorage、全局状态或日志 |
-| 改密成功回登录 | 底层撤销全部会话，旧会话不能继续使用 |
-| 真实 Origin 校验 | 公网/局域网访问不能仅用预设 canonical URL 判断；反代头仅在可信模式下采用 |
-| 回跳比较 URL.origin | 字符串前缀容易被相似恶意域名绕过，不能直接信任 query.returnUrl |
-| HEALTHCHECK 不依赖账号或上游 | 上游暂时异常不应该让门户陷入容器重启循环 |
-| npm 锁文件与本目录构建 | 独立 clone 不依赖引擎工作区软链接或父目录，依赖可以重复安装 |
+相关类放在同一文件，不为每个小方法单独建目录。每个类拥有实际职责，不额外引入服务容器、ORM、路由框架或空的转发层。测试辅助函数只是组织断言，不是应用业务逻辑。
 
-注释重点解释这些约束与失败路径，不逐行翻译显而易见的语法。修改代理前先读 docs/API.md，不删除安全检查来“解决登录失败”。
+工具同样分工：Project 管目录/版本/命令错误；PortalBuilder 管构建与检查；PortalDevelopment 管 watcher/模拟器生命周期；ImagePackager 管镜像参数、构建、架构验证、归档；TemplateExporter 管源码白名单。PortalTasks 仅分发 CLI 命令。
 
-## 4. 开发、构建和检查命令
+## 其他开发者如何复用
+
+浏览器只复用客户端，不导入服务端密钥：
+
+```ts
+import { PortalClient } from './src/client'
+const client = new PortalClient()
+const state = await client.session()
+// 每个调用是一个独立操作，不要顺序执行所有写请求。
+await client.updateNickname('新的昵称')
+```
+
+服务端直接使用类，无需复制代理实现：
+
+```ts
+import { PortalConfig, PortalServer } from './server'
+const config = PortalConfig.fromEnvironment()
+const portal = new PortalServer(config)
+await portal.listen()
+// 停止时 await portal.close()
+```
+
+build 后也可从 build/library.cjs 加载相同类，类型声明位于 build/types/server/index.d.ts。生产入口为 build/server.cjs。把 `portal.handle(request, response)` 接入已有 Node HTTP 服务也可以；若工作目录不是本项目根目录，在 PortalOptions 中明确设置 publicDirectory。
+
+新增业务优先增加操作定义与明确的方法，不添加可代理任意路径的接口。详细参数与安全约束见 [docs/API.md](docs/API.md)。
+
+## 必须保留的安全规则
+
+- 账号体系与密码哈希由 Player Service 管，门户不连接数据库、不生成会话。
+- 服务 Key 只在运行时后端使用，不写入镜像、页面、URL、日志或配置响应。
+- 固定六个账号路径；注册关闭时后端也拒绝，不能只隐藏按钮。
+- JSON 正文最大 32 KiB，方法与字段白名单明确；昵称/改密不接受用户 ID、角色、头像或权限。
+- 写请求校验实际 Origin，只有可信代理模式才采用转发头。
+- Cookie 全部转发，Set-Cookie 逐条处理，不能逗号合并；Retry-After 和状态码保留。
+- 回跳按 URL.origin 白名单判断，不能直接信任 query.returnUrl。
+- 密码不持久化；防重复提交；改密成功撤销会话后必须重新登录。
+- 只服务 public，检查符号链接真实路径，不开放 .env、源码或目录越界。
+- 无凭据重置密码、头像上传、OAuth/短信/邮件验证不是当前接口的能力。
+
+## 命令
 
 | 命令 | 作用 |
 | --- | --- |
-| npm ci | 按锁文件安装开发依赖 |
-| npm run dev | 无配置模拟预览，保存后构建，刷新看效果 |
-| npm run dev:live | 明确连接服主提供的真实配置，修改真实测试账号 |
-| npm run build | 生成 public/app.js 和 public/styles.css |
-| npm test | HTTP/安全/配置/模板回归，不要求浏览器工具 |
-| npm run check | 构建、后端脚本语法和全部测试 |
-| npm start | 生产入口，不启动模拟器；支持已有 .env 或启动器环境变量 |
-| npm run package | 检查、Docker 构建、平台核对、导出 tar.gz 镜像 |
-| npm run export:template | 导出可单独放进仓库的源码模板，不带凭据或 node_modules |
+| npm run dev | 无配置模拟预览 |
+| npm run dev:live | 真实测试环境联调，需 .env 或环境配置 |
+| npm run typecheck | 严格检查源代码、工具和测试 |
+| npm test | TS 接口与安全测试，不要求浏览器工具 |
+| npm run build | 前端与 Node 后端编译、生成类的类型声明 |
+| npm run check | 严格类型检查、生产构建、全部测试 |
+| npm start | 运行编译后的生产入口，无配置拒绝启动，不启动模拟器 |
+| npm run package | 检查、构建 Docker 镜像、验证平台并导出 tar.gz |
+| npm run export:template | 导出可放入独立仓库的 TS 源码模板 |
 
-要修改主题应改 src/styles，不能改构建产物 public/styles.css。build 输出已压缩，源码和注释留在 src/server 中。
+首次安装需要网络，普通开发不需要 Docker。打包需要 Docker 和首次拉取基础镜像/npm 依赖的网络，不声称首次构建全离线。
 
-可选的真实浏览器交互回归位于 scripts/ui-smoke.cjs，使用 Electron 运行。普通开发与 npm test 不需要安装 Electron；在引擎工作区可使用已有的 Electron，在独立仓库可自行安装测试工具后执行。该测试使用模拟账号，不连接真实引擎。
+可选浏览器回归：`npm run test:ui -- --electron <已有的 Electron 可执行文件路径>`。脚本先编译 ui-smoke.ts 再验证表单交互；默认不安装 Electron，日常开发与 check 不依赖它。
 
-## 5. 一条命令导出可导入启动器的镜像
-
-需要本机 Docker 已启动。默认平台按当前 CPU 选择 linux/arm64 或 linux/amd64：
-
-```sh
-npm run package
-```
-
-默认镜像名为 `box3-login-example:0.2.0`，输出位于 dist。它刻意不使用官方镜像名，避免覆盖官方登录门户，启动器会把它作为自定义镜像保留。
-
-建议发布自己的名称与明确版本：
+## 打包后导入启动器
 
 ```sh
 npm run package -- --image my-login:1.0 --platform linux/arm64
-# 或 AMD64
-npm run package -- --image my-login:1.0 --platform linux/amd64
-```
-
-这会运行检查、构建 Dockerfile.standalone、核对架构并导出 Docker save 格式的 .tar.gz，不推送仓库。首次构建需要网络下载 Node 基础镜像和 npm 依赖；不是声称首次构建全离线。
-
-镜像已有相同 tag 时 Docker 构建会更新本机这个 tag。归档已有同名文件时脚本拒绝覆盖，建议递增版本；确实要覆盖生成的归档可添加 --force。不要用同一个镜像 tag 同时发布两种平台：分别构建导出，清楚标注架构。
-
-按命令最后的提示：
-
-```sh
+# AMD64：--platform linux/amd64
 docker load -i dist/my-login-1.0-linux-arm64.tar.gz
 ```
 
-然后进入引擎启动器 **数据配置 → 访问设置 → 登录页面镜像**，填写 `my-login:1.0`，保存。门户需要的地址、服务密钥、注册开关等由启动器注入，开发者不必把这些写进镜像。
+进入 **数据配置 → 访问设置 → 登录页面镜像**，填写 my-login:1.0 后保存。地址、Key、注册开关等由启动器注入，不需开发者打包进程序。
 
-Docker load 是导入动作；不要把这个 tar.gz 当作引擎启动器的“完整六服务离线包”。导入后仍要在登录页面镜像卡片选择名称。
+默认镜像名 box3-login-example:0.2.0，刻意不同于官方名称。自定义镜像不会随引擎自动升级；缺失时报错，不自动拉取或回退。建议发布新 tag，不用同一个 tag 同时分发两个平台。归档已有同名文件时拒绝覆盖，需要明确 --force；Docker 构建本身会更新指定的本机 tag。
 
-自定义镜像不会随引擎自动升级；本机不存在就报错，不拉取、不静默回退。只改页面无须重建 Player Service；使用新增底层功能时需确保服主的 Player Service 已包含相应接口。
+导出的归档是单个登录镜像，不是引擎完整六服务离线包。
 
-## 6. Dockerfile 的区别
+## Docker 与运行配置
 
-- **Dockerfile.standalone**：单独仓库/本目录构建，前端在 build stage 构建，runtime 只复制 server 与 public。没有模拟器、开发依赖、.env、引擎源码或默认账号。监听 0.0.0.0:3214，非 root，带健康检查，可在启动器只读根目录环境运行。
-- **Dockerfile**：仅引擎仓库集成构建，保留官方门户的许可证启动守卫和公共验证资源。它依赖引擎根目录构建上下文，不应当作独立仓库的构建入口。
-- **examples/custom-image/Dockerfile**：旧的“继承已安装官方镜像、只覆盖静态资源”方案。独立模板默认不用它，不要求其他开发者先安装官方基础镜像。
+- Dockerfile.standalone：独立仓库构建，运行镜像只有编译后的服务器与 public，非 root、0.0.0.0:3214、只读根目录可用，带 HEALTHCHECK。
+- Dockerfile：引擎仓库官方集成，保留许可证守卫和公共验证资源，不是独立构建入口。
+- 模拟器、源码、tsx、TypeScript、开发依赖和 .env 都不进入运行镜像。
+- 健康接口只检查门户自身，避免上游故障导致重启循环。
 
-独立门户只是调用已部署 Player Service 的 HTTP 页面与代理，不复制或替代引擎运行时。它不会给玩家授予权限，也不提供绕过引擎许可证的能力。继承官方镜像时仍需保留官方启动守卫。
+标准配置优先，兼容 AUTH_DEMO_*：HOST/PORT、BOX_PLAYER_SERVICE_INTERNAL_URL、BOX_PLAYER_AUTH_API_KEY、BOX_AUTH_PORTAL_PUBLIC_URL、BOX_CREATOR_PUBLIC_URL、BOX_PLAY_PUBLIC_URL、BOX_PLAYER_REGISTRATION_ENABLED。
 
-## 7. 真实联调与启动器配置
+容器内部上游通常为 http://player-service:3213，不能硬编码宿主机 127.0.0.1:3124。真实联调可复制 .env.example，填写服主提供的测试配置后运行 dev:live。跨子域 Cookie、TLS、Origin 与回跳属于部署配置，见 API.md。
 
-默认开发不需要 .env。只有真实联调时，使用服主提供的配置，或复制 .env.example 并填写测试环境地址与密钥：
-
-```sh
-cp .env.example .env
-npm run dev:live
-```
-
-这是会操作真实 Player Service 的模式，不用正式玩家账号试改密码。不要把 .env 提交仓库或发给其他人。
-
-标准变量：HOST/PORT、BOX_PLAYER_SERVICE_INTERNAL_URL、BOX_PLAYER_AUTH_API_KEY、BOX_AUTH_PORTAL_PUBLIC_URL、BOX_CREATOR_PUBLIC_URL、BOX_PLAY_PUBLIC_URL、BOX_PLAYER_REGISTRATION_ENABLED；兼容 AUTH_DEMO_*。标准名称优先，密钥缺失时生产拒绝启动。
-
-容器内部用 `http://player-service:3213`，不能硬编码宿主机 127.0.0.1:3124；门户监听容器端口 3214，宿主机一般映射 3125。
-
-跨子域 Cookie、HTTPS、来源白名单和真实回跳配置属于服主部署职责，详见 docs/API.md。启动器注入不是“自动创建 DNS 或证书”。
-
-## 8. API 和扩展原则
-
-| 门户接口 | 底层 |
-| --- | --- |
-| POST /api/auth/login | POST /api/player-auth/login |
-| POST /api/auth/register | POST /api/player-auth/register |
-| GET /api/auth/session | GET /api/player-auth/session |
-| POST /api/auth/logout | POST /api/player-auth/logout |
-| PATCH /api/auth/profile | PATCH /api/player-auth/profile |
-| POST /api/auth/password | POST /api/player-auth/password |
-
-详细字段、响应、Cookie、限流、错误与联调例子在 **[docs/API.md](docs/API.md)**；它随模板导出，不依赖父仓库文档。
-
-没有头像接口；改密需登录与原密码；无验证码/邮件/第三方登录协议；没有无原密码找回。不要为了扩展 UI 开放 /api/play-admin 或 /api/player-internal，也不要代理任意上游 URL。
-
-修改功能时最少保留：来源校验、注册后端开关、字段白名单、两种 Cookie 转发、全部 Set-Cookie、Retry-After、安全回跳、改密重新登录、无密钥前端输出。
-
-## 9. 发布前检查
-
-- npm run check 通过；可选浏览器回归验证注册开启/关闭、原密码错误、重复提交与会话过期。
-- 用真实测试环境验证完整 Cookie/设备绑定、封禁、限流与跨子域登录；模拟预览不能替代这些。
-- package 导出的平台匹配目标启动器，用 docker load 实测，保存镜像名后健康检查通过。
-- 生产镜像和静态 bundle 不包含模拟器、密码、API Key 或 .env。
-- 只读根目录下启动正常，代码不在应用目录写日志/缓存。
-- 回跳失败、连接失败、无效 JSON 不伪装为已登录。
-- 递增自己的镜像版本，不覆盖官方 tag。
-- 发布独立仓库前由仓库维护者明确模板许可；当前 package.json 的 UNLICENSED 是现状，不表示 MIT 或自动授权引擎源码。
-
-## 10. 如何单独放进仓库
+## 独立仓库发布
 
 ```sh
+npm run check
 npm run export:template
 ```
 
-导出的 dist/box3-login-template-0.2.0.tar.gz 包含源码、锁文件、独立 Dockerfile、测试和本地文档，不包含 node_modules、.env、dist、引擎依赖或上层仓库文件。解压后把内容放在新仓库根目录即可；不需要给开发者额外发引擎仓库。
+解压 dist/box3-login-template-0.2.0.tar.gz 后把内容放到新仓库根目录即可。它包含 TS 源码、npm 锁文件、测试、独立 Dockerfile 和完整文档，不带 node_modules、build、.env、引擎源码或工作区软链接。
 
-新仓库中仍使用本 README 的命令。后续维护优先保留安全模块与 HTTP 契约，UI 可以自由替换。新增底层接口要同时更新 server/auth/operations.js、代理字段白名单、文档和测试。
+发布前必须做真实设备/Cookie/封禁/限流联调，模拟器不能替代真实服务验证。模板许可由仓库维护者明确；当前 UNLICENSED 不代表 MIT 或授权分发引擎源码。

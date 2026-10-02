@@ -1,5 +1,16 @@
 ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 
+FROM ${NODE_IMAGE} AS build
+WORKDIR /build
+COPY apps/player-auth-portal/package.json apps/player-auth-portal/package-lock.json ./
+RUN npm ci --include=dev --ignore-scripts
+COPY apps/player-auth-portal/src ./src
+COPY apps/player-auth-portal/server ./server
+COPY apps/player-auth-portal/public ./public
+COPY apps/player-auth-portal/scripts/tasks.ts apps/player-auth-portal/scripts/mock.ts ./scripts/
+COPY apps/player-auth-portal/tsconfig.json apps/player-auth-portal/tsconfig.library.json ./
+RUN npm run build
+
 FROM ${NODE_IMAGE}
 
 ARG BOX_BUILD_VERSION=0.2.0
@@ -22,9 +33,8 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --chown=node:node apps/player-auth-portal/server.js ./server.js
-COPY --chown=node:node apps/player-auth-portal/server ./server
-COPY --chown=node:node apps/player-auth-portal/public ./public
+COPY --from=build --chown=node:node /build/build/server.cjs ./build/server.cjs
+COPY --from=build --chown=node:node /build/public ./public
 RUN mkdir -p /app/license && chown node:node /app/license
 COPY --chown=node:node packages/license/index.js packages/license/runtime-gate.js packages/license/process-guard.js packages/license/trusted-time.js /app/license/
 COPY --chown=node:node distribution/license-public-key.pem /app/license/license-public-key.pem
@@ -38,4 +48,4 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3214/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["node", "/app/license/runtime-gate.js", "player-auth-portal", "--"]
-CMD ["node", "-r", "/app/license/process-guard.js", "server.js"]
+CMD ["node", "-r", "/app/license/process-guard.js", "build/server.cjs"]

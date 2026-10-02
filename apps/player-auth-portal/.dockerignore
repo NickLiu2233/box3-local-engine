@@ -1,7 +1,6 @@
 *
 !package.json
 !package-lock.json
-!server.js
 !server/
 !server/**
 !src/
@@ -9,7 +8,10 @@
 !public/
 !public/**
 !scripts/
-!scripts/build.mjs
+!scripts/tasks.ts
+!scripts/mock.ts
+!tsconfig.json
+!tsconfig.library.json
 !Dockerfile.standalone
 **/.env
 **/.env.*
