@@ -449,6 +449,15 @@ function overview() {
         ? `<strong>${displayLabel}</strong>`
         : `<span class="status-dot ${allHealthy ? 'good' : ''}"></span><strong>${displayLabel}</strong>`
   const statusMarkup = overviewStatus ? `<div class="overview-status">${overviewStatus}</div>` : ''
+  const ownerSecretConfigured = Boolean(
+    state.config?.hasPlayAdminToken || state.ownerSecrets?.playAdminToken,
+  )
+  const ownerSecretCopied = state.ownerSecretCopied === 'playAdminToken'
+  const ownerSecretMarkup = `<div class="overview-owner-secret" aria-label="服主密钥">
+    <span>服主密钥</span>
+    <code class="${ownerSecretConfigured ? '' : 'empty'}">${ownerSecretConfigured ? '••••••••••••••••' : '未生成'}</code>
+    <button type="button" class="overview-owner-secret-copy" data-secret-copy="playAdminToken" aria-label="复制服主密钥" ${ownerSecretConfigured ? '' : 'disabled'}>${icon(ownerSecretCopied ? 'check' : 'copy')}</button>
+  </div>`
   const userDataServiceIds = new Set(['player-service', 'player-auth-portal'])
   const infrastructureServiceIds = new Set(['managed-postgres', 'managed-redis'])
   const serviceNames = new Map(services.map(([id, name]) => [id, name]))
@@ -512,7 +521,7 @@ function overview() {
   return `<header><div><h1>服务总览</h1></div>
     <div class="header-actions">${performanceAction}</div></header>
     ${state.busy ? progressPanel() : ''}
-    <section class="overview-simple">${statusMarkup}${actions}${runningEnvironmentList}${supportLists}</section>`
+    <section class="overview-simple">${statusMarkup}${actions}${runningEnvironmentList}${supportLists}${ownerSecretMarkup}</section>`
 }
 
 function runtimePhase(status = {}) {
@@ -2000,7 +2009,10 @@ async function copyOwnerSecret(name) {
     window.setTimeout(() => {
       if (state.ownerSecretCopied !== name) return
       state.ownerSecretCopied = ''
-      if (state.page === 'setup' && state.setupSection === 'security') render()
+      if (
+        state.page === 'overview' ||
+        (state.page === 'setup' && state.setupSection === 'security')
+      ) render()
     }, 1600)
   } catch (error) {
     state.error = `复制失败：${String(error)}`

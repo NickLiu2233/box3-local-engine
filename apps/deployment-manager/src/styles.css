@@ -743,6 +743,49 @@ button:disabled {
   font-weight: 650;
 }
 
+.overview-owner-secret {
+  width: min(100%, 640px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.overview-owner-secret code {
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+
+.overview-owner-secret code.empty {
+  color: var(--muted);
+  letter-spacing: normal;
+}
+
+.overview-owner-secret-copy {
+  width: 24px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.overview-owner-secret-copy:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.overview-owner-secret-copy:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .overview-start-options {
   width: min(100%, 640px);
   display: grid;
@@ -4271,6 +4314,10 @@ details.about-image-row:first-child {
   .overview-start-options,
   .overview-support-groups {
     grid-template-columns: 1fr;
+  }
+
+  .overview-owner-secret {
+    justify-content: flex-start;
   }
 
   .overview-required {
