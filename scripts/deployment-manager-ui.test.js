@@ -145,10 +145,57 @@ test('saving a changed login image refreshes only the running login container an
   assert.equal(starts[0].payload.service, 'player-auth-portal')
   assert.equal(starts[0].payload.action, 'start')
   await app.document.querySelector('#restore-default-login-image').click()
-  assert.equal(app.form.values.get('authPortalImage'), '')
+  assert.equal(app.form.values.get('authPortalImage'), 'box-local-engine-player-auth-portal:0.2.0')
   await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
   assert.equal(app.api.state.config.authPortalImage, '')
   assert.equal(app.calls.filter(call => call.command === 'control_service').length, 2)
+})
+
+test('login image has its own access-settings card with the current official image and an upgrade-following default', async () => {
+  const image = 'box-local-engine-player-auth-portal:v0.2.0-linux-arm64'
+  const app = await createFixture({ responses: { get_about_info: { imageTag: 'v0.2.0-linux-arm64' } } })
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'network'
+  for (const mode of ['local', 'lan', 'public']) {
+    app.api.state.accessMode = mode
+    app.api.render()
+    assert.ok(app.html.includes('class="network-service-card login-image-card"'))
+    assert.equal(app.form.values.get('authPortalImage'), image)
+    assert.equal([...app.html.matchAll(/name="authPortalImage"/g)].length, 1)
+    const accountCard = app.html.indexOf('class="network-service-card player-service-card"')
+    const accountEnd = app.html.indexOf('</section>', accountCard)
+    assert.ok(app.html.indexOf('class="network-service-card login-image-card"') > accountEnd)
+  }
+  app.api.state.status.services.push({ name: 'player-auth-portal', running: true })
+  app.results.save_configuration_command = ({ config }) => { app.results.get_install_config = { ...config } }
+  await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
+  assert.equal(app.api.state.config.authPortalImage, '')
+  assert.ok(!app.calls.some(call => call.command === 'control_service'))
+  app.results.get_about_info = { imageTag: 'v0.3.0-linux-arm64' }
+  await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
+  app.api.render()
+  assert.equal(app.form.values.get('authPortalImage'), 'box-local-engine-player-auth-portal:v0.3.0-linux-arm64')
+})
+
+test('custom login image stays editable across access-mode changes and is escaped in its standalone card', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'network'
+  app.api.render()
+  app.form.setValue('authPortalImage', 'my-login:1.0')
+  await app.clickMode('public')
+  assert.equal(app.form.values.get('authPortalImage'), 'my-login:1.0')
+  await app.clickMode('local')
+  assert.equal(app.form.values.get('authPortalImage'), 'my-login:1.0')
+  app.results.save_configuration_command = ({ config }) => { app.results.get_install_config = { ...config } }
+  app.results.get_about_info = { imageTag: 'v0.3.0-linux-arm64' }
+  await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
+  assert.equal(app.api.state.config.authPortalImage, 'my-login:1.0')
+  assert.equal(app.form.values.get('authPortalImage'), 'my-login:1.0')
+  app.api.state.config.authPortalImage = '\"/><img src=x onerror=alert(1)>'
+  app.api.render()
+  assert.ok(app.html.includes('&quot;/&gt;&lt;img'))
+  assert.ok(!app.html.includes('<img src=x'))
 })
 
 test('login image changes remain saved when applying fails and do not start a stopped portal', async () => {

@@ -4,19 +4,6 @@
   gap: 14px;
 }
 
-.login-image-setting {
-  grid-column: 1 / -1;
-  position: relative;
-}
-
-.login-image-reset {
-  position: absolute;
-  top: 0;
-  right: 0;
-  padding: 0;
-  font-size: 11px;
-}
-
 .network-primary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

@@ -2,6 +2,7 @@ import { clearFeedback } from '../operations/feedback.js'
 import { numericConfigFields, ownerSecretKeys } from '../core/constants.js'
 import { render } from '../core/render-request.js'
 import { resetOwnerSecretState, state } from '../core/state.js'
+import { normalizeAuthPortalImage } from './auth-portal-image.js'
 
 export function captureSetupForm() {
   const form = document.querySelector('#setup-form')
@@ -39,6 +40,7 @@ export function captureSetupForm() {
     }
   }
   state.config = normalizeInactiveServicePorts(next)
+  state.config.authPortalImage = normalizeAuthPortalImage(state.config.authPortalImage)
 }
 
 export function revealInvalidSetupField(form) {
@@ -97,6 +99,7 @@ export function normalizeInactiveServicePorts(config) {
 
 export function normalizedConfig() {
   const config = { ...(state.config || {}) }
+  config.authPortalImage = normalizeAuthPortalImage(config.authPortalImage)
   normalizeInactiveServicePorts(config)
   for (const key of numericConfigFields) {
     config[key] = Number(config[key])

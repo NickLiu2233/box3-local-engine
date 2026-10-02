@@ -4,7 +4,7 @@
 `box-local-engine-player-auth-portal` 镜像，不会进入 Creator、Play、Player Service 或 VOXA
 镜像，也不直接访问 PostgreSQL。
 
-启动器支持在“访问设置 → 账号服务”填写自己的登录镜像，也支持恢复默认。制作兼容镜像的模板和接口约定见[自定义登录镜像](../../docs/self-hosted-login.md)。
+启动器支持在“访问设置 → 登录页面镜像”独立卡片填写自己的本机登录镜像，默认显示官方镜像，也支持恢复默认。制作兼容镜像的模板和接口约定见[自定义登录镜像](../../docs/self-hosted-login.md)。
 
 浏览器只请求本程序的 `/api/auth/*`；本程序在服务端向 Player Service 转发登录、注册、
 Session 查询和退出请求。`BOX_PLAYER_AUTH_API_KEY` 的对应密钥不会发给浏览器。

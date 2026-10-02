@@ -169,7 +169,8 @@ export function setup() {
               <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play 端口', config.playPort || 3121, 'number')}${endpointAddressInput('playPublicAddressOverride', 'Play')}</div></section>
               <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA 端口', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA 端口', config.voxaPort || 3123, 'number')}${endpointAddressInput('creatorPublicAddressOverride', 'ARENA')}${endpointAddressInput('voxaPublicAddressOverride', 'VOXA')}</div></section>
             </div>
-            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2></div><div class="form-grid player-port-grid">${input('playerServicePort', '后台管理端口', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面端口', config.authPortalPort || 3125, 'number')}${endpointAddressInput('playerServicePublicAddressOverride', '后台管理')}${endpointAddressInput('authPortalPublicAddressOverride', '登录页面')}</div>${authPortalImageSetting()}</section>
+            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2></div><div class="form-grid player-port-grid">${input('playerServicePort', '后台管理端口', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面端口', config.authPortalPort || 3125, 'number')}${endpointAddressInput('playerServicePublicAddressOverride', '后台管理')}${endpointAddressInput('authPortalPublicAddressOverride', '登录页面')}</div></section>
+            ${authPortalImageSetting()}
           </div>${setupExplanation('配置说明：访问地址和端口有什么影响？', [
             [
               '统一访问范围',

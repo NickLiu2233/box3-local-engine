@@ -5,6 +5,7 @@ import { numericConfigFields, ownerSecretKeys } from '../core/constants.js'
 import { refreshStatus } from './status.js'
 import { render } from '../core/render-request.js'
 import { resetOwnerSecretState, state } from '../core/state.js'
+import { normalizeAuthPortalImage } from '../configuration/auth-portal-image.js'
 
 export async function testConnection(kind) {
   captureSetupForm()
@@ -97,6 +98,7 @@ export async function saveConfiguration(event) {
     }
   }
   normalizeInactiveServicePorts(config)
+  config.authPortalImage = normalizeAuthPortalImage(config.authPortalImage)
   config.databaseSsl = form.has('databaseSsl')
   config.autoBackupEnabled = form.has('autoBackupEnabled')
   config.registrationEnabled = form.has('registrationEnabled')
