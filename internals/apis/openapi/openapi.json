@@ -422,6 +422,286 @@
         ]
       }
     },
+    "/api/auth/password": {
+      "post": {
+        "operationId": "postApiAuthPassword",
+        "summary": "修改当前玩家密码并撤销会话",
+        "description": "仅修改当前登录玩家的密码，必须验证原密码。成功后撤销该玩家全部会话并清除当前会话 Cookie，需要重新登录；正在游玩的会话也会收到撤销通知。",
+        "tags": [
+          "登录门户"
+        ],
+        "security": [
+          {
+            "playerSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "auth-portal"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“修改当前玩家密码并撤销会话”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "changed",
+                    "reloginRequired"
+                  ],
+                  "properties": {
+                    "changed": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "reloginRequired": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "字段无效，或原密码不正确。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少有效会话或服务端凭据。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号或访问来源被封禁。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "操作过于频繁；按 Retry-After 重试。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "建议等待的秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "账号服务暂时不可用。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "description": "执行“修改当前玩家密码并撤销会话”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "auth-portal"
+        ]
+      }
+    },
+    "/api/auth/profile": {
+      "patch": {
+        "operationId": "patchApiAuthProfile",
+        "summary": "修改当前玩家昵称",
+        "description": "仅修改当前登录玩家的昵称；不接受身份 ID、角色、头像或权限字段。",
+        "tags": [
+          "登录门户"
+        ],
+        "security": [
+          {
+            "playerSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "auth-portal"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“修改当前玩家昵称”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerSelfProfile"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "字段无效，或原密码不正确。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少有效会话或服务端凭据。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号或访问来源被封禁。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "操作过于频繁；按 Retry-After 重试。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "建议等待的秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "账号服务暂时不可用。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "displayName"
+                ],
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "description": "执行“修改当前玩家昵称”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "auth-portal"
+        ]
+      }
+    },
     "/api/auth/register": {
       "post": {
         "operationId": "postApiAuthRegister",
@@ -8413,7 +8693,11 @@
         "tags": [
           "玩家认证"
         ],
-        "security": [],
+        "security": [
+          {
+            "playerAuthKey": []
+          }
+        ],
         "x-box-deployment-modes": [
           "player-service"
         ],
@@ -8528,7 +8812,11 @@
         "tags": [
           "玩家认证"
         ],
-        "security": [],
+        "security": [
+          {
+            "playerAuthKey": []
+          }
+        ],
         "x-box-deployment-modes": [
           "player-service"
         ],
@@ -8573,6 +8861,288 @@
         ]
       }
     },
+    "/api/player-auth/password": {
+      "post": {
+        "operationId": "postApiPlayerAuthPassword",
+        "summary": "修改当前玩家密码并撤销会话",
+        "description": "仅修改当前登录玩家的密码，必须验证原密码。成功后撤销该玩家全部会话并清除当前会话 Cookie，需要重新登录；正在游玩的会话也会收到撤销通知。",
+        "tags": [
+          "玩家认证"
+        ],
+        "security": [
+          {
+            "playerAuthKey": [],
+            "playerSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“修改当前玩家密码并撤销会话”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "changed",
+                    "reloginRequired"
+                  ],
+                  "properties": {
+                    "changed": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "reloginRequired": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "字段无效，或原密码不正确。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少有效会话或服务端凭据。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号或访问来源被封禁。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "操作过于频繁；按 Retry-After 重试。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "建议等待的秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "账号服务暂时不可用。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 128,
+                    "writeOnly": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "description": "执行“修改当前玩家密码并撤销会话”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-auth/profile": {
+      "patch": {
+        "operationId": "patchApiPlayerAuthProfile",
+        "summary": "修改当前玩家昵称",
+        "description": "仅修改当前登录玩家的昵称；不接受身份 ID、角色、头像或权限字段。",
+        "tags": [
+          "玩家认证"
+        ],
+        "security": [
+          {
+            "playerAuthKey": [],
+            "playerSession": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“修改当前玩家昵称”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerSelfProfile"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "字段无效，或原密码不正确。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "缺少有效会话或服务端凭据。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "账号或访问来源被封禁。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "操作过于频繁；按 Retry-After 重试。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "建议等待的秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "账号服务暂时不可用。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "displayName"
+                ],
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "description": "执行“修改当前玩家昵称”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
     "/api/player-auth/register": {
       "post": {
         "operationId": "postApiPlayerAuthRegister",
@@ -8581,7 +9151,11 @@
         "tags": [
           "玩家认证"
         ],
-        "security": [],
+        "security": [
+          {
+            "playerAuthKey": []
+          }
+        ],
         "x-box-deployment-modes": [
           "player-service"
         ],
@@ -8634,7 +9208,11 @@
         "tags": [
           "玩家认证"
         ],
-        "security": [],
+        "security": [
+          {
+            "playerAuthKey": []
+          }
+        ],
         "x-box-deployment-modes": [
           "player-service"
         ],
@@ -10293,6 +10871,18 @@
   },
   "components": {
     "securitySchemes": {
+      "playerAuthKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-box-player-auth-key",
+        "description": "仅供登录门户服务端使用，不得发送给浏览器。"
+      },
+      "playerSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "box_local_player_session",
+        "description": "使用登录后取得的会话及设备 Cookie，浏览器请求需携带 credentials。"
+      },
       "adminSession": {
         "type": "apiKey",
         "in": "cookie",
@@ -10313,6 +10903,32 @@
       }
     },
     "schemas": {
+      "PlayerSelfProfile": {
+        "type": "object",
+        "required": [
+          "subjectId",
+          "userId",
+          "username",
+          "displayName"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "subjectId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        }
+      },
       "ApiError": {
         "type": "object",
         "required": [
@@ -11969,6 +12585,22 @@
       "source": "apps/game/pages/api/player-auth/logout.ts"
     },
     {
+      "path": "/api/player-auth/password",
+      "methods": [
+        "POST"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-auth/password.ts"
+    },
+    {
+      "path": "/api/player-auth/profile",
+      "methods": [
+        "PATCH"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-auth/profile.ts"
+    },
+    {
       "path": "/api/player-auth/register",
       "methods": [
         "POST"
@@ -12406,6 +13038,22 @@
     },
     {
       "path": "/api/auth/logout",
+      "methods": [
+        "POST"
+      ],
+      "service": "auth-portal",
+      "source": "apps/player-auth-portal/server.js"
+    },
+    {
+      "path": "/api/auth/profile",
+      "methods": [
+        "PATCH"
+      ],
+      "service": "auth-portal",
+      "source": "apps/player-auth-portal/server.js"
+    },
+    {
+      "path": "/api/auth/password",
       "methods": [
         "POST"
       ],

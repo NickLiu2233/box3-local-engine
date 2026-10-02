@@ -108,12 +108,24 @@ impl ServiceRuntime for WebRuntime<'_> {
         }
     }
     fn prepare_images(&self) -> Result<(), String> {
-        generate_runtime_environment(self.0)?;
+        let runtime_path = generate_runtime_environment(self.0)?;
         database_url(&parse_env(
             &fs::read_to_string(env_path(self.0)).map_err(|e| e.to_string())?,
         ))?;
         docker(&["info", "--format", "{{.ServerVersion}}"])?;
-        Ok(())
+        let values =
+            parse_env(&fs::read_to_string(env_path(self.0)).map_err(|error| error.to_string())?);
+        let runtime =
+            parse_env(&fs::read_to_string(runtime_path).map_err(|error| error.to_string())?);
+        box_manager_core::auth_portal::prepare_custom_image(
+            &values,
+            runtime
+                .get("BOX_PLAY_PLATFORM")
+                .map(String::as_str)
+                .unwrap_or("linux/amd64"),
+            docker,
+            |stage, message, percent| self.0.progress(stage, message, percent),
+        )
     }
     fn managed_enabled(&self, service: &str) -> bool {
         let key = match service {

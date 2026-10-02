@@ -7,6 +7,10 @@ const object = (properties, required = Object.keys(properties)) => ({
 })
 
 const contracts = {
+  'patch /api/auth/profile': object({ player: ref('PlayerSelfProfile') }),
+  'patch /api/player-auth/profile': object({ player: ref('PlayerSelfProfile') }),
+  'post /api/auth/password': object({ changed: { type: 'boolean', const: true }, reloginRequired: { type: 'boolean', const: true } }),
+  'post /api/player-auth/password': object({ changed: { type: 'boolean', const: true }, reloginRequired: { type: 'boolean', const: true } }),
   'get /api/health-check': object({ status: { type: 'string' }, runtime: { type: 'string' } }, ['status']),
   'get /api/player-launcher/bootstrap': ref('PlayerLauncherBootstrap'),
   'get /api/player-launcher/maps': object({ worlds: array('PlayerLauncherWorld') }),
@@ -52,6 +56,16 @@ const contracts = {
 }
 
 const requestContracts = {
+  'patch /api/auth/profile': { ...object({ displayName: { type: 'string', minLength: 1, maxLength: 32 } }), additionalProperties: false },
+  'patch /api/player-auth/profile': { ...object({ displayName: { type: 'string', minLength: 1, maxLength: 32 } }), additionalProperties: false },
+  'post /api/auth/password': { ...object({
+    currentPassword: { type: 'string', minLength: 1, maxLength: 128, writeOnly: true },
+    newPassword: { type: 'string', minLength: 10, maxLength: 128, writeOnly: true },
+  }), additionalProperties: false },
+  'post /api/player-auth/password': { ...object({
+    currentPassword: { type: 'string', minLength: 1, maxLength: 128, writeOnly: true },
+    newPassword: { type: 'string', minLength: 10, maxLength: 128, writeOnly: true },
+  }), additionalProperties: false },
   'patch /api/play-library': object({
     mapId: { type: 'string', pattern: '^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$' },
     favorite: { type: 'boolean' },
@@ -79,6 +93,18 @@ const requestContracts = {
 }
 
 export function applyOperationContracts(paths) {
+  for (const apiPath of ['/api/auth/profile', '/api/player-auth/profile', '/api/auth/password', '/api/player-auth/password']) {
+    const password = apiPath.endsWith('/password')
+    const operation = paths[apiPath]?.[password ? 'post' : 'patch']
+    if (!operation) continue
+    operation.description = password
+      ? '仅修改当前登录玩家的密码，必须验证原密码。成功后撤销该玩家全部会话并清除当前会话 Cookie，需要重新登录；正在游玩的会话也会收到撤销通知。'
+      : '仅修改当前登录玩家的昵称；不接受身份 ID、角色、头像或权限字段。'
+    for (const [status, description] of Object.entries({ 400: '字段无效，或原密码不正确。', 401: '缺少有效会话或服务端凭据。', 403: '账号或访问来源被封禁。', 429: '操作过于频繁；按 Retry-After 重试。', 503: '账号服务暂时不可用。' })) {
+      operation.responses[status] = { description, content: { 'application/json': { schema: ref('ApiError') } } }
+    }
+    operation.responses[429].headers = { 'Retry-After': { description: '建议等待的秒数。', schema: { type: 'integer', minimum: 1 } } }
+  }
   for (const [key, schema] of Object.entries(contracts)) {
     const [method, apiPath] = key.split(' ')
     const operation = paths[apiPath]?.[method]

@@ -15,6 +15,7 @@ import {
   Sun,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { PasswordChange } from './components/password-change.jsx'
 
 const themeKey = 'box-player-admin-theme'
 const themeOrder = ['system', 'light', 'dark']
@@ -49,6 +50,7 @@ async function api(path, options = {}) {
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
     const error = new Error(data.message || `请求失败（HTTP ${response.status}）`)
+    error.status = response.status
     error.registrationEnabled = data.registrationEnabled
     error.banReason = data.banReason
     error.bannedUntil = data.bannedUntil
@@ -125,6 +127,7 @@ function PasswordField({ label, name, autoComplete, minimum = 8, inputRef }) {
           type={visible ? 'text' : 'password'}
           autoComplete={autoComplete}
           minLength={minimum}
+          maxLength={128}
           required
         />
         <button
@@ -141,10 +144,10 @@ function PasswordField({ label, name, autoComplete, minimum = 8, inputRef }) {
   )
 }
 
-function Notice({ children }) {
+function Notice({ children, tone = 'error' }) {
   if (!children) return null
   return (
-    <div className="message" role="alert">
+    <div className={`message${tone === 'success' ? ' message-success' : ''}`} role={tone === 'success' ? 'status' : 'alert'}>
       {children}
     </div>
   )
@@ -209,14 +212,16 @@ function RegisterForm({ busy, onSubmit }) {
   )
 }
 
-function Authentication({ registrationEnabled, initialMessage, onAuthenticated }) {
+function Authentication({ registrationEnabled, initialMessage, initialTone, onAuthenticated }) {
   const [mode, setMode] = useState('login')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(initialMessage || '')
+  const [tone, setTone] = useState(initialTone || 'error')
 
   async function submit(event, operation) {
     event.preventDefault()
     if (busy) return
+    setTone('error')
     const values = Object.fromEntries(new FormData(event.currentTarget))
     if (operation === 'register' && values.password !== values.confirmPassword) {
       setMessage('两次输入的密码不一致')
@@ -242,12 +247,13 @@ function Authentication({ registrationEnabled, initialMessage, onAuthenticated }
   function changeMode(nextMode) {
     setMode(nextMode)
     setMessage('')
+    setTone('error')
   }
 
   if (!registrationEnabled) {
     return (
       <div className="auth-content">
-        <Notice>{message}</Notice>
+        <Notice tone={tone}>{message}</Notice>
         <LoginForm busy={busy} onSubmit={(event) => submit(event, 'login')} />
       </div>
     )
@@ -268,7 +274,7 @@ function Authentication({ registrationEnabled, initialMessage, onAuthenticated }
           注册
         </Tabs.Trigger>
       </Tabs.List>
-      <Notice>{message}</Notice>
+      <Notice tone={tone}>{message}</Notice>
       <Tabs.Content className="tab-content" value="login">
         <LoginForm busy={busy} onSubmit={(event) => submit(event, 'login')} />
       </Tabs.Content>
@@ -279,7 +285,7 @@ function Authentication({ registrationEnabled, initialMessage, onAuthenticated }
   )
 }
 
-function AccountView({ player, returnUrl, onLogout }) {
+function AccountView({ player, returnUrl, onLogout, onChangePassword }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const displayName = player.displayName || player.username || '玩家'
@@ -315,6 +321,7 @@ function AccountView({ player, returnUrl, onLogout }) {
             <ArrowRight size={16} aria-hidden="true" />
           </a>
         ) : null}
+        <button className="secondary-button" type="button" disabled={busy} onClick={onChangePassword}>修改密码</button>
         <button className="secondary-button" type="button" disabled={busy} onClick={logout}>
           <PendingLabel pending={busy} icon={LogOut}>
             {busy ? '正在退出' : '退出登录'}
@@ -327,9 +334,10 @@ function AccountView({ player, returnUrl, onLogout }) {
 
 function Portal() {
   const [state, setState] = useState({ kind: 'loading' })
-  const title = state.kind === 'account' ? '账号已登录' : '登录玩家账号'
+  const title = state.kind === 'password' ? '修改密码' : state.kind === 'account' ? '账号已登录' : '登录玩家账号'
   const subtitle = useMemo(() => {
-    if (state.kind === 'account') return '选择继续访问，或退出当前账号。'
+    if (state.kind === 'password') return '验证原密码后，设置新的登录密码。'
+    if (state.kind === 'account') return '管理当前账号，或继续访问。'
     if (state.kind === 'auth' && state.registrationEnabled === false)
       return '使用服主创建的账号继续访问。'
     return '登录后继续访问游戏或创作端。'
@@ -387,10 +395,17 @@ function Portal() {
               <LoaderCircle className="spinner" size={18} aria-hidden="true" />
               <span>正在检查登录状态</span>
             </div>
+          ) : state.kind === 'password' ? (
+            <PasswordChange
+              api={api} PasswordField={PasswordField} Notice={Notice} PendingLabel={PendingLabel}
+              onCancel={() => setState({ ...state, kind: 'account' })}
+              onRelogin={(message, tone = 'error') => setState({ kind: 'auth', registrationEnabled: state.registrationEnabled, message, tone })}
+            />
           ) : state.kind === 'account' ? (
             <AccountView
               player={state.player}
               returnUrl={state.returnUrl}
+              onChangePassword={() => setState({ ...state, kind: 'password' })}
               onLogout={() =>
                 setState({
                   kind: 'auth',
@@ -403,6 +418,7 @@ function Portal() {
             <Authentication
               registrationEnabled={state.registrationEnabled}
               initialMessage={state.message}
+              initialTone={state.tone}
               onAuthenticated={(player, returnUrl, registrationEnabled) =>
                 setState({
                   kind: 'account',

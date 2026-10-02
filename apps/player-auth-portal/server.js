@@ -211,6 +211,13 @@ async function proxyAuthentication(request, response, config, operation) {
 
   let browserBody = {}
   if (operation.method !== 'GET') browserBody = await readJSONBody(request)
+  const selfService = operation.name === 'profile' || operation.name === 'password'
+  if (selfService) {
+    const fields = operation.name === 'profile' ? ['displayName'] : ['currentPassword', 'newPassword']
+    if (Object.keys(browserBody).some(key => !fields.includes(key))) {
+      return sendError(response, 400, 'INVALID_INPUT', '请求包含不支持的账号字段')
+    }
+  }
   const source = String(browserBody.source || operation.search.get('source') || '')
   const requestedReturnURL = String(
     browserBody.returnUrl || operation.search.get('returnUrl') || '',
@@ -228,6 +235,10 @@ async function proxyAuthentication(request, response, config, operation) {
       displayName: browserBody.displayName,
       password: browserBody.password,
     }
+  } else if (operation.name === 'profile') {
+    upstreamBody = { displayName: browserBody.displayName }
+  } else if (operation.name === 'password') {
+    upstreamBody = { currentPassword: browserBody.currentPassword, newPassword: browserBody.newPassword }
   }
 
   const controller = new AbortController()
@@ -271,7 +282,7 @@ async function proxyAuthentication(request, response, config, operation) {
       data.registrationEnabled =
         config.registrationEnabled !== false && data.registrationEnabled !== false
     }
-    if (returnUrl) data.returnUrl = returnUrl
+    if (returnUrl && !selfService) data.returnUrl = returnUrl
     const headers = {}
     const cookies = responseCookies(upstream.headers)
     if (cookies.length) headers['Set-Cookie'] = cookies
@@ -325,6 +336,8 @@ function createAuthPortalServer(config) {
         '/api/auth/register': { name: 'register', method: 'POST' },
         '/api/auth/session': { name: 'session', method: 'GET' },
         '/api/auth/logout': { name: 'logout', method: 'POST' },
+        '/api/auth/profile': { name: 'profile', method: 'PATCH' },
+        '/api/auth/password': { name: 'password', method: 'POST' },
       }[requestURL.pathname]
       if (request.method === 'GET' && requestURL.pathname === '/api/health-check') {
         return sendJSON(response, 200, {

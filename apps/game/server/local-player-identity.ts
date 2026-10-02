@@ -32,6 +32,7 @@ import {
 import { requestClientAddress } from './client-address';
 import { hasTrustedPlayerAuthKey } from './player-auth-security';
 import { PlayerAdminRequestError } from './player-admin-errors';
+import { changeSelfPassword, PlayerSelfServiceError, verifyLockedLoginPassword } from './player-self-password';
 
 const COOKIE_NAME = 'box_local_player_session';
 const DEVICE_COOKIE_NAME = 'box_local_player_device';
@@ -1221,7 +1222,17 @@ export async function loginPlayer(
     // Serialize concurrent logins for the same account. Without the user-row
     // lock, two simultaneous logins could both remove the old session and
     // then create two new active sessions.
-    await client.query(`SELECT 1 FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE`, [row.subject_id]);
+    const locked = await client.query<{ password_salt: string; password_hash: string; status: string; ban_reason: string; banned_until: Date | null }>(`
+      SELECT password_salt, password_hash, status, ban_reason, banned_until
+      FROM ${table('users')} WHERE principal_id = $1 FOR UPDATE
+    `, [row.subject_id]);
+    const current = locked.rows[0];
+    if (!current) throw new Error('用户名或密码错误');
+    if (current.status !== 'active') throw new PlayerBannedError(current.ban_reason || '', current.banned_until);
+    // A password change can commit while the initial scrypt verification is running.
+    if (!(await verifyLockedLoginPassword(current, row, password, derivePassword))) {
+      throw new Error('用户名或密码错误');
+    }
     if (oldToken) {
       await client.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(oldToken)]);
     }
@@ -1287,6 +1298,32 @@ export async function currentPlayer(req: NextApiRequest, res: NextApiResponse) {
   };
 }
 
+export async function changeCurrentPlayerPassword(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  values: { currentPassword?: unknown; newPassword?: unknown },
+) {
+  const identity = await resolvePlayerIdentity(req, res);
+  if (identity.status !== 'active') throw new PlayerSelfServiceError('账号当前不可用', 'PLAYER_BANNED', 403);
+  const database = getPool();
+  if (!database) throw new Error('PLAYER_DATABASE_NOT_CONFIGURED');
+  const result = await changeSelfPassword({
+    database, usersTable: table('users'), sessionsTable: table('sessions'),
+    subjectId: identity.subjectId, sessionHash: tokenHash(sessionToken(req)),
+    absoluteSessionDays: SESSION_ABSOLUTE_DAYS, derivePassword,
+    publishRevocation: async (client, revoked) => {
+      const eventId = await publishPlayerRevocation(client, identity.subjectId, 'sessions-revoked');
+      await audit(client, 'player.password.change', identity.subjectId, { revoked, eventId }, {
+        actor: `player:${identity.subjectId}`, actorDisplayName: identity.displayName,
+        actorRole: identity.role, ip: requestIp(req), userAgent: requestUserAgent(req),
+        deviceHash: tokenHash(deviceToken(req)),
+      });
+    },
+  }, values);
+  clearSessionCookie(req, res);
+  return result;
+}
+
 export async function playerMapLibrary(req: NextApiRequest, res: NextApiResponse) {
   const database = getPool();
   const identity = await resolvePlayerIdentity(req, res);
@@ -1317,6 +1354,7 @@ export async function updateCurrentPlayerProfile(
 ) {
   const identity = await resolvePlayerIdentity(req, res);
   if (!identity.userId) throw new Error('只有已注册账号可以修改资料');
+  if (identity.status !== 'active') throw new PlayerSelfServiceError('账号当前不可用', 'PLAYER_BANNED', 403);
   const displayName = typeof changes.displayName === 'string' ? changes.displayName.trim() : undefined;
   const avatarSkinId = typeof changes.avatarSkinId === 'string' ? changes.avatarSkinId.trim() : undefined;
   if (displayName === undefined && avatarSkinId === undefined) throw new Error('没有可更新的资料');
@@ -1336,7 +1374,7 @@ export async function updateCurrentPlayerProfile(
         display_name = COALESCE($2, display_name),
         avatar_skin_id = COALESCE($3, avatar_skin_id),
         updated_at = NOW()
-      WHERE principal_id = $1
+      WHERE principal_id = $1 AND status = 'active'
       RETURNING id, principal_id, username, box_id, user_key, display_name, avatar_hash, avatar_skin_id,
         creator_access, creator_permissions, role, status,
         created_at AS registered_at, updated_at, registration_ip, last_login_at, last_login_ip, login_count,

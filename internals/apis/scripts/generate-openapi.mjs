@@ -66,6 +66,8 @@ const manualRoutes = [
   ['auth-portal', '/api/auth/register', ['POST'], 'apps/player-auth-portal/server.js'],
   ['auth-portal', '/api/auth/session', ['GET'], 'apps/player-auth-portal/server.js'],
   ['auth-portal', '/api/auth/logout', ['POST'], 'apps/player-auth-portal/server.js'],
+  ['auth-portal', '/api/auth/profile', ['PATCH'], 'apps/player-auth-portal/server.js'],
+  ['auth-portal', '/api/auth/password', ['POST'], 'apps/player-auth-portal/server.js'],
 ]
 const outputFile = path.join(packageRoot, 'openapi/openapi.json')
 
@@ -78,6 +80,8 @@ const METHOD_OVERRIDES = new Map([
   ['/api/play-admin/players/{subjectId}', ['GET', 'POST', 'PATCH', 'DELETE']],
   ['/api/play-profile', ['PATCH']],
   ['/api/player-auth/login-required', ['GET']],
+  ['/api/player-auth/profile', ['PATCH']],
+  ['/api/player-auth/password', ['POST']],
 ])
 const QUERY_PARAMETER_OVERRIDES = new Map([
   ['/api/creator-models', ['modelType', 'mapId', 'creativeMode', 'modelName']],
@@ -169,7 +173,10 @@ function securityFor(apiPath, service) {
   if (service === 'game-runtime' && apiPath.startsWith('/internal/')) {
     return [{ internalBearer: [] }]
   }
-  if (apiPath === '/api/play-admin/login' || apiPath.startsWith('/api/player-auth/')) return []
+  if (['/api/player-auth/profile', '/api/player-auth/password'].includes(apiPath)) return [{ playerAuthKey: [], playerSession: [] }]
+  if (['/api/auth/profile', '/api/auth/password'].includes(apiPath)) return [{ playerSession: [] }]
+  if (apiPath.startsWith('/api/player-auth/') && apiPath !== '/api/player-auth/login-required') return [{ playerAuthKey: [] }]
+  if (apiPath === '/api/play-admin/login' || apiPath === '/api/player-auth/login-required') return []
   if (apiPath.startsWith('/api/play-admin/')) return [{ adminSession: [] }]
   if (apiPath.startsWith('/api/player-internal/')) return [{ internalBearer: [] }]
   if (apiPath.startsWith('/api/creator/v1/')) return [{ creatorToken: [] }]
@@ -325,6 +332,8 @@ const document = {
   paths: Object.fromEntries(Object.entries(paths).sort(([left], [right]) => left.localeCompare(right))),
   components: {
     securitySchemes: {
+      playerAuthKey: { type: 'apiKey', in: 'header', name: 'x-box-player-auth-key', description: '仅供登录门户服务端使用，不得发送给浏览器。' },
+      playerSession: { type: 'apiKey', in: 'cookie', name: 'box_local_player_session', description: '使用登录后取得的会话及设备 Cookie，浏览器请求需携带 credentials。' },
       adminSession: { type: 'apiKey', in: 'cookie', name: 'box_local_admin_session' },
       creatorToken: { type: 'http', scheme: 'bearer', bearerFormat: 'CLI Token' },
       internalBearer: { type: 'http', scheme: 'bearer' },

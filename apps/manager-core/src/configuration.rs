@@ -486,6 +486,10 @@ pub fn runtime_environment(
     for (key, value) in [
         ("COMPOSE_PROFILES", profiles.join(",")),
         ("BOX_IMAGE_TAG", input.image_tag.into()),
+        (
+            "BOX_AUTH_PORTAL_IMAGE",
+            crate::auth_portal::image(values, input.image_tag)?,
+        ),
         ("BOX_PLAY_PLATFORM", input.platform.into()),
         ("BOX_LICENSE_FILE", input.license_file.into()),
         ("BOX_LICENSE_DEVICE_FILE", input.license_device_file.into()),
@@ -708,6 +712,7 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
         "creatorNetworkMode",
         "publicHost",
         "publicAddress",
+        "authPortalImage",
         "creatorHost",
         "playPublicAddressOverride",
         "creatorPublicAddressOverride",
@@ -738,6 +743,9 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                 }
                 "publicAddress" => {
                     parse_public_address(value, "共用公网地址")?;
+                }
+                "authPortalImage" => {
+                    crate::auth_portal::validate_image(value)?;
                 }
                 "creatorHost" => {
                     validate_creator_host(value)?;

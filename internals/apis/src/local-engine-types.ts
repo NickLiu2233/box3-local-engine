@@ -5,6 +5,7 @@ type Schemas = components['schemas'];
 /** Public Local Engine transport types. They are generated from OpenAPI. */
 export type Actor = Schemas['PlayerAdminActor'];
 export type Player = Schemas['Player'];
+export type PlayerSelfProfile = Schemas['PlayerSelfProfile'];
 export type Activity = Schemas['PlayerAdminActivity'];
 export type Admin = Schemas['PlayerAdminAccount'];
 export type Group = Schemas['PermissionGroup'];

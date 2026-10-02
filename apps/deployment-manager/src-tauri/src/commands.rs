@@ -102,6 +102,7 @@ struct InstallConfigView {
     creator_port: u16,
     player_service_port: u16,
     auth_portal_port: u16,
+    auth_portal_image: String,
     play_runtimes: u32,
     creator_edit_runtimes: u32,
     creator_play_runtimes: u32,
@@ -194,6 +195,7 @@ impl Default for InstallConfigView {
             creator_port: 3127,
             player_service_port: 3124,
             auth_portal_port: 3125,
+            auth_portal_image: String::new(),
             play_runtimes: 8,
             creator_edit_runtimes: 6,
             creator_play_runtimes: 4,
@@ -295,6 +297,8 @@ struct InstallConfigInput {
     player_service_port: u16,
     #[serde(default = "default_auth_portal_port")]
     auth_portal_port: u16,
+    #[serde(default)]
+    auth_portal_image: String,
     #[serde(default = "default_play_runtimes")]
     play_runtimes: u32,
     #[serde(default = "default_creator_edit_runtimes")]
@@ -849,6 +853,8 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     config.public_host = public_host.clone();
     config.creator_host = public_host.clone();
     validate_install_configuration(&config)?;
+    config.auth_portal_image =
+        box_manager_core::auth_portal::validate_image(&config.auth_portal_image)?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_creator_network_mode(&config.creator_network_mode)?;
     config.play_public_address_override =
@@ -876,6 +882,15 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     };
     let mut content = configuration_document_for_save(&source, &config)?;
     let existing = parse_env(&content);
+    if config.auth_portal_image.is_empty() {
+        remove_env(&mut content, "BOX_AUTH_PORTAL_IMAGE");
+    } else {
+        set_env(
+            &mut content,
+            "BOX_AUTH_PORTAL_IMAGE",
+            &config.auth_portal_image,
+        )?;
+    }
 
     set_env(
         &mut content,
@@ -1997,6 +2012,10 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         auth_portal_port: number_u32("BOX_AUTH_PORTAL_PORT", 3125)
             .try_into()
             .unwrap_or(3125),
+        auth_portal_image: values
+            .get("BOX_AUTH_PORTAL_IMAGE")
+            .cloned()
+            .unwrap_or_default(),
         play_runtimes: number_u32("BOX_PLAY_MAX_RUNTIMES", 8),
         creator_edit_runtimes: number_u32("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
         creator_play_runtimes: number_u32("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),
@@ -2902,7 +2921,17 @@ impl ServiceRuntime for DesktopRuntime<'_> {
     fn prepare_images(&self) -> Result<(), String> {
         database_url(&generate_runtime_environment(self.0)?)?;
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
-        ensure_images(self.0)
+        ensure_images(self.0)?;
+        box_manager_core::auth_portal::prepare_custom_image(
+            &load_existing_env(self.0),
+            if cfg!(target_arch = "aarch64") {
+                "linux/arm64"
+            } else {
+                "linux/amd64"
+            },
+            docker_output,
+            |stage, message, percent| emit_progress(self.0, stage, message, percent),
+        )
     }
     fn managed_enabled(&self, service: &str) -> bool {
         match service {
@@ -3709,6 +3738,7 @@ mod tests {
             creator_port: 3127,
             player_service_port: 3124,
             auth_portal_port: 3125,
+            auth_portal_image: String::new(),
             play_runtimes: default_play_runtimes(),
             creator_edit_runtimes: default_creator_edit_runtimes(),
             creator_play_runtimes: default_creator_play_runtimes(),
@@ -3730,6 +3760,16 @@ mod tests {
             play_memory_mb: default_play_memory_mb(),
             play_cpu_limit: default_play_cpu_limit(),
         }
+    }
+
+    #[test]
+    fn validates_custom_login_image_and_default_in_native_configuration() {
+        let mut config = test_install_config();
+        assert!(validate_install_configuration(&config).is_ok());
+        config.auth_portal_image = "registry.test/login:1.0".into();
+        assert!(validate_install_configuration(&config).is_ok());
+        config.auth_portal_image = "https://registry.test/login".into();
+        assert!(validate_install_configuration(&config).is_err());
     }
 
     #[cfg(target_os = "macos")]

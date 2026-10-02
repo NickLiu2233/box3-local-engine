@@ -66,7 +66,7 @@ function applyCredentialedCors(req: NextApiRequest, res: NextApiResponse) {
       'Access-Control-Allow-Headers',
       `Content-Type, ${PLAYER_AUTH_API_KEY_HEADER}`,
     );
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Vary', 'Origin');
   }
   if (req.method === 'OPTIONS') {

@@ -145,18 +145,32 @@ export async function installManagedService(service) {
 
 async function persistConfiguration(config) {
   if (state.busy) return
+  const loginImageChanged = (config.authPortalImage || '').trim() !== state.savedAuthPortalImage
+  const loginRunning = state.status?.services?.some(service => service.name === 'player-auth-portal' && service.running)
+  let configurationSaved = false
   state.busy = true
   clearFeedback()
   render()
   try {
     await invoke('save_configuration_command', { config })
+    configurationSaved = true
+    state.savedAuthPortalImage = (config.authPortalImage || '').trim()
     for (const key of ownerSecretKeys) delete state.config?.[key]
     resetOwnerSecretState()
-    state.notice = '已保存在当前页面，服务不会自动启动。'
+    if (loginImageChanged && loginRunning) {
+      state.progress = { stage: 'login-image', message: '正在更新登录页面…', percent: 35 }
+      render()
+      await invoke('control_service', { service: 'player-auth-portal', action: 'start' })
+      state.notice = '登录页面已更新。'
+    } else {
+      state.notice = loginImageChanged
+        ? '镜像配置已保存，下次启动登录页面时自动使用。'
+        : '已保存在当前页面，服务不会自动启动。'
+    }
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
-    state.error = String(error)
+    state.error = configurationSaved ? `配置已保存，但登录页面更新失败：${String(error)}` : String(error)
   } finally {
     state.busy = false
     await refreshStatus()

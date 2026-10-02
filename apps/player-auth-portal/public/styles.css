@@ -408,6 +408,21 @@ input {
   white-space: pre-line;
 }
 
+.message-success {
+  color: var(--text-secondary);
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+.password-fields {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .state-view {
   display: flex;
   min-height: 136px;

@@ -4,8 +4,14 @@
 `box-local-engine-player-auth-portal` 镜像，不会进入 Creator、Play、Player Service 或 VOXA
 镜像，也不直接访问 PostgreSQL。
 
+启动器支持在“访问设置 → 账号服务”填写自己的登录镜像，也支持恢复默认。制作兼容镜像的模板和接口约定见[自定义登录镜像](../../docs/self-hosted-login.md)。
+
 浏览器只请求本程序的 `/api/auth/*`；本程序在服务端向 Player Service 转发登录、注册、
 Session 查询和退出请求。`BOX_PLAYER_AUTH_API_KEY` 的对应密钥不会发给浏览器。
+
+已登录页面提供“修改密码”入口，验证原密码、确认新密码后提交。改密成功会返回登录页面并提示重新登录；登录过期也会返回登录页面。未登录玩家需先登录，不提供无凭据重置密码。
+
+页面交互回归可用工作区的 Electron 开发运行时执行：`apps/player-launcher/node_modules/.bin/electron apps/player-auth-portal/scripts/ui-smoke.cjs`（在仓库根目录运行）。测试使用模拟账号，不连接真实数据库。
 
 ## 本地运行
 
@@ -50,10 +56,14 @@ npm start
 | `POST /api/auth/login`    | `POST /api/player-auth/login`    |
 | `GET /api/auth/session`   | `GET /api/player-auth/session`   |
 | `POST /api/auth/logout`   | `POST /api/player-auth/logout`   |
+| `PATCH /api/auth/profile` | `PATCH /api/player-auth/profile` |
+| `POST /api/auth/password` | `POST /api/player-auth/password` |
 
 登录与注册 JSON 参数与 [Player Service API](../../docs/player-service-api.md) 一致。代理会原样
 转发上游状态码、`Retry-After` 和全部 `Set-Cookie`，但只向上游传递白名单字段，不会把 API
 Key 返回到浏览器。
+
+资料接口仅接受 `{ "displayName": "新昵称" }`，不支持头像、用户 ID、角色或权限字段。修改密码接受 `{ "currentPassword": "原密码", "newPassword": "新密码" }`；成功后撤销全部玩家会话并返回 `{ "changed": true, "reloginRequired": true }`，页面应引导玩家重新登录。完整字段、限流和错误码见 [Player Service API](../../docs/player-service-api.md)。
 
 ## Docker 一键部署（推荐）
 

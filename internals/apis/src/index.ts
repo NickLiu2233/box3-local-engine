@@ -17,5 +17,6 @@ export type {
   PlayMap,
   PlayMapResourceStatus,
   Player,
+  PlayerSelfProfile,
   RuntimeStatus,
 } from './local-engine-types';

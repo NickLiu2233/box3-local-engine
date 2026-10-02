@@ -8,6 +8,22 @@ use crate::runtime::runtime::{
 };
 
 #[test]
+fn login_image_configuration_is_persisted_cleared_and_validated() {
+    let owner = "BOX_DATABASE_MODE=external\nBOX_DATABASE_HOST=db\nBOX_DATABASE_PORT=5432\nBOX_DATABASE_NAME=box\nBOX_DATABASE_USER=owner\nBOX_DATABASE_PASSWORD=fixture\n";
+    let form = json!({"authPortalImage":"registry.test/login:1.0"});
+    let custom = configuration_document_for_save(owner, form.as_object().unwrap()).unwrap();
+    assert_eq!(
+        parse_env(&custom)["BOX_AUTH_PORTAL_IMAGE"],
+        "registry.test/login:1.0"
+    );
+    let blank = json!({"authPortalImage":""});
+    let restored = configuration_document_for_save(&custom, blank.as_object().unwrap()).unwrap();
+    assert!(!parse_env(&restored).contains_key("BOX_AUTH_PORTAL_IMAGE"));
+    let invalid = json!({"authPortalImage":"https://registry.test/image"});
+    assert!(configuration_document_for_save(owner, invalid.as_object().unwrap()).is_err());
+}
+
+#[test]
 fn startup_tokens_require_a_real_secret_and_explain_the_configuration_fix() {
     assert_eq!(
         validate_startup_token("BOX_RUNTIME_MANAGER_TOKEN", Some("a".repeat(32))).unwrap(),

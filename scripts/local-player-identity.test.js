@@ -15,6 +15,11 @@ const account = {
   boxId: 'legacy_box_player',
   displayName: '本地玩家',
   avatar: '',
+  avatarSkinId: 'explorer',
+  userKey: '',
+  creatorAccess: false,
+  creatorPermissions: [],
+  creatorCliPermissions: [],
   role: 'player',
   status: 'active',
 }

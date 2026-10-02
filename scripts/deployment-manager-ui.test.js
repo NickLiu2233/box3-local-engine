@@ -129,3 +129,46 @@ test('backup metadata is escaped at the view interface', async () => {
   assert.ok(app.html.includes('&lt;img'))
   assert.ok(!app.html.includes('<img src=x'))
 })
+
+test('saving a changed login image refreshes only the running login container and supports restoring default', async () => {
+  const app = await createFixture()
+  app.api.state.status.services.push({ name: 'player-auth-portal', running: true })
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'network'
+  app.api.render()
+  app.results.save_configuration_command = ({ config }) => { app.results.get_install_config = { ...config } }
+  app.form.setValue('authPortalImage', 'ghcr.io/owner/login:1.0')
+  await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
+  assert.equal(app.api.state.config.authPortalImage, 'ghcr.io/owner/login:1.0')
+  const starts = app.calls.filter(call => call.command === 'control_service')
+  assert.equal(starts.length, 1)
+  assert.equal(starts[0].payload.service, 'player-auth-portal')
+  assert.equal(starts[0].payload.action, 'start')
+  await app.document.querySelector('#restore-default-login-image').click()
+  assert.equal(app.form.values.get('authPortalImage'), '')
+  await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
+  assert.equal(app.api.state.config.authPortalImage, '')
+  assert.equal(app.calls.filter(call => call.command === 'control_service').length, 2)
+})
+
+test('login image changes remain saved when applying fails and do not start a stopped portal', async () => {
+  const stopped = await createFixture()
+  stopped.api.state.page = 'setup'
+  stopped.api.render()
+  stopped.results.save_configuration_command = ({ config }) => { stopped.results.get_install_config = { ...config } }
+  stopped.form.setValue('authPortalImage', 'ghcr.io/owner/login:1.0')
+  await stopped.api.saveConfiguration({ currentTarget: stopped.form, preventDefault() {} })
+  assert.ok(!stopped.calls.some(call => call.command === 'control_service'))
+  assert.match(stopped.api.state.notice, /下次启动/)
+  const failed = await createFixture()
+  failed.api.state.status.services.push({ name: 'player-auth-portal', running: true })
+  failed.api.state.page = 'setup'
+  failed.api.render()
+  failed.results.save_configuration_command = ({ config }) => { failed.results.get_install_config = { ...config } }
+  failed.results.control_service = () => { throw new Error('download failed') }
+  failed.form.setValue('authPortalImage', 'ghcr.io/owner/login:2.0')
+  await failed.api.saveConfiguration({ currentTarget: failed.form, preventDefault() {} })
+  assert.equal(failed.api.state.config.authPortalImage, 'ghcr.io/owner/login:2.0')
+  assert.match(failed.api.state.error, /配置已保存，但登录页面更新失败/)
+  assert.equal(failed.api.state.busy, false)
+})

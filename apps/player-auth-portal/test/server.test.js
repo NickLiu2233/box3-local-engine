@@ -33,11 +33,24 @@ before(async () => {
     const chunks = []
     for await (const chunk of request) chunks.push(chunk)
     lastUpstreamRequest = {
+      method: request.method,
       url: request.url,
       headers: request.headers,
       body: Buffer.concat(chunks).toString('utf8'),
     }
     response.setHeader('Content-Type', 'application/json')
+    if (request.url.endsWith('/profile') || request.url.endsWith('/password')) {
+      if (!String(request.headers.cookie || '').includes('box_local_player_session=')) {
+        response.statusCode = 401
+        response.end(JSON.stringify({ code: 'AUTH_REQUIRED', message: '请重新登录' }))
+        return
+      }
+      if (request.url.endsWith('/password')) {
+        response.setHeader('Set-Cookie', 'box_local_player_session=; Path=/; HttpOnly; Max-Age=0')
+        response.end(JSON.stringify({ changed: true, reloginRequired: true }))
+        return
+      }
+    }
     if (request.url.endsWith('/session')) {
       response.end(
         JSON.stringify({
@@ -77,6 +90,47 @@ before(async () => {
 
 after(async () => {
   await Promise.all([close(portal), close(upstream)])
+})
+
+test('nickname and password APIs forward only self-service fields, sessions and cookie revocation', async () => {
+  const profile = await fetch(`${portalURL}/api/auth/profile?source=play&returnUrl=http://play.example.test/`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json', Origin: portalURL, Cookie: 'box_local_player_session=fixture; box_local_player_device=device' },
+    body: JSON.stringify({ displayName: '新昵称' }),
+  })
+  assert.equal(profile.status, 200)
+  assert.equal(lastUpstreamRequest.method, 'PATCH')
+  assert.equal(lastUpstreamRequest.url, '/api/player-auth/profile')
+  assert.deepEqual(JSON.parse(lastUpstreamRequest.body), { displayName: '新昵称' })
+  assert.match(lastUpstreamRequest.headers.cookie, /box_local_player_session=fixture/)
+  assert.equal((await profile.json()).returnUrl, undefined)
+  const password = await fetch(`${portalURL}/api/auth/password`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Origin: portalURL, Cookie: 'box_local_player_session=fixture' },
+    body: JSON.stringify({ currentPassword: 'old-password-123', newPassword: 'new-password-456' }),
+  })
+  assert.equal(password.status, 200)
+  assert.deepEqual(await password.json(), { changed: true, reloginRequired: true })
+  assert.match(password.headers.get('set-cookie'), /Max-Age=0/)
+  assert.equal(lastUpstreamRequest.url, '/api/player-auth/password')
+  assert.deepEqual(JSON.parse(lastUpstreamRequest.body), { currentPassword: 'old-password-123', newPassword: 'new-password-456' })
+  assert.equal(lastUpstreamRequest.headers['x-box-player-auth-key'], 'server-only-test-key')
+})
+
+test('self-service proxy rejects avatar/identity fields and cross-origin writes and preserves upstream session errors', async () => {
+  for (const [api, method, body] of [
+    ['profile', 'PATCH', { displayName: 'new', avatar: 'ignored' }],
+    ['profile', 'PATCH', { displayName: 'new', avatarSkinId: 'pilot' }],
+    ['password', 'POST', { currentPassword: 'old', newPassword: 'new-password-456', subjectId: 'other-player' }],
+  ]) {
+    const previous = lastUpstreamRequest
+    const rejected = await fetch(`${portalURL}/api/auth/${api}`, { method, headers: { 'Content-Type': 'application/json', Origin: portalURL }, body: JSON.stringify(body) })
+    assert.equal(rejected.status, 400)
+    assert.equal(lastUpstreamRequest, previous)
+  }
+  const forbidden = await fetch(`${portalURL}/api/auth/profile`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Origin: 'http://untrusted.test' }, body: JSON.stringify({ displayName: 'new' }) })
+  assert.equal(forbidden.status, 403)
+  const missing = await fetch(`${portalURL}/api/auth/profile`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Origin: portalURL }, body: JSON.stringify({ displayName: 'new' }) })
+  assert.equal(missing.status, 401)
+  assert.equal((await missing.json()).code, 'AUTH_REQUIRED')
 })
 
 test('requires a server-side API key', () => {

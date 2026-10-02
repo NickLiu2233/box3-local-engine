@@ -5,10 +5,12 @@ import { copyText } from '../../utils/clipboard.js'
 import { installManagedService, reloadRawEnvironment, relocateDataStorage, saveConfiguration, saveRawEnvironment, testConnection } from '../../operations/configuration.js'
 import { render } from '../../core/render-request.js'
 import { state } from '../../core/state.js'
+import { restoreDefaultAuthPortalImage } from '../../operations/auth-portal.js'
 
 
 
 export function bindConfigurationEvents() {
+  document.querySelector('#restore-default-login-image')?.addEventListener('click', restoreDefaultAuthPortalImage)
   document
       .querySelectorAll('[data-install-managed]')
       .forEach((node) =>

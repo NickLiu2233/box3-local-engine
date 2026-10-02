@@ -145,6 +145,7 @@ pub(crate) async fn command(
                     "creatorPort": number("BOX_CREATOR_PORT", 3127),
                     "playerServicePort": number("BOX_PLAYER_SERVICE_PORT", 3124),
                     "authPortalPort": number("BOX_AUTH_PORTAL_PORT", 3125),
+                    "authPortalImage": values.get("BOX_AUTH_PORTAL_IMAGE").cloned().unwrap_or_default(),
                     "playRuntimes": number("BOX_PLAY_MAX_RUNTIMES", 8),
                     "creatorEditRuntimes": number("BOX_CREATOR_EDIT_MAX_RUNTIMES", 6),
                     "creatorPlayRuntimes": number("BOX_CREATOR_PLAY_MAX_RUNTIMES", 4),

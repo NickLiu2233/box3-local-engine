@@ -3,6 +3,14 @@ const optionalString = string
 const stringArray = { type: 'array', items: string }
 
 export const localEngineSchemas = {
+  PlayerSelfProfile: {
+    type: 'object',
+    required: ['subjectId', 'userId', 'username', 'displayName'],
+    additionalProperties: false,
+    properties: {
+      subjectId: string, userId: string, username: string, displayName: { type: 'string', minLength: 1, maxLength: 32 },
+    },
+  },
   ApiError: {
     type: 'object',
     required: ['message'],

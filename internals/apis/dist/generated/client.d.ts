@@ -391,6 +391,10 @@ export declare const apiOperations: {
         readonly path: "/__local_runtime/status";
         readonly method: "GET";
     };
+    readonly patchApiAuthProfile: {
+        readonly path: "/api/auth/profile";
+        readonly method: "PATCH";
+    };
     readonly patchApiCreatorProfile: {
         readonly path: "/api/creator-profile";
         readonly method: "PATCH";
@@ -431,6 +435,10 @@ export declare const apiOperations: {
         readonly path: "/api/play-admin/worlds/{id}";
         readonly method: "PATCH";
     };
+    readonly patchApiPlayerAuthProfile: {
+        readonly path: "/api/player-auth/profile";
+        readonly method: "PATCH";
+    };
     readonly patchApiPlayerInternalMapLibrary: {
         readonly path: "/api/player-internal/map-library";
         readonly method: "PATCH";
@@ -453,6 +461,10 @@ export declare const apiOperations: {
     };
     readonly postApiAuthLogout: {
         readonly path: "/api/auth/logout";
+        readonly method: "POST";
+    };
+    readonly postApiAuthPassword: {
+        readonly path: "/api/auth/password";
         readonly method: "POST";
     };
     readonly postApiAuthRegister: {
@@ -609,6 +621,10 @@ export declare const apiOperations: {
     };
     readonly postApiPlayerAuthLogout: {
         readonly path: "/api/player-auth/logout";
+        readonly method: "POST";
+    };
+    readonly postApiPlayerAuthPassword: {
+        readonly path: "/api/player-auth/password";
         readonly method: "POST";
     };
     readonly postApiPlayerAuthRegister: {
@@ -12222,6 +12238,260 @@ export declare class ApiClient {
     getLocalRuntimeStatus(...init: Parameters<PathBasedClient<paths>["/__local_runtime/status"]["GET"]>): Promise<{
         [x: string]: unknown;
     }>;
+    patchApiAuthProfileRaw(...init: Parameters<PathBasedClient<paths>["/api/auth/profile"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    displayName: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        player: import("./openapi").components["schemas"]["PlayerSelfProfile"];
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: {
+            displayName: string;
+        } & {};
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        displayName: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            player: import("./openapi").components["schemas"]["PlayerSelfProfile"];
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        displayName: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            player: import("./openapi").components["schemas"]["PlayerSelfProfile"];
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    patchApiAuthProfile(...init: Parameters<PathBasedClient<paths>["/api/auth/profile"]["PATCH"]>): Promise<{
+        player: {
+            subjectId: string;
+            userId: string;
+            username: string;
+            displayName: string;
+        };
+    }>;
     patchApiCreatorProfileRaw(...init: Parameters<PathBasedClient<paths>["/api/creator-profile"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -13555,6 +13825,260 @@ export declare class ApiClient {
     patchApiPlayAdminWorldsId(...init: Parameters<PathBasedClient<paths>["/api/play-admin/worlds/{id}"]["PATCH"]>): Promise<{
         [x: string]: unknown;
     }>;
+    patchApiPlayerAuthProfileRaw(...init: Parameters<PathBasedClient<paths>["/api/player-auth/profile"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    displayName: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        player: import("./openapi").components["schemas"]["PlayerSelfProfile"];
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: {
+            displayName: string;
+        } & {};
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        displayName: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            player: import("./openapi").components["schemas"]["PlayerSelfProfile"];
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        displayName: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            player: import("./openapi").components["schemas"]["PlayerSelfProfile"];
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    patchApiPlayerAuthProfile(...init: Parameters<PathBasedClient<paths>["/api/player-auth/profile"]["PATCH"]>): Promise<{
+        player: {
+            subjectId: string;
+            userId: string;
+            username: string;
+            displayName: string;
+        };
+    }>;
     patchApiPlayerInternalMapLibraryRaw(...init: Parameters<PathBasedClient<paths>["/api/player-internal/map-library"]["PATCH"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
             query?: never;
@@ -14324,6 +14848,263 @@ export declare class ApiClient {
     } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     postApiAuthLogout(...init: Parameters<PathBasedClient<paths>["/api/auth/logout"]["POST"]>): Promise<{
         loggedOut: boolean;
+    }>;
+    postApiAuthPasswordRaw(...init: Parameters<PathBasedClient<paths>["/api/auth/password"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword: string;
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        changed: true;
+                        reloginRequired: true;
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: {
+            currentPassword: string;
+            newPassword: string;
+        } & {};
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        currentPassword: string;
+                        newPassword: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            changed: true;
+                            reloginRequired: true;
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        currentPassword: string;
+                        newPassword: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            changed: true;
+                            reloginRequired: true;
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    postApiAuthPassword(...init: Parameters<PathBasedClient<paths>["/api/auth/password"]["POST"]>): Promise<{
+        changed: true;
+        reloginRequired: true;
     }>;
     postApiAuthRegisterRaw(...init: Parameters<PathBasedClient<paths>["/api/auth/register"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
@@ -19535,6 +20316,263 @@ export declare class ApiClient {
     }) | undefined, `${string}/${string}`>>;
     postApiPlayerAuthLogout(...init: Parameters<PathBasedClient<paths>["/api/player-auth/logout"]["POST"]>): Promise<{
         [x: string]: unknown;
+    }>;
+    postApiPlayerAuthPasswordRaw(...init: Parameters<PathBasedClient<paths>["/api/player-auth/password"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword: string;
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        changed: true;
+                        reloginRequired: true;
+                    };
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            429: {
+                headers: {
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: {
+            currentPassword: string;
+            newPassword: string;
+        } & {};
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        currentPassword: string;
+                        newPassword: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            changed: true;
+                            reloginRequired: true;
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        currentPassword: string;
+                        newPassword: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            changed: true;
+                            reloginRequired: true;
+                        };
+                    };
+                };
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                429: {
+                    headers: {
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    postApiPlayerAuthPassword(...init: Parameters<PathBasedClient<paths>["/api/player-auth/password"]["POST"]>): Promise<{
+        changed: true;
+        reloginRequired: true;
     }>;
     postApiPlayerAuthRegisterRaw(...init: Parameters<PathBasedClient<paths>["/api/player-auth/register"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {

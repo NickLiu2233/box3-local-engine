@@ -6,7 +6,8 @@ export function input(name, label, value = '', type = 'text', hint = '', require
       ? `min="${limits.min ?? 0}"${limits.max === undefined ? '' : ` max="${limits.max}"`} step="${limits.step ?? 1}"`
       : ''
   const hintMarkup = limits.hideHint ? '' : `<small class="${hint ? '' : 'empty'}">${hint ? escapeHtml(hint) : '&nbsp;'}</small>`
-  return `<label class="field ${limits.hideHint ? 'no-hint' : ''}"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${numberLimits} ${required ? 'required' : ''} ${limits.disabled ? 'disabled' : ''}/>${hintMarkup}</label>`
+  const placeholder = limits.placeholder ? `placeholder="${escapeHtml(limits.placeholder)}"` : ''
+  return `<label class="field ${limits.hideHint ? 'no-hint' : ''}"><span>${label}</span><input name="${name}" type="${type}" value="${escapeHtml(value)}" ${placeholder} ${numberLimits} ${required ? 'required' : ''} ${limits.disabled ? 'disabled' : ''}/>${hintMarkup}</label>`
 }
 
 export function settingToggle(name, label, description, checked) {

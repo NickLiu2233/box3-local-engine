@@ -167,7 +167,8 @@ services:
   player-auth-portal:
     profiles: [auth-portal]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: box-local-engine-player-auth-portal:${BOX_IMAGE_TAG:-0.2.0}
+    image: ${BOX_AUTH_PORTAL_IMAGE:-box-local-engine-player-auth-portal:${BOX_IMAGE_TAG:-0.2.0}}
+    pull_policy: never
     build:
       context: .
       dockerfile: apps/player-auth-portal/Dockerfile
@@ -201,6 +202,14 @@ services:
       AUTH_DEMO_CREATOR_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3127}
       AUTH_DEMO_PLAY_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3121}
       AUTH_DEMO_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
+      HOST: 0.0.0.0
+      PORT: 3214
+      BOX_PLAYER_SERVICE_INTERNAL_URL: http://player-service:3213
+      BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
+      BOX_AUTH_PORTAL_PUBLIC_URL: ${BOX_AUTH_PORTAL_PUBLIC_URL:-http://127.0.0.1:3125}
+      BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3127}
+      BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3121}
+      BOX_PLAYER_REGISTRATION_ENABLED: ${BOX_PLAYER_REGISTRATION_ENABLED:-true}
       BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
       BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
       BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}

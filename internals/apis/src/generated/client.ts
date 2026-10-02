@@ -398,6 +398,10 @@ export const apiOperations = {
     "path": "/__local_runtime/status",
     "method": "GET"
   },
+  "patchApiAuthProfile": {
+    "path": "/api/auth/profile",
+    "method": "PATCH"
+  },
   "patchApiCreatorProfile": {
     "path": "/api/creator-profile",
     "method": "PATCH"
@@ -438,6 +442,10 @@ export const apiOperations = {
     "path": "/api/play-admin/worlds/{id}",
     "method": "PATCH"
   },
+  "patchApiPlayerAuthProfile": {
+    "path": "/api/player-auth/profile",
+    "method": "PATCH"
+  },
   "patchApiPlayerInternalMapLibrary": {
     "path": "/api/player-internal/map-library",
     "method": "PATCH"
@@ -460,6 +468,10 @@ export const apiOperations = {
   },
   "postApiAuthLogout": {
     "path": "/api/auth/logout",
+    "method": "POST"
+  },
+  "postApiAuthPassword": {
+    "path": "/api/auth/password",
     "method": "POST"
   },
   "postApiAuthRegister": {
@@ -616,6 +628,10 @@ export const apiOperations = {
   },
   "postApiPlayerAuthLogout": {
     "path": "/api/player-auth/logout",
+    "method": "POST"
+  },
+  "postApiPlayerAuthPassword": {
+    "path": "/api/player-auth/password",
     "method": "POST"
   },
   "postApiPlayerAuthRegister": {
@@ -1927,6 +1943,18 @@ export class ApiClient {
     return this.unwrap(this.getLocalRuntimeStatusRaw(...init));
   }
 
+  patchApiAuthProfileRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/auth/profile"]["PATCH"]>
+  ) {
+    return this.paths["/api/auth/profile"].PATCH(...init);
+  }
+
+  patchApiAuthProfile(
+    ...init: Parameters<PathBasedClient<paths>["/api/auth/profile"]["PATCH"]>
+  ) {
+    return this.unwrap(this.patchApiAuthProfileRaw(...init));
+  }
+
   patchApiCreatorProfileRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/creator-profile"]["PATCH"]>
   ) {
@@ -2047,6 +2075,18 @@ export class ApiClient {
     return this.unwrap(this.patchApiPlayAdminWorldsIdRaw(...init));
   }
 
+  patchApiPlayerAuthProfileRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-auth/profile"]["PATCH"]>
+  ) {
+    return this.paths["/api/player-auth/profile"].PATCH(...init);
+  }
+
+  patchApiPlayerAuthProfile(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-auth/profile"]["PATCH"]>
+  ) {
+    return this.unwrap(this.patchApiPlayerAuthProfileRaw(...init));
+  }
+
   patchApiPlayerInternalMapLibraryRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/player-internal/map-library"]["PATCH"]>
   ) {
@@ -2117,6 +2157,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/auth/logout"]["POST"]>
   ) {
     return this.unwrap(this.postApiAuthLogoutRaw(...init));
+  }
+
+  postApiAuthPasswordRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/auth/password"]["POST"]>
+  ) {
+    return this.paths["/api/auth/password"].POST(...init);
+  }
+
+  postApiAuthPassword(
+    ...init: Parameters<PathBasedClient<paths>["/api/auth/password"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiAuthPasswordRaw(...init));
   }
 
   postApiAuthRegisterRaw(
@@ -2585,6 +2637,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/player-auth/logout"]["POST"]>
   ) {
     return this.unwrap(this.postApiPlayerAuthLogoutRaw(...init));
+  }
+
+  postApiPlayerAuthPasswordRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-auth/password"]["POST"]>
+  ) {
+    return this.paths["/api/player-auth/password"].POST(...init);
+  }
+
+  postApiPlayerAuthPassword(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-auth/password"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiPlayerAuthPasswordRaw(...init));
   }
 
   postApiPlayerAuthRegisterRaw(

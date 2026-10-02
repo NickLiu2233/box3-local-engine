@@ -34,14 +34,17 @@ test('container image copies only runtime source and never an env file', () => {
 test('Compose keeps the auth key server-side and uses Player Service over its internal URL', () => {
   const service = compose.slice(
     compose.indexOf('  player-auth-portal:'),
-    compose.indexOf('\n  creator:', compose.indexOf('  player-auth-portal:')),
+    compose.indexOf('\n  server-manager:', compose.indexOf('  player-auth-portal:')),
   )
   assert.match(service, /AUTH_DEMO_API_KEY: \$\{BOX_PLAYER_AUTH_API_KEY:-\}/)
   assert.match(service, /AUTH_DEMO_PLAYER_SERVICE_URL: http:\/\/player-service:3213/)
   assert.match(service, /AUTH_DEMO_HOST: 0\.0\.0\.0/)
   assert.match(service, /read_only: true/)
+  assert.match(service, /pull_policy: never/)
   assert.match(service, /tmpfs:\s*\n\s*- \/tmp:mode=1777/)
-  assert.equal((service.match(/BOX_PLAYER_AUTH_API_KEY/g) || []).length, 1)
+  assert.match(service, /BOX_PLAYER_AUTH_API_KEY: \$\{BOX_PLAYER_AUTH_API_KEY:-\}/)
+  assert.match(service, /BOX_PLAYER_SERVICE_INTERNAL_URL: http:\/\/player-service:3213/)
+  assert.doesNotMatch(browserSource + browserApp, /AUTH_DEMO_API_KEY|BOX_PLAYER_AUTH_API_KEY/)
 })
 
 test('disabled registration removes the redundant authentication tabs', () => {

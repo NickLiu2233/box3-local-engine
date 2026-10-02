@@ -6,6 +6,7 @@ export const state = {
   busy: false,
   status: null,
   config: null,
+  savedAuthPortalImage: '',
   about: null,
   legal: null,
   license: null,

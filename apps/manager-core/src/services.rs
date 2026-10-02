@@ -66,6 +66,9 @@ fn start_applications(runtime: &impl Runtime, services: &[&str]) -> Result<(), S
         ])?;
     }
     let mut args = vec!["up", "-d", "--no-build", "--no-deps"];
+    if services == ["player-auth-portal"] {
+        args.extend_from_slice(&["--wait", "--wait-timeout", "90"]);
+    }
     args.extend_from_slice(services);
     runtime.compose(&args)
 }
@@ -179,6 +182,30 @@ mod tests {
         assert!(start(&host, "all").is_err());
         assert!(control(&host, "creator", "restart").is_err());
         assert!(host.calls.borrow().is_empty());
+    }
+    #[test]
+    fn applying_login_image_prepares_it_and_recreates_only_the_healthy_portal() {
+        let host = Fake {
+            licensed: true,
+            ..Fake::default()
+        };
+        control(&host, "player-auth-portal", "start").unwrap();
+        let calls = host.calls.borrow();
+        assert_eq!(calls[0], ["images"]);
+        assert_eq!(
+            calls[1],
+            [
+                "up",
+                "-d",
+                "--no-build",
+                "--no-deps",
+                "--wait",
+                "--wait-timeout",
+                "90",
+                "player-auth-portal"
+            ]
+        );
+        assert_eq!(calls.len(), 2);
     }
     #[test]
     fn dependencies_are_ready_before_selected_apps_are_started() {

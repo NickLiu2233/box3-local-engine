@@ -99,7 +99,7 @@ class FixtureFormData {
 async function createFixture({ webManager = false, token = '', bundle, responses = {} } = {}) {
   if (!bundle) { bundlePromise ||= buildFixtureBundle(); bundle = await bundlePromise }
   const calls = [], copied = [], events = new Map(), intervals = new Map(), timeouts = new Map()
-  let html = '', form = null, modes = [], timerId = 0
+  let html = '', form = null, modes = [], resetLoginImage = null, timerId = 0
   const mainScroll = new FixtureElement(), setupScroll = new FixtureElement()
   const fixtureConfig = {
     databaseMode: 'managed', databasePort: '5432', redisMode: 'disabled', redisPort: '6379',
@@ -123,6 +123,7 @@ async function createFixture({ webManager = false, token = '', bundle, responses
     set innerHTML(value) {
       html = value
       form = html.includes('id="setup-form"') ? new FixtureForm(html) : null
+      resetLoginImage = html.includes('id="restore-default-login-image"') ? new FixtureElement() : null
       modes = [...html.matchAll(/data-network-mode="([^"]+)"/g)].map(([, networkMode]) => new FixtureElement({ networkMode }))
     },
   }
@@ -136,6 +137,7 @@ async function createFixture({ webManager = false, token = '', bundle, responses
     querySelector(selector) {
       if (selector === '#app') return appElement
       if (selector === '#setup-form') return form
+      if (selector === '#restore-default-login-image') return resetLoginImage
       if (selector === 'main') return mainScroll
       if (selector === '.setup-panels') return setupScroll
       if (selector === '.shell' && html.includes('data-rendered-page=')) return {

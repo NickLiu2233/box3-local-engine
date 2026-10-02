@@ -39,6 +39,7 @@ export async function refreshStatus() {
       message: status.dockerMessage,
     }
     state.config = config
+    state.savedAuthPortalImage = config.authPortalImage || ''
     state.about = about
     state.managedDatabaseInfo = managedDatabaseInfo
     state.managedRedisInfo = managedRedisInfo

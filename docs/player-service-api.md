@@ -73,7 +73,45 @@
 { "loggedOut": true }
 ```
 
-## 玩家资料（内部接口）
+## 玩家自助接口
+
+自建登录门户向浏览器提供 `PATCH /api/auth/profile` 和 `POST /api/auth/password`，门户服务端代理到下面的 Player Service 接口。必须同时携带门户的服务端 API Key 和当前玩家的会话、设备 Cookie；接口从会话确定身份，不接受调用者指定用户 ID。
+
+### `PATCH /api/player-auth/profile`
+
+只修改当前玩家自己的昵称。请求：
+
+```json
+{ "displayName": "新昵称" }
+```
+
+昵称去除首尾空白后必须为 1–32 个字符。头像、皮肤、用户名、身份 ID、角色和权限字段均会被拒绝。成功返回 `200`：
+
+```json
+{ "player": { "subjectId": "当前玩家身份ID", "userId": "用户ID", "username": "player_01", "displayName": "新昵称" } }
+```
+
+### `POST /api/player-auth/password`
+
+修改当前玩家自己的密码，必须验证原密码。请求：
+
+```json
+{ "currentPassword": "原密码", "newPassword": "至少10位的新密码" }
+```
+
+新密码必须为 10–128 位，不能与原密码相同。成功返回 `200`：
+
+```json
+{ "changed": true, "reloginRequired": true }
+```
+
+修改密码、撤销全部玩家会话及发布会话撤销通知在同一个事务中完成，成功后清除当前登录 Cookie。页面必须重新进入登录流程；游玩会话收到撤销通知后也会退出。原密码错误不修改账号或清除当前会话。
+
+两个接口返回统一错误 `{ "code": "错误码", "message": "说明" }`：`400 INVALID_INPUT` 字段无效；改密还可能返回 `400 CURRENT_PASSWORD_INVALID` 原密码错误；`401 AUTH_REQUIRED` 会话失效；`403` 账号或访问来源被封禁；`429 RATE_LIMITED` 附带 `Retry-After`；`503 ACCOUNT_SERVICE_UNAVAILABLE` 账号服务暂不可用。
+
+昵称修改每个账号最多 20 次 / 5 分钟，IP 最多 100 次 / 5 分钟；密码修改每个账号最多 5 次 / 15 分钟，IP 最多 30 次 / 15 分钟。失败的改密尝试也计入额度。
+
+## 玩家资料（原有内部接口）
 
 ### `PATCH /api/player-internal/profile`
 
