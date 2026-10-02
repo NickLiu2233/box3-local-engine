@@ -3,13 +3,12 @@
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { frontendSource } = require('./lib/deployment-manager-source')
 
 const root = path.resolve(__dirname, '..')
 const rootVersion = require(path.join(root, 'package.json')).version
 const manager = path.join(root, 'apps/deployment-manager')
-const frontend = ['main.js', 'transport.js']
-  .map((file) => fs.readFileSync(path.join(manager, 'src', file), 'utf8'))
-  .join('\n')
+const frontend = frontendSource(root)
 const backendSourceDirectory = path.join(manager, 'src-tauri/src')
 const desktopBackend = fs
   .readdirSync(backendSourceDirectory)
@@ -33,7 +32,7 @@ const serverManager = fs
   .map((file) => fs.readFileSync(path.join(serverManagerSourceDirectory, file), 'utf8'))
   .join('\n')
 const defaults = fs.readFileSync(path.join(manager, 'src-tauri/defaults.env'), 'utf8')
-const styles = fs.readFileSync(path.join(manager, 'src/styles.css'), 'utf8')
+const styles = frontendSource(root, '.css')
 const tauriConfig = fs.readFileSync(path.join(manager, 'src-tauri/tauri.conf.json'), 'utf8')
 const tauriEntry = fs.readFileSync(path.join(manager, 'src-tauri/src/main.rs'), 'utf8')
 const tauriBuild = fs.readFileSync(path.join(manager, 'src-tauri/build.rs'), 'utf8')
@@ -188,9 +187,9 @@ const saveConfigurationBody = frontend.match(
 assert.ok(saveConfigurationBody, 'missing saveConfiguration implementation')
 assert.match(saveConfigurationBody, /normalizeInactiveServicePorts\(config\)/)
 assert.match(
-  saveConfigurationBody,
-  /config\.creatorHost = submitted\.publicHost/,
-  'public access submissions must keep the hidden creator host in sync with the public host',
+  backend,
+  /config\.creator_host = public_host\.clone\(\)/,
+  'the backend must derive the shared host from the explicit public address',
 )
 const numericConfigFields = frontend.match(/const numericConfigFields = \[[\s\S]*?\n\]/)?.[0]
 assert.ok(numericConfigFields, 'missing numericConfigFields contract')
@@ -489,7 +488,7 @@ assert.match(frontend, /captureSetupForm/)
 // throw a ReferenceError and leaves every later setup tab inert.
 assert.match(
   frontend,
-  /async function saveConfiguration\(event\)[\s\S]*?\n}\n\nasync function saveRawEnvironment\(\)/,
+  /async function saveConfiguration\(event\)[\s\S]*?\n}\n\n(?:export )?async function saveRawEnvironment\(\)/,
 )
 assert.match(frontend, /function switchSetupSection\(section\)/)
 for (const mode of ['local', 'lan', 'public']) {
@@ -503,8 +502,8 @@ assert.equal(
 assert.doesNotMatch(frontend, /data-(?:play|creator)-network-mode=/)
 assert.match(frontend, /name="creatorNetworkMode" type="hidden" value="\$\{accessMode\}"/)
 assert.match(frontend, /name="creatorHost" type="hidden"/)
-assert.match(frontend, /creatorHost: values\.publicHost/)
-assert.equal((frontend.match(/input\('publicHost'/g) || []).length, 1)
+assert.match(frontend, /name="publicAddress" type="hidden" value="\$\{escapeHtml\(config\.publicAddress/)
+assert.equal((frontend.match(/input\('publicAddress'/g) || []).length, 1)
 assert.doesNotMatch(frontend, /创作端访问地址/)
 assert.doesNotMatch(frontend, /不建议直接向公网开放创作端/)
 assert.match(frontend, /name="playNetworkMode" type="hidden" value="\$\{accessMode\}"/)

@@ -5,8 +5,9 @@
   "description": "Native installer and operations console for BOX3 Engine",
   "scripts": {
     "dev": "node ../../scripts/sync-root-version.js && vite",
-    "build": "node ../../scripts/sync-root-version.js && vite build",
-    "check": "node ../../scripts/sync-root-version.js --check && vite build",
+    "build": "node ../../scripts/sync-root-version.js && node ../../scripts/check-deployment-manager-structure.js && vite build",
+    "check": "node ../../scripts/sync-root-version.js --check && node ../../scripts/check-deployment-manager-structure.js && vite build",
+    "test": "node --test ../../scripts/deployment-manager-ui.test.js ../../scripts/deployment-manager-transport.test.js",
     "tauri": "tauri"
   },
   "dependencies": {

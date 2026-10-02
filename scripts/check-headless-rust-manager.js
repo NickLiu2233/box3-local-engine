@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
+const { frontendSource } = require('./lib/deployment-manager-source')
 
 const root = path.resolve(__dirname, '..')
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
@@ -26,8 +27,8 @@ const sharedBackend = fs
   .map((file) => fs.readFileSync(path.join(sharedDirectory, file), 'utf8'))
   .join('\n')
 const service = serverManager + '\n' + sharedBackend
-const transport = read('apps/deployment-manager/src/transport.js')
-const consoleSource = read('apps/deployment-manager/src/main.js')
+const transport = read('apps/deployment-manager/src/infrastructure/transport.js')
+const consoleSource = frontendSource(root)
 const serverEnvExample = read('distribution/server/.env.example')
 const serverInstall = read('distribution/server/install.sh')
 const compose = read('docker-compose.yml')

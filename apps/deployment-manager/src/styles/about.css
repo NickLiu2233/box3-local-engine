@@ -1,0 +1,220 @@
+.about-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.about-card-heading {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.about-card-heading h2 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.about-document-list {
+  border-top: 1px solid var(--border);
+}
+
+.about-image-list {
+  border-top: 1px solid var(--border);
+}
+
+.about-image-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.about-image-row:first-child {
+  border-top: 0;
+}
+
+.about-image-summary {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  flex: 1;
+}
+
+.about-image-row strong {
+  font-size: 13px;
+}
+
+.about-image-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-image-details {
+  min-width: 106px;
+  flex: 0 0 auto;
+}
+
+.about-image-details summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  list-style: none;
+  text-align: right;
+}
+
+.about-image-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.about-image-details summary::after {
+  content: '⌄';
+  display: inline-block;
+  margin-left: 5px;
+  transition: transform 140ms ease;
+}
+
+.about-image-details[open] summary {
+  color: var(--text);
+}
+
+.about-image-details[open] {
+  flex-basis: 100%;
+  width: 100%;
+}
+
+.about-image-details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.about-image-meta {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.about-image-meta > div {
+  min-width: 0;
+}
+
+.about-image-meta dt,
+.about-image-meta dd {
+  overflow: hidden;
+  margin: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-image-meta dt {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.about-image-meta dd {
+  color: var(--text);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 11px;
+}
+
+.about-image-meta dd {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.about-image-empty {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* About uses a compact release card and expandable component rows. Avoid the
+   old spreadsheet-like fact grid here: build information is supporting
+   context, not the primary task on this screen. */
+.about-page {
+  width: min(1400px, 100%);
+  gap: 16px;
+}
+
+.about-release-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--panel) 0%, var(--panel-soft) 180%);
+}
+
+.about-release-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.about-release-facts > div {
+  min-width: 0;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 16px 20px;
+  border-right: 1px solid var(--border);
+}
+
+.about-release-facts > div:nth-child(3n) {
+  border-right: 0;
+}
+
+.about-release-facts dt,
+.about-release-facts dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.about-release-facts dt {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.about-release-facts dd {
+  overflow: hidden;
+  color: var(--text);
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.about-image-list {
+  border-top: 1px solid var(--border);
+}
+
+.about-changelog-list {
+  max-height: min(560px, 65vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--border);
+  scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}

@@ -23,7 +23,7 @@ const serverManagerCommands = fs.readFileSync(
   'utf8',
 )
 const serverManagerTransport = fs.readFileSync(
-  path.join(root, 'apps/deployment-manager/src/transport.js'),
+  path.join(root, 'apps/deployment-manager/src/infrastructure/transport.js'),
   'utf8',
 )
 const headlessInstaller = fs.readFileSync(path.join(root, 'distribution/server/install.sh'), 'utf8')

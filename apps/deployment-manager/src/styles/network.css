@@ -1,0 +1,152 @@
+.network-layout {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.network-primary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.network-service-card {
+  min-width: 0;
+  align-self: start;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.network-access-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.network-access-card .network-card-heading {
+  min-width: 0;
+}
+
+.network-access-card .access-choice {
+  justify-self: end;
+}
+
+.network-access-address {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.network-service-card .field {
+  grid-template-rows: 15px 34px minmax(15px, auto);
+}
+
+.network-service-card .field.no-hint {
+  grid-template-rows: 15px 34px;
+}
+
+.network-service-card .field small {
+  min-height: 15px;
+  overflow: visible;
+  line-height: 1.35;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.network-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.network-card-heading h2 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+}
+
+.network-card-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.access-choice {
+  display: inline-flex;
+  width: fit-content;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-soft);
+}
+
+.access-choice button {
+  height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.access-choice button.active {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 1px 3px color-mix(in srgb, #000 12%, transparent);
+}
+
+.access-choice button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.card-port-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: auto;
+}
+
+.network-primary-grid .card-port-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.player-service-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+}
+
+.player-service-card .network-card-heading,
+.player-service-card .player-port-grid {
+  grid-column: 1 / -1;
+}
+
+.player-port-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.group-title {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.group-title h2,
+.group-title span {
+  display: inline;
+}
+
+.group-title h2 {
+  margin: 0 8px 0 0;
+  font-size: 13px;
+}
+
+.group-title span {
+  color: var(--muted);
+  font-size: 11px;
+}

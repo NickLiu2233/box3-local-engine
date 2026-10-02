@@ -141,7 +141,7 @@ const generatedApiConsumers = [
   'apps/voxa/src/apis/index.ts',
   'services/game-server/src/createServer.ts',
   'services/game-server/src/player/player-revocation-poller.ts',
-  'apps/deployment-manager/src/transport.js',
+  'apps/deployment-manager/src/infrastructure/transport.js',
   'apps/local-engine/src/runtime-container-client.js',
 ]
 

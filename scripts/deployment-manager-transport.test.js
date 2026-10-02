@@ -51,7 +51,7 @@ Object.defineProperty(globalThis, 'fetch', {
 
 // Exercise the real transport with only the native bridge and HTTP boundary stubbed.
 const source = fs
-  .readFileSync(path.join(__dirname, '../apps/deployment-manager/src/transport.js'), 'utf8')
+  .readFileSync(path.join(__dirname, '../apps/deployment-manager/src/infrastructure/transport.js'), 'utf8')
   .replace(
     /import .* from '@tauri-apps\/api\/core'/,
     'const tauriInvoke = (...args) => globalThis.nativeInvoke(...args)',
@@ -464,47 +464,5 @@ test('late 401 responses preserve replacement tokens across authenticated adapte
       return json({ result: true })
     }
     await api.invoke('get_system_status')
-  }
-})
-
-test('restore success includes optional cleanup warning without claiming services stopped', async () => {
-  const vm = require('node:vm')
-  const main = fs.readFileSync(
-    path.join(__dirname, '../apps/deployment-manager/src/main.js'),
-    'utf8',
-  )
-  const handler = main.slice(
-    main.indexOf('async function confirmBackupAction()'),
-    main.indexOf('async function refreshStatus()'),
-  )
-  for (const warning of [null, '旧数据目录清理失败，请手动清理。']) {
-    const state = {
-      backupDialog: { action: 'restore', archive: 'old.zip' },
-      busy: false,
-      page: 'backups',
-      error: '',
-    }
-    let refreshed = false
-    const context = vm.createContext({
-      state,
-      clearFeedback() {},
-      render() {},
-      async refreshStatus() {
-        refreshed = true
-      },
-      async invoke(command, payload) {
-        assert.equal(command, 'restore_backup')
-        assert.equal(payload.archive, 'old.zip')
-        return warning
-      },
-    })
-    await vm.runInContext(`${handler}\nconfirmBackupAction()`, context)
-    assert.equal(
-      state.backupMessage,
-      '恢复完成，请在服务总览检查并按需启动服务。' + (warning ? ` 清理提示：${warning}` : ''),
-    )
-    assert.equal(state.error, '')
-    assert.equal(state.busy, false)
-    assert.equal(refreshed, true)
   }
 })
