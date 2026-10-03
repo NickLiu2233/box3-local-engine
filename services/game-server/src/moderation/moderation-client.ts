@@ -1,5 +1,7 @@
 import { ApiClient } from '@box/apis'
 import { createHash } from 'node:crypto'
+import { resolveRuntimeScriptEntry } from '../script/script-entry'
+import { moderationAuthorization } from './moderation-credential'
 
 export function scriptFingerprint(source: Record<string, string>, entryPoint = ''): string {
   return createHash('sha256')
@@ -13,6 +15,13 @@ export function scriptFingerprint(source: Record<string, string>, entryPoint = '
     )
     .digest('hex')
 }
+/** A version depends on project code/entry only, never on paused/running or edit/play state. */
+export function projectScriptFingerprint(
+  project: { scriptIndex: string; assets: Record<string, unknown> },
+  source: Record<string, string>,
+) {
+  return scriptFingerprint(source, resolveRuntimeScriptEntry(project.scriptIndex, project.assets))
+}
 
 /** Only the trusted runtime host owns this transport; never import into the script bundle. */
 export class ModerationClient {
@@ -21,11 +30,14 @@ export class ModerationClient {
   private configured: boolean
   constructor() {
     const baseUrl = process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || ''
-    const secret = process.env.PERMISSION_TOKEN_SECRET || ''
-    this.configured = !!(baseUrl && secret && this.mapId && process.env.MODE !== 'edit')
+    this.configured = !!(
+      baseUrl &&
+      process.env.BOX_MODERATION_CREDENTIAL_PATH &&
+      this.mapId &&
+      process.env.MODE !== 'edit'
+    )
     this.api = new ApiClient({
       baseUrl,
-      headers: { Authorization: `Bearer ${secret}` },
       defaultErrorMessage: '地图管理服务暂时不可用',
     })
   }
@@ -34,7 +46,11 @@ export class ModerationClient {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10000)
     try {
-      return await this.api.postApiPlayerInternalScriptModeration({ body, signal: controller.signal })
+      return await this.api.postApiPlayerInternalScriptModeration({
+        body,
+        signal: controller.signal,
+        headers: { Authorization: moderationAuthorization() },
+      })
     } finally {
       clearTimeout(timer)
     }
@@ -48,6 +64,7 @@ export class ModerationClient {
       const result = await this.api.postApiPlayerInternalMapAdmission({
         body: { mapId: this.mapId, userId, ipAddress },
         signal: controller.signal,
+        headers: { Authorization: moderationAuthorization() },
       })
       return result.allowed === true
     } finally {
@@ -62,6 +79,7 @@ export class ModerationClient {
       const result = await this.api.postApiPlayerInternalMapAdmission({
         body: { mapId: this.mapId, players },
         signal: controller.signal,
+        headers: { Authorization: moderationAuthorization() },
       })
       if (
         !Array.isArray(result.denied) ||

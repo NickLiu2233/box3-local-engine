@@ -35,6 +35,7 @@ import { PlayMapsPage } from '../maps/play-maps-page'
 import { SecurityActivityPage } from '../security/security-activity-page'
 import { IdentityBansPage } from '../security/identity-bans-page'
 import { AdminAccountsPage } from '../access/admin-accounts-page'
+import { ScriptModerationPage } from '../access/script-moderation-page'
 import { PermissionGroupsPage } from '../access/permission-groups-page'
 import { AdminAccountDialog, PermissionGroupDialog } from '../access/owner-management-dialogs'
 import { PlayerDirectoryPage } from '../players/player-directory-page'
@@ -112,6 +113,7 @@ export default function PlayerAdminPage() {
     if (view === 'identity-bans') return security.identityBans.load()
     if (view === 'security') return security.activity.load()
     if (view === 'admins' || view === 'permission-groups') return owner.load()
+    if (view === 'script-moderation') return
     return loadOverview()
   }, [
     actor,
@@ -399,6 +401,7 @@ export default function PlayerAdminPage() {
     )
   else if (view === 'security')
     body = <SecurityActivityPage {...security.activity} refresh={() => void load()} />
+  else if (view === 'script-moderation') body = <ScriptModerationPage />
   else if (view === 'admins')
     body = (
       <AdminAccountsPage

@@ -4,8 +4,23 @@ import type { GameEntity } from '@box/schema/api/js/api'
 import { PromiseWrapper } from '../utils/script-promise'
 import { ModerationProtocol } from './moderation-protocol'
 
+/** Called by the trusted shell before evaluating user code; play has no inspection property. */
+export function configureModerationFingerprint(
+  target: GameModeration,
+  config: { moderationFingerprintReadable: boolean; moderationFingerprint: string },
+) {
+  if (!config.moderationFingerprintReadable) return
+  Object.defineProperty(target, 'scriptFingerprint', {
+    value: config.moderationFingerprint,
+    enumerable: true,
+    writable: false,
+    configurable: false,
+  })
+}
+
 /** Small sandbox surface: entity references in, public result out; no host credentials. */
 export class ModerationScript implements GameModeration {
+  declare readonly scriptFingerprint?: string
   private pending = new Map<number, { wrapper: PromiseWrapper<any>; timer: number }>()
   private sequence = 0
   private protocol
@@ -13,7 +28,6 @@ export class ModerationScript implements GameModeration {
     client: MuClient,
     private schedule: (event: () => void) => void,
     private playerId: (entity: GameEntity) => number,
-    private info: () => { mapId: string; scriptFingerprint: string },
     private timers: { setTimeout: (fn: () => void, ms: number) => number; clearTimeout: (id: number) => void },
   ) {
     this.protocol = client.protocol(ModerationProtocol)
@@ -34,12 +48,6 @@ export class ModerationScript implements GameModeration {
         },
       },
     })
-  }
-  get mapId() {
-    return this.info().mapId
-  }
-  get scriptFingerprint() {
-    return this.info().scriptFingerprint
   }
   private request<T>(action: string, player: GameEntity | undefined, options: object): Promise<T> {
     if (this.pending.size >= 8) return Promise.reject(new Error('地图管理请求过多'))

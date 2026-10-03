@@ -715,8 +715,12 @@ use shared_config::database_url;
 fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, String>, String> {
     ensure_runtime_files(app)?;
     enforce_creator_network_policy(app)?;
-    let owner =
+    let mut owner =
         fs::read_to_string(env_path(app)?).map_err(|error| format!("无法读取部署配置：{error}"))?;
+    let existing = parse_env(&owner);
+    let moderation_secret = resolve_secret("BOX_MODERATION_SIGNING_SECRET", "", &existing)?;
+    set_env(&mut owner, "BOX_MODERATION_SIGNING_SECRET", &moderation_secret)?;
+    write_private_file(&env_path(app)?, &owner, "部署配置")?;
     let values = parse_env(&owner);
     let lan_ip = detect_lan_ip();
     let license_file = license::license_path(app)?.to_string_lossy().into_owned();
@@ -924,6 +928,11 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
         &resolve_secret("BOX_TELEPORT_INTERNAL_TOKEN", "", &existing)?,
     )?;
     // Separate, non-browser credential for Creator -> Runtime Manager calls.
+    set_env(
+        &mut content,
+        "BOX_MODERATION_SIGNING_SECRET",
+        &resolve_secret("BOX_MODERATION_SIGNING_SECRET", "", &existing)?,
+    )?;
     // It is intentionally not part of the editable installation form.
     set_env(
         &mut content,

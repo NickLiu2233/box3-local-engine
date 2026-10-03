@@ -13359,10 +13359,8 @@ type ModerationBan = {
     expiresAt: string;
 };
 interface GameModeration {
-    /** 当前地图的永久 ID，用于后台绑定授权。 */
-    readonly mapId: string;
-    /** 当前服务端脚本指纹，修改脚本后需要重新绑定。 */
-    readonly scriptFingerprint: string;
+    /** 仅创作端可读取的服务端脚本指纹；游玩端没有此属性。修改脚本后需要重新绑定。 */
+    readonly scriptFingerprint?: string;
     /** 封禁当前地图中的玩家账号，返回处罚 ID 和截止时间。 */
     banPlayer: (player: GameEntity, options: ModerationOptions) => Promise<ModerationBan>;
     /** 封禁玩家当前连接的 IP。共享网络可能影响其他玩家，请谨慎使用。 */

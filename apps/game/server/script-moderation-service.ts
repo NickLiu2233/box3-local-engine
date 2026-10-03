@@ -39,7 +39,9 @@ export const moderationCommandSchema = z
 type Command = z.infer<typeof moderationCommandSchema>
 type Grant = {
   id: string
-  admin_id: string
+  admin_id: string | null
+  actor_id: string
+  created_by: string
   name: string
   scope: string
   maximum_ban_seconds: number
@@ -57,7 +59,7 @@ type Ban = {
   effect_marker: string | null
 }
 
-/** 业务事务复用后台处罚函数；Key 不传入运行时，权限组在每次调用时读取。 */
+/** 业务事务复用后台处罚函数；脚本不接触 Key，独立授权权限每次调用都重新读取。 */
 export class ScriptModerationService {
   private hashIP(value: string): string {
     return scriptModerationStore.hashIP(value)
@@ -69,16 +71,27 @@ export class ScriptModerationService {
     lock: boolean,
   ): Promise<Grant> {
     const result = await client.query<Grant>(
-      `SELECT k.*,a.display_name,g.permissions FROM ${table('script_admin_bindings')} b
+      `SELECT k.*,k.name AS display_name,k.created_by AS actor_id FROM ${table('script_admin_bindings')} b
       JOIN ${table('script_admin_keys')} k ON k.id=b.key_id
-      JOIN ${table('admin_accounts')} a ON a.id=k.admin_id
-      JOIN ${table('admin_permission_groups')} g ON g.id=a.permission_group_id
-      WHERE b.map_id=$1 AND b.script_fingerprint=$2 AND k.revoked_at IS NULL AND k.expires_at>NOW() AND a.status='active'
-      ${lock ? 'FOR SHARE OF b,k,a,g' : ''}`,
+      WHERE b.map_id=$1 AND b.script_fingerprint=$2 AND k.revoked_at IS NULL AND k.expires_at>NOW()
+      ${lock ? 'FOR SHARE OF b,k' : ''}`,
       [input.mapId, input.scriptFingerprint],
     )
-    if (!result.rows[0]) throw new PlayerAdminRequestError('地图未授权、脚本已改变，或管理员/Key 已失效', 403)
-    return result.rows[0]
+    const grant = result.rows[0]
+    if (!grant) throw new PlayerAdminRequestError('地图未授权、脚本已改变或 Key 已失效', 403)
+    if (grant.admin_id) {
+      const legacy = await client.query(
+        `SELECT a.display_name,g.permissions FROM ${table('admin_accounts')} a
+        JOIN ${table('admin_permission_groups')} g ON g.id=a.permission_group_id WHERE a.id=$1 AND a.status='active'
+        ${lock ? 'FOR SHARE OF a,g' : ''}`,
+        [grant.admin_id],
+      )
+      if (!legacy.rows[0]) throw new PlayerAdminRequestError('旧版账号授权已失效，请由服主重新创建 Key', 403)
+      grant.permissions = legacy.rows[0].permissions
+      grant.display_name = legacy.rows[0].display_name
+      grant.actor_id = grant.admin_id
+    }
+    return grant
   }
   private permission(grant: Grant, action: string, kind?: string): void {
     const required =
@@ -88,7 +101,7 @@ export class ScriptModerationService {
           ? 'identity-bans.manage'
           : 'players.ban'
     if (!normalizePlayerAdminCapabilities(grant.permissions).includes(required))
-      throw new PlayerAdminRequestError('管理员权限组不允许此操作', 403)
+      throw new PlayerAdminRequestError('Key 不允许此操作', 403)
   }
   private async limit(mapId: string, keyId?: string): Promise<void> {
     const limits: Array<[string, string, number]> = keyId
@@ -163,7 +176,7 @@ export class ScriptModerationService {
           `INSERT INTO ${table('admin_audit_events')}(actor_id,action,target_id,details,ip_address)
           VALUES($1,$2,$3,$4::jsonb,$5)`,
           [
-            grant.admin_id,
+            grant.actor_id,
             `script.${input.action}`,
             input.mapId,
             JSON.stringify({

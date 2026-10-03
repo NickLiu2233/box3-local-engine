@@ -775,6 +775,10 @@ const apiOperations = {
         "path": "/api/player-internal/runtime-identity",
         "method": "POST"
     },
+    "postApiPlayerInternalScriptMetadata": {
+        "path": "/api/player-internal/script-metadata",
+        "method": "POST"
+    },
     "postApiPlayerInternalScriptModeration": {
         "path": "/api/player-internal/script-moderation",
         "method": "POST"
@@ -1839,6 +1843,12 @@ class ApiClient {
     }
     postApiPlayerInternalRuntimeIdentity(...init) {
         return this.unwrap(this.postApiPlayerInternalRuntimeIdentityRaw(...init));
+    }
+    postApiPlayerInternalScriptMetadataRaw(...init) {
+        return this.paths["/api/player-internal/script-metadata"].POST(...init);
+    }
+    postApiPlayerInternalScriptMetadata(...init) {
+        return this.unwrap(this.postApiPlayerInternalScriptMetadataRaw(...init));
     }
     postApiPlayerInternalScriptModerationRaw(...init) {
         return this.paths["/api/player-internal/script-moderation"].POST(...init);

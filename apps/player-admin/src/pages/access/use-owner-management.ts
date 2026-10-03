@@ -10,7 +10,6 @@ type AdminFormValues = {
   displayName: string
   password?: string
   permissionGroupId?: string
-  consoleLoginEnabled?: boolean
 }
 
 /** Owns management-account and permission-group persistence and editor state. */
@@ -50,9 +49,8 @@ export function useOwnerManagement() {
             password: '',
             permissions: [],
             permissionGroupId: admin.permissionGroupId || undefined,
-            consoleLoginEnabled: admin.consoleLoginEnabled !== false,
           }
-        : { permissions: [], permissionGroupId: undefined, consoleLoginEnabled: true },
+        : { permissions: [], permissionGroupId: undefined },
     )
     setAdminOpen(true)
   }
@@ -75,7 +73,6 @@ export function useOwnerManagement() {
         ? {
             displayName: values.displayName,
             permissionGroupId: values.permissionGroupId,
-            consoleLoginEnabled: values.consoleLoginEnabled,
             ...(values.password ? { password: values.password } : {}),
           }
         : values
@@ -85,9 +82,9 @@ export function useOwnerManagement() {
           body: payload,
         })
       } else {
-        const { username, displayName, password, permissionGroupId, consoleLoginEnabled } = values
+        const { username, displayName, password, permissionGroupId } = values
         if (!username || !displayName || !password || !permissionGroupId) throw new Error('请完整填写管理账号信息')
-        await api.postApiPlayAdminAdmins({ body: {username,displayName,password,permissionGroupId,consoleLoginEnabled} })
+        await api.postApiPlayAdminAdmins({ body: {username,displayName,password,permissionGroupId} })
       }
       message.success(editingAdmin ? '管理账号已更新' : '管理账号已创建')
       closeAdminEditor()

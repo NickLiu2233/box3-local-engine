@@ -5,6 +5,7 @@ const http = require('http')
 const path = require('path')
 const crypto = require('crypto')
 const { spawn, spawnSync } = require('child_process')
+const {createModerationCredential}=require('./moderation-credential')
 const {
   resolveMapRuntimeNamespace,
   resolveGroupRuntimeNamespace,
@@ -322,7 +323,7 @@ function readCloudMapId() {
 }
 
 function run(command, args, options = {}) {
-  const child = spawn(command, args, {
+  const child = spawnRuntime(command, args, {
     stdio: 'inherit',
     ...options,
   })
@@ -333,6 +334,16 @@ function run(command, args, options = {}) {
     }
   })
   children.push(child)
+  return child
+}
+function spawnRuntime(command,args,options){
+  if(options.cwd!==gameServerRoot)return spawn(command,args,options)
+  const credential=createModerationCredential(options.env,process.env.BOX_MODERATION_SIGNING_SECRET||'')
+  let child
+  try{child=spawn(command,args,{...options,env:credential.env})}catch(error){credential.close();throw error}
+  const close=()=>{credential.close();process.removeListener('exit',close)}
+  child.once('exit',close);child.once('error',close)
+  process.once('exit',close)
   return child
 }
 
@@ -806,7 +817,7 @@ async function main() {
     const externalHashes = Array.isArray(externalDistribution?.hashes)
       ? externalDistribution.hashes.filter((hash) => typeof hash === 'string')
       : []
-    const child = spawn(
+    const child = spawnRuntime(
       process.execPath,
       production
         ? [

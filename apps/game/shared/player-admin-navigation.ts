@@ -9,6 +9,7 @@ export const PLAYER_ADMIN_VIEWS = [
   'security',
   'admins',
   'permission-groups',
+  'script-moderation',
   'play-maps',
   'container-play',
   'container-creator',
@@ -38,6 +39,7 @@ export const PLAYER_ADMIN_VIEW_REQUIREMENTS: Record<
   security: 'audit.view',
   admins: 'owner',
   'permission-groups': 'owner',
+  'script-moderation': 'owner',
   'play-maps': 'play-maps.view',
   'container-play': 'containers.view',
   'container-creator': 'containers.view',
@@ -52,6 +54,7 @@ export function canOpenPlayerAdminView(
   view: PlayerAdminView,
 ) {
   if (!actor) return false;
+  if (view === 'script-moderation') return actor.role === 'owner';
   // Owners and full administrators always receive the complete built-in
   // capability set. Moderators are the only role whose menu is shaped by a
   // delegable permission group.

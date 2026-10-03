@@ -521,6 +521,9 @@ importers:
       '@box/content-server':
         specifier: workspace:*
         version: link:../../packages/content-server
+      '@box/utils':
+        specifier: workspace:2.1.0
+        version: link:../../packages/utils
 
   ../../apps/migrator:
     dependencies:

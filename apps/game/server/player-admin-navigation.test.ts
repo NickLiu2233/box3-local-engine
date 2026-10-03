@@ -27,6 +27,11 @@ describe('player-admin navigation permissions', () => {
       PLAYER_ADMIN_VIEWS.length,
     );
   });
+  test('independent map keys are visible only to the owner',()=>{
+    expect(canOpenPlayerAdminView({role:'admin',permissions:[]},'script-moderation')).toBe(false);
+    expect(canOpenPlayerAdminView(moderator,'script-moderation')).toBe(false);
+    expect(canOpenPlayerAdminView({role:'owner',permissions:[]},'script-moderation')).toBe(true);
+  });
 
   test('delegates the play-map page only to groups with map visibility', () => {
     expect(canOpenPlayerAdminView(moderator, 'play-maps')).toBe(false);

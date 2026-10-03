@@ -199,7 +199,6 @@ export const localEngineSchemas = {
       displayName: string,
       role: { type: 'string', enum: ['admin', 'moderator'] },
       status: { type: 'string', enum: ['active', 'disabled'] },
-      consoleLoginEnabled: { type: 'boolean', default: true },
       permissionGroupId: optionalString,
       permissionGroupName: optionalString,
       lastLoginAt: optionalString,

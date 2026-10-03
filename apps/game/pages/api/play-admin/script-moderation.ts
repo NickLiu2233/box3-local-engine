@@ -10,6 +10,12 @@ import {
 const operationSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('create'), values: keyCreateSchema }).strict(),
   z.object({ action: z.literal('bind'), values: bindingSchema }).strict(),
+  z
+    .object({
+      action: z.literal('update'),
+      values: bindingSchema.extend({ days: z.number().int().min(1).max(30).optional() }).strict(),
+    })
+    .strict(),
   z.object({ action: z.literal('revoke'), keyId: z.string().uuid() }).strict(),
   z.object({ action: z.literal('unbind'), mapId: mapIdSchema }).strict(),
   z.object({ action: z.literal('revoke-map-ban'), banId: z.string().uuid() }).strict(),
@@ -31,11 +37,13 @@ export default playerAdminRoute(
         ? await scriptModerationStore.create(op.values, actor.subjectId)
         : op.action === 'bind'
           ? await scriptModerationStore.bind(op.values, actor.subjectId)
-          : op.action === 'revoke'
-            ? await scriptModerationStore.revoke(op.keyId, actor.subjectId)
-            : op.action === 'revoke-map-ban'
-              ? await scriptModerationStore.revokeMapBan(op.banId, actor.subjectId)
-              : await scriptModerationStore.unbind(op.mapId, actor.subjectId)
+          : op.action === 'update'
+            ? await scriptModerationStore.updateAuthorization(op.values, actor.subjectId)
+            : op.action === 'revoke'
+              ? await scriptModerationStore.revoke(op.keyId, actor.subjectId)
+              : op.action === 'revoke-map-ban'
+                ? await scriptModerationStore.revokeMapBan(op.banId, actor.subjectId)
+                : await scriptModerationStore.unbind(op.mapId, actor.subjectId)
     return res.status(200).json(result)
   },
 )

@@ -2255,7 +2255,7 @@ export interface paths {
         put?: never;
         /**
          * 检查地图账号与 IP 封禁（仅可信运行时）
-         * @description 此操作用于“检查地图账号与 IP 封禁（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。
+         * @description 此操作用于“检查地图账号与 IP 封禁（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
          */
         post: operations["postApiPlayerInternalMapAdmission"];
         delete?: never;
@@ -2348,6 +2348,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/player-internal/script-metadata": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 登记公开地图实例的脚本版本（仅可信运行时）
+         * @description 此操作用于“登记公开地图实例的脚本版本（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiPlayerInternalScriptMetadata"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/player-internal/script-moderation": {
         parameters: {
             query?: never;
@@ -2359,7 +2379,7 @@ export interface paths {
         put?: never;
         /**
          * 执行已授权地图脚本的管理操作（仅可信运行时）
-         * @description 此操作用于“执行已授权地图脚本的管理操作（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。
+         * @description 此操作用于“执行已授权地图脚本的管理操作（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
          */
         post: operations["postApiPlayerInternalScriptModeration"];
         delete?: never;
@@ -2974,8 +2994,6 @@ export interface components {
             role: "admin" | "moderator";
             /** @enum {string} */
             status: "active" | "disabled";
-            /** @default true */
-            consoleLoginEnabled: boolean;
             permissionGroupId?: string;
             permissionGroupName?: string;
             lastLoginAt?: string;
@@ -6096,8 +6114,6 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @default true */
-                    consoleLoginEnabled?: boolean;
                     username: string;
                     displayName: string;
                     password: string;
@@ -6188,7 +6204,6 @@ export interface operations {
                     permissionGroupId?: string | null;
                     /** @enum {string} */
                     status?: "active" | "disabled";
-                    consoleLoginEnabled?: boolean;
                 };
             };
         };
@@ -7826,14 +7841,23 @@ export interface operations {
                     "application/json": {
                         keys: {
                             id: string;
-                            adminId: string;
-                            adminName: string;
+                            adminId: string | null;
+                            adminName: string | null;
+                            permissions: string[] | null;
                             name: string;
                             /** @enum {string} */
                             scope: "map" | "server";
                             maximumBanSeconds: number;
                             expiresAt: string;
                             revokedAt: string | null;
+                        }[];
+                        maps: {
+                            mapId: string;
+                            name: string;
+                            scriptFingerprint: string;
+                            /** @enum {string} */
+                            mode: "edit" | "play";
+                            observedAt: string;
                         }[];
                         bindings: {
                             mapId: string;
@@ -7876,12 +7900,14 @@ export interface operations {
                     /** @constant */
                     action: "create";
                     values: {
-                        adminId: string;
-                        name: string;
+                        mapId: string;
+                        expectedFingerprint: string;
+                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                        name?: string;
                         /** @enum {string} */
                         scope?: "map" | "server";
                         maximumBanSeconds?: number;
-                        expiresAt: string;
+                        expiresAt?: string;
                     };
                 } | {
                     /** @constant */
@@ -7889,7 +7915,16 @@ export interface operations {
                     values: {
                         mapId: string;
                         keyId: string;
-                        scriptFingerprint: string;
+                        expectedFingerprint: string;
+                    };
+                } | {
+                    /** @constant */
+                    action: "update";
+                    values: {
+                        mapId: string;
+                        keyId: string;
+                        expectedFingerprint: string;
+                        days?: number;
                     };
                 } | {
                     /** @constant */
@@ -9144,6 +9179,48 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiPlayerInternalScriptMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“登记公开地图实例的脚本版本（仅可信运行时）”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    mapId: string;
+                    /** @enum {string} */
+                    mode: "edit" | "play";
+                    name: string;
+                    scriptFingerprint: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“登记公开地图实例的脚本版本（仅可信运行时）”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        observed: boolean;
                     };
                 };
             };

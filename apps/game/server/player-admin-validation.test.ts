@@ -22,8 +22,8 @@ function expectRequestError(callback: () => unknown, message?: string) {
 }
 
 describe('player administration request validation', () => {
-  test('console login policy is a strict boolean, independent of account status', () => {
-    expect(parseUpdateAdminAccount({consoleLoginEnabled:false})).toEqual({consoleLoginEnabled:false});
+  test('removed console login flag is no longer accepted', () => {
+    expectRequestError(()=>parseUpdateAdminAccount({consoleLoginEnabled:false}));
     expectRequestError(()=>parseUpdateAdminAccount({consoleLoginEnabled:'false'}));
   });
   test('normalizes supported player fields and rejects unknown fields', () => {

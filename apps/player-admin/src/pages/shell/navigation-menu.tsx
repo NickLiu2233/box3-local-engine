@@ -27,7 +27,7 @@ const groups: Record<MenuGroup, readonly PlayerAdminView[]> = {
     'container-profiles',
     'container-resource-groups',
   ],
-  'owner-center': ['admins', 'permission-groups'],
+  'owner-center': ['admins', 'permission-groups','script-moderation'],
 }
 
 const labels: Record<PlayerAdminView, string> = {
@@ -39,6 +39,7 @@ const labels: Record<PlayerAdminView, string> = {
   'security': '安全记录',
   'admins': '管理账号',
   'permission-groups': '权限组',
+  'script-moderation': '地图管理 Key',
   'play-maps': '游玩地图',
   'container-play': '游玩端',
   'container-creator': '创作端',

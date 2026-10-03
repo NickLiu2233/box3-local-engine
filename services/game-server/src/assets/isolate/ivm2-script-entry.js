@@ -24161,13 +24161,16 @@ const ModerationProtocol = {
     }
 };
 
+function configureModerationFingerprint(target, config) {
+    if (!config.moderationFingerprintReadable) return;
+    Object.defineProperty(target, 'scriptFingerprint', {
+        value: config.moderationFingerprint,
+        enumerable: true,
+        writable: false,
+        configurable: false
+    });
+}
 class ModerationScript {
-    get mapId() {
-        return this.info().mapId;
-    }
-    get scriptFingerprint() {
-        return this.info().scriptFingerprint;
-    }
     request(action, player, options) {
         if (this.pending.size >= 8) return Promise.reject(new Error('地图管理请求过多'));
         const playerId = player ? this.playerId(player) : 0;
@@ -24212,10 +24215,9 @@ class ModerationScript {
     getPlayerStatus(player) {
         return this.request('getPlayerStatus', player, {});
     }
-    constructor(client, schedule, playerId, info, timers){
+    constructor(client, schedule, playerId, timers){
         this.schedule = schedule;
         this.playerId = playerId;
-        this.info = info;
         this.timers = timers;
         this.pending = new Map();
         this.sequence = 0;
@@ -33022,7 +33024,7 @@ const ScriptConfigSchema = new schemaExports.MuStruct({
     animationLimit: new schemaExports.MuFloat64(500),
     keyframeLimit: new schemaExports.MuFloat64(16),
     serverId: new schemaExports.MuUTF8(),
-    moderationMapId: new schemaExports.MuUTF8(),
+    moderationFingerprintReadable: new schemaExports.MuBoolean(false),
     moderationFingerprint: new schemaExports.MuUTF8()
 });
 const SciptCollisionFilterSpecSchema = new schemaExports.MuStruct({
@@ -33845,10 +33847,7 @@ class ScriptShell {
             const wrapper = this.world.entity.getEntityWrapper(entity);
             if (!wrapper || !wrapper.isPlayer) throw new Error('目标不是当前地图的玩家');
             return wrapper.id;
-        }, ()=>({
-                mapId: this.config.moderationMapId,
-                scriptFingerprint: this.config.moderationFingerprint
-            }), this.scheduler.scheduler);
+        }, this.scheduler.scheduler);
         this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
         this.console = new GameConsole(this.log, this.clearLog);
         this.resource = new ScriptResourceSync(this._eval);
@@ -33923,6 +33922,7 @@ class ScriptShell {
                 start: (config)=>{
                     this.sysLog('debug', 'ScriptShell starting.');
                     ScriptConfigSchema.assign(this.config, config.config);
+                    configureModerationFingerprint(moderation, this.config);
                     BlockInfoSchema.assign(this.blockInfo, config.blocks);
                     unpackBlockIndex(config.blocks, this.blockIndex);
                     this.scheduler.setTime(config.state.tick * MS_PER_TICK);

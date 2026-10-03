@@ -178,6 +178,7 @@ function securityFor(apiPath, service) {
   if (apiPath.startsWith('/api/player-auth/') && apiPath !== '/api/player-auth/login-required') return [{ playerAuthKey: [] }]
   if (apiPath === '/api/play-admin/login' || apiPath === '/api/player-auth/login-required') return []
   if (apiPath.startsWith('/api/play-admin/')) return [{ adminSession: [] }]
+  if (['/api/player-internal/script-moderation','/api/player-internal/script-metadata','/api/player-internal/map-admission'].includes(apiPath)) return [{moderationRuntime:[]}]
   if (apiPath.startsWith('/api/player-internal/')) return [{ internalBearer: [] }]
   if (apiPath.startsWith('/api/creator/v1/')) return [{ creatorToken: [] }]
   return []
@@ -337,6 +338,7 @@ const document = {
       adminSession: { type: 'apiKey', in: 'cookie', name: 'box_local_admin_session' },
       creatorToken: { type: 'http', scheme: 'bearer', bearerFormat: 'CLI Token' },
       internalBearer: { type: 'http', scheme: 'bearer' },
+      moderationRuntime: {type:'apiKey',in:'header',name:'Authorization',description:'Moderation <短期地图实例凭证>；由可信启动器维护，不接受浏览器 Cookie 或玩家身份 Bearer'},
       managerToken: { type: 'http', scheme: 'bearer' },
     },
     schemas: localEngineSchemas,

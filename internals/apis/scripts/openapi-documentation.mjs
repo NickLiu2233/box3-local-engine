@@ -64,6 +64,7 @@ const exactSummaries = {
   'delete /api/play-presence': '移除玩家在线状态',
   'post /api/player-internal/runtime-identity': '签发运行时玩家身份',
   'post /api/player-internal/script-moderation': '执行已授权地图脚本的管理操作（仅可信运行时）',
+  'post /api/player-internal/script-metadata': '登记公开地图实例的脚本版本（仅可信运行时）',
   'post /api/player-internal/map-admission': '检查地图账号与 IP 封禁（仅可信运行时）',
   'get /api/play-admin/script-moderation': '查看地图脚本授权与地图封禁（仅服主）',
   'post /api/play-admin/script-moderation': '维护地图脚本授权与地图封禁（仅服主）',

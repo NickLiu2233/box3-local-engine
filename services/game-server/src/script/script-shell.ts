@@ -76,7 +76,7 @@ import { NavigatorScriptShell } from '../navigator/navigator-script';
 import { RTCScriptShell } from '../rtc/rtc-script';
 import { StorageSynchronizer } from '../storage/storage-script';
 import { TeleportScriptShell } from '../teleport/teleport-script';
-import { ModerationScript } from '../moderation/moderation-script';
+import { ModerationScript, configureModerationFingerprint } from '../moderation/moderation-script';
 import { warnDeprecate } from '../utils/deprecate';
 import { PromiseWrapper } from '../utils/script-promise';
 import { ScriptParserAPI } from './bindings/animations';
@@ -944,7 +944,7 @@ export class ScriptShell {
       const wrapper = this.world.entity.getEntityWrapper(entity);
       if (!wrapper || !wrapper.isPlayer) throw new Error('目标不是当前地图的玩家');
       return wrapper.id;
-    }, () => ({mapId:this.config.moderationMapId,scriptFingerprint:this.config.moderationFingerprint}),this.scheduler.scheduler);
+    }, this.scheduler.scheduler);
     this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);
 
     this.console = new GameConsole(this.log, this.clearLog);
@@ -1034,6 +1034,7 @@ export class ScriptShell {
           this.sysLog('debug', 'ScriptShell starting.');
           // Copy script config
           ScriptConfigSchema.assign(this.config, config.config);
+          configureModerationFingerprint(moderation,this.config);
 
           // update block index
           BlockInfoSchema.assign(this.blockInfo, config.blocks);

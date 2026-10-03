@@ -1,4 +1,4 @@
-import { Form, Input, Modal, notification, Select, TreeSelect, Switch } from 'antd'
+import { Form, Input, Modal, notification, Select, TreeSelect } from 'antd'
 import type { FormInstance } from 'antd'
 
 import {
@@ -59,9 +59,6 @@ export function AdminAccountDialog({
               label: `${group.name} · ${group.permissions.length} 项权限`,
             }))}
           />
-        </Form.Item>
-        <Form.Item name="consoleLoginEnabled" label="允许登录管理后台" valuePropName="checked" extra="关闭后撤销后台会话；账号仍可用于已授权的自动化。停用账号则禁止所有访问。">
-          <Switch />
         </Form.Item>
       </Form>
     </Modal>

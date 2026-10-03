@@ -42,7 +42,6 @@ export type PlayerAdminIdentity = {
   permissionGroupId?: string;
   permissionGroupName?: string;
   status: 'active' | 'disabled';
-  consoleLoginEnabled?: boolean;
   credential: 'account' | 'owner-session';
   createdAt?: string;
   updatedAt?: string;
@@ -74,7 +73,6 @@ type AdminRow = QueryResultRow & {
   permission_group_name?: string | null;
   permission_group_permissions?: string[] | null;
   status: 'active' | 'disabled';
-  console_login_enabled?: boolean;
   password_salt: string;
   password_hash: string;
   created_at?: Date | string;
@@ -181,7 +179,7 @@ async function initialize() {
         REFERENCES ${table('admin_permission_groups')}(id) ON DELETE SET NULL
       `);
       await client.query(`ALTER TABLE ${table('admin_accounts')}
-        ADD COLUMN IF NOT EXISTS console_login_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
+        DROP COLUMN IF EXISTS console_login_enabled`);
       await client.query(`
         UPDATE ${table('admin_accounts')}
         SET role = 'admin', permissions = '{}'::text[], permission_group_id = NULL,
@@ -422,7 +420,6 @@ function toIdentity(row: AdminRow): PlayerAdminIdentity {
     permissionGroupId: row.permission_group_id || undefined,
     permissionGroupName: row.permission_group_name || undefined,
     status: row.status,
-    consoleLoginEnabled: row.console_login_enabled !== false,
     credential: 'account',
     createdAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : undefined,
@@ -662,7 +659,7 @@ export async function loginPlayerAdmin(
     Boolean(row) &&
     derived.length === expected.length &&
     timingSafeEqual(derived, expected);
-  const valid = passwordMatches && row?.status === 'active' && row.console_login_enabled !== false;
+  const valid = passwordMatches && row?.status === 'active';
   await database().query(`
     INSERT INTO ${table('admin_login_events')}
       (admin_id, username, success, reason, ip_address, user_agent)
@@ -671,7 +668,7 @@ export async function loginPlayerAdmin(
     row?.id || null,
     username.slice(0, 64),
     valid,
-    valid ? '' : row?.status === 'disabled' ? 'disabled' : row?.console_login_enabled === false ? 'console_login_disabled' : 'invalid_credentials',
+    valid ? '' : row?.status === 'disabled' ? 'disabled' : 'invalid_credentials',
     ip,
     requestUserAgent(req),
   ]);
@@ -679,8 +676,6 @@ export async function loginPlayerAdmin(
     throw new PlayerAdminRequestError(
       row?.status === 'disabled' && passwordMatches
         ? '该管理账号已被停用'
-        : row?.console_login_enabled === false && passwordMatches
-          ? '此管理账号已禁止登录后台'
         : '管理员用户名或密码错误',
       401,
     );
@@ -719,7 +714,7 @@ export async function resolvePlayerAdminSession(
     SELECT s.owner_session, s.csrf_hash, s.user_agent_hash,
       a.id, a.username, a.display_name, a.role, a.permissions,
       a.permission_group_id, g.name AS permission_group_name,
-      g.permissions AS permission_group_permissions, a.status, a.console_login_enabled,
+      g.permissions AS permission_group_permissions, a.status,
       a.password_salt, a.password_hash, a.created_at, a.updated_at,
       a.last_login_at, a.last_login_ip, a.login_count
     FROM ${table('admin_sessions')} s
@@ -733,7 +728,7 @@ export async function resolvePlayerAdminSession(
     !row ||
     (row.owner_session
       ? Boolean(row.id)
-      : !row.id || row.status !== 'active' || row.console_login_enabled === false)
+      : !row.id || row.status !== 'active')
   ) {
     throw playerAdminSessionError('ADMIN_AUTH_REQUIRED');
   }
@@ -803,16 +798,12 @@ export async function createPlayerAdminAccount(
     displayName?: unknown;
     password?: unknown;
     permissionGroupId?: unknown;
-    consoleLoginEnabled?: unknown;
   },
   actor: PlayerAdminIdentity,
   req?: NextApiRequest,
 ) {
   requireOwnerIdentity(actor);
   await initialize();
-  if (values.consoleLoginEnabled !== undefined && typeof values.consoleLoginEnabled !== 'boolean') {
-    throw new PlayerAdminRequestError('后台登录开关必须是布尔值');
-  }
   const input = validateAccountInput(values);
   const salt = randomBytes(16).toString('base64url');
   const hash = (await derivePassword(input.password, salt)).toString('base64url');
@@ -824,8 +815,8 @@ export async function createPlayerAdminAccount(
     await client.query(`
       INSERT INTO ${table('admin_accounts')}
         (id, username, display_name, password_salt, password_hash,
-         role, permissions, permission_group_id, created_by, console_login_enabled)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         role, permissions, permission_group_id, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `, [
       id,
       input.username,
@@ -836,7 +827,6 @@ export async function createPlayerAdminAccount(
       input.permissionGroupId ? [] : input.permissions,
       input.permissionGroupId,
       actor.id,
-      values.consoleLoginEnabled !== false,
     ]);
     const row = await findAdminAccount(client, id);
     const identity = toIdentity(row);
@@ -849,7 +839,6 @@ export async function createPlayerAdminAccount(
         username: identity.username,
         role: identity.role,
         permissionGroupId: identity.permissionGroupId || null,
-        consoleLoginEnabled: identity.consoleLoginEnabled,
       },
       req,
     );
@@ -873,7 +862,6 @@ export async function updatePlayerAdminAccount(
     password?: unknown;
     permissionGroupId?: unknown;
     status?: unknown;
-    consoleLoginEnabled?: unknown;
   },
   actor: PlayerAdminIdentity,
   req?: NextApiRequest,
@@ -934,15 +922,10 @@ export async function updatePlayerAdminAccount(
       hash = (await derivePassword(password, salt)).toString('base64url');
     }
     const effectivePermissions = permissionGroupId ? [] : permissions;
-    if (values.consoleLoginEnabled !== undefined && typeof values.consoleLoginEnabled !== 'boolean') {
-      throw new PlayerAdminRequestError('后台登录开关必须是布尔值');
-    }
-    const consoleLoginEnabled = values.consoleLoginEnabled === undefined ? row.console_login_enabled !== false : values.consoleLoginEnabled;
     const unchanged = password === undefined
       && displayName === row.display_name
       && role === row.role
       && status === row.status
-      && consoleLoginEnabled === (row.console_login_enabled !== false)
       && permissionGroupId === (row.permission_group_id || null)
       && JSON.stringify(effectivePermissions) === JSON.stringify(row.permissions || []);
     if (unchanged) {
@@ -954,7 +937,7 @@ export async function updatePlayerAdminAccount(
       UPDATE ${table('admin_accounts')}
       SET display_name = $2, role = $3, permissions = $4,
         permission_group_id = $5, status = $6,
-        password_salt = $7, password_hash = $8, console_login_enabled = $9, updated_at = NOW()
+        password_salt = $7, password_hash = $8, updated_at = NOW()
       WHERE id = $1
     `, [
       id,
@@ -965,9 +948,8 @@ export async function updatePlayerAdminAccount(
       status,
       salt,
       hash,
-      consoleLoginEnabled,
     ]);
-    if (password !== undefined || status === 'disabled' || !consoleLoginEnabled) {
+    if (password !== undefined || status === 'disabled') {
       await client.query(`DELETE FROM ${table('admin_sessions')} WHERE admin_id = $1`, [id]);
     }
     const updated = await findAdminAccount(client, id);
@@ -984,7 +966,6 @@ export async function updatePlayerAdminAccount(
         status: identity.status,
         permissionGroupId: identity.permissionGroupId || null,
         passwordReset: password !== undefined,
-        consoleLoginEnabled,
       },
       req,
     );

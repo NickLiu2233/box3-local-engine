@@ -36,6 +36,7 @@ const playerServiceRoutes = new Set([
   '/api/player-internal/revocations',
   '/api/player-internal/runtime-identity',
   '/api/player-internal/script-moderation',
+  '/api/player-internal/script-metadata',
   '/api/player-internal/map-admission',
   '/api/play-admin/script-moderation',
   '/api/play-admin/activity',

@@ -255,7 +255,7 @@ fn runtime_container_stats(container_id: &str) -> Result<Value, String> {
 }
 
 pub(crate) fn runtime_entrypoint_command(needs_privileged_init: bool) -> String {
-    let game_command = "node -r /app/license/process-guard.js /app/services/game-server/dist/src/launch.js --useProdBundle";
+    let game_command = "node -r /app/license/process-guard.js /app/apps/local-engine/src/moderation-runtime-launch.js";
     if needs_privileged_init {
         format!(
             "if [ \"$BOX_RUNTIME_NETWORK_POLICY\" = private ]; then \
@@ -400,6 +400,7 @@ pub(crate) async fn ensure_runtime_container(
                 ("BOX_RUNTIME_NETWORK_POLICY", network_policy),
                 ("BOX_RUNTIME_BANDWIDTH_MBPS", &bandwidth_mbps.to_string()),
                 ("PERMISSION_TOKEN_SECRET", &secret), ("BOX_DATABASE_URL", &database_url),
+                ("BOX_MODERATION_SIGNING_SECRET", values.get("BOX_MODERATION_SIGNING_SECRET").map(String::as_str).unwrap_or("")),
                 ("BOX_TELEPORT_CONTROL_URL", &request.teleport_control_url),
                 ("BOX_TELEPORT_INTERNAL_TOKEN", &request.teleport_internal_token),
                 ("BOX_DIRECT_SESSION_API", "false"),

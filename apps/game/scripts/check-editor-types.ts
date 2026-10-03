@@ -61,9 +61,10 @@ for (const [name, declarations] of [
   const probe = new ScriptTypeProbe(declarations);
   try {
     const methods = probe.completions('world.moderation.');
-    for (const method of ['banPlayer', 'banCurrentIP', 'revokeBan', 'getPlayerStatus', 'mapId', 'scriptFingerprint']) {
+    for (const method of ['banPlayer', 'banCurrentIP', 'revokeBan', 'getPlayerStatus', 'scriptFingerprint']) {
       assert.ok(methods.includes(method), `${name}: missing ${method} completion`);
     }
+    assert.ok(!methods.includes('mapId'),`${name}: removed mapId still exposed`);
     const options = probe.completions('world.moderation.banPlayer(world.querySelector("player"), { ');
     for (const field of ['reason', 'durationSeconds', 'scope', 'requestId']) {
       assert.ok(options.includes(field), `${name}: missing ${field} completion`);

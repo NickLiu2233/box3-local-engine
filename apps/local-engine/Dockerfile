@@ -36,6 +36,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 # contains only the published dist files and runtime dependencies; OpenAPI
 # source documents and Swagger tooling remain outside the final images.
 RUN cd internals/apis && node ../../common/scripts/install-run-rushx.js build
+RUN cd packages/utils && node ../../common/scripts/install-run-rushx.js build
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy \
       --filter @box/apis --prod --legacy /opt/apis-runtime
@@ -223,9 +224,12 @@ ENV BOX_DEPLOYMENT_MODE=creator \
     PORT=3000 \
     BOX_LICENSE_FEATURE=creator
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tar gzip \
-    && rm -rf /var/lib/apt/lists/*
+RUN if ! command -v tar >/dev/null || ! command -v gzip >/dev/null; then \
+      apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update \
+      && apt-get install -y --no-install-recommends tar gzip \
+      && rm -rf /var/lib/apt/lists/*; \
+    fi \
+    && command -v tar && command -v gzip
 
 COPY --from=creator-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
 COPY --from=creator-build --chown=node:node /opt/game-server /app/services/game-server
@@ -241,6 +245,8 @@ COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/edit-libr
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/teleport-room-manager.js /app/apps/local-engine/src/teleport-room-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/map-identity.js /app/apps/local-engine/src/map-identity.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/moderation-credential.js /app/apps/local-engine/src/moderation-credential.js
+COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/moderation-runtime-launch.js /app/apps/local-engine/src/moderation-runtime-launch.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/project-manager.js /app/apps/local-engine/src/project-manager.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/asset-distribution.js /app/apps/local-engine/src/asset-distribution.js
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/distribution-metadata.js /app/apps/local-engine/src/distribution-metadata.js
@@ -320,6 +326,8 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/teleport-room-manager.js /app/apps/local-engine/src/teleport-room-manager.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/map-identity.js /app/apps/local-engine/src/map-identity.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/moderation-credential.js /app/apps/local-engine/src/moderation-credential.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/moderation-runtime-launch.js /app/apps/local-engine/src/moderation-runtime-launch.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
 

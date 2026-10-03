@@ -4892,10 +4892,6 @@
                   "permissionGroupId"
                 ],
                 "properties": {
-                  "consoleLoginEnabled": {
-                    "type": "boolean",
-                    "default": true
-                  },
                   "username": {
                     "type": "string"
                   },
@@ -4995,9 +4991,6 @@
                       "active",
                       "disabled"
                     ]
-                  },
-                  "consoleLoginEnabled": {
-                    "type": "boolean"
                   }
                 }
               }
@@ -7807,6 +7800,7 @@
                   "type": "object",
                   "required": [
                     "keys",
+                    "maps",
                     "bindings",
                     "bans"
                   ],
@@ -7819,6 +7813,7 @@
                           "id",
                           "adminId",
                           "adminName",
+                          "permissions",
                           "name",
                           "scope",
                           "maximumBanSeconds",
@@ -7830,10 +7825,25 @@
                             "type": "string"
                           },
                           "adminId": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "adminName": {
-                            "type": "string"
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "permissions": {
+                            "type": [
+                              "array",
+                              "null"
+                            ],
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "name": {
                             "type": "string"
@@ -7856,6 +7866,40 @@
                               "string",
                               "null"
                             ]
+                          }
+                        }
+                      }
+                    },
+                    "maps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "mapId",
+                          "name",
+                          "scriptFingerprint",
+                          "mode",
+                          "observedAt"
+                        ],
+                        "properties": {
+                          "mapId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scriptFingerprint": {
+                            "type": "string"
+                          },
+                          "mode": {
+                            "type": "string",
+                            "enum": [
+                              "edit",
+                              "play"
+                            ]
+                          },
+                          "observedAt": {
+                            "type": "string"
                           }
                         }
                       }
@@ -7995,13 +8039,26 @@
                       "values": {
                         "type": "object",
                         "required": [
-                          "adminId",
-                          "name",
-                          "expiresAt"
+                          "mapId",
+                          "expectedFingerprint"
                         ],
                         "properties": {
-                          "adminId": {
+                          "mapId": {
                             "type": "string"
+                          },
+                          "expectedFingerprint": {
+                            "type": "string"
+                          },
+                          "permissions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "players.view",
+                                "players.ban",
+                                "identity-bans.manage"
+                              ]
+                            }
                           },
                           "name": {
                             "type": "string"
@@ -8039,7 +8096,7 @@
                         "required": [
                           "mapId",
                           "keyId",
-                          "scriptFingerprint"
+                          "expectedFingerprint"
                         ],
                         "properties": {
                           "mapId": {
@@ -8048,8 +8105,45 @@
                           "keyId": {
                             "type": "string"
                           },
-                          "scriptFingerprint": {
+                          "expectedFingerprint": {
                             "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "action",
+                      "values"
+                    ],
+                    "properties": {
+                      "action": {
+                        "type": "string",
+                        "const": "update"
+                      },
+                      "values": {
+                        "type": "object",
+                        "required": [
+                          "mapId",
+                          "keyId",
+                          "expectedFingerprint"
+                        ],
+                        "properties": {
+                          "mapId": {
+                            "type": "string"
+                          },
+                          "keyId": {
+                            "type": "string"
+                          },
+                          "expectedFingerprint": {
+                            "type": "string"
+                          },
+                          "days": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 30
                           }
                         }
                       }
@@ -9668,13 +9762,13 @@
       "post": {
         "operationId": "postApiPlayerInternalMapAdmission",
         "summary": "检查地图账号与 IP 封禁（仅可信运行时）",
-        "description": "此操作用于“检查地图账号与 IP 封禁（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。",
+        "description": "此操作用于“检查地图账号与 IP 封禁（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
         "tags": [
           "玩家内部接口"
         ],
         "security": [
           {
-            "internalBearer": []
+            "moderationRuntime": []
           }
         ],
         "x-box-deployment-modes": [
@@ -10063,17 +10157,108 @@
         ]
       }
     },
-    "/api/player-internal/script-moderation": {
+    "/api/player-internal/script-metadata": {
       "post": {
-        "operationId": "postApiPlayerInternalScriptModeration",
-        "summary": "执行已授权地图脚本的管理操作（仅可信运行时）",
-        "description": "此操作用于“执行已授权地图脚本的管理操作（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。",
+        "operationId": "postApiPlayerInternalScriptMetadata",
+        "summary": "登记公开地图实例的脚本版本（仅可信运行时）",
+        "description": "此操作用于“登记公开地图实例的脚本版本（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
         "tags": [
           "玩家内部接口"
         ],
         "security": [
           {
-            "internalBearer": []
+            "moderationRuntime": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“登记公开地图实例的脚本版本（仅可信运行时）”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "observed"
+                  ],
+                  "properties": {
+                    "observed": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mapId",
+                  "mode",
+                  "name",
+                  "scriptFingerprint"
+                ],
+                "properties": {
+                  "mapId": {
+                    "type": "string"
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "edit",
+                      "play"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "scriptFingerprint": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "description": "执行“登记公开地图实例的脚本版本（仅可信运行时）”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/player-internal/script-moderation": {
+      "post": {
+        "operationId": "postApiPlayerInternalScriptModeration",
+        "summary": "执行已授权地图脚本的管理操作（仅可信运行时）",
+        "description": "此操作用于“执行已授权地图脚本的管理操作（仅可信运行时）”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "玩家内部接口"
+        ],
+        "security": [
+          {
+            "moderationRuntime": []
           }
         ],
         "x-box-deployment-modes": [
@@ -11591,6 +11776,12 @@
         "type": "http",
         "scheme": "bearer"
       },
+      "moderationRuntime": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization",
+        "description": "Moderation <短期地图实例凭证>；由可信启动器维护，不接受浏览器 Cookie 或玩家身份 Bearer"
+      },
       "managerToken": {
         "type": "http",
         "scheme": "bearer"
@@ -12170,10 +12361,6 @@
               "active",
               "disabled"
             ]
-          },
-          "consoleLoginEnabled": {
-            "type": "boolean",
-            "default": true
           },
           "permissionGroupId": {
             "type": "string"
@@ -13371,6 +13558,14 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/player-internal/runtime-identity.ts"
+    },
+    {
+      "path": "/api/player-internal/script-metadata",
+      "methods": [
+        "POST"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/player-internal/script-metadata.ts"
     },
     {
       "path": "/api/player-internal/script-moderation",

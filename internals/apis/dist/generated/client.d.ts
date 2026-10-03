@@ -651,6 +651,10 @@ export declare const apiOperations: {
         readonly path: "/api/player-internal/runtime-identity";
         readonly method: "POST";
     };
+    readonly postApiPlayerInternalScriptMetadata: {
+        readonly path: "/api/player-internal/script-metadata";
+        readonly method: "POST";
+    };
     readonly postApiPlayerInternalScriptModeration: {
         readonly path: "/api/player-internal/script-moderation";
         readonly method: "POST";
@@ -7348,7 +7352,6 @@ export declare class ApiClient {
             displayName: string;
             role: "admin" | "moderator";
             status: "active" | "disabled";
-            consoleLoginEnabled: boolean;
             permissionGroupId?: string | undefined;
             permissionGroupName?: string | undefined;
             lastLoginAt?: string | undefined;
@@ -9012,13 +9015,21 @@ export declare class ApiClient {
                     "application/json": {
                         keys: {
                             id: string;
-                            adminId: string;
-                            adminName: string;
+                            adminId: string | null;
+                            adminName: string | null;
+                            permissions: string[] | null;
                             name: string;
                             scope: "map" | "server";
                             maximumBanSeconds: number;
                             expiresAt: string;
                             revokedAt: string | null;
+                        }[];
+                        maps: {
+                            mapId: string;
+                            name: string;
+                            scriptFingerprint: string;
+                            mode: "edit" | "play";
+                            observedAt: string;
                         }[];
                         bindings: {
                             mapId: string;
@@ -9073,13 +9084,21 @@ export declare class ApiClient {
                         "application/json": {
                             keys: {
                                 id: string;
-                                adminId: string;
-                                adminName: string;
+                                adminId: string | null;
+                                adminName: string | null;
+                                permissions: string[] | null;
                                 name: string;
                                 scope: "map" | "server";
                                 maximumBanSeconds: number;
                                 expiresAt: string;
                                 revokedAt: string | null;
+                            }[];
+                            maps: {
+                                mapId: string;
+                                name: string;
+                                scriptFingerprint: string;
+                                mode: "edit" | "play";
+                                observedAt: string;
                             }[];
                             bindings: {
                                 mapId: string;
@@ -9124,13 +9143,21 @@ export declare class ApiClient {
                         "application/json": {
                             keys: {
                                 id: string;
-                                adminId: string;
-                                adminName: string;
+                                adminId: string | null;
+                                adminName: string | null;
+                                permissions: string[] | null;
                                 name: string;
                                 scope: "map" | "server";
                                 maximumBanSeconds: number;
                                 expiresAt: string;
                                 revokedAt: string | null;
+                            }[];
+                            maps: {
+                                mapId: string;
+                                name: string;
+                                scriptFingerprint: string;
+                                mode: "edit" | "play";
+                                observedAt: string;
                             }[];
                             bindings: {
                                 mapId: string;
@@ -9169,13 +9196,21 @@ export declare class ApiClient {
     getApiPlayAdminScriptModeration(...init: Parameters<PathBasedClient<paths>["/api/play-admin/script-moderation"]["GET"]>): Promise<{
         keys: {
             id: string;
-            adminId: string;
-            adminName: string;
+            adminId: string | null;
+            adminName: string | null;
+            permissions: string[] | null;
             name: string;
             scope: "map" | "server";
             maximumBanSeconds: number;
             expiresAt: string;
             revokedAt: string | null;
+        }[];
+        maps: {
+            mapId: string;
+            name: string;
+            scriptFingerprint: string;
+            mode: "edit" | "play";
+            observedAt: string;
         }[];
         bindings: {
             mapId: string;
@@ -13111,7 +13146,6 @@ export declare class ApiClient {
                     password?: string;
                     permissionGroupId?: string | null;
                     status?: "active" | "disabled";
-                    consoleLoginEnabled?: boolean;
                 };
             };
         };
@@ -13150,7 +13184,6 @@ export declare class ApiClient {
             password?: string | undefined;
             permissionGroupId?: (string | null) | undefined;
             status?: ("active" | "disabled") | undefined;
-            consoleLoginEnabled?: boolean | undefined;
         } & {};
     } & {
         baseUrl?: string;
@@ -13170,7 +13203,6 @@ export declare class ApiClient {
                         password?: string;
                         permissionGroupId?: string | null;
                         status?: "active" | "disabled";
-                        consoleLoginEnabled?: boolean;
                     };
                 };
             };
@@ -13211,7 +13243,6 @@ export declare class ApiClient {
                         password?: string;
                         permissionGroupId?: string | null;
                         status?: "active" | "disabled";
-                        consoleLoginEnabled?: boolean;
                     };
                 };
             };
@@ -17867,7 +17898,6 @@ export declare class ApiClient {
         requestBody: {
             content: {
                 "application/json": {
-                    consoleLoginEnabled?: boolean;
                     username: string;
                     displayName: string;
                     password: string;
@@ -17904,7 +17934,6 @@ export declare class ApiClient {
         } | undefined;
     } & {
         body: {
-            consoleLoginEnabled?: boolean | undefined;
             username: string;
             displayName: string;
             password: string;
@@ -17922,7 +17951,6 @@ export declare class ApiClient {
             requestBody: {
                 content: {
                     "application/json": {
-                        consoleLoginEnabled?: boolean;
                         username: string;
                         displayName: string;
                         password: string;
@@ -17961,7 +17989,6 @@ export declare class ApiClient {
             requestBody: {
                 content: {
                     "application/json": {
-                        consoleLoginEnabled?: boolean;
                         username: string;
                         displayName: string;
                         password: string;
@@ -20048,18 +20075,28 @@ export declare class ApiClient {
                 "application/json": {
                     action: "create";
                     values: {
-                        adminId: string;
-                        name: string;
+                        mapId: string;
+                        expectedFingerprint: string;
+                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                        name?: string;
                         scope?: "map" | "server";
                         maximumBanSeconds?: number;
-                        expiresAt: string;
+                        expiresAt?: string;
                     };
                 } | {
                     action: "bind";
                     values: {
                         mapId: string;
                         keyId: string;
-                        scriptFingerprint: string;
+                        expectedFingerprint: string;
+                    };
+                } | {
+                    action: "update";
+                    values: {
+                        mapId: string;
+                        keyId: string;
+                        expectedFingerprint: string;
+                        days?: number;
                     };
                 } | {
                     action: "revoke";
@@ -20104,18 +20141,28 @@ export declare class ApiClient {
         body: ({
             action: "create";
             values: {
-                adminId: string;
-                name: string;
+                mapId: string;
+                expectedFingerprint: string;
+                permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[] | undefined;
+                name?: string | undefined;
                 scope?: ("map" | "server") | undefined;
                 maximumBanSeconds?: number | undefined;
-                expiresAt: string;
+                expiresAt?: string | undefined;
             } & {};
         } & {}) | ({
             action: "bind";
             values: {
                 mapId: string;
                 keyId: string;
-                scriptFingerprint: string;
+                expectedFingerprint: string;
+            } & {};
+        } & {}) | ({
+            action: "update";
+            values: {
+                mapId: string;
+                keyId: string;
+                expectedFingerprint: string;
+                days?: number | undefined;
             } & {};
         } & {}) | ({
             action: "revoke";
@@ -20141,18 +20188,28 @@ export declare class ApiClient {
                     "application/json": {
                         action: "create";
                         values: {
-                            adminId: string;
-                            name: string;
+                            mapId: string;
+                            expectedFingerprint: string;
+                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                            name?: string;
                             scope?: "map" | "server";
                             maximumBanSeconds?: number;
-                            expiresAt: string;
+                            expiresAt?: string;
                         };
                     } | {
                         action: "bind";
                         values: {
                             mapId: string;
                             keyId: string;
-                            scriptFingerprint: string;
+                            expectedFingerprint: string;
+                        };
+                    } | {
+                        action: "update";
+                        values: {
+                            mapId: string;
+                            keyId: string;
+                            expectedFingerprint: string;
+                            days?: number;
                         };
                     } | {
                         action: "revoke";
@@ -20199,18 +20256,28 @@ export declare class ApiClient {
                     "application/json": {
                         action: "create";
                         values: {
-                            adminId: string;
-                            name: string;
+                            mapId: string;
+                            expectedFingerprint: string;
+                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                            name?: string;
                             scope?: "map" | "server";
                             maximumBanSeconds?: number;
-                            expiresAt: string;
+                            expiresAt?: string;
                         };
                     } | {
                         action: "bind";
                         values: {
                             mapId: string;
                             keyId: string;
-                            scriptFingerprint: string;
+                            expectedFingerprint: string;
+                        };
+                    } | {
+                        action: "update";
+                        values: {
+                            mapId: string;
+                            keyId: string;
+                            expectedFingerprint: string;
+                            days?: number;
                         };
                     } | {
                         action: "revoke";
@@ -21570,6 +21637,144 @@ export declare class ApiClient {
     }) | undefined, `${string}/${string}`>>;
     postApiPlayerInternalRuntimeIdentity(...init: Parameters<PathBasedClient<paths>["/api/player-internal/runtime-identity"]["POST"]>): Promise<{
         [x: string]: unknown;
+    }>;
+    postApiPlayerInternalScriptMetadataRaw(...init: Parameters<PathBasedClient<paths>["/api/player-internal/script-metadata"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    mapId: string;
+                    mode: "edit" | "play";
+                    name: string;
+                    scriptFingerprint: string;
+                };
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        observed: boolean;
+                    };
+                };
+            };
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": import("./openapi").components["schemas"]["ApiError"];
+                };
+            };
+        };
+    }, {
+        params?: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        } | undefined;
+    } & {
+        body: {
+            mapId: string;
+            mode: "edit" | "play";
+            name: string;
+            scriptFingerprint: string;
+        } & {};
+    } & {
+        baseUrl?: string;
+        querySerializer?: import("openapi-fetch").QuerySerializerOptions | import("openapi-fetch").QuerySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        mapId: string;
+                        mode: "edit" | "play";
+                        name: string;
+                        scriptFingerprint: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            observed: boolean;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        bodySerializer?: import("openapi-fetch").BodySerializer<{
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        mapId: string;
+                        mode: "edit" | "play";
+                        name: string;
+                        scriptFingerprint: string;
+                    };
+                };
+            };
+            responses: {
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            observed: boolean;
+                        };
+                    };
+                };
+                default: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": import("./openapi").components["schemas"]["ApiError"];
+                    };
+                };
+            };
+        }> | undefined;
+        pathSerializer?: import("openapi-fetch").PathSerializer;
+        parseAs?: import("openapi-fetch").ParseAs;
+        fetch?: ClientOptions["fetch"];
+        headers?: import("openapi-fetch").HeadersOptions;
+        middleware?: import("openapi-fetch").Middleware[];
+    } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
+    postApiPlayerInternalScriptMetadata(...init: Parameters<PathBasedClient<paths>["/api/player-internal/script-metadata"]["POST"]>): Promise<{
+        observed: boolean;
     }>;
     postApiPlayerInternalScriptModerationRaw(...init: Parameters<PathBasedClient<paths>["/api/player-internal/script-moderation"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{
         parameters: {
