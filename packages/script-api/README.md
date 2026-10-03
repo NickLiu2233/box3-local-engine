@@ -14,4 +14,6 @@
 
 直接修改 `src/client` 内的文件，在本目录执行 `rushx build`，构建会处理并在 `dts` 目录下生成对应的文件。
 
-后端脚本的API暂时还不能够在这里生成。
+服务端声明由 `src/server` 生成。Local Engine 的 `world.moderation` 类型以 `internals/schema/api/js/moderation.ts` 为准，由同步脚本更新；不要手工修改生成的 DTS。
+
+在仓库根目录运行 `npm --prefix apps/game run build:script-types`，可一起更新脚本 SDK 和地图编辑器类型资源。地图授权、封禁、批量操作及处罚查询示例见[地图脚本管理文档](../../docs/script-moderation.md)。

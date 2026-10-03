@@ -13,6 +13,7 @@ BOX3 Local Engine 是一个本地优先的多人联机 3D 创作与游玩发行�
 | 云服务器一键安装                 | [云服务器快速部署](docs/cloud-server-quickstart.md)      |
 | 创建、导入和发布地图             | [地图、地图组与发布包](docs/projects.md)                 |
 | 玩家账号、权限组和后台管理       | [玩家身份与后台管理](docs/player-identity.md)            |
+| 授权地图脚本封禁或查询处罚       | [地图授权与脚本处罚 API](docs/script-moderation.md)      |
 | 配置端口、数据库和资源限制       | [配置参考](docs/configuration-reference.md)              |
 | 开发、测试或提交代码             | [贡献者指南](CONTRIBUTING.md)                            |
 | 查看或开发 HTTP API              | [Local Engine API 与 Swagger](docs/local-engine-api.md)  |
@@ -47,9 +48,11 @@ Player Admin 在发行镜像中构建进 Player Service，不是第七个业务�
 - 独立后台账号、权限组、查看/编辑能力和安全审计；
 - Creator 访问权限与一次性展示的 CLI Token；
 - `.boxplay` 地图包预览、导入、开放、关闭和删除；
-- 服主或管理员可开启的 Play 本地资源加速：为已发布地图的公开地形、模型、贴图、图片、音频和其他静态资源建立浏览器缓存；客户端/服务端脚本、私有发布数据、账号信息及实时状态不会缓存。缓存按永久地图 ID 和资源清单版本隔离，详见 [游玩端部署说明](docs/play-deployment.md#本地资源加速)；
+- 玩家启动器通过 Service Worker 自动缓存地图公开静态资源，按固定地图 ID 和资源版本隔离；脚本、私有发布数据、账号信息及实时状态不会缓存，详见[游玩端部署说明](docs/play-deployment.md#本地资源加速)；
 - 创作端/游玩端运行时、地图容器配置及资源组；
-- 独立 Docker 地图容器的 CPU、内存、进程、网络和出网带宽限制。
+- 独立 Docker 地图容器的 CPU、内存、进程、网络和出网带宽限制；
+- 服主按固定地图组 ID 授权服务端脚本封禁账号、当前 IP / 设备及查询处罚，两端共用授权，支持批量玩家、永久封禁上限和最长 360 天有效期；
+- 地图脚本调用的安全记录，包括请求来源 IP、目标、API、结果和详情。
 
 Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理统一在后台管理的“游玩管理”中完成。
 
@@ -200,6 +203,8 @@ docker compose --profile infra stop postgres redis
 | `services/game-server/`     | 权威游戏运行时、脚本和数据存储                 |
 
 ## 参与开发
+
+后台页面复用入口见[后台管理开发说明](docs/player-admin-development.md)与[复用索引](docs/player-admin-code.md)。
 
 希望在地图里自动处理违规玩家，可以参考[地图脚本管理接口](docs/script-moderation.md)。授权由服主在后台绑定，脚本不需要保存管理员密钥。
 

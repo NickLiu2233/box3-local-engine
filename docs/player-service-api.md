@@ -88,7 +88,14 @@
 昵称去除首尾空白后必须为 1–32 个字符。头像、皮肤、用户名、身份 ID、角色和权限字段均会被拒绝。成功返回 `200`：
 
 ```json
-{ "player": { "subjectId": "当前玩家身份ID", "userId": "用户ID", "username": "player_01", "displayName": "新昵称" } }
+{
+  "player": {
+    "subjectId": "当前玩家身份ID",
+    "userId": "用户ID",
+    "username": "player_01",
+    "displayName": "新昵称"
+  }
+}
 ```
 
 ### `POST /api/player-auth/password`
@@ -282,7 +289,9 @@
 { "action": "cleanup-expired-sessions" }
 ```
 
-审计只在操作实际成功且造成变化后写入；取消界面操作、参数校验失败、删除不存在对象或无变化维护不会产生成功审计。
+后台变更在操作实际成功且造成变化后写入审计；取消界面操作、参数校验失败、删除不存在对象或无变化维护不会产生成功审计。地图脚本调用额外记录查询、处罚、幂等重放和通过实例鉴权后的业务拒绝，结果在安全记录详情中区分。请求来源 IP 缺失时显示 `—`。
+
+地图脚本权限由服主通过 `/api/play-admin/script-moderation` 管理，脚本经可信运行时调用 `/api/player-internal/script-moderation`。这组接口使用独立实例凭证，与登录门户 API Key 和后台账号权限组分开；接口方法、授权及查询边界见[地图授权与脚本处罚 API](./script-moderation.md)。
 
 ## 状态码
 

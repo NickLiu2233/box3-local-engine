@@ -1,6 +1,6 @@
 # 后台管理开发说明
 
-后台管理是 Umi + Ant Design 单页应用，入口为 `apps/player-admin/`。它管理玩家、后台账号、权限组、创作授权、游玩地图和地图运行容器；它不是游戏运行时，也不替代 Player Service 的服务端授权。
+后台管理是 Umi + Ant Design 单页应用，入口为 `apps/player-admin/`。它管理玩家、后台账号、权限组、创作权限、地图脚本授权、游玩地图和地图运行容器；它不是游戏运行时，也不替代 Player Service 的服务端授权。
 
 ## 模块地图
 
@@ -18,7 +18,9 @@
 | `apps/game/pages/api/play-admin/`                | 路由适配、方法限制、进入服务端授权模块        | 仅靠前端隐藏来保护操作                     |
 | `apps/game/server/player-admin-authorization.ts` | 后台身份解析与最终授权                        | 页面展示逻辑                               |
 
-`playerAdminApi` 是所有页面的请求 seam：它使用 `@box/apis` 生成客户端，统一携带同源 Cookie、为变更请求附加 CSRF header，并把 JSON 错误变成 `ApiClientError`。新增或修改接口时先更新 OpenAPI 契约并运行 `npm run api:generate`，页面再调用生成的 operation 方法；不要重复手写带 ID 的 URL、请求 interface 或另一套通用 fetch 封装。
+`playerAdminApi` 是所有页面的请求入口：它使用 `@box/apis` 生成客户端，统一携带同源 Cookie、为变更请求附加 CSRF header，并把 JSON 错误变成 `ApiClientError`。新增或修改接口时先更新 OpenAPI 契约并运行 `npm run api:generate`，页面再调用生成的 operation 方法；不要重复手写带 ID 的 URL、请求 interface 或另一套通用 fetch 封装。
+
+公共组件、业务 Hook 和逐页复用入口见[后台管理复用索引](./player-admin-code.md)。新增页面先检查已有入口，同一业务的创建与编辑共用字段和校验。
 
 ## 启动开发环境
 
@@ -41,7 +43,7 @@ npm run dev
 
 1. 一张页面只负责一个管理工作流。该工作流的查询、表单、确认、保存和刷新可以内聚在页面模块中。
 2. 后端返回的记录必须引用 `player-admin-types.ts`。接口字段改变时先改类型和服务端测试，再改页面。
-3. 删除、封禁、撤销 Token、销毁或重启容器使用 Ant Design 确认框，不得使用浏览器 `confirm`。
+3. 删除、封禁、撤销 Token、销毁或重启容器使用公共 `confirmAdminAction` 确认入口，不得使用浏览器 `confirm`。
 4. 长列表必须分页；运行容器列表只显示已启动运行时，刷新由用户显式触发，不轮询页面。
 5. 菜单隐藏只是体验优化。每个写接口必须在服务端再次要求相同或更强的能力。
 6. 地图组与单图配置必须明确传递 `configurationScope`，不得依据显示名称推断配置范围。
@@ -66,6 +68,8 @@ npm run dev
 地图包请求由 `apps/game/server/play-library-admin-proxy.ts` 转发到 Play 服务。前端不得把导入包、预览资源或管理 Token 写入本地存储或审计详情。
 
 资源组是独立配置记录，地图容器配置只引用资源组 ID。资源组仍被配置引用时，服务端拒绝删除。保存容量配置不会改造正在运行的进程：新启动或手动重启后的独立 Docker 容器才会应用 CPU、内存、进程、网络和带宽限制。未选资源组时地图使用共享 Node 运行时。
+
+地图授权共用 `admin-map-catalog.ts` 读取两端目录；以固定地图组 ID 绑定授权，不按 edit/play 分开维护。界面状态筛选与状态标签共用同一判断，具体使用规则见[地图授权与脚本处罚 API](./script-moderation.md)。
 
 ## 验证清单
 

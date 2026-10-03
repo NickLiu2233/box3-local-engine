@@ -51,6 +51,21 @@ rush export-images
 
 Linux 服务器包包含 Creator、Play、VOXA、Player Service、参考登录门户和 Rust Server Manager，不包含迁移器或 PostgreSQL/Redis 镜像。选择内置数据库或 Redis 时，管理端会在用户确认后联网下载基础镜像。
 
+## 本地增量测试包
+
+只修改后台前端或 Player Service 时，可重建单个服务，再把它加入完整镜像归档。以下命令适用于 Apple Silicon macOS 本机测试：
+
+```bash
+rush package-images --architecture arm64 --service player-service
+rush export-images
+BOX_ALLOW_DIRTY_RELEASE=true rush package-desktop --target macos-arm64 \
+  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+```
+
+`BOX_ALLOW_DIRTY_RELEASE=true` 仅用于包含未提交修改的本地测试包。打包器重建原生启动器、嵌入镜像归档并校验清单、校验和及 macOS 应用签名完整性。生成 ZIP 不会自动替换正在运行的容器。
+
+导出时其他服务使用本机已有的同版本镜像，不会因为重新打包启动器而自动更新源码。修改 Game Server、脚本 API 或运行协议时，应先重建 Creator / Play；修改地图导入逻辑时应重建 Play。缺少相关服务的新镜像时，测试包不能验证那些改动。完整发行仍按上面的干净 Tag 构建流程执行。
+
 ## GitHub Actions
 
 Verify 工作流在 Pull Request 和 `main` 推送时执行：
