@@ -10709,6 +10709,295 @@
               }
             }
           },
+          "400": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "建议等待的秒数。",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "地图脚本管理错误，遵循 CommonError。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "code",
+                    "msg"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "MODERATION_PARAMS_INVALID",
+                        "MODERATION_AUTH_REQUIRED",
+                        "MODERATION_FORBIDDEN",
+                        "MODERATION_NOT_FOUND",
+                        "MODERATION_CONFLICT",
+                        "MODERATION_RATE_LIMITED",
+                        "MODERATION_UNAVAILABLE"
+                      ]
+                    },
+                    "code": {
+                      "type": "integer"
+                    },
+                    "msg": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "default": {
             "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
             "content": {

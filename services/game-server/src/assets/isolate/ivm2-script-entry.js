@@ -24151,6 +24151,42 @@ class TeleportScriptShell {
     }
 }
 
+const statuses = {
+    400: 'MODERATION_PARAMS_INVALID',
+    401: 'MODERATION_AUTH_REQUIRED',
+    403: 'MODERATION_FORBIDDEN',
+    404: 'MODERATION_NOT_FOUND',
+    409: 'MODERATION_CONFLICT',
+    429: 'MODERATION_RATE_LIMITED',
+    503: 'MODERATION_UNAVAILABLE',
+    504: 'MODERATION_TIMEOUT'
+};
+function moderationError(code, msg, status) {
+    return {
+        status: status || statuses[code] || 'MODERATION_INTERNAL_ERROR',
+        code,
+        msg
+    };
+}
+function normalizeModerationError(error, code = 503, fallback = '地图管理服务暂时不可用') {
+    if (error && typeof error === 'object') {
+        const value = error;
+        if (typeof value.status === 'string' && [
+            ...Object.values(statuses),
+            'MODERATION_RESPONSE_INVALID',
+            'MODERATION_INTERNAL_ERROR'
+        ].includes(value.status) && typeof value.code === 'number' && Number.isInteger(value.code) && typeof value.msg === 'string') {
+            return {
+                status: value.status,
+                code: value.code,
+                msg: value.msg
+            };
+        }
+        return moderationError(code, typeof value.message === 'string' ? value.message : fallback);
+    }
+    return moderationError(code, fallback);
+}
+
 const ModerationProtocol = {
     name: 'script-moderation',
     server: {
@@ -24169,61 +24205,83 @@ const ModerationProtocol = {
     }
 };
 
+function publicBan(ban) {
+    const record = Object.assign({}, ban);
+    delete record.scope;
+    return record;
+}
 class ModerationScript {
     request(action, player, options) {
-        if (this.pending.size >= 8) return Promise.reject(new Error('地图管理请求过多'));
-        const playerId = player ? this.playerId(player) : 0;
-        const payload = JSON.stringify(Object.assign(Object.assign({}, options), {
-            action
-        }));
-        if (payload.length > 2048) return Promise.reject(new Error('地图管理参数过长'));
-        const handle = this.sequence++ >>> 0;
-        const wrapper = new PromiseWrapper(this.schedule);
-        const timer = this.timers.setTimeout(()=>{
-            this.pending.delete(handle);
-            wrapper.notifyError(new Error('地图管理请求超时；重试请复用 requestId'));
-        }, 12000);
-        this.pending.set(handle, {
-            wrapper,
-            timer
-        });
-        try {
-            this.protocol.server.message.request({
-                handle,
-                playerId,
-                payload
+        return __awaiter(this, void 0, void 0, function*() {
+            if (this.pending.size >= 8) throw moderationError(429, '地图管理请求过多');
+            let playerId;
+            let payload;
+            try {
+                playerId = player ? this.playerId(player) : 0;
+                payload = JSON.stringify(Object.assign(Object.assign({}, options), {
+                    action
+                }));
+            } catch (error) {
+                throw normalizeModerationError(error, 400, '地图管理参数无效');
+            }
+            if (payload.length > 2048) throw moderationError(400, '地图管理参数过长');
+            const handle = this.sequence++ >>> 0;
+            const wrapper = new PromiseWrapper(this.schedule);
+            const timer = this.timers.setTimeout(()=>{
+                this.pending.delete(handle);
+                wrapper.notifyError(moderationError(504, '地图管理请求超时，操作可能已执行；手动重试须事先指定并复用 requestId'));
+            }, 12000);
+            this.pending.set(handle, {
+                wrapper,
+                timer
             });
-        } catch (error) {
-            this.timers.clearTimeout(timer);
-            this.pending.delete(handle);
-            wrapper.notifyError(error);
-        }
-        return wrapper.query;
+            try {
+                this.protocol.server.message.request({
+                    handle,
+                    playerId,
+                    payload
+                });
+            } catch (error) {
+                this.timers.clearTimeout(timer);
+                this.pending.delete(handle);
+                wrapper.notifyError(normalizeModerationError(error));
+            }
+            return wrapper.query;
+        });
+    }
+    operationOptions(options) {
+        if (!options || typeof options !== 'object' || Array.isArray(options)) throw moderationError(400, '地图管理参数无效');
+        return Object.assign(Object.assign({}, options), {
+            requestId: options.requestId === undefined ? `${this.requestPrefix}-${this.automaticSequence++}` : options.requestId
+        });
     }
     ban(action, players, options) {
         return __awaiter(this, void 0, void 0, function*() {
-            if (!Array.isArray(players)) return this.request(action, players, options);
-            if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(options.requestId)) throw new Error('批量最多 100 个玩家，requestId 须为 1–72 个合法字符');
+            const batchOptions = this.operationOptions(options);
+            if (!Array.isArray(players)) return this.request(action, players, Object.assign(Object.assign({}, batchOptions), {
+                scope: 'server'
+            })).then(publicBan);
+            if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId)) throw moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符');
             const targets = [
                 ...players
             ];
-            const batchOptions = Object.assign({}, options);
             const results = [];
             for(let index = 0; index < targets.length; index++){
                 try {
                     const ban = yield this.request(action, targets[index], Object.assign(Object.assign({}, batchOptions), {
-                        requestId: `${batchOptions.requestId}.b${index}`
+                        requestId: `${batchOptions.requestId}.b${index}`,
+                        scope: 'server'
                     }));
                     results.push({
                         index,
                         success: true,
-                        ban
+                        ban: publicBan(ban)
                     });
                 } catch (error) {
                     results.push({
                         index,
                         success: false,
-                        error: error instanceof Error ? error.message : String(error)
+                        error: normalizeModerationError(error)
                     });
                 }
             }
@@ -24240,26 +24298,39 @@ class ModerationScript {
         return this.ban('banCurrentDevice', players, options);
     }
     revokeBan(banId, options) {
-        return this.request('revokeBan', undefined, Object.assign(Object.assign({}, options), {
-            banId
-        }));
+        return __awaiter(this, void 0, void 0, function*() {
+            return this.request('revokeBan', undefined, Object.assign(Object.assign({}, this.operationOptions(options)), {
+                banId
+            }));
+        });
     }
-    listBans(query = {}) {
-        const { player } = query, filters = __rest(query, [
-            "player"
-        ]);
-        return this.request('listBans', player, filters);
+    listBans() {
+        return __awaiter(this, arguments, void 0, function*(query = {}) {
+            if (!query || typeof query !== 'object' || Array.isArray(query)) throw moderationError(400, '地图管理参数无效');
+            const { player } = query, filters = __rest(query, [
+                "player"
+            ]);
+            const result = yield this.request('listBans', player, filters);
+            return Object.assign(Object.assign({}, result), {
+                items: result.items.map(publicBan)
+            });
+        });
     }
     getBan(banId) {
         return __awaiter(this, void 0, void 0, function*() {
             const result = yield this.request('getBan', undefined, {
                 banId
             });
-            return result.ban;
+            return result.ban ? publicBan(result.ban) : null;
         });
     }
     getPlayerStatus(player) {
-        return this.request('getPlayerStatus', player, {});
+        return __awaiter(this, void 0, void 0, function*() {
+            const result = yield this.request('getPlayerStatus', player, {});
+            return Object.assign(Object.assign({}, result), {
+                bans: result.bans.map(publicBan)
+            });
+        });
     }
     constructor(client, schedule, playerId, timers){
         this.schedule = schedule;
@@ -24267,6 +24338,8 @@ class ModerationScript {
         this.timers = timers;
         this.pending = new Map();
         this.sequence = 0;
+        this.automaticSequence = 0;
+        this.requestPrefix = `auto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
         this.protocol = client.protocol(ModerationProtocol);
         this.protocol.configure({
             message: {
@@ -24278,9 +24351,9 @@ class ModerationScript {
                     try {
                         const result = JSON.parse(message.payload);
                         if (message.success) item.wrapper.notifyDone(result);
-                        else item.wrapper.notifyError(new Error(result.message || '地图管理操作失败'));
+                        else item.wrapper.notifyError(normalizeModerationError(result, 503, '地图管理操作失败'));
                     } catch (_a) {
-                        item.wrapper.notifyError(new Error('地图管理响应无效'));
+                        item.wrapper.notifyError(moderationError(502, '地图管理响应无效', 'MODERATION_RESPONSE_INVALID'));
                     }
                 }
             }
@@ -33887,9 +33960,9 @@ class ScriptShell {
         this.rtc = new RTCScriptShell(this);
         this.gui = new GUIScriptShell(this);
         this.teleport = new TeleportScriptShell(this.client, this.scheduler.schedule);
-        const moderation = new ModerationScript(this.client, this.scheduler.schedule, (entity)=>{
-            const wrapper = this.world.entity.getEntityWrapper(entity);
-            if (!wrapper || !wrapper.isPlayer) throw new Error('目标不是当前地图的玩家');
+        const moderation = new ModerationScript(this.client, this.scheduler.schedule, (player)=>{
+            const wrapper = WRAPPER_PLAYER_INDEX.get(player);
+            if (!wrapper || !wrapper.isPlayer || this.world.entity.entityIndex.get(wrapper.id) !== wrapper || wrapper.entity.player !== player) throw new Error('目标不是当前地图的玩家');
             return wrapper.id;
         }, this.scheduler.scheduler);
         this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);

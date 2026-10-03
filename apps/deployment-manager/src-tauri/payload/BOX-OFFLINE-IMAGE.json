@@ -1,0 +1,7 @@
+{
+  "formatVersion": 1,
+  "archive": "box-local-engine-images-v0.2.0-linux-arm64.tar.gz",
+  "sha256": "37ed74118b4bbe66bfe33fdfeb551c2e67570af38137bd27d412572995080744",
+  "imageTag": "v0.2.0-linux-arm64",
+  "platform": "linux/arm64"
+}

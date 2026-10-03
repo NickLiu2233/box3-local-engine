@@ -805,6 +805,9 @@ export class ApiClient {
           : details && typeof details === 'object' && 'message' in details &&
         typeof details.message === 'string'
           ? details.message
+          : details && typeof details === 'object' && 'msg' in details &&
+        typeof details.msg === 'string'
+          ? details.msg
           : this.defaultErrorMessage;
       throw new ApiClientError(message, result.response, details);
     }

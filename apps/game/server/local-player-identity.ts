@@ -2146,9 +2146,6 @@ export async function createIdentityBan(
   const value = typeof values.value === 'string' ? values.value.trim() : '';
   if (kind === 'ip' && (!value || value.length > 128)) throw new Error('IP 地址无效');
   if (kind === 'device' && !/^[0-9a-f]{64}$/i.test(value)) throw new Error('设备标识无效');
-  if (kind === 'ip' && context?.ip && context.ip === value) {
-    throw new Error('不能封禁当前管理会话使用的 IP 地址');
-  }
   if (kind === 'device' && context?.deviceHash && context.deviceHash === value.toLowerCase()) {
     throw new Error('不能封禁当前管理会话使用的设备');
   }

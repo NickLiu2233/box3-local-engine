@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { checkPlayerDatabaseReady, createManagedPlayer } from '../server/local-player-identity'
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { checkPlayerDatabaseReady, createManagedPlayer, resolvePlayerIdentity } from '../server/local-player-identity'
 import {
   playerAdminStore,
   createPlayerAdminAccount,
   createPlayerAdminPermissionGroup,
   updatePlayerAdminAccount,
+  loginPlayerAdmin,
+  resolvePlayerAdminSession,
   type PlayerAdminIdentity,
 } from '../server/player-admin-identity'
 import { scriptModerationStore as store } from '../server/script-moderation-store'
@@ -119,6 +122,24 @@ async function main() {
     { username: 'test_admin', displayName: '管理员', password: 'TestOnly_7W9q4s!Bp', permissionGroupId: group.id },
     owner,
   )
+  // Player IP bans must not affect the independent admin login or an existing admin session.
+  const adminIP = '192.0.2.9'
+  const adminRequest = {headers:{host:'localhost','user-agent':'moderation-isolation-test'},socket:{remoteAddress:adminIP}} as NextApiRequest
+  const responseHeaders = new Map<string, unknown>()
+  const adminResponse = {getHeader:(name:string)=>responseHeaders.get(name),setHeader:(name:string,value:unknown)=>responseHeaders.set(name,value)} as unknown as NextApiResponse
+  const credentials = {username:'test_admin',password:'TestOnly_7W9q4s!Bp'}
+  await loginPlayerAdmin(adminRequest, adminResponse, credentials)
+  const cookie = (responseHeaders.get('Set-Cookie') as string[]).map(value=>value.split(';')[0]).join('; ')
+  const sessionRequest = {...adminRequest,headers:{...adminRequest.headers,cookie}} as NextApiRequest
+  assert.equal((await resolvePlayerAdminSession(sessionRequest)).id, admin.id)
+  await report('admin-ip-map')
+  const adminIPKey = await store.create({mapId:'admin-ip-map',permissions:['identity-bans.manage']},owner.id)
+  const sharedIPBan = await moderation.execute({...input,mapId:'admin-ip-map',scope:'server',action:'banCurrentIP',ipAddress:adminIP,requestId:'admin-ip-ban'}, {...context,ip:adminIP})
+  await assert.rejects(resolvePlayerIdentity(adminRequest,adminResponse), /IP_BANNED/)
+  assert.equal((await resolvePlayerAdminSession(sessionRequest)).id,admin.id)
+  assert.equal((await loginPlayerAdmin(adminRequest,adminResponse,credentials)).id,admin.id)
+  await moderation.execute({mapId:'admin-ip-map',action:'revokeBan',banId:sharedIPBan.id,reason:'测试完成',requestId:'admin-ip-unban'},context)
+  await store.revoke(adminIPKey.id,owner.id)
   await updatePlayerAdminAccount(admin.id, { status: 'disabled' }, owner)
   assert.ok(await moderation.execute({ ...input, action: 'getPlayerStatus' }, context))
   const legacyId = randomUUID()

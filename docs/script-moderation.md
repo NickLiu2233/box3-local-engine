@@ -60,11 +60,22 @@ await world.moderation.banCurrentIP(playerEntity.player, {
 })
 ```
 
-共享网络里的多个玩家可能使用同一个 IP，优先使用账号封禁。无效地址、本机回环地址、正在使用的后台管理会话 IP 不能由脚本封禁。
+共享网络里的多个玩家可能使用同一个 IP，优先使用账号封禁。无效地址、本机回环地址不能由脚本封禁。后台管理会话使用中的 IP 可以封禁：处罚只限制玩家登录和游戏连接，不影响独立的后台管理登录和会话。
 
 ## 被拒绝或超时怎么办
 
 调用失败会拒绝 Promise，需要 `try/catch`。超时不代表服务端一定没有执行成功；手动重试须事先显式指定 `requestId`，重试时复用原 ID 和参数。未指定 ID 的超时操作应先复核处罚，不能直接再次调用以保证去重。
+
+所有 moderation 调用的拒绝值遵循 `CommonError`：`{ status, code, msg }`。`status` 为错误类型，`code` 为数字错误码（如 403 权限不足、429 限流、504 超时），`msg` 为错误描述。批量失败项的 `error` 也是这个对象。
+
+```js
+try {
+  await world.moderation.banPlayer(playerEntity.player, { reason: '违规', durationSeconds: 600 })
+} catch (error) {
+  console.log(error.status, error.code, error.msg)
+}
+// 例如：{ status: 'MODERATION_FORBIDDEN', code: 403, msg: '授权不允许此操作' }
+```
 
 如果封禁已生效、目标已离线，重试可能提示玩家已离线。此时在后台复核处罚，不要换一个请求 ID 反复封禁。
 

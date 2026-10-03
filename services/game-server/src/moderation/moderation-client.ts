@@ -1,4 +1,5 @@
-import { ApiClient } from '@box/apis'
+import { ApiClient, ApiClientError } from '@box/apis'
+import { moderationError, normalizeModerationError } from '@box/schema/api/js/moderation-error'
 import { moderationAuthorization } from './moderation-credential'
 
 /** Only the trusted runtime host owns this transport; never import into the script bundle. */
@@ -19,7 +20,7 @@ export class ModerationClient {
     })
   }
   async execute(body: Parameters<ApiClient['postApiPlayerInternalScriptModeration']>[0]['body']) {
-    if (!this.configured) throw new Error('此运行环境未启用地图管理服务')
+    if (!this.configured) throw moderationError(503, '此运行环境未启用地图管理服务')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10000)
     try {
@@ -28,6 +29,11 @@ export class ModerationClient {
         signal: controller.signal,
         headers: { Authorization: moderationAuthorization() },
       })
+    } catch (error) {
+      if (error instanceof ApiClientError)
+        throw normalizeModerationError(error.details, error.response.status, error.message)
+      if (controller.signal.aborted) throw moderationError(504, '地图管理请求超时，操作可能已执行；重试请复用 requestId')
+      throw moderationError(503, '地图管理服务暂时不可用')
     } finally {
       clearTimeout(timer)
     }

@@ -9369,6 +9369,120 @@ export interface operations {
                     };
                 };
             };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            429: {
+                headers: {
+                    /** @description 建议等待的秒数。 */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
+            /** @description 地图脚本管理错误，遵循 CommonError。 */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        status: "MODERATION_PARAMS_INVALID" | "MODERATION_AUTH_REQUIRED" | "MODERATION_FORBIDDEN" | "MODERATION_NOT_FOUND" | "MODERATION_CONFLICT" | "MODERATION_RATE_LIMITED" | "MODERATION_UNAVAILABLE";
+                        code: number;
+                        msg: string;
+                    };
+                };
+            };
             /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
             default: {
                 headers: {

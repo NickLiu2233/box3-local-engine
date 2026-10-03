@@ -4087,6 +4087,15 @@ declare class GameRGBColor {
 }
 
 
+declare function moderationError(code: number, msg: string, status?: ModerationErrorStatus): ModerationError;
+/** Normalize both current structured replies and legacy message-only transports. */
+declare function normalizeModerationError(error: unknown, code?: number, fallback?: string): ModerationError;
+
+
+
+type ModerationErrorStatus = 'MODERATION_PARAMS_INVALID' | 'MODERATION_AUTH_REQUIRED' | 'MODERATION_FORBIDDEN' | 'MODERATION_NOT_FOUND' | 'MODERATION_CONFLICT' | 'MODERATION_RATE_LIMITED' | 'MODERATION_UNAVAILABLE' | 'MODERATION_TIMEOUT' | 'MODERATION_RESPONSE_INVALID' | 'MODERATION_INTERNAL_ERROR';
+/** 单次调用失败时 Promise 拒绝此对象；批量失败项的 error 使用相同结构。 */
+type ModerationError = CommonError<ModerationErrorStatus>;
 /** 权限由服主在后台绑定，脚本不能设置管理员身份、地图 ID 或 IP。 */
 type ModerationOptions = {
     /** 处罚原因，会写入后台审计。 */
@@ -4108,7 +4117,7 @@ type ModerationBatchResult = {
 } | {
     index: number;
     success: false;
-    error: string;
+    error: ModerationError;
 };
 type ModerationBanRecord = ModerationBan & {
     kind: 'account' | 'ip' | 'device';

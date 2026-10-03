@@ -310,13 +310,6 @@ export class ScriptModerationService {
     const ip = canonicalModerationIP(String(input.ipAddress || ''))
     if (kind === 'ip' && (!isIP(ip) || ip.startsWith('127.') || ['::1', '0.0.0.0', '::'].includes(ip)))
       throw new PlayerAdminRequestError('不能封禁无效地址或本机管理地址')
-    if (kind === 'ip') {
-      const protectedSession = await client.query(
-        `SELECT 1 FROM ${table('admin_sessions')} WHERE expires_at>NOW() AND absolute_expires_at>NOW() AND (created_ip=$1 OR last_seen_ip=$1) LIMIT 1`,
-        [ip],
-      )
-      if (protectedSession.rowCount) throw new PlayerAdminRequestError('该 IP 正用于管理会话，需由管理员人工复核', 403)
-    }
     let reference: string | null = null
     let marker: string | null = null
     const ipHash = kind === 'ip' ? this.hashIP(ip) : null

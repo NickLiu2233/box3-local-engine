@@ -163,6 +163,19 @@ export function applyOperationContracts(paths) {
       content: { 'application/json': { schema } },
     }
   }
+  const moderation = paths['/api/player-internal/script-moderation']?.post
+  if (moderation) {
+    for (const code of [400, 401, 403, 404, 405, 409, 429, 503]) {
+      moderation.responses[code] = {
+        description: '地图脚本管理错误，遵循 CommonError。',
+        content: { 'application/json': { schema: object({
+          status: { type: 'string', enum: ['MODERATION_PARAMS_INVALID', 'MODERATION_AUTH_REQUIRED', 'MODERATION_FORBIDDEN', 'MODERATION_NOT_FOUND', 'MODERATION_CONFLICT', 'MODERATION_RATE_LIMITED', 'MODERATION_UNAVAILABLE'] },
+          code: { type: 'integer' }, msg: { type: 'string' },
+        }) } },
+      }
+    }
+    moderation.responses[429].headers = { 'Retry-After': { description: '建议等待的秒数。', schema: { type: 'integer', minimum: 1 } } }
+  }
   const libraryUpdate = paths['/api/play-library']?.patch
   if (libraryUpdate) {
     delete libraryUpdate.responses[200]
