@@ -94,9 +94,9 @@ export function IdentityBansPage(props: Props) {
             },
             { title: '封禁时间', dataIndex: 'bannedAt', render: dateTime },
             {
-              title: '到期',
+              title: '自动解封时间',
               dataIndex: 'bannedUntil',
-              render: (value) => (value ? dateTime(value) : '永久'),
+              render: dateTime,
             },
             {
               title: '操作',

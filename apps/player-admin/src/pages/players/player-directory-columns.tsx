@@ -51,6 +51,10 @@ export function playerDirectoryColumns(options: Options): ColumnsType<Player> {
       ),
     },
     {
+      title: '自动解封时间',
+      render: (_, player) => dateTime(player.status === 'banned' ? player.bannedUntil : undefined),
+    },
+    {
       title: '操作',
       width: 100,
       render: (_, player) => (

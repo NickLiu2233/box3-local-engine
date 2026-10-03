@@ -32,7 +32,7 @@ export const keyCreateSchema = z
     mode: z.enum(['edit', 'play']).default('play'),
     name: z.string().trim().min(1).max(64).optional(),
     permissions: moderationPermissionsSchema.default(['players.view', 'players.ban']),
-    scope: z.enum(['map', 'server']).default('map'),
+    scope: z.enum(['map', 'server']).default('server').transform(() => 'server' as const),
     maximumBanSeconds: z.union([z.literal(0), z.number().int().min(60).max(604800)]).default(3600),
     expiresAt: z.string().datetime().optional(),
   })
@@ -114,6 +114,11 @@ export class ScriptModerationStore {
         (older.updated_at,older.key_id,older.mode)<(newer.updated_at,newer.key_id,newer.mode)`)
       await migration.query(`CREATE UNIQUE INDEX IF NOT EXISTS script_admin_bindings_map ON ${table('script_admin_bindings')}(map_id)`)
       await migration.query(`DROP INDEX IF EXISTS ${table('script_admin_bindings_map_mode')}`)
+      // Existing owner-issued map grants now allow the unified server default.
+      // Historical punishments retain their original scope.
+      await migration.query(`UPDATE ${table('script_admin_keys')} k SET scope='server'
+        WHERE k.admin_id IS NULL AND k.revoked_at IS NULL AND k.scope='map'
+        AND EXISTS (SELECT 1 FROM ${table('script_admin_bindings')} b WHERE b.key_id=k.id)`)
       await migration.query('COMMIT')
     } catch (error) {
       await migration.query('ROLLBACK')
@@ -292,7 +297,7 @@ export class ScriptModerationStore {
       const renewed = await client.query(
         `UPDATE ${table('script_admin_keys')} SET expires_at=NOW()+($2*INTERVAL '1 day'), maximum_ban_seconds=COALESCE($3,maximum_ban_seconds), scope=COALESCE($4,scope), permissions=COALESCE($5::text[],permissions)
         WHERE id=$1 AND admin_id IS NULL AND revoked_at IS NULL RETURNING id`,
-        [input.keyId, input.days, input.maximumBanSeconds ?? null, input.scope ?? null, input.permissions ? [...new Set(input.permissions)] : null],
+        [input.keyId, input.days, input.maximumBanSeconds ?? null, 'server', input.permissions ? [...new Set(input.permissions)] : null],
       )
       if (!renewed.rowCount) throw new PlayerAdminRequestError('授权已撤销或属于旧版账号授权，请重新创建', 409)
       await this.saveBinding(client, table, metadata.group_id, input.keyId, actor)

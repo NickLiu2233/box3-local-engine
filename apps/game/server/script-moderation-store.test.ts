@@ -6,6 +6,9 @@ import { ScriptModerationStore, keyCreateSchema } from './script-moderation-stor
 import { moderationBanExpiry, moderationCommandSchema } from './script-moderation-service'
 
 test('permanent bans require explicit permanent authorization', () => {
+  expect(keyCreateSchema.parse({ mapId: 'main-map' }).scope).toBe('server')
+  expect(keyCreateSchema.parse({ mapId: 'main-map', scope: 'map' }).scope).toBe('server')
+  expect(moderationCommandSchema.parse({ mapId: 'main-map', action: 'banPlayer' }).scope).toBe('server')
   expect(keyCreateSchema.parse({ mapId: 'main-map', maximumBanSeconds: 0 }).maximumBanSeconds).toBe(0)
   expect(moderationCommandSchema.parse({ mapId: 'main-map', action: 'banPlayer', durationSeconds: 0 }).durationSeconds).toBe(0)
   expect(moderationBanExpiry(0, 0)).toBeNull()
@@ -47,6 +50,7 @@ integration('group grants persist across script updates and offline periods, and
     expect(creationAudit.details).toMatchObject({ mapId: 'main-map', mapName: '真正的地图名称', targetType: 'map-group', actorDisplayName: '测试服主' })
     const play = await store.create({ mapId: 'main-map', mode: 'play', permissions: ['players.ban'], maximumBanSeconds: 0, expiresAt: new Date(Date.now() + 360 * 86400000).toISOString() }, 'owner')
     const catalog = await store.list()
+    expect(catalog.keys.find((key: any) => key.id === play.id).scope).toBe('server')
     expect(catalog.maps).toHaveLength(4)
     expect(catalog.maps.find((map: any) => map.mapId === 'main-map' && map.mode === 'edit')).toMatchObject({name:'真正的地图名称',projectId:'main-map'})
     expect(catalog.keys.find((key: any) => key.id === edit.id).name).toBe('真正的地图名称')
@@ -95,7 +99,10 @@ integration('group grants persist across script updates and offline periods, and
     await pool.query(`UPDATE ${table('script_admin_bindings')} SET mode='edit',updated_at=NOW()-INTERVAL '1 day'`)
     await pool.query(`INSERT INTO ${table('script_admin_bindings')}(map_id,mode,key_id,updated_by) VALUES('main-map','play',$1,'owner')`, [play.id])
     await (store as any).initialize({ pool, table })
+    await pool.query(`UPDATE ${table('script_admin_keys')} SET scope='map' WHERE id=$1`, [play.id])
+    await (store as any).initialize({ pool, table })
     const migrated = await store.list()
+    expect(migrated.keys.find((key: any) => key.id === play.id).scope).toBe('server')
     expect(migrated.bindings).toHaveLength(1)
     expect(migrated.bindings[0].keyId).toBe(play.id)
     await (store as any).initialize({ pool, table })

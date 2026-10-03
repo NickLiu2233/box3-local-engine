@@ -65,19 +65,28 @@ for (const [name, declarations] of [
       assert.ok(methods.includes(method), `${name}: missing ${method} completion`);
     }
     assert.ok(!methods.includes('mapId'),`${name}: removed mapId still exposed`);
-    const options = probe.completions('world.moderation.banPlayer(world.querySelector("player"), { ');
-    for (const field of ['reason', 'durationSeconds', 'scope', 'requestId']) {
+    const options = probe.completions('world.moderation.banPlayer(world.querySelector("player").player, { ');
+    for (const field of ['reason', 'durationSeconds', 'requestId']) {
       assert.ok(options.includes(field), `${name}: missing ${field} completion`);
     }
+    assert.ok(!options.includes('scope'), `${name}: removed scope still in completion`);
     const signature = probe.signature('world.moderation.banPlayer(');
     assert.equal(signature?.items.length,3,`${name}: duplicate signature hints`);
     assert.ok(signature?.items[0].parameters.some(parameter => parameter.name === 'options'));
     assert.ok(probe.hover('world.moderation.banPlayer')?.documentation?.some(part=>part.text.includes('封禁')));
-    assert.equal(probe.diagnostics('world.moderation.banPlayer(world.querySelector("player"), {reason:"test",durationSeconds:60,requestId:"test"});').length,0,`${name}: valid call has type errors`);
-    assert.equal(probe.diagnostics('world.moderation.banCurrentDevice(world.querySelectorAll("player"), {reason:"test",durationSeconds:0,requestId:"batch"}).then(results => results.forEach(result => { if (result.success === true) console.log(result.ban.id); else console.log(result.error); }));').length,0,`${name}: batch device call has type errors`);
-    assert.equal(probe.diagnostics('world.moderation.listBans({player:world.querySelector("player"),kind:"device",status:"expired",page:1,pageSize:20}).then(result => result.items.forEach(ban => console.log(ban.reason,ban.remainingSeconds))); world.moderation.getBan("00000000-0000-0000-0000-000000000000").then(ban => { if (ban) console.log(ban.status); });').length,0,`${name}: punishment queries have type errors`);
-    const errors = probe.diagnostics('world.moderation.banPlayer(world.querySelector("player"), {reason: "test", durationSeconds: 60, requestId: "test", scope: "invalid"});');
-    assert.ok(errors.some(error => error.code === 2322 || error.code === 2345 || error.code === 2769), `${name}: invalid scope was not detected: ${JSON.stringify(errors.map(error=>({code:error.code,message:ts.flattenDiagnosticMessageText(error.messageText,' ')})))}`);
-    console.log(`${name}: moderation methods, option fields, signature, Chinese documentation and scope validation passed`);
+    assert.equal(probe.diagnostics('world.moderation.banPlayer(world.querySelector("player").player, {reason:"test",durationSeconds:60,requestId:"test"});').length,0,`${name}: valid call has type errors`);
+    assert.equal(probe.diagnostics('world.moderation.banCurrentDevice(world.querySelectorAll("player").map(entity => entity.player), {reason:"test",durationSeconds:0,requestId:"batch"}).then(results => results.forEach(result => { if (result.success === true) console.log(result.ban.id); else console.log(result.error); }));').length,0,`${name}: batch device call has type errors`);
+    assert.equal(probe.diagnostics('world.moderation.listBans({player:world.querySelector("player").player,kind:"device",status:"expired",page:1,pageSize:20}).then(result => result.items.forEach(ban => console.log(ban.reason,ban.remainingSeconds))); world.moderation.getBan("00000000-0000-0000-0000-000000000000").then(ban => { if (ban) console.log(ban.status); });').length,0,`${name}: punishment queries have type errors`);
+    for (const code of [
+      'world.moderation.banPlayer(world.querySelector("player"), {reason:"test",durationSeconds:60,requestId:"entity"});',
+      'world.moderation.banCurrentIP(world.querySelectorAll("player"), {reason:"test",durationSeconds:60,requestId:"entities"});',
+      'world.moderation.getPlayerStatus(world.querySelector("player"));',
+      'world.moderation.listBans({player:world.querySelector("player")});',
+    ]) assert.ok(probe.diagnostics(code).length > 0, `${name}: entity accepted instead of GamePlayer`);
+    assert.equal(probe.diagnostics('const player = world.querySelector("player").player; world.moderation.banPlayer(player, {reason:"test",durationSeconds:60}); world.moderation.banCurrentDevice([player], {reason:"test",durationSeconds:60}); world.moderation.revokeBan("ban", {reason:"review"});').length, 0, `${name}: omitted requestId has type errors`);
+    assert.ok(probe.diagnostics('world.moderation.getBan("ban").then(ban => { if (ban) console.log(ban.scope); });').length > 0, `${name}: removed record scope still exposed`);
+    const errors = probe.diagnostics('world.moderation.banPlayer(world.querySelector("player").player, {reason: "test", durationSeconds: 60, requestId: "test", scope: "server"});');
+    assert.ok(errors.some(error => error.code === 2353 || error.code === 2322 || error.code === 2345 || error.code === 2769), `${name}: removed scope parameter was not rejected: ${JSON.stringify(errors.map(error=>({code:error.code,message:ts.flattenDiagnosticMessageText(error.messageText,' ')})))}`);
+    console.log(`${name}: moderation methods, option fields, signature, Chinese documentation and removed scope validation passed`);
   } finally { probe.dispose(); }
 }

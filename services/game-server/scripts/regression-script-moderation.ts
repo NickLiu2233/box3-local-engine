@@ -125,13 +125,14 @@ async function main() {
   assert.equal('scriptFingerprint' in script, false)
   const promise = script.banPlayer(player, { reason: 'test', durationSeconds: 60, requestId: 'test-account' })
   assert.equal(sent[0].playerId, 7)
+  assert.equal(JSON.parse(sent[0].payload).scope, 'server')
   assert.ok(!sent[0].payload.includes('secret'))
   scriptHandler({
     handle: sent[0].handle,
     success: true,
     payload: JSON.stringify({ id: 'ban', scope: 'map', expiresAt: 'expiry' }),
   })
-  assert.equal((await promise).id, 'ban')
+  assert.deepEqual(await promise, { id: 'ban', expiresAt: 'expiry' })
   assert.equal(timers.size, 0)
   const batch = script.banCurrentDevice([player, player, player], { reason: 'batch', durationSeconds: 0, requestId: 'device-batch' })
   const batchIds: string[] = []
@@ -140,25 +141,66 @@ async function main() {
     const message = sent.at(-1)
     const body = JSON.parse(message.payload)
     assert.equal(body.action, 'banCurrentDevice')
+    assert.equal(body.scope, 'server')
     batchIds.push(body.requestId)
     scriptHandler({ handle: message.handle, success: index !== 1, payload: JSON.stringify(index === 1 ? {message: '权限不足'} : {id: `device-${index}`,scope:'map',expiresAt:null}) })
   }
   assert.deepEqual(batchIds, ['device-batch.b0', 'device-batch.b1', 'device-batch.b2'])
   assert.deepEqual(await batch, [
-    {index:0,success:true,ban:{id:'device-0',scope:'map',expiresAt:null}},
+    {index:0,success:true,ban:{id:'device-0',expiresAt:null}},
     {index:1,success:false,error:'权限不足'},
-    {index:2,success:true,ban:{id:'device-2',scope:'map',expiresAt:null}},
+    {index:2,success:true,ban:{id:'device-2',expiresAt:null}},
   ])
   const sentCount = sent.length
   await assert.rejects(script.banPlayer(Array(101).fill(player), {reason:'test',durationSeconds:60,requestId:'invalid'}), /100/)
   assert.equal(sent.length, sentCount)
   assert.deepEqual(await script.banPlayer([], {reason:'test',durationSeconds:60,requestId:'empty'}), [])
+  const automaticIds: string[] = []
+  const automaticOptions = {reason:'automatic',durationSeconds:60}
+  for (const invoke of [
+    () => script.banPlayer(player, automaticOptions),
+    () => script.banCurrentIP(player, automaticOptions),
+    () => script.revokeBan('ban', {reason:'review'}),
+  ]) {
+    const result = invoke()
+    const request = sent.at(-1)
+    const id = JSON.parse(request.payload).requestId
+    assert.match(id, /^[A-Za-z0-9._-]{1,72}$/)
+    automaticIds.push(id)
+    scriptHandler({handle:request.handle,success:true,payload:JSON.stringify({id:'ban',revoked:true,scope:'map',expiresAt:null})})
+    await result
+  }
+  assert.equal(new Set(automaticIds).size, automaticIds.length)
+  assert.equal('requestId' in automaticOptions, false)
+  const automaticBatch = script.banCurrentDevice([player, player], automaticOptions)
+  const automaticBatchIds: string[] = []
+  for (let index = 0; index < 2; index++) {
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const request = sent.at(-1)
+    automaticBatchIds.push(JSON.parse(request.payload).requestId)
+    scriptHandler({handle:request.handle,success:true,payload:JSON.stringify({id:`auto-${index}`,scope:'map',expiresAt:null})})
+  }
+  assert.equal((await automaticBatch).length, 2)
+  assert.equal(automaticBatchIds[0].replace(/\.b0$/, ''), automaticBatchIds[1].replace(/\.b1$/, ''))
+  assert.ok(!automaticIds.includes(automaticBatchIds[0].replace(/\.b0$/, '')))
   const list = script.listBans({player,kind:'device',status:'active',page:2,pageSize:10})
   let msg=sent.at(-1)
   assert.equal(msg.playerId,7)
   assert.deepEqual(JSON.parse(msg.payload),{kind:'device',status:'active',page:2,pageSize:10,action:'listBans'})
   scriptHandler({handle:msg.handle,success:true,payload:JSON.stringify({items:[],total:0,page:2,pageSize:10})})
   assert.equal((await list).page,2)
+  const detailsPromise = script.getBan('record-with-scope')
+  msg = sent.at(-1)
+  scriptHandler({handle:msg.handle,success:true,payload:JSON.stringify({ban:{id:'record',scope:'map',expiresAt:null,reason:'legacy'}})})
+  assert.equal('scope' in (await detailsPromise)!, false)
+  const recordsPromise = script.listBans()
+  msg = sent.at(-1)
+  scriptHandler({handle:msg.handle,success:true,payload:JSON.stringify({items:[{id:'record',scope:'map',expiresAt:null}],total:1,page:1,pageSize:20})})
+  assert.equal('scope' in (await recordsPromise).items[0], false)
+  const statusPromise = script.getPlayerStatus(player)
+  msg = sent.at(-1)
+  scriptHandler({handle:msg.handle,success:true,payload:JSON.stringify({status:'active',bans:[{id:'record',scope:'map',expiresAt:null}]})})
+  assert.equal('scope' in (await statusPromise).bans[0], false)
   const get = script.getBan('00000000-0000-0000-0000-000000000000')
   msg=sent.at(-1)
   assert.equal(msg.playerId,0)

@@ -26,7 +26,7 @@ export const moderationCommandSchema = z
     userId: z.string().max(128).optional(),
     ipAddress: z.string().max(64).optional(),
     deviceHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
-    scope: z.enum(['map', 'server']).default('map'),
+    scope: z.enum(['map', 'server']).default('server'),
     durationSeconds: z.number().int().min(0).max(604800).optional(),
     reason: z.string().trim().min(1).max(500).optional(),
     banId: z.string().uuid().optional(),
@@ -159,7 +159,7 @@ export class ScriptModerationService {
         if (previous.rows[0].scope === 'server' && grant.scope !== 'server')
           throw new PlayerAdminRequestError('授权未授权全服处罚', 403)
       } else this.permission(grant, input.action)
-      if (input.scope === 'server' && grant.scope !== 'server')
+      if (['banPlayer', 'banCurrentIP', 'banCurrentDevice'].includes(input.action) && input.scope === 'server' && grant.scope !== 'server')
         throw new PlayerAdminRequestError('授权未授权全服处罚', 403)
       const context: AdminActionContext = {
         ...hostContext,

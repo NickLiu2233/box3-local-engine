@@ -1,18 +1,27 @@
 import { MuClient } from '@box/mudb/client'
 import type { GameModeration, ModerationOptions, ModerationBan, ModerationBatchResult, ModerationBanRecord, ModerationBanQuery } from '@box/schema/api/js/moderation'
-import type { GameEntity } from '@box/schema/api/js/api'
+import type { GamePlayer } from '@box/schema/api/js/api'
 import { PromiseWrapper } from '../utils/script-promise'
 import { ModerationProtocol } from './moderation-protocol'
+
+// Hide legacy transport scope from the public script records.
+function publicBan<T extends ModerationBan>(ban: T): T {
+  const record = { ...ban }
+  delete (record as T & { scope?: unknown }).scope
+  return record
+}
 
 /** Called by the trusted shell before evaluating user code; play has no inspection property. */
 export class ModerationScript implements GameModeration {
   private pending = new Map<number, { wrapper: PromiseWrapper<any>; timer: number }>()
   private sequence = 0
+  private automaticSequence = 0
+  private readonly requestPrefix = `auto-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
   private protocol
   constructor(
     client: MuClient,
     private schedule: (event: () => void) => void,
-    private playerId: (entity: GameEntity) => number,
+    private playerId: (entity: GamePlayer) => number,
     private timers: { setTimeout: (fn: () => void, ms: number) => number; clearTimeout: (id: number) => void },
   ) {
     this.protocol = client.protocol(ModerationProtocol)
@@ -34,7 +43,7 @@ export class ModerationScript implements GameModeration {
       },
     })
   }
-  private request<T>(action: string, player: GameEntity | undefined, options: object): Promise<T> {
+  private request<T>(action: string, player: GamePlayer | undefined, options: object): Promise<T> {
     if (this.pending.size >= 8) return Promise.reject(new Error('地图管理请求过多'))
     const playerId = player ? this.playerId(player) : 0
     const payload = JSON.stringify({ ...options, action })
@@ -43,7 +52,7 @@ export class ModerationScript implements GameModeration {
     const wrapper = new PromiseWrapper<T>(this.schedule)
     const timer = this.timers.setTimeout(() => {
       this.pending.delete(handle)
-      wrapper.notifyError(new Error('地图管理请求超时；重试请复用 requestId'))
+      wrapper.notifyError(new Error('地图管理请求超时，操作可能已执行；手动重试须事先指定并复用 requestId'))
     }, 12000)
     this.pending.set(handle, { wrapper, timer })
     try {
@@ -55,54 +64,60 @@ export class ModerationScript implements GameModeration {
     }
     return wrapper.query
   }
-  private async ban(action: string, players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]> {
-    if (!Array.isArray(players)) return this.request<ModerationBan>(action, players as GameEntity, options)
+  private operationOptions<T extends { requestId?: string }>(options: T): T & { requestId: string } {
+    return { ...options, requestId: options.requestId === undefined
+      ? `${this.requestPrefix}-${this.automaticSequence++}` : options.requestId }
+  }
+  private async ban(action: string, players: GamePlayer | readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]> {
+    const batchOptions = this.operationOptions(options)
+    if (!Array.isArray(players)) return this.request<ModerationBan>(action, players as GamePlayer, { ...batchOptions, scope: 'server' }).then(publicBan)
     // Validate the batch envelope before starting any irreversible operation.
-    if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(options.requestId))
+    if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId))
       throw new Error('批量最多 100 个玩家，requestId 须为 1–72 个合法字符')
     const targets = [...players]
-    const batchOptions = { ...options }
     const results: ModerationBatchResult[] = []
     for (let index = 0; index < targets.length; index++) {
       try {
-        const ban = await this.request<ModerationBan>(action, targets[index], { ...batchOptions, requestId: `${batchOptions.requestId}.b${index}` })
-        results.push({ index, success: true, ban })
+        const ban = await this.request<ModerationBan>(action, targets[index], { ...batchOptions, requestId: `${batchOptions.requestId}.b${index}`, scope: 'server' })
+        results.push({ index, success: true, ban: publicBan(ban) })
       } catch (error) {
         results.push({ index, success: false, error: error instanceof Error ? error.message : String(error) })
       }
     }
     return results
   }
-  banPlayer(player: GameEntity, options: ModerationOptions): Promise<ModerationBan>
-  banPlayer(players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>
-  banPlayer(players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
-  banPlayer(players: GameEntity | readonly GameEntity[], options: ModerationOptions) {
+  banPlayer(player: GamePlayer, options: ModerationOptions): Promise<ModerationBan>
+  banPlayer(players: readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBatchResult[]>
+  banPlayer(players: GamePlayer | readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
+  banPlayer(players: GamePlayer | readonly GamePlayer[], options: ModerationOptions) {
     return this.ban('banPlayer', players, options)
   }
-  banCurrentIP(player: GameEntity, options: ModerationOptions): Promise<ModerationBan>
-  banCurrentIP(players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>
-  banCurrentIP(players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
-  banCurrentIP(players: GameEntity | readonly GameEntity[], options: ModerationOptions) {
+  banCurrentIP(player: GamePlayer, options: ModerationOptions): Promise<ModerationBan>
+  banCurrentIP(players: readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBatchResult[]>
+  banCurrentIP(players: GamePlayer | readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
+  banCurrentIP(players: GamePlayer | readonly GamePlayer[], options: ModerationOptions) {
     return this.ban('banCurrentIP', players, options)
   }
-  banCurrentDevice(player: GameEntity, options: ModerationOptions): Promise<ModerationBan>
-  banCurrentDevice(players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>
-  banCurrentDevice(players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
-  banCurrentDevice(players: GameEntity | readonly GameEntity[], options: ModerationOptions) {
+  banCurrentDevice(player: GamePlayer, options: ModerationOptions): Promise<ModerationBan>
+  banCurrentDevice(players: readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBatchResult[]>
+  banCurrentDevice(players: GamePlayer | readonly GamePlayer[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
+  banCurrentDevice(players: GamePlayer | readonly GamePlayer[], options: ModerationOptions) {
     return this.ban('banCurrentDevice', players, options)
   }
-  revokeBan(banId: string, options: { reason: string; requestId: string }) {
-    return this.request<{ revoked: boolean; id: string }>('revokeBan', undefined, { ...options, banId })
+  revokeBan(banId: string, options: { reason: string; requestId?: string }) {
+    return this.request<{ revoked: boolean; id: string }>('revokeBan', undefined, { ...this.operationOptions(options), banId })
   }
-  listBans(query: ModerationBanQuery = {}) {
+  async listBans(query: ModerationBanQuery = {}) {
     const { player, ...filters } = query
-    return this.request<{ items: ModerationBanRecord[]; total: number; page: number; pageSize: number }>('listBans', player, filters)
+    const result = await this.request<{ items: ModerationBanRecord[]; total: number; page: number; pageSize: number }>('listBans', player, filters)
+    return { ...result, items: result.items.map(publicBan) }
   }
   async getBan(banId: string) {
     const result = await this.request<{ ban: ModerationBanRecord | null }>('getBan', undefined, { banId })
-    return result.ban
+    return result.ban ? publicBan(result.ban) : null
   }
-  getPlayerStatus(player: GameEntity) {
-    return this.request<{ status: string; bans: ModerationBan[] }>('getPlayerStatus', player, {})
+  async getPlayerStatus(player: GamePlayer) {
+    const result = await this.request<{ status: string; bans: ModerationBan[] }>('getPlayerStatus', player, {})
+    return { ...result, bans: result.bans.map(publicBan) }
   }
 }

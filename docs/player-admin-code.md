@@ -16,7 +16,7 @@
 - `apps/game/shared/player-admin-policy.ts` 与 `player-admin-navigation.ts`：前后端共用角色能力判断和页面准入规则，页面不要再次手写 owner/admin 判断。
 - `hooks/use-admin-request.ts`：异步请求的加载状态与错误提示；重叠请求全部结束后才解除加载状态。调用方负责更新数据，请求失败返回 `undefined`。
 - `player-admin-errors.ts`：统一错误提示，表单校验错误由表单显示。
-- `pages/access/map-authorization-fields.tsx`：创建和编辑授权共用的权限、处罚范围、封禁上限与有效期字段。
+- `pages/access/map-authorization-fields.tsx`：创建和编辑授权共用的权限、封禁上限与有效期字段。
 - `player-admin-api.ts`、`player-admin-types.ts`、`player-admin-format.ts`：已有的请求客户端、业务类型和格式化方法，新增页面优先复用。
 
 地图授权、地图容器配置和地图导入的分组语义不同，不在展示模块内合并业务规则。新增权限或修改有效期规则时，同时修改后端校验与授权字段；不要在创建、编辑窗口分别维护一份。

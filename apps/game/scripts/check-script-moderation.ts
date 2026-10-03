@@ -34,7 +34,7 @@ async function main() {
   await checkPlayerDatabaseReady()
   await report()
   const key = await store.create(
-    { mapId, permissions: ['players.view', 'players.ban', 'identity-bans.manage'] },
+    { mapId, scope: 'map', permissions: ['players.view', 'players.ban', 'identity-bans.manage'] },
     owner.id,
   )
   const { pool, table } = await playerAdminStore()
@@ -57,7 +57,10 @@ async function main() {
     reason: '测试',
     durationSeconds: 120,
     requestId: 'ban-one',
+    scope: 'map' as const,
   }
+  // Seed a legacy restricted grant to verify historical map punishments.
+  await pool.query(`UPDATE ${table('script_admin_keys')} SET scope='map' WHERE id=$1`, [key.id])
   const ban = await moderation.execute(input, context)
   assert.deepEqual(await moderation.execute(input, context), { ...ban, replayed: true })
   assert.equal((await moderation.admission(mapId, player.userId, '192.0.2.2')).allowed, false)
@@ -139,13 +142,13 @@ async function main() {
   const globalKey = await store.create(
     {
       mapId: 'server-map',
-      scope: 'server',
       permissions: ['players.view', 'players.ban'],
     },
     owner.id,
   )
-  const globalInput = { ...input, mapId: 'server-map', scope: 'server', requestId: 'global-ban' }
+  const globalInput = { ...input, mapId: 'server-map', scope: undefined, requestId: 'global-ban' }
   const globalBan = await moderation.execute(globalInput, context)
+  assert.equal(globalBan.scope, 'server')
   assert.equal(
     (await pool.query(`SELECT status FROM ${table('users')} WHERE id=$1`, [player.userId])).rows[0].status,
     'banned',

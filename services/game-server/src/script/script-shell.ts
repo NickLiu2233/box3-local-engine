@@ -90,6 +90,7 @@ import {
 } from './bindings/coerce';
 import { unpackAxis } from './bindings/entity-bindings';
 import { ScriptEntityWrapper } from './bindings/entity-synchronizer';
+import { WRAPPER_PLAYER_INDEX } from './bindings/binding-factory';
 import { ScriptResourceSync } from './bindings/resource';
 import {
   ScriptVoxelSync,
@@ -940,9 +941,9 @@ export class ScriptShell {
       this.client,
       this.scheduler.schedule,
     );
-    const moderation = new ModerationScript(this.client,this.scheduler.schedule, entity => {
-      const wrapper = this.world.entity.getEntityWrapper(entity);
-      if (!wrapper || !wrapper.isPlayer) throw new Error('目标不是当前地图的玩家');
+    const moderation = new ModerationScript(this.client,this.scheduler.schedule, player => {
+      const wrapper = WRAPPER_PLAYER_INDEX.get(player);
+      if (!wrapper || !wrapper.isPlayer || this.world.entity.entityIndex.get(wrapper.id) !== wrapper || wrapper.entity.player !== player) throw new Error('目标不是当前地图的玩家');
       return wrapper.id;
     }, this.scheduler.scheduler);
     this.remoteChannel = new RemoteChannelScriptShell(this.client, this.logger);

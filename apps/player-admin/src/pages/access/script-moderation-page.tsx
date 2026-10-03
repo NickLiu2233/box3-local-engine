@@ -80,7 +80,6 @@ export function ScriptModerationPage() {
           values: {
             mapId: map.groupId,
             permissions: values.permissions,
-            scope: values.scope,
             maximumBanSeconds: values.banLimit === 'permanent' ? 0 : values.minutes * 60,
             expiresAt: new Date(Date.now() + values.days * 86400000).toISOString(),
           },
@@ -100,14 +99,13 @@ export function ScriptModerationPage() {
       permissions: (key.permissions || []) as AuthorizationValues['permissions'],
       days: 7,
       minutes: key.maximumBanSeconds ? key.maximumBanSeconds / 60 : 60,
-      scope: key.scope,
       banLimit: key.maximumBanSeconds === 0 ? 'permanent' : 'limited',
     })
     setRenewing(key)
   }
   const renew = async () => {
     if (!renewing) return
-    const { days, minutes, scope, banLimit, permissions } = await renewalForm.validateFields()
+    const { days, minutes, banLimit, permissions } = await renewalForm.validateFields()
     const map = authorizationMap(catalog, renewing.id)
     if (!map) {
       message.info('请刷新地图列表')
@@ -122,7 +120,6 @@ export function ScriptModerationPage() {
             mapId: map.groupId,
             days,
             maximumBanSeconds: banLimit === 'permanent' ? 0 : minutes * 60,
-            scope,
             permissions,
           },
         },
@@ -197,14 +194,6 @@ export function ScriptModerationPage() {
               ),
             },
             {
-              title: '范围',
-              render: (_, key) => (
-                <Tag color={key.scope === 'server' ? 'orange' : undefined}>
-                  {key.scope === 'server' ? '全服' : '本图'}
-                </Tag>
-              ),
-            },
-            {
               title: '授权状态',
               width: 110,
               render: (_, key) => {
@@ -276,7 +265,6 @@ export function ScriptModerationPage() {
             permissions: ['players.view', 'players.ban'],
             days: 7,
             minutes: 60,
-            scope: 'map',
             banLimit: 'limited',
           }}
         >

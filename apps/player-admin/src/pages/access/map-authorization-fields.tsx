@@ -2,7 +2,6 @@ import { Checkbox, Col, Form, InputNumber, Row, Select } from 'antd'
 
 export type AuthorizationSettings = {
   banLimit: 'limited' | 'permanent'
-  scope: 'map' | 'server'
   minutes: number
   days: number
   permissions: Array<'players.view' | 'players.ban' | 'identity-bans.manage' | 'moderation.view'>
@@ -39,18 +38,6 @@ export function AuthorizationFields() {
         </Checkbox.Group>
       </Form.Item>
 
-      <Form.Item
-        name="scope"
-        label="处罚范围"
-        rules={[{ required: true, message: '请选择处罚范围' }]}
-      >
-        <Select
-          options={[
-            { value: 'map', label: '仅本图' },
-            { value: 'server', label: '全服' },
-          ]}
-        />
-      </Form.Item>
       <Form.Item name="banLimit" label="单次封禁上限" rules={[{ required: true }]}>
         <Select
           options={[

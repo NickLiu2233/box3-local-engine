@@ -8,7 +8,7 @@
 
 1. 用服主身份登录玩家管理后台，打开「服主管理 → 地图授权」。
 2. 点击「创建授权」，在「地图组」中按名称和固定地图 ID 选择地图，勾选需要的操作。
-3. 设置处罚范围（仅本图或全服）、单次封禁上限（限制时长或永久）和授权有效期（1–360 天）。默认仅本图、封禁上限 60 分钟、有效期 7 天。
+3. 设置单次封禁上限（限制时长或永久）和授权有效期（1–360 天）。处罚默认全服，默认封禁上限 60 分钟、有效期 7 天。
 
 授权按不可修改的地图组 ID 绑定，创作端和游玩端共用同一份授权，修改或发布脚本后继续生效，无需重新授权。可以点击「编辑授权 / 续期」调整处罚设置和有效期，或撤销授权。复制地图不会继承另一地图组的授权。地图组选项直接读取创作端项目和游玩端已导入地图，同一地图组只显示一次，无需先启动地图；创建或导入地图后刷新列表即可。
 
@@ -16,11 +16,11 @@
 
 ## 在脚本里调用
 
-目标是当前地图中的玩家实体，不是自己填写的账号 ID 或 IP。
+玩家参数使用当前地图玩家实体上的 `GamePlayer` 组件，即 `entity.player`；批量传入 `GamePlayer[]`，不能直接传实体、账号 ID 或 IP。
 
 ```js
 async function punish(playerEntity, incidentId) {
-  const ban = await world.moderation.banPlayer(playerEntity, {
+  const ban = await world.moderation.banPlayer(playerEntity.player, {
     reason: '持续异常操作',
     durationSeconds: 600,
     requestId: `spam-${incidentId}`,
@@ -29,19 +29,19 @@ async function punish(playerEntity, incidentId) {
 }
 ```
 
-`incidentId` 要对应一次真实事件。同一次操作重试时保留 `requestId`，新的操作再换一个；同一个 ID 不能拿来发送不同内容。ID 支持字母、数字、点、下划线和连字符，最多 80 个字符。
+`requestId` 可省略，运行时会为每次封禁或解除处罚调用生成唯一 ID，批量调用共用一个基础 ID 并按下标派生。省略时再次调用会生成新 ID；需要手动重试时，请像上例一样显式传入固定值。`incidentId` 要对应一次真实事件。同一次操作重试时保留 `requestId`，新的操作再换一个；同一个 ID 不能拿来发送不同内容。ID 支持字母、数字、点、下划线和连字符，最多 80 个字符。
 
 | 方法                                      | 用途                                 | 所需权限               |
 | ----------------------------------------- | ------------------------------------ | ---------------------- |
-| `banPlayer(entity, options)`              | 封禁这个玩家账号                     | `players.ban`          |
-| `banCurrentIP(entity, options)`           | 封禁该玩家当前连接的 IP              | `identity-bans.manage` |
-| `banCurrentDevice(entity, options)`       | 封禁该玩家当前连接的设备身份         | `identity-bans.manage` |
+| `banPlayer(player, options)`              | 封禁这个玩家账号                     | `players.ban`          |
+| `banCurrentIP(player, options)`           | 封禁该玩家当前连接的 IP              | `identity-bans.manage` |
+| `banCurrentDevice(player, options)`       | 封禁该玩家当前连接的设备身份         | `identity-bans.manage` |
 | `revokeBan(banId, { reason, requestId })` | 解除当前授权在本图创建的处罚         | 对应处罚的封禁权限     |
-| `getPlayerStatus(entity)`                 | 查看账号状态、本图内该账号的处罚记录 | `players.view`         |
+| `getPlayerStatus(player)`                 | 查看账号状态、本图内该账号的处罚记录 | `players.view`         |
 | `listBans(options)`                       | 分页查询本图发起的处罚记录           | `moderation.view`      |
 | `getBan(banId)`                           | 查询单条处罚详情                     | `moderation.view`      |
 
-封禁结果包含 `id`、`scope` 和 `expiresAt`；永久封禁的 `expiresAt` 为 `null`。后台允许永久封禁时，脚本可传 `durationSeconds: 0`；永久处罚持续到被解除，授权到期或撤销不会自动解除已有处罚。解除处罚时使用返回的 `id`：
+封禁结果包含 `id` 和 `expiresAt`；永久封禁的 `expiresAt` 为 `null`。后台允许永久封禁时，脚本可传 `durationSeconds: 0`；永久处罚持续到被解除，授权到期或撤销不会自动解除已有处罚。解除处罚时使用返回的 `id`：
 
 ```js
 await world.moderation.revokeBan(banId, {
@@ -50,11 +50,10 @@ await world.moderation.revokeBan(banId, {
 })
 ```
 
-本地图是默认范围，玩家在其他地图不受影响。需要全服处罚时，授权必须允许全服范围，调用也必须显式传入 `scope: 'server'`。
+处罚统一全服，账号封禁会禁止登录并在后台显示封禁状态。脚本参数不再提供 `scope`，后台也不再选择处罚范围。旧的服主地图授权会升级为全服授权；已有处罚保留原范围和截止时间，不会追溯扩大处罚。脚本返回的处罚记录不包含范围字段。
 
 ```js
-await world.moderation.banCurrentIP(playerEntity, {
-  scope: 'server',
+await world.moderation.banCurrentIP(playerEntity.player, {
   reason: '确认的恶意请求',
   durationSeconds: 600,
   requestId: `abuse-${incidentId}`,
@@ -65,7 +64,7 @@ await world.moderation.banCurrentIP(playerEntity, {
 
 ## 被拒绝或超时怎么办
 
-调用失败会拒绝 Promise，需要 `try/catch`。超时不代表服务端一定没有执行成功；重试时使用原来的 `requestId` 和参数。
+调用失败会拒绝 Promise，需要 `try/catch`。超时不代表服务端一定没有执行成功；手动重试须事先显式指定 `requestId`，重试时复用原 ID 和参数。未指定 ID 的超时操作应先复核处罚，不能直接再次调用以保证去重。
 
 如果封禁已生效、目标已离线，重试可能提示玩家已离线。此时在后台复核处罚，不要换一个请求 ID 反复封禁。
 
@@ -83,15 +82,17 @@ await world.moderation.banCurrentIP(playerEntity, {
 
 设备身份依赖浏览器设备凭据，并非硬件序列号。更换浏览器或清除凭据可能产生新身份。
 
-`banPlayer`、`banCurrentIP` 和 `banCurrentDevice` 均支持单个玩家实体或玩家实体数组。单个返回封禁回执，数组返回逐项结果 `{ index, success, ban? , error? }`，顺序与输入一致。批量最多 100 项，仍受原有频率限制；被限流等失败项会明确返回错误，不回滚已成功的处罚。共享 IP 或设备的重复目标也会报告重复处罚。
+`banPlayer`、`banCurrentIP` 和 `banCurrentDevice` 均支持单个 `GamePlayer` 或 `GamePlayer` 数组。单个返回封禁回执，数组返回逐项结果 `{ index, success, ban? , error? }`，顺序与输入一致。批量最多 100 项，仍受原有频率限制；被限流等失败项会明确返回错误，不回滚已成功的处罚。共享 IP 或设备的重复目标也会报告重复处罚。
 
 ```js
-const results = await world.moderation.banCurrentDevice(world.querySelectorAll('player'), {
-  reason: '违规设备',
-  durationSeconds: 0,
-  scope: 'map',
-  requestId: 'device-batch-001',
-})
+const results = await world.moderation.banCurrentDevice(
+  world.querySelectorAll('player').map((entity) => entity.player),
+  {
+    reason: '违规设备',
+    durationSeconds: 0,
+    requestId: 'device-batch-001',
+  },
+)
 for (const result of results) {
   if (result.success === true) console.log(result.index, result.ban.id)
   else console.log(result.index, result.error)
@@ -106,7 +107,7 @@ for (const result of results) {
 
 ```js
 const page = await world.moderation.listBans({
-  player: playerEntity, // 可省略，省略时查询本图发起的全部处罚
+  player: playerEntity.player, // 可省略，省略时查询本图发起的全部处罚
   kind: 'account', // 可省略，也支持 ip、device
   status: 'all', // 可省略，也支持 active、expired、revoked
   page: 1,
@@ -115,9 +116,9 @@ const page = await world.moderation.listBans({
 const detail = await world.moderation.getBan(banId)
 ```
 
-`listBans` 返回 `{ items, total, page, pageSize }`，按创建时间从新到旧排列，每页最多 50 条。记录包含处罚 ID、账号 ID、类型、范围、原因、创建时间、到期时间、解除时间、状态和剩余秒数；永久有效处罚的剩余秒数为 `null`，已过期或已解除为 `0`。
+`listBans` 返回 `{ items, total, page, pageSize }`，按创建时间从新到旧排列，每页最多 50 条。记录包含处罚 ID、账号 ID、类型、原因、创建时间、到期时间、解除时间、状态和剩余秒数；永久有效处罚的剩余秒数为 `null`，已过期或已解除为 `0`。
 
-查询限定为当前地图发起的处罚，包括历史授权创建的记录，以及由本图发起的全服处罚。不会读取其他地图或后台人工创建的处罚，也不返回 IP、设备标识或管理员身份。玩家筛选接受当前在线玩家实体；离线玩家的记录仍可从不带玩家筛选的列表或处罚 ID 查询。详情不存在或属于其他地图时返回 `null`。
+查询限定为当前地图发起的处罚，包括历史授权创建的记录，以及由本图发起的全服处罚。不会读取其他地图或后台人工创建的处罚，也不返回 IP、设备标识或管理员身份。玩家筛选接受当前在线玩家的 `GamePlayer` 组件；离线玩家的记录仍可从不带玩家筛选的列表或处罚 ID 查询。详情不存在或属于其他地图时返回 `null`。
 
 地图授权选择框按地图组 ID 去重，不区分创作端和游玩端。旧版若同一地图组分别存在两端授权，升级时保留最后设置的一份；旧记录仍可在授权列表查看。创建、编辑、撤销后，两端统一使用当前授权。运行实例凭证仍独立验证地图、实例和运行模式。
 
@@ -157,7 +158,7 @@ npm --prefix apps/game run build:script-types
 }
 ```
 
-`world.moderation.` 会提示可用方法，调用时会提示参数类型，填写选项时会提示 `reason`、`durationSeconds`、`scope` 和 `requestId`。把鼠标放到方法或字段上可以查看说明。声明只用于开发提示，不会给地图增加管理权限。
+`world.moderation.` 会提示可用方法，调用时会提示参数类型，填写选项时会提示 `reason`、`durationSeconds` 和可选 `requestId`。把鼠标放到方法或字段上可以查看说明。声明只用于开发提示，不会给地图增加管理权限。
 
 管理接口的类型以 `internals/schema/api/js/moderation.ts` 为准，SDK 的对应类型由构建自动同步，不需要手动维护两份。
 
