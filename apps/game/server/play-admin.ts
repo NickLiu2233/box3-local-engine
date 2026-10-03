@@ -532,26 +532,78 @@ function collectReviewResources(world: ValidatedPlayWorld, prefix: string) {
   };
 }
 
+// Numeric version segments avoid lexical ordering (1.10 must be newer than 1.9).
+// Short versions such as v1 are treated as 1.0.0; prereleases precede releases.
+function comparePlayVersions(incoming: string, installed: string) {
+  const parse = (value: string) => {
+    const match = value.trim().match(/^v?(\d+(?:\.\d+)*)(?:-([a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*))?$/i);
+    if (!match) throw new Error(`版本号“${value}”无法比较，请使用数字版本号，如 1.0.0`);
+    return { core: match[1].split('.'), pre: match[2]?.split('.') };
+  };
+  const numeric = (left: string, right: string) => {
+    const a = left.replace(/^0+(?=\d)/, '');
+    const b = right.replace(/^0+(?=\d)/, '');
+    return a.length === b.length ? (a < b ? -1 : a > b ? 1 : 0) : a.length < b.length ? -1 : 1;
+  };
+  const a = parse(incoming);
+  const b = parse(installed);
+  for (let i = 0; i < Math.max(a.core.length, b.core.length); i += 1) {
+    const order = numeric(a.core[i] || '0', b.core[i] || '0');
+    if (order) return order;
+  }
+  if (!a.pre || !b.pre) return a.pre ? -1 : b.pre ? 1 : 0;
+  for (let i = 0; i < Math.max(a.pre.length, b.pre.length); i += 1) {
+    const left = a.pre[i];
+    const right = b.pre[i];
+    if (left === undefined || right === undefined) return left === right ? 0 : left === undefined ? -1 : 1;
+    const leftNumeric = /^\d+$/.test(left);
+    const rightNumeric = /^\d+$/.test(right);
+    const order = leftNumeric && rightNumeric ? numeric(left, right)
+      : leftNumeric !== rightNumeric ? (leftNumeric ? -1 : 1)
+      : left < right ? -1 : left > right ? 1 : 0;
+    if (order) return order;
+  }
+  return 0;
+}
+
 function validateInstallConflicts(validated: ValidatedPlayWorld[]) {
   const root = libraryRoot();
   fs.mkdirSync(root, { recursive: true });
   const installedWorlds = getPlayWorlds();
-  const installedReferences = new Set(
-    installedWorlds.flatMap((world) => [world.id, world.publicId]),
-  );
-  const installedPermanentIds = new Set(installedWorlds.map((world) => world.permanentMapId));
+  const replacements = new Map<string, (typeof installedWorlds)[number]>();
   for (const world of validated) {
-    if (fs.existsSync(path.join(root, world.id))) {
-      throw new Error(`同 ID 地图“${world.manifest.projectName || world.id}”已经存在，请先删除旧地图`);
+    const existing = installedWorlds.find((item) => item.permanentMapId === world.manifest.permanentMapId);
+    if (!existing) continue;
+    const order = comparePlayVersions(String(world.manifest.version || ''), existing.version);
+    if (order <= 0) {
+      throw new Error(`地图“${existing.name}”导入版本 ${world.manifest.version} ${order === 0 ? '与当前版本相同' : '低于当前版本'}（${existing.version}），未覆盖`);
     }
-    if (installedReferences.has(world.id) || installedReferences.has(world.publicId)) {
-      throw new Error(`地图 ID“${world.publicId}”已经被其他地图使用`);
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, existing.id, 'manifest.json'), 'utf8'));
+    if (manifest.permanentMapGroupId !== world.manifest.permanentMapGroupId || existing.mapRole !== world.manifest.mapRole) {
+      throw new Error(`地图“${existing.name}”的地图组关系与已安装版本不一致`);
     }
-    if (installedPermanentIds.has(String(world.manifest.permanentMapId))) {
-      throw new Error(`永久地图 ID“${world.manifest.permanentMapId}”已经被其他地图使用`);
+    replacements.set(world.id, existing);
+  }
+  const ids = new Set<string>();
+  const references = new Map<string, string>();
+  for (const world of validated) {
+    const existing = replacements.get(world.id);
+    const id = existing?.id || world.id;
+    const publicId = existing?.publicId || world.publicId;
+    if (ids.has(id)) throw new Error('游玩包包含重复地图');
+    ids.add(id);
+    if (!existing && fs.existsSync(path.join(root, id))) {
+      throw new Error(`同 ID 地图“${world.manifest.projectName || id}”已经存在，地图 ID 不一致，无法覆盖`);
+    }
+    for (const reference of [id, publicId]) {
+      if (installedWorlds.some((item) => item.id !== existing?.id && (item.id === reference || item.publicId === reference)) ||
+          (references.has(reference) && references.get(reference) !== id)) {
+        throw new Error(`地图 ID“${reference}”已经被其他地图使用`);
+      }
+      references.set(reference, id);
     }
   }
-  return root;
+  return { root, replacements };
 }
 
 async function preparePlayBundle(archivePath: string) {
@@ -565,8 +617,8 @@ async function preparePlayBundle(archivePath: string) {
       root: candidate,
     }));
     validateMapGroupBundle(temporaryRoot, worlds);
-    validateInstallConflicts(worlds);
-    return { temporaryRoot, worlds };
+    const { replacements } = validateInstallConflicts(worlds);
+    return { temporaryRoot, worlds, replacements };
   } catch (error) {
     cleanupDirectoryQuietly(temporaryRoot);
     throw error;
@@ -574,28 +626,59 @@ async function preparePlayBundle(archivePath: string) {
 }
 
 function installPreparedPlayBundle(validated: ValidatedPlayWorld[]) {
-  const root = validateInstallConflicts(validated);
-  const nonce = `${process.pid}-${Date.now()}`;
+  // Recheck at confirmation: another import may have upgraded a reviewed map.
+  const { root, replacements } = validateInstallConflicts(validated);
+  const nonce = `${process.pid}-${randomBytes(8).toString('hex')}`;
+  const remapId = (id: string) => replacements.get(id)?.id || id;
   const staging = new Map(
-    validated.map((world) => [world.id, path.join(root, `.${world.id}-importing-${nonce}`)]),
+    validated.map((world) => [remapId(world.id), path.join(root, `.${remapId(world.id)}-importing-${nonce}`)]),
   );
+  const backups = new Map<string, string>();
   const installed: string[] = [];
   try {
-    for (const world of validated) copyReadableDirectory(world.root, staging.get(world.id)!);
     for (const world of validated) {
-      fs.renameSync(staging.get(world.id)!, path.join(root, world.id));
-      installed.push(world.id);
+      const existing = replacements.get(world.id);
+      const id = remapId(world.id);
+      const stage = staging.get(id)!;
+      if (existing) {
+        // Retain runtime storage and content-addressed blobs used by player data.
+        copyReadableDirectory(path.join(root, id, 'data'), path.join(stage, 'data'));
+      }
+      copyReadableDirectory(world.root, stage);
+      const manifest = { ...world.manifest, id };
+      manifest.mainProjectId = remapId(String(manifest.mainProjectId || world.id));
+      manifest.mapGroupId = remapId(String(manifest.mapGroupId || world.id));
+      if (existing) {
+        const previous = JSON.parse(fs.readFileSync(path.join(root, id, 'manifest.json'), 'utf8'));
+        manifest.publicId = existing.publicId;
+        manifest.playEnabled = existing.playEnabled;
+        manifest.mapGroupId = previous.mapGroupId;
+        if (previous.installedAt) manifest.installedAt = previous.installedAt;
+      }
+      fs.writeFileSync(path.join(stage, 'manifest.json'), JSON.stringify(manifest));
+    }
+    for (const world of validated) {
+      const id = remapId(world.id);
+      if (replacements.has(world.id)) {
+        const backup = path.join(root, `.${id}-backup-${nonce}`);
+        fs.renameSync(path.join(root, id), backup);
+        backups.set(id, backup);
+      }
+      fs.renameSync(staging.get(id)!, path.join(root, id));
+      installed.push(id);
     }
   } catch (error) {
     for (const target of staging.values()) cleanupDirectoryQuietly(target);
-    for (const id of installed) cleanupDirectoryQuietly(path.join(root, id));
+    for (const id of installed) removeDirectoryWithRetry(path.join(root, id));
+    for (const [id, backup] of backups) fs.renameSync(backup, path.join(root, id));
     if ((error as NodeJS.ErrnoException).code === 'EROFS' || (error as NodeJS.ErrnoException).code === 'EACCES') {
       throw new Error('地图目录不可写，请检查 Play 地图库挂载权限');
     }
     throw error;
   }
+  for (const backup of backups.values()) cleanupDirectoryQuietly(backup);
   const installedWorlds = getPlayWorlds().filter((world) => installed.includes(world.id));
-  const mainProjectId = String(validated[0].manifest.mainProjectId || validated[0].id);
+  const mainProjectId = remapId(String(validated[0].manifest.mainProjectId || validated[0].id));
   return {
     world: installedWorlds.find((world) => world.id === mainProjectId) || installedWorlds[0],
     worlds: installedWorlds,
@@ -638,6 +721,11 @@ export async function createPlayBundleReview(archivePath: string): Promise<PlayB
   const id = randomBytes(32).toString('base64url');
   const resources = new Map<string, { path: string; resource: PlayBundleReviewResource }>();
   const warnings: string[] = [];
+  const { replacements } = prepared;
+  for (const world of prepared.worlds) {
+    const previous = replacements.get(world.id);
+    if (previous) warnings.push(`“${previous.name}”将更新：${previous.version} → ${world.manifest.version}`);
+  }
   let blobCount = 0;
   let unindexedBlobCount = 0;
   for (const [index, world] of prepared.worlds.entries()) {

@@ -23,7 +23,8 @@ function signature(payload, secret) {
     return encodeBase64URL((0, crypto_1.createHmac)('sha256', secret).update(payload).digest());
 }
 function validIdentity(value) {
-    return (subjectPattern.test(value.subjectId) &&
+    return ((value.deviceHash === undefined || /^[0-9a-f]{64}$/.test(value.deviceHash)) &&
+        subjectPattern.test(value.subjectId) &&
         userIdPattern.test(value.userId) &&
         usernamePattern.test(value.username) &&
         typeof value.boxId === 'string' &&

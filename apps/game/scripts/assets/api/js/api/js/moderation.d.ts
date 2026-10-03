@@ -3,7 +3,7 @@
 type ModerationOptions = {
     /** 处罚原因，会写入后台审计。 */
     reason: string;
-    /** 封禁秒数，不能超过后台授权上限。 */
+    /** 封禁秒数；0 表示永久，需要后台允许永久封禁。有限时长不能超过授权上限。 */
     durationSeconds: number;
     /** 默认仅本地图；全服处罚还需要后台允许。 */
     scope?: 'map' | 'server';
@@ -13,15 +13,61 @@ type ModerationOptions = {
 type ModerationBan = {
     id: string;
     scope: 'map' | 'server';
-    expiresAt: string;
+    expiresAt: string | null;
+};
+/** 批量结果与输入数组顺序一致；失败项不会阻止后续项。 */
+type ModerationBatchResult = {
+    index: number;
+    success: true;
+    ban: ModerationBan;
+} | {
+    index: number;
+    success: false;
+    error: string;
+};
+type ModerationBanRecord = ModerationBan & {
+    kind: 'account' | 'ip' | 'device';
+    /** 目标账号 ID，不包含 IP、设备标识或管理员身份。 */
+    userId: string | null;
+    reason: string;
+    createdAt: string;
+    revokedAt: string | null;
+    status: 'active' | 'expired' | 'revoked';
+    /** 永久有效处罚为 null，已过期或已解除为 0。 */
+    remainingSeconds: number | null;
+};
+type ModerationBanQuery = {
+    /** 可选：筛选当前在线玩家的处罚记录。 */
+    player?: GameEntity;
+    kind?: 'account' | 'ip' | 'device';
+    status?: 'active' | 'expired' | 'revoked' | 'all';
+    /** 页码，从 1 开始。 */
+    page?: number;
+    /** 每页 1–50 条，默认 20 条。 */
+    pageSize?: number;
 };
 interface GameModeration {
-    /** 仅创作端可读取的服务端脚本指纹；游玩端没有此属性。修改脚本后需要重新绑定。 */
-    readonly scriptFingerprint?: string;
     /** 封禁当前地图中的玩家账号，返回处罚 ID 和截止时间。 */
-    banPlayer: (player: GameEntity, options: ModerationOptions) => Promise<ModerationBan>;
+    banPlayer: {
+        (player: GameEntity, options: ModerationOptions): Promise<ModerationBan>;
+        /** 批量最多 100 个玩家，逐项返回结果；requestId 最长 72 字符，重试须保持数组顺序。 */
+        (players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>;
+        (players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>;
+    };
     /** 封禁玩家当前连接的 IP。共享网络可能影响其他玩家，请谨慎使用。 */
-    banCurrentIP: (player: GameEntity, options: ModerationOptions) => Promise<ModerationBan>;
+    banCurrentIP: {
+        (player: GameEntity, options: ModerationOptions): Promise<ModerationBan>;
+        /** 批量最多 100 个玩家，逐项返回结果；requestId 最长 72 字符，重试须保持数组顺序。 */
+        (players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>;
+        (players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>;
+    };
+    /** 封禁玩家当前连接的设备身份，不向脚本暴露设备标识。设备身份由浏览器凭据识别，重置凭据后可能变化。 */
+    banCurrentDevice: {
+        (player: GameEntity, options: ModerationOptions): Promise<ModerationBan>;
+        /** 批量最多 100 个玩家，逐项返回结果；requestId 最长 72 字符，重试须保持数组顺序。 */
+        (players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>;
+        (players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>;
+    };
     /** 解除同一授权在本图创建的处罚；原因和请求 ID 必填。 */
     revokeBan: (banId: string, options: {
         reason: string;
@@ -30,6 +76,15 @@ interface GameModeration {
         revoked: boolean;
         id: string;
     }>;
+    /** 分页查询当前地图发起的处罚记录，包括已过期、已解除记录。须由服主授予「查询处罚记录与详情」。 */
+    listBans: (query?: ModerationBanQuery) => Promise<{
+        items: ModerationBanRecord[];
+        total: number;
+        page: number;
+        pageSize: number;
+    }>;
+    /** 查询当前地图发起的指定处罚；不存在或属于其他地图时返回 null。须由服主授予「查询处罚记录与详情」。 */
+    getBan: (banId: string) => Promise<ModerationBanRecord | null>;
     /** 查询当前玩家的账号状态和本图处罚，不暴露 IP 或密钥。 */
     getPlayerStatus: (player: GameEntity) => Promise<{
         status: string;

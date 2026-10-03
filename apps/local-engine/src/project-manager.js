@@ -2294,6 +2294,9 @@ function getLaunchTarget({ project, release }) {
     return {
       kind: 'source',
       id: project,
+      name: metadata.name,
+      publicId: metadata.publicId,
+      description: metadata.description,
       dataRoot: path.join(root, 'source'),
       statePath: path.join(root, 'source', 'project-state.json'),
       groupStatePath: mapGroupManager.paths(project).statePath,
@@ -2333,6 +2336,9 @@ function getLaunchTarget({ project, release }) {
     return {
       kind: 'release',
       id,
+      name: manifest.projectName,
+      publicId: manifest.publicId,
+      description: manifest.description,
       version,
       dataRoot,
       statePath,

@@ -1,9 +1,10 @@
-import { describe, test, expect } from '@jest/globals'
+import { describe, test, expect, jest } from '@jest/globals'
 import { issueModerationRuntimeToken } from '@box/utils/moderation-runtime-auth'
 import { moderationRuntimeIdentity } from './moderation-runtime-authorization'
 import type { NextApiRequest } from 'next'
 import type {NextApiResponse} from 'next'
 import moderationHandler from '../pages/api/player-internal/script-moderation'
+import { scriptModerationService } from './script-moderation-service'
 import metadataHandler from '../pages/api/player-internal/script-metadata'
 
 describe('moderation runtime authorization', () => {
@@ -28,20 +29,25 @@ describe('moderation runtime authorization', () => {
       else process.env.BOX_MODERATION_SIGNING_SECRET = previous
     }
   })
-  test('runtime credentials cannot operate another map, edit-mode bans or private-room version reporting',async()=>{
+  test('runtime credentials cannot operate another map, unverified mode changes or private-room version reporting',async()=>{
     const previousSecret=process.env.BOX_MODERATION_SIGNING_SECRET,previousMode=process.env.BOX_DEPLOYMENT_MODE;
     process.env.BOX_MODERATION_SIGNING_SECRET=secret;process.env.BOX_DEPLOYMENT_MODE='player-service';
     const call=async(handler:typeof moderationHandler,identity:{mapId:string;runtimeId:string;mode:'edit'|'play'},body:unknown)=>{
       let status=0;const res={setHeader:()=>{},status:(value:number)=>{status=value;return res},json:()=>res,end:()=>res};
       const token=issueModerationRuntimeToken(identity,secret);
-      await handler({method:'POST',headers:{authorization:`Moderation ${token}`},body} as NextApiRequest,res as unknown as NextApiResponse);
+      await handler({method:'POST',headers:{authorization:`Moderation ${token}`},socket:{remoteAddress:'127.0.0.1'},body} as NextApiRequest,res as unknown as NextApiResponse);
       return status;
     };
     try{
-      const command={mapId:'other-map',scriptFingerprint:'a'.repeat(64),action:'getPlayerStatus',userId:'1'};
+      const command={mapId:'other-map',action:'getPlayerStatus',userId:'1'};
       expect(await call(moderationHandler,{mapId:'test-map',runtimeId:'test-map',mode:'play'},command)).toBe(403);
-      expect(await call(moderationHandler,{mapId:'other-map',runtimeId:'other-map',mode:'edit'},command)).toBe(403);
-      expect(await call(metadataHandler,{mapId:'test-map',runtimeId:'private-room',mode:'play'},{mapId:'test-map',mode:'play',name:'test',scriptFingerprint:'a'.repeat(64)})).toBe(403);
+      const execute = jest.spyOn(scriptModerationService, 'execute').mockResolvedValue({ status: 'active', bans: [] } as never);
+      try {
+        expect(await call(moderationHandler,{mapId:'other-map',runtimeId:'other-map',mode:'edit'},command)).toBe(200);
+        expect(execute.mock.calls[0][2]).toBe('edit');
+        expect(await call(moderationHandler,{mapId:'other-map',runtimeId:'other-map',mode:'edit'},{...command, mode:'play'})).toBe(400);
+      } finally { execute.mockRestore(); }
+      expect(await call(metadataHandler,{mapId:'test-map',runtimeId:'private-room',mode:'play'},{mapId:'test-map',mode:'play',name:'test'})).toBe(403);
     }finally{
       if(previousSecret===undefined)delete process.env.BOX_MODERATION_SIGNING_SECRET;else process.env.BOX_MODERATION_SIGNING_SECRET=previousSecret;
       if(previousMode===undefined)delete process.env.BOX_DEPLOYMENT_MODE;else process.env.BOX_DEPLOYMENT_MODE=previousMode;

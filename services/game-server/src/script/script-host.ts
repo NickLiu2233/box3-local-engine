@@ -102,7 +102,6 @@ import { RemoteChannelServer } from '../remote-channel/channel-server';
 import { PlayerServer } from '../player/player-server';
 import { TeleportServer } from '../teleport/teleport-server';
 import { ModerationHost } from '../moderation/moderation-host';
-import { projectScriptFingerprint } from '../moderation/moderation-client';
 import { ModerationMetadataReporter } from '../moderation/moderation-metadata';
 import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
 import { EntityNameComponentSetSchema } from '@box/schema/entity-name/entity-name';
@@ -139,9 +138,7 @@ export class ScriptHost {
   public gui: GUIServer;
   private marketProtocol: MuServerProtocol<typeof MarketProtocol>;
   public teleport: TeleportServer;
-  private moderationFingerprint = '';
   private moderationMetadata: ModerationMetadataReporter;
-  private moderationSourcesReady = false;
   public remoteChannel: RemoteChannelServer;
   public input: InputServer;
   public player: PlayerServer;
@@ -259,7 +256,6 @@ export class ScriptHost {
     return () => {
       ScriptSrcSchema.assign(this._state.scriptSrc, scriptSrc);
       ScriptSrcSchema.free(scriptSrc);
-      this.moderationSourcesReady=true;
     };
   }
 
@@ -429,8 +425,7 @@ export class ScriptHost {
     player: PlayerServer;
   }) {
     this._state = spec.state;
-    this.moderationMetadata=new ModerationMetadataReporter(()=>({name:this._state.project.name,
-      fingerprint:this.moderationSourcesReady ? projectScriptFingerprint(this._state.project,this._state.scriptSrc.serverSrc) : ''}));
+    this.moderationMetadata = new ModerationMetadataReporter(() => ({ name: this._state.project.name }));
     this._state.script.runSemaphore = new Semaphore(0);
     this._state.script.stopSemaphore = new Semaphore(1);
     this._state.script.isolateStopSemaphore = new Semaphore(0);
@@ -658,7 +653,6 @@ export class ScriptHost {
 
           const { serverId } = this._state.settings;
           initPacket.config.serverId = serverId;
-          initPacket.config.moderationFingerprintReadable = process.env.MODE === 'edit';
 
           // copy zones
           ZoneSetRDA.stateSchema.assign(
@@ -696,10 +690,7 @@ export class ScriptHost {
           } else {
             initPacket.scriptIndex = '';
           }
-          this.moderationFingerprint = projectScriptFingerprint(this._state.project,this._state.scriptSrc.serverSrc);
           void this.moderationMetadata.refresh();
-          // The play worker receives no fingerprint, even through its raw configuration packet.
-          initPacket.config.moderationFingerprint = initPacket.config.moderationFingerprintReadable ? this.moderationFingerprint : '';
 
           // clear non-seed entities
           this._clearNonSeeds(initPacket);
@@ -822,12 +813,9 @@ export class ScriptHost {
       scriptServer: this.muServer,
       state: spec.state,
     });
-    new ModerationHost(this.muServer, id => this._scriptReady(id), () => {
-      // An old worker must not borrow the fingerprint of newly edited modules.
-      return this.moderationFingerprint === projectScriptFingerprint(this._state.project,this._state.scriptSrc.serverSrc) ? this.moderationFingerprint : '';
-    }, id => {
+    new ModerationHost(this.muServer, id => this._scriptReady(id), id => {
       const connection = getById(this._state.connectionSet,id);
-      return connection ? {userId:connection.sessionData.user.id,ipAddress:connection.sessionData.ipAddress} : undefined;
+      return connection ? {userId:connection.sessionData.user.id,ipAddress:connection.sessionData.ipAddress,deviceHash:connection.sessionData.deviceHash} : undefined;
     }, id => {
       const connection = getById(this._state.connectionSet,id);
       if (connection) this.net.kickSession(connection.sessionId);

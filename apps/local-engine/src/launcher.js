@@ -767,7 +767,10 @@ async function main() {
           // getGroupStorage is shared inside one map group, never across
           // unrelated projects or independently distributed game packages.
           BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
-          BOX_SERVER_NAME: process.env.BOX_WORLD_NAME || process.env.BOX_SERVER_NAME || 'BOX 世界',
+          BOX_SERVER_NAME: launchTarget?.name || process.env.BOX_WORLD_NAME || process.env.BOX_SERVER_NAME || 'BOX 世界',
+          BOX_WORLD_PUBLIC_ID: launchTarget?.publicId || projectId,
+          BOX_WORLD_DESCRIPTION: launchTarget?.description || '',
+          BOX_WORLD_VERSION: mode === 'play' ? launchTarget?.version || '' : '',
           // world.serverId is a runtime identity, not the mutable route used
           // to open a map. Public/edit runtimes use the permanent map ID;
           // private teleport runtimes keep their generated room ID.
@@ -866,6 +869,9 @@ async function main() {
             mapId: world.id,
           }),
           BOX_SERVER_NAME: world.manifest.projectName || world.id,
+          BOX_WORLD_PUBLIC_ID: world.manifest.publicId || world.id,
+          BOX_WORLD_DESCRIPTION: world.manifest.description || '',
+          BOX_WORLD_VERSION: world.manifest.version || '',
           CONTAINER_NAME: world.id,
           SERVER_ID: instance.serverId || world.manifest.permanentMapId || world.id,
           TYPE: instance.privateRoom ? 'teleport' : 'public',

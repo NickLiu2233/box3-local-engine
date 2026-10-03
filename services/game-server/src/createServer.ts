@@ -313,6 +313,7 @@ export async function createGameServer(spec: {
     // resolve session data for user
     let sessionData: GameSessionData;
     let userData: GameSessionData['user'];
+    let deviceHash = '';
     if (login === 'admin') {
       // fake admin login
       const adminId = (Math.random() * 99999) | 0;
@@ -360,6 +361,7 @@ export async function createGameServer(spec: {
           userData.permission |= DB.UserPermission.gameAdmin;
         }
         fingerPrint = runtimeIdentity.subjectId;
+        deviceHash = runtimeIdentity.deviceHash || "";
         spec.logger.info(
           `Local ${runtimeIdentity.userId ? 'user' : 'guest'} log in: ${runtimeIdentity.displayName}`,
         );
@@ -406,6 +408,7 @@ export async function createGameServer(spec: {
       reqUrl,
       fingerPrint,
       'CN',
+      deviceHash,
     );
 
     // prepare user configuration

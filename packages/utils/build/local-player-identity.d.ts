@@ -1,6 +1,7 @@
 export type LocalPlayerRole = 'player' | 'moderator' | 'admin';
 export type LocalPlayerStatus = 'active' | 'banned';
 export type RuntimePlayerIdentity = {
+    deviceHash?: string;
     subjectId: string;
     userId: string;
     username: string;

@@ -1,3 +1,5 @@
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { reportAdminError } from '../../player-admin-errors'
 import { Form, message } from 'antd'
 import { useCallback, useState } from 'react'
 
@@ -7,6 +9,7 @@ import type { PlayerBatchAction } from './player-table'
 
 /** Owns player search, profile lifecycle, bulk actions, and account bans. */
 export function usePlayerDirectory(view: View, canExport: boolean) {
+  const { loading, run } = useAdminRequest()
   const [players, setPlayers] = useState<Player[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -19,32 +22,35 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [createOpen, setCreateOpen] = useState(false)
   const [banDialog, setBanDialog] = useState<{ player: Player; detail?: Detail }>()
-  const [exporting, setExporting] = useState(false)
+  const { loading: exporting, run: runExport } = useAdminRequest()
   const [createForm] = Form.useForm()
   const [editForm] = Form.useForm()
   const [banForm] = Form.useForm()
 
-  const load = useCallback(async () => {
-    const result = await api.getApiPlayAdminPlayers({
-      params: {
-        query: {
-          search,
-          page: String(page),
-          pageSize: String(pageSize),
-          identity: view === 'account-bans' ? 'banned' : identity,
-          online: view === 'online-sessions' ? 'online' : 'all',
-          sort: 'lastSeen',
-        },
-      },
-    })
-    setPlayers(result.players || [])
-    setTotal(result.total || 0)
-  }, [identity, page, pageSize, search, view])
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const result = await api.getApiPlayAdminPlayers({
+          params: {
+            query: {
+              search,
+              page: String(page),
+              pageSize: String(pageSize),
+              identity: view === 'account-bans' ? 'banned' : identity,
+              online: view === 'online-sessions' ? 'online' : 'all',
+              sort: 'lastSeen',
+            },
+          },
+        })
+        setPlayers(result.players || [])
+        setTotal(result.total || 0)
+      }),
+    [run, identity, page, pageSize, search, view],
+  )
 
   const exportPlayers = async () => {
     if (exporting || !canExport) return
-    setExporting(true)
-    try {
+    return runExport(async () => {
       const result = await api.getApiPlayAdminPlayersExportRaw({
         params: { query: { search, identity, online: 'all', sort: 'lastSeen' } },
         cache: 'no-store',
@@ -62,15 +68,11 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       const exported = result.response.headers.get('X-BOX-Exported-Rows') || '0'
       const totalRows = result.response.headers.get('X-BOX-Total-Rows') || exported
       message.success(`已导出 ${exported} / ${totalRows} 条玩家记录`)
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setExporting(false)
-    }
+    })
   }
 
   const openDetails = async (player: Player, tab = 'profile') => {
-    try {
+    return run(async () => {
       setSelected(player)
       setDetails(undefined)
       setDetailTab(tab)
@@ -86,9 +88,7 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
         adminNote: result.player.adminNote,
         tags: result.player.tags?.join(', '),
       })
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const closeDetails = () => {
@@ -98,7 +98,7 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
 
   const savePlayer = async () => {
     if (!selected) return
-    try {
+    return run(async () => {
       const values = await editForm.validateFields()
       const result = (await api.patchApiPlayAdminPlayersSubjectId({
         params: { path: { subjectId: selected.subjectId } },
@@ -118,14 +118,12 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       }
       message.success('玩家资料已保存')
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const command = async (commandValue: Record<string, unknown>, success: string) => {
     if (!selected) return
-    try {
+    return run(async () => {
       await api.postApiPlayAdminPlayersSubjectId({
         params: { path: { subjectId: selected.subjectId } },
         body: commandValue,
@@ -133,13 +131,11 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       message.success(success)
       await openDetails(selected)
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const toggleBan = async (player: Player) => {
-    try {
+    return run(async () => {
       const status = player.status === 'banned' ? 'active' : 'banned'
       await api.patchApiPlayAdminPlayersSubjectId({
         params: { path: { subjectId: player.subjectId } },
@@ -150,9 +146,7 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       })
       message.success(status === 'banned' ? '账号已封禁' : '账号已解除封禁')
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const openBanDialog = async (player: Player) => {
@@ -166,7 +160,7 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       setBanDialog({ player: detail.player, detail })
     } catch (error) {
       setBanDialog(undefined)
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
 
@@ -202,26 +196,24 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       message.success('封禁已生效')
       await load()
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
 
   const deletePlayer = async (player = selected) => {
     if (!player) return
-    try {
+    return run(async () => {
       await api.deleteApiPlayAdminPlayersSubjectId({
         params: { path: { subjectId: player.subjectId } },
       })
       message.success('玩家身份已删除')
       closeDetails()
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const batchPlayers = async (action: PlayerBatchAction, subjectIds: string[], tag?: string) => {
-    try {
+    return run(async () => {
       await api.postApiPlayAdminPlayersBatch({
         body: {
           action,
@@ -240,24 +232,21 @@ export function usePlayerDirectory(view: View, canExport: boolean) {
       message.success(notices[action])
       setSelectedIds([])
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const createPlayer = async () => {
-    try {
+    return run(async () => {
       await api.postApiPlayAdminPlayers({ body: await createForm.validateFields() })
       message.success('玩家账号已创建')
       setCreateOpen(false)
       createForm.resetFields()
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   return {
+    loading,
     players,
     total,
     page,

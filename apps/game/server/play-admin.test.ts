@@ -21,14 +21,14 @@ const { resolveWorld } = require('../../local-engine/src/play-library') as {
 const temporaryRoots: string[] = [];
 const reviewIds: string[] = [];
 
-function createGroupBundle() {
+function createGroupBundle(version = 'v1', suffix = '') {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-group-test-'));
   temporaryRoots.push(root);
   const input = path.join(root, 'input');
   const archivePath = path.join(root, 'group.boxplay');
   const members = [
-    { id: 'group-main', permanentMapId: '11111111111111111111', name: '主地图', mapRole: 'main' },
-    { id: 'group-dungeon', permanentMapId: '22222222222222222222', name: '副地图', mapRole: 'submap' },
+    { id: `group-main${suffix}`, permanentMapId: '11111111111111111111', name: '主地图', mapRole: 'main' },
+    { id: `group-dungeon${suffix}`, permanentMapId: '22222222222222222222', name: '副地图', mapRole: 'submap' },
   ] as const;
 
   for (const member of members) {
@@ -51,10 +51,10 @@ function createGroupBundle() {
       permanentMapId: member.permanentMapId,
       permanentMapGroupId: members[0].permanentMapId,
       projectName: member.name,
-      version: 'v1',
+      version,
       permissionHash,
-      mapGroupId: 'group-main',
-      mainProjectId: 'group-main',
+      mapGroupId: members[0].id,
+      mainProjectId: members[0].id,
       mapRole: member.mapRole,
     }));
     fs.writeFileSync(
@@ -101,14 +101,14 @@ function createGroupBundle() {
   fs.writeFileSync(path.join(input, 'bundle.json'), JSON.stringify({
     formatVersion: 1,
     type: 'map-group-play-bundle',
-    mapGroupId: 'group-main',
+    mapGroupId: members[0].id,
     permanentMapGroupId: members[0].permanentMapId,
-    mainProjectId: 'group-main',
+    mainProjectId: members[0].id,
     members: members.map((member) => ({
       id: member.id,
       permanentMapId: member.permanentMapId,
       mapRole: member.mapRole,
-      mainProjectId: 'group-main',
+      mainProjectId: members[0].id,
     })),
   }));
   execFileSync('tar', ['-czf', archivePath, '-C', input, 'bundle.json', 'worlds']);
@@ -203,6 +203,81 @@ describe('map group play bundle import', () => {
     expect(fs.existsSync(path.join(library, 'group-dungeon', 'manifest.json'))).toBe(true);
   });
 
+  test('upgrades matching projects and preserves local access settings', async () => {
+    const old = createGroupBundle('1.9.0');
+    process.env.BOX_PLAY_LIBRARY_PATH = path.join(old.root, 'library');
+    await importPlayBundle(old.archivePath);
+    updatePlayWorld('group-main', { publicId: 'my-town' });
+    const incoming = createGroupBundle('1.10.0');
+    const review = await createPlayBundleReview(incoming.archivePath);
+    const result = confirmPlayBundleReview(review.id);
+    expect(result.world.version).toBe('1.10.0');
+    expect(result.world.publicId).toBe('my-town');
+    expect(result.world.permanentMapId).toBe('11111111111111111111');
+    await expect(importPlayBundle(incoming.archivePath)).rejects.toThrow('相同');
+    await expect(importPlayBundle(old.archivePath)).rejects.toThrow('低于');
+  });
+
+  test('keeps installed identities, group links and runtime storage when archive directory IDs change', async () => {
+    const old = createGroupBundle('1.0.0');
+    const library = path.join(old.root, 'library');
+    process.env.BOX_PLAY_LIBRARY_PATH = library;
+    await importPlayBundle(old.archivePath);
+    fs.writeFileSync(path.join(library, 'group-main', 'data', 'player-storage.json'), '{"score":42}');
+    const incoming = createGroupBundle('2.0.0', '-exported');
+    const result = await importPlayBundle(incoming.archivePath);
+    expect(result.mainProjectId).toBe('group-main');
+    expect(result.worlds.map((world) => world.id).sort()).toEqual(['group-dungeon', 'group-main']);
+    expect(result.worlds.every((world) => world.mainProjectId === 'group-main' && world.mapGroupId === 'group-main')).toBe(true);
+    expect(fs.readFileSync(path.join(library, 'group-main', 'data', 'player-storage.json'), 'utf8')).toBe('{"score":42}');
+    expect(fs.existsSync(path.join(library, 'group-main-exported'))).toBe(false);
+  });
+
+  test('restores all old maps if an upgrade fails partway through installation', async () => {
+    const old = createGroupBundle('1.0.0');
+    const library = path.join(old.root, 'library');
+    process.env.BOX_PLAY_LIBRARY_PATH = library;
+    await importPlayBundle(old.archivePath);
+    const before = ['group-main', 'group-dungeon'].map((id) => fs.readFileSync(path.join(library, id, 'manifest.json'), 'utf8'));
+    const incoming = createGroupBundle('2.0.0');
+    const review = await createPlayBundleReview(incoming.archivePath);
+    const originalRename = fs.renameSync;
+    let installedCount = 0;
+    fs.renameSync = ((source: fs.PathLike, destination: fs.PathLike) => {
+      if (String(source).includes('-importing-') && ++installedCount === 2) throw new Error('fixture upgrade failure');
+      return originalRename(source, destination);
+    }) as typeof fs.renameSync;
+    try {
+      expect(() => confirmPlayBundleReview(review.id)).toThrow('fixture upgrade failure');
+    } finally {
+      fs.renameSync = originalRename;
+    }
+    expect(['group-main', 'group-dungeon'].map((id) => fs.readFileSync(path.join(library, id, 'manifest.json'), 'utf8'))).toEqual(before);
+    expect(fs.readdirSync(library).sort()).toEqual(['group-dungeon', 'group-main']);
+  });
+
+  test('rechecks versions at confirmation instead of overwriting a newer concurrent import', async () => {
+    const old = createGroupBundle('1.0.0');
+    process.env.BOX_PLAY_LIBRARY_PATH = path.join(old.root, 'library');
+    await importPlayBundle(old.archivePath);
+    const incoming = createGroupBundle('2.0.0');
+    const review = await createPlayBundleReview(incoming.archivePath);
+    expect(review.warnings.some((warning) => warning.includes('1.0.0 → 2.0.0'))).toBe(true);
+    await importPlayBundle(createGroupBundle('3.0.0').archivePath);
+    expect(() => confirmPlayBundleReview(review.id)).toThrow('低于');
+  });
+
+  test('compares short versions and prereleases numerically', async () => {
+    const old = createGroupBundle('v1');
+    process.env.BOX_PLAY_LIBRARY_PATH = path.join(old.root, 'library');
+    await importPlayBundle(old.archivePath);
+    await expect(importPlayBundle(createGroupBundle('1.0.0').archivePath)).rejects.toThrow('相同');
+    await importPlayBundle(createGroupBundle('2.0.0-beta.2').archivePath);
+    await importPlayBundle(createGroupBundle('2.0.0-beta.10').archivePath);
+    await importPlayBundle(createGroupBundle('2.0.0').archivePath);
+    await expect(importPlayBundle(createGroupBundle('2.0.0-beta.20').archivePath)).rejects.toThrow('低于');
+  });
+
   test('rejects the whole bundle when any member ID already exists', async () => {
     const { root, archivePath } = createGroupBundle();
     const library = path.join(root, 'library');
@@ -257,7 +332,7 @@ describe('map group play bundle import', () => {
     process.env.BOX_PLAY_LIBRARY_PATH = path.join(root, 'library');
     const originalCopy = fs.cpSync;
 
-    fs.cpSync = ((source: fs.PathLike, destination: fs.PathLike, options?: fs.CopySyncOptions) => {
+    fs.cpSync = ((source: Parameters<typeof fs.cpSync>[0], destination: Parameters<typeof fs.cpSync>[1], options?: fs.CopySyncOptions) => {
       if (String(destination).includes('-importing-')) {
         const error = new Error(`EACCES: permission denied, copy '${destination}'`) as NodeJS.ErrnoException;
         error.code = 'EACCES';

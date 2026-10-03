@@ -26,7 +26,7 @@ export function PlayerDetailDrawer({
         <Card loading bordered={false} />
       </Drawer>
     )
-  const command = (value: Record<string, unknown>, ok: string) => void c.command(value, ok)
+  const command = (value: Record<string, unknown>, ok: string) => c.command(value, ok)
   const items = [
     { key: 'profile', label: '账号资料', children: props.children },
     {

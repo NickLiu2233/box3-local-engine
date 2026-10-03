@@ -5,18 +5,22 @@ import { ModerationClient } from './moderation-client'
 
 const commandSchema = z
   .object({
-    action: z.enum(['banPlayer', 'banCurrentIP', 'revokeBan', 'getPlayerStatus']),
+    action: z.enum(['banPlayer', 'banCurrentIP', 'banCurrentDevice', 'revokeBan', 'getPlayerStatus', 'listBans', 'getBan']),
     reason: z.string().trim().min(1).max(500).optional(),
-    durationSeconds: z.number().int().min(1).max(604800).optional(),
+    durationSeconds: z.number().int().min(0).max(604800).optional(),
     scope: z.enum(['map', 'server']).optional(),
     requestId: z
       .string()
       .regex(/^[A-Za-z0-9._-]{1,80}$/)
       .optional(),
     banId: z.string().uuid().optional(),
+    kind: z.enum(['account', 'ip', 'device']).optional(),
+    status: z.enum(['active', 'expired', 'revoked', 'all']).optional(),
+    page: z.number().int().min(1).max(100000).optional(),
+    pageSize: z.number().int().min(1).max(50).optional(),
   })
   .strict()
-type Target = { userId: string; ipAddress: string }
+type Target = { userId: string; ipAddress: string; deviceHash?: string }
 
 export class ModerationHost {
   private transport = new ModerationClient()
@@ -24,7 +28,6 @@ export class ModerationHost {
   constructor(
     server: MuServer,
     ready: (sessionId: string) => boolean,
-    fingerprint: () => string,
     target: (id: number) => Target | undefined,
     kick: (id: number) => void,
   ) {
@@ -44,22 +47,21 @@ export class ModerationHost {
           this.active++
           try {
             const input = commandSchema.parse(JSON.parse(message.payload))
-            const player = input.action === 'revokeBan' ? undefined : target(message.playerId)
-            if (input.action !== 'revokeBan' && (!player || !player.userId)) throw new Error('目标玩家已离线')
-            const loadedFingerprint = fingerprint()
-            if (!loadedFingerprint) throw new Error('服务端脚本已更新，请重新运行地图并确认授权')
+            const needsPlayer = !['revokeBan', 'getBan'].includes(input.action) && (input.action !== 'listBans' || message.playerId !== 0)
+            const player = needsPlayer ? target(message.playerId) : undefined
+            if (needsPlayer && (!player || !player.userId)) throw new Error('目标玩家已离线')
             // These fields cannot be supplied or overridden by sandbox code.
             const result = await this.transport.execute({
               ...input,
               mapId: this.transport.mapId,
-              scriptFingerprint: loadedFingerprint,
               userId: player?.userId,
               ipAddress: input.action === 'banCurrentIP' ? player?.ipAddress : undefined,
+              deviceHash: input.action === 'banCurrentDevice' ? player?.deviceHash : undefined,
             })
             const { replayed, ...receipt } = result as Record<string, unknown>
             reply(true, receipt)
             // A receipt replay must not kick a player after an administrator has already unbanned them.
-            if (!replayed && (input.action === 'banPlayer' || input.action === 'banCurrentIP')) kick(message.playerId)
+            if (!replayed && (input.action === 'banPlayer' || input.action === 'banCurrentIP' || input.action === 'banCurrentDevice')) kick(message.playerId)
           } catch (error) {
             reply(false, { message: error instanceof z.ZodError ? '地图管理参数无效' : (error as Error).message })
           } finally {

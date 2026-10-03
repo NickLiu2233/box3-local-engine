@@ -108,6 +108,7 @@ export class GameSession implements GameSessionInterface {
     referer: string,
     fingerPrint: string,
     region: string,
+    deviceHash?: string,
   ) {
     const data = GameSessionDataSchema.alloc();
     UserDetailSchema.assign(data.user, userDetail);
@@ -120,6 +121,7 @@ export class GameSession implements GameSessionInterface {
     data.blocklist = userDetail.blocklist || [];
     data.fingerPrint = fingerPrint;
     data.region = region;
+    data.deviceHash = deviceHash || "";
 
     data.avatarSkin = userDetail.wearing_skins && Object.values(userDetail.wearing_skins).some(Boolean)
       ? userDetail.wearing_skins

@@ -1,3 +1,7 @@
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { MapSelect } from '../../components/map-select'
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { PageToolbar } from '../../components/page-toolbar'
 import { ReloadOutlined } from '@ant-design/icons'
 import {
   Button,
@@ -23,21 +27,18 @@ type Props = { canManage: boolean }
 /** Edits map-level capacity rules; active runtimes are listed on their own page. */
 export function ContainerProfilesPage({ canManage }: Props) {
   const [catalog, setCatalog] = useState<ContainerCatalog>()
-  const [loading, setLoading] = useState(false)
+  const { loading, run } = useAdminRequest()
   const [profile, setProfile] = useState<ContainerProfile>()
   const [form] = Form.useForm<ContainerProfile>()
   const configurationScope = Form.useWatch('configurationScope', form) || 'group'
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      setCatalog(await api.getApiPlayAdminContainers({ params: { query: { mode: 'play' } } }))
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const load = useCallback(
+    () =>
+      run(async () => {
+        setCatalog(await api.getApiPlayAdminContainers({ params: { query: { mode: 'play' } } }))
+      }),
+    [run],
+  )
 
   useEffect(() => {
     void load()
@@ -63,19 +64,17 @@ export function ContainerProfilesPage({ canManage }: Props) {
   }
 
   const saveProfile = async () => {
-    try {
+    return run(async () => {
       const values = await form.validateFields()
       await api.postApiPlayAdminContainers({ body: values })
       message.success('地图容器配置已保存；新启动的运行时会使用该配置')
       setProfile(undefined)
       await load()
-    } catch (error) {
-      if (error instanceof Error) message.error(error.message)
-    }
+    })
   }
 
   const removeProfile = (item: ContainerProfile) =>
-    Modal.confirm({
+    confirmAdminAction({
       title: '删除容器配置',
       content: '后续启动将使用全局默认容量和共享 Node 运行时。',
       okText: '删除',
@@ -96,23 +95,18 @@ export function ContainerProfilesPage({ canManage }: Props) {
 
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">地图容器配置</h1>
-        </Col>
-        <Col>
-          <Space>
-            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
-              刷新
+      <PageToolbar title="地图容器配置">
+        <Space>
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
+            刷新
+          </Button>
+          {canManage ? (
+            <Button type="primary" onClick={() => openProfile()}>
+              新增配置
             </Button>
-            {canManage ? (
-              <Button type="primary" onClick={() => openProfile()}>
-                新增配置
-              </Button>
-            ) : null}
-          </Space>
-        </Col>
-      </Row>
+          ) : null}
+        </Space>
+      </PageToolbar>
       <Card className="player-admin-panel player-admin-container-profiles">
         <Table<ContainerProfile>
           loading={loading}
@@ -214,12 +208,17 @@ export function ContainerProfilesPage({ canManage }: Props) {
                   },
                 ]}
               >
-                <Select
+                <MapSelect
                   disabled={Boolean(profile?.permanentMapId)}
                   placeholder={configurationScope === 'group' ? '选择地图组' : '选择地图'}
-                  options={mapChoices.map((item) => ({
+                  maps={mapChoices.map((item) => ({
                     value: item.permanentMapId,
-                    label: `${item.name} · ${item.permanentMapId}${configurationScope === 'group' && (item.memberCount || 1) > 1 ? ` · ${item.memberCount} 张地图` : ''}`,
+                    name: item.name,
+                    permanentMapId: item.permanentMapId,
+                    suffix:
+                      configurationScope === 'group' && (item.memberCount || 1) > 1
+                        ? ` · ${item.memberCount} 张地图`
+                        : '',
                   }))}
                 />
               </Form.Item>

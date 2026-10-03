@@ -1,4 +1,6 @@
-import { Button, Input, Modal, Space, Table } from 'antd'
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { confirmText } from './confirm-text'
+import { Button, Space, Table } from 'antd'
 import type { TableProps } from 'antd/es/table'
 
 import type { Player } from '../../player-admin-types'
@@ -10,28 +12,6 @@ type Props = TableProps<Player> & {
   setSelectedIds: (ids: string[]) => void
   openDetails: (player: Player) => Promise<void>
   batchPlayers: (action: PlayerBatchAction, subjectIds: string[], tag?: string) => Promise<void>
-}
-
-function requestTag(title: string, placeholder: string, onOk: (tag: string) => void) {
-  let value = ''
-  Modal.confirm({
-    title,
-    content: (
-      <Input
-        autoFocus
-        placeholder={placeholder}
-        onChange={(event) => {
-          value = event.target.value
-        }}
-      />
-    ),
-    okText: '确认',
-    cancelText: '取消',
-    onOk: () => {
-      if (!value.trim()) return Promise.reject(new Error('请输入内容'))
-      onOk(value.trim())
-    },
-  })
 }
 
 /** Player selection and bulk actions stay together so every directory view behaves identically. */
@@ -70,7 +50,7 @@ export function PlayerTable({
           <Space>
             <Button
               onClick={() =>
-                Modal.confirm({
+                confirmAdminAction({
                   title: `确定让 ${ids.length} 个玩家全部下线？`,
                   okText: '确认下线',
                   onOk: () => batchPlayers('revoke-sessions', ids),
@@ -82,7 +62,7 @@ export function PlayerTable({
             <Button
               danger
               onClick={() =>
-                Modal.confirm({
+                confirmAdminAction({
                   title: `确定封禁 ${ids.length} 个玩家？`,
                   okText: '确认封禁',
                   okButtonProps: { danger: true },
@@ -94,7 +74,7 @@ export function PlayerTable({
             </Button>
             <Button
               onClick={() =>
-                Modal.confirm({
+                confirmAdminAction({
                   title: `确定解除 ${ids.length} 个玩家的封禁？`,
                   okText: '确认解除',
                   onOk: () => batchPlayers('unban', ids),
@@ -105,7 +85,7 @@ export function PlayerTable({
             </Button>
             <Button
               onClick={() =>
-                requestTag('批量添加标签', '输入 1–32 个字符的标签', (tag) =>
+                confirmText('批量添加标签', '输入 1–32 个字符的标签', (tag) =>
                   batchPlayers('add-tag', ids, tag),
                 )
               }
@@ -114,7 +94,7 @@ export function PlayerTable({
             </Button>
             <Button
               onClick={() =>
-                requestTag('批量移除标签', '输入要移除的标签', (tag) =>
+                confirmText('批量移除标签', '输入要移除的标签', (tag) =>
                   batchPlayers('remove-tag', ids, tag),
                 )
               }

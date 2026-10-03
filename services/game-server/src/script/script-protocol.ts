@@ -100,8 +100,6 @@ export const ScriptConfigSchema = new MuStruct({
   keyframeLimit: new MuFloat64(16),
 
   serverId: new MuUTF8(),
-  moderationFingerprintReadable: new MuBoolean(false),
-  moderationFingerprint: new MuUTF8(),
 });
 export type ScriptConfig = typeof ScriptConfigSchema.identity;
 

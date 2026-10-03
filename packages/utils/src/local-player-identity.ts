@@ -4,6 +4,8 @@ export type LocalPlayerRole = 'player' | 'moderator' | 'admin';
 export type LocalPlayerStatus = 'active' | 'banned';
 
 export type RuntimePlayerIdentity = {
+  /** Authenticated browser device identifier; never supplied by map scripts. */
+  deviceHash?: string;
   subjectId: string;
   userId: string;
   username: string;
@@ -50,6 +52,7 @@ function signature(payload: string, secret: string) {
 
 function validIdentity(value: RuntimePlayerIdentity) {
   return (
+    (value.deviceHash === undefined || /^[0-9a-f]{64}$/.test(value.deviceHash)) &&
     subjectPattern.test(value.subjectId) &&
     userIdPattern.test(value.userId) &&
     usernamePattern.test(value.username) &&

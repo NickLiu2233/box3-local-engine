@@ -1,3 +1,5 @@
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { reportAdminError } from '../../player-admin-errors'
 import { message } from 'antd'
 import { useCallback, useState } from 'react'
 
@@ -8,62 +10,56 @@ import type { Activity, IdentityBan } from '../../player-admin-types'
 export function useSecurityManagement() {
   const [activity, setActivity] = useState<Activity[]>([])
   const [activityTotal, setActivityTotal] = useState(0)
-  const [activityLoading, setActivityLoading] = useState(false)
+  const { loading: activityLoading, run: requestActivity } = useAdminRequest()
   const [activityPage, setActivityPage] = useState(1)
   const [activityPageSize, setActivityPageSize] = useState(30)
   const [activityKind, setActivityKind] = useState('all')
   const [activitySearch, setActivitySearch] = useState('')
   const [identityBans, setIdentityBans] = useState<IdentityBan[]>([])
   const [identityBanTotal, setIdentityBanTotal] = useState(0)
-  const [identityBanLoading, setIdentityBanLoading] = useState(false)
+  const { loading: identityBanLoading, run: requestIdentityBans } = useAdminRequest()
   const [identityBanSearch, setIdentityBanSearch] = useState('')
   const [identityBanKind, setIdentityBanKind] = useState<'all' | 'ip' | 'device'>('all')
   const [identityBanPage, setIdentityBanPage] = useState(1)
   const [identityBanPageSize, setIdentityBanPageSize] = useState(30)
 
-  const loadActivity = useCallback(async () => {
-    setActivityLoading(true)
-    try {
-      const result = await api.getApiPlayAdminActivity({
-        params: {
-          query: {
-            page: String(activityPage),
-            pageSize: String(activityPageSize),
-            kind: activityKind,
-            search: activitySearch,
+  const loadActivity = useCallback(
+    () =>
+      requestActivity(async () => {
+        const result = await api.getApiPlayAdminActivity({
+          params: {
+            query: {
+              page: String(activityPage),
+              pageSize: String(activityPageSize),
+              kind: activityKind,
+              search: activitySearch,
+            },
           },
-        },
-      })
-      setActivity(result.events || [])
-      setActivityTotal(result.total || 0)
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setActivityLoading(false)
-    }
-  }, [activityKind, activityPage, activityPageSize, activitySearch])
+        })
+        setActivity(result.events || [])
+        setActivityTotal(result.total || 0)
+      }),
+    [requestActivity, activityKind, activityPage, activityPageSize, activitySearch],
+  )
 
-  const loadIdentityBans = useCallback(async () => {
-    setIdentityBanLoading(true)
-    try {
-      const result = await api.getApiPlayAdminIdentityBans({
-        params: {
-          query: {
-            search: identityBanSearch,
-            kind: identityBanKind,
-            page: String(identityBanPage),
-            pageSize: String(identityBanPageSize),
+  const loadIdentityBans = useCallback(
+    () =>
+      requestIdentityBans(async () => {
+        const result = await api.getApiPlayAdminIdentityBans({
+          params: {
+            query: {
+              search: identityBanSearch,
+              kind: identityBanKind,
+              page: String(identityBanPage),
+              pageSize: String(identityBanPageSize),
+            },
           },
-        },
-      })
-      setIdentityBans(result.bans || [])
-      setIdentityBanTotal(result.total || 0)
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setIdentityBanLoading(false)
-    }
-  }, [identityBanKind, identityBanPage, identityBanPageSize, identityBanSearch])
+        })
+        setIdentityBans(result.bans || [])
+        setIdentityBanTotal(result.total || 0)
+      }),
+    [requestIdentityBans, identityBanKind, identityBanPage, identityBanPageSize, identityBanSearch],
+  )
 
   const revokeIdentityBan = async (ban: IdentityBan) => {
     try {
@@ -71,7 +67,7 @@ export function useSecurityManagement() {
       message.success(`${ban.kind === 'ip' ? 'IP' : '设备'}封禁已解除`)
       await loadIdentityBans()
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
 

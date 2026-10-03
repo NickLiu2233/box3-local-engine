@@ -3,6 +3,8 @@ import { defineConfig } from '@umijs/max'
 
 export default defineConfig({
   antd: {},
+  // Workspace dependencies are built locally; compile them directly in dev.
+  mfsu: false,
   hash: true,
   // The Player Service rewrites its origin to this static entry point. Keep
   // assets under the same directory, otherwise root-relative Umi bundles are

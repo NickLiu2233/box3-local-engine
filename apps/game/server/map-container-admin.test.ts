@@ -84,27 +84,25 @@ describe('map container profile validation', () => {
     const originalFetch = global.fetch;
     process.env.BOX_PLAY_INTERNAL_URL = 'http://play:3000';
     const fetchMock = jest
-      .fn()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(new Response(null, { status: 204 }))
       .mockResolvedValueOnce(new Response(null, { status: 202 }));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    await restartContainerRuntime('play', 'project-map');
-
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      'http://play:3000/p/project-map/__local_runtime/destroy',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      'http://play:3000/p/project-map/__local_runtime/start',
-      expect.objectContaining({ method: 'POST', headers: { 'x-box-runtime-restart': '1' } }),
-    );
-
-    global.fetch = originalFetch;
-    if (originalPlay === undefined) delete process.env.BOX_PLAY_INTERNAL_URL;
-    else process.env.BOX_PLAY_INTERNAL_URL = originalPlay;
+    try {
+      await restartContainerRuntime('play', 'project-map');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const requests = fetchMock.mock.calls.map(([input, init]) => new Request(input as RequestInfo, init as RequestInit));
+      expect(requests.map((request) => ({ url: request.url, method: request.method }))).toEqual([
+        { url: 'http://play:3000/p/project-map/__local_runtime/destroy', method: 'POST' },
+        { url: 'http://play:3000/p/project-map/__local_runtime/start', method: 'POST' },
+      ]);
+      expect(requests[1].headers.get('x-box-runtime-restart')).toBe('1');
+    } finally {
+      global.fetch = originalFetch;
+      if (originalPlay === undefined) delete process.env.BOX_PLAY_INTERNAL_URL;
+      else process.env.BOX_PLAY_INTERNAL_URL = originalPlay;
+    }
   });
 
   test('applies one map-group profile to its main map and every submap', async () => {
@@ -117,7 +115,7 @@ describe('map container profile validation', () => {
     process.env.BOX_PLAY_INTERNAL_URL = 'http://play:3000';
     process.env.BOX_PLAY_ADMIN_TOKEN = 'test-token';
     process.env.BOX_MAP_RUNTIME_PROFILES_PATH = profilePath;
-    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ worlds: [
+    global.fetch = jest.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ worlds: [
       { id: 'main-project', permanentMapId: 'main-map', name: '主地图', mapGroupId: 'group-1', mapRole: 'main', mainProjectId: 'main-project' },
       { id: 'sub-project', permanentMapId: 'sub-map', name: '副地图', mapGroupId: 'group-1', mapRole: 'submap', mainProjectId: 'main-project' },
     ] }), { status: 200 })) as unknown as typeof fetch;
@@ -150,7 +148,7 @@ describe('map container profile validation', () => {
     process.env.BOX_PLAY_INTERNAL_URL = 'http://play:3000';
     process.env.BOX_PLAY_ADMIN_TOKEN = 'test-token';
     process.env.BOX_MAP_RUNTIME_PROFILES_PATH = profilePath;
-    global.fetch = jest.fn().mockResolvedValue(new Response(JSON.stringify({ worlds: [
+    global.fetch = jest.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ worlds: [
       { id: 'main-project', permanentMapId: 'main-map', name: '主地图', mapGroupId: 'group-1', mapRole: 'main', mainProjectId: 'main-project' },
     ] }), { status: 200 })) as unknown as typeof fetch;
     try {

@@ -8,7 +8,7 @@ export class ModerationMetadataReporter {
   private enabled: boolean
   private mapId = process.env.BOX_WORLD_PERMANENT_MAP_ID || ''
   private mode = process.env.MODE === 'edit' ? ('edit' as const) : ('play' as const)
-  constructor(private snapshot: () => { name: string; fingerprint: string }) {
+  constructor(private snapshot: () => { name: string }) {
     const baseUrl = process.env.BOX_PLAYER_SERVICE_INTERNAL_URL || ''
     const serverId = process.env.SERVER_ID || ''
     this.enabled = !!(
@@ -33,17 +33,20 @@ export class ModerationMetadataReporter {
     const timer = setTimeout(() => controller.abort(), 5000)
     try {
       const value = this.snapshot()
-      if (value.fingerprint)
-        await this.api.postApiPlayerInternalScriptMetadata({
-          body: {
-            mapId: this.mapId,
-            mode: this.mode,
-            name: value.name.slice(0, 64) || this.mapId,
-            scriptFingerprint: value.fingerprint,
-          },
-          signal: controller.signal,
-          headers: { Authorization: moderationAuthorization() },
-        })
+      await this.api.postApiPlayerInternalScriptMetadata({
+        body: {
+          mapId: this.mapId,
+          groupId: process.env.BOX_GROUP_STORAGE_NAMESPACE || this.mapId,
+          mode: this.mode,
+          name: (process.env.BOX_SERVER_NAME || value.name).slice(0, 64) || this.mapId,
+          projectId: this.mapId,
+          publicId: process.env.BOX_WORLD_PUBLIC_ID || process.env.CONTENT_ID || this.mapId,
+          description: (process.env.BOX_WORLD_DESCRIPTION || '').slice(0, 2000),
+          version: (process.env.BOX_WORLD_VERSION || '').slice(0, 64),
+        },
+        signal: controller.signal,
+        headers: { Authorization: moderationAuthorization() },
+      })
     } catch {
       /* Reporting failure never grants authority; the owner sees unavailable metadata. */
     } finally {

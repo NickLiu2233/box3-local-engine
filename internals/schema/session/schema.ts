@@ -58,6 +58,7 @@ export const GameSessionDataSchema = new MuStruct({
   ipAddress: new MuASCII(''),
   url: new MuASCII(''),
   fingerPrint: new MuASCII(''),
+  deviceHash: new MuASCII(''),
   user: UserDetailSchema,
   isAdmin: new MuBoolean(),
   name: new MuUTF8(''),

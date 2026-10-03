@@ -76,7 +76,7 @@ import { NavigatorScriptShell } from '../navigator/navigator-script';
 import { RTCScriptShell } from '../rtc/rtc-script';
 import { StorageSynchronizer } from '../storage/storage-script';
 import { TeleportScriptShell } from '../teleport/teleport-script';
-import { ModerationScript, configureModerationFingerprint } from '../moderation/moderation-script';
+import { ModerationScript } from '../moderation/moderation-script';
 import { warnDeprecate } from '../utils/deprecate';
 import { PromiseWrapper } from '../utils/script-promise';
 import { ScriptParserAPI } from './bindings/animations';
@@ -1034,7 +1034,6 @@ export class ScriptShell {
           this.sysLog('debug', 'ScriptShell starting.');
           // Copy script config
           ScriptConfigSchema.assign(this.config, config.config);
-          configureModerationFingerprint(moderation,this.config);
 
           // update block index
           BlockInfoSchema.assign(this.blockInfo, config.blocks);

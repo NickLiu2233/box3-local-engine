@@ -43,6 +43,7 @@ exports.GameSessionDataSchema = new schema_1.MuStruct({
     ipAddress: new schema_1.MuASCII(''),
     url: new schema_1.MuASCII(''),
     fingerPrint: new schema_1.MuASCII(''),
+    deviceHash: new schema_1.MuASCII(''),
     user: exports.UserDetailSchema,
     isAdmin: new schema_1.MuBoolean(),
     name: new schema_1.MuUTF8(''),

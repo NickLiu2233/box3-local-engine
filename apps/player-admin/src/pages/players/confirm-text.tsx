@@ -1,9 +1,14 @@
-import { Input, Modal } from 'antd'
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { Input } from 'antd'
 
 /** Opens a typed confirmation prompt for short administrative text input. */
-export function confirmText(title: string, placeholder: string, onOk: (value: string) => void) {
+export function confirmText(
+  title: string,
+  placeholder: string,
+  onOk: (value: string) => void | Promise<unknown>,
+) {
   let value = ''
-  Modal.confirm({
+  confirmAdminAction({
     title,
     content: (
       <Input
@@ -18,7 +23,7 @@ export function confirmText(title: string, placeholder: string, onOk: (value: st
     cancelText: '取消',
     onOk: () => {
       if (!value.trim()) return Promise.reject(new Error('请输入内容'))
-      onOk(value.trim())
+      return onOk(value.trim())
     },
   })
 }

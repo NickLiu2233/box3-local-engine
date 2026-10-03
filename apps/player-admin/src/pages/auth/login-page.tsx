@@ -1,3 +1,4 @@
+import { useAdminRequest } from '../../hooks/use-admin-request'
 import { LockOutlined, SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons'
 import { Button, Card, Form, Input, message } from 'antd'
 import { useState } from 'react'
@@ -9,14 +10,13 @@ type Props = { onSuccess: (actor: Actor) => void }
 
 /** The login page deliberately owns only credentials and never admin shell state. */
 export function LoginPage({ onSuccess }: Props) {
-  const [loading, setLoading] = useState(false)
+  const { loading, run } = useAdminRequest()
   const [mode, setMode] = useState<'admin' | 'owner'>('admin')
   const [form] = Form.useForm()
 
-  const submit = async () => {
-    try {
+  const submit = () =>
+    run(async () => {
       const values = await form.validateFields()
-      setLoading(true)
       const result =
         mode === 'admin'
           ? await api.postApiPlayAdminLogin({ body: values })
@@ -26,13 +26,7 @@ export function LoginPage({ onSuccess }: Props) {
             })
       onSuccess(result.actor)
       message.success('登录成功')
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : ''
-      if (errorMessage) message.error(errorMessage)
-    } finally {
-      setLoading(false)
-    }
-  }
+    })
 
   const selectMode = (next: 'admin' | 'owner') => {
     setMode(next)

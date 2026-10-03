@@ -1,5 +1,7 @@
+import { AdminPagination } from '../../components/admin-pagination'
+import { PageToolbar } from '../../components/page-toolbar'
 import { DownloadOutlined, PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
-import { Button, Card, Col, Empty, Input, Pagination, Row, Select, Space } from 'antd'
+import { Button, Card, Empty, Input, Select, Space } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 
 import type { Player } from '../../player-admin-types'
@@ -17,6 +19,7 @@ type Props = {
   search: string
   identity: string
   selectedIds: string[]
+  loading: boolean
   exporting: boolean
   canExport: boolean
   canCreate: boolean
@@ -49,32 +52,27 @@ export function PlayerDirectoryPage(props: Props) {
 
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">{labels.title}</h1>
-        </Col>
-        <Col>
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={props.refresh}>
-              刷新
+      <PageToolbar title={labels.title}>
+        <Space>
+          <Button icon={<ReloadOutlined />} loading={props.loading} onClick={props.refresh}>
+            刷新
+          </Button>
+          {props.mode === 'players' && props.canExport ? (
+            <Button
+              icon={<DownloadOutlined />}
+              loading={props.exporting}
+              onClick={props.exportPlayers}
+            >
+              导出 CSV
             </Button>
-            {props.mode === 'players' && props.canExport ? (
-              <Button
-                icon={<DownloadOutlined />}
-                loading={props.exporting}
-                onClick={props.exportPlayers}
-              >
-                导出 CSV
-              </Button>
-            ) : null}
-            {props.mode === 'players' && props.canCreate ? (
-              <Button type="primary" icon={<PlusOutlined />} onClick={props.createPlayer}>
-                新增玩家
-              </Button>
-            ) : null}
-          </Space>
-        </Col>
-      </Row>
+          ) : null}
+          {props.mode === 'players' && props.canCreate ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={props.createPlayer}>
+              新增玩家
+            </Button>
+          ) : null}
+        </Space>
+      </PageToolbar>
       <Card
         className="player-admin-panel"
         title={panelTitle}
@@ -108,6 +106,7 @@ export function PlayerDirectoryPage(props: Props) {
         }
       >
         <PlayerTable
+          loading={props.loading}
           className="player-admin-table"
           selectedIds={props.selectedIds}
           setSelectedIds={props.setSelectedIds}
@@ -123,20 +122,13 @@ export function PlayerDirectoryPage(props: Props) {
               : undefined
           }
         />
-        <div className="player-admin-table-pagination">
-          <Pagination
-            current={props.page}
-            total={props.total}
-            pageSize={props.pageSize}
-            showSizeChanger
-            pageSizeOptions={['20', '30', '50', '100']}
-            onChange={props.setPage}
-            onShowSizeChange={(_, size) => {
-              props.setPageSize(size)
-              props.setPage(1)
-            }}
-          />
-        </div>
+        <AdminPagination
+          page={props.page}
+          pageSize={props.pageSize}
+          total={props.total}
+          setPage={props.setPage}
+          setPageSize={props.setPageSize}
+        />
       </Card>
     </>
   )

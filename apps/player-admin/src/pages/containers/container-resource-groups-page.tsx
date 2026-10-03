@@ -1,3 +1,6 @@
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { PageToolbar } from '../../components/page-toolbar'
 import { ReloadOutlined } from '@ant-design/icons'
 import {
   Button,
@@ -32,21 +35,18 @@ const newResourceGroup = (): ContainerResourceGroup => ({
 /** A complete resource-group workflow behind one small screen interface. */
 export function ContainerResourceGroupsPage({ canManage }: Props) {
   const [groups, setGroups] = useState<ContainerResourceGroup[]>([])
-  const [loading, setLoading] = useState(false)
+  const { loading, run } = useAdminRequest()
   const [editing, setEditing] = useState<ContainerResourceGroup>()
   const [form] = Form.useForm<ContainerResourceGroup>()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const result = await api.getApiPlayAdminContainerResourceGroups()
-      setGroups(result.resourceGroups || [])
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const result = await api.getApiPlayAdminContainerResourceGroups()
+        setGroups(result.resourceGroups || [])
+      }),
+    [run],
+  )
 
   useEffect(() => void load(), [load])
 
@@ -57,7 +57,7 @@ export function ContainerResourceGroupsPage({ canManage }: Props) {
   }
 
   const save = async () => {
-    try {
+    return run(async () => {
       const values = await form.validateFields()
       if (editing?.id) {
         await api.patchApiPlayAdminContainerResourceGroupsId({
@@ -70,13 +70,11 @@ export function ContainerResourceGroupsPage({ canManage }: Props) {
       setEditing(undefined)
       message.success('资源组已保存')
       await load()
-    } catch (error) {
-      if (error instanceof Error) message.error(error.message)
-    }
+    })
   }
 
   const remove = (group: ContainerResourceGroup) =>
-    Modal.confirm({
+    confirmAdminAction({
       title: `删除资源组“${group.name}”？`,
       content: '资源组未被地图容器配置使用时才可删除。',
       okText: '删除',
@@ -93,23 +91,18 @@ export function ContainerResourceGroupsPage({ canManage }: Props) {
 
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">资源组</h1>
-        </Col>
-        <Col>
-          <Space>
-            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
-              刷新
+      <PageToolbar title="资源组">
+        <Space>
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
+            刷新
+          </Button>
+          {canManage ? (
+            <Button type="primary" onClick={() => openEditor()}>
+              新建资源组
             </Button>
-            {canManage ? (
-              <Button type="primary" onClick={() => openEditor()}>
-                新建资源组
-              </Button>
-            ) : null}
-          </Space>
-        </Col>
-      </Row>
+          ) : null}
+        </Space>
+      </PageToolbar>
       <Card className="player-admin-panel">
         <Table
           loading={loading}

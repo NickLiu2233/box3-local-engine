@@ -1,3 +1,7 @@
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { reportAdminError } from '../../player-admin-errors'
+import { PageToolbar } from '../../components/page-toolbar'
 import {
   CodeOutlined,
   DeleteOutlined,
@@ -10,14 +14,12 @@ import {
 import {
   Button,
   Card,
-  Col,
   Dropdown,
   Empty,
   Form,
   Input,
   message,
   Modal,
-  Row,
   Space,
   Switch,
   Table as AntTable,
@@ -40,7 +42,7 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   const uploadRef = useRef<HTMLInputElement>(null)
   const [worlds, setWorlds] = useState<PlayMap[]>([])
   const [statuses, setStatuses] = useState<Record<string, PlayMapResourceStatus>>({})
-  const [loading, setLoading] = useState(false)
+  const { loading, run } = useAdminRequest()
   const [editing, setEditing] = useState<PlayMap>()
   const [review, setReview] = useState<PlayBundleReview>()
   const [reviewFile, setReviewFile] = useState<File>()
@@ -51,25 +53,26 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   const [reviewWorldId, setReviewWorldId] = useState('')
   const [reviewCategory, setReviewCategory] = useState('script')
   const [form] = Form.useForm()
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [maps, resourceStatus] = await Promise.all([
-        api.getApiPlayAdminLibrarySection({ params: { path: { section: 'worlds' } } }) as Promise<{
-          worlds: PlayMap[]
-        }>,
-        api.getApiPlayAdminLibrarySection({
-          params: { path: { section: 'world-status' } },
-        }) as Promise<{ worlds: PlayMapResourceStatus[] }>,
-      ])
-      setWorlds(maps.worlds || [])
-      setStatuses(Object.fromEntries((resourceStatus.worlds || []).map((item) => [item.id, item])))
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [maps, resourceStatus] = await Promise.all([
+          api.getApiPlayAdminLibrarySection({
+            params: { path: { section: 'worlds' } },
+          }) as Promise<{
+            worlds: PlayMap[]
+          }>,
+          api.getApiPlayAdminLibrarySection({
+            params: { path: { section: 'world-status' } },
+          }) as Promise<{ worlds: PlayMapResourceStatus[] }>,
+        ])
+        setWorlds(maps.worlds || [])
+        setStatuses(
+          Object.fromEntries((resourceStatus.worlds || []).map((item) => [item.id, item])),
+        )
+      }),
+    [run],
+  )
   useEffect(() => {
     void load()
   }, [load])
@@ -90,11 +93,11 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
       setEditing(undefined)
       message.success('地图访问 ID 已保存')
     } catch (error) {
-      if (error instanceof Error) message.error(error.message)
+      reportAdminError(error)
     }
   }
   const removeWorld = (world: PlayMap) =>
-    Modal.confirm({
+    confirmAdminAction({
       title: world.mapRole === 'main' ? '删除地图组' : '删除副地图',
       content:
         world.mapRole === 'main'
@@ -113,8 +116,7 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
       },
     })
   const inspectBundle = async (file: File) => {
-    setLoading(true)
-    try {
+    return run(async () => {
       const result = (await api.postApiPlayAdminLibraryImport({
         params: { query: { mode: 'preview' } },
         headers: { 'Content-Type': file.type || 'application/octet-stream' },
@@ -126,11 +128,7 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
       setReviewWorldId(result.review.worlds[0]?.id || '')
       setReviewCategory('script')
       setPreview(undefined)
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
+    })
   }
   const cancelReview = async () => {
     if (review)
@@ -149,8 +147,7 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
   }
   const confirmImport = async () => {
     if (!review) return
-    setLoading(true)
-    try {
+    return run(async () => {
       await api.postApiPlayAdminLibraryImport({
         params: { query: { mode: 'confirm', reviewId: review.id } },
         body: {},
@@ -158,11 +155,7 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
       message.success(`已导入 ${review.mapCount} 张地图`)
       await cancelReview()
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
+    })
   }
   const previewResource = async (resource: PlayBundleReview['resources'][number]) => {
     if (!review || !resource.previewable) return
@@ -180,33 +173,28 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
         setPreview({ resource, content: URL.createObjectURL(content) })
       }
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">游玩地图</h1>
-        </Col>
-        <Col>
-          <Space>
-            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
-              刷新
+      <PageToolbar title="游玩地图">
+        <Space>
+          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
+            刷新
+          </Button>
+          {canManage ? (
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              loading={loading}
+              onClick={() => uploadRef.current?.click()}
+            >
+              导入游玩包
             </Button>
-            {canManage ? (
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                loading={loading}
-                onClick={() => uploadRef.current?.click()}
-              >
-                导入游玩包
-              </Button>
-            ) : null}
-          </Space>
-        </Col>
-      </Row>
+          ) : null}
+        </Space>
+      </PageToolbar>
       <input
         ref={uploadRef}
         hidden
@@ -257,10 +245,10 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
                 ),
               },
               {
-                title: '访问 ID',
+                title: '地图 ID',
                 width: '29%',
                 render: (_, row: PlayMapTableRow) => (
-                  <code title={row.map.publicId}>{row.map.publicId}</code>
+                  <code title={row.map.permanentMapId}>{row.map.permanentMapId}</code>
                 ),
               },
               {
@@ -311,7 +299,7 @@ export function PlayMapsPage({ canManage }: { canManage: boolean }) {
                               .then(() =>
                                 message.success(playEnabled ? '地图组已开放' : '地图组已关闭'),
                               )
-                              .catch((error) => message.error(error.message))
+                              .catch(reportAdminError)
                           }
                         />
                       ) : (

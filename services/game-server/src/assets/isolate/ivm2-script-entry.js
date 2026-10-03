@@ -1,6 +1,14 @@
 (function (defineDebug) {
 'use strict';
 
+function __rest(s, e) {
+    var t = {};
+    for(var p in s)if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0) t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function") for(var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++){
+        if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i])) t[p[i]] = s[p[i]];
+    }
+    return t;
+}
 function __awaiter(thisArg, _arguments, P, generator) {
     function adopt(value) {
         return value instanceof P ? value : new P(function(resolve) {
@@ -24161,15 +24169,6 @@ const ModerationProtocol = {
     }
 };
 
-function configureModerationFingerprint(target, config) {
-    if (!config.moderationFingerprintReadable) return;
-    Object.defineProperty(target, 'scriptFingerprint', {
-        value: config.moderationFingerprint,
-        enumerable: true,
-        writable: false,
-        configurable: false
-    });
-}
 class ModerationScript {
     request(action, player, options) {
         if (this.pending.size >= 8) return Promise.reject(new Error('地图管理请求过多'));
@@ -24201,16 +24200,63 @@ class ModerationScript {
         }
         return wrapper.query;
     }
-    banPlayer(player, options) {
-        return this.request('banPlayer', player, options);
+    ban(action, players, options) {
+        return __awaiter(this, void 0, void 0, function*() {
+            if (!Array.isArray(players)) return this.request(action, players, options);
+            if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(options.requestId)) throw new Error('批量最多 100 个玩家，requestId 须为 1–72 个合法字符');
+            const targets = [
+                ...players
+            ];
+            const batchOptions = Object.assign({}, options);
+            const results = [];
+            for(let index = 0; index < targets.length; index++){
+                try {
+                    const ban = yield this.request(action, targets[index], Object.assign(Object.assign({}, batchOptions), {
+                        requestId: `${batchOptions.requestId}.b${index}`
+                    }));
+                    results.push({
+                        index,
+                        success: true,
+                        ban
+                    });
+                } catch (error) {
+                    results.push({
+                        index,
+                        success: false,
+                        error: error instanceof Error ? error.message : String(error)
+                    });
+                }
+            }
+            return results;
+        });
     }
-    banCurrentIP(player, options) {
-        return this.request('banCurrentIP', player, options);
+    banPlayer(players, options) {
+        return this.ban('banPlayer', players, options);
+    }
+    banCurrentIP(players, options) {
+        return this.ban('banCurrentIP', players, options);
+    }
+    banCurrentDevice(players, options) {
+        return this.ban('banCurrentDevice', players, options);
     }
     revokeBan(banId, options) {
         return this.request('revokeBan', undefined, Object.assign(Object.assign({}, options), {
             banId
         }));
+    }
+    listBans(query = {}) {
+        const { player } = query, filters = __rest(query, [
+            "player"
+        ]);
+        return this.request('listBans', player, filters);
+    }
+    getBan(banId) {
+        return __awaiter(this, void 0, void 0, function*() {
+            const result = yield this.request('getBan', undefined, {
+                banId
+            });
+            return result.ban;
+        });
     }
     getPlayerStatus(player) {
         return this.request('getPlayerStatus', player, {});
@@ -33023,9 +33069,7 @@ const ScriptConfigSchema = new schemaExports.MuStruct({
     entityLimit: new schemaExports.MuFloat64(MAX_BODIES - 100),
     animationLimit: new schemaExports.MuFloat64(500),
     keyframeLimit: new schemaExports.MuFloat64(16),
-    serverId: new schemaExports.MuUTF8(),
-    moderationFingerprintReadable: new schemaExports.MuBoolean(false),
-    moderationFingerprint: new schemaExports.MuUTF8()
+    serverId: new schemaExports.MuUTF8()
 });
 const SciptCollisionFilterSpecSchema = new schemaExports.MuStruct({
     a: new schemaExports.MuUTF8(),
@@ -33922,7 +33966,6 @@ class ScriptShell {
                 start: (config)=>{
                     this.sysLog('debug', 'ScriptShell starting.');
                     ScriptConfigSchema.assign(this.config, config.config);
-                    configureModerationFingerprint(moderation, this.config);
                     BlockInfoSchema.assign(this.blockInfo, config.blocks);
                     unpackBlockIndex(config.blocks, this.blockIndex);
                     this.scheduler.setTime(config.state.tick * MS_PER_TICK);

@@ -1,5 +1,8 @@
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { PageToolbar } from '../../components/page-toolbar'
 import { ReloadOutlined } from '@ant-design/icons'
-import { Button, Card, Col, Modal, Row, Space, Table, Tag, Tooltip, message } from 'antd'
+import { Button, Card, Space, Table, Tag, Tooltip, message } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatBytes } from '../../player-admin-format'
 import { playerAdminApi as api } from '../../player-admin-api'
@@ -22,18 +25,15 @@ const runtimeLabel = (status: RuntimeStatus) => {
 /** Lists only active runtime containers; configuration belongs to a separate page. */
 export function ContainerManagementPage({ mode, canManage }: Props) {
   const [catalog, setCatalog] = useState<ContainerCatalog>()
-  const [loading, setLoading] = useState(false)
+  const { loading, run } = useAdminRequest()
   const isPlay = mode === 'play'
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      setCatalog(await api.getApiPlayAdminContainers({ params: { query: { mode } } }))
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [mode])
+  const load = useCallback(
+    () =>
+      run(async () => {
+        setCatalog(await api.getApiPlayAdminContainers({ params: { query: { mode } } }))
+      }),
+    [mode, run],
+  )
   useEffect(() => void load(), [load])
 
   const rows = useMemo<ContainerRuntimeRow[]>(() => {
@@ -55,7 +55,7 @@ export function ContainerManagementPage({ mode, canManage }: Props) {
   }, [catalog?.maps])
 
   const runAction = (map: ContainerMap, action: 'destroy' | 'restart', roomId?: string) =>
-    Modal.confirm({
+    confirmAdminAction({
       title: action === 'restart' ? '重启地图运行时' : roomId ? '销毁房间运行时' : '销毁地图运行时',
       content:
         action === 'restart'
@@ -77,16 +77,11 @@ export function ContainerManagementPage({ mode, canManage }: Props) {
 
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">{isPlay ? '游玩端容器' : '创作端容器'}</h1>
-        </Col>
-        <Col>
-          <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
-            刷新
-          </Button>
-        </Col>
-      </Row>
+      <PageToolbar title={isPlay ? '游玩端容器' : '创作端容器'}>
+        <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()}>
+          刷新
+        </Button>
+      </PageToolbar>
       <Card className="player-admin-panel" title="已启动地图容器">
         <Table<ContainerRuntimeRow>
           className="player-admin-map-table player-admin-container-table"

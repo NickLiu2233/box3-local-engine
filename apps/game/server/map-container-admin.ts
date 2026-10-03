@@ -3,17 +3,9 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import { ApiClient } from '@box/apis';
 import { PlayerAdminRequestError } from './player-admin-errors';
+import { readAdminMapCatalog, type AdminMapReference } from './admin-map-catalog';
 
 type RuntimeMode = 'play' | 'creator';
-type PlayMapReference = {
-  id: string;
-  permanentMapId: string;
-  name: string;
-  version?: string;
-  mapGroupId?: string;
-  mapRole?: 'main' | 'submap';
-  mainProjectId?: string;
-};
 type MapRuntimeProfile = {
   permanentMapId: string;
   mode: 'play';
@@ -82,11 +74,6 @@ function runtimeDefaults(mode: RuntimeMode) {
 function dataPath() {
   return process.env.BOX_MAP_RUNTIME_PROFILES_PATH
     || path.resolve(process.cwd(), '../local-engine/data/map-runtime-profiles.json');
-}
-
-function creatorProjectsPath() {
-  return process.env.BOX_CREATOR_PROJECTS_PATH
-    || path.resolve(process.cwd(), '../local-engine/projects');
 }
 
 function positiveInteger(value: unknown, label: string, minimum: number, maximum: number) {
@@ -259,32 +246,6 @@ async function runtimeStatus(mode: RuntimeMode, projectId: string): Promise<Runt
   }
 }
 
-async function creatorMaps() {
-  try {
-    const entries = await fs.readdir(creatorProjectsPath(), { withFileTypes: true });
-    const maps = await Promise.all(entries.filter((entry) => entry.isDirectory() && mapIdPattern.test(entry.name)).map(async (entry) => {
-      try {
-        const project = JSON.parse(await fs.readFile(path.join(creatorProjectsPath(), entry.name, 'project.json'), 'utf8'));
-        return { id: entry.name, permanentMapId: String(project.permanentMapId || entry.name), name: String(project.name || entry.name), mapRole: project.mapRole === 'submap' ? 'submap' : 'main', mainProjectId: String(project.mainProjectId || entry.name) };
-      } catch { return null; }
-    }));
-    return maps.filter(Boolean) as Array<{ id: string; permanentMapId: string; name: string; mapRole: 'main' | 'submap'; mainProjectId: string }>;
-  } catch { return []; }
-}
-
-async function playMaps() {
-  const token = String(process.env.BOX_PLAY_ADMIN_TOKEN || '').trim();
-  if (!token) return [];
-  try {
-    const result = await new ApiClient({
-      baseUrl: runtimeBaseURL('play'),
-      headers: { Authorization: `Bearer ${token}` },
-      defaultErrorMessage: '读取游玩地图失败',
-    }).getApiPlayAdminWorlds({ signal: AbortSignal.timeout(5000) }) as Record<string, any>;
-    return Array.isArray(result.worlds) ? result.worlds : [];
-  } catch { return []; }
-}
-
 async function playPresenceCounts(permanentMapIds: string[]) {
   if (!permanentMapIds.length) return {} as Record<string, number>;
   try {
@@ -301,11 +262,11 @@ async function playPresenceCounts(permanentMapIds: string[]) {
   }
 }
 
-function groupKey(map: PlayMapReference) {
+function groupKey(map: AdminMapReference) {
   return String(map.mapGroupId || map.mainProjectId || map.id);
 }
 
-function playMapGroup(maps: PlayMapReference[], permanentMapId: string) {
+function playMapGroup(maps: AdminMapReference[], permanentMapId: string) {
   const selected = maps.find((map) => map.permanentMapId === permanentMapId);
   if (!selected) throw new Error('请选择当前已导入的游玩地图');
   const members = maps.filter((map) => groupKey(map) === groupKey(selected));
@@ -317,7 +278,7 @@ function playMapGroup(maps: PlayMapReference[], permanentMapId: string) {
 
 /** Saving a map group mirrors its profile onto every submap runtime. */
 export async function savePlayMapGroupRuntimeProfile(input: Record<string, unknown>) {
-  const maps = await playMaps() as PlayMapReference[];
+  const maps = await readAdminMapCatalog('play');
   let mapGroup: ReturnType<typeof playMapGroup>;
   try {
     mapGroup = playMapGroup(maps, String(input.permanentMapId || ''));
@@ -353,7 +314,7 @@ export async function savePlayMapGroupRuntimeProfile(input: Record<string, unkno
 }
 
 export async function deletePlayMapGroupRuntimeProfile(permanentMapId: string, configurationScope: 'group' | 'map' = 'group') {
-  const maps = await playMaps() as PlayMapReference[];
+  const maps = await readAdminMapCatalog('play');
   const { members } = playMapGroup(maps, permanentMapId);
   const document = await profileDocument();
   const memberIds = new Set(members.map((map) => map.permanentMapId));
@@ -364,7 +325,7 @@ export async function deletePlayMapGroupRuntimeProfile(permanentMapId: string, c
 }
 
 export async function getContainerCatalog(mode: RuntimeMode) {
-  const maps = mode === 'play' ? await playMaps() : await creatorMaps();
+  const maps = await readAdminMapCatalog(mode);
   const onlineByMap = mode === 'play' ? await playPresenceCounts(maps.map((map) => String(map.permanentMapId))) : {};
   const storedProfiles = mode === 'play' ? await listMapRuntimeProfiles() : [];
   const resourceGroups = mode === 'play' ? await listRuntimeResourceGroups() : [];
@@ -387,7 +348,7 @@ export async function getContainerCatalog(mode: RuntimeMode) {
     availableMaps: mode === 'play'
       ? maps.filter((map) => map.mapRole !== 'submap').map((map) => ({
           ...map,
-          memberCount: maps.filter((candidate) => groupKey(candidate as PlayMapReference) === groupKey(map as PlayMapReference)).length,
+          memberCount: maps.filter((candidate) => groupKey(candidate) === groupKey(map)).length,
         }))
       : maps,
     maps: withStatus.filter((map) => !['idle', 'unavailable'].includes(map.status.phase)),

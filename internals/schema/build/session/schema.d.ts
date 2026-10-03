@@ -40,6 +40,7 @@ export declare const GameSessionDataSchema: MuStruct<{
     ipAddress: MuASCII;
     url: MuASCII;
     fingerPrint: MuASCII;
+    deviceHash: MuASCII;
     user: MuStruct<{
         id: MuUTF8;
         displayname: MuUTF8;

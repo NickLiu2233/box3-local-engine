@@ -1,15 +1,13 @@
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import {
+  roleHasPlayerAdminPermission,
+  type PlayerAdminRequirement,
+} from '../../../../game/shared/player-admin-policy'
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { reportAdminError } from '../../player-admin-errors'
 // Player-admin application coordinator. Route entry lives in pages/index.tsx.
 import { KeyOutlined, LogoutOutlined } from '@ant-design/icons'
-import {
-  Button,
-  Card,
-  Form,
-  Layout as AntLayout,
-  message,
-  Modal as AntModal,
-  Space,
-  Tooltip,
-} from 'antd'
+import { Button, Card, Form, Layout as AntLayout, message, Space, Tooltip } from 'antd'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   allowedPlayerAdminViews,
@@ -52,7 +50,6 @@ import { usePlayerDirectory } from '../players/use-player-directory'
 import { playerDirectoryColumns } from '../players/player-directory-columns'
 
 const Layout = AntLayout
-const Modal = AntModal
 import { buildPlayerAdminMenuItems, PlayerAdminNavigationMenu } from './navigation-menu'
 const viewFromLocation = (): View => {
   if (typeof window === 'undefined') return 'players'
@@ -75,14 +72,20 @@ export default function PlayerAdminPage() {
   const [creatorPickerForm] = Form.useForm()
   const [selfPasswordForm] = Form.useForm()
   const [selfPasswordOpen, setSelfPasswordOpen] = useState(false)
-  const [selfPasswordSaving, setSelfPasswordSaving] = useState(false)
+  const { loading: selfPasswordSaving, run: savePassword } = useAdminRequest()
+  const { loading: overviewLoading, run: requestOverview } = useAdminRequest()
   const owner = useOwnerManagement()
   const security = useSecurityManagement()
   const isOwner = actor?.role === 'owner'
   const can = (permission: string) =>
-    actor?.role === 'owner' ||
-    actor?.role === 'admin' ||
-    Boolean(actor?.permissions.includes(permission))
+    Boolean(
+      actor &&
+        roleHasPlayerAdminPermission(
+          actor.role,
+          permission as PlayerAdminRequirement,
+          actor.permissions,
+        ),
+    )
   const directory = usePlayerDirectory(view, can('players.export'))
   const allowedViews = useMemo(() => allowedPlayerAdminViews(actor), [actor])
   const fallbackView = useMemo(() => playerAdminFallbackView(actor), [actor])
@@ -96,10 +99,14 @@ export default function PlayerAdminPage() {
     },
     [allowedViews, fallbackView],
   )
-  const loadOverview = useCallback(async () => {
-    const result = await api.getApiPlayAdminPlayersOverview()
-    setTotals(result.totals || {})
-  }, [])
+  const loadOverview = useCallback(
+    () =>
+      requestOverview(async () => {
+        const result = await api.getApiPlayAdminPlayersOverview()
+        setTotals(result.totals || {})
+      }),
+    [requestOverview],
+  )
   const load = useCallback(async () => {
     if (!actor || !canOpenPlayerAdminView(actor, view)) return
     if (
@@ -113,8 +120,7 @@ export default function PlayerAdminPage() {
     if (view === 'identity-bans') return security.identityBans.load()
     if (view === 'security') return security.activity.load()
     if (view === 'admins' || view === 'permission-groups') return owner.load()
-    if (view === 'script-moderation') return
-    return loadOverview()
+    if (view === 'overview') return loadOverview()
   }, [
     actor,
     view,
@@ -130,14 +136,13 @@ export default function PlayerAdminPage() {
       try {
         const r = await api.getApiPlayAdminVerify()
         setActor(r.actor)
-        await loadOverview()
       } catch {
         setActor(undefined)
       } finally {
         setBooting(false)
       }
     })()
-  }, [loadOverview])
+  }, [])
   useEffect(() => {
     if (actor) void load()
   }, [actor, load])
@@ -158,7 +163,7 @@ export default function PlayerAdminPage() {
       setCreatorDialog({ player: detail.player, detail, mode })
     } catch (error) {
       setCreatorDialog(undefined)
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
   const openCreatorPicker = async () => {
@@ -178,7 +183,7 @@ export default function PlayerAdminPage() {
       creatorPickerForm.resetFields()
       setCreatorPickerOpen(true)
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
   const selectCreatorCandidate = async () => {
@@ -189,8 +194,7 @@ export default function PlayerAdminPage() {
       setCreatorPickerOpen(false)
       await openCreatorDialog(player, 'creator-access')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : ''
-      if (errorMessage) message.error(errorMessage)
+      reportAdminError(error)
     }
   }
   const updateCreatorDialog = async (changes: {
@@ -216,7 +220,7 @@ export default function PlayerAdminPage() {
       message.success(changes.creatorAccess ? '创作权限已更新' : '已关闭创作端访问权限')
       await directory.load()
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
   const creatorCommand = async (commandValue: Record<string, unknown>, success: string) => {
@@ -238,7 +242,7 @@ export default function PlayerAdminPage() {
       await directory.load()
       return result
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
   const confirmCreatorCommand = (
@@ -246,7 +250,7 @@ export default function PlayerAdminPage() {
     commandValue: Record<string, unknown>,
     success: string,
   ) =>
-    Modal.confirm({
+    confirmAdminAction({
       title,
       content: '此操作会立即使该 CLI Token 失效，使用它的 CLI 将无法继续访问创作端。',
       okText: '确认撤销',
@@ -261,10 +265,9 @@ export default function PlayerAdminPage() {
       setActor(undefined)
     }
   }
-  const changeOwnPassword = async () => {
-    try {
+  const changeOwnPassword = () =>
+    savePassword(async () => {
       const values = await selfPasswordForm.validateFields()
-      setSelfPasswordSaving(true)
       await api.postApiPlayAdminSelfPassword({
         body: {
           currentPassword: values.currentPassword,
@@ -275,13 +278,8 @@ export default function PlayerAdminPage() {
       setSelfPasswordOpen(false)
       setActor(undefined)
       message.success('密码已修改，请使用新密码重新登录')
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : ''
-      if (errorMessage) message.error(errorMessage)
-    } finally {
-      setSelfPasswordSaving(false)
-    }
-  }
+    })
+
   const columns = playerDirectoryColumns({
     canDelete: can('players.delete'),
     toggleBan: directory.toggleBan,
@@ -311,6 +309,7 @@ export default function PlayerAdminPage() {
     command: directory.command,
   }
   const creatorPageController: CreatorPageController = {
+    loading: directory.loading,
     players: directory.players,
     total: directory.total,
     page: directory.page,
@@ -357,6 +356,7 @@ export default function PlayerAdminPage() {
   else if (view === 'overview')
     body = (
       <OverviewPage
+        loading={overviewLoading}
         totals={totals}
         canViewSecurity={canOpenPlayerAdminView(actor, 'security')}
         isOwner={isOwner}
@@ -368,6 +368,7 @@ export default function PlayerAdminPage() {
     body = (
       <PlayerDirectoryPage
         mode={view}
+        loading={directory.loading}
         players={directory.players}
         columns={columns}
         total={directory.total}
@@ -410,6 +411,7 @@ export default function PlayerAdminPage() {
         refresh={owner.load}
         edit={owner.adminDialog.openEditor}
         remove={owner.removeAdmin}
+        toggleStatus={owner.toggleAdminStatus}
       />
     )
   else

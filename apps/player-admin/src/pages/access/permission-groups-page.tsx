@@ -1,5 +1,8 @@
+import { adminPaginationDefaults } from '../../components/admin-pagination'
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { PageToolbar } from '../../components/page-toolbar'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Button, Card, Col, Modal, Row, Space, Table, Tag, Tooltip } from 'antd'
+import { Button, Card, Space, Table, Tag, Tooltip } from 'antd'
 
 import { PLAYER_ADMIN_CAPABILITY_META } from '../../../../game/shared/player-admin-policy'
 import { dateTime } from '../../player-admin-format'
@@ -17,29 +20,23 @@ type Props = {
 export function PermissionGroupsPage({ groups, loading, refresh, edit, remove }: Props) {
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">权限组</h1>
-        </Col>
-        <Col>
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
-              刷新
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => edit()}>
-              新增权限组
-            </Button>
-          </Space>
-        </Col>
-      </Row>
+      <PageToolbar title="权限组">
+        <Space>
+          <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
+            刷新
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => edit()}>
+            新增权限组
+          </Button>
+        </Space>
+      </PageToolbar>
       <Card className="player-admin-panel">
         <Table<Group>
           loading={loading}
           dataSource={groups}
           rowKey="id"
           pagination={{
-            showSizeChanger: true,
-            pageSizeOptions: ['20', '30', '50', '100'],
+            ...adminPaginationDefaults,
             showTotal: (count) => `共 ${count} 个权限组`,
           }}
           columns={[
@@ -79,7 +76,7 @@ export function PermissionGroupsPage({ groups, loading, refresh, edit, remove }:
                       danger
                       type="link"
                       onClick={() =>
-                        Modal.confirm({
+                        confirmAdminAction({
                           title: `删除权限组“${group.name}”？`,
                           content: '删除后无法恢复。',
                           okText: '删除',

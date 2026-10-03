@@ -4,8 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import {issueModerationRuntimeToken} from '@box/utils/moderation-runtime-auth'
 import { ModerationHost } from '../src/moderation/moderation-host'
-import { ModerationScript, configureModerationFingerprint } from '../src/moderation/moderation-script'
-import { scriptFingerprint, projectScriptFingerprint } from '../src/moderation/moderation-client'
+import { ModerationScript } from '../src/moderation/moderation-script'
 import { ModerationMetadataReporter } from '../src/moderation/moderation-metadata'
 
 async function main() {
@@ -13,20 +12,14 @@ async function main() {
   process.env.PERMISSION_TOKEN_SECRET = 'test-only-host-secret'
   process.env.BOX_WORLD_PERMANENT_MAP_ID = 'test-permanent-map'
   process.env.MODE = 'play'
+  process.env.BOX_SERVER_NAME = '真正的地图名称'
+  process.env.BOX_WORLD_DESCRIPTION = '地图介绍'
+  process.env.BOX_WORLD_PUBLIC_ID = 'test-access-id'
+  process.env.BOX_WORLD_VERSION = 'v1.2.3'
   const credentialRoot=fs.mkdtempSync(path.join(os.tmpdir(),'moderation-bridge-test-'))
   process.env.BOX_MODERATION_CREDENTIAL_PATH=path.join(credentialRoot,'credential')
   const token=issueModerationRuntimeToken({mapId:'test-permanent-map',runtimeId:'test-permanent-map',mode:'play'},'test-only-moderation-signing-secret')
   fs.writeFileSync(process.env.BOX_MODERATION_CREDENTIAL_PATH,token,{mode:0o600})
-  assert.equal(scriptFingerprint({ b: 'two', a: 'one' }), scriptFingerprint({ a: 'one', b: 'two' }))
-  assert.notEqual(scriptFingerprint({ a: 'one' }), scriptFingerprint({ a: 'changed' }))
-  assert.notEqual(scriptFingerprint({ a: 'one' }, 'a'), scriptFingerprint({ a: 'one' }, 'different-entry'))
-  const project = { scriptIndex: 'index.js', assets: { 'index.js': {} }, running: false }
-  const creatorFingerprint = projectScriptFingerprint(project, { 'index.js': 'same project' })
-  const runningProject={...project,running:true}
-  assert.equal(
-    creatorFingerprint,
-    projectScriptFingerprint(runningProject, { 'index.js': 'same project' }),
-  )
   let hostHandler: any
   let requestCount = 0
   let lastBody: any
@@ -51,32 +44,39 @@ async function main() {
       }),
     } as never,
     (session) => session === 'active-script',
-    () => scriptFingerprint({ main: 'source' }),
-    (id) => (id === 7 ? { userId: '42', ipAddress: '192.0.2.8' } : undefined),
+    (id) => (id === 7 ? { userId: '42', ipAddress: '192.0.2.8', deviceHash: 'a'.repeat(64) } : undefined),
     (id) => kicked.push(id),
   )
   const client = { sessionId: 'active-script', message: { reply: (reply: any) => replies.push(reply) } }
   const command = { action: 'banCurrentIP', reason: 'test', durationSeconds: 60, requestId: 'test-ip' }
   await hostHandler(client, { handle: 1, playerId: 7, payload: JSON.stringify(command) })
   assert.equal(requestCount, 1)
+  await hostHandler(client, { handle: 9, playerId: 7, payload: JSON.stringify({...command, durationSeconds: 0}) })
+  assert.equal(lastBody.durationSeconds, 0)
+  requestCount = 1
 
   const commandBody = lastBody
   process.env.SERVER_ID = 'private-room'
-  await new ModerationMetadataReporter(() => ({ name: 'private', fingerprint: 'a'.repeat(64) })).refresh()
+  await new ModerationMetadataReporter(() => ({ name: 'private' })).refresh()
   assert.equal(requestCount, 1, 'private rooms must not replace public metadata')
   process.env.SERVER_ID = 'test-permanent-map'
-  await new ModerationMetadataReporter(() => ({ name: 'public', fingerprint: 'a'.repeat(64) })).refresh()
+  await new ModerationMetadataReporter(() => ({ name: 'public' })).refresh()
   assert.equal(requestCount, 2)
   assert.equal(lastBody.mode, 'play')
-  assert.equal(lastBody.scriptFingerprint, 'a'.repeat(64))
+  assert.equal(lastBody.name, '真正的地图名称')
+  assert.equal(lastBody.description, '地图介绍')
+  assert.equal(lastBody.projectId, 'test-permanent-map')
+  assert.equal(lastBody.publicId, 'test-access-id')
+  assert.equal(lastBody.version, 'v1.2.3')
+  assert.equal('scriptFingerprint' in lastBody, false)
   requestCount = 1
   lastBody = commandBody
   assert.equal(lastBody.userId, '42')
   assert.equal(lastBody.ipAddress, '192.0.2.8')
   assert.equal(lastBody.mapId, 'test-permanent-map')
-  assert.equal(lastBody.scriptFingerprint, scriptFingerprint({ main: 'source' }))
-  assert.deepEqual(kicked, [7])
-  for (const field of ['mapId', 'scriptFingerprint', 'userId', 'ipAddress', 'keyId', 'adminId']) {
+  assert.equal('scriptFingerprint' in lastBody, false)
+  assert.deepEqual(kicked, [7, 7])
+  for (const field of ['mapId', 'scriptFingerprint', 'userId', 'ipAddress', 'deviceHash', 'keyId', 'adminId']) {
     await hostHandler(client, { handle: 2, playerId: 7, payload: JSON.stringify({ ...command, [field]: 'forged' }) })
     assert.equal(replies.at(-1).success, false)
   }
@@ -88,6 +88,12 @@ async function main() {
     { handle: 4, playerId: 7, payload: JSON.stringify(command) },
   )
   assert.equal(requestCount, 1)
+
+  await hostHandler(client, { handle: 10, playerId: 7, payload: JSON.stringify({ ...command, action: 'banCurrentDevice' }) })
+  assert.equal(lastBody.deviceHash, 'a'.repeat(64))
+  assert.equal(lastBody.ipAddress, undefined)
+  assert.equal(replies.at(-1).success, true)
+  assert.deepEqual(kicked, [7, 7, 7])
 
   let scriptHandler: any
   const sent: any[] = []
@@ -116,18 +122,7 @@ async function main() {
   )
   const player = {} as never
   assert.equal('mapId' in script, false)
-  configureModerationFingerprint(script, {
-    moderationFingerprintReadable: false,
-    moderationFingerprint: 'must-not-be-exposed',
-  })
   assert.equal('scriptFingerprint' in script, false)
-  assert.equal(script.scriptFingerprint, undefined)
-  configureModerationFingerprint(script, {
-    moderationFingerprintReadable: true,
-    moderationFingerprint: 'creator-fingerprint',
-  })
-  assert.equal(script.scriptFingerprint, 'creator-fingerprint')
-  assert.equal(Object.getOwnPropertyDescriptor(script, 'scriptFingerprint')?.writable, false)
   const promise = script.banPlayer(player, { reason: 'test', durationSeconds: 60, requestId: 'test-account' })
   assert.equal(sent[0].playerId, 7)
   assert.ok(!sent[0].payload.includes('secret'))
@@ -138,6 +133,46 @@ async function main() {
   })
   assert.equal((await promise).id, 'ban')
   assert.equal(timers.size, 0)
+  const batch = script.banCurrentDevice([player, player, player], { reason: 'batch', durationSeconds: 0, requestId: 'device-batch' })
+  const batchIds: string[] = []
+  for (let index = 0; index < 3; index++) {
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const message = sent.at(-1)
+    const body = JSON.parse(message.payload)
+    assert.equal(body.action, 'banCurrentDevice')
+    batchIds.push(body.requestId)
+    scriptHandler({ handle: message.handle, success: index !== 1, payload: JSON.stringify(index === 1 ? {message: '权限不足'} : {id: `device-${index}`,scope:'map',expiresAt:null}) })
+  }
+  assert.deepEqual(batchIds, ['device-batch.b0', 'device-batch.b1', 'device-batch.b2'])
+  assert.deepEqual(await batch, [
+    {index:0,success:true,ban:{id:'device-0',scope:'map',expiresAt:null}},
+    {index:1,success:false,error:'权限不足'},
+    {index:2,success:true,ban:{id:'device-2',scope:'map',expiresAt:null}},
+  ])
+  const sentCount = sent.length
+  await assert.rejects(script.banPlayer(Array(101).fill(player), {reason:'test',durationSeconds:60,requestId:'invalid'}), /100/)
+  assert.equal(sent.length, sentCount)
+  assert.deepEqual(await script.banPlayer([], {reason:'test',durationSeconds:60,requestId:'empty'}), [])
+  const list = script.listBans({player,kind:'device',status:'active',page:2,pageSize:10})
+  let msg=sent.at(-1)
+  assert.equal(msg.playerId,7)
+  assert.deepEqual(JSON.parse(msg.payload),{kind:'device',status:'active',page:2,pageSize:10,action:'listBans'})
+  scriptHandler({handle:msg.handle,success:true,payload:JSON.stringify({items:[],total:0,page:2,pageSize:10})})
+  assert.equal((await list).page,2)
+  const get = script.getBan('00000000-0000-0000-0000-000000000000')
+  msg=sent.at(-1)
+  assert.equal(msg.playerId,0)
+  scriptHandler({handle:msg.handle,success:true,payload:JSON.stringify({ban:null})})
+  assert.equal(await get,null)
+  await hostHandler(client,{handle:11,playerId:0,payload:JSON.stringify({action:'listBans',page:1})})
+  assert.equal(replies.at(-1).success,true)
+  assert.equal(lastBody.userId,undefined)
+  await hostHandler(client,{handle:12,playerId:0,payload:JSON.stringify({action:'getBan',banId:'00000000-0000-0000-0000-000000000000'})})
+  assert.equal(replies.at(-1).success,true)
+  await hostHandler(client,{handle:13,playerId:99,payload:JSON.stringify({action:'listBans'})})
+  assert.equal(replies.at(-1).success,false)
+  await hostHandler(client,{handle:14,playerId:0,payload:JSON.stringify({action:'listBans',pageSize:51})})
+  assert.equal(replies.at(-1).success,false)
   const pending = Array.from({ length: 8 }, () => script.getPlayerStatus(player))
   const outcomes = Promise.allSettled(pending)
   await assert.rejects(script.getPlayerStatus(player), /请求过多/)

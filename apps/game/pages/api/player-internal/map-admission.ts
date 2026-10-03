@@ -5,7 +5,7 @@ import { scriptModerationService } from '../../../server/script-moderation-servi
 import { mapIdSchema } from '../../../server/script-moderation-store'
 import { sendPlayerAdminApiError, applyPlayerAdminSecurityHeaders } from '../../../server/player-admin-authorization'
 
-const playerSchema = z.object({ userId: z.string().max(128), ipAddress: z.string().max(64) }).strict()
+const playerSchema = z.object({ userId: z.string().max(128), ipAddress: z.string().max(64), deviceHash: z.string().regex(/^[0-9a-f]{64}$/).optional() }).strict()
 const bodySchema = z.union([
   playerSchema.extend({ mapId: mapIdSchema }).strict(),
   z.object({ mapId: mapIdSchema, players: z.array(playerSchema).min(1).max(100) }).strict(),
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const input = parsed.data
     if ('players' in input)
       return res.status(200).json({ denied: await scriptModerationService.deniedPlayers(input.mapId, input.players) })
-    return res.status(200).json(await scriptModerationService.admission(input.mapId, input.userId, input.ipAddress))
+    return res.status(200).json(await scriptModerationService.admission(input.mapId, input.userId, input.ipAddress, input.deviceHash))
   } catch (error) {
     return sendPlayerAdminApiError(res, error, 'Map admission failed')
   }

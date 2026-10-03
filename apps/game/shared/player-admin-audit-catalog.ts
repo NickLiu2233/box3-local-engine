@@ -4,6 +4,8 @@ export type PlayerAdminAuditCategory =
   | 'administrator'
   | 'permission'
   | 'maintenance'
+  | 'map'
+  | 'script'
   | 'unknown';
 
 export type PlayerAdminAuditSeverity = 'info' | 'sensitive' | 'destructive';
@@ -15,6 +17,20 @@ export type PlayerAdminAuditDescriptor = Readonly<{
 }>;
 
 export const PLAYER_ADMIN_AUDIT_ACTIONS = {
+  'script.key.create': { label: '创建地图授权', category: 'map', severity: 'sensitive' },
+  'script.key.revoke': { label: '撤销地图授权', category: 'map', severity: 'sensitive' },
+  'script.authorization.update': { label: '更新地图授权', category: 'map', severity: 'sensitive' },
+  'script.binding.save': { label: '绑定地图授权', category: 'map', severity: 'sensitive' },
+  'script.binding.delete': { label: '解除地图授权', category: 'map', severity: 'sensitive' },
+  'script.map-ban.revoke': { label: '解除地图处罚', category: 'map', severity: 'sensitive' },
+  'script.banPlayer': { label: '脚本封禁玩家', category: 'script', severity: 'sensitive' },
+  'script.banCurrentIP': { label: '脚本封禁 IP', category: 'script', severity: 'sensitive' },
+  'script.banCurrentDevice': { label: '脚本封禁设备', category: 'script', severity: 'sensitive' },
+  'script.revokeBan': { label: '脚本解除处罚', category: 'script', severity: 'sensitive' },
+  'script.getPlayerStatus': { label: '脚本查询玩家状态', category: 'script', severity: 'sensitive' },
+  'script.listBans': { label: '脚本查询处罚记录', category: 'script', severity: 'sensitive' },
+  'script.getBan': { label: '脚本查询处罚详情', category: 'script', severity: 'sensitive' },
+
   'login.success': { label: '账号登录成功', category: 'authentication', severity: 'info' },
   'login.failed': { label: '账号登录失败', category: 'authentication', severity: 'sensitive' },
   'admin.login.success': { label: '管理账号登录成功', category: 'authentication', severity: 'sensitive' },

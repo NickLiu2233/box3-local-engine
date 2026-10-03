@@ -1,5 +1,9 @@
+import { AdminPagination } from '../../components/admin-pagination'
+import { PageToolbar } from '../../components/page-toolbar'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
-import { Button, Card, Col, Input, Pagination, Row, Select, Table, Tag, Tooltip } from 'antd'
+import { Button, Card, Input, Select, Table, Tag } from 'antd'
+import { useState } from 'react'
+import { activityActionName, activityTarget, ActivityResult, isScriptActivity, SecurityActivityDetails } from './security-activity-details'
 
 import { dateTime } from '../../player-admin-format'
 import type { Activity } from '../../player-admin-types'
@@ -20,6 +24,7 @@ type Props = {
 }
 
 export function SecurityActivityPage(props: Props) {
+  const [selected, setSelected] = useState<Activity>()
   const resetSearch = (value: string) => {
     props.setSearch(value)
     props.setPage(1)
@@ -30,22 +35,17 @@ export function SecurityActivityPage(props: Props) {
   }
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">安全记录</h1>
-        </Col>
-        <Col>
-          <Button icon={<ReloadOutlined />} onClick={props.refresh}>
-            刷新
-          </Button>
-        </Col>
-      </Row>
+      <PageToolbar title="安全记录">
+        <Button icon={<ReloadOutlined />} onClick={props.refresh}>
+          刷新
+        </Button>
+      </PageToolbar>
       <Card className="player-admin-panel" title={`操作与登录记录（${props.total}）`}>
         <div className="player-admin-filterbar">
           <Input
             prefix={<SearchOutlined />}
             allowClear
-            placeholder="搜索操作、账号、玩家、IP 或身份 ID"
+            placeholder="搜索操作、账号、地图、IP 或请求 ID"
             value={props.search}
             onChange={(event) => resetSearch(event.target.value)}
           />
@@ -70,63 +70,40 @@ export function SecurityActivityPage(props: Props) {
             {
               title: '类型',
               dataIndex: 'kind',
-              render: (value) => (
-                <Tag color={value === 'admin' ? 'blue' : 'default'}>
-                  {value === 'admin' ? '管理操作' : '登录'}
+              render: (value, row) => (
+                <Tag color={isScriptActivity(row) ? 'purple' : value === 'admin' ? 'blue' : 'default'}>
+                  {isScriptActivity(row) ? '地图脚本' : value === 'admin' ? '管理操作' : '登录'}
                 </Tag>
               ),
             },
-            { title: '操作', dataIndex: 'action' },
+            { title: '操作', render: (_, row) => <><div>{activityActionName(row.action)}</div><small className="player-admin-muted">{row.action}</small></> },
+            { title: '结果', width: 90, render: (_, row) => <ActivityResult row={row} /> },
             { title: '操作人', render: (_, row) => row.actorDisplayName || row.actor },
             {
               title: '对象',
               render: (_, row) => {
-                const name = row.displayName || row.username || '—'
-                return row.subjectId ? (
-                  <>
-                    <div>{name}</div>
-                    <div className="player-admin-muted">{row.subjectId}</div>
-                  </>
-                ) : (
-                  name
-                )
+                const target = activityTarget(row)
+                return <><div>{target.name}</div>{target.id &&
+                  <small className="player-admin-muted" style={{ overflowWrap: 'anywhere' }}>{target.kind}：{target.id}</small>}</>
+
               },
             },
             { title: 'IP 地址', dataIndex: 'ip', render: (value) => value || '—' },
             {
               title: '详情',
-              render: (_, row) =>
-                row.details && Object.keys(row.details).length ? (
-                  <Tooltip
-                    title={
-                      <pre className="player-admin-audit-details">
-                        {JSON.stringify(row.details, null, 2)}
-                      </pre>
-                    }
-                  >
-                    <Button type="link">查看</Button>
-                  </Tooltip>
-                ) : (
-                  '—'
-                ),
+              render: (_, row) => <Button type="link" onClick={() => setSelected(row)}>查看</Button>,
             },
           ]}
         />
-        <div className="player-admin-table-pagination">
-          <Pagination
-            current={props.page}
-            total={props.total}
-            pageSize={props.pageSize}
-            showSizeChanger
-            pageSizeOptions={['20', '30', '50', '100']}
-            onChange={props.setPage}
-            onShowSizeChange={(_, size) => {
-              props.setPageSize(size)
-              props.setPage(1)
-            }}
-          />
-        </div>
+        <AdminPagination
+          page={props.page}
+          pageSize={props.pageSize}
+          total={props.total}
+          setPage={props.setPage}
+          setPageSize={props.setPageSize}
+        />
       </Card>
+      <SecurityActivityDetails event={selected} onClose={() => setSelected(undefined)} />
     </>
   )
 }

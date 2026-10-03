@@ -1,4 +1,6 @@
-import { Avatar, Button, Dropdown, Modal, Tag } from 'antd'
+import { PlayerIdentity } from '../../components/player-identity'
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { Button, Dropdown, Tag } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 
 import { dateTime } from '../../player-admin-format'
@@ -16,15 +18,7 @@ export function playerDirectoryColumns(options: Options): ColumnsType<Player> {
   return [
     {
       title: '玩家',
-      render: (_, player) => (
-        <div className="player-admin-player">
-          <Avatar>{(player.displayName || player.username).slice(0, 1)}</Avatar>
-          <span>
-            <div className="player-admin-player-name">{player.displayName || player.username}</div>
-            <div className="player-admin-player-meta">@{player.username}</div>
-          </span>
-        </div>
-      ),
+      render: (_, player) => <PlayerIdentity player={player} />,
     },
     {
       title: '账号标识',
@@ -79,7 +73,7 @@ export function playerDirectoryColumns(options: Options): ColumnsType<Player> {
                       label: '删除身份',
                       danger: true,
                       onClick: () =>
-                        Modal.confirm({
+                        confirmAdminAction({
                           title: `删除身份 · ${player.displayName || player.username}`,
                           content: '将永久删除该玩家的资料、角色、处罚记录和全部会话，且无法恢复。',
                           okText: '永久删除',

@@ -7846,22 +7846,27 @@ export interface operations {
                             name: string;
                             /** @enum {string} */
                             scope: "map" | "server";
-                            maximumBanSeconds: number;
+                            maximumBanSeconds: 0 | number;
                             expiresAt: string;
                             revokedAt: string | null;
                         }[];
                         maps: {
                             mapId: string;
+                            groupId: string;
                             name: string;
-                            scriptFingerprint: string;
+                            projectId: string;
+                            publicId: string;
+                            description: string;
+                            version: string;
                             /** @enum {string} */
                             mode: "edit" | "play";
                             observedAt: string;
                         }[];
                         bindings: {
                             mapId: string;
+                            /** @enum {string} */
+                            mode: "edit" | "play";
                             keyId: string;
-                            scriptFingerprint: string;
                         }[];
                         bans: {
                             id: string;
@@ -7869,7 +7874,7 @@ export interface operations {
                             subjectId: string;
                             kind: string;
                             reason: string;
-                            expiresAt: string;
+                            expiresAt: string | null;
                         }[];
                     };
                 };
@@ -7900,12 +7905,13 @@ export interface operations {
                     action: "create";
                     values: {
                         mapId: string;
-                        expectedFingerprint: string;
-                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                        /** @enum {string} */
+                        mode?: "edit" | "play";
+                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                         name?: string;
                         /** @enum {string} */
                         scope?: "map" | "server";
-                        maximumBanSeconds?: number;
+                        maximumBanSeconds?: 0 | number;
                         expiresAt?: string;
                     };
                 } | {
@@ -7913,17 +7919,23 @@ export interface operations {
                     action: "bind";
                     values: {
                         mapId: string;
+                        /** @enum {string} */
+                        mode: "edit" | "play";
                         keyId: string;
-                        expectedFingerprint: string;
                     };
                 } | {
                     /** @constant */
                     action: "update";
                     values: {
                         mapId: string;
+                        /** @enum {string} */
+                        mode?: "edit" | "play";
                         keyId: string;
-                        expectedFingerprint: string;
+                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                         days?: number;
+                        maximumBanSeconds?: 0 | number;
+                        /** @enum {string} */
+                        scope?: "map" | "server";
                     };
                 } | {
                     /** @constant */
@@ -7933,6 +7945,8 @@ export interface operations {
                     /** @constant */
                     action: "unbind";
                     mapId: string;
+                    /** @enum {string} */
+                    mode?: "edit" | "play";
                 } | {
                     /** @constant */
                     action: "revoke-map-ban";
@@ -8978,11 +8992,13 @@ export interface operations {
                     mapId: string;
                     userId: string;
                     ipAddress: string;
+                    deviceHash?: string;
                 } | {
                     mapId: string;
                     players: {
                         userId: string;
                         ipAddress: string;
+                        deviceHash?: string;
                     }[];
                 };
             };
@@ -9204,10 +9220,14 @@ export interface operations {
             content: {
                 "application/json": {
                     mapId: string;
+                    groupId?: string;
                     /** @enum {string} */
                     mode: "edit" | "play";
                     name: string;
-                    scriptFingerprint: string;
+                    projectId?: string;
+                    publicId?: string;
+                    description?: string;
+                    version?: string;
                 };
             };
         };
@@ -9246,17 +9266,24 @@ export interface operations {
             content: {
                 "application/json": {
                     mapId: string;
-                    scriptFingerprint: string;
                     /** @enum {string} */
-                    action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                    action: "banPlayer" | "banCurrentIP" | "banCurrentDevice" | "revokeBan" | "getPlayerStatus" | "listBans" | "getBan";
                     userId?: string;
                     ipAddress?: string;
+                    deviceHash?: string;
                     /** @enum {string} */
                     scope?: "map" | "server";
+                    /** @description 0 表示永久，需后台允许永久封禁 */
                     durationSeconds?: number;
                     reason?: string;
                     banId?: string;
                     requestId?: string;
+                    /** @enum {string} */
+                    kind?: "account" | "ip" | "device";
+                    /** @enum {string} */
+                    status?: "active" | "expired" | "revoked" | "all";
+                    page?: number;
+                    pageSize?: number;
                 };
             };
         };
@@ -9268,12 +9295,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        ban: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "account" | "ip" | "device";
+                            /** @enum {string} */
+                            scope: "map" | "server";
+                            userId: string | null;
+                            reason: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            expiresAt: string | null;
+                            /** Format: date-time */
+                            revokedAt: string | null;
+                            /** @enum {string} */
+                            status: "active" | "expired" | "revoked";
+                            remainingSeconds: number | null;
+                        } | null;
+                        replayed: boolean;
+                    } | {
+                        items: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            kind: "account" | "ip" | "device";
+                            /** @enum {string} */
+                            scope: "map" | "server";
+                            userId: string | null;
+                            reason: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            expiresAt: string | null;
+                            /** Format: date-time */
+                            revokedAt: string | null;
+                            /** @enum {string} */
+                            status: "active" | "expired" | "revoked";
+                            remainingSeconds: number | null;
+                        }[];
+                        total: number;
+                        page: number;
+                        pageSize: number;
+                        replayed: boolean;
+                    } | {
                         /** Format: uuid */
                         id: string;
                         /** @enum {string} */
                         scope: "map" | "server";
                         /** Format: date-time */
-                        expiresAt: string;
+                        expiresAt: string | null;
                         replayed: boolean;
                     } | {
                         /** Format: uuid */
@@ -9287,11 +9359,11 @@ export interface operations {
                         bans: {
                             id: string;
                             /** @enum {string} */
-                            kind: "account" | "ip";
+                            kind: "account" | "ip" | "device";
                             /** @enum {string} */
                             scope: "map" | "server";
                             reason: string;
-                            expiresAt: string;
+                            expiresAt: string | null;
                         }[];
                     };
                 };

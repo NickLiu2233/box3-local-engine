@@ -1,5 +1,8 @@
+import { confirmAdminAction } from '../../components/confirm-admin-action'
+import { AdminPagination } from '../../components/admin-pagination'
+import { PageToolbar } from '../../components/page-toolbar'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
-import { Button, Card, Col, Input, Modal, Pagination, Row, Select, Space, Table, Tag } from 'antd'
+import { Button, Card, Input, Select, Space, Table, Tag } from 'antd'
 
 import { dateTime } from '../../player-admin-format'
 import type { IdentityBan } from '../../player-admin-types'
@@ -24,16 +27,11 @@ type Props = {
 export function IdentityBansPage(props: Props) {
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">IP / 设备封禁</h1>
-        </Col>
-        <Col>
-          <Button icon={<ReloadOutlined />} onClick={props.refresh}>
-            刷新
-          </Button>
-        </Col>
-      </Row>
+      <PageToolbar title="IP / 设备封禁">
+        <Button icon={<ReloadOutlined />} onClick={props.refresh}>
+          刷新
+        </Button>
+      </PageToolbar>
       <Card
         className="player-admin-panel"
         title={`有效来源封禁（${props.total}）`}
@@ -108,7 +106,7 @@ export function IdentityBansPage(props: Props) {
                     danger
                     type="link"
                     onClick={() =>
-                      Modal.confirm({
+                      confirmAdminAction({
                         title: `确定解除这项${row.kind === 'ip' ? ' IP' : '设备'}封禁？`,
                         okText: '解除封禁',
                         okButtonProps: { danger: true },
@@ -124,20 +122,13 @@ export function IdentityBansPage(props: Props) {
             },
           ]}
         />
-        <div className="player-admin-table-pagination">
-          <Pagination
-            current={props.page}
-            total={props.total}
-            pageSize={props.pageSize}
-            showSizeChanger
-            pageSizeOptions={['20', '30', '50', '100']}
-            onChange={props.setPage}
-            onShowSizeChange={(_, size) => {
-              props.setPageSize(size)
-              props.setPage(1)
-            }}
-          />
-        </div>
+        <AdminPagination
+          page={props.page}
+          pageSize={props.pageSize}
+          total={props.total}
+          setPage={props.setPage}
+          setPageSize={props.setPageSize}
+        />
       </Card>
     </>
   )

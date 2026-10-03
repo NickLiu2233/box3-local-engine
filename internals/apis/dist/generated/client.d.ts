@@ -9020,21 +9020,25 @@ export declare class ApiClient {
                             permissions: string[] | null;
                             name: string;
                             scope: "map" | "server";
-                            maximumBanSeconds: number;
+                            maximumBanSeconds: 0 | number;
                             expiresAt: string;
                             revokedAt: string | null;
                         }[];
                         maps: {
                             mapId: string;
+                            groupId: string;
                             name: string;
-                            scriptFingerprint: string;
+                            projectId: string;
+                            publicId: string;
+                            description: string;
+                            version: string;
                             mode: "edit" | "play";
                             observedAt: string;
                         }[];
                         bindings: {
                             mapId: string;
+                            mode: "edit" | "play";
                             keyId: string;
-                            scriptFingerprint: string;
                         }[];
                         bans: {
                             id: string;
@@ -9042,7 +9046,7 @@ export declare class ApiClient {
                             subjectId: string;
                             kind: string;
                             reason: string;
-                            expiresAt: string;
+                            expiresAt: string | null;
                         }[];
                     };
                 };
@@ -9089,21 +9093,25 @@ export declare class ApiClient {
                                 permissions: string[] | null;
                                 name: string;
                                 scope: "map" | "server";
-                                maximumBanSeconds: number;
+                                maximumBanSeconds: 0 | number;
                                 expiresAt: string;
                                 revokedAt: string | null;
                             }[];
                             maps: {
                                 mapId: string;
+                                groupId: string;
                                 name: string;
-                                scriptFingerprint: string;
+                                projectId: string;
+                                publicId: string;
+                                description: string;
+                                version: string;
                                 mode: "edit" | "play";
                                 observedAt: string;
                             }[];
                             bindings: {
                                 mapId: string;
+                                mode: "edit" | "play";
                                 keyId: string;
-                                scriptFingerprint: string;
                             }[];
                             bans: {
                                 id: string;
@@ -9111,7 +9119,7 @@ export declare class ApiClient {
                                 subjectId: string;
                                 kind: string;
                                 reason: string;
-                                expiresAt: string;
+                                expiresAt: string | null;
                             }[];
                         };
                     };
@@ -9148,21 +9156,25 @@ export declare class ApiClient {
                                 permissions: string[] | null;
                                 name: string;
                                 scope: "map" | "server";
-                                maximumBanSeconds: number;
+                                maximumBanSeconds: 0 | number;
                                 expiresAt: string;
                                 revokedAt: string | null;
                             }[];
                             maps: {
                                 mapId: string;
+                                groupId: string;
                                 name: string;
-                                scriptFingerprint: string;
+                                projectId: string;
+                                publicId: string;
+                                description: string;
+                                version: string;
                                 mode: "edit" | "play";
                                 observedAt: string;
                             }[];
                             bindings: {
                                 mapId: string;
+                                mode: "edit" | "play";
                                 keyId: string;
-                                scriptFingerprint: string;
                             }[];
                             bans: {
                                 id: string;
@@ -9170,7 +9182,7 @@ export declare class ApiClient {
                                 subjectId: string;
                                 kind: string;
                                 reason: string;
-                                expiresAt: string;
+                                expiresAt: string | null;
                             }[];
                         };
                     };
@@ -9201,21 +9213,25 @@ export declare class ApiClient {
             permissions: string[] | null;
             name: string;
             scope: "map" | "server";
-            maximumBanSeconds: number;
+            maximumBanSeconds: 0 | number;
             expiresAt: string;
             revokedAt: string | null;
         }[];
         maps: {
             mapId: string;
+            groupId: string;
             name: string;
-            scriptFingerprint: string;
+            projectId: string;
+            publicId: string;
+            description: string;
+            version: string;
             mode: "edit" | "play";
             observedAt: string;
         }[];
         bindings: {
             mapId: string;
+            mode: "edit" | "play";
             keyId: string;
-            scriptFingerprint: string;
         }[];
         bans: {
             id: string;
@@ -9223,7 +9239,7 @@ export declare class ApiClient {
             subjectId: string;
             kind: string;
             reason: string;
-            expiresAt: string;
+            expiresAt: string | null;
         }[];
     }>;
     getApiPlayAdminStatusRaw(...init: Parameters<PathBasedClient<paths>["/api/play-admin/status"]["GET"]>): Promise<import("openapi-fetch").FetchResponse<{
@@ -20076,27 +20092,30 @@ export declare class ApiClient {
                     action: "create";
                     values: {
                         mapId: string;
-                        expectedFingerprint: string;
-                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                        mode?: "edit" | "play";
+                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                         name?: string;
                         scope?: "map" | "server";
-                        maximumBanSeconds?: number;
+                        maximumBanSeconds?: 0 | number;
                         expiresAt?: string;
                     };
                 } | {
                     action: "bind";
                     values: {
                         mapId: string;
+                        mode: "edit" | "play";
                         keyId: string;
-                        expectedFingerprint: string;
                     };
                 } | {
                     action: "update";
                     values: {
                         mapId: string;
+                        mode?: "edit" | "play";
                         keyId: string;
-                        expectedFingerprint: string;
+                        permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                         days?: number;
+                        maximumBanSeconds?: 0 | number;
+                        scope?: "map" | "server";
                     };
                 } | {
                     action: "revoke";
@@ -20104,6 +20123,7 @@ export declare class ApiClient {
                 } | {
                     action: "unbind";
                     mapId: string;
+                    mode?: "edit" | "play";
                 } | {
                     action: "revoke-map-ban";
                     banId: string;
@@ -20142,27 +20162,30 @@ export declare class ApiClient {
             action: "create";
             values: {
                 mapId: string;
-                expectedFingerprint: string;
-                permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[] | undefined;
+                mode?: ("edit" | "play") | undefined;
+                permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[] | undefined;
                 name?: string | undefined;
                 scope?: ("map" | "server") | undefined;
-                maximumBanSeconds?: number | undefined;
+                maximumBanSeconds?: (0 | number) | undefined;
                 expiresAt?: string | undefined;
             } & {};
         } & {}) | ({
             action: "bind";
             values: {
                 mapId: string;
+                mode: "edit" | "play";
                 keyId: string;
-                expectedFingerprint: string;
             } & {};
         } & {}) | ({
             action: "update";
             values: {
                 mapId: string;
+                mode?: ("edit" | "play") | undefined;
                 keyId: string;
-                expectedFingerprint: string;
+                permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[] | undefined;
                 days?: number | undefined;
+                maximumBanSeconds?: (0 | number) | undefined;
+                scope?: ("map" | "server") | undefined;
             } & {};
         } & {}) | ({
             action: "revoke";
@@ -20170,6 +20193,7 @@ export declare class ApiClient {
         } & {}) | ({
             action: "unbind";
             mapId: string;
+            mode?: ("edit" | "play") | undefined;
         } & {}) | ({
             action: "revoke-map-ban";
             banId: string;
@@ -20189,27 +20213,30 @@ export declare class ApiClient {
                         action: "create";
                         values: {
                             mapId: string;
-                            expectedFingerprint: string;
-                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                            mode?: "edit" | "play";
+                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                             name?: string;
                             scope?: "map" | "server";
-                            maximumBanSeconds?: number;
+                            maximumBanSeconds?: 0 | number;
                             expiresAt?: string;
                         };
                     } | {
                         action: "bind";
                         values: {
                             mapId: string;
+                            mode: "edit" | "play";
                             keyId: string;
-                            expectedFingerprint: string;
                         };
                     } | {
                         action: "update";
                         values: {
                             mapId: string;
+                            mode?: "edit" | "play";
                             keyId: string;
-                            expectedFingerprint: string;
+                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                             days?: number;
+                            maximumBanSeconds?: 0 | number;
+                            scope?: "map" | "server";
                         };
                     } | {
                         action: "revoke";
@@ -20217,6 +20244,7 @@ export declare class ApiClient {
                     } | {
                         action: "unbind";
                         mapId: string;
+                        mode?: "edit" | "play";
                     } | {
                         action: "revoke-map-ban";
                         banId: string;
@@ -20257,27 +20285,30 @@ export declare class ApiClient {
                         action: "create";
                         values: {
                             mapId: string;
-                            expectedFingerprint: string;
-                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage")[];
+                            mode?: "edit" | "play";
+                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                             name?: string;
                             scope?: "map" | "server";
-                            maximumBanSeconds?: number;
+                            maximumBanSeconds?: 0 | number;
                             expiresAt?: string;
                         };
                     } | {
                         action: "bind";
                         values: {
                             mapId: string;
+                            mode: "edit" | "play";
                             keyId: string;
-                            expectedFingerprint: string;
                         };
                     } | {
                         action: "update";
                         values: {
                             mapId: string;
+                            mode?: "edit" | "play";
                             keyId: string;
-                            expectedFingerprint: string;
+                            permissions?: ("players.view" | "players.ban" | "identity-bans.manage" | "moderation.view")[];
                             days?: number;
+                            maximumBanSeconds?: 0 | number;
+                            scope?: "map" | "server";
                         };
                     } | {
                         action: "revoke";
@@ -20285,6 +20316,7 @@ export declare class ApiClient {
                     } | {
                         action: "unbind";
                         mapId: string;
+                        mode?: "edit" | "play";
                     } | {
                         action: "revoke-map-ban";
                         banId: string;
@@ -21361,11 +21393,13 @@ export declare class ApiClient {
                     mapId: string;
                     userId: string;
                     ipAddress: string;
+                    deviceHash?: string;
                 } | {
                     mapId: string;
                     players: {
                         userId: string;
                         ipAddress: string;
+                        deviceHash?: string;
                     }[];
                 };
             };
@@ -21403,11 +21437,13 @@ export declare class ApiClient {
             mapId: string;
             userId: string;
             ipAddress: string;
+            deviceHash?: string | undefined;
         } & {}) | ({
             mapId: string;
             players: ({
                 userId: string;
                 ipAddress: string;
+                deviceHash?: string | undefined;
             } & {})[];
         } & {});
     } & {
@@ -21425,11 +21461,13 @@ export declare class ApiClient {
                         mapId: string;
                         userId: string;
                         ipAddress: string;
+                        deviceHash?: string;
                     } | {
                         mapId: string;
                         players: {
                             userId: string;
                             ipAddress: string;
+                            deviceHash?: string;
                         }[];
                     };
                 };
@@ -21469,11 +21507,13 @@ export declare class ApiClient {
                         mapId: string;
                         userId: string;
                         ipAddress: string;
+                        deviceHash?: string;
                     } | {
                         mapId: string;
                         players: {
                             userId: string;
                             ipAddress: string;
+                            deviceHash?: string;
                         }[];
                     };
                 };
@@ -21649,9 +21689,13 @@ export declare class ApiClient {
             content: {
                 "application/json": {
                     mapId: string;
+                    groupId?: string;
                     mode: "edit" | "play";
                     name: string;
-                    scriptFingerprint: string;
+                    projectId?: string;
+                    publicId?: string;
+                    description?: string;
+                    version?: string;
                 };
             };
         };
@@ -21685,9 +21729,13 @@ export declare class ApiClient {
     } & {
         body: {
             mapId: string;
+            groupId?: string | undefined;
             mode: "edit" | "play";
             name: string;
-            scriptFingerprint: string;
+            projectId?: string | undefined;
+            publicId?: string | undefined;
+            description?: string | undefined;
+            version?: string | undefined;
         } & {};
     } & {
         baseUrl?: string;
@@ -21702,9 +21750,13 @@ export declare class ApiClient {
                 content: {
                     "application/json": {
                         mapId: string;
+                        groupId?: string;
                         mode: "edit" | "play";
                         name: string;
-                        scriptFingerprint: string;
+                        projectId?: string;
+                        publicId?: string;
+                        description?: string;
+                        version?: string;
                     };
                 };
             };
@@ -21740,9 +21792,13 @@ export declare class ApiClient {
                 content: {
                     "application/json": {
                         mapId: string;
+                        groupId?: string;
                         mode: "edit" | "play";
                         name: string;
-                        scriptFingerprint: string;
+                        projectId?: string;
+                        publicId?: string;
+                        description?: string;
+                        version?: string;
                     };
                 };
             };
@@ -21787,15 +21843,19 @@ export declare class ApiClient {
             content: {
                 "application/json": {
                     mapId: string;
-                    scriptFingerprint: string;
-                    action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                    action: "banPlayer" | "banCurrentIP" | "banCurrentDevice" | "revokeBan" | "getPlayerStatus" | "listBans" | "getBan";
                     userId?: string;
                     ipAddress?: string;
+                    deviceHash?: string;
                     scope?: "map" | "server";
                     durationSeconds?: number;
                     reason?: string;
                     banId?: string;
                     requestId?: string;
+                    kind?: "account" | "ip" | "device";
+                    status?: "active" | "expired" | "revoked" | "all";
+                    page?: number;
+                    pageSize?: number;
                 };
             };
         };
@@ -21806,9 +21866,40 @@ export declare class ApiClient {
                 };
                 content: {
                     "application/json": {
+                        ban: {
+                            id: string;
+                            kind: "account" | "ip" | "device";
+                            scope: "map" | "server";
+                            userId: string | null;
+                            reason: string;
+                            createdAt: string;
+                            expiresAt: string | null;
+                            revokedAt: string | null;
+                            status: "active" | "expired" | "revoked";
+                            remainingSeconds: number | null;
+                        } | null;
+                        replayed: boolean;
+                    } | {
+                        items: {
+                            id: string;
+                            kind: "account" | "ip" | "device";
+                            scope: "map" | "server";
+                            userId: string | null;
+                            reason: string;
+                            createdAt: string;
+                            expiresAt: string | null;
+                            revokedAt: string | null;
+                            status: "active" | "expired" | "revoked";
+                            remainingSeconds: number | null;
+                        }[];
+                        total: number;
+                        page: number;
+                        pageSize: number;
+                        replayed: boolean;
+                    } | {
                         id: string;
                         scope: "map" | "server";
-                        expiresAt: string;
+                        expiresAt: string | null;
                         replayed: boolean;
                     } | {
                         id: string;
@@ -21819,10 +21910,10 @@ export declare class ApiClient {
                         replayed: boolean;
                         bans: {
                             id: string;
-                            kind: "account" | "ip";
+                            kind: "account" | "ip" | "device";
                             scope: "map" | "server";
                             reason: string;
-                            expiresAt: string;
+                            expiresAt: string | null;
                         }[];
                     };
                 };
@@ -21846,15 +21937,19 @@ export declare class ApiClient {
     } & {
         body: {
             mapId: string;
-            scriptFingerprint: string;
-            action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+            action: "banPlayer" | "banCurrentIP" | "banCurrentDevice" | "revokeBan" | "getPlayerStatus" | "listBans" | "getBan";
             userId?: string | undefined;
             ipAddress?: string | undefined;
+            deviceHash?: string | undefined;
             scope?: ("map" | "server") | undefined;
             durationSeconds?: number | undefined;
             reason?: string | undefined;
             banId?: string | undefined;
             requestId?: string | undefined;
+            kind?: ("account" | "ip" | "device") | undefined;
+            status?: ("active" | "expired" | "revoked" | "all") | undefined;
+            page?: number | undefined;
+            pageSize?: number | undefined;
         } & {};
     } & {
         baseUrl?: string;
@@ -21869,15 +21964,19 @@ export declare class ApiClient {
                 content: {
                     "application/json": {
                         mapId: string;
-                        scriptFingerprint: string;
-                        action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                        action: "banPlayer" | "banCurrentIP" | "banCurrentDevice" | "revokeBan" | "getPlayerStatus" | "listBans" | "getBan";
                         userId?: string;
                         ipAddress?: string;
+                        deviceHash?: string;
                         scope?: "map" | "server";
                         durationSeconds?: number;
                         reason?: string;
                         banId?: string;
                         requestId?: string;
+                        kind?: "account" | "ip" | "device";
+                        status?: "active" | "expired" | "revoked" | "all";
+                        page?: number;
+                        pageSize?: number;
                     };
                 };
             };
@@ -21888,9 +21987,40 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
+                            ban: {
+                                id: string;
+                                kind: "account" | "ip" | "device";
+                                scope: "map" | "server";
+                                userId: string | null;
+                                reason: string;
+                                createdAt: string;
+                                expiresAt: string | null;
+                                revokedAt: string | null;
+                                status: "active" | "expired" | "revoked";
+                                remainingSeconds: number | null;
+                            } | null;
+                            replayed: boolean;
+                        } | {
+                            items: {
+                                id: string;
+                                kind: "account" | "ip" | "device";
+                                scope: "map" | "server";
+                                userId: string | null;
+                                reason: string;
+                                createdAt: string;
+                                expiresAt: string | null;
+                                revokedAt: string | null;
+                                status: "active" | "expired" | "revoked";
+                                remainingSeconds: number | null;
+                            }[];
+                            total: number;
+                            page: number;
+                            pageSize: number;
+                            replayed: boolean;
+                        } | {
                             id: string;
                             scope: "map" | "server";
-                            expiresAt: string;
+                            expiresAt: string | null;
                             replayed: boolean;
                         } | {
                             id: string;
@@ -21901,10 +22031,10 @@ export declare class ApiClient {
                             replayed: boolean;
                             bans: {
                                 id: string;
-                                kind: "account" | "ip";
+                                kind: "account" | "ip" | "device";
                                 scope: "map" | "server";
                                 reason: string;
-                                expiresAt: string;
+                                expiresAt: string | null;
                             }[];
                         };
                     };
@@ -21930,15 +22060,19 @@ export declare class ApiClient {
                 content: {
                     "application/json": {
                         mapId: string;
-                        scriptFingerprint: string;
-                        action: "banPlayer" | "banCurrentIP" | "revokeBan" | "getPlayerStatus";
+                        action: "banPlayer" | "banCurrentIP" | "banCurrentDevice" | "revokeBan" | "getPlayerStatus" | "listBans" | "getBan";
                         userId?: string;
                         ipAddress?: string;
+                        deviceHash?: string;
                         scope?: "map" | "server";
                         durationSeconds?: number;
                         reason?: string;
                         banId?: string;
                         requestId?: string;
+                        kind?: "account" | "ip" | "device";
+                        status?: "active" | "expired" | "revoked" | "all";
+                        page?: number;
+                        pageSize?: number;
                     };
                 };
             };
@@ -21949,9 +22083,40 @@ export declare class ApiClient {
                     };
                     content: {
                         "application/json": {
+                            ban: {
+                                id: string;
+                                kind: "account" | "ip" | "device";
+                                scope: "map" | "server";
+                                userId: string | null;
+                                reason: string;
+                                createdAt: string;
+                                expiresAt: string | null;
+                                revokedAt: string | null;
+                                status: "active" | "expired" | "revoked";
+                                remainingSeconds: number | null;
+                            } | null;
+                            replayed: boolean;
+                        } | {
+                            items: {
+                                id: string;
+                                kind: "account" | "ip" | "device";
+                                scope: "map" | "server";
+                                userId: string | null;
+                                reason: string;
+                                createdAt: string;
+                                expiresAt: string | null;
+                                revokedAt: string | null;
+                                status: "active" | "expired" | "revoked";
+                                remainingSeconds: number | null;
+                            }[];
+                            total: number;
+                            page: number;
+                            pageSize: number;
+                            replayed: boolean;
+                        } | {
                             id: string;
                             scope: "map" | "server";
-                            expiresAt: string;
+                            expiresAt: string | null;
                             replayed: boolean;
                         } | {
                             id: string;
@@ -21962,10 +22127,10 @@ export declare class ApiClient {
                             replayed: boolean;
                             bans: {
                                 id: string;
-                                kind: "account" | "ip";
+                                kind: "account" | "ip" | "device";
                                 scope: "map" | "server";
                                 reason: string;
-                                expiresAt: string;
+                                expiresAt: string | null;
                             }[];
                         };
                     };
@@ -21987,9 +22152,40 @@ export declare class ApiClient {
         middleware?: import("openapi-fetch").Middleware[];
     } & Omit<RequestInit, "headers" | "body">, `${string}/${string}`>>;
     postApiPlayerInternalScriptModeration(...init: Parameters<PathBasedClient<paths>["/api/player-internal/script-moderation"]["POST"]>): Promise<{
+        ban: {
+            id: string;
+            kind: "account" | "ip" | "device";
+            scope: "map" | "server";
+            userId: string | null;
+            reason: string;
+            createdAt: string;
+            expiresAt: string | null;
+            revokedAt: string | null;
+            status: "active" | "expired" | "revoked";
+            remainingSeconds: number | null;
+        } | null;
+        replayed: boolean;
+    } | {
+        items: {
+            id: string;
+            kind: "account" | "ip" | "device";
+            scope: "map" | "server";
+            userId: string | null;
+            reason: string;
+            createdAt: string;
+            expiresAt: string | null;
+            revokedAt: string | null;
+            status: "active" | "expired" | "revoked";
+            remainingSeconds: number | null;
+        }[];
+        total: number;
+        page: number;
+        pageSize: number;
+        replayed: boolean;
+    } | {
         id: string;
         scope: "map" | "server";
-        expiresAt: string;
+        expiresAt: string | null;
         replayed: boolean;
     } | {
         id: string;
@@ -22000,10 +22196,10 @@ export declare class ApiClient {
         replayed: boolean;
         bans: {
             id: string;
-            kind: "account" | "ip";
+            kind: "account" | "ip" | "device";
             scope: "map" | "server";
             reason: string;
-            expiresAt: string;
+            expiresAt: string | null;
         }[];
     }>;
     postApiPlayLogoutRaw(...init: Parameters<PathBasedClient<paths>["/api/play-logout"]["POST"]>): Promise<import("openapi-fetch").FetchResponse<{

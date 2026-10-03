@@ -73,7 +73,7 @@ export function startPlayerRevocationPoller(game: GameServer, logger: Logger) {
       const connections=game.state.connectionSet.slice();
       for (let offset=0;moderation.mapId && process.env.MODE !== 'edit' && offset<connections.length;offset+=100) {
         const batch=connections.slice(offset,offset+100);
-        const denied=await moderation.deniedPlayers(batch.map(c=>({userId:c.sessionData.user.id,ipAddress:c.sessionData.ipAddress})));
+        const denied=await moderation.deniedPlayers(batch.map(c=>({userId:c.sessionData.user.id,ipAddress:c.sessionData.ipAddress,deviceHash:c.sessionData.deviceHash || undefined})));
         for (const index of denied) game.net.kickSession(batch[index].sessionId);
       }
     } catch (error) {

@@ -1,26 +1,11 @@
 import { MuClient } from '@box/mudb/client'
-import type { GameModeration, ModerationOptions, ModerationBan } from '@box/schema/api/js/moderation'
+import type { GameModeration, ModerationOptions, ModerationBan, ModerationBatchResult, ModerationBanRecord, ModerationBanQuery } from '@box/schema/api/js/moderation'
 import type { GameEntity } from '@box/schema/api/js/api'
 import { PromiseWrapper } from '../utils/script-promise'
 import { ModerationProtocol } from './moderation-protocol'
 
 /** Called by the trusted shell before evaluating user code; play has no inspection property. */
-export function configureModerationFingerprint(
-  target: GameModeration,
-  config: { moderationFingerprintReadable: boolean; moderationFingerprint: string },
-) {
-  if (!config.moderationFingerprintReadable) return
-  Object.defineProperty(target, 'scriptFingerprint', {
-    value: config.moderationFingerprint,
-    enumerable: true,
-    writable: false,
-    configurable: false,
-  })
-}
-
-/** Small sandbox surface: entity references in, public result out; no host credentials. */
 export class ModerationScript implements GameModeration {
-  declare readonly scriptFingerprint?: string
   private pending = new Map<number, { wrapper: PromiseWrapper<any>; timer: number }>()
   private sequence = 0
   private protocol
@@ -70,14 +55,52 @@ export class ModerationScript implements GameModeration {
     }
     return wrapper.query
   }
-  banPlayer(player: GameEntity, options: ModerationOptions) {
-    return this.request<ModerationBan>('banPlayer', player, options)
+  private async ban(action: string, players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]> {
+    if (!Array.isArray(players)) return this.request<ModerationBan>(action, players as GameEntity, options)
+    // Validate the batch envelope before starting any irreversible operation.
+    if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(options.requestId))
+      throw new Error('批量最多 100 个玩家，requestId 须为 1–72 个合法字符')
+    const targets = [...players]
+    const batchOptions = { ...options }
+    const results: ModerationBatchResult[] = []
+    for (let index = 0; index < targets.length; index++) {
+      try {
+        const ban = await this.request<ModerationBan>(action, targets[index], { ...batchOptions, requestId: `${batchOptions.requestId}.b${index}` })
+        results.push({ index, success: true, ban })
+      } catch (error) {
+        results.push({ index, success: false, error: error instanceof Error ? error.message : String(error) })
+      }
+    }
+    return results
   }
-  banCurrentIP(player: GameEntity, options: ModerationOptions) {
-    return this.request<ModerationBan>('banCurrentIP', player, options)
+  banPlayer(player: GameEntity, options: ModerationOptions): Promise<ModerationBan>
+  banPlayer(players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>
+  banPlayer(players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
+  banPlayer(players: GameEntity | readonly GameEntity[], options: ModerationOptions) {
+    return this.ban('banPlayer', players, options)
+  }
+  banCurrentIP(player: GameEntity, options: ModerationOptions): Promise<ModerationBan>
+  banCurrentIP(players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>
+  banCurrentIP(players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
+  banCurrentIP(players: GameEntity | readonly GameEntity[], options: ModerationOptions) {
+    return this.ban('banCurrentIP', players, options)
+  }
+  banCurrentDevice(player: GameEntity, options: ModerationOptions): Promise<ModerationBan>
+  banCurrentDevice(players: readonly GameEntity[], options: ModerationOptions): Promise<ModerationBatchResult[]>
+  banCurrentDevice(players: GameEntity | readonly GameEntity[], options: ModerationOptions): Promise<ModerationBan | ModerationBatchResult[]>
+  banCurrentDevice(players: GameEntity | readonly GameEntity[], options: ModerationOptions) {
+    return this.ban('banCurrentDevice', players, options)
   }
   revokeBan(banId: string, options: { reason: string; requestId: string }) {
     return this.request<{ revoked: boolean; id: string }>('revokeBan', undefined, { ...options, banId })
+  }
+  listBans(query: ModerationBanQuery = {}) {
+    const { player, ...filters } = query
+    return this.request<{ items: ModerationBanRecord[]; total: number; page: number; pageSize: number }>('listBans', player, filters)
+  }
+  async getBan(banId: string) {
+    const result = await this.request<{ ban: ModerationBanRecord | null }>('getBan', undefined, { banId })
+    return result.ban
   }
   getPlayerStatus(player: GameEntity) {
     return this.request<{ status: string; bans: ModerationBan[] }>('getPlayerStatus', player, {})

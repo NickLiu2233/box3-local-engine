@@ -1,15 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { z } from 'zod'
 import { moderationRuntimeIdentity } from '../../../server/moderation-runtime-authorization'
-import { scriptModerationStore, mapIdSchema, scriptFingerprintSchema } from '../../../server/script-moderation-store'
+import { scriptModerationStore, mapIdSchema } from '../../../server/script-moderation-store'
 import { applyPlayerAdminSecurityHeaders, sendPlayerAdminApiError } from '../../../server/player-admin-authorization'
 
 const schema = z
   .object({
     mapId: mapIdSchema,
+    groupId: mapIdSchema.optional(),
     mode: z.enum(['edit', 'play']),
+    projectId: mapIdSchema.optional(),
+    publicId: z.string().max(128).optional(),
+    description: z.string().max(2000).optional(),
+    version: z.string().max(64).optional(),
     name: z.string().trim().min(1).max(64),
-    scriptFingerprint: scriptFingerprintSchema,
   })
   .strict()
 export const config = { api: { bodyParser: { sizeLimit: '4kb' } } }

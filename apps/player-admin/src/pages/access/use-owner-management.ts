@@ -1,3 +1,5 @@
+import { useAdminRequest } from '../../hooks/use-admin-request'
+import { reportAdminError } from '../../player-admin-errors'
 import { Form, message } from 'antd'
 import { useCallback, useState } from 'react'
 
@@ -16,7 +18,7 @@ type AdminFormValues = {
 export function useOwnerManagement() {
   const [admins, setAdmins] = useState<Admin[]>([])
   const [groups, setGroups] = useState<Group[]>([])
-  const [loading, setLoading] = useState(false)
+  const { loading, run } = useAdminRequest()
   const [adminOpen, setAdminOpen] = useState(false)
   const [groupOpen, setGroupOpen] = useState(false)
   const [editingAdmin, setEditingAdmin] = useState<Admin>()
@@ -24,21 +26,18 @@ export function useOwnerManagement() {
   const [adminForm] = Form.useForm()
   const [groupForm] = Form.useForm()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [adminResult, groupResult] = await Promise.all([
-        api.getApiPlayAdminAdmins(),
-        api.getApiPlayAdminPermissionGroups(),
-      ])
-      setAdmins(adminResult.admins || [])
-      setGroups(groupResult.groups || [])
-    } catch (error) {
-      message.error((error as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const load = useCallback(
+    () =>
+      run(async () => {
+        const [adminResult, groupResult] = await Promise.all([
+          api.getApiPlayAdminAdmins(),
+          api.getApiPlayAdminPermissionGroups(),
+        ])
+        setAdmins(adminResult.admins || [])
+        setGroups(groupResult.groups || [])
+      }),
+    [run],
+  )
 
   const openAdminEditor = (admin?: Admin) => {
     setEditingAdmin(admin)
@@ -83,26 +82,39 @@ export function useOwnerManagement() {
         })
       } else {
         const { username, displayName, password, permissionGroupId } = values
-        if (!username || !displayName || !password || !permissionGroupId) throw new Error('请完整填写管理账号信息')
-        await api.postApiPlayAdminAdmins({ body: {username,displayName,password,permissionGroupId} })
+        if (!username || !displayName || !password || !permissionGroupId)
+          throw new Error('请完整填写管理账号信息')
+        await api.postApiPlayAdminAdmins({
+          body: { username, displayName, password, permissionGroupId },
+        })
       }
       message.success(editingAdmin ? '管理账号已更新' : '管理账号已创建')
       closeAdminEditor()
       await load()
     } catch (error) {
-      message.error((error as Error).message)
+      reportAdminError(error)
     }
   }
 
   const removeAdmin = async (admin: Admin) => {
-    try {
+    return run(async () => {
       await api.deleteApiPlayAdminAdminsId({ params: { path: { id: admin.id } } })
       message.success('管理账号已删除')
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
+
+  const toggleAdminStatus = (admin: Admin) =>
+    run(async () => {
+      await api.patchApiPlayAdminAdminsId({
+        params: { path: { id: admin.id } },
+        body: {
+          displayName: admin.displayName,
+          status: admin.status === 'active' ? 'disabled' : 'active',
+        },
+      })
+      await load()
+    })
 
   const openGroupEditor = (group?: Group) => {
     setEditingGroup(group)
@@ -119,7 +131,7 @@ export function useOwnerManagement() {
   }
 
   const saveGroup = async () => {
-    try {
+    return run(async () => {
       const values = await groupForm.validateFields()
       const payload = { ...values, permissions: capabilityLeaves(values.permissions) }
       if (editingGroup) {
@@ -133,19 +145,15 @@ export function useOwnerManagement() {
       message.success(editingGroup ? '权限组已更新' : '权限组已创建')
       closeGroupEditor()
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   const removeGroup = async (group: Group) => {
-    try {
+    return run(async () => {
       await api.deleteApiPlayAdminPermissionGroupsId({ params: { path: { id: group.id } } })
       message.success('权限组已删除')
       await load()
-    } catch (error) {
-      message.error((error as Error).message)
-    }
+    })
   }
 
   return {
@@ -169,6 +177,7 @@ export function useOwnerManagement() {
       close: closeGroupEditor,
       save: saveGroup,
     },
+    toggleAdminStatus,
     removeAdmin,
     removeGroup,
   }

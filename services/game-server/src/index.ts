@@ -362,7 +362,7 @@ export class GameServer {
 
         // Map-scoped bans are checked before allocating a connection, including reconnects.
         try {
-          if (!await new ModerationClient().admission(data.user.id,data.ipAddress)) {
+          if (!await new ModerationClient().admission(data.user.id,data.ipAddress,data.deviceHash)) {
             this.net.kickSession(sessionId,CloseType.NoAuth);
             return false;
           }

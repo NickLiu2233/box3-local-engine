@@ -1,9 +1,11 @@
+import { PageToolbar } from '../../components/page-toolbar'
 import { Button, Card, Col, Row, Space, Statistic } from 'antd'
 import { ReloadOutlined } from '@ant-design/icons'
 
 import type { View } from '../../player-admin-types'
 
 type Props = {
+  loading: boolean
   totals: Record<string, number>
   canViewSecurity: boolean
   isOwner: boolean
@@ -11,19 +13,21 @@ type Props = {
   navigate: (view: View) => void
 }
 
-export function OverviewPage({ totals, canViewSecurity, isOwner, refresh, navigate }: Props) {
+export function OverviewPage({
+  loading,
+  totals,
+  canViewSecurity,
+  isOwner,
+  refresh,
+  navigate,
+}: Props) {
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">管理概览</h1>
-        </Col>
-        <Col>
-          <Button icon={<ReloadOutlined />} onClick={refresh}>
-            刷新
-          </Button>
-        </Col>
-      </Row>
+      <PageToolbar title="管理概览">
+        <Button icon={<ReloadOutlined />} loading={loading} onClick={refresh}>
+          刷新
+        </Button>
+      </PageToolbar>
       <Row gutter={16}>
         <Col span={6}>
           <Card className="player-admin-stat">

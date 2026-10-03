@@ -1,16 +1,16 @@
+import { PlayerIdentity } from '../../components/player-identity'
+import { adminPaginationDefaults } from '../../components/admin-pagination'
+import { PageToolbar } from '../../components/page-toolbar'
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons'
 import {
-  Avatar,
   Button,
   Card,
   Checkbox,
-  Col,
   Empty,
   Form,
   Input,
   message,
   Modal as AntModal,
-  Row,
   Select,
   Space,
   Switch,
@@ -31,6 +31,7 @@ import { dateTime } from '../../player-admin-format'
 import type { Detail, Player } from '../../player-admin-types'
 
 export type CreatorPageController = {
+  loading: boolean
   players: Player[]
   total: number
   page: number
@@ -122,45 +123,40 @@ export function CreatorManagementPage({
   const title = mode === 'creator-access' ? '玩家创作权限' : 'CLI Token'
   return (
     <>
-      <Row justify="space-between" align="middle" className="player-admin-page-toolbar">
-        <Col>
-          <h1 className="player-admin-page-title">{title}</h1>
-        </Col>
-        <Col>
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => c?.loadPlayers()}>
-              刷新
+      <PageToolbar title={title}>
+        <Space>
+          <Button icon={<ReloadOutlined />} loading={c.loading} onClick={() => c?.loadPlayers()}>
+            刷新
+          </Button>
+          {mode === 'creator-access' && c?.can('creator-access.manage') ? (
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => c?.openCreatorPicker()}>
+              新增
             </Button>
-            {mode === 'creator-access' && c?.can('creator-access.manage') ? (
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => c?.openCreatorPicker()}>
-                新增
-              </Button>
-            ) : null}
-            {mode === 'creator-tokens' ? (
-              <Select
-                value={tokenFilter}
-                onChange={setTokenFilter}
-                style={{ width: 120 }}
-                options={[
-                  { value: 'all', label: '全部' },
-                  { value: 'assigned', label: '已分配' },
-                  { value: 'unassigned', label: '未分配' },
-                ]}
-              />
-            ) : null}
-          </Space>
-        </Col>
-      </Row>
+          ) : null}
+          {mode === 'creator-tokens' ? (
+            <Select
+              value={tokenFilter}
+              onChange={setTokenFilter}
+              style={{ width: 120 }}
+              options={[
+                { value: 'all', label: '全部' },
+                { value: 'assigned', label: '已分配' },
+                { value: 'unassigned', label: '未分配' },
+              ]}
+            />
+          ) : null}
+        </Space>
+      </PageToolbar>
       <Card className="player-admin-panel">
         <Table
+          loading={c.loading}
           dataSource={rows}
           rowKey="subjectId"
           pagination={{
             current: c?.page,
             total: mode === 'creator-tokens' ? rows.length : c?.total,
             pageSize: c?.pageSize,
-            showSizeChanger: true,
-            pageSizeOptions: ['20', '30', '50', '100'],
+            ...adminPaginationDefaults,
             onChange: (next) => c?.setPage(next),
             onShowSizeChange: (_, size) => c?.setPageSize(size),
           }}
@@ -168,17 +164,7 @@ export function CreatorManagementPage({
           columns={[
             {
               title: '玩家',
-              render: (_: unknown, player: Player) => (
-                <div className="player-admin-player">
-                  <Avatar>{(player.displayName || player.username).slice(0, 1)}</Avatar>
-                  <span>
-                    <div className="player-admin-player-name">
-                      {player.displayName || player.username}
-                    </div>
-                    <div className="player-admin-player-meta">@{player.username}</div>
-                  </span>
-                </div>
-              ),
+              render: (_: unknown, player: Player) => <PlayerIdentity player={player} />,
             },
             {
               title: '创作端访问',

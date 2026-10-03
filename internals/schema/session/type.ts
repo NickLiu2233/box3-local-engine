@@ -8,6 +8,7 @@ export interface GameSessionInterface {
     url: string,
     fingerPrint: string,
     region: string,
+    deviceHash?: string,
   ): Promise<GameSessionData>;
   getSessionData(sessionId: string): Promise<GameSessionData | undefined>;
 }

@@ -1,27 +1,5 @@
 import { ApiClient } from '@box/apis'
-import { createHash } from 'node:crypto'
-import { resolveRuntimeScriptEntry } from '../script/script-entry'
 import { moderationAuthorization } from './moderation-credential'
-
-export function scriptFingerprint(source: Record<string, string>, entryPoint = ''): string {
-  return createHash('sha256')
-    .update(
-      JSON.stringify([
-        entryPoint,
-        Object.keys(source)
-          .sort()
-          .map((name) => [name, source[name]]),
-      ]),
-    )
-    .digest('hex')
-}
-/** A version depends on project code/entry only, never on paused/running or edit/play state. */
-export function projectScriptFingerprint(
-  project: { scriptIndex: string; assets: Record<string, unknown> },
-  source: Record<string, string>,
-) {
-  return scriptFingerprint(source, resolveRuntimeScriptEntry(project.scriptIndex, project.assets))
-}
 
 /** Only the trusted runtime host owns this transport; never import into the script bundle. */
 export class ModerationClient {
@@ -33,8 +11,7 @@ export class ModerationClient {
     this.configured = !!(
       baseUrl &&
       process.env.BOX_MODERATION_CREDENTIAL_PATH &&
-      this.mapId &&
-      process.env.MODE !== 'edit'
+      this.mapId
     )
     this.api = new ApiClient({
       baseUrl,
@@ -55,14 +32,14 @@ export class ModerationClient {
       clearTimeout(timer)
     }
   }
-  async admission(userId: string, ipAddress: string): Promise<boolean> {
+  async admission(userId: string, ipAddress: string, deviceHash?: string): Promise<boolean> {
     if (!this.mapId || process.env.MODE === 'edit') return true
     if (!this.configured) return false
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 5000)
     try {
       const result = await this.api.postApiPlayerInternalMapAdmission({
-        body: { mapId: this.mapId, userId, ipAddress },
+        body: { mapId: this.mapId, userId, ipAddress, deviceHash: deviceHash || undefined },
         signal: controller.signal,
         headers: { Authorization: moderationAuthorization() },
       })
@@ -71,7 +48,7 @@ export class ModerationClient {
       clearTimeout(timer)
     }
   }
-  async deniedPlayers(players: Array<{ userId: string; ipAddress: string }>): Promise<number[]> {
+  async deniedPlayers(players: Array<{ userId: string; ipAddress: string; deviceHash?: string }>): Promise<number[]> {
     if (!this.configured) return []
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 5000)

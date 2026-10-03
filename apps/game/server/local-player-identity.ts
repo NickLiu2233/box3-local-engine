@@ -848,7 +848,7 @@ export async function resolvePlayerIdentity(req: NextApiRequest, res: NextApiRes
   const row = await findSession(database, sessionToken(req), req);
   if (!row?.user_id) throw new Error('AUTH_REQUIRED');
   await database.query(`UPDATE ${table('sessions')} SET device_hash = $2 WHERE token_hash = $1 AND device_hash = ''`, [tokenHash(sessionToken(req)), currentDeviceHash]);
-  return rowToIdentity(row);
+  return { ...rowToIdentity(row), deviceHash: currentDeviceHash };
 }
 
 /** Resolves a long-lived CLI token issued from player management. The raw token is never stored. */
@@ -2033,7 +2033,7 @@ export async function listPlayerAdminActivity(options: {
         COALESCE(aa.details->>'actorDisplayName', aa.details->>'actorUsername', aa.actor_id)
           AS actor_display_name,
         NULL::uuid AS subject_id,
-        COALESCE(aa.details->>'displayName', aa.details->>'name', aa.details->>'username', aa.target_id)
+        COALESCE(aa.details->>'targetName', aa.details->>'mapName', aa.details->>'displayName', aa.details->>'name', aa.details->>'username', aa.target_id)
           AS display_name,
         COALESCE(aa.details->>'username', aa.target_id) AS username,
         aa.ip_address AS ip, COALESCE(aa.details->>'actorUserAgent', '') AS user_agent,
@@ -2046,7 +2046,10 @@ export async function listPlayerAdminActivity(options: {
     AND ($2 = '' OR action ILIKE '%' || $2 || '%'
       OR actor ILIKE '%' || $2 || '%' OR actor_display_name ILIKE '%' || $2 || '%'
       OR display_name ILIKE '%' || $2 || '%' OR username ILIKE '%' || $2 || '%'
-      OR COALESCE(subject_id::text, '') ILIKE $2 || '%' OR ip ILIKE $2 || '%')
+      OR COALESCE(subject_id::text, '') ILIKE $2 || '%' OR ip ILIKE $2 || '%'
+      OR details->>'mapId' ILIKE '%' || $2 || '%' OR details->>'mapName' ILIKE '%' || $2 || '%'
+      OR details->>'targetId' ILIKE '%' || $2 || '%' OR details->>'requestId' ILIKE '%' || $2 || '%'
+      OR details->>'reason' ILIKE '%' || $2 || '%')
   `;
   const count = await database.query<{ total: string }>(`${eventQuery} SELECT COUNT(*) AS total FROM events WHERE ${where}`, [kind, search]);
   const total = Number(count.rows[0]?.total || 0);

@@ -26,16 +26,15 @@ const owner: PlayerAdminIdentity = {
   credential: 'owner-session',
 }
 const context = { ip: '192.0.2.1', userAgent: 'isolated regression', deviceHash: '' }
-const fingerprint = 'a'.repeat(64),
-  mapId = 'moderation-test-map'
-async function report(map = mapId, fp = fingerprint, mode: 'edit' | 'play' = 'play') {
-  return store.observeRuntime({ mapId: map, mode, name: '测试地图', scriptFingerprint: fp })
+const mapId = 'moderation-test-map'
+async function report(map = mapId, mode: 'edit' | 'play' = 'play') {
+  return store.observeRuntime({ mapId: map, mode, name: '测试地图' })
 }
 async function main() {
   await checkPlayerDatabaseReady()
   await report()
   const key = await store.create(
-    { mapId, expectedFingerprint: fingerprint, permissions: ['players.view', 'players.ban', 'identity-bans.manage'] },
+    { mapId, permissions: ['players.view', 'players.ban', 'identity-bans.manage'] },
     owner.id,
   )
   const { pool, table } = await playerAdminStore()
@@ -53,7 +52,6 @@ async function main() {
   )
   const input = {
     mapId,
-    scriptFingerprint: fingerprint,
     userId: player.userId,
     action: 'banPlayer',
     reason: '测试',
@@ -69,7 +67,7 @@ async function main() {
   await assert.rejects(moderation.execute({ ...input, mapId: 'copied-map' }, context), /未授权/)
   await assert.rejects(moderation.execute({ ...input, scope: 'server', requestId: 'global-denied' }, context), /全服/)
   await pool.query(`UPDATE ${table('script_admin_keys')} SET permissions=ARRAY['players.view'] WHERE id=$1`, [key.id])
-  await assert.rejects(moderation.execute(input, context), /Key 不允许/)
+  await assert.rejects(moderation.execute(input, context), /授权不允许/)
   await pool.query(
     `UPDATE ${table('script_admin_keys')} SET permissions=ARRAY['players.view','players.ban','identity-bans.manage'] WHERE id=$1`,
     [key.id],
@@ -77,8 +75,7 @@ async function main() {
   await moderation.execute(
     {
       mapId,
-      scriptFingerprint: fingerprint,
-      action: 'revokeBan',
+        action: 'revokeBan',
       banId: ban.id,
       reason: '解除',
       requestId: 'revoke-one',
@@ -98,29 +95,19 @@ async function main() {
     [0],
   )
   await store.revokeMapBan(ipBan.id, owner.id)
-  const next = 'b'.repeat(64)
-  await report(mapId, next)
-  await assert.rejects(
-    moderation.execute({ ...input, scriptFingerprint: next, requestId: 'new-version' }, context),
-    /脚本已改变/,
-  )
-  await assert.rejects(
-    store.updateAuthorization({ mapId, keyId: key.id, expectedFingerprint: fingerprint }, owner.id),
-    /版本已变化/,
-  )
-  await store.updateAuthorization({ mapId, keyId: key.id, expectedFingerprint: next }, owner.id)
-  assert.ok(await moderation.execute({ ...input, scriptFingerprint: next, action: 'getPlayerStatus' }, context))
-  await report(mapId, 'c'.repeat(64), 'edit')
-  assert.equal((await store.list()).maps.find((m) => m.mapId === mapId).scriptFingerprint, next)
+  await report()
+  assert.ok(await moderation.execute({ ...input, action: 'getPlayerStatus' }, context))
+  await report(mapId, 'edit')
+  assert.equal((await store.list()).maps.filter((map) => map.mapId === mapId).length, 2)
   await pool.query(`UPDATE ${table('script_admin_keys')} SET expires_at=NOW()-INTERVAL '1 second' WHERE id=$1`, [
     key.id,
   ])
   await assert.rejects(
-    moderation.execute({ ...input, scriptFingerprint: next, action: 'getPlayerStatus' }, context),
+    moderation.execute({ ...input, action: 'getPlayerStatus' }, context),
     /失效/,
   )
-  await store.updateAuthorization({ mapId, keyId: key.id, expectedFingerprint: next }, owner.id)
-  assert.ok(await moderation.execute({ ...input, scriptFingerprint: next, action: 'getPlayerStatus' }, context))
+  await store.updateAuthorization({ mapId, keyId: key.id }, owner.id)
+  assert.ok(await moderation.execute({ ...input, action: 'getPlayerStatus' }, context))
   const group = await createPlayerAdminPermissionGroup(
     { name: '旧授权组', permissions: ['players.view', 'players.ban'] },
     owner,
@@ -130,15 +117,15 @@ async function main() {
     owner,
   )
   await updatePlayerAdminAccount(admin.id, { status: 'disabled' }, owner)
-  assert.ok(await moderation.execute({ ...input, scriptFingerprint: next, action: 'getPlayerStatus' }, context))
+  assert.ok(await moderation.execute({ ...input, action: 'getPlayerStatus' }, context))
   const legacyId = randomUUID()
   await pool.query(
     `INSERT INTO ${table('script_admin_keys')}(id,admin_id,name,scope,maximum_ban_seconds,expires_at,created_by) VALUES($1,$2,'legacy','map',3600,NOW()+INTERVAL '1 day','server-owner')`,
     [legacyId, admin.id],
   )
   await pool.query(
-    `INSERT INTO ${table('script_admin_bindings')}(map_id,key_id,script_fingerprint,updated_by) VALUES('legacy-map',$1,$2,'server-owner')`,
-    [legacyId, fingerprint],
+    `INSERT INTO ${table('script_admin_bindings')}(map_id,key_id,updated_by) VALUES('legacy-map',$1,'server-owner')`,
+    [legacyId],
   )
   await assert.rejects(
     moderation.execute({ ...input, mapId: 'legacy-map', action: 'getPlayerStatus' }, context),
@@ -152,7 +139,6 @@ async function main() {
   const globalKey = await store.create(
     {
       mapId: 'server-map',
-      expectedFingerprint: fingerprint,
       scope: 'server',
       permissions: ['players.view', 'players.ban'],
     },
@@ -167,8 +153,7 @@ async function main() {
   await moderation.execute(
     {
       mapId: 'server-map',
-      scriptFingerprint: fingerprint,
-      action: 'revokeBan',
+        action: 'revokeBan',
       banId: globalBan.id,
       reason: '复核',
       requestId: 'global-unban',
@@ -189,18 +174,77 @@ async function main() {
   await pool.query(
     `DROP TRIGGER fail_script_audit ON ${table('admin_audit_events')}; DROP FUNCTION moderation_test.fail_script_audit()`,
   )
+  await report('device-map')
+  const deviceKey = await store.create({mapId:'device-map',scope:'server',maximumBanSeconds:0,permissions:['players.view','identity-bans.manage']},owner.id)
+  const deviceHash = 'a'.repeat(64)
+  const deviceInput = {...input,mapId:'device-map',action:'banCurrentDevice',deviceHash,durationSeconds:0,requestId:'device-map-ban'}
+  await assert.rejects(moderation.execute({...deviceInput,mapId:'server-map',requestId:'unauthorized-device'},context),/不允许此操作/)
+  await store.updateAuthorization({mapId:'device-map',keyId:deviceKey.id,maximumBanSeconds:60},owner.id)
+  await assert.rejects(moderation.execute({...deviceInput,requestId:'unauthorized-permanent'},context),/授权上限/)
+  await store.updateAuthorization({mapId:'device-map',keyId:deviceKey.id,maximumBanSeconds:0},owner.id)
+  const deviceBan = await moderation.execute(deviceInput, context)
+  assert.equal(deviceBan.expiresAt,null)
+  assert.equal((await moderation.admission('device-map',player2.userId,'192.0.2.99',deviceHash)).allowed,false)
+  assert.equal((await moderation.admission('device-map',player2.userId,'192.0.2.99','b'.repeat(64))).allowed,true)
+  assert.equal((await moderation.admission('other-map',player2.userId,'192.0.2.99',deviceHash)).allowed,true)
+  await assert.rejects(moderation.execute({...deviceInput,deviceHash:undefined,requestId:'missing-device'},context),/可信的设备/)
+  await moderation.execute({mapId:'device-map',action:'revokeBan',banId:deviceBan.id,reason:'复核',requestId:'device-map-unban'},context)
+  assert.equal((await moderation.admission('device-map',player2.userId,'192.0.2.99',deviceHash)).allowed,true)
+  const globalDeviceBan = await moderation.execute({...deviceInput,scope:'server',requestId:'device-global-ban'},context)
+  const identityBan = (await pool.query(`SELECT kind,banned_until,revoked_at FROM ${table('identity_bans')} WHERE id=(SELECT reference_id::bigint FROM ${table('script_moderation_bans')} WHERE id=$1)`,[globalDeviceBan.id])).rows[0]
+  assert.equal(identityBan.kind,'device')
+  assert.equal(identityBan.banned_until,null)
+  await moderation.execute({mapId:'device-map',action:'revokeBan',banId:globalDeviceBan.id,reason:'复核',requestId:'device-global-unban'},context)
+  await store.revoke(deviceKey.id,owner.id)
+  await report('query-map')
+  const queryKey = await store.create({mapId:'query-map',maximumBanSeconds:0,permissions:['players.ban']},owner.id)
+  const queryInput = {...input,mapId:'query-map',durationSeconds:0,requestId:'query-ban'}
+  const queryBan = await moderation.execute(queryInput,context)
+  await assert.rejects(moderation.execute({mapId:'query-map',action:'listBans'},context),/不允许查询处罚/)
+  await assert.rejects(moderation.execute({mapId:'query-map',action:'getBan',banId:queryBan.id},context),/不允许查询处罚/)
+  await store.updateAuthorization({mapId:'query-map',keyId:queryKey.id,permissions:['players.ban','moderation.view']},owner.id)
+  const detail = (await moderation.execute({mapId:'query-map',action:'getBan',banId:queryBan.id},context)).ban
+  assert.equal(detail.reason,'测试')
+  assert.equal(detail.status,'active')
+  assert.equal(detail.remainingSeconds,null)
+  assert.equal(detail.userId,player.userId)
+  assert.equal(detail.expiresAt,null)
+  for (const forbidden of ['ip_hash','device_hash','subject_id','key_id','reference_id']) assert.equal(forbidden in detail,false)
+  assert.equal((await moderation.execute({mapId:'query-map',action:'getBan',banId:globalBan.id},context)).ban,null)
+  assert.equal((await moderation.execute({mapId:'query-map',action:'getBan',banId:randomUUID()},context)).ban,null)
+  const expiredId=randomUUID()
+  await pool.query(`INSERT INTO ${table('script_moderation_bans')}(id,key_id,map_id,subject_id,kind,scope,reason,expires_at)
+    SELECT $1,key_id,map_id,subject_id,'ip',scope,'过期测试',NOW()-INTERVAL '1 minute' FROM ${table('script_moderation_bans')} WHERE id=$2`,[expiredId,queryBan.id])
+  const all = await moderation.execute({mapId:'query-map',action:'listBans',page:1,pageSize:1},context)
+  assert.equal(all.total,2)
+  assert.equal(all.items.length,1)
+  assert.equal(all.pageSize,1)
+  const expired = await moderation.execute({mapId:'query-map',action:'listBans',status:'expired',kind:'ip',userId:player.userId},context)
+  assert.equal(expired.items[0].id,expiredId)
+  assert.equal(expired.items[0].remainingSeconds,0)
+  assert.equal((await moderation.execute({mapId:'query-map',action:'listBans',userId:player2.userId},context)).total,0)
+  await moderation.execute({mapId:'query-map',action:'revokeBan',banId:queryBan.id,reason:'复核',requestId:'query-unban'},context)
+  const revoked = (await moderation.execute({mapId:'query-map',action:'listBans',status:'revoked'},context)).items[0]
+  assert.equal(revoked.id,queryBan.id)
+  assert.equal(revoked.remainingSeconds,0)
+  assert.ok(revoked.revokedAt)
+  assert.equal((await moderation.execute({mapId:'query-map',action:'listBans',status:'active'},context)).total,0)
+  await store.updateAuthorization({mapId:'query-map',keyId:queryKey.id,permissions:['players.ban']},owner.id)
+  await assert.rejects(moderation.execute({mapId:'query-map',action:'listBans'},context),/不允许查询处罚/)
+  await store.revoke(queryKey.id,owner.id)
+
   await store.revoke(globalKey.id, owner.id)
   await assert.rejects(
-    store.updateAuthorization({ mapId: 'server-map', keyId: globalKey.id, expectedFingerprint: fingerprint }, owner.id),
+    store.updateAuthorization({ mapId: 'server-map', keyId: globalKey.id }, owner.id),
     /已撤销/,
   )
   await store.revoke(key.id, owner.id)
   await assert.rejects(
-    moderation.execute({ ...input, scriptFingerprint: next, action: 'getPlayerStatus' }, context),
+    moderation.execute({ ...input, action: 'getPlayerStatus' }, context),
     /失效/,
   )
   console.log(
-    'Independent moderation keys passed: automatic versions, explicit updates, renewal, permissions, legacy isolation, removed login flag, map/global/IP bans and transaction audit',
+    'Map group authorizations passed: script updates retain grants, renewal, permissions, legacy isolation, removed login flag, map/global/IP/device/permanent bans, device admission across accounts, revocation, punishment queries, explicit read grants and transaction audit',
   )
 }
 main().then(
