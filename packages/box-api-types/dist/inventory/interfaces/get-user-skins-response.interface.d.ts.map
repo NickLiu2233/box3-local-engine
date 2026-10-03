@@ -1,1 +1,0 @@
-{"version":3,"file":"get-user-skins-response.interface.d.ts","sourceRoot":"","sources":["../../../src/inventory/interfaces/get-user-skins-response.interface.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,SAAS,EAAE,MAAM,uBAAuB,CAAC;AAElD;;;;GAIG;AACH,MAAM,WAAW,qBAAqB;IACpC;;OAEG;IACH,MAAM,EAAE,MAAM,CAAC;IAEf;;OAEG;IACH,KAAK,EAAE,SAAS,EAAE,CAAC;CACpB"}

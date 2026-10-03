@@ -1,1 +1,0 @@
-{"version":3,"file":"record-usage.dto.d.ts","sourceRoot":"","sources":["../../src/credit/record-usage.dto.ts"],"names":[],"mappings":"AAGA,qBAAa,qBAAqB;IAOhC,MAAM,CAAC,EAAE,MAAM,CAAC;IAIhB,KAAK,EAAE,MAAM,CAAC;IAId,WAAW,EAAE,MAAM,CAAC;IAIpB,YAAY,EAAE,MAAM,CAAC;CACtB;AAED,qBAAa,sBAAsB;IAEjC,eAAe,EAAE,MAAM,CAAC;IAGxB,gBAAgB,EAAE,MAAM,CAAC;CAC1B"}
