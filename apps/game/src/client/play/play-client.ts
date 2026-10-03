@@ -69,6 +69,23 @@ export class PlayClient extends EngineClient {
   private _fpsQueen: number[] = [];
   private _lowFrameRateShowed = false;
   private onPlayClientCloseCallback?: Function;
+  private disposed = false;
+  private readonly messengerDisposers: Array<() => void> = [];
+  private readonly onBeforeUnload = () => {
+    this.appState = GameClientPlayState.REFRESHING;
+  };
+
+  public dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.appState = GameClientPlayState.REFRESHING;
+    window.removeEventListener('beforeunload', this.onBeforeUnload);
+    this.messengerDisposers.splice(0).forEach(remove => remove());
+    this.onGameChange.unsubAll();
+    this.onGameReady.unsubAll();
+    this.onPlayClientCloseCallback = undefined;
+    super.dispose();
+  }
 
   constructor() {
     super('play');
@@ -79,39 +96,43 @@ export class PlayClient extends EngineClient {
   }
 
   public addMessengerEventListeners = () => {
-    messenger.messageTool.eventOn(
+    const listen: typeof messenger.messageTool.eventOn = (event, handler) => {
+      messenger.messageTool.eventOn(event, handler);
+      this.messengerDisposers.push(() => messenger.messageTool.eventOff(event, handler));
+    };
+    listen(
       'setSettings',
       (settings: Partial<Settings>) => {
         this.setGameSettings(settings);
       },
     );
-    messenger.messageTool.eventOn('postMessage', (payload) => {
+    listen('postMessage', (payload) => {
       this.game.navigator.postMessage(JSON.stringify(payload));
     });
-    messenger.messageTool.eventOn('togglePlayerRender', ({ hide }) => {
+    listen('togglePlayerRender', ({ hide }) => {
       this.hidePlayers(hide);
     });
     // 监听screenshot事件并回传截图
-    messenger.messageTool.eventOn('screenshot', async () => {
+    listen('screenshot', async () => {
       try {
         await this.sendScreenshot();
       } catch (error) {
         console.error(error);
       }
     });
-    messenger.messageTool.eventOn('setSkin', (skin) => {
+    listen('setSkin', (skin) => {
       // 当前用户avatar皮肤数据完全由后端管理
       // 不需要管iframe传入的数据，直接通知game server更新后端最新保存的皮肤数据
       this.game.player.updateAvatarSkin();
     });
 
-    messenger.messageTool.eventOn('playEmote', ({ emote }) => {
+    listen('playEmote', ({ emote }) => {
       if (this.game) {
         this.game.interact.protocol.server.message.playEmote(emote);
       }
     });
 
-    messenger.messageTool.eventOn(
+    listen(
       'getSettings',
       <K extends keyof Settings>(keys?: K[]) => {
         const settings = this.game.state.settings;
@@ -147,6 +168,7 @@ export class PlayClient extends EngineClient {
   }
 
   public preconnect(error?: (error?: CloseType) => void) {
+    if (this.disposed) return;
     const { logger, bufferSink } = this;
     const { game, client } = createGameClient(
       {
@@ -194,6 +216,7 @@ export class PlayClient extends EngineClient {
    * @returns
    */
   public connectGame = async (hash: string, serverId?: string) => {
+    if (this.disposed) return;
     const response = await fetch(
       `${clientConfig.ARENA_URL}/api/getMapInfo?hash=${hash}&mode=play`,
       {
@@ -205,6 +228,7 @@ export class PlayClient extends EngineClient {
     );
 
     const mapInfo = await response.json();
+    if (this.disposed) return;
     clientConfig.mapInfo = mapInfo;
     clientConfig.name = hash;
     if (clientConfig.isLocalGameServer) {
@@ -268,6 +292,11 @@ export class PlayClient extends EngineClient {
             serverId,
           );
 
+        if (this.disposed) {
+          prefetchAbortController.abort();
+          throw new Error('游戏页面已退出');
+        }
+
         configuredAudioHashes = sessionConfig.configuredAudioHashes;
 
         // 以服务器数据为准判断是否管理员
@@ -326,8 +355,8 @@ export class PlayClient extends EngineClient {
     });
 
     socket.defer.then(() => {
-      game.sound.loadFirstSampleHashes(configuredAudioHashes || []);
-    });
+      if (!this.disposed) game.sound.loadFirstSampleHashes(configuredAudioHashes || []);
+    }, () => {});
 
     // 使用新的 GameClient、GameAdminClient 与对应的 MuClient
     process.env.NODE_ENV === 'development' &&
@@ -390,7 +419,7 @@ export class PlayClient extends EngineClient {
     frame: () => void;
     close: (error: CloseType) => void;
   }) => {
-    if (this.clickedStart) {
+    if (this.disposed || this.clickedStart) {
       return;
     }
 
@@ -475,10 +504,7 @@ export class PlayClient extends EngineClient {
   };
 
   private _listenBrowserEvent = () => {
-    window.addEventListener('beforeunload', () => {
-      // can use sync XHR/navigator.sendBeacon to ensure call works. but maybe not ok with murpc. this one may be abort. should fix this when we get time.
-      this.appState = GameClientPlayState.REFRESHING;
-    });
+    window.addEventListener('beforeunload', this.onBeforeUnload);
   };
 
   public enableJoystick = () => (this.game.state.input.joystickEnabled = true);

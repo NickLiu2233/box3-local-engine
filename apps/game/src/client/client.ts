@@ -42,6 +42,8 @@ export class EngineClient {
   public logger: Logger;
 
   private _game = getMuRef<GameClient>();
+  private engineDisposed = false;
+  private memoryMeasurementTimer?: ReturnType<typeof setTimeout>;
 
   public get game() {
     return this._game;
@@ -106,6 +108,15 @@ export class EngineClient {
     messenger.messageTool.destroy();
   }
 
+  public dispose() {
+    if (this.engineDisposed) return;
+    this.engineDisposed = true;
+    clearTimeout(this.memoryMeasurementTimer);
+    this.onGameChange.unsubAll();
+    this.onGameReady.unsubAll();
+    this._game?.destroy();
+  }
+
   public setGameSettings = (settings: Partial<Settings>) => {
     setGameSettings(this.game.state, settings);
     // 如果修改分辨率，需要手动实时更新下canvas的尺寸
@@ -167,11 +178,11 @@ export class EngineClient {
    * @param nextInterval
    */
   private runMemoryMeasurements(nextInterval: number) {
-    if (!performance['memory']) {
+    if (this.engineDisposed || !performance['memory']) {
       this.pinoLogger.info('`performance.memory` not supported.');
       return;
     }
-    setTimeout(this.measureMemory, nextInterval);
+    this.memoryMeasurementTimer = setTimeout(this.measureMemory, nextInterval);
   }
 
   /**

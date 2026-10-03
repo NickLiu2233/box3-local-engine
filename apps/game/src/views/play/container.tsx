@@ -49,15 +49,16 @@ export const MainPage = (props: MainPageProps) => {
     }
 
     // iframe监听
-    messenger.messageTool.eventOn('setUIConfig', (payload) => {
+    const onUIConfig = (payload: Parameters<typeof setUIConfig>[0]) => {
       dispatch(setUIConfig(payload));
-    });
+    };
+    messenger.messageTool.eventOn('setUIConfig', onUIConfig);
 
     // iframe状态通知
     messenger.emitEvent('status', 'ready');
 
     // 页面监听 GameClient 实例发生变更
-    player.onGameChange.sub((gameClient) => {
+    const onGameChange = (gameClient: GameClient) => {
       if (!gameClient) return;
 
       // 监听 GameClient Close 事件，展示连接断开的页面
@@ -69,7 +70,8 @@ export const MainPage = (props: MainPageProps) => {
       });
 
       setGameClient(gameClient);
-    });
+    };
+    player.onGameChange.sub(onGameChange);
 
     // 初始化 GameClient
     player.preconnect();
@@ -80,6 +82,10 @@ export const MainPage = (props: MainPageProps) => {
     if (!clientConfig.isLocalGameServer) {
       registerWeChat();
     }
+    return () => {
+      messenger.messageTool.eventOff('setUIConfig', onUIConfig);
+      player.onGameChange.unsub(onGameChange);
+    };
   }, []);
 
   // 控制loading状态

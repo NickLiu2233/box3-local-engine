@@ -8,6 +8,7 @@ import { resolve_intl } from 'src/utils/i18n';
 import { MainPage } from './container';
 import { store } from 'src/redux/play';
 import { setUserInfo } from 'src/redux/slices/user';
+import type { GameClient } from 'src/engine/game-client';
 import { PlayClient } from 'src/client/play/play-client';
 import { PlayProvider } from 'src/client/play/play-context';
 import { LoadingStage } from 'src/defs/loading-stage';
@@ -31,15 +32,23 @@ const PlayUi = React.memo((props: PlayUiProps) => {
 
   // 初始化 PlayClient
   useEffect(() => {
+    let active = true;
+    let playClient: PlayClient | undefined;
     // 初始化iframe
     messenger.connect().then(() => {
-      const playClient = new PlayClient();
+      if (!active) return;
+      playClient = new PlayClient();
       setPlayer(playClient);
 
       if (process.env.NODE_ENV === 'development') {
         window['playClient'] = playClient;
       }
     });
+    return () => {
+      active = false;
+      playClient?.dispose();
+      if (window['playClient'] === playClient) delete window['playClient'];
+    };
   }, []);
 
   useEffect(() => {
@@ -52,15 +61,21 @@ const PlayUi = React.memo((props: PlayUiProps) => {
     setLoading(LoadingStage.game);
 
     // 页面监听 GameClient 实例发生变更
-    player.onGameChange.sub((gameClient) => {
+    const onGameChange = (gameClient: GameClient) => {
       if (!gameClient) return;
       // 在 Ready 前展示 Loading 页面
       setLoading(LoadingStage.game);
-    });
+    };
 
-    player.onGameReady.sub(() => {
+    const onGameReady = () => {
       setLoading(LoadingStage.close);
-    });
+    };
+    player.onGameChange.sub(onGameChange);
+    player.onGameReady.sub(onGameReady);
+    return () => {
+      player.onGameChange.unsub(onGameChange);
+      player.onGameReady.unsub(onGameReady);
+    };
   }, [player]);
 
   setHtmlFont();

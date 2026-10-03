@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { intlMessage } from 'src/utils/i18n';
 import { Settings } from 'src/engine/settings/settings-schema';
-import { throttle } from 'src/utils/debounce-throttle';
 import { Range } from '../../basic/inputSlider';
 
 import style from '../volumeController/index.module.css';
@@ -17,10 +16,10 @@ export class ControlSettings extends React.Component<Props> {
   }
 
   private setCameraSensitivity = (v: number) => {
-    const cameraSensitivity = v;
-    if (isNaN(cameraSensitivity)) {
+    if (!Number.isFinite(v)) {
       return;
     }
+    const cameraSensitivity = Number(v.toFixed(2));
     this.props.setGameSettings({
       cameraSensitivity,
     });
@@ -31,15 +30,13 @@ export class ControlSettings extends React.Component<Props> {
       <div className={style.wrapper}>
         <div className={style.title}>
           {intlMessage('cameraSensitivity')}:{' '}
-          {this.props.settings.cameraSensitivity}
+          {this.props.settings.cameraSensitivity.toFixed(2)}
         </div>
         <div className={style.rangeWrapper}>
           <Range
-            value={Math.floor(this.props.settings.cameraSensitivity)}
-            onValueChange={(value: number) => {
-              throttle(() => this.setCameraSensitivity(+value), 50);
-            }}
-            step={1}
+            value={this.props.settings.cameraSensitivity}
+            onValueChange={this.setCameraSensitivity}
+            step={0.01}
             min={0}
             max={10}
             dragEndCb={(value: number) => {
