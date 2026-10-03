@@ -72,6 +72,8 @@ apps/migrator/cache/
 # Native deployment manager build output is reproducible and must not enter source releases.
 apps/deployment-manager/src-tauri/gen/
 apps/deployment-manager/src-tauri/target/
+# Bundled offline images are local packaging inputs, not source files.
+apps/deployment-manager/src-tauri/payload/*.tar.gz
 
 # Player launcher Electron build output.
 apps/player-launcher/dist-electron/
