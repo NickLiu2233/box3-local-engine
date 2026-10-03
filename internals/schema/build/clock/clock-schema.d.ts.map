@@ -1,1 +1,0 @@
-{"version":3,"file":"clock-schema.d.ts","sourceRoot":"","sources":["../../clock/clock-schema.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,QAAQ,EAAE,MAAM,+BAA+B,CAAC;AACzD,OAAO,EAAE,QAAQ,EAAE,SAAS,EAAE,MAAM,wBAAwB,CAAC;AAE7D,eAAO,MAAM,WAAW,KAAK,CAAC;AAC9B,eAAO,MAAM,SAAS,QAAW,CAAC;AAClC,eAAO,MAAM,SAAS,QAAkB,CAAC;AAEzC,eAAO,MAAM,aAAa;;;;;;;;;;;;;CAazB,CAAC"}
