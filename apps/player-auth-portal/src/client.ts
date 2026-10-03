@@ -91,8 +91,8 @@ export class PortalClient {
     return this.request('/api/auth/password', 'POST', { currentPassword, newPassword })
   }
   static message(error: unknown): string {
-    if (error instanceof PortalError && error.banReason)
-      return `该玩家已被封禁\n封禁原因：${error.banReason}\n封禁期限：${error.bannedUntil ? new Date(error.bannedUntil).toLocaleString('zh-CN') : '永久'}`
+    if (error instanceof PortalError && error.banReason !== undefined)
+      return `${error.message}\n封禁原因：${error.banReason || '未说明'}\n封禁期限：${error.bannedUntil ? new Date(error.bannedUntil).toLocaleString('zh-CN') : '永久'}`
     if (error instanceof Error && error.name === 'AbortError')
       return '请求超时，请稍后重试；不要连续重复提交。'
     return error instanceof Error ? error.message : '请求失败，请稍后重试'

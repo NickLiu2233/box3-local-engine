@@ -2857,6 +2857,11 @@ export interface components {
         ApiError: {
             message: string;
             code?: string;
+            /** @enum {string} */
+            banKind?: "account" | "ip" | "device";
+            banReason?: string;
+            /** Format: date-time */
+            bannedUntil?: string | null;
             details?: unknown[];
         };
         PlayerLauncherBootstrap: {

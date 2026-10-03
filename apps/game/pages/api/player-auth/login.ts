@@ -1,9 +1,10 @@
+import { playerBanResponse } from '../../../server/player-ban-response';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   clearSuccessfulPlayerLoginRateLimits,
   consumePlayerLoginRateLimit,
 } from '../../../server/auth-rate-limit';
-import { loginPlayer, PlayerBannedError } from '../../../server/local-player-identity';
+import { loginPlayer } from '../../../server/local-player-identity';
 import {
   authorizePlayerAuthRequest,
   playerAuthClientAddress,
@@ -29,16 +30,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await clearSuccessfulPlayerLoginRateLimits(address, username);
     return res.status(200).json({ player });
   } catch (error) {
-    if (error instanceof PlayerBannedError) {
-      return res.status(403).json({
-        message: '该玩家已被封禁',
-        banReason: error.reason,
-        bannedUntil: error.bannedUntil,
-      });
-    }
+    const ban = playerBanResponse(error);
+    if (ban) return res.status(403).json(ban);
     const message = (error as Error).message;
-    if (message === 'IP_BANNED') return res.status(403).json({ message: '当前 IP 地址已被封禁' });
-    if (message === 'DEVICE_BANNED') return res.status(403).json({ message: '当前设备已被封禁' });
     return res.status(401).json({ message });
   }
 }

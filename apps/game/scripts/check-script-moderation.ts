@@ -1,7 +1,8 @@
+import { playerBanResponse } from '../server/player-ban-response'
 import assert from 'node:assert/strict'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { checkPlayerDatabaseReady, createManagedPlayer, resolvePlayerIdentity } from '../server/local-player-identity'
+import { checkPlayerDatabaseReady, createManagedPlayer, resolvePlayerIdentity, createIdentityBan, revokeIdentityBan, revokeIdentityBanGlobally } from '../server/local-player-identity'
 import {
   playerAdminStore,
   createPlayerAdminAccount,
@@ -11,7 +12,7 @@ import {
   resolvePlayerAdminSession,
   type PlayerAdminIdentity,
 } from '../server/player-admin-identity'
-import { scriptModerationStore as store } from '../server/script-moderation-store'
+import { scriptModerationStore as store, ScriptModerationStore } from '../server/script-moderation-store'
 import { scriptModerationService as moderation } from '../server/script-moderation-service'
 
 // This suite creates test accounts and fault-injection triggers. Never run against a real deployment.
@@ -135,10 +136,33 @@ async function main() {
   await report('admin-ip-map')
   const adminIPKey = await store.create({mapId:'admin-ip-map',permissions:['identity-bans.manage']},owner.id)
   const sharedIPBan = await moderation.execute({...input,mapId:'admin-ip-map',scope:'server',action:'banCurrentIP',ipAddress:adminIP,requestId:'admin-ip-ban'}, {...context,ip:adminIP})
-  await assert.rejects(resolvePlayerIdentity(adminRequest,adminResponse), /IP_BANNED/)
+  await assert.rejects(resolvePlayerIdentity(adminRequest,adminResponse), (error: unknown) => {
+    assert.deepEqual(playerBanResponse(error), {code:'IP_BANNED',message:'当前 IP 地址已被封禁',banKind:'ip',banReason:input.reason,bannedUntil:sharedIPBan.expiresAt})
+    return true
+  })
   assert.equal((await resolvePlayerAdminSession(sessionRequest)).id,admin.id)
   assert.equal((await loginPlayerAdmin(adminRequest,adminResponse,credentials)).id,admin.id)
-  await moderation.execute({mapId:'admin-ip-map',action:'revokeBan',banId:sharedIPBan.id,reason:'测试完成',requestId:'admin-ip-unban'},context)
+  const originalIPRecord = (await pool.query(`SELECT reference_id FROM ${table('script_moderation_bans')} WHERE id=$1`,[sharedIPBan.id])).rows[0]
+  await revokeIdentityBanGlobally(originalIPRecord.reference_id,context)
+  // A pre-fix manual unban left a stale script row. Verify startup reconciliation.
+  await pool.query(`UPDATE ${table('script_moderation_bans')} SET revoked_at=NULL WHERE id=$1`,[sharedIPBan.id])
+  await new ScriptModerationStore().ready()
+  assert.ok((await pool.query(`SELECT revoked_at FROM ${table('script_moderation_bans')} WHERE id=$1`,[sharedIPBan.id])).rows[0].revoked_at)
+  const repeatedIPBan = await moderation.execute({...input,mapId:'admin-ip-map',scope:'server',action:'banCurrentIP',ipAddress:adminIP,requestId:'admin-ip-after-manual-unban'},context)
+  assert.notEqual(repeatedIPBan.id,sharedIPBan.id)
+  assert.ok((await pool.query(`SELECT revoked_at FROM ${table('script_moderation_bans')} WHERE id=$1`,[sharedIPBan.id])).rows[0].revoked_at)
+  await moderation.execute({mapId:'admin-ip-map',action:'revokeBan',banId:repeatedIPBan.id,reason:'测试完成',requestId:'admin-ip-unban'},context)
+  const deviceToken = 'test-device-token-'.padEnd(48,'a')
+  const hashedDevice = createHash('sha256').update(deviceToken).digest('hex')
+  const deviceRequest = {...adminRequest,headers:{...adminRequest.headers,cookie:`box_local_player_device=${deviceToken}`}} as NextApiRequest
+  for (const bannedUntil of [new Date(Date.now()+120000).toISOString(),null]) {
+    const identityBan = await createIdentityBan(player.subjectId,{kind:'device',value:hashedDevice,reason:'设备违规测试',bannedUntil},context)
+    await assert.rejects(resolvePlayerIdentity(deviceRequest,adminResponse), (error: unknown) => {
+      assert.deepEqual(playerBanResponse(error), {code:'DEVICE_BANNED',message:'当前设备已被封禁',banKind:'device',banReason:'设备违规测试',bannedUntil})
+      return true
+    })
+    await revokeIdentityBan(player.subjectId,identityBan.id,context)
+  }
   await store.revoke(adminIPKey.id,owner.id)
   await updatePlayerAdminAccount(admin.id, { status: 'disabled' }, owner)
   assert.ok(await moderation.execute({ ...input, action: 'getPlayerStatus' }, context))
@@ -218,7 +242,12 @@ async function main() {
   const identityBan = (await pool.query(`SELECT kind,banned_until,revoked_at FROM ${table('identity_bans')} WHERE id=(SELECT reference_id::bigint FROM ${table('script_moderation_bans')} WHERE id=$1)`,[globalDeviceBan.id])).rows[0]
   assert.equal(identityBan.kind,'device')
   assert.equal(identityBan.banned_until,null)
-  await moderation.execute({mapId:'device-map',action:'revokeBan',banId:globalDeviceBan.id,reason:'复核',requestId:'device-global-unban'},context)
+  const scriptDeviceReference = (await pool.query(`SELECT reference_id FROM ${table('script_moderation_bans')} WHERE id=$1`,[globalDeviceBan.id])).rows[0].reference_id
+  await revokeIdentityBan(player.subjectId,scriptDeviceReference,context)
+  assert.ok((await pool.query(`SELECT revoked_at FROM ${table('script_moderation_bans')} WHERE id=$1`,[globalDeviceBan.id])).rows[0].revoked_at)
+  const repeatedDeviceBan = await moderation.execute({...deviceInput,scope:'server',requestId:'device-after-manual-unban'},context)
+  await assert.rejects(moderation.execute({...deviceInput,scope:'server',requestId:'device-still-active'},context),/对应处罚/)
+  await moderation.execute({mapId:'device-map',action:'revokeBan',banId:repeatedDeviceBan.id,reason:'复核',requestId:'device-global-unban'},context)
   await store.revoke(deviceKey.id,owner.id)
   await report('query-map')
   const queryKey = await store.create({mapId:'query-map',maximumBanSeconds:0,permissions:['players.ban']},owner.id)

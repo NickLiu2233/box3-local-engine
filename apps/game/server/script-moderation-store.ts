@@ -139,6 +139,11 @@ export class ScriptModerationStore {
       `CREATE INDEX IF NOT EXISTS script_bans_map_active ON ${table('script_moderation_bans')}(map_id, expires_at) WHERE revoked_at IS NULL`,
     )
     await pool.query(`CREATE INDEX IF NOT EXISTS script_bans_map_history ON ${table('script_moderation_bans')}(map_id,created_at DESC,id DESC)`)
+    // Reconcile historical manual unbans that predate linked-record updates.
+    await pool.query(`UPDATE ${table('script_moderation_bans')} b
+      SET revoked_at=i.revoked_at FROM ${table('identity_bans')} i
+      WHERE b.scope='server' AND b.kind=i.kind AND b.reference_id=i.id::text
+      AND i.revoked_at IS NOT NULL AND b.revoked_at IS NULL`)
     await pool.query(`CREATE TABLE IF NOT EXISTS ${table('script_moderation_requests')} (
       key_id UUID NOT NULL REFERENCES ${table('script_admin_keys')}(id) ON DELETE CASCADE,
       map_id TEXT NOT NULL, request_id TEXT NOT NULL, body_hash TEXT NOT NULL,

@@ -68,6 +68,8 @@ await world.moderation.banCurrentIP(playerEntity.player, {
 
 所有 moderation 调用的拒绝值遵循 `CommonError`：`{ status, code, msg }`。`status` 为错误类型，`code` 为数字错误码（如 403 权限不足、429 限流、504 超时），`msg` 为错误描述。批量失败项的 `error` 也是这个对象。
 
+单次拒绝值同时是 `Error` 实例，`JSON.stringify(error)` 仍返回上述三个字段；未捕获时，控制台也会保留这三个字段。有效处罚重复提交会返回 409；在后台解除 IP 或设备封禁后，关联脚本记录会同步为已解除，可用新的请求 ID 重新处罚。旧请求 ID 重试仍只返回原回执。
+
 ```js
 try {
   await world.moderation.banPlayer(playerEntity.player, { reason: '违规', durationSeconds: 600 })

@@ -17,6 +17,9 @@ export const localEngineSchemas = {
     properties: {
       message: string,
       code: string,
+      banKind: { type: 'string', enum: ['account', 'ip', 'device'] },
+      banReason: string,
+      bannedUntil: { type: ['string', 'null'], format: 'date-time' },
       details: { type: 'array', items: {} },
     },
   },

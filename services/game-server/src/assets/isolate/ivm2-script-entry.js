@@ -24205,6 +24205,11 @@ const ModerationProtocol = {
     }
 };
 
+function scriptModerationError(error, code = 503, fallback) {
+    const details = normalizeModerationError(error, code, fallback);
+    return Object.assign(new Error(JSON.stringify(details)), details);
+}
+
 function publicBan(ban) {
     const record = Object.assign({}, ban);
     delete record.scope;
@@ -24213,7 +24218,7 @@ function publicBan(ban) {
 class ModerationScript {
     request(action, player, options) {
         return __awaiter(this, void 0, void 0, function*() {
-            if (this.pending.size >= 8) throw moderationError(429, '地图管理请求过多');
+            if (this.pending.size >= 8) throw scriptModerationError(moderationError(429, '地图管理请求过多'));
             let playerId;
             let payload;
             try {
@@ -24222,11 +24227,11 @@ class ModerationScript {
                     action
                 }));
             } catch (error) {
-                throw normalizeModerationError(error, 400, '地图管理参数无效');
+                throw scriptModerationError(error, 400, '地图管理参数无效');
             }
-            if (payload.length > 2048) throw moderationError(400, '地图管理参数过长');
+            if (payload.length > 2048) throw scriptModerationError(moderationError(400, '地图管理参数过长'));
             const handle = this.sequence++ >>> 0;
-            const wrapper = new PromiseWrapper(this.schedule);
+            const wrapper = new PromiseWrapper(this.schedule, undefined, scriptModerationError);
             const timer = this.timers.setTimeout(()=>{
                 this.pending.delete(handle);
                 wrapper.notifyError(moderationError(504, '地图管理请求超时，操作可能已执行；手动重试须事先指定并复用 requestId'));
@@ -24250,7 +24255,7 @@ class ModerationScript {
         });
     }
     operationOptions(options) {
-        if (!options || typeof options !== 'object' || Array.isArray(options)) throw moderationError(400, '地图管理参数无效');
+        if (!options || typeof options !== 'object' || Array.isArray(options)) throw scriptModerationError(moderationError(400, '地图管理参数无效'));
         return Object.assign(Object.assign({}, options), {
             requestId: options.requestId === undefined ? `${this.requestPrefix}-${this.automaticSequence++}` : options.requestId
         });
@@ -24261,7 +24266,7 @@ class ModerationScript {
             if (!Array.isArray(players)) return this.request(action, players, Object.assign(Object.assign({}, batchOptions), {
                 scope: 'server'
             })).then(publicBan);
-            if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId)) throw moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符');
+            if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId)) throw scriptModerationError(moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符'));
             const targets = [
                 ...players
             ];
@@ -24306,7 +24311,7 @@ class ModerationScript {
     }
     listBans() {
         return __awaiter(this, arguments, void 0, function*(query = {}) {
-            if (!query || typeof query !== 'object' || Array.isArray(query)) throw moderationError(400, '地图管理参数无效');
+            if (!query || typeof query !== 'object' || Array.isArray(query)) throw scriptModerationError(moderationError(400, '地图管理参数无效'));
             const { player } = query, filters = __rest(query, [
                 "player"
             ]);

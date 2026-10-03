@@ -1,3 +1,4 @@
+import { playerBanResponse } from './player-ban-response';
 import { createHash } from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authorizePlayerAuthRequest, playerAuthClientAddress } from './player-auth-security';
@@ -54,6 +55,8 @@ export async function handlePlayerSelfService(req: NextApiRequest, res: NextApiR
       username: player.username, displayName: player.displayName,
     } });
   } catch (error) {
+    const ban = playerBanResponse(error);
+    if (ban) return res.status(403).json(ban);
     if (error instanceof PlayerSelfServiceError) {
       return res.status(error.status).json({ code: error.code, message: error.message });
     }

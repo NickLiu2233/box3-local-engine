@@ -318,7 +318,11 @@ export class ScriptModerationService {
       `${input.mapId}:${input.scope}:${kind}:${deviceHash || ipHash || target.principal_id}`,
     ])
     const duplicate = await client.query(
-      `SELECT 1 FROM ${table('script_moderation_bans')} WHERE map_id=$1 AND scope=$2 AND kind=$3 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>NOW()) AND (($3='account' AND subject_id=$4) OR ($3='ip' AND ip_hash=$5) OR ($3='device' AND device_hash=$6)) LIMIT 1`,
+      `SELECT 1 FROM ${table('script_moderation_bans')} b WHERE map_id=$1 AND scope=$2 AND kind=$3 AND revoked_at IS NULL AND (expires_at IS NULL OR expires_at>NOW()) AND (($3='account' AND subject_id=$4) OR ($3='ip' AND ip_hash=$5) OR ($3='device' AND device_hash=$6))
+       AND (b.scope='map' OR b.kind='account' OR EXISTS (
+         SELECT 1 FROM ${table('identity_bans')} i WHERE i.id::text=b.reference_id
+         AND i.revoked_at IS NULL AND (i.banned_until IS NULL OR i.banned_until>NOW())
+       )) LIMIT 1`,
       [input.mapId, input.scope, kind, target.principal_id, ipHash, deviceHash],
     )
     if (duplicate.rowCount) throw new PlayerAdminRequestError('已存在对应处罚，请复核或使用原 requestId 重试', 409)

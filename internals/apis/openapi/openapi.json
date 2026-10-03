@@ -12473,6 +12473,24 @@
           "code": {
             "type": "string"
           },
+          "banKind": {
+            "type": "string",
+            "enum": [
+              "account",
+              "ip",
+              "device"
+            ]
+          },
+          "banReason": {
+            "type": "string"
+          },
+          "bannedUntil": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
           "details": {
             "type": "array",
             "items": {}

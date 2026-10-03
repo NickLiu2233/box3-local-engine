@@ -288,8 +288,9 @@ export class PlayerBannedError extends Error {
   readonly reason: string;
   readonly bannedUntil: string | null;
 
-  constructor(reason: string, bannedUntil: string | Date | null | undefined) {
-    super('PLAYER_BANNED');
+  constructor(reason: string, bannedUntil: string | Date | null | undefined, readonly kind: 'account' | 'ip' | 'device' = 'account') {
+    super(kind === 'ip' ? 'IP_BANNED' : kind === 'device' ? 'DEVICE_BANNED' : 'PLAYER_BANNED');
+    Object.setPrototypeOf(this, new.target.prototype);
     this.name = 'PlayerBannedError';
     this.reason = reason.trim() || '未说明';
     this.bannedUntil = bannedUntil ? new Date(bannedUntil).toISOString() : null;
@@ -759,8 +760,8 @@ function identityBanHash(kind: 'ip' | 'device', value: string) {
 
 async function activeIdentityBan(database: Pool, kind: 'ip' | 'device', value: string) {
   if (!value) return null;
-  const result = await database.query<{ id: string; reason: string }>(`
-    SELECT id::text, reason FROM ${table('identity_bans')}
+  const result = await database.query<{ id: string; reason: string; banned_until: Date | null }>(`
+    SELECT id::text, reason, banned_until FROM ${table('identity_bans')}
     WHERE kind = $1 AND value_hash = $2 AND revoked_at IS NULL
       AND (banned_until IS NULL OR banned_until > NOW())
     LIMIT 1
@@ -774,8 +775,8 @@ async function assertRequestSourceAllowed(database: Pool, req: NextApiRequest, r
     activeIdentityBan(database, 'ip', requestIp(req)),
     activeIdentityBan(database, 'device', tokenHash(token)),
   ]);
-  if (ipBan) throw new Error('IP_BANNED');
-  if (deviceBan) throw new Error('DEVICE_BANNED');
+  if (ipBan) throw new PlayerBannedError(ipBan.reason, ipBan.banned_until, 'ip');
+  if (deviceBan) throw new PlayerBannedError(deviceBan.reason, deviceBan.banned_until, 'device');
   return tokenHash(token);
 }
 
@@ -803,7 +804,7 @@ async function findSession(database: Pool, token: string, req: NextApiRequest) {
   const storedDeviceBan = await activeIdentityBan(database, 'device', row.session_device_hash || '');
   if (storedDeviceBan) {
     await database.query(`DELETE FROM ${table('sessions')} WHERE token_hash = $1`, [tokenHash(token)]);
-    throw new Error('DEVICE_BANNED');
+    throw new PlayerBannedError(storedDeviceBan.reason, storedDeviceBan.banned_until, 'device');
   }
   await database.query(`
     UPDATE ${table('sessions')} SET last_seen_at = NOW(), last_seen_ip = $2,
@@ -858,7 +859,7 @@ export async function resolveCreatorCliTokenIdentity(token: string, req: NextApi
   if (!database) throw new Error('玩家身份服务需要配置 PostgreSQL');
   await initialize();
   const ipBan = await activeIdentityBan(database, 'ip', requestIp(req));
-  if (ipBan) throw new Error('IP_BANNED');
+  if (ipBan) throw new PlayerBannedError(ipBan.reason, ipBan.banned_until, 'ip');
   const hash = createHmac('sha256', identitySecret()).update(token).digest('hex');
   const result = await database.query<IdentityRow & { scopes: string[] }>(`
     SELECT p.id AS subject_id, p.created_at, p.last_seen_at, p.first_seen_ip, p.last_seen_ip,
@@ -2208,6 +2209,23 @@ export async function createIdentityBan(
   }
 }
 
+async function lockLinkedScriptIdentityBans(client: PoolClient, banId: string) {
+  const exists = (await client.query('SELECT to_regclass($1) AS relation', [table('script_moderation_bans')])).rows[0]?.relation;
+  if (!exists) return false;
+  // Script unban also locks its record before touching the identity ban.
+  await client.query(`SELECT id FROM ${table('script_moderation_bans')}
+    WHERE scope='server' AND kind IN ('ip','device') AND reference_id=$1
+    AND revoked_at IS NULL ORDER BY id FOR UPDATE`, [banId]);
+  return true;
+}
+
+async function syncLinkedScriptIdentityBan(client: PoolClient, banId: string) {
+  await client.query(`UPDATE ${table('script_moderation_bans')} b
+    SET revoked_at=i.revoked_at FROM ${table('identity_bans')} i
+    WHERE b.scope='server' AND b.kind=i.kind AND b.reference_id=i.id::text
+    AND i.id::text=$1 AND i.revoked_at IS NOT NULL AND b.revoked_at IS NULL`, [banId]);
+}
+
 export async function revokeIdentityBan(subjectId: string, banId: unknown, context?: AdminActionContext, transaction?: PoolClient) {
   if (!/^\d+$/.test(String(banId || ''))) throw new Error('封禁记录无效');
   const database = getPool();
@@ -2216,6 +2234,7 @@ export async function revokeIdentityBan(subjectId: string, banId: unknown, conte
   const client = transaction || await database.connect();
   try {
     if (!transaction) await client.query('BEGIN');
+    const linkedScripts = await lockLinkedScriptIdentityBans(client, String(banId));
     const result = await client.query<{ kind: string; display_value: string }>(`
       UPDATE ${table('identity_bans')}
       SET revoked_at = NOW(), revoked_by = $3
@@ -2223,6 +2242,7 @@ export async function revokeIdentityBan(subjectId: string, banId: unknown, conte
       RETURNING kind, display_value
     `, [String(banId), subjectId, context?.actor || 'server-owner']);
     if (!result.rowCount) throw new Error('封禁记录不存在或已经解除');
+    if (linkedScripts) await syncLinkedScriptIdentityBan(client, String(banId));
     await audit(client, `identity.${result.rows[0].kind}.unban`, subjectId, {
       banId: String(banId), displayValue: result.rows[0].display_value,
     }, context);
@@ -2244,6 +2264,7 @@ export async function revokeIdentityBanGlobally(banId: unknown, context?: AdminA
   const client = await database.connect();
   try {
     await client.query('BEGIN');
+    const linkedScripts = await lockLinkedScriptIdentityBans(client, String(banId));
     const result = await client.query<{ kind: 'ip' | 'device'; display_value: string; source_subject_id: string | null }>(`
       UPDATE ${table('identity_bans')}
       SET revoked_at = NOW(), revoked_by = $2
@@ -2251,6 +2272,7 @@ export async function revokeIdentityBanGlobally(banId: unknown, context?: AdminA
       RETURNING kind, display_value, REPLACE(source_subject_id::text, '-', '') AS source_subject_id
     `, [String(banId), context?.actor || 'server-owner']);
     if (!result.rowCount) throw new Error('封禁记录不存在、已经解除或已过期');
+    if (linkedScripts) await syncLinkedScriptIdentityBan(client, String(banId));
     const ban = result.rows[0];
     await audit(client, `identity.${ban.kind}.unban`, ban.source_subject_id || null, {
       banId: String(banId), displayValue: ban.display_value, source: 'identity-ban-list',

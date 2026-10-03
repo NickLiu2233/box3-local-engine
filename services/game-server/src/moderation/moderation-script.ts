@@ -4,6 +4,7 @@ import type { GamePlayer } from '@box/schema/api/js/api'
 import { moderationError, normalizeModerationError } from '@box/schema/api/js/moderation-error'
 import { PromiseWrapper } from '../utils/script-promise'
 import { ModerationProtocol } from './moderation-protocol'
+import { scriptModerationError } from './moderation-script-error'
 
 // Hide legacy transport scope from the public script records.
 function publicBan<T extends ModerationBan>(ban: T): T {
@@ -45,18 +46,18 @@ export class ModerationScript implements GameModeration {
     })
   }
   private async request<T>(action: string, player: GamePlayer | undefined, options: object): Promise<T> {
-    if (this.pending.size >= 8) throw moderationError(429, '地图管理请求过多')
+    if (this.pending.size >= 8) throw scriptModerationError(moderationError(429, '地图管理请求过多'))
     let playerId: number
     let payload: string
     try {
       playerId = player ? this.playerId(player) : 0
       payload = JSON.stringify({ ...options, action })
     } catch (error) {
-      throw normalizeModerationError(error, 400, '地图管理参数无效')
+      throw scriptModerationError(error, 400, '地图管理参数无效')
     }
-    if (payload.length > 2048) throw moderationError(400, '地图管理参数过长')
+    if (payload.length > 2048) throw scriptModerationError(moderationError(400, '地图管理参数过长'))
     const handle = this.sequence++ >>> 0
-    const wrapper = new PromiseWrapper<T>(this.schedule)
+    const wrapper = new PromiseWrapper<T>(this.schedule, undefined, scriptModerationError)
     const timer = this.timers.setTimeout(() => {
       this.pending.delete(handle)
       wrapper.notifyError(moderationError(504, '地图管理请求超时，操作可能已执行；手动重试须事先指定并复用 requestId'))
@@ -73,7 +74,7 @@ export class ModerationScript implements GameModeration {
   }
   private operationOptions<T extends { requestId?: string }>(options: T): T & { requestId: string } {
     if (!options || typeof options !== 'object' || Array.isArray(options))
-      throw moderationError(400, '地图管理参数无效')
+      throw scriptModerationError(moderationError(400, '地图管理参数无效'))
     return { ...options, requestId: options.requestId === undefined
       ? `${this.requestPrefix}-${this.automaticSequence++}` : options.requestId }
   }
@@ -82,7 +83,7 @@ export class ModerationScript implements GameModeration {
     if (!Array.isArray(players)) return this.request<ModerationBan>(action, players as GamePlayer, { ...batchOptions, scope: 'server' }).then(publicBan)
     // Validate the batch envelope before starting any irreversible operation.
     if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId))
-      throw moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符')
+      throw scriptModerationError(moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符'))
     const targets = [...players]
     const results: ModerationBatchResult[] = []
     for (let index = 0; index < targets.length; index++) {
@@ -118,7 +119,7 @@ export class ModerationScript implements GameModeration {
   }
   async listBans(query: ModerationBanQuery = {}) {
     if (!query || typeof query !== 'object' || Array.isArray(query))
-      throw moderationError(400, '地图管理参数无效')
+      throw scriptModerationError(moderationError(400, '地图管理参数无效'))
     const { player, ...filters } = query
     const result = await this.request<{ items: ModerationBanRecord[]; total: number; page: number; pageSize: number }>('listBans', player, filters)
     return { ...result, items: result.items.map(publicBan) }

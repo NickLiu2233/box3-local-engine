@@ -1,3 +1,4 @@
+import { playerBanResponse } from '../../../server/player-ban-response';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { registerPlayer } from '../../../server/local-player-identity';
 import { authorizePlayerAuthRequest } from '../../../server/player-auth-security';
@@ -13,9 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     return res.status(201).json({ player: await registerPlayer(req, res, req.body || {}) });
   } catch (error) {
+    const ban = playerBanResponse(error);
+    if (ban) return res.status(403).json(ban);
     const message = (error as Error).message;
-    if (message === 'IP_BANNED') return res.status(403).json({ message: '当前 IP 地址已被封禁' });
-    if (message === 'DEVICE_BANNED') return res.status(403).json({ message: '当前设备已被封禁' });
     return res.status(400).json({ message });
   }
 }
