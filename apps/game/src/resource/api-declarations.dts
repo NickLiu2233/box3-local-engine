@@ -9917,7 +9917,7 @@ declare class GameWorld {
      * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
      */
     serverId: string;
-    /** 服务端地图管理能力，由服主在后台授权；脚本不持有管理员密钥。 */
+    /** 地图管理能力，由服主在后台授权； */
     moderation: GameModeration;
     /**
      * The name of the project (read only)
@@ -13342,13 +13342,64 @@ declare class GameRGBColor {
     toString(): string;
 }
 
-declare function moderationError(code: number, msg: string, status?: ModerationErrorStatus): ModerationError;
-/** Normalize both current structured replies and legacy message-only transports. */
+/** Stable business codes; independent of the HTTP response status. */
+declare const moderationErrorCodes: {
+    readonly MODERATION_PARAMS_INVALID: 41000;
+    readonly MODERATION_OPTIONS_INVALID: 41001;
+    readonly MODERATION_TARGET_INVALID: 41002;
+    readonly MODERATION_PAYLOAD_TOO_LARGE: 41003;
+    readonly MODERATION_BATCH_TOO_LARGE: 41004;
+    readonly MODERATION_REQUEST_ID_INVALID: 41005;
+    readonly MODERATION_REASON_INVALID: 41006;
+    readonly MODERATION_DURATION_INVALID: 41007;
+    readonly MODERATION_BAN_ID_INVALID: 41008;
+    readonly MODERATION_QUERY_INVALID: 41009;
+    readonly MODERATION_ACTION_INVALID: 41010;
+    readonly MODERATION_IP_INVALID: 41011;
+    readonly MODERATION_DEVICE_UNAVAILABLE: 41012;
+    readonly MODERATION_METHOD_NOT_ALLOWED: 41013;
+    readonly MODERATION_AUTH_REQUIRED: 41100;
+    readonly MODERATION_FORBIDDEN: 41300;
+    readonly MODERATION_MAP_MISMATCH: 41301;
+    readonly MODERATION_GRANT_INVALID: 41302;
+    readonly MODERATION_LEGACY_GRANT_INVALID: 41303;
+    readonly MODERATION_QUERY_FORBIDDEN: 41304;
+    readonly MODERATION_ACTION_FORBIDDEN: 41305;
+    readonly MODERATION_BAN_ACCESS_DENIED: 41306;
+    readonly MODERATION_DURATION_LIMIT_EXCEEDED: 41307;
+    readonly MODERATION_ADMIN_PROTECTED: 41308;
+    readonly MODERATION_DEVICE_PROTECTED: 41309;
+    readonly MODERATION_SERVER_BAN_FORBIDDEN: 41310;
+    readonly MODERATION_GRANT_REQUIRED: 41311;
+    readonly MODERATION_GRANT_EXPIRED: 41312;
+    readonly MODERATION_GRANT_REVOKED: 41313;
+    readonly MODERATION_PERMANENT_FORBIDDEN: 41314;
+    readonly MODERATION_NOT_FOUND: 41400;
+    readonly MODERATION_PLAYER_OFFLINE: 41401;
+    readonly MODERATION_PLAYER_NOT_FOUND: 41402;
+    readonly MODERATION_CONFLICT: 41900;
+    readonly MODERATION_REQUEST_ID_CONFLICT: 41901;
+    readonly MODERATION_BAN_ALREADY_EXISTS: 41902;
+    readonly MODERATION_ACCOUNT_ALREADY_PUNISHED: 41903;
+    readonly MODERATION_BAN_CHANGED: 41904;
+    readonly MODERATION_RATE_LIMITED: 42900;
+    readonly MODERATION_RESPONSE_INVALID: 45002;
+    readonly MODERATION_INTERNAL_ERROR: 45000;
+    readonly MODERATION_UNAVAILABLE: 45003;
+    readonly MODERATION_RUNTIME_DISABLED: 45004;
+    readonly MODERATION_RATE_LIMIT_UNAVAILABLE: 45005;
+    readonly MODERATION_TIMEOUT: 45006;
+};
+declare function moderationError(httpStatus: number, msg: string, status?: ModerationErrorStatus): ModerationError;
+/** Normalize current replies and legacy HTTP-code replies using the same catalog. */
 declare function normalizeModerationError(error: unknown, code?: number, fallback?: string): ModerationError;
+/** Shared by host and HTTP validation, with no dependency on a particular Zod version. */
+declare function moderationValidationError(issues: readonly {
+    path: readonly PropertyKey[];
+}[]): ModerationError;
 
 
-type ModerationErrorStatus = 'MODERATION_PARAMS_INVALID' | 'MODERATION_AUTH_REQUIRED' | 'MODERATION_FORBIDDEN' | 'MODERATION_NOT_FOUND' | 'MODERATION_CONFLICT' | 'MODERATION_RATE_LIMITED' | 'MODERATION_UNAVAILABLE' | 'MODERATION_TIMEOUT' | 'MODERATION_RESPONSE_INVALID' | 'MODERATION_INTERNAL_ERROR';
-/** 单次调用失败时 Promise 拒绝此对象；批量失败项的 error 使用相同结构。 */
+type ModerationErrorStatus = 'MODERATION_PARAMS_INVALID' | 'MODERATION_OPTIONS_INVALID' | 'MODERATION_TARGET_INVALID' | 'MODERATION_PAYLOAD_TOO_LARGE' | 'MODERATION_BATCH_TOO_LARGE' | 'MODERATION_REQUEST_ID_INVALID' | 'MODERATION_REASON_INVALID' | 'MODERATION_DURATION_INVALID' | 'MODERATION_BAN_ID_INVALID' | 'MODERATION_QUERY_INVALID' | 'MODERATION_ACTION_INVALID' | 'MODERATION_IP_INVALID' | 'MODERATION_DEVICE_UNAVAILABLE' | 'MODERATION_METHOD_NOT_ALLOWED' | 'MODERATION_AUTH_REQUIRED' | 'MODERATION_FORBIDDEN' | 'MODERATION_MAP_MISMATCH' | 'MODERATION_GRANT_INVALID' | 'MODERATION_LEGACY_GRANT_INVALID' | 'MODERATION_QUERY_FORBIDDEN' | 'MODERATION_ACTION_FORBIDDEN' | 'MODERATION_BAN_ACCESS_DENIED' | 'MODERATION_DURATION_LIMIT_EXCEEDED' | 'MODERATION_ADMIN_PROTECTED' | 'MODERATION_DEVICE_PROTECTED' | 'MODERATION_SERVER_BAN_FORBIDDEN' | 'MODERATION_GRANT_REQUIRED' | 'MODERATION_GRANT_EXPIRED' | 'MODERATION_GRANT_REVOKED' | 'MODERATION_PERMANENT_FORBIDDEN' | 'MODERATION_NOT_FOUND' | 'MODERATION_PLAYER_OFFLINE' | 'MODERATION_PLAYER_NOT_FOUND' | 'MODERATION_CONFLICT' | 'MODERATION_REQUEST_ID_CONFLICT' | 'MODERATION_BAN_ALREADY_EXISTS' | 'MODERATION_ACCOUNT_ALREADY_PUNISHED' | 'MODERATION_BAN_CHANGED' | 'MODERATION_RATE_LIMITED' | 'MODERATION_RESPONSE_INVALID' | 'MODERATION_INTERNAL_ERROR' | 'MODERATION_UNAVAILABLE' | 'MODERATION_RUNTIME_DISABLED' | 'MODERATION_RATE_LIMIT_UNAVAILABLE' | 'MODERATION_TIMEOUT'; /** 单次失败的 Error 和批量失败项使用相同结构；code 为独立业务码，非 HTTP 状态码，详见地图管理文档。 */
 type ModerationError = CommonError<ModerationErrorStatus>;
 /** 权限由服主在后台绑定，脚本不能设置管理员身份、地图 ID 或 IP。 */
 type ModerationOptions = {

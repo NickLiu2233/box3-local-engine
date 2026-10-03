@@ -407,7 +407,7 @@ export class Sound {
  * which exist in the world.
  */
 export class GameWorld {
-  /** 服务端地图管理能力，由服主在后台授权；脚本不持有管理员密钥。 */
+  /** 地图管理能力，由服主在后台授权； */
   public moderation!: GameModeration;
   /**
    * The name of the project (read only)

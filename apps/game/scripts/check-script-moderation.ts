@@ -111,7 +111,7 @@ async function main() {
   ])
   await assert.rejects(
     moderation.execute({ ...input, action: 'getPlayerStatus' }, context),
-    /失效/,
+    {moderationStatus:'MODERATION_GRANT_EXPIRED',status:403},
   )
   await store.updateAuthorization({ mapId, keyId: key.id }, owner.id)
   assert.ok(await moderation.execute({ ...input, action: 'getPlayerStatus' }, context))
@@ -228,7 +228,7 @@ async function main() {
   const deviceInput = {...input,mapId:'device-map',action:'banCurrentDevice',deviceHash,durationSeconds:0,requestId:'device-map-ban'}
   await assert.rejects(moderation.execute({...deviceInput,mapId:'server-map',requestId:'unauthorized-device'},context),/不允许此操作/)
   await store.updateAuthorization({mapId:'device-map',keyId:deviceKey.id,maximumBanSeconds:60},owner.id)
-  await assert.rejects(moderation.execute({...deviceInput,requestId:'unauthorized-permanent'},context),/授权上限/)
+  await assert.rejects(moderation.execute({...deviceInput,requestId:'unauthorized-permanent'},context),{moderationStatus:'MODERATION_PERMANENT_FORBIDDEN',status:403})
   await store.updateAuthorization({mapId:'device-map',keyId:deviceKey.id,maximumBanSeconds:0},owner.id)
   const deviceBan = await moderation.execute(deviceInput, context)
   assert.equal(deviceBan.expiresAt,null)
@@ -291,10 +291,13 @@ async function main() {
     store.updateAuthorization({ mapId: 'server-map', keyId: globalKey.id }, owner.id),
     /已撤销/,
   )
+  await assert.rejects(moderation.execute({ ...input, mapId:'no-grant-map',action:'getPlayerStatus' }, context), {moderationStatus:'MODERATION_GRANT_REQUIRED',status:403})
+  await pool.query(`UPDATE ${table('script_admin_keys')} SET expires_at=NOW()-INTERVAL '1 minute' WHERE id=$1`, [key.id])
+  await assert.rejects(moderation.execute({ ...input, action:'getPlayerStatus' }, context), {moderationStatus:'MODERATION_GRANT_EXPIRED',status:403})
   await store.revoke(key.id, owner.id)
   await assert.rejects(
     moderation.execute({ ...input, action: 'getPlayerStatus' }, context),
-    /失效/,
+    {moderationStatus:'MODERATION_GRANT_REVOKED',status:403},
   )
   console.log(
     'Map group authorizations passed: script updates retain grants, renewal, permissions, legacy isolation, removed login flag, map/global/IP/device/permanent bans, device admission across accounts, revocation, punishment queries, explicit read grants and transaction audit',

@@ -13,9 +13,9 @@ test('permanent bans require explicit permanent authorization', () => {
   expect(moderationCommandSchema.parse({ mapId: 'main-map', action: 'banPlayer', durationSeconds: 0 }).durationSeconds).toBe(0)
   expect(moderationBanExpiry(0, 0)).toBeNull()
   expect(moderationBanExpiry(120, 0)).toBeInstanceOf(Date)
-  expect(() => moderationBanExpiry(0, 3600)).toThrow('授权上限')
+  expect(() => moderationBanExpiry(0, 3600)).toThrow('不允许永久封禁')
   expect(() => moderationBanExpiry(3601, 3600)).toThrow('授权上限')
-  expect(() => moderationBanExpiry(undefined, 0)).toThrow('授权上限')
+  expect(() => moderationBanExpiry(undefined, 0)).toThrow('durationSeconds')
 })
 
 // Uses a disposable schema and never touches deployment tables.

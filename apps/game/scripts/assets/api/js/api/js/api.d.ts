@@ -586,7 +586,7 @@ declare class GameWorld {
      * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
      */
     serverId: string;
-    /** 服务端地图管理能力，由服主在后台授权；脚本不持有管理员密钥。 */
+    /** 地图管理能力，由服主在后台授权； */
     moderation: GameModeration;
     /**
      * The name of the project (read only)

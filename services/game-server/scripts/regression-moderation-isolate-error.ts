@@ -6,7 +6,7 @@ import ivm from 'isolated-vm'
 const esbuild = require('../../../apps/player-auth-portal/node_modules/esbuild')
 const entry = path.resolve(__dirname, '../src/moderation/moderation-script.ts')
 const bundle = esbuild.buildSync({entryPoints:[entry],bundle:true,write:false,format:'iife',globalName:'ModerationTest',platform:'browser'}).outputFiles[0].text
-const expected = {status:'MODERATION_CONFLICT',code:409,msg:'已存在对应处罚，请复核或使用原 requestId 重试'}
+const expected = {status:'MODERATION_CONFLICT',code:41900,msg:'已存在对应处罚，请复核或使用原 requestId 重试'}
 async function main() {
   const isolate = new ivm.Isolate({memoryLimit:64})
   try {

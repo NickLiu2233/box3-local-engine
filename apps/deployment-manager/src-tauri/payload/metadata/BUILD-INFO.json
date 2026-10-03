@@ -1,0 +1,17 @@
+{
+  "formatVersion": 1,
+  "product": "box-local-engine",
+  "version": "0.2.0",
+  "release": "desktop-macos-arm64",
+  "generatedAt": "2026-10-03T11:46:13.950Z",
+  "buildCreatedAt": "2026-10-03T11:46:07.429Z",
+  "sourceRevision": "bd700d537d1fc222e4235ed6fee7b062538a2744",
+  "source": "local-dirty",
+  "nodeVersion": "v22.17.0",
+  "platform": "darwin/arm64",
+  "images": [
+    "box-local-engine-images-v0.2.0-linux-arm64.tar.gz (v0.2.0-linux-arm64)"
+  ],
+  "checksumAlgorithm": "SHA-256",
+  "thirdPartyDependencyCount": 95
+}

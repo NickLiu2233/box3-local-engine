@@ -2,7 +2,7 @@ import { MuServer } from '@box/mudb/server'
 import { z } from 'zod'
 import { ModerationProtocol } from './moderation-protocol'
 import { ModerationClient } from './moderation-client'
-import { moderationError, normalizeModerationError } from '@box/schema/api/js/moderation-error'
+import { moderationError, normalizeModerationError, moderationValidationError } from '@box/schema/api/js/moderation-error'
 
 const commandSchema = z
   .object({
@@ -44,7 +44,7 @@ export class ModerationHost {
           if (this.active >= 8 || message.payload.length > 2048) {
             reply(false, this.active >= 8
               ? moderationError(429, '地图管理请求过多')
-              : moderationError(400, '地图管理参数过长'))
+              : moderationError(400, '地图管理参数过长', 'MODERATION_PAYLOAD_TOO_LARGE'))
             return
           }
           this.active++
@@ -52,7 +52,7 @@ export class ModerationHost {
             const input = commandSchema.parse(JSON.parse(message.payload))
             const needsPlayer = !['revokeBan', 'getBan'].includes(input.action) && (input.action !== 'listBans' || message.playerId !== 0)
             const player = needsPlayer ? target(message.playerId) : undefined
-            if (needsPlayer && (!player || !player.userId)) throw moderationError(404, '目标玩家已离线')
+            if (needsPlayer && (!player || !player.userId)) throw moderationError(404, '目标玩家已离线', 'MODERATION_PLAYER_OFFLINE')
             // These fields cannot be supplied or overridden by sandbox code.
             const result = await this.transport.execute({
               ...input,
@@ -66,8 +66,8 @@ export class ModerationHost {
             // A receipt replay must not kick a player after an administrator has already unbanned them.
             if (!replayed && (input.action === 'banPlayer' || input.action === 'banCurrentIP' || input.action === 'banCurrentDevice')) kick(message.playerId)
           } catch (error) {
-            reply(false, error instanceof z.ZodError || error instanceof SyntaxError
-              ? moderationError(400, '地图管理参数无效')
+            reply(false, error instanceof z.ZodError ? moderationValidationError(error.issues)
+              : error instanceof SyntaxError ? moderationError(400, '地图管理参数无效')
               : normalizeModerationError(error))
           } finally {
             this.active--

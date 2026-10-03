@@ -76,7 +76,7 @@ try {
 } catch (error) {
   console.log(error.status, error.code, error.msg)
 }
-// 例如：{ status: 'MODERATION_FORBIDDEN', code: 403, msg: '授权不允许此操作' }
+// 例如：{ status: 'MODERATION_ACTION_FORBIDDEN', code: 41305, msg: '授权不允许此操作' }
 ```
 
 如果封禁已生效、目标已离线，重试可能提示玩家已离线。此时在后台复核处罚，不要换一个请求 ID 反复封禁。
@@ -192,3 +192,57 @@ npm --prefix apps/game run build:script-types
 相关代码：`apps/game/server/script-moderation-{store,service}.ts` 管理授权和处罚，`services/game-server/src/moderation/` 负责可信引擎与脚本之间的调用，`apps/player-admin/src/pages/access/script-moderation-page.tsx` 是服主授权界面。
 
 回归测试：`apps/game/scripts/check-script-moderation.ts` 只接受本机的 `moderation_test` 数据库和同名 schema，测试时会创建账号，必须使用一次性测试数据库。脚本桥接测试在 Game Server 下运行 `node -r @swc-node/register scripts/regression-script-moderation.ts`。
+
+### 地图管理业务错误码
+
+`code` 为稳定的业务错误码，与 HTTP 状态码独立。单次调用拒绝的 Error 和批量失败项均使用 `{ status, code, msg }`。按 `code` 或 `status` 判断原因，不要匹配 `msg`。
+
+| status | code |
+| --- | --- |
+| `MODERATION_PARAMS_INVALID` | 41000 |
+| `MODERATION_OPTIONS_INVALID` | 41001 |
+| `MODERATION_TARGET_INVALID` | 41002 |
+| `MODERATION_PAYLOAD_TOO_LARGE` | 41003 |
+| `MODERATION_BATCH_TOO_LARGE` | 41004 |
+| `MODERATION_REQUEST_ID_INVALID` | 41005 |
+| `MODERATION_REASON_INVALID` | 41006 |
+| `MODERATION_DURATION_INVALID` | 41007 |
+| `MODERATION_BAN_ID_INVALID` | 41008 |
+| `MODERATION_QUERY_INVALID` | 41009 |
+| `MODERATION_ACTION_INVALID` | 41010 |
+| `MODERATION_IP_INVALID` | 41011 |
+| `MODERATION_DEVICE_UNAVAILABLE` | 41012 |
+| `MODERATION_METHOD_NOT_ALLOWED` | 41013 |
+| `MODERATION_AUTH_REQUIRED` | 41100 |
+| `MODERATION_FORBIDDEN` | 41300 |
+| `MODERATION_MAP_MISMATCH` | 41301 |
+| `MODERATION_GRANT_INVALID` | 41302 |
+| `MODERATION_LEGACY_GRANT_INVALID` | 41303 |
+| `MODERATION_QUERY_FORBIDDEN` | 41304 |
+| `MODERATION_ACTION_FORBIDDEN` | 41305 |
+| `MODERATION_BAN_ACCESS_DENIED` | 41306 |
+| `MODERATION_DURATION_LIMIT_EXCEEDED` | 41307 |
+| `MODERATION_ADMIN_PROTECTED` | 41308 |
+| `MODERATION_DEVICE_PROTECTED` | 41309 |
+| `MODERATION_SERVER_BAN_FORBIDDEN` | 41310 |
+| `MODERATION_GRANT_REQUIRED`（未授权） | 41311 |
+| `MODERATION_GRANT_EXPIRED`（授权过期） | 41312 |
+| `MODERATION_GRANT_REVOKED`（授权撤销） | 41313 |
+| `MODERATION_PERMANENT_FORBIDDEN`（不允许永久封禁） | 41314 |
+| `MODERATION_NOT_FOUND` | 41400 |
+| `MODERATION_PLAYER_OFFLINE` | 41401 |
+| `MODERATION_PLAYER_NOT_FOUND` | 41402 |
+| `MODERATION_CONFLICT` | 41900 |
+| `MODERATION_REQUEST_ID_CONFLICT` | 41901 |
+| `MODERATION_BAN_ALREADY_EXISTS` | 41902 |
+| `MODERATION_ACCOUNT_ALREADY_PUNISHED` | 41903 |
+| `MODERATION_BAN_CHANGED` | 41904 |
+| `MODERATION_RATE_LIMITED` | 42900 |
+| `MODERATION_RESPONSE_INVALID` | 45002 |
+| `MODERATION_INTERNAL_ERROR` | 45000 |
+| `MODERATION_UNAVAILABLE` | 45003 |
+| `MODERATION_RUNTIME_DISABLED` | 45004 |
+| `MODERATION_RATE_LIMIT_UNAVAILABLE` | 45005 |
+| `MODERATION_TIMEOUT` | 45006 |
+
+`durationSeconds` 必须传数字：`0` 表示永久；字符串 `'0'` 返回 `MODERATION_DURATION_INVALID`（41007）。未获永久封禁授权时，数字 `0` 返回 `MODERATION_PERMANENT_FORBIDDEN`（41314）。

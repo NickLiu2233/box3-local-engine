@@ -29,7 +29,7 @@ export declare class GameWorld {
    * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
    */
   readonly serverId: string;
-  /** 服务端地图管理能力，须先由服主在后台授权。 */
+  /** 地图管理能力，须先由服主在后台授权。 */
   readonly moderation: GameModeration;
 
   /**
@@ -53,7 +53,7 @@ export declare class GameWorld {
   gamma: number;
 
   /**
-   
+
    * The entities in game can be searched using a jQuery selector-like syntax.
    * For more examples see {@link GameSelectorString}
    *
@@ -66,7 +66,7 @@ export declare class GameWorld {
   ): EntitySelectorType[T] | null;
 
   /**
-   
+
    * The entities in game can be searched using a jQuery selector-like syntax.
    * For more examples see {@link GameSelectorString}
    *

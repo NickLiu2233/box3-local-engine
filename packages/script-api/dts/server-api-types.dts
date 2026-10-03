@@ -159,7 +159,7 @@ type ListPageOptions = {
  * @param handler The handler callback which is invoked whenever the event is fired
  * @typeParam EventType The type of the event which is emitted by the channel
  * @returns An event handler token which can be used to cancel the event handler
- 
+
  */
 type GameEventChannel<EventType> = (handler: (event: EventType) => void) => GameEventHandlerToken;
 /**
@@ -340,7 +340,7 @@ interface GameMotionEvent {
  * @module Math
  */
 /**
- 
+
  */
 declare class GameVector3 {
     x: number;
@@ -386,7 +386,7 @@ interface PlayerNavigator {
 declare class GamePlayerEntity extends GameEntity {
     protected constructor();
     /**
-     
+
      * @group Components
      */
     readonly player: GamePlayer;
@@ -418,7 +418,7 @@ declare class GamePlayer {
     transportToGame(contentID: string): void;
     browser: PlayerNavigator;
     /**
-     
+
      * Camera behavior mode.
      *  + `"FPS"` - First person camera
      *  + `"FOLLOW"` - Third person follow camera (default)
@@ -428,25 +428,25 @@ declare class GamePlayer {
      */
     cameraMode: GameCameraMode;
     /**
-     
+
      * In FPS or FOLLOW mode, the entity which the player's camera follows
      * @group Camera
      */
     cameraEntity: GameEntity | null;
     /**
-     
+
      * Target point for the camera in FIXED mode
      * @group Camera
      */
     cameraTarget: GameVector3;
     /**
-     
+
      * Up vector for camera in FIXED mode
      * @group Camera
      */
     cameraUp: GameVector3;
     /**
-     
+
      * Eye position of camera in FIXED mode
      * @group Camera
      */
@@ -479,7 +479,7 @@ declare class GamePlayer {
      */
     onPress(handler: (event: GameInputEvent) => void): GameEventHandlerToken;
     /**
-     
+
      * Called whenever a player releases a buttin
      * @group Input
      */
@@ -504,8 +504,7 @@ type CommonError<T> = {
     msg: string;
 };
 
-type ModerationErrorStatus = 'MODERATION_PARAMS_INVALID' | 'MODERATION_AUTH_REQUIRED' | 'MODERATION_FORBIDDEN' | 'MODERATION_NOT_FOUND' | 'MODERATION_CONFLICT' | 'MODERATION_RATE_LIMITED' | 'MODERATION_UNAVAILABLE' | 'MODERATION_TIMEOUT' | 'MODERATION_RESPONSE_INVALID' | 'MODERATION_INTERNAL_ERROR';
-/** 单次调用失败时 Promise 拒绝此对象；批量失败项的 error 使用相同结构。 */
+type ModerationErrorStatus = 'MODERATION_PARAMS_INVALID' | 'MODERATION_OPTIONS_INVALID' | 'MODERATION_TARGET_INVALID' | 'MODERATION_PAYLOAD_TOO_LARGE' | 'MODERATION_BATCH_TOO_LARGE' | 'MODERATION_REQUEST_ID_INVALID' | 'MODERATION_REASON_INVALID' | 'MODERATION_DURATION_INVALID' | 'MODERATION_BAN_ID_INVALID' | 'MODERATION_QUERY_INVALID' | 'MODERATION_ACTION_INVALID' | 'MODERATION_IP_INVALID' | 'MODERATION_DEVICE_UNAVAILABLE' | 'MODERATION_METHOD_NOT_ALLOWED' | 'MODERATION_AUTH_REQUIRED' | 'MODERATION_FORBIDDEN' | 'MODERATION_MAP_MISMATCH' | 'MODERATION_GRANT_INVALID' | 'MODERATION_LEGACY_GRANT_INVALID' | 'MODERATION_QUERY_FORBIDDEN' | 'MODERATION_ACTION_FORBIDDEN' | 'MODERATION_BAN_ACCESS_DENIED' | 'MODERATION_DURATION_LIMIT_EXCEEDED' | 'MODERATION_ADMIN_PROTECTED' | 'MODERATION_DEVICE_PROTECTED' | 'MODERATION_SERVER_BAN_FORBIDDEN' | 'MODERATION_GRANT_REQUIRED' | 'MODERATION_GRANT_EXPIRED' | 'MODERATION_GRANT_REVOKED' | 'MODERATION_PERMANENT_FORBIDDEN' | 'MODERATION_NOT_FOUND' | 'MODERATION_PLAYER_OFFLINE' | 'MODERATION_PLAYER_NOT_FOUND' | 'MODERATION_CONFLICT' | 'MODERATION_REQUEST_ID_CONFLICT' | 'MODERATION_BAN_ALREADY_EXISTS' | 'MODERATION_ACCOUNT_ALREADY_PUNISHED' | 'MODERATION_BAN_CHANGED' | 'MODERATION_RATE_LIMITED' | 'MODERATION_RESPONSE_INVALID' | 'MODERATION_INTERNAL_ERROR' | 'MODERATION_UNAVAILABLE' | 'MODERATION_RUNTIME_DISABLED' | 'MODERATION_RATE_LIMIT_UNAVAILABLE' | 'MODERATION_TIMEOUT'; /** 单次失败的 Error 和批量失败项使用相同结构；code 为独立业务码，非 HTTP 状态码，详见地图管理文档。 */
 type ModerationError = CommonError<ModerationErrorStatus>;
 /** 权限由服主在后台绑定，脚本不能设置管理员身份、地图 ID 或 IP。 */
 type ModerationOptions = {
@@ -616,7 +615,7 @@ declare class GameWorld {
      * 独立房间使用房间 ID；修改地图访问 ID 不会改变此值。
      */
     readonly serverId: string;
-    /** 服务端地图管理能力，须先由服主在后台授权。 */
+    /** 地图管理能力，须先由服主在后台授权。 */
     readonly moderation: GameModeration;
     /**
      * Shared scene-light intensity. This updates the existing renderer uniform
@@ -637,7 +636,7 @@ declare class GameWorld {
      */
     gamma: number;
     /**
-     
+
      * The entities in game can be searched using a jQuery selector-like syntax.
      * For more examples see {@link GameSelectorString}
      *
@@ -647,7 +646,7 @@ declare class GameWorld {
      */
     querySelector<T extends GameSelectorString>(selector: T): EntitySelectorType[T] | null;
     /**
-     
+
      * The entities in game can be searched using a jQuery selector-like syntax.
      * For more examples see {@link GameSelectorString}
      *

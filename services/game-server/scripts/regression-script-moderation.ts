@@ -3,11 +3,19 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import {issueModerationRuntimeToken} from '@box/utils/moderation-runtime-auth'
+import { moderationErrorCodes, moderationError, normalizeModerationError, moderationValidationError } from '@box/schema/api/js/moderation-error'
 import { ModerationHost } from '../src/moderation/moderation-host'
 import { ModerationScript } from '../src/moderation/moderation-script'
 import { ModerationMetadataReporter } from '../src/moderation/moderation-metadata'
 
 async function main() {
+  assert.equal(new Set(Object.values(moderationErrorCodes)).size, Object.keys(moderationErrorCodes).length)
+  for (const [status, code] of Object.entries(moderationErrorCodes)) {
+    assert.deepEqual(normalizeModerationError({status, code:400, msg:'test'}), {status, code, msg:'test'})
+  }
+  assert.notEqual(moderationValidationError([{path:['reason']}]).code, moderationValidationError([{path:['durationSeconds']}]).code)
+  assert.equal(moderationError(400, 'test').code, 41000)
+
   process.env.BOX_PLAYER_SERVICE_INTERNAL_URL = 'http://test-player-service'
   process.env.PERMISSION_TOKEN_SECRET = 'test-only-host-secret'
   process.env.BOX_WORLD_PERMANENT_MAP_ID = 'test-permanent-map'
@@ -55,6 +63,9 @@ async function main() {
   assert.equal(requestCount, 1)
   await hostHandler(client, { handle: 9, playerId: 7, payload: JSON.stringify({...command, durationSeconds: 0}) })
   assert.equal(lastBody.durationSeconds, 0)
+  await hostHandler(client, {handle:11,playerId:7,payload:JSON.stringify({...command,durationSeconds:'0'})})
+  assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_DURATION_INVALID',code:41007,msg:'durationSeconds 必须为数字整数（0–604800）；永久封禁请传数字 0，不要加引号'})
+  assert.equal(lastBody.durationSeconds, 0, 'invalid string must not reach the service')
   requestCount = 1
 
   const commandBody = lastBody
@@ -97,6 +108,11 @@ async function main() {
   assert.equal(replies.at(-1).success, true)
   assert.deepEqual(kicked, [7, 7, 7])
 
+  const invalidTargetScript = new ModerationScript({protocol:()=>({configure:()=>{},server:{message:{request:()=>assert.fail('invalid target sent')}}})} as never,
+    f=>f(), ()=>{throw new Error('目标不是当前地图的玩家')}, {setTimeout:()=>1,clearTimeout:()=>{}})
+  await assert.rejects(invalidTargetScript.banPlayer({} as never, {reason:'test',durationSeconds:60}), {status:'MODERATION_TARGET_INVALID',code:41002,msg:'目标不是当前地图的玩家'})
+  await assert.rejects(invalidTargetScript.banPlayer(Array(101).fill({}), {reason:'test',durationSeconds:60}), {status:'MODERATION_BATCH_TOO_LARGE',code:41004})
+  await assert.rejects(invalidTargetScript.banPlayer([], {reason:'test',durationSeconds:60,requestId:'?'}), {status:'MODERATION_REQUEST_ID_INVALID',code:41005})
   let scriptHandler: any
   const sent: any[] = []
   const timers = new Map<number, () => void>()
@@ -145,16 +161,16 @@ async function main() {
     assert.equal(body.action, 'banCurrentDevice')
     assert.equal(body.scope, 'server')
     batchIds.push(body.requestId)
-    scriptHandler({ handle: message.handle, success: index !== 1, payload: JSON.stringify(index === 1 ? {status:'MODERATION_FORBIDDEN',code:403,msg:'权限不足'} : {id: `device-${index}`,scope:'map',expiresAt:null}) })
+    scriptHandler({ handle: message.handle, success: index !== 1, payload: JSON.stringify(index === 1 ? {status:'MODERATION_FORBIDDEN',code:41300,msg:'权限不足'} : {id: `device-${index}`,scope:'map',expiresAt:null}) })
   }
   assert.deepEqual(batchIds, ['device-batch.b0', 'device-batch.b1', 'device-batch.b2'])
   assert.deepEqual(await batch, [
     {index:0,success:true,ban:{id:'device-0',expiresAt:null}},
-    {index:1,success:false,error:{status:'MODERATION_FORBIDDEN',code:403,msg:'权限不足'}},
+    {index:1,success:false,error:{status:'MODERATION_FORBIDDEN',code:41300,msg:'权限不足'}},
     {index:2,success:true,ban:{id:'device-2',expiresAt:null}},
   ])
   const sentCount = sent.length
-  await assert.rejects(script.banPlayer(Array(101).fill(player), {reason:'test',durationSeconds:60,requestId:'invalid'}), (error: any) => error.status === 'MODERATION_PARAMS_INVALID' && error.code === 400 && /100/.test(error.msg))
+  await assert.rejects(script.banPlayer(Array(101).fill(player), {reason:'test',durationSeconds:60,requestId:'invalid'}), (error: any) => error.status === 'MODERATION_BATCH_TOO_LARGE' && error.code === 41004 && /100/.test(error.msg))
   assert.equal(sent.length, sentCount)
   assert.deepEqual(await script.banPlayer([], {reason:'test',durationSeconds:60,requestId:'empty'}), [])
   const automaticIds: string[] = []
@@ -219,32 +235,32 @@ async function main() {
   assert.equal(replies.at(-1).success,false)
   const pending = Array.from({ length: 8 }, () => script.getPlayerStatus(player))
   const outcomes = Promise.allSettled(pending)
-  await assert.rejects(script.getPlayerStatus(player), {status:'MODERATION_RATE_LIMITED',code:429,msg:'地图管理请求过多'})
+  await assert.rejects(script.getPlayerStatus(player), {status:'MODERATION_RATE_LIMITED',code:42900,msg:'地图管理请求过多'})
   for (const fn of timers.values()) fn()
-  assert.ok((await outcomes).every((result) => result.status === 'rejected' && result.reason.status === 'MODERATION_TIMEOUT' && result.reason.code === 504))
+  assert.ok((await outcomes).every((result) => result.status === 'rejected' && result.reason.status === 'MODERATION_TIMEOUT' && result.reason.code === 45006))
   const denied = script.banPlayer(player, automaticOptions)
   msg = sent.at(-1)
-  scriptHandler({handle:msg.handle,success:false,payload:JSON.stringify({status:'MODERATION_FORBIDDEN',code:403,msg:'授权不允许此操作'})})
-  await assert.rejects(denied, {status:'MODERATION_FORBIDDEN',code:403,msg:'授权不允许此操作'})
+  scriptHandler({handle:msg.handle,success:false,payload:JSON.stringify({status:'MODERATION_FORBIDDEN',code:41300,msg:'授权不允许此操作'})})
+  await assert.rejects(denied, {status:'MODERATION_FORBIDDEN',code:41300,msg:'授权不允许此操作'})
   const malformed = script.getPlayerStatus(player)
   msg = sent.at(-1)
   scriptHandler({handle:msg.handle,success:false,payload:'invalid-json'})
-  await assert.rejects(malformed, {status:'MODERATION_RESPONSE_INVALID',code:502,msg:'地图管理响应无效'})
-  await assert.rejects(script.banPlayer(player, {reason:'x'.repeat(2200),durationSeconds:60}), {status:'MODERATION_PARAMS_INVALID',code:400,msg:'地图管理参数过长'})
-  await assert.rejects(script.banPlayer(player, null as never), {status:'MODERATION_PARAMS_INVALID',code:400,msg:'地图管理参数无效'})
+  await assert.rejects(malformed, {status:'MODERATION_RESPONSE_INVALID',code:45002,msg:'地图管理响应无效'})
+  await assert.rejects(script.banPlayer(player, {reason:'x'.repeat(2200),durationSeconds:60}), {status:'MODERATION_PAYLOAD_TOO_LARGE',code:41003,msg:'地图管理参数过长'})
+  await assert.rejects(script.banPlayer(player, null as never), {status:'MODERATION_OPTIONS_INVALID',code:41001,msg:'地图管理参数无效'})
   for (const body of [
-    {status:'MODERATION_FORBIDDEN',code:403,msg:'授权不允许此操作'},
+    {status:'MODERATION_FORBIDDEN',code:41300,msg:'授权不允许此操作'},
     {message:'授权不允许此操作'},
   ]) {
     responseError = {code:403,body}
     await hostHandler(client,{handle:15,playerId:7,payload:JSON.stringify(command)})
-    assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_FORBIDDEN',code:403,msg:'授权不允许此操作'})
+    assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_FORBIDDEN',code:41300,msg:'授权不允许此操作'})
   }
   responseError = undefined
   await hostHandler(client,{handle:16,playerId:99,payload:JSON.stringify(command)})
-  assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_NOT_FOUND',code:404,msg:'目标玩家已离线'})
+  assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_PLAYER_OFFLINE',code:41401,msg:'目标玩家已离线'})
   await hostHandler(client,{handle:17,playerId:7,payload:'bad-json'})
-  assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_PARAMS_INVALID',code:400,msg:'地图管理参数无效'})
+  assert.deepEqual(JSON.parse(replies.at(-1).payload), {status:'MODERATION_PARAMS_INVALID',code:41000,msg:'地图管理参数无效'})
   console.log(
     'Script moderation bridge passed: trusted target/map/IP, stale peer rejection, tamper rejection, bounded requests, promise completion and timeout',
   )

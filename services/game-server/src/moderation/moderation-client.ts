@@ -20,7 +20,7 @@ export class ModerationClient {
     })
   }
   async execute(body: Parameters<ApiClient['postApiPlayerInternalScriptModeration']>[0]['body']) {
-    if (!this.configured) throw moderationError(503, '此运行环境未启用地图管理服务')
+    if (!this.configured) throw moderationError(503, '此运行环境未启用地图管理服务', 'MODERATION_RUNTIME_DISABLED')
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10000)
     try {

@@ -9,6 +9,7 @@ import {
 } from './script-moderation-store'
 import { normalizePlayerAdminCapabilities } from '../shared/player-admin-policy'
 import { PlayerAdminRequestError } from './player-admin-errors'
+import { ScriptModerationRequestError } from './script-moderation-error'
 import { writeScriptModerationAudit } from './script-moderation-audit'
 import {
   checkPlayerDatabaseReady,
@@ -51,6 +52,8 @@ type Grant = {
   maximum_ban_seconds: number
   permissions: string[]
   display_name: string
+  revoked_at: Date | null
+  grant_expired: boolean
 }
 type Ban = {
   id: string
@@ -65,9 +68,12 @@ type Ban = {
 
 /** 0 means permanent; finite grants never authorize a permanent punishment. */
 export function moderationBanExpiry(seconds: number | undefined, maximumSeconds: number): Date | null {
-  if (seconds === undefined || !Number.isInteger(seconds) || seconds < 0 || seconds > 604800 ||
-      (maximumSeconds !== 0 && (seconds === 0 || seconds > maximumSeconds)))
-    throw new PlayerAdminRequestError('处罚期限超过授权上限')
+  if (seconds === undefined || !Number.isInteger(seconds) || seconds < 0 || seconds > 604800)
+    throw new ScriptModerationRequestError('durationSeconds 必须为数字整数（0–604800）；永久封禁请传数字 0，不要加引号', 'MODERATION_DURATION_INVALID')
+  if (maximumSeconds !== 0 && seconds === 0)
+    throw new ScriptModerationRequestError('授权不允许永久封禁', 'MODERATION_PERMANENT_FORBIDDEN', 403)
+  if (maximumSeconds !== 0 && seconds > maximumSeconds)
+    throw new ScriptModerationRequestError('处罚期限超过授权上限', 'MODERATION_DURATION_LIMIT_EXCEEDED')
   return seconds === 0 ? null : new Date(Date.now() + seconds * 1000)
 }
 
@@ -84,16 +90,18 @@ export class ScriptModerationService {
     _mode: 'edit' | 'play',
   ): Promise<Grant> {
     const result = await client.query<Grant>(
-      `SELECT k.*,k.name AS display_name,k.created_by AS actor_id FROM ${table('script_admin_bindings')} b
+      `SELECT k.*,k.name AS display_name,k.created_by AS actor_id,k.expires_at<=NOW() AS grant_expired FROM ${table('script_admin_bindings')} b
       JOIN ${table('script_admin_keys')} k ON k.id=b.key_id
       LEFT JOIN LATERAL (SELECT group_id FROM ${table('script_runtime_metadata')}
         WHERE map_id=$1 ORDER BY observed_at DESC,mode LIMIT 1) m ON TRUE
-      WHERE b.map_id=COALESCE(m.group_id,$1) AND k.revoked_at IS NULL AND k.expires_at>NOW()
+      WHERE b.map_id=COALESCE(m.group_id,$1)
       ${lock ? 'FOR SHARE OF b,k' : ''}`,
       [input.mapId],
     )
     const grant = result.rows[0]
-    if (!grant) throw new PlayerAdminRequestError('地图未授权或授权已失效', 403)
+    if (!grant) throw new ScriptModerationRequestError('地图未授权', 'MODERATION_GRANT_REQUIRED', 403)
+    if (grant.revoked_at) throw new ScriptModerationRequestError('地图授权已撤销', 'MODERATION_GRANT_REVOKED', 403)
+    if (grant.grant_expired) throw new ScriptModerationRequestError('地图授权已过期', 'MODERATION_GRANT_EXPIRED', 403)
     if (grant.admin_id) {
       const legacy = await client.query(
         `SELECT a.display_name,g.permissions FROM ${table('admin_accounts')} a
@@ -101,7 +109,7 @@ export class ScriptModerationService {
         ${lock ? 'FOR SHARE OF a,g' : ''}`,
         [grant.admin_id],
       )
-      if (!legacy.rows[0]) throw new PlayerAdminRequestError('旧版账号授权已失效，请由服主重新创建授权', 403)
+      if (!legacy.rows[0]) throw new ScriptModerationRequestError('旧版账号授权已失效，请由服主重新创建授权', 'MODERATION_LEGACY_GRANT_INVALID', 403)
       grant.permissions = legacy.rows[0].permissions
       grant.display_name = legacy.rows[0].display_name
       grant.actor_id = grant.admin_id
@@ -110,7 +118,7 @@ export class ScriptModerationService {
   }
   private permission(grant: Grant, action: string, kind?: string): void {
     if (action === 'listBans' || action === 'getBan') {
-      if (!grant.permissions?.includes('moderation.view')) throw new PlayerAdminRequestError('授权不允许查询处罚记录与详情', 403)
+      if (!grant.permissions?.includes('moderation.view')) throw new ScriptModerationRequestError('授权不允许查询处罚记录与详情', 'MODERATION_QUERY_FORBIDDEN', 403)
       return
     }
     const required =
@@ -120,7 +128,7 @@ export class ScriptModerationService {
           ? 'identity-bans.manage'
           : 'players.ban'
     if (!normalizePlayerAdminCapabilities(grant.permissions).includes(required))
-      throw new PlayerAdminRequestError('授权不允许此操作', 403)
+      throw new ScriptModerationRequestError('授权不允许此操作', 'MODERATION_ACTION_FORBIDDEN', 403)
   }
   private async limit(mapId: string, keyId?: string): Promise<void> {
     const limits: Array<[string, string, number]> = keyId
@@ -128,9 +136,9 @@ export class ScriptModerationService {
       : [['script-moderation-map', mapId, 20]]
     for (const [scope, key, max] of limits) {
       const result = await consumePersistentAuthRateLimit(scope, key, max, 60000)
-      if (!result) throw new PlayerAdminRequestError('限流服务不可用', 503)
+      if (!result) throw new ScriptModerationRequestError('限流服务不可用', 'MODERATION_RATE_LIMIT_UNAVAILABLE', 503)
       if (!result.allowed)
-        throw new PlayerAdminRequestError('脚本管理操作过于频繁', 429, 'SCRIPT_RATE_LIMITED', result.retryAfterSeconds)
+        throw new ScriptModerationRequestError('脚本管理操作过于频繁', 'MODERATION_RATE_LIMITED', 429, result.retryAfterSeconds)
     }
   }
   async execute(raw: unknown, hostContext: AdminActionContext, mode: 'edit' | 'play' = 'play', runtime?: { runtimeId: string; mode: 'edit' | 'play' }) {
@@ -154,13 +162,13 @@ export class ScriptModerationService {
           `SELECT * FROM ${table('script_moderation_bans')} WHERE id=$1 AND key_id=$2 AND map_id=$3`,
           [input.banId || null, grant.id, input.mapId],
         )
-        if (!previous.rows[0]) throw new PlayerAdminRequestError('处罚记录无权访问', 403)
+        if (!previous.rows[0]) throw new ScriptModerationRequestError('处罚记录无权访问', 'MODERATION_BAN_ACCESS_DENIED', 403)
         this.permission(grant, input.action, previous.rows[0].kind)
         if (previous.rows[0].scope === 'server' && grant.scope !== 'server')
-          throw new PlayerAdminRequestError('授权未授权全服处罚', 403)
+          throw new ScriptModerationRequestError('授权未授权全服处罚', 'MODERATION_SERVER_BAN_FORBIDDEN', 403)
       } else this.permission(grant, input.action)
       if (['banPlayer', 'banCurrentIP', 'banCurrentDevice'].includes(input.action) && input.scope === 'server' && grant.scope !== 'server')
-        throw new PlayerAdminRequestError('授权未授权全服处罚', 403)
+        throw new ScriptModerationRequestError('授权未授权全服处罚', 'MODERATION_SERVER_BAN_FORBIDDEN', 403)
       const context: AdminActionContext = {
         ...hostContext,
         actor: `script-key:${grant.id}`,
@@ -171,8 +179,10 @@ export class ScriptModerationService {
       const readOnly = ['getPlayerStatus', 'listBans', 'getBan'].includes(input.action)
       const hash = createHash('sha256').update(JSON.stringify(input)).digest('hex')
       if (!readOnly) {
-        if (!input.requestId || !input.reason)
-          throw new PlayerAdminRequestError('写操作须提供 requestId 和处罚/解除原因')
+        if (!input.requestId)
+          throw new ScriptModerationRequestError('写操作须提供 requestId', 'MODERATION_REQUEST_ID_INVALID')
+        if (!input.reason)
+          throw new ScriptModerationRequestError('处罚/解除原因必填', 'MODERATION_REASON_INVALID')
         await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
           `${grant.id}:${input.mapId}:${input.requestId}`,
         ])
@@ -181,7 +191,7 @@ export class ScriptModerationService {
           [grant.id, input.mapId, input.requestId],
         )
         if (replay.rows[0]) {
-          if (replay.rows[0].body_hash !== hash) throw new PlayerAdminRequestError('requestId 已用于不同操作', 409)
+          if (replay.rows[0].body_hash !== hash) throw new ScriptModerationRequestError('requestId 已用于不同操作', 'MODERATION_REQUEST_ID_CONFLICT', 409)
           await this.auditCall(client, table, input, hostContext, grant, mode, runtime, { ...replay.rows[0].result, replayed: true })
           await client.query('COMMIT')
           return { ...replay.rows[0].result, replayed: true }
@@ -250,7 +260,7 @@ export class ScriptModerationService {
       }, { ...source, actorDisplayName: `${mapName} / 地图脚本` })
   }
   private async readBans(client: PoolClient, table: (name: string) => string, input: Command) {
-    if (input.action === 'getBan' && !input.banId) throw new PlayerAdminRequestError('处罚 ID 必填')
+    if (input.action === 'getBan' && !input.banId) throw new ScriptModerationRequestError('处罚 ID 必填', 'MODERATION_BAN_ID_INVALID')
     const page = input.page ?? 1, pageSize = input.pageSize ?? 20
     // Always constrain reads to the trusted runtime map, including historical grants.
     // Deliberately omit IP/device hashes, principal IDs and grant/admin identifiers.
@@ -269,13 +279,13 @@ export class ScriptModerationService {
     return input.action === 'getBan' ? { ban: result.rows[0] ?? null } : { items: result.rows, total: count.rows[0].total, page, pageSize }
   }
   private async target(client: PoolClient, table: (name: string) => string, userId?: string) {
-    if (!userId) throw new PlayerAdminRequestError('目标玩家无效')
+    if (!userId) throw new ScriptModerationRequestError('目标玩家无效', 'MODERATION_TARGET_INVALID')
     const result = await client.query<{ principal_id: string; role: string; status: string; effect_marker: string }>(
       `SELECT principal_id,role,status,updated_at::text AS effect_marker FROM ${table('users')} WHERE id::text=$1 FOR UPDATE`,
       [userId],
     )
-    if (!result.rows[0]) throw new PlayerAdminRequestError('玩家不存在', 404)
-    if (result.rows[0].role !== 'player') throw new PlayerAdminRequestError('脚本不能操作受保护的管理身份', 403)
+    if (!result.rows[0]) throw new ScriptModerationRequestError('玩家不存在', 'MODERATION_PLAYER_NOT_FOUND', 404)
+    if (result.rows[0].role !== 'player') throw new ScriptModerationRequestError('脚本不能操作受保护的管理身份', 'MODERATION_ADMIN_PROTECTED', 403)
     return result.rows[0]
   }
   private async apply(
@@ -295,21 +305,21 @@ export class ScriptModerationService {
       return { status: target.status, bans: bans.rows }
     }
     if (input.scope === 'server' && grant.scope !== 'server')
-      throw new PlayerAdminRequestError('授权未授权全服处罚', 403)
+      throw new ScriptModerationRequestError('授权未授权全服处罚', 'MODERATION_SERVER_BAN_FORBIDDEN', 403)
     const expiry = moderationBanExpiry(input.durationSeconds, grant.maximum_ban_seconds)
     const kind = input.action === 'banCurrentIP' ? 'ip' : input.action === 'banCurrentDevice' ? 'device' : 'account'
-    if (kind === 'device' && !input.deviceHash) throw new PlayerAdminRequestError('目标连接没有可信的设备身份')
+    if (kind === 'device' && !input.deviceHash) throw new ScriptModerationRequestError('目标连接没有可信的设备身份', 'MODERATION_DEVICE_UNAVAILABLE')
     if (kind === 'device') {
       const protectedDevice = await client.query(
         `SELECT 1 FROM ${table('sessions')} s JOIN ${table('users')} u ON u.principal_id=s.principal_id
          WHERE s.device_hash=$1 AND s.expires_at>NOW() AND (u.role<>'player' OR cardinality(u.admin_permissions)>0) LIMIT 1`,
         [input.deviceHash],
       )
-      if (protectedDevice.rowCount) throw new PlayerAdminRequestError('该设备正用于管理身份，需由管理员人工复核', 403)
+      if (protectedDevice.rowCount) throw new ScriptModerationRequestError('该设备正用于管理身份，需由管理员人工复核', 'MODERATION_DEVICE_PROTECTED', 403)
     }
     const ip = canonicalModerationIP(String(input.ipAddress || ''))
     if (kind === 'ip' && (!isIP(ip) || ip.startsWith('127.') || ['::1', '0.0.0.0', '::'].includes(ip)))
-      throw new PlayerAdminRequestError('不能封禁无效地址或本机管理地址')
+      throw new ScriptModerationRequestError('不能封禁无效地址或本机管理地址', 'MODERATION_IP_INVALID')
     let reference: string | null = null
     let marker: string | null = null
     const ipHash = kind === 'ip' ? this.hashIP(ip) : null
@@ -325,10 +335,10 @@ export class ScriptModerationService {
        )) LIMIT 1`,
       [input.mapId, input.scope, kind, target.principal_id, ipHash, deviceHash],
     )
-    if (duplicate.rowCount) throw new PlayerAdminRequestError('已存在对应处罚，请复核或使用原 requestId 重试', 409)
+    if (duplicate.rowCount) throw new ScriptModerationRequestError('已存在对应处罚，请复核或使用原 requestId 重试', 'MODERATION_BAN_ALREADY_EXISTS', 409)
     if (input.scope === 'server') {
       if (kind === 'account') {
-        if (target.status !== 'active') throw new PlayerAdminRequestError('已有账号处罚，须管理员人工复核', 409)
+        if (target.status !== 'active') throw new ScriptModerationRequestError('已有账号处罚，须管理员人工复核', 'MODERATION_ACCOUNT_ALREADY_PUNISHED', 409)
         await updateManagedPlayer(
           target.principal_id,
           { status: 'banned', banReason: input.reason, bannedUntil: expiry?.toISOString() || null },
@@ -379,13 +389,13 @@ export class ScriptModerationService {
     grant: Grant,
     context: AdminActionContext,
   ) {
-    if (!input.banId) throw new PlayerAdminRequestError('封禁记录无效')
+    if (!input.banId) throw new ScriptModerationRequestError('封禁记录无效', 'MODERATION_BAN_ID_INVALID')
     const result = await client.query<Ban>(
       `SELECT * FROM ${table('script_moderation_bans')} WHERE id=$1 AND key_id=$2 AND map_id=$3 AND revoked_at IS NULL FOR UPDATE`,
       [input.banId, grant.id, input.mapId],
     )
     const ban = result.rows[0]
-    if (!ban) throw new PlayerAdminRequestError('只能解除当前授权在本图创建的处罚', 403)
+    if (!ban) throw new ScriptModerationRequestError('只能解除当前授权在本图创建的处罚', 'MODERATION_BAN_ACCESS_DENIED', 403)
     this.permission(grant, input.action, ban.kind)
     if (ban.scope === 'server') {
       if (ban.kind === 'account') {
@@ -394,7 +404,7 @@ export class ScriptModerationService {
           [ban.subject_id],
         )
         if (state.rows[0]?.marker !== ban.effect_marker || state.rows[0]?.status !== 'banned')
-          throw new PlayerAdminRequestError('处罚已被管理员调整，请人工复核', 409)
+          throw new ScriptModerationRequestError('处罚已被管理员调整，请人工复核', 'MODERATION_BAN_CHANGED', 409)
         await updateManagedPlayer(
           ban.subject_id,
           { status: 'active', banReason: '', bannedUntil: null },

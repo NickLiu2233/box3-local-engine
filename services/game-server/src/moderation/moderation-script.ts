@@ -50,12 +50,14 @@ export class ModerationScript implements GameModeration {
     let playerId: number
     let payload: string
     try {
-      playerId = player ? this.playerId(player) : 0
       payload = JSON.stringify({ ...options, action })
     } catch (error) {
       throw scriptModerationError(error, 400, '地图管理参数无效')
     }
-    if (payload.length > 2048) throw scriptModerationError(moderationError(400, '地图管理参数过长'))
+    try { playerId = ['banPlayer', 'banCurrentIP', 'banCurrentDevice', 'getPlayerStatus'].includes(action) || player !== undefined ? this.playerId(player as GamePlayer) : 0 } catch {
+      throw scriptModerationError(moderationError(400, '目标不是当前地图的玩家', 'MODERATION_TARGET_INVALID'))
+    }
+    if (payload.length > 2048) throw scriptModerationError(moderationError(400, '地图管理参数过长', 'MODERATION_PAYLOAD_TOO_LARGE'))
     const handle = this.sequence++ >>> 0
     const wrapper = new PromiseWrapper<T>(this.schedule, undefined, scriptModerationError)
     const timer = this.timers.setTimeout(() => {
@@ -74,7 +76,7 @@ export class ModerationScript implements GameModeration {
   }
   private operationOptions<T extends { requestId?: string }>(options: T): T & { requestId: string } {
     if (!options || typeof options !== 'object' || Array.isArray(options))
-      throw scriptModerationError(moderationError(400, '地图管理参数无效'))
+      throw scriptModerationError(moderationError(400, '地图管理参数无效', 'MODERATION_OPTIONS_INVALID'))
     return { ...options, requestId: options.requestId === undefined
       ? `${this.requestPrefix}-${this.automaticSequence++}` : options.requestId }
   }
@@ -82,8 +84,10 @@ export class ModerationScript implements GameModeration {
     const batchOptions = this.operationOptions(options)
     if (!Array.isArray(players)) return this.request<ModerationBan>(action, players as GamePlayer, { ...batchOptions, scope: 'server' }).then(publicBan)
     // Validate the batch envelope before starting any irreversible operation.
-    if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId))
-      throw scriptModerationError(moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符'))
+    if (players.length > 100)
+      throw scriptModerationError(moderationError(400, '批量最多 100 个玩家', 'MODERATION_BATCH_TOO_LARGE'))
+    if (!/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId))
+      throw scriptModerationError(moderationError(400, 'requestId 须为 1–72 个合法字符', 'MODERATION_REQUEST_ID_INVALID'))
     const targets = [...players]
     const results: ModerationBatchResult[] = []
     for (let index = 0; index < targets.length; index++) {
@@ -119,7 +123,7 @@ export class ModerationScript implements GameModeration {
   }
   async listBans(query: ModerationBanQuery = {}) {
     if (!query || typeof query !== 'object' || Array.isArray(query))
-      throw scriptModerationError(moderationError(400, '地图管理参数无效'))
+      throw scriptModerationError(moderationError(400, '处罚查询条件无效', 'MODERATION_QUERY_INVALID'))
     const { player, ...filters } = query
     const result = await this.request<{ items: ModerationBanRecord[]; total: number; page: number; pageSize: number }>('listBans', player, filters)
     return { ...result, items: result.items.map(publicBan) }
