@@ -13,6 +13,7 @@ const jsonFiles = [
   'apps/license-server/package.json',
   'apps/migrator/package.json',
   'apps/player-admin/package.json',
+  'apps/player-auth-portal/package.json',
   'apps/server-manager/package.json',
   'apps/deployment-manager/src-tauri/tauri.conf.json',
 ]

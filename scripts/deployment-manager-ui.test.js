@@ -4,6 +4,19 @@ const assert = require('node:assert/strict')
 const { test } = require('node:test')
 const { createFixture } = require('./lib/deployment-manager-ui-fixture')
 
+test('about page lists the current engine release first without player launcher notes', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'about'
+  app.api.render()
+  const notes = app.html.slice(app.html.indexOf('about-changelog-list'))
+  assert.ok(notes.indexOf('v0.3.0') < notes.indexOf('v0.2.0'))
+  for (const feature of ['地图脚本与后台管理', 'world.moderation', '登录与账号', 'scaleTarget']) {
+    assert.ok(notes.includes(feature), `missing release note: ${feature}`)
+  }
+  assert.ok(!notes.includes('玩家启动器'))
+  assert.equal(require('../package.json').version, '0.3.0')
+})
+
 test('native bootstrap loads the console; unauthenticated Web bootstrap shows the login gate', async () => {
   const native = await createFixture()
   assert.equal(native.api.state.page, 'overview')
@@ -145,7 +158,7 @@ test('saving a changed login image refreshes only the running login container an
   assert.equal(starts[0].payload.service, 'player-auth-portal')
   assert.equal(starts[0].payload.action, 'start')
   await app.document.querySelector('#restore-default-login-image').click()
-  assert.equal(app.form.values.get('authPortalImage'), 'box-local-engine-player-auth-portal:0.2.0')
+  assert.equal(app.form.values.get('authPortalImage'), `box-local-engine-player-auth-portal:${require('../package.json').version}`)
   await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
   assert.equal(app.api.state.config.authPortalImage, '')
   assert.equal(app.calls.filter(call => call.command === 'control_service').length, 2)

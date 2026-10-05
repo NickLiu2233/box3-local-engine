@@ -1,5 +1,5 @@
 ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
-ARG BOX_BUILD_VERSION=0.2.0
+ARG BOX_BUILD_VERSION=0.3.0
 ARG BOX_BUILD_COMMIT=unknown
 ARG BOX_BUILD_DATE=unknown
 ARG BOX_BUILD_SOURCE=local
@@ -181,8 +181,13 @@ FROM ${NODE_IMAGE} AS runtime-base
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
-RUN apt-get -o Acquire::Retries=3 update \
-    && apt-get -o Acquire::Retries=3 install -y --no-install-recommends tini ca-certificates iproute2 iptables \
+# The slim image has no system CA bundle yet. Bootstrap HTTPS using Node's
+# bundled trusted roots, then let Debian's ca-certificates own the final bundle.
+# Keep TLS verification and repository signature validation enabled.
+RUN node -e "const fs=require('node:fs');fs.mkdirSync('/etc/ssl/certs',{recursive:true});fs.writeFileSync('/etc/ssl/certs/ca-certificates.crt',require('node:tls').rootCertificates.join('\\n'))" \
+    && sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 -o APT::Update::Error-Mode=any update \
+    && apt-get -o Acquire::Retries=2 -o Acquire::https::Timeout=30 install -y --no-install-recommends tini ca-certificates iproute2 iptables \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

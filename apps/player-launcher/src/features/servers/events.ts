@@ -1,5 +1,5 @@
 import { getServerAddressNotice } from './address-notice'
-import { playerServerAddError } from './errors'
+import { playerServerAddError, playerServerConnectionError } from './errors'
 
 export function bindServerEvents({
   state,
@@ -34,7 +34,7 @@ export function bindServerEvents({
           })
           await refreshPlayerSession(server)
         } catch (error) {
-          state.serverBootstrap = { error: String(error) }
+          state.serverBootstrap = { error: playerServerConnectionError(error) }
         } finally {
           render()
         }
@@ -68,7 +68,7 @@ export function bindServerEvents({
         })
         await refreshPlayerSession(server)
       } catch (error) {
-        state.serverBootstrap = { error: String(error) }
+        state.serverBootstrap = { error: playerServerConnectionError(error) }
       } finally {
         render()
       }
@@ -226,7 +226,7 @@ export function bindServerEvents({
         state.serverBootstrap = await playerInvoke('get_server_bootstrap', { endpoint: server.endpoint })
         await refreshPlayerSession(server)
       } catch (error) {
-        state.serverBootstrap = { error: String(error) }
+        state.serverBootstrap = { error: playerServerConnectionError(error) }
       }
     } catch (error) {
       state.error = playerServerAddError(error)
@@ -248,7 +248,7 @@ export function bindServerEvents({
         await refreshPlayerSession(server)
       })
       .catch((error) => {
-        state.serverBootstrap = { error: String(error) }
+        state.serverBootstrap = { error: playerServerConnectionError(error) }
       })
       .finally(() => {
         state.busy = false

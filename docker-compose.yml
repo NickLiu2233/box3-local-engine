@@ -96,14 +96,14 @@ services:
   player-service:
     profiles: [player-service]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: box-local-engine-player-service:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-player-service:${BOX_IMAGE_TAG:-0.3.0}
     build:
       context: .
       dockerfile: apps/local-engine/Dockerfile
       target: player-service
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
-        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
@@ -168,14 +168,14 @@ services:
   player-auth-portal:
     profiles: [auth-portal]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: ${BOX_AUTH_PORTAL_IMAGE:-box-local-engine-player-auth-portal:${BOX_IMAGE_TAG:-0.2.0}}
+    image: ${BOX_AUTH_PORTAL_IMAGE:-box-local-engine-player-auth-portal:${BOX_IMAGE_TAG:-0.3.0}}
     pull_policy: never
     build:
       context: .
       dockerfile: apps/player-auth-portal/Dockerfile
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
-        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
@@ -228,7 +228,7 @@ services:
     # outside an optional profile: `docker compose --profile creator up`
     # otherwise removes it from the project and makes Creator invalid.
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: box-local-engine-server-manager:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-server-manager:${BOX_IMAGE_TAG:-0.3.0}
     build:
       context: .
       dockerfile: apps/server-manager/Dockerfile
@@ -236,7 +236,7 @@ services:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
         DOCKER_CLI_IMAGE: ${BOX_DOCKER_CLI_IMAGE:-docker.m.daocloud.io/library/docker:27.5.1-cli}
         RUST_IMAGE: ${BOX_DOCKER_RUST_IMAGE:-docker.m.daocloud.io/library/rust:1.93-bookworm}
-        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
@@ -260,7 +260,7 @@ services:
       BOX_SERVER_MANAGER_PORT: 3130
       BOX_SERVER_MANAGER_TOKEN: ${BOX_SERVER_MANAGER_TOKEN:-}
       BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
-      BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.2.0}
+      BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.3.0}
       BOX_SERVER_MANAGER_ROOT: /workspace
       BOX_SERVER_MANAGER_HOST_ROOT: ${BOX_SERVER_MANAGER_HOST_ROOT:-}
       BOX_SERVER_MANAGER_COMPOSE_FILE: ${BOX_SERVER_MANAGER_COMPOSE_FILE:-/workspace/docker-compose.yml}
@@ -292,14 +292,14 @@ services:
   creator:
     profiles: [creator]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.3.0}
     build:
       context: .
       dockerfile: apps/local-engine/Dockerfile
       target: creator
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
-        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
@@ -318,15 +318,15 @@ services:
         condition: service_completed_successfully
     environment:
       BOX_DEPLOYMENT_MODE: creator
-      BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+      BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
       BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
       BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
       BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
       VOXA_URL: ${BOX_VOXA_PUBLIC_URL:-http://127.0.0.1:3123}
       BOX_VOXA_PUBLIC_URL: ${BOX_VOXA_PUBLIC_URL:-http://127.0.0.1:3123}
       VOXA_INTERNAL_URL: http://voxa:3001
-      BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.2.0}
-      BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.2.0}
+      BOX_IMAGE_TAG: ${BOX_IMAGE_TAG:-0.3.0}
+      BOX_PLAY_IMAGE: box-local-engine-play:${BOX_IMAGE_TAG:-0.3.0}
       BOX_RUNTIME_MANAGER_URL: ${BOX_RUNTIME_MANAGER_URL:-http://server-manager:3130}
       BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
       BOX_PLAY_IMAGE_ARCHIVE: /app/apps/local-engine/dist/images/play-image.tar
@@ -412,7 +412,7 @@ services:
   # once before Creator starts; the long-running service remains unprivileged.
   creator-storage-init:
     profiles: [creator]
-    image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-creator:${BOX_IMAGE_TAG:-0.3.0}
     user: "0:0"
     entrypoint: []
     command:
@@ -447,7 +447,7 @@ services:
 
   play-storage-init:
     profiles: [play]
-    image: box-local-engine-play:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-play:${BOX_IMAGE_TAG:-0.3.0}
     user: "0:0"
     entrypoint: []
     command:
@@ -480,14 +480,14 @@ services:
   play:
     profiles: [play]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: box-local-engine-play:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-play:${BOX_IMAGE_TAG:-0.3.0}
     build:
       context: .
       dockerfile: apps/local-engine/Dockerfile
       target: play
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
-        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
@@ -570,14 +570,14 @@ services:
   voxa:
     profiles: [voxa]
     platform: ${BOX_PLAY_PLATFORM:-linux/amd64}
-    image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.3.0}
     build:
       context: .
       dockerfile: apps/local-engine/Dockerfile
       target: voxa
       args:
         NODE_IMAGE: ${BOX_DOCKER_NODE_IMAGE:-docker.m.daocloud.io/library/node:22.17.0-bookworm-slim}
-        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.2.0}
+        BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
         BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
         BOX_BUILD_DATE: ${BOX_BUILD_DATE:-unknown}
         BOX_BUILD_SOURCE: ${BOX_BUILD_SOURCE:-local}
@@ -617,7 +617,7 @@ services:
   # host-backed library stays writable on every supported Docker host.
   voxa-storage-init:
     profiles: [voxa]
-    image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-voxa:${BOX_IMAGE_TAG:-0.3.0}
     user: "0:0"
     entrypoint: []
     command:
@@ -639,7 +639,7 @@ services:
 
   migrator:
     profiles: [migrator]
-    image: box-local-engine-migrator:${BOX_IMAGE_TAG:-0.2.0}
+    image: box-local-engine-migrator:${BOX_IMAGE_TAG:-0.3.0}
     build:
       context: .
       dockerfile: apps/migrator/Dockerfile

@@ -13,7 +13,7 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 RUN cd apps/deployment-manager && node ../../common/scripts/install-run-rushx.js build
 
 FROM ${RUST_IMAGE} AS rust-build
-ARG BOX_BUILD_VERSION=0.2.0
+ARG BOX_BUILD_VERSION=0.3.0
 ARG BOX_BUILD_COMMIT=unknown
 ARG BOX_BUILD_DATE=unknown
 ARG BOX_BUILD_SOURCE=local
@@ -34,7 +34,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM debian:bookworm-slim
 
-ARG BOX_BUILD_VERSION=0.2.0
+ARG BOX_BUILD_VERSION=0.3.0
 ARG BOX_BUILD_COMMIT=unknown
 ARG BOX_BUILD_DATE=unknown
 ARG BOX_BUILD_SOURCE=local
