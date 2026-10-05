@@ -60,6 +60,13 @@ for (const [name, declarations] of [
 ] as const) {
   const probe = new ScriptTypeProbe(declarations);
   try {
+    const anticheat = probe.completions('world.anticheat.');
+    for (const method of ['onMovement', 'onMessage', 'onInput', 'onAction', 'onKeyboard', 'onInteract', 'onCustomEvent', 'onUIEvent']) assert.ok(anticheat.includes(method), `${name}: missing anticheat ${method}`);
+    assert.equal(probe.diagnostics('world.anticheat.onAction(({actions,serverPosition,context}) => { for (const action of actions) { if (action.pressed && action.ray.origin.x - serverPosition.x > 10) context.reject(); console.log(action.targetId,action.ray.voxel,action.button); } });').length, 0, `${name}: action example has type errors`);
+    assert.ok(probe.diagnostics('world.anticheat.onAction(({actions}) => { actions[0].ray.origin.x = 99; });').length > 0, `${name}: action data must be read-only`);
+    assert.equal(probe.diagnostics('world.anticheat.onInput(({buttons, context}) => { if(buttons.fly) context.reject(); }); world.anticheat.onKeyboard(({pressed,released}) => console.log(pressed,released)); world.anticheat.onInteract(({target}) => { if(target) console.log(target.id); }); world.anticheat.onCustomEvent(({data,context}) => { console.log(data); context.reject(); });').length, 0, `${name}: categorized anticheat examples have type errors`);
+    assert.equal(probe.diagnostics('world.anticheat.onMovement(({player, from, to, elapsedMs, context}) => { console.log(player.name, from.x, to.y, elapsedMs, context.mode); context.reject(); }); world.anticheat.onMessage(({protocol, message, data, context}) => { console.log(protocol, message, data); context.reject(); });').length, 0, `${name}: anticheat examples have type errors`);
+    assert.ok(probe.diagnostics('world.anticheat.onMovement(event => { event.to.x = 100; });').length > 0, `${name}: mutable movement data exposed`);
     const methods = probe.completions('world.moderation.');
     for (const method of ['banPlayer', 'banCurrentIP', 'banCurrentDevice', 'revokeBan', 'getPlayerStatus', 'listBans', 'getBan']) {
       assert.ok(methods.includes(method), `${name}: missing ${method} completion`);

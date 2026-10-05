@@ -118,11 +118,15 @@ class MuServer {
                     const messageHandlers = {};
                     Object.keys(protocolSpec.messageHandlers).forEach((message) => {
                         const handler = protocolSpec.messageHandlers[message];
-                        messageHandlers[message] = function (data, unreliable) { handler(client, data, unreliable); };
+                        messageHandlers[message] = (data, unreliable) => {
+                            this._guardMessage({ sessionId: socket.sessionId, protocol: protocol.schema.name || String(pid), message, data, unreliable: !!unreliable }, protocol.schema.server[message], (retained) => handler(client, retained, unreliable));
+                        };
                     });
                     const rawHandler = protocolSpec.rawHandler;
                     protocolHandlers[pid] = {
-                        rawHandler: function (bytes, unreliable) { rawHandler(client, bytes, unreliable); },
+                        rawHandler: (bytes, unreliable) => {
+                            this._guardMessage({ sessionId: socket.sessionId, protocol: protocol.schema.name || String(pid), message: 'raw', data: bytes, unreliable: !!unreliable }, undefined, (retained) => rawHandler(client, retained, unreliable));
+                        },
                         messageHandlers,
                     };
                 });
@@ -199,6 +203,50 @@ class MuServer {
         this.running = false;
         this._socketServer.close();
         this._protocolSpecs.forEach((protocolSpec) => protocolSpec.closeHandler());
+    }
+    _guardMessage(event, schema, dispatch) {
+        if (!this.messageGuard) {
+            dispatch(event.data);
+            return;
+        }
+        const retained = schema ? schema.clone(event.data) : typeof event.data === 'string'
+            ? event.data : new Uint8Array(event.data);
+        let finished = false;
+        const complete = (allow) => {
+            if (finished) {
+                return;
+            }
+            finished = true;
+            let asynchronous = false;
+            try {
+                if (allow) {
+                    const result = dispatch(retained);
+                    if (result && typeof result.then === 'function') {
+                        asynchronous = true;
+                        Promise.resolve(result).catch((error) => this.logger.error(error)).then(() => {
+                            if (schema) {
+                                schema.free(retained);
+                            }
+                        });
+                    }
+                }
+            }
+            catch (error) {
+                this.logger.error(error);
+            }
+            finally {
+                if (!asynchronous && schema) {
+                    schema.free(retained);
+                }
+            }
+        };
+        try {
+            this.messageGuard(Object.assign(Object.assign({}, event), { data: retained }), complete);
+        }
+        catch (error) {
+            complete(false);
+            this.logger.error(error);
+        }
     }
     protocol(schema) {
         if (this._started || this._closed) {

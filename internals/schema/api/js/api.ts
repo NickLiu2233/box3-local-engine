@@ -7,6 +7,7 @@ import {
 } from './math';
 import { URL } from './url';
 import type { GameModeration } from './moderation';
+import type { GameAnticheat } from './anticheat';
 
 export type TELEPORT_ERROR_STATUS =
   | 'PLAYER_OFFLINE'
@@ -409,6 +410,8 @@ export class Sound {
 export class GameWorld {
   /** 地图管理能力，由服主在后台授权； */
   public moderation!: GameModeration;
+  /** 客户端移动修正检查，拒绝本次修正但不踢出玩家。 */
+  public anticheat!: GameAnticheat;
   /**
    * The name of the project (read only)
    */

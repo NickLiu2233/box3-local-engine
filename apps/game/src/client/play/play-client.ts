@@ -309,6 +309,7 @@ export class PlayClient extends EngineClient {
 
         return new MuWebSocket({
           sessionId: sessionConfig.sessionId,
+          sessionProof: sessionConfig.sessionProof,
           url: sessionConfig.socketServerUrl,
           maxSockets: sessionConfig.maxSockets,
           logger: createMuLogger(this.logger, 'mudb/src-socket'),

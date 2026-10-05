@@ -46,6 +46,8 @@ export interface GameSession {
   admin: boolean;
   // session id
   sessionId: string;
+  /** Transport capability, never a player identifier or a script-visible field. */
+  sessionProof?: string;
   // websockets
   socketServerUrl: string;
   maxSockets: number;

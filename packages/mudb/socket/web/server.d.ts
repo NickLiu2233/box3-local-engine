@@ -17,6 +17,7 @@ export interface WSSocket {
 }
 export declare class MuWebSocketConnection {
     bufferLimit: number;
+    sessionProof: string;
     readonly sessionId: string;
     started: boolean;
     closed: boolean;
@@ -50,6 +51,9 @@ export declare class MuWebSocketClient implements MuSocket {
     unreliableBufferedAmount(): number;
 }
 export declare class MuWebSocketServer implements MuSocketServer {
+    private _proof;
+    private _requireSessionProof;
+    issueSessionProof(sessionId: string): string;
     private _state;
     state(): MuSocketServerState;
     private _connections;
@@ -64,6 +68,7 @@ export declare class MuWebSocketServer implements MuSocketServer {
     bufferLimit: number;
     constructor(spec: {
         server: http.Server | https.Server;
+        requireSessionProof?: boolean;
         bufferLimit?: number;
         backlog?: number;
         handleProtocols?: (protocols: any[], request: http.IncomingMessage) => any;

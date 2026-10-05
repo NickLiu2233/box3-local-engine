@@ -50,6 +50,7 @@ class MuWebSocket {
             this._unreliableSockets.length = 0;
         };
         this.sessionId = spec.sessionId;
+        this._sessionProof = spec.sessionProof || '';
         this._url = spec.url;
         this._maxSockets = Math.max(1, spec.maxSockets || 5) | 0;
         this._logger = spec.logger || logger_1.MuDefaultLogger;
@@ -64,7 +65,15 @@ class MuWebSocket {
         }
         const self = this;
         function openSocket() {
-            const socket = new WS(`${self._url}?sid=${encodeURIComponent(self.sessionId)}`);
+            const address = new URL(self._url, isBrowser ? window.location.href : undefined);
+            address.searchParams.set('sid', String(self.sessionId));
+            const socket = new WS(address.toString(), self._sessionProof ? ['box3-game', `box3-proof.${self._sessionProof}`] : undefined);
+            socket.onclose = function (ev) {
+                if (self._state === socket_1.MuSocketState.INIT) {
+                    self.close();
+                    spec.close(ev);
+                }
+            };
             socket.onerror = function (ev) {
                 console.error('WebSocket error', ev);
                 self._logger.error(`WebSocket error ${ev}`);

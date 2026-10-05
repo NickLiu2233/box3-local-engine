@@ -86,7 +86,7 @@ function requireSocket () {
 	    MuSocketServerState[MuSocketServerState["INIT"] = 0] = "INIT";
 	    MuSocketServerState[MuSocketServerState["RUNNING"] = 1] = "RUNNING";
 	    MuSocketServerState[MuSocketServerState["SHUTDOWN"] = 2] = "SHUTDOWN";
-	})(MuSocketServerState || (socket.MuSocketServerState = MuSocketServerState = {})); 
+	})(MuSocketServerState || (socket.MuSocketServerState = MuSocketServerState = {}));
 	return socket;
 }
 
@@ -309,7 +309,7 @@ function requireCodec () {
 	        i += bytesPerSequence;
 	    }
 	    return decodeCodePointsArray(res);
-	} 
+	}
 	return codec;
 }
 
@@ -596,7 +596,7 @@ function requireStream () {
 		        this.length = data.byteLength + data.byteOffset;
 		    }
 		}
-		exports$1.MuReadStream = MuReadStream; 
+		exports$1.MuReadStream = MuReadStream;
 	} (stream));
 	return stream;
 }
@@ -689,7 +689,7 @@ function requireStringify () {
 	        return void 0;
 	    }
 	    return result.join('');
-	} 
+	}
 	return stringify;
 }
 
@@ -858,7 +858,7 @@ function requireProtocol () {
 	        this.jsonStr = this.protocolFactories.map((factory)=>factory.jsonStr).join();
 	    }
 	}
-	protocol.MuProtocolFactory = MuProtocolFactory; 
+	protocol.MuProtocolFactory = MuProtocolFactory;
 	return protocol;
 }
 
@@ -879,7 +879,7 @@ function requireLogger$1 () {
 	        console.log(`mudb error: ${x}`);
 	    },
 	    exception: console.error
-	}; 
+	};
 	return logger$1;
 }
 
@@ -1059,7 +1059,7 @@ function requireClient () {
 	        this._shouldValidateProtocol = !skipProtocolValidation;
 	    }
 	}
-	client.MuClient = MuClient; 
+	client.MuClient = MuClient;
 	return client;
 }
 
@@ -3332,7 +3332,7 @@ function requireStruct$1 () {
 	        this.stats = compiled.stats;
 	    }
 	}
-	struct$1.MuStruct = MuStruct; 
+	struct$1.MuStruct = MuStruct;
 	return struct$1;
 }
 
@@ -3377,7 +3377,7 @@ function require_void () {
 	        };
 	    }
 	}
-	_void.MuVoid = MuVoid; 
+	_void.MuVoid = MuVoid;
 	return _void;
 }
 
@@ -3439,7 +3439,7 @@ function requireBoolean () {
 	        };
 	    }
 	}
-	boolean.MuBoolean = MuBoolean; 
+	boolean.MuBoolean = MuBoolean;
 	return boolean;
 }
 
@@ -3488,7 +3488,7 @@ function require_string () {
 	        };
 	    }
 	}
-	_string.MuString = MuString; 
+	_string.MuString = MuString;
 	return _string;
 }
 
@@ -3519,7 +3519,7 @@ function requireAscii () {
 	        super(identity || '', 'ascii');
 	    }
 	}
-	ascii.MuASCII = MuASCII; 
+	ascii.MuASCII = MuASCII;
 	return ascii;
 }
 
@@ -3553,7 +3553,7 @@ function requireFixedAscii () {
 	        this.length = identity.length;
 	    }
 	}
-	fixedAscii.MuFixedASCII = MuFixedASCII; 
+	fixedAscii.MuFixedASCII = MuFixedASCII;
 	return fixedAscii;
 }
 
@@ -3584,7 +3584,7 @@ function requireUtf8 () {
 	        super(identity || '', 'utf8');
 	    }
 	}
-	utf8.MuUTF8 = MuUTF8; 
+	utf8.MuUTF8 = MuUTF8;
 	return utf8;
 }
 
@@ -3658,7 +3658,7 @@ function require_number () {
 		        };
 		    }
 		}
-		exports$1.MuNumber = MuNumber; 
+		exports$1.MuNumber = MuNumber;
 	} (_number));
 	return _number;
 }
@@ -3689,7 +3689,7 @@ function requireFloat32 () {
 	        super(identity, 'float32');
 	    }
 	}
-	float32.MuFloat32 = MuFloat32; 
+	float32.MuFloat32 = MuFloat32;
 	return float32;
 }
 
@@ -3721,7 +3721,7 @@ function requireFloat64 () {
 	        super(identity, 'float64');
 	    }
 	}
-	float64.MuFloat64 = MuFloat64; 
+	float64.MuFloat64 = MuFloat64;
 	return float64;
 }
 
@@ -3753,7 +3753,7 @@ function requireInt8 () {
 	        super(identity, 'int8');
 	    }
 	}
-	int8.MuInt8 = MuInt8; 
+	int8.MuInt8 = MuInt8;
 	return int8;
 }
 
@@ -3785,7 +3785,7 @@ function requireInt16 () {
 	        super(identity, 'int16');
 	    }
 	}
-	int16.MuInt16 = MuInt16; 
+	int16.MuInt16 = MuInt16;
 	return int16;
 }
 
@@ -3817,7 +3817,7 @@ function requireInt32 () {
 	        super(identity, 'int32');
 	    }
 	}
-	int32.MuInt32 = MuInt32; 
+	int32.MuInt32 = MuInt32;
 	return int32;
 }
 
@@ -3849,7 +3849,7 @@ function requireUint8 () {
 	        super(identity, 'uint8');
 	    }
 	}
-	uint8.MuUint8 = MuUint8; 
+	uint8.MuUint8 = MuUint8;
 	return uint8;
 }
 
@@ -3881,7 +3881,7 @@ function requireUint16 () {
 	        super(identity, 'uint16');
 	    }
 	}
-	uint16.MuUint16 = MuUint16; 
+	uint16.MuUint16 = MuUint16;
 	return uint16;
 }
 
@@ -3913,7 +3913,7 @@ function requireUint32 () {
 	        super(identity, 'uint32');
 	    }
 	}
-	uint32.MuUint32 = MuUint32; 
+	uint32.MuUint32 = MuUint32;
 	return uint32;
 }
 
@@ -3945,7 +3945,7 @@ function requireVarint () {
 	        super(identity, 'varint');
 	    }
 	}
-	varint.MuVarint = MuVarint; 
+	varint.MuVarint = MuVarint;
 	return varint;
 }
 
@@ -3979,7 +3979,7 @@ function requireRvarint () {
 	        super(identity, 'rvarint');
 	    }
 	}
-	rvarint.MuRelativeVarint = MuRelativeVarint; 
+	rvarint.MuRelativeVarint = MuRelativeVarint;
 	return rvarint;
 }
 
@@ -4060,7 +4060,7 @@ function requireQuantizedFloat () {
 	        };
 	    }
 	}
-	quantizedFloat.MuQuantizedFloat = MuQuantizedFloat; 
+	quantizedFloat.MuQuantizedFloat = MuQuantizedFloat;
 	return quantizedFloat;
 }
 
@@ -4094,7 +4094,7 @@ function requireIsPrimitive () {
 	];
 	function isMuPrimitiveType(muType) {
 	    return muPrimitiveTypes.indexOf(muType) > -1;
-	} 
+	}
 	return isPrimitive;
 }
 
@@ -4343,7 +4343,7 @@ function requireArray () {
 	        }
 	    }
 	}
-	array.MuArray = MuArray; 
+	array.MuArray = MuArray;
 	return array;
 }
 
@@ -4472,7 +4472,7 @@ function requireOption () {
 	        };
 	    }
 	}
-	option.MuOption = MuOption; 
+	option.MuOption = MuOption;
 	return option;
 }
 
@@ -4736,7 +4736,7 @@ function requireSortedArray () {
 	        this.fromJSON = arraySchema.fromJSON;
 	    }
 	}
-	sortedArray.MuSortedArray = MuSortedArray; 
+	sortedArray.MuSortedArray = MuSortedArray;
 	return sortedArray;
 }
 
@@ -4887,7 +4887,7 @@ function requireUnion () {
 	        };
 	    }
 	}
-	union.MuUnion = MuUnion; 
+	union.MuUnion = MuUnion;
 	return union;
 }
 
@@ -4983,7 +4983,7 @@ function requireBytes () {
 	        };
 	    }
 	}
-	bytes.MuBytes = MuBytes; 
+	bytes.MuBytes = MuBytes;
 	return bytes;
 }
 
@@ -5255,21 +5255,21 @@ function requireDictionary () {
 	        }
 	    }
 	}
-	dictionary.MuDictionary = MuDictionary; 
+	dictionary.MuDictionary = MuDictionary;
 	return dictionary;
 }
 
-var vector = {};
+var vector$1 = {};
 
 var hasRequiredVector;
 
 function requireVector () {
-	if (hasRequiredVector) return vector;
+	if (hasRequiredVector) return vector$1;
 	hasRequiredVector = 1;
-	Object.defineProperty(vector, "__esModule", {
+	Object.defineProperty(vector$1, "__esModule", {
 	    value: true
 	});
-	vector.MuVector = void 0;
+	vector$1.MuVector = void 0;
 	const muTypeToTypedArray = {
 	    float32: Float32Array,
 	    float64: Float64Array,
@@ -5417,8 +5417,8 @@ function requireVector () {
 	        this._t = new Uint8Array(this.__t.buffer);
 	    }
 	}
-	vector.MuVector = MuVector; 
-	return vector;
+	vector$1.MuVector = MuVector;
+	return vector$1;
 }
 
 var date = {};
@@ -5488,7 +5488,7 @@ function requireDate () {
 	        };
 	    }
 	}
-	date.MuDate = MuDate; 
+	date.MuDate = MuDate;
 	return date;
 }
 
@@ -5621,7 +5621,7 @@ function requireJson () {
 		        };
 		    }
 		}
-		exports$1.MuJSON = MuJSON; 
+		exports$1.MuJSON = MuJSON;
 	} (json));
 	return json;
 }
@@ -5817,7 +5817,7 @@ function requireSchema () {
 		    get: function() {
 		        return json_1.MuJSON;
 		    }
-		}); 
+		});
 	} (schema));
 	return schema;
 }
@@ -12622,7 +12622,7 @@ function requireConstant () {
 	        this.emptyStore = new MuRDAConstantStore(stateSchema.identity);
 	    }
 	}
-	constant$1.MuRDAConstant = MuRDAConstant; 
+	constant$1.MuRDAConstant = MuRDAConstant;
 	return constant$1;
 }
 
@@ -12681,7 +12681,7 @@ function requireRegister () {
 	        this.emptyStore = new MuRDARegisterStore(stateSchema.identity);
 	    }
 	}
-	register.MuRDARegister = MuRDARegister; 
+	register.MuRDARegister = MuRDARegister;
 	return register;
 }
 
@@ -12862,7 +12862,7 @@ function requireStruct () {
 	        };
 	    }
 	}
-	struct.MuRDAStruct = MuRDAStruct; 
+	struct.MuRDAStruct = MuRDAStruct;
 	return struct;
 }
 
@@ -13590,7 +13590,7 @@ function requireMap () {
 	        this.emptyStore = new MuRDAMapStore([]);
 	    }
 	}
-	map.MuRDAMap = MuRDAMap; 
+	map.MuRDAMap = MuRDAMap;
 	return map;
 }
 
@@ -13794,7 +13794,7 @@ function require_id () {
 		        }
 		    }
 		    return i;
-		} 
+		}
 	} (_id));
 	return _id;
 }
@@ -14306,7 +14306,7 @@ function requireList () {
 	        this.emptyStore = new MuRDAListStore([]);
 	    }
 	}
-	list.MuRDAList = MuRDAList; 
+	list.MuRDAList = MuRDAList;
 	return list;
 }
 
@@ -14384,7 +14384,7 @@ function requireRda () {
 		    get: function() {
 		        return list_1.MuRDAListStore;
 		    }
-		}); 
+		});
 	} (rda));
 	return rda;
 }
@@ -21941,7 +21941,7 @@ function requireLogger () {
 		        };
 		    }
 		}
-		exports$1.BufferSink = BufferSink; 
+		exports$1.BufferSink = BufferSink;
 	} (logger));
 	return logger;
 }
@@ -22139,7 +22139,7 @@ function requirePairingHeap () {
 		        p._right = p._parent = exports$1.NIL;
 		        return p;
 		    }
-		} 
+		}
 	} (pairingHeap));
 	return pairingHeap;
 }
@@ -24151,36 +24151,78 @@ class TeleportScriptShell {
     }
 }
 
+const moderationErrorCodes = {
+    MODERATION_PARAMS_INVALID: 41000,
+    MODERATION_OPTIONS_INVALID: 41001,
+    MODERATION_TARGET_INVALID: 41002,
+    MODERATION_PAYLOAD_TOO_LARGE: 41003,
+    MODERATION_BATCH_TOO_LARGE: 41004,
+    MODERATION_REQUEST_ID_INVALID: 41005,
+    MODERATION_REASON_INVALID: 41006,
+    MODERATION_DURATION_INVALID: 41007,
+    MODERATION_BAN_ID_INVALID: 41008,
+    MODERATION_QUERY_INVALID: 41009,
+    MODERATION_ACTION_INVALID: 41010,
+    MODERATION_IP_INVALID: 41011,
+    MODERATION_DEVICE_UNAVAILABLE: 41012,
+    MODERATION_METHOD_NOT_ALLOWED: 41013,
+    MODERATION_AUTH_REQUIRED: 41100,
+    MODERATION_FORBIDDEN: 41300,
+    MODERATION_MAP_MISMATCH: 41301,
+    MODERATION_GRANT_INVALID: 41302,
+    MODERATION_LEGACY_GRANT_INVALID: 41303,
+    MODERATION_QUERY_FORBIDDEN: 41304,
+    MODERATION_ACTION_FORBIDDEN: 41305,
+    MODERATION_BAN_ACCESS_DENIED: 41306,
+    MODERATION_DURATION_LIMIT_EXCEEDED: 41307,
+    MODERATION_ADMIN_PROTECTED: 41308,
+    MODERATION_DEVICE_PROTECTED: 41309,
+    MODERATION_SERVER_BAN_FORBIDDEN: 41310,
+    MODERATION_GRANT_REQUIRED: 41311,
+    MODERATION_GRANT_EXPIRED: 41312,
+    MODERATION_GRANT_REVOKED: 41313,
+    MODERATION_PERMANENT_FORBIDDEN: 41314,
+    MODERATION_NOT_FOUND: 41400,
+    MODERATION_PLAYER_OFFLINE: 41401,
+    MODERATION_PLAYER_NOT_FOUND: 41402,
+    MODERATION_CONFLICT: 41900,
+    MODERATION_REQUEST_ID_CONFLICT: 41901,
+    MODERATION_BAN_ALREADY_EXISTS: 41902,
+    MODERATION_ACCOUNT_ALREADY_PUNISHED: 41903,
+    MODERATION_BAN_CHANGED: 41904,
+    MODERATION_RATE_LIMITED: 42900,
+    MODERATION_RESPONSE_INVALID: 45002,
+    MODERATION_INTERNAL_ERROR: 45000,
+    MODERATION_UNAVAILABLE: 45003,
+    MODERATION_RUNTIME_DISABLED: 45004,
+    MODERATION_RATE_LIMIT_UNAVAILABLE: 45005,
+    MODERATION_TIMEOUT: 45006
+};
 const statuses = {
     400: 'MODERATION_PARAMS_INVALID',
     401: 'MODERATION_AUTH_REQUIRED',
     403: 'MODERATION_FORBIDDEN',
     404: 'MODERATION_NOT_FOUND',
+    405: 'MODERATION_METHOD_NOT_ALLOWED',
     409: 'MODERATION_CONFLICT',
     429: 'MODERATION_RATE_LIMITED',
+    502: 'MODERATION_RESPONSE_INVALID',
     503: 'MODERATION_UNAVAILABLE',
     504: 'MODERATION_TIMEOUT'
 };
-function moderationError(code, msg, status) {
+function moderationError(httpStatus, msg, status) {
+    const type = status || statuses[httpStatus] || 'MODERATION_INTERNAL_ERROR';
     return {
-        status: status || statuses[code] || 'MODERATION_INTERNAL_ERROR',
-        code,
+        status: type,
+        code: moderationErrorCodes[type],
         msg
     };
 }
 function normalizeModerationError(error, code = 503, fallback = '地图管理服务暂时不可用') {
     if (error && typeof error === 'object') {
         const value = error;
-        if (typeof value.status === 'string' && [
-            ...Object.values(statuses),
-            'MODERATION_RESPONSE_INVALID',
-            'MODERATION_INTERNAL_ERROR'
-        ].includes(value.status) && typeof value.code === 'number' && Number.isInteger(value.code) && typeof value.msg === 'string') {
-            return {
-                status: value.status,
-                code: value.code,
-                msg: value.msg
-            };
+        if (typeof value.status === 'string' && Object.prototype.hasOwnProperty.call(moderationErrorCodes, value.status) && typeof value.code === 'number' && Number.isInteger(value.code) && typeof value.msg === 'string') {
+            return moderationError(code, value.msg, value.status);
         }
         return moderationError(code, typeof value.message === 'string' ? value.message : fallback);
     }
@@ -24222,14 +24264,23 @@ class ModerationScript {
             let playerId;
             let payload;
             try {
-                playerId = player ? this.playerId(player) : 0;
                 payload = JSON.stringify(Object.assign(Object.assign({}, options), {
                     action
                 }));
             } catch (error) {
                 throw scriptModerationError(error, 400, '地图管理参数无效');
             }
-            if (payload.length > 2048) throw scriptModerationError(moderationError(400, '地图管理参数过长'));
+            try {
+                playerId = [
+                    'banPlayer',
+                    'banCurrentIP',
+                    'banCurrentDevice',
+                    'getPlayerStatus'
+                ].includes(action) || player !== undefined ? this.playerId(player) : 0;
+            } catch (_a) {
+                throw scriptModerationError(moderationError(400, '目标不是当前地图的玩家', 'MODERATION_TARGET_INVALID'));
+            }
+            if (payload.length > 2048) throw scriptModerationError(moderationError(400, '地图管理参数过长', 'MODERATION_PAYLOAD_TOO_LARGE'));
             const handle = this.sequence++ >>> 0;
             const wrapper = new PromiseWrapper(this.schedule, undefined, scriptModerationError);
             const timer = this.timers.setTimeout(()=>{
@@ -24255,7 +24306,7 @@ class ModerationScript {
         });
     }
     operationOptions(options) {
-        if (!options || typeof options !== 'object' || Array.isArray(options)) throw scriptModerationError(moderationError(400, '地图管理参数无效'));
+        if (!options || typeof options !== 'object' || Array.isArray(options)) throw scriptModerationError(moderationError(400, '地图管理参数无效', 'MODERATION_OPTIONS_INVALID'));
         return Object.assign(Object.assign({}, options), {
             requestId: options.requestId === undefined ? `${this.requestPrefix}-${this.automaticSequence++}` : options.requestId
         });
@@ -24266,7 +24317,8 @@ class ModerationScript {
             if (!Array.isArray(players)) return this.request(action, players, Object.assign(Object.assign({}, batchOptions), {
                 scope: 'server'
             })).then(publicBan);
-            if (players.length > 100 || !/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId)) throw scriptModerationError(moderationError(400, '批量最多 100 个玩家，requestId 须为 1–72 个合法字符'));
+            if (players.length > 100) throw scriptModerationError(moderationError(400, '批量最多 100 个玩家', 'MODERATION_BATCH_TOO_LARGE'));
+            if (!/^[A-Za-z0-9._-]{1,72}$/.test(batchOptions.requestId)) throw scriptModerationError(moderationError(400, 'requestId 须为 1–72 个合法字符', 'MODERATION_REQUEST_ID_INVALID'));
             const targets = [
                 ...players
             ];
@@ -24311,7 +24363,7 @@ class ModerationScript {
     }
     listBans() {
         return __awaiter(this, arguments, void 0, function*(query = {}) {
-            if (!query || typeof query !== 'object' || Array.isArray(query)) throw scriptModerationError(moderationError(400, '地图管理参数无效'));
+            if (!query || typeof query !== 'object' || Array.isArray(query)) throw scriptModerationError(moderationError(400, '处罚查询条件无效', 'MODERATION_QUERY_INVALID'));
             const { player } = query, filters = __rest(query, [
                 "player"
             ]);
@@ -24364,6 +24416,441 @@ class ModerationScript {
             }
         });
     }
+}
+
+const AnticheatProtocol = {
+    server: {
+        initialized: new schemaExports.MuVoid(),
+        listen: new schemaExports.MuBoolean(),
+        listenMessages: new schemaExports.MuUint32(),
+        messageDecision: new schemaExports.MuStruct({
+            handle: new schemaExports.MuUint32(),
+            playerId: new schemaExports.MuUint32(),
+            allow: new schemaExports.MuBoolean()
+        }),
+        decision: new schemaExports.MuStruct({
+            handle: new schemaExports.MuUint32(),
+            playerId: new schemaExports.MuUint32(),
+            allow: new schemaExports.MuBoolean()
+        })
+    },
+    client: {
+        movement: new schemaExports.MuStruct({
+            handle: new schemaExports.MuUint32(),
+            playerId: new schemaExports.MuUint32(),
+            payload: new schemaExports.MuUTF8()
+        }),
+        clientMessage: new schemaExports.MuStruct({
+            handle: new schemaExports.MuUint32(),
+            playerId: new schemaExports.MuUint32(),
+            payload: new schemaExports.MuUTF8()
+        })
+    }
+};
+
+function record(value) {
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : undefined;
+}
+function inputEvent(event) {
+    if (event.protocol !== 'game-net' || event.message !== 'input') return undefined;
+    const data = record(event.data);
+    const input = record(data === null || data === void 0 ? void 0 : data.input);
+    if (!input) {
+        event.context.reject();
+        return undefined;
+    }
+    const flags = input.inputState;
+    if (!Number.isInteger(flags) || flags < 0 || flags > 65535 || !Number.isFinite(data.tick)) {
+        event.context.reject();
+        return undefined;
+    }
+    return Object.freeze({
+        player: event.player,
+        tick: data.tick,
+        context: event.context,
+        buttons: Object.freeze({
+            jump: !!(flags & NetInputEventBits.JUMP),
+            walk: !!(flags & NetInputEventBits.WALK),
+            crouch: !!(flags & NetInputEventBits.CROUCH),
+            run: !!(flags & NetInputEventBits.RUN),
+            fly: !!(flags & NetInputEventBits.FLY),
+            doubleJump: !!(flags & NetInputEventBits.DOUBLE_JUMP),
+            action0: !!(flags & NetInputEventBits.ACTION0),
+            action1: !!(flags & NetInputEventBits.ACTION1)
+        })
+    });
+}
+function keyboardEvent(event) {
+    if (event.protocol !== 'game-net' || event.message !== 'sendKeyBoardEvent') return undefined;
+    const data = record(event.data);
+    if (!data || !Array.isArray(data.keyDownState) || !Array.isArray(data.prevKeyDownState)) {
+        event.context.reject();
+        return undefined;
+    }
+    if (!Number.isFinite(data.tick) || [
+        ...data.keyDownState,
+        ...data.prevKeyDownState
+    ].some((key)=>!Number.isInteger(key) || key < 0 || key > 255)) {
+        event.context.reject();
+        return undefined;
+    }
+    return Object.freeze({
+        player: event.player,
+        tick: data.tick,
+        context: event.context,
+        pressed: Object.freeze(data.keyDownState.filter((key)=>!data.prevKeyDownState.includes(key))),
+        released: Object.freeze(data.prevKeyDownState.filter((key)=>!data.keyDownState.includes(key)))
+    });
+}
+function interactionData(event) {
+    if (event.protocol !== 'entity-interact' || event.message !== 'interact') return undefined;
+    const data = record(event.data);
+    if (!data || !Number.isInteger(data.id) || data.id < 0 || !Number.isFinite(data.tick)) {
+        event.context.reject();
+        return undefined;
+    }
+    return data;
+}
+function customData(event) {
+    if (event.protocol !== 'remote-channel' || event.message !== 'sendServerEvent') return undefined;
+    const data = record(event.data);
+    if (!data || typeof data.args !== 'string' || !Number.isFinite(data.tick)) {
+        event.context.reject();
+        return undefined;
+    }
+    try {
+        return {
+            tick: data.tick,
+            data: JSON.parse(data.args)
+        };
+    } catch (_a) {
+        event.context.reject();
+        return undefined;
+    }
+}
+function uiData(event) {
+    if (event.protocol !== 'gui' || event.message !== 'sendMessage') return undefined;
+    const data = record(event.data);
+    if (!data || typeof data.name !== 'string' || typeof data.payload !== 'string') {
+        event.context.reject();
+        return undefined;
+    }
+    try {
+        return {
+            name: data.name,
+            data: JSON.parse(data.payload)
+        };
+    } catch (_a) {
+        event.context.reject();
+        return undefined;
+    }
+}
+
+var MessageSubscription;
+(function(MessageSubscription) {
+    MessageSubscription[MessageSubscription["All"] = 1] = "All";
+    MessageSubscription[MessageSubscription["Input"] = 2] = "Input";
+    MessageSubscription[MessageSubscription["Keyboard"] = 4] = "Keyboard";
+    MessageSubscription[MessageSubscription["Interact"] = 8] = "Interact";
+    MessageSubscription[MessageSubscription["Custom"] = 16] = "Custom";
+    MessageSubscription[MessageSubscription["UI"] = 32] = "UI";
+    MessageSubscription[MessageSubscription["Action"] = 64] = "Action";
+})(MessageSubscription || (MessageSubscription = {}));
+
+function vector(value) {
+    if (!Array.isArray(value) || value.length !== 3 || !value.every(Number.isFinite)) return undefined;
+    return Object.freeze({
+        x: value[0],
+        y: value[1],
+        z: value[2]
+    });
+}
+function actionData(event) {
+    if (event.protocol !== 'game-net' || event.message !== 'input') return undefined;
+    const data = event.data;
+    if (!data || !Array.isArray(data.events)) {
+        event.context.reject();
+        return undefined;
+    }
+    const actions = [];
+    for (const input of data.events){
+        if (!input || !Number.isFinite(input.tick) || !Number.isInteger(input.buttonState) || input.buttonState < 0 || input.buttonState > 255 || !Number.isInteger(input.prevButtonState) || input.prevButtonState < 0 || input.prevButtonState > 255) {
+            event.context.reject();
+            return undefined;
+        }
+        const changed = input.buttonState ^ input.prevButtonState;
+        if (!(changed & (NetInputEventBits.ACTION0 | NetInputEventBits.ACTION1))) continue;
+        const position = vector(input.position), origin = vector(input.rayOrigin), direction = vector(input.rayDirection), normal = vector(input.rayHitNormal);
+        const voxel = [
+            input.rayHitVoxelX,
+            input.rayHitVoxelY,
+            input.rayHitVoxelZ
+        ];
+        if (!position || !origin || !direction || !normal || !voxel.every(Number.isInteger) || !Number.isFinite(input.rayTime) || !Number.isSafeInteger(input.rayHitEntity) || input.rayHitEntity < 0) {
+            event.context.reject();
+            return undefined;
+        }
+        const ray = Object.freeze({
+            origin,
+            direction,
+            normal,
+            voxel: vector(voxel),
+            distance: input.rayTime
+        });
+        for (const [button, flag] of [
+            [
+                'action0',
+                NetInputEventBits.ACTION0
+            ],
+            [
+                'action1',
+                NetInputEventBits.ACTION1
+            ]
+        ]){
+            if (changed & flag) actions.push(Object.freeze({
+                tick: input.tick,
+                button,
+                pressed: !!(input.buttonState & flag),
+                position,
+                targetId: input.rayHitEntity,
+                ray
+            }));
+        }
+    }
+    return Object.freeze(actions);
+}
+
+class AnticheatScript {
+    initialize() {
+        this.listeners.clear();
+        this.messageListeners.clear();
+        this.sentMessageMask = 0;
+        this.protocol.server.message.listen(false);
+        this.protocol.server.message.listenMessages(0);
+    }
+    finishInitialization() {
+        this.protocol.server.message.initialized(undefined);
+    }
+    notifyMessageMask() {
+        let mask = 0;
+        for (const value of this.messageListeners.values())mask |= value;
+        if (mask & MessageSubscription.All) mask = MessageSubscription.All;
+        if (mask !== this.sentMessageMask) {
+            this.sentMessageMask = mask;
+            this.protocol.server.message.listenMessages(mask);
+        }
+    }
+    subscribeMessage(handler, mask) {
+        if (typeof handler !== 'function') throw new Error('消息监听器必须是函数');
+        const listener = (event)=>handler(event);
+        const enable = ()=>{
+            this.messageListeners.set(listener, mask);
+            this.notifyMessageMask();
+        };
+        enable();
+        return new GameEventHandlerToken(()=>{
+            this.messageListeners.delete(listener);
+            this.notifyMessageMask();
+        }, enable, ()=>this.messageListeners.has(listener));
+    }
+    category(handler, convert, mask) {
+        if (typeof handler !== 'function') throw new Error('监听器必须是函数');
+        return this.subscribeMessage((event)=>{
+            const value = convert(event);
+            if (value) return handler(value);
+        }, mask);
+    }
+    constructor(client, player, log, entity = ()=>undefined){
+        this.entity = entity;
+        this.listeners = new Set();
+        this.messageListeners = new Map();
+        this.sentMessageMask = 0;
+        this.playerIds = new WeakMap();
+        this.onMovement = (handler)=>{
+            if (typeof handler !== 'function') throw new Error('移动监听器必须是函数');
+            const listener = (event)=>handler(event);
+            const enable = ()=>{
+                const previous = this.listeners.size;
+                this.listeners.add(listener);
+                if (!previous) this.protocol.server.message.listen(true);
+            };
+            enable();
+            return new GameEventHandlerToken(()=>{
+                this.listeners.delete(listener);
+                if (!this.listeners.size) this.protocol.server.message.listen(false);
+            }, enable, ()=>this.listeners.has(listener));
+        };
+        this.onMessage = (handler)=>this.subscribeMessage(handler, MessageSubscription.All);
+        this.onInput = (handler)=>this.category(handler, inputEvent, MessageSubscription.Input);
+        this.onAction = (handler)=>this.category(handler, (event)=>{
+                var _a;
+                const actions = actionData(event);
+                if (!(actions === null || actions === void 0 ? void 0 : actions.length)) return undefined;
+                const position = (_a = this.entity(this.playerIds.get(event))) === null || _a === void 0 ? void 0 : _a.position;
+                if (!position) {
+                    event.context.reject();
+                    return undefined;
+                }
+                return Object.freeze({
+                    player: event.player,
+                    actions,
+                    serverPosition: Object.freeze({
+                        x: position.x,
+                        y: position.y,
+                        z: position.z
+                    }),
+                    context: event.context
+                });
+            }, MessageSubscription.Action);
+        this.onKeyboard = (handler)=>this.category(handler, keyboardEvent, MessageSubscription.Keyboard);
+        this.onInteract = (handler)=>this.category(handler, (event)=>{
+                const data = interactionData(event);
+                return data ? Object.freeze({
+                    player: event.player,
+                    tick: data.tick,
+                    target: this.entity(data.id),
+                    context: event.context
+                }) : undefined;
+            }, MessageSubscription.Interact);
+        this.onCustomEvent = (handler)=>this.category(handler, (event)=>{
+                const data = customData(event);
+                return data ? Object.freeze({
+                    player: event.player,
+                    tick: data.tick,
+                    data: freezeData(data.data),
+                    context: event.context
+                }) : undefined;
+            }, MessageSubscription.Custom);
+        this.onUIEvent = (handler)=>this.category(handler, (event)=>{
+                const data = uiData(event);
+                return data ? Object.freeze({
+                    player: event.player,
+                    name: data.name,
+                    data: freezeData(data.data),
+                    context: event.context
+                }) : undefined;
+            }, MessageSubscription.UI);
+        this.protocol = client.protocol(AnticheatProtocol);
+        this.protocol.configure({
+            message: {
+                clientMessage: (message)=>{
+                    let allow = true;
+                    let active = true;
+                    try {
+                        const sample = JSON.parse(message.payload);
+                        const target = player(message.playerId);
+                        if (!target || !this.messageListeners.size) allow = false;
+                        else {
+                            const event = Object.freeze({
+                                player: target,
+                                protocol: sample.protocol,
+                                message: sample.message,
+                                data: freezeData(sample.data),
+                                unreliable: sample.unreliable,
+                                context: Object.freeze({
+                                    source: 'client-message',
+                                    serverTick: sample.serverTick,
+                                    mode: sample.mode,
+                                    reject: ()=>{
+                                        if (active) allow = false;
+                                    }
+                                })
+                            });
+                            this.playerIds.set(event, message.playerId);
+                            for (const listener of [
+                                ...this.messageListeners.keys()
+                            ]){
+                                if (!this.messageListeners.has(listener)) continue;
+                                try {
+                                    const result = listener(event);
+                                    if (result && typeof result.then === 'function') {
+                                        allow = false;
+                                        Promise.resolve(result).catch(log);
+                                        log(new Error('world.anticheat.onMessage 必须同步处理，不能 await'));
+                                    }
+                                } catch (error) {
+                                    allow = false;
+                                    log(error);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        allow = false;
+                        log(error);
+                    } finally{
+                        active = false;
+                        this.protocol.server.message.messageDecision({
+                            handle: message.handle,
+                            playerId: message.playerId,
+                            allow
+                        });
+                    }
+                },
+                movement: (message)=>{
+                    let allow = true;
+                    let active = true;
+                    try {
+                        const sample = JSON.parse(message.payload);
+                        const target = player(message.playerId);
+                        if (!target || sample.playerId !== message.playerId || !this.listeners.size) allow = false;
+                        else {
+                            const event = Object.freeze({
+                                player: target,
+                                from: Object.freeze(Object.assign({}, sample.from)),
+                                to: Object.freeze(Object.assign({}, sample.to)),
+                                elapsedMs: sample.elapsedMs,
+                                velocity: Object.freeze({
+                                    from: Object.freeze(Object.assign({}, sample.velocity.from)),
+                                    to: Object.freeze(Object.assign({}, sample.velocity.to))
+                                }),
+                                context: Object.freeze({
+                                    source: 'client-correction',
+                                    inputTick: sample.inputTick,
+                                    serverTick: sample.serverTick,
+                                    mode: sample.mode,
+                                    reject: ()=>{
+                                        if (active) allow = false;
+                                    }
+                                })
+                            });
+                            for (const listener of [
+                                ...this.listeners
+                            ]){
+                                try {
+                                    const result = listener(event);
+                                    if (result && typeof result.then === 'function') {
+                                        allow = false;
+                                        Promise.resolve(result).catch(log);
+                                        log(new Error('world.anticheat.onMovement 必须同步处理，不能 await'));
+                                    }
+                                } catch (error) {
+                                    allow = false;
+                                    log(error);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        allow = false;
+                        log(error);
+                    } finally{
+                        active = false;
+                        this.protocol.server.message.decision({
+                            handle: message.handle,
+                            playerId: message.playerId,
+                            allow
+                        });
+                    }
+                }
+            }
+        });
+    }
+}
+function freezeData(value) {
+    if (value && typeof value === 'object') {
+        Object.values(value).forEach(freezeData);
+        Object.freeze(value);
+    }
+    return value;
 }
 
 function warnDeprecate(f, prev, cur) {
@@ -25202,7 +25689,7 @@ class BindingFactory {
         `);
                 Object.keys(PlayerGamepadSchema.identity).forEach((partName)=>{
                     check.push(`
-            ${path} = ${safePropExpr(scriptGamepad, partName)} 
+            ${path} = ${safePropExpr(scriptGamepad, partName)}
                     || ${safePropExpr(defaultGamepad, partName)};
             ${res} = ${resources}.resolveAsset(${path},GameAssetType.PICTURE);
             if(${res}){
@@ -34002,6 +34489,14 @@ class ScriptShell {
             teleport: this.teleport.teleport
         });
         this.world.world.moderation = moderation;
+        const anticheat = new AnticheatScript(this.client, (id)=>{
+            var _a;
+            return (_a = this.world.entity.entityIndex.get(id)) === null || _a === void 0 ? void 0 : _a.entity.player;
+        }, (error)=>this.sysLog('error', error, 'Anticheat listener failed.'), (id)=>{
+            var _a;
+            return (_a = this.world.entity.entityIndex.get(id)) === null || _a === void 0 ? void 0 : _a.entity;
+        });
+        this.world.world.anticheat = anticheat;
         this.api = createScriptAPI({
             scheduler: this.scheduler.scheduler,
             console: this.console,
@@ -34064,14 +34559,19 @@ class ScriptShell {
                     this.world.entity.initSeeds(config.seed);
                     if (config.scriptIndex) {
                         try {
+                            anticheat.initialize();
                             this.sysLog('debug', `Loading module: ${config.scriptIndex}...`);
                             this.resource.loadModule(config.scriptIndex, null);
+                            anticheat.finishInitialization();
                             this.sysLog('debug', 'Module loaded.');
                         } catch (e) {
                             const err = e instanceof Error ? e : new Error(JSON.stringify(e));
                             this.sysLog('error', err, 'Script module loading failed.');
                             this.raiseException(err);
                         }
+                    } else {
+                        anticheat.initialize();
+                        anticheat.finishInitialization();
                     }
                     config.collisionFilter.forEach(({ a, b })=>this.world.addCollisionFilter(a, b));
                     config.zones.forEach((zone)=>{

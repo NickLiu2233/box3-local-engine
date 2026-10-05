@@ -34,6 +34,7 @@ export class MuWebSocket implements MuSocket {
 
     private _reliableSocket: WebSocket | null = null;
     private _unreliableSockets: WebSocket[] = [];
+    private _sessionProof:string;
     private _maxSockets: number;
     private _logger: MuLogger;
 
@@ -42,12 +43,14 @@ export class MuWebSocket implements MuSocket {
 
     constructor(spec: {
         sessionId: MuSessionId;
+        sessionProof?: string;
         url: string;
         maxSockets?: number;
         logger?: MuLogger;
         bufferLimit?: number;
     }) {
         this.sessionId = spec.sessionId;
+        this._sessionProof = spec.sessionProof || '';
         this._url = spec.url;
         this._maxSockets = Math.max(1, spec.maxSockets || 5) | 0;
         this._logger = spec.logger || MuDefaultLogger;
@@ -71,9 +74,15 @@ export class MuWebSocket implements MuSocket {
 
         const self = this;
         function openSocket() {
+            const address = new URL(self._url, isBrowser ? window.location.href : undefined);
+            address.searchParams.set('sid', String(self.sessionId));
             const socket = new WS(
-                `${self._url}?sid=${encodeURIComponent(self.sessionId)}`,
+                address.toString(),
+                self._sessionProof ? ['box3-game', `box3-proof.${self._sessionProof}`] : undefined,
             );
+            socket.onclose = function (ev) {
+                if (self._state === MuSocketState.INIT) { self.close(); spec.close(ev); }
+            };
 
             socket.onerror = function (ev) {
                 console.error('WebSocket error', ev);

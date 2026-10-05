@@ -7,11 +7,13 @@ export declare class MuWebSocket implements MuSocket {
     private _url;
     private _reliableSocket;
     private _unreliableSockets;
+    private _sessionProof;
     private _maxSockets;
     private _logger;
     bufferLimit: number;
     constructor(spec: {
         sessionId: MuSessionId;
+        sessionProof?: string;
         url: string;
         maxSockets?: number;
         logger?: MuLogger;

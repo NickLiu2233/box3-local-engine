@@ -3,7 +3,7 @@ import {
   InteractProtocol,
   InteractComponentSetSchema,
 } from '@box/schema/interact/interact-protocol';
-import { GameServerState } from '../game-server-schema';
+import { GameConnectionState, GameServerState } from '../game-server-schema';
 import { getById } from '@box/utils/id';
 import { InteractEventSchema } from './interact-server-state';
 import { GameScriptRunState, scriptRunState } from '../script/script-schema';
@@ -26,7 +26,7 @@ export class InteractServer {
             return;
           }
           const connection = this.state.connections[client.sessionId];
-          if (!connection) {
+          if (!connection?.id || connection.state !== GameConnectionState.CONNECTED) {
             return;
           }
           const interact = getById(this.state.replica.interactive, event.id);
@@ -42,7 +42,7 @@ export class InteractServer {
 
         playEmote: (client, emote) => {
           const connection = this.state.connections[client.sessionId];
-          if (!connection) {
+          if (!connection?.id || connection.state !== GameConnectionState.CONNECTED) {
             return;
           }
           this.protocol.broadcast.emoteEvent({

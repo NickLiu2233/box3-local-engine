@@ -7,6 +7,7 @@ import type { GameEventChannel, GameEventFuture } from './events';
 import type { GameVector3 } from './math';
 import type { GamePlayer, GamePlayerEntity } from './player';
 import type { GameModeration } from './moderation';
+import type { GameAnticheat } from './anticheat';
 
 export declare class GameWorld {
   /**
@@ -31,6 +32,8 @@ export declare class GameWorld {
   readonly serverId: string;
   /** 地图管理能力，须先由服主在后台授权。 */
   readonly moderation: GameModeration;
+  /** 客户端移动修正检查，拒绝本次修正但不踢出玩家。 */
+  readonly anticheat: GameAnticheat;
 
   /**
    * Shared scene-light intensity. This updates the existing renderer uniform

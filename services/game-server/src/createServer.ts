@@ -142,6 +142,8 @@ export async function createGameServer(spec: {
     process.env.NODE_ENV !== 'development' && serverConfig.method !== 'local';
   const socketServer = new MuWebSocketServer({
     server: spec.httpServer,
+    requireSessionProof: true,
+    maxPayload: serverConfig.mode === 'edit' ? 16 * 1024 * 1024 : 1024 * 1024,
     // TODO 改用 debug
   });
   const muServer = new MuServer(
@@ -421,6 +423,7 @@ export async function createGameServer(spec: {
 
     const config = {
       sessionId: sessionData.sessionId,
+      sessionProof: socketServer.issueSessionProof(sessionData.sessionId),
       admin,
       maxSockets: 3,
       contentId: serverConfig.contentId,
@@ -476,6 +479,7 @@ export async function createGameServer(spec: {
     res: http.ServerResponse,
     direct: boolean,
   ): Promise<void> => {
+    res.setHeader('Cache-Control', 'private, no-store');
     if (direct) {
       setPublicCors(req, res);
     }

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.MuWebSocketServer = exports.MuWebSocketClient = exports.MuWebSocketConnection = void 0;
 const ws = require("ws");
 const url = require("url");
+const session_proof_1 = require("./session-proof");
 const socket_1 = require("../socket");
 const system_1 = require("../../scheduler/system");
 const logger_1 = require("../../logger");
@@ -26,6 +27,7 @@ function coallesceFragments(frags) {
 class MuWebSocketConnection {
     constructor(sessionId, reliableSocket, serverClose, logger, bufferLimit) {
         this.bufferLimit = bufferLimit;
+        this.sessionProof = '';
         this.started = false;
         this.closed = false;
         this.unreliableSockets = [];
@@ -256,14 +258,17 @@ class MuWebSocketClient {
 }
 exports.MuWebSocketClient = MuWebSocketClient;
 class MuWebSocketServer {
+    issueSessionProof(sessionId) { return this._proof.issue(sessionId); }
     state() { return this._state; }
     constructor(spec) {
+        this._proof = new session_proof_1.MuSessionProof();
         this._state = socket_1.MuSocketServerState.INIT;
         this._connections = [];
         this.clients = [];
         this._onClose = noop;
         this._pingInterval = 10000;
         this._logger = spec.logger || logger_1.MuDefaultLogger;
+        this._requireSessionProof = !!spec.requireSessionProof;
         this.bufferLimit = spec.bufferLimit || 1024;
         this._options = {
             server: spec.server,
@@ -272,6 +277,12 @@ class MuWebSocketServer {
         spec.backlog && (this._options['backlog'] = spec.backlog);
         spec.maxPayload && (this._options['maxPayload'] = spec.maxPayload);
         spec.handleProtocols && (this._options['handleProtocols'] = spec.handleProtocols);
+        if (this._requireSessionProof) {
+            this._options['handleProtocols'] = (protocols) => {
+                const values = Array.isArray(protocols) ? protocols : Array.from(protocols);
+                return values.includes('box3-game') ? 'box3-game' : false;
+            };
+        }
         spec.path && (this._options['path'] = spec.path);
         spec.perMessageDeflate && (this._options['perMessageDeflate'] = spec.perMessageDeflate);
         this.scheduler = spec.scheduler || system_1.MuSystemScheduler;
@@ -313,6 +324,7 @@ class MuWebSocketServer {
                 const sessionId = query['sid'];
                 if (typeof sessionId !== 'string') {
                     this._logger.error(`no session id`);
+                    socket.terminate();
                     return;
                 }
                 socket.binaryType = 'fragments';
@@ -321,6 +333,15 @@ class MuWebSocketServer {
                 };
                 socket.onopen = () => this._logger.log('socket opened');
                 let connection = this._findConnection(sessionId);
+                const proofHeaders = String(req.headers['sec-websocket-protocol'] || '').split(',')
+                    .map((value) => value.trim()).filter((value) => value.startsWith('box3-proof.'));
+                const sessionProof = proofHeaders.length === 1 ? proofHeaders[0].slice('box3-proof.'.length) : undefined;
+                if (this._requireSessionProof && (sessionId.length > 128 || (connection
+                    ? !this._proof.matches(connection.sessionProof, sessionProof)
+                    : !this._proof.verify(sessionId, sessionProof)))) {
+                    socket.terminate();
+                    return;
+                }
                 if (connection) {
                     socket.send(JSON.stringify({
                         reliable: false,
@@ -341,6 +362,7 @@ class MuWebSocketServer {
                             }
                         }
                     }, this._logger, this.bufferLimit);
+                    connection.sessionProof = this._requireSessionProof ? String(sessionProof) : '';
                     this._connections.push(connection);
                     const client = new MuWebSocketClient(connection, this.scheduler, this._logger);
                     this.clients.push(client);

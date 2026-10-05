@@ -77,6 +77,7 @@ import { RTCScriptShell } from '../rtc/rtc-script';
 import { StorageSynchronizer } from '../storage/storage-script';
 import { TeleportScriptShell } from '../teleport/teleport-script';
 import { ModerationScript } from '../moderation/moderation-script';
+import { AnticheatScript } from '../anticheat/anticheat-script';
 import { warnDeprecate } from '../utils/deprecate';
 import { PromiseWrapper } from '../utils/script-promise';
 import { ScriptParserAPI } from './bindings/animations';
@@ -985,6 +986,11 @@ export class ScriptShell {
       teleport: this.teleport.teleport,
     });
     this.world.world.moderation = moderation;
+    const anticheat = new AnticheatScript(this.client,
+      id => this.world.entity.entityIndex.get(id)?.entity.player,
+      error => this.sysLog('error', error, 'Anticheat listener failed.'),
+      id => this.world.entity.entityIndex.get(id)?.entity);
+    this.world.world.anticheat = anticheat;
     this.api = createScriptAPI({
       // world.moderation is installed before any user code is evaluated.
       scheduler: this.scheduler.scheduler,
@@ -1093,14 +1099,19 @@ export class ScriptShell {
 
           if (config.scriptIndex) {
             try {
+              anticheat.initialize();
               this.sysLog('debug', `Loading module: ${config.scriptIndex}...`);
               this.resource.loadModule(config.scriptIndex, null);
+              anticheat.finishInitialization();
               this.sysLog('debug', 'Module loaded.');
             } catch (e) {
               const err = e instanceof Error ? e : new Error(JSON.stringify(e));
               this.sysLog('error', err, 'Script module loading failed.');
               this.raiseException(err);
             }
+          } else {
+            anticheat.initialize();
+            anticheat.finishInitialization();
           }
           // initialize collision rules
           config.collisionFilter.forEach(({ a, b }) =>

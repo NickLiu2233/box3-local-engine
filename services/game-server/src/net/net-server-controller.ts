@@ -48,6 +48,7 @@ import { GamePrivateReplicaSchema } from '@box/schema/replica/game-private-repli
 import { HotProject } from '@box/schema/project/hot-schema';
 import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
 import { PendingPlayerJoins } from '../player/pending-player-joins';
+import { permittedCorrections, queueMovementCorrection } from '../anticheat/net-movement';
 
 const MIN_RESYNC_TICK_INTERVAL = 16; // 1 second
 
@@ -174,7 +175,13 @@ export function synchronizeNetClientInput(
   // combine input into net state
   const usePositionCorrection = playerCanMove(state, connection.id);
   // 以客户端用户输入发上来为准
-  mergeNetInput(inputState, connection.id, input.input, usePositionCorrection);
+  const safeInput = { ...input.input, bodies: permittedCorrections(input.input.bodies, connection.id) };
+  // Controls are immediate; only optional position/velocity corrections wait for script approval.
+  mergeNetInput(inputState, connection.id, safeInput, false);
+  const held = usePositionCorrection && queueMovementCorrection(
+    state, sessionId, input.tick, input.pauseCounter, safeInput,
+  );
+  if (usePositionCorrection && !held) mergeNetInput(inputState, connection.id, safeInput, true);
   net.lastInputTick = Math.min(net.lastInputTick, input.tick);
 
   // update input tick

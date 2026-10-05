@@ -4,7 +4,7 @@ import { RemoteChannelEventSchema } from '@box/schema/events/remote-channel-even
 import { getById } from '@box/utils/id';
 
 import { RemoteChannelScriptProtocol } from './channel-script-protocol';
-import { GameServerState } from '../game-server-schema';
+import { GameConnectionState, GameServerState } from '../game-server-schema';
 import { Logger } from '@box/utils/logger';
 
 export const SERVER_REWIND_TICKS = 4;
@@ -61,7 +61,7 @@ export class RemoteChannelServer {
 
           // check if client is connected
           const connection = this.state.connections[sessionId];
-          if (!connection) {
+          if (!connection?.id || connection.state !== GameConnectionState.CONNECTED) {
             logger.error(`remote event from invalid client ${sessionId}`);
             return;
           }

@@ -102,6 +102,7 @@ import { RemoteChannelServer } from '../remote-channel/channel-server';
 import { PlayerServer } from '../player/player-server';
 import { TeleportServer } from '../teleport/teleport-server';
 import { ModerationHost } from '../moderation/moderation-host';
+import { AnticheatHost } from '../anticheat/anticheat-host';
 import { ModerationMetadataReporter } from '../moderation/moderation-metadata';
 import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
 import { EntityNameComponentSetSchema } from '@box/schema/entity-name/entity-name';
@@ -139,6 +140,7 @@ export class ScriptHost {
   private marketProtocol: MuServerProtocol<typeof MarketProtocol>;
   public teleport: TeleportServer;
   private moderationMetadata: ModerationMetadataReporter;
+  private anticheat?: AnticheatHost;
   public remoteChannel: RemoteChannelServer;
   public input: InputServer;
   public player: PlayerServer;
@@ -825,6 +827,9 @@ export class ScriptHost {
       scriptServer: this.muServer,
       state: spec.state,
     });
+    // Private protocol order must match ScriptShell: moderation, channel, anticheat.
+    this.anticheat = new AnticheatHost(this.muServer, spec.netServer, this._state, id => this._scriptReady(id),
+      id => id === this._state.script.activeScriptId && !!this.protocol.clients[id]);
     this.muServer.start();
     this.logger.info('Script server started.');
   }
@@ -1000,6 +1005,7 @@ export class ScriptHost {
 
     // clear active script id
     this._state.script.activeScriptId = '';
+    this.anticheat?.reset();
 
     // wait for baton
     this.logger.debug(`Wait for all scripts to stop.`);
@@ -1041,6 +1047,7 @@ export class ScriptHost {
 
     // signal run semaphore
     this._state.script.runSemaphore.v();
+    this.anticheat?.running();
   }
 
   // stop all running scripts
@@ -1056,6 +1063,7 @@ export class ScriptHost {
 
     // clear active script
     this._state.script.activeScriptId = '';
+    this.anticheat?.reset();
 
     // clear all buffered script inputs
     const pendingSync = this._state.script.scriptSync;

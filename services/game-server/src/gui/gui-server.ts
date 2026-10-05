@@ -1,13 +1,15 @@
 import { MuServerProtocol, MuServer, MuRemoteClient } from '@box/mudb/server';
 import { GUIProtocol } from '@box/schema/gui/gui-protocol';
-import { GameServerState } from '../game-server-schema';
+import { GameConnectionState, GameServerState } from '../game-server-schema';
 import { GUIScriptProtocol } from './gui-script-protocol';
 import { getById } from '@box/utils/id';
+import { GUIReplyRouter } from './gui-reply-router';
 
 export class GUIServer {
   public scriptProtocol: MuServerProtocol<typeof GUIScriptProtocol>;
   public netProtocol: MuServerProtocol<typeof GUIProtocol>;
   public state: GameServerState;
+  private replies = new GUIReplyRouter();
 
   constructor(spec: {
     state: GameServerState;
@@ -19,14 +21,14 @@ export class GUIServer {
     this.netProtocol.configure({
       message: {
         return: (client, data) => {
-          this.scriptProtocol.broadcast.return(data);
+          this.replies.reply(client, data.handle, true, data.value);
         },
         throw: (client, data) => {
-          this.scriptProtocol.broadcast.throw(data);
+          this.replies.reply(client, data.handle, false, data.message);
         },
         sendMessage: (client, data) => {
           const conn = this.state.connections[client.sessionId];
-          if (conn) {
+          if (conn?.id && conn.state === GameConnectionState.CONNECTED) {
             this.scriptProtocol.broadcast.sendMessage({
               ...data,
               id: conn.id,
@@ -40,7 +42,7 @@ export class GUIServer {
       message: {
         init: (client, data) => {
           try {
-            this.getClient(data.id).message.init(data);
+            this.sendRequest(client, data, 'init');
           } catch (err) {
             client.message.throw({
               handle: data.handle,
@@ -50,7 +52,7 @@ export class GUIServer {
         },
         append: (client, data) => {
           try {
-            this.getClient(data.id).message.append(data);
+            this.sendRequest(client, data, 'append');
           } catch (err) {
             client.message.throw({
               handle: data.handle,
@@ -60,7 +62,7 @@ export class GUIServer {
         },
         show: (client, data) => {
           try {
-            this.getClient(data.id).message.show(data);
+            this.sendRequest(client, data, 'show');
           } catch (err) {
             client.message.throw({
               handle: data.handle,
@@ -70,7 +72,7 @@ export class GUIServer {
         },
         remove: (client, data) => {
           try {
-            this.getClient(data.id).message.remove(data);
+            this.sendRequest(client, data, 'remove');
           } catch (err) {
             client.message.throw({
               handle: data.handle,
@@ -80,7 +82,7 @@ export class GUIServer {
         },
         getAttribute: (client, data) => {
           try {
-            this.getClient(data.id).message.getAttribute(data);
+            this.sendRequest(client, data, 'getAttribute');
           } catch (err) {
             client.message.throw({
               handle: data.handle,
@@ -90,7 +92,7 @@ export class GUIServer {
         },
         setAttribute: (client, data) => {
           try {
-            this.getClient(data.id).message.setAttribute(data);
+            this.sendRequest(client, data, 'setAttribute');
           } catch (err) {
             client.message.throw({
               handle: data.handle,
@@ -113,8 +115,22 @@ export class GUIServer {
     }
     return client;
   }
+  private sendRequest(script: MuRemoteClient<any>, data: { id: number; handle: number }, method: string) {
+    const targetId = data.id;
+    const player = this.getClient(targetId);
+    const connection = this.state.connections[player.sessionId];
+    const principal = connection?.sessionData?.user?.id;
+    const wire = this.replies.reserve(player, script, data.handle, () =>
+      this.netProtocol.clients[player.sessionId] === player &&
+      this.scriptProtocol.clients[script.sessionId] === script &&
+      this.state.connections[player.sessionId] === connection &&
+      connection?.id === targetId && connection?.sessionData?.user?.id === principal);
+    try { player.message[method]({ ...data, handle: wire }); }
+    catch (error) { this.replies.cancel(wire); throw error; }
+  }
 
   public async reset() {
+    this.replies.reset();
     this.netProtocol.broadcast.reset();
   }
 }

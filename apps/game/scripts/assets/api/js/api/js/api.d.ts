@@ -1,6 +1,7 @@
 
 
 
+
 type TELEPORT_ERROR_STATUS = 'PLAYER_OFFLINE' | 'ACCESS_DENIED' | 'UNKNOWN';
 type TeleportType = (mapId: string, players: GameEntity[], serverId?: string) => Promise<TeleportResult>;
 type TeleportResult = {
@@ -588,6 +589,8 @@ declare class GameWorld {
     serverId: string;
     /** 地图管理能力，由服主在后台授权； */
     moderation: GameModeration;
+    /** 客户端移动修正检查，拒绝本次修正但不踢出玩家。 */
+    anticheat: GameAnticheat;
     /**
      * The name of the project (read only)
      */

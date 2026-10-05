@@ -1,5 +1,5 @@
 import { MuServer, MuServerProtocol } from '@box/mudb/server';
-import { GameServerState } from '../game-server-schema';
+import { GameConnectionState, GameServerState } from '../game-server-schema';
 import {
   ChatProtocolSchema,
   ChatMessageSchema,
@@ -84,6 +84,8 @@ export class ChatServer {
     this._protocol.configure({
       message: {
         noticeMessage: (client, { title, detail }) => {
+          const connection = this._state.connections[client.sessionId];
+          if (!connection || connection.state !== GameConnectionState.CONNECTED || !connection.sessionData.isAdmin) return;
           this._logger.log(`global notice: title:${title} detail:${detail}`);
           this._protocol.broadcast.globalNotice({ title, detail });
         },

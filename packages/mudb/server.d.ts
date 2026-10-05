@@ -44,7 +44,15 @@ export declare class MuServerProtocol<Schema extends MuAnyProtocolSchema> {
 }
 export interface MuAnyServerProtocol extends MuServerProtocol<MuAnyProtocolSchema> {
 }
+export interface MuIncomingMessage {
+    sessionId: string;
+    protocol: string;
+    message: string;
+    data: unknown;
+    unreliable: boolean;
+}
 export declare class MuServer {
+    messageGuard?: (message: MuIncomingMessage, complete: (allow: boolean) => void) => void;
     protocols: MuAnyServerProtocol[];
     private _protocolSpecs;
     running: boolean;
@@ -60,6 +68,7 @@ export declare class MuServer {
         close?: (error?: any) => void;
     }): void;
     destroy(): void;
+    private _guardMessage;
     protocol<Schema extends MuAnyProtocolSchema>(schema: Schema): MuServerProtocol<Schema>;
 }
 //# sourceMappingURL=server.d.ts.map

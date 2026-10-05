@@ -2,6 +2,7 @@ import * as ws from 'ws';
 import * as http from 'http';
 import * as https from 'https';
 import * as url from 'url';
+import { MuSessionProof } from './session-proof';
 
 import {
     MuSessionId, MuSocket, MuSocketState, MuSocketSpec,
@@ -44,6 +45,7 @@ function coallesceFragments (frags:Buffer[]) {
 }
 
 export class MuWebSocketConnection {
+    public sessionProof = '';
     public readonly sessionId:string;
 
     public started = false;
@@ -323,6 +325,9 @@ export class MuWebSocketClient implements MuSocket {
 }
 
 export class MuWebSocketServer implements MuSocketServer {
+    private _proof = new MuSessionProof();
+    private _requireSessionProof:boolean;
+    public issueSessionProof(sessionId:string) { return this._proof.issue(sessionId); }
     private _state = MuSocketServerState.INIT;
     public state () { return this._state; }
 
@@ -344,6 +349,7 @@ export class MuWebSocketServer implements MuSocketServer {
 
     constructor (spec:{
         server:http.Server|https.Server,
+        requireSessionProof?:boolean,
         bufferLimit?:number,
         backlog?:number,
         handleProtocols?:(protocols:any[], request:http.IncomingMessage) => any,
@@ -355,6 +361,7 @@ export class MuWebSocketServer implements MuSocketServer {
         pingInterval?:number,
     }) {
         this._logger = spec.logger || MuDefaultLogger;
+        this._requireSessionProof = !!spec.requireSessionProof;
         this.bufferLimit = spec.bufferLimit || 1024;
         this._options = {
             server: spec.server,
@@ -363,6 +370,13 @@ export class MuWebSocketServer implements MuSocketServer {
         spec.backlog && (this._options['backlog'] = spec.backlog);
         spec.maxPayload && (this._options['maxPayload'] = spec.maxPayload);
         spec.handleProtocols && (this._options['handleProtocols'] = spec.handleProtocols);
+        if (this._requireSessionProof) {
+            // Never echo a proof-bearing subprotocol into the response or logs.
+            this._options['handleProtocols'] = (protocols:any) => {
+                const values:string[] = Array.isArray(protocols) ? protocols : Array.from(protocols);
+                return values.includes('box3-game') ? 'box3-game' : false;
+            };
+        }
         spec.path && (this._options['path'] = spec.path);
         spec.perMessageDeflate && (this._options['perMessageDeflate'] = spec.perMessageDeflate);
         this.scheduler = spec.scheduler || MuSystemScheduler;
@@ -412,7 +426,7 @@ export class MuWebSocketServer implements MuSocketServer {
                     const sessionId = query['sid'];
                     if (typeof sessionId !== 'string') {
                         this._logger.error(`no session id`);
-                        return;
+                        socket.terminate(); return;
                     }
 
                     socket.binaryType = 'fragments';
@@ -422,6 +436,17 @@ export class MuWebSocketServer implements MuSocketServer {
                     socket.onopen = () => this._logger.log('socket opened');
 
                     let connection = this._findConnection(sessionId);
+                    const proofHeaders = String(req.headers['sec-websocket-protocol'] || '').split(',')
+                        .map((value) => value.trim()).filter((value) => value.startsWith('box3-proof.'));
+                    const sessionProof = proofHeaders.length === 1 ? proofHeaders[0].slice('box3-proof.'.length) : undefined;
+                    if (this._requireSessionProof && (
+                        sessionId.length > 128 || (connection
+                            ? !this._proof.matches(connection.sessionProof, sessionProof)
+                            : !this._proof.verify(sessionId, sessionProof))
+                    )) {
+                        // Do not close the existing user's connection or log credentials.
+                        socket.terminate(); return;
+                    }
                     if (connection) {
                         socket.send(JSON.stringify({
                             reliable: false,
@@ -442,6 +467,7 @@ export class MuWebSocketServer implements MuSocketServer {
                                 }
                             }
                         }, this._logger, this.bufferLimit);
+                        connection.sessionProof = this._requireSessionProof ? String(sessionProof) : '';
                         this._connections.push(connection);
 
                         const client = new MuWebSocketClient(connection, this.scheduler, this._logger);
