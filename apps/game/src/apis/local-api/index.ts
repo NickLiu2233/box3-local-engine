@@ -1,5 +1,6 @@
 import { ApiClient } from '@box/apis';
 import { clientConfig, getConfig } from 'src/config/client';
+import { localResourceIds, uploadLocalResource } from './resource-upload';
 
 export interface PagedData<T> {
   count: number;
@@ -40,8 +41,7 @@ const unsupportedCollaboration = async (..._args: any[]) => {
 export const apis = {
   createra: {
     async nextGameUidListUsingGet({ num }: { num?: number }) {
-      const count = Math.max(0, Math.min(1000, Number(num) || 0));
-      return Array.from({ length: count }, () => `local-${globalThis.crypto.randomUUID()}`);
+      return localResourceIds(num);
     },
     async checkNameScriptUsingGet(_input?: unknown) { return true; },
     async createScriptUsingPost(
@@ -74,13 +74,7 @@ export const apis = {
   upload: {
     async fileUploadPost({ file }: { file?: Blob; type?: string }) {
       if (!file) throw new Error('请选择要上传的文件');
-      const result = await runtimeApi().postBlockRaw({
-        body: file as never,
-        bodySerializer: (body) => body as unknown as BodyInit,
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      });
-      if (!result.response.ok) throw new Error('本地资源保存失败');
-      return String(result.data || '');
+      return uploadLocalResource(runtimeApi(), file);
     },
   },
   model: {
