@@ -71,11 +71,14 @@ export function getStorageTemplate<T extends { [name: string]: any }>(
  * @returns StorageEstimate
  */
 export async function estimateStorage() {
-  if ('storage' in navigator && 'estimate' in navigator.storage) {
-    const estimate = await navigator.storage.estimate();
-    return estimate;
+  if (typeof navigator !== 'undefined' && navigator.storage?.estimate) {
+    try {
+      return await navigator.storage.estimate();
+    } catch {
+      // Usage is optional and may be unavailable on HTTP/private browsing.
+    }
   }
-  throw new Error(`Cannot read navigator.storage.estimate()`);
+  return {} as StorageEstimate;
 }
 
 export async function clearIndexDB() {

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { hashURL } from 'src/utils/hash-url';
+import { writeClipboardText } from 'src/utils/copy2clipboard';
 import { TooltipTrigger, Toast } from '@box/box-design';
 import { BlockInfo, BlockIndex } from '@box/schema/voxel/block-schema';
 import style from './index.module.css';
@@ -110,8 +111,7 @@ export class AnimatedBlock extends React.Component<BlockProps, BlockState> {
 
   private _copyNameToClipboard = () => {
     try {
-      navigator.clipboard
-        .writeText(this.props.name)
+      writeClipboardText(this.props.name)
         .then(() => {
           // 显示复制成功的提示
           Toast.success({

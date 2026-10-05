@@ -4,6 +4,7 @@ import {
   getWavFileInfo,
 } from 'src/engine/script/audio-utils';
 import { messenger } from 'src/messenger';
+import { microphoneUnavailableReason } from './media-support';
 
 export class ClientMedia {
   private mediaRecorder: MediaRecorder | null = null;
@@ -38,6 +39,8 @@ export class ClientMedia {
 
   // 申请麦克风权限,返回stream
   private async getUserMedia() {
+    const unavailable = microphoneUnavailableReason();
+    if (unavailable) throw new Error(unavailable);
     //ios和rusty需要先requestUserMedia
     if (messenger.messageTool.isInWebviewOrRusty()) {
       const res = await messenger.callAsync('requestUserMedia', {
@@ -78,7 +81,7 @@ export class ClientMedia {
       try {
         this.stream = await this.getUserMedia();
       } catch (err) {
-        throw new Error('No permission to access microphone.');
+        throw err instanceof Error ? err : new Error('浏览器未允许访问麦克风。');
       }
 
       this.mediaRecorder = new MediaRecorder(this.stream);

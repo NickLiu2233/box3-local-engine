@@ -92,6 +92,8 @@ export async function bootstrapPlayResourceCache({
   if (waitForCompletion && !isSecureContext) {
     throw new Error('启动器本地资源缓存需要安全连接：请使用 HTTPS 地址')
   }
+  // Public HTTP skips optional caching; normal online resource loading continues.
+  if (!isSecureContext) return
   if (!serviceWorkerContainer) {
     if (waitForCompletion) throw new Error('当前客户端不支持 Service Worker，无法离线准备地图资源')
     return

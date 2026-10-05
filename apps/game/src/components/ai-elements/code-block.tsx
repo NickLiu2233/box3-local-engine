@@ -13,6 +13,7 @@ import {
 import { type BundledLanguage, codeToHtml, type ShikiTransformer } from 'shiki';
 import { Button } from '~/components/ui/button';
 import { cn } from '~/utils';
+import { writeClipboardText } from '~/utils/copy2clipboard';
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
@@ -147,13 +148,8 @@ export const CodeBlockCopyButton = ({
   const { code } = useContext(CodeBlockContext);
 
   const copyToClipboard = async () => {
-    if (typeof window === 'undefined' || !navigator?.clipboard?.writeText) {
-      onError?.(new Error('Clipboard API not available'));
-      return;
-    }
-
     try {
-      await navigator.clipboard.writeText(code);
+      await writeClipboardText(code);
       setIsCopied(true);
       onCopy?.();
       setTimeout(() => setIsCopied(false), timeout);
