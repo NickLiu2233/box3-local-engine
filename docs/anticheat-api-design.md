@@ -614,4 +614,4 @@ npm --prefix apps/game run test:script-types
 
 新增 `POST /api/realtime/session` 用于一次性认证票据，`WS /api/realtime/socket` 用于服务内权限受控推送，Web 管理器另使用 `WS /api/events`。后台只推送变化主题，再由原有 API 校验权限读取详情；内部撤销事件从数据库回放并去重，避免并发事务提交顺序和重连导致漏事件。地图范围封禁仍使用各宿主自己的地图凭据校验。
 
-接口参数、帧类型、来源/权限检查、数据库事务机制、流量变化、实际测试结果和部署限制统一见 [WebSocket 改造设计与测试记录](ws-polling-audit.md)。旧 Docker 镜像和此前候选 ZIP 尚未包含本次 WS 改动，不应将源码测试结果作为旧包升级的证明。
+接口参数、帧类型、来源/权限检查、数据库事务机制、流量变化、实际测试结果和部署限制统一见 [WebSocket 改造设计与测试记录](ws-polling-audit.md)。六服务镜像和新的 macOS ARM64 WS 候选启动器已重新构建；标准离线包检查及 ZIP 解压复验通过。旧运行容器和此前候选 ZIP 保留。交付文件、校验值和签名状态见 [新版打包验证](ws-package-release-20261006.md)。

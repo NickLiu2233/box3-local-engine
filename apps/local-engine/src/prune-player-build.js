@@ -23,6 +23,7 @@ const playerServiceRoutes = new Set([
   '/players',
   '/api/config/[...slug]',
   '/api/health-check',
+  '/api/realtime/session',
   '/api/player-auth/login',
   '/api/player-auth/logout',
   '/api/player-auth/login-required',

@@ -7,6 +7,7 @@ const os = require('node:os')
 const path = require('node:path')
 
 test('keeps Player Admin routes that are called by the standalone management UI', () => {
+  assert.equal(playerServiceRoutes.has('/api/realtime/session'), true)
   assert.equal(playerServiceRoutes.has('/api/play-admin/identity-bans'), true)
   assert.equal(playerServiceRoutes.has('/api/play-admin/self-password'), true)
   assert.equal(playerServiceRoutes.has('/api/play-admin/library/[section]/[[...id]]'), true)
@@ -18,7 +19,7 @@ test('keeps Player Admin routes that are called by the standalone management UI'
 
 test('packaging preserves compiled self-service APIs and their routing manifests while removing editor routes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-self-service-prune-'))
-  const routes = ['/api/player-auth/profile', '/api/player-auth/password', '/projects']
+  const routes = ['/api/player-auth/profile', '/api/player-auth/password', '/api/realtime/session', '/projects']
   const pages = Object.fromEntries(routes.map(route => [route, `pages${route}.js`]))
   const write = (file, value) => {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
@@ -31,7 +32,7 @@ test('packaging preserves compiled self-service APIs and their routing manifests
     write('routes-manifest.json', { staticRoutes: routes.map(page => ({ page })) })
     write('build-manifest.json', { pages: Object.fromEntries(routes.map(route => [route, ['bundle.js']])) })
     prunePlayerServiceBuild(root)
-    const kept = routes.slice(0, 2)
+    const kept = routes.slice(0, 3)
     assert.deepEqual(Object.keys(read('server/pages-manifest.json')), kept)
     assert.deepEqual(read('routes-manifest.json').staticRoutes.map(route => route.page), kept)
     assert.deepEqual(Object.keys(read('build-manifest.json').pages), kept)
