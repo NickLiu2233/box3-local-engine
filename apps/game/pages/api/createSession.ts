@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import axios from 'axios';
+import { toWebSocketURL } from '../../shared/websocket-url';
+import { requestWebSocketProtocol } from '../../server/request-websocket-protocol';
 
 import { getRealIP } from '@box/utils/ip';
 import { PrefetchCachesType } from '@box/content-server/content-fetch';
@@ -349,8 +351,7 @@ async function getSessionData(
       );
       if (!runtime.ready) return undefined;
     }
-    // 本地就直接把 http server url 处理成 socket server url
-  socketServerUrl = httpServerUrl.replace('http', 'ws');
+    socketServerUrl = toWebSocketURL(httpServerUrl);
 
   const data = await axios.post(
     httpServerUrl + '/createSession',
@@ -374,12 +375,7 @@ async function getSessionData(
   if (json.data) {
     const deploymentMode = process.env.BOX_DEPLOYMENT_MODE;
     if (deploymentMode === 'creator') {
-      const forwardedProto = ServerConfig.trustProxy
-        ? Array.isArray(req.headers['x-forwarded-proto'])
-          ? req.headers['x-forwarded-proto'][0]
-          : req.headers['x-forwarded-proto']
-        : undefined;
-      const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
+      const protocol = requestWebSocketProtocol(req, ServerConfig.trustProxy);
       const requestHost = req.headers.host || '127.0.0.1:3000';
       const roomPath = privateRoomId
         ? `/__room/${encodeURIComponent(privateRoomId)}`
@@ -395,14 +391,9 @@ async function getSessionData(
         : `/runtime/${mode}`;
       if (ServerConfig.serverPublicUrl) {
         const publicURL = ServerConfig.serverPublicUrl.replace(/\/$/, '');
-        json.data.socketServerUrl = `${publicURL.replace(/^http/, 'ws')}${runtimePath}`;
+        json.data.socketServerUrl = toWebSocketURL(`${publicURL}${runtimePath}`);
       } else {
-        const forwardedProto = ServerConfig.trustProxy
-          ? Array.isArray(req.headers['x-forwarded-proto'])
-            ? req.headers['x-forwarded-proto'][0]
-            : req.headers['x-forwarded-proto']
-          : undefined;
-        const protocol = forwardedProto === 'https' ? 'wss' : 'ws';
+        const protocol = requestWebSocketProtocol(req, ServerConfig.trustProxy);
         const host = req.headers.host || '127.0.0.1:3000';
         json.data.socketServerUrl = `${protocol}://${host}${runtimePath}`;
       }

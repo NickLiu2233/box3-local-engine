@@ -20,7 +20,7 @@
     "export": "NEXT_PUBLIC_EXPORT_MODE=true npm run build && NEXT_PUBLIC_EXPORT_MODE=true next export",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --cache --cache-location .next/cache/eslint/.eslintcache",
     "test": "jest",
-    "test:realtime": "jest --runInBand --runTestsByPath server/creator-scene-websocket.test.ts server/realtime-tickets.test.ts server/realtime-session.test.ts shared/realtime-client.test.ts src/views/edit/components/nav-bar/right-control/scene-connection.test.ts --reporters=default",
+    "test:realtime": "jest --runInBand --runTestsByPath server/creator-scene-websocket.test.ts server/realtime-tickets.test.ts server/realtime-session.test.ts server/request-websocket-protocol.test.ts shared/websocket-url.test.ts src/utils/remote-game-server.test.ts shared/realtime-client.test.ts src/views/edit/components/nav-bar/right-control/scene-connection.test.ts --reporters=default",
     "test:realtime-postgres": "ts-node --transpile-only --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' scripts/regression-player-change-feed.ts",
     "test:local-runtime-session": "node -r ts-node/register scripts/regression-local-runtime-session.ts"
   },

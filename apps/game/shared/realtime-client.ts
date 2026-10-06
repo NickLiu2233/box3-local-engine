@@ -1,3 +1,4 @@
+import { toWebSocketURL } from './websocket-url';
 type Options = { body: object; headers?: Record<string, string> };
 type Listener = (event: any) => void;
 type Connection = { listeners: Set<Listener>; stop: () => void };
@@ -30,8 +31,7 @@ export function subscribeRealtime(key: string, options: Options, listener: Liste
         if (disposed) return;
         const url = new URL(grant.socketPath, window.location.href);
         if (url.origin !== window.location.origin) throw new Error('实时连接必须同源');
-        url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(url.href); socket = ws;
+        const ws = new WebSocket(toWebSocketURL(url.href, window.location.href)); socket = ws;
         deadline = setTimeout(() => ws.close(), 10_000);
         ws.onopen = () => { if (!disposed && socket === ws) ws.send(JSON.stringify({ type: 'connect', ticket: grant.ticket })); };
         ws.onmessage = ({ data }) => {

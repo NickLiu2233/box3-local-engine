@@ -1,3 +1,4 @@
+import { toWebSocketURL } from '../../../shared/websocket-url';
 import { CameraBindingMode } from '@box/schema/input/input-schema';
 import {
   PostMessageSchema,
@@ -310,7 +311,7 @@ export class PlayClient extends EngineClient {
         return new MuWebSocket({
           sessionId: sessionConfig.sessionId,
           sessionProof: sessionConfig.sessionProof,
-          url: sessionConfig.socketServerUrl,
+          url: toWebSocketURL(sessionConfig.socketServerUrl, window.location.href),
           maxSockets: sessionConfig.maxSockets,
           logger: createMuLogger(this.logger, 'mudb/src-socket'),
         });

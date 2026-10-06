@@ -1,3 +1,4 @@
+import { toWebSocketURL } from '../../../../../../shared/websocket-url';
 type CaptureAction = { id: string; type: 'capture'; view: 'full' | '3d' | '2d' };
 
 /** One bootstrap per connection; commands and results travel over WebSocket. */
@@ -32,8 +33,7 @@ export function connectCreatorScene(projectId: string, capture: (action: Capture
       if (disposed) { closeSession(); return; }
       const url = new URL(session.socketPath, window.location.href);
       if (url.origin !== window.location.origin) throw new Error('场景控制地址必须同源');
-      url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-      const ws = new WebSocket(url.href);
+      const ws = new WebSocket(toWebSocketURL(url.href, window.location.href));
       socket = ws;
       connectionTimer = setTimeout(() => ws.close(), 10_000);
       ws.onopen = () => ws.send(JSON.stringify({

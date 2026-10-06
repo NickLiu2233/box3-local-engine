@@ -1,3 +1,4 @@
+import { toWebSocketURL } from '../../shared/websocket-url';
 import { clientConfig } from 'src/config/client';
 
 import { ContentResolver } from '@box/content-server/content-fetch';
@@ -96,7 +97,7 @@ export const createGameClient = (
       return new MuWebSocket({
         sessionId: sessionConfig.sessionId,
         sessionProof: sessionConfig.sessionProof,
-        url: sessionConfig.socketServerUrl,
+        url: toWebSocketURL(sessionConfig.socketServerUrl, window.location.href),
         maxSockets: sessionConfig.maxSockets,
         logger: createMuLogger(logger, 'mudb/src-socket'),
       });

@@ -1,3 +1,4 @@
+import { toWebSocketURL } from '../../shared/websocket-url';
 import type { ClientConfig } from 'src/config/client';
 
 export interface GameServerTarget {
@@ -66,7 +67,7 @@ export function resolveGameServerTarget(
   return {
     sessionURL: `${baseURL}/api/session`,
     assetBaseURL: config.launcherServiceWorkerMode ? config.CDN_PATH : baseURL,
-    socketServerURL: baseURL.replace(/^http/, 'ws'),
+    socketServerURL: toWebSocketURL(baseURL).replace(/\/$/, ''),
     isRemote: true,
   };
 }
