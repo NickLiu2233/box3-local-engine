@@ -97,7 +97,11 @@ for (const [name, declarations] of [
     assert.ok(probe.diagnostics('world.moderation.getBan("ban").then(ban => { if (ban) console.log(ban.scope); });').length > 0, `${name}: removed record scope still exposed`);
     const errors = probe.diagnostics('world.moderation.banPlayer(world.querySelector("player").player, {reason: "test", durationSeconds: 60, requestId: "test", scope: "server"});');
     assert.ok(errors.some(error => error.code === 2353 || error.code === 2322 || error.code === 2345 || error.code === 2769), `${name}: removed scope parameter was not rejected: ${JSON.stringify(errors.map(error=>({code:error.code,message:ts.flattenDiagnosticMessageText(error.messageText,' ')})))}`);
-    console.log(`${name}: moderation methods, option fields, signature, Chinese documentation and removed scope validation passed`);
+    assert.equal(probe.diagnostics('world.anticheat.onAction(event => { for (const action of event.actions) { if (action.target) console.log(action.target.position.x); } });').length, 0,
+      `${name}: server-resolved action target has type errors`);
+    assert.ok(probe.completions('world.anticheat.onAction(event => { const action = event.actions[0]; action.').includes('target'),
+      `${name}: missing action target completion`);
+    console.log(`${name}: moderation and server-resolved anticheat target types passed`);
   } finally { probe.dispose(); }
 }
 

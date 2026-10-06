@@ -4,13 +4,14 @@ import { MovementGate } from './movement-gate';
 import { setMovementInspector } from './movement-inspector';
 import { MessageInspector } from './message-inspector';
 import type { GameServerState } from '../game-server-schema';
+import { auditIdentity, auditRejection } from './audit';
 import { observesMessage } from './message-subscriptions';
 
 export class AnticheatHost {
   public reset: () => void;
   public running: () => void;
   constructor(server: MuServer, gameServer: MuServer, state: GameServerState, ready: (sessionId: string) => boolean,
-    trusted: (sessionId: string) => boolean = ready) {
+    trusted: (sessionId: string) => boolean = ready, audit: (record: object) => void = () => {}) {
     const protocol = server.protocol(AnticheatProtocol);
     let subscriber: any;
     let messageSubscriber: any;
@@ -23,7 +24,7 @@ export class AnticheatHost {
     let protectMessages = false;
     let initializedPeer = '';
     let initialized = false;
-    const messages = new MessageInspector(gameServer, state);
+    const messages = new MessageInspector(gameServer, state, audit);
     const gate = new MovementGate((handle, sample) => {
       if (!subscriber || !ready(subscriber.sessionId)) throw new Error('Script unavailable');
       subscriber.message.movement({ handle, playerId: sample.playerId, payload: JSON.stringify(sample) });
@@ -69,7 +70,7 @@ export class AnticheatHost {
       },
       messageDecision: (client, message) => {
         if (!messageSubscriber || client.sessionId !== messageSubscriber.sessionId || !ready(client.sessionId)) return;
-        messages.decide(message.handle, message.playerId, message.allow);
+        messages.decide(message.handle, message.playerId, message.allow, message.reason);
       },
       listen: (client, enabled) => {
         if (!trusted(client.sessionId)) return;
@@ -79,13 +80,21 @@ export class AnticheatHost {
       },
       decision: (client, message) => {
         if (!subscriber || client.sessionId !== subscriber.sessionId || !ready(client.sessionId)) return;
-        gate.decide(message.handle, message.playerId, message.allow);
+        gate.decide(message.handle, message.playerId, message.allow, message.reason);
       },
     } });
     setMovementInspector(state, (sample, complete) => {
       if (!movementEnabled && !(recovering && protectMovement)) return false;
-      if (!subscriber || !ready(subscriber.sessionId)) { complete(false); return true; }
-      gate.submit(sample, complete);
+      const identity = auditIdentity(state, sample.playerId);
+      const finish = (allow: boolean, reason?: string) => {
+        if (!allow) audit(auditRejection(identity, 'movement', reason, {
+          serverTick: sample.serverTick, inputTick: sample.inputTick, mode: sample.mode,
+          from: sample.from, to: sample.to, velocity: sample.velocity,
+        }));
+        complete(allow);
+      };
+      if (!subscriber || !ready(subscriber.sessionId)) { finish(false, 'script-unavailable'); return true; }
+      gate.submit(sample, finish);
       return true;
     });
   }

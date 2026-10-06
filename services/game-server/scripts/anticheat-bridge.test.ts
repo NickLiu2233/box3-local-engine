@@ -30,7 +30,8 @@ test('real player transport -> host -> script API rejects before the actual GUI 
   new GUIServer({ server: game, scriptServer: scripts, state });
   const applied: any[] = [];
   const observed: any[] = [];
-  const host = new AnticheatHost(scripts, game, state, (id) => id === 'trusted-script', (id) => id === 'trusted-script');
+  const audit: any[] = [];
+  const host = new AnticheatHost(scripts, game, state, (id) => id === 'trusted-script', (id) => id === 'trusted-script', value => audit.push(value));
   const script = new MuClient(createLocalSocket({ sessionId: 'trusted-script', server: privateSockets }), undefined, true);
   script.protocol(GUIScriptProtocol).configure({ message: { return() {}, throw() {}, sendMessage: (value) => applied.push({ ...value }) } });
   const api = new AnticheatScript(script, (id) => id === 1 ? alice : id === 2 ? bob : undefined, (error) => { throw error; });
@@ -42,7 +43,7 @@ test('real player transport -> host -> script API rejects before the actual GUI 
     api.initialize();
     api.onUIEvent((event) => {
       observed.push({ name: event.name, player: event.player });
-      if (event.name === 'blocked') event.context.reject();
+      if (event.name === 'blocked') event.context.reject('blocked-ui');
     });
     api.finishInitialization();
     await waitFor(() => !!game.messageGuard);
@@ -53,6 +54,10 @@ test('real player transport -> host -> script API rejects before the actual GUI 
     await new Promise((resolve) => setTimeout(resolve, 10));
     assert.equal(applied.length, 0);
     assert.equal(observed[0].player, alice, 'body-supplied identity cannot replace the transport owner');
+    assert.equal(audit.length, 1);
+    assert.equal(audit[0].userId, 'A');
+    assert.equal(audit[0].reason, 'blocked-ui');
+    assert.equal(audit[0].classification, 'suspected-anomaly');
     protocol.server.message.sendMessage({ name: 'allowed', payload: '{}' });
     await waitFor(() => applied.length === 1);
     assert.equal(applied[0].id, 1);

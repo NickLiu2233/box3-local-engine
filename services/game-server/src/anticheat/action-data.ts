@@ -30,7 +30,7 @@ export function actionData(event: GameClientMessageEvent): readonly GameAntichea
     const ray = Object.freeze({ origin, direction, normal, voxel: vector(voxel)!, distance: input.rayTime });
     for (const [button, flag] of [['action0', NetInputEventBits.ACTION0], ['action1', NetInputEventBits.ACTION1]] as const) {
       if (changed & flag) actions.push(Object.freeze({ tick: input.tick, button,
-        pressed: !!(input.buttonState & flag), position, targetId: input.rayHitEntity, ray }));
+        pressed: !!(input.buttonState & flag), position, targetId: input.rayHitEntity, target: undefined, ray }));
     }
   }
   return Object.freeze(actions);

@@ -102,6 +102,7 @@ import { RemoteChannelServer } from '../remote-channel/channel-server';
 import { PlayerServer } from '../player/player-server';
 import { TeleportServer } from '../teleport/teleport-server';
 import { ModerationHost } from '../moderation/moderation-host';
+import { AnticheatAudit } from '../anticheat/audit';
 import { AnticheatHost } from '../anticheat/anticheat-host';
 import { ModerationMetadataReporter } from '../moderation/moderation-metadata';
 import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
@@ -828,8 +829,14 @@ export class ScriptHost {
       state: spec.state,
     });
     // Private protocol order must match ScriptShell: moderation, channel, anticheat.
+    const audit = process.env.BOX_ANTICHEAT_AUDIT_PATH ? new AnticheatAudit(
+      process.env.BOX_ANTICHEAT_AUDIT_PATH, process.env.BOX_DATA_STORAGE_NAMESPACE || 'local',
+      message => this.logger.warn(message)) : undefined;
     this.anticheat = new AnticheatHost(this.muServer, spec.netServer, this._state, id => this._scriptReady(id),
-      id => id === this._state.script.activeScriptId && !!this.protocol.clients[id]);
+      id => id === this._state.script.activeScriptId && !!this.protocol.clients[id], record => audit?.record({ ...record,
+        mapId: process.env.BOX_WORLD_PERMANENT_MAP_ID || null,
+        mode: process.env.MODE === 'edit' ? 'edit' : 'play',
+      }));
     this.muServer.start();
     this.logger.info('Script server started.');
   }

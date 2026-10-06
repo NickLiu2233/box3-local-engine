@@ -24426,12 +24426,14 @@ const AnticheatProtocol = {
         messageDecision: new schemaExports.MuStruct({
             handle: new schemaExports.MuUint32(),
             playerId: new schemaExports.MuUint32(),
-            allow: new schemaExports.MuBoolean()
+            allow: new schemaExports.MuBoolean(),
+            reason: new schemaExports.MuUTF8()
         }),
         decision: new schemaExports.MuStruct({
             handle: new schemaExports.MuUint32(),
             playerId: new schemaExports.MuUint32(),
-            allow: new schemaExports.MuBoolean()
+            allow: new schemaExports.MuBoolean(),
+            reason: new schemaExports.MuUTF8()
         })
     },
     client: {
@@ -24613,6 +24615,7 @@ function actionData(event) {
                 pressed: !!(input.buttonState & flag),
                 position,
                 targetId: input.rayHitEntity,
+                target: undefined,
                 ray
             }));
         }
@@ -24842,12 +24845,15 @@ class AnticheatScript {
                 if (!(actions === null || actions === void 0 ? void 0 : actions.length)) return undefined;
                 const position = (_a = this.entity(this.playerIds.get(event))) === null || _a === void 0 ? void 0 : _a.position;
                 if (!position) {
-                    event.context.reject();
+                    event.context.reject("player-unavailable");
                     return undefined;
                 }
+                const resolved = Object.freeze(actions.map((action)=>Object.freeze(Object.assign(Object.assign({}, action), {
+                        target: action.targetId ? this.entity(action.targetId) : undefined
+                    }))));
                 return Object.freeze({
                     player: event.player,
-                    actions,
+                    actions: resolved,
                     serverPosition: Object.freeze({
                         x: position.x,
                         y: position.y,
@@ -24891,11 +24897,14 @@ class AnticheatScript {
                 clientMessage: (message)=>{
                     let allow = true;
                     let active = true;
+                    let reason = "map-rule";
                     try {
                         const sample = JSON.parse(message.payload);
                         const target = player(message.playerId);
-                        if (!target || !this.messageListeners.size) allow = false;
-                        else {
+                        if (!target || !this.messageListeners.size) {
+                            allow = false;
+                            reason = "player-unavailable";
+                        } else {
                             const event = Object.freeze({
                                 player: target,
                                 protocol: sample.protocol,
@@ -24906,8 +24915,11 @@ class AnticheatScript {
                                     source: 'client-message',
                                     serverTick: sample.serverTick,
                                     mode: sample.mode,
-                                    reject: ()=>{
-                                        if (active) allow = false;
+                                    reject: (value)=>{
+                                        if (active) {
+                                            allow = false;
+                                            reason = typeof value === "string" && value ? value.slice(0, 128) : "map-rule";
+                                        }
                                     }
                                 })
                             });
@@ -24920,35 +24932,42 @@ class AnticheatScript {
                                     const result = listener(event);
                                     if (result && typeof result.then === 'function') {
                                         allow = false;
+                                        reason = "async-listener";
                                         Promise.resolve(result).catch(log);
                                         log(new Error('world.anticheat.onMessage 必须同步处理，不能 await'));
                                     }
                                 } catch (error) {
                                     allow = false;
+                                    reason = "listener-error";
                                     log(error);
                                 }
                             }
                         }
                     } catch (error) {
                         allow = false;
+                        reason = "listener-error";
                         log(error);
                     } finally{
                         active = false;
                         this.protocol.server.message.messageDecision({
                             handle: message.handle,
                             playerId: message.playerId,
-                            allow
+                            allow,
+                            reason: allow ? "" : reason
                         });
                     }
                 },
                 movement: (message)=>{
                     let allow = true;
                     let active = true;
+                    let reason = "map-rule";
                     try {
                         const sample = JSON.parse(message.payload);
                         const target = player(message.playerId);
-                        if (!target || sample.playerId !== message.playerId || !this.listeners.size) allow = false;
-                        else {
+                        if (!target || sample.playerId !== message.playerId || !this.listeners.size) {
+                            allow = false;
+                            reason = "player-unavailable";
+                        } else {
                             const event = Object.freeze({
                                 player: target,
                                 from: Object.freeze(Object.assign({}, sample.from)),
@@ -24963,8 +24982,11 @@ class AnticheatScript {
                                     inputTick: sample.inputTick,
                                     serverTick: sample.serverTick,
                                     mode: sample.mode,
-                                    reject: ()=>{
-                                        if (active) allow = false;
+                                    reject: (value)=>{
+                                        if (active) {
+                                            allow = false;
+                                            reason = typeof value === "string" && value ? value.slice(0, 128) : "map-rule";
+                                        }
                                     }
                                 })
                             });
@@ -24975,24 +24997,28 @@ class AnticheatScript {
                                     const result = listener(event);
                                     if (result && typeof result.then === 'function') {
                                         allow = false;
+                                        reason = "async-listener";
                                         Promise.resolve(result).catch(log);
                                         log(new Error('world.anticheat.onMovement 必须同步处理，不能 await'));
                                     }
                                 } catch (error) {
                                     allow = false;
+                                    reason = "listener-error";
                                     log(error);
                                 }
                             }
                         }
                     } catch (error) {
                         allow = false;
+                        reason = "listener-error";
                         log(error);
                     } finally{
                         active = false;
                         this.protocol.server.message.decision({
                             handle: message.handle,
                             playerId: message.playerId,
-                            allow
+                            allow,
+                            reason: allow ? "" : reason
                         });
                     }
                 }

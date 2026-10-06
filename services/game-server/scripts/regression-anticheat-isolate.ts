@@ -91,6 +91,42 @@ async function main() {
         actionAllowed:replies[replies.length-1].allow,mask:masks[masks.length-1]});
     }`);
     assert.deepEqual(JSON.parse(observerResult as string), { movementAllowed: true, actionAllowed: true, mask: 64 });
+    // Exercise the configurable policy in the real script isolation runtime.
+    await context.eval(`
+      api.initialize();scriptTick=10;
+      const joins=[],leaves=[];let reportCallback,remoteReply;
+      const demoEntity={id:'alice',player:alice,position:{x:1,y:2,z:3}};
+      world.onPlayerJoin=fn=>{joins.push(fn);return {cancel(){}}};
+      world.onPlayerLeave=fn=>{leaves.push(fn);return {cancel(){}}};
+      world.onPress=()=>({cancel(){}});
+      world.raycast=()=>({hit:false,distance:-1});
+      class GameVector3 {constructor(x,y,z){this.x=x;this.y=y;this.z=z}}
+      const remoteChannel={onServerEvent:fn=>reportCallback=fn,
+        sendClientEvent:(entity,value)=>remoteReply=value};
+    `);
+    await context.eval('(() => {' + fs.readFileSync(path.resolve(__dirname, '../../../docs/examples/anticheat-policy.js'), 'utf8') + fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat-policy-isolate.js'), 'utf8') + '})();');
+    const demoResult = await context.eval(`{
+      for(const join of joins)join({entity:demoEntity});
+      scriptTick=60;
+      handlers.movement({handle:70,playerId:1,payload:JSON.stringify({playerId:1,
+        from:{x:1,y:2,z:3},to:{x:1,y:2,z:3},elapsedMs:16,
+        velocity:{from:{x:0,y:0,z:0},to:{x:0,y:0.5,z:0}},inputTick:999,serverTick:60,mode:'play'})});
+      const movementAllowed=replies.at(-1).allow;
+      const normal={...click,position:[1,2,3],rayOrigin:[1,2,3],rayTime:-1,rayHitEntity:0};
+      emit('input',{input:{bodies:[]},events:[normal]});
+      const firstAllowed=replies.at(-1).allow;
+      emit('input',{input:{bodies:[]},events:[normal]});
+      const secondAllowed=replies.at(-1).allow;
+      reportCallback({entity:demoEntity,args:{kind:'ac-manual-report',nonce:'probe'}});
+      JSON.stringify({movementAllowed,firstAllowed,secondAllowed,fixture:remoteReply.fixture,
+        ready:remoteReply.ready,score:remoteReply.score,movementRejected:remoteReply.stats.movementRejected,
+        actionRejected:remoteReply.stats.actionRejected});
+    }`);
+    assert.deepEqual(JSON.parse(demoResult as string), {
+      movementAllowed: false, firstAllowed: true, secondAllowed: false, fixture: 'box-ac-policy-v1',
+      ready: true, score: 2, movementRejected: 1, actionRejected: 1,
+    });
+    console.log('Hardened standalone demo passed in isolated-vm: velocity rejection, cross-packet cooldown and read-only report');
     console.log('Anticheat isolate passed: real API, category subscriptions, read-only payloads, rejection and initialization');
   } finally { context?.release(); isolate.dispose(); }
 }

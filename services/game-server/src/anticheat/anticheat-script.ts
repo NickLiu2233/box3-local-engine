@@ -25,17 +25,18 @@ export class AnticheatScript implements GameAnticheat {
       clientMessage: (message) => {
         let allow = true;
         let active = true;
+        let reason = "map-rule";
         try {
           const sample = JSON.parse(message.payload);
           const target = player(message.playerId);
-          if (!target || !this.messageListeners.size) allow = false;
+          if (!target || !this.messageListeners.size) { allow = false; reason = "player-unavailable"; }
           else {
             const event: GameClientMessageEvent = Object.freeze({
               player: target, protocol: sample.protocol, message: sample.message,
               data: freezeData(sample.data), unreliable: sample.unreliable,
               context: Object.freeze({ source: 'client-message' as const,
                 serverTick: sample.serverTick, mode: sample.mode,
-                reject: () => { if (active) allow = false; },
+                reject: (value?: string) => { if (active) { allow = false; reason = typeof value === "string" && value ? value.slice(0, 128) : "map-rule"; } },
               }),
             });
             this.playerIds.set(event, message.playerId);
@@ -44,26 +45,27 @@ export class AnticheatScript implements GameAnticheat {
               try {
                 const result: any = listener(event);
                 if (result && typeof result.then === 'function') {
-                  allow = false;
+                  allow = false; reason = "async-listener";
                   Promise.resolve(result).catch(log);
                   log(new Error('world.anticheat.onMessage 必须同步处理，不能 await'));
                 }
-              } catch (error) { allow = false; log(error); }
+              } catch (error) { allow = false; reason = "listener-error"; log(error); }
             }
           }
-        } catch (error) { allow = false; log(error); }
+        } catch (error) { allow = false; reason = "listener-error"; log(error); }
         finally {
           active = false;
-          this.protocol.server.message.messageDecision({ handle: message.handle, playerId: message.playerId, allow });
+          this.protocol.server.message.messageDecision({ handle: message.handle, playerId: message.playerId, allow, reason: allow ? "" : reason });
         }
       },
       movement: (message) => {
         let allow = true;
         let active = true;
+        let reason = "map-rule";
         try {
           const sample: MovementSample = JSON.parse(message.payload);
           const target = player(message.playerId);
-          if (!target || sample.playerId !== message.playerId || !this.listeners.size) allow = false;
+          if (!target || sample.playerId !== message.playerId || !this.listeners.size) { allow = false; reason = "player-unavailable"; }
           else {
             const event: GameMovementEvent = Object.freeze({
               player: target,
@@ -74,24 +76,24 @@ export class AnticheatScript implements GameAnticheat {
               context: Object.freeze({
                 source: 'client-correction' as const,
                 inputTick: sample.inputTick, serverTick: sample.serverTick, mode: sample.mode,
-                reject: () => { if (active) allow = false; },
+                reject: (value?: string) => { if (active) { allow = false; reason = typeof value === "string" && value ? value.slice(0, 128) : "map-rule"; } },
               }),
             });
             for (const listener of [...this.listeners]) {
               try {
                 const result: any = listener(event);
                 if (result && typeof result.then === 'function') {
-                  allow = false;
+                  allow = false; reason = "async-listener";
                   Promise.resolve(result).catch(log);
                   log(new Error('world.anticheat.onMovement 必须同步处理，不能 await'));
                 }
-              } catch (error) { allow = false; log(error); }
+              } catch (error) { allow = false; reason = "listener-error"; log(error); }
             }
           }
-        } catch (error) { allow = false; log(error); }
+        } catch (error) { allow = false; reason = "listener-error"; log(error); }
         finally {
           active = false;
-          this.protocol.server.message.decision({ handle: message.handle, playerId: message.playerId, allow });
+          this.protocol.server.message.decision({ handle: message.handle, playerId: message.playerId, allow, reason: allow ? "" : reason });
         }
       },
     } });
@@ -157,8 +159,11 @@ export class AnticheatScript implements GameAnticheat {
     if (!actions?.length) return undefined;
     // Actor comes exclusively from the private host message, not candidate target/position fields.
     const position = this.entity(this.playerIds.get(event)!)?.position;
-    if (!position) { event.context.reject(); return undefined; }
-    return Object.freeze({ player: event.player, actions,
+    if (!position) { event.context.reject("player-unavailable"); return undefined; }
+    const resolved = Object.freeze(actions.map(action => Object.freeze({
+      ...action, target: action.targetId ? this.entity(action.targetId) : undefined,
+    })));
+    return Object.freeze({ player: event.player, actions: resolved,
       serverPosition: Object.freeze({ x: position.x, y: position.y, z: position.z }), context: event.context });
   }, MessageSubscription.Action);
   readonly onKeyboard: GameEventChannel<GameAnticheatKeyboardEvent> = (handler) => this.category(handler, keyboardEvent, MessageSubscription.Keyboard);

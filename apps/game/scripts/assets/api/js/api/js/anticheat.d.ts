@@ -23,8 +23,8 @@ interface GameMovementEvent {
         inputTick: number;
         serverTick: number;
         mode: 'edit' | 'play';
-        /** 同步监听回调内调用。拒绝本次位置/速度修正，保留连接和按键输入。 */
-        reject: () => void;
+        /** 同步监听回调内调用。拒绝本次修正；可提供不超过 128 字符的审计原因，不包含凭据。 */
+        reject: (reason?: string) => void;
     }>;
 }
 interface GameAnticheat {
@@ -109,7 +109,7 @@ interface GameClientMessageEvent {
         serverTick: number;
         mode: 'edit' | 'play';
         /** 拒绝当前消息的业务处理；不踢出玩家，不修改其他玩家的数据。 */
-        reject: () => void;
+        reject: (reason?: string) => void;
     }>;
 }
 type AnticheatContext = GameClientMessageEvent['context'];
@@ -124,6 +124,8 @@ interface GameAnticheatAction {
     readonly position: MovementPosition;
     /** 客户端声称的目标 ID，0 表示未指定实体；必须自行校验。 */
     readonly targetId: number;
+    /** 从服务端实体表解析的候选目标；不存在或未指定时为 undefined，不代表命中合法。 */
+    readonly target: GameEntity | undefined;
     readonly ray: Readonly<{
         origin: MovementPosition;
         direction: MovementPosition;

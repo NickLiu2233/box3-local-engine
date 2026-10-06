@@ -683,7 +683,8 @@ async function main() {
     // as block_info remain in the immutable bundled data directory and are a
     // read-only fallback, matching the shared content layer used by Boxes.
     BOX_BUNDLED_CONTENT_PATH:
-      process.env.BOX_BUNDLED_CONTENT_PATH || path.join(defaultDataRoot, 'blobs'),
+      process.env.BOX_BUNDLED_CONTENT_PATH ||
+      path.join(process.env.BOX_LOCAL_TEMPLATE_DATA_PATH || defaultDataRoot, 'blobs'),
     NODE_ENV: production ? 'production' : 'development',
   }
 
@@ -711,6 +712,7 @@ async function main() {
           // serving this project. Creator launches often run edit-only, so
           // the play port is intentionally unavailable in that mode.
           OSS_CDN_URL: `http://127.0.0.1:${port}`,
+          BOX_ANTICHEAT_AUDIT_PATH: path.join(defaultDataRoot, 'anticheat-audit'),
           METHOD: 'local',
           MODE: mode,
           // Creator and Play sessions are authenticated by Player Service.
@@ -839,6 +841,7 @@ async function main() {
         stdio: 'inherit',
         env: {
           ...sharedEnv,
+          BOX_ANTICHEAT_AUDIT_PATH: path.join(defaultDataRoot, 'anticheat-audit'),
           METHOD: 'local',
           MODE: 'play',
           LOGIN: '',

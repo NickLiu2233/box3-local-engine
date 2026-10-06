@@ -16,11 +16,12 @@ function fixture() {
   let receive: (message: any) => void;
   const replies: any[] = [], masks: number[] = [], errors: unknown[] = [];
   const actor = { position: { x: 1, y: 2, z: 3 } };
+  const target = { id: 'target', position: { x: 4, y: 2, z: 3 } };
   const api = new AnticheatScript({ protocol: () => ({
     configure: (value: any) => { receive = value.message.clientMessage; },
     server: { message: { listenMessages: (mask: number) => masks.push(mask),
       messageDecision: (reply: any) => replies.push(reply) } },
-  }) } as any, () => ({ name: 'sender' }) as any, error => errors.push(error), id => id === 1 ? actor as any : undefined);
+  }) } as any, () => ({ name: 'sender' }) as any, error => errors.push(error), id => id === 1 ? actor as any : id === 2 ? target as any : undefined);
   const send = (events: any[]) => {
     receive!({ handle: replies.length, playerId: 1, payload: JSON.stringify({
       protocol: 'game-net', message: 'input', serverTick: 42, mode: 'play', unreliable: false,
@@ -32,8 +33,19 @@ function fixture() {
     position: [900, 900, 900], rayOrigin: [900, 900, 900], rayDirection: [1, 0, 0],
     rayHitNormal: [0, 1, 0], rayTime: 0, rayHitEntity: 2,
     rayHitVoxelX: 5, rayHitVoxelY: 6, rayHitVoxelZ: 7 });
-  return { api, send, click, actor, masks, errors };
+  return { api, send, click, actor, target, masks, errors };
 }
+
+test('action target resolves only through the server entity registry', () => {
+  const f = fixture();
+  const resolved: unknown[] = [];
+  f.api.onAction(event => { resolved.push(event.actions[0].target); });
+  assert.equal(f.send([f.click()]), true);
+  assert.equal(resolved[0], f.target);
+  const unknown = f.click(); unknown.rayHitEntity = 999;
+  assert.equal(f.send([unknown]), true);
+  assert.equal(resolved[1], undefined);
+});
 
 test('forged ray origin is observable independently of continuous input flags', () => {
   const f = fixture();

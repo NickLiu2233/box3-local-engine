@@ -6,8 +6,8 @@ export const AnticheatProtocol = {
     initialized: new MuVoid(),
     listen: new MuBoolean(),
     listenMessages: new MuUint32(),
-    messageDecision: new MuStruct({ handle: new MuUint32(), playerId: new MuUint32(), allow: new MuBoolean() }),
-    decision: new MuStruct({ handle: new MuUint32(), playerId: new MuUint32(), allow: new MuBoolean() }),
+    messageDecision: new MuStruct({ handle: new MuUint32(), playerId: new MuUint32(), allow: new MuBoolean(), reason: new MuUTF8() }),
+    decision: new MuStruct({ handle: new MuUint32(), playerId: new MuUint32(), allow: new MuBoolean(), reason: new MuUTF8() }),
   },
   client: {
     movement: new MuStruct({ handle: new MuUint32(), playerId: new MuUint32(), payload: new MuUTF8() }),

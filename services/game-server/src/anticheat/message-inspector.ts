@@ -1,5 +1,6 @@
 import type { MuServer, MuIncomingMessage } from '@box/mudb/server';
 import { GameConnectionState, GameServerState } from '../game-server-schema';
+import { auditRejection } from './audit';
 import { MessageGate } from './message-gate';
 
 const secretField = /password|authorization|cookie|secret|token|sessionid|ipaddress|devicehash|privatekey/i;
@@ -26,7 +27,7 @@ function publicData(data: any, depth = 0): any {
 
 export class MessageInspector {
   private gate = new MessageGate();
-  constructor(private server: MuServer, private state: GameServerState) {}
+  constructor(private server: MuServer, private state: GameServerState, private audit: (record: object) => void = () => {}) {}
   listen(send?: (handle: number, playerId: number, payload: string) => void,
     observes: (event: MuIncomingMessage) => boolean = () => true) {
     this.gate.reset();
@@ -35,7 +36,7 @@ export class MessageInspector {
       this.inspect(event, send, complete);
     } : undefined;
   }
-  decide(handle: number, playerId: number, allow: boolean) { this.gate.decide(handle, playerId, allow); }
+  decide(handle: number, playerId: number, allow: boolean, reason?: string) { this.gate.decide(handle, playerId, allow, reason); }
   private inspect(event: MuIncomingMessage, send: (handle: number, playerId: number, payload: string) => void, complete: (allow: boolean) => void) {
     const connection = this.state.connections[event.sessionId];
     // Only connection maintenance may run without an authenticated, joined player.
@@ -46,6 +47,13 @@ export class MessageInspector {
     }
     const playerId = connection.id;
     const principal = connection.sessionData?.user?.id;
+    const identity = { playerId, userId: principal || null, name: connection.sessionData?.user?.displayname || null };
+    const finish = (allow: boolean, reason?: string) => {
+      if (!allow) this.audit(auditRejection(identity, 'message', reason, {
+        protocol: event.protocol, message: event.message, serverTick: this.state.clock.tick,
+      }));
+      complete(allow);
+    };
     let payload: string;
     try {
       payload = JSON.stringify({
@@ -53,11 +61,12 @@ export class MessageInspector {
         serverTick: this.state.clock.tick, mode: process.env.MODE === 'edit' ? 'edit' : 'play',
       });
       if (payload.length > 16384) throw new Error('Message inspection payload too large');
-    } catch { complete(false); return; }
-    this.gate.submit(playerId, (handle) => send(handle, playerId, payload), (allow) => {
+    } catch { finish(false, 'invalid-inspection-payload'); return; }
+    this.gate.submit(playerId, (handle) => send(handle, playerId, payload), (allow, reason) => {
       const current = this.state.connections[event.sessionId];
-      complete(allow && !!current && current === connection && current.id === playerId &&
-        current.sessionData?.user?.id === principal && current.state === GameConnectionState.CONNECTED);
+      const valid = !!current && current === connection && current.id === playerId &&
+        current.sessionData?.user?.id === principal && current.state === GameConnectionState.CONNECTED;
+      finish(allow && valid, valid ? reason : 'connection-changed');
     });
   }
 }
