@@ -61,7 +61,10 @@ for (const [name, declarations] of [
   const probe = new ScriptTypeProbe(declarations);
   try {
     const anticheat = probe.completions('world.anticheat.');
-    for (const method of ['onMovement', 'onMessage', 'onInput', 'onAction', 'onKeyboard', 'onInteract', 'onCustomEvent', 'onUIEvent']) assert.ok(anticheat.includes(method), `${name}: missing anticheat ${method}`);
+    for (const method of ['createTracker', 'onMovement', 'onMessage', 'onInput', 'onAction', 'onKeyboard', 'onInteract', 'onCustomEvent', 'onUIEvent']) assert.ok(anticheat.includes(method), `${name}: missing anticheat ${method}`);
+    assert.equal(probe.diagnostics('const tracker = world.anticheat.createTracker({historySize:32,decayPerTick:0}); world.anticheat.onMovement(({player,to,context}) => { tracker.record(player,{x:to.x}); tracker.addScore(player,1); console.log(tracker.getHistory(player),tracker.getScore(player),tracker.serverTick); tracker.exempt(player,{ticks:10,reason:"server skill"}); if(!tracker.isExempt(player)) context.reject(); tracker.clearExemption(player); tracker.resetScore(player); tracker.clear(player); });').length, 0, `${name}: tracker example has type errors`);
+    assert.ok(probe.diagnostics('const tracker = world.anticheat.createTracker(); tracker.serverTick = 999;').length > 0, `${name}: tracker clock must be read-only`);
+    assert.ok(probe.diagnostics('const tracker = world.anticheat.createTracker(); tracker.getHistory(world.querySelector("player").player).push({serverTick:999,data:null});').length > 0, `${name}: tracker history must be read-only`);
     assert.equal(probe.diagnostics('world.anticheat.onAction(({actions,serverPosition,context}) => { for (const action of actions) { if (action.pressed && action.ray.origin.x - serverPosition.x > 10) context.reject(); console.log(action.targetId,action.ray.voxel,action.button); } });').length, 0, `${name}: action example has type errors`);
     assert.ok(probe.diagnostics('world.anticheat.onAction(({actions}) => { actions[0].ray.origin.x = 99; });').length > 0, `${name}: action data must be read-only`);
     assert.equal(probe.diagnostics('world.anticheat.onInput(({buttons, context}) => { if(buttons.fly) context.reject(); }); world.anticheat.onKeyboard(({pressed,released}) => console.log(pressed,released)); world.anticheat.onInteract(({target}) => { if(target) console.log(target.id); }); world.anticheat.onCustomEvent(({data,context}) => { console.log(data); context.reject(); });').length, 0, `${name}: categorized anticheat examples have type errors`);
@@ -97,3 +100,14 @@ for (const [name, declarations] of [
     console.log(`${name}: moderation methods, option fields, signature, Chinese documentation and removed scope validation passed`);
   } finally { probe.dispose(); }
 }
+
+const clientProbe = new ScriptTypeProbe({
+  'client-api.d.ts': fs.readFileSync(path.join(root, 'packages/script-api/dts/client-api-types.dts'), 'utf8'),
+});
+try {
+  const clientWorld = clientProbe.completions('world.');
+  assert.ok(clientWorld.includes('rendering3d'), 'probe must resolve the real ClientWorld, not an unknown identifier');
+  assert.ok(!clientWorld.includes('anticheat'), 'client script must not expose GameAnticheat');
+  assert.ok(clientProbe.diagnostics('world.anticheat.createTracker();').length > 0, 'client script must not accept tracker calls');
+  console.log('client SDK: server anticheat and tracker APIs are unavailable');
+} finally { clientProbe.dispose(); }

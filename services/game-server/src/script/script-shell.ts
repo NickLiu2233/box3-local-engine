@@ -989,7 +989,8 @@ export class ScriptShell {
     const anticheat = new AnticheatScript(this.client,
       id => this.world.entity.entityIndex.get(id)?.entity.player,
       error => this.sysLog('error', error, 'Anticheat listener failed.'),
-      id => this.world.entity.entityIndex.get(id)?.entity);
+      id => this.world.entity.entityIndex.get(id)?.entity,
+      () => this.prevTickEvent.state.tick);
     this.world.world.anticheat = anticheat;
     this.api = createScriptAPI({
       // world.moderation is installed before any user code is evaluated.

@@ -98,6 +98,8 @@ interface GameMovementEvent {
     }>;
 }
 interface GameAnticheat {
+    /** 创建一份规则独享的服务端玩家记录；不自动订阅、拒绝、处罚或改变引擎权限。 */
+    readonly createTracker: (options?: GameAnticheatTrackerOptions) => GameAnticheatTracker;
     /** 检查输入消息中的逐次主/副操作（点击、攻击、放置等），不是连续按键状态。仅服务端可用。 */
     readonly onAction: GameEventChannel<GameAnticheatActionEvent>;
     /** 连续移动控制：跳跃、奔跑、飞行等按键状态；拒绝会丢弃整个输入消息。 */
@@ -122,6 +124,48 @@ interface GameAnticheat {
 type ClientMessageData = null | boolean | number | string | readonly ClientMessageData[] | {
     readonly [key: string]: ClientMessageData;
 };
+interface GameAnticheatTrackerOptions {
+    /** 每位玩家保留的最新记录数，默认 32；允许 1～256，这是存储上限，不是玩法阈值。 */
+    readonly historySize?: number;
+    /** 每个服务端脚本 tick 扣减的分数；默认 0（不自动衰减）。只决定记分，不决定处罚。 */
+    readonly decayPerTick?: number;
+}
+interface GameAnticheatHistoryEntry {
+    /** 由服务端脚本时钟写入；record 不接受客户端 tick 参数。 */
+    readonly serverTick: number;
+    /** JSON 格式的独立只读快照；不是实际命中或作弊的证明。 */
+    readonly data: ClientMessageData;
+}
+interface GameAnticheatExemption {
+    /** 服务端脚本 tick 达到此值时失效，不受浏览器时间或客户端 tick 控制。 */
+    readonly untilTick: number;
+    readonly reason: string;
+}
+interface GameAnticheatTracker {
+    /** 当前服务端脚本 tick，不使用浏览器时间。 */
+    readonly serverTick: number;
+    /** 图主主动记录样本，不自动采集；只接受 JSON 数据，不传整个 player/entity/context。 */
+    readonly record: (player: GamePlayer, data: ClientMessageData) => GameAnticheatHistoryEntry;
+    /** 按时间顺序返回已保留的最新记录；有容量上限，不等于全部请求历史。 */
+    readonly getHistory: (player: GamePlayer) => readonly GameAnticheatHistoryEntry[];
+    /** 累计本规则的异常分数并返回当前值；amount 必须是非负有限数值，不会自动处罚。 */
+    readonly addScore: (player: GamePlayer, amount: number) => number;
+    /** 根据本规则的 decayPerTick 计算当前分数，最低 0。 */
+    readonly getScore: (player: GamePlayer) => number;
+    /** 只重置分数，保留历史和本规则的临时豁免。 */
+    readonly resetScore: (player: GamePlayer) => void;
+    /** 设置本规则的临时豁免；ticks 为正整数。只保存标记，图主自行决定跳过哪些检查。 */
+    readonly exempt: (player: GamePlayer, options: Readonly<{
+        ticks: number;
+        reason?: string;
+    }>) => void;
+    /** 查询本规则的豁免；绝不跳过引擎身份、所有权或消息一致性检查。 */
+    readonly isExempt: (player: GamePlayer) => boolean;
+    readonly getExemption: (player: GamePlayer) => GameAnticheatExemption | undefined;
+    readonly clearExemption: (player: GamePlayer) => void;
+    /** 清空某位玩家，或不传 player 清空本规则的历史、分数和豁免；不会撤销引擎检查。 */
+    readonly clear: (player?: GamePlayer) => void;
+}
 interface GameClientMessageEvent {
     readonly player: GamePlayer;
     /** 引擎注册的协议名和消息名，非客户端自报。 */

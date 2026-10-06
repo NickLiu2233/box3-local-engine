@@ -24620,8 +24620,161 @@ function actionData(event) {
     return Object.freeze(actions);
 }
 
+function trackerSnapshot(data) {
+    let nodes = 0;
+    const clone = (value, depth)=>{
+        if (++nodes > 2048 || depth > 16) throw new Error('反作弊记录过大或嵌套过深');
+        if (value === null || typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+            if (value.length > 16384) throw new Error('单条反作弊记录过大');
+            return value;
+        }
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+        if (!value || typeof value !== 'object') throw new Error('反作弊记录只接受有限数值和 JSON 数据');
+        if (Array.isArray(value)) {
+            if (value.length > 2048) throw new Error('反作弊记录数组过大');
+            return Object.freeze(Array.from({
+                length: value.length
+            }, (_, index)=>{
+                const property = Object.getOwnPropertyDescriptor(value, index);
+                if (!property || !('value' in property)) throw new Error('反作弊记录数组不接受空项或 getter/setter');
+                return clone(property.value, depth + 1);
+            }));
+        }
+        const prototype = Object.getPrototypeOf(value);
+        if (prototype !== Object.prototype && prototype !== null) throw new Error('请记录必要字段，不要传入玩家、实体或其他类实例');
+        const fields = Object.getOwnPropertyDescriptors(value);
+        return Object.freeze(Object.fromEntries(Object.entries(fields).map(([key, property])=>{
+            if (!('value' in property)) throw new Error('反作弊记录不接受 getter/setter');
+            return [
+                key,
+                clone(property.value, depth + 1)
+            ];
+        })));
+    };
+    const snapshot = clone(data, 0);
+    if (JSON.stringify(snapshot).length > 16384) throw new Error('单条反作弊记录不能超过 16384 个字符');
+    return snapshot;
+}
+
+class PlayerTracker {
+    get serverTick() {
+        const tick = this.clock();
+        if (!Number.isSafeInteger(tick) || tick < 0) throw new Error('反作弊服务端时钟不可用');
+        this.lastTick = Math.max(this.lastTick, tick);
+        return this.lastTick;
+    }
+    record(player, data) {
+        var _a;
+        const entry = Object.freeze({
+            serverTick: this.serverTick,
+            data: trackerSnapshot(data)
+        });
+        const history = (_a = this.records.get(player)) !== null && _a !== void 0 ? _a : [];
+        history.push(entry);
+        if (history.length > this.historySize) history.shift();
+        this.records.set(player, history);
+        return entry;
+    }
+    getHistory(player) {
+        var _a;
+        return Object.freeze([
+            ...(_a = this.records.get(player)) !== null && _a !== void 0 ? _a : []
+        ]);
+    }
+    getScore(player) {
+        const score = this.scores.get(player);
+        if (!score) return 0;
+        const now = this.serverTick;
+        score.value = Math.max(0, score.value - (now - score.tick) * this.decayPerTick);
+        score.tick = now;
+        return score.value;
+    }
+    addScore(player, amount) {
+        if (!Number.isFinite(amount) || amount < 0) throw new Error('异常分数必须是非负有限数值');
+        const value = this.getScore(player) + amount;
+        if (!Number.isFinite(value)) throw new Error('异常分数超出有效范围');
+        this.scores.set(player, {
+            value,
+            tick: this.serverTick
+        });
+        return value;
+    }
+    resetScore(player) {
+        this.scores.delete(player);
+    }
+    exempt(player, options) {
+        var _a;
+        if (!Number.isSafeInteger(options === null || options === void 0 ? void 0 : options.ticks) || options.ticks < 1) throw new Error('豁免 ticks 必须是正整数');
+        const reason = (_a = options.reason) !== null && _a !== void 0 ? _a : '';
+        if (typeof reason !== 'string' || reason.length > 256) throw new Error('豁免 reason 必须是不超过 256 个字符的字符串');
+        const untilTick = this.serverTick + options.ticks;
+        if (!Number.isSafeInteger(untilTick)) throw new Error('豁免时间超出有效范围');
+        this.exemptions.set(player, Object.freeze({
+            untilTick,
+            reason
+        }));
+    }
+    getExemption(player) {
+        const exemption = this.exemptions.get(player);
+        if (exemption && this.serverTick >= exemption.untilTick) {
+            this.exemptions.delete(player);
+            return undefined;
+        }
+        return exemption;
+    }
+    isExempt(player) {
+        return this.getExemption(player) !== undefined;
+    }
+    clearExemption(player) {
+        this.exemptions.delete(player);
+    }
+    clear(player) {
+        if (player) {
+            this.records.delete(player);
+            this.scores.delete(player);
+            this.exemptions.delete(player);
+        } else {
+            this.records = new WeakMap();
+            this.scores = new WeakMap();
+            this.exemptions = new WeakMap();
+        }
+    }
+    constructor(options, clock){
+        var _a, _b;
+        this.clock = clock;
+        this.records = new WeakMap();
+        this.scores = new WeakMap();
+        this.exemptions = new WeakMap();
+        this.lastTick = 0;
+        const size = (_a = options.historySize) !== null && _a !== void 0 ? _a : 32;
+        if (!Number.isInteger(size) || size < 1 || size > 256) throw new Error('historySize 必须是 1～256 的整数');
+        this.historySize = size;
+        const decay = (_b = options.decayPerTick) !== null && _b !== void 0 ? _b : 0;
+        if (!Number.isFinite(decay) || decay < 0) throw new Error('decayPerTick 必须是非负有限数值');
+        this.decayPerTick = decay;
+    }
+}
+class TrackerFactory {
+    create(options = {}) {
+        if (this.trackers.size >= 64) throw new Error('每个脚本最多创建 64 个反作弊记录器');
+        const tracker = new PlayerTracker(options, this.clock);
+        this.trackers.add(tracker);
+        return tracker;
+    }
+    reset() {
+        for (const tracker of this.trackers)tracker.clear();
+        this.trackers.clear();
+    }
+    constructor(clock){
+        this.clock = clock;
+        this.trackers = new Set();
+    }
+}
+
 class AnticheatScript {
     initialize() {
+        this.trackers.reset();
         this.listeners.clear();
         this.messageListeners.clear();
         this.sentMessageMask = 0;
@@ -24660,7 +24813,7 @@ class AnticheatScript {
             if (value) return handler(value);
         }, mask);
     }
-    constructor(client, player, log, entity = ()=>undefined){
+    constructor(client, player, log, entity = ()=>undefined, clock = ()=>0){
         this.entity = entity;
         this.listeners = new Set();
         this.messageListeners = new Map();
@@ -24680,6 +24833,7 @@ class AnticheatScript {
                 if (!this.listeners.size) this.protocol.server.message.listen(false);
             }, enable, ()=>this.listeners.has(listener));
         };
+        this.createTracker = (options)=>this.trackers.create(options);
         this.onMessage = (handler)=>this.subscribeMessage(handler, MessageSubscription.All);
         this.onInput = (handler)=>this.category(handler, inputEvent, MessageSubscription.Input);
         this.onAction = (handler)=>this.category(handler, (event)=>{
@@ -24730,6 +24884,7 @@ class AnticheatScript {
                     context: event.context
                 }) : undefined;
             }, MessageSubscription.UI);
+        this.trackers = new TrackerFactory(clock);
         this.protocol = client.protocol(AnticheatProtocol);
         this.protocol.configure({
             message: {
@@ -34495,7 +34650,7 @@ class ScriptShell {
         }, (error)=>this.sysLog('error', error, 'Anticheat listener failed.'), (id)=>{
             var _a;
             return (_a = this.world.entity.entityIndex.get(id)) === null || _a === void 0 ? void 0 : _a.entity;
-        });
+        }, ()=>this.prevTickEvent.state.tick);
         this.world.world.anticheat = anticheat;
         this.api = createScriptAPI({
             scheduler: this.scheduler.scheduler,

@@ -111,6 +111,11 @@ test('action rejection crosses real public/private transports before the engine 
   try {
     await new Promise<void>((resolve, fail) => scripts.start({ ready: () => script.start({ ready: error => error ? fail(new Error(error)) : resolve() }) }));
     api.initialize();
+    const tracker = api.createTracker();
+    api.onAction(event => {
+      tracker.exempt(event.player, { ticks: 100, reason: 'one map rule only' });
+      assert.equal(tracker.isExempt(event.player), true);
+    });
     api.onAction(event => { observed++; if (reject) event.context.reject(); });
     api.finishInitialization();
     await waitFor(() => !!game.messageGuard, 'subscription');
@@ -124,7 +129,7 @@ test('action rejection crosses real public/private transports before the engine 
     protocol.server.message.input(packet);
     await waitFor(() => observed === 1, 'rejection');
     await new Promise(resolve => setTimeout(resolve, 10));
-    assert.equal(state.events.net.length, 0, 'reject must stop actual engine dispatch, not merely notify');
+    assert.equal(state.events.net.length, 0, 'a tracker exemption cannot override another listener rejection or actual engine dispatch');
     reject = false;
     protocol.server.message.input(packet);
     await waitFor(() => state.events.net.length === 1, 'approval');

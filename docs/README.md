@@ -1,6 +1,6 @@
 # BOX3 Local Engine 文档中心
 
-根目录 [README](../README.md) 说明当前 `0.2.0` 产品范围、支持平台和最短启动方式。本目录按实际任务拆分专题；部署者不需要从头读完，也不要同时照着多份部署文档执行。
+根目录 [README](../README.md) 说明当前 `0.3.0` 产品范围、支持平台和最短启动方式。本目录按实际任务拆分专题；部署者不需要从头读完，也不要同时照着多份部署文档执行。
 
 ## 推荐阅读顺序
 
@@ -15,6 +15,7 @@
 | 部署 VOXA                    | [VOXA 部署](./voxa-deployment.md)                                      | [地图作品与资源边界](./projects.md)                                                                                                      |
 | 接入登录、玩家账号或后台管理 | [玩家身份与后台管理](./player-identity.md)                             | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
 | 授权地图脚本及查询处罚       | [地图授权与脚本处罚 API](./script-moderation.md)                       | [玩家身份与后台管理](./player-identity.md)                                                                                               |
+| 编写地图反作弊规则           | [反作弊入门与记录器](./anticheat-toolkit.md)                           | [事件接口](./script-anticheat.md)、[可运行示例](./examples/README.md)、[验证记录](./anticheat-test-report.md) |
 | 配置 PostgreSQL/Redis        | [配置参考](./configuration-reference.md)                               | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md)                                           |
 | 开发或修复代码               | [开发者与协作手册](./developer-guide.md)                               | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                                                              |
 | 开发后台管理                 | [管理后台开发说明](./player-admin-development.md)                      | [后台管理复用索引](./player-admin-code.md)、[Local Engine API 与 Swagger](./local-engine-api.md)                                         |
@@ -46,6 +47,7 @@
 - [管理后台开发说明](./player-admin-development.md)：后台前端模块地图、请求与权限 seam、页面开发约定和验收清单。
 - [后台管理复用索引](./player-admin-code.md)：公共组件、地图目录、业务 Hook、各页面的唯一实现位置。
 - [地图授权与脚本处罚 API](./script-moderation.md)：服主授权、单个/批量封禁、设备封禁、处罚查询和脚本安全记录。
+- [地图反作弊规则](./anticheat-toolkit.md)：服务端历史、异常分数、临时豁免与图主自定义规则；[事件接口](./script-anticheat.md)和[使用示例](./examples/README.md)分别介绍数据和接入方式。
 - [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
 - [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。
 - [个人学习许可证](./licensing.md)：服主侧的申请、设备绑定和运行门禁，以及仅供运营方使用的本机离线签发器。

@@ -7,6 +7,8 @@ import type { MovementSample } from './movement-inspector';
 import { inputEvent, keyboardEvent, interactionData, customData, uiData } from './message-categories';
 import { MessageSubscription } from './message-subscriptions';
 import { actionData } from './action-data';
+import { TrackerFactory } from './player-tracker';
+import type { GameAnticheatTrackerOptions } from '@box/schema/api/js/anticheat';
 
 export class AnticheatScript implements GameAnticheat {
   private listeners = new Set<(event: GameMovementEvent) => void>();
@@ -14,8 +16,10 @@ export class AnticheatScript implements GameAnticheat {
   private sentMessageMask = 0;
   private playerIds = new WeakMap<GameClientMessageEvent, number>();
   private protocol;
+  private trackers: TrackerFactory;
   constructor(client: MuClient, player: (id: number) => GamePlayer | undefined, log: (error: unknown) => void,
-    private entity: (id: number) => GameEntity | undefined = () => undefined) {
+    private entity: (id: number) => GameEntity | undefined = () => undefined, clock: () => number = () => 0) {
+    this.trackers = new TrackerFactory(clock);
     this.protocol = client.protocol(AnticheatProtocol);
     this.protocol.configure({ message: {
       clientMessage: (message) => {
@@ -109,12 +113,14 @@ export class AnticheatScript implements GameAnticheat {
   };
   /** Internal initialization messages, sent before/after evaluating the entry module. */
   initialize() {
+    this.trackers.reset();
     this.listeners.clear(); this.messageListeners.clear();
     this.sentMessageMask = 0;
     this.protocol.server.message.listen(false);
     this.protocol.server.message.listenMessages(0);
   }
   finishInitialization() { this.protocol.server.message.initialized(undefined); }
+  readonly createTracker = (options?: GameAnticheatTrackerOptions) => this.trackers.create(options);
   readonly onMessage = (handler: (event: GameClientMessageEvent) => void) => this.subscribeMessage(handler, MessageSubscription.All);
   private notifyMessageMask() {
     let mask = 0;

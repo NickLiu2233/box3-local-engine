@@ -20,6 +20,12 @@ license/
 apps/deployment-manager/src-tauri/target
 **/target
 
+# Player desktop installers are unrelated to engine containers. Keep local
+# Electron bundles out of COPY . . without deleting the user's packages.
+apps/player-launcher/release-electron/
+apps/player-launcher/dist-electron/
+apps/player-launcher/dist/
+
 # Creator workspaces and editable exports never belong in an image build
 # context. They are transferred only through the explicit project import/export
 # workflow or mounted as runtime data.

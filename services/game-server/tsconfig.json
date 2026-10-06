@@ -22,7 +22,8 @@
     "skipLibCheck": true,
     "jsx": "react",
     "preserveConstEnums": false,
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "rootDir": "."
   },
   "ts-node": {
     "files": true

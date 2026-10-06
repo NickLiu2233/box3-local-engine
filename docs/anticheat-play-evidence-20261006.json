@@ -1,0 +1,803 @@
+{
+  "date": "2026-10-06",
+  "mode": "play",
+  "verdict": "passed",
+  "reports": [
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-baseline",
+      "stats": {
+        "movements": 745,
+        "movementRejected": 0,
+        "actions": 0,
+        "actionRejected": 0,
+        "duplicatePackets": 0
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 0,
+      "history": [
+        {
+          "serverTick": 2475,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2476,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2477,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2478,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2480,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2480,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [],
+      "applied": {
+        "presses": 0
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    },
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-normal-action",
+      "stats": {
+        "movements": 1036,
+        "movementRejected": 0,
+        "actions": 1,
+        "actionRejected": 0,
+        "duplicatePackets": 0
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 0,
+      "history": [
+        {
+          "serverTick": 2772,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2773,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2773,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2775,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2775,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 2776,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "action",
+          "serverTick": 2643,
+          "presses": 1,
+          "score": 0,
+          "last": {
+            "serverTick": 2643,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": false
+            }
+          }
+        }
+      ],
+      "applied": {
+        "presses": 1
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    },
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-stacked-action",
+      "stats": {
+        "movements": 1265,
+        "movementRejected": 0,
+        "actions": 2,
+        "actionRejected": 1,
+        "duplicatePackets": 0
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 1,
+      "history": [
+        {
+          "serverTick": 3003,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3003,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3005,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3006,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3006,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3007,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "action",
+          "serverTick": 2643,
+          "presses": 1,
+          "score": 0,
+          "last": {
+            "serverTick": 2643,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": false
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 2901,
+          "presses": 3,
+          "score": 1,
+          "last": {
+            "serverTick": 2901,
+            "data": {
+              "kind": "action",
+              "presses": 3,
+              "rejected": true
+            }
+          }
+        }
+      ],
+      "applied": {
+        "presses": 1
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    },
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-forged-ray",
+      "stats": {
+        "movements": 1456,
+        "movementRejected": 0,
+        "actions": 3,
+        "actionRejected": 2,
+        "duplicatePackets": 0
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 2,
+      "history": [
+        {
+          "serverTick": 3195,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3196,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3197,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3198,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3198,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3200,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "action",
+          "serverTick": 2643,
+          "presses": 1,
+          "score": 0,
+          "last": {
+            "serverTick": 2643,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": false
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 2901,
+          "presses": 3,
+          "score": 1,
+          "last": {
+            "serverTick": 2901,
+            "data": {
+              "kind": "action",
+              "presses": 3,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 3095,
+          "presses": 1,
+          "score": 2,
+          "last": {
+            "serverTick": 3095,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": true
+            }
+          }
+        }
+      ],
+      "applied": {
+        "presses": 1
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    },
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-teleport",
+      "stats": {
+        "movements": 1733,
+        "movementRejected": 1,
+        "actions": 3,
+        "actionRejected": 2,
+        "duplicatePackets": 0
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 3,
+      "history": [
+        {
+          "serverTick": 3472,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3472,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3473,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3475,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3476,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3476,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "action",
+          "serverTick": 2643,
+          "presses": 1,
+          "score": 0,
+          "last": {
+            "serverTick": 2643,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": false
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 2901,
+          "presses": 3,
+          "score": 1,
+          "last": {
+            "serverTick": 2901,
+            "data": {
+              "kind": "action",
+              "presses": 3,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 3095,
+          "presses": 1,
+          "score": 2,
+          "last": {
+            "serverTick": 3095,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "movement",
+          "serverTick": 3374,
+          "from": {
+            "x": 64,
+            "y": 140,
+            "z": 64
+          },
+          "to": {
+            "x": 1064,
+            "y": 140,
+            "z": 64
+          },
+          "score": 3,
+          "exempt": false
+        }
+      ],
+      "applied": {
+        "presses": 1
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    },
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-duplicate",
+      "stats": {
+        "movements": 1935,
+        "movementRejected": 1,
+        "actions": 3,
+        "actionRejected": 2,
+        "duplicatePackets": 1
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 3,
+      "history": [
+        {
+          "serverTick": 3674,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3676,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3677,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3678,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3678,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3679,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "action",
+          "serverTick": 2643,
+          "presses": 1,
+          "score": 0,
+          "last": {
+            "serverTick": 2643,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": false
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 2901,
+          "presses": 3,
+          "score": 1,
+          "last": {
+            "serverTick": 2901,
+            "data": {
+              "kind": "action",
+              "presses": 3,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 3095,
+          "presses": 1,
+          "score": 2,
+          "last": {
+            "serverTick": 3095,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "movement",
+          "serverTick": 3374,
+          "from": {
+            "x": 64,
+            "y": 140,
+            "z": 64
+          },
+          "to": {
+            "x": 1064,
+            "y": 140,
+            "z": 64
+          },
+          "score": 3,
+          "exempt": false
+        }
+      ],
+      "applied": {
+        "presses": 1
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    },
+    {
+      "kind": "ac-live-report",
+      "nonce": "play-foreign",
+      "stats": {
+        "movements": 2169,
+        "movementRejected": 1,
+        "actions": 3,
+        "actionRejected": 2,
+        "duplicatePackets": 1
+      },
+      "position": {
+        "x": 64,
+        "y": 140,
+        "z": 64
+      },
+      "score": 3,
+      "history": [
+        {
+          "serverTick": 3909,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3910,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3911,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3911,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3913,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        },
+        {
+          "serverTick": 3913,
+          "data": {
+            "kind": "movement",
+            "distance": 0,
+            "rejected": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "kind": "action",
+          "serverTick": 2643,
+          "presses": 1,
+          "score": 0,
+          "last": {
+            "serverTick": 2643,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": false
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 2901,
+          "presses": 3,
+          "score": 1,
+          "last": {
+            "serverTick": 2901,
+            "data": {
+              "kind": "action",
+              "presses": 3,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "action",
+          "serverTick": 3095,
+          "presses": 1,
+          "score": 2,
+          "last": {
+            "serverTick": 3095,
+            "data": {
+              "kind": "action",
+              "presses": 1,
+              "rejected": true
+            }
+          }
+        },
+        {
+          "kind": "movement",
+          "serverTick": 3374,
+          "from": {
+            "x": 64,
+            "y": 140,
+            "z": 64
+          },
+          "to": {
+            "x": 1064,
+            "y": 140,
+            "z": 64
+          },
+          "score": 3,
+          "exempt": false
+        }
+      ],
+      "applied": {
+        "presses": 1
+      },
+      "sentinel": {
+        "x": 20,
+        "y": 4,
+        "z": 16
+      }
+    }
+  ]
+}
