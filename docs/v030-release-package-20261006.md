@@ -1,0 +1,53 @@
+# v0.3.0 更新日志与新版离线包交付记录
+
+构建开始：2026-10-06；完成验证：2026-10-07（北京时间）。平台：macOS ARM64 启动器，Linux ARM64 六服务镜像。
+
+## 更新日志
+
+在启动器“关于 → 更新日志”的 v0.3.0 条目中补充反作弊、行为审计及实时连接改进，并按现有分类格式精简为每类两条。原有 v0.3.0 功能保留在对应分类；v0.2.0 及更早条目未改动。日志面向使用者，省略 API 名称和内部实现，保留地图规则及处罚授权的能力边界。
+
+## 新交付物
+
+目录：`apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/`。旧候选包保留。
+
+- [新版 macOS ARM64 离线启动器](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/BOX-Local-Engine-0.3.0-realtime-rc-20261006-macos-arm64.zip)，约 589 MiB，内置全部六镜像。
+- [新版 Linux ARM64 镜像归档](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/box-local-engine-images-v0.3.0-linux-arm64.tar.gz)，约 585 MiB。
+- [SHA256SUMS](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/SHA256SUMS)。
+- [完整构建及验证证据](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/BUILD-EVIDENCE.json)。
+
+ZIP SHA-256：`33bd0b5755cc2be6eb27a2ad40e80fdd5443a04c4faf317a44780e0509dc3230`。
+
+镜像归档 SHA-256：`eb8c0a6266e47fc07292653d7ca5415b74ade69f9a33b94f678e706c677dd05b`。
+
+六镜像：Player Service、登录门户、管理器、Creator、Play、VOXA；统一标签 `v0.3.0-linux-arm64`。包含本次精简更新日志与最新 HTTPS/WSS 修复。
+
+提交基点：`93e38d736d45e850ba72a48fa1e3948c98dd2c3c`，构建来源 `local-dirty`。源码指纹 `5e7e07be1c254c67e89629eabe4d1a3f21abc72fb487c3d9b2ca7f1941f5f6be`，镜像构建期间未变化。构建开始时源码含未提交修改，该提交号是源码基点。
+
+## 本次实际验证
+
+| 检查 | 结果 |
+| --- | --- |
+| 实时连接与协议回归 | 39 项通过 |
+| 管理器、打包及路由裁剪回归 | 28 项通过 |
+| 本地引擎回归 | 15 组通过 |
+| 管理器界面结构检查及生产构建 | 通过 |
+| 六镜像构建、架构与版本标签 | 通过 |
+| 归档配置摘要及文件系统层与新镜像一致性 | 通过；OCI manifest ID 与配置摘要分别记录 |
+| Creator / Play 新会话 API 及 WSS 逻辑 | 最终镜像内加载与内容检查通过 |
+| Player Service 实时认证 API | 最终镜像内加载通过 |
+| Creator / Play 运行时测试脚本清理 | 确认未带入镜像 |
+| 管理器新日志进入镜像 | 通过，界面资源与桌面构建校验值一致 |
+| 启动器构建及标准包校验 | 通过 |
+| ZIP 解压后复核 | 通过，内置六镜像且归档 SHA-256 正确 |
+| 原生程序架构与签名完整性 | ARM64，通过；签名为 ad-hoc |
+| 现有业务容器 | 容器 ID 未变，未部署新镜像 |
+
+临时解压目录已删除，自动化回归保留。构建使用标准 Dockerfile 和打包脚本，管理器复用本机 ARM64 Rust 工具链。
+
+## 发布状态与验证边界
+
+本包按本地候选构建，校验使用脚本支持的 `BOX_ALLOW_DIRTY_RELEASE=true` 候选模式。默认正式发行校验会拒绝 `local-dirty`，未修改这项规则。macOS 尚未完成 Developer ID 签名及 Apple 公证。
+
+未重新进行公网 TLS 代理端到端、大规模多人和长时间断线容量验收。生产 Next 构建沿用仓库配置，不能代表整仓类型检查通过。此前 `check-standalone.js` 的既有上传调用静态规则问题仍按旧报告记录，本次未将其计为通过。
+
+此前测试与设计详见 [WebSocket 设计与测试记录](ws-polling-audit.md) 和 [反作弊 API 设计书](anticheat-api-design.md)。此前 WS 候选包及其校验值仍见 [旧包记录](ws-package-release-20261006.md)。

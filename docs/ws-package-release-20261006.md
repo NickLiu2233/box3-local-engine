@@ -5,9 +5,9 @@
 ## 交付产物
 
 - 启动器离线包：`BOX-Local-Engine-0.3.0-ws-rc-20261006-macos-arm64.zip`，约 589 MiB；位置 `apps/local-engine/dist/release-candidates/ws-20261006/`。
-- 单独镜像归档：`box-local-engine-images-v0.3.0-linux-arm64.tar.gz`，约 585 MiB；位置 `apps/local-engine/dist/images/`。
+- 单独镜像归档：`box-local-engine-images-v0.3.0-linux-arm64.tar.gz`，约 585 MiB；旧归档已另存于 `apps/local-engine/dist/release-candidates/ws-20261006/`。
 - 完整构建与验证证据：候选目录中的 `BUILD-EVIDENCE.json`。
-- 校验值：候选目录中的 `SHA256SUMS`；第二项镜像归档位于上述 images 目录。
+- 校验值：候选目录中的 `SHA256SUMS`；第二项旧镜像归档现位于同一候选目录。
 
 ZIP SHA-256：`b16d61e2aeba2a4d8a129ade6b9eac1319f4a1e874f7273230069d03f2e801e9`。
 
@@ -52,3 +52,5 @@ ZIP SHA-256：`b16d61e2aeba2a4d8a129ade6b9eac1319f4a1e874f7273230069d03f2e801e9`
 整仓静态检查 `scripts/check-standalone.js` 有一条既有规则未通过：它要求上传接口在 index.ts 内联调用 `runtimeApi().postBlockRaw`，当前实现已委托给 `uploadLocalResource` helper。检查脚本及对应业务代码均与当前 HEAD 相同，此项不是本次 WS 改动引入，也没有将它记为通过。本次打包补充了最终镜像内容、原生程序和解压 ZIP 验证。
 
 本包是未提交源码生成的本地候选，macOS 仅有 ad-hoc 签名，尚未完成 Developer ID 签名与 Apple 公证。未执行公开发布，也未替换现有服务。正式地图的多人、延迟与长时间断线容量验收仍不能用这些构建检查代替。
+
+后续精简更新日志和 HTTPS/WSS 补齐后的重新打包产物，见 [v0.3.0 新包交付记录](v030-release-package-20261006.md)。本记录的旧候选 ZIP、旧归档和校验值均保留。
