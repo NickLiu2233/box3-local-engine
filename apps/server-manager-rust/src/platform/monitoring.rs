@@ -232,3 +232,22 @@ pub(crate) fn service_images() -> Vec<Value> {
     })
     .collect()
 }
+
+/// Shared snapshot for HTTP initial reads and WebSocket sampling.
+pub(crate) fn system_status(app: &App) -> Result<Value, String> {
+                let env = parse_env(&fs::read_to_string(env_path(app)).unwrap_or_default());
+                let (mut docker_ready, docker_version, mut docker_message) = docker_check();
+                let text = if docker_ready {
+                    match compose(app, &["ps", "--all", "--format", "json"]) {
+                        Ok(output) => output,
+                        Err(error) => { docker_ready = false; docker_message = format!("无法读取服务状态：{error}"); String::new() }
+                    }
+                } else {
+                    String::new()
+                };
+                let mut services = services::statuses(&text, &env);
+                if !docker_ready { for service in &mut services { service.state = "unknown".into(); } }
+                Ok(
+                    json!({"dockerReady":docker_ready,"dockerCliAvailable":docker_ready || !docker_message.contains("无法运行 Docker"),"dockerCliVersion":docker_version,"dockerMessage":docker_message,"configured":env_path(app).is_file(),"allHealthy":services.iter().filter(|service|service.enabled).all(|service|service.running),"services":services,"dataDirectory":app.root}),
+                )
+}

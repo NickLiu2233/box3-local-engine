@@ -1,3 +1,4 @@
+import { subscribeRealtime } from '../../../shared/realtime-client';
 import { GetServerSideProps } from 'next';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
@@ -197,21 +198,7 @@ function Home(props: SSRProps) {
   useEffect(() => {
     const mapId = typeof router.query.gameName === 'string' ? router.query.gameName : '';
     if (!mapId || process.env.NEXT_PUBLIC_DEPLOYMENT_MODE === 'creator') return;
-    const send = (method: 'POST' | 'DELETE') => {
-      const request = method === 'POST'
-        ? apiClient.postApiPlayPresenceRaw({ body: { mapId } })
-        : apiClient.deleteApiPlayPresenceRaw({ body: { mapId } })
-      return request.catch(() => undefined)
-    }
-    void send('POST');
-    const timer = window.setInterval(() => void send('POST'), 25_000);
-    const leave = () => void send('DELETE');
-    window.addEventListener('pagehide', leave);
-    return () => {
-      window.clearInterval(timer);
-      window.removeEventListener('pagehide', leave);
-      leave();
-    };
+    return subscribeRealtime('player-presence:' + mapId, { body: { kind: 'player-presence', mapId } }, () => {});
   }, [router.query.gameName]);
 
   // 如果有异常，去异常页面

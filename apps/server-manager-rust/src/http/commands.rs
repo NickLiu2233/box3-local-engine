@@ -378,21 +378,7 @@ pub(crate) async fn command(
                 Ok(Value::Null)
             }
             "get_system_status" => {
-                let env = parse_env(&fs::read_to_string(env_path(&app)).unwrap_or_default());
-                let (mut docker_ready, docker_version, mut docker_message) = docker_check();
-                let text = if docker_ready {
-                    match compose(&app, &["ps", "--all", "--format", "json"]) {
-                        Ok(output) => output,
-                        Err(error) => { docker_ready = false; docker_message = format!("无法读取服务状态：{error}"); String::new() }
-                    }
-                } else {
-                    String::new()
-                };
-                let mut services = services::statuses(&text, &env);
-                if !docker_ready { for service in &mut services { service.state = "unknown".into(); } }
-                Ok(
-                    json!({"dockerReady":docker_ready,"dockerCliAvailable":docker_ready || !docker_message.contains("无法运行 Docker"),"dockerCliVersion":docker_version,"dockerMessage":docker_message,"configured":env_path(&app).is_file(),"allHealthy":services.iter().filter(|service|service.enabled).all(|service|service.running),"services":services,"dataDirectory":app.root}),
-                )
+                system_status(&app)
             }
             "control_service" => {
                 let action = req.body.get("action").and_then(Value::as_str).ok_or("操作名称无效")?;

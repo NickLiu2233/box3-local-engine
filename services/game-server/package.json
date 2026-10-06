@@ -16,6 +16,7 @@
     "check:redis-runtime": "node -r @swc-node/register scripts/check-redis-runtime.ts",
     "check:local-derived-content": "node -r @swc-node/register scripts/check-local-derived-content.ts",
     "check:default-skin-scope": "node -r @swc-node/register scripts/regression-default-skin-project-scope.ts",
+    "check:realtime": "node -r @swc-node/register scripts/regression-player-revocation-poller.ts && node -r @swc-node/register scripts/regression-moderation-metadata.ts",
     "check:player-revocation": "node -r @swc-node/register scripts/regression-player-revocation-poller.ts",
     "check:script-moderation": "node -r @swc-node/register scripts/regression-script-moderation.ts && node -r @swc-node/register scripts/regression-moderation-isolate-error.ts",
     "check:anticheat": "node -r @swc-node/register scripts/regression-anticheat.ts && node -r @swc-node/register scripts/regression-anticheat-isolate.ts && node -r @swc-node/register --test scripts/anticheat-adversarial.test.ts scripts/anticheat-gui.test.ts scripts/anticheat-websocket.test.ts scripts/anticheat-bridge.test.ts scripts/anticheat-movement.test.ts scripts/anticheat-actions.test.ts scripts/anticheat-tracker.test.ts scripts/anticheat-policy.test.ts scripts/anticheat-audit.test.ts",

@@ -15,6 +15,7 @@ export default defineConfig({
     '/api': {
       target: process.env.PLAYER_ADMIN_DEV_API_URL || 'http://127.0.0.1:3124',
       changeOrigin: true,
+      ws: true,
     },
   },
   // Build into a staging folder. The player-service image moves the generated

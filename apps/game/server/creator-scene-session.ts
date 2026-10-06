@@ -19,9 +19,15 @@ type SceneSession = {
   ownerSubjectId: string;
   expiresAt: number;
   capture?: CaptureRequest;
+  socketToken?: string;
+  originHost?: string;
+  push?: (action: NonNullable<ReturnType<typeof nextCreatorSceneAction>>) => void;
+  closeSocket?: () => void;
 };
 
-const sessions = new Map<string, SceneSession>();
+// Next API routes and development reloads must share the same session registry.
+const registry = globalThis as typeof globalThis & { __boxCreatorSceneSessions?: Map<string, SceneSession> };
+const sessions = registry.__boxCreatorSceneSessions ||= new Map<string, SceneSession>();
 
 function rejectCapture(session: SceneSession, error: Error) {
   if (!session.capture) return;
@@ -35,17 +41,22 @@ function activeSession(projectId: string) {
   if (session && session.expiresAt <= Date.now()) {
     rejectCapture(session, new Error('编辑场景控制会话已过期'));
     sessions.delete(projectId);
+    session.closeSocket?.();
     return undefined;
   }
   return session;
 }
 
-export function enableCreatorSceneSession(projectId: string, ownerSubjectId: string) {
+export function enableCreatorSceneSession(projectId: string, ownerSubjectId: string, originHost?: string) {
   const previous = sessions.get(projectId);
-  if (previous) rejectCapture(previous, new Error('编辑场景控制会话已被替换'));
-  const session: SceneSession = { id: randomUUID(), ownerSubjectId, expiresAt: Date.now() + SESSION_TTL_MS };
+  if (previous) {
+    rejectCapture(previous, new Error('编辑场景控制会话已被替换'));
+    previous.closeSocket?.();
+  }
+  const session: SceneSession = { id: randomUUID(), ownerSubjectId, expiresAt: Date.now() + SESSION_TTL_MS,
+    socketToken: randomUUID(), originHost };
   sessions.set(projectId, session);
-  return { sessionId: session.id, expiresAt: new Date(session.expiresAt).toISOString() };
+  return { sessionId: session.id, socketToken: session.socketToken, expiresAt: new Date(session.expiresAt).toISOString() };
 }
 
 export function disableCreatorSceneSession(projectId: string, sessionId: string, ownerSubjectId: string) {
@@ -53,7 +64,36 @@ export function disableCreatorSceneSession(projectId: string, sessionId: string,
   if (!session || session.id !== sessionId || session.ownerSubjectId !== ownerSubjectId) return false;
   rejectCapture(session, new Error('编辑场景控制会话已关闭'));
   sessions.delete(projectId);
+  session.closeSocket?.();
   return true;
+}
+
+/** A one-use credential issued by the authenticated HTTP bootstrap; never put it in a URL. */
+export function attachCreatorSceneSocket(projectId: string, sessionId: string, socketToken: string,
+  originHost: string, push: NonNullable<SceneSession['push']>, closeSocket: () => void) {
+  const session = activeSession(projectId);
+  if (!session || session.id !== sessionId || !session.socketToken || session.socketToken !== socketToken ||
+    !session.originHost || session.originHost !== originHost) throw new Error('编辑场景控制连接未授权');
+  session.socketToken = undefined;
+  session.push = push;
+  session.closeSocket = closeSocket;
+  const expiry = setTimeout(() => disableCreatorSceneSession(projectId, sessionId, session.ownerSubjectId),
+    Math.max(0, session.expiresAt - Date.now()));
+  expiry.unref?.();
+  if (session.capture) push({ id: session.capture.id, type: 'capture', view: session.capture.view });
+  return {
+    complete: (requestId: string, contentBase64: string) =>
+      completeCreatorSceneCapture(projectId, sessionId, requestId, session.ownerSubjectId, contentBase64),
+    fail: (requestId: string) => {
+      if (activeSession(projectId) === session && session.capture?.id === requestId) {
+        rejectCapture(session, new Error('编辑器截图失败，请确认当前场景已准备好'));
+      }
+    },
+    detach: () => {
+      clearTimeout(expiry);
+      disableCreatorSceneSession(projectId, sessionId, session.ownerSubjectId);
+    },
+  };
 }
 
 export function creatorSceneSessionStatus(projectId: string, sessionId: string, ownerSubjectId: string) {
@@ -79,6 +119,8 @@ export function requestCreatorSceneCapture(projectId: string, view: CreatorScene
       reject(Object.assign(new Error('等待编辑器截图超时，请确认地图已打开且已允许 CLI 场景控制'), { statusCode: 504 }));
     }, REQUEST_TTL_MS);
     session.capture = { id, view, resolve, reject, timer };
+    try { session.push?.({ id, type: 'capture', view }); }
+    catch { rejectCapture(session, new Error('编辑场景控制连接不可用')); }
   });
 }
 

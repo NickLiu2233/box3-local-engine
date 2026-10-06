@@ -1,0 +1,171 @@
+# 本地引擎 WebSocket 改造设计与测试记录
+
+日期：2026-10-06。范围：Creator、Play、Player Service、地图运行时和 Web 部署管理器。
+
+## 1. 改造结果
+
+原先持续查询的操作进度、运行状态、在线人数、玩家在线上报和账号撤销已经迁移到 WebSocket。后台增加数据库提交后的变化通知。地图元数据改为初次/变化时上报，无变化时不再重复 POST。
+
+源码与本地构建已完成。**正在运行的 Docker 镜像和此前反作弊候选 ZIP 未包含本次改动**；不能将本报告的源码验证当成旧发行包已经升级。
+
+| 功能 | 改造前 | 改造后 |
+| --- | --- | --- |
+| CLI 场景截图等待 | 每 800 ms GET scene/action | 同源 WS 按需发送截图指令与结果 |
+| Web 管理器操作进度 | 每 750 ms GET operations/:id | 按操作 ID 订阅，即时推送；重新订阅补发保留进度 |
+| Web 管理器运行时列表 | 每 3 s HTTP 查询 | 订阅 runtimes 快照 |
+| Web 管理器性能/总览 | 每 5 s / 10 s HTTP 查询 | 订阅 performance / overview 快照 |
+| Play 系统状态 | 每 5 s HTTP 查询 | WS 状态快照；首次/手动刷新保留 HTTP |
+| Play 首页在线人数 | 每 20 s HTTP 查询 | 人数变化推送 |
+| 玩家页面在线状态 | 每 25 s POST 上报 | 认证 WS 生命周期登记/移除，心跳检测异常断线 |
+| 运行时账号撤销 | 原默认每 10 s；部分包配置每 1 s | 内部认证事件流，启动/重连回放，数据库变化触发同步 |
+| 地图范围封禁检查 | 跟随撤销定时器分批请求 | 首次连接及封禁变化时检查；保留现有地图凭证和范围校验 |
+| 地图版本元数据 | 每 30 s 重复 POST | 本地 30 s 比较快照，仅初次、变化、上次失败时 POST |
+| 后台目录/安全/地图授权 | 原本首次、筛选、操作时读取 | 增加权限过滤的变化通知；收到通知再读取获准数据 |
+
+稳定空闲连接不会定时查询上述数据接口。通用连接每 15 分钟到期重新认证，断线也会重新认证；WS 自身仍有控制帧与变化消息。服务器指标每 5 秒采样并共享结果，采样定时器不是浏览器 HTTP 轮询。
+
+## 2. 接口设计
+
+### 2.1 通用会话：POST /api/realtime/session
+
+用途：校验身份、来源和订阅范围，签发短期一次性票据。响应不缓存。
+
+请求体为 JSON，最大 8 KiB。所有浏览器类型拒绝跨站 Origin / Sec-Fetch-Site；反向代理的正式公开 Host 可来自显式配置的服务公开地址，票据绑定实际获准的浏览器 Host。`kind` 决定权限；不存在自动升权或客户端任意指定广播主题。
+
+| kind | 请求参数 | 认证/限制 | 用途 |
+| --- | --- | --- | --- |
+| presence-watch | maps: string[] | 仅 Play；最多 100 个合法地图 ID；公开人数 | 首页订阅地图和地图组人数 |
+| player-presence | mapId: string | 仅 Play；地图存在；由 Player Service 解析认证身份 | 登记当前玩家页面连接 |
+| play-status | 无额外参数 | 沿用 Play 系统管理认证 | 获取状态快照 |
+| admin-events | 无额外参数 | 仅 Player Service；后台会话、来源和 CSRF 校验 | 获准的后台变化通知 |
+| revocations | after: 数字字符串；since: ISO 时间 | 仅 Player Service；宿主内部 Bearer 凭证；安全整数游标 | 运行时账号撤销与地图准入变化 |
+
+成功响应示例：
+
+```json
+{"ticket":"一次性随机票据","socketPath":"/api/realtime/socket"}
+```
+
+失败：方法不符 405；非法参数 400；内部认证失败 401；来源/权限失败按既有认证规则返回；不支持的功能/地图 404；数据库等基础设施不可用 503。客户端对 401/403/404 停止重复认证请求。
+
+### 2.2 通用连接：WS /api/realtime/socket
+
+用途：承接已认证会话的实时推送。Next.js 同源代理至容器内 loopback:9968，该端口无需对外开放。
+
+首条帧必须在 5 秒内发送：
+
+```json
+{"type":"connect","ticket":"会话接口取得的票据"}
+```
+
+票据 30 秒有效且只能使用一次。浏览器票据绑定 Origin Host；内部票据仅供无浏览器 Origin 的宿主连接。凭据不放 URL。认证成功发送 `ready`；订阅的初始数据可能先于 ready 到达，客户端按消息类型处理。
+
+| 服务端消息 | 内容 | 消费行为 |
+| --- | --- | --- |
+| ready | 认证完成 | 清除建立连接的超时与重试计数 |
+| presence | maps → onlineCount | 更新公开人数 |
+| snapshot | data | 更新 Play 系统状态 |
+| change | topic | 后台合并 250 ms 内的通知，再调用原授权读取接口 |
+| reauthenticate | 无玩家详情 | 权限变化、后台会话撤销或监听故障后重新校验会话，刷新后台当前角色 |
+| revocations | cursor、events[id,subjectId,reason,createdAt] | 宿主仅处理匹配认证身份的连接；按事件 ID 去重 |
+| admission-changed | 无处罚目标详情 | 宿主用自己地图的管理凭据分批校验当前连接 |
+| resync-required | 无额外内容 | 断开后重新认证并回放 |
+| error | 通用错误 | 显示采样失败；不泄露内部数据 |
+
+客户端不能通过此通道直接修改玩家、签发授权或执行封禁。正常业务写入仍使用原来的权限校验接口。后台 change 只包含失效主题，不广播昵称、IP、设备标识或玩家资料。
+
+每条连接 15 分钟有效，30 秒 ping/pong；未响应的连接被清理。通用入站控制消息限制 16 KiB，出站待发送缓冲超过 1 MiB 时关闭连接。场景与通用服务器合计最多 128 个连接，未消费票据最多 1,024 个。异常来源/票据使用关闭码 1008。
+
+浏览器按订阅 key 共享连接，最后一个订阅退出时清理 WS、重试和超时。断线按 1～30 秒退避重连。后台不同用户权限、普通玩家和内部宿主在各自服务内独立认证。
+
+### 2.3 Web 管理器连接：WS /api/events
+
+用途：替代 Linux Web 部署管理器的操作进度与状态查询。Rust 服务同源检查后升级，5 秒内校验首条帧中的管理令牌：
+
+```json
+{"type":"authenticate","token":"Web 管理令牌"}
+```
+
+收到 ready 后发送订阅：
+
+```json
+{"topics":["overview","runtimes","performance"],"operations":["指定操作ID"]}
+```
+
+只允许三个只读主题，最多 32 个操作 ID，拒绝额外字段和非法 ID。命令、上传、下载继续使用已认证 HTTP 接口，命令关联 `X-Operation-Id`。
+
+消息包含 `progress{id,payload}`、`snapshot{topic,payload}`、`error{topic,message}`。操作进度即时广播，重连订阅补发保留记录；广播接收落后时也从记录补齐。状态采样 5 秒，跨连接共享缓存，数据相同不重复发送。心跳 5 秒，65 秒无响应关闭；发送超时 5 秒；最多 128 个连接、入站帧最大 8 KiB。客户端连接建立超时 10 秒，认证失败清除旧令牌。
+
+桌面管理器继续走 Tauri IPC，原有本地状态刷新不产生 HTTP 网络流量。
+
+### 2.4 Creator 场景截图连接
+
+原有 `/api/creator/v1/projects/:projectId/scene/session` HTTP 创建/清理会话；`WS /api/creator/v1/scene/socket` 推送 `capture` 并接收 `capture-result` / `capture-error`。HTTP CLI 截图入口保持兼容。凭据绑定项目、会话和页面 Host，使用后不可重放；连接关闭会立即失败未完成截图。详细参数见 [Creator CLI 接口设计](creator-cli-http-api.md)。
+
+## 3. 数据一致性与安全边界
+
+### 3.1 数据库提交通知
+
+Player Service 使用 PostgreSQL LISTEN/NOTIFY，不依赖某个 Web 进程的局部回调。初始化在身份 schema 内安装 AFTER ROW 触发器，覆盖玩家、账号撤销、身份/地图封禁、审计、后台权限与会话删除、地图授权和版本元数据表。
+
+通知只包含表名；同事务相同通知由 PostgreSQL 合并。只有实际插入、删除、变化更新才通知，零行更新和数据不变更新不通知，避免后台刷新中的维护 UPDATE 产生循环。事务提交后才可见，回滚不发布。监听自动重连，恢复后发送 resync，消费者重新读取持久数据。
+
+### 3.2 撤销事件重放
+
+数据库序列分配顺序不等于提交顺序，单纯查询 `id > 最后游标` 会漏掉较晚提交的较小 ID。本实现每次变化/重连从运行时启动时确定的身份回放起点分页扫描（每页最多 500 条），连接内按 ID 去重，只推送新发现事件；返回游标保持递增。宿主再按 ID 去重，避免重连重复踢人。
+
+回放起点为宿主启动时间减去签名身份 TTL 和 30 秒余量；同一宿主重连保留该起点，避免长时间断线后因滑动窗口丢失事件。回放及去重状态随宿主运行时间增长，超大规模长运行部署仍需压测数据库扫描与内存；本次没有宣称完成这种容量验收。
+
+地图封禁只触发原有准入查询，使用宿主自己的地图身份和凭据。异步查询完成时确认连接仍存在；不直接把某地图的通知当成全局封禁。
+
+### 3.3 在线统计口径
+
+按地图、认证玩家、连接 ID 登记。同账号多个标签页/房间按账号和地图组去重；关闭一个标签页不会清除另一个连接。异常断线通过 WS 心跳清理。旧版 HTTP presence 上报接口保留兼容，仍按 75 秒 TTL 清理。
+
+这里统计的是玩家页面的认证在线连接，延续原页面上报口径，不能将它声称为引擎内已经出生的角色数。
+
+## 4. 实际测试记录
+
+以下为 2026-10-06 工作区执行结果，不是正式发行镜像现场结果。
+
+| 检查 | 实际结果 | 覆盖 |
+| --- | --- | --- |
+| Web 管理器 Node 回归 | 21 项通过 | 首帧认证、订阅、进度 ID 隔离、错误隔离、无空闲 HTTP 查询、令牌失效、桌面原契约和 UI |
+| Rust 管理器 cargo test | 33 项通过 | 真实 WS 来源/令牌拒绝、保留进度回放、即时进度、主题白名单/容量，以及既有管理回归 |
+| Game `test:realtime` | 21 项通过 | 真实场景 WS/Next 代理、2 MiB 截图、票据来源/过期/重放、后台 CSRF/权限过滤、并发晚提交回放、在线去重、共享连接重连/退出 |
+| 运行时 `check:realtime` | 两个回归脚本通过 | 真实本地 HTTP bootstrap + WS、身份过滤、低编号晚提交、重复去重、重连游标、空闲无轮询；元数据变化/失败重试 |
+| PostgreSQL 提交通知集成 | 通过 | 独立随机 schema；提交/回滚、零行/无变化更新、并发不同提交顺序、定向断开监听后重连、持久回放 |
+| 地图管理桥接回归 | 两个脚本通过 | 原地图/IP/目标可信校验、失效连接、篡改拒绝、超时与真实 isolate 错误传递 |
+| 反作弊自动化 | 两个基础回归及 55 项测试通过 | 原反作弊行为未被本次事件传输改造破坏 |
+| 部署管理器结构检查/Vite 构建 | 通过 | Web 管理器产物生成 |
+| Next.js 生产构建 | 通过（项目配置跳过全量类型校验，有既有 lint 警告） | Server、Edge、Client、页面数据与构建追踪完成 |
+| Player Admin Umi 构建 | 通过 | 后台订阅 hook 和页面产物生成 |
+| Game 新增服务端/实时客户端限定类型检查 | 通过 | bootstrap、共享 WS、票据、数据库通知、人数、快照 |
+| Game Server 全量 TypeScript noEmit | 通过 | 新撤销连接与元数据逻辑及运行时测试代码 |
+
+自动化覆盖范围以测试源码为准，未完成大量真实玩家、长时间网络分区、跨主机吞吐和所有正式地图现场验收。全 Game/后台已有其他生成 API/旧类型问题，限定类型检查和构建通过不能表述为全仓库类型零错误。
+
+重跑命令：
+
+```sh
+node --test scripts/deployment-manager-transport.test.js scripts/deployment-manager-ui.test.js
+cargo test --manifest-path apps/server-manager-rust/Cargo.toml
+npm --prefix apps/game run test:realtime
+npm --prefix services/game-server run check:realtime
+npm --prefix services/game-server run check:script-moderation
+npm --prefix services/game-server run check:anticheat
+npm --prefix apps/deployment-manager run check
+npm --prefix apps/player-admin run build
+```
+
+PostgreSQL 集成需要配置 `BOX_DATABASE_URL` 后运行 `npm --prefix apps/game run test:realtime-postgres`。脚本只使用独立随机 `ws_regression_*` schema，结束删除该 schema，不修改真实玩家记录。临时启动探针已清理，自动化回归保留。
+
+## 5. 保留的定时行为与发布说明
+
+引擎 tick、物理、脚本调度、本地耗时动画、分享倒计时、备份、空闲运行时清理、桌面 IPC 和服务器性能采样保留。首次认证、显式业务操作、文件上传下载和收到真实变化后的详情读取保留 HTTP。
+
+未新增未确认的举报/申请业务。现有用户、安全和授权变化已经接入后台通知；未来举报接口可提交数据库后复用权限受控事件来源。
+
+`BOX_PLAYER_REVOCATION_POLL_MS` 在旧包配置中仍可能存在，新宿主不再用它触发网络轮询。升级时 Player Service 与运行时需要一同更新；新运行时依赖新的实时 bootstrap，不应与旧身份服务混用。
+
+发行需用当前源码重建 Creator、Play、Player Service、运行时相关镜像与最终离线包，再验证已安装包中的反向代理和版本一致性。当前旧 ZIP 及其旧 SHA-256 不代表本次 WS 改造。

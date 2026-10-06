@@ -28,6 +28,7 @@ use tower_http::services::ServeDir;
 mod http {
     pub(crate) mod commands;
     pub(crate) mod web;
+    pub(crate) mod websocket;
 }
 mod operations;
 mod platform {
@@ -264,6 +265,7 @@ async fn main() {
         )
         .route("/api/commands/{name}", post(http::commands::command))
         .route("/api/operations/{id}", get(operation_progress))
+        .route("/api/events", get(http::websocket::upgrade))
         .layer(DefaultBodyLimit::max(512 * 1024 * 1024))
         .fallback_service(ServeDir::new(public_directory()).append_index_html_on_directories(true))
         .layer(middleware::from_fn(security))

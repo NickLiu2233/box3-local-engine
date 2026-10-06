@@ -1,3 +1,4 @@
+import { useAdminEvents } from '../../hooks/use-admin-events'
 import { confirmAdminAction } from '../../components/confirm-admin-action'
 import { AuthorizationFields, permissionOptions } from './map-authorization-fields'
 import type { AuthorizationSettings } from './map-authorization-fields'
@@ -66,6 +67,7 @@ export function ScriptModerationPage() {
   useEffect(() => {
     void run()
   }, [])
+  useAdminEvents(true, topic => { if (topic === 'map-authorization' || topic === 'resync') void run() })
   const create = async () => {
     const values = await form.validateFields()
     const map = mapGroups(catalog.maps).find((m) => mapValue(m) === values.map)

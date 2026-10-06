@@ -1,9 +1,11 @@
 import { OVERVIEW_HIDDEN_POLL_MS, OVERVIEW_POLL_MS } from '../core/constants.js'
 import { clearFeedback } from './feedback.js'
-import { dockerPlatform, invoke } from '../infrastructure/transport.js'
+import { dockerPlatform, invoke, isWebManager, subscribeManager } from '../infrastructure/transport.js'
 import { refreshStatus } from './status.js'
 import { render } from '../core/render-request.js'
 import { state } from '../core/state.js'
+
+let webSubscription
 
 let overviewStatusTimer
 
@@ -15,8 +17,13 @@ export function syncOverviewPolling() {
   clearInterval(overviewStatusTimer)
   overviewStatusTimer = undefined
   if (state.page !== 'overview') {
+    webSubscription?.(); webSubscription = undefined
     clearTimeout(dockerStartupPollTimer)
     dockerStartupPollTimer = undefined
+    return
+  }
+  if (isWebManager()) {
+    if (!webSubscription) webSubscription = subscribeManager('overview', applyOverviewSnapshot)
     return
   }
   overviewStatusTimer = window.setInterval(
@@ -161,4 +168,14 @@ export async function runAction(command, payload = {}) {
     state.busy = false
     await refreshStatus()
   }
+}
+
+function applyOverviewSnapshot(status, error) {
+  if (state.page !== 'overview') return
+  if (error) { state.error = error; render(); return }
+  if (state.error?.includes('实时连接') || state.error?.includes('管理令牌无效')) state.error = ''
+  state.status = status
+  state.dockerCheck = { cliAvailable: status.dockerCliAvailable, cliVersion: status.dockerCliVersion,
+    engineReady: status.dockerReady, message: status.dockerMessage }
+  render()
 }

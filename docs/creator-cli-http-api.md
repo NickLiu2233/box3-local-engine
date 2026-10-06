@@ -296,6 +296,19 @@ Authorization: Bearer bxc_...
 
 截图来自当前已授权且正在编辑该地图的 Creator 会话；没有可用编辑会话时会返回冲突错误。成功响应是图片内容，不是 JSON。
 
+### 10.1 编辑器的 WebSocket 场景控制通道
+
+编辑器先通过 `POST /api/creator/v1/projects/:projectId/scene/session` 验证登录和 `projects.edit` 权限，取得会话 ID、一次性 `socketToken` 与 `socketPath`，再连接同源 `/api/creator/v1/scene/socket`。HTTP 页面使用 `ws`，HTTPS 页面使用 `wss`；凭证放在首条 `connect` 帧，不放 URL。
+
+服务器仅在 CLI 请求截图时推送 `{ type: "capture", id, view }`，编辑器通过 `capture-result` 帧返回 `contentBase64`，或通过 `capture-error` 帧报告失败。编辑器不再循环查询 `/scene/action`，也不再通过 HTTP 提交截图结果。CLI 对外的截图 GET 接口与命令用法保持兼容。
+
+连接使用 30 秒一次的 WebSocket ping/pong 保活，空闲时没有 HTTP 动作查询。断线后按 1～30 秒退避重新认证和连接；页面卸载即停止重试。会话最长 15 分钟，到期后关闭连接并重新认证；401/403/404 不无限重试。服务器断线会立即取消待处理截图请求，避免等待原有 25 秒超时。
+
+通道后端只监听进程所在环境的 `127.0.0.1:9968`，由 Next.js 同源 WebSocket upgrade 代理转发，无需对外开放额外端口。`BOX_CREATOR_SCENE_SOCKET_PORT` 可指定内部端口，构建配置和运行进程需保持一致。连接校验会话、一次性凭证和创建会话时的页面 Host，阻止跨站附着与凭证重放；截图保留 6 MiB 内容上限。
+
+2026-10-06 自动化验证：14 项通过，包括真实 WebSocket 推送和截图返回（含 2 MiB 内容）、Next.js upgrade 代理、跨站/凭证重放/跨地图拒绝、断线与截图失败、建连前排队、空闲零 HTTP 轮询、重连和页面退出清理。旧 `/scene/action` 接口保留兼容用途，新编辑器不会访问它。
+
+
 ## 11. 状态码与错误码
 
 | 状态  | 常见 code / message             | 处理建议                                                    |

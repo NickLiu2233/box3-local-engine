@@ -4,6 +4,7 @@ import { moderationAuthorization } from './moderation-credential'
 /** Only public map instances report versions; an old private room must not replace the latest published version. */
 export class ModerationMetadataReporter {
   private pending = false
+  private lastSnapshot = ''
   private api: ApiClient
   private enabled: boolean
   private mapId = process.env.BOX_WORLD_PERMANENT_MAP_ID || ''
@@ -33,8 +34,7 @@ export class ModerationMetadataReporter {
     const timer = setTimeout(() => controller.abort(), 5000)
     try {
       const value = this.snapshot()
-      await this.api.postApiPlayerInternalScriptMetadata({
-        body: {
+      const body = {
           mapId: this.mapId,
           groupId: process.env.BOX_GROUP_STORAGE_NAMESPACE || this.mapId,
           mode: this.mode,
@@ -43,10 +43,15 @@ export class ModerationMetadataReporter {
           publicId: process.env.BOX_WORLD_PUBLIC_ID || process.env.CONTENT_ID || this.mapId,
           description: (process.env.BOX_WORLD_DESCRIPTION || '').slice(0, 2000),
           version: (process.env.BOX_WORLD_VERSION || '').slice(0, 64),
-        },
+      }
+      const signature = JSON.stringify(body)
+      if (signature === this.lastSnapshot) return
+      await this.api.postApiPlayerInternalScriptMetadata({
+        body,
         signal: controller.signal,
         headers: { Authorization: moderationAuthorization() },
       })
+      this.lastSnapshot = signature
     } catch {
       /* Reporting failure never grants authority; the owner sees unavailable metadata. */
     } finally {

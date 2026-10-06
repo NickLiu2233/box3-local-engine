@@ -65,6 +65,16 @@ const config = {
     const playerAdminAtRoot = process.env.BOX_DEPLOYMENT_MODE === 'player-service';
     return {
       beforeFiles: [
+        {
+          source: '/api/realtime/socket',
+          has: [{ type: 'header', key: 'upgrade', value: 'websocket' }],
+          destination: `http://127.0.0.1:${process.env.BOX_CREATOR_SCENE_SOCKET_PORT || 9968}/api/realtime/socket`,
+        },
+        {
+          source: '/api/creator/v1/scene/socket',
+          has: [{ type: 'header', key: 'upgrade', value: 'websocket' }],
+          destination: `http://127.0.0.1:${process.env.BOX_CREATOR_SCENE_SOCKET_PORT || 9968}/api/creator/v1/scene/socket`,
+        },
         // Player Service is a standalone administration site. Serve its Umi
         // entry at the origin without changing the address bar. Umi publishes
         // its HTML and static assets together under public/player-admin.

@@ -126,7 +126,7 @@ test('desktop commands and progress events retain their native contract', async 
 })
 
 function web() {
-  globalThis.window = { setTimeout }
+  globalThis.window = { setTimeout, location: { href: 'http://localhost/' } }
   const values = new Map()
   globalThis.sessionStorage = {
     getItem: (key) => values.get(key),
@@ -144,146 +144,52 @@ const deferred = () => {
   return { promise, resolve, reject }
 }
 
-test('Web progress protocol, subscriptions, abort and main error isolation', async () => {
+test('Web events authenticate, filter progress and avoid HTTP polling', async () => {
   const api = await transport
   web()
+  class MockSocket {
+    static OPEN = 1
+    static instances = []
+    readyState = 0
+    frames = []
+    constructor(url) { this.url = url; MockSocket.instances.push(this) }
+    send(data) { this.frames.push(JSON.parse(data)) }
+    open() { this.readyState = 1; this.onopen?.() }
+    event(value) { this.onmessage?.({ data: JSON.stringify(value) }) }
+    close(code = 1000) { this.readyState = 3; this.onclose?.({ code }) }
+  }
+  globalThis.WebSocket = MockSocket
   api.setWebManagerToken('secret')
-  const timers = new Map()
-  const originalSet = globalThis.setTimeout
-  const originalClear = globalThis.clearTimeout
-  globalThis.setTimeout = (callback, delay) => {
-    assert.equal(delay, 750)
-    const id = Symbol()
-    timers.set(id, callback)
-    return id
-  }
-  globalThis.clearTimeout = (id) => timers.delete(id)
-  const tick = async () => {
-    const [id, callback] = timers.entries().next().value
-    timers.delete(id)
-    await callback()
-  }
-  let unlisten = () => {}
+  const requests = [], events = [], snapshots = []
+  const command = deferred()
+  globalThis.fetch = (url, options) => { requests.push({ url, options }); return command.promise }
+  const unlisten = await api.listen('install-progress', value => events.push(value))
+  const unsubscribe = api.subscribeManager('overview', value => snapshots.push(value))
   try {
-    const requests = []
-    let command = deferred()
-    let progress = json({ stage: 'pull', message: '下载', percent: 42 })
-    globalThis.fetch = (url, options) => {
-      requests.push({ url, options })
-      return url.startsWith('/api/commands/') ? command.promise : Promise.resolve(progress.clone())
-    }
-    const events = []
-    const unrelated = await api.listen('other-event', () => assert.fail('unrelated event'))
-    unlisten = await api.listen('install-progress', (event) => events.push(event))
-    const result = api.invoke('start_services', { force: true })
-    const post = requests[0]
-    assert.equal(post.url, '/api/commands/start_services')
-    assert.equal(post.options.method, 'POST')
-    assert.equal(post.options.body, '{"force":true}')
-    assert.equal(post.options.headers['Content-Type'], 'application/json')
-    const id = post.options.headers['X-Operation-Id']
-    assert.match(id, /^[\da-f]{8}-[\da-f]{4}-4[\da-f]{3}-[89ab][\da-f]{3}-[\da-f]{12}$/)
-    await tick()
-    assert.equal(requests[1].url, `/api/operations/${id}`)
-    assert.equal(requests[1].options.method, 'GET')
-    for (const request of requests) {
-      assert.equal(request.options.headers.Authorization, 'Bearer secret')
-      assert.equal(request.options.credentials, 'same-origin')
-    }
-    assert.deepEqual(events, [{ payload: { stage: 'pull', message: '下载', percent: 42 } }])
-    const slowRead = deferred()
-    const commandFetch = globalThis.fetch
-    globalThis.fetch = (url, options) => {
-      if (url === '/api/commands/get_system_status') {
-        assert.equal(Object.hasOwn(options.headers, 'X-Operation-Id'), false)
-        return slowRead.promise
-      }
-      return commandFetch(url, options)
-    }
-    const reading = api.invoke('get_system_status')
-    assert.equal(timers.size, 1, 'only the startup operation has a timer')
-    await tick()
-    assert.equal(events.length, 2)
-    assert.equal(events.at(-1).payload.stage, 'pull')
-    slowRead.resolve(json({ result: { dockerReady: true } }))
-    assert.deepEqual(await reading, { dockerReady: true })
-    assert.equal(events.length, 2, 'read completion must not emit progress')
-    events.pop()
-    globalThis.fetch = commandFetch
-    progress = json({}, 404)
-    await tick()
-    progress = json({}, 500)
-    await tick()
-    assert.equal(events.length, 1)
-    command.resolve(json({ result: 'done' }))
-    assert.equal(await result, 'done')
-    assert.equal(timers.size, 0)
-
-    command = deferred()
-    progress = deferred()
-    const pending = api.invoke('start_services')
-    globalThis.fetch = (url, options) => {
-      requests.push({ url, options })
-      return progress.promise
-    }
-    const polling = tick()
-    unlisten()
-    unlisten()
-    assert.equal(requests.at(-1).options.signal.aborted, true)
-    progress.resolve(json({ percent: 99 }))
-    await polling
-    assert.equal(events.length, 1)
+    const pending = api.invoke('start_services', { force: true })
+    const socket = MockSocket.instances[0]
+    assert.equal(socket.url, 'ws://localhost/api/events')
+    socket.open()
+    assert.deepEqual(socket.frames[0], { type: 'authenticate', token: 'secret' })
+    socket.event({ type: 'ready' })
+    const id = requests[0].options.headers['X-Operation-Id']
+    assert.deepEqual(socket.frames.at(-1), { topics: ['overview'], operations: [id] })
+    socket.event({ type: 'progress', id: 'unrelated', payload: { percent: 1 } })
+    socket.event({ type: 'progress', id, payload: { percent: 42 } })
+    socket.event({ type: 'snapshot', topic: 'overview', payload: { allHealthy: true } })
+    assert.deepEqual(events, [{ payload: { percent: 42 } }])
+    assert.deepEqual(snapshots, [{ allHealthy: true }])
+    await new Promise(resolve => setTimeout(resolve, 20))
+    assert.equal(requests.length, 1, 'idle event stream must not poll HTTP')
     command.reject(new Error('main failure'))
     await assert.rejects(pending, /main failure/)
-    assert.equal(timers.size, 0)
-    unrelated()
-
-    // A completed command aborts a pending poll and suppresses its late response.
-    unlisten = await api.listen('install-progress', (value) => events.push(value))
-    command = deferred()
-    const lateProgress = deferred()
-    let signal
-    globalThis.fetch = (url, options) => {
-      if (url.startsWith('/api/commands/')) return command.promise
-      signal = options.signal
-      return lateProgress.promise
-    }
-    const finishing = api.invoke('start_services')
-    const lateTick = tick()
-    command.resolve(json({ result: 'finished' }))
-    assert.equal(await finishing, 'finished')
-    assert.equal(signal.aborted, true)
-    lateProgress.resolve(json({ percent: 100 }))
-    await lateTick
-    assert.equal(events.length, 1)
-    assert.equal(timers.size, 0)
-    unlisten()
-
-    globalThis.fetch = async () => json({ result: true })
-    await api.invoke('start_services')
-    assert.equal(timers.size, 0)
-    unlisten = await api.listen('install-progress', () => {})
-    api.setWebManagerToken('')
-    globalThis.fetch = () => assert.fail('missing token must not request')
-    await assert.rejects(api.invoke('start_services'), /令牌/)
-    assert.equal(timers.size, 0)
-
-    api.setWebManagerToken('expired')
-    command = deferred()
-    globalThis.fetch = (url) =>
-      url.startsWith('/api/commands/')
-        ? command.promise
-        : Promise.resolve(json({ message: 'expired' }, 401))
-    const unauthorized = api.invoke('start_services')
-    await tick()
+    socket.event({ type: 'progress', id, payload: { percent: 99 } })
+    assert.equal(events.length, 1, 'finished operation ignores late progress')
+    assert.deepEqual(socket.frames.at(-1).operations, [])
+    socket.close(1008)
     assert.equal(api.hasWebManagerToken(), false)
-    assert.equal(timers.size, 0)
-    command.resolve(json({ result: 'main result' }))
-    assert.equal(await unauthorized, 'main result')
   } finally {
-    unlisten()
-    globalThis.setTimeout = originalSet
-    globalThis.clearTimeout = originalClear
+    unlisten(); unsubscribe(); api.setWebManagerToken(''); delete globalThis.WebSocket
   }
 })
 

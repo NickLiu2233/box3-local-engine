@@ -12,8 +12,10 @@ struct Record {
     updated: Instant,
     finished: bool,
 }
-#[derive(Default)]
-pub struct Operations(Mutex<BTreeMap<String, Record>>);
+pub struct Operations(Mutex<BTreeMap<String, Record>>, tokio::sync::broadcast::Sender<(String, InstallProgress)>);
+impl Default for Operations {
+    fn default() -> Self { Self(Mutex::new(BTreeMap::new()), tokio::sync::broadcast::channel(256).0) }
+}
 impl Operations {
     pub fn begin(&self, id: &str) -> Result<(), String> {
         if !(16..=80).contains(&id.len())
@@ -52,8 +54,10 @@ impl Operations {
                 finished: false,
             },
         );
+        if let Some(record) = records.get(id) { let _ = self.1.send((id.into(), record.progress.clone())); }
         Ok(())
     }
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<(String, InstallProgress)> { self.1.subscribe() }
     pub fn update(&self, id: &str, stage: &str, message: &str, percent: u8, finished: bool) {
         if let Ok(mut records) = self.0.lock() {
             if let Some(record) = records.get_mut(id) {
@@ -67,6 +71,7 @@ impl Operations {
                 };
                 record.updated = Instant::now();
                 record.finished = finished;
+                let _ = self.1.send((id.into(), record.progress.clone()));
             }
         }
     }

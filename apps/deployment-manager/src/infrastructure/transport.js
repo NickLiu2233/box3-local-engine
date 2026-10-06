@@ -26,6 +26,8 @@ export function isWebManager() {
 export function setWebManagerToken(token) {
   if (token) sessionStorage.setItem(WEB_TOKEN_KEY, token)
   else sessionStorage.removeItem(WEB_TOKEN_KEY)
+  closeEvents()
+  if (token) ensureEvents()
 }
 
 export function hasWebManagerToken() {
@@ -83,44 +85,92 @@ function operationId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
-function trackProgress(id) {
-  let stopped = false
-  let timer
-  let controller
-  const stop = () => {
-    stopped = true
-    clearTimeout(timer)
-    controller?.abort()
-    operations.delete(stop)
+const topicHandlers = new Map()
+const operationKeys = new Set()
+let eventSocket
+let reconnectTimer
+let failures = 0
+let eventDeadline
+
+function hasSubscriptions() { return topicHandlers.size || operationKeys.size }
+function updateSubscriptions() {
+  if (eventSocket && eventSocket.readyState === WebSocket.OPEN) {
+    eventSocket.send(JSON.stringify({ topics: [...topicHandlers.keys()], operations: [...operationKeys] }))
   }
-  const poll = async () => {
-    if (stopped || !progressHandlers.size || !hasWebManagerToken()) return stop()
-    controller = new AbortController()
-    try {
-      const { api, token } = managerApi()
-      const result = await api.getApiOperationsIdRaw({
-        params: { path: { id } },
-        signal: controller.signal,
-      })
-      const { body: progress } = unwrapManagerResult(result, token)
-      if (!stopped) {
-        for (const handler of [...progressHandlers]) {
-          if (stopped || !progressHandlers.has(handler)) continue
-          try {
-            handler({ payload: progress })
-          } catch {
-            /* Observers cannot fail commands. */
-          }
-        }
+}
+function closeEvents() {
+  clearTimeout(reconnectTimer)
+  clearTimeout(eventDeadline)
+  const previous = eventSocket
+  eventSocket = undefined
+  previous?.close()
+}
+function ensureEvents() {
+  if (isTauri() || eventSocket || !hasWebManagerToken() || !hasSubscriptions() || typeof WebSocket === 'undefined') return
+  const url = new URL('/api/events', window.location.href)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  const ws = new WebSocket(url.href)
+  eventSocket = ws
+  eventDeadline = setTimeout(() => ws.close(), 10_000)
+  ws.onopen = () => { if (eventSocket === ws) ws.send(JSON.stringify({ type: 'authenticate', token: webToken() })) }
+  ws.onmessage = ({ data }) => {
+    if (eventSocket !== ws) return
+    let event
+    try { event = JSON.parse(data) } catch { ws.close(); return }
+    if (event.type === 'ready') { clearTimeout(eventDeadline); failures = 0; updateSubscriptions(); return }
+    if (event.type === 'progress' && operationKeys.has(event.id)) {
+      for (const handler of [...progressHandlers]) {
+        try { handler({ payload: event.payload }) } catch { /* Observers cannot fail commands. */ }
       }
-    } catch {
-      /* Progress is best effort, including 404 before the operation exists. */
     }
-    if (!stopped && hasWebManagerToken()) timer = setTimeout(poll, 750)
-    else stop()
+    if (event.type === 'snapshot' || event.type === 'error') {
+      for (const handler of [...(topicHandlers.get(event.topic) || [])]) {
+        try { handler(event.payload, event.type === 'error' ? event.message : undefined) } catch { /* Isolate observers. */ }
+      }
+    }
+  }
+  ws.onerror = () => ws.close()
+  ws.onclose = event => {
+    if (eventSocket !== ws) return
+    eventSocket = undefined
+    clearTimeout(eventDeadline)
+    for (const handlers of topicHandlers.values()) for (const handler of [...handlers]) {
+      try { handler(undefined, event.code === 1008 ? '管理令牌无效，请重新登录' : '实时连接断开，正在重连…') } catch { /* Isolate observers. */ }
+    }
+    if (event.code === 1008) { setWebManagerToken(''); return }
+    if (hasSubscriptions() && hasWebManagerToken()) {
+      reconnectTimer = setTimeout(ensureEvents, Math.min(30_000, 1000 * 2 ** Math.min(failures++, 5)))
+    }
+  }
+}
+export function subscribeManager(topic, handler) {
+  if (isTauri()) return () => {}
+  if (!['overview', 'runtimes', 'performance'].includes(topic)) throw new Error('未知状态订阅')
+  const listeners = topicHandlers.get(topic) || new Set()
+  // Each subscription has its own lifetime even when callbacks are reused.
+  const listener = (...args) => handler(...args)
+  listeners.add(listener)
+  topicHandlers.set(topic, listeners)
+  ensureEvents()
+  updateSubscriptions()
+  return () => {
+    listeners.delete(listener)
+    if (!listeners.size) topicHandlers.delete(topic)
+    if (hasSubscriptions()) updateSubscriptions()
+    else closeEvents()
+  }
+}
+function trackProgress(id) {
+  operationKeys.add(id)
+  ensureEvents()
+  updateSubscriptions()
+  const stop = () => {
+    operationKeys.delete(id)
+    operations.delete(stop)
+    if (hasSubscriptions()) updateSubscriptions()
+    else closeEvents()
   }
   operations.add(stop)
-  timer = setTimeout(poll, 750)
   return stop
 }
 

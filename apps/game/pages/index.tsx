@@ -1,3 +1,4 @@
+import { subscribeRealtime } from '../shared/realtime-client'
 import type { GetServerSideProps } from 'next'
 import { apiOperations } from '@box/apis'
 import Head from 'next/head'
@@ -291,22 +292,9 @@ function HomePageContent({
     if (uiPreview) return
     const mapIds = worldList.map((world) => world.publicId).filter(Boolean)
     if (!mapIds.length) return
-    let cancelled = false
-    const refresh = () => {
-      apiClient
-        .getApiPlayPresence({ params: { query: { maps: mapIds.join(',') } } })
-        .then((data) => {
-          const result = data as { maps?: Record<string, MapDiscoveryStats> }
-          if (!cancelled && result?.maps) setLiveMapStats(result.maps)
-        })
-        .catch(() => undefined)
-    }
-    refresh()
-    const timer = window.setInterval(refresh, 20_000)
-    return () => {
-      cancelled = true
-      window.clearInterval(timer)
-    }
+    return subscribeRealtime('play-presence', { body: { kind: 'presence-watch', maps: mapIds } }, event => {
+      if (event.type === 'presence') setLiveMapStats(event.maps)
+    })
   }, [uiPreview, worldList])
 
   useEffect(() => {

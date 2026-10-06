@@ -352,6 +352,9 @@ importers:
       weixin-js-sdk:
         specifier: 1.6.0
         version: 1.6.0
+      ws:
+        specifier: 7.5.13
+        version: 7.5.13(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       zod:
         specifier: 4.1.12
         version: 4.1.12

@@ -26,6 +26,7 @@ export const isWebManager = () => globalThis.webManager
 export const hasWebManagerToken = () => Boolean(globalThis.managerToken)
 export const setWebManagerToken = value => { globalThis.managerToken = value }
 export const dockerPlatform = () => ({ name: 'Docker', hint: 'fixture', action: '连接', busy: '连接中', canStart: false })
+export const subscribeManager = () => () => {}
 export const listen = (name, callback) => { globalThis.progressListeners.set(name, callback); return Promise.resolve(() => {}) }
 export const openExternal = () => Promise.resolve()
 export const selectBackup = () => Promise.resolve(null)

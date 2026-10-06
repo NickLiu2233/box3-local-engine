@@ -1,3 +1,4 @@
+import { subscribeRealtime } from '../shared/realtime-client';
 import type { GetServerSideProps } from 'next';
 import { ApiClientError } from '@box/apis';
 import Head from 'next/head';
@@ -177,9 +178,14 @@ export default function PlaySystemPage() {
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(true), 5000);
-    return () => window.clearInterval(timer);
-  }, [refresh]);
+    const token = window.sessionStorage.getItem(TOKEN_KEY);
+    if (!token) return;
+    return subscribeRealtime('play-status:' + token, { body: { kind: 'play-status' }, headers: { Authorization: `Bearer ${token}` } }, event => {
+      if (event.type === 'snapshot') { setData(event.data); setError(''); }
+      if (event.type === 'unauthorized') { window.sessionStorage.removeItem(TOKEN_KEY); void router.replace('/'); }
+      if (event.type === 'disconnected') setError('状态连接已断开，正在重连');
+    });
+  }, [refresh, router]);
 
   const activeRuntimes = data?.worlds.runtimes.filter(({ status }) => status.phase === 'ready').length;
   const diskUsed = data ? Math.max(0, data.disk.totalBytes - data.disk.freeBytes) : 0;
