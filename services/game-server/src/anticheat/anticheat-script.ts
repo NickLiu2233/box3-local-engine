@@ -23,49 +23,37 @@ export class AnticheatScript implements GameAnticheat {
     this.protocol = client.protocol(AnticheatProtocol);
     this.protocol.configure({ message: {
       clientMessage: (message) => {
-        let allow = true;
-        let active = true;
-        let reason = "map-rule";
+        const decision = new ListenerDecision(log);
         try {
           const sample = JSON.parse(message.payload);
           const target = player(message.playerId);
-          if (!target || !this.messageListeners.size) { allow = false; reason = "player-unavailable"; }
+          if (!target || !this.messageListeners.size) decision.reject('player-unavailable');
           else {
             const event: GameClientMessageEvent = Object.freeze({
               player: target, protocol: sample.protocol, message: sample.message,
               data: freezeData(sample.data), unreliable: sample.unreliable,
               context: Object.freeze({ source: 'client-message' as const,
                 serverTick: sample.serverTick, mode: sample.mode,
-                reject: (value?: string) => { if (active) { allow = false; reason = typeof value === "string" && value ? value.slice(0, 128) : "map-rule"; } },
+                reject: decision.reject,
               }),
             });
             this.playerIds.set(event, message.playerId);
             for (const listener of [...this.messageListeners.keys()]) {
               if (!this.messageListeners.has(listener)) continue;
-              try {
-                const result: any = listener(event);
-                if (result && typeof result.then === 'function') {
-                  allow = false; reason = "async-listener";
-                  Promise.resolve(result).catch(log);
-                  log(new Error('world.anticheat.onMessage 必须同步处理，不能 await'));
-                }
-              } catch (error) { allow = false; reason = "listener-error"; log(error); }
+              decision.run(() => listener(event), 'onMessage');
             }
           }
-        } catch (error) { allow = false; reason = "listener-error"; log(error); }
+        } catch (error) { decision.fail(error); }
         finally {
-          active = false;
-          this.protocol.server.message.messageDecision({ handle: message.handle, playerId: message.playerId, allow, reason: allow ? "" : reason });
+          this.protocol.server.message.messageDecision({ handle: message.handle, playerId: message.playerId, ...decision.finish() });
         }
       },
       movement: (message) => {
-        let allow = true;
-        let active = true;
-        let reason = "map-rule";
+        const decision = new ListenerDecision(log);
         try {
           const sample: MovementSample = JSON.parse(message.payload);
           const target = player(message.playerId);
-          if (!target || sample.playerId !== message.playerId || !this.listeners.size) { allow = false; reason = "player-unavailable"; }
+          if (!target || sample.playerId !== message.playerId || !this.listeners.size) decision.reject('player-unavailable');
           else {
             const event: GameMovementEvent = Object.freeze({
               player: target,
@@ -76,24 +64,16 @@ export class AnticheatScript implements GameAnticheat {
               context: Object.freeze({
                 source: 'client-correction' as const,
                 inputTick: sample.inputTick, serverTick: sample.serverTick, mode: sample.mode,
-                reject: (value?: string) => { if (active) { allow = false; reason = typeof value === "string" && value ? value.slice(0, 128) : "map-rule"; } },
+                reject: decision.reject,
               }),
             });
             for (const listener of [...this.listeners]) {
-              try {
-                const result: any = listener(event);
-                if (result && typeof result.then === 'function') {
-                  allow = false; reason = "async-listener";
-                  Promise.resolve(result).catch(log);
-                  log(new Error('world.anticheat.onMovement 必须同步处理，不能 await'));
-                }
-              } catch (error) { allow = false; reason = "listener-error"; log(error); }
+              decision.run(() => listener(event), 'onMovement');
             }
           }
-        } catch (error) { allow = false; reason = "listener-error"; log(error); }
+        } catch (error) { decision.fail(error); }
         finally {
-          active = false;
-          this.protocol.server.message.decision({ handle: message.handle, playerId: message.playerId, allow, reason: allow ? "" : reason });
+          this.protocol.server.message.decision({ handle: message.handle, playerId: message.playerId, ...decision.finish() });
         }
       },
     } });
@@ -179,6 +159,43 @@ export class AnticheatScript implements GameAnticheat {
     const data = uiData(event);
     return data ? Object.freeze({ player: event.player, name: data.name, data: freezeData(data.data), context: event.context }) : undefined;
   }, MessageSubscription.UI);
+}
+
+/** One decision per packet: late callbacks cannot modify a finished or subsequent request. */
+class ListenerDecision {
+  private active = true;
+  private allow = true;
+  private reason = 'map-rule';
+  constructor(private log: (error: unknown) => void) {}
+
+  readonly reject = (reason?: string) => {
+    if (!this.active) return;
+    this.allow = false;
+    this.reason = typeof reason === 'string' && reason ? reason.slice(0, 128) : 'map-rule';
+  };
+
+  run(listener: () => unknown, channel: 'onMessage' | 'onMovement') {
+    const log = this.log;
+    try {
+      const result: any = listener();
+      if (result && typeof result.then === 'function') {
+        this.reject('async-listener');
+        Promise.resolve(result).catch(log);
+        log(new Error(`world.anticheat.${channel} 必须同步处理，不能 await`));
+      }
+    } catch (error) { this.fail(error); }
+  }
+
+  fail(error: unknown) {
+    const log = this.log;
+    this.reject('listener-error');
+    log(error);
+  }
+
+  finish() {
+    this.active = false;
+    return { allow: this.allow, reason: this.allow ? '' : this.reason };
+  }
 }
 
 function freezeData(value: any): any {

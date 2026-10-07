@@ -8,31 +8,16 @@ import { ScriptNetInputSchema } from '@box/schema/events/net-events';
 import { ScriptSentEventSchema } from '@box/schema/events/script-events';
 import {
   NetProtocolSchema,
-  TimestampedClientInput,
-  NetStateSchema,
   NetState,
   NetMessageType,
-  NetPositionCorrectionSchema,
   NetInputEventSchema,
   PUBLIC_BUFFER_DIVISOR,
   ClientScriptSrcSchema,
 } from '@box/schema/net/net-schema';
-import {
-  PlayerSkinHashSchema,
-  PlayerFlags,
-} from '@box/schema/player/player-schema';
 import { MS_PER_TICK } from '@box/schema/clock/clock-schema';
-
+import { NetPublicSchema, NetPublic } from '@box/schema/net/net-schema';
+import { GameServerState } from '../game-server-schema';
 import {
-  NetPublicSchema,
-  NetSecretSchema,
-  NetPublic,
-} from '@box/schema/net/net-schema';
-import { GameServerState, GameConnectionState } from '../game-server-schema';
-import { getServerNetInput } from './net-server-tick';
-import { mergeNetInput } from '@box/schema/net/net-tick';
-import {
-  SERVER_SECRET_PACKET_SIZE,
   SERVER_REPLICA_PACKET_SIZE,
   MAX_PUBLIC_BUFFER_SIZE,
   SERVER_UNRELIABLE,
@@ -40,188 +25,25 @@ import {
   SERVER_REWIND_TICKS,
   MAX_BUFFERED_BYTES,
 } from './net-server-state';
-import { GameReplicaSchema } from '@box/schema/replica/game-replica';
-import { getPlayerEnvironmentZones } from '../zone/zone-server';
 import { PhysicsZoneIndex } from '@box/schema/physics/zone-index';
 import { CloseType } from '@box/schema/types/game';
-import { GamePrivateReplicaSchema } from '@box/schema/replica/game-private-replica';
 import { HotProject } from '@box/schema/project/hot-schema';
 import { ClientKeyboardEventSchema } from '@box/schema/events/client-keyboard-event-schema';
 import { PendingPlayerJoins } from '../player/pending-player-joins';
-import { permittedCorrections, queueMovementCorrection } from '../anticheat/net-movement';
+import {
+  computeNetPublic,
+  computeClientScriptModules,
+  synchronizeClientSecrets,
+  synchronizeNetClientInput,
+  overrideClientPositionCorrections,
+} from './net-state-operations';
+
+// Preserve the existing import path for callers outside the transport module.
+export { synchronizeNetClientInput } from './net-state-operations';
 
 const MIN_RESYNC_TICK_INTERVAL = 16; // 1 second
 
-// -----------------------------------------------------------------------
-// Public info sent to all clients
-//  This is recomputed each tick after all scripts run.  Information is
-//  blasted out to all clients so they can update their replicas accordingly
-// -----------------------------------------------------------------------
-function computeNetPublic(state: GameServerState, netState: NetState) {
-  const result = NetPublicSchema.alloc();
-
-  // copy clock info
-  result.tick = state.clock.tick - 1;
-  result.frameSkip = state.clock.frameSkip;
-
-  // copy state snapshot stuff
-  NetStateSchema.assign(result.state, netState);
-
-  // copy replicated state
-  GameReplicaSchema.assign(result.replica, state.replica);
-
-  // clear replica animation state
-  // clearKeyframeReplica(state, result.replica, result.tick);
-  return result;
-}
-
-// -----------------------------------------------------------------------
-// Secret info, computed for each client
-//  This is computed each tick for each client.  Sends only changes when
-//  necessary.  Private info like entity id, player hp, etc. goes here
-// -----------------------------------------------------------------------
-function computeNetSecret(state: GameServerState, sessionId: string) {
-  const result = NetSecretSchema.clone(NetSecretSchema.identity);
-
-  const connection = state.connections[sessionId];
-  if (connection) {
-    result.id = connection.id;
-
-    // send user id to client
-    result.userId = connection.sessionData.user.id;
-    result.userAvatar = connection.sessionData.user.avatar_hash;
-    result.userName = connection.sessionData.name;
-    result.avatarSkin = PlayerSkinHashSchema.assign(
-      result.avatarSkin,
-      connection.sessionData.avatarSkin,
-    );
-
-    // update secret replica state
-    const secret = getById(state.secrets, result.id);
-    if (secret) {
-      result.replica = GamePrivateReplicaSchema.assign(result.replica, secret);
-    }
-
-    // set login state
-    result.loginState = connection.loginState;
-
-    // set pause state for connection
-    result.netPaused = connection.net.statePaused;
-
-    // compute environment zones for this player
-    getPlayerEnvironmentZones(state, result.environmentZones, result.id);
-  }
-
-  return result;
-}
-
-// -----------------------------------------------------------------------
-// Records an input from a client
-//  This is called whenever we get a new input.  Should just record input.
-//  Don't do any weird processing here
-// -----------------------------------------------------------------------
-function playerCanMove(state: GameServerState, id: number) {
-  const player = getById(state.players, id);
-  if (player) {
-    return !!(player.flags & PlayerFlags.ALLOW_MOVE);
-  }
-  return true;
-}
-
-// 同步客户端的用户输入
-export function synchronizeNetClientInput(
-  state: GameServerState,
-  sessionId: string,
-  input: TimestampedClientInput,
-  logger: Logger,
-) {
-  const { connections, net } = state;
-
-  const connection = connections[sessionId];
-
-  if (
-    !connection ||
-    !connection.id ||
-    connection.state !== GameConnectionState.CONNECTED
-  ) {
-    logger.warn(`input from bad connection, ${sessionId}, discarding`);
-    return true;
-  }
-
-  // check if input paused or old input tick
-  if (
-    input.pauseCounter !== connection.net.inputPauseCounter ||
-    input.tick < connection.net.lastInput
-  ) {
-    return true;
-  }
-
-  // hack: fast forward old ticks to state's oldest tick
-  input.tick = Math.max(input.tick, state.net.oldestTick);
-
-  // check for valid input
-  const inputState = getServerNetInput(state, input.tick);
-  if (!inputState) {
-    logger.warn(
-      `bad tick from client ${sessionId}, tick = ${
-        input.tick
-      }.  current server tick range: ${net.oldestTick} to ${
-        net.oldestTick + net.states.length
-      }`,
-    );
-    return false;
-  }
-
-  // combine input into net state
-  const usePositionCorrection = playerCanMove(state, connection.id);
-  // 以客户端用户输入发上来为准
-  const safeInput = { ...input.input, bodies: permittedCorrections(input.input.bodies, connection.id) };
-  // Controls are immediate; only optional position/velocity corrections wait for script approval.
-  mergeNetInput(inputState, connection.id, safeInput, false);
-  const held = usePositionCorrection && queueMovementCorrection(
-    state, sessionId, input.tick, input.pauseCounter, safeInput,
-  );
-  if (usePositionCorrection && !held) mergeNetInput(inputState, connection.id, safeInput, true);
-  net.lastInputTick = Math.min(net.lastInputTick, input.tick);
-
-  // update input tick
-  connection.net.lastInput = input.tick;
-
-  return true;
-}
-
-function overrideClientPositionCorrections(
-  state: GameServerState,
-  sessionId: string,
-) {
-  const connection = state.connections[sessionId];
-  if (!connection) {
-    return;
-  }
-
-  // update input pause counter
-  connection.net.inputPauseCounter++;
-
-  // clear all body corrections form client
-  const inputs = state.net.inputs;
-  for (let i = 0; i < inputs.length; ++i) {
-    const netInput = state.net.inputs[i];
-    const clientInput = getById(netInput.clients, connection.id);
-    if (!clientInput) {
-      continue;
-    }
-    const bodyCorrections = clientInput.input.bodies;
-    for (let j = 0; j < bodyCorrections.length; ++j) {
-      NetPositionCorrectionSchema.free(bodyCorrections[j]);
-    }
-    bodyCorrections.length = 0;
-  }
-  state.net.lastInputTick = state.net.oldestTick;
-}
-
-// -----------------------------------------------------------------------
-// Network IO implementation details below here
-// -----------------------------------------------------------------------
+/** 连接和协议消息收发；状态计算与编码在 net-state-operations 中维护。 */
 export class NetServer {
   public protocol: MuServerProtocol<typeof NetProtocolSchema>;
   private _state: GameServerState;
@@ -632,41 +454,7 @@ export class NetServer {
   }
 
   public synchronizeSecrets() {
-    // loop over all clients
-    const clients = this.protocol.clients;
-    const clientIds = Object.keys(clients);
-    const stream = new MuWriteStream(SERVER_SECRET_PACKET_SIZE);
-    for (let i = 0; i < clientIds.length; ++i) {
-      const sessionId = clientIds[i];
-
-      // if client isn't connected yet then don't send them secrets
-      const connection = this._state.connections[sessionId];
-      if (!connection) {
-        continue;
-      }
-
-      // compute secret data for client
-      const currentSecret = computeNetSecret(this._state, sessionId);
-      const prevSecret = connection.net.lastSentSecret;
-
-      // check if the secret for this client changed
-      if (!NetSecretSchema.equal(currentSecret, prevSecret)) {
-        // serialize secret and send to client
-        stream.offset = 0;
-        stream.writeVarint(NetMessageType.SECRET);
-        NetSecretSchema.diff(prevSecret, currentSecret, stream);
-        clients[sessionId].sendRaw(stream.bytes());
-
-        // update previous secret state
-        NetSecretSchema.assign(connection.net.lastSentSecret, currentSecret);
-      }
-
-      // clean up
-      NetSecretSchema.free(currentSecret);
-    }
-
-    // clean up stream
-    stream.destroy();
+    synchronizeClientSecrets(this._state, this.protocol.clients);
   }
 
   public kickSession(sessionId: string, reason: CloseType = CloseType.Server) {
@@ -692,9 +480,6 @@ export class NetServer {
   }
 
   public getClientScriptModules() {
-    const { scriptSrc } = this._state;
-    const modules = ClientScriptSrcSchema.alloc();
-    ClientScriptSrcSchema.assign(modules, scriptSrc.clientSrc);
-    return modules;
+    return computeClientScriptModules(this._state);
   }
 }
