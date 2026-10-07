@@ -13,7 +13,6 @@
   "projects": [
     { "packageName": "@box/deployment-manager", "projectFolder": "apps/deployment-manager" },
     { "packageName": "@box/game", "projectFolder": "apps/game" },
-    { "packageName": "@box/license-server", "projectFolder": "apps/license-server" },
     { "packageName": "@box/local-engine", "projectFolder": "apps/local-engine" },
     { "packageName": "@box/migrator", "projectFolder": "apps/migrator" },
     { "packageName": "@box/player-admin", "projectFolder": "apps/player-admin" },
@@ -33,7 +32,6 @@
     { "packageName": "@box/dsbridge", "projectFolder": "packages/dsbridge" },
     { "packageName": "@box/icons", "projectFolder": "packages/icons" },
     { "packageName": "@box/iframe-event-bus", "projectFolder": "packages/iframe-event-bus" },
-    { "packageName": "@box/license", "projectFolder": "packages/license" },
     { "packageName": "@box/mesher", "projectFolder": "packages/mesher" },
     { "packageName": "@box/mudb", "projectFolder": "packages/mudb" },
     { "packageName": "@box/regl", "projectFolder": "packages/regl" },

@@ -67,7 +67,6 @@ use shared_config::{
     database_url, validate_configuration, validate_host, validate_raw_environment,
 };
 
-const KEY: &str = include_str!("../../../distribution/license-public-key.pem");
 const LEGAL_NOTICE: &str = include_str!("../../../distribution/LICENSE.txt");
 #[derive(Clone)]
 /// Immutable dependencies for one management request.
@@ -97,17 +96,6 @@ struct WebRuntime<'a>(&'a App);
 /// Adapter from the shared service-control module to this manager's local
 /// configuration, Compose runner and progress store.
 impl ServiceRuntime for WebRuntime<'_> {
-    fn require_license(&self) -> Result<(), String> {
-        if license(self.0, None)?
-            .get("valid")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-        {
-            Ok(())
-        } else {
-            Err("请先安装有效许可证".into())
-        }
-    }
     fn prepare_images(&self) -> Result<(), String> {
         let runtime_path = generate_runtime_environment(self.0)?;
         database_url(&parse_env(
@@ -168,9 +156,6 @@ struct Request {
     #[serde(flatten)]
     body: BTreeMap<String, Value>,
 }
-use box_manager_core::license as shared_license;
-#[cfg(test)]
-use shared_license::LicensePayload;
 #[derive(Serialize)]
 struct Error {
     message: String,
@@ -240,8 +225,6 @@ async fn main() {
             .map(PathBuf::from)
             .unwrap_or_else(|_| root_path.join(".env")),
     });
-    initialize_license_storage(&app)
-        .expect("unable to initialize the license device file before serving requests");
     let router = Router::new()
         .route("/", get(index))
         .route("/api/health", get(health))

@@ -56,9 +56,7 @@ function check() {
   npmScript('services/game-server', 'check:disabled-storage')
   node('scripts/platform-api-removal.test.js')
   node('scripts/check-engine-wire-protocols.js')
-  npmScript('packages/license', 'test')
-  npmScript('apps/license-server', 'test')
-  node('scripts/check-license-boundaries.js')
+  run(process.execPath, ['--test', 'scripts/license-removal.test.js'])
   node('scripts/check-windows-offline-installer.js')
   run(process.execPath, [
     '--test',
@@ -82,6 +80,8 @@ function check() {
   )
   npmScript('apps/player-auth-portal', 'check')
   run('cargo', ['test', '--manifest-path', 'apps/manager-core/Cargo.toml'])
+  // cargo test enables cfg(test); also compile the actual manager binary.
+  run('cargo', ['check', '--manifest-path', 'apps/server-manager-rust/Cargo.toml'])
   run('cargo', ['test', '--manifest-path', 'apps/server-manager-rust/Cargo.toml'])
   npmScript('apps/migrator', 'test')
   run(process.execPath, [

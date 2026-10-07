@@ -12,7 +12,6 @@ pub fn mutates_runtime(command: &str) -> bool {
         command,
         "save_raw_environment"
             | "save_configuration_command"
-            | "install_license"
             | "start_services"
             | "stop_services"
             | "control_service"

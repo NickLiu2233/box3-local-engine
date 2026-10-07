@@ -262,8 +262,6 @@ mod tests {
                 lan_ip: None,
                 image_tag: "0.3.0",
                 platform: "linux/arm64",
-                license_file: "fixture",
-                license_device_file: "fixture-device",
                 database_required: false,
                 web_manager: false,
             },

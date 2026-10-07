@@ -9,7 +9,6 @@ REPOSITORY_URL=${BOX3_REPOSITORY_URL:-https://github.com/ifishcool/box-local-eng
 RELEASE_CDN_URL=${BOX3_RELEASE_CDN_URL:-https://assets.box3.fun/local-engine}
 INSTALL_DIRECTORY=${BOX3_INSTALL_DIRECTORY:-/opt/box3-engine}
 REQUESTED_VERSION=${BOX3_VERSION:-latest}
-MACHINE_ID_FILE=${BOX3_MACHINE_ID_FILE:-/etc/machine-id}
 OS_RELEASE_FILE=${BOX3_OS_RELEASE_FILE:-/etc/os-release}
 MANAGER_BIND_IP=${BOX3_MANAGER_BIND_IP:-0.0.0.0}
 INSTALL_STARTED_AT=$(date +%s)
@@ -354,10 +353,6 @@ existing_installation_matches_target() {
 
 install_download_tools
 install_docker
-
-if [ ! -s "$MACHINE_ID_FILE" ]; then
-  fail '缺少 /etc/machine-id，无法生成稳定的许可证设备身份。'
-fi
 
 resolve_version
 if existing_installation_matches_target; then

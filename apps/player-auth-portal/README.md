@@ -140,7 +140,7 @@ docker load -i dist/my-login-1.0-linux-arm64.tar.gz
 ## Docker 与运行配置
 
 - Dockerfile.standalone：独立仓库构建，运行镜像只有编译后的服务器与 public，非 root、0.0.0.0:3214、只读根目录可用，带 HEALTHCHECK。
-- Dockerfile：引擎仓库官方集成，保留许可证守卫和公共验证资源，不是独立构建入口。
+- Dockerfile：引擎仓库官方集成，不检查许可证；独立仓库请使用 Dockerfile.standalone。
 - 模拟器、源码、tsx、TypeScript、开发依赖和 .env 都不进入运行镜像。
 - 健康接口只检查门户自身，避免上游故障导致重启循环。
 

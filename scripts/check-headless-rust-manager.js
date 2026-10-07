@@ -57,11 +57,6 @@ assert.match(
 )
 assert.match(consoleSource, /managementAvailable \? '社区与许可' : '许可证'/)
 assert.match(serverManager, /if name != "get_legal_notices"/)
-assert.match(
-  adapter,
-  /initialize_license_storage\(&app\)[\s\S]*?before serving requests/,
-  'the manager must create the device bind-mount file before business containers can start',
-)
 assert.match(transport, /managerApi\(command !== 'get_legal_notices'\)/)
 assert.match(
   consoleSource,
@@ -72,8 +67,6 @@ for (const command of [
   'get_system_status',
   'get_install_config',
   'save_configuration_command',
-  'get_license_status',
-  'install_license',
   'start_services',
   'control_service',
   'list_backups',
@@ -152,18 +145,6 @@ assert.match(service, /BOX_LAN_IP/)
 assert.match(serverEnvExample, /^BOX_LAN_IP=/m)
 assert.match(serverInstall, /BOX_LAN_IP=\$lan_ip/)
 assert.match(compose, /BOX_LAN_IP: \$\{BOX_LAN_IP:-\}/)
-// A new package version must not change the licence device identity.
-assert.match(service, /fn install_secret\(app: &App\)/)
-assert.match(service, /BOX_LICENSE_INSTALL_SECRET/)
-assert.match(service, /许可证与当前设备不匹配/)
-assert.match(serverEnvExample, /^BOX_LICENSE_INSTALL_SECRET=/m)
-assert.match(serverInstall, /BOX_LICENSE_INSTALL_SECRET=\$license_secret\//)
-assert.match(compose, /BOX_LICENSE_INSTALL_SECRET: \$\{BOX_LICENSE_INSTALL_SECRET:-\}/)
-assert.match(
-  compose.match(/ {2}server-manager:[\s\S]*?\n {2}creator:/)?.[0] || '',
-  /cap_add:\s+- CHOWN/,
-  'server-manager must be able to grant the runtime user read access to the license device file',
-)
 assert.match(serverInstall, /--remove-orphans --wait server-manager/)
 assert.match(serverEnvExample, /^BOX_DOCKER_SOCKET=\/var\/run\/docker\.sock$/m)
 assert.match(serverEnvExample, /^BOX_MANAGED_POSTGRES_MEMORY_LIMIT=512m$/m)
@@ -179,16 +160,16 @@ const productionRust = (source) =>
     .replace(/^#\[cfg\(test\)\]\s*mod \w+\s*\{[\s\S]*?^\}/gm, '')
     .replace(/^\s*\/\/.*$/gm, '')
 const core = Object.fromEntries(
-  ['lib', 'configuration', 'license', 'services', 'backup'].map((name) => [
+  ['lib', 'configuration', 'services', 'backup'].map((name) => [
     name,
     productionRust(fs.readFileSync(path.join(sharedDirectory, `${name}.rs`), 'utf8')),
   ]),
 )
-for (const module of ['configuration', 'license', 'services']) {
+for (const module of ['configuration', 'services']) {
   assert.ok(core.lib.includes(`pub mod ${module};`), `core must export ${module}`)
 }
 // Core owns policies; native filesystem/network/UI adapters must stay outside
-// configuration. License time/checkpoint I/O and backup filesystem I/O are valid.
+// configuration. Backup filesystem I/O remains in the dedicated backup module.
 assert.doesNotMatch(core.configuration, /\b(?:tauri|axum)::/)
 assert.doesNotMatch(core.configuration, /\b(?:std::env|env)::(?:var|var_os)\(/)
 for (const name of [
@@ -213,24 +194,6 @@ for (const key of [
 ]) {
   assert.ok(core.configuration.includes(`"${key}"`), `shared runtime must derive/preserve ${key}`)
 }
-// The camelCase signed-token contract is now public and owned by core.
-assert.match(
-  core.license,
-  /#\[serde\(rename_all = "camelCase"\)\]\s*pub struct LicensePayload\s*\{/,
-)
-assert.match(
-  core.license,
-  /\.verify_strict\(/,
-  'signed licenses must use strict signature verification',
-)
-assert.match(
-  core.license,
-  /payload\.device_id != expected_device/,
-  'licenses must bind to the device',
-)
-for (const name of ['verify_token', 'status_from_token', 'trusted_now']) {
-  assert.ok(core.license.includes(`pub fn ${name}(`), `missing shared license API ${name}`)
-}
 assert.match(core.services, /pub const MANAGED_SERVICES:/)
 for (const serviceName of [
   'managed-postgres',
@@ -249,9 +212,6 @@ for (const serviceName of [
 for (const name of ['start', 'control', 'stop', 'statuses', 'compose_rows', 'enabled']) {
   assert.ok(core.services.includes(`pub fn ${name}(`), `missing shared service operation ${name}`)
 }
-// Keep the license guard as a security invariant, but leave scope selection,
-// dependency order and exact Compose argv to the shared runtime behavior tests.
-assert.match(core.services, /runtime\.require_license\(\)\?;/)
 assert.match(
   core.services,
   /start_applications\(runtime, &\[service\]\)\?;/,
@@ -303,17 +263,7 @@ for (const operation of ['start', 'control', 'stop']) {
     `Web must delegate ${operation} to core services`,
   )
 }
-assert.match(
-  webAdapter,
-  /license\(self\.0,\s*None\)\?\s*\.get\("valid"\)/,
-  'Web runtime must supply the license gate',
-)
-assert.match(webAdapter, /use box_manager_core::license as shared_license;/)
 for (const operation of ['trusted_now', 'verify_token', 'status_from_token']) {
-  assert.ok(
-    webAdapter.includes(`shared_license::${operation}(`),
-    `Web must use shared license ${operation}`,
-  )
 }
 if (core.lib.includes('pub mod backup;')) {
   // Accept direct and flat grouped imports, including module aliases. Match
@@ -361,3 +311,6 @@ if (core.lib.includes('pub mod backup;')) {
 }
 
 console.log('headless Rust manager checks passed')
+
+assert.doesNotMatch(frontendSource(root), /get_license_status|install_license|hasValidLicense|许可证管理/)
+assert.doesNotMatch(core.services, /require_license/)

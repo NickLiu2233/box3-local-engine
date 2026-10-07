@@ -127,7 +127,6 @@ fn privileged_runtime_setup_drops_to_node_before_starting_the_game() {
     let command = runtime_entrypoint_command(true);
     assert!(command.contains("iptables -P OUTPUT DROP"));
     assert!(command.contains("tc qdisc replace dev eth0 root tbf"));
-    assert!(command.contains("chown node:node /tmp/box3-license-time-play.json"));
     assert!(command
         .contains("exec setpriv --reuid=node --regid=node --init-groups --bounding-set=-all node"));
     assert!(!runtime_entrypoint_command(false).contains("setpriv"));
@@ -429,24 +428,6 @@ fn database_url_fields_round_trip_common_postgres_urls() {
 }
 
 #[test]
-fn license_payload_parses_camel_case_tokens() {
-    // Regression: without #[serde(rename_all = "camelCase")] every signed
-    // license failed to deserialize and the Web console reported it invalid.
-    let payload = br#"{"formatVersion":1,"licenseId":"lic_a","type":"personal-learning",
-            "holderId":"device_a","deviceId":"dev_a","issuedAt":"2026-09-10T07:36:54.957Z",
-            "expiresAt":"2026-10-10T06:50:00.000Z",
-            "features":["creator","play","voxa","player-service","player-auth-portal"],
-            "commercialUse":false,"version":1}"#;
-    let parsed: LicensePayload = serde_json::from_slice(payload).unwrap();
-    assert_eq!(parsed.format_version, 1);
-    assert_eq!(parsed.license_id, "lic_a");
-    assert_eq!(parsed.license_type, "personal-learning");
-    assert_eq!(parsed.device_id, "dev_a");
-    assert!(!parsed.commercial_use);
-    assert_eq!(parsed.features.len(), 5);
-}
-
-#[test]
 fn private_file_replaces_only_empty_docker_directory_placeholders() {
     let root = std::env::temp_dir().join(format!(
         "box-private-placeholder-{}-{}",
@@ -454,64 +435,19 @@ fn private_file_replaces_only_empty_docker_directory_placeholders() {
         random_hex(6)
     ));
     fs::create_dir_all(&root).unwrap();
-    let empty = root.join("device-id");
+    let empty = root.join("config");
     fs::create_dir(&empty).unwrap();
-    private(&empty, "device").unwrap();
-    assert_eq!(fs::read_to_string(&empty).unwrap(), "device");
+    private(&empty, "config").unwrap();
+    assert_eq!(fs::read_to_string(&empty).unwrap(), "config");
 
-    let nonempty = root.join("license.boxlic");
+    let nonempty = root.join("config.env");
     fs::create_dir(&nonempty).unwrap();
     fs::write(nonempty.join("keep"), "owner data").unwrap();
-    assert!(private(&nonempty, "license").is_err());
+    assert!(private(&nonempty, "config").is_err());
     assert_eq!(
         fs::read_to_string(nonempty.join("keep")).unwrap(),
         "owner data"
     );
-    fs::remove_dir_all(root).unwrap();
-}
-
-#[test]
-fn startup_initialization_creates_the_device_file_before_containers_start() {
-    let root = std::env::temp_dir().join(format!(
-        "box-startup-license-device-{}-{}",
-        std::process::id(),
-        random_hex(6)
-    ));
-    fs::create_dir_all(&root).unwrap();
-    let app = App {
-        root: root.clone(),
-        token: "fixture-token-with-at-least-32-chars".into(),
-        runtime_token: "fixture-runtime-token-with-32-chars".into(),
-        compose_file: root.join("compose.yml"),
-        environment_file: root.join(".env"),
-        operations: Arc::new(Operations::default()),
-        operation_id: None,
-    };
-    let hardware = root.join("machine-id");
-    fs::write(&hardware, "fixture-machine-id\n").unwrap();
-    std::env::set_var("BOX_LICENSE_HARDWARE_ID_FILE", &hardware);
-    initialize_license_storage(&app).unwrap();
-    std::env::remove_var("BOX_LICENSE_HARDWARE_ID_FILE");
-    let device = root.join("license/device-id");
-    assert!(device.is_file());
-    let first_device = fs::read_to_string(&device).unwrap();
-    assert!(first_device.starts_with("dev_"));
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::{MetadataExt, PermissionsExt};
-        assert_eq!(
-            fs::metadata(&device).unwrap().permissions().mode() & 0o777,
-            0o640
-        );
-        let inode = fs::metadata(&device).unwrap().ino();
-        let changed_hardware = root.join("changed-machine-id");
-        fs::write(&changed_hardware, "different-machine-id\n").unwrap();
-        std::env::set_var("BOX_LICENSE_HARDWARE_ID_FILE", &changed_hardware);
-        initialize_license_storage(&app).unwrap();
-        std::env::remove_var("BOX_LICENSE_HARDWARE_ID_FILE");
-        assert_eq!(fs::metadata(&device).unwrap().ino(), inode);
-        assert_eq!(fs::read_to_string(&device).unwrap(), first_device);
-    }
     fs::remove_dir_all(root).unwrap();
 }
 

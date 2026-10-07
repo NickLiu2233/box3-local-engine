@@ -255,7 +255,7 @@ fn runtime_container_stats(container_id: &str) -> Result<Value, String> {
 }
 
 pub(crate) fn runtime_entrypoint_command(needs_privileged_init: bool) -> String {
-    let game_command = "node -r /app/license/process-guard.js /app/apps/local-engine/src/moderation-runtime-launch.js";
+    let game_command = "node /app/apps/local-engine/src/moderation-runtime-launch.js";
     if needs_privileged_init {
         format!(
             "if [ \"$BOX_RUNTIME_NETWORK_POLICY\" = private ]; then \
@@ -269,7 +269,6 @@ pub(crate) fn runtime_entrypoint_command(needs_privileged_init: bool) -> String 
             if [ \"${{BOX_RUNTIME_BANDWIDTH_MBPS:-0}}\" -gt 0 ]; then \
               tc qdisc replace dev eth0 root tbf rate \"${{BOX_RUNTIME_BANDWIDTH_MBPS}}mbit\" burst 64kb latency 400ms; \
             fi; \
-            chown node:node /tmp/box3-license-time-play.json 2>/dev/null || true; \
             exec setpriv --reuid=node --regid=node --init-groups --bounding-set=-all {game_command}"
         )
     } else {
@@ -334,14 +333,6 @@ pub(crate) async fn ensure_runtime_container(
                 "{}:/app/apps/local-engine/data:ro",
                 data_root.join("apps/local-engine/data").display()
             );
-            let license_mount = format!(
-                "{}:/run/secrets/box3-license.boxlic:ro",
-                data_root.join("license/box3-license.boxlic").display()
-            );
-            let device_mount = format!(
-                "{}:/run/secrets/box3-device-id:ro",
-                data_root.join("license/device-id").display()
-            );
             let secret = required_runtime_value(&values, "PERMISSION_TOKEN_SECRET")?;
             let database_url = required_runtime_value(&values, "BOX_DATABASE_URL")?;
             let image = format!("box-local-engine-play:{tag}");
@@ -365,7 +356,6 @@ pub(crate) async fn ensure_runtime_container(
                 "--health-retries".into(), "12".into(),
                 "--health-start-period".into(), "30s".into(),
                 "-v".into(), world_mount, "-v".into(), data_mount,
-                "-v".into(), license_mount, "-v".into(), device_mount,
             ];
             let needs_privileged_init = network_policy == "private" || bandwidth_mbps > 0;
             if needs_privileged_init {

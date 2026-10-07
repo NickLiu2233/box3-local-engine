@@ -138,9 +138,6 @@ services:
       BOX_CREATOR_PROJECTS_PATH: /app/apps/local-engine/projects
       BOX_PLAYER_LOGIN_URL: ${BOX_PLAYER_LOGIN_URL:-}
       BOX_PLAYER_AUTH_API_KEY: ${BOX_PLAYER_AUTH_API_KEY:-}
-      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
-      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
-      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_PLAYER_AUTH_ALLOWED_ORIGINS: ${BOX_PLAYER_AUTH_ALLOWED_ORIGINS:-}
       BOX_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
       BOX_RUNTIME_IDENTITY_TTL_MS: ${BOX_RUNTIME_IDENTITY_TTL_MS:-300000}
@@ -162,8 +159,6 @@ services:
       # this directory read-only and only consumes the policy at runtime.
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/projects:/app/apps/local-engine/projects:ro"
-      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
-      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   player-auth-portal:
     profiles: [auth-portal]
@@ -182,9 +177,7 @@ services:
     restart: unless-stopped
     init: true
     read_only: true
-    # The license gate persists its signed-time checkpoint before starting the
-    # portal. Keep the root filesystem read-only while giving that checkpoint
-    # a private, writable temporary directory.
+    # The portal runs with a read-only root and a private writable temp directory.
     tmpfs:
       - /tmp:mode=1777
     security_opt:
@@ -211,17 +204,11 @@ services:
       BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3127}
       BOX_PLAY_PUBLIC_URL: ${BOX_PLAY_PUBLIC_URL:-http://127.0.0.1:3121}
       BOX_PLAYER_REGISTRATION_ENABLED: ${BOX_PLAYER_REGISTRATION_ENABLED:-true}
-      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
-      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
-      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       AUTH_DEMO_REGISTRATION_ENABLED: ${BOX_PLAYER_REGISTRATION_ENABLED:-true}
       AUTH_DEMO_REQUEST_TIMEOUT_MS: ${BOX_AUTH_PORTAL_REQUEST_TIMEOUT_MS:-10000}
       AUTH_DEMO_TRUST_PROXY: ${BOX_TRUST_PROXY:-false}
     ports:
       - "${BOX_BIND_IP:-127.0.0.1}:${BOX_AUTH_PORTAL_PORT:-3125}:3214"
-    volumes:
-      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
-      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   server-manager:
     # Creator's per-map runtime scheduler depends on this service.  Keep it
@@ -248,10 +235,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    # The manager creates the shared license/device-id file in the bind mount
-    # before any licensed service starts, then grants UID 1000 read access.
-    cap_add:
-      - CHOWN
     mem_limit: ${BOX_SERVER_MANAGER_MEMORY_LIMIT:-128m}
     cpus: ${BOX_SERVER_MANAGER_CPU_LIMIT:-0.5}
     pids_limit: 64
@@ -268,9 +251,6 @@ services:
       # Set by install.sh from the host address. The container cannot detect
       # the host LAN IP itself, so the Web console reads it from here.
       BOX_LAN_IP: ${BOX_LAN_IP:-}
-      # Keeps the license device identity stable across package upgrades.
-      BOX_LICENSE_INSTALL_SECRET: ${BOX_LICENSE_INSTALL_SECRET:-}
-      BOX_LICENSE_HARDWARE_ID_FILE: /run/host-machine-id
     ports:
       - "${BOX_SERVER_MANAGER_BIND_IP:-127.0.0.1}:${BOX_SERVER_MANAGER_PORT:-3130}:3130"
     volumes:
@@ -279,7 +259,6 @@ services:
       # to host loopback with an independent 256-bit management token.
       - ${BOX_DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
       - ${BOX_SERVER_MANAGER_ROOT:-.}:/workspace
-      - /etc/machine-id:/run/host-machine-id:ro
     tmpfs:
       - /tmp:size=16m,mode=1777
     healthcheck:
@@ -371,9 +350,6 @@ services:
       BOX_AUTO_BACKUP_RETENTION_COUNT: ${BOX_AUTO_BACKUP_RETENTION_COUNT:-24}
       BOX_AUTO_BACKUP_RETENTION_DAYS: ${BOX_AUTO_BACKUP_RETENTION_DAYS:-30}
       BOX_PROJECT_BACKUP_PATH: ${BOX_PROJECT_BACKUP_PATH:-/app/apps/local-engine/backups}
-      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
-      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
-      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_CREATOR_ALLOWED_HOSTS: ${BOX_CREATOR_ALLOWED_HOSTS:-}
       BOX_DATABASE_URL: ${BOX_DATABASE_URL:-}
       BOX_DATABASE_SCHEMA: ${BOX_DATABASE_SCHEMA:-box_engine}
@@ -404,8 +380,6 @@ services:
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/backups:/app/apps/local-engine/backups"
       - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data:ro"
-      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
-      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   # A host bind mount can belong to a different UID than the non-root runtime
   # user, especially on Linux servers and Docker Desktop. Repair ownership
@@ -474,8 +448,6 @@ services:
         target: /app/play-worlds
         bind:
           create_host_path: true
-      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
-      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   play:
     profiles: [play]
@@ -510,9 +482,6 @@ services:
       BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
       BOX_PLAY_LIBRARY_PATH: /app/play-worlds
       BOX_PLAY_ADMIN_TOKEN: ${BOX_PLAY_ADMIN_TOKEN:-}
-      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
-      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
-      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_LOCAL_PLAYER_LIMIT: ${BOX_LOCAL_PLAYER_LIMIT:-70}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
       BOX_MODERATION_SIGNING_SECRET: ${BOX_MODERATION_SIGNING_SECRET:-}
@@ -564,8 +533,6 @@ services:
       # blobs while loading a map, so this directory must remain writable.
       - "${BOX_DATA_DIRECTORY:-.}/apps/local-engine/data:/app/apps/local-engine/data"
       - box-play-runtime-cache:/app/play-runtime-cache
-      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
-      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   voxa:
     profiles: [voxa]
@@ -602,16 +569,11 @@ services:
       BOX_VOXA_ALLOWED_ORIGINS: ${BOX_VOXA_ALLOWED_ORIGINS:-}
       BOX_CREATOR_PUBLIC_URL: ${BOX_CREATOR_PUBLIC_URL:-http://127.0.0.1:3127}
       PERMISSION_TOKEN_SECRET: ${PERMISSION_TOKEN_SECRET:-}
-      BOX_LICENSE_TIME_URL: ${BOX_LICENSE_TIME_URL:-}
-      BOX_LICENSE_TIME_MODE: ${BOX_LICENSE_TIME_MODE:-signed}
-      BOX_LICENSE_TIME_MAX_AGE_MS: ${BOX_LICENSE_TIME_MAX_AGE_MS:-604800000}
       BOX_PLAYER_SERVICE_INTERNAL_URL: ${BOX_PLAYER_SERVICE_INTERNAL_URL-http://player-service:3213}
     ports:
       - "${BOX_VOXA_BIND_IP:-127.0.0.1}:${BOX_VOXA_PORT:-3123}:3001"
     volumes:
       - "${BOX_DATA_DIRECTORY:-.}/apps/voxa/data:/app/apps/voxa/data"
-      - "${BOX_LICENSE_FILE:-./license/box3-license.boxlic}:/run/secrets/box3-license.boxlic:ro"
-      - "${BOX_LICENSE_DEVICE_FILE:-./license/device-id}:/run/secrets/box3-device-id:ro"
 
   # Keep the model editor itself on the non-root image user while ensuring its
   # host-backed library stays writable on every supported Docker host.

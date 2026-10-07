@@ -112,7 +112,7 @@ async function createFixture({ webManager = false, token = '', bundle, responses
   }
   const results = {
     get_system_status: { dockerReady: true, configured: true, allHealthy: true, services: [{ name: 'play', running: true }, { name: 'creator', running: true }, { name: 'managed-postgres', running: true }] },
-    get_install_config: fixtureConfig, get_about_info: {}, get_license_status: { valid: true, deviceId: 'device-fixture' },
+    get_install_config: fixtureConfig, get_about_info: {},
     get_managed_service_info: { configured: true, ready: true, imageAvailable: true },
     get_data_storage_info: { path: '/tmp/engine-fixture' }, get_raw_environment: 'FIXTURE=true',
     list_backups: [], get_project_runtime_status: { creator: [], play: [], playMaps: [] },

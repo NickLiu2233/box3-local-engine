@@ -2,7 +2,7 @@
 
 本包用于没有桌面环境的 Linux amd64/arm64 服务器，包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Web 管理端六个离线镜像。运行时只需要 Docker Engine 与 Docker Compose v2，不需要安装 Node.js、pnpm、Rust 或源码仓库。
 
-包内不包含真实 `.env`、密钥、许可证、地图、模型、玩家数据、备份、日志，也不包含 PostgreSQL/Redis 镜像。选择内置 PostgreSQL 或 Redis 时需要联网拉取对应基础镜像。
+包内不包含真实 `.env`、密钥、地图、模型、玩家数据、备份、日志，也不包含 PostgreSQL/Redis 镜像。选择内置 PostgreSQL 或 Redis 时需要联网拉取对应基础镜像。
 
 如果尚未下载本包，联网服务器可以直接运行一键安装命令；该命令会自动下载匹配架构的完整包并执行本 README 中的校验和安装流程，同时把管理端开放到局域网和公网，并在终端显示访问地址与两类管理密钥：
 
@@ -51,7 +51,7 @@ chmod +x *.sh
 ./install.sh
 ```
 
-`verify.sh` 校验包内文件和镜像归档 SHA-256。`install.sh` 会再次校验架构与镜像，首次运行时创建权限为 `0600` 的 `.env`，生成业务密钥、Web 管理令牌、内部运行时管理密钥与许可证安装密钥，导入六个镜像，并且只启动 Web 管理端。业务服务必须在许可证安装后由服主启动。
+`verify.sh` 校验包内文件和镜像归档 SHA-256。`install.sh` 会再次校验架构与镜像，首次运行时创建权限为 `0600` 的 `.env`，生成业务密钥、Web 管理令牌、内部运行时管理密钥，导入六个镜像，并且只启动 Web 管理端。业务服务由服主完成数据配置后启动。
 
 安装脚本不会覆盖已有 `.env`；升级旧版本时会自动补齐缺失的内部管理密钥，不会替换长度合法的现有密钥。若命令提示没有 Docker 权限，请重新登录使 docker 用户组生效，不要改成长期使用宽松的 Socket 权限。
 
@@ -71,17 +71,16 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 管理密钥只保存在当前标签页；关闭标签页或点击“退出管理”后，下次需要重新输入。不要分享 `.env` 或包含密钥的截图。
 
-## 四、许可证、数据库和启动顺序
+## 四、数据库和启动顺序
 
-1. 在“许可证管理”复制设备 ID并安装许可证。
-2. 在“数据配置”选择 PostgreSQL：内置模式会联网拉取 PostgreSQL 16，外部模式需要填写并测试连接。
-3. Redis 可以关闭、使用内置实例或连接外部服务。
-4. 填写 Play、Creator 的地址与监听范围并保存。
-5. 在“服务总览”启动游玩端、创作端或全部服务。
+1. 在“数据配置”选择 PostgreSQL：内置模式会联网拉取 PostgreSQL 16，外部模式需要填写并测试连接。
+2. Redis 可以关闭、使用内置实例或连接外部服务。
+3. 填写 Play、Creator 的地址与监听范围并保存。
+4. 在“服务总览”启动游玩端、创作端或全部服务。
 
 `.env` 是服主维护的唯一配置来源。保存配置和启动服务时，Rust 管理端会自动生成 `.runtime.env`；不要手工修改它。
 
-必须长期保留 `.env` 与 `license/`。`BOX_LICENSE_INSTALL_SECRET` 决定许可证设备 ID；丢失后设备 ID 会改变。内置 PostgreSQL 已有数据卷时也必须保留原 `.env` 中的数据库身份与密码。管理端检测到数据卷存在但原凭据缺失时会停止保存，不会生成无法登录的新账号。
+必须长期保留 `.env`。内置 PostgreSQL 已有数据卷时也必须保留原 `.env` 中的数据库身份与密码。管理端检测到数据卷存在但原凭据缺失时会停止保存，不会生成无法登录的新账号。
 
 ## 五、网络边界
 
@@ -125,10 +124,10 @@ Rust 管理端默认限制为 128 MB、0.5 CPU，实际空闲内存仅为数 MiB
 - `start.sh`：读取已有 `.env`，按 `COMPOSE_PROFILES` 启动服务；
 - 只启动 Play 相关服务：`BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh`（一次性覆盖，不修改 `.env`）；
 - `logs.sh [服务名]`：查看并跟踪最近 300 行日志；
-- `stop.sh`：停止服务，不删除数据卷、工程、许可证或备份；
+- `stop.sh`：停止服务，不删除数据卷、工程或备份；
 - `install.sh`：重新校验镜像并恢复管理端，不覆盖已有配置。
 
-升级前备份 `.env`、`license/`、`apps/local-engine/projects/`、`apps/local-engine/play-worlds/`、`apps/voxa/data/`、`apps/local-engine/backups/`，并单独执行 PostgreSQL `pg_dump` 或数据库快照。页面文件备份不包含 PostgreSQL。
+升级前备份 `.env`、`apps/local-engine/projects/`、`apps/local-engine/play-worlds/`、`apps/voxa/data/`、`apps/local-engine/backups/`，并单独执行 PostgreSQL `pg_dump` 或数据库快照。页面文件备份不包含 PostgreSQL。
 
 升级到新目录时，先停止旧部署，再复制上述配置与数据，然后执行新包的 `./verify.sh` 和 `./install.sh`。不要删除 `box-managed-postgres-data` 排障。
 
@@ -141,7 +140,6 @@ Rust 管理端默认限制为 128 MB、0.5 CPU，实际空闲内存仅为数 MiB
 | Player Service 返回 503 | 查看 Player Service 与 PostgreSQL 日志                    |
 | PostgreSQL role 不存在  | 恢复创建数据卷时的 `.env`，不要删除卷或生成另一组随机凭据 |
 | 内置数据库镜像下载失败  | 检查网络、镜像源、代理和磁盘空间                          |
-| 升级后许可证失效        | 恢复旧 `.env` 的安装密钥与完整 `license/`                 |
 | 容器因内存不足退出      | 查看日志，按实际负载提高对应 `*_MEMORY_LIMIT`             |
 
 管理容器通过 Docker Socket 控制本机 Docker，拥有该 Socket 等同于宿主机 root 级权限。只运行可信发行镜像并保护管理密钥。

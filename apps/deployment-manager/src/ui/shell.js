@@ -1,6 +1,5 @@
 import { backupConfirmDialog, legalDocumentDialog, mapRuntimeProfileDialog, runtimeDestroyDialog, startScopeDialog } from './dialogs.js'
 import { escapeHtml } from './html.js'
-import { hasValidLicense } from './access.js'
 import { hasWebManagerToken, isWebManager } from '../infrastructure/transport.js'
 import { icon } from './icons.js'
 import { state } from '../core/state.js'
@@ -12,17 +11,14 @@ function navItem(page, iconName, label) {
 
 export function shell(content) {
   const webLoginRequired = isWebManager() && !hasWebManagerToken()
-  const licensedNavigation = hasValidLicense()
-    ? `${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
-    : ''
   const primaryNavigation = webLoginRequired
     ? navItem('web-login', 'device', '管理登录')
-    : `${licensedNavigation}${navItem('license', 'device', '许可证管理')}`
+    : `${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
   return `<div class="shell" data-rendered-page="${state.page}">
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
       <nav>${primaryNavigation}${navItem('about', 'info', '关于')}</nav>
-      <div class="sidebar-bottom">${isWebManager() && hasWebManagerToken() ? `<button class="web-logout" id="web-logout">${icon('logout')}<span>退出管理</span></button>` : ''}${themeControl()}${hasValidLicense() ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div>` : ''}</div>
+      <div class="sidebar-bottom">${isWebManager() && hasWebManagerToken() ? `<button class="web-logout" id="web-logout">${icon('logout')}<span>退出管理</span></button>` : ''}${themeControl()}${!webLoginRequired ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div>` : ''}</div>
     </aside>
     <main>${content}</main>
     ${feedbackToast()}

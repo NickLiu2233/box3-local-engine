@@ -68,7 +68,7 @@ Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理
 | 游戏服务端           | Node.js、TypeScript、WebSocket、自研 MuDB 协议             |
 | 桌面启动器           | Tauri 2、Rust、Vite                                        |
 | Linux 管理端         | Rust、Axum、Tokio                                          |
-| 玩家登录与许可证服务 | React、esbuild、Fastify、Ed25519                           |
+| 玩家登录门户 | React、TypeScript、esbuild                           |
 | 数据与资源存储       | PostgreSQL、Redis、文件系统内容寻址 Blob                   |
 | 部署、交付与持续集成 | Docker、Docker Compose、GitHub Actions                     |
 | 代码质量             | ESLint、Prettier、TypeScript 类型检查、自动化回归测试      |
@@ -82,7 +82,7 @@ Creator、Play 和 VOXA 的 3D 画面由浏览器 WebGL 渲染。Linux 服务端
 - PostgreSQL 是玩家、会话、权限、审计和地图脚本持久数据的正确性来源，必须单独备份。
 - Redis 是可选的会话、限流和构建协调缓存，不保存永久业务数据。
 - `box-play-runtime-cache` 只保存可再生成的预烘焙和构建产物，不是数据库。
-- Creator 工程、Play 地图库、VOXA 模型数据、`.env` 和许可证文件均需按部署方式单独备份。
+- Creator 工程、Play 地图库、VOXA 模型数据、`.env` 均需按部署方式单独备份。
 - 桌面安装数据与源码工作区数据彼此独立；需要通过工程包、游玩包或备份迁移。
 
 服务端地图脚本在 game-server 的隔离运行时中执行，负责权威规则和持久数据。客户端地图脚本运行在玩家浏览器页面中，玩家可以查看或修改其执行环境，因此不能保存密码、Token、数据库连接串、付费判定、奖励规则或其他秘密。
@@ -183,7 +183,6 @@ docker compose --profile infra stop postgres redis
 | `docs/`         | 架构、领域模型、开发、部署与运维文档                 |
 | `distribution/` | 安装器、服务器包、独立部署和许可模板                 |
 | `scripts/`      | 仓库级开发、回归、打包和发布命令                     |
-| `license/`      | 本机许可证运行目录；仅保留占位文件，运行数据禁止入库 |
 
 `distribution/` 和 `scripts/` 是发布与仓库命令的稳定入口，因此保留在根目录。正式应用必须放入 `apps/`，不要用 `examples/` 承载生产服务，也不要在根目录新增临时项目、构建产物或本机数据。
 
@@ -239,8 +238,8 @@ GitHub Release 发布桌面包、服务器包和 `install.sh`。Linux 服务器�
 
 ## 许可与安全
 
-部署和启动业务服务前需要安装有效许可证。个人学习许可证绑定设备，仅限对应许可范围；使用说明见[个人学习许可证](docs/licensing.md)。
+引擎和启动器不再进行运行时许可证检测；完成数据配置即可启动服务。管理登录、账户权限和内部接口鉴权仍然保留。
 
 仓库 npm 元数据为 `UNLICENSED`，不授予源代码开源许可。用户发行包适用 [BOX3 Local Engine 本地部署用户许可协议](distribution/LICENSE.txt)。商业使用、二次开发、再分发或品牌合作需要取得权利人书面授权。
 
-不要提交或发布真实 `.env`、数据库连接串、密码、Cookie、Token、许可证私钥、用户 IP、地图工程、模型库、备份、日志、Docker 卷或构建缓存。
+不要提交或发布真实 `.env`、数据库连接串、密码、Cookie、Token、用户 IP、地图工程、模型库、备份、日志、Docker 卷或构建缓存。

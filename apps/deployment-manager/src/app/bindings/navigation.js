@@ -1,9 +1,7 @@
-import { UNLICENSED_PAGES } from '../../core/constants.js'
 import { dismissFeedback } from '../../operations/feedback.js'
-import { hasValidLicense } from '../../ui/access.js'
 import { hasWebManagerToken, isWebManager, setWebManagerToken } from '../../infrastructure/transport.js'
 import { loadBackups } from '../../operations/backups.js'
-import { loadLegalNotices, refreshLicenseStatus } from '../../operations/license.js'
+import { loadLegalNotices } from '../../operations/legal.js'
 import { refreshManagedServiceInfo } from '../../operations/status.js'
 import { refreshMapRuntimeProfiles, scheduleProjectRuntimeRefresh } from '../../operations/runtimes.js'
 import { render } from '../../core/render-request.js'
@@ -24,11 +22,6 @@ export function bindNavigationEvents() {
           render()
           return
         }
-        if (!hasValidLicense() && !UNLICENSED_PAGES.has(node.dataset.page)) {
-          state.page = 'license'
-          render()
-          return
-        }
         if (node.dataset.page !== 'setup') {
           resetOwnerSecretState()
         }
@@ -39,7 +32,6 @@ export function bindNavigationEvents() {
         render()
         if (state.page === 'backups') loadBackups()
         if (state.page === 'about') loadLegalNotices()
-        if (state.page === 'license') refreshLicenseStatus()
         if (state.page === 'setup') refreshManagedServiceInfo()
         if (state.page === 'runtimes') {
           scheduleProjectRuntimeRefresh()
@@ -57,7 +49,6 @@ export function bindNavigationEvents() {
       state.config = null
       state.about = null
       state.legal = null
-      state.license = null
       state.environmentFile = ''
       state.environmentFileLoaded = false
       resetOwnerSecretState()

@@ -1,5 +1,5 @@
 //! Shared configuration validation, URL migration and runtime derivation.
-//! Hosts supply LAN detection, image/platform and license paths. No host I/O.
+//! Hosts supply LAN detection, image/platform settings. No host I/O.
 
 use serde_json::{Map, Value};
 use std::{
@@ -425,8 +425,6 @@ pub struct RuntimeInputs<'a> {
     pub lan_ip: Option<&'a str>,
     pub image_tag: &'a str,
     pub platform: &'a str,
-    pub license_file: &'a str,
-    pub license_device_file: &'a str,
     /// Keep setup/status/stop available before the database step is complete.
     pub database_required: bool,
     pub web_manager: bool,
@@ -491,8 +489,6 @@ pub fn runtime_environment(
             crate::auth_portal::image(values, input.image_tag)?,
         ),
         ("BOX_PLAY_PLATFORM", input.platform.into()),
-        ("BOX_LICENSE_FILE", input.license_file.into()),
-        ("BOX_LICENSE_DEVICE_FILE", input.license_device_file.into()),
         ("BOX_BIND_IP", network.play_bind_ip.into()),
         ("BOX_PUBLIC_SCHEME", public_scheme.into()),
         ("BOX_PLAY_PUBLIC_HOST", network.play_host.clone()),
@@ -1147,8 +1143,6 @@ mod tests {
             lan_ip: Some("fd00::10"),
             image_tag: "test",
             platform: "linux/arm64",
-            license_file: "/path with spaces/license",
-            license_device_file: "/device",
             database_required: true,
             web_manager: false,
         };
@@ -1157,7 +1151,6 @@ mod tests {
         assert_eq!(runtime["BOX_CREATOR_PUBLIC_URL"], "http://[fd00::10]:3127");
         assert_eq!(runtime["BOX_PLAY_PUBLIC_URL"], "http://127.0.0.1:3121");
         assert_eq!(runtime["BOX_CREATOR_ALLOWED_HOSTS"], "fd00::10");
-        assert_eq!(runtime["BOX_LICENSE_FILE"], input.license_file);
         assert_eq!(
             runtime["BOX_PLAYER_LOGIN_URL"],
             runtime["BOX_AUTH_PORTAL_PUBLIC_URL"]

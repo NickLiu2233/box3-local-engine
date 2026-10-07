@@ -28,7 +28,6 @@ coverage/
 apps/game/html-report/
 *.log
 .DS_Store
-apps/license-server/.local/
 *.tsbuildinfo
 .env.local
 .env.*.local
@@ -41,10 +40,10 @@ apps/license-server/.local/
 !**/.env.example
 !**/.env.*.example
 
-# The launcher generates runtime configuration and license state locally.
-# Keep the directory placeholder, never machine-bound credentials or IDs.
+# The launcher generates runtime configuration locally; legacy license data stays ignored.
+# Old installations may retain credentials here; never add them to the repository.
 /license/*
-!/license/.gitkeep
+/apps/license-server/
 
 # Local .NET launcher outputs are reproducible build artifacts.
 /tools/windows-launcher/bin/

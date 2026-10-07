@@ -498,21 +498,6 @@ importers:
         specifier: 5.0.2
         version: 5.0.2(webpack@5.102.1)
 
-  ../../apps/license-server:
-    dependencies:
-      '@box/license':
-        specifier: workspace:*
-        version: link:../../packages/license
-      '@fastify/rate-limit':
-        specifier: 10.3.0
-        version: 10.3.0
-      fastify:
-        specifier: 5.6.2
-        version: 5.6.2
-      zod:
-        specifier: 4.1.12
-        version: 4.1.12
-
   ../../apps/local-engine:
     dependencies:
       '@box/apis':
@@ -1272,8 +1257,6 @@ importers:
       typescript:
         specifier: 5.6.3
         version: 5.6.3
-
-  ../../packages/license: {}
 
   ../../packages/mesher:
     dependencies:

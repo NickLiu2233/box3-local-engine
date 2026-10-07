@@ -5,7 +5,7 @@
   "scripts": {
     "format": "node ../../scripts/format-repository.js --write",
     "format:check": "node ../../scripts/format-repository.js",
-    "lint:root": "eslint ../../apps/local-engine/src ../../apps/local-engine/scripts ../../apps/license-server ../../packages/license ../../scripts --ext .js,.cjs"
+    "lint:root": "eslint ../../apps/local-engine/src ../../apps/local-engine/scripts ../../scripts --ext .js,.cjs"
   },
   "devDependencies": {
     "eslint": "8.57.1",

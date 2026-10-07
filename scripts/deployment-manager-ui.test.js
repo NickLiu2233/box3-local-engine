@@ -35,7 +35,7 @@ test('all pages render through the module renderer and preserve scroll on same-p
   app.api.state.projectRuntimesLoaded = true
   for (const [page, marker] of [
     ['overview', '服务总览'], ['setup', 'setup-form'], ['backups', '立即备份'],
-    ['runtimes', '地图容器管理'], ['performance', '性能监控'], ['license', '许可证管理'],
+    ['runtimes', '地图容器管理'], ['performance', '性能监控'],
     ['about', 'about-page'], ['web-login', 'web-login-form'],
   ]) {
     app.api.state.page = page
@@ -232,3 +232,15 @@ test('login image changes remain saved when applying fails and do not start a st
   assert.match(failed.api.state.error, /配置已保存，但登录页面更新失败/)
   assert.equal(failed.api.state.busy, false)
 })
+
+test('console works without activation while Web administration still requires authentication', async () => {
+  const native = await createFixture();
+  assert.match(native.html, /服务总览/);
+  assert.ok(!native.html.includes('许可证管理'));
+  assert.ok(!native.calls.some(call => /license/.test(call.command)));
+  const web = await createFixture({ webManager: true });
+  web.api.state.page = 'setup';
+  web.api.render();
+  assert.equal(web.api.state.page, 'web-login');
+  assert.match(web.html, /web-login-form/);
+});

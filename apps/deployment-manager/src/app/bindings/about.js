@@ -1,6 +1,5 @@
 import { applyTheme } from '../../ui/theme.js'
-import { closeLegalDialog, installLicenseToken, openLegalDocument } from '../../operations/license.js'
-import { copyText } from '../../utils/clipboard.js'
+import { closeLegalDialog, openLegalDocument } from '../../operations/legal.js'
 import { exportDiagnostics } from '../../operations/backups.js'
 import { openExternal } from '../../infrastructure/transport.js'
 import { render } from '../../core/render-request.js'
@@ -8,25 +7,7 @@ import { state } from '../../core/state.js'
 
 
 
-export function bindLicenseAboutEvents() {
-  document.querySelector('#install-license')?.addEventListener('click', () => installLicenseToken())
-  
-  document.querySelector('#toggle-license-device')?.addEventListener('click', () => {
-      state.licenseDeviceVisible = !state.licenseDeviceVisible
-      render()
-    })
-  
-  document.querySelector('#copy-license-device')?.addEventListener('click', async () => {
-      if (!state.license?.deviceId) return
-      try {
-        await copyText(state.license.deviceId)
-        state.notice = '设备 ID 已复制。'
-      } catch (error) {
-        state.error = `复制失败：${String(error)}`
-      }
-      render()
-    })
-  
+export function bindAboutEvents() {
   document.querySelector('#close-legal-dialog')?.addEventListener('click', closeLegalDialog)
   
   document.querySelector('[data-legal-dialog-dismiss]')?.addEventListener('click', (event) => {

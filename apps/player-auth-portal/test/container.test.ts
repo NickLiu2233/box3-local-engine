@@ -33,7 +33,7 @@ const browserSource = readSource(path.join(portalRoot, 'src'))
 const portalHtml = readFileSync(path.join(portalRoot, 'public/index.html'), 'utf8')
 
 test(
-  'official container keeps the license gate and copies only runtime source',
+  'official container starts without activation and copies only runtime source',
   { skip: !integrated },
   () => {
     assert.match(
@@ -41,15 +41,11 @@ test(
       /COPY --from=build --chown=node:node \/build\/build\/server\.cjs \.\/build\/server\.cjs/,
     )
     assert.match(dockerfile, /COPY --from=build --chown=node:node \/build\/public \.\/public/)
-    assert.match(dockerfile, /COPY --chown=node:node packages\/license\/index\.js/)
-    assert.match(dockerfile, /COPY --chown=node:node distribution\/license-public-key\.pem/)
     assert.doesNotMatch(dockerfile, /COPY[^\n]*\.env/i)
     assert.match(dockerfile, /USER node/)
+    assert.doesNotMatch(dockerfile, /runtime-gate|process-guard|BOX_LICENSE/)
+    assert.match(dockerfile, /CMD \["node", "build\/server.cjs"\]/)
     assert.match(dockerignore, /^\.env$/m)
-    assert.match(dockerignore, /^apps\/license-server\/\*$/m)
-    assert.match(dockerignore, /^!apps\/license-server\/package\.json$/m)
-    assert.doesNotMatch(dockerignore, /^!apps\/license-server\/$/m)
-    assert.doesNotMatch(dockerignore, /^!apps\/license-server\/\*\*$/m)
   },
 )
 

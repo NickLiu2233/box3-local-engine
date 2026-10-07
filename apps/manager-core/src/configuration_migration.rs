@@ -699,8 +699,6 @@ mod tests {
                 lan_ip: None,
                 image_tag: "fixture",
                 platform: "linux/amd64",
-                license_file: "/fixture/license",
-                license_device_file: "/fixture/device",
                 database_required: true,
                 web_manager: true,
             },
@@ -717,7 +715,6 @@ mod tests {
             derived["BOX_DATABASE_URL"],
             "postgresql://u:p@db:5432/box?sslmode=require"
         );
-        assert_eq!(derived["BOX_LICENSE_FILE"], "/fixture/license");
         let once = derived.clone();
         apply_url_overrides(&migrated, &mut derived).unwrap();
         assert_eq!(derived, once);

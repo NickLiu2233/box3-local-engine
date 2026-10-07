@@ -469,14 +469,6 @@ pub(crate) fn generate_runtime_environment(app: &App) -> Result<PathBuf, String>
             } else {
                 "linux/amd64"
             },
-            license_file: values
-                .get("BOX_LICENSE_FILE")
-                .map(String::as_str)
-                .unwrap_or("./license/box3-license.boxlic"),
-            license_device_file: values
-                .get("BOX_LICENSE_DEVICE_FILE")
-                .map(String::as_str)
-                .unwrap_or("./license/device-id"),
             database_required: false,
             web_manager: true,
         },

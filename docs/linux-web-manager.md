@@ -38,13 +38,13 @@ df -h /
 curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
-安装器会自动识别 `amd64` 或 `arm64`、准备 Docker Engine 与 Compose v2、下载并校验匹配的完整发行包，然后安装到 `/opt/box3-engine` 并启动管理端。管理端默认监听 `0.0.0.0:3130`，安装完成时会显示局域网地址、公网地址、管理端登录密钥和服主管理密钥。重复执行会升级程序文件并保留现有配置、许可证、地图、模型、备份和数据库卷。
+安装器会自动识别 `amd64` 或 `arm64`、准备 Docker Engine 与 Compose v2、下载并校验匹配的完整发行包，然后安装到 `/opt/box3-engine` 并启动管理端。管理端默认监听 `0.0.0.0:3130`，安装完成时会显示局域网地址、公网地址、管理端登录密钥和服主管理密钥。重复执行会升级程序文件并保留现有配置、地图、模型、备份和数据库卷。
 
 重复执行进行升级时，只更新发行镜像标签和平台字段，并重建升级前正在运行的六个应用服务。未运行的服务、PostgreSQL、Redis、地图运行时和所有持久数据不会被安装器删除。
 
 安装器会在已启用的 UFW 或 firewalld 中自动放行 TCP 3130；云厂商安全组仍需由服主手动放行。公网部署应尽快使用 HTTPS 反向代理或 VPN 保护管理端；不需要公网和局域网访问时，可以下载安装器后通过 `BOX3_MANAGER_BIND_IP=127.0.0.1` 执行。
 
-安装有效许可证前不会启动 Play、Creator 等业务服务。安装完成后继续阅读“登录管理端”和“安装许可证并启动服务”。
+安装后只启动管理端，Play、Creator 等业务服务由服主配置后启动。安装完成后继续阅读“登录管理端”和“配置并启动服务”。
 
 ## 3. 手动安装 Docker
 
@@ -93,11 +93,11 @@ chmod +x *.sh
 
 1. 再次校验完整包与 CPU 架构；
 2. 从 `.env.example` 创建权限为 `0600` 的 `.env`；
-3. 生成业务密钥、Web 管理令牌和许可证安装密钥；
+3. 生成业务密钥、Web 管理令牌；
 4. 导入六个离线镜像；
 5. 只启动 Rust Web 管理端。
 
-业务服务不会在许可证安装前自动启动。安装器不会覆盖已有 `.env`。
+业务服务由服主完成数据配置后启动。安装器不会覆盖已有 `.env`。
 
 ```bash
 ./status.sh
@@ -122,16 +122,15 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 
 管理密钥只保存在当前浏览器标签页。关闭标签页或点击“退出管理”后，下次必须重新输入。不要分享 `.env`、管理密钥或包含密钥的截图。
 
-## 7. 安装许可证并启动服务
+## 7. 配置并启动服务
 
 首次登录后按顺序操作：
 
-1. 打开“许可证管理”，复制设备 ID，申请并安装许可证。
-2. 打开“数据配置”，选择 PostgreSQL 模式。
-3. 选择内置 PostgreSQL 时，管理端会联网下载 PostgreSQL 16 镜像；选择外部数据库时填写连接信息并执行连接测试。
-4. Redis 可以关闭、使用内置实例或连接外部实例。
-5. 填写 Play、Creator 的访问地址和监听范围并保存。
-6. 在“服务总览”启动“游玩端”“创作端”或“全部服务”。
+1. 打开“数据配置”，选择 PostgreSQL 模式。
+2. 选择内置 PostgreSQL 时，管理端会联网下载 PostgreSQL 16 镜像；选择外部数据库时填写连接信息并执行连接测试。
+3. Redis 可以关闭、使用内置实例或连接外部实例。
+4. 填写 Play、Creator 的访问地址和监听范围并保存。
+5. 在“服务总览”启动“游玩端”“创作端”或“全部服务”。
 
 `.env` 是唯一需要持久保存的配置来源。Rust 管理端在保存配置和启动服务时自动生成 `.runtime.env`；不要手工修改 `.runtime.env`，它会被覆盖。
 
@@ -182,7 +181,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 - `status.sh` 查看服务状态；
 - `start.sh` 读取已有 `.env`，按 `COMPOSE_PROFILES` 启动服务；
 - `logs.sh [服务名]` 跟踪最近 300 行日志；
-- `stop.sh` 停止服务，但不删除工程、地图、许可证、备份或 Docker 数据卷；
+- `stop.sh` 停止服务，但不删除工程、地图、备份或 Docker 数据卷；
 - `install.sh` 可重新校验镜像并恢复 Web 管理端，已有配置不会被覆盖。
 
 容器使用 `restart: unless-stopped`，服务器重启后会恢复此前运行的服务。Web 页面只能管理固定白名单内的业务服务与内置数据库。
@@ -211,14 +210,14 @@ BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh
 
 升级前保存：
 
-- `.env` 和 `license/`；
+- `.env`；
 - `apps/local-engine/projects/`、`apps/local-engine/play-worlds/`、`apps/voxa/data/`；
 - `apps/local-engine/backups/`；
 - PostgreSQL 的 `pg_dump` 或数据库服务商快照。
 
 页面文件备份不包含 PostgreSQL。Redis 和 `box-play-runtime-cache` 是可重新生成的数据，不作为永久数据源。
 
-升级到新目录时，先停止旧部署，将 `.env`、`license/` 和持久数据复制到新目录，再运行新包的 `./verify.sh` 与 `./install.sh`。必须保留 `.env` 中的 `BOX_LICENSE_INSTALL_SECRET`，否则设备 ID 会变化。
+升级到新目录时，先停止旧部署，将 `.env` 和持久数据复制到新目录，再运行新包的 `./verify.sh` 与 `./install.sh`。
 
 ## 12. 故障排查
 
@@ -226,11 +225,10 @@ BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh
 | --------------------------- | -------------------------------------------------------------- |
 | 页面打不开                  | 检查 SSH 隧道、`./status.sh`、`./logs.sh server-manager`       |
 | 管理端登录失败              | 重新读取当前`.env` 的管理密钥，不要使用旧令牌                  |
-| 服务无法启动                | 先检查许可证，再查看对应服务和数据库日志                       |
+| 服务无法启动                | 查看对应服务、数据库日志及数据配置                       |
 | Player Service 返回 503     | 查看`./logs.sh player-service` 与 `./logs.sh managed-postgres` |
 | PostgreSQL 提示 role 不存在 | 恢复创建该数据卷时使用的`.env`；不要删除卷或生成另一组随机凭据 |
 | 内置数据库下载失败          | 检查网络、镜像源、代理和磁盘空间                               |
-| 升级后许可证失效            | 恢复旧`.env` 的 `BOX_LICENSE_INSTALL_SECRET` 和完整 `license/` |
 | 容器被 OOM 终止             | 查看日志，按实际负载提高对应的`*_MEMORY_LIMIT`                 |
 
-配置字段详解见[配置参考](./configuration-reference.md)，数据边界见[本地基础设施](./local-infrastructure.md)，许可证规则见[个人学习许可证](./licensing.md)。
+配置字段详解见[配置参考](./configuration-reference.md)，数据边界见[本地基础设施](./local-infrastructure.md)。

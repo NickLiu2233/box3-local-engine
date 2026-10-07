@@ -28,17 +28,12 @@ LABEL org.opencontainers.image.title="BOX Local Engine Player Auth Portal" \
 
 ENV NODE_ENV=production \
     AUTH_DEMO_HOST=0.0.0.0 \
-    AUTH_DEMO_PORT=3214 \
-    BOX_LICENSE_FEATURE=player-auth-portal
+    AUTH_DEMO_PORT=3214
 
 WORKDIR /app
 
 COPY --from=build --chown=node:node /build/build/server.cjs ./build/server.cjs
 COPY --from=build --chown=node:node /build/public ./public
-RUN mkdir -p /app/license && chown node:node /app/license
-COPY --chown=node:node packages/license/index.js packages/license/runtime-gate.js packages/license/process-guard.js packages/license/trusted-time.js /app/license/
-COPY --chown=node:node distribution/license-public-key.pem /app/license/license-public-key.pem
-COPY --chown=node:node distribution/license-time-public-key.pem /app/license/license-time-public-key.pem
 
 USER node
 
@@ -47,5 +42,4 @@ EXPOSE 3214
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
   CMD node -e "fetch('http://127.0.0.1:3214/api/health-check').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 
-ENTRYPOINT ["node", "/app/license/runtime-gate.js", "player-auth-portal", "--"]
-CMD ["node", "-r", "/app/license/process-guard.js", "build/server.cjs"]
+CMD ["node", "build/server.cjs"]

@@ -271,16 +271,6 @@ for (const name of [
   'build:headless-server-package',
   'prepare:assets',
   'sync:avatar',
-  'license-server',
-  'license-server:build',
-  'license-server:up',
-  'license-server:dev',
-  'license-server:status',
-  'license-server:logs',
-  'license-server:stop',
-  'license-server:down',
-  'license:keygen',
-  'license:time-keygen',
   'migrator',
   'migrator:up',
   'migrator:dev',
@@ -292,7 +282,6 @@ for (const name of [
   'check:engine',
   'check:distribution',
   'check:integration',
-  'check:license',
   'check:voxa-map-link',
   'check:voxa-extra-project',
   'check:voxa-render',
@@ -488,16 +477,15 @@ for (const [label, pattern] of [
     'clean-checkout runtime asset generation',
     /^RUN cd apps\/local-engine && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js prepare-assets$/m,
   ],
-  ['licensed runtime base', /^FROM runtime-base AS licensed-runtime-base$/m],
-  ['creator final target', /^FROM licensed-runtime-base AS creator$/m],
-  ['play final target', /^FROM licensed-runtime-base AS play$/m],
+  ['creator final target', /^FROM runtime-base AS creator$/m],
+  ['play final target', /^FROM runtime-base AS play$/m],
   ['VOXA build stage', /^FROM source-base AS voxa-build$/m],
   ['VOXA targeted Rush install', /install-run-rush\.js install --to @box\/voxa/],
   [
     'VOXA build command',
     /^RUN cd apps\/voxa && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js build$/m,
   ],
-  ['VOXA final target', /^FROM licensed-runtime-base AS voxa$/m],
+  ['VOXA final target', /^FROM runtime-base AS voxa$/m],
   ['referenced runtime-blob staging', /stage-runtime-data\.js \/opt\/runtime-data/],
   [
     'immutable creator template data',
@@ -607,7 +595,7 @@ for (const [name, stage, flag] of [
     dockerFile,
     `${name} launcher command`,
     new RegExp(
-      `CMD \\["node", "-r", "\\/app\\/license\\/process-guard\\.js", "apps/local-engine/src/launcher\\.js", "--production", "${flag}"\\]`,
+      `CMD \\["node", "apps/local-engine/src/launcher\\.js", "--production", "${flag}"\\]`,
     ),
   )
   requirePattern(
@@ -735,7 +723,7 @@ requirePattern(
   playerServiceDockerStage,
   dockerFile,
   'player service standalone server',
-  /CMD \["node", "-r", "\/app\/license\/process-guard\.js", "apps\/game\/\.next\/standalone\/apps\/game\/server\.js"\]/,
+  /CMD \["node", "apps\/game\/\.next\/standalone\/apps\/game\/server\.js"\]/,
 )
 requirePattern(
   voxaDockerStage,
@@ -747,7 +735,7 @@ requirePattern(
   voxaDockerStage,
   dockerFile,
   'VOXA standalone server',
-  /CMD \["node", "-r", "\/app\/license\/process-guard\.js", "apps\/voxa\/\.next\/standalone\/apps\/voxa\/server\.js"\]/,
+  /CMD \["node", "apps\/voxa\/\.next\/standalone\/apps\/voxa\/server\.js"\]/,
 )
 requirePattern(voxaDockerStage, dockerFile, 'VOXA target runs as node', /^USER node$/m)
 requirePattern(

@@ -156,7 +156,7 @@ for (const required of [
   'cd apps/player-admin',
   'npm run dev',
   '`@box/apis`',
-  '内部许可证签发器和迁移器是明确例外',
+  '迁移器是明确例外',
   'rush dev --infra',
 ]) {
   assert.ok(

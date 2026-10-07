@@ -1,5 +1,5 @@
 //! Service policy and sequencing. Hosts supply Docker, image acquisition and
-//! license storage; neither transport owns a second startup workflow.
+//! configuration; neither transport owns a second startup workflow.
 use serde::Serialize;
 
 pub const APPLICATION_SERVICES: [&str; 5] = [
@@ -20,7 +20,6 @@ pub struct InstallProgress {
 }
 
 pub trait Runtime {
-    fn require_license(&self) -> Result<(), String>;
     fn prepare_images(&self) -> Result<(), String>;
     fn managed_enabled(&self, service: &str) -> bool;
     fn check_managed(&self, service: &str) -> Result<(), String>;
@@ -74,9 +73,8 @@ fn start_applications(runtime: &impl Runtime, services: &[&str]) -> Result<(), S
 }
 
 pub fn start(runtime: &impl Runtime, scope: &str) -> Result<(), String> {
-    // Validate before touching licenses, images or containers.
+    // Validate before touching images or containers.
     let targets = scope_services(scope)?;
-    runtime.require_license()?;
     runtime.progress("images", "正在检查运行镜像…", 20);
     runtime.prepare_images()?;
     for (service, stage, label, percent) in [
@@ -109,8 +107,6 @@ pub fn control(runtime: &impl Runtime, service: &str, action: &str) -> Result<()
     }
     if managed {
         runtime.check_managed(service)?;
-    } else if action != "stop" {
-        runtime.require_license()?;
     }
     if action == "start" {
         if managed {
@@ -142,17 +138,9 @@ mod tests {
     #[derive(Default)]
     struct Fake {
         calls: RefCell<Vec<Vec<String>>>,
-        licensed: bool,
         dependency_fails: bool,
     }
     impl Runtime for Fake {
-        fn require_license(&self) -> Result<(), String> {
-            if self.licensed {
-                Ok(())
-            } else {
-                Err("unlicensed".into())
-            }
-        }
         fn prepare_images(&self) -> Result<(), String> {
             self.calls.borrow_mut().push(vec!["images".into()]);
             Ok(())
@@ -176,17 +164,16 @@ mod tests {
         fn progress(&self, _: &str, _: &str, _: u8) {}
     }
     #[test]
-    fn invalid_scope_and_missing_license_have_no_side_effects() {
+    fn invalid_scope_and_action_have_no_side_effects() {
         let host = Fake::default();
         assert!(start(&host, "invalid").is_err());
-        assert!(start(&host, "all").is_err());
-        assert!(control(&host, "creator", "restart").is_err());
+        assert!(control(&host, "unknown", "start").is_err());
+        assert!(control(&host, "creator", "unknown").is_err());
         assert!(host.calls.borrow().is_empty());
     }
     #[test]
     fn applying_login_image_prepares_it_and_recreates_only_the_healthy_portal() {
         let host = Fake {
-            licensed: true,
             ..Fake::default()
         };
         control(&host, "player-auth-portal", "start").unwrap();
@@ -210,7 +197,6 @@ mod tests {
     #[test]
     fn dependencies_are_ready_before_selected_apps_are_started() {
         let host = Fake {
-            licensed: true,
             ..Fake::default()
         };
         start(&host, "play").unwrap();
@@ -236,7 +222,6 @@ mod tests {
     #[test]
     fn starting_apps_never_recreates_the_web_manager_dependency() {
         let host = Fake {
-            licensed: true,
             ..Fake::default()
         };
         start(&host, "creator").unwrap();
@@ -249,7 +234,6 @@ mod tests {
     #[test]
     fn starting_one_app_never_recreates_the_web_manager_dependency() {
         let host = Fake {
-            licensed: true,
             ..Fake::default()
         };
         control(&host, "creator", "start").unwrap();
@@ -259,7 +243,6 @@ mod tests {
     #[test]
     fn starting_creator_runs_its_initializer_then_starts_without_dependencies() {
         let host = Fake {
-            licensed: true,
             ..Fake::default()
         };
         start(&host, "creator").unwrap();
@@ -280,7 +263,6 @@ mod tests {
     #[test]
     fn failed_dependency_never_starts_applications() {
         let host = Fake {
-            licensed: true,
             dependency_fails: true,
             ..Fake::default()
         };
@@ -288,7 +270,7 @@ mod tests {
         assert_eq!(host.calls.borrow().len(), 2);
     }
     #[test]
-    fn stop_does_not_require_a_license_or_stop_the_manager() {
+    fn stop_does_not_stop_the_manager() {
         let host = Fake::default();
         stop(&host).unwrap();
         let calls = host.calls.borrow();

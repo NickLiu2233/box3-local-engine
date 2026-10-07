@@ -8,9 +8,7 @@ license = "UNLICENSED"
 path = "src/lib.rs"
 
 [dependencies]
-base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-ed25519-dalek = { version = "2", features = ["pem", "pkcs8"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"

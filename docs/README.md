@@ -23,7 +23,6 @@
 | Fork、提交 PR 和构建贡献包   | [贡献者指南](../CONTRIBUTING.md)                                       | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)                                               |
 | 构建镜像和发行包             | [构建、分发与 CI](./release-and-distribution.md)                       | [安全审计](./security-audit.md)                                                                                                          |
 | 会议或业务介绍               | [业务方案对比](./business-comparison.md)                               | [系统架构](./architecture.md)                                                                                                            |
-| 申请个人学习许可证           | [个人学习许可证](./licensing.md)                                       | [构建、分发与 CI](./release-and-distribution.md)                                                                                         |
 
 ## 文档职责
 
@@ -50,7 +49,6 @@
 - [地图反作弊规则](./anticheat-toolkit.md)：服务端历史、异常分数、临时豁免与图主自定义规则；[事件接口](./script-anticheat.md)和[使用示例](./examples/README.md)分别介绍数据和接入方式。
 - [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
 - [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。
-- [个人学习许可证](./licensing.md)：服主侧的申请、设备绑定和运行门禁，以及仅供运营方使用的本机离线签发器。
 - [PostgreSQL 数据空间](./postgresql-data-storage.md)：账号与地图脚本数据的 schema、隔离、权限和备份。
 - [本地基础设施](./local-infrastructure.md)：PostgreSQL、Redis、工程文件和运行时缓存的职责、卷与删除边界。
 
@@ -76,7 +74,6 @@
 - Apple Silicon 本地桌面构建产物位于 `apps/local-engine/dist/desktop-installers/`，文件名为 `BOX-Local-Engine-<version>-macos-arm64.zip`；解压后包含 `BOX3 Engine Launcher.app`。
 - 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、玩家登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
 - `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
-- `apps/license-server/` 是不连接数据库的内部本机签发器，不进入启动器、Linux Web 部署包、业务镜像或公开 Release；发行物只包含验签公钥和许可证校验能力。
 - Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。
 - 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
 - 桌面启动器和 Linux Web 管理端都可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis。

@@ -68,10 +68,10 @@ const playerIdentity = fs.readFileSync(
   path.join(root, 'apps/game/server/local-player-identity.ts'),
   'utf8',
 )
-const authPortalServer = fs.readFileSync(
-  path.join(root, 'apps/player-auth-portal/server.js'),
-  'utf8',
-)
+const authPortalServer = fs.readdirSync(path.join(root, 'apps/player-auth-portal/server'), { recursive: true })
+  .filter(file => file.endsWith('.ts'))
+  .map(file => fs.readFileSync(path.join(root, 'apps/player-auth-portal/server', file), 'utf8'))
+  .join('\n')
 
 for (const file of [
   'package.json',
@@ -118,7 +118,6 @@ assert.match(
   'deployment manager needs a Web-compatible clipboard helper',
 )
 assert.match(frontend, /document\.execCommand\('copy'\)/)
-assert.match(frontend, /await copyText\(state\.license\.deviceId\)/)
 assert.match(frontend, /databaseMode/)
 assert.match(frontend, /启用并启动/)
 assert.match(frontend, /PostgreSQL 16/)
@@ -719,15 +718,6 @@ assert.match(frontend, /data-start-scope="all"/)
 assert.match(frontend, /data-start-scope="play"/)
 assert.match(frontend, /data-start-scope="creator"/)
 assert.match(frontend, /数据库还没有配置/)
-assert.match(frontend, /invoke\('get_license_status'\)/)
-assert.match(frontend, /invoke\('install_license', \{ token \}\)/)
-assert.match(frontend, /id="license-token" class="license-token-input"/)
-assert.match(frontend, /id="install-license"/)
-assert.match(frontend, /async function installLicenseToken\(\)/)
-assert.doesNotMatch(frontend, /id="license-file"/)
-assert.doesNotMatch(frontend, /licenseToken/)
-assert.match(frontend, /const UNLICENSED_PAGES = new Set\(\['license', 'about', 'web-login'\]\)/)
-assert.match(frontend, /if \(!hasValidLicense\(\) && !UNLICENSED_PAGES\.has\(state\.page\)\)/)
 // The Web manager gate must reuse the launcher shell and panels. A bespoke
 // full-screen form (and its undefined CSS variables) made the headless console
 // look like a different product.
@@ -799,17 +789,6 @@ assert.match(backend, /fn start_docker_desktop\(\) -> Result<\(\), String>/)
 assert.match(backend, /\["desktop", "start"\]/)
 assert.match(backend, /get_docker_check,/)
 assert.match(backend, /docker_cli_available: bool/)
-assert.match(frontend, /const licensedNavigation = hasValidLicense\(\)/)
-assert.doesNotMatch(
-  backend.match(
-    /async fn start_managed_service[\s\S]*?(?=\n#\[tauri::command\]\nfn get_install_config)/,
-  )?.[0] ?? '',
-  /license::require\(&app\)\?;/,
-)
-assert.match(backend, /fn get_license_status\(app: AppHandle\)/)
-assert.match(backend, /fn install_license\(app: AppHandle, token: String\)/)
-assert.match(compose, /BOX_LICENSE_FILE/)
-assert.match(compose, /BOX_LICENSE_DEVICE_FILE/)
 // The main shell is intentionally fixed-height. The log pane therefore needs
 // to reserve space for the page header and filters, then expose its own
 // vertical scrollbar instead of being clipped below the viewport.
@@ -824,16 +803,16 @@ const productionRust = (source) =>
     .replace(/^#\[cfg\(test\)\]\s*mod \w+\s*\{[\s\S]*?^\}/gm, '')
     .replace(/^\s*\/\/.*$/gm, '')
 const core = Object.fromEntries(
-  ['lib', 'configuration', 'license', 'services', 'backup'].map((name) => [
+  ['lib', 'configuration', 'services', 'backup'].map((name) => [
     name,
     productionRust(fs.readFileSync(path.join(sharedDirectory, `${name}.rs`), 'utf8')),
   ]),
 )
-for (const module of ['configuration', 'license', 'services']) {
+for (const module of ['configuration', 'services']) {
   assert.ok(core.lib.includes(`pub mod ${module};`), `core must export ${module}`)
 }
 // Core owns policies; native filesystem/network/UI adapters must stay outside
-// configuration. License time/checkpoint I/O and backup filesystem I/O are valid.
+// configuration. Backup filesystem I/O remains in the dedicated backup module.
 assert.doesNotMatch(core.configuration, /\b(?:tauri|axum)::/)
 assert.doesNotMatch(core.configuration, /\b(?:std::env|env)::(?:var|var_os)\(/)
 for (const name of [
@@ -858,24 +837,6 @@ for (const key of [
 ]) {
   assert.ok(core.configuration.includes(`"${key}"`), `shared runtime must derive/preserve ${key}`)
 }
-// The camelCase signed-token contract is now public and owned by core.
-assert.match(
-  core.license,
-  /#\[serde\(rename_all = "camelCase"\)\]\s*pub struct LicensePayload\s*\{/,
-)
-assert.match(
-  core.license,
-  /\.verify_strict\(/,
-  'signed licenses must use strict signature verification',
-)
-assert.match(
-  core.license,
-  /payload\.device_id != expected_device/,
-  'licenses must bind to the device',
-)
-for (const name of ['verify_token', 'status_from_token', 'trusted_now']) {
-  assert.ok(core.license.includes(`pub fn ${name}(`), `missing shared license API ${name}`)
-}
 assert.match(core.services, /pub const MANAGED_SERVICES:/)
 for (const serviceName of [
   'managed-postgres',
@@ -894,9 +855,6 @@ for (const serviceName of [
 for (const name of ['start', 'control', 'stop', 'statuses', 'compose_rows', 'enabled']) {
   assert.ok(core.services.includes(`pub fn ${name}(`), `missing shared service operation ${name}`)
 }
-// Keep the license guard as a security invariant, but leave scope selection,
-// dependency order and exact Compose argv to the shared runtime behavior tests.
-assert.match(core.services, /runtime\.require_license\(\)\?;/)
 assert.match(
   core.services,
   /start_applications\(runtime, &\[service\]\)\?;/,
@@ -931,9 +889,6 @@ const desktopCommands = productionRust(
 const desktopConfig = productionRust(
   fs.readFileSync(path.join(backendSourceDirectory, 'config.rs'), 'utf8'),
 )
-const desktopLicense = productionRust(
-  fs.readFileSync(path.join(backendSourceDirectory, 'license.rs'), 'utf8'),
-)
 assert.match(desktopCommands, /use box_manager_core::configuration as shared_config;/)
 assert.match(desktopCommands, /shared_config::runtime_environment\(/)
 assert.match(desktopCommands, /shared_config::validate_configuration\(/)
@@ -964,18 +919,6 @@ for (const operation of ['start', 'control', 'stop']) {
   assert.ok(
     desktopCommands.includes(`services::${operation}(&DesktopRuntime(`),
     `desktop must delegate ${operation} to core services`,
-  )
-}
-assert.match(
-  desktopCommands,
-  /license::require\(self\.0\)/,
-  'desktop runtime must supply the license gate',
-)
-assert.match(desktopLicense, /use box_manager_core::license::\{self as shared,/)
-for (const operation of ['trusted_now', 'verify_token', 'status_from_token']) {
-  assert.ok(
-    desktopLicense.includes(`shared::${operation}(`),
-    `desktop must use shared license ${operation}`,
   )
 }
 if (core.lib.includes('pub mod backup;')) {
@@ -1034,3 +977,6 @@ if (core.lib.includes('pub mod backup;')) {
 }
 
 console.log('Desktop deployment manager checks passed')
+
+assert.doesNotMatch(frontendSource(root), /get_license_status|install_license|hasValidLicense|许可证管理/)
+assert.doesNotMatch(core.services, /require_license/)

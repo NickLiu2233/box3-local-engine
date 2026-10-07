@@ -2,7 +2,7 @@
 
 BOX3 Local Engine 使用一份 OpenAPI 3.1 文档登记 Creator、Play、Player Service、玩家管理、VOXA、地图运行时、Server Manager 和登录门户的 HTTP 接口。`@box/apis` 是这些本地引擎服务共用的 TypeScript API 契约包，不再包含旧 BOX 平台的 Java、Createra、Content、Model 等生成客户端。
 
-内部许可证签发器和迁移器是独立工具，不属于本地引擎对外服务，也不会进入统一 OpenAPI、Swagger 或 `@box/apis`。它们分别维护自己的内部接口和调用代码。
+迁移器是独立工具，不属于本地引擎对外服务，也不会进入统一 OpenAPI、Swagger 或 `@box/apis`。它维护自己的内部接口和调用代码。
 
 ## 查看接口文档
 
@@ -43,7 +43,7 @@ Creator、Play、Player Service 和 VOXA 均不再提供 `/api/docs` 或 `/api/o
 | `internals/apis/scripts/openapi-operation-contracts.mjs` | operation 与具体 schema 的绑定                                   |
 | `internals/apis/scripts/check-openapi.mjs`               | 路径、operationId、服务归属和核心 schema 校验                    |
 
-生成文件禁止手工修改。当前生成器只扫描 `apps/game/pages/api` 和 `apps/voxa/pages/api`；地图运行时、Rust Server Manager 和登录门户等非 Next 路由在生成器的 `manualRoutes` 中登记。`apps/migrator/` 与 `apps/license-server/` 不在生成范围内。
+生成文件禁止手工修改。当前生成器只扫描 `apps/game/pages/api` 和 `apps/voxa/pages/api`；地图运行时、Rust Server Manager 和登录门户等非 Next 路由在生成器的 `manualRoutes` 中登记。`apps/migrator/` 不在生成范围内。
 
 ## TypeScript 调用
 

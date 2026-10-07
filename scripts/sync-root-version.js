@@ -10,7 +10,6 @@ const check = process.argv.includes('--check')
 const jsonFiles = [
   'apps/deployment-manager/package.json',
   'apps/local-engine/package.json',
-  'apps/license-server/package.json',
   'apps/migrator/package.json',
   'apps/player-admin/package.json',
   'apps/player-auth-portal/package.json',

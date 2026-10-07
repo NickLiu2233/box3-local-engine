@@ -17,11 +17,6 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-if [ ! -s /etc/machine-id ]; then
-  echo 'Missing /etc/machine-id; a stable Linux machine identity is required for licensing.' >&2
-  exit 1
-fi
-
 random_hex() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 32
@@ -57,9 +52,6 @@ if [ ! -f .env ]; then
   admin_secret=$(random_hex)
   manager_secret=$(random_hex)
   runtime_manager_secret=$(random_hex)
-  # Bind the license device identity to the operator's .env so unpacking a new
-  # package version does not silently invalidate an installed license.
-  license_secret=$(random_hex)
   # The Web manager runs inside a container, so it cannot discover the host LAN
   # address itself. Record it now, while we are still on the host.
   lan_ip=''
@@ -75,7 +67,6 @@ if [ ! -f .env ]; then
     -e "s/CHANGE_ME_PLAY_ADMIN_TOKEN/$admin_secret/" \
     -e "s/CHANGE_ME_SERVER_MANAGER_TOKEN/$manager_secret/" \
     -e "s/CHANGE_ME_RUNTIME_MANAGER_TOKEN/$runtime_manager_secret/" \
-    -e "s/^BOX_LICENSE_INSTALL_SECRET=.*/BOX_LICENSE_INSTALL_SECRET=$license_secret/" \
     -e "s/^BOX_LAN_IP=.*/BOX_LAN_IP=$lan_ip/" .env
   rm -f .env.bak
   chmod 600 .env
@@ -115,4 +106,4 @@ echo 'Starting the Linux Web manager…'
 docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait server-manager
 echo 'Done. Linux Web manager: http://127.0.0.1:3130'
 echo 'Use BOX_SERVER_MANAGER_TOKEN from .env to sign in. Keep this token private.'
-echo 'Install a license in the Web manager, then start the required engine services.'
+echo 'Configure the database in the Web manager, then start the required engine services.'

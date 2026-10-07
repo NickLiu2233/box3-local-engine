@@ -36,16 +36,6 @@ pub(crate) async fn command(
             Some(box_manager_core::operation::mutation_guard()?)
         } else { None };
         match name.as_str() {
-            "get_license_status" => license(&app, None),
-            "install_license" => license(
-                &app,
-                Some(
-                    req.body
-                        .get("token")
-                        .and_then(Value::as_str)
-                        .ok_or("许可证内容无效")?,
-                ),
-            ),
             "get_raw_environment" => Ok(json!(
                 fs::read_to_string(env_path(&app)).map_err(|e| e.to_string())?
             )),

@@ -21,14 +21,13 @@ export async function refreshManagedServiceInfo() {
 
 export async function refreshStatus() {
   try {
-    const [status, config, about, managedDatabaseInfo, managedRedisInfo, license, dataStorage] =
+    const [status, config, about, managedDatabaseInfo, managedRedisInfo, dataStorage] =
       await Promise.all([
         invoke('get_system_status'),
         invoke('get_install_config'),
         invoke('get_about_info'),
         invoke('get_managed_service_info', { service: 'postgresql' }),
         invoke('get_managed_service_info', { service: 'redis' }),
-        invoke('get_license_status'),
         invoke('get_data_storage_info'),
       ])
     state.status = status
@@ -43,7 +42,6 @@ export async function refreshStatus() {
     state.about = about
     state.managedDatabaseInfo = managedDatabaseInfo
     state.managedRedisInfo = managedRedisInfo
-    state.license = license
     state.dataStorage = dataStorage
     state.accessMode = ''
     state.environmentFile = await invoke('get_raw_environment')

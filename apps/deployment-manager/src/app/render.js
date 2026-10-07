@@ -1,8 +1,7 @@
 import { about } from '../views/about.js'
 import { backups } from '../views/backups.js'
 import { bindEvents } from './bind-events.js'
-import { licenseManagement } from '../views/license.js'
-import { normalizeLicensedPage } from '../ui/access.js'
+import { normalizeAccessiblePage } from '../ui/access.js'
 import { overview } from '../views/overview.js'
 import { performance } from '../views/performance.js'
 import { runtimes } from '../views/runtimes.js'
@@ -36,7 +35,7 @@ function restoreScrollPositions(positions) {
 }
 
 export function render() {
-  normalizeLicensedPage()
+  normalizeAccessiblePage()
   const scrollPositions = captureScrollPositions()
   const content =
     state.page === 'web-login'
@@ -49,8 +48,6 @@ export function render() {
             ? performance()
             : state.page === 'backups'
               ? backups()
-              : state.page === 'license'
-                ? licenseManagement()
                 : state.page === 'about'
                   ? about()
                   : overview()

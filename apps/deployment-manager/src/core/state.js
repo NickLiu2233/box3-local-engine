@@ -9,8 +9,6 @@ export const state = {
   savedAuthPortalImage: '',
   about: null,
   legal: null,
-  license: null,
-  licenseDeviceVisible: false,
   legalLoading: false,
   connectionTests: {},
   environmentFile: '',

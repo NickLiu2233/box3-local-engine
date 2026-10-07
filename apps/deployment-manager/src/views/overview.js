@@ -23,7 +23,7 @@ export function overview() {
     state.config?.databaseMode === 'external'
       ? Boolean(state.config.databaseHost)
       : Boolean(state.managedDatabaseInfo?.configured)
-  const canStart = Boolean(installed && state.license?.valid && databaseReady && !state.busy)
+  const canStart = Boolean(installed && databaseReady && !state.busy)
   const runningServices = (state.status?.services || []).filter((service) => service.running)
   const environmentServiceIds = new Set(['creator', 'voxa', 'play'])
   const environmentRunning = runningServices.some((service) =>
@@ -36,9 +36,7 @@ export function overview() {
     : installed
       ? !databaseReady
         ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
-        : state.license?.valid
-          ? `${environmentRunning ? '' : `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>`}${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
-          : `<button type="button" class="button primary" data-page="license">安装许可证后启动</button>`
+        : `${environmentRunning ? '' : `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>`}${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
       : `<button type="button" class="button primary" data-page="setup">开始配置</button>`
   const idle = Boolean(installed && !runningCount && databaseReady)
   const idlePrompt = idle

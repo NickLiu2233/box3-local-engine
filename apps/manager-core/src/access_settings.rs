@@ -118,8 +118,6 @@ mod tests {
                     lan_ip: Some("192.168.1.20"),
                     image_tag: "0.2.0",
                     platform: "linux/arm64",
-                    license_file: "fixture",
-                    license_device_file: "fixture-device",
                     database_required: false,
                     web_manager: false,
                 },

@@ -28,8 +28,6 @@ use tauri::{AppHandle, Emitter, Manager};
 mod config;
 #[path = "docker.rs"]
 mod docker;
-#[path = "license.rs"]
-mod license;
 
 use config::{
     compose_path, default_runtime_root, detect_lan_ip, ensure_runtime_files, env_path, parse_env,
@@ -46,7 +44,6 @@ mod models;
 
 use models::*;
 
-use license::LicenseStatus;
 
 const ENV_TEMPLATE: &str = include_str!("../defaults.env");
 const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
@@ -723,8 +720,6 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     write_private_file(&env_path(app)?, &owner, "部署配置")?;
     let values = parse_env(&owner);
     let lan_ip = detect_lan_ip();
-    let license_file = license::license_path(app)?.to_string_lossy().into_owned();
-    let device_file = license::device_id_path(app)?.to_string_lossy().into_owned();
     let derived = shared_config::runtime_environment(
         &values,
         &shared_config::RuntimeInputs {
@@ -735,8 +730,6 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
             } else {
                 "linux/amd64"
             },
-            license_file: &license_file,
-            license_device_file: &device_file,
             database_required: false,
             web_manager: false,
         },
@@ -2922,9 +2915,6 @@ fn validate_service_name(app: &AppHandle, service: &str) -> Result<bool, String>
 
 struct DesktopRuntime<'a>(&'a AppHandle);
 impl ServiceRuntime for DesktopRuntime<'_> {
-    fn require_license(&self) -> Result<(), String> {
-        license::require(self.0)
-    }
     fn prepare_images(&self) -> Result<(), String> {
         database_url(&generate_runtime_environment(self.0)?)?;
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
@@ -3496,17 +3486,6 @@ async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
     })
     .await
     .map_err(|error| format!("启动任务异常结束：{error}"))?
-}
-
-#[tauri::command]
-fn get_license_status(app: AppHandle) -> Result<LicenseStatus, String> {
-    license::status(&app)
-}
-
-#[tauri::command]
-fn install_license(app: AppHandle, token: String) -> Result<LicenseStatus, String> {
-    let _operation = box_manager_core::operation::mutation_guard()?;
-    license::install(&app, &token)
 }
 
 #[tauri::command]
@@ -4162,8 +4141,6 @@ pub fn run() {
             destroy_project_runtime,
             get_about_info,
             get_legal_notices,
-            get_license_status,
-            install_license,
             get_performance_status,
             get_data_storage_info,
             choose_data_storage_directory,

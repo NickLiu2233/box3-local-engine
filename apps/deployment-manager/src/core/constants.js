@@ -42,7 +42,6 @@ export const themes = [
   ['dark', '暗色'],
 ]
 
-export const UNLICENSED_PAGES = new Set(['license', 'about', 'web-login'])
 
 export const ownerSecretKeys = ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']
 

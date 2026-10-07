@@ -319,7 +319,6 @@ test('only explicitly supported long tasks carry operation IDs', async () => {
     'get_managed_service_info',
     'get_install_config',
     'get_raw_environment',
-    'get_license_status',
     'get_legal_notices',
     'get_docker_check',
     'get_owner_secrets',
