@@ -4,6 +4,20 @@ const assert = require('node:assert/strict')
 const { test } = require('node:test')
 const { createFixture } = require('./lib/deployment-manager-ui-fixture')
 
+test('about cards use a single-column grid so their section spacing takes effect', async () => {
+  const css = require('node:fs').readFileSync(
+    require('node:path').join(__dirname, '../apps/deployment-manager/src/styles/about.css'), 'utf8',
+  )
+  const layout = css.match(/\.about-page\s*\{([^}]+)\}/)?.[1] || ''
+  assert.match(layout, /display:\s*grid\s*;/)
+  assert.match(layout, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s*;/)
+  assert.match(layout, /gap:\s*16px\s*;/)
+  const app = await createFixture()
+  app.api.state.page = 'about'
+  app.api.render()
+  assert.equal((app.html.match(/<article class="about-/g) || []).length, 4)
+})
+
 test('about page lists the current engine release first without player launcher notes', async () => {
   const app = await createFixture()
   app.api.state.page = 'about'
