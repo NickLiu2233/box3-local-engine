@@ -17,7 +17,7 @@ apps/local-engine/backups/
 apps/local-engine/.build-lock/
 apps/local-engine/runtime-cache/
 apps/voxa/data/
-apps/migrator/cache/
+apps/migrator/
 apps/deployment-manager/src-tauri/gen/
 apps/deployment-manager/src-tauri/target/
 apps/player-admin/src/.umi/

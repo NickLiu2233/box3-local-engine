@@ -2,7 +2,7 @@
   "name": "@box/box-design",
   "version": "1.0.6",
   "description": "An UI component library for box",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Code Infinity",
   "sideEffects": false,
   "main": "build/index.js",

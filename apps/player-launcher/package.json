@@ -1,6 +1,7 @@
 {
   "name": "@box/player-launcher",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "description": "Standalone BOX3 player launcher for locally prepared online maps",
   "author": "深圳奇梦岛科技有限公司",

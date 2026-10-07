@@ -28,11 +28,10 @@ function lint() {
   npmScript('tools/repo-tooling', 'lint:root')
   npmScript('apps/game', 'lint')
   npmScript('apps/voxa', 'lint')
-  npmScript('apps/migrator', 'lint')
 }
 
 function typecheck() {
-  npmScript('apps/migrator', 'typecheck')
+  npmScript('apps/player-auth-portal', 'typecheck')
 }
 
 function check() {
@@ -56,6 +55,8 @@ function check() {
   npmScript('services/game-server', 'check:disabled-storage')
   node('scripts/platform-api-removal.test.js')
   node('scripts/check-engine-wire-protocols.js')
+  node('scripts/check-public-repository.js')
+  run(process.execPath, ['--test', 'scripts/internal-migrator.test.js', 'scripts/check-public-repository.test.js'])
   run(process.execPath, ['--test', 'scripts/license-removal.test.js'])
   node('scripts/check-windows-offline-installer.js')
   run(process.execPath, [
@@ -83,7 +84,6 @@ function check() {
   // cargo test enables cfg(test); also compile the actual manager binary.
   run('cargo', ['check', '--manifest-path', 'apps/server-manager-rust/Cargo.toml'])
   run('cargo', ['test', '--manifest-path', 'apps/server-manager-rust/Cargo.toml'])
-  npmScript('apps/migrator', 'test')
   run(process.execPath, [
     '--test',
     'scripts/teleport-room-manager.test.js',

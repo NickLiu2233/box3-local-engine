@@ -157,4 +157,4 @@ npm run export:template
 
 解压 dist/box3-login-template-0.2.0.tar.gz 后把内容放到新仓库根目录即可。它包含 TS 源码、npm 锁文件、测试、独立 Dockerfile 和完整文档，不带 node_modules、build、.env、引擎源码或工作区软链接。
 
-发布前必须做真实设备/Cookie/封禁/限流联调，模拟器不能替代真实服务验证。模板许可由仓库维护者明确；当前 UNLICENSED 不代表 MIT 或授权分发引擎源码。
+发布前必须做真实设备/Cookie/封禁/限流联调，模拟器不能替代真实服务验证。登录门户模板采用 [MIT](LICENSE)，允许修改、商用和再分发；分发时保留版权与许可声明。第三方依赖遵守原许可，BOX3 品牌和商标使用不随代码许可授予。

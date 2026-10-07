@@ -43,7 +43,7 @@ Creator、Play、Player Service 和 VOXA 均不再提供 `/api/docs` 或 `/api/o
 | `internals/apis/scripts/openapi-operation-contracts.mjs` | operation 与具体 schema 的绑定                                   |
 | `internals/apis/scripts/check-openapi.mjs`               | 路径、operationId、服务归属和核心 schema 校验                    |
 
-生成文件禁止手工修改。当前生成器只扫描 `apps/game/pages/api` 和 `apps/voxa/pages/api`；地图运行时、Rust Server Manager 和登录门户等非 Next 路由在生成器的 `manualRoutes` 中登记。`apps/migrator/` 不在生成范围内。
+生成文件禁止手工修改。当前生成器只扫描 `apps/game/pages/api` 和 `apps/voxa/pages/api`；地图运行时、Rust Server Manager 和登录门户等非 Next 路由在生成器的 `manualRoutes` 中登记。仓库外的内部迁移器不在生成范围内。
 
 ## TypeScript 调用
 

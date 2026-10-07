@@ -7,7 +7,7 @@ describe('play admin availability', () => {
     process.env = {
       ...originalEnvironment,
       BOX_DEPLOYMENT_MODE: 'play',
-      BOX_PLAY_ADMIN_TOKEN: 'owner-token-at-least-sixteen-characters',
+      BOX_PLAY_ADMIN_TOKEN: 'fixture-server-side-admin-key-for-security-tests',
       BOX_PLAY_LIBRARY_PATH: '/app/play-worlds',
     };
   });

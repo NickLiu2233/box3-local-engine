@@ -24,7 +24,7 @@ LABEL org.opencontainers.image.title="BOX Local Engine Player Auth Portal" \
       org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
       org.opencontainers.image.created="${BOX_BUILD_DATE}" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
-      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+      org.opencontainers.image.licenses="MIT"
 
 ENV NODE_ENV=production \
     AUTH_DEMO_HOST=0.0.0.0 \
@@ -34,6 +34,8 @@ WORKDIR /app
 
 COPY --from=build --chown=node:node /build/build/server.cjs ./build/server.cjs
 COPY --from=build --chown=node:node /build/public ./public
+
+COPY --chown=node:node distribution/LICENSE.txt /app/LICENSE
 
 USER node
 

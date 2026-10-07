@@ -1,6 +1,7 @@
 {
   "name": "@box/player-admin",
   "version": "0.3.0",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "max dev",

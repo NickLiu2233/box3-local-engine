@@ -14,6 +14,8 @@ RUN npm run build
 FROM ${NODE_IMAGE}
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3214
 WORKDIR /app
+LABEL org.opencontainers.image.licenses="MIT"
+COPY --chown=node:node LICENSE ./LICENSE
 COPY --from=build --chown=node:node /build/build/server.cjs ./build/server.cjs
 COPY --from=build --chown=node:node /build/public ./public
 # 后端只用 Node 内置模块，运行镜像无需 node_modules、开发工具或模拟账号。

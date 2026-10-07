@@ -153,3 +153,9 @@ Play 的“关于”页面使用这些值显示版本与提交短号。服主不
 9. 执行 `node scripts/verify-desktop-offline-package.js <解压目录>` 验证桌面包。
 
 GitHub Release 和 OSS/CDN 只能包含发行物，不能包含 `.env`、真实密钥、用户地图、模型库、数据库、备份、日志或 Docker 卷。
+
+## 开源许可随包分发
+
+项目代码采用 MIT。发行包继续附带 `LICENSE.txt` 与第三方声明，不能把它们作为裁剪项删除。根目录 `LICENSE.md` 与 `distribution/LICENSE.txt` 必须一致；构建时会将发行协议复制到安装包元数据，并纳入 SHA-256 清单。
+
+Docker 镜像的 `org.opencontainers.image.licenses` 使用 `MIT`。第三方组件已有的独立许可不随该标记变更。商用、修改和再分发的具体要求见[开源许可说明](./open-source-licensing.md)。

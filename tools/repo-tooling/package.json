@@ -1,6 +1,7 @@
 {
   "name": "@box/repo-tooling",
   "version": "0.2.0",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "format": "node ../../scripts/format-repository.js --write",

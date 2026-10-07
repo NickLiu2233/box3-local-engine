@@ -273,6 +273,7 @@ export class TemplateExporter {
     'tsconfig.json',
     'tsconfig.library.json',
     'README.md',
+    'LICENSE',
     '.env.example',
     '.gitignore',
     '.dockerignore',

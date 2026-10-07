@@ -1,6 +1,7 @@
 {
   "name": "@box/cli",
   "version": "0.1.1",
+  "license": "MIT",
   "private": true,
   "description": "Stable Creator protocol contracts for BOX CLI clients and server adapters",
   "main": "build/index.js",

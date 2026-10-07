@@ -2675,7 +2675,7 @@ fn get_about_info() -> AboutInfo {
         build_source: option_env!("BOX_BUILD_SOURCE").unwrap_or("local").into(),
         platform: std::env::consts::OS.into(),
         architecture: std::env::consts::ARCH.into(),
-        license: "本地部署用户许可协议（非开源、非商业）".into(),
+        license: "MIT License".into(),
         service_images,
     }
 }
@@ -2683,7 +2683,7 @@ fn get_about_info() -> AboutInfo {
 #[tauri::command]
 fn get_legal_notices() -> LegalNotices {
     LegalNotices {
-        license_name: "BOX3 Engine 本地部署用户许可协议".into(),
+        license_name: "MIT License".into(),
         license_text: include_str!("../../../../distribution/LICENSE.txt").into(),
     }
 }

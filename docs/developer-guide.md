@@ -89,7 +89,7 @@ cp .env.docker.example .env
 `.env` 只保存在本机，禁止提交。使用已有 PostgreSQL 和 Redis 时，至少核对：
 
 ```env
-BOX_DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/DATABASE
+BOX_DATABASE_URL=postgresql://USER:CHANGE_ME_DATABASE_PASSWORD@127.0.0.1:5432/DATABASE
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
@@ -164,7 +164,6 @@ npm run dev
 | 桌面/Web 共用管理核心                          | `apps/manager-core/`        |
 | Linux 管理服务                                 | `apps/server-manager-rust/` |
 | 玩家登录与注册门户                             | `apps/player-auth-portal/`  |
-| 内部迁移工具                                   | `apps/migrator/`            |
 
 Creator 编辑可变 `.boxproject` 工程，Play 只运行发布后的只读 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口，修改前应阅读[系统架构](./architecture.md)和[与 boxes 的对齐基线](./boxes-parity.md)。
 
@@ -299,7 +298,7 @@ apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-<architecture
 2. 健康检查通过，页面和 API 可访问；
 3. 登录、权限、地图导入、Creator、Play 和 VOXA 的相关改动可用；
 4. 容器重启后 PostgreSQL、地图、模型和配置仍存在；
-5. 升级不会覆盖 `.env`、许可证或业务数据；
+5. 升级不会覆盖 `.env` 或业务数据；
 6. 日志中没有密钥、Cookie、数据库密码和用户隐私。
 
 已有当前版本、架构和全部镜像时，可只导出归档：
@@ -422,7 +421,7 @@ rush format-check
 
 ## 13. 安全与数据边界
 
-- 禁止提交真实密钥、许可证私钥、数据库 URL、Cookie、Token、用户数据、地图工程、模型库、备份、Docker 卷和日志；
+- 禁止提交真实密钥、数据库 URL、Cookie、Token、用户数据、地图工程、模型库、备份、Docker 卷和日志；
 - 禁止将 Docker Socket、PostgreSQL、Redis 或管理端直接暴露到不受信任公网；
 - 禁止用删除卷、清空数据库或删除地图目录作为普通排障方法；
 - 高风险删除、封禁、Token 撤销和容器操作必须保留服务端授权、二次确认和审计；

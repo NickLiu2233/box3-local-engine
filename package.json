@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "description": "Standalone local-first voxel engine developer preview",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "engines": {
     "node": "22.17.x"
   },

@@ -7,7 +7,7 @@ PostgreSQL 保存玩家身份与地图服务端持久数据，是生产部署的
 至少设置：
 
 ```env
-BOX_DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
+BOX_DATABASE_URL=postgresql://USER:CHANGE_ME_DATABASE_PASSWORD@HOST:5432/DATABASE
 ```
 
 Player Service 默认使用 `box_identity` schema；地图运行时默认使用 `box_engine` schema。地图数据按不可变永久地图 ID 隔离，主图与副地图可通过地图组数据空间共享组级数据。

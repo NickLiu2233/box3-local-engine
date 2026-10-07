@@ -1,6 +1,7 @@
 {
   "name": "@box/build-system",
   "version": "0.3.1",
+  "license": "MIT",
   "description": "",
   "keywords": [],
   "author": "Code Infinity",

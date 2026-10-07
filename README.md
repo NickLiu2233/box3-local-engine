@@ -239,7 +239,10 @@ GitHub Release 发布桌面包、服务器包和 `install.sh`。Linux 服务器�
 ## 许可与安全
 
 引擎和启动器不再进行运行时许可证检测；完成数据配置即可启动服务。管理登录、账户权限和内部接口鉴权仍然保留。
+项目代码采用 MIT 开源许可，允许修改、商用和二次分发，使用或分发时须按协议保留版权与许可声明。
 
-仓库 npm 元数据为 `UNLICENSED`，不授予源代码开源许可。用户发行包适用 [BOX3 Local Engine 本地部署用户许可协议](distribution/LICENSE.txt)。商业使用、二次开发、再分发或品牌合作需要取得权利人书面授权。
+协议原文见 [LICENSE.md](LICENSE.md)，发行包内的 [LICENSE.txt](distribution/LICENSE.txt) 与其一致。第三方组件保留各自许可；BOX3 品牌和商标使用不随代码许可授予。许可范围、分发要求与品牌边界见[开源许可说明](docs/open-source-licensing.md)。
 
 不要提交或发布真实 `.env`、数据库连接串、密码、Cookie、Token、用户 IP、地图工程、模型库、备份、日志、Docker 卷或构建缓存。
+
+内部迁移器不在本仓库、公开构建或发行包中。本机可通过 `node scripts/internal-migrator.js dev` 调用仓库外的工具；路径与维护方式见[内部工具接入](docs/internal-tools.md)。

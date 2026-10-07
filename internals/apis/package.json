@@ -1,6 +1,7 @@
 {
   "name": "@box/apis",
   "version": "0.2.0",
+  "license": "MIT",
   "description": "OpenAPI contract and generated clients for BOX3 Local Engine",
   "keywords": [],
   "author": "Code Infinity",

@@ -1,6 +1,7 @@
 {
   "name": "@box/env",
   "version": "0.3.0",
+  "license": "MIT",
   "description": "",
   "keywords": [],
   "author": "Code Infinity",

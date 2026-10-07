@@ -1,7 +1,7 @@
 {
   "name": "@box/utils",
   "version": "2.1.0",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Box Engine",
   "exports": {
     "./*": "./build/*.js"

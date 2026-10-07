@@ -8,6 +8,45 @@ const test = require('node:test')
 const root = path.resolve(__dirname, '..')
 const read = file => fs.readFileSync(path.join(root, file), 'utf8')
 
+test('package, native and container metadata agree with the MIT adoption', () => {
+  for (const project of JSON.parse(read('rush.json')).projects) {
+    const manifest = JSON.parse(read(`${project.projectFolder}/package.json`))
+    assert.equal(typeof manifest.license, 'string', `${project.packageName} has no license`)
+    assert.ok(!/^unlicensed$/i.test(manifest.license), `${project.packageName} is still unlicensed`)
+  }
+  for (const file of ['apps/manager-core/Cargo.toml', 'apps/server-manager-rust/Cargo.toml', 'apps/deployment-manager/src-tauri/Cargo.toml']) {
+    assert.match(read(file), /^license = "MIT"$/m)
+  }
+  for (const file of ['apps/local-engine/Dockerfile', 'apps/server-manager/Dockerfile', 'apps/player-auth-portal/Dockerfile']) {
+    assert.match(read(file), /org.opencontainers.image.licenses="MIT"/)
+    assert.doesNotMatch(read(file), /LicenseRef-Proprietary/)
+  }
+  for (const file of ['apps/deployment-manager/src-tauri/src/commands.rs', 'apps/server-manager-rust/src/http/commands.rs']) {
+    assert.match(read(file), /MIT License/)
+    assert.doesNotMatch(read(file), /非开源、非商业|本地部署用户许可协议/)
+  }
+})
+
+test('independent component licenses retain their authors and original license markers', () => {
+  assert.match(read('packages/regl/LICENSE'), /Copyright \(c\) 2016 Mikola Lysenko/)
+  assert.match(read('packages/ao-mesher/LICENSE'), /Copyright \(c\) 2013 Mikola Lysenko/)
+  assert.match(read('packages/mudb/LICENSE'), /2020 Mikola Lysenko, Shenzhen DianMao/)
+  assert.match(read('packages/script-api/LICENSE'), /Copyright \(c\) 2023 Box Engine/)
+  assert.equal(JSON.parse(read('packages/content-server/package.json')).license, 'ISC')
+  assert.equal(JSON.parse(read('packages/mesher/package.json')).license, 'ISC')
+})
+
+test('source and distribution use the same MIT license without activation restrictions', () => {
+  const agreement = read('distribution/LICENSE.txt')
+  assert.doesNotMatch(agreement, /\.boxlic|个人学习许可证|设备 ID|许可证到期|申请续期|有效个人学习许可证|将拒绝部署或启动|签名校验、设备绑定|许可证自然到期/)
+  assert.equal(agreement, read('LICENSE.md'))
+  assert.equal(agreement, read('apps/player-auth-portal/LICENSE'))
+  assert.match(agreement, /^MIT License/)
+  assert.match(agreement, /sublicense, and\/or sell/)
+  assert.match(agreement, /copyright notice and this permission notice/)
+  assert.equal(JSON.parse(read('package.json')).license, 'MIT')
+})
+
 test('all official business images start directly, without runtime license hooks', () => {
   const engine = read('apps/local-engine/Dockerfile')
   const portal = read('apps/player-auth-portal/Dockerfile')

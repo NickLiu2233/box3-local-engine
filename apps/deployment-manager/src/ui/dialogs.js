@@ -44,7 +44,7 @@ export function mapRuntimeProfileDialog() {
 export function legalDocumentDialog() {
   const legal = state.legal || {}
   const title = '发行许可证'
-  const meta = legal.licenseName || 'BOX3 Engine 本地部署用户许可协议'
+  const meta = legal.licenseName || 'MIT License'
   const document = legal.licenseText || '正在读取许可证全文…'
   return `<div class="dialog-backdrop legal-dialog-backdrop" data-legal-dialog-dismiss><section class="legal-dialog" role="dialog" aria-modal="true" aria-labelledby="legal-dialog-title"><header><div><h2 id="legal-dialog-title">${title}</h2><p>${escapeHtml(meta)}</p></div><button class="dialog-close" id="close-legal-dialog" aria-label="关闭">×</button></header><pre class="legal-document-content">${escapeHtml(document)}</pre></section></div>`
 }

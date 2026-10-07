@@ -14,7 +14,6 @@
     { "packageName": "@box/deployment-manager", "projectFolder": "apps/deployment-manager" },
     { "packageName": "@box/game", "projectFolder": "apps/game" },
     { "packageName": "@box/local-engine", "projectFolder": "apps/local-engine" },
-    { "packageName": "@box/migrator", "projectFolder": "apps/migrator" },
     { "packageName": "@box/player-admin", "projectFolder": "apps/player-admin" },
     { "packageName": "@box/player-launcher", "projectFolder": "apps/player-launcher" },
     { "packageName": "@box/server-manager", "projectFolder": "apps/server-manager" },

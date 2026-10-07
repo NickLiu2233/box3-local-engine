@@ -52,3 +52,9 @@ apps/migrator/cache/
 
 apps/manager-core/target/
 common/temp/
+
+# Do not include accidentally restored internal tools in any engine image.
+apps/migrator/
+.internal/
+.private/
+box-local-engine-internal/

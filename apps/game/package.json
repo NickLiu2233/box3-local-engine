@@ -2,7 +2,7 @@
   "name": "@box/game",
   "version": "1.0.0",
   "description": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Code Infinity",
   "scripts": {
     "build": "npm run build-apis && npm run build-ipfs && npm run build-next",

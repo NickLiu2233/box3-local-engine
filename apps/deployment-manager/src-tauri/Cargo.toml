@@ -4,7 +4,7 @@ version = "0.3.0"
 description = "Native deployment manager for BOX Local Engine"
 authors = ["BOX Local Engine contributors"]
 edition = "2021"
-license = "UNLICENSED"
+license = "MIT"
 
 [lib]
 name = "box_local_engine_manager_lib"

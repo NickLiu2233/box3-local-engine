@@ -84,6 +84,16 @@ test('standalone image is buildable without engine sources and excludes developm
   assert.doesNotMatch(ignore, /!\.env/)
 })
 
+test('standalone template and image include the MIT permission text', () => {
+  const license = readFileSync(path.join(portalRoot, 'LICENSE'), 'utf8')
+  assert.match(license, /^MIT License/)
+  assert.match(license, /copyright notice and this permission notice/)
+  const tasks = readFileSync(path.join(portalRoot, 'scripts/tasks.ts'), 'utf8')
+  assert.match(tasks, /'README.md',\s*'LICENSE',/)
+  assert.match(readFileSync(path.join(portalRoot, '.dockerignore'), 'utf8'), /^!LICENSE$/m)
+  assert.match(readFileSync(path.join(portalRoot, 'Dockerfile.standalone'), 'utf8'), /COPY --chown=node:node LICENSE \.\/LICENSE/)
+})
+
 test('disabled registration removes the redundant authentication tabs', () => {
   assert.match(browserSource, /if \(!this\.state\.registrationEnabled\)/)
   assert.match(browserSource, /this\.renderForm\(\)/)

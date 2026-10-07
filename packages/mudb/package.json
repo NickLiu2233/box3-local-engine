@@ -19,7 +19,7 @@
     "tcp",
     "udp"
   ],
-  "license": "Unlicensed",
+  "license": "MIT",
   "author": "Code Infinity",
   "main": "index.js",
   "browser": {

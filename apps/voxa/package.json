@@ -2,7 +2,7 @@
   "name": "@box/voxa",
   "version": "1.0.0",
   "description": "Local-first VOXA voxel model editor",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Code Infinity",
   "main": "index.js",
   "scripts": {

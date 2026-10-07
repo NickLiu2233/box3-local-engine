@@ -85,3 +85,13 @@ player-release-files/
 apps/server-manager-rust/target/
 
 apps/manager-core/target/
+
+# Internal tools and private material never belong to the public repository.
+/apps/migrator/
+/.internal/
+/.private/
+/box-local-engine-internal/
+**/*.boxlic
+**/*private-key*.pem
+**/*.p12
+**/*.pfx

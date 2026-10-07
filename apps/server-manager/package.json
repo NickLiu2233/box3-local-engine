@@ -1,6 +1,7 @@
 {
   "name": "@box/server-manager",
   "version": "0.3.0",
+  "license": "MIT",
   "private": true,
   "description": "Container build definition for the Rust BOX3 Engine headless manager",
   "scripts": {

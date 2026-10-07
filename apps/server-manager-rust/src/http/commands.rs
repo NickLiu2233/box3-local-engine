@@ -203,7 +203,7 @@ pub(crate) async fn command(
                 Ok(Value::Null)
             }
             "get_legal_notices" => Ok(json!({
-                "licenseName": "BOX3 Engine 本地部署用户许可协议",
+                "licenseName": "MIT License",
                 "licenseText": LEGAL_NOTICE
             })),
             "get_docker_check" => Ok({
@@ -385,7 +385,7 @@ pub(crate) async fn command(
                 "buildSource": option_env!("BOX_BUILD_SOURCE").unwrap_or("local"),
                 "platform": "linux",
                 "architecture": env::consts::ARCH,
-                "license": "本地部署用户许可协议（非开源、非商业）",
+                "license": "MIT License",
                 "serviceImages": service_images()
             })),
             _ => Err(format!("暂不支持命令 {name}")),

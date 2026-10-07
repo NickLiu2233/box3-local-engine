@@ -1,6 +1,7 @@
 {
   "name": "@box/schema",
   "version": "0.4.3",
+  "license": "MIT",
   "description": "",
   "keywords": [],
   "author": "Code Infinity",

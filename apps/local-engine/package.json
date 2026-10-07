@@ -1,6 +1,7 @@
 {
   "name": "@box/local-engine",
   "version": "0.3.0",
+  "license": "MIT",
   "private": true,
   "description": "Offline-first local runner for the Box engine",
   "scripts": {

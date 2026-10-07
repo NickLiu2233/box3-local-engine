@@ -44,10 +44,11 @@ LABEL org.opencontainers.image.title="BOX Local Engine Server Manager" \
       org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
       org.opencontainers.image.created="${BOX_BUILD_DATE}" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
-      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+      org.opencontainers.image.licenses="MIT"
 
 ENV BOX_SERVER_MANAGER_HOST=0.0.0.0 BOX_SERVER_MANAGER_PORT=3130
 WORKDIR /app
+COPY distribution/LICENSE.txt /app/LICENSE
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker
 COPY --from=docker-cli /usr/local/libexec/docker/cli-plugins/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
 

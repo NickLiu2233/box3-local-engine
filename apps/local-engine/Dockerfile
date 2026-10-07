@@ -191,6 +191,7 @@ RUN node -e "const fs=require('node:fs');fs.mkdirSync('/etc/ssl/certs',{recursiv
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY --chown=node:node distribution/LICENSE.txt /app/LICENSE
 ENTRYPOINT ["tini", "--"]
 
 FROM runtime-base AS creator
@@ -204,7 +205,7 @@ LABEL org.opencontainers.image.title="BOX Local Engine Creator" \
       org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
       org.opencontainers.image.created="${BOX_BUILD_DATE}" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
-      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+      org.opencontainers.image.licenses="MIT"
 
 ENV BOX_DEPLOYMENT_MODE=creator \
     BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
@@ -289,7 +290,7 @@ LABEL org.box.local-engine.play-format="7" \
       org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
       org.opencontainers.image.created="${BOX_BUILD_DATE}" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
-      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+      org.opencontainers.image.licenses="MIT"
 
 # The Play Library control endpoint is private to the Compose network.
 # Isolated map/room containers use it for signed teleport allocation;
@@ -353,7 +354,7 @@ LABEL org.box.local-engine.player-service-format="7" \
       org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
       org.opencontainers.image.created="${BOX_BUILD_DATE}" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
-      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+      org.opencontainers.image.licenses="MIT"
 
 ENV BOX_DEPLOYMENT_MODE=player-service \
     NEXT_PUBLIC_APP_ENV=development \
@@ -387,7 +388,7 @@ LABEL org.opencontainers.image.title="BOX Local Engine VOXA" \
       org.opencontainers.image.revision="${BOX_BUILD_COMMIT}" \
       org.opencontainers.image.created="${BOX_BUILD_DATE}" \
       org.opencontainers.image.source="${BOX_BUILD_SOURCE}" \
-      org.opencontainers.image.licenses="LicenseRef-Proprietary"
+      org.opencontainers.image.licenses="MIT"
 
 ENV BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
     BOX_BUILD_COMMIT=${BOX_BUILD_COMMIT} \

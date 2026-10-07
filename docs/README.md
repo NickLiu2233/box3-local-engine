@@ -54,6 +54,11 @@
 
 ### 开发与兼容
 
+- [内部工具接入](./internal-tools.md)：可选本机迁移器入口，不包含内部工具实现。
+- [公开仓库检查记录](./public-repository-audit.md)：敏感文件检查、历史风险与第三方资源待核实事项。
+
+- [开源许可说明](./open-source-licensing.md)：MIT 使用与分发要求、第三方声明、用户作品和品牌边界。
+
 - [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
 - [Local Engine API 与 Swagger](./local-engine-api.md)：统一 OpenAPI 契约、生成客户端、Swagger 调试、鉴权和接口开发流程。
 - [领域模型](./domain-model.md)：地图组、地图资源、数据空间和管理权限的统一术语与约束。
@@ -70,10 +75,12 @@
 
 ## 当前发行边界
 
+- 项目代码采用 [MIT License](../LICENSE.md)，允许修改、商用和再分发；第三方组件、用户作品和品牌的边界见[开源许可说明](./open-source-licensing.md)。
+
 - 桌面启动器管理 Creator、Play、VOXA、Player Service 和玩家登录门户五个业务服务；完整镜像归档还包含 Linux Server Manager，共六个镜像。
 - Apple Silicon 本地桌面构建产物位于 `apps/local-engine/dist/desktop-installers/`，文件名为 `BOX-Local-Engine-<version>-macos-arm64.zip`；解压后包含 `BOX3 Engine Launcher.app`。
 - 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、玩家登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
-- `apps/migrator/` 是内部迁移工具，不进入用户发行包，也不属于普通服主部署流程。
+- 内部作品迁移器保存在仓库外，不参与公开构建、测试或发行。本机接入方式见[内部工具接入](./internal-tools.md)。
 - Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。
 - 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
 - 桌面启动器和 Linux Web 管理端都可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis。

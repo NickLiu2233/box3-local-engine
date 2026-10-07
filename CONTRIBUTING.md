@@ -1,6 +1,6 @@
 # BOX3 Local Engine 贡献指南
 
-本文说明如何准备环境、运行源码、验证改动、提交 Pull Request 和维护发行文档。仓库属于私有发行项目；提交代码不代表获得源码再分发、商业使用或品牌使用授权。
+本文说明如何准备环境、运行源码、验证改动、提交 Pull Request 和维护发行文档。项目代码采用 MIT 开源许可，允许按协议修改、商用和再分发；品牌和商标使用另行处理。贡献代码前请确认你有权提交，并保留原作者与第三方许可声明。
 
 ## 1. 开始前
 
@@ -11,7 +11,7 @@ git status --short
 git remote -v
 ```
 
-禁止提交真实密钥、许可证私钥、用户数据、数据库备份、地图工程、VOXA 数据、Docker 卷和日志。不要手工修改 `.next*`、`dist/`、`build/`、`target/` 或其他生成物，除非该生成物明确属于仓库发布契约。
+禁止提交真实密钥、用户数据、数据库备份、地图工程、VOXA 数据、Docker 卷和日志。不要手工修改 `.next*`、`dist/`、`build/`、`target/` 或其他生成物，除非该生成物明确属于仓库发布契约。
 
 ## 2. Fork、同步与分支
 
@@ -49,7 +49,7 @@ cp .env.docker.example .env
 `.env` 只保存在本机。源码开发至少需要 PostgreSQL；Redis 可选。使用外部服务时设置：
 
 ```env
-BOX_DATABASE_URL=postgresql://USER:PASSWORD@127.0.0.1:5432/DATABASE
+BOX_DATABASE_URL=postgresql://USER:CHANGE_ME_DATABASE_PASSWORD@127.0.0.1:5432/DATABASE
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
@@ -132,15 +132,16 @@ Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig�
 | 桌面/Web 共用管理核心                    | `apps/manager-core/`        |
 | Linux Web 管理端                         | `apps/server-manager-rust/` |
 | 玩家登录与注册门户                       | `apps/player-auth-portal/`  |
-| 内部迁移工具                             | `apps/migrator/`            |
 
 Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 ID、地图组、Blob/hash、脚本 API、发布清单、MuDB 和运行时协议属于兼容接口；修改前阅读[领域模型](docs/domain-model.md)、[系统架构](docs/architecture.md)与[对齐基线](docs/boxes-parity.md)。
 
 玩家管理菜单与 API 必须使用同一套 capability。新增页面或写操作时同步修改前端可见性、服务端授权、权限组分类、API 文档和拒绝测试，不能只隐藏按钮。
 
-所有对外 Local Engine HTTP 接口统一登记在 `@box/apis` 的 OpenAPI 契约中。新增或修改接口时按 [Local Engine API 与 Swagger](docs/local-engine-api.md) 更新 schema、生成类型和调用端；禁止在应用内新增平行 API 客户端，禁止重新引入旧平台生成接口。内部许可证签发器和迁移器是明确例外，不进入统一契约和普通发行包。
+所有对外 Local Engine HTTP 接口统一登记在 `@box/apis` 的 OpenAPI 契约中。新增或修改接口时按 [Local Engine API 与 Swagger](docs/local-engine-api.md) 更新 schema、生成类型和调用端；禁止在应用内新增平行 API 客户端，禁止重新引入旧平台生成接口。内部迁移器是明确例外，不进入统一契约和普通发行包。
 
 ## 6. 测试
+
+提交前运行 `node scripts/check-public-repository.js --staged`；公开仓库不得跟踪内部工具、真实环境密钥或用户数据。检查范围及新仓库发布注意事项见[公开仓库检查记录](docs/public-repository-audit.md)。
 
 提交前必须运行：
 
@@ -280,7 +281,7 @@ Pull Request 至少说明：
 
 Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本应使用 `v0.2.0`。不要移动或重复使用已发布 Tag；流水线会按 `box-local-engine/<tag>/` 复用同版本 OSS 中间产物。
 
-公开发布前还应在干净机器验证镜像导入、许可证安装、数据库初始化、登录、地图导入、Creator/Play/VOXA、容器重启、升级保留数据和 SHA-256 校验。Windows 使用 Authenticode；macOS 使用 Developer ID 签名和公证。
+公开发布前还应在干净机器验证镜像导入、无需激活的服务启动、数据库初始化、登录、地图导入、Creator/Play/VOXA、容器重启、升级保留数据和 SHA-256 校验。Windows 使用 Authenticode；macOS 使用 Developer ID 签名和公证。
 
 ## 12. 安全边界
 
@@ -290,4 +291,4 @@ Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本
 - 不用删除卷、清空数据库或删除地图目录作为常规排障手段；
 - 高风险删除、封禁、Token 撤销和容器操作必须保留确认、授权与审计。
 
-用户发行包适用 [BOX3 Local Engine 本地部署用户许可协议](distribution/LICENSE.txt)。商业使用、再分发和品牌合作需要权利人书面授权。
+源码与发行包中的项目代码采用 [MIT License](LICENSE.md)。分发时保留版权与许可声明，第三方代码继续遵守原许可；品牌合作与商标使用不由 MIT 授权。详细边界见[开源许可说明](docs/open-source-licensing.md)。

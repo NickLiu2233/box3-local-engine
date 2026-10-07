@@ -2,7 +2,7 @@
   "name": "@box/vb-parser",
   "version": "1.0.7",
   "description": "A parser for .vb/.vd project file",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "author": "Code Infinity",
   "main": "build/index.js",
   "module": "build/index.es.js",

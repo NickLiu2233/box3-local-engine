@@ -2,7 +2,7 @@
 name = "box-local-engine-server-manager"
 version = "0.3.0"
 edition = "2021"
-license = "UNLICENSED"
+license = "MIT"
 
 [dependencies]
 box-manager-core = { path = "../manager-core" }

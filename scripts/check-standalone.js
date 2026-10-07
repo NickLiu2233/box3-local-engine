@@ -762,7 +762,7 @@ for (const line of composeSource.split('\n')) {
 }
 if (
   composeServiceNames.join(',') !==
-  'managed-redis,managed-postgres,postgres,redis,player-service,player-auth-portal,server-manager,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init,migrator'
+  'managed-redis,managed-postgres,postgres,redis,player-service,player-auth-portal,server-manager,creator,creator-storage-init,play-storage-init,play,voxa,voxa-storage-init'
 ) {
   fail(`${composeFile}: unexpected service set (found ${composeServiceNames.join(', ') || 'none'})`)
 }

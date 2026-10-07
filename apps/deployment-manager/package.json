@@ -1,6 +1,7 @@
 {
   "name": "@box/deployment-manager",
   "version": "0.3.0",
+  "license": "MIT",
   "private": true,
   "description": "Native installer and operations console for BOX3 Engine",
   "scripts": {

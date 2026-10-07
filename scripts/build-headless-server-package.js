@@ -58,7 +58,7 @@ function headlessCompose() {
   const serverManager = serviceSection(source, '  server-manager:', '  creator:')
   const creator = serviceSection(source, '  creator:', '  play-storage-init:')
   const play = serviceSection(source, '  play-storage-init:', '  voxa:')
-  const voxa = serviceSection(source, '  voxa:', '  migrator:')
+  const voxa = serviceSection(source, '  voxa:', '\nvolumes:\n')
   const volumes =
     'volumes:\n  box-managed-redis-data:\n  box-managed-postgres-data:\n  box-play-runtime-cache:\n'
   if (
