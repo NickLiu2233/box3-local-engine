@@ -11,6 +11,11 @@ pub fn mutates_runtime(command: &str) -> bool {
     matches!(
         command,
         "save_raw_environment"
+            | "apply_ssl_config"
+            | "delete_ssl_certificate"
+            | "install_nginx_image"
+            | "set_nginx_provider"
+            | "stop_ssl_proxy"
             | "save_configuration_command"
             | "start_services"
             | "stop_services"

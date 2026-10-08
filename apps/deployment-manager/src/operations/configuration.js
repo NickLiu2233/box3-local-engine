@@ -5,6 +5,9 @@ import { numericConfigFields, ownerSecretKeys } from '../core/constants.js'
 import { refreshStatus } from './status.js'
 import { render } from '../core/render-request.js'
 import { resetOwnerSecretState, state } from '../core/state.js'
+import { shouldApplySsl, applyCertificateConfiguration, persistNginxSelection, validateSslRoutes } from './ssl.js'
+import { sslRoutes } from '../configuration/ssl.js'
+import { hostFromAddress } from '../configuration/addresses.js'
 import { normalizeAuthPortalImage } from '../configuration/auth-portal-image.js'
 
 export async function testConnection(kind) {
@@ -98,6 +101,13 @@ export async function saveConfiguration(event) {
     }
   }
   normalizeInactiveServicePorts(config)
+  // Retain the transport's legacy base-host fields only for bind derivation.
+  // Each service's public URL and certificate comes from its own fields.
+  const primaryAddress = ['playPublicAddressOverride', 'creatorPublicAddressOverride', 'voxaPublicAddressOverride', 'playerServicePublicAddressOverride', 'authPortalPublicAddressOverride']
+    .map(field => config[field]?.trim()).find(Boolean) || '127.0.0.1'
+  config.publicAddress = primaryAddress
+  config.publicHost = hostFromAddress(primaryAddress)
+  config.creatorHost = config.publicHost
   config.authPortalImage = normalizeAuthPortalImage(config.authPortalImage)
   config.databaseSsl = form.has('databaseSsl')
   config.autoBackupEnabled = form.has('autoBackupEnabled')
@@ -154,6 +164,7 @@ async function persistConfiguration(config) {
   clearFeedback()
   render()
   try {
+    if (shouldApplySsl()) validateSslRoutes(sslRoutes(config))
     await invoke('save_configuration_command', { config })
     configurationSaved = true
     state.savedAuthPortalImage = (config.authPortalImage || '').trim()
@@ -169,13 +180,16 @@ async function persistConfiguration(config) {
         ? '镜像配置已保存，下次启动登录页面时自动使用。'
         : '已保存在当前页面，服务不会自动启动。'
     }
+    await persistNginxSelection()
+    if (shouldApplySsl()) await applyCertificateConfiguration()
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
-    state.error = configurationSaved ? `配置已保存，但登录页面更新失败：${String(error)}` : String(error)
+    state.error = configurationSaved ? `配置已保存，但后续应用失败：${String(error)}` : String(error)
   } finally {
     state.busy = false
-    await refreshStatus()
+    if (configurationSaved) await refreshStatus()
+    else render()
   }
 }
 
@@ -194,6 +208,7 @@ export async function saveRawEnvironment() {
       ? '环境变量已保存；创作端的公网配置已自动改回本机或局域网范围。'
       : '环境变量已保存，不会自动重启服务。'
     state.notice = state.environmentMessage
+    if (shouldApplySsl()) await applyCertificateConfiguration()
     state.progress = { stage: 'saved', message: '环境变量已保存', percent: 100 }
   } catch (error) {
     state.error = String(error)

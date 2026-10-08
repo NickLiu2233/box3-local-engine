@@ -6,10 +6,20 @@ import { installManagedService, reloadRawEnvironment, relocateDataStorage, saveC
 import { render } from '../../core/render-request.js'
 import { state } from '../../core/state.js'
 import { restoreDefaultAuthPortalImage } from '../../operations/auth-portal.js'
+import { applySsl, captureSslDraft, refreshSsl, selectSslFile, stopSsl, chooseNginx, downloadNginx, enableNginx, deleteSslCertificate } from '../../operations/ssl.js'
 
 
 
 export function bindConfigurationEvents() {
+  if (state.page !== 'setup' || state.setupSection !== 'network') state.sslFiles = {}
+  for (const [id, handler] of [['ssl-apply', applySsl], ['ssl-stop', stopSsl], ['ssl-apply-network', applySsl], ['nginx-download', downloadNginx], ['nginx-enable', enableNginx]]) {
+    document.querySelector(`#${id}`)?.addEventListener('click', handler)
+  }
+  document.querySelectorAll('[data-ssl-kind]').forEach(node => node.addEventListener('change', async event => { const valid = await selectSslFile(node.dataset.sslKind, event.target.files?.[0], node.dataset.sslService); const name = state.sslFiles?.[node.dataset.sslService]?.[node.dataset.sslKind === 'certificate' ? 'certificateName' : 'keyName']; if (valid && name) node.closest('label').querySelector('.file-picker-name').textContent = name }))
+  document.querySelectorAll('[data-nginx-mode]').forEach(node => node.addEventListener('click', () => chooseNginx(node.dataset.nginxMode)))
+  document.querySelectorAll('[data-delete-ssl]').forEach(node => node.addEventListener('click', () => deleteSslCertificate(node.dataset.deleteSsl)))
+  document.querySelectorAll('[name="publicAddress"], [name$="PublicAddressOverride"]').forEach(node => node.addEventListener('change', () => { captureSetupForm(); render() }))
+  if (state.page === 'setup' && ['network', 'data'].includes(state.setupSection) && !state.sslLoaded) void refreshSsl()
   document.querySelector('#restore-default-login-image')?.addEventListener('click', restoreDefaultAuthPortalImage)
   document
       .querySelectorAll('[data-install-managed]')

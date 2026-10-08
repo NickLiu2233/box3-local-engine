@@ -4,6 +4,45 @@ const assert = require('node:assert/strict')
 const { test } = require('node:test')
 const { createFixture } = require('./lib/deployment-manager-ui-fixture')
 
+test('desktop renders its shell while Docker status is pending', async () => {
+  const app = await createFixture({ responses: { get_system_status: () => new Promise(() => {}) } })
+  assert.ok(app.html.includes('class="shell'), 'startup must render before waiting for Docker')
+})
+
+test('overview hides owner credentials until a game environment is running', async () => {
+  const app = await createFixture()
+  app.api.state.config.hasPlayAdminToken = true
+  for (const status of [null, { dockerReady: false, configured: false },
+    { dockerReady: true, configured: true, services: [] },
+    { dockerReady: true, configured: true, services: [{ name: 'managed-postgres', running: true }] }]) {
+    app.api.state.status = status
+    app.api.render()
+    assert.ok(!app.html.includes('aria-label="服主密钥"'))
+    if (!status?.dockerReady) assert.ok(!app.html.includes('尚未配置'))
+  }
+  app.api.state.status = { dockerReady: true, configured: true, services: [{ name: 'play', running: true }] }
+  app.api.render()
+  assert.ok(app.html.includes('aria-label="服主密钥"'))
+  app.api.state.config.hasPlayAdminToken = false
+  app.api.state.ownerSecrets = {}
+  app.api.render()
+  assert.ok(!app.html.includes('aria-label="服主密钥"'))
+})
+
+test('SSL settings render expiry and escaped domains without exposing private keys', async () => {
+  const app = await createFixture()
+  app.api.state.sslFiles = { privateKey: 'SECRET_PRIVATE_KEY_FIXTURE', certificateName: 'chain.pem', keyName: 'private.key' }
+  app.api.state.sslStatus = { running: true, config: { certificateExpiries: { play: '2020-01-01T00:00:00Z' } } }
+  app.api.state.sslDraft = { mode: 'external', httpsPort: 443, routes: [{ service: 'play', domain: '<script>fixture</script>' }] }
+  app.api.state.config.playPublicAddressOverride = 'https://play.example.test'
+  const html = app.api.setup()
+  assert.ok(html.includes('已过期'))
+  assert.ok(html.includes('已有外部 Nginx'))
+  assert.ok(!html.includes('ssl-domain-play'))
+  assert.ok(!html.includes('SECRET_PRIVATE_KEY_FIXTURE'))
+  assert.ok(!html.includes('<script>fixture'))
+})
+
 test('about cards use a single-column grid so their section spacing takes effect', async () => {
   const css = require('node:fs').readFileSync(
     require('node:path').join(__dirname, '../apps/deployment-manager/src/styles/about.css'), 'utf8',
@@ -71,16 +110,16 @@ test('public address edits and service overrides survive local/LAN/public event 
   app.api.state.page = 'setup'
   app.api.state.setupSection = 'network'
   app.api.render()
-  app.form.setValue('publicAddress', 'https://changed.example.test')
+  app.api.state.config.publicAddress = 'https://changed.example.test'
   app.form.setValue('playPublicAddressOverride', 'http://play.example.test:4121')
   await app.clickMode('local')
   assert.equal(app.api.state.config.publicAddress, 'https://changed.example.test')
   assert.equal(app.api.getServiceUrl('play'), 'http://127.0.0.1:3121/')
-  assert.equal(app.form.values.get('publicAddress'), 'https://changed.example.test')
+  assert.equal(app.form.values.get('publicAddress'), undefined)
   await app.clickMode('lan')
   assert.equal(app.api.getServiceUrl('play'), 'http://192.168.1.20:3121/')
   await app.clickMode('public')
-  assert.equal(app.form.values.get('publicAddress'), 'https://changed.example.test')
+  assert.equal(app.form.values.get('publicAddress'), undefined)
   assert.equal(app.form.values.get('playPublicAddressOverride'), 'http://play.example.test:4121')
   assert.equal(app.api.getServiceUrl('play'), 'http://play.example.test:4121/')
   assert.equal(app.api.state.config.authPortalPublicAddressOverride, 'https://auth.example.test')
@@ -90,13 +129,12 @@ test('configuration submission keeps public URLs and converts numeric fields wit
   const app = await createFixture()
   app.api.state.page = 'setup'
   app.api.render()
-  app.form.setValue('publicAddress', 'http://shared.example.test')
   app.form.setValue('playPort', '4201')
   const form = app.form
   await app.api.saveConfiguration({ currentTarget: form, preventDefault() {} })
   const saved = app.calls.find(call => call.command === 'save_configuration_command')
   assert.ok(saved)
-  assert.equal(saved.payload.config.publicAddress, 'http://shared.example.test')
+  assert.equal(saved.payload.config.publicAddress, 'https://play.example.test')
   assert.equal(saved.payload.config.playPort, 4201)
   assert.equal(saved.payload.config.databasePort, '5432')
   assert.equal(saved.payload.config.playPublicAddressOverride, 'https://play.example.test')
@@ -243,7 +281,7 @@ test('login image changes remain saved when applying fails and do not start a st
   failed.form.setValue('authPortalImage', 'ghcr.io/owner/login:2.0')
   await failed.api.saveConfiguration({ currentTarget: failed.form, preventDefault() {} })
   assert.equal(failed.api.state.config.authPortalImage, 'ghcr.io/owner/login:2.0')
-  assert.match(failed.api.state.error, /配置已保存，但登录页面更新失败/)
+  assert.match(failed.api.state.error, /配置已保存，但后续应用失败/)
   assert.equal(failed.api.state.busy, false)
 })
 
@@ -258,3 +296,382 @@ test('console works without activation while Web administration still requires a
   assert.equal(web.api.state.page, 'web-login');
   assert.match(web.html, /web-login-form/);
 });
+
+
+test('Nginx belongs to data services and certificates follow existing public addresses', async () => {
+  const app = await createFixture()
+  app.api.state.sslDraft = { mode: 'external' }
+  const html = app.api.setup()
+  assert.ok(html.indexOf('<h2>Nginx</h2>') < html.indexOf('data-setup-panel="network"'))
+  assert.ok(html.includes('连接已有服务'))
+  assert.ok(!html.includes('HTTPS 与证书管理'))
+  assert.ok(!html.includes('ssl-domain-play'))
+  const address = html.indexOf('name="playPublicAddressOverride"')
+  assert.ok(html.indexOf('data-ssl-service="play"', address) > address)
+  app.api.state.accessMode = 'local'
+  assert.ok(!app.api.setup().includes('data-ssl-service="play"'))
+})
+
+
+test('SSL routes reuse public address precedence and ports without another domain form', async () => {
+  const app = await createFixture()
+  const routes = app.api.sslRoutes({publicAddress:'https://shared.example.test',playPort:4121,playPublicAddressOverride:'https://play.example.test'})
+  assert.equal(routes.find(route => route.service === 'play').domain, 'play.example.test')
+  assert.equal(routes.find(route => route.service === 'play').port, 443)
+  assert.equal(routes.find(route => route.service === 'creator'), undefined)
+  assert.throws(() => app.api.sslRoutes({playPublicAddressOverride:'https://host.example.test/path'}), /路径/)
+})
+
+test('Nginx defaults to external and managed mode uses the Redis download/start layout', async () => {
+  const app = await createFixture()
+  app.api.state.sslLoaded = true
+  app.api.state.sslStatus = {provider:'disabled'}
+  let html = app.api.setup()
+  assert.match(html, /class="active" data-nginx-mode="external"/)
+  assert.ok(!html.includes('data-nginx-mode="disabled"'))
+  assert.ok(!html.includes('id="ssl-refresh"'))
+  app.api.state.sslDraft = {mode:'managed'}
+  html = app.api.setup()
+  assert.match(html, /尚未安装 Nginx 最新稳定版/)
+  assert.match(html, /id="nginx-download"[^>]*>立即下载/)
+  app.api.state.sslStatus = {imageAvailable:true,imageVersion:'1.30.2'}
+  html = app.api.setup()
+  assert.match(html, /内置 Nginx 1.30.2 已下载/)
+  assert.match(html, /id="nginx-enable"[^>]*>启用并启动/)
+  for (const removed of ['使用本地镜像', '启动已配置入口', '停止入口', '本地已有 Nginx 镜像']) assert.ok(!html.includes(removed))
+})
+
+test('Nginx selection updates immediately and external selection only reads status', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslStatus = {provider:'external',imageAvailable:false}
+  app.api.state.sslBusy = true
+  const before = app.calls.length
+  app.api.chooseNginx('managed')
+  assert.equal(app.api.state.sslDraft.mode, 'managed')
+  assert.match(app.html, /class="active" data-nginx-mode="managed"/)
+  assert.ok(!/data-nginx-mode="[^"]+"[^>]*disabled/.test(app.html))
+  app.results.get_ssl_status = {provider:'external',externalNginx:{installed:false}}
+  await app.api.chooseNginx('external')
+  assert.match(app.html, /class="active" data-nginx-mode="external"/)
+  assert.equal(app.calls.length, before + 1)
+  assert.equal(app.calls.at(-1).command, 'get_ssl_status')
+  app.api.state.sslBusy = false
+  app.api.chooseNginx('managed')
+  app.results.get_ssl_status = {provider:'managed',imageAvailable:false}
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  assert.equal(app.calls.find(call=>call.command==='set_nginx_provider').payload.mode, 'managed')
+  assert.equal(app.api.state.nginxSelectionDirty, false)
+})
+
+test('public certificate sections are available for every service and default to collapsed', async () => {
+  const app = await createFixture()
+  app.api.state.config.publicAddress = ''
+  for (const key of ['playPublicAddressOverride','creatorPublicAddressOverride','voxaPublicAddressOverride','playerServicePublicAddressOverride','authPortalPublicAddressOverride']) app.api.state.config[key] = ''
+  assert.equal((app.api.setup().match(/ssl-address-certificate/g) || []).length, 5)
+  app.api.state.config.playPublicAddressOverride = 'https://play.example.test'
+  const html = app.api.setup()
+  assert.equal((html.match(/ssl-address-certificate/g) || []).length, 5)
+  assert.equal((html.match(/<details class="setup-explainer ssl-address-certificate">/g) || []).length, 5)
+  assert.ok(!/<details[^>]*\bopen\b[^>]*ssl-address-certificate/.test(html))
+  assert.match(html, /证书文件（.pem \/ .crt \/ .cer）/)
+  assert.match(html, /证书密钥文件（.key \/ .pem）/)
+  for (const removed of ['未选择文件', '不选择则保留', '使用上方 HTTPS', '启用证书时请']) assert.ok(!html.includes(removed))
+})
+
+test('file import rejects incorrect extensions, malformed certificates and encrypted keys without replacing valid selections', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'; app.api.state.sslLoaded = true
+  const file = (name, text) => ({name,size:text.length,text:async()=>text})
+  const cert = '-----BEGIN CERTIFICATE-----\nYWJj\n-----END CERTIFICATE-----'
+  assert.equal(await app.api.selectSslFile('certificate', file('chain.pem', cert), 'play'), true)
+  for (const [name,text] of [['chain.txt',cert],['chain.pem','bad'],['chain.crt',`${cert}\n<script>`]]) {
+    assert.equal(await app.api.selectSslFile('certificate', file(name,text), 'play'), false)
+    assert.equal(app.api.state.sslFiles.play.certificateName, 'chain.pem')
+  }
+  assert.equal(await app.api.selectSslFile('privateKey', file('private.key','-----BEGIN ENCRYPTED PRIVATE KEY-----\nYWJj\n-----END ENCRYPTED PRIVATE KEY-----'), 'play'), false)
+  assert.equal(await app.api.selectSslFile('privateKey', file('private.key','-----BEGIN PRIVATE KEY-----\nYWJj\n-----END PRIVATE KEY-----'), 'play'), true)
+})
+
+test('enable Nginx opens certificate setup on first use and starts a saved configuration', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}; app.api.state.sslStatus = {imageAvailable:true}
+  app.api.render()
+  await app.api.enableNginx()
+  assert.equal(app.api.state.setupSection, 'network')
+  assert.equal(app.api.state.accessMode, 'public')
+  assert.ok(!app.calls.some(call=>call.command==='apply_ssl_config'))
+  app.api.state.sslStatus = {config:{settings:{mode:'external',routes:[{service:'play',domain:'play.example.test',port:443}]}}}
+  app.results.apply_ssl_config = {provider:'managed',running:true}
+  app.api.render()
+  await app.api.enableNginx()
+  const applied = app.calls.find(call=>call.command==='apply_ssl_config')
+  assert.equal(applied.payload.config.settings.mode, 'managed')
+  assert.equal(applied.payload.config.settings.routes[0].domain, 'play.example.test')
+})
+
+
+test('saving public configuration applies separate certificates without persisting keys in install config', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'network'
+  app.api.state.sslDraft = {mode:'external'}
+  app.api.state.sslLoaded = true
+  app.api.state.sslFiles = {
+    'player-auth-portal':{certificate:'AUTH_CERTIFICATE',privateKey:'AUTH_KEY'},
+    play:{certificate:'PLAY_CERTIFICATE',privateKey:'PLAY_KEY'},
+  }
+  app.results.apply_ssl_config = ({config}) => ({provider:'external', config:{settings:config.settings}})
+  app.results.get_ssl_status = {provider:'external'}
+  app.api.render()
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  const applied = app.calls.find(call => call.command === 'apply_ssl_config')
+  assert.equal(applied.payload.config.externalLocal, true)
+  assert.equal(applied.payload.config.certificates.play.privateKey, 'PLAY_KEY')
+  assert.equal(applied.payload.config.certificates['player-auth-portal'].privateKey, 'AUTH_KEY')
+  const saved = app.calls.find(call => call.command === 'save_configuration_command')
+  assert.ok(!JSON.stringify(saved.payload).includes('PLAY_KEY'))
+  assert.equal(Object.keys(app.api.state.sslFiles).length, 0)
+})
+
+test('updating one service certificate leaves another saved certificate untouched', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'
+  app.api.state.sslDraft = {mode:'external'}; app.api.state.sslLoaded = true
+  app.api.state.sslStatus = {config:{certificateSources:{play:'independent'}}}
+  app.api.state.sslFiles = {'player-auth-portal':{certificate:'NEW_AUTH_CERT',privateKey:'NEW_AUTH_KEY'}}
+  app.results.apply_ssl_config = () => ({provider:'external'})
+  app.api.render()
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  const config = app.calls.find(call => call.command === 'apply_ssl_config').payload.config
+  assert.equal(config.certificates.play, undefined)
+  assert.equal(config.certificates['player-auth-portal'].privateKey, 'NEW_AUTH_KEY')
+})
+
+test('Nginx start shows the shared processing dialog until completion and reports success', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  app.api.state.sslStatus = {config:{settings:{mode:'managed',routes:[{service:'play',domain:'play.example.test',port:443}]}}}
+  let finish
+  app.results.apply_ssl_config = () => new Promise(resolve => { finish = resolve })
+  app.results.get_ssl_status = {provider:'managed',running:true}
+  app.api.render()
+  const pending = app.api.enableNginx()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.match(app.html, /class="progress-backdrop" role="alertdialog"/)
+  assert.match(app.html, /这可能需要几分钟/)
+  await app.api.enableNginx()
+  assert.equal(app.calls.filter(call => call.command === 'apply_ssl_config').length, 1)
+  finish({running:true})
+  await pending
+  assert.ok(!app.html.includes('class="progress-backdrop"'))
+  assert.match(app.html, /内置 Nginx 已启用并启动/)
+})
+
+test('Nginx start failure closes the processing dialog and displays the error', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  app.api.state.sslStatus = {config:{settings:{mode:'managed',routes:[]}}}
+  app.results.apply_ssl_config = () => { throw new Error('fixture nginx failed') }
+  app.api.render()
+  await app.api.enableNginx()
+  assert.ok(!app.html.includes('class="progress-backdrop"'))
+  assert.match(app.html, /fixture nginx failed/)
+  assert.equal(app.api.state.sslBusy, false)
+})
+
+test('saving public addresses updates managed Nginx with saved certificates and removes the export panel', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  app.api.state.sslStatus = {config:{settings:{mode:'managed',routes:[{service:'play',domain:'old.example.test',port:443}]}}}
+  app.results.apply_ssl_config = {running:true}
+  app.results.get_ssl_status = {running:true,provider:'managed'}
+  app.api.render()
+  assert.ok(!app.html.includes('id="ssl-export"'))
+  assert.ok(!app.html.includes('<h2>证书配置</h2>'))
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  const applied = app.calls.find(call => call.command === 'apply_ssl_config')
+  assert.equal(applied.payload.config.settings.mode, 'managed')
+  assert.equal(applied.payload.config.externalLocal, false)
+  assert.equal(applied.payload.config.settings.routes[0].domain, 'play.example.test')
+  assert.equal(Object.keys(applied.payload.config.certificates).length, 0)
+  assert.match(app.html, /内置 Nginx 已自动更新/)
+})
+
+test('Nginx download uses the shared processing dialog and reports a reusable image', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  let finish
+  app.results.install_nginx_image = () => new Promise(resolve => { finish = resolve })
+  app.results.get_ssl_status = {provider:'managed',imageAvailable:true,imageVersion:'fixture'}
+  app.api.render()
+  const pending = app.api.downloadNginx()
+  await new Promise(resolve => setImmediate(resolve))
+  assert.match(app.html, /class="progress-backdrop" role="alertdialog"/)
+  finish()
+  await pending
+  assert.ok(!app.html.includes('class="progress-backdrop"'))
+  assert.match(app.html, /内置 Nginx 已下载/)
+  assert.match(app.html, /id="nginx-enable"/)
+})
+
+test('missing local Nginx saves certificates and shows an installation reminder instead of a save error', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'external'}
+  app.api.state.sslFiles = {play:{certificate:'CERT',privateKey:'KEY'}}
+  app.results.apply_ssl_config = {config:{pendingLocal:true}, externalLocalApplied:false, sslWarning:'地址和证书已保存；需要安装并启动本机 Nginx 才能启用 SSL，安装后再次点击保存配置即可应用。'}
+  app.results.get_ssl_status = {provider:'external', config:{pendingLocal:true}}
+  app.api.render()
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  assert.equal(app.api.state.error, '')
+  assert.equal(app.api.state.progress.stage, 'saved')
+  assert.match(app.html, /地址和证书已保存；需要安装/)
+  assert.ok(!app.html.includes('外部 Nginx 已自动更新并重载'))
+  assert.equal(Object.keys(app.api.state.sslFiles).length, 0)
+  assert.match(app.html, /SSL 配置已保存，需要安装/)
+  app.results.apply_ssl_config = {config:{pendingLocal:false}, externalLocalApplied:true, sslWarning:''}
+  app.results.get_ssl_status = {provider:'external', config:{pendingLocal:false}}
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  const retry = app.calls.filter(call => call.command === 'apply_ssl_config').at(-1)
+  assert.equal(Object.keys(retry.payload.config.certificates).length, 0)
+  assert.equal(app.api.state.error, '')
+  assert.match(app.html, /本机外部 Nginx 已自动更新并重载/)
+  assert.ok(!app.html.includes('SSL 配置已保存，需要安装'))
+})
+
+test('external Nginx detection reports installation details safely and refreshes on selection', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  let finish
+  app.results.get_ssl_status = () => new Promise(resolve => { finish = resolve })
+  const pending = app.api.chooseNginx('external')
+  assert.match(app.html, /正在检测本机 Nginx/)
+  assert.ok(!/data-nginx-mode="[^"]+"[^>]*disabled/.test(app.html))
+  assert.ok(!app.html.includes('class="progress-backdrop"'))
+  finish({externalNginx:{installed:true,version:'1.28.0',executablePath:'/opt/homebrew/bin/nginx',configPath:'/tmp/<fixture>/nginx.conf'}})
+  await pending
+  assert.match(app.html, /本机 Nginx 1.28.0/)
+  assert.match(app.html, /\/opt\/homebrew\/bin\/nginx/)
+  assert.match(app.html, /&lt;fixture&gt;/)
+  assert.ok(!app.html.includes('<fixture>'))
+  app.results.get_ssl_status = {externalNginx:{installed:false,error:''}}
+  await app.api.chooseNginx('external')
+  assert.match(app.html, /未检测到本机 Nginx/)
+  app.results.get_ssl_status = {externalNginx:{installed:null,error:'fixture permission denied'}}
+  await app.api.chooseNginx('external')
+  assert.match(app.html, /检测失败：fixture permission denied/)
+  assert.ok(!app.html.includes('未检测到本机 Nginx'))
+})
+
+test('a stale external Nginx detection response cannot overwrite the latest result', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'data'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'external'}
+  const finishes = []
+  app.results.get_ssl_status = () => new Promise(resolve => { finishes.push(resolve) })
+  const older = app.api.chooseNginx('external')
+  const newer = app.api.chooseNginx('external')
+  finishes[1]({externalNginx:{installed:true,version:'new',executablePath:'/new/nginx',configPath:'/new/nginx.conf'}})
+  await newer
+  finishes[0]({externalNginx:{installed:false}})
+  await older
+  assert.match(app.html, /本机 Nginx new/)
+  assert.ok(!app.html.includes('未检测到本机 Nginx'))
+  app.results.get_ssl_status = () => { throw new Error('fixture transport unavailable') }
+  await app.api.chooseNginx('external')
+  assert.match(app.html, /fixture transport unavailable/)
+})
+
+test('shared HTTPS duplicate domains are explained before saving or applying configuration', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  app.api.state.config.publicAddress = 'https://user.box3lab.com'
+  app.api.state.config.playPublicAddressOverride = 'https://user.box3lab.com'
+  app.api.state.config.authPortalPublicAddressOverride = 'https://user.box3lab.com'
+  app.api.state.sslFiles = {play:{certificate:'CERT',privateKey:'KEY'}}
+  app.api.render()
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  assert.match(app.api.state.error, /同一域名不能同时分配给多个服务/)
+  assert.ok(!app.calls.some(call => ['save_configuration_command','apply_ssl_config'].includes(call.command)))
+  assert.equal(app.api.state.sslFiles.play.privateKey, 'KEY')
+  assert.equal(app.api.state.config.playPublicAddressOverride, 'https://user.box3lab.com')
+})
+
+test('independent HTTPS domains use 443 without changing engine ports', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'; app.api.state.sslLoaded = true
+  app.api.state.sslDraft = {mode:'managed'}
+  app.api.state.config.publicAddress = 'https://shared.example.test'
+  for (const [field, host] of [['playPublicAddressOverride','play'],['creatorPublicAddressOverride','arena'],['voxaPublicAddressOverride','voxa'],['playerServicePublicAddressOverride','admin'],['authPortalPublicAddressOverride','auth']]) app.api.state.config[field] = `https://${host}.example.test`
+  const routes = app.api.sslRoutes()
+  assert.ok(routes.every(route => route.port === 443))
+  assert.equal(new Set(routes.map(route => route.domain)).size, 5)
+  assert.equal(app.api.getServiceUrl('play'), 'https://play.example.test/')
+  assert.ok(!app.api.setup().includes('共用公网地址'))
+  assert.ok(!app.api.setup().includes('13121'))
+  app.api.state.sslFiles = {play:{certificate:'CERT',privateKey:'KEY'}}
+  app.results.apply_ssl_config = {running:true}
+  app.api.render()
+  await app.api.saveConfiguration({currentTarget:app.form,preventDefault(){}})
+  assert.equal(app.api.state.error, '')
+  const applied = app.calls.find(call => call.command === 'apply_ssl_config')
+  assert.ok(applied.payload.config.settings.routes.every(route => route.port === 443))
+  const saved = app.calls.find(call => call.command === 'save_configuration_command')
+  assert.equal(saved.payload.config.playPort, 3121)
+  assert.throws(() => app.api.sslRoutes({playPublicAddressOverride:'https://play.example.test:8443'}), /统一使用 443/)
+})
+
+test('public configuration has only service addresses and independent certificate inputs', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'; app.api.state.setupSection = 'network'; app.api.state.sslLoaded = true
+  app.api.state.config.publicAddress = 'https://legacy-shared.example.test'
+  const html = app.api.setup()
+  assert.ok(!html.includes('name="publicAddress"'))
+  assert.ok(!html.includes('共用公网地址'))
+  assert.ok(!html.includes('SSL 证书（共用）'))
+  assert.ok(!html.includes('data-ssl-service="shared"'))
+  assert.ok(html.includes('data-ssl-service="play"'))
+  app.api.state.config.playPublicAddressOverride = ''
+  assert.equal(app.api.getServiceUrl('play'), '')
+  assert.ok(!app.api.sslRoutes().some(route => route.service === 'play'))
+})
+
+test('SSL expiry distinguishes impending and expired certificates and provides a deletion control', async () => {
+  const app = await createFixture()
+  app.api.state.sslStatus = {config:{certificateExpiries:{play:new Date(Date.now()+10*86400000).toISOString()}}}
+  assert.match(app.api.setup(), /ssl-expiry-card expiring/)
+  assert.match(app.api.setup(), /即将到期，请更换/)
+  assert.match(app.api.setup(), /ssl-title-status expiring">（已配置 · 即将到期）/)
+  assert.match(app.api.setup(), /data-delete-ssl="play"/)
+  app.api.state.sslStatus.config.certificateExpiries.play = new Date(Date.now()-86400000).toISOString()
+  assert.match(app.api.setup(), /ssl-expiry-card expired/)
+  assert.match(app.api.setup(), /已过期，请更换/)
+  assert.match(app.api.setup(), /ssl-title-status expired">（已配置 · 已过期）/)
+  assert.ok(!app.api.setup().includes('即将到期或已过期'))
+  app.api.state.sslStatus.config.certificateExpiries.play = new Date(Date.now()+90*86400000).toISOString()
+  assert.match(app.api.setup(), /ssl-title-status ">（已配置）/)
+  delete app.api.state.sslStatus.config.certificateExpiries.play
+  assert.ok(!app.api.setup().includes('ssl-title-status'))
+})
+
+test('deleting a service certificate removes its expiry and draft while keeping other services', async () => {
+  const app = await createFixture()
+  app.api.state.page='setup'; app.api.state.setupSection='network'; app.api.state.sslLoaded=true
+  app.api.state.sslStatus = {config:{certificateExpiries:{play:'2099-01-01',creator:'2099-01-01'}}}
+  app.api.state.sslFiles = {play:{certificate:'PLAY'},creator:{certificate:'CREATOR'}}
+  app.results.delete_ssl_certificate = {config:{certificateExpiries:{creator:'2099-01-01'}}}
+  await app.api.deleteSslCertificate('play')
+  assert.equal(app.calls.find(call=>call.command==='delete_ssl_certificate').payload.service, 'play')
+  assert.equal(app.api.state.sslFiles.play, undefined)
+  assert.equal(app.api.state.sslFiles.creator.certificate, 'CREATOR')
+  assert.ok(!app.html.includes('data-delete-ssl="play"'))
+  assert.match(app.html, /data-delete-ssl="creator"/)
+})

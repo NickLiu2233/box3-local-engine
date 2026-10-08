@@ -273,7 +273,7 @@ fn web_form_preserves_legacy_managed_storage_credentials() {
 }
 
 #[test]
-fn existing_managed_volumes_reject_missing_original_credentials() {
+fn existing_postgres_volume_rejects_missing_credentials_but_redis_accepts_new_credentials() {
     let postgres = json!({"databaseMode":"managed"});
     let postgres_error = guard_managed_storage_credentials(
         "BOX_DATABASE_MODE=managed\n",
@@ -285,14 +285,13 @@ fn existing_managed_volumes_reject_missing_original_credentials() {
     assert!(postgres_error.contains("已有内置 PostgreSQL 数据"));
 
     let redis = json!({"redisMode":"managed"});
-    let redis_error = guard_managed_storage_credentials(
+    guard_managed_storage_credentials(
         "BOX_REDIS_MODE=managed\n",
         redis.as_object().unwrap(),
         false,
         true,
     )
-    .unwrap_err();
-    assert!(redis_error.contains("已有内置 Redis 数据"));
+    .unwrap();
 }
 
 struct MigrationFixture(App);
@@ -577,4 +576,26 @@ fn docker_bytes_decodes_docker_stats_units() {
     assert_eq!(docker_bytes("256MiB"), Some(268_435_456));
     assert_eq!(docker_bytes("1.5GB"), Some(1_500_000_000));
     assert_eq!(docker_bytes("not-a-size"), None);
+}
+
+#[test]
+fn independent_service_addresses_preserve_empty_entries_in_saved_owner_document() {
+    let saved = configuration_document_for_save("BOX_DATABASE_MODE=managed\nBOX_REDIS_MODE=disabled\n", json!({"databaseMode":"managed","redisMode":"disabled","playNetworkMode":"public","creatorNetworkMode":"public","publicAddress":"https://play.example.test","playPublicAddressOverride":"https://play.example.test","creatorPublicAddressOverride":"https://arena.example.test","voxaPublicAddressOverride":"","playerServicePublicAddressOverride":"","authPortalPublicAddressOverride":""}).as_object().unwrap()).unwrap();
+    let values = parse_env(&saved);
+    assert_eq!(values["BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE"], "https://play.example.test");
+    assert_eq!(values["BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE"], "https://arena.example.test");
+    assert_eq!(values["BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE"], "");
+}
+
+#[test]
+fn managed_redis_missing_credentials_uses_new_password_without_shared_owner_hosts() {
+    let config = json!({"databaseMode":"external","redisMode":"managed","redisPassword":"new-test-password","playNetworkMode":"public","creatorNetworkMode":"public","publicAddress":"https://old.example.test","playPublicAddressOverride":"https://play.example.test","creatorPublicAddressOverride":"https://arena.example.test","voxaPublicAddressOverride":"","playerServicePublicAddressOverride":"","authPortalPublicAddressOverride":""});
+    let owner = "BOX_REDIS_MODE=managed\nBOX_PLAY_PUBLIC_HOST=old.example.test\nBOX_CREATOR_HOST=old.example.test\n";
+    guard_managed_storage_credentials(owner, config.as_object().unwrap(), false, true).unwrap();
+    let saved = configuration_document_for_save(owner, config.as_object().unwrap()).unwrap();
+    let values = parse_env(&saved);
+    assert_eq!(values["REDIS_PASSWORD"], "new-test-password");
+    assert_eq!(values["BOX_MANAGED_REDIS_PASSWORD"], "new-test-password");
+    assert!(!values.contains_key("BOX_PLAY_PUBLIC_HOST"));
+    assert!(!values.contains_key("BOX_CREATOR_HOST"));
 }

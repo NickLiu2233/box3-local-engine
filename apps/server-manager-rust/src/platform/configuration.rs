@@ -365,7 +365,7 @@ pub(crate) fn guard_managed_storage_credentials(
     content: &str,
     config: &serde_json::Map<String, Value>,
     postgres_volume_exists: bool,
-    redis_volume_exists: bool,
+    _redis_volume_exists: bool,
 ) -> Result<(), String> {
     let existing = parse_env(&migrate_document(content)?);
     if config.get("databaseMode").and_then(Value::as_str) == Some("managed")
@@ -374,12 +374,6 @@ pub(crate) fn guard_managed_storage_credentials(
             || managed_database_password(&existing).is_none())
     {
         return Err("检测到已有内置 PostgreSQL 数据，但缺少其原始连接凭据。为避免生成不匹配的新账号，已停止保存；请恢复此前的 .env 后重试。".into());
-    }
-    if config.get("redisMode").and_then(Value::as_str) == Some("managed")
-        && redis_volume_exists
-        && managed_redis_password(&existing).is_none()
-    {
-        return Err("检测到已有内置 Redis 数据，但缺少其原始连接凭据。为避免生成不匹配的新密码，已停止保存；请恢复此前的 .env 后重试。".into());
     }
     Ok(())
 }
@@ -459,7 +453,7 @@ pub(crate) fn generate_runtime_environment(app: &App) -> Result<PathBuf, String>
         .cloned()
         .or_else(|| env::var("BOX_IMAGE_TAG").ok())
         .unwrap_or_else(|| env!("CARGO_PKG_VERSION").into());
-    let derived = shared_config::runtime_environment(
+    let mut derived = shared_config::runtime_environment(
         &values,
         &shared_config::RuntimeInputs {
             lan_ip: lan_ip.as_deref(),
@@ -473,6 +467,7 @@ pub(crate) fn generate_runtime_environment(app: &App) -> Result<PathBuf, String>
             web_manager: true,
         },
     )?;
+    box_manager_core::ssl::apply_runtime_urls(&app.root, &values, &mut derived)?;
     let mut runtime = migrated_owner.clone();
     for (key, value) in derived {
         runtime = set_env(runtime, &key, &value)?;
@@ -717,7 +712,7 @@ pub(crate) fn configuration_document_for_save(
         }
     }
     if redis_mode == "managed" {
-        let password = managed_redis_password(&existing).unwrap_or_else(|| random_hex(32));
+        let password = config.get("redisPassword").and_then(Value::as_str).filter(|password| !password.is_empty()).map(str::to_string).or_else(|| managed_redis_password(&existing)).unwrap_or_else(|| random_hex(32));
         source = set_env(source, "REDIS_HOST", "managed-redis")?;
         source = set_env(source, "REDIS_PORT", "6379")?;
         source = set_env(source, "REDIS_PASSWORD", &password)?;
@@ -789,14 +784,28 @@ pub(crate) fn configuration_document_for_save(
     let mode = config.get("playNetworkMode").and_then(Value::as_str);
     if config.contains_key("publicAddress") || matches!(mode, Some("local" | "lan")) {
         let current = parse_env(&source);
-        let address = config.get("publicAddress").and_then(Value::as_str)
+        let address = box_manager_core::configuration::independent_public_base(config)?.or_else(|| config.get("publicAddress").and_then(Value::as_str)
             .map(str::to_string)
-            .unwrap_or_else(|| box_manager_core::access_settings::public_address(&existing));
+        ).unwrap_or_else(|| box_manager_core::access_settings::public_address(&existing));
         let play_mode = current.get("BOX_PLAY_NETWORK_MODE").map(String::as_str).unwrap_or("local");
         let creator_mode = current.get("BOX_CREATOR_NETWORK_MODE").map(String::as_str).unwrap_or(play_mode);
         source = box_manager_core::access_settings::save(&source, &address, play_mode, creator_mode, detect_lan_ip().as_deref())?;
     }
-    Ok(source)
+    for (field, prefix) in [
+        ("playPublicAddressOverride", "BOX_PLAY"),
+        ("creatorPublicAddressOverride", "BOX_CREATOR"),
+        ("voxaPublicAddressOverride", "BOX_VOXA"),
+        ("playerServicePublicAddressOverride", "BOX_PLAYER_SERVICE"),
+        ("authPortalPublicAddressOverride", "BOX_AUTH_PORTAL"),
+    ] {
+        if let Some(value) = config.get(field) {
+            let address = box_manager_core::configuration::validate_public_address_override(value.as_str().ok_or("公网地址必须是字符串")?, field)?;
+            box_manager_core::environment::remove_env(&mut source, &format!("{prefix}_PUBLIC_HOST_OVERRIDE"));
+            box_manager_core::environment::remove_env(&mut source, &format!("{prefix}_PUBLIC_URL_OVERRIDE"));
+            source = set_env(source, &format!("{prefix}_PUBLIC_ADDRESS_OVERRIDE"), &address)?;
+        }
+    }
+    Ok(box_manager_core::access_settings::independent_owner(&source))
 }
 
 pub(crate) fn managed_image(

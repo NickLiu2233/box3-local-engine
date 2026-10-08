@@ -149,6 +149,7 @@ fn migrate_network(
     };
     let missing_host = !values.contains_key(host_key);
     let missing_mode = !values.contains_key(mode_key);
+    if !missing_mode && values.keys().any(|key| key.ends_with("_PUBLIC_ADDRESS_OVERRIDE")) { return Ok(()); }
     // A partially adopted new schema is already an owner choice: fill missing
     // fields, but never turn its stale derived URLs into permanent overrides.
     let legacy = missing_host && missing_mode;

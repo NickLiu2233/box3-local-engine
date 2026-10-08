@@ -18,6 +18,7 @@ export function getServiceUrl(serviceId) {
   if (state.config?.playNetworkMode === 'public' && serviceHostOverride) {
     return `${publicEndpointUrl(serviceHostOverride, port)}${path}`
   }
+  if (state.config?.playNetworkMode === 'public') return ''
   const authority = host.includes(':') ? `[${host.replace(/^\[|\]$/g, '')}]` : host
   const scheme = state.config?.playNetworkMode === 'public' ? publicAddressScheme() : 'http'
   return `${scheme}://${authority}:${port}${path}`

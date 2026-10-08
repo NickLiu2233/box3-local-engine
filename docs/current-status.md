@@ -10,6 +10,7 @@
 - 服务端 `world.moderation` 地图授权；图主自定义 `world.anticheat` 规则与拒绝审计。
 - 可替换的 TypeScript 登录门户模板、修改密码及独立模板导出。
 - 共用公网地址与单服务覆盖，显式 HTTP/HTTPS 配置，实时 WS/WSS 连接。
+- 新增 [Nginx HTTPS 证书管理](./https-certificate-management.md)，支持证书导入、托管入口及已有 Nginx 配置导出；发行物需重新构建才能包含。
 - 已移除程序许可证激活、设备绑定、在线取时和到期检测；账户与服务端权限校验仍保留。
 - 项目代码采用 MIT，源码访问目前先邀请制；内部迁移器已移到仓库外。
 

@@ -65,6 +65,11 @@ const PROGRESS_COMMANDS = new Set([
   'prepare_managed_redis',
   'start_managed_service',
   'save_configuration_command',
+  'apply_ssl_config',
+  'install_nginx_image',
+  'set_nginx_provider',
+  'stop_ssl_proxy',
+  'verify_ssl_endpoint',
   'save_raw_environment',
   'create_backup',
   'restore_backup',
@@ -257,6 +262,14 @@ export async function exportBackupFile(archive) {
   }
   await downloadBackup(archive)
   return '备份下载已开始。'
+}
+
+export async function exportSslConfiguration(content) {
+  if (isTauri()) return invoke('export_ssl_configuration')
+  const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }))
+  const link = document.createElement('a'); link.href = url; link.download = 'box-engine-https.conf'
+  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return true
 }
 
 export async function exportDiagnosticsFile() {

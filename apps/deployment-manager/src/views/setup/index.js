@@ -1,23 +1,16 @@
 import { escapeHtml } from '../../ui/html.js'
-import { hostFromAddress } from '../../configuration/addresses.js'
 import { icon } from '../../ui/icons.js'
 import { input, settingToggle, setupExplanation } from '../../ui/forms.js'
 import { isWebManager } from '../../infrastructure/transport.js'
 import { progressPanel } from '../../ui/shell.js'
 import { state } from '../../core/state.js'
 import { authPortalImageSetting } from './auth-portal.js'
+import { nginxSetting, sslCertificateSetting } from './ssl.js'
 
 export function setup() {
   const config = state.config || {}
   const databaseMode = config.databaseMode || 'managed'
   const redisMode = config.redisMode || 'disabled'
-  const creatorHost = config.creatorHost || '127.0.0.1'
-  const legacyCreatorPublicHost =
-    creatorHost === '127.0.0.1' ||
-    creatorHost === 'localhost' ||
-    (config.lanIp && creatorHost === config.lanIp)
-      ? ''
-      : creatorHost
   const inferredAccessMode =
     config.playNetworkMode ||
     config.creatorNetworkMode ||
@@ -27,20 +20,9 @@ export function setup() {
         ? 'lan'
         : 'public')
   const accessMode = state.accessMode || inferredAccessMode
-  const storedPublicAddress = config.publicAddress || (config.publicHost
-    ? config.publicHost.includes('://')
-      ? config.publicHost
-      : config.publicHost.includes('.') && !/^\d+(?:\.\d+){3}$/.test(config.publicHost)
-        ? `http://${config.publicHost}`
-        : config.publicHost
-    : legacyCreatorPublicHost)
-  const publicAddressHost = hostFromAddress(storedPublicAddress)
-  const publicAddressValue = ['127.0.0.1', 'localhost', config.lanIp].includes(publicAddressHost)
-    ? ''
-    : storedPublicAddress
   const endpointAddressInput = (name, label) =>
     accessMode === 'public'
-      ? input(
+      ? `<div class="network-endpoint-setting">${input(
           name,
           `${label} 公网地址`,
           config[name] || '',
@@ -48,7 +30,7 @@ export function setup() {
           '',
           false,
           { hideHint: true },
-        )
+        ) + sslCertificateSetting({playPublicAddressOverride:'play',creatorPublicAddressOverride:'creator',voxaPublicAddressOverride:'voxa',playerServicePublicAddressOverride:'player-service',authPortalPublicAddressOverride:'player-auth-portal'}[name])}</div>`
       : `<input name="${name}" type="hidden" value="${escapeHtml(config[name] || '')}"/>`
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
@@ -103,13 +85,14 @@ export function setup() {
       ])}
     </section>`
   return `<header><div><h1>数据配置</h1></div></header>
-    ${state.busy ? progressPanel() : ''}
+    ${state.busy || state.sslBusy ? progressPanel() : ''}
     <form id="setup-form" novalidate class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
       <div class="setup-tabs">${tab('data', '数据服务')}${tab('storage', '数据存储')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
           <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '首次保存时必填')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
           <div class="config-group"><div class="group-title"><div><h2>Redis</h2></div>${redisMode === 'external' ? '<button type="button" class="text-button" data-test-connection="redis">测试连接</button>' : ''}</div><input name="redisMode" type="hidden" value="${redisMode}"/><div class="database-mode-choice redis-mode-choice"><button type="button" class="${redisMode === 'disabled' ? 'active' : ''}" data-redis-mode="disabled"><strong>不启用</strong><span>保持最少依赖</span></button><button type="button" class="${redisMode === 'managed' ? 'active' : ''}" data-redis-mode="managed"><strong>内置 Redis</strong><span>启动器自动维护</span></button><button type="button" class="${redisMode === 'external' ? 'active' : ''}" data-redis-mode="external"><strong>外部 Redis</strong><span>连接已有服务</span></button></div>${redisMode === 'managed' ? managedServicePanel('redis', state.managedRedisInfo) : redisMode === 'external' ? `<div class="form-grid compact three">${input('redisHost', '地址', config.redisHost === 'managed-redis' ? '' : config.redisHost, 'text', 'IP 或域名', true)}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', true, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '外部 Redis 无密码时可留空')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div>` : ''}</div>
+          ${nginxSetting()}
           ${setupExplanation('配置说明：这些服务用来做什么？', [
             [
               'PostgreSQL',
@@ -163,7 +146,7 @@ export function setup() {
               <input name="playNetworkMode" type="hidden" value="${accessMode}"/>
               <input name="creatorNetworkMode" type="hidden" value="${accessMode}"/>
               <div class="access-choice"><button type="button" class="${accessMode === 'local' ? 'active' : ''}" data-network-mode="local">本机</button><button type="button" class="${accessMode === 'lan' ? 'active' : ''}" data-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${accessMode === 'public' ? 'active' : ''}" data-network-mode="public">公网</button></div>
-              ${accessMode === 'public' ? `<div class="network-access-address">${input('publicAddress', '共用公网地址（IP 或域名）', publicAddressValue, 'text', '域名需带 http:// 或 https://；IP 可直接填写', true)}<input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/></div>` : `<input name="publicAddress" type="hidden" value="${escapeHtml(config.publicAddress || '')}"/><input name="creatorHost" type="hidden" value="${escapeHtml(config.publicHost || '')}"/>`}
+
             </section>
             <div class="network-primary-grid">
               <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play 端口', config.playPort || 3121, 'number')}${endpointAddressInput('playPublicAddressOverride', 'Play')}</div></section>
@@ -176,9 +159,9 @@ export function setup() {
               '统一访问范围',
               'Play、ARENA、VOXA、账号服务和登录页面统一使用本机、局域网或公网模式，避免监听地址互相冲突。',
             ],
-            ['公网地址优先级', '先填写共用公网地址；某个服务填写了自己的公网地址后，就优先使用该地址。留空的服务继续使用共用地址。'],
+            ['单独配置', '分别填写各服务的公网地址、证书和私钥；未填写地址的服务不生成公网访问链接。HTTPS 统一使用 443，各服务需要不同域名。'],
             ['公网地址', 'IP 可只填写地址；域名必须显式填写 http:// 或 https://。单端地址可带自己的端口，例如 https://play.example.com 或 http://play.example.com:3121。'],
-            ['端口', '每个服务使用独立端口，不能重复；修改后访问链接也会随之改变。'],
+            ['端口', '引擎的 HTTP 端口不能重复；HTTPS 由 Nginx 使用 443，并按各服务域名转发。'],
           ])}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 70, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>

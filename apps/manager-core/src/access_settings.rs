@@ -5,6 +5,16 @@ use std::net::IpAddr;
 use crate::configuration::{origin_host, parse_public_address, resolve_network};
 use crate::environment::set_env;
 
+pub fn independent_owner(content: &str) -> String {
+    let values = crate::environment::parse_env(content);
+    if !values.keys().any(|key| key.ends_with("_PUBLIC_ADDRESS_OVERRIDE")) { return content.into(); }
+    let mut result = content.to_string();
+    for key in ["BOX_PLAY_PUBLIC_HOST", "BOX_CREATOR_HOST", "BOX_PUBLIC_ADDRESS", "BOX_PUBLIC_SCHEME"] {
+        crate::environment::remove_env(&mut result, key);
+    }
+    result
+}
+
 /// Old configurations store the draft only in the host/scheme pair.
 pub fn public_address(values: &BTreeMap<String, String>) -> String {
     if let Some(address) = values.get("BOX_PUBLIC_ADDRESS") {
@@ -33,14 +43,25 @@ pub fn save(
     creator_mode: &str,
     lan_ip: Option<&str>,
 ) -> Result<String, String> {
+    let values = crate::environment::parse_env(content);
+    if values.keys().any(|key| key.ends_with("_PUBLIC_ADDRESS_OVERRIDE")) {
+        let mut independent = values;
+        independent.insert("BOX_PLAY_NETWORK_MODE".into(), play_mode.into());
+        independent.insert("BOX_CREATOR_NETWORK_MODE".into(), creator_mode.into());
+        resolve_network(&independent, lan_ip)?;
+        let mut result = independent_owner(content);
+        set_env(&mut result, "BOX_PLAY_NETWORK_MODE", play_mode)?;
+        set_env(&mut result, "BOX_CREATOR_NETWORK_MODE", creator_mode)?;
+        return Ok(result);
+    }
     let address = address.trim();
     let (host, scheme) = if address.is_empty() {
         if play_mode == "public" || creator_mode == "public" {
-            return Err("公网模式请填写共用公网地址".into());
+            return Err("公网模式请填写公网地址".into());
         }
         ("127.0.0.1".into(), "http")
     } else {
-        parse_public_address(address, "共用公网地址")?
+        parse_public_address(address, "公网地址")?
     };
     let network = resolve_network(
         &BTreeMap::from([
@@ -143,5 +164,25 @@ mod tests {
                 }
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod independent_owner_tests {
+    use super::*;
+    #[test]
+    fn individual_save_removes_shared_owner_hosts_and_migration_does_not_restore_them() {
+        let source = "BOX_PLAY_NETWORK_MODE=public\nBOX_CREATOR_NETWORK_MODE=public\nBOX_PLAY_PUBLIC_HOST=old.example.test\nBOX_CREATOR_HOST=old.example.test\nBOX_PUBLIC_ADDRESS=https://old.example.test\nBOX_PUBLIC_SCHEME=https\nBOX_PLAY_PUBLIC_ADDRESS_OVERRIDE=https://play.example.test\nBOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE=https://arena.example.test\n";
+        let saved = save(source, "", "public", "public", None).unwrap();
+        let migrated = crate::configuration_migration::migrate_document(&saved).unwrap();
+        let values = crate::environment::parse_env(&migrated);
+        assert!(!values.contains_key("BOX_PLAY_PUBLIC_HOST"));
+        assert!(!values.contains_key("BOX_CREATOR_HOST"));
+        assert!(!values.contains_key("BOX_PUBLIC_ADDRESS"));
+        assert!(!values.contains_key("BOX_PUBLIC_SCHEME"));
+        let network = resolve_network(&values, None).unwrap();
+        assert_eq!(network.play_host, "play.example.test");
+        assert_eq!(network.creator_host, "arena.example.test");
+        assert_eq!(network.play_bind_ip, "0.0.0.0");
     }
 }

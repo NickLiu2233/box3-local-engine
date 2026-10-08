@@ -4,10 +4,45 @@
 //! process flags, or how command failures are rendered.
 
 use std::{
+    io::Read,
     ffi::OsStr,
     path::{Path, PathBuf},
-    process::{Command, Output},
+    process::{Command, Output, Stdio},
+    time::{Duration, Instant},
 };
+
+// Read-only probes must finish even when Docker Desktop is unresponsive.
+pub(crate) fn run_probe(mut command: Command, timeout: Duration) -> Result<Output, String> {
+    hide_window(&mut command);
+    command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    let mut child = command.spawn().map_err(|error| error.to_string())?;
+    let mut stdout = child.stdout.take().ok_or("无法读取命令输出")?;
+    let mut stderr = child.stderr.take().ok_or("无法读取命令错误")?;
+    let out = std::thread::spawn(move || { let mut bytes = Vec::new(); stdout.read_to_end(&mut bytes).map(|_| bytes) });
+    let err = std::thread::spawn(move || { let mut bytes = Vec::new(); stderr.read_to_end(&mut bytes).map(|_| bytes) });
+    let started = Instant::now();
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if started.elapsed() < timeout => std::thread::sleep(Duration::from_millis(20)),
+            result => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(match result {
+                    Err(error) => error.to_string(),
+                    _ => "Docker 状态查询超时，请检查 Docker Desktop 后重新检测。".into(),
+                });
+            }
+        }
+    };
+    let stdout = out.join().map_err(|_| "读取命令输出失败")?.map_err(|error| error.to_string())?;
+    let stderr = err.join().map_err(|_| "读取命令错误失败")?.map_err(|error| error.to_string())?;
+    if !status.success() {
+        let message = if stderr.is_empty() { &stdout } else { &stderr };
+        return Err(String::from_utf8_lossy(message).trim().to_string());
+    }
+    Ok(Output { status, stdout, stderr })
+}
 
 #[cfg(target_os = "windows")]
 pub(crate) fn hide_window(command: &mut Command) {
@@ -93,7 +128,13 @@ pub(crate) fn command() -> Command {
 pub(crate) fn output(args: &[&str]) -> Result<String, String> {
     let mut command = command();
     command.args(args);
-    let output = run_command(command)?;
+    let read_only = matches!(args.first(), Some(&"--version" | &"info" | &"ps" | &"inspect" | &"stats"))
+        || matches!(args, ["image", "inspect", ..] | ["desktop", "version", ..]);
+    let output = if read_only {
+        run_probe(command, Duration::from_secs(15))?
+    } else {
+        run_command(command)?
+    };
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
@@ -119,6 +160,27 @@ pub(crate) fn unavailable_message(error: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn stalled_probe_times_out() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "exec sleep 5"]);
+        let started = Instant::now();
+        assert!(run_probe(command, Duration::from_millis(100)).unwrap_err().contains("超时"));
+        assert!(started.elapsed() < Duration::from_secs(2));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn probe_drains_output_and_reports_errors() {
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf ready"]);
+        assert_eq!(run_probe(command, Duration::from_secs(2)).unwrap().stdout, b"ready");
+        let mut command = Command::new("sh");
+        command.args(["-c", "printf failure >&2; exit 1"]);
+        assert_eq!(run_probe(command, Duration::from_secs(2)).unwrap_err(), "failure");
+    }
 
     #[cfg(target_os = "macos")]
     #[test]

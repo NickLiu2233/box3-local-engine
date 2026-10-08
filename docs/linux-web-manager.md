@@ -232,3 +232,5 @@ BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh
 | 容器被 OOM 终止             | 查看日志，按实际负载提高对应的`*_MEMORY_LIMIT`                 |
 
 配置字段详解见[配置参考](./configuration-reference.md)，数据边界见[本地基础设施](./local-infrastructure.md)。
+
+Nginx 来源在数据服务配置，HTTPS/WSS 证书位于现有公网地址下，证书导入、托管入口及已有外部 Nginx 的接入方式见 [HTTPS 与证书管理](./https-certificate-management.md)。

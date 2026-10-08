@@ -36,6 +36,27 @@ pub(crate) async fn command(
             Some(box_manager_core::operation::mutation_guard()?)
         } else { None };
         match name.as_str() {
+            "install_nginx_image" => {
+                box_manager_core::ssl::install_image(&mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()))?;
+                Ok(json!(true))
+            }
+            "set_nginx_provider" => {
+                let mode = req.body.get("mode").and_then(Value::as_str).ok_or("Nginx 来源无效")?;
+                let status = box_manager_core::ssl::status(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()))?;
+                if status["running"] == true { return Err("请先停止托管 Nginx 入口".into()); }
+                box_manager_core::ssl::set_provider(&app.root, mode)?;
+                Ok(json!(true))
+            }
+            "get_ssl_status" => box_manager_core::ssl::status(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
+            "apply_ssl_config" => {
+                let config = serde_json::from_value(req.body.get("config").cloned().ok_or("证书配置缺失")?).map_err(|_| "证书配置格式无效")?;
+                box_manager_core::ssl::apply(&app.root, &host_project_root(&app)?, "box-local-engine_default",
+                    &fs::read_to_string(env_path(&app)).map_err(|e|e.to_string())?, config,
+                    &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()))
+            }
+            "stop_ssl_proxy" => box_manager_core::ssl::stop(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
+            "delete_ssl_certificate" => box_manager_core::ssl::delete_certificate(&app.root, &host_project_root(&app)?, "box-local-engine_default", &fs::read_to_string(env_path(&app)).map_err(|error|error.to_string())?, req.body.get("service").and_then(Value::as_str).ok_or("证书服务缺失")?, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
+            "verify_ssl_endpoint" => box_manager_core::ssl::verify_endpoint(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
             "get_raw_environment" => Ok(json!(
                 fs::read_to_string(env_path(&app)).map_err(|e| e.to_string())?
             )),
@@ -127,6 +148,11 @@ pub(crate) async fn command(
                     "autoBackupRetentionDays": number("BOX_AUTO_BACKUP_RETENTION_DAYS", 30),
                     "publicHost": values.get("BOX_PLAY_PUBLIC_HOST").cloned().unwrap_or_else(|| url_host(values.get("BOX_PLAY_PUBLIC_URL"), "127.0.0.1")),
                     "publicAddress": box_manager_core::access_settings::public_address(&values),
+                    "playPublicAddressOverride": values.get("BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE").cloned().unwrap_or_default(),
+                    "creatorPublicAddressOverride": values.get("BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE").cloned().unwrap_or_default(),
+                    "voxaPublicAddressOverride": values.get("BOX_VOXA_PUBLIC_ADDRESS_OVERRIDE").cloned().unwrap_or_default(),
+                    "playerServicePublicAddressOverride": values.get("BOX_PLAYER_SERVICE_PUBLIC_ADDRESS_OVERRIDE").cloned().unwrap_or_default(),
+                    "authPortalPublicAddressOverride": values.get("BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE").cloned().unwrap_or_default(),
                     "playNetworkMode": values.get("BOX_PLAY_NETWORK_MODE").cloned().unwrap_or_else(|| "local".into()),
                     "creatorNetworkMode": values.get("BOX_CREATOR_NETWORK_MODE").cloned().unwrap_or_else(|| "local".into()),
                     "creatorHost": values.get("BOX_CREATOR_HOST").cloned().unwrap_or_else(|| url_host(values.get("BOX_CREATOR_PUBLIC_URL"), "127.0.0.1")),
@@ -355,7 +381,7 @@ pub(crate) async fn command(
                     &content,
                     config,
                     managed_volume_exists("box-local-engine_box-managed-postgres-data"),
-                    managed_volume_exists("box-local-engine_box-managed-redis-data"),
+                    false,
                 )?;
                 let source = configuration_document_for_save(&content, config)?;
                 private(&env_path(&app), &source)?;

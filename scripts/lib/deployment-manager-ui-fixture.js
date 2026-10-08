@@ -17,8 +17,10 @@ import { setup } from ${JSON.stringify(path.join(src, 'views/setup/index.js'))}
 import { getServiceUrl } from ${JSON.stringify(path.join(src, 'configuration/addresses.js'))}
 import { copyOwnerSecret } from ${JSON.stringify(path.join(src, 'operations/owner-secrets.js'))}
 import { saveConfiguration } from ${JSON.stringify(path.join(src, 'operations/configuration.js'))}
+import { sslRoutes } from ${JSON.stringify(path.join(src, 'configuration/ssl.js'))}
+import { selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
 import { confirmBackupAction } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
-globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction }
+globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate }
 `
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
@@ -32,6 +34,7 @@ export const openExternal = () => Promise.resolve()
 export const selectBackup = () => Promise.resolve(null)
 export const exportBackupFile = () => Promise.resolve(null)
 export const exportDiagnosticsFile = () => Promise.resolve(null)
+export const exportSslConfiguration = () => Promise.resolve(null)
 `
 
 async function buildFixtureBundle(source = entrySource) {

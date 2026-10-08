@@ -42,6 +42,9 @@ use docker::{
 #[path = "models.rs"]
 mod models;
 
+#[path = "ssl.rs"]
+mod ssl_commands;
+
 use models::*;
 
 
@@ -485,7 +488,11 @@ fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
         command.env_remove(key);
     }
     command.arg(env).arg("-f").arg(compose).args(args);
-    let output = run_command(command)?;
+    let output = if args.first() == Some(&"ps") {
+        docker::run_probe(command, Duration::from_secs(15))?
+    } else {
+        run_command(command)?
+    };
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
@@ -686,7 +693,7 @@ fn normalize_owner_environment(content: &str) -> Result<String, String> {
     // belongs only in the generated runtime file.
     remove_env(&mut normalized, "BOX_DATABASE_URL");
     remove_env(&mut normalized, "BOX_PLAYER_SERVICE_INTERNAL_URL");
-    Ok(normalized)
+    Ok(box_manager_core::access_settings::independent_owner(&normalized))
 }
 
 /// Creator and VOXA are deliberately constrained to loopback or a private
@@ -720,7 +727,7 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
     write_private_file(&env_path(app)?, &owner, "部署配置")?;
     let values = parse_env(&owner);
     let lan_ip = detect_lan_ip();
-    let derived = shared_config::runtime_environment(
+    let mut derived = shared_config::runtime_environment(
         &values,
         &shared_config::RuntimeInputs {
             lan_ip: lan_ip.as_deref(),
@@ -734,6 +741,7 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
             web_manager: false,
         },
     )?;
+    box_manager_core::ssl::apply_runtime_urls(&runtime_root(app)?, &values, &mut derived)?;
     let mut runtime = owner;
     for (key, value) in derived {
         set_env(&mut runtime, &key, &value)?;
@@ -839,14 +847,11 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     normalize_unified_access_settings(&mut config);
     let database_mode = validate_database_mode(&config.database_mode)?;
     let redis_mode = validate_redis_mode(&config.redis_mode)?;
-    if config.public_address.trim().is_empty() {
-        if config.play_network_mode == "public" {
-            return Err("公网模式请填写共用公网地址；域名必须填写 http:// 或 https://".into());
-        }
-        config.public_address = config.public_host.clone();
-    }
+    let submitted_addresses = serde_json::to_value(&config).map_err(|error| error.to_string())?;
+    if let Some(base) = shared_config::independent_public_base(submitted_addresses.as_object().ok_or("配置格式无效")?)? { config.public_address = base; }
+    if config.public_address.trim().is_empty() { config.public_address = "127.0.0.1".into(); }
     let (public_host, public_scheme) =
-        shared_config::parse_public_address(&config.public_address, "共用公网地址")?;
+        shared_config::parse_public_address(&config.public_address, "公网地址")?;
     config.public_host = public_host.clone();
     config.creator_host = public_host.clone();
     validate_install_configuration(&config)?;
@@ -983,11 +988,7 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     ] {
         remove_env(&mut content, host_key);
         remove_env(&mut content, url_key);
-        if address.is_empty() {
-            remove_env(&mut content, key);
-        } else {
-            set_env(&mut content, key, address)?;
-        }
+        set_env(&mut content, key, address)?;
     }
     remove_env(&mut content, "BOX_PLAYER_LOGIN_URL_OVERRIDE");
     set_env(
@@ -1207,12 +1208,10 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     };
     let (redis_host, redis_port, redis_password) = match redis_mode {
         "managed" => {
-            let password = if let Some(password) = saved_redis_password {
-                password
-            } else if managed_redis_volume_exists() {
-                return Err("检测到已有内置 Redis 数据，但缺少其原始连接凭据。为避免重置现有访问配置，已停止切换；请恢复此前的 .env 后重试。".into());
+            let password = if !config.redis_password.is_empty() {
+                config.redis_password.clone()
             } else {
-                random_hex(32)
+                saved_redis_password.unwrap_or_else(|| random_hex(32))
             };
             ("managed-redis".into(), "6379".into(), password)
         }
@@ -1578,15 +1577,6 @@ fn managed_database_volume_exists() -> bool {
     .is_ok()
 }
 
-fn managed_redis_volume_exists() -> bool {
-    docker_output(&[
-        "volume",
-        "inspect",
-        &format!("{PROJECT_NAME}_box-managed-redis-data"),
-    ])
-    .is_ok()
-}
-
 fn managed_value(values: &BTreeMap<String, String>, key: &str) -> Option<String> {
     values
         .get(key)
@@ -1679,7 +1669,12 @@ fn managed_container_connectable(service: &str, host_port: &str) -> bool {
 }
 
 #[tauri::command]
-fn get_managed_service_info(app: AppHandle, service: String) -> Result<ManagedServiceInfo, String> {
+async fn get_managed_service_info(app: AppHandle, service: String) -> Result<ManagedServiceInfo, String> {
+    tauri::async_runtime::spawn_blocking(move || managed_service_info(app, service))
+        .await.map_err(|error| error.to_string())?
+}
+
+fn managed_service_info(app: AppHandle, service: String) -> Result<ManagedServiceInfo, String> {
     let values = load_existing_env(&app);
     let host = "127.0.0.1".to_string();
     match service.as_str() {
@@ -2090,7 +2085,12 @@ fn save_raw_environment(app: AppHandle, content: String) -> Result<bool, String>
 }
 
 #[tauri::command]
-fn get_system_status(app: AppHandle) -> SystemStatus {
+async fn get_system_status(app: AppHandle) -> Result<SystemStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || system_status(app))
+        .await.map_err(|error| error.to_string())
+}
+
+fn system_status(app: AppHandle) -> SystemStatus {
     let _ = enforce_creator_network_policy(&app);
     let data_directory = runtime_root(&app)
         .map(|path| path.to_string_lossy().to_string())
@@ -2165,8 +2165,9 @@ fn docker_check() -> DockerCheck {
 }
 
 #[tauri::command]
-fn get_docker_check() -> DockerCheck {
-    docker_check()
+async fn get_docker_check() -> Result<DockerCheck, String> {
+    tauri::async_runtime::spawn_blocking(docker_check)
+        .await.map_err(|error| error.to_string())
 }
 
 fn unavailable_runtime_status() -> RuntimeEndpointStatus {
@@ -3421,7 +3422,7 @@ async fn export_diagnostics(app: AppHandle) -> Result<Option<String>, String> {
             "imageTag": IMAGE_TAG,
             "platform": std::env::consts::OS,
             "architecture": std::env::consts::ARCH,
-            "systemStatus": get_system_status(app.clone()),
+            "systemStatus": system_status(app.clone()),
             "configuration": safe_environment,
             "dockerInfo": docker_info,
             "composeState": compose_state,
@@ -4129,6 +4130,14 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            ssl_commands::get_ssl_status,
+            ssl_commands::install_nginx_image,
+            ssl_commands::set_nginx_provider,
+            ssl_commands::apply_ssl_config,
+            ssl_commands::delete_ssl_certificate,
+            ssl_commands::stop_ssl_proxy,
+            ssl_commands::verify_ssl_endpoint,
+            ssl_commands::export_ssl_configuration,
             get_install_config,
             get_owner_secrets,
             get_raw_environment,

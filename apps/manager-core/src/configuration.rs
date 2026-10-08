@@ -396,15 +396,24 @@ pub fn resolve_network(
         }
         Ok(ip.to_string())
     };
+    let service_host = |address_key: &str, legacy: &str| -> Result<String, String> {
+        if let Some(address) = values.get(address_key) {
+            let address = validate_public_address_override(address, "服务公网地址")?;
+            if address.is_empty() { return Ok("127.0.0.1".into()); }
+            if address.contains("://") { return crate::configuration_migration::public_url_parts(&address, "服务公网地址").map(|parts| parts.0); }
+            return Ok(address);
+        }
+        Ok(values.get(legacy).cloned().unwrap_or_else(|| "127.0.0.1".into()))
+    };
     let play_host = match play_mode {
         "local" => "127.0.0.1".into(),
         "lan" => lan()?,
-        _ => validate_public_host(get("BOX_PLAY_PUBLIC_HOST", "127.0.0.1"))?,
+        _ => validate_public_host(&service_host("BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE", "BOX_PLAY_PUBLIC_HOST")?)?,
     };
     let creator_host = match creator_mode {
         "local" => "127.0.0.1".into(),
         "lan" => lan()?,
-        _ => validate_creator_host(get("BOX_CREATOR_HOST", "127.0.0.1"))?,
+        _ => validate_creator_host(&service_host("BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE", "BOX_CREATOR_HOST")?)?,
     };
     let loopback = play_host.trim_end_matches('.') == "localhost"
         || play_host.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
@@ -445,15 +454,17 @@ pub fn runtime_environment(
         .unwrap_or("local")
         == "public"
     {
-        values
+        if let Some(address) = values.get("BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE") {
+            if address.to_ascii_lowercase().starts_with("https://") { "https" } else { "http" }
+        } else { values
             .get("BOX_PUBLIC_SCHEME")
             .map(String::as_str)
-            .unwrap_or("http")
+            .unwrap_or("http") }
     } else {
         "http"
     };
     if !matches!(public_scheme, "http" | "https") {
-        return Err("共用公网地址协议只能是 HTTP 或 HTTPS".into());
+        return Err("公网地址协议只能是 HTTP 或 HTTPS".into());
     }
     let db = match database_url(values) {
         Ok(url) => url,
@@ -601,6 +612,15 @@ pub fn runtime_environment(
                 format!("https://{host}")
             }
         });
+        if values.get(address_key).is_some_and(|address| address.trim().is_empty()) {
+            let port = env_port(values, port_key, port_default)?;
+            let url = format!("http://127.0.0.1:{port}");
+            url_override_values.insert(format!("{url_key}_OVERRIDE"), url.clone());
+            if url_key == "BOX_AUTH_PORTAL_PUBLIC_URL" {
+                url_override_values.insert("BOX_PLAYER_LOGIN_URL_OVERRIDE".into(), url);
+            }
+            continue;
+        }
         let Some(address) = values
             .get(address_key)
             .or(legacy_address.as_ref())
@@ -629,7 +649,27 @@ fn config_number(config: &Map<String, Value>, key: &str) -> Option<f64> {
 }
 
 /// Validate supplied camelCase form fields after merging adapter defaults or prior state.
+pub fn independent_public_base(config: &Map<String, Value>) -> Result<Option<String>, String> {
+    let fields = [("playPublicAddressOverride", "Play 公网地址"), ("creatorPublicAddressOverride", "ARENA 公网地址"), ("voxaPublicAddressOverride", "VOXA 公网地址"), ("playerServicePublicAddressOverride", "后台管理公网地址"), ("authPortalPublicAddressOverride", "登录页面公网地址")];
+    if !fields.iter().any(|(key, _)| config.contains_key(*key)) { return Ok(None); }
+    let mut primary = None;
+    for (key, label) in fields {
+        let Some(value) = config.get(key) else { continue; };
+        let address = validate_public_address_override(value.as_str().ok_or_else(|| format!("{label}必须是字符串"))?, label)?;
+        if address.is_empty() { continue; }
+        if primary.is_none() {
+            let base = if address.contains("://") {
+                let (host, _, secure, _) = crate::configuration_migration::public_url_parts(&address, label)?;
+                format!("{}://{}", if secure { "https" } else { "http" }, origin_host(&host)?)
+            } else { address };
+            primary = Some(base);
+        }
+    }
+    Ok(Some(primary.unwrap_or_else(|| "127.0.0.1".into())))
+}
+
 pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String> {
+    let independent = independent_public_base(config)?.is_some();
     if let (Some(play_mode), Some(creator_mode)) = (
         config.get("playNetworkMode").and_then(Value::as_str),
         config.get("creatorNetworkMode").and_then(Value::as_str),
@@ -741,8 +781,8 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                     validate_public_host(value)?;
                 }
                 "publicAddress" => {
-                    if !value.trim().is_empty() || config.get("playNetworkMode").and_then(Value::as_str) == Some("public") {
-                        parse_public_address(value, "共用公网地址")?;
+                    if !independent && (!value.trim().is_empty() || config.get("playNetworkMode").and_then(Value::as_str) == Some("public")) {
+                        parse_public_address(value, "公网地址")?;
                     }
                 }
                 "authPortalImage" => {
@@ -1216,5 +1256,42 @@ mod tests {
             validate(json!({"redisPort":"bad"})).unwrap_err(),
             "Redis 端口必须是 1-65535 之间的整数"
         );
+    }
+}
+
+#[cfg(test)]
+mod independent_address_tests {
+    use super::*;
+    #[test]
+    fn explicit_empty_service_address_does_not_inherit_a_legacy_shared_host() {
+        let values = BTreeMap::from([
+            ("BOX_PLAY_NETWORK_MODE".into(), "public".into()),
+            ("BOX_CREATOR_NETWORK_MODE".into(), "local".into()),
+            ("BOX_PLAY_PUBLIC_HOST".into(), "legacy-shared.example.test".into()),
+            ("BOX_PUBLIC_SCHEME".into(), "https".into()),
+            ("BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE".into(), "https://play.example.test".into()),
+            ("BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE".into(), String::new()),
+        ]);
+        let result = runtime_environment(&values, &RuntimeInputs {lan_ip:None,image_tag:"test",platform:"linux/arm64",database_required:false,web_manager:false}).unwrap();
+        assert_eq!(result["BOX_PLAY_PUBLIC_URL"], "https://play.example.test");
+        assert_eq!(result["BOX_AUTH_PORTAL_PUBLIC_URL"], "http://127.0.0.1:3125");
+        assert_eq!(result["BOX_PLAYER_LOGIN_URL"], "http://127.0.0.1:3125");
+    }
+}
+
+#[cfg(test)]
+mod individual_validation_tests {
+    use super::*;
+    #[test]
+    fn service_validation_reports_its_own_label_and_ignores_removed_shared_inputs() {
+        let config = serde_json::json!({"playNetworkMode":"public","publicAddress":"stale-shared-value","playPublicAddressOverride":"http://play.example.test:4121","authPortalPublicAddressOverride":""});
+        assert_eq!(independent_public_base(config.as_object().unwrap()).unwrap(), Some("http://play.example.test".into()));
+        validate_configuration(config.as_object().unwrap()).unwrap();
+        let invalid = serde_json::json!({"playPublicAddressOverride":"play.example.test"});
+        let error = independent_public_base(invalid.as_object().unwrap()).unwrap_err();
+        assert!(error.contains("Play 公网地址"));
+        assert!(!error.contains("共用"));
+        let empty = serde_json::json!({"playPublicAddressOverride":"","authPortalPublicAddressOverride":""});
+        assert_eq!(independent_public_base(empty.as_object().unwrap()).unwrap(), Some("127.0.0.1".into()));
     }
 }

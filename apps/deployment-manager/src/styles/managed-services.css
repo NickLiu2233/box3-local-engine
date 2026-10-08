@@ -101,6 +101,11 @@
   grid-column: 1 / -1;
 }
 
+.external-nginx-info .managed-connection-grid code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .managed-connection-grid dt {
   margin-bottom: 4px;
   color: var(--muted);

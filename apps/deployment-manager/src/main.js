@@ -34,4 +34,7 @@ document.addEventListener('contextmenu', (event) => event.preventDefault())
 applyTheme(state.theme)
 
 if (isWebManager()) startWebManager()
-else refreshStatus()
+else {
+  renderApplication()
+  refreshStatus()
+}

@@ -17,3 +17,9 @@ export function settingToggle(name, label, description, checked) {
 export function setupExplanation(title, items) {
   return `<details class="setup-explainer"><summary>${title}</summary><div class="setup-explainer-grid">${items.map(([name, description]) => `<div><strong>${name}</strong><span>${description}</span></div>`).join('')}</div></details>`
 }
+
+
+export function fileInput(label, filename, attributes, hint) {
+  const data = Object.entries(attributes).map(([key, value]) => `${key}="${escapeHtml(value)}"`).join(' ')
+  return `<label class="field no-hint"><span>${label}</span><span class="file-picker"><span class="file-picker-action">选择文件</span><span class="file-picker-name">${escapeHtml(filename || '')}</span><input type="file" ${data} aria-label="${label}"/></span>${hint ? `<small>${escapeHtml(hint)}</small>` : ''}</label>`
+}
