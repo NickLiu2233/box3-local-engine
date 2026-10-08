@@ -1,107 +1,93 @@
 # BOX3 Local Engine 文档中心
 
-根目录 [README](../README.md) 说明当前 `0.3.0` 产品范围、支持平台和最短启动方式。本目录按实际任务拆分专题；部署者不需要从头读完，也不要同时照着多份部署文档执行。
+整理日期：2026-10-08。当前源码 `0.3.0`，先通过邀请参与开发；不是声明安装包或 CDN 已同步。
 
 ## 推荐阅读顺序
 
-| 目标                         | 主文档                                                                 | 必要补充                                                                                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 桌面启动器首次部署           | [图形化部署管理器](./graphical-deployment-manager.md)                  | [配置参考](./configuration-reference.md)                                                                                                 |
-| 无图形 Linux 服务器          | [Linux Web 管理端](./linux-web-manager.md)                             | [安装、部署与运维](./installation-and-operations.md)、[游玩端部署](./play-deployment.md)                                                 |
-| 云服务器快速安装             | [云服务器快速部署](./cloud-server-quickstart.md)                       | [Linux Web 管理端](./linux-web-manager.md)、[部署与联机](./deployment.md)                                                                |
-| 创建和发布地图               | [地图作品、地图组与发布包](./projects.md)                              | [创作端部署](./creator-deployment.md)                                                                                                    |
-| 部署 Play 或公开服务器       | [游玩端部署](./play-deployment.md)                                     | [部署与联机](./deployment.md)                                                                                                            |
-| 设计启动器本地地图包         | [启动器本地地图包与严格资源门禁](./launcher-local-map-packs-design.md) | [游玩端部署](./play-deployment.md)、[地图作品、地图组与发布包](./projects.md)                                                            |
-| 部署 VOXA                    | [VOXA 部署](./voxa-deployment.md)                                      | [地图作品与资源边界](./projects.md)                                                                                                      |
-| 接入登录、玩家账号或后台管理 | [玩家身份与后台管理](./player-identity.md)                             | [Player Service API](./player-service-api.md)、[管理后台开发说明](./player-admin-development.md)、[自建登录门户](./self-hosted-login.md) |
-| 授权地图脚本及查询处罚       | [地图授权与脚本处罚 API](./script-moderation.md)                       | [玩家身份与后台管理](./player-identity.md)                                                                                               |
-| 编写地图反作弊规则           | [反作弊入门与记录器](./anticheat-toolkit.md)                           | [事件接口](./script-anticheat.md)、[可运行示例](./examples/README.md)、[验证记录](./anticheat-test-report.md) |
-| 配置 PostgreSQL/Redis        | [配置参考](./configuration-reference.md)                               | [PostgreSQL 数据空间](./postgresql-data-storage.md)、[本地基础设施](./local-infrastructure.md)                                           |
-| 开发或修复代码               | [开发者与协作手册](./developer-guide.md)                               | [系统架构](./architecture.md)、[工程规范](./engineering.md)                                                                              |
-| 开发后台管理                 | [管理后台开发说明](./player-admin-development.md)                      | [后台管理复用索引](./player-admin-code.md)、[Local Engine API 与 Swagger](./local-engine-api.md)                                         |
-| 查看、调用或新增 HTTP API    | [Local Engine API 与 Swagger](./local-engine-api.md)                   | [Player Service API](./player-service-api.md)、[Creator CLI HTTP API](./creator-cli-http-api.md)                                         |
-| Fork、提交 PR 和构建贡献包   | [贡献者指南](../CONTRIBUTING.md)                                       | [开发者与协作手册](./developer-guide.md)、[构建、分发与 CI](./release-and-distribution.md)                                               |
-| 构建镜像和发行包             | [构建、分发与 CI](./release-and-distribution.md)                       | [安全审计](./security-audit.md)                                                                                                          |
-| 会议或业务介绍               | [业务方案对比](./business-comparison.md)                               | [系统架构](./architecture.md)                                                                                                            |
+- 第一次拿到源码：[邀请与访问](./source-access.md) → [贡献指南](../CONTRIBUTING.md) → [开发手册](./developer-guide.md)。
+- 部署试用包：[桌面启动器](./graphical-deployment-manager.md)或 [Linux 管理端](./linux-web-manager.md) → [配置](./configuration-reference.md) → [备份边界](./local-infrastructure.md)。
+- 创作与运营：[地图与发布包](./projects.md) → [玩家管理](./player-identity.md) → [地图授权](./script-moderation.md)与[反作弊规则](./anticheat-toolkit.md)。
+- 修改和再分发：[MIT 与品牌边界](./open-source-licensing.md) → [发布检查](./public-repository-audit.md) → [构建与分发](./release-and-distribution.md)。
 
-## 文档职责
+## 当前发行与安全边界
 
-### 部署与使用
+Player Admin 源码开发时独立运行，发行时并入 Player Service。完整离线包有六个官方镜像，不含内部迁移器或签发器。
+程序不要求激活，但登录、管理权限、地图脚本授权、资源完整性校验仍然存在。客户端不保存秘密，DTS 不是安全沙箱。
+邀请制控制官方仓库访问，不收回已经按 MIT 交付的代码使用权。运行数据和源码不混存，文件备份不替代 PostgreSQL 备份。
 
-- [安装、部署与运维](./installation-and-operations.md)：硬件/软件要求、桌面包、无图形服务器、备份、升级和排障。
-- [图形化部署管理器](./graphical-deployment-manager.md)：启动器页面、配置保存、启动范围、自动状态、性能与离线包结构。
-- [Linux Web 管理端](./linux-web-manager.md)：无桌面服务器的浏览器配置、状态、日志、启停和安全访问。
-- [配置参考](./configuration-reference.md)：环境变量来源、端口、数据库、容量、备份、安全项和修改后的生效方式。
-- [部署与联机](./deployment.md)：本机、局域网、公网反向代理和服务暴露边界。
-- [创作端部署](./creator-deployment.md)：Creator 工程目录、镜像、更新和排错。
-- [游玩端部署](./play-deployment.md)：`.boxplay` 导入、地图开关、更新和公网部署；地图日常管理统一在后台管理完成。
-- [VOXA 部署](./voxa-deployment.md)：模型工程、地图引用和本地数据备份。
-- [地图作品、地图组与发布包](./projects.md)：主地图/副地图、`.boxproject`、`.boxplay` 和共享资源。
-- [Creator CLI HTTP API](./creator-cli-http-api.md)：当前 Creator CLI Token、九项可授权能力和服务端调用契约。
-- [ArenaPro CLI 接入设计](./arenapro-cli-creator-adapter.md)：保留的协议设计背景，不作为当前 `apc` 命令手册。
+## 文档目录
 
-### 玩家身份与数据
+当前指南优先用于操作；带日期的验收、技术记录和规划保留上下文，不作为当前版本通过证明。
 
-- [玩家身份与后台管理](./player-identity.md)：玩家账号、预置皮肤、单设备会话、独立管理账号、权限组、游玩地图与容器管理边界。
-- [管理后台开发说明](./player-admin-development.md)：后台前端模块地图、请求与权限 seam、页面开发约定和验收清单。
-- [后台管理复用索引](./player-admin-code.md)：公共组件、地图目录、业务 Hook、各页面的唯一实现位置。
-- [地图授权与脚本处罚 API](./script-moderation.md)：服主授权、单个/批量封禁、设备封禁、处罚查询和脚本安全记录。
-- [地图反作弊规则](./anticheat-toolkit.md)：服务端历史、异常分数、临时豁免与图主自定义规则；[事件接口](./script-anticheat.md)和[使用示例](./examples/README.md)分别介绍数据和接入方式。
-- [Player Service API](./player-service-api.md)：认证与管理 API 的服务端接入契约。
-- [自建登录门户](./self-hosted-login.md)：安全代理 API Key、Cookie 和登录回跳。
-- [PostgreSQL 数据空间](./postgresql-data-storage.md)：账号与地图脚本数据的 schema、隔离、权限和备份。
-- [本地基础设施](./local-infrastructure.md)：PostgreSQL、Redis、工程文件和运行时缓存的职责、卷与删除边界。
+### 开始、访问与许可
 
-### 开发与兼容
+- [邀请制源码访问与协作](./source-access.md)
+- [当前版本与文档范围](./current-status.md)
+- [开源许可说明](./open-source-licensing.md)
+- [公开仓库检查记录](./public-repository-audit.md)
 
-- [内部工具接入](./internal-tools.md)：可选本机迁移器入口，不包含内部工具实现。
-- [公开仓库检查记录](./public-repository-audit.md)：敏感文件检查、历史风险与第三方资源待核实事项。
+### 部署、配置与数据
 
-- [开源许可说明](./open-source-licensing.md)：MIT 使用与分发要求、第三方声明、用户作品和品牌边界。
+- [安装与运维](./installation-and-operations.md)
+- [图形化部署管理器](./graphical-deployment-manager.md)
+- [从纯 Linux 系统部署 BOX3 Engine](./linux-web-manager.md)
+- [BOX3 Engine 云服务器快速部署](./cloud-server-quickstart.md)
+- [配置参考](./configuration-reference.md)
+- [部署与联机](./deployment.md)
+- [创作端部署](./creator-deployment.md)
+- [游玩端部署](./play-deployment.md)
+- [VOXA 本地模型编辑器](./voxa-deployment.md)
+- [地图、地图组与发布包](./projects.md)
+- [本地基础设施](./local-infrastructure.md)
+- [PostgreSQL 数据空间](./postgresql-data-storage.md)
+- [HTTP 访问兼容](./http-compatibility.md)
+- [玩家启动器 Service Worker 资源缓存](./launcher-service-worker-cache.md)
 
-- [系统架构](./architecture.md)：服务职责、请求链路和源码入口。
-- [Local Engine API 与 Swagger](./local-engine-api.md)：统一 OpenAPI 契约、生成客户端、Swagger 调试、鉴权和接口开发流程。
-- [领域模型](./domain-model.md)：地图组、地图资源、数据空间和管理权限的统一术语与约束。
-- [开发者与协作手册](./developer-guide.md)：从获取代码、安装依赖、配置和启动源码，到模块开发、测试、镜像部署验证、故障排查及提交 PR 的完整流程。
-- [贡献者指南](../CONTRIBUTING.md)：从 fork、分支、源码开发到测试、镜像和桌面 App 构建的完整流程。
-- [工程规范](./engineering.md)：模块边界、测试策略和登记中的工程优化。
-- [图形化与 Web 启动器统一记录](./launcher-parity-audit.md)：共用 Rust 核心、平台适配、修复与验证范围。
-- [玩家启动器 Service Worker 资源缓存](./launcher-service-worker-cache.md)：通过同源 Service Worker 缓存公开静态地图资源；无自定义协议、无手动离线导入。
-- [与 boxes 的核心对齐基线](./boxes-parity.md)：仅约束引擎兼容接口，不是用户部署手册。
-- [稳定地图存储 ID 决策](./adr/0001-stable-map-storage-identity.md)：地图和地图组数据空间的架构决策。
-- [业务方案对比](./business-comparison.md)：面向管理层的本地部署、在线平台、Unity 与 Minecraft 对比。
-- [构建、分发与 CI](./release-and-distribution.md)：完整镜像归档、桌面 App、无图形服务器包和 Tag 流水线。
-- [安全审计](./security-audit.md)：生产依赖审计范围与剩余风险。
+### 账号、管理与地图脚本
 
-## 当前发行边界
+- [玩家身份与后台管理](./player-identity.md)
+- [后台管理开发说明](./player-admin-development.md)
+- [后台管理复用索引](./player-admin-code.md)
+- [Player Service API](./player-service-api.md)
+- [从零做一个自己的 BOX3 登录门户](./self-hosted-login.md)
+- [地图授权与脚本处罚 API](./script-moderation.md)
+- [地图反作弊监听](./script-anticheat.md)
+- [给地图写自己的反作弊规则](./anticheat-toolkit.md)
+- [地图反作弊示例](./examples/README.md)
+- [可配置的移动与攻击校验](./examples/anticheat-policy.md)
 
-- 项目代码采用 [MIT License](../LICENSE.md)，允许修改、商用和再分发；第三方组件、用户作品和品牌的边界见[开源许可说明](./open-source-licensing.md)。
+### 开发、架构与接口
 
-- 桌面启动器管理 Creator、Play、VOXA、Player Service 和玩家登录门户五个业务服务；完整镜像归档还包含 Linux Server Manager，共六个镜像。
-- Apple Silicon 本地桌面构建产物位于 `apps/local-engine/dist/desktop-installers/`，文件名为 `BOX-Local-Engine-<version>-macos-arm64.zip`；解压后包含 `BOX3 Engine Launcher.app`。
-- 无图形 Linux 服务器包包含 Creator、VOXA、Play、Player Service、玩家登录门户和 Rust Linux Web 管理端；不包含迁移器或 PostgreSQL/Redis 镜像，但管理端可按需拉取并维护内置基础服务。
-- 内部作品迁移器保存在仓库外，不参与公开构建、测试或发行。本机接入方式见[内部工具接入](./internal-tools.md)。
-- Creator 与 VOXA 默认仅本机访问。确需远程创作时可选择局域网或公网，但应使用 HTTPS、VPN/访问控制和创作者权限；Play 与登录门户仍是面向普通玩家的公开入口。
-- 正常创作和游玩所需资源已本地化。选择“仅引用 OSS”发布模式时，地图会依赖发布者自己维护的对象存储；需要完全离线时必须选择“仅本地资源”。
-- 桌面启动器和 Linux Web 管理端都可在用户确认后下载并管理内置 PostgreSQL/Redis，也可连接外部服务或不启用 Redis。
-- 构建版本、提交短号、构建日期和来源来自镜像 `BOX_BUILD_*` 元数据；正式 Tag 构建应注入这些值，服主无需配置。
-- 当前桌面发行目标为 Windows x64、Windows ARM64、Apple Silicon macOS、Linux x64 和 Linux ARM64。构建脚本支持 Intel macOS，但当前公开 Release 不构建该目标。
-- 主分支和 Pull Request 的 Verify 工作流执行依赖审计、Compose 校验和 `rush verify`；Tag Release 工作流校验版本与 OSS 配置后构建发行包，不会重复执行完整 Verify。
+- [开发者与协作手册](./developer-guide.md)
+- [系统架构](./architecture.md)
+- [BOX Local Engine](./domain-model.md)
+- [Local Engine API 与 Swagger](./local-engine-api.md)
+- [Creator CLI 与 HTTP API（当前实现）](./creator-cli-http-api.md)
+- [工程规范](./engineering.md)
+- [与 boxes 的核心对齐基线](./boxes-parity.md)
+- [构建与分发](./release-and-distribution.md)
+- [安全边界](./security-audit.md)
+- [内部工具接入](./internal-tools.md)
+- [Use an immutable permanent map ID for storage identity](./adr/0001-stable-map-storage-identity.md)
 
-## 当前脚本边界
+### 技术记录与历史验收
 
-- 客户端脚本运行在浏览器中，能使用运行环境提供的浏览器能力；编辑器的 DTS 只负责补全，不是安全沙箱。
-- 服务端脚本在 game-server 隔离运行时中执行。账号、密钥、付费、奖励、权限和权威存档逻辑不得交给客户端决定。
-- Local Engine 不使用 BOX 平台资源域名白名单，但仍校验危险 URL 协议，并保留登录 Origin、回跳地址和资源 CORS 等服务边界。
-- 本地脚本 API 已移除在线平台专属的支付成功事件、社交统计、临时聊天、商城和分析能力；兼容范围以[对齐基线](./boxes-parity.md)为准。
+- [本地引擎反作弊发行说明](./anticheat-release.md)
+- [反作弊验证记录](./anticheat-test-report.md)
+- [本地引擎反作弊 API 详细设计书](./anticheat-api-design.md)
+- [本地引擎 WebSocket 改造设计与测试记录](./ws-polling-audit.md)
+- [WebSocket 新版镜像与启动器打包验证](./ws-package-release-20261006.md)
+- [v0.3.0 更新日志与新版离线包交付记录](./v030-release-package-20261006.md)
+- [工程整理：第一轮](./engineering-refactor.md)
+- [图形化与 Web 启动器统一记录](./launcher-parity-audit.md)
 
-## 文档维护规则
+### 设计、规划与方案参考
 
-以下变化必须在同一提交更新文档和示例配置：
+- [ArenaPro CLI 接入 BOX Creator（历史设计背景）](./arenapro-cli-creator-adapter.md)
+- [BOX3玩家启动器](./launcher-local-map-packs-design.md)
+- [引擎核心性能评估与优化计划书](./engine-performance-optimization-plan.md)
+- [BOX3 Engine 私服方案对比](./business-comparison.md)
 
-- 服务、端口、镜像、启动范围、数据目录或 Release 附件；
-- 环境变量、默认值、启动器表单、Compose 传递或网络限制；
-- 地图组、发布包、玩家身份、权限组、Cookie 或 API；
-- 用户可见按钮、操作流程、错误信息和已删除功能。
+## 维护规则
 
-文档只描述当前已实现行为。内部工具必须明确标注“内部”，测试预览必须明确标注“仅开发环境”，未来计划只能写入工程规划，不能混入用户操作步骤。文档不得出现真实密钥、Cookie、IP、数据库连接串或用户数据。
+服务、端口、配置、接口、权限、数据目录和发行入口变化时，同一提交更新对应指南与示例。历史记录不改写为新测试结果；原始数据不应带玩家身份或本机路径进入源码。命令和版本以脚本与清单为准。

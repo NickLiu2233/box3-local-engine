@@ -266,7 +266,7 @@ app
       'Boolean(document.querySelector(".empty-maps")) && !document.querySelector(".storage-server-trigger")',
     )
     authenticated = false
-    await run('document.querySelector("[data-select-server]").click(); document.querySelector("[data-map-filter=recent]").click()')
+    await run('document.querySelector("[data-select-server]").click()')
     await waitFor('document.querySelector(".login-card [role=alert]")?.textContent === "登录状态已过期，请重新登录。"')
     if (!(await run('!document.querySelector(".map-filter-tabs, .world-card, .player-account-control") && document.querySelector("#player-username").value === "test-player" && document.querySelector("#player-password").value === ""')))
       throw new Error('Expired sessions must show login only and retain the account name without a password')

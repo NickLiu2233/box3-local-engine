@@ -2,6 +2,8 @@
 
 BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Linux 桌面；无图形 Linux 服务器使用 Web 管理端。Play 与登录门户可以面向玩家公开；Creator 和 VOXA 默认仅本机访问，远程创作需要额外的 HTTPS、访问控制和权限保护。
 
+源码目前先通过邀请提供，安装包按维护者提供的试用渠道获取；运行程序不需要源码邀请或许可证激活。渠道是否开放与 MIT 代码许可分开处理。
+
 ## 最小要求
 
 - Linux 无图形服务器只需 Docker Engine 与 Docker Compose v2，不需要 Node.js、Rust 或桌面环境；桌面端使用 Docker Desktop。
@@ -38,4 +40,4 @@ BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Li
 
 服务总览应显示 Play、Player Service 和登录门户健康。公网部署还应从外部网络验证 HTTPS、登录回跳、静态资源和 WebSocket。首次部署时先用一张小地图完成登录、进入、退出和重新进入测试，再导入大型地图。
 
-桌面包与服务器包均支持离线镜像导入；镜像架构必须和运行机器一致。Windows 使用 x64 包，Apple Silicon 使用 macOS arm64 包，Linux 按 amd64/arm64 选择。
+桌面包与服务器包均支持离线镜像导入；镜像架构必须和运行机器一致。Windows 按机器选择 x64/ARM64 包，Apple Silicon 使用 macOS arm64 包，Linux 按 amd64/arm64 选择。

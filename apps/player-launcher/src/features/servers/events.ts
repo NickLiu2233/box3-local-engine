@@ -1,3 +1,4 @@
+import { beginServerLoad } from '../player/session'
 import { getServerAddressNotice } from './address-notice'
 import { playerServerAddError, playerServerConnectionError } from './errors'
 
@@ -20,28 +21,37 @@ export function bindServerEvents({
         state.page = 'servers'
         state.playerMenuOpen = false
         state.playerSettingsOpen = false
-        if (state.serverBootstrap?.supported && !state.serverBootstrap.error) {
-          render()
-          return
-        }
+        if (server) remoteApi.invalidateRequests?.(server.endpoint)
+        const isCurrent = beginServerLoad(state)
         state.serverBootstrap = { loading: true }
         state.error = ''
         state.notice = ''
         render()
         try {
-          state.serverBootstrap = await playerInvoke('get_server_bootstrap', {
+          const bootstrap = await playerInvoke('get_server_bootstrap', {
             endpoint: server?.endpoint || '',
           })
+          if (!isCurrent()) return
+          state.serverBootstrap = bootstrap
           await refreshPlayerSession(server)
         } catch (error) {
+          if (!isCurrent()) return
           state.serverBootstrap = { error: playerServerConnectionError(error) }
         } finally {
-          render()
+          if (isCurrent()) render()
         }
         return
       }
+      const previousServer = selectedServer()
+      if (previousServer) remoteApi.invalidateRequests?.(previousServer.endpoint)
       state.selectedId = serverId
+      const server = selectedServer()
+      if (server) remoteApi.invalidateRequests?.(server.endpoint)
+      const isCurrent = beginServerLoad(state)
       state.loginDraft = undefined
+      state.authError = ''
+      state.mapsError = ''
+      state.mapFilter = 'all'
       state.mapSearch = ''
       state.page = 'servers'
       state.player = null
@@ -62,15 +72,18 @@ export function bindServerEvents({
       render()
       try {
         await playerInvoke('select_server', { serverId })
-        const server = selectedServer()
-        state.serverBootstrap = await playerInvoke('get_server_bootstrap', {
+        if (!isCurrent()) return
+        const bootstrap = await playerInvoke('get_server_bootstrap', {
           endpoint: server?.endpoint || '',
         })
+        if (!isCurrent()) return
+        state.serverBootstrap = bootstrap
         await refreshPlayerSession(server)
       } catch (error) {
+        if (!isCurrent()) return
         state.serverBootstrap = { error: playerServerConnectionError(error) }
       } finally {
-        render()
+        if (isCurrent()) render()
       }
     }),
   )
@@ -89,11 +102,13 @@ export function bindServerEvents({
     state.confirmRemoveServerId = ''
     render()
   })
-  document.querySelector('[data-remove-server-dialog-dismiss]')?.addEventListener('click', (event) => {
-    if (event.target !== event.currentTarget) return
-    state.confirmRemoveServerId = ''
-    render()
-  })
+  document
+    .querySelector('[data-remove-server-dialog-dismiss]')
+    ?.addEventListener('click', (event) => {
+      if (event.target !== event.currentTarget) return
+      state.confirmRemoveServerId = ''
+      render()
+    })
   document.querySelector('.confirm-dialog')?.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.key !== 'Escape' || state.busy) return
     state.confirmRemoveServerId = ''
@@ -210,47 +225,69 @@ export function bindServerEvents({
   })
 
   async function addServer(endpoint: string): Promise<void> {
+    let isCurrent = beginServerLoad(state)
     state.busy = true
     state.error = ''
     state.notice = ''
     render()
     try {
       const server = await playerInvoke('add_server', { endpoint })
+      if (!isCurrent()) return
       state.servers = [server, ...state.servers.filter((item) => item.id !== server.id)]
       state.selectedId = server.id
+      isCurrent = beginServerLoad(state)
+      remoteApi.invalidateRequests?.(server.endpoint)
+      state.player = null
+      state.worlds = []
+      state.recentWorlds = []
+      state.favoriteMapIds = []
+      state.authError = ''
+      state.mapsError = ''
       state.page = 'servers'
       state.endpointInput = ''
       state.notice = '服务器已添加。'
       state.serverBootstrap = { loading: true }
       try {
-        state.serverBootstrap = await playerInvoke('get_server_bootstrap', { endpoint: server.endpoint })
+        const bootstrap = await playerInvoke('get_server_bootstrap', {
+          endpoint: server.endpoint,
+        })
+        if (!isCurrent()) return
+        state.serverBootstrap = bootstrap
         await refreshPlayerSession(server)
       } catch (error) {
-        state.serverBootstrap = { error: playerServerConnectionError(error) }
+        if (isCurrent()) state.serverBootstrap = { error: playerServerConnectionError(error) }
       }
     } catch (error) {
+      if (!isCurrent()) return
       state.error = playerServerAddError(error)
       state.page = 'add-server'
     } finally {
-      state.busy = false
-      render()
+      if (isCurrent()) {
+        state.busy = false
+        render()
+      }
     }
   }
   document.querySelector('[data-action="discover"]')?.addEventListener('click', () => {
     const server = selectedServer()
     if (!server || state.busy) return
     state.busy = true
+    remoteApi.invalidateRequests?.(server.endpoint)
+    const isCurrent = beginServerLoad(state)
     state.serverBootstrap = { loading: true }
     render()
     playerInvoke('get_server_bootstrap', { endpoint: server.endpoint })
       .then(async (bootstrap) => {
+        if (!isCurrent()) return
         state.serverBootstrap = bootstrap
         await refreshPlayerSession(server)
       })
       .catch((error) => {
+        if (!isCurrent()) return
         state.serverBootstrap = { error: playerServerConnectionError(error) }
       })
       .finally(() => {
+        if (!isCurrent()) return
         state.busy = false
         render()
       })

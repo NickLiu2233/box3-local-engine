@@ -27,20 +27,21 @@ Node 版本不一致时，先通过 nvm、fnm 或其他版本管理器切换到 
 
 ## 2. 获取代码与创建分支
 
-首次参与时先 Fork 仓库，再克隆自己的 Fork：
+目前官方源码先邀请访问。仓库地址和权限由维护者提供，详见[源码访问与协作](./source-access.md)。
+
+先接受邀请，再克隆维护者提供的仓库。私有 Fork 是否可用由维护者确认，不默认要求公开 Fork：
 
 ```bash
-git clone https://github.com/<your-account>/box-local-engine.git
+git clone <维护者提供的仓库地址> box-local-engine
 cd box-local-engine
-git remote add upstream https://github.com/ifishcool/box-local-engine.git
-git fetch upstream
+git fetch origin
 ```
 
 每项工作从最新主分支创建独立分支：
 
 ```bash
 git switch main
-git pull --ff-only upstream main
+git pull --ff-only origin main
 git switch -c codex/<short-description>
 git status --short
 ```
@@ -289,7 +290,7 @@ rush package-images --architecture arm64 --service player-service
 完整归档输出到：
 
 ```text
-apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-<architecture>.tar.gz
+apps/local-engine/dist/images/box-local-engine-images-v0.3.0-linux-<architecture>.tar.gz
 ```
 
 镜像构建成功不代表部署流程完整。至少还要验证：
@@ -321,7 +322,7 @@ rush package-desktop --target macos-arm64
 
 ```bash
 rush package-desktop --target macos-arm64 \
-  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+  --archive apps/local-engine/dist/images/box-local-engine-images-v0.3.0-linux-arm64.tar.gz
 ```
 
 构建无桌面 Linux 服务器包：

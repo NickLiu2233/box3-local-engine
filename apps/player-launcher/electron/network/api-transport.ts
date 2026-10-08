@@ -1,3 +1,4 @@
+import type { PlayerSessionStore } from '../storage/player-session-store'
 import type { ApiRequest, ApiResponse, ApiTransport } from '../types'
 import type { ApiRequestTiming } from './request-diagnostics'
 import { normalizeServerAddress } from '../../shared/server-address'
@@ -34,7 +35,8 @@ function cookieChanges(setCookieHeaders: string[]): Map<string, string | null> {
     const value = pair.slice(separator + 1).trim()
     if (!PLAYER_COOKIE_NAMES.has(name)) continue
     const expires = attributes.some(
-      (attribute) => /^\s*max-age\s*=\s*-?\d+\s*$/i.test(attribute) && Number(attribute.split('=')[1]) <= 0,
+      (attribute) =>
+        /^\s*max-age\s*=\s*-?\d+\s*$/i.test(attribute) && Number(attribute.split('=')[1]) <= 0,
     )
     changes.set(name, expires || !value ? null : `${name}=${value}`)
   }
@@ -106,14 +108,49 @@ export function createApiTransport({
   timeoutMs = 15_000,
   loginTimeoutMs = 30_000,
   onTiming,
+  sessionStore,
 }: {
   fetchImpl?: typeof fetch
+  sessionStore?: PlayerSessionStore
   timeoutMs?: number
   loginTimeoutMs?: number
   onTiming?: (record: ApiRequestTiming) => void
 } = {}): ApiTransport {
   const playerCookies = new Map<string, string>()
   const authOrigins = new Map<string, string>()
+  const versions = new Map<string, number>()
+  function readCookies(endpoint: string): string {
+    if (!playerCookies.has(endpoint)) {
+      let saved = ''
+      try {
+        saved = sessionStore?.read(endpoint) || ''
+      } catch {
+        /* Keep login usable if storage fails. */
+      }
+      const safe = saved
+        .split(';')
+        .map((pair) => pair.trim())
+        .filter((pair) =>
+          /^(box_local_player_session|box_local_player_device)=[^;\s\r\n]*$/.test(pair),
+        )
+        .join('; ')
+      playerCookies.set(endpoint, safe)
+    }
+    return playerCookies.get(endpoint) || ''
+  }
+  function saveCookies(endpoint: string, value: string): void {
+    playerCookies.set(endpoint, value)
+    try {
+      if (value) sessionStore?.write(endpoint, value)
+      else sessionStore?.delete(endpoint)
+    } catch {
+      /* OS storage failure must not disclose credentials or block in-memory login. */
+    }
+  }
+  function clearCookies(endpoint: string): void {
+    versions.set(endpoint, (versions.get(endpoint) || 0) + 1)
+    saveCookies(endpoint, '')
+  }
 
   return Object.freeze({
     async request({
@@ -134,15 +171,21 @@ export function createApiTransport({
       let outcome: ApiRequestTiming['outcome'] = 'blocked'
       let controller: AbortController | undefined
       let timer: ReturnType<typeof setTimeout> | undefined
+      let version = versions.get(endpoint) || 0
       try {
         targetUrl = validateRequestUrl(endpointUrl, requestUrl, authOrigins.get(endpoint), method)
         if (!ALLOWED_METHODS.has(method)) throw new Error('不支持的 API 请求方法')
-        if (method === 'POST' && targetUrl.pathname === playerLoginPath) budget = loginTimeoutMs
+        if (method === 'POST' && targetUrl.pathname === playerLoginPath) {
+          budget = loginTimeoutMs
+          version += 1
+          versions.set(endpoint, version)
+        }
         const requestHeaders = new Headers()
         for (const [name, value] of headers) {
-          if (!BLOCKED_REQUEST_HEADERS.has(String(name).toLowerCase())) requestHeaders.set(name, value)
+          if (!BLOCKED_REQUEST_HEADERS.has(String(name).toLowerCase()))
+            requestHeaders.set(name, value)
         }
-        const existingCookies = playerCookies.get(endpoint) || ''
+        const existingCookies = readCookies(endpoint)
         if (existingCookies) requestHeaders.set('cookie', existingCookies)
         controller = new AbortController()
         timer = setTimeout(() => controller.abort(), budget)
@@ -189,13 +232,17 @@ export function createApiTransport({
           throw new Error('服务器 API 响应不是有效文本')
         }
         const setCookieHeaders = response.headers.getSetCookie?.() || []
-        if (setCookieHeaders.length) {
-          const merged = mergeCookies(existingCookies, setCookieHeaders)
-          if (merged) playerCookies.set(endpoint, merged)
-          else playerCookies.delete(endpoint)
+        if (version === (versions.get(endpoint) || 0)) {
+          if (response.status === 401 && targetUrl.pathname !== playerLoginPath)
+            clearCookies(endpoint)
+          else if (setCookieHeaders.length)
+            saveCookies(endpoint, mergeCookies(readCookies(endpoint), setCookieHeaders))
         }
-        if (targetUrl.pathname.endsWith(playerBootstrapPath)) rememberAuthPortal(endpoint, text, authOrigins)
-        const responseHeaders = [...response.headers.entries()].filter(([name]) => name !== 'set-cookie')
+        if (targetUrl.pathname.endsWith(playerBootstrapPath))
+          rememberAuthPortal(endpoint, text, authOrigins)
+        const responseHeaders = [...response.headers.entries()].filter(
+          ([name]) => name !== 'set-cookie',
+        )
         outcome = response.ok ? 'ok' : 'http-error'
         return { status: response.status, headers: responseHeaders, body: text }
       } catch (error) {
@@ -237,16 +284,16 @@ export function createApiTransport({
     },
     clear(endpoint) {
       const normalized = normalizeEndpoint(endpoint).toString().replace(/\/$/, '')
-      playerCookies.delete(normalized)
+      clearCookies(normalized)
     },
     forget(endpoint) {
       const normalized = normalizeEndpoint(endpoint).toString().replace(/\/$/, '')
-      playerCookies.delete(normalized)
+      clearCookies(normalized)
       authOrigins.delete(normalized)
     },
     cookies(endpoint) {
       const normalized = normalizeEndpoint(endpoint).toString().replace(/\/$/, '')
-      return String(playerCookies.get(normalized) || '')
+      return readCookies(normalized)
         .split(';')
         .map((part) => part.trim().split('='))
         .filter(([name]) => PLAYER_COOKIE_NAMES.has(name))

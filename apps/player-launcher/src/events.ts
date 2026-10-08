@@ -1,3 +1,4 @@
+import { beginServerLoad } from './features/player/session'
 import { bindServerEvents } from './features/servers/events'
 import { bindPlayerAccountEvents } from './features/player/account-events'
 import { bindLoginEvents } from './features/player/login-events'
@@ -6,7 +7,15 @@ import { bindStorageEvents, refreshStorage } from './features/storage/events'
 import { bindMapSearch } from './features/maps/search-events'
 import type { PlayerServer } from './types'
 
-export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshMapLibrary = async (_server: PlayerServer) => undefined, render }) {
+export function bindEvents({
+  state,
+  playerInvoke,
+  remoteApi,
+  selectedServer,
+  refreshPlayerSession,
+  refreshMapLibrary = async (_server: PlayerServer) => undefined,
+  render,
+}) {
   bindPlayerAccountEvents({ state, playerInvoke, remoteApi, selectedServer, render })
   bindStorageEvents({ state, playerInvoke, render })
   const mapSearch = document.querySelector<HTMLInputElement>('#map-search')
@@ -14,11 +23,20 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
   document.querySelectorAll<HTMLButtonElement>('[data-map-filter]').forEach((button) =>
     button.addEventListener('click', async () => {
       const filter = button.dataset.mapFilter
-      if ((filter === 'all' || filter === 'recent' || filter === 'favorites') && state.mapFilter !== filter) {
+      if (
+        (filter === 'all' || filter === 'recent' || filter === 'favorites') &&
+        state.mapFilter !== filter
+      ) {
         state.mapFilter = filter
         render()
         const server = selectedServer()
-        if (server && filter !== 'all' && !state.busy && !state.libraryLoading && !state.pendingFavoriteMapIds.length) {
+        if (
+          server &&
+          filter !== 'all' &&
+          !state.busy &&
+          !state.libraryLoading &&
+          !state.pendingFavoriteMapIds.length
+        ) {
           const pending = refreshMapLibrary(server)
           render()
           await pending
@@ -38,6 +56,9 @@ export function bindEvents({ state, playerInvoke, remoteApi, selectedServer, ref
       const nextPage = node.dataset.nav || 'servers'
       if (state.page === nextPage) return
       state.loginDraft = undefined
+      const server = selectedServer()
+      if (server) remoteApi.invalidateRequests?.(server.endpoint)
+      beginServerLoad(state)
       state.page = nextPage
       state.editingServerId = ''
       state.serverNameInput = ''

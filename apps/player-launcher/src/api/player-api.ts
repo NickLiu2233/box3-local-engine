@@ -41,7 +41,8 @@ export function resolveMapCoverUrl(endpoint: string, value: unknown, publicMapId
 
 export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerApiOptions) {
   const sessionVersions = new Map<string, number>()
-  const advanceSession = (endpoint: string) => sessionVersions.set(endpoint, (sessionVersions.get(endpoint) || 0) + 1)
+  const advanceSession = (endpoint: string) =>
+    sessionVersions.set(endpoint, (sessionVersions.get(endpoint) || 0) + 1)
   const coverRequests = new Map<string, { expires: number; pending: Promise<string> }>()
   function fetchCover(endpoint: string, url: string): Promise<string> {
     const key = `${endpoint}:${url}`
@@ -60,7 +61,11 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
     coverRequests.set(key, { expires: Date.now() + 60_000, pending })
     return pending
   }
-  async function fetchApi(endpoint: string, request: Request, authPortalBase = ''): Promise<Response> {
+  async function fetchApi(
+    endpoint: string,
+    request: Request,
+    authPortalBase = '',
+  ): Promise<Response> {
     if (!isNative()) return fetch(request)
     const base = new URL(endpoint)
     const target = new URL(request.url)
@@ -75,7 +80,9 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
       throw new Error('API 请求必须指向当前游玩服务器或其登录门户')
     }
 
-    const body = ['GET', 'HEAD'].includes(request.method.toUpperCase()) ? null : await request.text()
+    const body = ['GET', 'HEAD'].includes(request.method.toUpperCase())
+      ? null
+      : await request.text()
     const result = await invoke('api_request', {
       request: {
         endpoint,
@@ -98,10 +105,17 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
         const version = sessionVersions.get(endpoint) || 0
         const response = await fetchApi(endpoint, request, baseUrl !== endpoint ? baseUrl : '')
         const path = new URL(request.url).pathname
-        const loginOrPublic = [apiOperations.postApiAuthLogin, apiOperations.postApiAuthLogout,
-          apiOperations.getApiHealthCheck, apiOperations.getApiPlayerLauncherBootstrap]
-          .some((operation) => path.endsWith(operation.path))
-        if (response.status === 401 && !loginOrPublic && version === (sessionVersions.get(endpoint) || 0)) {
+        const loginOrPublic = [
+          apiOperations.postApiAuthLogin,
+          apiOperations.postApiAuthLogout,
+          apiOperations.getApiHealthCheck,
+          apiOperations.getApiPlayerLauncherBootstrap,
+        ].some((operation) => path.endsWith(operation.path))
+        if (
+          response.status === 401 &&
+          !loginOrPublic &&
+          version === (sessionVersions.get(endpoint) || 0)
+        ) {
           onSessionExpired?.(endpoint)
         }
         return response
@@ -127,6 +141,7 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
   }
 
   return {
+    invalidateRequests: advanceSession,
     async readBootstrap(endpoint) {
       const bootstrapClient = client(endpoint)
       let result = await bootstrapClient.getApiPlayerLauncherBootstrapRaw()
@@ -141,7 +156,8 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
     },
     async verifyServer(endpoint) {
       const { data, response } = await client(endpoint).getApiHealthCheckRaw()
-      if (!response.ok) throw new Error(`服务器已响应（HTTP ${response.status}），但没有通过 BOX3 游玩端检查`)
+      if (!response.ok)
+        throw new Error(`服务器已响应（HTTP ${response.status}），但没有通过 BOX3 游玩端检查`)
       if (data?.status !== 'ok' || (data.runtime && data.runtime !== 'ready')) {
         throw new Error('游玩端尚未就绪，请稍后重试')
       }
@@ -189,7 +205,11 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
     readLibrary(endpoint: string) {
       return client(endpoint).getApiPlayLibraryRaw()
     },
-    updateLibrary(endpoint: string, mapId: string, changes: { favorite?: boolean; played?: boolean }) {
+    updateLibrary(
+      endpoint: string,
+      mapId: string,
+      changes: { favorite?: boolean; played?: boolean },
+    ) {
       return client(endpoint).patchApiPlayLibraryRaw({ body: { mapId, ...changes } })
     },
     getDescriptor(endpoint, mapId) {

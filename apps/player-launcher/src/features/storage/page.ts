@@ -40,7 +40,7 @@ export function renderStoragePage(
   const loading = storage?.loading ? '<p role="status">正在读取本机缓存…</p>' : ''
   if (!selected || !server)
     return `<section class="page">
-    <div class="page-heading"><h1>本机存储</h1><p>地图缓存按服务器管理，浏览器缓存单独管理。这里只显示有地图缓存的服务器。</p></div>
+    <div class="page-heading"><h1>本机存储</h1></div>
     ${feedback}${loading}
     ${storage?.loading ? '' : '<div class="section-heading"><h2>地图缓存</h2></div>'}
     <div class="storage-list">${

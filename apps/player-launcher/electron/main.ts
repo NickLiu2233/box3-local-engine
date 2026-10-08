@@ -1,4 +1,13 @@
-import { app, BrowserWindow, ipcMain, nativeImage, nativeTheme, session } from 'electron'
+import { createPlayerSessionStore } from './storage/player-session-store'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  nativeImage,
+  nativeTheme,
+  session,
+  safeStorage,
+} from 'electron'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
@@ -12,7 +21,11 @@ import { validateDescriptor } from './security/package-descriptor'
 import { createServerStore } from './storage/server-store'
 import type { ElectronCommandPayload } from './types'
 import type { ServerStore } from './storage/server-store'
-import type { GameWindow, GameWindowManager, GameWindowOptions } from './runtime/game-window-manager'
+import type {
+  GameWindow,
+  GameWindowManager,
+  GameWindowOptions,
+} from './runtime/game-window-manager'
 import type { ViteDevServer } from 'vite'
 
 const COMMANDS = new Set<string>([
@@ -48,7 +61,13 @@ const dataRoot =
     : app.getPath('appData')
 app.setPath('userData', path.join(dataRoot, 'com.box.player.launcher'))
 const apiTransport = createApiTransport({
-  onTiming: createRequestDiagnostics(path.join(app.getPath('userData'), 'network-diagnostics.json')),
+  sessionStore: createPlayerSessionStore(
+    path.join(app.getPath('userData'), 'player-sessions'),
+    safeStorage,
+  ),
+  onTiming: createRequestDiagnostics(
+    path.join(app.getPath('userData'), 'network-diagnostics.json'),
+  ),
 })
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
@@ -63,12 +82,19 @@ function createRememberedWindow(
   key: string,
   options: Electron.BrowserWindowConstructorOptions,
 ): Electron.BrowserWindow {
-  const size = windowStates.read(key, { width: options.width || 1180, height: options.height || 760 })
+  const size = windowStates.read(key, {
+    width: options.width || 1180,
+    height: options.height || 760,
+  })
   const created = new BrowserWindow({ ...options, width: size.width, height: size.height })
   if (size.maximized) created.maximize()
   created.on('close', () => {
     const bounds = created.getNormalBounds()
-    windowStates.save(key, { width: bounds.width, height: bounds.height, maximized: created.isMaximized() })
+    windowStates.save(key, {
+      width: bounds.width,
+      height: bounds.height,
+      maximized: created.isMaximized(),
+    })
   })
   return created
 }
@@ -132,7 +158,8 @@ async function launchMap(payload: ElectronCommandPayload): Promise<void> {
   if (state.selectedServerId !== serverId) throw new Error('请先选择要启动地图的服务器')
   const server = state.servers.find((item) => item.id === serverId)
   if (!server) throw new Error('这个服务器已不在列表中')
-  if (!validateLaunchTicket(payload.launchTicket)) throw new Error('服务器启动授权无效，请重新点击开始游玩。')
+  if (!validateLaunchTicket(payload.launchTicket))
+    throw new Error('服务器启动授权无效，请重新点击开始游玩。')
   const descriptor = validateDescriptor(
     requireString(payload.descriptor, '地图资源描述符格式无效'),
     requireString(payload.trustedSigningKey, '服务器签名公钥格式无效'),
@@ -176,7 +203,9 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
     return
   }
   if (
-    ['cache_status', 'clear_resource_cache', 'clear_map_cache', 'clear_server_map_cache'].includes(command)
+    ['cache_status', 'clear_resource_cache', 'clear_map_cache', 'clear_server_map_cache'].includes(
+      command,
+    )
   ) {
     const server = store.load().servers.find((item) => item.id === payload.serverId)
     if (!server) throw new Error('这个服务器已不在列表中')
@@ -242,7 +271,8 @@ async function dispatch(command: string, payload: ElectronCommandPayload = {}): 
 }
 
 function isLauncherWindow(event: Electron.IpcMainInvokeEvent): boolean {
-  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return false
+  if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents)
+    return false
   const frameUrl = event.senderFrame?.url || ''
   if (process.argv.includes('--dev')) return frameUrl.startsWith('http://127.0.0.1:1421/')
   try {

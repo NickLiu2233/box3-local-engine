@@ -1,6 +1,13 @@
 # 构建与分发
 
-当前项目版本为 `0.2.0`。公开发行必须来自干净、已验证且版本匹配的 Git Tag。Windows 公开包需要 Authenticode；macOS 公开包需要 Apple Developer ID 签名与公证。
+当前项目版本为 `0.3.0`。公开发行必须来自干净、已验证且版本匹配的 Git Tag。Windows 公开包需要 Authenticode；macOS 公开包需要 Apple Developer ID 签名与公证。
+
+## 邀请阶段的交付
+
+源码访问按[邀请协作安排](./source-access.md)进行，安装包和 CDN 下载另行管理。
+现有 Tag 工作流会创建 Release 并向 OSS/CDN 发布附件；它没有因为源码邀请制自动变成私有交付。
+只给受邀者提供测试包时，使用维护者确认的受控渠道，并标明版本、校验值、候选状态和签名状态。
+本文描述流水线配置，不声明当前 CDN 的 latest.txt 已指向源码 0.3.0。
 
 ## 本机构建
 
@@ -30,7 +37,7 @@ rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz]
 
 ```bash
 rush package-desktop --target macos-arm64 \
-  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+  --archive apps/local-engine/dist/images/box-local-engine-images-v0.3.0-linux-arm64.tar.gz
 ```
 
 已经在本机完成六个镜像构建、只想导出归档时使用：
@@ -59,7 +66,7 @@ Linux 服务器包包含 Creator、Play、VOXA、Player Service、参考登录�
 rush package-images --architecture arm64 --service player-service
 rush export-images
 BOX_ALLOW_DIRTY_RELEASE=true rush package-desktop --target macos-arm64 \
-  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
+  --archive apps/local-engine/dist/images/box-local-engine-images-v0.3.0-linux-arm64.tar.gz
 ```
 
 `BOX_ALLOW_DIRTY_RELEASE=true` 仅用于包含未提交修改的本地测试包。打包器重建原生启动器、嵌入镜像归档并校验清单、校验和及 macOS 应用签名完整性。生成 ZIP 不会自动替换正在运行的容器。
@@ -75,7 +82,7 @@ Verify 工作流在 Pull Request 和 `main` 推送时执行：
 3. 校验 Compose 模板；
 4. 执行 `rush verify`。
 
-Release 工作流只在 `v*` Tag 推送时执行。它先确认所有项目版本与根 `package.json` 一致、Tag 严格等于 `v<version>`，并检查 OSS Secret，然后构建发行物。Release 工作流不会重复运行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
+Release 工作流只在 `v*` Tag 推送时执行。它先确认发行应用与 Rust 管理器等受版本同步管理的项目与根 `package.json` 一致、Tag 严格等于 `v<version>`，并检查 OSS Secret，然后构建发行物。Release 工作流不会重复运行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 
 当前 Release 矩阵：
 
@@ -89,6 +96,8 @@ Release 工作流只在 `v*` Tag 推送时执行。它先确认所有项目版�
 镜像在原生 Linux amd64/arm64 Runner 上各构建一次。桌面与服务器任务复用同一架构归档，避免重复构建 Docker 镜像。Server Manager 只在 Linux 服务器运行；桌面安装包仍携带完整镜像集合，以保持统一离线包格式。
 
 ## OSS 与 CDN
+
+新源码仓库也可能沿用旧 OSS 前缀。创建新仓库不代表同版本缓存目录为空；正式发行前确认新版本/Tag 与对象路径，必要时使用隔离的前缀，不能把旧缓存当成新源码产物。
 
 仓库需要以下 GitHub Actions Secrets：
 

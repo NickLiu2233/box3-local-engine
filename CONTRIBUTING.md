@@ -1,10 +1,16 @@
 # BOX3 Local Engine 贡献指南
 
-本文说明如何准备环境、运行源码、验证改动、提交 Pull Request 和维护发行文档。项目代码采用 MIT 开源许可，允许按协议修改、商用和再分发；品牌和商标使用另行处理。贡献代码前请确认你有权提交，并保留原作者与第三方许可声明。
+欢迎一起完善 BOX3 Local Engine。修复问题、补充测试、改进界面和文档都可以参与。这份指南带你从运行源码开始，完成修改后再检查和提交。
+
+项目代码采用 MIT 开源许可，允许按协议修改、商用和再分发；品牌和商标使用另行处理。贡献代码前请确认你有权提交，并保留原作者与第三方许可声明。
+
+当前源码版本为 `0.3.0`，官方源码先通过邀请访问。先阅读[源码访问与协作](docs/source-access.md)，邀请制不改变 MIT 使用与再分发权利。
 
 ## 1. 开始前
 
-贡献者需要有权访问仓库及相关二方源码。开始工作前先确认工作区状态，不要覆盖其他协作者的改动：
+先接受仓库邀请。第一次接手某个改动时，先找对应模块和测试；目标较大或涉及数据、协议时，先与维护者讨论范围。
+
+开始工作前先确认工作区状态，不要覆盖其他协作者的改动：
 
 ```bash
 git status --short
@@ -13,19 +19,21 @@ git remote -v
 
 禁止提交真实密钥、用户数据、数据库备份、地图工程、VOXA 数据、Docker 卷和日志。不要手工修改 `.next*`、`dist/`、`build/`、`target/` 或其他生成物，除非该生成物明确属于仓库发布契约。
 
-## 2. Fork、同步与分支
+## 2. 获取源码、同步与分支
+
+先接受维护者发出的仓库邀请，再克隆提供的地址。不要求创建公开 Fork；私有 Fork、仓库分支或补丁的提交方式以维护者确认的权限为准。
 
 ```bash
-git clone https://github.com/<your-account>/box-local-engine.git
+git clone <维护者提供的仓库地址> box-local-engine
 cd box-local-engine
-git remote add upstream https://github.com/ifishcool/box-local-engine.git
-git fetch upstream
+git fetch origin
 git switch main
-git pull --ff-only upstream main
+git pull --ff-only origin main
 git switch -c codex/<short-description>
 ```
 
-不要直接在 `main` 开发。分支名应简短描述范围，例如 `codex/player-permissions`、`codex/linux-installer` 或 `codex/voxa-model-card`。
+没有写权限时先做本机改动，再通过约定渠道提供补丁或申请协作权限。若允许私有 Fork，才将 `upstream` 设置为维护者提供的源仓库地址。
+不要覆盖其他人的未提交改动，不要向多人共用的分支强制推送。
 
 ## 3. 环境要求
 
@@ -39,12 +47,11 @@ git switch -c codex/<short-description>
 安装依赖：
 
 ```bash
-npm install --global @microsoft/rush@5.156.0
 npm run install:all
 cp .env.docker.example .env
 ```
 
-根 npm 命令会自动准备仓库锁定版本的 Rush；全局安装则提供本文后续使用的 `rush` 与 `rushx` 命令。也可以始终使用根 `package.json` 中的 npm 别名，不全局安装 Rush。已经安装 Rush `5.156.0` 时，可用 `rush install` 代替 `npm run install:all`。
+根 npm 命令会自动准备仓库锁定版本的 Rush，不要求全局安装。已有 Rush `5.156.0` 时，可用 `rush install` 代替 `npm run install:all`。如需直接使用本文的 `rush` 和 `rushx` 命令，可选执行 `npm install --global @microsoft/rush@5.156.0`；否则使用下表 npm 别名或 `npm run rush -- <命令>`。
 
 `.env` 只保存在本机。源码开发至少需要 PostgreSQL；Redis 可选。使用外部服务时设置：
 
@@ -56,7 +63,7 @@ REDIS_PASSWORD=
 REDIS_DB=0
 ```
 
-Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/config/rush/pnpm-lock.yaml` 是唯一提交的 JavaScript 依赖锁文件；不要重新创建根目录的 `pnpm-workspace.yaml` 或 `pnpm-lock.yaml`。
+Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/config/rush/pnpm-lock.yaml` 是主工程提交的 Rush 依赖锁文件；不要重新创建根目录的 `pnpm-workspace.yaml` 或 `pnpm-lock.yaml`。登录门户独立模板的 `package-lock.json` 用于独立构建，不替代 Rush 锁文件。
 
 拉取没有依赖变化的提交后运行 `rush install`。修改任意项目的 `package.json`、新增项目或调整依赖后运行 `rush update`，并提交更新后的 Rush 锁文件。新增项目还必须加入 `rush.json`。在单个项目目录执行该项目脚本时使用 `rushx <script>`；跨项目构建使用 `rush build --to <package-name>`，修改公共包后可用 `rush build --from <package-name>` 构建所有受影响项目。
 
@@ -83,7 +90,7 @@ npm run package:images -- --architecture arm64 --service player-service
 ## 4. 启动源码开发环境
 
 ```bash
-rush dev
+npm run dev
 ```
 
 该命令直接运行源码，不使用业务镜像：
@@ -96,16 +103,16 @@ rush dev
 | Player Service API | `http://127.0.0.1:3124/` |
 | 参考登录门户       | `http://127.0.0.1:3125/` |
 
-`rush dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要临时开发数据库时执行：
+`rush dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要本机开发数据库时执行（等价于 `rush dev --infra`）：
 
 ```bash
-rush dev --infra
+npm run dev:infra
 ```
 
 只开发 Creator 相关功能时可以执行：
 
 ```bash
-rush dev-creator
+npm run dev:creator
 ```
 
 玩家管理前端不由 `rush dev` 启动。开发后台页面时保留上述 Player Service，并在另一个终端运行：
@@ -139,11 +146,20 @@ Creator 编辑可变 `.boxproject`，Play 只运行 `.boxplay` 快照。地图 I
 
 所有对外 Local Engine HTTP 接口统一登记在 `@box/apis` 的 OpenAPI 契约中。新增或修改接口时按 [Local Engine API 与 Swagger](docs/local-engine-api.md) 更新 schema、生成类型和调用端；禁止在应用内新增平行 API 客户端，禁止重新引入旧平台生成接口。内部迁移器是明确例外，不进入统一契约和普通发行包。
 
+### 写代码时的约定
+
+- 先复用已有模块、组件和接口，再考虑新增实现；修复问题时不要顺带重写无关功能。
+- 手写代码文件尽量少于 500 行。按业务职责拆分，不按行数切成大量小文件；生成代码和第三方源码不为满足行数而手改。
+- 类适合管理状态和生命周期，纯转换逻辑可以用函数。不要只把整段流程包进一个大方法。
+- 注释说明为什么这样做、兼容哪些行为和哪里不能信任客户端；不逐行复述代码。
+- 管理后台优先复用已有布局、表单和权限组件，保持其他页面的交互习惯。
+- 地图玩法由图主决定，反作弊接口提供服务端数据和处理能力，不随意增加写死的速度、距离或玩法限制。客户端提交的数据仍须校验身份、所有权和结构。
+
 ## 6. 测试
 
-提交前运行 `node scripts/check-public-repository.js --staged`；公开仓库不得跟踪内部工具、真实环境密钥或用户数据。检查范围及新仓库发布注意事项见[公开仓库检查记录](docs/public-repository-audit.md)。
+暂存准备提交的文件后，运行 `node scripts/check-public-repository.js --staged`；公开仓库不得跟踪内部工具、真实环境密钥或用户数据。检查范围及新仓库发布注意事项见[公开仓库检查记录](docs/public-repository-audit.md)。
 
-提交前必须运行：
+提交前应运行完整验证；存在失败时如实记录，不能把局部通过写成全量通过：
 
 ```bash
 rush verify
@@ -162,6 +178,10 @@ rush build --to @box/player-admin
 
 涉及 Compose、Dockerfile、安装器、权限、数据库 schema、地图组、地图 ID、`.boxproject`/`.boxplay`、脚本 API 或管理器时，不能只运行局部测试，必须执行完整 `rush verify`。
 
+权限和脚本接口既要测正常调用，也要测未授权、撤销授权和伪造客户端请求。反作弊修改还需检查拒绝消息后是否误改状态，以及允许的正常玩法是否仍能运行。不能用客户端隐藏按钮或 DTS 提示代替服务端验证。
+
+仅改文档时至少运行 `node scripts/check-documentation.js` 和 `git diff --check`。完整验证的已知失败见[版本说明](docs/current-status.md)；交付时写清哪些检查通过、哪些未运行或失败。
+
 ## 7. 文档要求
 
 以下变化必须在同一提交更新根 README、相关 `docs/` 专题、配置示例和回归测试：
@@ -175,50 +195,18 @@ rush build --to @box/player-admin
 
 ## 8. 构建镜像和发行包
 
-构建完整镜像归档：
+源码开发和镜像部署是两套运行方式。源码改动不会自动进入已有容器，打包后需要重新创建相关容器才能验证。
 
 ```bash
-rush package-images --architecture arm64
+# 构建完整 Linux ARM64 镜像归档
+npm run package:images:arm64
+# 构建 Apple Silicon macOS 桌面包
+npm run package:desktop:macos-arm64
+# 构建 Linux ARM64 无桌面服务器包
+npm run package:web:arm64
 ```
 
-输出示例：
-
-```text
-apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
-```
-
-已有当前版本和架构的六个镜像时，可只导出而不重建：
-
-```bash
-rush export-images
-```
-
-构建桌面包：
-
-```bash
-rush package-desktop --target macos-arm64
-```
-
-支持目标为 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 和 `linux-arm64`；当前公开流水线不构建 `macos-amd64`。输出示例：
-
-```text
-apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
-```
-
-使用已有镜像归档可以跳过镜像重建：
-
-```bash
-rush package-desktop --target macos-arm64 \
-  --archive apps/local-engine/dist/images/box-local-engine-images-v0.2.0-linux-arm64.tar.gz
-```
-
-Linux 无桌面服务器包：
-
-```bash
-rush package-web --architecture arm64
-```
-
-输出位于 `apps/local-engine/dist/server-packages/`。完整发布要求见[构建与分发](docs/release-and-distribution.md)。
+产物位于 `apps/local-engine/dist/`。目标架构、复用已有镜像归档、离线包内容和签名要求见[构建与分发](docs/release-and-distribution.md)。构建示例不代表产物已经通过目标平台验收；不要把本机归档或安装包提交到 Git。
 
 ## 9. 提交与 Pull Request
 
@@ -239,17 +227,17 @@ git commit -m "feat: describe the change"
 git push -u origin codex/<short-description>
 ```
 
-评审期间需要同步主分支时：
+评审期间需要同步主分支时，先确保工作区干净。下面按直接克隆协作仓库写 `origin`；使用获准的私有 Fork 时，改用维护者仓库对应的 `upstream`。
 
 ```bash
-git fetch upstream
-git rebase upstream/main
-rush install
-rush verify
-git push --force-with-lease
+git fetch origin
+git merge origin/main
+npm run install:all
+npm run verify
+git push
 ```
 
-不要使用无保护的 `git push --force`。不要用 `git add .` 把 `.env`、日志、数据库、地图、模型、压缩包或其他协作者的改动一起提交。
+如果团队要求线性历史，可与维护者约定后在自己独占的主题分支上 rebase；不要改写多人共用的分支。只暂存本次工作的文件，不要用 `git add .` 混入环境文件、日志、地图或其他人的改动。
 
 Pull Request 至少说明：
 
@@ -277,9 +265,11 @@ Pull Request 至少说明：
 
 ## 11. 发布纪律
 
+邀请源码和发行物下载是不同通道。现有 Tag 流水线会上传 OSS/CDN，并创建 Release；打 Tag 前确认是否允许向该渠道交付，仓库私有并不自动让 OSS 文件私有。文档修改不改变远端权限。
+
 主分支和 Pull Request 的 Verify 工作流执行生产依赖审计、Compose 校验和 `rush verify`。Tag Release 工作流负责版本/OSS 配置校验、镜像与安装包构建、GitHub Release 及 OSS/CDN 发布；它不会再次执行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 
-Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本应使用 `v0.2.0`。不要移动或重复使用已发布 Tag；流水线会按 `box-local-engine/<tag>/` 复用同版本 OSS 中间产物。
+Release Tag 必须严格等于根 `package.json` 的 `v<version>`。当前版本应使用 `v0.3.0`。不要移动或重复使用已发布 Tag；流水线会按 `box-local-engine/<tag>/` 复用同版本 OSS 中间产物。
 
 公开发布前还应在干净机器验证镜像导入、无需激活的服务启动、数据库初始化、登录、地图导入、Creator/Play/VOXA、容器重启、升级保留数据和 SHA-256 校验。Windows 使用 Authenticode；macOS 使用 Developer ID 签名和公证。
 

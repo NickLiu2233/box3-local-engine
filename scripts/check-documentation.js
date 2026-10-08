@@ -6,6 +6,7 @@ const path = require('node:path')
 
 const root = path.resolve(__dirname, '..')
 const docsRoot = path.join(root, 'docs')
+const projectVersion = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version
 
 function markdownFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -79,7 +80,38 @@ for (const supportedTarget of [
   assert.ok(readme.includes(supportedTarget), `README is missing release target ${supportedTarget}`)
 }
 
-assert.ok(readme.includes('当前版本：`0.2.0`'), 'README does not identify version 0.2.0')
+assert.ok(
+  readme.includes(`当前源码版本：\`${projectVersion}\``),
+  'README does not identify the current source version',
+)
+assert.ok(readme.includes('docs/source-access.md'), 'README is missing invitation access guidance')
+assert.ok(readme.includes('MIT'), 'README is missing the code license')
+const accessGuide = fs.readFileSync(path.join(docsRoot, 'source-access.md'), 'utf8')
+for (const required of [
+  '先获得仓库访问',
+  '不增加“禁止分享源码”“不得商用”',
+  '撤销仓库访问也不等于撤销',
+  '安装包下载分别管理',
+]) {
+  assert.ok(accessGuide.includes(required), `source access guide is missing: ${required}`)
+}
+assert.ok(
+  !accessGuide.includes('git clone https://github.com/<your-account>'),
+  'invitation access must not require a public fork',
+)
+for (const file of [
+  'CONTRIBUTING.md',
+  'docs/developer-guide.md',
+  'docs/release-and-distribution.md',
+  'docs/cloud-server-quickstart.md',
+]) {
+  const source = fs.readFileSync(path.join(root, file), 'utf8')
+  for (const match of source.matchAll(
+    /(?:BOX-Local-Engine-|box-local-engine-images-v|BOX3-Engine-Server-)(\d+\.\d+\.\d+)-/g,
+  )) {
+    assert.equal(match[1], projectVersion, `${file} contains an outdated current-build example`)
+  }
+}
 assert.ok(readme.includes('rush install'), 'README does not explain Rush installation')
 assert.ok(readme.includes('rush verify'), 'README does not explain Rush verification')
 assert.ok(readme.includes('npm run api:docs'), 'README does not explain standalone API docs')

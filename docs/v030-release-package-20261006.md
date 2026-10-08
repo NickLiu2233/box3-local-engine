@@ -1,5 +1,7 @@
 # v0.3.0 更新日志与新版离线包交付记录
 
+> 历史技术/验收记录：结论只对应文中日期、源码和测试环境，不表示当前版本全量验收通过。当前状态见[版本说明](./current-status.md)。本机原始报告与候选包不随源码分发。
+
 构建开始：2026-10-06；完成验证：2026-10-07（北京时间）。平台：macOS ARM64 启动器，Linux ARM64 六服务镜像。
 
 ## 更新日志
@@ -10,10 +12,10 @@
 
 目录：`apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/`。旧候选包保留。
 
-- [新版 macOS ARM64 离线启动器](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/BOX-Local-Engine-0.3.0-realtime-rc-20261006-macos-arm64.zip)，约 589 MiB，内置全部六镜像。
-- [新版 Linux ARM64 镜像归档](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/box-local-engine-images-v0.3.0-linux-arm64.tar.gz)，约 585 MiB。
-- [SHA256SUMS](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/SHA256SUMS)。
-- [完整构建及验证证据](../apps/local-engine/dist/release-candidates/v030-realtime-final-20261006/BUILD-EVIDENCE.json)。
+- 新版 macOS ARM64 离线启动器（本机历史附件，未随源码提供），约 589 MiB，内置全部六镜像。
+- 新版 Linux ARM64 镜像归档（本机历史附件，未随源码提供），约 585 MiB。
+- SHA256SUMS（本机历史附件，未随源码提供）。
+- 完整构建及验证证据（本机历史附件，未随源码提供）。
 
 ZIP SHA-256：`33bd0b5755cc2be6eb27a2ad40e80fdd5443a04c4faf317a44780e0509dc3230`。
 

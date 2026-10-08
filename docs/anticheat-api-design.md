@@ -1,5 +1,7 @@
 # 本地引擎反作弊 API 详细设计书
 
+> 历史技术/验收记录：结论只对应文中日期、源码和测试环境，不表示当前版本全量验收通过。当前状态见[版本说明](./current-status.md)。本机原始报告与候选包不随源码分发。
+
 > 编写日期：2026-10-06  
 > 对应版本：本地引擎 0.3.0
 > 文档范围：服务端 `world.anticheat` API、地图规则辅助模块、本地审计及已完成测试
@@ -490,7 +492,7 @@ npm --prefix apps/game run test:script-types
 
 ### 11.3 最新版本真实浏览器与审计对照
 
-专用地图：`project-muw6e2cy`，永久 ID：`46e8d2b12f8f7a7664eb`。
+专用地图：专用测试地图（未随源码交付），永久 ID：`46e8d2b12f8f7a7664eb`。
 
 临时服务端监听器只安装到运行时内存，接收两条同类消息：正常消息和显式拒绝样本。两条均包含客户端自报身份 `forged-client-user`。
 
@@ -500,7 +502,7 @@ npm --prefix apps/game run test:script-types
 | 拒绝消息 `deny:true` | 检查监听器收到，业务回调没有收到 | 执行前拒绝生效 |
 | 客户端自报身份 | 两条均声称 `forged-client-user` | 未作为服务器身份 |
 | 服务端事件身份 | 两条均为账号 `1` | 主体取自服务器 |
-| JSONL 持久记录 | 账号 `1`、显示名 `fish`、对应地图、`release-test-rejection` | 拒绝原因及真实身份关联成功 |
+| JSONL 持久记录 | 本机认证测试账号（身份已脱敏）、对应地图、`release-test-rejection` | 拒绝原因及真实身份关联成功 |
 
 实际审计字段摘录如下，仅展示本次验证相关字段：
 
@@ -508,7 +510,7 @@ npm --prefix apps/game run test:script-types
 {
   "mapId": "46e8d2b12f8f7a7664eb",
   "userId": "1",
-  "name": "fish",
+  "name": "example-player",
   "reason": "release-test-rejection",
   "classification": "suspected-anomaly"
 }

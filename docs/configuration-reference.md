@@ -2,7 +2,7 @@
 
 桌面启动器和 Linux Web 管理端都负责保存 `.env`，并在保存配置或启动服务时生成内部 `.runtime.env`。`.env` 是持久配置来源，`.runtime.env` 是可覆盖的派生文件，不应手工编辑。源码开发环境可以直接使用 `.env`；修改配置后重启受影响服务。
 
-`BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE` 和 `BOX_BUILD_SOURCE` 是发行构建元数据，只由 CI 写入镜像。它们不在启动器表单展示，也不应由服主手工配置。
+`BOX_BUILD_VERSION`、`BOX_BUILD_COMMIT`、`BOX_BUILD_DATE` 和 `BOX_BUILD_SOURCE` 是发行构建元数据，由构建流程写入镜像。它们不在启动器表单展示，也不应由服主手工配置。
 
 ## 最小配置
 
@@ -67,3 +67,11 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 `BOX_RUNTIME_CACHE_PATH` 是 Play 的可再生成文件缓存路径。仓库 Compose 将它挂载到 `box-play-runtime-cache`，不是 PostgreSQL 的本地替代存储，也不应放入 Redis。源码或服务器部署通常不需要手工修改该路径。
 
 `BOX_DATABASE_POOL_SIZE` 是每个业务服务或地图运行时的 PostgreSQL 最大连接数，Local Engine 的部署默认值为 `4`。多运行时同时运行时连接数会叠加；只有在 PostgreSQL 的 `max_connections`、内存和实际并发均已评估后才提高此值。
+
+## 单服务公网地址与登录镜像
+
+访问设置支持共用公网地址，以及 Play、Creator、VOXA、Player Service 和登录门户的单服务覆盖。单服务地址优先，留空使用共用地址；本机/局域网不使用公网覆盖，切回公网会保留已填草稿。
+域名必须明确写 `http://` 或 `https://`，不因填写域名自动改成 HTTPS。IP 可不带协议，此时按 HTTP 与对应服务端口生成地址。是否使用代理由部署者决定。
+主要覆盖字段为 `BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE`、`BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE`、`BOX_VOXA_PUBLIC_ADDRESS_OVERRIDE`、`BOX_PLAYER_SERVICE_PUBLIC_ADDRESS_OVERRIDE` 和 `BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE`；优先通过管理器保存，实际 URL 由运行时配置派生。
+
+登录镜像使用 `BOX_AUTH_PORTAL_IMAGE`。默认官方镜像跟随引擎版本，自定义镜像名/版本保持服主设置；只读取本机已有 Docker 镜像，不为自定义配置自动拉取仓库镜像。制作与导入见[自建登录门户](./self-hosted-login.md)。

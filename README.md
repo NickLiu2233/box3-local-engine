@@ -1,8 +1,10 @@
 # BOX3 Local Engine
 
-BOX3 Local Engine 是一个本地优先的多人联机 3D 创作与游玩发行版。它提供地图创作、VOXA 模型编辑、只读地图发布、多人房间、玩家身份、权限组、运行容器和图形化部署能力。正常创作与游玩所需的引擎资源及预置玩家皮肤均包含在仓库或离线镜像中，不依赖 BOX3 云端资源服务。
+BOX3 Local Engine 把地图创作、模型制作、多人游玩和玩家管理放在自己的电脑或服务器上运行。你可以在 Creator 中制作地图，用 VOXA 编辑模型，再把作品发布到 Play，邀请其他玩家一起体验。
 
-当前版本：`0.2.0`。项目仍处于发布候选阶段；公开发行必须由干净的 `v0.2.0` Tag 构建，并完成对应平台的代码签名要求。
+正常创作与游玩所需的引擎资源和预置玩家皮肤包含在仓库或离线镜像中，不依赖 BOX3 云端资源服务。桌面启动器负责配置和管理服务，Linux 服务器也可以通过 Web 管理端维护。
+
+当前源码版本：`0.3.0`。项目仍在试用与验证阶段，官方源码仓库先通过邀请访问。收到邀请后按[源码访问与协作](docs/source-access.md)开始；当前能力、历史记录和验证边界见[版本说明](docs/current-status.md)。
 
 ## 选择使用方式
 
@@ -20,15 +22,18 @@ BOX3 Local Engine 是一个本地优先的多人联机 3D 创作与游玩发行�
 | 构建镜像与发行包                 | [构建与分发](docs/release-and-distribution.md)           |
 | 查看全部专题                     | [文档中心](docs/README.md)                               |
 
-Linux 服务器可以直接执行：
-
-```bash
-curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
-```
-
-安装器支持 Linux `amd64` 和 `arm64`，会准备 Docker Engine 与 Compose v2、下载匹配的服务器包、保留已有数据完成升级，并输出管理地址和初始密钥。服务器部署前请先阅读[安全与公网访问要求](docs/linux-web-manager.md#8-网络与防火墙)。
+只想部署使用，不需要安装源码开发环境。先向维护者确认可用的测试包或下载渠道，再按对应部署文档操作；源码版本不代表下载渠道已经更新。公网部署前请先阅读[网络与防火墙要求](docs/linux-web-manager.md#8-网络与防火墙)。
 
 ## 产品组成
+
+除了创作与游玩，当前还提供：
+
+- 玩家账号、权限组、封禁和操作审计；
+- 可替换的登录门户，支持登录、注册和修改密码；
+- 由服主在后台配置的地图脚本授权，脚本无需保存管理员密钥；
+- 服务端反作弊监听与拒绝处理，由图主根据地图玩法编写规则。
+
+邀请只用于官方源码仓库访问，不是程序运行激活。功能的使用边界见[版本说明](docs/current-status.md)。
 
 | 服务               | 职责                                   | 源码开发地址             |
 | ------------------ | -------------------------------------- | ------------------------ |
@@ -42,38 +47,13 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 
 Player Admin 在发行镜像中构建进 Player Service，不是第七个业务镜像；只有源码开发时才由 Umi 在 `8000` 端口独立提供热更新，并把 `/api` 代理到 `3124`。桌面版本使用 Tauri 启动器管理五个业务服务；Linux 服务器版本使用 Server Manager 提供同一套配置和运维能力。完整离线镜像归档包含六个镜像。无桌面服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Server Manager。关闭桌面启动器窗口不会停止已经运行的容器。
 
-后台管理由 Player Service 在根路径提供，当前主要功能包括：
-
-- 玩家账号、会话、标签、备注、封禁、密码重置和 CSV 导出；
-- 独立后台账号、权限组、查看/编辑能力和安全审计；
-- Creator 访问权限与一次性展示的 CLI Token；
-- `.boxplay` 地图包预览、导入、开放、关闭和删除；
-- 玩家启动器通过 Service Worker 自动缓存地图公开静态资源，按固定地图 ID 和资源版本隔离；脚本、私有发布数据、账号信息及实时状态不会缓存，详见[游玩端部署说明](docs/play-deployment.md#本地资源加速)；
-- 创作端/游玩端运行时、地图容器配置及资源组；
-- 独立 Docker 地图容器的 CPU、内存、进程、网络和出网带宽限制；
-- 服主按固定地图组 ID 授权服务端脚本封禁账号、当前 IP / 设备及查询处罚，两端共用授权，支持批量玩家、永久封禁上限和最长 360 天有效期；
-- 地图脚本调用的安全记录，包括请求来源 IP、目标、API、结果和详情。
-
-Play 游戏内不再提供旧的“服主管理”。地图导入和日常管理统一在后台管理的“游玩管理”中完成。
+地图导入和日常管理统一在玩家管理后台完成，Play 游戏内不再提供旧的“服主管理”。后台还负责账号权限、地图运行容器、脚本授权和安全记录，详见[玩家身份与后台管理](docs/player-identity.md)。公开静态资源的缓存边界见[资源缓存说明](docs/launcher-service-worker-cache.md)。
 
 ## 技术栈
 
-| 领域                 | 主要技术                                                   |
-| -------------------- | ---------------------------------------------------------- |
-| Monorepo 与工程管理  | Rush.js、pnpm、Node.js、TypeScript                         |
-| API 契约与交互文档   | OpenAPI 3.1、Swagger UI、openapi-typescript、openapi-fetch |
-| Creator 与 Play      | Next.js、React、TypeScript、WebGL                          |
-| VOXA                 | Next.js、React、TypeScript、WebGL                          |
-| 后台管理             | Umi Max、React、Ant Design、LESS                           |
-| 游戏服务端           | Node.js、TypeScript、WebSocket、自研 MuDB 协议             |
-| 桌面启动器           | Tauri 2、Rust、Vite                                        |
-| Linux 管理端         | Rust、Axum、Tokio                                          |
-| 玩家登录门户 | React、TypeScript、esbuild                           |
-| 数据与资源存储       | PostgreSQL、Redis、文件系统内容寻址 Blob                   |
-| 部署、交付与持续集成 | Docker、Docker Compose、GitHub Actions                     |
-| 代码质量             | ESLint、Prettier、TypeScript 类型检查、自动化回归测试      |
+主工程使用 Rush 管理 TypeScript/Node.js 项目和依赖。创作与游玩界面使用 Next.js、React 和 WebGL，后台使用 Umi 与 Ant Design；桌面启动器使用 Tauri，桌面端与 Linux Web 管理端共用 Rust 业务核心。玩家数据保存在 PostgreSQL，Redis 用作可选缓存，部署使用 Docker Compose。HTTP API 通过 OpenAPI 维护契约和文档。
 
-Creator、Play 和 VOXA 的 3D 画面由浏览器 WebGL 渲染。Linux 服务端负责业务服务、权威游戏逻辑和地图运行容器，正常部署不要求 GPU。
+3D 画面由浏览器 WebGL 渲染，服务器负责业务服务、权威游戏逻辑和地图运行容器，正常部署不要求 GPU。
 
 ## 数据边界
 
@@ -88,6 +68,8 @@ Creator、Play 和 VOXA 的 3D 画面由浏览器 WebGL 渲染。Linux 服务端
 服务端地图脚本在 game-server 的隔离运行时中执行，负责权威规则和持久数据。客户端地图脚本运行在玩家浏览器页面中，玩家可以查看或修改其执行环境，因此不能保存密码、Token、数据库连接串、付费判定、奖励规则或其他秘密。
 
 ## 源码快速开始
+
+先接受仓库邀请，并使用维护者提供的地址克隆源码。没有源码访问时，安装和使用测试包请按维护者提供的渠道操作。
 
 要求：Node.js `22.17.x`、Docker Compose v2。Rush 会自动安装仓库锁定的 Rush `5.156.0` 和 pnpm `10.12.1`；完整验证和桌面 App 构建还需要 Rust stable 及目标平台原生工具链。
 
@@ -125,41 +107,7 @@ npm run dev
 
 开发页面访问 `http://127.0.0.1:8000/`，请求会代理到 Player Service `3124`。发行模式不需要单独启动该前端。
 
-常用命令：
-
-| 命令                                        | 作用                                   |
-| ------------------------------------------- | -------------------------------------- |
-| `rush dev`                                  | 启动完整源码开发栈                     |
-| `rush dev --infra`                          | 启动开发栈并启动开发 PostgreSQL/Redis  |
-| `rush dev-creator`                          | 启动 Creator 相关开发服务              |
-| `rush dev-creator --infra`                  | 启动 Creator 开发服务及基础设施        |
-| `cd apps/player-admin && npm run dev`       | 启动后台管理前端热更新服务             |
-| `npm run api:docs`                          | 独立启动只读 Swagger API 文档          |
-| `rush build --to <项目名>`                  | 按依赖顺序增量构建指定项目             |
-| `rush package-images --architecture <架构>` | 构建六个 Linux 镜像并导出归档          |
-| `rush export-images`                        | 不重建，导出本机已有的完整镜像集合     |
-| `rush package-desktop --target <目标>`      | 生成目标平台桌面离线包                 |
-| `rush package-web --architecture <架构>`    | 生成 Linux 无桌面服务器包              |
-| `rush verify`                               | 执行格式、Lint、类型检查和全部回归测试 |
-
-根 `package.json` 同时提供便于发现的 npm 别名，例如 `npm run dev`、`npm run verify`、`npm run package:images:arm64`、`npm run package:desktop:macos-arm64` 和 `npm run package:web:amd64`。需要自定义参数时，可在 `--` 后继续传给 Rush：
-
-```bash
-npm run build -- --to @box/player-admin
-npm run package:images -- --architecture arm64 --service player-service
-```
-
-例如构建 Apple Silicon macOS 包：
-
-```bash
-rush package-desktop --target macos-arm64
-```
-
-输出：
-
-```text
-apps/local-engine/dist/desktop-installers/BOX-Local-Engine-0.2.0-macos-arm64.zip
-```
+API 文档可单独通过 `npm run api:docs` 启动。提交改动前运行 `npm run verify`（等价于 `rush verify`）；详细开发步骤见[贡献者指南](CONTRIBUTING.md)，镜像与桌面打包命令见[构建与分发](docs/release-and-distribution.md)。
 
 按 `Ctrl-C` 停止源码服务。使用 `--infra` 启动的 PostgreSQL/Redis 不会删除数据卷；需要单独停止时执行：
 
@@ -169,20 +117,20 @@ docker compose --profile infra stop postgres redis
 
 ## 仓库结构
 
-顶层目录按 Rush 多项目仓库的职责分类，与 `boxes` 保持相同的主体结构：
+顶层目录按职责分类：
 
-| 路径            | 职责                                                 |
-| --------------- | ---------------------------------------------------- |
-| `apps/`         | 可独立运行、构建或发布的产品应用                     |
-| `services/`     | 权威后端服务与脚本运行时                             |
-| `packages/`     | 可复用的引擎、协议、UI 和工具包                      |
-| `internals/`    | 仅供仓库内部使用的 API、Schema、环境与构建基础设施   |
-| `tools/`        | 仓库工具项目与平台专用启动器                         |
-| `types/`        | 跨项目共享的类型声明                                 |
-| `common/`       | Rush 配置、锁文件、安装器和变更记录                  |
-| `docs/`         | 架构、领域模型、开发、部署与运维文档                 |
-| `distribution/` | 安装器、服务器包、独立部署和许可模板                 |
-| `scripts/`      | 仓库级开发、回归、打包和发布命令                     |
+| 路径            | 职责                                               |
+| --------------- | -------------------------------------------------- |
+| `apps/`         | 可独立运行、构建或发布的产品应用                   |
+| `services/`     | 权威后端服务与脚本运行时                           |
+| `packages/`     | 可复用的引擎、协议、UI 和工具包                    |
+| `internals/`    | 仅供仓库内部使用的 API、Schema、环境与构建基础设施 |
+| `tools/`        | 仓库工具项目与平台专用启动器                       |
+| `types/`        | 跨项目共享的类型声明                               |
+| `common/`       | Rush 配置、锁文件、安装器和变更记录                |
+| `docs/`         | 架构、领域模型、开发、部署与运维文档               |
+| `distribution/` | 安装器、服务器包、独立部署和发行许可文件           |
+| `scripts/`      | 仓库级开发、回归、打包和发布命令                   |
 
 `distribution/` 和 `scripts/` 是发布与仓库命令的稳定入口，因此保留在根目录。正式应用必须放入 `apps/`，不要用 `examples/` 承载生产服务，也不要在根目录新增临时项目、构建产物或本机数据。
 
@@ -198,10 +146,11 @@ docker compose --profile infra stop postgres redis
 | `apps/manager-core/`        | 桌面端和服务器管理端共用 Rust 业务核心         |
 | `apps/server-manager-rust/` | Linux Web 管理服务                             |
 | `apps/player-auth-portal/`  | 玩家登录与注册门户                             |
-| `apps/migrator/`            | 内部迁移工具，不进入普通用户发行包             |
 | `services/game-server/`     | 权威游戏运行时、脚本和数据存储                 |
 
 ## 参与开发
+
+源码仓库地址和提交方式以维护者提供的邀请为准，不默认要求公开 Fork。只读账号也能本机开发；写入权限和私有 Fork 由维护者另外安排。
 
 后台页面复用入口见[后台管理开发说明](docs/player-admin-development.md)与[复用索引](docs/player-admin-code.md)。
 
@@ -209,24 +158,11 @@ docker compose --profile infra stop postgres redis
 
 新人建议先阅读[开发者与协作手册](docs/developer-guide.md)，它完整说明环境准备、Rush 依赖管理、源码启动、模块定位、测试、镜像与发行包构建、部署验证和常见故障。准备提交代码时，再按[贡献者指南](CONTRIBUTING.md)完成分支同步、提交检查和 Pull Request。
 
-最短开发流程：
-
-```bash
-git switch -c codex/<short-description>
-rush install
-cp .env.docker.example .env
-rush dev --infra
-# 完成修改和相关局部测试
-rush verify
-git status --short
-git diff --check
-```
-
-修改依赖或增加 Rush 项目时使用 `rush update`，并提交 `common/config/rush/pnpm-lock.yaml`。普通拉取只使用 `rush install`。不要重新创建 pnpm Workspace 文件，也不要提交 `.env`、数据库、地图、模型、日志、Docker 卷和本地构建产物。
+遇到问题时，说明操作步骤、预期结果和实际结果；提交代码时附上验证命令与结果。请先去掉日志和截图中的密钥、账号信息及用户数据。修改依赖、兼容接口或发行流程的约定统一放在[贡献者指南](CONTRIBUTING.md)，这里不重复展开。
 
 ## 发行范围
 
-当前 Tag 流水线构建：
+当前引擎 Tag 流水线配置的构建目标如下；这不是已经公开交付的版本清单：
 
 - Windows x64 与 Windows ARM64 桌面 ZIP；
 - Apple Silicon macOS 桌面 ZIP；
@@ -237,6 +173,8 @@ git diff --check
 GitHub Release 发布桌面包、服务器包和 `install.sh`。Linux 服务器的 `install.sh`、`latest.txt` 与两个架构的版本包同时发布到 OSS 的 `local-engine/` 目录，由 `https://assets.box3.fun/local-engine/` 提供下载。Tag 流水线会校验 Tag 与项目版本及 OSS Secret，但不会替代主分支和 Pull Request 的 `rush verify`；创建 Tag 前必须先完成完整验证。
 
 ## 许可与安全
+
+邀请制管理官方仓库访问，不改变 MIT 已授予的修改、商用和再分发权利。它能控制首次官方交付与后续协作，不能保证已收到源码者不再分发代码。
 
 引擎和启动器不再进行运行时许可证检测；完成数据配置即可启动服务。管理登录、账户权限和内部接口鉴权仍然保留。
 项目代码采用 MIT 开源许可，允许修改、商用和二次分发，使用或分发时须按协议保留版权与许可声明。

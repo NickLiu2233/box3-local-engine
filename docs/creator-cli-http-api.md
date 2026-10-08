@@ -1,6 +1,6 @@
 # Creator CLI 与 HTTP API（当前实现）
 
-本文记录当前可用的 Creator HTTP 接口、CLI Token 权限模型，以及 CLI 适配器应遵守的协议。它描述的是**已经实现**的能力；`[ArenaPro CLI 接入设计](./arenapro-cli-creator-adapter.md)` 中的设备登录、工程导入导出等内容仍是后续设计，不应当被当作当前 API 合约。
+本文记录当前可用的 Creator HTTP 接口、CLI Token 权限模型，以及 CLI 适配器应遵守的协议。它描述的是**已经实现**的能力；[ArenaPro CLI 接入设计](./arenapro-cli-creator-adapter.md) 中的设备登录、工程导入导出等内容仍是后续设计，不应当被当作当前 API 合约。
 
 ## 1. 适用范围与术语
 
@@ -98,7 +98,7 @@ GET /api/creator/v1/health
 ```json
 {
   "apiVersion": "v1",
-  "engineVersion": "0.2.0",
+  "engineVersion": "0.3.0",
   "serverInstanceId": "local-engine",
   "issuer": "local-engine",
   "deploymentMode": "creator"
@@ -307,7 +307,6 @@ Authorization: Bearer bxc_...
 通道后端只监听进程所在环境的 `127.0.0.1:9968`，由 Next.js 同源 WebSocket upgrade 代理转发，无需对外开放额外端口。`BOX_CREATOR_SCENE_SOCKET_PORT` 可指定内部端口，构建配置和运行进程需保持一致。连接校验会话、一次性凭证和创建会话时的页面 Host，阻止跨站附着与凭证重放；截图保留 6 MiB 内容上限。
 
 2026-10-06 自动化验证：14 项通过，包括真实 WebSocket 推送和截图返回（含 2 MiB 内容）、Next.js upgrade 代理、跨站/凭证重放/跨地图拒绝、断线与截图失败、建连前排队、空闲零 HTTP 轮询、重连和页面退出清理。旧 `/scene/action` 接口保留兼容用途，新编辑器不会访问它。
-
 
 ## 11. 状态码与错误码
 

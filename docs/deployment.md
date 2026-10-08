@@ -6,7 +6,7 @@ Play 与登录门户是面向普通玩家的公开页面。Creator 和 VOXA 可�
 
 - 本机：使用 `127.0.0.1`，适合开发和单机测试。
 - 局域网：使用私网 IP，适合可信设备。
-- 公网：使用 HTTPS 反向代理公开 Play 与登录门户。远程创作还必须限制 Creator/VOXA 的访问来源和创作者权限；不要直接公开 Docker 管理端口。
+- 公网：普通功能支持 HTTP/HTTPS；涉及账号、Token 和管理操作时强烈建议 HTTPS。可使用反向代理公开 Play 与登录门户。远程创作还必须限制 Creator/VOXA 的访问来源和创作者权限；不要直接公开 Docker 管理端口。
 
 登录门户负责页面跳转，Player Service 负责账号、会话和权限。Play 导入的是 `.boxplay`，不是 Creator 工程。
 
@@ -16,6 +16,8 @@ Play 与登录门户是面向普通玩家的公开页面。Creator 和 VOXA 可�
 2. Play 和门户使用正确的公开 HTTPS 地址。
 3. 玩家可登录、进入地图并返回大厅。
 4. 备份 PostgreSQL 与重要工程。
+
+普通 HTTP 不代表安全传输；录音、Service Worker 等浏览器功能可能受安全上下文限制，见[HTTP 兼容说明](./http-compatibility.md)。
 
 具体端口和变量见[配置参考](./configuration-reference.md)，游玩地图管理见[游玩端部署](./play-deployment.md)。
 

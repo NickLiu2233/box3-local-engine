@@ -21,13 +21,21 @@ document.addEventListener('contextmenu', (event) => event.preventDefault(), { ca
 const state = createInitialState()
 let composingInput: Element | null = null
 let renderAfterComposition = false
-document.addEventListener('compositionstart', (event) => {
-  composingInput = event.target instanceof Element ? event.target : null
-}, true)
-document.addEventListener('compositionend', () => {
-  composingInput = null
-  if (renderAfterComposition) setTimeout(render, 0)
-}, true)
+document.addEventListener(
+  'compositionstart',
+  (event) => {
+    composingInput = event.target instanceof Element ? event.target : null
+  },
+  true,
+)
+document.addEventListener(
+  'compositionend',
+  () => {
+    composingInput = null
+    if (renderAfterComposition) setTimeout(render, 0)
+  },
+  true,
+)
 const { serverRows, removeServerDialog, serverAddressNoticeDialog } = createShellViews(state)
 
 document.addEventListener('click', (event) => {
@@ -44,23 +52,36 @@ const remoteApi = createPlayerApi({
     const server = selectedServer()
     if (!server || server.endpoint !== endpoint || !expirePlayerSession(state, server.id)) return
     render()
-    document.querySelector<HTMLInputElement>(state.loginDraft?.username ? '#player-password' : '#player-username')?.focus()
+    document
+      .querySelector<HTMLInputElement>(
+        state.loginDraft?.username ? '#player-password' : '#player-username',
+      )
+      ?.focus()
   },
 })
-const { playerInvoke, refreshPlayerSession, refreshMapLibrary } = createLauncherController({
-  state,
-  remoteApi,
-  invoke,
-  isDesktopLauncher,
-  selectedServer,
-  onLibraryChange: render,
-})
+const { playerInvoke, refreshPlayerSession, refreshMapLibrary, restoreSelectedServer } =
+  createLauncherController({
+    state,
+    remoteApi,
+    invoke,
+    isDesktopLauncher,
+    selectedServer,
+    onLibraryChange: render,
+  })
 let lastContentKey = ''
 let lastLibraryFocusAt = 0
 
 window.addEventListener('focus', () => {
   const server = selectedServer()
-  if (!server || state.page !== 'servers' || !state.serverBootstrap?.supported || state.busy || state.libraryLoading || state.pendingFavoriteMapIds.length) return
+  if (
+    !server ||
+    state.page !== 'servers' ||
+    !state.serverBootstrap?.supported ||
+    state.busy ||
+    state.libraryLoading ||
+    state.pendingFavoriteMapIds.length
+  )
+    return
   if (state.serverBootstrap.loginRequired && !state.player) return
   // Avoid replacing an input while the player is typing with an IME.
   if (document.activeElement instanceof HTMLInputElement) return
@@ -117,7 +138,8 @@ function render(): void {
       ? [focused.selectionStart, focused.selectionEnd]
       : null
   const contentKey = `${state.page}:${state.selectedId}`
-  const contentScroll = contentKey === lastContentKey ? document.querySelector('.content')?.scrollTop || 0 : 0
+  const contentScroll =
+    contentKey === lastContentKey ? document.querySelector('.content')?.scrollTop || 0 : 0
   lastContentKey = contentKey
   app.innerHTML =
     `
@@ -137,7 +159,15 @@ function render(): void {
     </main>` +
     serverAddressNoticeDialog() +
     removeServerDialog()
-  bindEvents({ state, playerInvoke, remoteApi, selectedServer, refreshPlayerSession, refreshMapLibrary, render })
+  bindEvents({
+    state,
+    playerInvoke,
+    remoteApi,
+    selectedServer,
+    refreshPlayerSession,
+    refreshMapLibrary,
+    render,
+  })
   bindDialogFocus()
   if (focusId) {
     const next = document.getElementById(focusId) as HTMLInputElement | null
@@ -172,6 +202,7 @@ async function bootstrap() {
         render()
       })
     }
+    await restoreSelectedServer()
   } catch (error) {
     state.error = `无法读取本机启动器数据：${error}`
   }
