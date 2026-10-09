@@ -45,6 +45,9 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 # the image instead of relying on a developer's previously generated output;
 # otherwise a newly added MuDB message can be present in TypeScript source but
 # absent from the production runtime.
+# Schema storage interfaces import the script API declarations. Generate them
+# first; dist is absent in a clean checkout.
+RUN cd packages/script-api && node ../../common/scripts/install-run-rushx.js build
 RUN cd internals/schema && node ../../common/scripts/install-run-rushx.js build
 
 # Generated content-addressed runtime resources are intentionally excluded
