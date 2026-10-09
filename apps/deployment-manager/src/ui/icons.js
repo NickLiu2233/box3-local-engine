@@ -9,6 +9,7 @@ const icons = {
   'archive': '<path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3zM9 11h6M9 15h6"/>',
   'play': '<path d="m8 5 11 7-11 7Z"/>',
   'stop': '<rect x="6" y="6" width="12" height="12" rx="1"/>',
+  'download': '<path d="M12 3v12m-5-5 5 5 5-5"/><path d="M4 16v4h16v-4"/>',
   'refresh': '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>',
   'external': '<path d="M14 5h5v5M19 5l-8 8"/><path d="M18 13v6H5V6h6"/>',
   'sun':

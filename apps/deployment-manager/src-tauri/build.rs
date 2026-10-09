@@ -20,5 +20,8 @@ fn main() {
         .filter(|value| !value.is_empty())
         .expect("root package.json has no version");
     println!("cargo:rustc-env=BOX_ROOT_VERSION={version}");
+    for key in ["BOX_MANAGER_IMAGE_TAG", "BOX_MANAGER_REMOTE_IMAGE"] {
+        println!("cargo:rerun-if-env-changed={key}");
+    }
     tauri_build::build()
 }

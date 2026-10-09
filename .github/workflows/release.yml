@@ -140,6 +140,18 @@ jobs:
             | gzip -1 > "box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz"
           # Keep the builder empty before artifact upload as a final safeguard.
           docker builder prune --all --force
+      - name: Build and upload per-service image downloads
+        run: |
+          archive="box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          if ! test -f "$archive"; then
+            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" "$archive"
+          fi
+          catalog="box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          node scripts/build-image-downloads.js "$archive" '${{ matrix.architecture }}' "$catalog"
+          for image in box-local-engine-image-*.tar.gz; do
+            ossutil cp "$image" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
+          done
+          ossutil cp "$catalog" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
       - name: Upload images to Aliyun OSS
         if: steps.image-cache.outputs.cache-hit != 'true'
         run: |
@@ -192,15 +204,15 @@ jobs:
           fi
           version="$(node -p "require('./apps/deployment-manager/package.json').version")"
           installer="BOX-Local-Engine-${version}-${{ matrix.target }}.zip"
-          object="oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$installer"
+          object="oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/$installer"
           if [[ "${{ matrix.target }}" == windows-* ]]; then
             export AWS_ACCESS_KEY_ID="$OSS_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$OSS_ACCESS_KEY_SECRET"
             aws configure set default.s3.addressing_style virtual
             aws configure set default.s3.payload_signing_enabled false
-            if aws s3api head-object --bucket "$OSS_BUCKET" --key "$OSS_BUILD_PREFIX/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-stat.txt 2>&1; then
+            if aws s3api head-object --bucket "$OSS_BUCKET" --key "$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-stat.txt 2>&1; then
               echo "cache-hit=true" >> "$GITHUB_OUTPUT"
               echo "Found cached desktop installer: $installer"
-            elif aws s3api get-object --bucket "$OSS_BUCKET" --key "$OSS_BUILD_PREFIX/$installer" "$RUNNER_TEMP/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-cache-download.txt 2>&1; then
+            elif aws s3api get-object --bucket "$OSS_BUCKET" --key "$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/$installer" "$RUNNER_TEMP/$installer" --endpoint-url "https://$OSS_ENDPOINT" >/tmp/desktop-cache-download.txt 2>&1; then
               echo "cache-hit=true" >> "$GITHUB_OUTPUT"
               echo "Found cached desktop installer by download: $installer"
             else
@@ -249,19 +261,19 @@ jobs:
             aws configure set default.s3.addressing_style virtual
             aws configure set default.s3.payload_signing_enabled false
             aws s3api get-object --bucket "$OSS_BUCKET" \
-              --key "$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
-              "apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+              --key "$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
+              "apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
               --endpoint-url "https://$OSS_ENDPOINT"
           else
             ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
               apps/local-engine/dist/images/
           fi
       - name: Build installer
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
           test -f "$archive"
           node common/scripts/install-run-rush.js package-desktop \
             --target '${{ matrix.target }}' \
@@ -284,11 +296,11 @@ jobs:
             aws configure set default.s3.addressing_style virtual
             aws configure set default.s3.payload_signing_enabled false
             for installer in apps/local-engine/dist/desktop-installers/*.zip; do
-              aws s3api put-object --bucket "$OSS_BUCKET" --key "$OSS_BUILD_PREFIX/$(basename "$installer")" --body "$installer" --endpoint-url "https://$OSS_ENDPOINT"
+              aws s3api put-object --bucket "$OSS_BUCKET" --key "$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/$(basename "$installer")" --body "$installer" --endpoint-url "https://$OSS_ENDPOINT"
             done
           else
             ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-            ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --recursive --update
+            ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/" --recursive --update
           fi
 
   headless-server:
@@ -365,11 +377,17 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           for target in windows-amd64 windows-arm64 macos-arm64 linux-amd64 linux-arm64; do
             file="BOX-Local-Engine-${version}-${target}.zip"
-            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$file" "release-files/$file"
+            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/$file" "release-files/$file"
           done
           for architecture in amd64 arm64; do
             file="BOX3-Engine-Server-${version}-linux-${architecture}.zip"
             ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$file" "release-files/$file"
+            catalog="box-local-engine-images-${GITHUB_REF_NAME}-linux-${architecture}.json"
+            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$catalog" "release-files/$catalog"
+            node -e 'for (const image of require("./" + process.argv[1]).images) console.log(image.archive)' "release-files/$catalog" > /tmp/image-downloads.txt
+            while IFS= read -r image; do
+              ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$image" "release-files/$image"
+            done < /tmp/image-downloads.txt
           done
       - name: Add stable Linux bootstrap installer
         run: |
@@ -393,6 +411,13 @@ jobs:
               "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/" --update
           done
           for architecture in amd64 arm64; do
+            # Publish the pinned desktop image archives before updating latest pointers.
+            catalog="release-files/box-local-engine-images-v${version}-linux-${architecture}.json"
+            node -e 'for (const image of require("./" + process.argv[1]).images) console.log(image.archive)' "$catalog" > /tmp/image-downloads.txt
+            while IFS= read -r image; do
+              test -f "release-files/$image"
+              ossutil cp "release-files/$image" "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/" --update
+            done < /tmp/image-downloads.txt
             server_package="release-files/BOX3-Engine-Server-${version}-linux-${architecture}.zip"
             test -f "$server_package"
             ossutil cp "$server_package" \

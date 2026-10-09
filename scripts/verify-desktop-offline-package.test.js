@@ -19,16 +19,17 @@ function fixturePackage() {
   const payload = path.join(app, 'Contents', 'Resources', 'payload')
   const metadata = path.join(payload, 'metadata')
   fs.mkdirSync(metadata, { recursive: true })
-  const archive = path.join(payload, 'images.tar.gz')
-  fs.writeFileSync(archive, 'fixture image archive')
   fs.writeFileSync(
-    path.join(payload, 'BOX-OFFLINE-IMAGE.json'),
+    path.join(metadata, 'BOX-REMOTE-IMAGE.json'),
     `${JSON.stringify({
-      formatVersion: 1,
-      archive: 'images.tar.gz',
-      sha256: sha256(archive),
+      formatVersion: 2,
       imageTag: 'v0.1.0-linux-arm64',
       platform: 'linux/arm64',
+      images: ['creator', 'voxa', 'play', 'player-service', 'player-auth-portal', 'server-manager'].map(service => ({
+        formatVersion: 1, image: `box-local-engine-${service}`, imageId: `sha256:${'b'.repeat(64)}`, imageIds: [`sha256:${'b'.repeat(64)}`],
+        archive: `box-local-engine-image-${service}-arm64-${'a'.repeat(64)}.tar.gz`,
+        sha256: 'a'.repeat(64), size: 123, imageTag: 'v0.1.0-linux-arm64', platform: 'linux/arm64',
+      })),
     })}\n`,
   )
   const info = {
@@ -51,10 +52,25 @@ function fixturePackage() {
 }
 
 test('macOS unsigned internal package skips outer resource-signature verification', () => {
-  if (process.platform !== 'darwin') return
   const root = fixturePackage()
   try {
     assert.doesNotThrow(() => verifyPackage(root))
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('lightweight packages reject accidentally embedded archives and invalid image metadata', () => {
+  const root = fixturePackage()
+  try {
+    fs.writeFileSync(path.join(root, 'images.tar.gz'), 'unexpected archive')
+    assert.throws(() => verifyPackage(root), /不应包含离线镜像/)
+    fs.rmSync(path.join(root, 'images.tar.gz'))
+    const file = path.join(root, 'BOX3 Engine.app/Contents/Resources/payload/metadata/BOX-REMOTE-IMAGE.json')
+    const manifest = JSON.parse(fs.readFileSync(file, 'utf8'))
+    manifest.images[0].archive = '../wrong-image.tar.gz'
+    fs.writeFileSync(file, JSON.stringify(manifest))
+    assert.throws(() => verifyPackage(root), /Invalid image download/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

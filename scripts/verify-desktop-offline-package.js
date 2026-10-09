@@ -23,7 +23,7 @@ function sha256(file) {
 }
 
 function fail(message) {
-  throw new Error(`桌面离线包校验失败：${message}`)
+  throw new Error(`桌面启动器校验失败：${message}`)
 }
 
 function findApplication(packageRoot) {
@@ -57,16 +57,14 @@ function verifyChecksums(metadataRoot) {
   }
 }
 
-function findImageManifest(packageRoot) {
-  const rootManifest = path.join(packageRoot, 'BOX-OFFLINE-IMAGE.json')
-  if (fs.existsSync(rootManifest)) return rootManifest
-  const application = findApplication(packageRoot)
-  if (!application) fail('未找到 Windows 镜像清单或 macOS APP')
-  return path.join(
-    packageRoot,
-    application.name,
-    'Contents/Resources/payload/BOX-OFFLINE-IMAGE.json',
-  )
+function rejectEmbeddedArchives(directory) {
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const target = path.join(directory, entry.name)
+    if (entry.isDirectory()) rejectEmbeddedArchives(target)
+    else if (/\.tar(?:\.gz)?$/.test(entry.name) || entry.name === 'BOX-OFFLINE-IMAGE.json') {
+      fail(`轻量启动器不应包含离线镜像：${entry.name}`)
+    }
+  }
 }
 
 function verifyMacSignature(packageRoot) {
@@ -124,32 +122,22 @@ function verifyPackage(packageRoot) {
   ) {
     fail('BUILD-INFO.json 缺少正式构建版本、提交号或构建时间')
   }
-  const manifestPath = findImageManifest(packageRoot)
+  rejectEmbeddedArchives(packageRoot)
+  const manifestPath = path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json')
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  if (
-    manifest.formatVersion !== 1 ||
-    !/^[a-f0-9]{64}$/i.test(manifest.sha256 || '') ||
-    !manifest.imageTag ||
-    !/^linux\/(amd64|arm64)$/.test(manifest.platform || '')
-  ) {
-    fail('BOX-OFFLINE-IMAGE.json 格式无效')
-  }
-  const imageArchive = path.join(path.dirname(manifestPath), manifest.archive || '')
-  if (!fs.statSync(imageArchive, { throwIfNoEntry: false })?.isFile()) {
-    fail('镜像清单引用的归档不存在')
-  }
-  if (sha256(imageArchive) !== manifest.sha256.toLowerCase()) fail('镜像归档 SHA-256 不匹配')
+  const { validateCatalog } = require('./build-image-downloads')
+  validateCatalog(manifest, manifest.platform?.split('/')[1])
   verifyChecksums(metadataRoot)
   verifyMacSignature(packageRoot)
-  return { imageArchive, manifest }
+  return { manifest }
 }
 
 if (require.main === module) {
   try {
     const packageRoot = process.argv[2]
-    assert.ok(packageRoot, '用法: node scripts/verify-desktop-offline-package.js <离线包目录>')
+    assert.ok(packageRoot, '用法: node scripts/verify-desktop-offline-package.js <启动器目录>')
     const result = verifyPackage(packageRoot)
-    console.log(`Desktop offline package verified: ${result.manifest.imageTag}`)
+    console.log(`Desktop launcher package verified: ${result.manifest.imageTag}`)
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1

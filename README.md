@@ -45,7 +45,7 @@ BOX3 Local Engine 把地图创作、模型制作、多人游玩和玩家管理�
 | Player Auth Portal | 可替换的参考登录/注册门户              | `http://127.0.0.1:3125/` |
 | Server Manager     | Linux 无桌面环境的 Web 管理端          | `http://127.0.0.1:3130/` |
 
-Player Admin 在发行镜像中构建进 Player Service，不是第七个业务镜像；只有源码开发时才由 Umi 在 `8000` 端口独立提供热更新，并把 `/api` 代理到 `3124`。桌面版本使用 Tauri 启动器管理五个业务服务；Linux 服务器版本使用 Server Manager 提供同一套配置和运维能力。完整离线镜像归档包含六个镜像。无桌面服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Server Manager。关闭桌面启动器窗口不会停止已经运行的容器。
+Player Admin 在发行镜像中构建进 Player Service，不是第七个业务镜像；只有源码开发时才由 Umi 在 `8000` 端口独立提供热更新，并把 `/api` 代理到 `3124`。桌面版本使用轻量 Tauri 启动器，首次启动服务时下载并校验当前架构镜像，管理五个业务服务；Linux 服务器版本使用 Server Manager 提供同一套配置和运维能力。完整离线镜像归档包含六个镜像。无桌面服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Server Manager。关闭桌面启动器窗口不会停止已经运行的容器。
 
 地图导入和日常管理统一在玩家管理后台完成，Play 游戏内不再提供旧的“服主管理”。后台还负责账号权限、地图运行容器、脚本授权和安全记录，详见[玩家身份与后台管理](docs/player-identity.md)。公开静态资源的缓存边界见[资源缓存说明](docs/launcher-service-worker-cache.md)。
 

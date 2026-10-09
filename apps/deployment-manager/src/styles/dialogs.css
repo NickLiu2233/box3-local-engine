@@ -11,6 +11,8 @@
 }
 
 .update-check { margin-left: auto; flex: 0 0 28px; width: 28px; height: 28px; }
+.icon-button.update-check.update-available { background: #2563eb; border-color: #2563eb; color: #fff; }
+.icon-button.update-check.update-available:hover { background: #1d4ed8; border-color: #1d4ed8; }
 .update-backdrop { z-index: 35; }
 .start-dialog.update-dialog { width: min(100%, 600px); max-height: calc(100dvh - 48px); overflow-y: auto; }
 .update-dialog header { display: flex; justify-content: space-between; gap: 12px; }

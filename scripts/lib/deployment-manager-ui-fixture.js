@@ -102,7 +102,7 @@ class FixtureFormData {
   [Symbol.iterator]() { return this.entries() }
 }
 
-async function createFixture({ webManager = false, token = '', bundle, responses = {}, releaseResponse } = {}) {
+async function createFixture({ webManager = false, token = '', bundle, responses = {}, releaseResponse, releaseHttpResponse } = {}) {
   if (!bundle) { bundlePromise ||= buildFixtureBundle(); bundle = await bundlePromise }
   const calls = [], copied = [], events = new Map(), intervals = new Map(), timeouts = new Map()
   let html = '', form = null, modes = [], resetLoginImage = null, timerId = 0
@@ -161,6 +161,7 @@ async function createFixture({ webManager = false, token = '', bundle, responses
     console, URL, AbortController, document, webManager, managerToken: token,
     fetch: async (url, options) => {
       calls.push({command:'fetch_release',url,options})
+      if (releaseHttpResponse) return releaseHttpResponse
       const release = typeof releaseResponse === 'function' ? await releaseResponse() : releaseResponse
       return {ok:true,text:async () => JSON.stringify(release || {schemaVersion:1,version:'0.3.0',date:'2026-10-09',summary:'Current',sections:[]})}
     },

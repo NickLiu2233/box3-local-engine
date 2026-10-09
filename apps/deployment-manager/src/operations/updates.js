@@ -27,10 +27,19 @@ export async function checkForUpdates(manual = false) {
     if (result.newer) {
       state.updateRelease = result.release
       state.updateDialogOpen = true
-    } else if (manual) state.notice = '当前已是最新版本。'
-  } catch {
-    if (manual) state.error = '无法检测更新，请检查网络后重试。'
+    } else {
+      state.updateRelease = null
+      state.updateDialogOpen = false
+      if (manual) state.notice = '当前已是最新版本。'
+    }
+  } catch (error) {
+    if (manual) state.error = `无法检测更新：${error?.message || String(error)}`
   }
+  renderUpdateState()
+}
+
+export function openUpdateDialog() {
+  state.updateDialogOpen = true
   renderUpdateState()
 }
 

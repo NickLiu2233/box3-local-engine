@@ -4,12 +4,15 @@ import { exportDiagnostics } from '../../operations/backups.js'
 import { openExternal } from '../../infrastructure/transport.js'
 import { render } from '../../core/render-request.js'
 import { state } from '../../core/state.js'
-import { checkForUpdates, closeUpdateDialog } from '../../operations/updates.js'
+import { checkForUpdates, closeUpdateDialog, openUpdateDialog } from '../../operations/updates.js'
 
 
 
 export function bindAboutEvents() {
-  document.querySelector('#check-version-updates')?.addEventListener('click', () => checkForUpdates(true))
+  document.querySelector('#check-version-updates')?.addEventListener('click', () => {
+    if (state.updateRelease) openUpdateDialog()
+    else checkForUpdates(true)
+  })
   document.querySelector('#close-update-dialog')?.addEventListener('click', closeUpdateDialog)
   document.querySelector('#dismiss-update')?.addEventListener('click', closeUpdateDialog)
   document.querySelector('[data-update-dismiss]')?.addEventListener('click', event => {

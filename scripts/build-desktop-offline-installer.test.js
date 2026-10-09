@@ -143,7 +143,7 @@ test('image details are read from a gzip Docker archive', () => {
       {
         image: 'box-local-engine-play',
         tag: 'v0.1.0-linux-amd64',
-        imageId: 'sha256:image-config.json',
+        imageId: `sha256:${require('node:crypto').createHash('sha256').update(archiveEntry(archive, 'image-config.json')).digest('hex')}`,
         createdAt: '2026-08-26T00:00:00.000Z',
         platform: 'linux/amd64',
         sourceRevision: 'revision',

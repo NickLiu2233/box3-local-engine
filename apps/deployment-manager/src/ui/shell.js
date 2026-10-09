@@ -12,7 +12,8 @@ function navItem(page, iconName, label) {
 
 export function shell(content) {
   const webLoginRequired = isWebManager() && !hasWebManagerToken()
-  const updateControl = !isWebManager() ? `<button class="icon-button update-check" id="check-version-updates" title="${state.updateChecking ? '正在检测更新' : '检测版本更新'}" aria-label="检测版本更新" ${state.updateChecking ? 'disabled' : ''}>${icon('refresh')}</button>` : ''
+  const updateLabel = state.updateChecking ? '正在检测更新' : state.updateRelease ? '发现新版本，下载更新' : '检测版本更新'
+  const updateControl = !isWebManager() ? `<button class="icon-button update-check${state.updateRelease ? ' update-available' : ''}" id="check-version-updates" title="${updateLabel}" aria-label="${updateLabel}" ${state.updateChecking ? 'disabled' : ''}>${icon('download')}</button>` : ''
   const primaryNavigation = webLoginRequired
     ? navItem('web-login', 'device', '管理登录')
     : `${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`

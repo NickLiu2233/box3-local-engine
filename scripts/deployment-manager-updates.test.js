@@ -65,3 +65,27 @@ test('manifest selects version logs, retains history and rejects unpublished ver
   assert.throws(() => buildReleaseManifest('0.4.0','2026-10-09'),/Missing release notes/)
   assert.throws(() => buildReleaseManifest('0.3.0','2026-02-31'),/Invalid release date/)
 })
+
+
+test('missing CDN manifest reports the publication problem instead of blaming connectivity', async () => {
+  const app = await createFixture({releaseHttpResponse:{ok:false,status:404,text:async () => '<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message></Error>'}})
+  assert.equal(app.api.state.error, '')
+  await app.api.checkForUpdates(true)
+  assert.match(app.api.state.error, /HTTP 404/)
+  assert.match(app.api.state.error, /NoSuchKey/)
+  assert.match(app.api.state.error, /The specified key does not exist\./)
+  assert.match(app.html, /&lt;Error&gt;/)
+  assert.doesNotMatch(app.html, /<Error>/)
+  assert.doesNotMatch(app.api.state.error, /检查网络/)
+  assert.equal(app.api.state.updateRelease, null)
+  assert.equal(app.api.state.updateChecking, false)
+})
+
+test('manual checks preserve server and invalid-manifest errors', async () => {
+  const server = await createFixture({releaseHttpResponse:{ok:false,status:503,text:async () => 'Service Unavailable'}})
+  await server.api.checkForUpdates(true)
+  assert.match(server.api.state.error, /HTTP 503：\nService Unavailable/)
+  const invalid = await createFixture({releaseHttpResponse:{ok:true,text:async () => '<Error>NoSuchKey</Error>'}})
+  await invalid.api.checkForUpdates(true)
+  assert.match(invalid.api.state.error, /Unexpected token/)
+})

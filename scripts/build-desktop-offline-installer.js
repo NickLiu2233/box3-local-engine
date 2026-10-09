@@ -55,7 +55,7 @@ function prepareReleaseMetadata() {
   const dirty = gitOutput(['status', '--porcelain'])
   if (dirty && process.env.BOX_ALLOW_DIRTY_RELEASE !== 'true') {
     fail(
-      '工作区存在未提交修改。请提交后再构建正式离线包；仅测试时可设置 BOX_ALLOW_DIRTY_RELEASE=true。',
+      '工作区存在未提交修改。请提交后再构建正式启动器；仅测试时可设置 BOX_ALLOW_DIRTY_RELEASE=true。',
     )
   }
   if (dirty) console.warn('WARNING: 正在构建带未提交修改的测试包，禁止用于公开发布。')
@@ -92,7 +92,7 @@ function ensureMacApplicationSignature(application) {
   if (process.platform !== 'darwin' || macApplicationHasResourceSeal(application)) return
   // Tauri's unsigned CI bundle contains a linker ad-hoc signature on the
   // executable but no outer app resource seal. Gatekeeper reports that shape
-  // as a damaged application once the offline payload is embedded. Sign the
+  // as a damaged application once resources are embedded. Sign the
   // finished bundle ad-hoc to seal every resource. A Developer ID-signed app
   // already has CodeResources, so this never replaces a release signature.
   const result = spawnSync('codesign', ['--force', '--deep', '--sign', '-', application], {
@@ -162,12 +162,13 @@ function imageDetailsFromArchive(archive) {
     const image = entry.RepoTags?.[0]
     const configPath = entry.Config
     if (!image || !configPath) return []
-    const config = JSON.parse(archiveEntry(archive, configPath))
+    const configContents = archiveEntry(archive, configPath)
+    const config = JSON.parse(configContents)
     const separator = image.lastIndexOf(':')
     const imageName = separator > 0 ? image.slice(0, separator) : image
     const tag = separator > 0 ? image.slice(separator + 1) : 'unknown'
     const labels = config.config?.Labels || {}
-    const configDigest = configPath.split('/').at(-1) || ''
+    const configDigest = crypto.createHash('sha256').update(configContents).digest('hex')
     return [
       {
         image: imageName,
@@ -221,6 +222,7 @@ function tauriBuildFailure(result) {
 
 function main() {
   prepareReleaseMetadata()
+  const version = require(path.join(managerRoot, 'package.json')).version
   const platform = process.argv[2]
   const archive = process.argv[3] ? path.resolve(process.argv[3]) : ''
   const spec = supported.get(platform)
@@ -236,30 +238,16 @@ function main() {
     fail('离线镜像归档不存在')
   }
   const expectedArchitecture = platform.endsWith('arm64') ? 'arm64' : 'amd64'
-  if (!path.basename(archive).includes(expectedArchitecture)) {
-    fail(`镜像归档名称与目标架构 ${expectedArchitecture} 不一致`)
+  const catalogPath = archive.endsWith('.json') ? archive : path.join(path.dirname(archive), `box-local-engine-images-v${version}-linux-${expectedArchitecture}.json`)
+  const staleCatalog = !archive.endsWith('.json') && fs.existsSync(catalogPath) && JSON.parse(fs.readFileSync(catalogPath, 'utf8')).sourceArchiveSha256 !== sha256(archive)
+  if (!fs.existsSync(catalogPath) || staleCatalog) {
+    const result = spawnSync(process.execPath, [path.join(repoRoot, 'scripts/build-image-downloads.js'), archive, expectedArchitecture, catalogPath], { stdio: 'inherit' })
+    if (result.status !== 0) fail('无法生成独立服务镜像包')
   }
-
-  // The Docker tag belongs to the image archive, not to the native desktop
-  // executable. A linux/arm64 archive can be embedded by Windows on ARM,
-  // macOS on Apple Silicon and Linux ARM64 installers without duplicating the
-  // same five images under three different tags.
-  const imageDetails = imageDetailsFromArchive(archive)
-  const archiveImageTags = [...new Set(imageDetails.map(({ tag }) => tag).filter(Boolean))]
-  const imageTag = archiveImageTags.length === 1 ? archiveImageTags[0] : process.env.BOX_IMAGE_TAG
-  if (!imageTag) {
-    fail('镜像归档包含多个标签，请使用只含一个版本的五服务归档或设置 BOX_IMAGE_TAG')
-  }
-
-  const payloadArchive = path.join(managerRoot, 'src-tauri/payload', path.basename(archive))
-  const imageManifest = {
-    formatVersion: 1,
-    archive: path.basename(archive),
-    sha256: sha256(archive),
-    imageTag,
-    platform: `linux/${expectedArchitecture}`,
-  }
-  const payloadManifest = path.join(managerRoot, 'src-tauri/payload/BOX-OFFLINE-IMAGE.json')
+  const { validateCatalog } = require('./build-image-downloads')
+  const imageManifest = validateCatalog(JSON.parse(fs.readFileSync(catalogPath, 'utf8')), expectedArchitecture)
+  const imageDetails = imageManifest.images
+  const imageTag = imageManifest.imageTag
   const payloadImageInfo = path.join(managerRoot, 'src-tauri/payload/IMAGE-INFO.json')
   const payloadMetadata = path.join(managerRoot, 'src-tauri/payload/metadata')
   const originalImageInfo = fs.readFileSync(payloadImageInfo, 'utf8')
@@ -267,18 +255,19 @@ function main() {
     formatVersion: 1,
     images: imageDetails,
   }
-  // A macOS app is often moved into /Applications after download. Embed its
-  // image archive as an application resource so that move cannot break first
-  // launch. Windows keeps the archive beside the .exe to avoid making the
-  // executable itself hundreds of megabytes larger.
+  for (const name of fs.readdirSync(path.dirname(payloadImageInfo))) {
+    if (/\.tar(?:\.gz)?$/.test(name) || name === 'BOX-OFFLINE-IMAGE.json') {
+      fail(`轻量启动器资源目录中存在离线归档，请移走后重试：${name}`)
+    }
+  }
+  // Embed only metadata; the immutable image archive is published separately.
   if (spec.bundle) {
-    fs.copyFileSync(archive, payloadArchive)
-    fs.writeFileSync(payloadManifest, `${JSON.stringify(imageManifest, null, 2)}\n`)
     // Tauri signs the complete .app bundle. Metadata must become a resource
     // before that step; writing it into Contents/Resources afterwards makes
     // macOS report the application as damaged.
     fs.rmSync(payloadMetadata, { recursive: true, force: true })
     fs.mkdirSync(payloadMetadata, { recursive: true })
+    fs.writeFileSync(path.join(payloadMetadata, 'BOX-REMOTE-IMAGE.json'), `${JSON.stringify(imageManifest, null, 2)}\n`)
     generateDistributionMetadata(payloadMetadata, {
       repoRoot,
       generatedAt: new Date().toISOString(),
@@ -295,16 +284,15 @@ function main() {
     const invocation = tauriBuildCommand()
     const result = spawnSync(invocation.command, tauriArgs, {
       cwd: managerRoot,
-      env: tauriBuildEnvironment({ ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag }),
+      env: tauriBuildEnvironment({ ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag,
+        BOX_MANAGER_REMOTE_IMAGE: JSON.stringify(imageManifest) }),
       shell: invocation.shell,
       stdio: 'inherit',
     })
-    if (result.error || result.status !== 0) fail(tauriBuildFailure(result))
+    if (result.error || result.status !== 0) throw new Error(tauriBuildFailure(result))
   } finally {
     fs.writeFileSync(payloadImageInfo, originalImageInfo)
     if (spec.bundle) {
-      fs.rmSync(payloadArchive, { force: true })
-      fs.rmSync(payloadManifest, { force: true })
       fs.rmSync(payloadMetadata, { recursive: true, force: true })
     }
   }
@@ -318,7 +306,6 @@ function main() {
   }
 
   fs.mkdirSync(outputRoot, { recursive: true })
-  const version = require(path.join(managerRoot, 'package.json')).version
   const packageName = `BOX-Local-Engine-${version}-${platform}`
   const packageRoot = path.join(outputRoot, packageName)
   fs.rmSync(packageRoot, { recursive: true, force: true })
@@ -327,21 +314,15 @@ function main() {
   if (spec.bundle) copyDirectory(executableSource, executableDestination)
   else fs.copyFileSync(executableSource, executableDestination)
   if (spec.bundle) ensureMacApplicationSignature(executableDestination)
-  if (!spec.bundle) {
-    fs.copyFileSync(archive, path.join(packageRoot, path.basename(archive)))
-    fs.writeFileSync(
-      path.join(packageRoot, 'BOX-OFFLINE-IMAGE.json'),
-      `${JSON.stringify(imageManifest, null, 2)}\n`,
-    )
-  }
   // Keep the macOS download folder intentionally simple: users only see the
   // APP. Its metadata was embedded before signing; Windows keeps metadata
-  // beside the EXE and image archive.
+  // beside the EXE.
   const metadataRoot = spec.bundle
     ? path.join(executableDestination, 'Contents/Resources/payload/metadata')
     : packageRoot
   if (!spec.bundle) {
     fs.mkdirSync(metadataRoot, { recursive: true })
+    fs.writeFileSync(path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json'), `${JSON.stringify(imageManifest, null, 2)}\n`)
     generateDistributionMetadata(metadataRoot, {
       repoRoot,
       generatedAt: new Date().toISOString(),
@@ -355,17 +336,19 @@ function main() {
     [path.join(repoRoot, 'scripts/verify-desktop-offline-package.js'), packageRoot],
     { cwd: repoRoot, env: process.env, stdio: 'inherit' },
   )
-  if (verification.status !== 0) fail(`桌面离线包校验失败，退出码 ${verification.status}`)
+  if (verification.status !== 0) fail(`桌面启动器校验失败，退出码 ${verification.status}`)
   const zip = path.join(outputRoot, `${packageName}.zip`)
   // Finder can create this hidden view-state file whenever the output folder
   // is opened. It is not part of the release and must not leak into the ZIP.
   fs.rmSync(path.join(packageRoot, '.DS_Store'), { force: true })
   createZip(packageRoot, zip)
-  console.log(`Offline package: ${zip}`)
+  console.log(`Launcher package: ${zip}`)
   console.log(`SHA-256:        ${sha256(zip)}`)
 }
 
-if (require.main === module) main()
+if (require.main === module) {
+  try { main() } catch (error) { fail(error.message) }
+}
 
 module.exports = {
   archiveEntry,

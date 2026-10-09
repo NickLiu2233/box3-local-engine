@@ -1488,6 +1488,11 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
     } else {
         "amd64"
     };
+    if let Some(release) = crate::image_download::embedded_release()? {
+        release.validate(expected)?;
+        return crate::image_updates::prepare(&release, tag, &DesktopImageRuntime(app));
+    }
+
     let archive = archive_candidates(Some(app))
         .into_iter()
         .find(|path| {
@@ -2960,6 +2965,114 @@ fn validate_service_name(app: &AppHandle, service: &str) -> Result<bool, String>
     Ok(true)
 }
 
+struct DesktopImageRuntime<'a>(&'a AppHandle);
+impl crate::image_updates::Runtime for DesktopImageRuntime<'_> {
+    fn docker(&self, args: &[&str]) -> Result<String, String> {
+        docker_output(args)
+    }
+    fn acquire(&self, image: &crate::image_download::ImageRelease) -> Result<PathBuf, String> {
+        let cache = self
+            .0
+            .path()
+            .app_cache_dir()
+            .map_err(|e| e.to_string())?
+            .join("engine-images");
+        let mut last_percent = 0;
+        emit_progress(
+            self.0,
+            "image-download",
+            &format!("正在下载 {}…", image.image),
+            20,
+        );
+        crate::image_download::download(image, &cache, |bytes| {
+            let percent = 20 + ((bytes as f64 / image.size as f64) * 20.0) as u8;
+            if percent != last_percent {
+                last_percent = percent;
+                emit_progress(
+                    self.0,
+                    "image-download",
+                    &format!(
+                        "正在下载 {}：{} / {} MB",
+                        image.image,
+                        bytes / 1_048_576,
+                        image.size / 1_048_576
+                    ),
+                    percent,
+                );
+            }
+        })
+    }
+    fn discard(&self, archive: PathBuf) {
+        let _ = fs::remove_file(archive);
+    }
+    fn pending(&self) -> Result<Vec<crate::image_updates::PendingImage>, String> {
+        let path = runtime_root(self.0)?.join(".pending-image-updates.json");
+        match fs::read_to_string(path) {
+            Ok(value) => serde_json::from_str(&value).map_err(|e| format!("镜像更新记录无效：{e}")),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+    fn save(&self, pending: &[crate::image_updates::PendingImage]) -> Result<(), String> {
+        write_private_file(
+            &runtime_root(self.0)?.join(".pending-image-updates.json"),
+            serde_json::to_string_pretty(pending).map_err(|e| e.to_string())?,
+            "镜像更新记录",
+        )
+    }
+    fn previous(&self, service: &str) -> Result<Vec<String>, String> {
+        let containers = docker_output(&[
+            "ps",
+            "--all",
+            "--quiet",
+            "--filter",
+            &format!("label=com.docker.compose.project={PROJECT_NAME}"),
+            "--filter",
+            &format!("label=com.docker.compose.service={service}"),
+        ])?;
+        containers
+            .lines()
+            .map(|id| {
+                docker_output(&["inspect", id, "--format", "{{.Image}}"])
+                    .map(|image| image.trim().to_string())
+            })
+            .collect()
+    }
+    fn ready(&self, service: &str, image: &crate::image_download::ImageRelease) -> Result<bool, String> {
+        let containers = docker_output(&[
+            "ps",
+            "--all",
+            "--quiet",
+            "--filter",
+            &format!("label=com.docker.compose.project={PROJECT_NAME}"),
+            "--filter",
+            &format!("label=com.docker.compose.service={service}"),
+        ])?;
+        if containers.trim().is_empty() {
+            return Ok(false);
+        }
+        for container in containers.lines() {
+            let details = docker_output(&["inspect", container, "--format", "{{json .}}"])?;
+            let details: Value = serde_json::from_str(&details).map_err(|e| e.to_string())?;
+            if !details["Image"].as_str().is_some_and(|id| image.accepts(id))
+                || details["State"]["Running"].as_bool() != Some(true)
+                || details["State"]["Health"]["Status"].as_str() != Some("healthy")
+            {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+}
+
+fn finalize_image_updates(app: &AppHandle) {
+    if let Ok(Some(catalog)) = crate::image_download::embedded_release() {
+        if let Err(error) = crate::image_updates::finalize(&catalog, &DesktopImageRuntime(app)) {
+            eprintln!("镜像清理已延后：{error}");
+        }
+    }
+}
+
 struct DesktopRuntime<'a>(&'a AppHandle);
 impl ServiceRuntime for DesktopRuntime<'_> {
     fn prepare_images(&self) -> Result<(), String> {
@@ -2988,7 +3101,11 @@ impl ServiceRuntime for DesktopRuntime<'_> {
         validate_service_name(self.0, service).map(|_| ())
     }
     fn compose(&self, args: &[&str]) -> Result<(), String> {
-        compose_output(self.0, args).map(|_| ())
+        let mut arguments = args.to_vec();
+        if args.starts_with(&["up", "-d"]) && !args.contains(&"--wait") {
+            arguments.splice(2..2, ["--wait", "--wait-timeout", "90"]);
+        }
+        compose_output(self.0, &arguments).map(|_| ())
     }
     fn progress(&self, stage: &str, message: &str, percent: u8) {
         emit_progress(self.0, stage, message, percent);
@@ -2999,7 +3116,9 @@ impl ServiceRuntime for DesktopRuntime<'_> {
 async fn control_service(app: AppHandle, service: String, action: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let _operation = box_manager_core::operation::mutation_guard()?;
-        services::control(&DesktopRuntime(&app), &service, &action)
+        services::control(&DesktopRuntime(&app), &service, &action)?;
+        if action == "start" { finalize_image_updates(&app); }
+        Ok(())
     })
     .await
     .map_err(|error| format!("服务操作异常结束：{error}"))?
@@ -3529,7 +3648,9 @@ async fn save_configuration_command(
 async fn start_services(app: AppHandle, scope: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let _operation = box_manager_core::operation::mutation_guard()?;
-        services::start(&DesktopRuntime(&app), &scope)
+        services::start(&DesktopRuntime(&app), &scope)?;
+        finalize_image_updates(&app);
+        Ok(())
     })
     .await
     .map_err(|error| format!("启动任务异常结束：{error}"))?
