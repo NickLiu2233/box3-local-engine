@@ -282,10 +282,10 @@ fn real_local_nginx_include_reload_and_bad_configuration_rollback() {
 
 #[test]
 fn native_fragment_uses_quoted_local_certificates_and_keeps_websocket_headers() {
-    let settings = crate::ssl::Settings {
+    let settings = crate::ssl::Settings {upstream_ports:Default::default(),
         mode: "external".into(),
         https_port: 443,
-        routes: vec![crate::ssl::Route {
+        routes: vec![crate::ssl::Route {path:String::new(),secure:true,
             service: "play".into(),
             domain: "play.example.test".into(),
             port: Some(8443),

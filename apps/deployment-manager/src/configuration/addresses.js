@@ -1,5 +1,6 @@
 import { services } from '../core/constants.js'
 import { state } from '../core/state.js'
+import { publicEndpoints } from './public-access.js'
 
 export function getServiceUrl(serviceId) {
   const service = services.find(([id]) => id === serviceId)
@@ -7,18 +8,9 @@ export function getServiceUrl(serviceId) {
   const [, , , portKey, defaultPort, path] = service
   const host = sharedNetworkHost()
   const port = Number(state.config?.[portKey]) || defaultPort
-  const hostOverrideKey = {
-    creator: 'creatorPublicAddressOverride',
-    voxa: 'voxaPublicAddressOverride',
-    play: 'playPublicAddressOverride',
-    'player-service': 'playerServicePublicAddressOverride',
-    'player-auth-portal': 'authPortalPublicAddressOverride',
-  }[serviceId]
-  const serviceHostOverride = state.config?.[hostOverrideKey]
-  if (state.config?.playNetworkMode === 'public' && serviceHostOverride) {
-    return `${publicEndpointUrl(serviceHostOverride, port)}${path}`
+  if (state.config?.playNetworkMode === 'public') {
+    try { const endpoint = publicEndpoints().find(endpoint => endpoint.service === serviceId); return endpoint ? `${endpoint.url}${path}` : '' } catch { return '' }
   }
-  if (state.config?.playNetworkMode === 'public') return ''
   const authority = host.includes(':') ? `[${host.replace(/^\[|\]$/g, '')}]` : host
   const scheme = state.config?.playNetworkMode === 'public' ? publicAddressScheme() : 'http'
   return `${scheme}://${authority}:${port}${path}`

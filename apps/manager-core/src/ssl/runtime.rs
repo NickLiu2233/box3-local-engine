@@ -4,14 +4,13 @@ use sha2::{Digest, Sha256};
 use std::{
     fs,
     path::Path,
-    time::{SystemTime, UNIX_EPOCH},
 };
 type Docker<'a> = dyn FnMut(&[String]) -> Result<String, String> + 'a;
 
-fn call(docker: &mut Docker<'_>, args: &[&str]) -> Result<String, String> {
+pub(super) fn call(docker: &mut Docker<'_>, args: &[&str]) -> Result<String, String> {
     docker(&args.iter().map(|s| s.to_string()).collect::<Vec<_>>())
 }
-fn identity(root: &Path) -> String {
+pub(super) fn identity(root: &Path) -> String {
     if let Ok(owner) = fs::read_to_string(root.join("https/owner")) {
         if owner.len() == 16 && owner.bytes().all(|b| b.is_ascii_hexdigit()) {
             return owner;
@@ -19,10 +18,10 @@ fn identity(root: &Path) -> String {
     }
     format!("{:x}", Sha256::digest(root.to_string_lossy().as_bytes()))[..16].to_string()
 }
-fn name(root: &Path) -> String {
+pub(super) fn name(root: &Path) -> String {
     format!("box-https-{}", identity(root))
 }
-fn owned(root: &Path, docker: &mut Docker<'_>) -> Result<Option<bool>, String> {
+pub(super) fn owned(root: &Path, docker: &mut Docker<'_>) -> Result<Option<bool>, String> {
     // `container ls` distinguishes a missing container from an unavailable daemon.
     let id = call(
         docker,
@@ -60,7 +59,7 @@ fn owned(root: &Path, docker: &mut Docker<'_>) -> Result<Option<bool>, String> {
             == "true",
     ))
 }
-fn private(path: &Path, data: &str) -> Result<(), String> {
+pub(super) fn private(path: &Path, data: &str) -> Result<(), String> {
     use std::io::Write;
     let mut options = fs::OpenOptions::new();
     options.write(true).create_new(true);
@@ -72,7 +71,7 @@ fn private(path: &Path, data: &str) -> Result<(), String> {
     let mut file = options.open(path).map_err(|e| e.to_string())?;
     file.write_all(data.as_bytes()).map_err(|e| e.to_string())
 }
-fn replace(path: &Path, data: &str) -> Result<(), String> {
+pub(super) fn replace(path: &Path, data: &str) -> Result<(), String> {
     let temporary = path.with_extension("pending");
     if temporary.exists() {
         fs::remove_file(&temporary).map_err(|e| e.to_string())?;
@@ -94,7 +93,7 @@ fn replace(path: &Path, data: &str) -> Result<(), String> {
     }
     Ok(())
 }
-fn saved(root: &Path) -> Result<Option<Saved>, String> {
+pub(super) fn saved(root: &Path) -> Result<Option<Saved>, String> {
     let path = root.join("https/settings.json");
     if !path.exists() {
         return Ok(None);
@@ -116,22 +115,27 @@ pub fn apply_runtime_urls(
     values: &BTreeMap<String, String>,
     derived: &mut BTreeMap<String, String>,
 ) -> Result<(), String> {
-    let Some(config) = saved(root)? else { return Ok(()); };
-    let provider = fs::read_to_string(root.join("https/provider")).unwrap_or_else(|_| config.settings.mode.clone());
-    if provider.trim() != "managed" || config.settings.mode != "managed" { return Ok(()); }
+    for service in SERVICES { derived.insert(service.3.trim_end_matches("_PORT").to_owned()+"_BASE_PATH", String::new()); }
+    derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(), "{}".into());
+    let Some(settings) = super::plan::routing_settings(root)? else { return Ok(()); };
+    let provider = fs::read_to_string(root.join("https/provider")).unwrap_or_else(|_|settings.mode.clone());
+    if provider.trim()!=settings.mode {return Ok(());}
     let mut overrides = values.clone();
-    for route in &config.settings.routes {
-        let Some(service) = SERVICES.iter().find(|service| service.0 == route.service) else { continue; };
-        let mode = if matches!(route.service.as_str(), "creator" | "voxa") { "BOX_CREATOR_NETWORK_MODE" } else { "BOX_PLAY_NETWORK_MODE" };
-        if values.get(mode).map(String::as_str) != Some("public") { continue; }
-        let key = service.3.trim_end_matches("_PORT").to_owned() + "_PUBLIC_URL";
-        let host = derived.get(&key).and_then(|url| url.strip_prefix("https://")).and_then(|authority| authority.split([':', '/']).next());
-        if host != Some(route.domain.as_str()) { continue; }
-        let port = route.port.unwrap_or(config.settings.https_port);
-        let endpoint = if port == 443 { format!("https://{}", route.domain) } else { format!("https://{}:{port}", route.domain) };
-        overrides.insert(format!("{key}_OVERRIDE"), endpoint);
+    let mut peers: BTreeMap<String,Vec<String>> = BTreeMap::new();
+    for route in &settings.routes {
+        let Some(service) = SERVICES.iter().find(|service|service.0==route.service) else {continue;};
+        let mode = if matches!(route.service.as_str(),"creator"|"voxa") {"BOX_CREATOR_NETWORK_MODE"} else {"BOX_PLAY_NETWORK_MODE"};
+        if values.get(mode).map(String::as_str)!=Some("public") {continue;}
+        let key = service.3.trim_end_matches("_PORT");
+        let port = route.port.unwrap_or(if route.secure {settings.https_port}else{80});
+        let origin = format!("{}://{}{}",if route.secure {"https"}else{"http"},crate::configuration::origin_host(&route.domain)?,if port==if route.secure {443}else{80} {String::new()}else{format!(":{port}")});
+        overrides.insert(format!("{key}_PUBLIC_URL_OVERRIDE"),format!("{origin}{}",route.path));
+        derived.insert(format!("{key}_BASE_PATH"),route.path.clone());
+        if !route.path.is_empty() { peers.entry(origin).or_default().push(route.path.clone()); }
     }
-    crate::configuration_migration::apply_url_overrides(&overrides, derived)
+    crate::configuration_migration::apply_url_overrides(&overrides,derived)?;
+    derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(),serde_json::to_string(&peers).map_err(|error|error.to_string())?);
+    Ok(())
 }
 pub fn set_provider(root: &Path, mode: &str) -> Result<(), String> {
     if !matches!(mode, "managed" | "external" | "disabled") {
@@ -153,9 +157,9 @@ pub fn status(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
             config
                 .as_ref()
                 .map(|c| c.settings.mode.clone())
-                .unwrap_or_else(|| "external".into())
+                .unwrap_or_else(|| "managed".into())
         });
-    let provider = if provider.trim() == "managed" { "managed" } else { "external" };
+    let provider = if provider.trim() == "external" { "external" } else { "managed" };
     let image = call(docker, &["image", "inspect", IMAGE]);
     let image_available = image.is_ok();
     let metadata = if running { call(docker, &["inspect", &name(root)]).ok() } else { image.ok() };
@@ -179,7 +183,7 @@ pub(super) fn openssl_command() -> std::process::Command {
     }
     std::process::Command::new("openssl")
 }
-fn check_local_key(staging: &Path, certificate: &str, key: &str) -> Result<(), String> {
+pub(super) fn check_local_key(staging: &Path, certificate: &str, key: &str) -> Result<(), String> {
     let public = |args: &[&str], file: &str| -> Result<Vec<u8>, String> {
         let output = openssl_command()
             .args(args)
@@ -198,20 +202,21 @@ fn check_local_key(staging: &Path, certificate: &str, key: &str) -> Result<(), S
     }
     Ok(())
 }
-fn mount(host_root: &Path) -> Result<String, String> {
+pub(super) fn mount(host_root: &Path) -> Result<String, String> {
     let value = host_root.join("https").to_string_lossy().to_string();
     if value.contains(',') || value.contains('\n') {
         return Err("数据目录不能包含逗号或换行".into());
     }
     Ok(format!("type=bind,src={value},dst=/etc/box-https,readonly"))
 }
-fn check_cert(
+pub(super) fn check_cert(
     docker: &mut Docker<'_>,
     bind: &str,
     revision: &str,
     settings: &Settings,
     certificate_file: &str,
     staging: &Path,
+    require_valid: bool,
 ) -> Result<String, String> {
     let cert = format!("/etc/box-https/revisions/{revision}/{certificate_file}");
     let mut check = |args: &[&str]| {
@@ -245,13 +250,14 @@ fn check_cert(
         command.extend(args);
         call(docker, &command)
     };
-    check(&["-noout", "-checkend", "0"]).map_err(|_| "证书已过期或无法读取".to_string())?;
+    if require_valid { check(&["-noout", "-checkend", "0"]).map_err(|_| "证书已过期或无法读取".to_string())?;
     for route in &settings.routes {
-        let output = check(&["-noout", "-checkhost", &route.domain])
+        let output = check(&["-noout", if route.domain.parse::<std::net::IpAddr>().is_ok() {"-checkip"} else {"-checkhost"}, &route.domain])
             .map_err(|_| format!("证书未覆盖域名 {}", route.domain))?;
         if !output.contains("does match certificate") {
             return Err(format!("证书未覆盖域名 {}", route.domain));
         }
+    }
     }
     let dates = check(&["-noout", "-startdate", "-enddate"])?;
     let parse = |prefix: &str| -> Result<chrono::DateTime<chrono::Utc>, String> {
@@ -263,7 +269,7 @@ fn check_cert(
             .map_err(|_| "证书有效期格式无效")?;
         Ok(date.and_utc())
     };
-    if parse("notBefore=")? > chrono::Utc::now() {
+    if require_valid && parse("notBefore=")? > chrono::Utc::now() {
         return Err("证书尚未生效".into());
     }
     Ok(parse("notAfter=")?.to_rfc3339())
@@ -284,397 +290,40 @@ pub(super) fn apply_with_local(
     host_root: &Path,
     network: &str,
     environment: &str,
-    mut input: Import,
+    input: Import,
     docker: &mut Docker<'_>,
     local_deploy: &mut dyn FnMut(&Path, &str) -> Result<Option<super::local::Transaction>, String>,
 ) -> Result<Value, String> {
-    validate(&mut input)?;
-    let directory = root.join("https");
-    fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))
-            .map_err(|e| e.to_string())?;
-    }
-    if !directory.join("owner").exists() {
-        private(&directory.join("owner"), &identity(host_root))?;
-    }
-    let existing = if input.settings.mode == "external" {
-        owned(root, docker).unwrap_or(None)
-    } else {
-        owned(root, docker)?
-    };
-    if input.settings.mode == "external" && existing.is_some() {
-        return Err("请先停用托管 HTTPS 入口，再切换到已有 Nginx 模式".into());
-    }
-    let old = saved(root)?;
-    let removing_routes = input.certificates.is_empty() && input.certificate.is_empty() && input.private_key.is_empty()
-        && old.as_ref().is_some_and(|previous| previous.settings.mode == input.settings.mode
-            && previous.settings.routes.len() > input.settings.routes.len()
-            && input.settings.routes.iter().all(|route| previous.settings.routes.iter().any(|saved| saved.service == route.service && saved.domain == route.domain && saved.port == route.port)));
-    if input.settings.mode == "managed" {
-        let values = crate::environment::parse_env(environment);
-        for route in &input.settings.routes {
-            let port = route.port.unwrap_or(input.settings.https_port);
-            if SERVICES.iter().any(|s| {
-                values
-                    .get(s.3)
-                    .and_then(|v| v.parse::<u16>().ok())
-                    .unwrap_or(s.4)
-                    == port
-            }) {
-                return Err("Nginx 端口与引擎服务端口冲突；请填写独立 HTTPS 域名使用 443，或在外部 Nginx 配置独立入口端口".into());
-            }
-        }
-    }
-    let ports = |settings: &Settings| {
-        settings
-            .routes
-            .iter()
-            .map(|r| r.port.unwrap_or(settings.https_port))
-            .collect::<std::collections::BTreeSet<_>>()
-    };
-    if existing.is_some()
-        && old
-            .as_ref()
-            .is_some_and(|s| ports(&s.settings) != ports(&input.settings))
-    {
-        return Err("修改入口监听端口前请先停止 Nginx 入口".into());
-    }
-    if existing.is_some()
-        && old.as_ref().map(|s| s.settings.https_port) != Some(input.settings.https_port)
-    {
-        return Err("修改 HTTPS 端口前请先停用入口".into());
-    }
-    let directory = root.join("https");
-    fs::create_dir_all(directory.join("revisions")).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&directory, fs::Permissions::from_mode(0o700))
-            .map_err(|e| e.to_string())?;
-    }
-    let revision = format!(
-        "{}-{}",
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|e| e.to_string())?
-            .as_nanos(),
-        std::process::id()
-    );
-    let staging = directory.join("revisions").join(&revision);
-    fs::create_dir(&staging).map_err(|e| e.to_string())?;
-    let active = directory.join("nginx.conf");
-    let previous = fs::read_to_string(&active).ok();
-    let mut changed = false;
-    let mut local_transaction = None;
-    let mut pending_local = false;
-    let result: Result<Value, String> = (|| {
-        let multiple = !input.certificates.is_empty() || input.certificate.is_empty();
-        if input.settings.mode == "managed" {
-            install_image(docker)?;
-        }
-        let bind = mount(host_root)?;
-        let mut expiries = std::collections::BTreeMap::new();
-        let mut sources = std::collections::BTreeMap::new();
-        if multiple {
-            for route in &input.settings.routes {
-                let cert_name = format!("{}-cert.pem", route.service);
-                let key_name = format!("{}-key.pem", route.service);
-                let material = if let Some(cert) = input.certificates.get(&route.service) {
-                    cert.clone()
-                } else {
-                    let old = old.as_ref().ok_or("请为每个 HTTPS 地址选择证书和私钥")?;
-                    let previous = directory.join("revisions").join(&old.revision);
-                    let per_service = previous.join(&cert_name).exists();
-                    Certificate {
-                        source: old
-                            .certificate_sources
-                            .get(&route.service)
-                            .cloned()
-                            .unwrap_or_else(|| {
-                                if per_service {
-                                    "independent".into()
-                                } else {
-                                    "shared".into()
-                                }
-                            }),
-                        certificate: fs::read_to_string(previous.join(if per_service {
-                            cert_name.as_str()
-                        } else {
-                            "cert.pem"
-                        }))
-                        .map_err(|_| "缺少已保存证书")?,
-                        private_key: fs::read_to_string(previous.join(if per_service {
-                            key_name.as_str()
-                        } else {
-                            "key.pem"
-                        }))
-                        .map_err(|_| "缺少已保存私钥")?,
-                    }
-                };
-                private(&staging.join(&cert_name), &material.certificate)?;
-                private(&staging.join(&key_name), &material.private_key)?;
-                let settings = Settings {
-                    routes: vec![route.clone()],
-                    ..input.settings.clone()
-                };
-                let expiry = if removing_routes {
-                    let previous = old.as_ref().ok_or("缺少已保存的证书记录")?;
-                    previous.certificate_expiries.get(&route.service).cloned().unwrap_or_else(|| previous.expires_at.clone())
-                } else { check_cert(docker, &bind, &revision, &settings, &cert_name, &staging)? };
-                if input.settings.mode == "external" {
-                    check_local_key(&staging, &cert_name, &key_name)?;
-                }
-                sources.insert(route.service.clone(), material.source);
-                expiries.insert(route.service.clone(), expiry);
-            }
-        } else {
-            private(&staging.join("cert.pem"), &input.certificate)?;
-            private(&staging.join("key.pem"), &input.private_key)?;
-            let expiry = check_cert(
-                docker,
-                &bind,
-                &revision,
-                &input.settings,
-                "cert.pem",
-                &staging,
-            )?;
-            if input.settings.mode == "external" {
-                check_local_key(&staging, "cert.pem", "key.pem")?;
-            }
-            for route in &input.settings.routes {
-                sources.insert(route.service.clone(), "shared".into());
-                expiries.insert(route.service.clone(), expiry.clone());
-            }
-        }
-        let expiry = expiries.values().min().cloned().ok_or("未配置证书")?;
-        let fragment = configuration_multiple(&input.settings, &revision, environment, multiple);
-        let config = format!("events {{}}\nhttp {{\n{fragment}\n}}\n");
-        private(&staging.join("nginx.conf"), &config)?;
-        let candidate = format!("/etc/box-https/revisions/{revision}/nginx.conf");
-        if input.settings.mode == "managed" {
-            call(
-                docker,
-                &[
-                    "run",
-                    "--rm",
-                    "--network",
-                    "none",
-                    "--mount",
-                    &bind,
-                    IMAGE,
-                    "nginx",
-                    "-t",
-                    "-c",
-                    &candidate,
-                ],
-            )
-            .map_err(|e| format!("Nginx 配置或证书私钥校验失败：{e}"))?;
-        }
-        if input.settings.mode == "managed" {
-            replace(&active, &config)?;
-            changed = true;
-            let activate = (|| {
-                if existing.is_some() {
-                    if existing == Some(false) {
-                        call(docker, &["start", &name(root)])?;
-                    }
-                    call(
-                        docker,
-                        &[
-                            "exec",
-                            &name(root),
-                            "nginx",
-                            "-t",
-                            "-c",
-                            "/etc/box-https/nginx.conf",
-                        ],
-                    )?;
-                    call(
-                        docker,
-                        &[
-                            "exec",
-                            &name(root),
-                            "nginx",
-                            "-s",
-                            "reload",
-                            "-c",
-                            "/etc/box-https/nginx.conf",
-                        ],
-                    )?;
-                } else {
-                    let mut ports = Vec::<String>::new();
-                    let mut seen = std::collections::BTreeSet::new();
-                    for route in &input.settings.routes {
-                        let internal = route.port.unwrap_or(443);
-                        let public = route.port.unwrap_or(input.settings.https_port);
-                        if seen.insert(public) {
-                            ports.extend(["-p".into(), format!("{public}:{internal}")]);
-                        }
-                    }
-                    let mut args = vec![
-                        "run",
-                        "-d",
-                        "--name",
-                        &name(root),
-                        "--label",
-                        &format!("box.https.owner={}", identity(root)),
-                        "--restart",
-                        "unless-stopped",
-                        "--network",
-                        network,
-                        "--mount",
-                        &bind,
-                        IMAGE,
-                        "nginx",
-                        "-g",
-                        "daemon off;",
-                        "-c",
-                        "/etc/box-https/nginx.conf",
-                    ]
-                    .into_iter()
-                    .map(|value| value.to_string())
-                    .collect::<Vec<_>>();
-                    args.extend(ports);
-                    // Publish options must precede the image.
-                    let image_index = args.iter().position(|value| value == IMAGE).unwrap();
-                    let port_args = args.split_off(args.len() - seen.len() * 2);
-                    args.splice(image_index..image_index, port_args);
-                    docker(&args)?;
-                    call(
-                        docker,
-                        &[
-                            "exec",
-                            &name(root),
-                            "nginx",
-                            "-t",
-                            "-c",
-                            "/etc/box-https/nginx.conf",
-                        ],
-                    )?;
-                }
-                Ok::<(), String>(())
-            })();
-            activate?;
-        }
-        if input.settings.mode == "external" && input.external_local {
-            if root != host_root {
-                return Err("本机 Nginx 自动更新需要管理端直接运行在 Nginx 所在机器，容器内管理端无法访问宿主机配置".into());
-            }
-            let local_fragment = super::local::configuration(&fragment, host_root, &identity(root))?;
-            local_transaction = local_deploy(root, &local_fragment)?;
-            pending_local = local_transaction.is_none();
-        }
-        let saved = Saved {
-            settings: input.settings.clone(),
-            external_local: input.external_local,
-            pending_local,
-            expires_at: expiry,
-            revision: revision.clone(),
-            certificate_expiries: expiries,
-            certificate_sources: sources,
-            external_config: configuration_multiple(
-                &Settings {
-                    mode: "external".into(),
-                    ..input.settings.clone()
-                },
-                &revision,
-                environment,
-                multiple,
-            ),
-        };
-        replace(
-            &directory.join("settings.json"),
-            &serde_json::to_string_pretty(&saved).map_err(|e| e.to_string())?,
-        )?;
-        Ok(
-            json!({"config":saved,"running":existing.is_some() || input_mode_managed(&saved),"externalLocalApplied":local_transaction.is_some(),"sslWarning":if pending_local { "地址和证书已保存；需要安装并启动本机 Nginx 才能启用 SSL，安装后再次点击保存配置即可应用。" } else { "" },"daysRemaining":null}),
-        )
-    })();
-    match result {
-        Ok(value) => Ok(value),
-        Err(error) => {
-            let rollback = if let Some(transaction) = &local_transaction {
-                transaction.rollback()
-            } else if error.contains("回退失败") {
-                Err(error.clone())
-            } else if changed {
-                if let Some(previous) = previous {
-                    replace(&active, &previous).and_then(|_| {
-                        call(
-                            docker,
-                            &[
-                                "exec",
-                                &name(root),
-                                "nginx",
-                                "-s",
-                                "reload",
-                                "-c",
-                                "/etc/box-https/nginx.conf",
-                            ],
-                        )
-                        .map(|_| ())
-                    })
-                } else {
-                    let _ = fs::remove_file(&active);
-                    match owned(root, docker) {
-                        Ok(Some(_)) => call(docker, &["rm", "-f", &name(root)]).map(|_| ()),
-                        Ok(None) => Ok(()),
-                        Err(e) => Err(e),
-                    }
-                }
-            } else {
-                Ok(())
-            };
-            // Retain the new revision if rollback failed: a live process may still need it.
-            if rollback.is_ok() {
-                let _ = fs::remove_dir_all(&staging);
-            }
-            Err(format!(
-                "{error}；{}",
-                if rollback.is_ok() {
-                    "原配置已保留或恢复"
-                } else {
-                    "回退失败，请检查 HTTPS 入口"
-                }
-            ))
-        }
-    }
+    super::apply::execute(root,host_root,network,environment,input,docker,local_deploy,&mut |_|Ok(()),false)
 }
-fn input_mode_managed(saved: &Saved) -> bool {
-    saved.settings.mode == "managed"
+pub fn apply_with_transition(root:&Path,host_root:&Path,network:&str,environment:&str,input:Import,docker:&mut Docker<'_>,transition:&mut dyn FnMut(bool)->Result<(),String>) -> Result<Value,String> {
+    super::apply::execute(root,host_root,network,environment,input,docker,&mut super::local::deploy,transition,true)
 }
+
 pub fn delete_certificate(root: &Path, host_root: &Path, network: &str, environment: &str, service: &str, docker: &mut Docker<'_>) -> Result<Value, String> {
-    if !SERVICES.iter().any(|entry| entry.0 == service) { return Err("证书服务无效".into()); }
+    if service != "shared" && !SERVICES.iter().any(|entry| entry.0 == service) { return Err("证书服务无效".into()); }
     let mut config = saved(root)?.ok_or("没有已保存的 SSL 证书")?;
     let metadata: Value = serde_json::from_str(&fs::read_to_string(root.join("https/settings.json")).map_err(|error| error.to_string())?).map_err(|error| error.to_string())?;
     if metadata.get("externalLocal").is_none() && config.settings.mode == "external" {
         config.external_local = fs::read_to_string(root.join("https/local-nginx.conf")).is_ok_and(|fragment| fragment.starts_with("# BOX3 managed local HTTPS\n"));
     }
-    let count = config.settings.routes.len();
-    config.settings.routes.retain(|route| route.service != service);
-    if config.settings.routes.len() == count { return Err("该服务没有已保存的 SSL 证书".into()); }
-    if config.settings.routes.is_empty() {
-        if config.settings.mode == "managed" { stop(root, docker)?; }
-        else if config.external_local && !config.pending_local {
-            let transaction = super::local::deploy(root, "")?.ok_or("未找到本机 Nginx，无法停用现有 HTTPS 入口，证书尚未删除")?;
-            if let Err(error) = fs::remove_file(root.join("https/settings.json")) {
-                let rollback = transaction.rollback();
-                return Err(format!("无法删除证书记录：{error}；回退结果：{rollback:?}"));
-            }
-        }
-        if root.join("https/settings.json").exists() { fs::remove_file(root.join("https/settings.json")).map_err(|error| error.to_string())?; }
-    } else {
-        apply(root, host_root, network, environment, Import {settings:config.settings, external_local:config.external_local, certificate:String::new(), private_key:String::new(), certificates:Default::default()}, docker)?;
+    let targets: Vec<String> = if service == "shared" {
+        SERVICES.iter().filter(|entry| config.certificate_sources.get(entry.0).is_some_and(|source|source=="shared") || (config.certificate_sources.is_empty() && config.settings.routes.iter().any(|route|route.service==entry.0 && route.secure))).map(|entry|entry.0.to_string()).collect()
+    } else {vec![service.into()]};
+    if targets.is_empty() || !targets.iter().any(|service|config.certificate_sources.contains_key(service) || config.settings.routes.iter().any(|route|route.service==*service && route.secure)) {return Err("没有对应的已保存 SSL 证书".into());}
+    config.settings.routes.retain(|route| !route.secure || !targets.contains(&route.service));
+    let result = apply_with_transition(root, host_root, network, environment, Import {settings:config.settings, external_local:config.external_local, certificate:String::new(), private_key:String::new(), certificates:Default::default(),delete_services:targets.clone()}, docker, &mut |_|Ok(()))?;
+    if result["config"]["settings"]["routes"].as_array().is_some_and(|routes|routes.is_empty()) && result["config"]["certificateSources"].as_object().is_some_and(|sources|sources.is_empty()) {
+        fs::remove_file(root.join("https/settings.json")).map_err(|error|error.to_string())?;
     }
     let directory = root.join("https/revisions");
     if directory.exists() {
         for entry in fs::read_dir(&directory).map_err(|error| error.to_string())? {
             let entry = entry.map_err(|error| error.to_string())?;
             if !entry.file_type().map_err(|error| error.to_string())?.is_dir() { continue; }
-            for filename in [format!("{service}-cert.pem"),format!("{service}-key.pem"),"cert.pem".into(),"key.pem".into()] {
+            let mut filenames=vec!["cert.pem".to_string(),"key.pem".to_string()];
+            for service in &targets {filenames.extend([format!("{service}-cert.pem"),format!("{service}-key.pem")]);}
+            for filename in filenames {
                 let file = entry.path().join(filename);
                 if file.exists() { fs::remove_file(file).map_err(|error| format!("HTTPS 路由已停用，但证书文件清理失败：{error}"))?; }
             }
@@ -684,6 +333,7 @@ pub fn delete_certificate(root: &Path, host_root: &Path, network: &str, environm
     if backup.exists() { fs::remove_file(backup).map_err(|error| error.to_string())?; }
     status(root, docker)
 }
+
 pub fn stop(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
     if owned(root, docker)?.is_some() {
         call(docker, &["rm", "-f", &name(root)])?;

@@ -176,7 +176,7 @@ async function createFixture({ webManager = false, token = '', bundle, responses
   await new Promise(resolve => setImmediate(resolve))
   return { context, api: context.manager, calls, copied, document, intervals, timeouts, results,
     get html() { return html }, get form() { return form },
-    clickMode: mode => modes.find(node => node.dataset.networkMode === mode).click(),
+    clickMode: mode => modes.find(node => node.dataset.networkMode === (mode === 'public' ? 'public-independent' : mode)).click(),
     emitDocument: async name => { for (const handler of events.get(name) || []) await handler({}) },
   }
 }

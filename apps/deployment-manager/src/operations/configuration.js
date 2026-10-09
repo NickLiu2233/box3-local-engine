@@ -7,6 +7,7 @@ import { render } from '../core/render-request.js'
 import { resetOwnerSecretState, state } from '../core/state.js'
 import { shouldApplySsl, applyCertificateConfiguration, persistNginxSelection, validateSslRoutes } from './ssl.js'
 import { sslRoutes } from '../configuration/ssl.js'
+import { publicEndpoints, publicServices, publicCertificateFlags } from '../configuration/public-access.js'
 import { hostFromAddress } from '../configuration/addresses.js'
 import { normalizeAuthPortalImage } from '../configuration/auth-portal-image.js'
 
@@ -103,8 +104,11 @@ export async function saveConfiguration(event) {
   normalizeInactiveServicePorts(config)
   // Retain the transport's legacy base-host fields only for bind derivation.
   // Each service's public URL and certificate comes from its own fields.
-  const primaryAddress = ['playPublicAddressOverride', 'creatorPublicAddressOverride', 'voxaPublicAddressOverride', 'playerServicePublicAddressOverride', 'authPortalPublicAddressOverride']
-    .map(field => config[field]?.trim()).find(Boolean) || '127.0.0.1'
+  config.publicServicePaths = Object.fromEntries(publicServices.map(([service]) => [service, submitted[`publicPath-${service}`] ?? config.publicServicePaths?.[service] ?? '']))
+  config.publicSslConfigured = publicCertificateFlags(config)
+  for (const key of Object.keys(config)) if (key.startsWith('publicPath-')) delete config[key]
+  let primaryAddress = '127.0.0.1'
+  try { primaryAddress = publicEndpoints(config)[0]?.url || primaryAddress } catch (error) { state.error = String(error); render(); return }
   config.publicAddress = primaryAddress
   config.publicHost = hostFromAddress(primaryAddress)
   config.creatorHost = config.publicHost

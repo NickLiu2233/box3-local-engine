@@ -1,3 +1,4 @@
+import { isPublicMode, publicEndpoints } from '../../configuration/public-access.js'
 import { captureSetupForm, switchSetupSection } from '../../configuration/form.js'
 import { clearFeedback } from '../../operations/feedback.js'
 import { copyOwnerSecret, toggleOwnerSecretEditor } from '../../operations/owner-secrets.js'
@@ -15,10 +16,23 @@ export function bindConfigurationEvents() {
   for (const [id, handler] of [['ssl-apply', applySsl], ['ssl-stop', stopSsl], ['ssl-apply-network', applySsl], ['nginx-download', downloadNginx], ['nginx-enable', enableNginx]]) {
     document.querySelector(`#${id}`)?.addEventListener('click', handler)
   }
-  document.querySelectorAll('[data-ssl-kind]').forEach(node => node.addEventListener('change', async event => { const valid = await selectSslFile(node.dataset.sslKind, event.target.files?.[0], node.dataset.sslService); const name = state.sslFiles?.[node.dataset.sslService]?.[node.dataset.sslKind === 'certificate' ? 'certificateName' : 'keyName']; if (valid && name) node.closest('label').querySelector('.file-picker-name').textContent = name }))
+  document.querySelectorAll('[data-ssl-kind]').forEach(node => node.addEventListener('change', async event => {
+    const valid = await selectSslFile(node.dataset.sslKind, event.target.files?.[0], node.dataset.sslService)
+    const name = state.sslFiles?.[node.dataset.sslService]?.[node.dataset.sslKind === 'certificate' ? 'certificateName' : 'keyName']
+    if (valid && name) {
+      node.closest('label').querySelector('.file-picker-name').textContent = name
+      try {
+        const endpoints = publicEndpoints()
+        document.querySelectorAll('[data-public-preview]').forEach(preview => {
+          const endpoint = endpoints.find(endpoint => endpoint.service === preview.dataset.publicPreview)
+          if (endpoint) preview.querySelector('code').textContent = endpoint.url
+        })
+      } catch {}
+    }
+  }))
   document.querySelectorAll('[data-nginx-mode]').forEach(node => node.addEventListener('click', () => chooseNginx(node.dataset.nginxMode)))
   document.querySelectorAll('[data-delete-ssl]').forEach(node => node.addEventListener('click', () => deleteSslCertificate(node.dataset.deleteSsl)))
-  document.querySelectorAll('[name="publicAddress"], [name$="PublicAddressOverride"]').forEach(node => node.addEventListener('change', () => { captureSetupForm(); render() }))
+  document.querySelectorAll('[name="sharedPublicAddress"], [name^="publicPath-"], [name$="PublicAddressOverride"], [name="playPort"], [name="creatorPort"], [name="voxaPort"], [name="playerServicePort"], [name="authPortalPort"]').forEach(node => node.addEventListener('change', () => { captureSetupForm(); render() }))
   if (state.page === 'setup' && ['network', 'data'].includes(state.setupSection) && !state.sslLoaded) void refreshSsl()
   document.querySelector('#restore-default-login-image')?.addEventListener('click', restoreDefaultAuthPortalImage)
   document
@@ -108,8 +122,16 @@ export function bindConfigurationEvents() {
         captureSetupForm()
         const mode = node.dataset.networkMode
         if (!mode) return
-        state.config.playNetworkMode = mode
-        state.config.creatorNetworkMode = mode
+        state.config.playNetworkMode = isPublicMode(mode) ? 'public' : mode
+        state.config.creatorNetworkMode = isPublicMode(mode) ? 'public' : mode
+        if (mode === 'public-shared') {
+          state.config.publicAddressMode = 'shared'
+          if (!state.config.sharedPublicAddress && state.config.playPublicAddressOverride) {
+            try { const address = state.config.playPublicAddressOverride; const url = new URL(address.includes('://') ? address : `http://${address}`); state.config.sharedPublicAddress = `${url.protocol}//${url.hostname}` } catch {}
+          }
+        }
+        else if (isPublicMode(mode)) state.config.publicAddressMode = 'independent'
+        if (!isPublicMode(mode)) state.sslFiles = {}
         state.accessMode = mode
         render()
       }),

@@ -16,11 +16,11 @@ function base58Encode(bytes) {
   return `${'1'.repeat(leadingZeroes < 0 ? bytes.length : leadingZeroes)}${encoded}`
 }
 
-function loadWorkerTestHooks({ fetchImpl } = {}) {
+function loadWorkerTestHooks({ fetchImpl, prefix = '' } = {}) {
   const hooks = {}
   const workerScope = {
     __BOX3_RESOURCE_CACHE_TEST__: hooks,
-    location: { origin: 'https://play.example.test' },
+    location: { origin: 'https://play.example.test', pathname: `${prefix}/box-resource-cache-worker.js` },
     addEventListener: () => {},
     skipWaiting: () => {},
     clients: { claim: () => {} },
@@ -38,10 +38,10 @@ function loadWorkerTestHooks({ fetchImpl } = {}) {
     atob,
     fetch: fetchImpl,
     importScripts(scriptPath) {
-      if (scriptPath !== '/box-resource-cache-range.js') {
+      if (scriptPath !== `${prefix}/box-resource-cache-range.js`) {
         throw new Error(`Unexpected Service Worker import: ${scriptPath}`)
       }
-      const helper = fs.readFileSync(path.join(__dirname, scriptPath.slice(1)), 'utf8')
+      const helper = fs.readFileSync(path.join(__dirname, 'box-resource-cache-range.js'), 'utf8')
       vm.runInNewContext(helper, context)
     },
   }
@@ -52,6 +52,13 @@ function loadWorkerTestHooks({ fetchImpl } = {}) {
 }
 
 describe('BOX3 Play resource cache worker', () => {
+  test('loads its range helper and identifies media below a public path prefix', () => {
+    const { resourceDescriptor, hasRangeHelper } = loadWorkerTestHooks({ prefix: '/play' })
+    const hash = 'QmbVZUtAue26KwkMjcJggm5yVLbiUrunC83t4e2CdS2ZGf'
+    expect(hasRangeHelper).toBe(true)
+    expect(resourceDescriptor({url: `https://play.example.test/play/runtime/play/map/block/${hash}.png`})).toEqual({hash, extension: '.png'})
+    expect(resourceDescriptor({url: `https://play.example.test/play/runtime/play/map/engine/s/${hash}`})).toBeNull()
+  })
   test('maps engine media URLs with extensions to the manifest content hash', () => {
     const { resourceDescriptor, hasRangeHelper } = loadWorkerTestHooks()
     const hash = 'QmbVZUtAue26KwkMjcJggm5yVLbiUrunC83t4e2CdS2ZGf'

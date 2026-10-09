@@ -5,7 +5,13 @@
  * signature and every downloaded blob before it reaches Cache Storage. Script
  * blobs are excluded by the server before this worker receives the manifest.
  */
-importScripts('/box-resource-cache-range.js')
+const PUBLIC_PREFIX = (self.location.pathname || '/box-resource-cache-worker.js').replace(/\/box-resource-cache-worker\.js$/, '')
+importScripts(`${PUBLIC_PREFIX}/box-resource-cache-range.js`)
+
+function resourcePath(request) {
+  const pathname = new URL(request.url).pathname
+  return PUBLIC_PREFIX && pathname.startsWith(`${PUBLIC_PREFIX}/`) ? pathname.slice(PUBLIC_PREFIX.length) : pathname
+}
 
 const CACHE_PREFIX = 'box-play-static:'
 // Map loads have their own critical requests. Keep the optional warm-up small
@@ -38,7 +44,7 @@ function isCacheableResource(request) {
   // `engine/m` is the public, immutable model route. Do not broaden this to
   // `engine/s`: that namespace carries scripts and must never be persisted in
   // a player's browser cache.
-  return url.origin === self.location.origin && /^\/runtime\/play\/[^/]+\/(?:block|engine\/m)\/[^/]+$/.test(url.pathname)
+  return url.origin === self.location.origin && (!PUBLIC_PREFIX || url.pathname.startsWith(`${PUBLIC_PREFIX}/`)) && /^\/runtime\/play\/[^/]+\/(?:block|engine\/m)\/[^/]+$/.test(resourcePath(request))
 }
 
 // Cache entries deliberately use only their content hash instead of a public
@@ -50,7 +56,7 @@ function staticResourceCacheKey(hash) {
 }
 
 function resourceDescriptor(request) {
-  const match = new URL(request.url).pathname.match(/^\/runtime\/play\/[^/]+\/(?:block|engine\/m)\/([^/]+)$/)
+  const match = resourcePath(request).match(/^\/runtime\/play\/[^/]+\/(?:block|engine\/m)\/([^/]+)$/)
   if (!match) return null
   const segment = decodeURIComponent(match[1])
   // ContentFetch appends an extension (for example `<CID>.png`) only so the
@@ -196,7 +202,9 @@ async function prefetch({ mapId, version, hashes, assets, signature }) {
   await cleanupMapCaches(mapId, cacheName)
   await runWithConcurrency(assets, PREFETCH_CONCURRENCY, async (asset, index) => {
     if (typeof asset !== 'string' || typeof hashes[index] !== 'string') return
-    const request = new Request(asset, { credentials: 'include' })
+    const url = new URL(asset, self.location.origin)
+    if (PUBLIC_PREFIX && url.origin === self.location.origin && url.pathname.startsWith('/runtime/play/')) url.pathname = PUBLIC_PREFIX + url.pathname
+    const request = new Request(url, { credentials: 'include' })
     if (!isCacheableResource(request) || await cache.match(staticResourceCacheKey(hashes[index]))) return
     try {
       await cacheVerifiedResponse(cache, request, hashes[index])

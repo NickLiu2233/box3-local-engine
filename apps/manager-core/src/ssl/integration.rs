@@ -97,14 +97,14 @@ fn real_nginx_https_wss_import_and_rollback() {
     drop(listener);
     let certificate = fs::read_to_string(root.join("test.pem")).unwrap();
     let key = fs::read_to_string(root.join("test.key")).unwrap();
-    let settings = Settings {
+    let settings = Settings {upstream_ports:Default::default(),
         mode: "managed".into(),
         https_port: port,
-        routes: vec![Route {
+        routes: vec![Route {path:String::new(),secure:true,
             service: "play".into(),
             domain: "play.example.com".into(),
             port: None,
-        }, Route {
+        }, Route {path:String::new(),secure:true,
             service: "creator".into(),
             domain: "creator.example.com".into(),
             port: None,
@@ -116,6 +116,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "",
         Import {
+        delete_services: Vec::new(),
         external_local: false,
             settings: settings.clone(),
             certificate: certificate.clone(),
@@ -179,6 +180,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "",
         Import {
+        delete_services: Vec::new(),
         external_local: false,
             settings: settings.clone(),
             certificate: certificate.clone(),
@@ -200,6 +202,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "",
         Import {
+        delete_services: Vec::new(),
         external_local: false,
             settings: settings.clone(),
             certificate: String::new(),
@@ -234,6 +237,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "BOX_PLAY_PORT=4121",
         Import {
+        delete_services: Vec::new(),
         external_local: false,
             settings,
             certificate,

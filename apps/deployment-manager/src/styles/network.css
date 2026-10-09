@@ -1,14 +1,14 @@
 .network-layout {
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 16px;
 }
 
 .network-primary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  gap: 14px;
+  gap: 16px;
 }
 
 .network-service-card {
@@ -16,7 +16,7 @@
   align-self: start;
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 16px;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -42,12 +42,15 @@
 }
 
 .network-service-card .field {
-  grid-template-rows: 15px 34px minmax(15px, auto);
+  gap: 6px;
+  grid-template-rows: auto 34px;
 }
 
 .network-service-card .field.no-hint {
-  grid-template-rows: 15px 34px;
+  grid-template-rows: auto 34px;
 }
+
+.network-service-card > .form-grid { gap: 16px; }
 
 .network-service-card .field small {
   min-height: 15px;
@@ -152,7 +155,7 @@
 }
 
 .network-endpoint-setting,
-.network-access-address { min-width: 0; display: grid; align-content: start; gap: 12px; }
+.network-access-address { min-width: 0; display: grid; align-content: start; gap: 16px; }
 .ssl-address-certificate { min-width: 0; margin: 0; }
 .ssl-address-certificate .form-grid { margin-top: 0; }
 .ssl-address-certificate .database-download-note { margin: 0 0 12px; }
@@ -171,3 +174,6 @@
 .ssl-delete-certificate svg { width: 16px; height: 16px; }
 .ssl-delete-certificate:hover { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 .ssl-delete-certificate:disabled { cursor: not-allowed; opacity: 0.5; }
+.network-endpoint-preview { min-width: 0; color: var(--muted); font-size: 11px; }
+.network-endpoint-preview code { white-space: normal; overflow-wrap: anywhere; color: var(--muted); line-height: 1.5; }
+.network-access-card .access-choice { flex-wrap: wrap; }

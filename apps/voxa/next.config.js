@@ -47,7 +47,7 @@ const nextConfig = {
     // 升级 react 前临时使用
     ignoreBuildErrors: true,
   },
-  webpack: (config) => {
+  webpack: (config, options) => {
     config.module.rules.push({
       test: /\.(glsl|vs|fs|vert|frag)$/,
       exclude: /node_modules/,
@@ -94,7 +94,7 @@ const nextConfig = {
       layers: true,
     };
 
-    return config;
+    return require('../../internals/deployment-routing/next-webpack.cjs')(config,{...options,dir:__dirname});
   },
   // https://nextjs.org/docs/messages/next-image-unconfigured-host
   // TODO 新版本的Next.js支持remotePatterns方式设置

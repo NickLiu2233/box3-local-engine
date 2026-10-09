@@ -52,7 +52,12 @@ export class PortalBuilder {
   }
   targets(): BuildOptions[] {
     return [
-      { entryPoints: ['src/main.tsx'], outfile: 'public/app.js', jsx: 'automatic' },
+      { entryPoints: ['src/main.tsx'], outfile: 'public/app.js', jsx: 'automatic', alias: {
+        react: path.resolve(this.project.root,'../../internals/deployment-routing/react.cjs'),
+        'react/jsx-runtime':path.resolve(this.project.root,'../../internals/deployment-routing/jsx-runtime.cjs'),
+        __box_original_react__:path.join(this.project.root,'node_modules/react/index.js'),
+        __box_original_jsx_runtime__:path.join(this.project.root,'node_modules/react/jsx-runtime.js'),
+      } },
       { entryPoints: ['src/theme-main.ts'], outfile: 'public/theme.js' },
       { entryPoints: ['src/styles/app.css'], outfile: 'public/styles.css' },
       {

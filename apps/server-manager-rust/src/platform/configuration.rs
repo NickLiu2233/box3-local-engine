@@ -139,10 +139,13 @@ pub(crate) fn mapped_host_root(root: &FsPath, mounts: &Value) -> Result<PathBuf,
 /// Runtime configuration is regenerated before each call, so direct edits to
 /// the owner `.env` cannot leave Docker using stale derived endpoints.
 pub(crate) fn compose(app: &App, args: &[&str]) -> Result<String, String> {
-    if let Some(result) = services::control_existing(args, "box-local-engine", docker) {
+    if box_manager_core::ssl::routing_settings(&app.root)?.is_none() { if let Some(result) = services::control_existing(args, "box-local-engine", docker) {
         return result;
-    }
+    }}
     let environment = generate_runtime_environment(app)?;
+    let source=fs::read_to_string(&app.compose_file).map_err(|error|error.to_string())?;
+    let compose_file=app.root.join(".runtime-compose.yml");
+    private(&compose_file,&box_manager_core::ssl::compose_source(&app.root,&source)?)?;
     let mut command = Command::new("docker");
     command
         .args([
@@ -155,7 +158,7 @@ pub(crate) fn compose(app: &App, args: &[&str]) -> Result<String, String> {
         .arg("--env-file")
         .arg(&environment)
         .arg("-f")
-        .arg(&app.compose_file)
+        .arg(&compose_file)
         .args(args)
         .current_dir(&app.root);
     for key in
@@ -383,6 +386,15 @@ pub(crate) fn guard_managed_storage_credentials(
 /// 172.18.0.2) instead of the address players actually use. Prefer the value
 /// install.sh detected on the host and never fall back to a probe inside a
 /// container.
+pub(crate) fn compose_file_output(app:&App,file:&FsPath,args:&[String]) -> Result<String,String> {
+    let env=generate_runtime_environment(app)?;
+    let mut command=Command::new("docker");
+    command.args(["compose","--project-name","box-local-engine","--project-directory"]).arg(host_project_root(app)?).arg("--env-file").arg(&env).arg("-f").arg(file).args(args).current_dir(&app.root);
+    for key in parse_env(&fs::read_to_string(&env).map_err(|error|error.to_string())?).keys() {command.env_remove(key);}
+    let output=command.output().map_err(|error|error.to_string())?;
+    if output.status.success() {Ok(String::from_utf8_lossy(&output.stdout).into())} else {Err(String::from_utf8_lossy(&output.stderr).into())}
+}
+
 pub(crate) fn configured_lan_ip() -> Option<String> {
     let value = env::var("BOX_LAN_IP").ok()?;
     let value = value.trim();
@@ -486,6 +498,8 @@ pub(crate) fn configuration_document_for_save(
     content: &str,
     config: &serde_json::Map<String, Value>,
 ) -> Result<String, String> {
+    let prepared = box_manager_core::public_access::prepare(config)?;
+    let config = &prepared;
     let mut source = migrate_document(content)?;
     clear_overrides_on_configuration_change(&mut source, config)?;
     let existing = parse_env(&source);
@@ -805,6 +819,7 @@ pub(crate) fn configuration_document_for_save(
             source = set_env(source, &format!("{prefix}_PUBLIC_ADDRESS_OVERRIDE"), &address)?;
         }
     }
+    source = box_manager_core::public_access::save_document(&source, config)?;
     Ok(box_manager_core::access_settings::independent_owner(&source))
 }
 

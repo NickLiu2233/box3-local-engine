@@ -116,6 +116,8 @@ services:
     cpus: ${BOX_PLAYER_SERVICE_CPU_LIMIT:-1.0}
     pids_limit: ${BOX_PLAYER_SERVICE_PIDS_LIMIT:-256}
     environment:
+      BOX_APP_BASE_PATH: ${BOX_PLAYER_SERVICE_BASE_PATH:-}
+      BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN: ${BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN:-{}}
       BOX_DEPLOYMENT_MODE: player-service
       # Keep the lightweight identity service from competing with Play's map
       # runtime for heap on small servers. Hosts can raise this in .env.
@@ -188,6 +190,8 @@ services:
     cpus: ${BOX_AUTH_PORTAL_CPU_LIMIT:-0.5}
     pids_limit: ${BOX_AUTH_PORTAL_PIDS_LIMIT:-64}
     environment:
+      BOX_APP_BASE_PATH: ${BOX_AUTH_PORTAL_BASE_PATH:-}
+      BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN: ${BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN:-{}}
       NODE_OPTIONS: --max-old-space-size=${BOX_AUTH_PORTAL_NODE_HEAP_MB:-96}
       AUTH_DEMO_HOST: 0.0.0.0
       AUTH_DEMO_PORT: 3214
@@ -296,6 +300,8 @@ services:
       creator-storage-init:
         condition: service_completed_successfully
     environment:
+      BOX_APP_BASE_PATH: ${BOX_CREATOR_BASE_PATH:-}
+      BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN: ${BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN:-{}}
       BOX_DEPLOYMENT_MODE: creator
       BOX_BUILD_VERSION: ${BOX_BUILD_VERSION:-0.3.0}
       BOX_BUILD_COMMIT: ${BOX_BUILD_COMMIT:-unknown}
@@ -477,6 +483,8 @@ services:
       play-storage-init:
         condition: service_completed_successfully
     environment:
+      BOX_APP_BASE_PATH: ${BOX_PLAY_BASE_PATH:-}
+      BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN: ${BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN:-{}}
       BOX_DEPLOYMENT_MODE: play
       BOX_RUNTIME_MANAGER_URL: ${BOX_RUNTIME_MANAGER_URL:-http://server-manager:3130}
       BOX_RUNTIME_MANAGER_TOKEN: ${BOX_RUNTIME_MANAGER_TOKEN:-}
@@ -560,6 +568,8 @@ services:
       voxa-storage-init:
         condition: service_completed_successfully
     environment:
+      BOX_APP_BASE_PATH: ${BOX_VOXA_BASE_PATH:-}
+      BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN: ${BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN:-{}}
       VOXA_DATA_PATH: /app/apps/voxa/data
       VOXA_MAX_BLOB_BYTES: ${VOXA_MAX_BLOB_BYTES:-268435456}
       # Used by VOXA's same-origin API guard. The browser URL must be passed

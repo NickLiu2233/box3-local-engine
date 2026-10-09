@@ -133,6 +133,8 @@ pub(super) fn status() -> serde_json::Value {
     }
 }
 
+pub(super) fn available() -> Result<bool,String> { discover().map(|value|value.is_some()) }
+
 pub(super) fn quote(path: &Path) -> Result<String, String> {
     let value = path.to_str().ok_or("Nginx 路径不是有效 UTF-8")?;
     if value.contains(['\n', '\r', '\0', '$']) {

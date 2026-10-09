@@ -49,10 +49,16 @@ pub(crate) async fn command(
             }
             "get_ssl_status" => box_manager_core::ssl::status(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
             "apply_ssl_config" => {
-                let config = serde_json::from_value(req.body.get("config").cloned().ok_or("证书配置缺失")?).map_err(|_| "证书配置格式无效")?;
-                box_manager_core::ssl::apply(&app.root, &host_project_root(&app)?, "box-local-engine_default",
-                    &fs::read_to_string(env_path(&app)).map_err(|e|e.to_string())?, config,
-                    &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()))
+                let config:box_manager_core::ssl::Import=serde_json::from_value(req.body.get("config").cloned().ok_or("公网配置缺失")?).map_err(|_|"公网配置格式无效")?;
+                let runtime=generate_runtime_environment(&app)?;
+                box_manager_core::ssl::validate_path_images(&config.settings,&parse_env(&fs::read_to_string(runtime).map_err(|error|error.to_string())?),&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()))?;
+                let environment=fs::read_to_string(env_path(&app)).map_err(|error|error.to_string())?;
+                let source=fs::read_to_string(&app.compose_file).map_err(|error|error.to_string())?;
+                let mut transition=box_manager_core::ssl::UpstreamTransition::new(&app.root,"box-local-engine",&config.settings)?;
+                box_manager_core::ssl::apply_with_transition(&app.root,&host_project_root(&app)?,"box-local-engine_default",&environment,config,&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),&mut |rollback| {
+                    if rollback {transition.rollback(&source,&mut |file,args|compose_file_output(&app,file,args))}
+                    else {transition.apply(&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),&mut |args|compose(&app,&args.iter().map(String::as_str).collect::<Vec<_>>()))}
+                })
             }
             "stop_ssl_proxy" => box_manager_core::ssl::stop(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
             "delete_ssl_certificate" => box_manager_core::ssl::delete_certificate(&app.root, &host_project_root(&app)?, "box-local-engine_default", &fs::read_to_string(env_path(&app)).map_err(|error|error.to_string())?, req.body.get("service").and_then(Value::as_str).ok_or("证书服务缺失")?, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
@@ -123,7 +129,7 @@ pub(crate) async fn command(
                         "disabled".into()
                     }
                 });
-                Ok(json!({
+                let mut configuration = json!({
                     "databaseMode": database_mode,
                     "databaseHost": values.get("BOX_DATABASE_HOST").cloned().unwrap_or(url_database_host),
                     "databasePort": values.get("BOX_DATABASE_PORT").cloned().unwrap_or(url_database_port),
@@ -183,7 +189,12 @@ pub(crate) async fn command(
                     "creatorCpuLimit": decimal("BOX_CREATOR_CPU_LIMIT", 4.0),
                     "playMemoryMb": memory("BOX_PLAY_MEMORY_LIMIT", 4096),
                     "playCpuLimit": decimal("BOX_PLAY_CPU_LIMIT", 4.0)
-                }))
+                });
+                if let Some(view) = box_manager_core::public_access::view(&values).as_object() {
+                    for (key,value) in view { configuration[key] = value.clone(); }
+                }
+                configuration["publicSslConfigured"] = serde_json::to_value(box_manager_core::public_access::certificate_flags(&app.root)).map_err(|error|error.to_string())?;
+                Ok(configuration)
             }
             "get_managed_service_info" => managed_service_info(
                 &app,
@@ -336,11 +347,14 @@ pub(crate) async fn command(
                 Ok(json!(restore_backup(&app, archive)?))
             }
             "save_configuration_command" => {
-                let config = req
+                let mut input = req
                     .body
                     .get("config")
                     .and_then(Value::as_object)
-                    .ok_or("配置格式无效")?;
+                    .ok_or("配置格式无效")?.clone();
+                input.entry("publicSslConfigured").or_insert(serde_json::to_value(box_manager_core::public_access::certificate_flags(&app.root)).map_err(|error|error.to_string())?);
+                let prepared = box_manager_core::public_access::prepare(&input)?;
+                let config = &prepared;
                 validate_configuration(config)?;
                 if config.get("databaseMode").and_then(Value::as_str) == Some("external") {
                     let host = config

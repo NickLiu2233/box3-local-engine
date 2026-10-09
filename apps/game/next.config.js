@@ -271,7 +271,7 @@ const config = {
 
   webpack: (...args) => {
     const getWebpackConfig = require('./webpack');
-    return getWebpackConfig(...args);
+    return require('../../internals/deployment-routing/next-webpack.cjs')(getWebpackConfig(...args), {...args[1], dir:__dirname});
   },
 
 };

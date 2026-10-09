@@ -1,9 +1,12 @@
 //! Certificate import and Nginx configuration shared by both manager transports.
 mod runtime;
 mod local;
+mod plan;
+mod apply;
 pub use runtime::{apply, install_image, set_provider, status, stop, verify_endpoint};
-pub use runtime::apply_runtime_urls;
+pub use runtime::{apply_runtime_urls,apply_with_transition};
 pub use runtime::delete_certificate;
+pub use plan::{compose_source, routing_settings, transition_services, UpstreamTransition, validate_path_images};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -42,7 +45,12 @@ pub struct Route {
     pub domain: String,
     #[serde(default)]
     pub port: Option<u16>,
+    #[serde(default)]
+    pub path: String,
+    #[serde(default = "secure_route")]
+    pub secure: bool,
 }
+fn secure_route() -> bool { true }
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -50,6 +58,8 @@ pub struct Settings {
     pub mode: String,
     pub https_port: u16,
     pub routes: Vec<Route>,
+    #[serde(default)]
+    pub upstream_ports: BTreeMap<String,u16>,
 }
 
 #[derive(Deserialize)]
@@ -64,6 +74,8 @@ pub struct Import {
     pub private_key: String,
     #[serde(default)]
     pub certificates: BTreeMap<String, Certificate>,
+    #[serde(default)]
+    pub delete_services: Vec<String>,
 }
 
 fn independent_certificate() -> String {
@@ -98,6 +110,8 @@ pub struct Saved {
 
 pub fn domain(value: &str) -> Result<String, String> {
     let value = value.trim().to_ascii_lowercase();
+    let value = value.trim_matches(['[',']']).to_string();
+    if let Ok(ip) = value.parse::<std::net::IpAddr>() { return Ok(ip.to_string()); }
     if value.len() > 253
         || !value.contains('.')
         || value.parse::<std::net::IpAddr>().is_ok()
@@ -120,28 +134,36 @@ pub fn validate(input: &mut Import) -> Result<(), String> {
     {
         return Err("HTTPS 模式或端口无效".into());
     }
-    if input.settings.routes.is_empty() || input.settings.routes.len() > SERVICES.len() {
-        return Err("请至少为一个服务配置 HTTPS 域名".into());
+    if input.settings.routes.len() > SERVICES.len() {
+        return Err("公网路由数量无效".into());
     }
     let mut domains = BTreeSet::new();
     let mut services = BTreeSet::new();
+    let mut protocols = BTreeMap::new();
     for route in &mut input.settings.routes {
         route.domain = domain(&route.domain)?;
+        route.path = crate::public_access::prefix(&route.path)?;
+        let port = route.port.unwrap_or(if route.secure {input.settings.https_port}else{80});
+        if protocols.insert(port,route.secure).is_some_and(|secure|secure!=route.secure) {return Err("同一个公网端口不能同时使用 HTTP 和 HTTPS".into());}
         if route.port == Some(0)
             || !SERVICES.iter().any(|s| s.0 == route.service)
             || !services.insert(route.service.clone())
             || !domains.insert((
                 route.domain.clone(),
-                route.port.unwrap_or(input.settings.https_port),
+                route.port.unwrap_or(if route.secure { input.settings.https_port } else { 80 }),
+                route.path.clone(),
             ))
         {
-            return Err("每个服务与域名只能配置一次；不同服务请使用独立域名".into());
+            return Err("同一个服务只能配置一次；同一地址、端口和路径不能重复".into());
         }
     }
     if input.certificates.len() > SERVICES.len()
-        || input.certificates.keys().any(|key| !services.contains(key))
+        || input.certificates.keys().any(|key| !SERVICES.iter().any(|service|service.0==key))
     {
         return Err("证书服务配置无效".into());
+    }
+    for service in &input.delete_services {
+        if !SERVICES.iter().any(|entry|entry.0==service) || input.certificates.contains_key(service) || input.settings.routes.iter().any(|route|route.service==*service && route.secure) {return Err("证书删除参数与当前 HTTPS 路由冲突".into());}
     }
     if !input.certificate.is_empty() || !input.private_key.is_empty() {
         validate_pem(&input.certificate, &input.private_key)?;
@@ -182,35 +204,7 @@ fn configuration_multiple(
     environment: &str,
     multiple: bool,
 ) -> String {
-    let values = crate::environment::parse_env(environment);
-    let mut config =
-        "map $http_upgrade $box_ssl_connection { default upgrade; '' close; }\n".to_string();
-    for route in &settings.routes {
-        let service = SERVICES.iter().find(|s| s.0 == route.service).unwrap();
-        let upstream = if settings.mode == "managed" {
-            format!("{}:{}", service.1, service.2)
-        } else {
-            format!(
-                "127.0.0.1:{}",
-                values
-                    .get(service.3)
-                    .and_then(|s| s.parse::<u16>().ok())
-                    .unwrap_or(service.4)
-            )
-        };
-        let certificate_file = if multiple {
-            format!("{}-cert.pem", route.service)
-        } else {
-            "cert.pem".into()
-        };
-        let key_file = if multiple {
-            format!("{}-key.pem", route.service)
-        } else {
-            "key.pem".into()
-        };
-        config.push_str(&format!("server {{\n listen {} ssl;\n server_name {};\n ssl_certificate /etc/box-https/revisions/{revision}/{certificate_file};\n ssl_certificate_key /etc/box-https/revisions/{revision}/{key_file};\n ssl_protocols TLSv1.2 TLSv1.3;\n client_max_body_size 256m;\n location / {{\n  resolver 127.0.0.11 valid=30s ipv6=off;\n  set $box_upstream http://{upstream};\n  proxy_pass $box_upstream;\n  proxy_http_version 1.1;\n  proxy_set_header Host $http_host;\n  proxy_set_header X-Forwarded-Proto https;\n  proxy_set_header X-Forwarded-Host $http_host;\n  proxy_set_header X-Forwarded-For $remote_addr;\n  proxy_set_header Upgrade $http_upgrade;\n  proxy_set_header Connection $box_ssl_connection;\n  proxy_read_timeout 3600s;\n }}\n}}\n", route.port.unwrap_or(if settings.mode == "managed" { 443 } else { settings.https_port }), route.domain));
-    }
-    config
+    plan::configuration(settings, revision, environment, multiple)
 }
 
 #[cfg(test)]

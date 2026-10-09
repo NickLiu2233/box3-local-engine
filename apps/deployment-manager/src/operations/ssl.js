@@ -2,6 +2,7 @@ import { invoke, exportSslConfiguration } from '../infrastructure/transport.js'
 import { state } from '../core/state.js'
 import { render } from '../core/render-request.js'
 import { captureSetupForm } from '../configuration/form.js'
+import { isPublicMode } from '../configuration/public-access.js'
 import { nginxMode, sslRoutes } from '../configuration/ssl.js'
 import { clearFeedback } from './feedback.js'
 
@@ -95,12 +96,12 @@ export function downloadNginx() {
 export function enableNginx() {
   return task(async () => {
     await persistNginxSelection()
-    if (!state.sslStatus?.config) {
+    if (!state.sslStatus?.config || !isPublicMode(state.accessMode || state.config?.playNetworkMode) || !sslRoutes().length) {
       state.setupSection = 'network'
-      state.accessMode = 'public'
+      state.accessMode = state.config?.publicAddressMode === 'shared' ? 'public-shared' : 'public-independent'
       state.config.playNetworkMode = 'public'
       state.config.creatorNetworkMode = 'public'
-      state.notice = '请填写 HTTPS 公网地址并选择证书文件，保存配置后将启动内置 Nginx。'
+      state.notice = '请填写公网地址，HTTPS 地址需要配置证书；保存后将启用 Nginx 入口。'
       return
     }
     await applyCertificateConfiguration()
@@ -108,38 +109,39 @@ export function enableNginx() {
   })
 }
 export function shouldApplySsl() {
-  const mode = nginxMode()
-  if (state.setupSection !== 'network' || (state.accessMode || state.config?.playNetworkMode) !== 'public' || !['managed', 'external'].includes(mode)) return false
-  return Object.entries(state.sslFiles || {}).some(([service, files]) => service !== 'shared' && (files.certificate || files.privateKey))
-    || Boolean(state.sslStatus?.config && (mode === 'external'
-      || mode !== state.sslStatus.config.settings?.mode
-      || JSON.stringify(sslRoutes()) !== JSON.stringify(state.sslStatus.config.settings?.routes)))
+  if (state.setupSection !== 'network' && !state.nginxSelectionDirty) return false
+  const active = (state.sslStatus?.config?.settings?.routes || []).length > 0
+  if (!isPublicMode(state.accessMode || state.config?.playNetworkMode)) return active
+  return sslRoutes().length > 0 || active
 }
 export function validateSslRoutes(routes) {
-  const domains = new Set()
+  const endpoints = new Set()
+  const protocols = new Map()
   for (const route of routes) {
-    if (domains.has(route.domain)) throw new Error('HTTPS 统一使用 443，同一域名不能同时分配给多个服务。请为各服务填写不同的独立 HTTPS 公网地址。')
-    domains.add(route.domain)
+    const key = `${route.domain}:${route.port}${route.path || '/'}`
+    if (endpoints.has(key)) throw new Error('同一个地址、端口和路径不能分配给多个服务，请使用不同端口或不同入口路径。')
+    endpoints.add(key)
+    if (protocols.has(route.port) && protocols.get(route.port) !== route.secure) throw new Error('同一个公网端口不能同时使用 HTTP 和 HTTPS。')
+    protocols.set(route.port, route.secure)
   }
 }
 export function applySsl() { return task(applyCertificateConfiguration) }
 export async function applyCertificateConfiguration() {
     const mode = nginxMode()
     if (!['managed', 'external'].includes(mode)) throw new Error('请先在数据服务选择 Nginx 使用方式')
-    const routes = sslRoutes()
-    if (!routes.length) throw new Error('请先填写至少一个 HTTPS 公网地址')
+    const routes = isPublicMode(state.accessMode || state.config?.playNetworkMode) ? sslRoutes() : []
     validateSslRoutes(routes)
     const certificates = {}
     for (const route of routes) {
       const local = state.sslFiles?.[route.service]
-      const files = local
+      const files = state.config?.publicAddressMode === 'shared' ? state.sslFiles?.shared : local
       if (!files?.certificate && !files?.privateKey) continue
       if (!files.certificate || !files.privateKey) throw new Error('请为选定证书同时选择完整证书链和私钥')
-      certificates[route.service] = { source: 'independent', certificate: files.certificate, privateKey: files.privateKey }
+      certificates[route.service] = { source: state.config?.publicAddressMode === 'shared' ? 'shared' : 'independent', certificate: files.certificate, privateKey: files.privateKey }
     }
     state.sslStatus = await invoke('apply_ssl_config', { config: { settings: { mode, httpsPort: 443, routes }, externalLocal: mode === 'external', certificates } })
     state.sslFiles = {}
-    state.notice = state.sslStatus.sslWarning || (mode === 'managed' ? '配置已保存，内置 Nginx 已自动更新。公网地址变更后，请重新启动相关引擎服务。' : '配置已保存，本机外部 Nginx 已自动更新并重载。')
+    state.notice = state.sslStatus.sslWarning || (routes.length ? '公网配置已应用，Nginx 入口和已运行服务的访问设置已更新。' : '公网入口已停用，服务按当前本机或局域网设置运行。')
     await refreshSsl()
 }
 export function stopSsl() {
@@ -150,7 +152,7 @@ export function deleteSslCertificate(service) {
   return task(async () => {
     state.sslStatus = await invoke('delete_ssl_certificate', { service })
     if (state.sslFiles) delete state.sslFiles[service]
-    state.notice = '该服务的 SSL 证书和私钥已删除，HTTPS 路由已停用。'
+    state.notice = `${service === 'shared' ? '共用' : '该服务的'} SSL 证书和私钥已删除，HTTPS 路由已停用。未指定协议的地址将在下次保存时使用 HTTP。`
   })
 }
 export function exportSsl() {

@@ -2,6 +2,7 @@ ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /build
+COPY internals/deployment-routing /internals/deployment-routing
 COPY apps/player-auth-portal/package.json apps/player-auth-portal/package-lock.json ./
 RUN npm ci --include=dev --ignore-scripts
 COPY apps/player-auth-portal/src ./src
@@ -12,6 +13,7 @@ COPY apps/player-auth-portal/tsconfig.json apps/player-auth-portal/tsconfig.libr
 RUN npm run build
 
 FROM ${NODE_IMAGE}
+LABEL box.routing.base-path="runtime-v1"
 
 ARG BOX_BUILD_VERSION=0.3.0
 ARG BOX_BUILD_COMMIT=unknown

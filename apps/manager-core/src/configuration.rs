@@ -95,11 +95,8 @@ pub fn parse_public_address(value: &str, label: &str) -> Result<(String, &'stati
         return Ok((host, if secure { "https" } else { "http" }));
     }
 
-    let host = validate_public_host(value)?;
-    if host.parse::<IpAddr>().is_ok() {
-        return Ok((host, "http"));
-    }
-    Err(format!("{label}填写域名时必须带 http:// 或 https://"))
+    let host = validate_public_host(value).map_err(|error|format!("{label}：{error}"))?;
+    Ok((host, "http"))
 }
 
 pub fn validate_public_address_override(value: &str, label: &str) -> Result<String, String> {
@@ -110,11 +107,8 @@ pub fn validate_public_address_override(value: &str, label: &str) -> Result<Stri
     if value.contains("://") {
         return crate::configuration_migration::normalize_public_url(value, label);
     }
-    let host = validate_public_host(value)?;
-    if host.parse::<IpAddr>().is_ok() {
-        return Ok(host);
-    }
-    Err(format!("{label}填写域名时必须带 http:// 或 https://"))
+    let host = validate_public_host(value).map_err(|error|format!("{label}：{error}"))?;
+    Ok(host)
 }
 
 pub fn normalize_public_endpoint_address(
@@ -1287,7 +1281,7 @@ mod individual_validation_tests {
         let config = serde_json::json!({"playNetworkMode":"public","publicAddress":"stale-shared-value","playPublicAddressOverride":"http://play.example.test:4121","authPortalPublicAddressOverride":""});
         assert_eq!(independent_public_base(config.as_object().unwrap()).unwrap(), Some("http://play.example.test".into()));
         validate_configuration(config.as_object().unwrap()).unwrap();
-        let invalid = serde_json::json!({"playPublicAddressOverride":"play.example.test"});
+        let invalid = serde_json::json!({"playPublicAddressOverride":"not a valid domain"});
         let error = independent_public_base(invalid.as_object().unwrap()).unwrap_err();
         assert!(error.contains("Play 公网地址"));
         assert!(!error.contains("共用"));

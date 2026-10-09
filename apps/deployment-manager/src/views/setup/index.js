@@ -1,3 +1,4 @@
+import { accessChoice, isPublicMode, publicServices, publicEndpoints } from '../../configuration/public-access.js'
 import { escapeHtml } from '../../ui/html.js'
 import { icon } from '../../ui/icons.js'
 import { input, settingToggle, setupExplanation } from '../../ui/forms.js'
@@ -11,27 +12,23 @@ export function setup() {
   const config = state.config || {}
   const databaseMode = config.databaseMode || 'managed'
   const redisMode = config.redisMode || 'disabled'
-  const inferredAccessMode =
-    config.playNetworkMode ||
-    config.creatorNetworkMode ||
-    (config.publicHost === '127.0.0.1' || config.publicHost === 'localhost'
-      ? 'local'
-      : config.lanIp && config.publicHost === config.lanIp
-        ? 'lan'
-        : 'public')
-  const accessMode = state.accessMode || inferredAccessMode
-  const endpointAddressInput = (name, label) =>
-    accessMode === 'public'
-      ? `<div class="network-endpoint-setting">${input(
-          name,
-          `${label} 公网地址`,
-          config[name] || '',
-          'text',
-          '',
-          false,
-          { hideHint: true },
-        ) + sslCertificateSetting({playPublicAddressOverride:'play',creatorPublicAddressOverride:'creator',voxaPublicAddressOverride:'voxa',playerServicePublicAddressOverride:'player-service',authPortalPublicAddressOverride:'player-auth-portal'}[name])}</div>`
-      : `<input name="${name}" type="hidden" value="${escapeHtml(config[name] || '')}"/>`
+  const choice = accessChoice(config)
+  const accessMode = isPublicMode(choice) ? 'public' : choice
+  const shared = choice === 'public-shared'
+  const paths = config.publicServicePaths || {}
+  const portInput = (name, label, value) => input(name, label, value, 'number', '', false, { hideHint: true })
+  const endpointAddressInput = (name, label) => {
+    const service = publicServices.find(([, , field]) => field === name)?.[0]
+    if (accessMode !== 'public') return `<input name="${name}" type="hidden" value="${escapeHtml(config[name] || '')}"/><input name="publicPath-${service}" type="hidden" value="${escapeHtml(paths[service] || '')}"/>`
+    let preview = ''
+    if (shared) {
+      try { preview = publicEndpoints(config).find(endpoint => endpoint.service === service)?.url || '' } catch {}
+    }
+    return `<div class="network-endpoint-setting">${shared ? `<input name="${name}" type="hidden" value="${escapeHtml(config[name] || '')}"/>` : input(name, '公网地址', config[name] || '', 'text', '', false, {hideHint:true, ariaLabel:`${label} 公网地址`, placeholder:'域名或 IP，可选协议和端口'})}
+      ${shared ? input(`publicPath-${service}`, '入口路径（可选）', paths[service] || '', 'text', '', false, {hideHint:true, ariaLabel:`${label} 入口路径`, placeholder:{play:'/play',creator:'/arena',voxa:'/voxa','player-service':'/admin','player-auth-portal':'/login'}[service]}) : `<input name="publicPath-${service}" type="hidden" value="${escapeHtml(paths[service] || '')}"/>`}
+      ${preview ? `<div class="network-endpoint-preview" data-public-preview="${service}" aria-label="实际访问地址"><code>${escapeHtml(preview)}</code></div>` : ''}
+      ${shared ? '' : sslCertificateSetting(service)}</div>`
+  }
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
   const secretCard = (name, label, configured) => {
@@ -145,23 +142,26 @@ export function setup() {
               <div class="network-card-heading"><h2>访问范围</h2></div>
               <input name="playNetworkMode" type="hidden" value="${accessMode}"/>
               <input name="creatorNetworkMode" type="hidden" value="${accessMode}"/>
-              <div class="access-choice"><button type="button" class="${accessMode === 'local' ? 'active' : ''}" data-network-mode="local">本机</button><button type="button" class="${accessMode === 'lan' ? 'active' : ''}" data-network-mode="lan" ${config.lanIp ? '' : 'disabled'}>局域网</button><button type="button" class="${accessMode === 'public' ? 'active' : ''}" data-network-mode="public">公网</button></div>
+              <input name="publicAddressMode" type="hidden" value="${shared ? 'shared' : 'independent'}"/>
+              <div class="access-choice">${[['local','本机'],['lan','局域网'],['public-shared','公网（共用地址）'],['public-independent','公网（独立地址）']].map(([mode,label]) => `<button type="button" class="${choice === mode ? 'active' : ''}" data-network-mode="${mode}" ${mode === 'lan' && !config.lanIp ? 'disabled' : ''}>${label}</button>`).join('')}</div>
+              ${accessMode === 'public' && shared ? `<div class="network-access-address">${input('sharedPublicAddress','共用公网地址',config.sharedPublicAddress || '', 'text','',true,{hideHint:true,placeholder:'域名或 IP，可选协议和端口'})}${sslCertificateSetting('shared')}</div>` : `<input name="sharedPublicAddress" type="hidden" value="${escapeHtml(config.sharedPublicAddress || '')}"/>`}
+
 
             </section>
             <div class="network-primary-grid">
-              <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${input('playPort', 'Play 端口', config.playPort || 3121, 'number')}${endpointAddressInput('playPublicAddressOverride', 'Play')}</div></section>
-              <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${input('creatorPort', 'ARENA 端口', config.creatorPort || 3127, 'number')}${input('voxaPort', 'VOXA 端口', config.voxaPort || 3123, 'number')}${endpointAddressInput('creatorPublicAddressOverride', 'ARENA')}${endpointAddressInput('voxaPublicAddressOverride', 'VOXA')}</div></section>
+              <section class="network-service-card"><div class="network-card-heading"><h2>游玩端</h2></div><div class="form-grid single">${portInput('playPort', 'Play 端口', config.playPort || 3121)}${endpointAddressInput('playPublicAddressOverride', 'Play')}</div></section>
+              <section class="network-service-card"><div class="network-card-heading"><h2>创作端</h2></div><div class="form-grid card-port-grid">${portInput('creatorPort', 'ARENA 端口', config.creatorPort || 3127)}${portInput('voxaPort', 'VOXA 端口', config.voxaPort || 3123)}${endpointAddressInput('creatorPublicAddressOverride', 'ARENA')}${endpointAddressInput('voxaPublicAddressOverride', 'VOXA')}</div></section>
             </div>
-            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2></div><div class="form-grid player-port-grid">${input('playerServicePort', '后台管理端口', config.playerServicePort || 3124, 'number')}${input('authPortalPort', '登录页面端口', config.authPortalPort || 3125, 'number')}${endpointAddressInput('playerServicePublicAddressOverride', '后台管理')}${endpointAddressInput('authPortalPublicAddressOverride', '登录页面')}</div></section>
+            <section class="network-service-card player-service-card"><div class="network-card-heading"><h2>账号服务</h2></div><div class="form-grid player-port-grid">${portInput('playerServicePort', '后台管理端口', config.playerServicePort || 3124)}${portInput('authPortalPort', '登录页面端口', config.authPortalPort || 3125)}${endpointAddressInput('playerServicePublicAddressOverride', '后台管理')}${endpointAddressInput('authPortalPublicAddressOverride', '登录页面')}</div></section>
             ${authPortalImageSetting()}
-          </div>${setupExplanation('配置说明：访问地址和端口有什么影响？', [
-            [
-              '统一访问范围',
-              'Play、ARENA、VOXA、账号服务和登录页面统一使用本机、局域网或公网模式，避免监听地址互相冲突。',
-            ],
-            ['单独配置', '分别填写各服务的公网地址、证书和私钥；未填写地址的服务不生成公网访问链接。HTTPS 统一使用 443，各服务需要不同域名。'],
-            ['公网地址', 'IP 可只填写地址；域名必须显式填写 http:// 或 https://。单端地址可带自己的端口，例如 https://play.example.com 或 http://play.example.com:3121。'],
-            ['端口', '引擎的 HTTP 端口不能重复；HTTPS 由 Nginx 使用 443，并按各服务域名转发。'],
+          </div>${setupExplanation('配置说明：访问地址、路径与 SSL', [
+            ['访问范围', '本机仅当前电脑访问；局域网供同一网络内的设备访问。公网模式需要安装并运行 Nginx。'],
+            ['共用地址', '顶部填写一个 IP 或域名，所有服务共用。路径留空时按各服务端口访问，例如 https://abc.example.com:3121。'],
+            ['独立地址', '各服务分别填写完整地址，支持不同域名或同一域名的不同端口，例如 https://play.example.com 或 https://abc.example.com:3121。'],
+            ['填写格式', '域名或 IP 可直接填写，也可带端口。未写协议时，有 SSL 证书使用 HTTPS，没有则使用 HTTP；显式填写 http:// 或 https:// 时以填写的协议为准。证书需覆盖对应的域名或 IP。'],
+            ['入口路径（共用地址）', '仅共用地址模式显示。如 /play、/arena、/login，页面、资源和实时连接会保留此前缀。填写不同路径后，可共享 80 或 443；留空按服务端口访问。独立地址模式直接使用各服务填写的地址。'],
+            ['SSL 证书', 'HTTPS 需上传证书和私钥。共用地址模式只在顶部配置一组，各服务统一使用；独立地址模式分别配置，证书需覆盖对应的域名或 IP。'],
+            ['保存与生效', '共用地址模式在卡片底部显示最终访问地址。缺少 Nginx 时可保存配置，安装并启动后再次保存，公网入口才会生效。'],
           ])}</section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 70, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>

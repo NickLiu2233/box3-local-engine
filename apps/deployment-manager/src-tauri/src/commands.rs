@@ -88,6 +88,11 @@ struct InstallConfigView {
     auto_backup_retention_days: u32,
     public_host: String,
     public_address: String,
+    public_address_mode: String,
+    shared_public_address: String,
+    public_service_paths: BTreeMap<String,String>,
+    #[serde(default)]
+    public_ssl_configured: BTreeMap<String,bool>,
     play_public_address_override: String,
     creator_public_address_override: String,
     voxa_public_address_override: String,
@@ -181,6 +186,10 @@ impl Default for InstallConfigView {
             auto_backup_retention_days: 30,
             public_host: "127.0.0.1".into(),
             public_address: "127.0.0.1".into(),
+            public_address_mode: "independent".into(),
+            shared_public_address: String::new(),
+            public_service_paths: BTreeMap::new(),
+            public_ssl_configured: BTreeMap::new(),
             play_public_address_override: String::new(),
             creator_public_address_override: String::new(),
             voxa_public_address_override: String::new(),
@@ -271,6 +280,16 @@ struct InstallConfigInput {
     public_host: String,
     #[serde(default)]
     public_address: String,
+    #[serde(default = "default_public_address_mode")]
+    public_address_mode: String,
+    #[serde(default)]
+    shared_public_address: String,
+    #[serde(default)]
+    public_service_paths: BTreeMap<String,String>,
+    #[serde(default)]
+    public_ssl_configured: BTreeMap<String,bool>,
+    #[serde(default)]
+    independent_public_addresses: BTreeMap<String,String>,
     #[serde(default)]
     play_public_address_override: String,
     #[serde(default)]
@@ -470,20 +489,23 @@ fn default_play_cpu_limit() -> f64 {
 }
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
-    if let Some(result) = services::control_existing(args, PROJECT_NAME, docker_output) {
+    if box_manager_core::ssl::routing_settings(&runtime_root(app)?)?.is_none() { if let Some(result) = services::control_existing(args, PROJECT_NAME, docker_output) {
         return result;
-    }
+    }}
     ensure_runtime_files(app)?;
     let root = runtime_root(app)?;
     // Regenerate on every invocation. The owner can edit .env directly, but
     // Docker only ever consumes the policy-checked derived configuration.
     generate_runtime_environment(app)?;
     let env = runtime_env_path(app)?;
-    let compose = compose_path(app)?;
+    let original = compose_path(app)?;
+    let source=fs::read_to_string(original).map_err(|error|error.to_string())?;
+    let compose=root.join(".runtime-compose.yml");
+    write_private_file(&compose,box_manager_core::ssl::compose_source(&root,&source)?,"公网运行配置")?;
     let mut command = docker_command();
     command
         .current_dir(&root)
-        .args(["compose", "--project-name", PROJECT_NAME, "--env-file"]);
+        .args(["compose", "--project-name", PROJECT_NAME, "--project-directory"]).arg(&root).arg("--env-file");
     for key in parse_env(&fs::read_to_string(&env).map_err(|error| error.to_string())?).keys() {
         command.env_remove(key);
     }
@@ -494,6 +516,16 @@ fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
         run_command(command)?
     };
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+fn compose_file_output(app:&AppHandle,file:&Path,args:&[String]) -> Result<String,String> {
+    generate_runtime_environment(app)?;
+    let root=runtime_root(app)?;
+    let env=runtime_env_path(app)?;
+    let mut command=docker_command();
+    command.current_dir(&root).args(["compose","--project-name",PROJECT_NAME,"--project-directory"]).arg(&root).arg("--env-file").arg(&env).arg("-f").arg(file).args(args);
+    for key in parse_env(&fs::read_to_string(&env).map_err(|error|error.to_string())?).keys() {command.env_remove(key);}
+    run_command(command).map(|output|String::from_utf8_lossy(&output.stdout).into())
 }
 
 fn emit_progress(app: &AppHandle, stage: &str, message: &str, percent: u8) {
@@ -842,7 +874,13 @@ fn configuration_document_for_save(
     Ok(content)
 }
 
+fn default_public_address_mode() -> String { "independent".into() }
+
 fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result<(), String> {
+    if config.public_ssl_configured.is_empty() {config.public_ssl_configured = box_manager_core::public_access::certificate_flags(&runtime_root(app)?);}
+    let incoming = serde_json::to_value(&config).map_err(|error|error.to_string())?;
+    let prepared = box_manager_core::public_access::prepare(incoming.as_object().ok_or("配置格式无效")?)?;
+    config = serde_json::from_value(serde_json::Value::Object(prepared)).map_err(|error|error.to_string())?;
     ensure_runtime_files(app)?;
     normalize_unified_access_settings(&mut config);
     let database_mode = validate_database_mode(&config.database_mode)?;
@@ -1313,6 +1351,8 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     if database_mode == "managed" {
         remove_env(&mut content, "BOX_DATABASE_QUERY");
     }
+    let submitted = serde_json::to_value(&config).map_err(|error|error.to_string())?;
+    content = box_manager_core::public_access::save_document(&content, submitted.as_object().ok_or("配置格式无效")?)?;
     content = box_manager_core::access_settings::save(
         &content,
         &config.public_address,
@@ -1800,6 +1840,8 @@ fn saved_public_address_override(
     url_key: &str,
     fallback_url_key: Option<&str>,
 ) -> String {
+    if let Some(value) = values.get(&address_key.replace("_PUBLIC_ADDRESS_OVERRIDE","_INDEPENDENT_PUBLIC_ADDRESS")) { return value.clone(); }
+
     if let Some(address) = values.get(address_key) {
         return address.clone();
     }
@@ -1871,6 +1913,7 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         .cloned()
         .unwrap_or_else(default_public_host);
     let public_address = box_manager_core::access_settings::public_address(&values);
+    let public_view = box_manager_core::public_access::view(&values);
     InstallConfigView {
         database_mode: values
             .get("BOX_DATABASE_MODE")
@@ -1948,7 +1991,10 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         auto_backup_retention_days: number_u32("BOX_AUTO_BACKUP_RETENTION_DAYS", 30),
         public_host,
         public_address,
-        play_public_address_override: saved_public_address_override(
+        public_address_mode: public_view["publicAddressMode"].as_str().unwrap_or("independent").into(),
+        shared_public_address: public_view["sharedPublicAddress"].as_str().unwrap_or("").into(),
+        public_ssl_configured: runtime_root(&app).map(|root|box_manager_core::public_access::certificate_flags(&root)).unwrap_or_default(),
+        public_service_paths: serde_json::from_value(public_view["publicServicePaths"].clone()).unwrap_or_default(),        play_public_address_override: saved_public_address_override(
             &values,
             "BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE",
             "BOX_PLAY_PUBLIC_HOST_OVERRIDE",
@@ -3712,6 +3758,11 @@ mod tests {
             auto_backup_retention_days: 30,
             public_host: default_public_host(),
             public_address: "127.0.0.1".into(),
+            public_address_mode: "independent".into(),
+            shared_public_address: String::new(),
+            public_service_paths: BTreeMap::new(),
+            public_ssl_configured: BTreeMap::new(),
+            independent_public_addresses: BTreeMap::new(),
             play_public_address_override: String::new(),
             creator_public_address_override: String::new(),
             voxa_public_address_override: String::new(),

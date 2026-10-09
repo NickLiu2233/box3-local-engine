@@ -229,7 +229,8 @@
   position: fixed;
   top: 24px;
   right: 24px;
-  z-index: 20;
+  /* Feedback stays above dialogs (20) and the processing overlay (30). */
+  z-index: 40;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 20px;
   grid-template-rows: auto auto;

@@ -38,7 +38,8 @@ function externalNginxPanel() {
 export function sslCertificateSetting(service) {
   const files = state.sslFiles?.[service] || {}
   const saved = state.sslStatus?.config
-  const expiry = saved?.certificateExpiries?.[service] || (saved?.settings?.routes?.some(route => route.service === service) ? saved.expiresAt : null)
+  const sharedDates = service === 'shared' ? Object.entries(saved?.certificateSources || {}).filter(([,source]) => source === 'shared').map(([key]) => saved?.certificateExpiries?.[key]).filter(Boolean).sort() : []
+  const expiry = sharedDates[0] || saved?.certificateExpiries?.[service] || (saved?.settings?.routes?.some(route => route.service === service) ? saved.expiresAt : null)
   const remaining = Date.parse(expiry) - Date.now()
   const expiryClass = remaining <= 0 ? 'expired' : remaining <= 30 * 86400000 ? 'expiring' : ''
   const expiryHint = expiryClass === 'expired' ? '（已过期，请更换）' : expiryClass === 'expiring' ? '（即将到期，请更换）' : ''

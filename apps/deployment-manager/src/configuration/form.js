@@ -2,6 +2,7 @@ import { clearFeedback } from '../operations/feedback.js'
 import { numericConfigFields, ownerSecretKeys } from '../core/constants.js'
 import { render } from '../core/render-request.js'
 import { resetOwnerSecretState, state } from '../core/state.js'
+import { isPublicMode } from './public-access.js'
 import { normalizeAuthPortalImage } from './auth-portal-image.js'
 
 export function captureSetupForm() {
@@ -17,8 +18,10 @@ export function captureSetupForm() {
   const next = {
     ...state.config,
     ...values,
-    playNetworkMode: state.accessMode || state.config?.playNetworkMode || 'local',
-    creatorNetworkMode: state.accessMode || state.config?.playNetworkMode || 'local',
+    publicAddressMode: state.accessMode === 'public-shared' ? 'shared' : state.accessMode === 'public-independent' ? 'independent' : state.config?.publicAddressMode || 'independent',
+    publicServicePaths: Object.fromEntries(['play','creator','voxa','player-service','player-auth-portal'].map(service => [service, values[`publicPath-${service}`] ?? state.config?.publicServicePaths?.[service] ?? ''])),
+    playNetworkMode: isPublicMode(state.accessMode) ? 'public' : state.accessMode || state.config?.playNetworkMode || 'local',
+    creatorNetworkMode: isPublicMode(state.accessMode) ? 'public' : state.accessMode || state.config?.playNetworkMode || 'local',
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,
@@ -39,6 +42,7 @@ export function captureSetupForm() {
       next[key] = state.config[key]
     }
   }
+  for (const key of Object.keys(next)) if (key.startsWith('publicPath-')) delete next[key]
   state.config = normalizeInactiveServicePorts(next)
   state.config.authPortalImage = normalizeAuthPortalImage(state.config.authPortalImage)
 }

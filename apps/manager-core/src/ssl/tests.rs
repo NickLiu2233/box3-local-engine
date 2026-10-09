@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn nginx_defaults_to_external_and_reports_the_local_stable_version() {
+fn nginx_defaults_to_managed_and_preserves_explicit_external_selection() {
     let root = fixture_root();
     let mut docker = |args: &[String]| -> Result<String, String> {
         if args.starts_with(&["image".into(), "inspect".into()]) {
@@ -11,9 +11,11 @@ fn nginx_defaults_to_external_and_reports_the_local_stable_version() {
         Ok(String::new())
     };
     let result = status(&root, &mut docker).unwrap();
-    assert_eq!(result["provider"], "external");
+    assert_eq!(result["provider"], "managed");
     assert_eq!(result["imageVersion"], "1.30.2");
     set_provider(&root, "disabled").unwrap();
+    assert_eq!(status(&root, &mut docker).unwrap()["provider"], "managed");
+    set_provider(&root, "external").unwrap();
     assert_eq!(status(&root, &mut docker).unwrap()["provider"], "external");
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -29,11 +31,12 @@ fn missing_nginx_image_downloads_the_same_registry_mirror_as_redis() {
 }
 fn input() -> Import {
     Import {
+        delete_services: Vec::new(),
         external_local: false,
-        settings: Settings {
+        settings: Settings {upstream_ports:Default::default(),
             mode: "managed".into(),
             https_port: 443,
-            routes: vec![Route {
+            routes: vec![Route {path:String::new(),secure:true,
                 service: "play".into(),
                 domain: "play.example.com".into(),
                 port: None,
@@ -51,12 +54,11 @@ fn refuses_configuration_injection_and_duplicate_hosts() {
         "x.example.com\n}",
         "*.example.com",
         "http://x.example.com",
-        "127.0.0.1",
     ] {
         assert!(domain(host).is_err());
     }
     let mut draft = input();
-    draft.settings.routes.push(Route {
+    draft.settings.routes.push(Route {path:String::new(),secure:true,
         service: "creator".into(),
         domain: "play.example.com".into(),
         port: None,
@@ -188,7 +190,7 @@ fn failed_reload_restores_previous_config_and_keeps_old_metadata() {
 fn per_service_certificates_use_distinct_files_and_support_same_host_on_distinct_ports() {
     let mut input = input();
     input.settings.routes[0].port = Some(8443);
-    input.settings.routes.push(Route {
+    input.settings.routes.push(Route {path:String::new(),secure:true,
         service: "creator".into(),
         domain: "play.example.com".into(),
         port: Some(9443),
@@ -234,7 +236,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
     }
     let mut input = input();
     input.settings.mode = "external".into();
-    input.settings.routes.push(Route {
+    input.settings.routes.push(Route {path:String::new(),secure:true,
         service: "creator".into(),
         domain: "creator.example.com".into(),
         port: Some(8443),
@@ -260,7 +262,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
         .contains("PRIVATE KEY"));
     let deferred = runtime::apply_with_local(
         &root, &root, "unused", "",
-        Import { settings: settings.clone(), external_local: true, certificate: String::new(), private_key: String::new(), certificates: Default::default() },
+        Import {delete_services:Vec::new(), settings: settings.clone(), external_local: true, certificate: String::new(), private_key: String::new(), certificates: Default::default() },
         &mut unavailable, &mut |_, _| Ok(None),
     ).unwrap();
     assert_eq!(deferred["config"]["pendingLocal"], true);
@@ -276,6 +278,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
         "unused",
         "",
         Import {
+        delete_services: Vec::new(),
         external_local: false,
             settings,
             certificate: String::new(),
@@ -287,11 +290,12 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
     .unwrap();
     let metadata = fs::read_to_string(root.join("https/settings.json")).unwrap();
     let mut bad = Import {
+        delete_services: Vec::new(),
         external_local: false,
-        settings: Settings {
+        settings: Settings {upstream_ports:Default::default(),
             mode: "external".into(),
             https_port: 443,
-            routes: vec![Route {
+            routes: vec![Route {path:String::new(),secure:true,
                 service: "play".into(),
                 domain: "play.example.com".into(),
                 port: None,
@@ -325,7 +329,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
 fn managed_https_runtime_links_use_listener_ports_without_changing_engine_ports() {
     let root = fixture_root();
     std::fs::create_dir(root.join("https")).unwrap();
-    let saved = Saved {settings:Settings {mode:"managed".into(),https_port:443,routes:vec![Route {service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {service:"player-auth-portal".into(),domain:"auth.example.test".into(),port:Some(443)}]},pending_local:false,external_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"fixture".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
+    let saved = Saved {settings:Settings {upstream_ports:Default::default(),mode:"managed".into(),https_port:443,routes:vec![Route {path:String::new(),secure:true,service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {path:String::new(),secure:true,service:"player-auth-portal".into(),domain:"auth.example.test".into(),port:Some(443)}]},pending_local:false,external_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"fixture".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
     std::fs::write(root.join("https/settings.json"), serde_json::to_string(&saved).unwrap()).unwrap();
     let values = [("BOX_PLAY_NETWORK_MODE","public"),("BOX_CREATOR_NETWORK_MODE","local")].into_iter().map(|(key,value)|(key.to_string(),value.to_string())).collect();
     let mut derived: BTreeMap<String,String> = [("BOX_PLAY_PUBLIC_URL","https://play.example.test:3121"),("BOX_CREATOR_PUBLIC_URL","http://127.0.0.1:3127"),("BOX_VOXA_PUBLIC_URL","http://127.0.0.1:3123"),("BOX_PLAYER_SERVICE_PUBLIC_URL","https://shared.example.test:3124"),("BOX_AUTH_PORTAL_PUBLIC_URL","https://auth.example.test:3125"),("BOX_PLAY_PORT","3121")].into_iter().map(|(key,value)|(key.to_string(),value.to_string())).collect();
@@ -346,7 +350,7 @@ fn managed_https_runtime_links_use_listener_ports_without_changing_engine_ports(
 fn failed_route_reload_preserves_the_certificate_being_deleted() {
     let root = fixture_root();
     std::fs::create_dir_all(root.join("https/revisions/old")).unwrap();
-    let settings = Settings {mode:"managed".into(), https_port:443, routes:vec![Route {service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {service:"creator".into(),domain:"creator.example.test".into(),port:Some(443)}]};
+    let settings = Settings {upstream_ports:Default::default(),mode:"managed".into(), https_port:443, routes:vec![Route {path:String::new(),secure:true,service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {path:String::new(),secure:true,service:"creator".into(),domain:"creator.example.test".into(),port:Some(443)}]};
     let saved = Saved {settings,external_local:false,pending_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"old".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
     let metadata = serde_json::to_string(&saved).unwrap();
     std::fs::write(root.join("https/settings.json"), &metadata).unwrap();
@@ -370,7 +374,7 @@ fn failed_route_reload_preserves_the_certificate_being_deleted() {
 fn certificate_removal_is_not_blocked_by_another_expired_certificate() {
     let root = fixture_root();
     std::fs::create_dir_all(root.join("https/revisions/old")).unwrap();
-    let saved = Saved {settings:Settings {mode:"managed".into(),https_port:443,routes:vec![Route {service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {service:"creator".into(),domain:"creator.example.test".into(),port:Some(443)}]},external_local:false,pending_local:false,expires_at:"2020-01-01T00:00:00Z".into(),revision:"old".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
+    let saved = Saved {settings:Settings {upstream_ports:Default::default(),mode:"managed".into(),https_port:443,routes:vec![Route {path:String::new(),secure:true,service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {path:String::new(),secure:true,service:"creator".into(),domain:"creator.example.test".into(),port:Some(443)}]},external_local:false,pending_local:false,expires_at:"2020-01-01T00:00:00Z".into(),revision:"old".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
     std::fs::write(root.join("https/settings.json"), serde_json::to_string(&saved).unwrap()).unwrap();
     for service in ["play", "creator"] {
         std::fs::write(root.join(format!("https/revisions/old/{service}-cert.pem")), "-----BEGIN CERTIFICATE-----\nfixture").unwrap();
@@ -383,5 +387,33 @@ fn certificate_removal_is_not_blocked_by_another_expired_certificate() {
     assert_eq!(result["config"]["settings"]["routes"].as_array().unwrap().len(), 1);
     assert_eq!(result["config"]["certificateExpiries"]["play"], "2020-01-01T00:00:00Z");
     assert!(!root.join("https/revisions/old/creator-key.pem").exists());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn shared_certificate_deletion_clears_tls_flags_and_keeps_http_and_other_certificates() {
+    let root=fixture_root();
+    std::fs::create_dir_all(root.join("https/revisions/old")).unwrap();
+    let settings=Settings {mode:"managed".into(),https_port:443,upstream_ports:Default::default(),routes:vec![
+        Route {service:"play".into(),domain:"play.example.test".into(),port:Some(8080),secure:false,path:String::new()},
+        Route {service:"creator".into(),domain:"creator.example.test".into(),port:Some(443),secure:true,path:String::new()},
+        Route {service:"voxa".into(),domain:"voxa.example.test".into(),port:Some(443),secure:true,path:String::new()},
+    ]};
+    let saved=Saved {settings,external_local:false,pending_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"old".into(),external_config:String::new(),certificate_sources:[("play".into(),"shared".into()),("creator".into(),"shared".into()),("voxa".into(),"independent".into())].into_iter().collect(),certificate_expiries:["play","creator","voxa"].into_iter().map(|service|(service.into(),"2099-01-01T00:00:00Z".into())).collect()};
+    std::fs::write(root.join("https/settings.json"),serde_json::to_string(&saved).unwrap()).unwrap();
+    for service in ["play","creator","voxa"] {
+        std::fs::write(root.join(format!("https/revisions/old/{service}-cert.pem")),"-----BEGIN CERTIFICATE-----\nfixture").unwrap();
+        std::fs::write(root.join(format!("https/revisions/old/{service}-key.pem")),"-----BEGIN PRIVATE KEY-----\nfixture").unwrap();
+    }
+    assert!(crate::public_access::certificate_flags(&root)["shared"]);
+    let result=delete_certificate(&root,&root,"fixture","","shared",&mut |_|Ok(String::new())).unwrap();
+    let routes=result["config"]["settings"]["routes"].as_array().unwrap();
+    assert_eq!(routes.len(),2);
+    assert!(routes.iter().any(|route|route["service"]=="play" && route["secure"]==false));
+    let flags=crate::public_access::certificate_flags(&root);
+    assert!(!flags["shared"]);assert!(!flags["play"]);assert!(!flags["creator"]);assert!(flags["voxa"]);
+    assert!(!root.join("https/revisions/old/play-key.pem").exists());
+    assert!(!root.join("https/revisions/old/creator-key.pem").exists());
+    assert!(root.join("https/revisions/old/voxa-key.pem").exists());
     std::fs::remove_dir_all(root).unwrap();
 }
