@@ -59,7 +59,7 @@ curl -fsSL https://abc.com/install.sh |
 
 该目录必须支持 HTTPS 原始文件下载，不能返回登录页面或 HTML 错误页。正式 Release 会自动先上传两个架构包和 `install.sh`，最后更新 `latest.txt`。
 
-CDN 的 `latest.txt` 或当前架构 ZIP 返回错误时，安装器会自动回退到同版本的 GitHub Release；CDN 与 GitHub 都无法下载时才停止安装。
+版本信息和服务器发行包仅从 CDN 获取。CDN 的 `latest.txt` 或当前架构 ZIP 获取失败时，安装器会提示错误并停止安装，请检查网络或稍后重试。
 
 ## 2. 准备服务器
 

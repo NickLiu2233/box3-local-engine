@@ -4200,6 +4200,7 @@ pub fn run() {
             delete_map_runtime_profile,
             destroy_project_runtime,
             get_about_info,
+            crate::updates::open_release_download,
             get_legal_notices,
             get_performance_status,
             get_data_storage_info,

@@ -5,7 +5,6 @@ set -eu
 # as the stable `install.sh` release asset; the full offline package keeps its
 # own installer for image verification and service startup.
 
-REPOSITORY_URL=${BOX3_REPOSITORY_URL:-https://github.com/ifishcool/box-local-engine}
 RELEASE_CDN_URL=${BOX3_RELEASE_CDN_URL:-https://assets.box3.fun/local-engine}
 INSTALL_DIRECTORY=${BOX3_INSTALL_DIRECTORY:-/opt/box3-engine}
 REQUESTED_VERSION=${BOX3_VERSION:-latest}
@@ -238,27 +237,17 @@ install_docker() {
 resolve_version() {
   if [ "$REQUESTED_VERSION" != 'latest' ]; then
     version=${REQUESTED_VERSION#v}
-  elif [ -n "$RELEASE_CDN_URL" ]; then
+  else
     if version=$(curl --proto '=https' --tlsv1.2 -fsSL \
       "${RELEASE_CDN_URL%/}/latest.txt"); then
       version=${version#v}
     else
-      info 'CDN 版本信息不可用，回退到 GitHub Releases'
-      resolve_github_version
+      fail '无法从 CDN 获取发行版本，请检查网络或稍后重试。'
     fi
-  else
-    resolve_github_version
   fi
   case "$version" in
     ''|*[!0-9A-Za-z._-]*) fail '无法确定可安装的发行版本。' ;;
   esac
-}
-
-resolve_github_version() {
-  latest_url=$(curl --proto '=https' --tlsv1.2 -fsSL \
-    -o /dev/null -w '%{url_effective}' "$REPOSITORY_URL/releases/latest")
-  version=${latest_url##*/}
-  version=${version#v}
 }
 
 is_ipv4_address() {
@@ -362,11 +351,7 @@ if existing_installation_matches_target; then
 fi
 
 package_name="BOX3-Engine-Server-$version-linux-$architecture"
-if [ -n "$RELEASE_CDN_URL" ]; then
-  package_url="${RELEASE_CDN_URL%/}/$package_name.zip"
-else
-  package_url="$REPOSITORY_URL/releases/download/v$version/$package_name.zip"
-fi
+package_url="${RELEASE_CDN_URL%/}/$package_name.zip"
 temporary_directory=$(mktemp -d)
 cleanup() {
   exit_status=$?
@@ -379,14 +364,7 @@ trap cleanup EXIT HUP INT TERM
 info "下载 BOX3 Engine ${version}（linux/${architecture}）"
 if ! curl --proto '=https' --tlsv1.2 --fail --location \
   --retry 3 --retry-delay 2 --output "$temporary_directory/package.zip" "$package_url"; then
-  if [ -z "$RELEASE_CDN_URL" ]; then
-    fail '无法下载服务器发行包。'
-  fi
-  github_package_url="$REPOSITORY_URL/releases/download/v$version/$package_name.zip"
-  info 'CDN 发行包不可用，回退到 GitHub Releases'
-  curl --proto '=https' --tlsv1.2 --fail --location \
-    --retry 3 --retry-delay 2 --output "$temporary_directory/package.zip" \
-    "$github_package_url"
+  fail '无法从 CDN 下载服务器发行包，请检查网络或稍后重试。'
 fi
 unzip -q "$temporary_directory/package.zip" -d "$temporary_directory/unpacked"
 package_directory="$temporary_directory/unpacked/$package_name"

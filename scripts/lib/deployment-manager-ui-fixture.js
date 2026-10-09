@@ -20,7 +20,9 @@ import { saveConfiguration } from ${JSON.stringify(path.join(src, 'operations/co
 import { sslRoutes } from ${JSON.stringify(path.join(src, 'configuration/ssl.js'))}
 import { selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
 import { confirmBackupAction } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
-globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate }
+import { checkForUpdates, closeUpdateDialog } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
+import { isNewerVersion, validateRelease } from ${JSON.stringify(path.join(src, 'utils/releases.js'))}
+globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, isNewerVersion, validateRelease }
 `
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
@@ -100,7 +102,7 @@ class FixtureFormData {
   [Symbol.iterator]() { return this.entries() }
 }
 
-async function createFixture({ webManager = false, token = '', bundle, responses = {} } = {}) {
+async function createFixture({ webManager = false, token = '', bundle, responses = {}, releaseResponse } = {}) {
   if (!bundle) { bundlePromise ||= buildFixtureBundle(); bundle = await bundlePromise }
   const calls = [], copied = [], events = new Map(), intervals = new Map(), timeouts = new Map()
   let html = '', form = null, modes = [], resetLoginImage = null, timerId = 0
@@ -115,7 +117,7 @@ async function createFixture({ webManager = false, token = '', bundle, responses
   }
   const results = {
     get_system_status: { dockerReady: true, configured: true, allHealthy: true, services: [{ name: 'play', running: true }, { name: 'creator', running: true }, { name: 'managed-postgres', running: true }] },
-    get_install_config: fixtureConfig, get_about_info: {},
+    get_install_config: fixtureConfig, get_about_info: {applicationVersion:'0.3.0'},
     get_managed_service_info: { configured: true, ready: true, imageAvailable: true },
     get_data_storage_info: { path: '/tmp/engine-fixture' }, get_raw_environment: 'FIXTURE=true',
     list_backups: [], get_project_runtime_status: { creator: [], play: [], playMaps: [] },
@@ -156,7 +158,13 @@ async function createFixture({ webManager = false, token = '', bundle, responses
   }
   const localValues = new Map()
   const context = vm.createContext({
-    console, URL, document, webManager, managerToken: token,
+    console, URL, AbortController, document, webManager, managerToken: token,
+    fetch: async (url, options) => {
+      calls.push({command:'fetch_release',url,options})
+      const release = typeof releaseResponse === 'function' ? await releaseResponse() : releaseResponse
+      return {ok:true,text:async () => JSON.stringify(release || {schemaVersion:1,version:'0.3.0',date:'2026-10-09',summary:'Current',sections:[]})}
+    },
+    setTimeout: (handler, delay) => { timeouts.set(++timerId, {handler, delay}); return timerId },
     progressListeners: new Map(), navigator: { clipboard: { async writeText(value) { copied.push(value) } } },
     localStorage: { getItem: key => localValues.get(key) || null, setItem: (key, value) => localValues.set(key, value) },
     Element: FixtureElement, HTMLInputElement: FixtureInput, FormData: FixtureFormData, CSS: { escape: value => value },

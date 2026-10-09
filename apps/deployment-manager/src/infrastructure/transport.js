@@ -228,7 +228,7 @@ export function dockerPlatform() {
 }
 
 export async function openExternal(url, nativeCommand = 'open_service') {
-  if (isTauri()) return invoke(nativeCommand, nativeCommand === 'open_service' ? { url } : {})
+  if (isTauri()) return invoke(nativeCommand, ['open_service', 'open_release_download'].includes(nativeCommand) ? { url } : {})
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 

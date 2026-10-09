@@ -19,10 +19,10 @@ env:
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
   AWS_REQUEST_CHECKSUM_CALCULATION: when_required
   AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-  # Intermediate build artifacts are private CI exchange files. Public Linux
-  # server releases use OSS_SERVER_RELEASE_PREFIX below, which is the origin
-  # directory behind https://assets.box3.fun/local-engine/.
-  OSS_BUILD_PREFIX: box-local-engine/${{ github.ref_name }}
+  # Intermediate build artifacts use a version subdirectory. Stable releases
+  # use OSS_SERVER_RELEASE_PREFIX below, which is the origin directory behind
+  # https://assets.box3.fun/local-engine/.
+  OSS_BUILD_PREFIX: local-engine/${{ github.ref_name }}
   OSS_SERVER_RELEASE_PREFIX: local-engine
 
 jobs:
@@ -386,7 +386,12 @@ jobs:
       - name: Publish stable Linux installer to OSS
         run: |
           version="${GITHUB_REF_NAME#v}"
+          node scripts/build-release-manifest.js "$version" release-files/latest.json "$(TZ=Asia/Shanghai date +'%Y-%m-%d')"
           printf '%s\n' "$version" > release-files/latest.txt
+          for target in windows-amd64 windows-arm64 macos-arm64 linux-amd64 linux-arm64; do
+            ossutil cp "release-files/BOX-Local-Engine-${version}-${target}.zip" \
+              "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/" --update
+          done
           for architecture in amd64 arm64; do
             server_package="release-files/BOX3-Engine-Server-${version}-linux-${architecture}.zip"
             test -f "$server_package"
@@ -395,6 +400,8 @@ jobs:
           done
           ossutil cp release-files/install.sh \
             "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/install.sh" --update
+          ossutil cp release-files/latest.json \
+            "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/latest.json" --meta Cache-Control:no-cache --update
           # Publish latest.txt last so clients never observe a version before
           # both architecture packages and the matching installer are ready.
           ossutil cp release-files/latest.txt \

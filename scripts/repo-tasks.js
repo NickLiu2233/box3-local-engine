@@ -71,7 +71,7 @@ function check() {
   node('scripts/check-desktop-deployment-manager.js')
   node('scripts/check-headless-rust-manager.js')
   node('scripts/check-public-routing-structure.js')
-  run(process.execPath, ['--test', 'scripts/deployment-manager-ui.test.js', 'scripts/deployment-manager-transport.test.js'])
+  run(process.execPath, ['--test', 'scripts/deployment-manager-ui.test.js', 'scripts/deployment-manager-transport.test.js', 'scripts/deployment-manager-updates.test.js'])
   node('scripts/check-release-workflow.js')
   node('scripts/check-server-package-workflow.js')
   node('scripts/check-documentation.js')

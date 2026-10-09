@@ -142,7 +142,7 @@ assert.match(
   workflow,
   /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
 )
-assert.match(workflow, /OSS_BUILD_PREFIX: box-local-engine\/\$\{\{ github\.ref_name \}\}/)
+assert.match(workflow, /OSS_BUILD_PREFIX: local-engine\/\$\{\{ github\.ref_name \}\}/)
 assert.match(workflow, /OSS_SERVER_RELEASE_PREFIX: local-engine/)
 assert.match(workflow, /ALIYUN_OSS_BUCKET must contain only the bucket name/)
 assert.match(workflow, /ALIYUN_OSS_ENDPOINT must be an OSS endpoint hostname/)
@@ -202,11 +202,12 @@ const bootstrapInstaller = fs.readFileSync(
   'utf8',
 )
 assert.match(bootstrapInstaller, /uname -m/)
-assert.match(bootstrapInstaller, /releases\/latest/)
+assert.doesNotMatch(bootstrapInstaller, /ifishcool\/box-local-engine/)
 assert.match(bootstrapInstaller, /BOX3_RELEASE_CDN_URL/)
 assert.match(bootstrapInstaller, /https:\/\/assets\.box3\.fun\/local-engine/)
 assert.match(bootstrapInstaller, /latest\.txt/)
-assert.match(bootstrapInstaller, /CDN 发行包不可用，回退到 GitHub Releases/)
+assert.match(bootstrapInstaller, /无法从 CDN 下载服务器发行包/)
+assert.doesNotMatch(bootstrapInstaller, /REPOSITORY_URL|resolve_github_version|github_package_url/)
 assert.match(bootstrapInstaller, /BOX3-Engine-Server-\$version-linux-\$architecture/)
 assert.match(bootstrapInstaller, /get\.docker\.com/)
 assert.match(bootstrapInstaller, /distribution_id.*alinux/)

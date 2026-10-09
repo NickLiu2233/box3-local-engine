@@ -1,4 +1,5 @@
 import { applyTheme } from './ui/theme.js'
+import { checkForUpdates } from './operations/updates.js'
 import { isWebManager, listen } from './infrastructure/transport.js'
 import { refreshOverviewStatus, syncOverviewPolling } from './operations/overview.js'
 import { refreshPerformance, syncPerformancePolling } from './operations/performance.js'
@@ -37,4 +38,5 @@ if (isWebManager()) startWebManager()
 else {
   renderApplication()
   refreshStatus()
+  checkForUpdates()
 }

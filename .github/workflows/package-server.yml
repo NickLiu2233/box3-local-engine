@@ -37,7 +37,7 @@ env:
   AWS_REQUEST_CHECKSUM_CALCULATION: when_required
   AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
   # This prefix contains the image archives produced by the release workflow.
-  OSS_BUILD_PREFIX: box-local-engine/v${{ inputs.version }}
+  OSS_BUILD_PREFIX: local-engine/v${{ inputs.version }}
   # This directory is the origin behind https://assets.box3.fun/local-engine/.
   OSS_SERVER_RELEASE_PREFIX: local-engine
 

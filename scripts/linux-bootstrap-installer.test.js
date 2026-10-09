@@ -95,11 +95,11 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 if printf '%s' "$arguments" | grep -q 'latest.txt'; then
+  [ "$FAIL_CDN" != 'version' ] || exit 22
   printf '9.8.7\n'
 elif printf '%s' "$arguments" | grep -q 'cdn.example.test.*BOX3-Engine-Server'; then
-  exit 22
-elif [ "$output" = '/dev/null' ]; then
-  printf 'https://example.test/releases/tag/v9.8.7'
+  [ "$FAIL_CDN" != 'package' ] || exit 22
+  cp "$FIXTURE_ZIP" "$output"
 elif [ -z "$output" ]; then
   printf '203.0.113.10'
 else
@@ -108,20 +108,22 @@ fi
 `,
     )
 
-    const result = spawnSync('sh', [installer], {
+    const runInstaller = (extraEnv = {}) => spawnSync('sh', [installer], {
       env: {
         ...process.env,
         PATH: `${mockBin}:/usr/bin:/bin`,
         FIXTURE_ZIP: fixtureZip,
         DOCKER_CALLS: dockerCalls,
         CURL_CALLS: curlCalls,
-        BOX3_REPOSITORY_URL: 'https://example.test/project',
+        FAIL_CDN: '',
         BOX3_RELEASE_CDN_URL: 'https://cdn.example.test/box3',
         BOX3_INSTALL_DIRECTORY: installRoot,
         BOX3_MACHINE_ID_FILE: path.join(temporaryRoot, 'machine-id'),
+        ...extraEnv,
       },
       encoding: 'utf8',
     })
+    const result = runInstaller()
     assert.equal(result.status, 0, result.stderr || result.stdout)
     const environment = fs.readFileSync(path.join(installRoot, '.env'), 'utf8')
     assert.match(environment, /^PRESERVED=yes$/m)
@@ -149,11 +151,15 @@ fi
       curlInvocations,
       /https:\/\/cdn\.example\.test\/box3\/BOX3-Engine-Server-9\.8\.7-linux-amd64\.zip/,
     )
-    assert.match(
-      curlInvocations,
-      /https:\/\/example\.test\/project\/releases\/download\/v9\.8\.7\/BOX3-Engine-Server-9\.8\.7-linux-amd64\.zip/,
-    )
-    assert.match(result.stdout, /CDN 发行包不可用，回退到 GitHub Releases/)
+    assert.doesNotMatch(curlInvocations, /github|releases\/download|releases\/latest/)
+    for (const failure of ['version', 'package']) {
+      fs.writeFileSync(curlCalls, '')
+      const failed = runInstaller({FAIL_CDN:failure, ...(failure === 'package' ? {BOX3_VERSION:'9.8.8'} : {})})
+      assert.notEqual(failed.status, 0)
+      assert.match(failed.stderr, failure === 'version' ? /无法从 CDN 获取发行版本/ : /无法从 CDN 下载服务器发行包/)
+      assert.doesNotMatch(fs.readFileSync(curlCalls, 'utf8'), /github|releases\/download|releases\/latest/)
+      assert.equal(fs.readFileSync(path.join(installRoot,'.env'),'utf8'),environment)
+    }
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
   }

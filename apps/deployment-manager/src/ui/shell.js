@@ -4,6 +4,7 @@ import { hasWebManagerToken, isWebManager } from '../infrastructure/transport.js
 import { icon } from './icons.js'
 import { state } from '../core/state.js'
 import { themeControl } from './theme.js'
+import { updateDialog } from './update-dialog.js'
 
 function navItem(page, iconName, label) {
   return `<button class="nav-item ${state.page === page ? 'active' : ''}" data-page="${page}">${icon(iconName)}<span>${label}</span></button>`
@@ -11,6 +12,7 @@ function navItem(page, iconName, label) {
 
 export function shell(content) {
   const webLoginRequired = isWebManager() && !hasWebManagerToken()
+  const updateControl = !isWebManager() ? `<button class="icon-button update-check" id="check-version-updates" title="${state.updateChecking ? '正在检测更新' : '检测版本更新'}" aria-label="检测版本更新" ${state.updateChecking ? 'disabled' : ''}>${icon('refresh')}</button>` : ''
   const primaryNavigation = webLoginRequired
     ? navItem('web-login', 'device', '管理登录')
     : `${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`
@@ -18,7 +20,7 @@ export function shell(content) {
     <aside>
       <div class="brand"><img class="brand-mark" src="/logo512.png" alt="BOX3 Engine"/><div><strong>BOX3 Engine</strong><span>本地部署</span></div></div>
       <nav>${primaryNavigation}${navItem('about', 'info', '关于')}</nav>
-      <div class="sidebar-bottom">${isWebManager() && hasWebManagerToken() ? `<button class="web-logout" id="web-logout">${icon('logout')}<span>退出管理</span></button>` : ''}${themeControl()}${!webLoginRequired ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span></div>` : ''}</div>
+      <div class="sidebar-bottom">${isWebManager() && hasWebManagerToken() ? `<button class="web-logout" id="web-logout">${icon('logout')}<span>退出管理</span></button>` : ''}${themeControl()}${!webLoginRequired ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span>${updateControl}</div>` : ''}</div>
     </aside>
     <main>${content}</main>
     ${feedbackToast()}
@@ -27,6 +29,7 @@ export function shell(content) {
     ${state.runtimeDestroyDialog ? runtimeDestroyDialog() : ''}
     ${state.mapRuntimeProfileDialog ? mapRuntimeProfileDialog() : ''}
     ${state.legalDialog ? legalDocumentDialog() : ''}
+    ${state.updateDialogOpen ? updateDialog() : ''}
   </div>`
 }
 

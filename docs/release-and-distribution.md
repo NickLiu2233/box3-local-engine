@@ -108,18 +108,22 @@ Release 工作流只在 `v*` Tag 推送时执行。它先确认发行应用与 R
 | `ALIYUN_OSS_BUCKET`            | Bucket 名称，不含 `oss://` 和路径              |
 | `ALIYUN_OSS_ENDPOINT`          | OSS 公网 Endpoint 域名，不含 `https://` 和路径 |
 
-流水线使用两个互不混淆的目录：
+流水线使用版本子目录和稳定根目录：
 
 | OSS 路径                  | 用途                                       |
 | ------------------------- | ------------------------------------------ |
-| `box-local-engine/<tag>/` | 镜像、桌面包和服务器包的流水线中间交换目录 |
-| `local-engine/`           | Linux 一键安装器的稳定 CDN 源目录          |
+| `local-engine/<tag>/` | 镜像、桌面包和服务器包的流水线中间交换目录，例如 `local-engine/v0.3.0/` |
+| `local-engine/`       | 启动器更新检测和 Linux 一键安装器的稳定 CDN 源目录 |
+
+正式发布流水线使用 Tag 作为版本子目录，手动服务器打包流水线使用 `v<输入版本>`，两者保持一致。修改前缀不会删除旧的 `box-local-engine/<tag>/` 对象；旧路径下的缓存不会在新路径命中，首次运行可能需要重新构建。
 
 `local-engine/` 最终包含：
 
 ```text
 install.sh
 latest.txt
+latest.json
+BOX-Local-Engine-<version>-<platform>.zip
 BOX3-Engine-Server-<version>-linux-amd64.zip
 BOX3-Engine-Server-<version>-linux-arm64.zip
 ```
@@ -127,10 +131,18 @@ BOX3-Engine-Server-<version>-linux-arm64.zip
 这些对象通过 `https://assets.box3.fun/local-engine/` 下载。发布顺序为：
 
 1. 收集五个桌面包和两个服务器包；
-2. 创建 GitHub Release，确保 CDN 失败时可回退；
-3. 上传两个带版本号的服务器包；
+2. 创建 GitHub Release，归档发行物；安装器的版本信息和发行包仅从 CDN 获取，CDN 失败时提示错误并停止；
+3. 上传五个桌面包和两个带版本号的服务器包；
 4. 上传稳定名称 `install.sh`；
-5. 最后更新 `latest.txt`。
+5. 更新启动器的 `latest.json`，然后最后更新 `latest.txt`。
+
+### 启动器版本检测
+
+桌面启动器每次启动自动请求 `https://assets.box3.fun/local-engine/latest.json`；侧栏更新图标可手动重试。仅当稳定版本号高于当前启动器版本时弹出更新日志，显示版本、发布日期与变更内容，并提供 CDN 安装包下载。检测超时为 10 秒，并发检测共用请求；启动检测失败静默，手动检测失败显示提示。离线启动不受影响。Linux Web 管理页不触发桌面启动器更新检测。
+
+`latest.json` 使用 `schemaVersion: 1`，包含 `version`（三段稳定版本号）、`date`（`YYYY-MM-DD` 发布日期）、`summary` 和 `sections`（每项含 `title`、字符串数组 `items`）。日志来自 `distribution/release-notes.json`，与关于页共用，新增版本时应追加到数组顶部并保留历史版本。发布流程用 `scripts/build-release-manifest.js` 按 Tag 选取日志、检查五个安装包齐全后生成清单，在全部安装包上传后发布，并设置 `Cache-Control: no-cache`。CDN 须允许跨域 GET（`Access-Control-Allow-Origin: *`）；启动器 CSP 仅放行该资源域名。
+
+该代码变更不会直接上传 CDN 清单。首次部署此流程前，若 CDN 尚未提供 `latest.json`，启动器将按检测失败处理。
 
 流水线只执行复制和同名覆盖，不删除 OSS 中的其他文件，也不会删除旧版本服务器包。同名 `install.sh`、`latest.txt` 和同版本 ZIP 会被更新。
 
