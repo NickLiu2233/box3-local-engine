@@ -63,7 +63,7 @@ test('about page lists the current engine release first without player launcher 
   app.api.render()
   const notes = app.html.slice(app.html.indexOf('about-changelog-list'))
   assert.ok(notes.indexOf('v0.3.0') < notes.indexOf('v0.2.0'))
-  for (const feature of ['地图脚本与后台管理', '反作弊与行为审计', '登录与账号', '速度缩放', '实时连接与流量优化']) {
+  for (const feature of ['玩家与地图', '反作弊', '登录页面', '速度缩放', '实时同步与体验']) {
     assert.ok(notes.includes(feature), `missing release note: ${feature}`)
   }
   assert.ok(!notes.includes('玩家启动器'))
