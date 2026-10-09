@@ -2,6 +2,7 @@
 
 const path = require('node:path')
 const { spawnSync } = require('node:child_process')
+const { testDependencyBuildPlan } = require('./test-dependency-build')
 
 const root = path.resolve(__dirname, '..')
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm'
@@ -34,10 +35,24 @@ function typecheck() {
   npmScript('apps/player-auth-portal', 'typecheck')
 }
 
-function check() {
+let testDependenciesPrepared = false
+
+function prepareTestDependencies() {
+  if (testDependenciesPrepared) return
+  // Check committed API artifacts before its build can regenerate them.
   npmScript('internals/apis', 'check:openapi')
+  // These packages expose compiled entry points. A clean checkout has no
+  // schema/API outputs, and an incremental cache can outlive deleted outputs.
+  // Run package builds directly: nesting Rush inside a global Rush command
+  // would acquire the same repository lock twice.
+  for (const project of testDependencyBuildPlan(root)) npmScript(project.folder, 'build')
+  testDependenciesPrepared = true
+}
+
+function check() {
+  prepareTestDependencies()
   npmScript('internals/apis', 'test')
-  run(process.execPath, ['--test', 'scripts/dev-environment.test.js'])
+  run(process.execPath, ['--test', 'scripts/dev-environment.test.js', 'scripts/repo-tasks.test.js'])
   node('apps/local-engine/src/build-metadata.test.js')
   node('apps/local-engine/scripts/regression-project-storage-identity.js')
   node('scripts/regression-empty-mesh-asset.js')
@@ -102,6 +117,7 @@ function check() {
 }
 
 function test() {
+  prepareTestDependencies()
   npmScript('apps/local-engine', 'test')
   npmScript('services/game-server', 'test')
   check()
