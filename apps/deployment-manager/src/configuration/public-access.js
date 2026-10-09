@@ -15,7 +15,7 @@ export function accessChoice(config = state.config || {}) {
 export function pathPrefix(value) {
   if (!value?.trim() || value === '/') return ''
   const path = '/' + value.trim().replace(/^\/+|\/+$/g,'')
-  if (!/^\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path) || /^\/(?:api|_next|runtime|p|player-admin)(?:\/|$)/.test(path)) throw new Error('路径前缀请使用 /play 这样的格式，不能使用 API、资源或运行时的保留路径')
+  if (path.length > 129 || !/^\/[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path) || /^\/(?:api|_next|runtime|p|player-admin)(?:\/|$)/.test(path)) throw new Error('路径前缀最多 128 个字符，请使用 /play 这样的格式，不能使用 API、资源或运行时的保留路径')
   return path
 }
 export function publicCertificateFlags(config = state.config || {}) {

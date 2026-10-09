@@ -70,8 +70,12 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 
 ## 单服务公网地址与登录镜像
 
-访问设置支持共用公网地址，以及 Play、Creator、VOXA、Player Service 和登录门户的单服务覆盖。单服务地址优先，留空使用共用地址；本机/局域网不使用公网覆盖，切回公网会保留已填草稿。
-域名必须明确写 `http://` 或 `https://`，不因填写域名自动改成 HTTPS。IP 可不带协议，此时按 HTTP 与对应服务端口生成地址。是否使用代理由部署者决定。
+访问设置支持独立地址与共用地址两种公网模式。独立模式逐服务填写，空地址不继承；共用模式使用一个 IP 或域名，通过服务端口或路径区分。本机/局域网不使用公网覆盖，模式切换保留两套草稿。
+域名和 IP 均可省略协议：有完整证书使用 HTTPS，否则 HTTP；显式协议优先。独立裸域名默认使用 443/80，独立裸 IP 使用服务端口，显式端口保留。共用模式路径为空时使用各服务端口，有路径时使用共用地址端口。示例见 [Nginx 与公网证书配置](./https-certificate-management.md)。
 主要覆盖字段为 `BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE`、`BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE`、`BOX_VOXA_PUBLIC_ADDRESS_OVERRIDE`、`BOX_PLAYER_SERVICE_PUBLIC_ADDRESS_OVERRIDE` 和 `BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE`；优先通过管理器保存，实际 URL 由运行时配置派生。
+
+`BOX_PUBLIC_ADDRESS_MODE` 保存 independent/shared，`BOX_SHARED_PUBLIC_ADDRESS` 保存共用地址草稿；各服务 `*_INDEPENDENT_PUBLIC_ADDRESS` 保存独立草稿，`*_PUBLIC_PATH` 保存共用路径，`*_PUBLIC_ADDRESS_OVERRIDE` 是当前模式生成的完整地址。Nginx 来源保存在数据目录 `https/provider`，默认内置，已保存的外部选择保留。
+
+`*_BASE_PATH` 与 `BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN` 是运行时派生项。内置入口接管公网端口，上游容器取消对应端口映射；外部本机入口使用独立 loopback 上游端口，避免争用公网端口。
 
 登录镜像使用 `BOX_AUTH_PORTAL_IMAGE`。默认官方镜像跟随引擎版本，自定义镜像名/版本保持服主设置；只读取本机已有 Docker 镜像，不为自定义配置自动拉取仓库镜像。制作与导入见[自建登录门户](./self-hosted-login.md)。

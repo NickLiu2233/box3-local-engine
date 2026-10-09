@@ -490,30 +490,30 @@ assert.match(
   /async function saveConfiguration\(event\)[\s\S]*?\n}\n\n(?:export )?async function saveRawEnvironment\(\)/,
 )
 assert.match(frontend, /function switchSetupSection\(section\)/)
-for (const mode of ['local', 'lan', 'public']) {
-  assert.match(frontend, new RegExp(`data-network-mode="${mode}"`))
+for (const mode of ['local', 'lan', 'public-shared', 'public-independent']) {
+  assert.ok(frontend.includes(`['${mode}',`), `access selector must include ${mode}`)
 }
 assert.equal(
   (frontend.match(/data-network-mode=/g) || []).length,
-  3,
-  'access scope must render one shared local/LAN/public selector',
+  1,
+  'access scope must use one generated selector for all modes',
 )
 assert.doesNotMatch(frontend, /data-(?:play|creator)-network-mode=/)
 assert.match(frontend, /name="creatorNetworkMode" type="hidden" value="\$\{accessMode\}"/)
-assert.match(frontend, /name="creatorHost" type="hidden"/)
-assert.match(frontend, /name="publicAddress" type="hidden" value="\$\{escapeHtml\(config\.publicAddress/)
-assert.equal((frontend.match(/input\('publicAddress'/g) || []).length, 1)
+assert.match(frontend, /config\.creatorHost = config\.publicHost/)
+assert.match(frontend, /name="publicAddressMode" type="hidden"/)
+assert.match(frontend, /config\.publicAddress = primaryAddress/)
 assert.doesNotMatch(frontend, /创作端访问地址/)
 assert.doesNotMatch(frontend, /不建议直接向公网开放创作端/)
 assert.match(frontend, /name="playNetworkMode" type="hidden" value="\$\{accessMode\}"/)
-assert.match(frontend, /state\.config\.playNetworkMode = mode/)
-assert.match(frontend, /state\.config\.creatorNetworkMode = mode/)
-assert.match(frontend, /creatorNetworkMode: state\.accessMode/)
-assert.match(frontend, /const inferredAccessMode/)
+assert.match(frontend, /state\.config\.playNetworkMode = isPublicMode\(mode\) \? 'public' : mode/)
+assert.match(frontend, /state\.config\.creatorNetworkMode = isPublicMode\(mode\) \? 'public' : mode/)
+assert.match(frontend, /creatorNetworkMode: isPublicMode\(state\.accessMode\)/)
+assert.match(frontend, /function accessChoice\(/)
 assert.match(sharedBackend, /游玩端与创作端必须使用相同的访问范围/)
 assert.match(backend, /fn detect_lan_ip/)
 for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 'authPortalPort']) {
-  assert.match(frontend, new RegExp(`input\\('${port}'`))
+  assert.match(frontend, new RegExp(`portInput\\('${port}'`))
 }
 assert.match(backend, /不能使用同一个端口/)
 assert.match(backend, /BOX_AUTH_PORTAL_PORT/)
@@ -784,7 +784,7 @@ assert.match(frontend, /function scheduleProgressRender\(\)/)
 assert.match(frontend, /state\.projectRuntimesLoaded = true/)
 assert.match(backend, /fn open_docker_desktop_download\(\)/)
 assert.match(backend, /open_docker_desktop_download,/)
-assert.match(backend, /fn get_docker_check\(\) -> DockerCheck/)
+assert.match(backend, /async fn get_docker_check\(\) -> Result<DockerCheck, String>/)
 assert.match(backend, /fn start_docker_desktop\(\) -> Result<\(\), String>/)
 assert.match(backend, /\["desktop", "start"\]/)
 assert.match(backend, /get_docker_check,/)

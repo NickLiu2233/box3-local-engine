@@ -21,6 +21,26 @@ fn nginx_defaults_to_managed_and_preserves_explicit_external_selection() {
 }
 
 #[test]
+fn draft_routing_uses_the_same_provider_default_as_status() {
+    let root = fixture_root();
+    std::fs::write(root.join(".env"), "BOX_PLAY_NETWORK_MODE=public\nBOX_PLAY_PUBLIC_ADDRESS_OVERRIDE=http://play.example.test:3121\n").unwrap();
+    let source = "services:\n  play:\n    ports:\n      - \"3121:3000\"\n    environment:\n      ROLE: play\n";
+    for mode in [None, Some("disabled"), Some("external")] {
+        if let Some(mode) = mode { set_provider(&root, mode).unwrap(); }
+        let mut docker = |_: &[String]| Ok(String::new());
+        let selected = status(&root, &mut docker).unwrap();
+        let composed = compose_source(&root, source).unwrap();
+        if selected["provider"] == "managed" {
+            assert!(!composed.contains("ports:"));
+        } else {
+            assert!(composed.contains("127.0.0.1:13121:3000"));
+        }
+        assert!(composed.contains("ROLE: play"));
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn missing_nginx_image_downloads_the_same_registry_mirror_as_redis() {
     let mut calls = Vec::new();
     install_image(&mut |args: &[String]| {

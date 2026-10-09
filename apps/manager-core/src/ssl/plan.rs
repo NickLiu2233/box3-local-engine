@@ -1,180 +1,477 @@
+//! Compose port ownership, upstream transitions and public routing configuration.
 use super::*;
-use std::{fs,path::Path};
+use std::{fs, path::Path};
 
-pub fn routing_settings(root:&Path) -> Result<Option<Settings>,String> {
-    let pending=root.join("https/routing.pending.json");
-    if pending.exists() {return serde_json::from_str(&fs::read_to_string(pending).map_err(|e|e.to_string())?).map(Some).map_err(|e|e.to_string());}
-    let saved=root.join("https/settings.json");
-    if !saved.exists() {return Ok(None);}
-    let config:Saved=serde_json::from_str(&fs::read_to_string(saved).map_err(|e|e.to_string())?).map_err(|e|e.to_string())?;
+pub fn routing_settings(root: &Path) -> Result<Option<Settings>, String> {
+    let pending = root.join("https/routing.pending.json");
+    if pending.exists() {
+        return serde_json::from_str(&fs::read_to_string(pending).map_err(|e| e.to_string())?)
+            .map(Some)
+            .map_err(|e| e.to_string());
+    }
+    let saved = root.join("https/settings.json");
+    if !saved.exists() {
+        return Ok(None);
+    }
+    let config: Saved =
+        serde_json::from_str(&fs::read_to_string(saved).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?;
     Ok(Some(config.settings))
 }
-fn controller_owned(root:&Path,settings:&Settings) -> bool {
-    let provider=fs::read_to_string(root.join("https/provider")).unwrap_or_else(|_|settings.mode.clone());
-    provider.trim()==settings.mode
+fn controller_owned(root: &Path, settings: &Settings) -> bool {
+    super::runtime::provider(root, Some(&settings.mode)) == settings.mode
 }
 /// Keep host HTTP bindings out of the ports owned by Nginx. No application is started here.
-pub fn compose_source(root:&Path,source:&str) -> Result<String,String> {
-    let Some(settings)=routing_settings(root)?.or(draft_settings(root)?) else {return Ok(source.into());};
-    if !controller_owned(root,&settings) {return Ok(source.into());}
-    let targets:std::collections::BTreeSet<&str>=settings.routes.iter().map(|r|r.service.as_str()).collect();
-    let mut result=String::new();let mut service="";let mut skipping=false;
+pub fn compose_source(root: &Path, source: &str) -> Result<String, String> {
+    let Some(settings) = routing_settings(root)?.or(draft_settings(root)?) else {
+        return Ok(source.into());
+    };
+    if !controller_owned(root, &settings) {
+        return Ok(source.into());
+    }
+    let targets: std::collections::BTreeSet<&str> =
+        settings.routes.iter().map(|r| r.service.as_str()).collect();
+    let mut result = String::new();
+    let mut service = "";
+    let mut skipping = false;
     for line in source.lines() {
-        let indent=line.bytes().take_while(|byte|*byte==b' ').count();
-        if indent==2 && line.trim_end().ends_with(':') {service=line.trim().trim_end_matches(':');}
-        if skipping {if indent>4 || line.trim().is_empty() {continue;} skipping=false;}
-        if indent==4 && line.trim()=="ports:" && targets.contains(service) {
-            if settings.mode=="external" {
-                if let Some(port)=settings.upstream_ports.get(service) {
-                    let internal=SERVICES.iter().find(|s|s.0==service).ok_or("公网服务无效")?.2;
-                    result.push_str(&format!("    ports:\n      - \"127.0.0.1:{port}:{internal}\"\n"));
-                } else {result.push_str(line);result.push('\n');continue;}
-            }
-            skipping=true;continue;
+        let indent = line.bytes().take_while(|byte| *byte == b' ').count();
+        if indent == 2 && line.trim_end().ends_with(':') {
+            service = line.trim().trim_end_matches(':');
         }
-        result.push_str(line);result.push('\n');
+        if skipping {
+            if indent > 4 || line.trim().is_empty() {
+                continue;
+            }
+            skipping = false;
+        }
+        if indent == 4 && line.trim() == "ports:" && targets.contains(service) {
+            if settings.mode == "external" {
+                if let Some(port) = settings.upstream_ports.get(service) {
+                    let internal = SERVICES
+                        .iter()
+                        .find(|s| s.0 == service)
+                        .ok_or("公网服务无效")?
+                        .2;
+                    result.push_str(&format!(
+                        "    ports:\n      - \"127.0.0.1:{port}:{internal}\"\n"
+                    ));
+                } else {
+                    result.push_str(line);
+                    result.push('\n');
+                    continue;
+                }
+            }
+            skipping = true;
+            continue;
+        }
+        result.push_str(line);
+        result.push('\n');
     }
     Ok(result)
 }
-fn draft_settings(root:&Path) -> Result<Option<Settings>,String> {
-    let Ok(content)=fs::read_to_string(root.join(".env")) else {return Ok(None);};
-    let values=crate::environment::parse_env(&content);
-    if values.get("BOX_PLAY_NETWORK_MODE").map(String::as_str)!=Some("public") {return Ok(None);}
-    let mut routes=Vec::new();
-    for (service,label,_,key,port) in crate::public_access::SERVICES {
-        let Some(address)=values.get(&format!("{key}_PUBLIC_ADDRESS_OVERRIDE")).filter(|value|!value.is_empty()) else {continue;};
-        let (domain,port,secure,path)=if address.contains("://") {crate::configuration_migration::public_url_parts(address,label)?} else {(address.clone(),crate::configuration::env_port(&values,&format!("{key}_PORT"),port)?,false,String::new())};
-        routes.push(Route {service:service.into(),domain,port:Some(port),secure,path:crate::public_access::prefix(&path)?});
+fn draft_settings(root: &Path) -> Result<Option<Settings>, String> {
+    let Ok(content) = fs::read_to_string(root.join(".env")) else {
+        return Ok(None);
+    };
+    let values = crate::environment::parse_env(&content);
+    if values.get("BOX_PLAY_NETWORK_MODE").map(String::as_str) != Some("public") {
+        return Ok(None);
     }
-    if routes.is_empty(){return Ok(None);}
-    let mode=fs::read_to_string(root.join("https/provider")).unwrap_or_else(|_|"external".into()).trim().to_string();
-    let mut settings=Settings {mode,https_port:443,routes,upstream_ports:Default::default()};
-    if settings.mode=="external" {super::apply::backend_ports(&mut settings,&content,None)?;}
+    let mut routes = Vec::new();
+    for (service, label, _, key, port) in crate::public_access::SERVICES {
+        let Some(address) = values
+            .get(&format!("{key}_PUBLIC_ADDRESS_OVERRIDE"))
+            .filter(|value| !value.is_empty())
+        else {
+            continue;
+        };
+        let (domain, port, secure, path) = if address.contains("://") {
+            crate::configuration_migration::public_url_parts(address, label)?
+        } else {
+            (
+                address.clone(),
+                crate::configuration::env_port(&values, &format!("{key}_PORT"), port)?,
+                false,
+                String::new(),
+            )
+        };
+        routes.push(Route {
+            service: service.into(),
+            domain,
+            port: Some(port),
+            secure,
+            path: crate::public_access::prefix(&path)?,
+        });
+    }
+    if routes.is_empty() {
+        return Ok(None);
+    }
+    let mode = super::runtime::provider(root, None).to_string();
+    let mut settings = Settings {
+        mode,
+        https_port: 443,
+        routes,
+        upstream_ports: Default::default(),
+    };
+    if settings.mode == "external" {
+        super::apply::backend_ports(&mut settings, &content, None)?;
+    }
     Ok(Some(settings))
 }
 /// Select only this project's currently running applications when ports must move.
-pub fn transition_services(root:&Path,project:&str,desired:&Settings,docker:&mut dyn FnMut(&[String])->Result<String,String>,compose:&mut dyn FnMut(&[String])->Result<String,String>) -> Result<(),String> {
-    let mut targets:std::collections::BTreeSet<String>=desired.routes.iter().map(|r|r.service.clone()).collect();
-    if let Ok(text)=fs::read_to_string(root.join("https/settings.json")) {if let Ok(old)=serde_json::from_str::<Saved>(&text) {targets.extend(old.settings.routes.into_iter().map(|r|r.service));}}
-    let mut running=Vec::new();
-    for service in targets {
-        let args=vec!["container".into(),"ls".into(),"--filter".into(),format!("label=com.docker.compose.project={project}"),"--filter".into(),format!("label=com.docker.compose.service={service}"),"--format".into(),"{{.ID}}".into()];
-        if !docker(&args)?.trim().is_empty() {running.push(service);}
+pub fn transition_services(
+    root: &Path,
+    project: &str,
+    desired: &Settings,
+    docker: &mut dyn FnMut(&[String]) -> Result<String, String>,
+    compose: &mut dyn FnMut(&[String]) -> Result<String, String>,
+) -> Result<(), String> {
+    let mut targets: std::collections::BTreeSet<String> =
+        desired.routes.iter().map(|r| r.service.clone()).collect();
+    if let Ok(text) = fs::read_to_string(root.join("https/settings.json")) {
+        if let Ok(old) = serde_json::from_str::<Saved>(&text) {
+            targets.extend(old.settings.routes.into_iter().map(|r| r.service));
+        }
     }
-    if running.is_empty() {return Ok(());}
-    let mut args=vec!["up".into(),"-d".into(),"--no-deps".into(),"--no-build".into(),"--force-recreate".into()];args.extend(running);compose(&args).map(|_|())
+    let mut running = Vec::new();
+    for service in targets {
+        let args = vec![
+            "container".into(),
+            "ls".into(),
+            "--filter".into(),
+            format!("label=com.docker.compose.project={project}"),
+            "--filter".into(),
+            format!("label=com.docker.compose.service={service}"),
+            "--format".into(),
+            "{{.ID}}".into(),
+        ];
+        if !docker(&args)?.trim().is_empty() {
+            running.push(service);
+        }
+    }
+    if running.is_empty() {
+        return Ok(());
+    }
+    let mut args = vec![
+        "up".into(),
+        "-d".into(),
+        "--no-deps".into(),
+        "--no-build".into(),
+        "--force-recreate".into(),
+    ];
+    args.extend(running);
+    compose(&args).map(|_| ())
 }
-fn upstream(settings:&Settings,route:&Route,environment:&str) -> String {
-    let service=SERVICES.iter().find(|s|s.0==route.service).unwrap();
-    if settings.mode=="managed" {return format!("{}:{}",service.1,service.2);}
-    let values=crate::environment::parse_env(environment);
-    format!("127.0.0.1:{}",settings.upstream_ports.get(&route.service).copied().or_else(||values.get(service.3).and_then(|v|v.parse().ok())).unwrap_or(service.4))
+fn upstream(settings: &Settings, route: &Route, environment: &str) -> String {
+    let service = SERVICES.iter().find(|s| s.0 == route.service).unwrap();
+    if settings.mode == "managed" {
+        return format!("{}:{}", service.1, service.2);
+    }
+    let values = crate::environment::parse_env(environment);
+    format!(
+        "127.0.0.1:{}",
+        settings
+            .upstream_ports
+            .get(&route.service)
+            .copied()
+            .or_else(|| values.get(service.3).and_then(|v| v.parse().ok()))
+            .unwrap_or(service.4)
+    )
 }
-pub(super) fn configuration(settings:&Settings,revision:&str,environment:&str,multiple:bool) -> String {
-    let mut output="map $http_upgrade $box_ssl_connection { default upgrade; '' close; }\n".to_string();
-    let mut groups:BTreeMap<(String,u16),Vec<&Route>>=BTreeMap::new();
-    for route in &settings.routes {groups.entry((route.domain.clone(),route.port.unwrap_or(if route.secure {if settings.mode=="managed" {443}else{settings.https_port}}else{80}))).or_default().push(route);}
-    for ((domain,port),routes) in groups {
-        let first=routes[0];
-        output.push_str(&format!("server {{\n listen {port}{};\n server_name {domain};\n client_max_body_size 256m;\n",if first.secure {" ssl"}else{""}));
+pub(super) fn configuration(
+    settings: &Settings,
+    revision: &str,
+    environment: &str,
+    multiple: bool,
+) -> String {
+    let mut output =
+        "map $http_upgrade $box_ssl_connection { default upgrade; '' close; }\n".to_string();
+    let mut groups: BTreeMap<(String, u16), Vec<&Route>> = BTreeMap::new();
+    for route in &settings.routes {
+        groups
+            .entry((
+                route.domain.clone(),
+                route.port.unwrap_or(if route.secure {
+                    if settings.mode == "managed" {
+                        443
+                    } else {
+                        settings.https_port
+                    }
+                } else {
+                    80
+                }),
+            ))
+            .or_default()
+            .push(route);
+    }
+    for ((domain, port), routes) in groups {
+        let first = routes[0];
+        output.push_str(&format!(
+            "server {{\n listen {port}{};\n server_name {domain};\n client_max_body_size 256m;\n",
+            if first.secure { " ssl" } else { "" }
+        ));
         if first.secure {
-            let cert=if multiple {format!("{}-cert.pem",first.service)}else{"cert.pem".into()};
-            let key=if multiple {format!("{}-key.pem",first.service)}else{"key.pem".into()};
+            let cert = if multiple {
+                format!("{}-cert.pem", first.service)
+            } else {
+                "cert.pem".into()
+            };
+            let key = if multiple {
+                format!("{}-key.pem", first.service)
+            } else {
+                "key.pem".into()
+            };
             output.push_str(&format!(" ssl_certificate /etc/box-https/revisions/{revision}/{cert};\n ssl_certificate_key /etc/box-https/revisions/{revision}/{key};\n ssl_protocols TLSv1.2 TLSv1.3;\n"));
         }
         for route in &routes {
-            let target=upstream(settings,route,environment);
-            let location=if route.path.is_empty() {"/".into()}else{format!("{}/",route.path)};
-            if !route.path.is_empty() {output.push_str(&format!(" location = {} {{ return 308 {}/$is_args$args; }}\n",route.path,route.path));}
-            output.push_str(&format!(" location {}{location} {{\n",if route.path.is_empty(){""}else{"^~ "}));
-            if !route.path.is_empty() {output.push_str(&format!("  rewrite ^{}(/.*)$ $1 break;\n",route.path));}
-            if settings.mode=="managed" {output.push_str("  resolver 127.0.0.11 valid=30s ipv6=off;\n");}
+            let target = upstream(settings, route, environment);
+            let location = if route.path.is_empty() {
+                "/".into()
+            } else {
+                format!("{}/", route.path)
+            };
+            if !route.path.is_empty() {
+                output.push_str(&format!(
+                    " location = {} {{ return 308 {}/$is_args$args; }}\n",
+                    route.path, route.path
+                ));
+            }
+            output.push_str(&format!(
+                " location {}{location} {{\n",
+                if route.path.is_empty() { "" } else { "^~ " }
+            ));
+            if !route.path.is_empty() {
+                output.push_str(&format!("  rewrite ^{}(/.*)$ $1 break;\n", route.path));
+            }
+            if settings.mode == "managed" {
+                output.push_str("  resolver 127.0.0.11 valid=30s ipv6=off;\n");
+            }
             output.push_str(&format!("  set $box_upstream http://{target};\n  proxy_pass $box_upstream;\n  proxy_http_version 1.1;\n  proxy_set_header Host $http_host;\n  proxy_set_header X-Forwarded-Proto {};\n  proxy_set_header X-Forwarded-Host $http_host;\n  proxy_set_header X-Forwarded-For $remote_addr;\n  proxy_set_header X-Forwarded-Prefix \"{}\";\n  proxy_set_header Accept-Encoding \"\";\n  proxy_set_header Upgrade $http_upgrade;\n  proxy_set_header Connection $box_ssl_connection;\n  proxy_read_timeout 3600s;\n }}\n",if route.secure{"https"}else{"http"},route.path));
         }
-        if routes.iter().all(|r|!r.path.is_empty()) {output.push_str(" location / { return 404; }\n");}
+        if routes.iter().all(|r| !r.path.is_empty()) {
+            output.push_str(" location / { return 404; }\n");
+        }
         output.push_str("}\n");
     }
     output
 }
 
 pub struct UpstreamTransition {
-    root:std::path::PathBuf,
-    project:String,
-    targets:std::collections::BTreeSet<String>,
-    snapshots:Option<BTreeMap<String,serde_json::Value>>,
+    root: std::path::PathBuf,
+    project: String,
+    targets: std::collections::BTreeSet<String>,
+    snapshots: Option<BTreeMap<String, serde_json::Value>>,
 }
 impl UpstreamTransition {
-    pub fn new(root:&Path,project:&str,desired:&Settings) -> Result<Self,String> {
-        let mut targets:std::collections::BTreeSet<String>=desired.routes.iter().map(|r|r.service.clone()).collect();
-        if let Some(previous)=routing_settings(root)? {targets.extend(previous.routes.into_iter().map(|r|r.service));}
-        Ok(Self {root:root.into(),project:project.into(),targets,snapshots:None})
+    pub fn new(root: &Path, project: &str, desired: &Settings) -> Result<Self, String> {
+        let mut targets: std::collections::BTreeSet<String> =
+            desired.routes.iter().map(|r| r.service.clone()).collect();
+        if let Some(previous) = routing_settings(root)? {
+            targets.extend(previous.routes.into_iter().map(|r| r.service));
+        }
+        Ok(Self {
+            root: root.into(),
+            project: project.into(),
+            targets,
+            snapshots: None,
+        })
     }
-    pub fn apply(&mut self,docker:&mut dyn FnMut(&[String])->Result<String,String>,compose:&mut dyn FnMut(&[String])->Result<String,String>) -> Result<(),String> {
-        let mut snapshots=BTreeMap::new();
+    pub fn apply(
+        &mut self,
+        docker: &mut dyn FnMut(&[String]) -> Result<String, String>,
+        compose: &mut dyn FnMut(&[String]) -> Result<String, String>,
+    ) -> Result<(), String> {
+        let mut snapshots = BTreeMap::new();
         for service in &self.targets {
-            let args=vec!["container".into(),"ls".into(),"--filter".into(),format!("label=com.docker.compose.project={}",self.project),"--filter".into(),format!("label=com.docker.compose.service={service}"),"--format".into(),"{{.ID}}".into()];
-            let ids=docker(&args)?;
-            if let Some(id)=ids.lines().next().filter(|value|!value.is_empty()) {
-                let data:serde_json::Value=serde_json::from_str(&docker(&["inspect".into(),id.into()])?).map_err(|_|"无法读取旧服务状态")?;
-                snapshots.insert(service.clone(),data[0].clone());
+            let args = vec![
+                "container".into(),
+                "ls".into(),
+                "--filter".into(),
+                format!("label=com.docker.compose.project={}", self.project),
+                "--filter".into(),
+                format!("label=com.docker.compose.service={service}"),
+                "--format".into(),
+                "{{.ID}}".into(),
+            ];
+            let ids = docker(&args)?;
+            if let Some(id) = ids.lines().next().filter(|value| !value.is_empty()) {
+                let data: serde_json::Value =
+                    serde_json::from_str(&docker(&["inspect".into(), id.into()])?)
+                        .map_err(|_| "无法读取旧服务状态")?;
+                snapshots.insert(service.clone(), data[0].clone());
             }
         }
-        let mut args=vec!["up".into(),"-d".into(),"--no-deps".into(),"--no-build".into(),"--pull".into(),"never".into(),"--force-recreate".into()];
+        let mut args = vec![
+            "up".into(),
+            "-d".into(),
+            "--no-deps".into(),
+            "--no-build".into(),
+            "--pull".into(),
+            "never".into(),
+            "--force-recreate".into(),
+        ];
         let empty = snapshots.is_empty();
         args.extend(snapshots.keys().cloned());
-        self.snapshots=Some(snapshots);
-        if empty {return Ok(());}
-        compose(&args).map(|_|())
+        self.snapshots = Some(snapshots);
+        if empty {
+            return Ok(());
+        }
+        compose(&args).map(|_| ())
     }
-    pub fn rollback(&mut self,source:&str,compose_file:&mut dyn FnMut(&Path,&[String])->Result<String,String>) -> Result<(),String> {
-        let Some(snapshots)=&self.snapshots else {return Ok(());};
-        if snapshots.is_empty() {return Ok(());}
-        let mut result=String::new();let mut service="";let mut skipping=false;
-        let quote=|value:&str| serde_json::to_string(&value.replace('$',"$$")).unwrap();
+    pub fn rollback(
+        &mut self,
+        source: &str,
+        compose_file: &mut dyn FnMut(&Path, &[String]) -> Result<String, String>,
+    ) -> Result<(), String> {
+        let Some(snapshots) = &self.snapshots else {
+            return Ok(());
+        };
+        if snapshots.is_empty() {
+            return Ok(());
+        }
+        let mut result = String::new();
+        let mut service = "";
+        let mut skipping = false;
+        let quote = |value: &str| serde_json::to_string(&value.replace('$', "$$")).unwrap();
         for line in source.lines() {
-            let indent=line.bytes().take_while(|byte|*byte==b' ').count();
-            if indent==2 && line.trim_end().ends_with(':') {service=line.trim().trim_end_matches(':');}
-            if skipping {if indent>4 || line.trim().is_empty() {continue;} skipping=false;}
-            if let Some(snapshot)=snapshots.get(service) {
-                if indent==4 && line.trim().starts_with("image:") {
-                    result.push_str(&format!("    image: {}\n",quote(snapshot["Image"].as_str().ok_or("旧镜像标识缺失")?)));continue;
+            let indent = line.bytes().take_while(|byte| *byte == b' ').count();
+            if indent == 2 && line.trim_end().ends_with(':') {
+                service = line.trim().trim_end_matches(':');
+            }
+            if skipping {
+                if indent > 4 || line.trim().is_empty() {
+                    continue;
                 }
-                if indent==4 && line.trim()=="environment:" {
+                skipping = false;
+            }
+            if let Some(snapshot) = snapshots.get(service) {
+                if indent == 4 && line.trim().starts_with("image:") {
+                    result.push_str(&format!(
+                        "    image: {}\n",
+                        quote(snapshot["Image"].as_str().ok_or("旧镜像标识缺失")?)
+                    ));
+                    continue;
+                }
+                if indent == 4 && line.trim() == "environment:" {
                     result.push_str("    environment:\n");
-                    if let Some(values)=snapshot["Config"]["Env"].as_array() {for value in values {if let Some((key,value))=value.as_str().and_then(|value|value.split_once('=')) {result.push_str(&format!("      {key}: {}\n",quote(value)));}}}
-                    skipping=true;continue;
-                }
-                if indent==4 && line.trim()=="ports:" {
-                    if let Some(ports)=snapshot["HostConfig"]["PortBindings"].as_object().filter(|map|!map.is_empty()) {
-                        result.push_str("    ports:\n");
-                        for (container,bindings) in ports {if let Some(bindings)=bindings.as_array() {for binding in bindings {
-                            let address=binding["HostIp"].as_str().unwrap_or("127.0.0.1");
-                            let address=if address.contains(':'){format!("[{address}]")}else{address.into()};
-                            let port=binding["HostPort"].as_str().ok_or("旧端口标识缺失")?;
-                            result.push_str(&format!("      - {}\n",quote(&format!("{address}:{port}:{container}"))));
-                        }}}
+                    if let Some(values) = snapshot["Config"]["Env"].as_array() {
+                        for value in values {
+                            if let Some((key, value)) =
+                                value.as_str().and_then(|value| value.split_once('='))
+                            {
+                                result.push_str(&format!("      {key}: {}\n", quote(value)));
+                            }
+                        }
                     }
-                    skipping=true;continue;
+                    skipping = true;
+                    continue;
+                }
+                if indent == 4 && line.trim() == "ports:" {
+                    if let Some(ports) = snapshot["HostConfig"]["PortBindings"]
+                        .as_object()
+                        .filter(|map| !map.is_empty())
+                    {
+                        result.push_str("    ports:\n");
+                        for (container, bindings) in ports {
+                            if let Some(bindings) = bindings.as_array() {
+                                for binding in bindings {
+                                    let address = binding["HostIp"].as_str().unwrap_or("127.0.0.1");
+                                    let address = if address.contains(':') {
+                                        format!("[{address}]")
+                                    } else {
+                                        address.into()
+                                    };
+                                    let port =
+                                        binding["HostPort"].as_str().ok_or("旧端口标识缺失")?;
+                                    result.push_str(&format!(
+                                        "      - {}\n",
+                                        quote(&format!("{address}:{port}:{container}"))
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                    skipping = true;
+                    continue;
                 }
             }
-            result.push_str(line);result.push('\n');
+            result.push_str(line);
+            result.push('\n');
         }
-        let file=self.root.join("https").join(format!("routing.restore-{}.yml",std::process::id()));
-        if file.exists() {fs::remove_file(&file).map_err(|error|error.to_string())?;}
-        super::runtime::private(&file,&result)?;
-        let mut args=vec!["up".into(),"-d".into(),"--no-deps".into(),"--no-build".into(),"--pull".into(),"never".into(),"--force-recreate".into()];args.extend(snapshots.keys().cloned());
-        let restored=compose_file(&file,&args).map(|_|());let _=fs::remove_file(file);restored
+        let file = self
+            .root
+            .join("https")
+            .join(format!("routing.restore-{}.yml", std::process::id()));
+        if file.exists() {
+            fs::remove_file(&file).map_err(|error| error.to_string())?;
+        }
+        super::runtime::private(&file, &result)?;
+        let mut args = vec![
+            "up".into(),
+            "-d".into(),
+            "--no-deps".into(),
+            "--no-build".into(),
+            "--pull".into(),
+            "never".into(),
+            "--force-recreate".into(),
+        ];
+        args.extend(snapshots.keys().cloned());
+        let restored = compose_file(&file, &args).map(|_| ());
+        let _ = fs::remove_file(file);
+        restored
     }
 }
 
-pub fn validate_path_images(settings:&Settings,environment:&BTreeMap<String,String>,docker:&mut dyn FnMut(&[String])->Result<String,String>) -> Result<(),String> {
-    for route in settings.routes.iter().filter(|route|!route.path.is_empty()) {
-        let key=match route.service.as_str(){"play"=>"BOX_PLAY_IMAGE","creator"=>"BOX_CREATOR_IMAGE","voxa"=>"BOX_VOXA_IMAGE","player-service"=>"BOX_PLAYER_SERVICE_IMAGE","player-auth-portal"=>"BOX_AUTH_PORTAL_IMAGE",_=>return Err("当前服务不支持入口路径".into())};
-        let tag=environment.get("BOX_IMAGE_TAG").ok_or("无法确定服务镜像版本")?;
-        let image=environment.get(key).cloned().unwrap_or_else(||format!("box-local-engine-{}:{tag}",if route.service=="player-auth-portal"{"player-auth-portal"}else{&route.service}));
-        let args=vec!["image".into(),"inspect".into(),"--format".into(),"{{json .Config.Labels}}".into(),image];
-        let metadata:serde_json::Value=serde_json::from_str(&docker(&args).map_err(|_|format!("{} 的镜像尚未安装，无法设置入口路径",route.service))?).map_err(|_|"镜像路径能力记录无效")?;
-        if metadata["box.routing.base-path"].as_str()!=Some("runtime-v1") {return Err(format!("{} 的镜像暂不支持入口路径，请先安装支持前缀的新镜像",route.service));}
+pub fn validate_path_images(
+    settings: &Settings,
+    environment: &BTreeMap<String, String>,
+    docker: &mut dyn FnMut(&[String]) -> Result<String, String>,
+) -> Result<(), String> {
+    for route in settings
+        .routes
+        .iter()
+        .filter(|route| !route.path.is_empty())
+    {
+        let key = match route.service.as_str() {
+            "play" => "BOX_PLAY_IMAGE",
+            "creator" => "BOX_CREATOR_IMAGE",
+            "voxa" => "BOX_VOXA_IMAGE",
+            "player-service" => "BOX_PLAYER_SERVICE_IMAGE",
+            "player-auth-portal" => "BOX_AUTH_PORTAL_IMAGE",
+            _ => return Err("当前服务不支持入口路径".into()),
+        };
+        let tag = environment
+            .get("BOX_IMAGE_TAG")
+            .ok_or("无法确定服务镜像版本")?;
+        let image = environment.get(key).cloned().unwrap_or_else(|| {
+            format!(
+                "box-local-engine-{}:{tag}",
+                if route.service == "player-auth-portal" {
+                    "player-auth-portal"
+                } else {
+                    &route.service
+                }
+            )
+        });
+        let args = vec![
+            "image".into(),
+            "inspect".into(),
+            "--format".into(),
+            "{{json .Config.Labels}}".into(),
+            image,
+        ];
+        let metadata: serde_json::Value = serde_json::from_str(
+            &docker(&args)
+                .map_err(|_| format!("{} 的镜像尚未安装，无法设置入口路径", route.service))?,
+        )
+        .map_err(|_| "镜像路径能力记录无效")?;
+        if metadata["box.routing.base-path"].as_str() != Some("runtime-v1") {
+            return Err(format!(
+                "{} 的镜像暂不支持入口路径，请先安装支持前缀的新镜像",
+                route.service
+            ));
+        }
     }
     Ok(())
 }

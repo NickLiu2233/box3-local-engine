@@ -92,6 +92,7 @@ const browserHandledCommands = new Set([
   'choose_data_storage_directory',
   'import_backup',
   'export_backup',
+  'export_ssl_configuration',
 ])
 const invokedCommands = [...consoleSource.matchAll(/invoke\('([a-z_]+)'/g)].map((match) => match[1])
 for (const command of invokedCommands) {

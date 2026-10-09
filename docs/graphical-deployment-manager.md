@@ -27,7 +27,7 @@ Creator、VOXA 默认使用本机模式，也可选择局域网或公网；公�
 
 ## 页面与数据
 
-共用公网地址作为默认值，单服务覆盖优先；域名填写时需明确 HTTP/HTTPS。公网 HTTP 的兼容与浏览器限制见[HTTP 兼容说明](./http-compatibility.md)，登录镜像定制见[门户模板](./self-hosted-login.md)。
+公网支持独立地址或共用地址，共用模式通过端口或路径区分服务；裸域名/IP 根据证书自动选择协议，显式 HTTP/HTTPS 优先。数据服务默认选择内置 Nginx，保存过的外部选择保留。地址与证书流程见[Nginx 配置](./https-certificate-management.md)。公网 HTTP 的浏览器限制见[HTTP 兼容说明](./http-compatibility.md)，登录镜像定制见[门户模板](./self-hosted-login.md)。
 
 - **服务总览**：启动、停止、打开地址并自动查看健康状态；服主密钥默认掩码，点击复制图标复制。
 - **数据配置**：PostgreSQL、Redis、端口、共用/单服务公开地址、登录门户镜像、容量、地图库、注册开关和密钥。

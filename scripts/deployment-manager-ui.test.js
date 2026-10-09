@@ -720,6 +720,14 @@ test('independent addresses hide path controls and ignore retained shared path d
   assert.equal(app.api.getServiceUrl('play'), 'https://play.example.test/')
 })
 
+test('public path length agrees with the backend before applying routes', async () => {
+  const app = await createFixture()
+  const config = {publicAddressMode:'shared', sharedPublicAddress:'example.test', publicServicePaths:{play:'/' + 'a'.repeat(128)}}
+  assert.equal(app.api.sslRoutes(config)[0].path.length, 129)
+  config.publicServicePaths.play += 'a'
+  assert.throws(() => app.api.sslRoutes(config), /128/)
+})
+
 test('bare domains infer protocol from certificates while explicit schemes and ports win', async () => {
   const app = await createFixture()
   app.api.state.config.playPublicAddressOverride = 'play.example.test'
