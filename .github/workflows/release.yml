@@ -242,10 +242,12 @@ jobs:
       - name: Install Linux desktop dependencies
         if: steps.desktop-cache.outputs.cache-hit != 'true' && startsWith(matrix.target, 'linux-')
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf zip
-      - name: Download images from Aliyun OSS
+      - name: Download desktop image catalog from Aliyun OSS
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
+          # Only the small JSON catalog is needed; no image archives enter the launcher.
+          echo "Downloading desktop image catalog (JSON only)"
           mkdir -p apps/local-engine/dist/images
           if ! command -v ossutil >/dev/null 2>&1; then
             if [[ "${{ matrix.target }}" == windows-* ]]; then
@@ -269,15 +271,15 @@ jobs:
             ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
               apps/local-engine/dist/images/
           fi
-      - name: Build installer
+      - name: Build lightweight desktop launcher
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
-          test -f "$archive"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          test -f "$catalog"
           node common/scripts/install-run-rush.js package-desktop \
             --target '${{ matrix.target }}' \
-            --archive "$archive"
+            --archive "$catalog"
       - name: Upload desktop installer to Aliyun OSS
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash
@@ -319,7 +321,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Download images from Aliyun OSS
+      - name: Download server image archive from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
           if ! command -v ossutil >/dev/null 2>&1; then

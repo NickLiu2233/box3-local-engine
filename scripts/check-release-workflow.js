@@ -127,13 +127,21 @@ assert.doesNotMatch(headlessComposeSource, /box-play-storage/)
 // catches accidental regressions to the quota-limited artifact service.
 for (const step of [
   'Upload images to Aliyun OSS',
-  'Download images from Aliyun OSS',
+  'Download desktop image catalog from Aliyun OSS',
+  'Download server image archive from Aliyun OSS',
   'Upload desktop installer to Aliyun OSS',
   'Upload server package to Aliyun OSS',
   'Download release packages from Aliyun OSS',
 ]) {
   assert.match(workflow, new RegExp(step))
 }
+const desktopJob = workflow.slice(
+  workflow.indexOf('  desktop:'),
+  workflow.indexOf('  headless-server:'),
+)
+assert.match(desktopJob, /box-local-engine-images-[^\n]*\.json/)
+assert.doesNotMatch(desktopJob, /\.tar(?:\.gz)?(?:["'\s]|$)/)
+assert.match(desktopJob, /name: Build lightweight desktop launcher/)
 assert.match(workflow, /ossutil\s+config/)
 assert.match(workflow, /OSS_BUCKET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_BUCKET\s*\}\}/)
 assert.match(workflow, /OSS_ENDPOINT:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ENDPOINT\s*\}\}/)

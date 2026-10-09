@@ -12,13 +12,14 @@ let largest = { lines: 0, file: '' }
 
 for (const extension of ['.js', '.css']) {
   for (const file of frontendFiles(root, extension)) {
+    const relative = path.relative(directory, file).split(path.sep).join('/')
     const source = fs.readFileSync(file, 'utf8')
     const lines = source.trimEnd().split('\n').length
     assert.ok(
       lines < 500,
       `${path.relative(root, file)} has ${lines} lines; keep source files below 500 lines`,
     )
-    if (lines > largest.lines) largest = { lines, file: path.relative(directory, file) }
+    if (lines > largest.lines) largest = { lines, file: relative }
 
     const dependencies = []
     for (const [, specifier] of source.matchAll(
@@ -30,14 +31,14 @@ for (const extension of ['.js', '.css']) {
       if (target.endsWith('.js')) dependencies.push(target)
     }
     if (extension === '.js') graph.set(file, dependencies)
-    if (extension === '.js' && !file.endsWith('/infrastructure/transport.js')) {
+    if (extension === '.js' && relative !== 'infrastructure/transport.js') {
       assert.doesNotMatch(
         source,
         /from ['"]@tauri-apps\//,
         'native bridge imports belong in infrastructure/transport.js',
       )
     }
-    if (file.includes('/views/')) {
+    if (relative.startsWith('views/')) {
       assert.doesNotMatch(
         source,
         /from ['"].*\/operations\//,
