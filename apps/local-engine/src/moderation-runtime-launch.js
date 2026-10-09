@@ -1,7 +1,10 @@
 'use strict'
 const { spawn } = require('node:child_process')
 const { createModerationCredential } = require('./moderation-credential')
-const credential = createModerationCredential(process.env, process.env.BOX_MODERATION_SIGNING_SECRET || '')
+const credential = createModerationCredential(
+  process.env,
+  process.env.BOX_MODERATION_SIGNING_SECRET || '',
+)
 const child = spawn(
   process.execPath,
   [...process.execArgv, '/app/services/game-server/dist/src/launch.js', '--useProdBundle'],

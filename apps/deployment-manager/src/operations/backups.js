@@ -1,5 +1,10 @@
 import { clearFeedback } from './feedback.js'
-import { exportBackupFile, exportDiagnosticsFile, invoke, selectBackup } from '../infrastructure/transport.js'
+import {
+  exportBackupFile,
+  exportDiagnosticsFile,
+  invoke,
+  selectBackup,
+} from '../infrastructure/transport.js'
 import { refreshStatus } from './status.js'
 import { render } from '../core/render-request.js'
 import { state } from '../core/state.js'

@@ -29,19 +29,29 @@ test('allows map block images but rejects arbitrary server paths and other origi
   const transport = createPublicImageTransport({
     fetchImpl: async () => {
       fetchCount += 1
-      return new Response(new Uint8Array([1]), { status: 200, headers: { 'content-type': 'image/webp' } })
+      return new Response(new Uint8Array([1]), {
+        status: 200,
+        headers: { 'content-type': 'image/webp' },
+      })
     },
   })
 
   await assert.doesNotReject(() =>
-    transport.fetch('http://127.0.0.1:3121', 'http://127.0.0.1:3121/runtime/play/map-one/block/QmCover.webp'),
+    transport.fetch(
+      'http://127.0.0.1:3121',
+      'http://127.0.0.1:3121/runtime/play/map-one/block/QmCover.webp',
+    ),
   )
   await assert.rejects(
     () => transport.fetch('http://127.0.0.1:3121', 'http://127.0.0.1:3121/api/admin/secrets'),
     /不在允许范围内/,
   )
   await assert.rejects(
-    () => transport.fetch('http://127.0.0.1:3121', 'http://127.0.0.2:3121/map-templates/blank-template.png'),
+    () =>
+      transport.fetch(
+        'http://127.0.0.1:3121',
+        'http://127.0.0.2:3121/map-templates/blank-template.png',
+      ),
     /不在允许范围内/,
   )
   assert.equal(fetchCount, 1)
@@ -57,7 +67,11 @@ test('rejects non-image responses instead of embedding server error pages', asyn
   })
 
   await assert.rejects(
-    () => transport.fetch('http://127.0.0.1:3121', 'http://127.0.0.1:3121/map-templates/blank-template.png'),
+    () =>
+      transport.fetch(
+        'http://127.0.0.1:3121',
+        'http://127.0.0.1:3121/map-templates/blank-template.png',
+      ),
     /格式不受支持/,
   )
 })

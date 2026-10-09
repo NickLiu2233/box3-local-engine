@@ -39,7 +39,9 @@ function inspect(file, text) {
     try {
       if (['@box/migrator', '@box/license-server'].includes(JSON.parse(text).name))
         findings.push('internal-project-manifest')
-    } catch {}
+    } catch {
+      // Only valid manifests can declare an internal project name.
+    }
   }
   for (const line of text.split('\n')) {
     const assignment = /^\s*(?:export\s+)?([A-Z][A-Z0-9_]+)=(.*)$/.exec(line)
@@ -55,7 +57,9 @@ function inspect(file, text) {
     if (/^(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\//.test(value)) {
       try {
         if (new URL(value).password) findings.push('credential-database-url')
-      } catch {}
+      } catch {
+        // Only parsable database URLs expose a password field.
+      }
     }
   }
   if (publicEnvironment[file]) {

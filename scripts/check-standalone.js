@@ -1377,7 +1377,7 @@ requirePattern(
   remoteTargetSource,
   remoteTargetFile,
   'same-origin WebSocket target',
-  /socketServerURL: baseURL\.replace\(\/\^http\/, 'ws'\)/,
+  /socketServerURL:\s*toWebSocketURL\(baseURL\)/,
 )
 
 const browserConfigFile = 'apps/game/configs/client.ts'
@@ -1410,7 +1410,20 @@ requirePattern(
   readRequired('apps/game/src/apis/local-api/index.ts'),
   'apps/game/src/apis/local-api/index.ts',
   'local uploads use the writable edit runtime',
-  /function runtimeApi\(\)[\s\S]*?baseUrl: getConfig\(\)\.BACKEND_SERVER_URL\.replace\([\s\S]*?upload:[\s\S]*?runtimeApi\(\)\.postBlockRaw/,
+  /function runtimeApi\(\)[\s\S]*?baseUrl: getConfig\(\)\.BACKEND_SERVER_URL\.replace\([\s\S]*?upload:[\s\S]*?uploadLocalResource\(runtimeApi\(\), file\)/,
+)
+
+requirePattern(
+  remoteTargetSource,
+  remoteTargetFile,
+  'shared WebSocket URL conversion',
+  /import\s*\{\s*toWebSocketURL\s*\}\s*from\s*['"]\.\.\/\.\.\/shared\/websocket-url['"]/,
+)
+requirePattern(
+  readRequired('apps/game/src/apis/local-api/resource-upload.ts'),
+  'apps/game/src/apis/local-api/resource-upload.ts',
+  'resource upload helper preserves the runtime client and plain-text response',
+  /uploadLocalResource\(api: ApiClient, file: Blob\)[\s\S]*?api\.postBlockRaw\([\s\S]*?parseAs:\s*'text'/,
 )
 
 const nextConfigFile = 'apps/game/next.config.js'

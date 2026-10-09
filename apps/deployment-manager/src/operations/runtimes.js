@@ -1,4 +1,8 @@
-import { PROJECT_RUNTIME_EMPTY_POLL_MS, PROJECT_RUNTIME_HIDDEN_POLL_MS, PROJECT_RUNTIME_POLL_MS } from '../core/constants.js'
+import {
+  PROJECT_RUNTIME_EMPTY_POLL_MS,
+  PROJECT_RUNTIME_HIDDEN_POLL_MS,
+  PROJECT_RUNTIME_POLL_MS,
+} from '../core/constants.js'
 import { clearFeedback } from './feedback.js'
 import { invoke, isWebManager, subscribeManager } from '../infrastructure/transport.js'
 import { render } from '../core/render-request.js'
@@ -16,7 +20,8 @@ export function syncProjectRuntimePolling() {
   clearInterval(projectRuntimeTimer)
   projectRuntimeTimer = undefined
   if (state.page !== 'runtimes' || state.runtimeCatalogTab === 'config') {
-    webSubscription?.(); webSubscription = undefined
+    webSubscription?.()
+    webSubscription = undefined
     clearTimeout(projectRuntimeRefreshTimer)
     projectRuntimeRefreshTimer = undefined
     return
@@ -146,7 +151,10 @@ export async function destroyProjectRuntime(projectId, mode, roomId) {
 function applyRuntimeSnapshot(value, error) {
   if (state.page !== 'runtimes') return
   if (error) state.projectRuntimesError = error
-  else { state.projectRuntimes = value; state.projectRuntimesError = '' }
+  else {
+    state.projectRuntimes = value
+    state.projectRuntimesError = ''
+  }
   state.projectRuntimesLoaded = true
   state.projectRuntimesLoading = false
   if (!state.runtimeDestroyDialog && !state.mapRuntimeProfileDialog) render()

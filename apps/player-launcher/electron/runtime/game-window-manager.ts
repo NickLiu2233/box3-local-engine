@@ -11,7 +11,10 @@ export type GameSession = Session
 export interface GameWindow {
   webContents: {
     setWindowOpenHandler(handler: () => { action: 'deny' }): void
-    on(event: 'will-navigate', listener: (event: { preventDefault(): void }, target: string) => void): void
+    on(
+      event: 'will-navigate',
+      listener: (event: { preventDefault(): void }, target: string) => void,
+    ): void
   }
   setMenuBarVisibility(visible: boolean): void
   on(event: 'closed', listener: () => void): void
@@ -164,8 +167,9 @@ export function createGameWindowManager({
         const nextSession = sessions.fromPartition(cachePartition(server.id), { cache: true })
         gameSession = nextSession
         playerSessions.add(nextSession)
-        nextSession.setPermissionCheckHandler((_webContents, permission, requestingOrigin, details) =>
-          isAllowedGamePermission(permission, requestingOrigin, details.isMainFrame, origin),
+        nextSession.setPermissionCheckHandler(
+          (_webContents, permission, requestingOrigin, details) =>
+            isAllowedGamePermission(permission, requestingOrigin, details.isMainFrame, origin),
         )
         nextSession.setPermissionRequestHandler((_webContents, permission, callback, details) => {
           const allowed =
@@ -250,12 +254,14 @@ export function createGameWindowManager({
       }
     },
     async clearResources(serverId) {
-      if (activeServerId === serverId) throw new Error('请先关闭此服务器的游戏窗口，再清理地图缓存。')
+      if (activeServerId === serverId)
+        throw new Error('请先关闭此服务器的游戏窗口，再清理地图缓存。')
       const target = sessions.fromPartition(cachePartition(serverId), { cache: true })
       await clearResourceCache(target)
     },
     async clearMapResources(serverId, endpoint, mapId) {
-      if (activeServerId === serverId) throw new Error('请先关闭此服务器的游戏窗口，再清理地图缓存。')
+      if (activeServerId === serverId)
+        throw new Error('请先关闭此服务器的游戏窗口，再清理地图缓存。')
       const target = sessions.fromPartition(cachePartition(serverId), { cache: true })
       await inspectMapCaches(target, endpoint, mapId, !mapId)
     },

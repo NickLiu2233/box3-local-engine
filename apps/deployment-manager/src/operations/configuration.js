@@ -1,13 +1,27 @@
-import { captureSetupForm, normalizeInactiveServicePorts, normalizedConfig, revealInvalidSetupField } from '../configuration/form.js'
+import {
+  captureSetupForm,
+  normalizeInactiveServicePorts,
+  normalizedConfig,
+  revealInvalidSetupField,
+} from '../configuration/form.js'
 import { clearFeedback } from './feedback.js'
 import { invoke, isWebManager } from '../infrastructure/transport.js'
 import { numericConfigFields, ownerSecretKeys } from '../core/constants.js'
 import { refreshStatus } from './status.js'
 import { render } from '../core/render-request.js'
 import { resetOwnerSecretState, state } from '../core/state.js'
-import { shouldApplySsl, applyCertificateConfiguration, persistNginxSelection, validateSslRoutes } from './ssl.js'
+import {
+  shouldApplySsl,
+  applyCertificateConfiguration,
+  persistNginxSelection,
+  validateSslRoutes,
+} from './ssl.js'
 import { sslRoutes } from '../configuration/ssl.js'
-import { publicEndpoints, publicServices, publicCertificateFlags } from '../configuration/public-access.js'
+import {
+  publicEndpoints,
+  publicServices,
+  publicCertificateFlags,
+} from '../configuration/public-access.js'
 import { hostFromAddress } from '../configuration/addresses.js'
 import { normalizeAuthPortalImage } from '../configuration/auth-portal-image.js'
 
@@ -104,11 +118,22 @@ export async function saveConfiguration(event) {
   normalizeInactiveServicePorts(config)
   // Retain the transport's legacy base-host fields only for bind derivation.
   // Each service's public URL and certificate comes from its own fields.
-  config.publicServicePaths = Object.fromEntries(publicServices.map(([service]) => [service, submitted[`publicPath-${service}`] ?? config.publicServicePaths?.[service] ?? '']))
+  config.publicServicePaths = Object.fromEntries(
+    publicServices.map(([service]) => [
+      service,
+      submitted[`publicPath-${service}`] ?? config.publicServicePaths?.[service] ?? '',
+    ]),
+  )
   config.publicSslConfigured = publicCertificateFlags(config)
   for (const key of Object.keys(config)) if (key.startsWith('publicPath-')) delete config[key]
   let primaryAddress = '127.0.0.1'
-  try { primaryAddress = publicEndpoints(config)[0]?.url || primaryAddress } catch (error) { state.error = String(error); render(); return }
+  try {
+    primaryAddress = publicEndpoints(config)[0]?.url || primaryAddress
+  } catch (error) {
+    state.error = String(error)
+    render()
+    return
+  }
   config.publicAddress = primaryAddress
   config.publicHost = hostFromAddress(primaryAddress)
   config.creatorHost = config.publicHost
@@ -162,7 +187,9 @@ export async function installManagedService(service) {
 async function persistConfiguration(config) {
   if (state.busy) return
   const loginImageChanged = (config.authPortalImage || '').trim() !== state.savedAuthPortalImage
-  const loginRunning = state.status?.services?.some(service => service.name === 'player-auth-portal' && service.running)
+  const loginRunning = state.status?.services?.some(
+    (service) => service.name === 'player-auth-portal' && service.running,
+  )
   let configurationSaved = false
   state.busy = true
   clearFeedback()
@@ -189,7 +216,9 @@ async function persistConfiguration(config) {
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
-    state.error = configurationSaved ? `配置已保存，但后续应用失败：${String(error)}` : String(error)
+    state.error = configurationSaved
+      ? `配置已保存，但后续应用失败：${String(error)}`
+      : String(error)
   } finally {
     state.busy = false
     if (configurationSaved) await refreshStatus()

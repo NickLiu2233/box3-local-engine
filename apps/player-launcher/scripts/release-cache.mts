@@ -3,7 +3,10 @@ import type { ArtifactManifest, PlayerTarget, ReleaseInfo } from './release-cont
 import type { OssObjectHead } from './oss-client.mts'
 
 export function manifestMetadata(manifest: ArtifactManifest): Record<string, string> {
-  if (manifest.target === 'macos-arm64' && manifest.macSignatureRevision !== MAC_SIGNATURE_REVISION) {
+  if (
+    manifest.target === 'macos-arm64' &&
+    manifest.macSignatureRevision !== MAC_SIGNATURE_REVISION
+  ) {
     throw new Error('macOS installer must pass the current signature integrity check before upload')
   }
   return {
@@ -14,23 +17,41 @@ export function manifestMetadata(manifest: ArtifactManifest): Record<string, str
     'player-target': manifest.target,
     'player-size': String(manifest.size),
     'player-sha256': manifest.sha256,
-    ...(manifest.target === 'macos-arm64' ? { 'player-mac-signature-revision': String(MAC_SIGNATURE_REVISION) } : {}),
+    ...(manifest.target === 'macos-arm64'
+      ? { 'player-mac-signature-revision': String(MAC_SIGNATURE_REVISION) }
+      : {}),
   }
 }
 
-export function manifestFromHead(head: OssObjectHead, info: ReleaseInfo, target: PlayerTarget): ArtifactManifest | null {
-  if (!Number.isSafeInteger(head.ContentLength) || head.ContentLength <= 0) throw new Error('OSS installer is empty or has invalid size')
+export function manifestFromHead(
+  head: OssObjectHead,
+  info: ReleaseInfo,
+  target: PlayerTarget,
+): ArtifactManifest | null {
+  if (!Number.isSafeInteger(head.ContentLength) || head.ContentLength <= 0)
+    throw new Error('OSS installer is empty or has invalid size')
   const metadata = head.Metadata || {}
   // Reuse installers uploaded by the previous workflow, even without object metadata.
   if (!Object.keys(metadata).some((key) => key.startsWith('player-'))) return null
-  const manifest = validateManifest({
-    formatVersion: Number(metadata['player-format']),
-    tag: metadata['player-tag'], version: metadata['player-version'], commit: metadata['player-commit'],
-    target: metadata['player-target'], file: artifactName(info, target),
-    size: Number(metadata['player-size']), sha256: metadata['player-sha256'],
-    ...(target === 'macos-arm64' ? { macSignatureRevision: Number(metadata['player-mac-signature-revision']) } : {}),
-  }, info, target)
-  if (head.ContentLength !== manifest.size) throw new Error(`Cached installer size differs from metadata: ${manifest.file}`)
+  const manifest = validateManifest(
+    {
+      formatVersion: Number(metadata['player-format']),
+      tag: metadata['player-tag'],
+      version: metadata['player-version'],
+      commit: metadata['player-commit'],
+      target: metadata['player-target'],
+      file: artifactName(info, target),
+      size: Number(metadata['player-size']),
+      sha256: metadata['player-sha256'],
+      ...(target === 'macos-arm64'
+        ? { macSignatureRevision: Number(metadata['player-mac-signature-revision']) }
+        : {}),
+    },
+    info,
+    target,
+  )
+  if (head.ContentLength !== manifest.size)
+    throw new Error(`Cached installer size differs from metadata: ${manifest.file}`)
   return manifest
 }
 
@@ -42,7 +63,11 @@ export async function cachedInstaller(
   const head = await oss.head(`box-player-launcher/${info.tag}/${artifactName(info, target)}`)
   if (!head) return false
   // Earlier macOS objects retained invalid upstream signatures. Never reuse them.
-  if (target === 'macos-arm64' && head.Metadata?.['player-mac-signature-revision'] !== String(MAC_SIGNATURE_REVISION)) return false
+  if (
+    target === 'macos-arm64' &&
+    head.Metadata?.['player-mac-signature-revision'] !== String(MAC_SIGNATURE_REVISION)
+  )
+    return false
   manifestFromHead(head, info, target)
   return true
 }

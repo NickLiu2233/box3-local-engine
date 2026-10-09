@@ -5,7 +5,10 @@ declare global {
   interface Window {
     boxPlayerLauncher?: {
       invoke<T = unknown>(command: string, payload?: unknown): Promise<T>
-      listen<T = unknown>(eventName: string, callback: (event: LauncherEvent<T>) => void): Promise<Unlisten>
+      listen<T = unknown>(
+        eventName: string,
+        callback: (event: LauncherEvent<T>) => void,
+      ): Promise<Unlisten>
     }
   }
 }

@@ -1,5 +1,3 @@
-
-
 export async function copyText(value) {
   const text = String(value || '')
   if (!text) throw new Error('没有可复制的内容。')

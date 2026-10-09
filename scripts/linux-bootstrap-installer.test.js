@@ -108,21 +108,22 @@ fi
 `,
     )
 
-    const runInstaller = (extraEnv = {}) => spawnSync('sh', [installer], {
-      env: {
-        ...process.env,
-        PATH: `${mockBin}:/usr/bin:/bin`,
-        FIXTURE_ZIP: fixtureZip,
-        DOCKER_CALLS: dockerCalls,
-        CURL_CALLS: curlCalls,
-        FAIL_CDN: '',
-        BOX3_RELEASE_CDN_URL: 'https://cdn.example.test/box3',
-        BOX3_INSTALL_DIRECTORY: installRoot,
-        BOX3_MACHINE_ID_FILE: path.join(temporaryRoot, 'machine-id'),
-        ...extraEnv,
-      },
-      encoding: 'utf8',
-    })
+    const runInstaller = (extraEnv = {}) =>
+      spawnSync('sh', [installer], {
+        env: {
+          ...process.env,
+          PATH: `${mockBin}:/usr/bin:/bin`,
+          FIXTURE_ZIP: fixtureZip,
+          DOCKER_CALLS: dockerCalls,
+          CURL_CALLS: curlCalls,
+          FAIL_CDN: '',
+          BOX3_RELEASE_CDN_URL: 'https://cdn.example.test/box3',
+          BOX3_INSTALL_DIRECTORY: installRoot,
+          BOX3_MACHINE_ID_FILE: path.join(temporaryRoot, 'machine-id'),
+          ...extraEnv,
+        },
+        encoding: 'utf8',
+      })
     const result = runInstaller()
     assert.equal(result.status, 0, result.stderr || result.stdout)
     const environment = fs.readFileSync(path.join(installRoot, '.env'), 'utf8')
@@ -154,11 +155,20 @@ fi
     assert.doesNotMatch(curlInvocations, /github|releases\/download|releases\/latest/)
     for (const failure of ['version', 'package']) {
       fs.writeFileSync(curlCalls, '')
-      const failed = runInstaller({FAIL_CDN:failure, ...(failure === 'package' ? {BOX3_VERSION:'9.8.8'} : {})})
+      const failed = runInstaller({
+        FAIL_CDN: failure,
+        ...(failure === 'package' ? { BOX3_VERSION: '9.8.8' } : {}),
+      })
       assert.notEqual(failed.status, 0)
-      assert.match(failed.stderr, failure === 'version' ? /无法从 CDN 获取发行版本/ : /无法从 CDN 下载服务器发行包/)
-      assert.doesNotMatch(fs.readFileSync(curlCalls, 'utf8'), /github|releases\/download|releases\/latest/)
-      assert.equal(fs.readFileSync(path.join(installRoot,'.env'),'utf8'),environment)
+      assert.match(
+        failed.stderr,
+        failure === 'version' ? /无法从 CDN 获取发行版本/ : /无法从 CDN 下载服务器发行包/,
+      )
+      assert.doesNotMatch(
+        fs.readFileSync(curlCalls, 'utf8'),
+        /github|releases\/download|releases\/latest/,
+      )
+      assert.equal(fs.readFileSync(path.join(installRoot, '.env'), 'utf8'), environment)
     }
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })

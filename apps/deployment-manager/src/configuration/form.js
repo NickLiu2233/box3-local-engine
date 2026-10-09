@@ -18,10 +18,24 @@ export function captureSetupForm() {
   const next = {
     ...state.config,
     ...values,
-    publicAddressMode: state.accessMode === 'public-shared' ? 'shared' : state.accessMode === 'public-independent' ? 'independent' : state.config?.publicAddressMode || 'independent',
-    publicServicePaths: Object.fromEntries(['play','creator','voxa','player-service','player-auth-portal'].map(service => [service, values[`publicPath-${service}`] ?? state.config?.publicServicePaths?.[service] ?? ''])),
-    playNetworkMode: isPublicMode(state.accessMode) ? 'public' : state.accessMode || state.config?.playNetworkMode || 'local',
-    creatorNetworkMode: isPublicMode(state.accessMode) ? 'public' : state.accessMode || state.config?.playNetworkMode || 'local',
+    publicAddressMode:
+      state.accessMode === 'public-shared'
+        ? 'shared'
+        : state.accessMode === 'public-independent'
+          ? 'independent'
+          : state.config?.publicAddressMode || 'independent',
+    publicServicePaths: Object.fromEntries(
+      ['play', 'creator', 'voxa', 'player-service', 'player-auth-portal'].map((service) => [
+        service,
+        values[`publicPath-${service}`] ?? state.config?.publicServicePaths?.[service] ?? '',
+      ]),
+    ),
+    playNetworkMode: isPublicMode(state.accessMode)
+      ? 'public'
+      : state.accessMode || state.config?.playNetworkMode || 'local',
+    creatorNetworkMode: isPublicMode(state.accessMode)
+      ? 'public'
+      : state.accessMode || state.config?.playNetworkMode || 'local',
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,

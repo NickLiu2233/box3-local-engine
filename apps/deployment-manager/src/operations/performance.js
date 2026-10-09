@@ -11,9 +11,14 @@ let performanceTimer
 export function syncPerformancePolling() {
   clearInterval(performanceTimer)
   performanceTimer = undefined
-  if (state.page !== 'performance') { webSubscription?.(); webSubscription = undefined; return }
+  if (state.page !== 'performance') {
+    webSubscription?.()
+    webSubscription = undefined
+    return
+  }
   if (isWebManager()) {
-    if (!webSubscription) webSubscription = subscribeManager('performance', applyPerformanceSnapshot)
+    if (!webSubscription)
+      webSubscription = subscribeManager('performance', applyPerformanceSnapshot)
     return
   }
   if (!state.performance && !state.performanceLoading) refreshPerformance()
@@ -41,7 +46,10 @@ export async function refreshPerformance() {
 function applyPerformanceSnapshot(value, error) {
   if (state.page !== 'performance') return
   if (error) state.performanceError = error
-  else { state.performance = value; state.performanceError = '' }
+  else {
+    state.performance = value
+    state.performanceError = ''
+  }
   state.performanceLoading = false
   render()
 }

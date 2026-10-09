@@ -97,10 +97,14 @@ let reconnectTimer
 let failures = 0
 let eventDeadline
 
-function hasSubscriptions() { return topicHandlers.size || operationKeys.size }
+function hasSubscriptions() {
+  return topicHandlers.size || operationKeys.size
+}
 function updateSubscriptions() {
   if (eventSocket && eventSocket.readyState === WebSocket.OPEN) {
-    eventSocket.send(JSON.stringify({ topics: [...topicHandlers.keys()], operations: [...operationKeys] }))
+    eventSocket.send(
+      JSON.stringify({ topics: [...topicHandlers.keys()], operations: [...operationKeys] }),
+    )
   }
 }
 function closeEvents() {
@@ -111,40 +115,81 @@ function closeEvents() {
   previous?.close()
 }
 function ensureEvents() {
-  if (isTauri() || eventSocket || !hasWebManagerToken() || !hasSubscriptions() || typeof WebSocket === 'undefined') return
+  if (
+    isTauri() ||
+    eventSocket ||
+    !hasWebManagerToken() ||
+    !hasSubscriptions() ||
+    typeof WebSocket === 'undefined'
+  )
+    return
   const url = new URL('/api/events', window.location.href)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   const ws = new WebSocket(url.href)
   eventSocket = ws
   eventDeadline = setTimeout(() => ws.close(), 10_000)
-  ws.onopen = () => { if (eventSocket === ws) ws.send(JSON.stringify({ type: 'authenticate', token: webToken() })) }
+  ws.onopen = () => {
+    if (eventSocket === ws) ws.send(JSON.stringify({ type: 'authenticate', token: webToken() }))
+  }
   ws.onmessage = ({ data }) => {
     if (eventSocket !== ws) return
     let event
-    try { event = JSON.parse(data) } catch { ws.close(); return }
-    if (event.type === 'ready') { clearTimeout(eventDeadline); failures = 0; updateSubscriptions(); return }
+    try {
+      event = JSON.parse(data)
+    } catch {
+      ws.close()
+      return
+    }
+    if (event.type === 'ready') {
+      clearTimeout(eventDeadline)
+      failures = 0
+      updateSubscriptions()
+      return
+    }
     if (event.type === 'progress' && operationKeys.has(event.id)) {
       for (const handler of [...progressHandlers]) {
-        try { handler({ payload: event.payload }) } catch { /* Observers cannot fail commands. */ }
+        try {
+          handler({ payload: event.payload })
+        } catch {
+          /* Observers cannot fail commands. */
+        }
       }
     }
     if (event.type === 'snapshot' || event.type === 'error') {
       for (const handler of [...(topicHandlers.get(event.topic) || [])]) {
-        try { handler(event.payload, event.type === 'error' ? event.message : undefined) } catch { /* Isolate observers. */ }
+        try {
+          handler(event.payload, event.type === 'error' ? event.message : undefined)
+        } catch {
+          /* Isolate observers. */
+        }
       }
     }
   }
   ws.onerror = () => ws.close()
-  ws.onclose = event => {
+  ws.onclose = (event) => {
     if (eventSocket !== ws) return
     eventSocket = undefined
     clearTimeout(eventDeadline)
-    for (const handlers of topicHandlers.values()) for (const handler of [...handlers]) {
-      try { handler(undefined, event.code === 1008 ? '管理令牌无效，请重新登录' : '实时连接断开，正在重连…') } catch { /* Isolate observers. */ }
+    for (const handlers of topicHandlers.values())
+      for (const handler of [...handlers]) {
+        try {
+          handler(
+            undefined,
+            event.code === 1008 ? '管理令牌无效，请重新登录' : '实时连接断开，正在重连…',
+          )
+        } catch {
+          /* Isolate observers. */
+        }
+      }
+    if (event.code === 1008) {
+      setWebManagerToken('')
+      return
     }
-    if (event.code === 1008) { setWebManagerToken(''); return }
     if (hasSubscriptions() && hasWebManagerToken()) {
-      reconnectTimer = setTimeout(ensureEvents, Math.min(30_000, 1000 * 2 ** Math.min(failures++, 5)))
+      reconnectTimer = setTimeout(
+        ensureEvents,
+        Math.min(30_000, 1000 * 2 ** Math.min(failures++, 5)),
+      )
     }
   }
 }
@@ -228,7 +273,11 @@ export function dockerPlatform() {
 }
 
 export async function openExternal(url, nativeCommand = 'open_service') {
-  if (isTauri()) return invoke(nativeCommand, ['open_service', 'open_release_download'].includes(nativeCommand) ? { url } : {})
+  if (isTauri())
+    return invoke(
+      nativeCommand,
+      ['open_service', 'open_release_download'].includes(nativeCommand) ? { url } : {},
+    )
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
@@ -267,8 +316,11 @@ export async function exportBackupFile(archive) {
 export async function exportSslConfiguration(content) {
   if (isTauri()) return invoke('export_ssl_configuration')
   const url = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }))
-  const link = document.createElement('a'); link.href = url; link.download = 'box-engine-https.conf'
-  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'box-engine-https.conf'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
   return true
 }
 

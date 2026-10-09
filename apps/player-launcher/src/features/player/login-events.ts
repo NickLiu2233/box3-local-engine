@@ -18,7 +18,8 @@ export function bindLoginEvents({
       serverId: server.id,
       username: username.value,
       password: password.value,
-      passwordVisible: state.loginDraft?.serverId === server.id && Boolean(state.loginDraft.passwordVisible),
+      passwordVisible:
+        state.loginDraft?.serverId === server.id && Boolean(state.loginDraft.passwordVisible),
     }
   }
   document.querySelector('#player-username')?.addEventListener('input', saveDraft)
@@ -45,7 +46,12 @@ export function bindLoginEvents({
     try {
       let loginResult
       try {
-        loginResult = await remoteApi.login(server.endpoint, state.serverBootstrap, username, password)
+        loginResult = await remoteApi.login(
+          server.endpoint,
+          state.serverBootstrap,
+          username,
+          password,
+        )
       } catch (error) {
         state.authError = playerLoginConnectionError(error)
         return

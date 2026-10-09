@@ -6,7 +6,8 @@ function renderPlayerAccountControl(state, { icon, escapeHtml }) {
   if (!state.player) return ''
   const displayName = state.player.displayName || state.player.username || '已登录用户'
   const username = state.player.username || ''
-  const skin = playerSkinOptions.find((item) => item.id === state.player.avatarSkinId) || playerSkinOptions[0]
+  const skin =
+    playerSkinOptions.find((item) => item.id === state.player.avatarSkinId) || playerSkinOptions[0]
 
   return `
     <div class="player-account-control">

@@ -140,7 +140,6 @@ const generatedApiConsumers = [
   'apps/game/server/map-container-admin.ts',
   'apps/voxa/src/apis/index.ts',
   'services/game-server/src/createServer.ts',
-  'services/game-server/src/player/player-revocation-poller.ts',
   'apps/deployment-manager/src/infrastructure/transport.js',
   'apps/local-engine/src/runtime-container-client.js',
 ]
@@ -158,6 +157,19 @@ for (const file of generatedApiConsumers) {
     assert.equal(source.includes('XMLHttpRequest'), false, `${file} must not use XMLHttpRequest`)
   }
 }
+
+// The revocation WebSocket transport has one authenticated HTTP bootstrap;
+// it does not use the former generated HTTP polling operation.
+const revocationStream = fs.readFileSync(
+  path.join(root, 'services/game-server/src/player/player-revocation-poller.ts'),
+  'utf8',
+)
+assert.equal((revocationStream.match(/\bfetch\s*\(/g) || []).length, 1)
+assert.match(revocationStream, /fetch\(`\$\{serviceURL\}\/api\/realtime\/session`/)
+assert.match(revocationStream, /Authorization: `Bearer \$\{secret\}`/)
+assert.match(revocationStream, /url\.origin !== new URL\(serviceURL\)\.origin/)
+assert.match(revocationStream, /new WebSocket\(url\.href/)
+assert.doesNotMatch(revocationStream, /setInterval\s*\(|\baxios\b/i)
 
 const playHome = fs.readFileSync(path.join(root, 'apps/game/pages/index.tsx'), 'utf8')
 assert.equal((playHome.match(/XMLHttpRequest/g) || []).length, 1)

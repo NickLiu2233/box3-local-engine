@@ -8,10 +8,16 @@ interface ServerLabels {
 }
 
 const validMapId = (value: unknown): value is string =>
-  typeof value === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(value) &&
+  typeof value === 'string' &&
+  /^[A-Za-z0-9_-]{1,128}$/.test(value) &&
   !['__proto__', 'constructor', 'prototype'].includes(value)
 const safeName = (value: unknown): string =>
-  typeof value === 'string' ? value.replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, 80) : ''
+  typeof value === 'string'
+    ? value
+        .replace(/[\u0000-\u001f\u007f]/g, '')
+        .trim()
+        .slice(0, 80)
+    : ''
 
 /** Cache display names only. Favorites/recent play are managed by Play's player library. */
 export function createMapLabels(filename: string) {
@@ -45,7 +51,9 @@ export function createMapLabels(filename: string) {
 
   function persist(): void {
     fs.mkdirSync(path.dirname(filename), { recursive: true })
-    fs.writeFileSync(filename, JSON.stringify({ ...legacyFields, version: 2, servers: labels }), { mode: 0o600 })
+    fs.writeFileSync(filename, JSON.stringify({ ...legacyFields, version: 2, servers: labels }), {
+      mode: 0o600,
+    })
   }
 
   return {
@@ -61,7 +69,11 @@ export function createMapLabels(filename: string) {
     },
     forget(serverId: string): void {
       delete labels[serverId]
-      try { persist() } catch { /* Cache names must not prevent server removal. */ }
+      try {
+        persist()
+      } catch {
+        /* Cache names must not prevent server removal. */
+      }
     },
     name(serverId: string, mapId: string): string {
       return labels[serverId]?.maps[mapId]?.name || `地图 ${mapId}`

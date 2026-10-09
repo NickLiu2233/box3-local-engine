@@ -16,12 +16,26 @@ export default async function afterPack(context: PackContext): Promise<void> {
     ? path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`, 'Contents')
     : context.appOutDir
   const locales = mac
-    ? path.join(application, 'Frameworks', 'Electron Framework.framework', 'Versions', 'A', 'Resources')
+    ? path.join(
+        application,
+        'Frameworks',
+        'Electron Framework.framework',
+        'Versions',
+        'A',
+        'Resources',
+      )
     : path.join(application, 'locales')
-  const retained = new Set(mac ? ['en.lproj', 'en_US.lproj', 'zh_CN.lproj'] : ['en-US.pak', 'zh-CN.pak'])
+  const retained = new Set(
+    mac ? ['en.lproj', 'en_US.lproj', 'zh_CN.lproj'] : ['en-US.pak', 'zh-CN.pak'],
+  )
   for (const entry of await fs.readdir(locales, { withFileTypes: true })) {
-    const isLocale = mac ? entry.isDirectory() && entry.name.endsWith('.lproj') : entry.isFile() && entry.name.endsWith('.pak')
-    if (isLocale && !retained.has(entry.name)) await fs.rm(path.join(locales, entry.name), { recursive: true })
+    const isLocale = mac
+      ? entry.isDirectory() && entry.name.endsWith('.lproj')
+      : entry.isFile() && entry.name.endsWith('.pak')
+    if (isLocale && !retained.has(entry.name))
+      await fs.rm(path.join(locales, entry.name), { recursive: true })
   }
-  await fs.rm(path.join(application, mac ? 'Resources' : 'resources', 'default_app.asar'), { force: true })
+  await fs.rm(path.join(application, mac ? 'Resources' : 'resources', 'default_app.asar'), {
+    force: true,
+  })
 }

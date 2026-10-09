@@ -151,10 +151,15 @@ export class StaticFiles {
     if (!file) return false
     const body = await readFile(file)
     const headers = this.headers(asset, body.length)
-    const config = (response as ServerResponse & {__boxPrefixConfig?: {basePath:string; peerPaths:string[]}}).__boxPrefixConfig
+    const config = (
+      response as ServerResponse & { __boxPrefixConfig?: { basePath: string; peerPaths: string[] } }
+    ).__boxPrefixConfig
     if (asset.html && config?.basePath) {
       const hash = createHash('sha256').update(bootstrap(config)).digest('base64')
-      headers['Content-Security-Policy'] = String(headers['Content-Security-Policy']).replace("script-src 'self'", `script-src 'self' 'sha256-${hash}'`)
+      headers['Content-Security-Policy'] = String(headers['Content-Security-Policy']).replace(
+        "script-src 'self'",
+        `script-src 'self' 'sha256-${hash}'`,
+      )
     }
     response.writeHead(200, headers)
     response.end(body)

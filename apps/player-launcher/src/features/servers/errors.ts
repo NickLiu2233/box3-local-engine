@@ -12,8 +12,10 @@ const CONNECTION_ERRORS: Array<[needle: string, message: string]> = [
 /** Recognize known transport failures; never render raw IPC exceptions or stack details. */
 export function playerServerConnectionError(error: unknown): string {
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : ''
-  return CONNECTION_ERRORS.find(([needle]) => raw.includes(needle))?.[1]
-    || '无法读取服务器状态，请检查地址、端口和网络后重新检查。'
+  return (
+    CONNECTION_ERRORS.find(([needle]) => raw.includes(needle))?.[1] ||
+    '无法读取服务器状态，请检查地址、端口和网络后重新检查。'
+  )
 }
 
 const PLAYER_SERVER_ERRORS: Array<[needle: string, message: string]> = [

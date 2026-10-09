@@ -2,9 +2,14 @@
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { issueModerationRuntimeToken } = require(require.resolve('@box/utils/moderation-runtime-auth',{
-  paths:[path.resolve(__dirname,'..'),path.resolve(__dirname,'../../../services/game-server')],
-}))
+const { issueModerationRuntimeToken } = require(
+  require.resolve('@box/utils/moderation-runtime-auth', {
+    paths: [
+      path.resolve(__dirname, '..'),
+      path.resolve(__dirname, '../../../services/game-server'),
+    ],
+  }),
+)
 
 /** The launcher retains the signing secret; game children receive only a private rotating credential file. */
 function createModerationCredential(environment, secret) {
@@ -27,7 +32,13 @@ function createModerationCredential(environment, secret) {
     fs.rmSync(directory, { recursive: true, force: true })
     throw error
   }
-  const timer = setInterval(()=>{try{refresh()}catch{console.warn('地图实例凭证刷新失败，过期后管理调用将被拒绝')}}, 60000)
+  const timer = setInterval(() => {
+    try {
+      refresh()
+    } catch {
+      console.warn('地图实例凭证刷新失败，过期后管理调用将被拒绝')
+    }
+  }, 60000)
   timer.unref()
   env.BOX_MODERATION_CREDENTIAL_PATH = file
   let closed = false

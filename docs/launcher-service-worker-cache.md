@@ -29,7 +29,7 @@ Service Worker 仅处理同源、GET、内容寻址的 Play 公开资源，不�
 
 ## 支持条件与回退
 
-玩家启动器在 HTTPS 或本机 loopback HTTP（127.0.0.0/8、localhost、*.localhost、::1）服务器下启用 Service Worker 地图资源缓存。非 loopback 的 HTTP 服务器仍可登录并在线游玩，直接按需读取资源，跳过地图预下载缓存；Chromium 的普通 HTTP 缓存仍可使用。缓存能力判断统一来自 `shared/server-address.ts`，本机 HTTP 不需要 HTTPS。
+玩家启动器在 HTTPS 或本机 loopback HTTP（127.0.0.0/8、localhost、\*.localhost、::1）服务器下启用 Service Worker 地图资源缓存。非 loopback 的 HTTP 服务器仍可登录并在线游玩，直接按需读取资源，跳过地图预下载缓存；Chromium 的普通 HTTP 缓存仍可使用。缓存能力判断统一来自 `shared/server-address.ts`，本机 HTTP 不需要 HTTPS。
 
 “本机存储”按服务器统计 Service Worker Cache Storage 与 Chromium 页面缓存的磁盘占用。清理资源时保留 Cookie 和服务器列表；游戏运行期间拒绝清理该服务器的缓存。再次点击正在游玩的地图直接聚焦现有游戏窗口。
 

@@ -6,7 +6,7 @@ const path = require('node:path')
 const test = require('node:test')
 
 const root = path.resolve(__dirname, '..')
-const read = file => fs.readFileSync(path.join(root, file), 'utf8')
+const read = (file) => fs.readFileSync(path.join(root, file), 'utf8')
 
 test('package, native and container metadata agree with the MIT adoption', () => {
   for (const project of JSON.parse(read('rush.json')).projects) {
@@ -14,14 +14,25 @@ test('package, native and container metadata agree with the MIT adoption', () =>
     assert.equal(typeof manifest.license, 'string', `${project.packageName} has no license`)
     assert.ok(!/^unlicensed$/i.test(manifest.license), `${project.packageName} is still unlicensed`)
   }
-  for (const file of ['apps/manager-core/Cargo.toml', 'apps/server-manager-rust/Cargo.toml', 'apps/deployment-manager/src-tauri/Cargo.toml']) {
+  for (const file of [
+    'apps/manager-core/Cargo.toml',
+    'apps/server-manager-rust/Cargo.toml',
+    'apps/deployment-manager/src-tauri/Cargo.toml',
+  ]) {
     assert.match(read(file), /^license = "MIT"$/m)
   }
-  for (const file of ['apps/local-engine/Dockerfile', 'apps/server-manager/Dockerfile', 'apps/player-auth-portal/Dockerfile']) {
+  for (const file of [
+    'apps/local-engine/Dockerfile',
+    'apps/server-manager/Dockerfile',
+    'apps/player-auth-portal/Dockerfile',
+  ]) {
     assert.match(read(file), /org.opencontainers.image.licenses="MIT"/)
     assert.doesNotMatch(read(file), /LicenseRef-Proprietary/)
   }
-  for (const file of ['apps/deployment-manager/src-tauri/src/commands.rs', 'apps/server-manager-rust/src/http/commands.rs']) {
+  for (const file of [
+    'apps/deployment-manager/src-tauri/src/commands.rs',
+    'apps/server-manager-rust/src/http/commands.rs',
+  ]) {
     assert.match(read(file), /MIT License/)
     assert.doesNotMatch(read(file), /非开源、非商业|本地部署用户许可协议/)
   }
@@ -38,7 +49,10 @@ test('independent component licenses retain their authors and original license m
 
 test('source and distribution use the same MIT license without activation restrictions', () => {
   const agreement = read('distribution/LICENSE.txt')
-  assert.doesNotMatch(agreement, /\.boxlic|个人学习许可证|设备 ID|许可证到期|申请续期|有效个人学习许可证|将拒绝部署或启动|签名校验、设备绑定|许可证自然到期/)
+  assert.doesNotMatch(
+    agreement,
+    /\.boxlic|个人学习许可证|设备 ID|许可证到期|申请续期|有效个人学习许可证|将拒绝部署或启动|签名校验、设备绑定|许可证自然到期/,
+  )
   assert.equal(agreement, read('LICENSE.md'))
   assert.equal(agreement, read('apps/player-auth-portal/LICENSE'))
   assert.match(agreement, /^MIT License/)
@@ -51,7 +65,10 @@ test('all official business images start directly, without runtime license hooks
   const engine = read('apps/local-engine/Dockerfile')
   const portal = read('apps/player-auth-portal/Dockerfile')
   for (const source of [engine, portal, read('apps/server-manager/Dockerfile')]) {
-    assert.doesNotMatch(source, /runtime-gate|process-guard|BOX_LICENSE_|license-public-key|packages\/license/)
+    assert.doesNotMatch(
+      source,
+      /runtime-gate|process-guard|BOX_LICENSE_|license-public-key|packages\/license/,
+    )
   }
   for (const target of ['creator', 'play', 'player-service', 'voxa']) {
     const stage = engine.split(`FROM runtime-base AS ${target}\n`)[1]?.split('\nFROM ')[0]
@@ -68,7 +85,10 @@ test('Compose and isolated map runtimes retain security without license mounts',
   const runtime = read('apps/server-manager-rust/src/runtime/runtime.rs')
   const launcher = read('apps/local-engine/src/launcher.js')
   for (const source of [compose, runtime, launcher]) {
-    assert.doesNotMatch(source, /BOX_LICENSE_|box3-license|box3-device-id|runtime-gate|process-guard/)
+    assert.doesNotMatch(
+      source,
+      /BOX_LICENSE_|box3-license|box3-device-id|runtime-gate|process-guard/,
+    )
   }
   assert.match(compose, /no-new-privileges:true/)
   assert.match(compose, /BOX_RUNTIME_MANAGER_TOKEN/)
@@ -82,8 +102,15 @@ test('desktop and Web managers no longer provide activation commands or startup 
   const core = read('apps/manager-core/src/services.rs')
   const manager = read('apps/server-manager-rust/src/main.rs')
   const desktopConfig = read('apps/deployment-manager/src-tauri/src/config.rs')
-  for (const source of [manager, desktopConfig, read('apps/server-manager-rust/src/platform/security_data.rs')]) {
-    assert.doesNotMatch(source, /trusted_now|trusted-time|license-time|keychain_install_secret|hardware_identity|BOX_LICENSE_/)
+  for (const source of [
+    manager,
+    desktopConfig,
+    read('apps/server-manager-rust/src/platform/security_data.rs'),
+  ]) {
+    assert.doesNotMatch(
+      source,
+      /trusted_now|trusted-time|license-time|keychain_install_secret|hardware_identity|BOX_LICENSE_/,
+    )
   }
   assert.doesNotMatch(manager, /#\[cfg\(test\)\]\s*#\[derive\(Serialize\)\]\s*struct Error/)
   for (const source of [desktop, web, core]) {
@@ -91,11 +118,19 @@ test('desktop and Web managers no longer provide activation commands or startup 
   }
   assert.match(web, /auth\(&headers, &app\)/)
   assert.match(core, /mutation_guard|操作名称或服务名称无效/)
-  assert.ok(!JSON.parse(read('rush.json')).projects.some(project => /@box\/license/.test(project.packageName)))
+  assert.ok(
+    !JSON.parse(read('rush.json')).projects.some((project) =>
+      /@box\/license/.test(project.packageName),
+    ),
+  )
 })
 
 test('server installation no longer depends on a licensing machine identity', () => {
-  for (const file of ['distribution/server/install.sh', 'distribution/server/bootstrap.sh', 'distribution/server/.env.example']) {
+  for (const file of [
+    'distribution/server/install.sh',
+    'distribution/server/bootstrap.sh',
+    'distribution/server/.env.example',
+  ]) {
     assert.doesNotMatch(read(file), /BOX_LICENSE_|MACHINE_ID_FILE|\/etc\/machine-id|licensing/)
   }
   assert.match(read('distribution/server/install.sh'), /BOX_RUNTIME_MANAGER_TOKEN/)

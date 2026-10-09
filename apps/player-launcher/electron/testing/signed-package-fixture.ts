@@ -8,10 +8,17 @@ export interface SignedPackageFixture {
 
 export function createSignedPackageFixture(
   content: Buffer,
-  options: { mapId?: string; accessId?: string; releaseVersion?: string; contentType?: string } = {},
+  options: {
+    mapId?: string
+    accessId?: string
+    releaseVersion?: string
+    contentType?: string
+  } = {},
 ): SignedPackageFixture {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' })
-  const publicKeyJwk = publicKey.export({ format: 'jwk' }) as PackageDescriptor['signature']['publicKey']
+  const publicKeyJwk = publicKey.export({
+    format: 'jwk',
+  }) as PackageDescriptor['signature']['publicKey']
   const payload = {
     formatVersion: 1 as const,
     permanentMapId: options.mapId || 'map-one',
@@ -27,7 +34,10 @@ export function createSignedPackageFixture(
     ],
     optional: [],
   }
-  const manifestDigest = crypto.createHash('sha256').update(JSON.stringify(payload)).digest('base64url')
+  const manifestDigest = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(payload))
+    .digest('base64url')
   const signedPayload = { ...payload, manifestDigest }
   const value = crypto
     .sign('sha256', Buffer.from(JSON.stringify(signedPayload)), {

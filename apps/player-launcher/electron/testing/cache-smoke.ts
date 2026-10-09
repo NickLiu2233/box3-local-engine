@@ -6,12 +6,17 @@ import * as http from 'node:http'
 import { readResourceCache, clearResourceCache } from '../runtime/resource-cache'
 import { inspectMapCaches } from '../runtime/map-cache'
 
-const temp = process.env.BOX_LAUNCHER_TEST_USER_DATA || fs.mkdtempSync(path.join(os.tmpdir(), 'box-real-cache-'))
+const temp =
+  process.env.BOX_LAUNCHER_TEST_USER_DATA ||
+  fs.mkdtempSync(path.join(os.tmpdir(), 'box-real-cache-'))
 app.setPath('userData', temp)
 const worker = `self.addEventListener('install',event=>event.waitUntil((async()=>{const cache=await caches.open('box-play-static:cache-test:v1');await cache.add('/resource');await self.skipWaiting()})()));self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));`
 const fixture = http.createServer((request, response) => {
   if (request.url === '/worker.js') {
-    response.writeHead(200, { 'Content-Type': 'application/javascript', 'Cache-Control': 'no-store' })
+    response.writeHead(200, {
+      'Content-Type': 'application/javascript',
+      'Cache-Control': 'no-store',
+    })
     response.end(worker)
   } else if (request.url === '/resource') {
     response.writeHead(200, {
@@ -35,7 +40,12 @@ app
     const target = session.fromPartition('persist:cache-check', { cache: true })
     const window = new BrowserWindow({
       show: false,
-      webPreferences: { session: target, sandbox: true, nodeIntegration: false, contextIsolation: true },
+      webPreferences: {
+        session: target,
+        sandbox: true,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
     })
     await window.loadURL(origin)
     const written = await window.webContents.executeJavaScript(`(async()=>{
@@ -108,4 +118,7 @@ app
   })
 
 // Cleanup belongs to the parent runner, after Chromium has released profile files.
-process.on('uncaughtException', (error) => { console.error(error); app.exit(1) })
+process.on('uncaughtException', (error) => {
+  console.error(error)
+  app.exit(1)
+})

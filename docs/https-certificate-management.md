@@ -13,13 +13,13 @@
 
 独立地址模式逐服务填写，留空的服务不继承其他服务地址。共用地址模式填写一个 IP 或域名，各服务通过端口或路径区分。切换模式保留两套草稿，独立模式不应用共用路径草稿。
 
-| 场景 | 示例 | 生成规则 |
-| --- | --- | --- |
-| 独立域名 | `play.example.com` | 有证书用 HTTPS，否则 HTTP；域名默认 443/80 |
-| 独立 IP | `203.0.113.10` | 自动判断协议，未指定端口时使用服务端口 |
-| 显式协议和端口 | `http://play.example.com:8080` | 显式协议与端口优先 |
-| 共用地址，路径为空 | `example.com` | 各服务使用配置的服务端口，如 3121、3127 |
-| 共用地址，配置路径 | `example.com` + `/play` | 使用共用地址端口，未写端口时为 443/80 |
+| 场景               | 示例                           | 生成规则                                   |
+| ------------------ | ------------------------------ | ------------------------------------------ |
+| 独立域名           | `play.example.com`             | 有证书用 HTTPS，否则 HTTP；域名默认 443/80 |
+| 独立 IP            | `203.0.113.10`                 | 自动判断协议，未指定端口时使用服务端口     |
+| 显式协议和端口     | `http://play.example.com:8080` | 显式协议与端口优先                         |
+| 共用地址，路径为空 | `example.com`                  | 各服务使用配置的服务端口，如 3121、3127    |
+| 共用地址，配置路径 | `example.com` + `/play`        | 使用共用地址端口，未写端口时为 443/80      |
 
 例如共用地址 `https://example.com`：Play 路径留空得到 `https://example.com:3121`，Creator 路径 `/arena` 得到 `https://example.com/arena`。路径非空时保留共用地址的显式端口；路径为空时使用各服务端口。
 
@@ -57,14 +57,14 @@
 
 桌面使用 Tauri，Web 使用认证后的 `POST /api/commands/{name}`。
 
-| 命令 | 用途 |
-| --- | --- |
-| `get_ssl_status` | 来源、镜像、运行状态、证书公开元数据及导出配置 |
-| `set_nginx_provider` | 保存 managed/external；disabled 兼容旧调用 |
-| `install_nginx_image` | 下载或复用官方稳定版镜像 |
-| `apply_ssl_config` | 应用 HTTP/HTTPS 路由与证书，兼容旧单证书格式 |
-| `stop_ssl_proxy` | 停止本实例内置入口，保留配置与证书 |
-| `export_ssl_configuration` | 导出配置，不能视为已部署 |
-| `verify_ssl_endpoint` | TLS 探测，不等同于真实登录和 WSS 会话验收 |
+| 命令                       | 用途                                           |
+| -------------------------- | ---------------------------------------------- |
+| `get_ssl_status`           | 来源、镜像、运行状态、证书公开元数据及导出配置 |
+| `set_nginx_provider`       | 保存 managed/external；disabled 兼容旧调用     |
+| `install_nginx_image`      | 下载或复用官方稳定版镜像                       |
+| `apply_ssl_config`         | 应用 HTTP/HTTPS 路由与证书，兼容旧单证书格式   |
+| `stop_ssl_proxy`           | 停止本实例内置入口，保留配置与证书             |
+| `export_ssl_configuration` | 导出配置，不能视为已部署                       |
+| `verify_ssl_endpoint`      | TLS 探测，不等同于真实登录和 WSS 会话验收      |
 
 工程入口及检查见[公网路由工程说明](./public-routing-engineering.md)。日期命名的 Nginx 文档记录历史方案，当前操作以本文为准。

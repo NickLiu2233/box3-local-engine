@@ -15,12 +15,18 @@ function isIPv4(value: string): boolean {
 function isDomain(value: string, allowSingleLabel: boolean): boolean {
   const domain = value.toLowerCase().replace(/\.$/, '')
   if (!domain || domain.length > 253 || /^\d+$/.test(domain)) return false
-  if (!allowSingleLabel && !domain.includes('.') && domain !== 'localhost' && !domain.endsWith('.localhost'))
+  if (
+    !allowSingleLabel &&
+    !domain.includes('.') &&
+    domain !== 'localhost' &&
+    !domain.endsWith('.localhost')
+  )
     return false
   return domain
     .split('.')
     .every(
-      (label) => label.length >= 1 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label),
+      (label) =>
+        label.length >= 1 && label.length <= 63 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(label),
     )
 }
 
@@ -54,7 +60,12 @@ export function normalizeServerAddress(value: string): string {
   } catch {
     throw new Error(ADDRESS_ERROR)
   }
-  if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) {
+  if (
+    !['http:', 'https:'].includes(url.protocol) ||
+    !url.hostname ||
+    url.username ||
+    url.password
+  ) {
     throw new Error(ADDRESS_ERROR)
   }
 

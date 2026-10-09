@@ -5,7 +5,8 @@ export interface ServerAddressNotice {
   message: string
 }
 
-export const SERVER_ADDRESS_HELP_TEXT = '支持域名、IP 和端口。本机地址默认 HTTP。公网地址建议使用 HTTPS。'
+export const SERVER_ADDRESS_HELP_TEXT =
+  '支持域名、IP 和端口。本机地址默认 HTTP。公网地址建议使用 HTTPS。'
 
 /** Returns a confirmation notice for endpoints that may not support safe local caching. */
 export function getServerAddressNotice(value: string): ServerAddressNotice | null {

@@ -14,11 +14,16 @@ for (const extension of ['.js', '.css']) {
   for (const file of frontendFiles(root, extension)) {
     const source = fs.readFileSync(file, 'utf8')
     const lines = source.trimEnd().split('\n').length
-    assert.ok(lines < 500, `${path.relative(root, file)} has ${lines} lines; keep source files below 500 lines`)
+    assert.ok(
+      lines < 500,
+      `${path.relative(root, file)} has ${lines} lines; keep source files below 500 lines`,
+    )
     if (lines > largest.lines) largest = { lines, file: path.relative(directory, file) }
 
     const dependencies = []
-    for (const [, specifier] of source.matchAll(/(?:from\s+|import\s*|@import\s*)['"]([^'"]+)['"]/g)) {
+    for (const [, specifier] of source.matchAll(
+      /(?:from\s+|import\s*|@import\s*)['"]([^'"]+)['"]/g,
+    )) {
       if (!specifier.startsWith('.')) continue
       const target = path.resolve(path.dirname(file), specifier)
       assert.ok(fs.existsSync(target), `${path.relative(root, file)} imports missing ${specifier}`)
@@ -26,21 +31,34 @@ for (const extension of ['.js', '.css']) {
     }
     if (extension === '.js') graph.set(file, dependencies)
     if (extension === '.js' && !file.endsWith('/infrastructure/transport.js')) {
-      assert.doesNotMatch(source, /from ['"]@tauri-apps\//, 'native bridge imports belong in infrastructure/transport.js')
+      assert.doesNotMatch(
+        source,
+        /from ['"]@tauri-apps\//,
+        'native bridge imports belong in infrastructure/transport.js',
+      )
     }
     if (file.includes('/views/')) {
-      assert.doesNotMatch(source, /from ['"].*\/operations\//, 'views must render data rather than call operations')
+      assert.doesNotMatch(
+        source,
+        /from ['"].*\/operations\//,
+        'views must render data rather than call operations',
+      )
     }
   }
 }
 
 const visited = new Set()
 function visit(file, stack = []) {
-  assert.ok(!stack.includes(file), `circular frontend imports: ${[...stack, file].map(item => path.relative(directory, item)).join(' -> ')}`)
+  assert.ok(
+    !stack.includes(file),
+    `circular frontend imports: ${[...stack, file].map((item) => path.relative(directory, item)).join(' -> ')}`,
+  )
   if (visited.has(file)) return
   for (const dependency of graph.get(file) || []) visit(dependency, [...stack, file])
   visited.add(file)
 }
 for (const file of graph.keys()) visit(file)
 
-console.log(`Deployment manager structure passed: ${graph.size} JavaScript modules; largest source ${largest.file} (${largest.lines} lines)`)
+console.log(
+  `Deployment manager structure passed: ${graph.size} JavaScript modules; largest source ${largest.file} (${largest.lines} lines)`,
+)

@@ -68,9 +68,10 @@ const playerIdentity = fs.readFileSync(
   path.join(root, 'apps/game/server/local-player-identity.ts'),
   'utf8',
 )
-const authPortalServer = fs.readdirSync(path.join(root, 'apps/player-auth-portal/server'), { recursive: true })
-  .filter(file => file.endsWith('.ts'))
-  .map(file => fs.readFileSync(path.join(root, 'apps/player-auth-portal/server', file), 'utf8'))
+const authPortalServer = fs
+  .readdirSync(path.join(root, 'apps/player-auth-portal/server'), { recursive: true })
+  .filter((file) => file.endsWith('.ts'))
+  .map((file) => fs.readFileSync(path.join(root, 'apps/player-auth-portal/server', file), 'utf8'))
   .join('\n')
 
 for (const file of [
@@ -507,7 +508,10 @@ assert.doesNotMatch(frontend, /创作端访问地址/)
 assert.doesNotMatch(frontend, /不建议直接向公网开放创作端/)
 assert.match(frontend, /name="playNetworkMode" type="hidden" value="\$\{accessMode\}"/)
 assert.match(frontend, /state\.config\.playNetworkMode = isPublicMode\(mode\) \? 'public' : mode/)
-assert.match(frontend, /state\.config\.creatorNetworkMode = isPublicMode\(mode\) \? 'public' : mode/)
+assert.match(
+  frontend,
+  /state\.config\.creatorNetworkMode = isPublicMode\(mode\) \? 'public' : mode/,
+)
 assert.match(frontend, /creatorNetworkMode: isPublicMode\(state\.accessMode\)/)
 assert.match(frontend, /function accessChoice\(/)
 assert.match(sharedBackend, /游玩端与创作端必须使用相同的访问范围/)
@@ -977,5 +981,8 @@ if (core.lib.includes('pub mod backup;')) {
 
 console.log('Desktop deployment manager checks passed')
 
-assert.doesNotMatch(frontendSource(root), /get_license_status|install_license|hasValidLicense|许可证管理/)
+assert.doesNotMatch(
+  frontendSource(root),
+  /get_license_status|install_license|hasValidLicense|许可证管理/,
+)
 assert.doesNotMatch(core.services, /require_license/)

@@ -225,7 +225,7 @@ BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh
 | --------------------------- | -------------------------------------------------------------- |
 | 页面打不开                  | 检查 SSH 隧道、`./status.sh`、`./logs.sh server-manager`       |
 | 管理端登录失败              | 重新读取当前`.env` 的管理密钥，不要使用旧令牌                  |
-| 服务无法启动                | 查看对应服务、数据库日志及数据配置                       |
+| 服务无法启动                | 查看对应服务、数据库日志及数据配置                             |
 | Player Service 返回 503     | 查看`./logs.sh player-service` 与 `./logs.sh managed-postgres` |
 | PostgreSQL 提示 role 不存在 | 恢复创建该数据卷时使用的`.env`；不要删除卷或生成另一组随机凭据 |
 | 内置数据库下载失败          | 检查网络、镜像源、代理和磁盘空间                               |

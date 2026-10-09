@@ -10,7 +10,8 @@ export function renderWorldCard(world: PlayWorld, state, { escapeHtml }) {
   const onlineCount = Math.max(0, Number(world.onlineCount) || 0)
   const favoriteId = world.publicId || world.id
   const favorite = state.favoriteMapIds?.includes(favoriteId)
-  const star = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.75 5.58 6.16.9-4.46 4.35 1.05 6.14L12 17.07l-5.5 2.9 1.05-6.14-4.46-4.35 6.16-.9L12 3Z"/></svg>'
+  const star =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.75 5.58 6.16.9-4.46 4.35 1.05 6.14L12 17.07l-5.5 2.9 1.05-6.14-4.46-4.35 6.16-.9L12 3Z"/></svg>'
 
   return `<article class="world-card surface">
     <div class="world-cover-frame">

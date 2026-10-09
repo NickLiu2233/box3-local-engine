@@ -16,9 +16,12 @@ test('a player can log in again after logout clears the local session', async ()
       }
       if (url.pathname === '/api/auth/login') {
         loginAttempts += 1
-        return Response.json({ player: { username: 'test-player' } }, {
-          headers: { 'set-cookie': 'box_local_player_session=test-session; Path=/; HttpOnly' },
-        })
+        return Response.json(
+          { player: { username: 'test-player' } },
+          {
+            headers: { 'set-cookie': 'box_local_player_session=test-session; Path=/; HttpOnly' },
+          },
+        )
       }
       if (url.pathname === '/api/auth/logout') {
         return new Response('{}', {
@@ -36,7 +39,10 @@ test('a player can log in again after logout clears the local session', async ()
 
   const bootstrap = await playerApi.readBootstrap(endpoint)
   assert.equal(bootstrap.supported, true)
-  assert.equal((await playerApi.login(endpoint, bootstrap, 'test-player', 'fixture-password')).response.ok, true)
+  assert.equal(
+    (await playerApi.login(endpoint, bootstrap, 'test-player', 'fixture-password')).response.ok,
+    true,
+  )
   assert.equal((await playerApi.logout(endpoint, bootstrap)).response.ok, true)
   transport.clear(endpoint)
 

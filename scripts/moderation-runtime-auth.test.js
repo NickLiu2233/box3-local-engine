@@ -22,7 +22,10 @@ test('runtime tokens are purpose-bound, signed and expire after five minutes', (
     body = JSON.parse(Buffer.from(parts[0], 'base64').toString())
   body.mapId = 'other-map'
   assert.equal(
-    verifyModerationRuntimeToken(Buffer.from(JSON.stringify(body)).toString('base64') + '.' + parts[1], secret),
+    verifyModerationRuntimeToken(
+      Buffer.from(JSON.stringify(body)).toString('base64') + '.' + parts[1],
+      secret,
+    ),
     null,
   )
 })
@@ -40,7 +43,10 @@ test('game children receive a private credential file, never the signing secret'
   try {
     assert.equal(grant.env.BOX_MODERATION_SIGNING_SECRET, undefined)
     assert.equal(fs.statSync(file).mode & 0o777, 0o600)
-    assert.equal(verifyModerationRuntimeToken(fs.readFileSync(file, 'utf8'), secret).mapId, 'test-map')
+    assert.equal(
+      verifyModerationRuntimeToken(fs.readFileSync(file, 'utf8'), secret).mapId,
+      'test-map',
+    )
   } finally {
     grant.close()
   }

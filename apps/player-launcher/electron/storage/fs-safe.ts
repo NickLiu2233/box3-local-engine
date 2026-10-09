@@ -6,7 +6,10 @@ export interface OpenedFile {
   stat: fs.Stats
 }
 
-export async function openRegularFile(filename: string, expectedSize?: number): Promise<OpenedFile | null> {
+export async function openRegularFile(
+  filename: string,
+  expectedSize?: number,
+): Promise<OpenedFile | null> {
   const noFollow = fs.constants.O_NOFOLLOW || 0
   let handle
   try {
@@ -65,7 +68,8 @@ export async function assertSubdirectories(root: string, ...segments: string[]):
     .lstat(root)
     .catch((error) => (error.code === 'ENOENT' ? null : Promise.reject(error)))
   if (!rootStat) return false
-  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error('本地地图资源目录状态异常')
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink())
+    throw new Error('本地地图资源目录状态异常')
   let current = root
   for (const segment of segments) {
     if (!segment || segment === '.' || segment === '..' || segment.includes(path.sep))
@@ -83,7 +87,10 @@ export async function assertSubdirectories(root: string, ...segments: string[]):
   return true
 }
 
-export async function readRegularFile(filename: string, maxBytes = 16 * 1024 * 1024): Promise<Buffer | null> {
+export async function readRegularFile(
+  filename: string,
+  maxBytes = 16 * 1024 * 1024,
+): Promise<Buffer | null> {
   const opened = await openRegularFile(filename)
   if (!opened) return null
   try {
@@ -98,7 +105,8 @@ export function readRegularFileSync(filename: string, maxBytes = 16 * 1024 * 102
   let descriptor
   try {
     const pathStat = fs.lstatSync(filename)
-    if (!pathStat.isFile() || pathStat.isSymbolicLink()) throw new Error('本地地图包索引文件状态无效')
+    if (!pathStat.isFile() || pathStat.isSymbolicLink())
+      throw new Error('本地地图包索引文件状态无效')
     descriptor = fs.openSync(filename, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0))
     const stat = fs.fstatSync(descriptor)
     if (!stat.isFile() || stat.dev !== pathStat.dev || stat.ino !== pathStat.ino)

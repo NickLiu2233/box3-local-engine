@@ -91,7 +91,10 @@ test('standalone template and image include the MIT permission text', () => {
   const tasks = readFileSync(path.join(portalRoot, 'scripts/tasks.ts'), 'utf8')
   assert.match(tasks, /'README.md',\s*'LICENSE',/)
   assert.match(readFileSync(path.join(portalRoot, '.dockerignore'), 'utf8'), /^!LICENSE$/m)
-  assert.match(readFileSync(path.join(portalRoot, 'Dockerfile.standalone'), 'utf8'), /COPY --chown=node:node LICENSE \.\/LICENSE/)
+  assert.match(
+    readFileSync(path.join(portalRoot, 'Dockerfile.standalone'), 'utf8'),
+    /COPY --chown=node:node LICENSE \.\/LICENSE/,
+  )
 })
 
 test('disabled registration removes the redundant authentication tabs', () => {

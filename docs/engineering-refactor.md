@@ -6,13 +6,13 @@
 
 ## 现在从哪里读代码
 
-| 功能 | 入口与职责 |
-| --- | --- |
-| 网络连接、消息处理、同步调度 | `services/game-server/src/net/net-server-controller.ts` |
-| 网络状态投影、输入合并、私有快照编码 | 同目录 `net-state-operations.ts` |
+| 功能                                       | 入口与职责                                               |
+| ------------------------------------------ | -------------------------------------------------------- |
+| 网络连接、消息处理、同步调度               | `services/game-server/src/net/net-server-controller.ts`  |
+| 网络状态投影、输入合并、私有快照编码       | 同目录 `net-state-operations.ts`                         |
 | 反作弊订阅、事件适配、单条请求决策生命周期 | `services/game-server/src/anticheat/anticheat-script.ts` |
-| 后台地图请求、权限、导入流程和页面状态 | `apps/player-admin/src/pages/maps/play-maps-page.tsx` |
-| 地图设置与游玩包检查弹窗 | 同目录 `play-map-dialogs.tsx` |
+| 后台地图请求、权限、导入流程和页面状态     | `apps/player-admin/src/pages/maps/play-maps-page.tsx`    |
+| 地图设置与游玩包检查弹窗                   | 同目录 `play-map-dialogs.tsx`                            |
 
 网络状态模块不注册协议，也不管理连接生命周期。公开和私有快照继续使用原来的 schema；私有数据必须发给对应连接，不能广播。原有 `synchronizeNetClientInput` 导入路径保留，调用者无需迁移。
 

@@ -8,5 +8,10 @@ if (name !== 'desktop' && name !== 'cache') throw new Error('Usage: run-smoke.mt
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const file = name === 'desktop' ? 'launcher-smoke.cjs' : 'cache-smoke.cjs'
-await runSmoke({ executable: require('electron') as string, args: [path.join(appRoot, 'dist-electron', file)], cwd: appRoot, name })
+await runSmoke({
+  executable: require('electron') as string,
+  args: [path.join(appRoot, 'dist-electron', file)],
+  cwd: appRoot,
+  name,
+})
 console.log(`${name} smoke process exited successfully`)

@@ -9,7 +9,12 @@ export function getServiceUrl(serviceId) {
   const host = sharedNetworkHost()
   const port = Number(state.config?.[portKey]) || defaultPort
   if (state.config?.playNetworkMode === 'public') {
-    try { const endpoint = publicEndpoints().find(endpoint => endpoint.service === serviceId); return endpoint ? `${endpoint.url}${path}` : '' } catch { return '' }
+    try {
+      const endpoint = publicEndpoints().find((endpoint) => endpoint.service === serviceId)
+      return endpoint ? `${endpoint.url}${path}` : ''
+    } catch {
+      return ''
+    }
   }
   const authority = host.includes(':') ? `[${host.replace(/^\[|\]$/g, '')}]` : host
   const scheme = state.config?.playNetworkMode === 'public' ? publicAddressScheme() : 'http'

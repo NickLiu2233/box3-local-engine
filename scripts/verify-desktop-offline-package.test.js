@@ -25,10 +25,23 @@ function fixturePackage() {
       formatVersion: 2,
       imageTag: 'v0.1.0-linux-arm64',
       platform: 'linux/arm64',
-      images: ['creator', 'voxa', 'play', 'player-service', 'player-auth-portal', 'server-manager'].map(service => ({
-        formatVersion: 1, image: `box-local-engine-${service}`, imageId: `sha256:${'b'.repeat(64)}`, imageIds: [`sha256:${'b'.repeat(64)}`],
+      images: [
+        'creator',
+        'voxa',
+        'play',
+        'player-service',
+        'player-auth-portal',
+        'server-manager',
+      ].map((service) => ({
+        formatVersion: 1,
+        image: `box-local-engine-${service}`,
+        imageId: `sha256:${'b'.repeat(64)}`,
+        imageIds: [`sha256:${'b'.repeat(64)}`],
         archive: `box-local-engine-image-${service}-arm64-${'a'.repeat(64)}.tar.gz`,
-        sha256: 'a'.repeat(64), size: 123, imageTag: 'v0.1.0-linux-arm64', platform: 'linux/arm64',
+        sha256: 'a'.repeat(64),
+        size: 123,
+        imageTag: 'v0.1.0-linux-arm64',
+        platform: 'linux/arm64',
       })),
     })}\n`,
   )
@@ -66,7 +79,10 @@ test('lightweight packages reject accidentally embedded archives and invalid ima
     fs.writeFileSync(path.join(root, 'images.tar.gz'), 'unexpected archive')
     assert.throws(() => verifyPackage(root), /不应包含离线镜像/)
     fs.rmSync(path.join(root, 'images.tar.gz'))
-    const file = path.join(root, 'BOX3 Engine.app/Contents/Resources/payload/metadata/BOX-REMOTE-IMAGE.json')
+    const file = path.join(
+      root,
+      'BOX3 Engine.app/Contents/Resources/payload/metadata/BOX-REMOTE-IMAGE.json',
+    )
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'))
     manifest.images[0].archive = '../wrong-image.tar.gz'
     fs.writeFileSync(file, JSON.stringify(manifest))

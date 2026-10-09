@@ -8,13 +8,13 @@
 发行安装包只通过玩家标签流水线生成，与 main/PR 检查隔离。
 `.github/workflows/player-launcher-release.yml` 独立生成以下五个安装包：
 
-| 目标 | 原生 runner | 文件 |
-| --- | --- | --- |
-| Windows AMD64 | windows-2022 | `BOX3-Player-Launcher-<版本>-windows-amd64.exe` |
-| Windows ARM64 | windows-11-arm | `BOX3-Player-Launcher-<版本>-windows-arm64.exe` |
-| macOS ARM64 | macos-14 | `BOX3-Player-Launcher-<版本>-macos-arm64.dmg` |
-| Linux AMD64 | ubuntu-22.04 | `BOX3-Player-Launcher-<版本>-linux-amd64.AppImage` |
-| Linux ARM64 | ubuntu-22.04-arm | `BOX3-Player-Launcher-<版本>-linux-arm64.AppImage` |
+| 目标          | 原生 runner      | 文件                                               |
+| ------------- | ---------------- | -------------------------------------------------- |
+| Windows AMD64 | windows-2022     | `BOX3-Player-Launcher-<版本>-windows-amd64.exe`    |
+| Windows ARM64 | windows-11-arm   | `BOX3-Player-Launcher-<版本>-windows-arm64.exe`    |
+| macOS ARM64   | macos-14         | `BOX3-Player-Launcher-<版本>-macos-arm64.dmg`      |
+| Linux AMD64   | ubuntu-22.04     | `BOX3-Player-Launcher-<版本>-linux-amd64.AppImage` |
+| Linux ARM64   | ubuntu-22.04-arm | `BOX3-Player-Launcher-<版本>-linux-arm64.AppImage` |
 
 Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安装 Electron/FUSE 运行依赖，并用 Xvfb 验证桌面交互和真实 Service Worker 缓存；打包后的测试也在 Xvfb 中执行。应用保持原有 sandbox 配置。
 
@@ -56,11 +56,11 @@ Windows 未配置证书时保持未签名行为。macOS 未配置证书时使用
 
 下载后的应用仍受 Gatekeeper 检查。对普通玩家正式分发，需要 Developer ID Application 签名和 Apple 公证；本地 ad-hoc 签名不能替代这两者。参见 [Apple Developer ID 说明](https://developer.apple.com/developer-id/)。
 
-| Secrets | 用途 |
-| --- | --- |
-| `PLAYER_WINDOWS_CSC_LINK` / `PLAYER_WINDOWS_CSC_KEY_PASSWORD` | Windows 签名证书及密码，传给 electron-builder |
-| `PLAYER_MACOS_CSC_LINK` / `PLAYER_MACOS_CSC_KEY_PASSWORD` | macOS Developer ID 证书及密码 |
-| `PLAYER_APPLE_ID` / `PLAYER_APPLE_APP_SPECIFIC_PASSWORD` / `PLAYER_APPLE_TEAM_ID` | macOS 公证凭据 |
+| Secrets                                                                           | 用途                                          |
+| --------------------------------------------------------------------------------- | --------------------------------------------- |
+| `PLAYER_WINDOWS_CSC_LINK` / `PLAYER_WINDOWS_CSC_KEY_PASSWORD`                     | Windows 签名证书及密码，传给 electron-builder |
+| `PLAYER_MACOS_CSC_LINK` / `PLAYER_MACOS_CSC_KEY_PASSWORD`                         | macOS Developer ID 证书及密码                 |
+| `PLAYER_APPLE_ID` / `PLAYER_APPLE_APP_SPECIFIC_PASSWORD` / `PLAYER_APPLE_TEAM_ID` | macOS 公证凭据                                |
 
 这些可选值只传给构建步骤，不影响 OSS 缓存和普通 PR 检查。流水线不会自动申请证书。
 

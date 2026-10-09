@@ -15,7 +15,10 @@ function canonicalAsset(asset: PackageAsset): PackageAsset {
   }
 }
 
-function canonicalPayload(descriptor: PackageDescriptor, includeDigest = false): Record<string, unknown> {
+function canonicalPayload(
+  descriptor: PackageDescriptor,
+  includeDigest = false,
+): Record<string, unknown> {
   const value: Record<string, unknown> = {
     formatVersion: descriptor.formatVersion,
     permanentMapId: descriptor.permanentMapId,
@@ -78,7 +81,12 @@ function validMimeToken(value: string): boolean {
 }
 
 function validContentType(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 128 || /[^\x20-\x7e]/.test(value))
+  if (
+    typeof value !== 'string' ||
+    value.length === 0 ||
+    value.length > 128 ||
+    /[^\x20-\x7e]/.test(value)
+  )
     return false
   const [mediaType, ...parameters] = value.split(';')
   const parts = mediaType.trim().split('/')
@@ -178,7 +186,12 @@ export function validateDescriptor(
   const signedBytes = Buffer.from(JSON.stringify(canonicalPayload(descriptor, true)))
   if (
     signatureBytes.length !== 64 ||
-    !crypto.verify('sha256', signedBytes, { key: publicKey, dsaEncoding: 'ieee-p1363' }, signatureBytes)
+    !crypto.verify(
+      'sha256',
+      signedBytes,
+      { key: publicKey, dsaEncoding: 'ieee-p1363' },
+      signatureBytes,
+    )
   ) {
     throw new Error('地图资源描述符签名校验失败')
   }

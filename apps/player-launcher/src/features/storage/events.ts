@@ -3,7 +3,11 @@ import { cacheClearedMessage } from './copy'
 
 type StorageOptions = Pick<PlayerAccountEventOptions, 'state' | 'playerInvoke' | 'render'>
 
-export async function refreshStorage({ state, playerInvoke, render }: StorageOptions): Promise<void> {
+export async function refreshStorage({
+  state,
+  playerInvoke,
+  render,
+}: StorageOptions): Promise<void> {
   state.storage = {
     loading: true,
     error: '',
@@ -23,7 +27,9 @@ export async function refreshStorage({ state, playerInvoke, render }: StorageOpt
     )
     state.storage.rows = rows
     if (
-      !state.storage.rows.some((row) => row.serverId === state.storage.selectedServerId && row.maps?.length)
+      !state.storage.rows.some(
+        (row) => row.serverId === state.storage.selectedServerId && row.maps?.length,
+      )
     )
       state.storage.selectedServerId = ''
   } catch (error) {

@@ -3,7 +3,13 @@ import { PageToolbar } from '../../components/page-toolbar'
 import { ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { Button, Card, Input, Select, Table, Tag } from 'antd'
 import { useState } from 'react'
-import { activityActionName, activityTarget, ActivityResult, isScriptActivity, SecurityActivityDetails } from './security-activity-details'
+import {
+  activityActionName,
+  activityTarget,
+  ActivityResult,
+  isScriptActivity,
+  SecurityActivityDetails,
+} from './security-activity-details'
 
 import { dateTime } from '../../player-admin-format'
 import type { Activity } from '../../player-admin-types'
@@ -71,27 +77,48 @@ export function SecurityActivityPage(props: Props) {
               title: '类型',
               dataIndex: 'kind',
               render: (value, row) => (
-                <Tag color={isScriptActivity(row) ? 'purple' : value === 'admin' ? 'blue' : 'default'}>
+                <Tag
+                  color={isScriptActivity(row) ? 'purple' : value === 'admin' ? 'blue' : 'default'}
+                >
                   {isScriptActivity(row) ? '地图脚本' : value === 'admin' ? '管理操作' : '登录'}
                 </Tag>
               ),
             },
-            { title: '操作', render: (_, row) => <><div>{activityActionName(row.action)}</div><small className="player-admin-muted">{row.action}</small></> },
+            {
+              title: '操作',
+              render: (_, row) => (
+                <>
+                  <div>{activityActionName(row.action)}</div>
+                  <small className="player-admin-muted">{row.action}</small>
+                </>
+              ),
+            },
             { title: '结果', width: 90, render: (_, row) => <ActivityResult row={row} /> },
             { title: '操作人', render: (_, row) => row.actorDisplayName || row.actor },
             {
               title: '对象',
               render: (_, row) => {
                 const target = activityTarget(row)
-                return <><div>{target.name}</div>{target.id &&
-                  <small className="player-admin-muted" style={{ overflowWrap: 'anywhere' }}>{target.kind}：{target.id}</small>}</>
-
+                return (
+                  <>
+                    <div>{target.name}</div>
+                    {target.id && (
+                      <small className="player-admin-muted" style={{ overflowWrap: 'anywhere' }}>
+                        {target.kind}：{target.id}
+                      </small>
+                    )}
+                  </>
+                )
               },
             },
             { title: 'IP 地址', dataIndex: 'ip', render: (value) => value || '—' },
             {
               title: '详情',
-              render: (_, row) => <Button type="link" onClick={() => setSelected(row)}>查看</Button>,
+              render: (_, row) => (
+                <Button type="link" onClick={() => setSelected(row)}>
+                  查看
+                </Button>
+              ),
             },
           ]}
         />

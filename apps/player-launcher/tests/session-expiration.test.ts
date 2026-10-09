@@ -13,15 +13,25 @@ const server = { id: 'server', name: '本机', endpoint: 'http://127.0.0.1:3121'
 test('library 401 switches directly to login with a visible expiry message and no old map data', async () => {
   const state = createInitialState()
   Object.assign(state, {
-    selectedId: server.id, page: 'servers', player: { username: 'alice', subjectId: 'alice' },
+    selectedId: server.id,
+    page: 'servers',
+    player: { username: 'alice', subjectId: 'alice' },
     serverBootstrap: { supported: true, loginRequired: true },
-    worlds: [{ id: 'town', name: '星梦小镇' }], favoriteMapIds: ['town'],
-    mapSearch: '没有匹配', mapFilter: 'favorites', playerSettingsOpen: true,
+    worlds: [{ id: 'town', name: '星梦小镇' }],
+    favoriteMapIds: ['town'],
+    mapSearch: '没有匹配',
+    mapFilter: 'favorites',
+    playerSettingsOpen: true,
   })
   let renders = 0
   const controller = createLauncherController({
-    state, remoteApi: { readLibrary: async () => ({ response: { status: 401, ok: false } }) } as unknown as RemoteApi,
-    invoke: async () => undefined, isDesktopLauncher: () => true, selectedServer: () => server,
+    state,
+    remoteApi: {
+      readLibrary: async () => ({ response: { status: 401, ok: false } }),
+    } as unknown as RemoteApi,
+    invoke: async () => undefined,
+    isDesktopLauncher: () => true,
+    selectedServer: () => server,
     onLibraryChange: () => renders++,
   })
   await controller.refreshMapLibrary(server)
@@ -45,8 +55,13 @@ test('a server failure does not expire a valid player session', async () => {
   state.selectedId = server.id
   state.player = { username: 'alice', subjectId: 'alice' }
   const controller = createLauncherController({
-    state, remoteApi: { readLibrary: async () => ({ response: { status: 503, ok: false } }) } as unknown as RemoteApi,
-    invoke: async () => undefined, isDesktopLauncher: () => true, selectedServer: () => server,
+    state,
+    remoteApi: {
+      readLibrary: async () => ({ response: { status: 503, ok: false } }),
+    } as unknown as RemoteApi,
+    invoke: async () => undefined,
+    isDesktopLauncher: () => true,
+    selectedServer: () => server,
   })
   await controller.refreshMapLibrary(server)
   assert.equal(state.player.username, 'alice')
@@ -56,12 +71,20 @@ test('a server failure does not expire a valid player session', async () => {
 
 test('protected API 401 triggers expiry while an incorrect login password does not', async () => {
   let expired = 0
-  const transport = createApiTransport({ fetchImpl: async () => Response.json({ message: 'unauthorized' }, { status: 401 }) })
+  const transport = createApiTransport({
+    fetchImpl: async () => Response.json({ message: 'unauthorized' }, { status: 401 }),
+  })
   const api = createPlayerApi({
-    isNative: () => true, invoke: async (_command, payload) => transport.request(payload.request),
+    isNative: () => true,
+    invoke: async (_command, payload) => transport.request(payload.request),
     onSessionExpired: () => expired++,
   })
-  await api.login(server.endpoint, { loginApiUrl: `${server.endpoint}/api/auth/login` }, 'alice', 'wrong')
+  await api.login(
+    server.endpoint,
+    { loginApiUrl: `${server.endpoint}/api/auth/login` },
+    'alice',
+    'wrong',
+  )
   assert.equal(expired, 0)
   await api.readLibrary(server.endpoint)
   assert.equal(expired, 1)
@@ -71,18 +94,28 @@ test('protected API 401 triggers expiry while an incorrect login password does n
 
 test('late unauthorized responses cannot expire a newly started login session', async () => {
   let finish: (response: Response) => void
-  const deferred = new Promise<Response>((resolve) => { finish = resolve })
+  const deferred = new Promise<Response>((resolve) => {
+    finish = resolve
+  })
   let expired = 0
-  const transport = createApiTransport({ fetchImpl: async (url) => {
-    if (new URL(String(url)).pathname === '/api/play-library') return deferred
-    return Response.json({ player: { username: 'alice' } })
-  } })
+  const transport = createApiTransport({
+    fetchImpl: async (url) => {
+      if (new URL(String(url)).pathname === '/api/play-library') return deferred
+      return Response.json({ player: { username: 'alice' } })
+    },
+  })
   const api = createPlayerApi({
-    isNative: () => true, invoke: async (_command, payload) => transport.request(payload.request),
+    isNative: () => true,
+    invoke: async (_command, payload) => transport.request(payload.request),
     onSessionExpired: () => expired++,
   })
   const oldRequest = api.readLibrary(server.endpoint)
-  await api.login(server.endpoint, { loginApiUrl: `${server.endpoint}/api/auth/login` }, 'alice', 'fixture')
+  await api.login(
+    server.endpoint,
+    { loginApiUrl: `${server.endpoint}/api/auth/login` },
+    'alice',
+    'fixture',
+  )
   finish(Response.json({ message: 'unauthorized' }, { status: 401 }))
   await oldRequest
   assert.equal(expired, 0)

@@ -686,6 +686,10 @@ export const apiOperations = {
     "path": "/api/project-skins",
     "method": "POST"
   },
+  "postApiRealtimeSession": {
+    "path": "/api/realtime/session",
+    "method": "POST"
+  },
   "postApiRuntimeEnsure": {
     "path": "/api/runtime/ensure",
     "method": "POST"
@@ -2828,6 +2832,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/project-skins"]["POST"]>
   ) {
     return this.unwrap(this.postApiProjectSkinsRaw(...init));
+  }
+
+  postApiRealtimeSessionRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/realtime/session"]["POST"]>
+  ) {
+    return this.paths["/api/realtime/session"].POST(...init);
+  }
+
+  postApiRealtimeSession(
+    ...init: Parameters<PathBasedClient<paths>["/api/realtime/session"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiRealtimeSessionRaw(...init));
   }
 
   postApiRuntimeEnsureRaw(

@@ -1,5 +1,3 @@
-
-
 export function formatMetric(value, suffix = '%') {
   return `${Number(value || 0).toFixed(1)}${suffix}`
 }

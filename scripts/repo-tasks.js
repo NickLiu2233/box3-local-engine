@@ -56,7 +56,11 @@ function check() {
   node('scripts/platform-api-removal.test.js')
   node('scripts/check-engine-wire-protocols.js')
   node('scripts/check-public-repository.js')
-  run(process.execPath, ['--test', 'scripts/internal-migrator.test.js', 'scripts/check-public-repository.test.js'])
+  run(process.execPath, [
+    '--test',
+    'scripts/internal-migrator.test.js',
+    'scripts/check-public-repository.test.js',
+  ])
   run(process.execPath, ['--test', 'scripts/license-removal.test.js'])
   node('scripts/check-windows-offline-installer.js')
   run(process.execPath, [
@@ -71,7 +75,12 @@ function check() {
   node('scripts/check-desktop-deployment-manager.js')
   node('scripts/check-headless-rust-manager.js')
   node('scripts/check-public-routing-structure.js')
-  run(process.execPath, ['--test', 'scripts/deployment-manager-ui.test.js', 'scripts/deployment-manager-transport.test.js', 'scripts/deployment-manager-updates.test.js'])
+  run(process.execPath, [
+    '--test',
+    'scripts/deployment-manager-ui.test.js',
+    'scripts/deployment-manager-transport.test.js',
+    'scripts/deployment-manager-updates.test.js',
+  ])
   node('scripts/check-release-workflow.js')
   node('scripts/check-server-package-workflow.js')
   node('scripts/check-documentation.js')

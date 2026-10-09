@@ -272,7 +272,9 @@ function main() {
   // and turn dist/src/launch.js into dist/services/game-server/src/launch.js.
   const runtimeEntry = path.join(gameServerRoot, 'dist/src/launch.js')
   if (!fs.existsSync(runtimeEntry)) {
-    throw new Error(`Game runtime entry is missing: ${runtimeEntry}; check game-server rootDir and workspace imports`)
+    throw new Error(
+      `Game runtime entry is missing: ${runtimeEntry}; check game-server rootDir and workspace imports`,
+    )
   }
 
   console.log(`\nBOX Local Engine ${creatorMode ? 'creator' : 'play'} build is ready.`)

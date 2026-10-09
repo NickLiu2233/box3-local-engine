@@ -8,16 +8,16 @@ Electron 入口 `electron/main.ts` 负责 app/window 生命周期与 IPC 分发�
 
 ## 修改功能的位置
 
-| 要修改什么 | 入口 |
-| --- | --- |
+| 要修改什么           | 入口                                                                                                                               |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | 新增或调整 HTTP 接口 | `internals/apis/openapi/openapi.json` 的生成源和 `internals/apis/scripts/`，重新生成 `@box/apis`；然后调整 `src/api/player-api.ts` |
-| 玩家允许调用的接口 | `shared/api-policy.ts`；路径和 HTTP 方法从生成的 `apiOperations` 引用 |
-| 新增桌面本地能力 | 对应 Electron 模块，然后在 `electron/main.ts` 注册 IPC 命令；HTTP 接口与本机操作分开 |
-| 服务器列表和输入 | `src/features/servers/` 与 `electron/storage/server-store.ts` |
-| 登录、退出和账号设置 | `src/features/player/`；每个服务器会话独立，不保存密码 |
-| 地图搜索和启动 | `src/features/maps/`；游戏窗口在 `electron/runtime/game-window-manager.ts` |
-| 缓存显示和清理 | `src/features/storage/` 与 `electron/runtime/resource-cache.ts` |
-| 整体排版与通用组件 | `src/views/`、`src/styles.css` |
+| 玩家允许调用的接口   | `shared/api-policy.ts`；路径和 HTTP 方法从生成的 `apiOperations` 引用                                                              |
+| 新增桌面本地能力     | 对应 Electron 模块，然后在 `electron/main.ts` 注册 IPC 命令；HTTP 接口与本机操作分开                                               |
+| 服务器列表和输入     | `src/features/servers/` 与 `electron/storage/server-store.ts`                                                                      |
+| 登录、退出和账号设置 | `src/features/player/`；每个服务器会话独立，不保存密码                                                                             |
+| 地图搜索和启动       | `src/features/maps/`；游戏窗口在 `electron/runtime/game-window-manager.ts`                                                         |
+| 缓存显示和清理       | `src/features/storage/` 与 `electron/runtime/resource-cache.ts`                                                                    |
+| 整体排版与通用组件   | `src/views/`、`src/styles.css`                                                                                                     |
 
 ## 检查与打包
 

@@ -2031,10 +2031,7 @@ function selectCreatorModelAssets(assets, groupState, projectId) {
     Object.entries(groupState?.modelProjects || {})
       .filter(
         ([modelName, hash]) =>
-          typeof modelName === 'string' &&
-          modelName &&
-          typeof hash === 'string' &&
-          hash,
+          typeof modelName === 'string' && modelName && typeof hash === 'string' && hash,
       )
       .map(([modelName, hash]) => {
         const assetPath = `mesh/${modelName}.vb`

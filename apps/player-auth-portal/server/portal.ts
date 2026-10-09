@@ -33,14 +33,17 @@ export class PortalServer {
     )
   }
   async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
-    const basePath = this.config.publicURL?.pathname.replace(/\/$/,'') || ''
-    const peerPaths = [this.config.playURL,this.config.creatorURL].filter((url):url is URL => Boolean(url) && url!.origin === this.config.publicURL?.origin).map(url => url.pathname.replace(/\/$/,''))
-    Object.defineProperty(response,'__boxPrefixConfig',{value:{basePath,peerPaths}})
+    const basePath = this.config.publicURL?.pathname.replace(/\/$/, '') || ''
+    const peerPaths = [this.config.playURL, this.config.creatorURL]
+      .filter((url): url is URL => Boolean(url) && url!.origin === this.config.publicURL?.origin)
+      .map((url) => url.pathname.replace(/\/$/, ''))
+    Object.defineProperty(response, '__boxPrefixConfig', { value: { basePath, peerPaths } })
     response.setHeader('X-Content-Type-Options', 'nosniff')
     response.setHeader('Referrer-Policy', 'same-origin')
     try {
       const url = new URL(request.url || '/', 'http://localhost')
-      if (basePath && (url.pathname === basePath || url.pathname.startsWith(basePath + '/'))) url.pathname = url.pathname.slice(basePath.length) || '/'
+      if (basePath && (url.pathname === basePath || url.pathname.startsWith(basePath + '/')))
+        url.pathname = url.pathname.slice(basePath.length) || '/'
       // 健康检查与账号/上游解耦，避免上游故障造成门户反复重启。
       if (request.method === 'GET' && url.pathname === '/api/health-check')
         return Http.json(response, 200, { status: 'ok', service: 'player-auth-portal' })

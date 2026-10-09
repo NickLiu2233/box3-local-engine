@@ -58,11 +58,14 @@ export function overview() {
     state.config?.hasPlayAdminToken || state.ownerSecrets?.playAdminToken,
   )
   const ownerSecretCopied = state.ownerSecretCopied === 'playAdminToken'
-  const ownerSecretMarkup = dockerReady && environmentRunning && ownerSecretConfigured ? `<div class="overview-owner-secret" aria-label="服主密钥">
+  const ownerSecretMarkup =
+    dockerReady && environmentRunning && ownerSecretConfigured
+      ? `<div class="overview-owner-secret" aria-label="服主密钥">
     <span>服主密钥</span>
     <code class="${ownerSecretConfigured ? '' : 'empty'}">${ownerSecretConfigured ? '••••••••••••••••' : '未生成'}</code>
     <button type="button" class="overview-owner-secret-copy" data-secret-copy="playAdminToken" aria-label="复制服主密钥" ${ownerSecretConfigured ? '' : 'disabled'}>${icon(ownerSecretCopied ? 'check' : 'copy')}</button>
-  </div>` : ''
+  </div>`
+      : ''
   const userDataServiceIds = new Set(['player-service', 'player-auth-portal'])
   const infrastructureServiceIds = new Set(['managed-postgres', 'managed-redis'])
   const serviceNames = new Map(services.map(([id, name]) => [id, name]))
@@ -138,18 +141,20 @@ function serviceCard([id, name, description, portKey, defaultPort], options = {}
   const port = portKey ? Number(state.config?.[portKey]) || defaultPort : null
   const host = portKey ? sharedNetworkHost() : ''
   const hostOverrideKey = {
-    creator: 'creatorPublicAddressOverride',
-    voxa: 'voxaPublicAddressOverride',
-    play: 'playPublicAddressOverride',
+    'creator': 'creatorPublicAddressOverride',
+    'voxa': 'voxaPublicAddressOverride',
+    'play': 'playPublicAddressOverride',
     'player-service': 'playerServicePublicAddressOverride',
     'player-auth-portal': 'authPortalPublicAddressOverride',
   }[id]
   const serviceHostOverride = state.config?.[hostOverrideKey]
-  const endpoint = options.endpoint || (port
-    ? state.config?.playNetworkMode === 'public' && serviceHostOverride
-      ? publicEndpointUrl(serviceHostOverride, port)
-      : `${host || '127.0.0.1'}:${port}`
-    : '')
+  const endpoint =
+    options.endpoint ||
+    (port
+      ? state.config?.playNetworkMode === 'public' && serviceHostOverride
+        ? publicEndpointUrl(serviceHostOverride, port)
+        : `${host || '127.0.0.1'}:${port}`
+      : '')
   const availability = !enabled ? '需要 PostgreSQL 配置' : description
   const moreMenu =
     state.serviceMenu === id

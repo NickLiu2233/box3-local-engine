@@ -1,5 +1,3 @@
-
-
 export const services = [
   ['creator', '地图创作工具 / 创作作品管理', '地图编辑服务', 'creatorPort', 3127, '/'],
   ['voxa', '模型创作工具', '模型编辑服务', 'voxaPort', 3123, '/'],
@@ -41,7 +39,6 @@ export const themes = [
   ['light', '亮色'],
   ['dark', '暗色'],
 ]
-
 
 export const ownerSecretKeys = ['permissionTokenSecret', 'playerAuthApiKey', 'playAdminToken']
 

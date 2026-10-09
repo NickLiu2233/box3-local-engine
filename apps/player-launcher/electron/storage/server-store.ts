@@ -74,7 +74,8 @@ export function createServerStore(filename: string): ServerStore {
     },
     async select(serverId) {
       const state = load()
-      if (!state.servers.some((server) => server.id === serverId)) throw new Error('这个服务器已不在列表中')
+      if (!state.servers.some((server) => server.id === serverId))
+        throw new Error('这个服务器已不在列表中')
       state.selectedServerId = serverId
       return save(state)
     },

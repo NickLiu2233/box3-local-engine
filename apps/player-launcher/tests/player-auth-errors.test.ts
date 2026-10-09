@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { playerLoginConnectionError, playerLoginErrorMessage } from '../src/features/player/auth-errors'
+import {
+  playerLoginConnectionError,
+  playerLoginErrorMessage,
+} from '../src/features/player/auth-errors'
 
 test('desktop transport timeouts and stopped services have distinct player feedback', () => {
   assert.match(
@@ -12,11 +15,16 @@ test('desktop transport timeouts and stopped services have distinct player feedb
   )
   assert.match(
     playerLoginConnectionError(
-      new Error("Error invoking remote method 'launcher:invoke': Error: 服务器服务未启动或连接端口不可用"),
+      new Error(
+        "Error invoking remote method 'launcher:invoke': Error: 服务器服务未启动或连接端口不可用",
+      ),
     ),
     /未启动或正在重启/,
   )
-  assert.match(playerLoginConnectionError(new Error('服务器连接被中断，请重新尝试')), /连接被服务器中断/)
+  assert.match(
+    playerLoginConnectionError(new Error('服务器连接被中断，请重新尝试')),
+    /连接被服务器中断/,
+  )
 })
 
 test('401 explains the credential issue without revealing whether an account exists', () => {

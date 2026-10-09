@@ -35,7 +35,9 @@ test('normalizes map covers for the standalone file-based launcher window', asyn
       return {
         status: 200,
         headers: [['content-type', 'application/json']],
-        body: JSON.stringify({ worlds: [{ id: 'map-one', publicId: 'map-one', cover: 'QmCover.png', onlineCount: 4 }] }),
+        body: JSON.stringify({
+          worlds: [{ id: 'map-one', publicId: 'map-one', cover: 'QmCover.png', onlineCount: 4 }],
+        }),
       }
     },
   })

@@ -55,7 +55,8 @@ export async function copyOwnerSecret(name) {
       if (
         state.page === 'overview' ||
         (state.page === 'setup' && state.setupSection === 'security')
-      ) render()
+      )
+        render()
     }, 1600)
   } catch (error) {
     state.error = `复制失败：${String(error)}`

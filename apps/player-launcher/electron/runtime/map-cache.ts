@@ -21,7 +21,12 @@ export async function inspectMapCaches(
 ): Promise<CachedMap[]> {
   const window = new BrowserWindow({
     show: false,
-    webPreferences: { session: target, sandbox: true, nodeIntegration: false, contextIsolation: true },
+    webPreferences: {
+      session: target,
+      sandbox: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
   })
   const debuggerClient = window.webContents.debugger
   try {
@@ -39,7 +44,9 @@ export async function inspectMapCaches(
             { name: 'Content-Type', value: 'text/html' },
             { name: 'Cache-Control', value: 'no-store' },
           ],
-          body: Buffer.from('<!doctype html><title>Local cache inspection</title>').toString('base64'),
+          body: Buffer.from('<!doctype html><title>Local cache inspection</title>').toString(
+            'base64',
+          ),
         })
         .catch(() => window.webContents.stop())
     })

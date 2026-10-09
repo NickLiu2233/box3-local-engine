@@ -32,8 +32,12 @@ apps/voxa/assets/
 **/*.frag
 **/*.vert
 **/*.min.js
-# Vendored browser bundle retained by the standalone reference login portal.
+# Generated runtime and browser assets for the standalone login portal.
+# Their source files remain covered by formatting checks.
+apps/player-auth-portal/build/
 apps/player-auth-portal/public/app.js
+apps/player-auth-portal/public/styles.css
+apps/player-auth-portal/public/theme.js
 pnpm-lock.yaml
 common/config/rush/pnpm-lock.yaml
 common/config/rush/repo-state.json

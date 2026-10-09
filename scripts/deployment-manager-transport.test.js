@@ -51,7 +51,10 @@ Object.defineProperty(globalThis, 'fetch', {
 
 // Exercise the real transport with only the native bridge and HTTP boundary stubbed.
 const source = fs
-  .readFileSync(path.join(__dirname, '../apps/deployment-manager/src/infrastructure/transport.js'), 'utf8')
+  .readFileSync(
+    path.join(__dirname, '../apps/deployment-manager/src/infrastructure/transport.js'),
+    'utf8',
+  )
   .replace(
     /import .* from '@tauri-apps\/api\/core'/,
     'const tauriInvoke = (...args) => globalThis.nativeInvoke(...args)',
@@ -152,19 +155,37 @@ test('Web events authenticate, filter progress and avoid HTTP polling', async ()
     static instances = []
     readyState = 0
     frames = []
-    constructor(url) { this.url = url; MockSocket.instances.push(this) }
-    send(data) { this.frames.push(JSON.parse(data)) }
-    open() { this.readyState = 1; this.onopen?.() }
-    event(value) { this.onmessage?.({ data: JSON.stringify(value) }) }
-    close(code = 1000) { this.readyState = 3; this.onclose?.({ code }) }
+    constructor(url) {
+      this.url = url
+      MockSocket.instances.push(this)
+    }
+    send(data) {
+      this.frames.push(JSON.parse(data))
+    }
+    open() {
+      this.readyState = 1
+      this.onopen?.()
+    }
+    event(value) {
+      this.onmessage?.({ data: JSON.stringify(value) })
+    }
+    close(code = 1000) {
+      this.readyState = 3
+      this.onclose?.({ code })
+    }
   }
   globalThis.WebSocket = MockSocket
   api.setWebManagerToken('secret')
-  const requests = [], events = [], snapshots = []
+  const requests = [],
+    events = [],
+    snapshots = []
   const command = deferred()
-  globalThis.fetch = (url, options) => { requests.push({ url, options }); return command.promise }
-  const unlisten = await api.listen('install-progress', value => events.push(value))
-  const unsubscribe = api.subscribeManager('overview', value => snapshots.push(value))
+  globalThis.fetch = (url, options) => {
+    requests.push({ url, options })
+    return command.promise
+  }
+  const unlisten = await api.listen('install-progress', (value) => events.push(value))
+  const unsubscribe = api.subscribeManager('overview', (value) => snapshots.push(value))
   try {
     const pending = api.invoke('start_services', { force: true })
     const socket = MockSocket.instances[0]
@@ -179,7 +200,7 @@ test('Web events authenticate, filter progress and avoid HTTP polling', async ()
     socket.event({ type: 'snapshot', topic: 'overview', payload: { allHealthy: true } })
     assert.deepEqual(events, [{ payload: { percent: 42 } }])
     assert.deepEqual(snapshots, [{ allHealthy: true }])
-    await new Promise(resolve => setTimeout(resolve, 20))
+    await new Promise((resolve) => setTimeout(resolve, 20))
     assert.equal(requests.length, 1, 'idle event stream must not poll HTTP')
     command.reject(new Error('main failure'))
     await assert.rejects(pending, /main failure/)
@@ -189,7 +210,10 @@ test('Web events authenticate, filter progress and avoid HTTP polling', async ()
     socket.close(1008)
     assert.equal(api.hasWebManagerToken(), false)
   } finally {
-    unlisten(); unsubscribe(); api.setWebManagerToken(''); delete globalThis.WebSocket
+    unlisten()
+    unsubscribe()
+    api.setWebManagerToken('')
+    delete globalThis.WebSocket
   }
 })
 

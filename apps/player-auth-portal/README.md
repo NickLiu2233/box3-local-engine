@@ -49,18 +49,18 @@ public/               HTML、品牌资源及自动构建产物
 
 ## 类如何合作，为什么不是把函数塞进 class
 
-| 类 | 持有的数据 | 主要职责/方法 |
-| --- | --- | --- |
-| PortalConfig | 外部地址、开关、私有 Key | fromEnvironment 校验；可信协议/IP；安全回跳。Key 不被 JSON 序列化 |
-| AuthOperation | 操作名、方法、字段白名单 | payload 只提取允许字段，自助请求拒绝额外身份字段 |
-| AuthPolicy | 当前配置 | validate 分别检查方法、注册与来源；decorate 补充安全导航和注册策略 |
-| PlayerServiceClient | 上游配置 | headers、responseHeaders、response、failure、send，统一网络与响应处理 |
-| AuthProxy | policy、client、JsonBody | handle 仅协调操作，不堆叠请求和安全细节 |
-| JsonBody | 字节上限 | requireJson、bytes、parse、read，各自处理请求限制 |
-| StaticFiles | public 目录、MIME 白名单 | asset、file、headers、serve，分别检查类型和真实路径 |
-| PortalServer | 代理、静态服务、HTTP server | handle、listen、close；既可独立启动也可接入已有服务器 |
-| PortalClient | 浏览器导航参数 | login/register/session/logout/updateNickname/changePassword，共用带超时的请求方法 |
-| PortalApp / PasswordChange | 页面状态、提交状态 | 明确状态切换，错误留表单，改密/过期回登录 |
+| 类                         | 持有的数据                  | 主要职责/方法                                                                     |
+| -------------------------- | --------------------------- | --------------------------------------------------------------------------------- |
+| PortalConfig               | 外部地址、开关、私有 Key    | fromEnvironment 校验；可信协议/IP；安全回跳。Key 不被 JSON 序列化                 |
+| AuthOperation              | 操作名、方法、字段白名单    | payload 只提取允许字段，自助请求拒绝额外身份字段                                  |
+| AuthPolicy                 | 当前配置                    | validate 分别检查方法、注册与来源；decorate 补充安全导航和注册策略                |
+| PlayerServiceClient        | 上游配置                    | headers、responseHeaders、response、failure、send，统一网络与响应处理             |
+| AuthProxy                  | policy、client、JsonBody    | handle 仅协调操作，不堆叠请求和安全细节                                           |
+| JsonBody                   | 字节上限                    | requireJson、bytes、parse、read，各自处理请求限制                                 |
+| StaticFiles                | public 目录、MIME 白名单    | asset、file、headers、serve，分别检查类型和真实路径                               |
+| PortalServer               | 代理、静态服务、HTTP server | handle、listen、close；既可独立启动也可接入已有服务器                             |
+| PortalClient               | 浏览器导航参数              | login/register/session/logout/updateNickname/changePassword，共用带超时的请求方法 |
+| PortalApp / PasswordChange | 页面状态、提交状态          | 明确状态切换，错误留表单，改密/过期回登录                                         |
 
 相关类放在同一文件，不为每个小方法单独建目录。每个类拥有实际职责，不额外引入服务容器、ORM、路由框架或空的转发层。测试辅助函数只是组织断言，不是应用业务逻辑。
 
@@ -107,17 +107,17 @@ build 后也可从 build/library.cjs 加载相同类，类型声明位于 build/
 
 ## 命令
 
-| 命令 | 作用 |
-| --- | --- |
-| npm run dev | 无配置模拟预览 |
-| npm run dev:live | 真实测试环境联调，需 .env 或环境配置 |
-| npm run typecheck | 严格检查源代码、工具和测试 |
-| npm test | TS 接口与安全测试，不要求浏览器工具 |
-| npm run build | 前端与 Node 后端编译、生成类的类型声明 |
-| npm run check | 严格类型检查、生产构建、全部测试 |
-| npm start | 运行编译后的生产入口，无配置拒绝启动，不启动模拟器 |
-| npm run package | 检查、构建 Docker 镜像、验证平台并导出 tar.gz |
-| npm run export:template | 导出可放入独立仓库的 TS 源码模板 |
+| 命令                    | 作用                                               |
+| ----------------------- | -------------------------------------------------- |
+| npm run dev             | 无配置模拟预览                                     |
+| npm run dev:live        | 真实测试环境联调，需 .env 或环境配置               |
+| npm run typecheck       | 严格检查源代码、工具和测试                         |
+| npm test                | TS 接口与安全测试，不要求浏览器工具                |
+| npm run build           | 前端与 Node 后端编译、生成类的类型声明             |
+| npm run check           | 严格类型检查、生产构建、全部测试                   |
+| npm start               | 运行编译后的生产入口，无配置拒绝启动，不启动模拟器 |
+| npm run package         | 检查、构建 Docker 镜像、验证平台并导出 tar.gz      |
+| npm run export:template | 导出可放入独立仓库的 TS 源码模板                   |
 
 首次安装需要网络，普通开发不需要 Docker。打包需要 Docker 和首次拉取基础镜像/npm 依赖的网络，不声称首次构建全离线。
 
@@ -144,7 +144,7 @@ docker load -i dist/my-login-1.0-linux-arm64.tar.gz
 - 模拟器、源码、tsx、TypeScript、开发依赖和 .env 都不进入运行镜像。
 - 健康接口只检查门户自身，避免上游故障导致重启循环。
 
-标准配置优先，兼容 AUTH_DEMO_*：HOST/PORT、BOX_PLAYER_SERVICE_INTERNAL_URL、BOX_PLAYER_AUTH_API_KEY、BOX_AUTH_PORTAL_PUBLIC_URL、BOX_CREATOR_PUBLIC_URL、BOX_PLAY_PUBLIC_URL、BOX_PLAYER_REGISTRATION_ENABLED。
+标准配置优先，兼容 AUTH*DEMO*\*：HOST/PORT、BOX_PLAYER_SERVICE_INTERNAL_URL、BOX_PLAYER_AUTH_API_KEY、BOX_AUTH_PORTAL_PUBLIC_URL、BOX_CREATOR_PUBLIC_URL、BOX_PLAY_PUBLIC_URL、BOX_PLAYER_REGISTRATION_ENABLED。
 
 容器内部上游通常为 http://player-service:3213，不能硬编码宿主机 127.0.0.1:3124。真实联调可复制 .env.example，填写服主提供的测试配置后运行 dev:live。跨子域 Cookie、TLS、Origin 与回跳属于部署配置，见 API.md。
 

@@ -27,7 +27,9 @@ function matches(
     .split('/')
     .map((part) => (part.startsWith('{') ? '[^/]+' : part))
     .join('/')
-  return new RegExp(`^${pattern}$`).test(path) && (!method || method.toUpperCase() === operation.method)
+  return (
+    new RegExp(`^${pattern}$`).test(path) && (!method || method.toUpperCase() === operation.method)
+  )
 }
 
 export function isAllowedPlayerApi(
@@ -42,7 +44,9 @@ export function isAllowedPlayerApi(
   const serverApi =
     target.origin === endpoint.origin &&
     target.pathname.startsWith(`${basePath}/`) &&
-    [...playerOperations, ...authOperations].some((operation) => matches(localPath, method, operation))
+    [...playerOperations, ...authOperations].some((operation) =>
+      matches(localPath, method, operation),
+    )
   const authApi =
     authOrigin &&
     target.origin === authOrigin &&

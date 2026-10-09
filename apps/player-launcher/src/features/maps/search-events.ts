@@ -3,7 +3,11 @@ import type { PlayerLauncherState } from '../../types'
 type SearchInput = Pick<HTMLInputElement, 'value' | 'addEventListener'>
 
 /** Keep the input node alive until IME composition commits its final text. */
-export function bindMapSearch(input: SearchInput, state: PlayerLauncherState, render: () => void): void {
+export function bindMapSearch(
+  input: SearchInput,
+  state: PlayerLauncherState,
+  render: () => void,
+): void {
   let composing = false
   let compositionCommitTimer: ReturnType<typeof setTimeout> | undefined
   const commit = () => {
@@ -26,7 +30,8 @@ export function bindMapSearch(input: SearchInput, state: PlayerLauncherState, re
   })
   input.addEventListener('input', (event) => {
     state.mapSearch = input.value
-    if (composing || (event as InputEvent).isComposing || compositionCommitTimer !== undefined) return
+    if (composing || (event as InputEvent).isComposing || compositionCommitTimer !== undefined)
+      return
     render()
   })
 }

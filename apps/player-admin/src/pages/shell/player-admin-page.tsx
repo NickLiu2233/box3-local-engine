@@ -131,10 +131,15 @@ export default function PlayerAdminPage() {
     owner.load,
     loadOverview,
   ])
-  useAdminEvents(Boolean(actor), topic => {
+  useAdminEvents(Boolean(actor), (topic) => {
     if (topic === 'authorization') {
-      void api.getApiPlayAdminVerify().then(result => setActor(result.actor)).catch(() => setActor(undefined))
-    } else { void load() }
+      void api
+        .getApiPlayAdminVerify()
+        .then((result) => setActor(result.actor))
+        .catch(() => setActor(undefined))
+    } else {
+      void load()
+    }
   })
   useEffect(() => {
     void (async () => {

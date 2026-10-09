@@ -28,7 +28,10 @@
     "npmRebuild": false,
     "afterPack": "./dist-electron/build/after-pack.cjs",
     "compression": "maximum",
-    "electronLanguages": ["en-US", "zh-CN"],
+    "electronLanguages": [
+      "en-US",
+      "zh-CN"
+    ],
     "files": [
       "dist/**/*",
       "dist-electron/main.cjs",
@@ -47,17 +50,23 @@
         "CFBundleDisplayName": "BOX3 Player Launcher",
         "CFBundleName": "BOX3 Player Launcher"
       },
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "win": {
       "icon": "resources/icons/icon.ico",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
       "executableName": "box3-player-launcher",
       "category": "Game",
       "icon": "resources/icons/icon.png",
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     }
   },
   "devDependencies": {

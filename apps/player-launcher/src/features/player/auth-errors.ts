@@ -16,7 +16,10 @@ export interface PlayerLoginErrorPayload {
   banReason?: string
 }
 
-export function playerLoginErrorMessage(status: number, payload: PlayerLoginErrorPayload = {}): string {
+export function playerLoginErrorMessage(
+  status: number,
+  payload: PlayerLoginErrorPayload = {},
+): string {
   const code = typeof payload?.code === 'string' ? payload.code : ''
   const serverMessage = typeof payload?.message === 'string' ? payload.message.trim() : ''
 
@@ -61,7 +64,8 @@ export function playerLoginConnectionError(error: unknown): string {
   const message = error instanceof Error ? error.message : ''
   if (message.includes('API 请求超时')) return '服务器登录响应较慢，等待超时。请稍后重试。'
   if (message.includes('服务器服务未启动')) return '服务器登录服务未启动或正在重启，请稍后重试。'
-  if (message.includes('无法解析服务器地址')) return '无法找到服务器登录地址，请检查服务器地址后重试。'
+  if (message.includes('无法解析服务器地址'))
+    return '无法找到服务器登录地址，请检查服务器地址后重试。'
   if (message.includes('服务器连接被中断')) return '登录连接被服务器中断，请稍后重新登录。'
   if (message.includes('API 请求必须指向')) return '服务器登录地址验证未通过，请重新连接服务器。'
   if (/JSON|Unexpected token|Unexpected end/i.test(message))

@@ -8,12 +8,12 @@
 
 ## 一、先准备好这几样
 
-| 需要什么 | 用来做什么 |
-| --- | --- |
-| Node.js 22.17 或更新版本 | 开发、检查和构建页面 |
-| 登录门户模板源码 | 已有页面、账号接口和打包工具 |
-| Docker | 最后把页面打成启动器可用的镜像；改页面时暂时不需要 |
-| 一套 BOX3 测试环境 | 检查真实登录；这一步可以等页面做好再进行 |
+| 需要什么                 | 用来做什么                                         |
+| ------------------------ | -------------------------------------------------- |
+| Node.js 22.17 或更新版本 | 开发、检查和构建页面                               |
+| 登录门户模板源码         | 已有页面、账号接口和打包工具                       |
+| Docker                   | 最后把页面打成启动器可用的镜像；改页面时暂时不需要 |
+| 一套 BOX3 测试环境       | 检查真实登录；这一步可以等页面做好再进行           |
 
 只改页面时，不用先找服主要密钥。模板自带本地模拟服务，可以试登录、注册和修改密码，但不会碰真实玩家的数据。
 
@@ -38,14 +38,14 @@ npm run dev
 
 先看这几个文件就够了：
 
-| 文件 | 可以改什么 |
-| --- | --- |
-| `src/app.tsx` | 品牌文字、页面布局、登录和账号页面 |
-| `src/forms.tsx` | 密码输入框、提示、修改密码表单 |
-| `src/styles/theme.css` | 主题颜色 |
-| `src/styles/app.css` | 表单和页面样式 |
-| `public/index.html` | 网页标题 |
-| `public/` | 放自己的 logo、图片和字体 |
+| 文件                   | 可以改什么                         |
+| ---------------------- | ---------------------------------- |
+| `src/app.tsx`          | 品牌文字、页面布局、登录和账号页面 |
+| `src/forms.tsx`        | 密码输入框、提示、修改密码表单     |
+| `src/styles/theme.css` | 主题颜色                           |
+| `src/styles/app.css`   | 表单和页面样式                     |
+| `public/index.html`    | 网页标题                           |
+| `public/`              | 放自己的 logo、图片和字体          |
 
 比如，把 logo 放到 `public/images/logo.svg`，页面里就可以使用 `/images/logo.svg`。
 
@@ -72,7 +72,7 @@ npm run dev
 import { PortalClient } from './client'
 
 const client = new PortalClient()
-client.session().then(session => {
+client.session().then((session) => {
   if (session.player) {
     // 已经登录，可以显示昵称和账号操作。
     console.log(session.player.displayName)
@@ -84,14 +84,14 @@ client.session().then(session => {
 
 各个按钮对应的方法如下，不需要自己重复写 fetch：
 
-| 功能 | 客户端方法 | 门户接口 | 提交内容 |
-| --- | --- | --- | --- |
-| 登录 | `client.login(username, password)` | `POST /api/auth/login` | 用户名、密码 |
-| 注册 | `client.register(username, displayName, password)` | `POST /api/auth/register` | 用户名、昵称、密码 |
-| 查会话 | `client.session()` | `GET /api/auth/session` | 无正文 |
-| 退出 | `client.logout()` | `POST /api/auth/logout` | 空 JSON 对象，由客户端处理 |
-| 改昵称 | `client.updateNickname(displayName)` | `PATCH /api/auth/profile` | 新昵称 |
-| 改密码 | `client.changePassword(currentPassword, newPassword)` | `POST /api/auth/password` | 原密码、新密码 |
+| 功能   | 客户端方法                                            | 门户接口                  | 提交内容                   |
+| ------ | ----------------------------------------------------- | ------------------------- | -------------------------- |
+| 登录   | `client.login(username, password)`                    | `POST /api/auth/login`    | 用户名、密码               |
+| 注册   | `client.register(username, displayName, password)`    | `POST /api/auth/register` | 用户名、昵称、密码         |
+| 查会话 | `client.session()`                                    | `GET /api/auth/session`   | 无正文                     |
+| 退出   | `client.logout()`                                     | `POST /api/auth/logout`   | 空 JSON 对象，由客户端处理 |
+| 改昵称 | `client.updateNickname(displayName)`                  | `PATCH /api/auth/profile` | 新昵称                     |
+| 改密码 | `client.changePassword(currentPassword, newPassword)` | `POST /api/auth/password` | 原密码、新密码             |
 
 ### 表单要注意哪些规则？
 
@@ -148,14 +148,14 @@ npm run dev:live
 
 主要配置有这些，启动器部署时会替你注入：
 
-| 配置 | 是什么 |
-| --- | --- |
-| `BOX_PLAYER_SERVICE_INTERNAL_URL` | Player Service 地址 |
-| `BOX_PLAYER_AUTH_API_KEY` | 与 Player Service 相同的服务密钥，仅后端使用 |
-| `BOX_AUTH_PORTAL_PUBLIC_URL` | 登录页面对外地址 |
-| `BOX_PLAY_PUBLIC_URL`、`BOX_CREATOR_PUBLIC_URL` | 允许返回的游玩端、创作端地址 |
-| `BOX_PLAYER_REGISTRATION_ENABLED` | 是否开放注册 |
-| `HOST`、`PORT` | 门户监听地址和端口 |
+| 配置                                            | 是什么                                       |
+| ----------------------------------------------- | -------------------------------------------- |
+| `BOX_PLAYER_SERVICE_INTERNAL_URL`               | Player Service 地址                          |
+| `BOX_PLAYER_AUTH_API_KEY`                       | 与 Player Service 相同的服务密钥，仅后端使用 |
+| `BOX_AUTH_PORTAL_PUBLIC_URL`                    | 登录页面对外地址                             |
+| `BOX_PLAY_PUBLIC_URL`、`BOX_CREATOR_PUBLIC_URL` | 允许返回的游玩端、创作端地址                 |
+| `BOX_PLAYER_REGISTRATION_ENABLED`               | 是否开放注册                                 |
+| `HOST`、`PORT`                                  | 门户监听地址和端口                           |
 
 本机源码联调时，Player Service 通常是 `http://127.0.0.1:3124`。放进启动器的容器后，要用 `http://player-service:3213`；容器里的 `127.0.0.1` 指自己，不是宿主机。
 
@@ -196,7 +196,7 @@ docker load -i dist/my-login-1.0-linux-arm64.tar.gz
 import { PortalConfig, PortalServer } from './server'
 
 const portal = new PortalServer(PortalConfig.fromEnvironment())
-portal.listen().catch(error => console.error(error.message))
+portal.listen().catch((error) => console.error(error.message))
 // 停止时：await portal.close()
 ```
 
@@ -204,12 +204,12 @@ portal.listen().catch(error => console.error(error.message))
 
 完全自己实现时，底层接口如下。每个请求都要由后端添加 `X-Box-Player-Auth-Key`，并转发浏览器 Cookie：
 
-| 功能 | Player Service 接口 |
-| --- | --- |
-| 登录 | `POST /api/player-auth/login` |
-| 注册 | `POST /api/player-auth/register` |
-| 查会话 | `GET /api/player-auth/session` |
-| 退出 | `POST /api/player-auth/logout` |
+| 功能   | Player Service 接口              |
+| ------ | -------------------------------- |
+| 登录   | `POST /api/player-auth/login`    |
+| 注册   | `POST /api/player-auth/register` |
+| 查会话 | `GET /api/player-auth/session`   |
+| 退出   | `POST /api/player-auth/logout`   |
 | 改昵称 | `PATCH /api/player-auth/profile` |
 | 改密码 | `POST /api/player-auth/password` |
 

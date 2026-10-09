@@ -13,12 +13,15 @@ test('clicking the server that is already selected on its page does not refresh 
     },
   }
   class TestElement {
-    closest() { return null }
+    closest() {
+      return null
+    }
   }
   Reflect.set(globalThis, 'Element', TestElement)
   Reflect.set(globalThis, 'document', {
     querySelector: () => null,
-    querySelectorAll: (selector: string) => selector === '[data-select-server]' ? [serverButton] : [],
+    querySelectorAll: (selector: string) =>
+      selector === '[data-select-server]' ? [serverButton] : [],
   })
 
   const state = {
@@ -43,11 +46,18 @@ test('clicking the server that is already selected on its page does not refresh 
   try {
     bindEvents({
       state,
-      playerInvoke: async () => { invokeCount += 1; return { supported: true } },
+      playerInvoke: async () => {
+        invokeCount += 1
+        return { supported: true }
+      },
       remoteApi: {},
       selectedServer: () => state.servers[0],
-      refreshPlayerSession: async () => { refreshCount += 1 },
-      render: () => { renderCount += 1 },
+      refreshPlayerSession: async () => {
+        refreshCount += 1
+      },
+      render: () => {
+        renderCount += 1
+      },
     })
     assert.ok(clickHandler, 'server row click handler should be bound')
     await clickHandler?.({ target: new TestElement() as unknown as Element })
@@ -80,12 +90,15 @@ test('opening the already-selected server from home loads its missing bootstrap'
     },
   }
   class TestElement {
-    closest() { return null }
+    closest() {
+      return null
+    }
   }
   Reflect.set(globalThis, 'Element', TestElement)
   Reflect.set(globalThis, 'document', {
     querySelector: () => null,
-    querySelectorAll: (selector: string) => selector === '[data-select-server]' ? [serverButton] : [],
+    querySelectorAll: (selector: string) =>
+      selector === '[data-select-server]' ? [serverButton] : [],
   })
 
   const state = {
@@ -114,7 +127,9 @@ test('opening the already-selected server from home loads its missing bootstrap'
       },
       remoteApi: {},
       selectedServer: () => server,
-      refreshPlayerSession: async () => { refreshCount += 1 },
+      refreshPlayerSession: async () => {
+        refreshCount += 1
+      },
       render: () => {},
     })
     assert.ok(clickHandler, 'server row click handler should be bound')

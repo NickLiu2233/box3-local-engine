@@ -13,7 +13,11 @@ test('retries a transient missing launcher bootstrap before marking the server u
     invoke: async (_command, payload) => {
       requestCount += 1
       const next = responses.shift() || { status: 500, body: '{}' }
-      return { status: next.status, headers: [['content-type', 'application/json']], body: next.body }
+      return {
+        status: next.status,
+        headers: [['content-type', 'application/json']],
+        body: next.body,
+      }
     },
   })
 

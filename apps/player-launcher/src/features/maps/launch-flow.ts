@@ -22,7 +22,8 @@ export async function prepareMapLaunch({
   const descriptorResult = await remoteApi.getDescriptor(server.endpoint, mapId)
   if (!descriptorResult.response.ok || !descriptorResult.data) {
     throw new Error(
-      descriptorResult.error?.message || `读取地图资源清单失败（HTTP ${descriptorResult.response.status}）`,
+      descriptorResult.error?.message ||
+        `读取地图资源清单失败（HTTP ${descriptorResult.response.status}）`,
     )
   }
 

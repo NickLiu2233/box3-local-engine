@@ -15,7 +15,10 @@ test('verifies canonical descriptor digest and ES256 signature', () => {
   const fixture = signedFixture()
   assert.equal(validateDescriptor(fixture.descriptor, fixture.trustedKey).accessId, 'town')
   assert.equal(verifyHashBytes(fixture.descriptor.required[0].hash, Buffer.from('asset'), 5), true)
-  assert.equal(verifyHashBytes(fixture.descriptor.required[0].hash, Buffer.from('altered'), 5), false)
+  assert.equal(
+    verifyHashBytes(fixture.descriptor.required[0].hash, Buffer.from('altered'), 5),
+    false,
+  )
 })
 
 test('rejects tampered fields, untrusted keys and duplicate content hashes', () => {

@@ -13,9 +13,8 @@ function validatePublicImageUrl(endpointUrl: URL, rawUrl: string): URL {
   const basePath = endpointUrl.pathname.replace(/\/$/, '')
   const path = url.pathname.slice(basePath.length)
   const isTemplateCover = /^\/map-templates\/[A-Za-z0-9._~-]{1,160}$/.test(path)
-  const isMapBlockCover = /^\/runtime\/play\/[a-z0-9][a-z0-9-]{0,62}\/block\/[A-Za-z0-9._~-]{1,160}$/.test(
-    path,
-  )
+  const isMapBlockCover =
+    /^\/runtime\/play\/[a-z0-9][a-z0-9-]{0,62}\/block\/[A-Za-z0-9._~-]{1,160}$/.test(path)
   if (
     url.origin !== endpointUrl.origin ||
     (!isTemplateCover && !isMapBlockCover) ||
@@ -40,7 +39,11 @@ export function createPublicImageTransport({
       const timer = setTimeout(() => controller.abort(), timeoutMs)
       let response: Response
       try {
-        response = await fetchImpl(url, { method: 'GET', redirect: 'manual', signal: controller.signal })
+        response = await fetchImpl(url, {
+          method: 'GET',
+          redirect: 'manual',
+          signal: controller.signal,
+        })
       } catch (error) {
         if (error.name === 'AbortError') throw new Error('地图封面加载超时')
         throw new Error('无法从游玩服务器读取地图封面')
@@ -64,7 +67,8 @@ export function createPublicImageTransport({
         throw new Error('地图封面超过启动器安全大小限制')
       }
       const bytes = new Uint8Array(await response.arrayBuffer())
-      if (bytes.byteLength > MAX_PUBLIC_IMAGE_BYTES) throw new Error('地图封面超过启动器安全大小限制')
+      if (bytes.byteLength > MAX_PUBLIC_IMAGE_BYTES)
+        throw new Error('地图封面超过启动器安全大小限制')
       return `data:${contentType};base64,${Buffer.from(bytes).toString('base64')}`
     },
   })

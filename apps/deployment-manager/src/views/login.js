@@ -1,5 +1,3 @@
-
-
 export function webLogin() {
   return `<section class="manager-login-page"><article class="manager-login-card">
     <div class="manager-login-heading"><span class="manager-login-kicker">BOX3 ENGINE</span><h1>Box Engine 管理界面</h1></div>

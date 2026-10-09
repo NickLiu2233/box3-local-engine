@@ -48,9 +48,9 @@ export function render() {
             ? performance()
             : state.page === 'backups'
               ? backups()
-                : state.page === 'about'
-                  ? about()
-                  : overview()
+              : state.page === 'about'
+                ? about()
+                : overview()
   document.querySelector('#app').innerHTML = shell(content)
   restoreScrollPositions(scrollPositions)
   bindEvents()

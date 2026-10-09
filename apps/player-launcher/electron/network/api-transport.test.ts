@@ -11,17 +11,26 @@ test('API requests are restricted to server API and advertised login routes', ()
   assert.throws(() => validateRequestUrl(base, 'https://other.example.com/base/api/health-check'))
   assert.throws(() => validateRequestUrl(base, 'https://play.example.com/elsewhere'))
   assert.equal(
-    validateRequestUrl(base, 'https://accounts.example.com/api/auth/login', 'https://accounts.example.com')
-      .pathname,
+    validateRequestUrl(
+      base,
+      'https://accounts.example.com/api/auth/login',
+      'https://accounts.example.com',
+    ).pathname,
     '/api/auth/login',
   )
   assert.throws(() =>
-    validateRequestUrl(base, 'https://accounts.example.com/api/private', 'https://accounts.example.com'),
+    validateRequestUrl(
+      base,
+      'https://accounts.example.com/api/private',
+      'https://accounts.example.com',
+    ),
   )
   assert.throws(() =>
     validateRequestUrl(base, 'https://play.example.com/base/api/health-check', undefined, 'POST'),
   )
-  assert.throws(() => validateRequestUrl(base, 'https://play.example.com/base/api/play-admin/players'))
+  assert.throws(() =>
+    validateRequestUrl(base, 'https://play.example.com/base/api/play-admin/players'),
+  )
 })
 
 test('HTTP player servers can use an advertised login portal on the same hostname', async () => {
@@ -96,7 +105,10 @@ test('transport sends and clears server-scoped session cookies', async () => {
     url: 'https://play.example.com/api/player-launcher/maps',
     method: 'GET',
   })
-  assert.equal(new Headers(requests[1].options.headers).get('cookie'), 'box_local_player_session=first')
+  assert.equal(
+    new Headers(requests[1].options.headers).get('cookie'),
+    'box_local_player_session=first',
+  )
   transport.clear('play.example.com')
   assert.deepEqual(transport.cookies('play.example.com'), [])
 })

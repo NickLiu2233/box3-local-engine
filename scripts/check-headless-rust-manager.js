@@ -264,8 +264,6 @@ for (const operation of ['start', 'control', 'stop']) {
     `Web must delegate ${operation} to core services`,
   )
 }
-for (const operation of ['trusted_now', 'verify_token', 'status_from_token']) {
-}
 if (core.lib.includes('pub mod backup;')) {
   // Accept direct and flat grouped imports, including module aliases. Match
   // complete members so backup_store alone cannot satisfy the backup import.
@@ -313,5 +311,8 @@ if (core.lib.includes('pub mod backup;')) {
 
 console.log('headless Rust manager checks passed')
 
-assert.doesNotMatch(frontendSource(root), /get_license_status|install_license|hasValidLicense|许可证管理/)
+assert.doesNotMatch(
+  frontendSource(root),
+  /get_license_status|install_license|hasValidLicense|许可证管理/,
+)
 assert.doesNotMatch(core.services, /require_license/)

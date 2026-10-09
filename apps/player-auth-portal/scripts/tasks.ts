@@ -52,12 +52,23 @@ export class PortalBuilder {
   }
   targets(): BuildOptions[] {
     return [
-      { entryPoints: ['src/main.tsx'], outfile: 'public/app.js', jsx: 'automatic', alias: {
-        react: path.resolve(this.project.root,'../../internals/deployment-routing/react.cjs'),
-        'react/jsx-runtime':path.resolve(this.project.root,'../../internals/deployment-routing/jsx-runtime.cjs'),
-        __box_original_react__:path.join(this.project.root,'node_modules/react/index.js'),
-        __box_original_jsx_runtime__:path.join(this.project.root,'node_modules/react/jsx-runtime.js'),
-      } },
+      {
+        entryPoints: ['src/main.tsx'],
+        outfile: 'public/app.js',
+        jsx: 'automatic',
+        alias: {
+          'react': path.resolve(this.project.root, '../../internals/deployment-routing/react.cjs'),
+          'react/jsx-runtime': path.resolve(
+            this.project.root,
+            '../../internals/deployment-routing/jsx-runtime.cjs',
+          ),
+          '__box_original_react__': path.join(this.project.root, 'node_modules/react/index.js'),
+          '__box_original_jsx_runtime__': path.join(
+            this.project.root,
+            'node_modules/react/jsx-runtime.js',
+          ),
+        },
+      },
       { entryPoints: ['src/theme-main.ts'], outfile: 'public/theme.js' },
       { entryPoints: ['src/styles/app.css'], outfile: 'public/styles.css' },
       {
@@ -98,7 +109,15 @@ export class PortalBuilder {
   }
   async testUI(electron: string): Promise<void> {
     await this.build()
-    await build({ absWorkingDir: this.project.root, entryPoints: ['scripts/ui-smoke.ts'], outfile: 'build/ui-smoke.cjs', bundle: true, platform: 'node', format: 'cjs', external: ['electron'] })
+    await build({
+      absWorkingDir: this.project.root,
+      entryPoints: ['scripts/ui-smoke.ts'],
+      outfile: 'build/ui-smoke.cjs',
+      bundle: true,
+      platform: 'node',
+      format: 'cjs',
+      external: ['electron'],
+    })
     this.project.run(electron, [path.join(this.project.root, 'build/ui-smoke.cjs')])
   }
 }
@@ -142,8 +161,13 @@ export class PortalDevelopment {
       await this.watch()
       this.portal = new PortalServer(config)
       await this.portal.listen()
-      console.log(`页面：http://${config.host}:${config.port}；保存后刷新。${live ? '真实联调，仅用测试账号。' : '不连接引擎。'}`)
-      for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { void this.close().then(() => process.exit(0)) })
+      console.log(
+        `页面：http://${config.host}:${config.port}；保存后刷新。${live ? '真实联调，仅用测试账号。' : '不连接引擎。'}`,
+      )
+      for (const signal of ['SIGINT', 'SIGTERM'] as const)
+        process.once(signal, () => {
+          void this.close().then(() => process.exit(0))
+        })
     } catch (error) {
       // 端口冲突或配置错误也必须释放 watcher/模拟器，不能挂着后台进程。
       await this.close()
@@ -333,7 +357,8 @@ export class PortalTasks {
         return this.builder.check()
       case 'ui': {
         const index = args.indexOf('--electron')
-        if (index < 0 || !args[index + 1]) throw new Error('可选 UI 测试需要 --electron <已有 Electron 可执行文件路径>')
+        if (index < 0 || !args[index + 1])
+          throw new Error('可选 UI 测试需要 --electron <已有 Electron 可执行文件路径>')
         return this.builder.testUI(args[index + 1])
       }
       case 'dev':

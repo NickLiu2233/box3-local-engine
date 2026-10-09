@@ -46,9 +46,11 @@ export function bindPlayerAccountEvents({
   document.querySelector('[data-player-profile-backdrop]')?.addEventListener('click', (event) => {
     if (event.target === event.currentTarget) closeProfile()
   })
-  document.querySelector('.player-profile-dialog')?.addEventListener('keydown', (event: KeyboardEvent) => {
-    if (event.key === 'Escape') closeProfile()
-  })
+  document
+    .querySelector('.player-profile-dialog')
+    ?.addEventListener('keydown', (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeProfile()
+    })
   document.querySelectorAll<HTMLElement>('[data-player-skin]').forEach((node) => {
     node.addEventListener('click', () => {
       state.playerProfileSkinId = node.dataset.playerSkin || 'explorer'

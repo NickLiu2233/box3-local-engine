@@ -3,7 +3,11 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { test } from 'node:test'
-import { createGameWindowManager, isAllowedGamePermission, makeGameUrl } from './game-window-manager'
+import {
+  createGameWindowManager,
+  isAllowedGamePermission,
+  makeGameUrl,
+} from './game-window-manager'
 import { createSignedPackageFixture } from '../testing/signed-package-fixture'
 import type {
   GameSession,
@@ -119,14 +123,26 @@ test('uses a persistent isolated origin session so the Service Worker cache surv
 
 test('grants pointer lock only to the main game page from its server origin', () => {
   const origin = 'https://play.example.com'
-  assert.equal(isAllowedGamePermission('pointerLock', 'https://play.example.com/p/town', true, origin), true)
-  assert.equal(isAllowedGamePermission('fullscreen', 'https://play.example.com/p/town', true, origin), true)
-  assert.equal(isAllowedGamePermission('pointerLock', 'https://attacker.example/p/town', true, origin), false)
+  assert.equal(
+    isAllowedGamePermission('pointerLock', 'https://play.example.com/p/town', true, origin),
+    true,
+  )
+  assert.equal(
+    isAllowedGamePermission('fullscreen', 'https://play.example.com/p/town', true, origin),
+    true,
+  )
+  assert.equal(
+    isAllowedGamePermission('pointerLock', 'https://attacker.example/p/town', true, origin),
+    false,
+  )
   assert.equal(
     isAllowedGamePermission('pointerLock', 'https://play.example.com/iframe', false, origin),
     false,
   )
-  assert.equal(isAllowedGamePermission('media', 'https://play.example.com/p/town', true, origin), false)
+  assert.equal(
+    isAllowedGamePermission('media', 'https://play.example.com/p/town', true, origin),
+    false,
+  )
   assert.equal(
     isAllowedGamePermission('notifications', 'https://play.example.com/p/town', true, origin),
     false,
@@ -152,7 +168,11 @@ test('launches non-loopback HTTP servers directly without the Service Worker cac
 test('loopback HTTP maps use the signed Service Worker caching flow', () => {
   const { descriptor } = createSignedPackageFixture(Buffer.from('resource'))
   for (const endpoint of ['http://127.0.0.1:3121', 'http://localhost:3121', 'http://[::1]:3121']) {
-    const url = makeGameUrl({ id: 'local', endpoint, name: 'Local' }, descriptor, 'payload.signature')
+    const url = makeGameUrl(
+      { id: 'local', endpoint, name: 'Local' },
+      descriptor,
+      'payload.signature',
+    )
     assert.equal(url.searchParams.get('box3ServiceWorkerCache'), '1')
     assert.equal(url.searchParams.has('box3DisableResourceCache'), false)
     assert.match(url.hash, /box3LaunchTicket=/)

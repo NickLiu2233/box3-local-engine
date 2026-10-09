@@ -259,8 +259,40 @@
   font-weight: 620;
 }
 
-.file-picker { position: relative; min-width: 0; display: flex; align-items: center; gap: 8px; height: 34px; border: 1px solid var(--border); border-radius: 7px; background: var(--panel-soft); padding: 0 10px; }
-.file-picker-action { flex: none; font-size: 11px; color: var(--accent); }
-.file-picker-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-weight: 400; }
-.field .file-picker input[type="file"] { position: absolute; inset: 0; opacity: 0; height: 100%; padding: 0; cursor: pointer; }
-.file-picker:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent); }
+.file-picker {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--panel-soft);
+  padding: 0 10px;
+}
+.file-picker-action {
+  flex: none;
+  font-size: 11px;
+  color: var(--accent);
+}
+.file-picker-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-weight: 400;
+}
+.field .file-picker input[type='file'] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  height: 100%;
+  padding: 0;
+  cursor: pointer;
+}
+.file-picker:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}

@@ -5,7 +5,7 @@ const http = require('http')
 const path = require('path')
 const crypto = require('crypto')
 const { spawn, spawnSync } = require('child_process')
-const {createModerationCredential}=require('./moderation-credential')
+const { createModerationCredential } = require('./moderation-credential')
 const {
   resolveMapRuntimeNamespace,
   resolveGroupRuntimeNamespace,
@@ -336,14 +336,26 @@ function run(command, args, options = {}) {
   children.push(child)
   return child
 }
-function spawnRuntime(command,args,options){
-  if(options.cwd!==gameServerRoot)return spawn(command,args,options)
-  const credential=createModerationCredential(options.env,process.env.BOX_MODERATION_SIGNING_SECRET||'')
+function spawnRuntime(command, args, options) {
+  if (options.cwd !== gameServerRoot) return spawn(command, args, options)
+  const credential = createModerationCredential(
+    options.env,
+    process.env.BOX_MODERATION_SIGNING_SECRET || '',
+  )
   let child
-  try{child=spawn(command,args,{...options,env:credential.env})}catch(error){credential.close();throw error}
-  const close=()=>{credential.close();process.removeListener('exit',close)}
-  child.once('exit',close);child.once('error',close)
-  process.once('exit',close)
+  try {
+    child = spawn(command, args, { ...options, env: credential.env })
+  } catch (error) {
+    credential.close()
+    throw error
+  }
+  const close = () => {
+    credential.close()
+    process.removeListener('exit', close)
+  }
+  child.once('exit', close)
+  child.once('error', close)
+  process.once('exit', close)
   return child
 }
 
@@ -765,7 +777,11 @@ async function main() {
           // getGroupStorage is shared inside one map group, never across
           // unrelated projects or independently distributed game packages.
           BOX_GROUP_STORAGE_NAMESPACE: groupStorageNamespace(projectId),
-          BOX_SERVER_NAME: launchTarget?.name || process.env.BOX_WORLD_NAME || process.env.BOX_SERVER_NAME || 'BOX 世界',
+          BOX_SERVER_NAME:
+            launchTarget?.name ||
+            process.env.BOX_WORLD_NAME ||
+            process.env.BOX_SERVER_NAME ||
+            'BOX 世界',
           BOX_WORLD_PUBLIC_ID: launchTarget?.publicId || projectId,
           BOX_WORLD_DESCRIPTION: launchTarget?.description || '',
           BOX_WORLD_VERSION: mode === 'play' ? launchTarget?.version || '' : '',

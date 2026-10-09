@@ -7,31 +7,46 @@ import { bindServerEvents } from '../src/features/servers/events'
 test('rechecking a stopped server displays clean copy and restores the retry button', async () => {
   const originalDocument = Reflect.get(globalThis, 'document')
   let discover: (() => void) | undefined
-  const button = { addEventListener(_name: string, listener: () => void) { discover = listener } }
+  const button = {
+    addEventListener(_name: string, listener: () => void) {
+      discover = listener
+    },
+  }
   Reflect.set(globalThis, 'document', {
-    querySelector: (selector: string) => selector === '[data-action="discover"]' ? button : null,
+    querySelector: (selector: string) => (selector === '[data-action="discover"]' ? button : null),
     querySelectorAll: () => [],
   })
   const state = { busy: false, serverBootstrap: {} as { loading?: boolean; error?: string } }
   let completed: () => void
-  const done = new Promise<void>((resolve) => { completed = resolve })
+  const done = new Promise<void>((resolve) => {
+    completed = resolve
+  })
   try {
     bindServerEvents({
       state,
       playerInvoke: async () => {
-        throw new Error("Error invoking remote method 'launcher:invoke': Error: 服务器服务未启动或连接端口不可用")
+        throw new Error(
+          "Error invoking remote method 'launcher:invoke': Error: 服务器服务未启动或连接端口不可用",
+        )
       },
       remoteApi: {},
       selectedServer: () => ({ endpoint: 'http://127.0.0.1:3121' }),
-      refreshPlayerSession: async () => { assert.fail('must not load a session after connection failure') },
-      render: () => { if (!state.busy) completed() },
+      refreshPlayerSession: async () => {
+        assert.fail('must not load a session after connection failure')
+      },
+      render: () => {
+        if (!state.busy) completed()
+      },
     })
     assert.ok(discover)
     discover()
     assert.equal(state.serverBootstrap.loading, true)
     await done
     assert.equal(state.busy, false)
-    assert.equal(state.serverBootstrap.error, '无法连接游玩服务，请确认服务已启动、地址和端口正确后重新检查。')
+    assert.equal(
+      state.serverBootstrap.error,
+      '无法连接游玩服务，请确认服务已启动、地址和端口正确后重新检查。',
+    )
     assert.doesNotMatch(state.serverBootstrap.error, /launcher:invoke|Error:/)
   } finally {
     if (originalDocument === undefined) Reflect.deleteProperty(globalThis, 'document')
@@ -42,14 +57,20 @@ test('rechecking a stopped server displays clean copy and restores the retry but
 test('shows a clean connection error when an invalid server address cannot be reached', async () => {
   const originalDocument = Reflect.get(globalThis, 'document')
   const originalFormData = Reflect.get(globalThis, 'FormData')
-  const form = { addEventListener(_name: string, listener: (event: unknown) => Promise<void>) { submit = listener } }
+  const form = {
+    addEventListener(_name: string, listener: (event: unknown) => Promise<void>) {
+      submit = listener
+    },
+  }
   let submit: ((event: unknown) => Promise<void>) | undefined
   class TestFormData {
-    get(name: string) { return name === 'endpoint' ? '撒打算大' : null }
+    get(name: string) {
+      return name === 'endpoint' ? '撒打算大' : null
+    }
   }
   Reflect.set(globalThis, 'FormData', TestFormData)
   Reflect.set(globalThis, 'document', {
-    querySelector: (selector: string) => selector === '#server-form' ? form : null,
+    querySelector: (selector: string) => (selector === '#server-form' ? form : null),
     querySelectorAll: () => [],
   })
 
@@ -58,7 +79,9 @@ test('shows a clean connection error when an invalid server address cannot be re
     bindEvents({
       state,
       playerInvoke: async () => {
-        throw new Error("Error invoking remote method 'launcher:invoke': Error: 无法连接到游玩端服务器，请检查地址和网络")
+        throw new Error(
+          "Error invoking remote method 'launcher:invoke': Error: 无法连接到游玩端服务器，请检查地址和网络",
+        )
       },
       remoteApi: {},
       selectedServer: () => null,

@@ -238,14 +238,34 @@ function main() {
     fail('离线镜像归档不存在')
   }
   const expectedArchitecture = platform.endsWith('arm64') ? 'arm64' : 'amd64'
-  const catalogPath = archive.endsWith('.json') ? archive : path.join(path.dirname(archive), `box-local-engine-images-v${version}-linux-${expectedArchitecture}.json`)
-  const staleCatalog = !archive.endsWith('.json') && fs.existsSync(catalogPath) && JSON.parse(fs.readFileSync(catalogPath, 'utf8')).sourceArchiveSha256 !== sha256(archive)
+  const catalogPath = archive.endsWith('.json')
+    ? archive
+    : path.join(
+        path.dirname(archive),
+        `box-local-engine-images-v${version}-linux-${expectedArchitecture}.json`,
+      )
+  const staleCatalog =
+    !archive.endsWith('.json') &&
+    fs.existsSync(catalogPath) &&
+    JSON.parse(fs.readFileSync(catalogPath, 'utf8')).sourceArchiveSha256 !== sha256(archive)
   if (!fs.existsSync(catalogPath) || staleCatalog) {
-    const result = spawnSync(process.execPath, [path.join(repoRoot, 'scripts/build-image-downloads.js'), archive, expectedArchitecture, catalogPath], { stdio: 'inherit' })
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(repoRoot, 'scripts/build-image-downloads.js'),
+        archive,
+        expectedArchitecture,
+        catalogPath,
+      ],
+      { stdio: 'inherit' },
+    )
     if (result.status !== 0) fail('无法生成独立服务镜像包')
   }
   const { validateCatalog } = require('./build-image-downloads')
-  const imageManifest = validateCatalog(JSON.parse(fs.readFileSync(catalogPath, 'utf8')), expectedArchitecture)
+  const imageManifest = validateCatalog(
+    JSON.parse(fs.readFileSync(catalogPath, 'utf8')),
+    expectedArchitecture,
+  )
   const imageDetails = imageManifest.images
   const imageTag = imageManifest.imageTag
   const payloadImageInfo = path.join(managerRoot, 'src-tauri/payload/IMAGE-INFO.json')
@@ -267,7 +287,10 @@ function main() {
     // macOS report the application as damaged.
     fs.rmSync(payloadMetadata, { recursive: true, force: true })
     fs.mkdirSync(payloadMetadata, { recursive: true })
-    fs.writeFileSync(path.join(payloadMetadata, 'BOX-REMOTE-IMAGE.json'), `${JSON.stringify(imageManifest, null, 2)}\n`)
+    fs.writeFileSync(
+      path.join(payloadMetadata, 'BOX-REMOTE-IMAGE.json'),
+      `${JSON.stringify(imageManifest, null, 2)}\n`,
+    )
     generateDistributionMetadata(payloadMetadata, {
       repoRoot,
       generatedAt: new Date().toISOString(),
@@ -284,8 +307,11 @@ function main() {
     const invocation = tauriBuildCommand()
     const result = spawnSync(invocation.command, tauriArgs, {
       cwd: managerRoot,
-      env: tauriBuildEnvironment({ ...process.env, BOX_MANAGER_IMAGE_TAG: imageTag,
-        BOX_MANAGER_REMOTE_IMAGE: JSON.stringify(imageManifest) }),
+      env: tauriBuildEnvironment({
+        ...process.env,
+        BOX_MANAGER_IMAGE_TAG: imageTag,
+        BOX_MANAGER_REMOTE_IMAGE: JSON.stringify(imageManifest),
+      }),
       shell: invocation.shell,
       stdio: 'inherit',
     })
@@ -322,7 +348,10 @@ function main() {
     : packageRoot
   if (!spec.bundle) {
     fs.mkdirSync(metadataRoot, { recursive: true })
-    fs.writeFileSync(path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json'), `${JSON.stringify(imageManifest, null, 2)}\n`)
+    fs.writeFileSync(
+      path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json'),
+      `${JSON.stringify(imageManifest, null, 2)}\n`,
+    )
     generateDistributionMetadata(metadataRoot, {
       repoRoot,
       generatedAt: new Date().toISOString(),
@@ -347,7 +376,11 @@ function main() {
 }
 
 if (require.main === module) {
-  try { main() } catch (error) { fail(error.message) }
+  try {
+    main()
+  } catch (error) {
+    fail(error.message)
+  }
 }
 
 module.exports = {

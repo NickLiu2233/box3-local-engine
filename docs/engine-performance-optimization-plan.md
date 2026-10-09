@@ -23,20 +23,20 @@
 
 ## 2. 当前运行链路与代码证据
 
-| 范围 | 已确认的行为 | 依据位置 | 判断 |
-| --- | --- | --- | --- |
-| 客户端主循环 | rAF 中顺序执行 poll、tick、渲染与 overlay；tick 包含预测、动画、相机、粒子、模型等 | `apps/game/src/engine/game-client.ts`：`_frame`、`_tick` | 共享主线程预算，应测阶段耗时，不能只测 draw |
-| 体素可见性 | `prepareVoxels` 每次调用 `bfsClear`；后者按带边界的全部块维度清零 adjacency/visited；另有视锥范围扫描和 BFS | `apps/game/src/engine/voxel/voxel-controller.ts`：`prepareVoxels`、`bfsClear` | 全图清零是明确的规模相关成本，实际占比待测 |
-| 体素生成与上传 | Worker 排序后连续遍历整批 dirtyChunks；主线程 UPDATE_CHUNK 分支立即调用 updateChunk；缓冲区通过 transfer 回收 | `voxel/voxel.worker.ts`、`voxel/voxel-controller.ts` | 已有零拷贝传输机制，优先检查批处理和上传调度 |
-| 模型准备 | 每次模型 tick 重建绘制列表；已有视锥判断，GL 各 pass 继续收集、排序 | `mesh/client-model-controller.ts`、`gl/main.ts` | 可评估静态缓存与模型空间索引，不能笼统说没有剔除 |
-| GL 排序 | 不透明按 part.distance / instance.distance 升序；透明反向排序；阴影 pass 也排序 | `mesh/gl-controller/gl-mesh-schema.ts`、`gl/main.ts` | 不能随意删除排序，需权衡提交成本与 overdraw |
-| GPU 提交 | 按 mesh hash 等组织字典，通过 BundleCache 缓存命令并更新 uniform | `gpu/mesh.ts`、`gpu/render-bundle.ts` | 缓存命令不等于真正合并实例绘制；先测 draw 数与缓存命中 |
-| 物理 broad phase | 每次 solvePhysics 准备全部参与刚体，重建 active 树和 fixed 树，再生成候选接触 | `internals/schema/physics/physics-solve.ts`、`prepare-bodies.ts`、`body-rbush.ts` | 静态占比高时有避免重建的空间 |
-| 求解倍率 | netTick 的 OBB 模式 4 子步；有 NET_TARGETS 时，预测和实际各跑一遍，共 8 次 solvePhysics | `internals/schema/net/net-tick.ts` | 4/8 是求解次数，不是性能提升倍数 |
-| 客户端附加物理 | 插值路径有一次实际求解，有纠正目标时还做一次预测求解；重放也调用 netTick | `net/net-client-interpolate.ts`、`net/net-client-tick.ts` | 不能用单个网络 tick 的 4/8 次代表整帧总工作量 |
-| 休眠 | 小速度归零；刚体分类未按独立睡眠状态排除静止动态刚体；LOCKED 用于网络控制相关逻辑 | `physics/def.ts`、`prepare-bodies.ts`、`physics-solve.ts` | 速度归零不等于整岛休眠；LOCKED 不能当作 sleep |
-| 模拟频率 | MS_PER_TICK = 64，即权威 tick 约 15.625Hz | `internals/schema/clock/clock-schema.ts` | 渲染 FPS 与物理 tick 不同，不直接改 tick 频率 |
-| 粒子与脚本 | 粒子有 Worker、updateInProgress 和数量上限；脚本调度有优先队列与专用执行链路 | `particle/particle-client-controller.ts`、客户端及服务端 script 模块 | 已有保护，后续测 CPU/GPU、队列积压和脚本超时 |
+| 范围             | 已确认的行为                                                                                                  | 依据位置                                                                          | 判断                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 客户端主循环     | rAF 中顺序执行 poll、tick、渲染与 overlay；tick 包含预测、动画、相机、粒子、模型等                            | `apps/game/src/engine/game-client.ts`：`_frame`、`_tick`                          | 共享主线程预算，应测阶段耗时，不能只测 draw            |
+| 体素可见性       | `prepareVoxels` 每次调用 `bfsClear`；后者按带边界的全部块维度清零 adjacency/visited；另有视锥范围扫描和 BFS   | `apps/game/src/engine/voxel/voxel-controller.ts`：`prepareVoxels`、`bfsClear`     | 全图清零是明确的规模相关成本，实际占比待测             |
+| 体素生成与上传   | Worker 排序后连续遍历整批 dirtyChunks；主线程 UPDATE_CHUNK 分支立即调用 updateChunk；缓冲区通过 transfer 回收 | `voxel/voxel.worker.ts`、`voxel/voxel-controller.ts`                              | 已有零拷贝传输机制，优先检查批处理和上传调度           |
+| 模型准备         | 每次模型 tick 重建绘制列表；已有视锥判断，GL 各 pass 继续收集、排序                                           | `mesh/client-model-controller.ts`、`gl/main.ts`                                   | 可评估静态缓存与模型空间索引，不能笼统说没有剔除       |
+| GL 排序          | 不透明按 part.distance / instance.distance 升序；透明反向排序；阴影 pass 也排序                               | `mesh/gl-controller/gl-mesh-schema.ts`、`gl/main.ts`                              | 不能随意删除排序，需权衡提交成本与 overdraw            |
+| GPU 提交         | 按 mesh hash 等组织字典，通过 BundleCache 缓存命令并更新 uniform                                              | `gpu/mesh.ts`、`gpu/render-bundle.ts`                                             | 缓存命令不等于真正合并实例绘制；先测 draw 数与缓存命中 |
+| 物理 broad phase | 每次 solvePhysics 准备全部参与刚体，重建 active 树和 fixed 树，再生成候选接触                                 | `internals/schema/physics/physics-solve.ts`、`prepare-bodies.ts`、`body-rbush.ts` | 静态占比高时有避免重建的空间                           |
+| 求解倍率         | netTick 的 OBB 模式 4 子步；有 NET_TARGETS 时，预测和实际各跑一遍，共 8 次 solvePhysics                       | `internals/schema/net/net-tick.ts`                                                | 4/8 是求解次数，不是性能提升倍数                       |
+| 客户端附加物理   | 插值路径有一次实际求解，有纠正目标时还做一次预测求解；重放也调用 netTick                                      | `net/net-client-interpolate.ts`、`net/net-client-tick.ts`                         | 不能用单个网络 tick 的 4/8 次代表整帧总工作量          |
+| 休眠             | 小速度归零；刚体分类未按独立睡眠状态排除静止动态刚体；LOCKED 用于网络控制相关逻辑                             | `physics/def.ts`、`prepare-bodies.ts`、`physics-solve.ts`                         | 速度归零不等于整岛休眠；LOCKED 不能当作 sleep          |
+| 模拟频率         | MS_PER_TICK = 64，即权威 tick 约 15.625Hz                                                                     | `internals/schema/clock/clock-schema.ts`                                          | 渲染 FPS 与物理 tick 不同，不直接改 tick 频率          |
+| 粒子与脚本       | 粒子有 Worker、updateInProgress 和数量上限；脚本调度有优先队列与专用执行链路                                  | `particle/particle-client-controller.ts`、客户端及服务端 script 模块              | 已有保护，后续测 CPU/GPU、队列积压和脚本超时           |
 
 源码引用均以本次工作区为准。没有发现适用的 AGENTS.md / CONTEXT.md；已检查架构、工程规范及 ADR 目录，现有 ADR 为地图存储身份约束，与本计划的算法候选无直接冲突。
 
@@ -61,18 +61,18 @@
 
 ### 3.3 固定测试矩阵
 
-| 场景 | 用途 | 参数 |
-| --- | --- | --- |
-| 小地图常规游玩 | 防止小场景因复杂优化变慢 | 固定镜头路线、玩家输入、资源版本 |
-| 大地图但视域小 | 验证全图清零和全量模型扫描 | 扩大地图总块数，保持可见内容相近 |
-| 室内/洞穴、快速转身 | 验证遮挡、可见性缓存正确性 | 出入口、穿墙外视角、传送、近裁面 |
-| 反复修改地形 | 验证 Worker 与上传尖峰 | 单块、跨块、连续修改、集中批量修改 |
-| 高重复模型与动画 | 验证 draw call、列表、uniform | 重复模型与独特模型分别测试 |
-| 透明/流体/粒子密集 | 验证 fill rate 与透明排序 | 固定屏幕覆盖比例和特效密度 |
-| 刚体散布、堆叠、集中重叠 | 区分索引收益与候选对退化 | 100/500/1500/3000 刚体，AABB/OBB 分开 |
-| 静止动态体占比高 | 验证休眠收益和唤醒行为 | 推动堆叠、移动平台、区域力、浮力 |
-| 网络抖动与纠正 | 验证重放尖峰和视觉纠正 | 本地、受控延迟/丢包，1/4/8 玩家 |
-| 30 分钟长时间游玩 | 验证资源与缓存增长 | 同一路线反复进入、修改、加载 |
+| 场景                     | 用途                          | 参数                                  |
+| ------------------------ | ----------------------------- | ------------------------------------- |
+| 小地图常规游玩           | 防止小场景因复杂优化变慢      | 固定镜头路线、玩家输入、资源版本      |
+| 大地图但视域小           | 验证全图清零和全量模型扫描    | 扩大地图总块数，保持可见内容相近      |
+| 室内/洞穴、快速转身      | 验证遮挡、可见性缓存正确性    | 出入口、穿墙外视角、传送、近裁面      |
+| 反复修改地形             | 验证 Worker 与上传尖峰        | 单块、跨块、连续修改、集中批量修改    |
+| 高重复模型与动画         | 验证 draw call、列表、uniform | 重复模型与独特模型分别测试            |
+| 透明/流体/粒子密集       | 验证 fill rate 与透明排序     | 固定屏幕覆盖比例和特效密度            |
+| 刚体散布、堆叠、集中重叠 | 区分索引收益与候选对退化      | 100/500/1500/3000 刚体，AABB/OBB 分开 |
+| 静止动态体占比高         | 验证休眠收益和唤醒行为        | 推动堆叠、移动平台、区域力、浮力      |
+| 网络抖动与纠正           | 验证重放尖峰和视觉纠正        | 本地、受控延迟/丢包，1/4/8 玩家       |
+| 30 分钟长时间游玩        | 验证资源与缓存增长            | 同一路线反复进入、修改、加载          |
 
 每场景预热后记录至少 120 秒，重复 3 次；冷加载单独记录。固定硬件、分辨率、DPR、浏览器版本和画质；至少覆盖低端集显与主流设备，GL/GPU 两条路径分别评估。多人权威场景保留真实输入，不用客户端 FPS 替代服务端性能。
 
@@ -172,13 +172,13 @@ GL rAF 末尾显式 flush 可做独立 A/B 检查；flush 本身不等于 CPU �
 
 ## 5. 推进顺序与每阶段交付
 
-| 阶段 | 工作 | 进入下一阶段的条件 |
-| --- | --- | --- |
-| A：基准 | 修正统计、补分阶段采样、固定地图回放与测试设备 | 取得 CPU/GPU/物理/上传基线，明确前三热点 |
-| B：低风险优化 | 优先实验可见性初始化、上传队列、资源去重、静态数据缓存 | 单项 A/B 可复现改善，正确性检查通过 |
-| C：物理索引 | 静态/运动学分类、缓存所有权、静态树复用；动态树择优 | 候选对与旧算法一致，多种分布均验证 |
-| D：深度优化 | 根据数据选择休眠、实例绘制、重放预算或阴影策略 | 达到固定目标，无玩法与尾部性能回退 |
-| E：集成验收 | 全矩阵、长时间运行、GL/GPU、客户端/服务端、最终发行运行时 | 工程检查及最终镜像测量通过，保留回滚方案 |
+| 阶段          | 工作                                                      | 进入下一阶段的条件                       |
+| ------------- | --------------------------------------------------------- | ---------------------------------------- |
+| A：基准       | 修正统计、补分阶段采样、固定地图回放与测试设备            | 取得 CPU/GPU/物理/上传基线，明确前三热点 |
+| B：低风险优化 | 优先实验可见性初始化、上传队列、资源去重、静态数据缓存    | 单项 A/B 可复现改善，正确性检查通过      |
+| C：物理索引   | 静态/运动学分类、缓存所有权、静态树复用；动态树择优       | 候选对与旧算法一致，多种分布均验证       |
+| D：深度优化   | 根据数据选择休眠、实例绘制、重放预算或阴影策略            | 达到固定目标，无玩法与尾部性能回退       |
+| E：集成验收   | 全矩阵、长时间运行、GL/GPU、客户端/服务端、最终发行运行时 | 工程检查及最终镜像测量通过，保留回滚方案 |
 
 工作量按热点证据再拆分，不在无测量时承诺工期。每个实验单独开关、单独结果记录，一次只改变一个主要变量；通过后再组合测试。物理方面优先优化索引与数据搬运，保持子步、迭代和 tick 频率，之后才评估需要改状态模型的方案。
 

@@ -14,5 +14,12 @@
     "noEmit": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["vite.config.ts", "shared/**/*.ts", "src/**/*.ts", "electron/**/*.ts", "tests/**/*.ts", "scripts/**/*.mts"]
+  "include": [
+    "vite.config.ts",
+    "shared/**/*.ts",
+    "src/**/*.ts",
+    "electron/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.mts"
+  ]
 }

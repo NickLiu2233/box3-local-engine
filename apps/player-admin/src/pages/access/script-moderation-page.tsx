@@ -19,23 +19,20 @@ const mapGroups = (maps: Catalog['maps']) => {
   for (const map of maps) {
     const id = map.groupId
     const previous = groups.get(id)
-    if (!previous || (map.mapId === map.groupId &&
-      (previous.mapId !== previous.groupId || map.mode === 'edit'))) groups.set(id, map)
+    if (
+      !previous ||
+      (map.mapId === map.groupId && (previous.mapId !== previous.groupId || map.mode === 'edit'))
+    )
+      groups.set(id, map)
   }
   return [...groups.values()]
 }
 const authorizationMap = (catalog: Catalog, id: string) => {
   const binding = catalog.bindings.find((item) => item.keyId === id)
   const member = catalog.maps.find(
-    (map) =>
-      (map.mapId === binding?.mapId || map.groupId === binding?.mapId),
+    (map) => map.mapId === binding?.mapId || map.groupId === binding?.mapId,
   )
-  return (
-    member &&
-    mapGroups(catalog.maps).find(
-      (map) => map.groupId === member.groupId,
-    )
-  )
+  return member && mapGroups(catalog.maps).find((map) => map.groupId === member.groupId)
 }
 const authorizationStatus = (catalog: Catalog, key: Catalog['keys'][number]) => {
   if (key.revokedAt) return 'revoked'
@@ -67,7 +64,9 @@ export function ScriptModerationPage() {
   useEffect(() => {
     void run()
   }, [])
-  useAdminEvents(true, topic => { if (topic === 'map-authorization' || topic === 'resync') void run() })
+  useAdminEvents(true, (topic) => {
+    if (topic === 'map-authorization' || topic === 'resync') void run()
+  })
   const create = async () => {
     const values = await form.validateFields()
     const map = mapGroups(catalog.maps).find((m) => mapValue(m) === values.map)
@@ -147,25 +146,29 @@ export function ScriptModerationPage() {
           </Button>
         </Space>
       </PageToolbar>
-      <Card className="player-admin-panel" title="授权列表" extra={
-        <Select
-          aria-label="筛选授权状态"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          style={{ width: 130 }}
-          options={[
-            { value: 'all', label: '全部状态' },
-            { value: 'active', label: statusLabels.active.label },
-            { value: 'revoked', label: statusLabels.revoked.label },
-          ]}
-        />
-      }>
+      <Card
+        className="player-admin-panel"
+        title="授权列表"
+        extra={
+          <Select
+            aria-label="筛选授权状态"
+            value={statusFilter}
+            onChange={setStatusFilter}
+            style={{ width: 130 }}
+            options={[
+              { value: 'all', label: '全部状态' },
+              { value: 'active', label: statusLabels.active.label },
+              { value: 'revoked', label: statusLabels.revoked.label },
+            ]}
+          />
+        }
+      >
         <Table
           size="middle"
           rowKey="id"
           loading={busy}
-          dataSource={catalog.keys.filter((key) =>
-            statusFilter === 'all' || authorizationStatus(catalog, key) === statusFilter,
+          dataSource={catalog.keys.filter(
+            (key) => statusFilter === 'all' || authorizationStatus(catalog, key) === statusFilter,
           )}
           pagination={{ pageSize: 10 }}
           columns={[

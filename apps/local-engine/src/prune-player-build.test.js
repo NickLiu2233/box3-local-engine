@@ -19,22 +19,32 @@ test('keeps Player Admin routes that are called by the standalone management UI'
 
 test('packaging preserves compiled self-service APIs and their routing manifests while removing editor routes', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-self-service-prune-'))
-  const routes = ['/api/player-auth/profile', '/api/player-auth/password', '/api/realtime/session', '/projects']
-  const pages = Object.fromEntries(routes.map(route => [route, `pages${route}.js`]))
+  const routes = [
+    '/api/player-auth/profile',
+    '/api/player-auth/password',
+    '/api/realtime/session',
+    '/projects',
+  ]
+  const pages = Object.fromEntries(routes.map((route) => [route, `pages${route}.js`]))
   const write = (file, value) => {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
     fs.writeFileSync(path.join(root, file), JSON.stringify(value))
   }
-  const read = file => JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))
+  const read = (file) => JSON.parse(fs.readFileSync(path.join(root, file), 'utf8'))
   try {
     for (const file of Object.values(pages)) write(`server/${file}`, 'compiled fixture')
     write('server/pages-manifest.json', pages)
-    write('routes-manifest.json', { staticRoutes: routes.map(page => ({ page })) })
-    write('build-manifest.json', { pages: Object.fromEntries(routes.map(route => [route, ['bundle.js']])) })
+    write('routes-manifest.json', { staticRoutes: routes.map((page) => ({ page })) })
+    write('build-manifest.json', {
+      pages: Object.fromEntries(routes.map((route) => [route, ['bundle.js']])),
+    })
     prunePlayerServiceBuild(root)
     const kept = routes.slice(0, 3)
     assert.deepEqual(Object.keys(read('server/pages-manifest.json')), kept)
-    assert.deepEqual(read('routes-manifest.json').staticRoutes.map(route => route.page), kept)
+    assert.deepEqual(
+      read('routes-manifest.json').staticRoutes.map((route) => route.page),
+      kept,
+    )
     assert.deepEqual(Object.keys(read('build-manifest.json').pages), kept)
     for (const route of kept) assert.ok(fs.existsSync(path.join(root, 'server', pages[route])))
     assert.equal(fs.existsSync(path.join(root, 'server', pages['/projects'])), false)

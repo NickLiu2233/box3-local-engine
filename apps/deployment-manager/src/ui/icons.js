@@ -1,5 +1,3 @@
-
-
 const icons = {
   'home': '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10M9 20v-6h6v6"/>',
   'settings':

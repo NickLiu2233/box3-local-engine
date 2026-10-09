@@ -29,23 +29,23 @@ ZIP SHA-256：`b16d61e2aeba2a4d8a129ade6b9eac1319f4a1e874f7273230069d03f2e801e9`
 
 ## 实际验证
 
-| 验证 | 结果 |
-| --- | --- |
-| 六镜像构建与导出 | 通过，构建/导出退出码 0 |
-| 六镜像版本、架构、源码基点、构建标签 | 通过 |
-| 镜像归档与 APP 中 IMAGE-INFO 的配置摘要、文件系统层、标签一致性 | 通过；Docker 的 OCI manifest ID 与配置 ID 分别记录，不混为同一种摘要 |
-| Creator、Play、Player Service 的实时 bootstrap 路由与 WS 依赖加载 | 从最终镜像内检查通过 |
-| Creator、Play 的新撤销同步宿主代码 | 存在新的 realtime bootstrap，无旧撤销轮询 URL |
-| 生产宿主测试脚本清理 | Creator、Play 中 game-server/scripts 不存在 |
-| Web 管理器实际启动与健康检查 | 独立临时工作区通过；未连接真实地图或数据库 |
-| 管理器 WS 认证 | 正确令牌收到 ready；错误令牌关闭码 1008 |
-| 启动器构建 | Tauri release 编译及 APP 打包通过 |
-| 标准桌面离线包验证 | 通过 |
-| 新 ZIP 解压后重新验证 | 通过，确认内置 6 镜像 |
-| macOS 签名完整性 | 通过，签名类型 ad-hoc，TeamIdentifier 未设置 |
-| 打包自动化测试 | 8 项通过 |
-| Player Service 裁剪回归 | 2 项通过；新增实时 API 保留在文件和路由清单中 |
-| 本地引擎回归 | 15 组通过 |
+| 验证                                                              | 结果                                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 六镜像构建与导出                                                  | 通过，构建/导出退出码 0                                              |
+| 六镜像版本、架构、源码基点、构建标签                              | 通过                                                                 |
+| 镜像归档与 APP 中 IMAGE-INFO 的配置摘要、文件系统层、标签一致性   | 通过；Docker 的 OCI manifest ID 与配置 ID 分别记录，不混为同一种摘要 |
+| Creator、Play、Player Service 的实时 bootstrap 路由与 WS 依赖加载 | 从最终镜像内检查通过                                                 |
+| Creator、Play 的新撤销同步宿主代码                                | 存在新的 realtime bootstrap，无旧撤销轮询 URL                        |
+| 生产宿主测试脚本清理                                              | Creator、Play 中 game-server/scripts 不存在                          |
+| Web 管理器实际启动与健康检查                                      | 独立临时工作区通过；未连接真实地图或数据库                           |
+| 管理器 WS 认证                                                    | 正确令牌收到 ready；错误令牌关闭码 1008                              |
+| 启动器构建                                                        | Tauri release 编译及 APP 打包通过                                    |
+| 标准桌面离线包验证                                                | 通过                                                                 |
+| 新 ZIP 解压后重新验证                                             | 通过，确认内置 6 镜像                                                |
+| macOS 签名完整性                                                  | 通过，签名类型 ad-hoc，TeamIdentifier 未设置                         |
+| 打包自动化测试                                                    | 8 项通过                                                             |
+| Player Service 裁剪回归                                           | 2 项通过；新增实时 API 保留在文件和路由清单中                        |
+| 本地引擎回归                                                      | 15 组通过                                                            |
 
 打包前的 WS、权限、重连、数据库提交通知与反作弊回归详见 [WebSocket 设计与测试记录](ws-polling-audit.md)。临时镜像检查脚本、容器及解压目录已删除；仓库中的自动化回归保留。
 

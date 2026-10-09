@@ -8,22 +8,22 @@
 
 日常反作弊优先使用分类事件，不用先学习网络协议。
 
-| 接口 | 能直接拿到什么 | 拒绝会影响什么 |
-| --- | --- | --- |
-| `onMovement` | 玩家、位置、速度、采样间隔 | 当前位置和速度修正；保留按键输入 |
-| `onInput` | 玩家、跳跃/奔跑/飞行等按钮状态 | 整个移动输入消息 |
-| `onKeyboard` | 玩家、本次按下和松开的键码 | 本次键盘消息 |
-| `onInteract` | 玩家、请求交互的候选目标实体 | 本次交互请求 |
-| `onCustomEvent` | 玩家、客户端脚本发送的 JSON 数据 | 本次自定义事件 |
-| `onUIEvent` | 玩家、自定义 GUI 的事件名和 JSON 数据 | 本次界面事件 |
-| `onMessage` | 原始协议名、消息名、解码数据副本 | 本次消息；进阶排查使用 |
+| 接口            | 能直接拿到什么                        | 拒绝会影响什么                   |
+| --------------- | ------------------------------------- | -------------------------------- |
+| `onMovement`    | 玩家、位置、速度、采样间隔            | 当前位置和速度修正；保留按键输入 |
+| `onInput`       | 玩家、跳跃/奔跑/飞行等按钮状态        | 整个移动输入消息                 |
+| `onKeyboard`    | 玩家、本次按下和松开的键码            | 本次键盘消息                     |
+| `onInteract`    | 玩家、请求交互的候选目标实体          | 本次交互请求                     |
+| `onCustomEvent` | 玩家、客户端脚本发送的 JSON 数据      | 本次自定义事件                   |
+| `onUIEvent`     | 玩家、自定义 GUI 的事件名和 JSON 数据 | 本次界面事件                     |
+| `onMessage`     | 原始协议名、消息名、解码数据副本      | 本次消息；进阶排查使用           |
 
 例如，地图不允许客户端请求飞行：
 
 ```js
 world.anticheat.onInput(({ buttons, context }) => {
-  if (buttons.fly) context.reject();
-});
+  if (buttons.fly) context.reject()
+})
 ```
 
 自定义事件也不用自己解析字符串：
@@ -31,8 +31,8 @@ world.anticheat.onInput(({ buttons, context }) => {
 ```js
 world.anticheat.onCustomEvent(({ player, data, context }) => {
   // data 不可信，要按你自己地图的事件格式校验。
-  if (!isAllowedEvent(player, data)) context.reject();
-});
+  if (!isAllowedEvent(player, data)) context.reject()
+})
 ```
 
 `isAllowedEvent` 是自己编写的判断函数。分类事件与通用事件复用同一次消息检查；任何监听器拒绝都生效，不会因为其他监听器没有拒绝就重新放行。分类事件中的 `tick` 仍是客户端上报值，可信的服务器 tick 位于 `context.serverTick`。
@@ -48,20 +48,20 @@ world.anticheat.onCustomEvent(({ player, data, context }) => {
 ```js
 world.anticheat.onAction(({ player, actions, serverPosition, context }) => {
   // 示例策略：本图不允许一条消息中重复主操作；不是引擎通用限制。
-  const attacks = actions.filter(a => a.button === 'action0' && a.pressed);
+  const attacks = actions.filter((a) => a.button === 'action0' && a.pressed)
   if (attacks.length > 1) {
-    context.reject();
-    return;
+    context.reject()
+    return
   }
   for (const action of attacks) {
     // origin、targetId、position、distance 都是客户端声明，不是命中证明。
     // 先按本图相机规则校验起点，再调用 world.raycast 重新计算遮挡/命中。
     if (!isAllowedAction(player, action, serverPosition)) {
-      context.reject();
-      return;
+      context.reject()
+      return
     }
   }
-});
+})
 ```
 
 `isAllowedAction` 由服主实现，不是引擎接口。每个 `action` 包含 `button`、`pressed`、客户端 `tick`、`position`、`targetId` 和 `ray`（`origin`、`direction`、`normal`、`voxel`、`distance`）。松开也会进入列表，同一个原始输入同时改变两个操作键时会产生两项。
@@ -69,19 +69,21 @@ world.anticheat.onAction(({ player, actions, serverPosition, context }) => {
 只检查单条消息的次数，不会拦住拆成多条消息的重复攻击。下面是另一条可直接使用的服务端规则；数值需要按本图武器调整，可与起点、命中检查组合：
 
 ```js
-const attackIntervalTicks = 4; // 本图规则，不是引擎默认值。
-const lastAttack = new WeakMap();
+const attackIntervalTicks = 4 // 本图规则，不是引擎默认值。
+const lastAttack = new WeakMap()
 world.anticheat.onAction(({ player, actions, context }) => {
-  const attacks = actions.filter(a => a.button === 'action0' && a.pressed);
-  if (!attacks.length) return;
-  const previous = lastAttack.get(player);
-  if (attacks.length > 1 ||
-      (previous !== undefined && context.serverTick - previous < attackIntervalTicks)) {
-    context.reject();
-    return;
+  const attacks = actions.filter((a) => a.button === 'action0' && a.pressed)
+  if (!attacks.length) return
+  const previous = lastAttack.get(player)
+  if (
+    attacks.length > 1 ||
+    (previous !== undefined && context.serverTick - previous < attackIntervalTicks)
+  ) {
+    context.reject()
+    return
   }
-  lastAttack.set(player, context.serverTick);
-});
+  lastAttack.set(player, context.serverTick)
+})
 ```
 
 这是一条保守的接收频率规则，不保证处理所有延迟补发情况。如果另一条规则也拒绝了该消息，这里仍会记录尝试的 tick。先观察正常玩家数据，再决定是否开启；不要用客户端上报 tick 代替服务器时间。
@@ -101,9 +103,9 @@ world.anticheat.onMessage(({ player, protocol, message, data, context }) => {
   // protocol、message 由引擎消息表确定，data 是解码后的只读副本。
   // 按自己地图的规则检查，不要把每个带目标玩家的消息都当作作弊。
   if (shouldReject(player, protocol, message, data)) {
-    context.reject();
+    context.reject()
   }
-});
+})
 ```
 
 `shouldReject` 是你自己编写的判断函数，不是引擎 API。可先记录实际消息名称和数据结构，再编写针对当前地图的规则。不要把所有消息都拒绝，否则按键、聊天和网络同步也会被拒绝。
@@ -120,12 +122,12 @@ world.anticheat.onMessage(({ player, protocol, message, data, context }) => {
 
 ```js
 world.anticheat.onMovement(({ player, from, to, elapsedMs, context }) => {
-  const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
+  const distance = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z)
   // 这是示意阈值，不是适用于所有地图的速度限制。
   // 还需要考虑冲刺、载具、击退和网络延迟等玩法。
-  if (distance > 100) context.reject();
+  if (distance > 100) context.reject()
   // 首条 elapsedMs 为 0，不能计算速度，但也不能直接放过越界或大幅位移。
-});
+})
 ```
 
 - `player` 是服务器从真实连接识别的玩家。
@@ -146,10 +148,10 @@ world.anticheat.onMovement(({ player, from, to, elapsedMs, context }) => {
 各个接口都返回与其他事件一致的 token：
 
 ```js
-const listener = world.anticheat.onMessage((event) => {});
-listener.cancel();
-listener.resume();
-console.log(listener.active());
+const listener = world.anticheat.onMessage((event) => {})
+listener.cancel()
+listener.resume()
+console.log(listener.active())
 ```
 
 监听器必须同步执行，不能等待数据库或网络请求。`context.reject()` 只在当前回调期间有效，不能保存起来延迟拒绝。多个监听器中任意一个拒绝，当前操作就被拒绝；监听器异常、返回 Promise 或超过主机 200 ms 决策时限也拒绝。

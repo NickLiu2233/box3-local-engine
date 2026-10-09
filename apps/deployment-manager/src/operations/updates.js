@@ -14,12 +14,21 @@ function renderUpdateState() {
 
 export async function checkForUpdates(manual = false) {
   if (isWebManager()) return
-  if (manual) { state.error = ''; state.notice = '' }
+  if (manual) {
+    state.error = ''
+    state.notice = ''
+  }
   if (!pending) {
     state.updateChecking = true
     pending = Promise.all([invoke('get_about_info'), fetchLatestRelease()])
-      .then(([info, release]) => ({ release, newer: isNewerVersion(release.version, info.applicationVersion) }))
-      .finally(() => { pending = null; state.updateChecking = false })
+      .then(([info, release]) => ({
+        release,
+        newer: isNewerVersion(release.version, info.applicationVersion),
+      }))
+      .finally(() => {
+        pending = null
+        state.updateChecking = false
+      })
   }
   if (manual) renderUpdateState()
   try {

@@ -5,14 +5,18 @@ import { test } from 'node:test'
 import { renderWorldCard } from '../src/features/maps/card'
 
 test('world cards show the Play cover ratio, author, version and online player count', () => {
-  const html = renderWorldCard({
-    id: 'map-one',
-    name: '星梦小镇',
-    author: '作者甲',
-    version: 'v1.2.3',
-    cover: 'https://play.example.test/covers/map.png',
-    onlineCount: 7,
-  }, { busy: false, preparingMapId: '', libraryEnabled: true }, { escapeHtml: (value: string) => value })
+  const html = renderWorldCard(
+    {
+      id: 'map-one',
+      name: '星梦小镇',
+      author: '作者甲',
+      version: 'v1.2.3',
+      cover: 'https://play.example.test/covers/map.png',
+      onlineCount: 7,
+    },
+    { busy: false, preparingMapId: '', libraryEnabled: true },
+    { escapeHtml: (value: string) => value },
+  )
   const styles = fs.readFileSync(path.join(process.cwd(), 'src/styles.css'), 'utf8')
 
   assert.match(html, /world-cover-frame/)

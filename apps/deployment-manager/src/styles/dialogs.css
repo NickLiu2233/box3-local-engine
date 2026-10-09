@@ -10,16 +10,51 @@
   animation: modal-scrim-in 180ms ease-out both;
 }
 
-.update-check { margin-left: auto; flex: 0 0 28px; width: 28px; height: 28px; }
-.icon-button.update-check.update-available { background: #2563eb; border-color: #2563eb; color: #fff; }
-.icon-button.update-check.update-available:hover { background: #1d4ed8; border-color: #1d4ed8; }
-.update-backdrop { z-index: 35; }
-.start-dialog.update-dialog { width: min(100%, 600px); max-height: calc(100dvh - 48px); overflow-y: auto; }
-.update-dialog header { display: flex; justify-content: space-between; gap: 12px; }
-.update-notes { margin: 18px 0; font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
-.update-notes h3 { font-size: 14px; margin: 14px 0 6px; }
-.update-notes ul { padding-left: 20px; margin: 0; }
-.update-dialog .dialog-actions { margin-top: 16px; }
+.update-check {
+  margin-left: auto;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+}
+.icon-button.update-check.update-available {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.icon-button.update-check.update-available:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+.update-backdrop {
+  z-index: 35;
+}
+.start-dialog.update-dialog {
+  width: min(100%, 600px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+}
+.update-dialog header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.update-notes {
+  margin: 18px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.update-notes h3 {
+  font-size: 14px;
+  margin: 14px 0 6px;
+}
+.update-notes ul {
+  padding-left: 20px;
+  margin: 0;
+}
+.update-dialog .dialog-actions {
+  margin-top: 16px;
+}
 
 .start-dialog {
   width: min(100%, 410px);
