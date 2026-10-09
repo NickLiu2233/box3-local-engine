@@ -30,25 +30,21 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
       --to @box/game-server \
       --to @box/local-engine
 
-# The launcher loads the generated API client directly at runtime. Produce a
-# self-contained production deployment here so the compact Creator and Play
-# images do not depend on workspace symlinks from the build stage. The deploy
-# contains only the published dist files and runtime dependencies; OpenAPI
-# source documents and Swagger tooling remain outside the final images.
-RUN cd internals/apis && node ../../common/scripts/install-run-rushx.js build
-RUN cd packages/utils && node ../../common/scripts/install-run-rushx.js build
+# Build all workspace dependencies before any Next/runtime compilation. Clean
+# image contexts contain source, not env/iframe/schema/script API dist outputs.
+# Exclude the applications themselves: each following stage selects its mode.
+RUN node common/scripts/install-run-rush.js rebuild \
+      --to-except @box/game \
+      --to-except @box/player-admin \
+      --to-except @box/game-server \
+      --to-except @box/local-engine \
+      --parallelism 2
+
+# Deploy only the generated API runtime and production dependencies; source
+# documents and Swagger tooling remain outside the compact runtime images.
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     node common/scripts/install-run-rush-pnpm.js --rush-skip-checks deploy \
       --filter @box/apis --prod --legacy /opt/apis-runtime
-
-# Protocol modules are consumed from internals/schema/build.  Build them in
-# the image instead of relying on a developer's previously generated output;
-# otherwise a newly added MuDB message can be present in TypeScript source but
-# absent from the production runtime.
-# Schema storage interfaces import the script API declarations. Generate them
-# first; dist is absent in a clean checkout.
-RUN cd packages/script-api && node ../../common/scripts/install-run-rushx.js build
-RUN cd internals/schema && node ../../common/scripts/install-run-rushx.js build
 
 # Generated content-addressed runtime resources are intentionally excluded
 # from Git. Rebuild them inside the shared build stage so clean CI checkouts
@@ -144,13 +140,14 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
 
 FROM engine-build-base AS player-service-build
 
-# Keep the Next build below Docker Desktop's available memory budget. A larger
-# V8 heap lets the compiler compete with webpack workers and can trigger exit 137.
+# Keep a bounded heap for Next while allowing a cold dependency-complete build.
+# Hosts with a different build memory budget can override this argument.
+ARG BOX_PLAYER_SERVICE_BUILD_HEAP_MB=4096
 RUN rm -rf apps/game/public/player-admin \
     && cd apps/player-admin \
     && node ../../common/scripts/install-run-rushx.js build \
     && cd ../.. \
-    && NODE_OPTIONS=--max-old-space-size=3072 \
+    && NODE_OPTIONS="--max-old-space-size=${BOX_PLAYER_SERVICE_BUILD_HEAP_MB}" \
     BOX_DEPLOYMENT_MODE=player-service \
     NEXT_PUBLIC_APP_ENV=development \
     NEXT_PUBLIC_APP_EDITION=createra \

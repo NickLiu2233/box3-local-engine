@@ -466,8 +466,8 @@ for (const [label, pattern] of [
   ['play build stage', /^FROM engine-build-base AS play-build$/m],
   ['play build command', /install-run-rushx\.js build[\s\S]*?install-run-rushx\.js build:play/],
   [
-    'generated API runtime build',
-    /cd internals\/apis && node \.\.\/\.\.\/common\/scripts\/install-run-rushx\.js build/,
+    'workspace runtime dependency build',
+    /install-run-rush\.js rebuild[\s\S]*?--to-except @box\/game[\s\S]*?--to-except @box\/player-admin[\s\S]*?--to-except @box\/game-server[\s\S]*?--to-except @box\/local-engine/,
   ],
   [
     'generated API production deploy',
