@@ -57,6 +57,7 @@ function check() {
     'scripts/dev-environment.test.js',
     'scripts/repo-tasks.test.js',
     'scripts/docker-engine-build.test.js',
+    'scripts/deployment-manager-build.test.js',
   ])
   node('apps/local-engine/src/build-metadata.test.js')
   node('apps/local-engine/scripts/regression-project-storage-identity.js')
