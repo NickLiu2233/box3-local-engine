@@ -2,7 +2,9 @@
 
 mod commands;
 mod image_download;
+mod image_download_batch;
 mod image_updates;
 mod updates;
+mod launcher_update;
 
 pub use commands::run;

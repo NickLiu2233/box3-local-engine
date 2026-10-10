@@ -20,9 +20,9 @@ import { saveConfiguration } from ${JSON.stringify(path.join(src, 'operations/co
 import { sslRoutes } from ${JSON.stringify(path.join(src, 'configuration/ssl.js'))}
 import { selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
 import { confirmBackupAction } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
-import { checkForUpdates, closeUpdateDialog } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
+import { checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
 import { isNewerVersion, validateRelease } from ${JSON.stringify(path.join(src, 'utils/releases.js'))}
-globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, isNewerVersion, validateRelease }
+globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
 `
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
@@ -32,7 +32,7 @@ export const setWebManagerToken = value => { globalThis.managerToken = value }
 export const dockerPlatform = () => ({ name: 'Docker', hint: 'fixture', action: '连接', busy: '连接中', canStart: false })
 export const subscribeManager = () => () => {}
 export const listen = (name, callback) => { globalThis.progressListeners.set(name, callback); return Promise.resolve(() => {}) }
-export const openExternal = () => Promise.resolve()
+export const openExternal = (url, command = 'open_service') => globalThis.adapterInvoke(command, { url })
 export const selectBackup = () => Promise.resolve(null)
 export const exportBackupFile = () => Promise.resolve(null)
 export const exportDiagnosticsFile = () => Promise.resolve(null)
@@ -161,9 +161,12 @@ async function createFixture({
     intervals = new Map(),
     timeouts = new Map()
   let html = '',
+    renderCount = 0,
     form = null,
     modes = [],
     resetLoginImage = null,
+    updateProgressLabel = null,
+    updateProgressBar = null,
     timerId = 0
   const mainScroll = new FixtureElement(),
     setupScroll = new FixtureElement()
@@ -199,7 +202,7 @@ async function createFixture({
       ],
     },
     get_install_config: fixtureConfig,
-    get_about_info: { applicationVersion: '0.3.0' },
+    get_about_info: { applicationVersion: '0.3.0', platform: 'macos', architecture: 'aarch64' },
     get_managed_service_info: { configured: true, ready: true, imageAvailable: true },
     get_data_storage_info: { path: '/tmp/engine-fixture' },
     get_raw_environment: 'FIXTURE=true',
@@ -217,7 +220,20 @@ async function createFixture({
       return html
     },
     set innerHTML(value) {
+      renderCount++
       html = value
+      updateProgressLabel = html.includes('id="launcher-update-progress-label"')
+        ? {
+            get textContent() { return html.match(/id="launcher-update-progress-label">([^<]*)/)?.[1] },
+            set textContent(text) { html = html.replace(/(id="launcher-update-progress-label">)[^<]*/, (_, prefix) => prefix + text) },
+          }
+        : null
+      updateProgressBar = html.includes('id="launcher-update-progress"')
+        ? {
+            value: 0,
+            removeAttribute(name) { if (name === 'value') this.value = null },
+          }
+        : null
       form = html.includes('id="setup-form"') ? new FixtureForm(html) : null
       resetLoginImage = html.includes('id="restore-default-login-image"')
         ? new FixtureElement()
@@ -247,7 +263,21 @@ async function createFixture({
       events.get(name)?.delete(handler)
     },
     querySelector(selector) {
+      if (selector === '.progress-dialog-content' && html.includes('class="progress-dialog-content"')) {
+        return {
+          set innerHTML(value) {
+            html = html.replace(/(<div class="progress-dialog-content">)[\s\S]*?(<\/div><\/section><\/div>)/, (_, start, end) => start + value + end)
+          },
+          parentElement: {
+            set className(value) {
+              html = html.replace(/<section class="progress-dialog[^"]*"/, `<section class="${value}"`)
+            },
+          },
+        }
+      }
       if (selector === '#app') return appElement
+      if (selector === '#launcher-update-progress-label') return updateProgressLabel
+      if (selector === '#launcher-update-progress') return updateProgressBar
       if (selector === '#setup-form') return form
       if (selector === '#restore-default-login-image') return resetLoginImage
       if (selector === 'main') return mainScroll
@@ -352,6 +382,9 @@ async function createFixture({
     intervals,
     timeouts,
     results,
+    get renderCount() {
+      return renderCount
+    },
     get html() {
       return html
     },

@@ -2966,48 +2966,46 @@ fn validate_service_name(app: &AppHandle, service: &str) -> Result<bool, String>
 }
 
 struct DesktopImageRuntime<'a>(&'a AppHandle);
+
 impl crate::image_updates::Runtime for DesktopImageRuntime<'_> {
     fn docker(&self, args: &[&str]) -> Result<String, String> {
         docker_output(args)
     }
     fn acquire(&self, image: &crate::image_download::ImageRelease) -> Result<PathBuf, String> {
+        self.acquire_many(&[image])?
+            .pop()
+            .ok_or("镜像下载结果缺失".into())
+    }
+    fn acquire_many(
+        &self,
+        images: &[&crate::image_download::ImageRelease],
+    ) -> Result<Vec<PathBuf>, String> {
         let cache = self
             .0
             .path()
             .app_cache_dir()
             .map_err(|e| e.to_string())?
             .join("engine-images");
-        let mut last_percent = 0;
-        emit_progress(
-            self.0,
-            "image-download",
-            &format!("正在下载 {}…", image.image),
-            0,
-        );
-        let archive = crate::image_download::download(image, &cache, |bytes| {
-            let percent = ((bytes as f64 / image.size as f64) * 100.0).floor() as u8;
-            if percent != last_percent {
-                last_percent = percent;
-                emit_progress(
-                    self.0,
-                    "image-download",
-                    &format!(
-                        "{} · {} / {} MB",
-                        image.image,
-                        bytes / 1_048_576,
-                        image.size / 1_048_576
-                    ),
-                    percent,
-                );
-            }
-        })?;
+        crate::image_download_batch::download(images, &cache, |downloads| {
+            let count = downloads.len();
+            let complete = downloads.iter().filter(|row| row.percent == 100).count();
+            let bytes: u64 = downloads.iter().map(|row| row.bytes).sum();
+            let total: u64 = downloads.iter().map(|row| row.total).sum();
+            let _ = self.0.emit("install-progress", serde_json::json!({
+                "stage": "image-download",
+                "message": format!("{count} 个镜像 · 已完成 {complete}/{count}"),
+                "percent": if complete == count { 100 } else { (bytes.saturating_mul(100) / total.max(1)).min(99) },
+                "downloads": downloads,
+            }));
+        })
+    }
+    fn importing(&self, image: &crate::image_download::ImageRelease) {
         emit_progress(
             self.0,
             "image-import",
             &format!("{} 下载完成，正在导入 Docker…", image.image),
             100,
         );
-        Ok(archive)
     }
     fn discard(&self, archive: PathBuf) {
         let _ = fs::remove_file(archive);
@@ -3073,11 +3071,33 @@ impl crate::image_updates::Runtime for DesktopImageRuntime<'_> {
 }
 
 fn finalize_image_updates(app: &AppHandle) {
+    if !image_cleanup_enabled(app) { return; }
     if let Ok(Some(catalog)) = crate::image_download::embedded_release() {
         if let Err(error) = crate::image_updates::finalize(&catalog, &DesktopImageRuntime(app)) {
             eprintln!("镜像清理已延后：{error}");
         }
     }
+}
+
+fn image_cleanup_enabled(app: &AppHandle) -> bool {
+    app.path().app_config_dir().ok()
+        .and_then(|root| fs::read_to_string(root.join("image-cleanup-choice.json")).ok())
+        .is_some_and(|value| value.trim() == "true")
+}
+
+pub(crate) fn set_image_cleanup_choice(app: &AppHandle, enabled: bool) -> Result<(), String> {
+    let root = app.path().app_config_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    fs::write(root.join("image-cleanup-choice.json"), if enabled { "true" } else { "false" })
+        .map_err(|e| e.to_string())
+}
+
+pub(crate) fn cleanup_images_before_launcher_restart(app: &AppHandle) -> Result<(), String> {
+    use crate::image_updates::Runtime;
+    let runtime = DesktopImageRuntime(app);
+    if runtime.pending()?.is_empty() { return Ok(()); }
+    let catalog = crate::image_download::embedded_release()?.ok_or("当前启动器没有镜像发行清单")?;
+    crate::image_updates::cleanup_before_restart(&catalog, &runtime, PROJECT_NAME)
 }
 
 struct DesktopRuntime<'a>(&'a AppHandle);
@@ -4329,6 +4349,8 @@ pub fn run() {
             destroy_project_runtime,
             get_about_info,
             crate::updates::open_release_download,
+            crate::launcher_update::download_launcher_update,
+            crate::launcher_update::apply_launcher_update,
             get_legal_notices,
             get_performance_status,
             get_data_storage_info,

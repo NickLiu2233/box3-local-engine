@@ -80,7 +80,7 @@ test('about cards use a single-column grid so their section spacing takes effect
   assert.equal((app.html.match(/<article class="about-/g) || []).length, 4)
 })
 
-test('about page lists the current engine release first without player launcher notes', async () => {
+test('about page lists the latest engine release first without player launcher notes', async () => {
   const app = await createFixture()
   app.api.state.page = 'about'
   app.api.render()
@@ -90,7 +90,7 @@ test('about page lists the current engine release first without player launcher 
     assert.ok(notes.includes(feature), `missing release note: ${feature}`)
   }
   assert.ok(!notes.includes('玩家启动器'))
-  assert.equal(require('../package.json').version, '0.3.0')
+  assert.equal(require('../apps/deployment-manager/package.json').version, require('../package.json').version)
 })
 
 test('native bootstrap loads the console; unauthenticated Web bootstrap shows the login gate', async () => {
@@ -693,6 +693,57 @@ test('image downloads show the service, byte progress and accessible progress ba
   assert.match(app.html, /class="image-download-progress" role="progressbar"/)
   assert.match(app.html, /aria-valuenow="50"/)
   assert.match(app.html, /class="image-download-percent">50%/)
+})
+
+test('parallel image downloads retain completed rows and independent byte progress', async () => {
+  const app = await createFixture()
+  app.api.state.busy = true
+  app.api.state.progress = {
+    stage: 'image-download',
+    message: '2 个镜像并行下载 · 已完成 1/2（模拟）',
+    downloads: [
+      { image: 'box-local-engine-creator', bytes: 256 * 1_048_576, total: 256 * 1_048_576, percent: 100 },
+      { image: 'box-local-engine-voxa', bytes: 64 * 1_048_576, total: 128 * 1_048_576, percent: 50 },
+    ],
+  }
+  app.api.render()
+  assert.equal((app.html.match(/role="progressbar"/g) || []).length, 2)
+  assert.match(app.html, /box-local-engine-creator 下载进度"[^>]*aria-valuenow="100"/)
+  assert.match(app.html, /box-local-engine-voxa 下载进度"[^>]*aria-valuenow="50"/)
+  assert.match(app.html, /已完成/)
+  assert.match(app.html, /256 \/ 256 MB/)
+  assert.match(app.html, /64 \/ 128 MB/)
+})
+
+test('service download ticks keep the spinner and page mounted', async () => {
+  const app = await createFixture()
+  app.api.state.busy = true
+  app.api.render()
+  const renders = app.renderCount
+  for (let percent = 1; percent <= 100; percent++) {
+    app.context.progressListeners.get('install-progress')({ payload: {
+      stage: 'image-download', message: `镜像下载 ${percent}%`, percent,
+    } })
+    for (const [id, timer] of app.timeouts) {
+      if (timer.delay === 50) {
+        app.timeouts.delete(id)
+        timer.handler()
+      }
+    }
+  }
+  assert.equal(app.renderCount, renders, 'download ticks must not replace the animated spinner')
+  assert.match(app.html, /aria-valuenow="100"/)
+  // A status refresh during acquisition must preserve the same overlay too.
+  app.api.render()
+  assert.equal(app.renderCount, renders)
+  app.api.state.progress = { stage: 'image-import', message: '正在导入 Docker' }
+  app.api.render()
+  assert.equal(app.renderCount, renders)
+  assert.match(app.html, /正在导入服务镜像/)
+  assert.doesNotMatch(app.html, /image-download-dialog/)
+  app.api.state.busy = false
+  app.api.render()
+  assert.doesNotMatch(app.html, /class="progress-backdrop"/)
 })
 
 test('missing local Nginx saves certificates and shows an installation reminder instead of a save error', async () => {

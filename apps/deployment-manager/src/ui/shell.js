@@ -78,8 +78,19 @@ function feedbackToast() {
   return `<div class="toast danger" role="status"><span>${title}</span><small>${escapeHtml(message)}</small><button type="button" data-dismiss-feedback aria-label="关闭提示">×</button></div>`
 }
 
-export function progressPanel() {
+function progressPanelMarkup() {
   if (state.progress?.stage === 'image-download') {
+    const downloads = state.progress.downloads
+    if (Array.isArray(downloads) && downloads.length) {
+      const rows = downloads.map((download) => {
+        const percent = Math.max(0, Math.min(100, Number(download.percent) || 0))
+        const image = escapeHtml(download.image)
+        const bytes = Math.floor((Number(download.bytes) || 0) / 1_048_576)
+        const total = Math.floor((Number(download.total) || 0) / 1_048_576)
+        return `<li class="image-download-row${percent === 100 ? ' complete' : ''}"><div class="image-download-row-label"><span>${image}</span><small>${percent === 100 ? '已完成' : `${percent}%`}</small></div><div class="image-download-progress" role="progressbar" aria-label="${image} 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-bytes">${bytes} / ${total} MB</small></li>`
+      }).join('')
+      return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message)}</p><ul class="image-download-list">${rows}</ul></section></div>`
+    }
     const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
     return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message || '正在准备下载…')}</p><div class="image-download-progress" role="progressbar" aria-label="服务镜像下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-percent">${percent}%</small></section></div>`
   }
@@ -87,4 +98,24 @@ export function progressPanel() {
     return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在导入服务镜像</strong><p>${escapeHtml(state.progress.message || '镜像下载完成，正在导入 Docker…')}</p></section></div>`
   }
   return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在处理</strong><p>这可能需要几分钟，请耐心等待…</p></section></div>`
+}
+
+function progressContent(markup) {
+  return markup.slice(markup.indexOf('</span>') + 7, markup.lastIndexOf('</section>'))
+}
+
+export function progressPanel() {
+  const markup = progressPanelMarkup()
+  return markup.replace(progressContent(markup), `<div class="progress-dialog-content">${progressContent(markup)}</div>`)
+}
+
+export function refreshProgressPanel() {
+  const content = document.querySelector('.progress-dialog-content')
+  if (!content) return false
+  const markup = progressPanelMarkup()
+  content.innerHTML = progressContent(markup)
+  content.parentElement.className = state.progress?.stage === 'image-download'
+    ? 'progress-dialog image-download-dialog'
+    : 'progress-dialog'
+  return true
 }

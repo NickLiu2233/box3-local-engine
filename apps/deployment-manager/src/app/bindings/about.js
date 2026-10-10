@@ -4,7 +4,7 @@ import { exportDiagnostics } from '../../operations/backups.js'
 import { openExternal } from '../../infrastructure/transport.js'
 import { render } from '../../core/render-request.js'
 import { state } from '../../core/state.js'
-import { checkForUpdates, closeUpdateDialog, openUpdateDialog } from '../../operations/updates.js'
+import { checkForUpdates, closeUpdateDialog, downloadUpdate, openUpdateDialog, restartAndUpdate } from '../../operations/updates.js'
 
 export function bindAboutEvents() {
   document.querySelector('#check-version-updates')?.addEventListener('click', () => {
@@ -12,32 +12,20 @@ export function bindAboutEvents() {
     else checkForUpdates(true)
   })
   document.querySelector('#close-update-dialog')?.addEventListener('click', closeUpdateDialog)
-  document.querySelector('#dismiss-update')?.addEventListener('click', closeUpdateDialog)
   document.querySelector('[data-update-dismiss]')?.addEventListener('click', (event) => {
     if (event.target === event.currentTarget) closeUpdateDialog()
   })
-  document.querySelector('#open-update-download')?.addEventListener('click', () => {
-    const target = document.querySelector('#update-download-target')?.value
-    if (
-      !['windows-amd64', 'windows-arm64', 'macos-arm64', 'linux-amd64', 'linux-arm64'].includes(
-        target,
-      )
-    )
-      return
-    openExternal(
-      `https://assets.box3.fun/local-engine/BOX-Local-Engine-${state.updateRelease.version.replace(/^v/, '')}-${target}.zip`,
-      'open_release_download',
-    ).catch((error) => {
-      state.error = String(error)
-      render()
-    })
+  document.querySelector('#open-update-download')?.addEventListener('click', downloadUpdate)
+  document.querySelector('#restart-update')?.addEventListener('click', restartAndUpdate)
+  document.querySelector('#update-cleanup-old-images')?.addEventListener('change', (event) => {
+    state.updateCleanupOldImages = event.target.checked
   })
   const updatePanel = document.querySelector('.update-dialog')
   updatePanel?.focus()
   updatePanel?.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeUpdateDialog()
     if (event.key === 'Tab') {
-      const controls = [...updatePanel.querySelectorAll('button, select')]
+      const controls = [...updatePanel.querySelectorAll('button:not(:disabled), select:not(:disabled), input:not(:disabled)')]
       const first = controls[0],
         last = controls.at(-1)
       if (

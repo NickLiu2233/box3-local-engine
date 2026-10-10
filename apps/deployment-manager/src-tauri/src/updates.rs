@@ -1,6 +1,6 @@
 use std::process::Command;
 
-fn valid_download_url(url: &str) -> bool {
+pub(crate) fn valid_download_url(url: &str) -> bool {
     let Some(name) = url.strip_prefix("https://assets.box3.fun/local-engine/BOX-Local-Engine-")
     else {
         return false;

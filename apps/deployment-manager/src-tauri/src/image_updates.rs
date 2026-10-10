@@ -14,6 +14,10 @@ pub(crate) struct PendingImage {
 pub(crate) trait Runtime {
     fn docker(&self, args: &[&str]) -> Result<String, String>;
     fn acquire(&self, image: &ImageRelease) -> Result<PathBuf, String>;
+    fn acquire_many(&self, images: &[&ImageRelease]) -> Result<Vec<PathBuf>, String> {
+        images.iter().map(|image| self.acquire(image)).collect()
+    }
+    fn importing(&self, _image: &ImageRelease) {}
     fn discard(&self, archive: PathBuf);
     fn pending(&self) -> Result<Vec<PendingImage>, String>;
     fn save(&self, pending: &[PendingImage]) -> Result<(), String>;
@@ -60,6 +64,7 @@ pub(crate) fn prepare(
     runtime: &impl Runtime,
 ) -> Result<(), String> {
     let mut pending = runtime.pending()?;
+    let mut needed = Vec::new();
     for image in &catalog.images {
         let service = image
             .image
@@ -101,9 +106,36 @@ pub(crate) fn prepare(
             remove_content_tag(runtime, image);
             continue;
         }
+        if installed(runtime, image).is_none() {
+            needed.push(image);
+        }
+    }
+    // Download the missing contents as a batch before mutating release tags.
+    // Rollback records above are persisted even if a download fails.
+    let acquired = runtime.acquire_many(&needed)?;
+    if acquired.len() != needed.len() {
+        return Err("镜像下载结果不完整，请重试".into());
+    }
+    let mut archives: std::collections::BTreeMap<_, _> = needed
+        .iter()
+        .zip(acquired)
+        .map(|(image, archive)| (image.image.as_str(), archive))
+        .collect();
+    for image in &catalog.images {
+        let service = image
+            .image
+            .strip_prefix("box-local-engine-")
+            .ok_or("镜像名称无效")?;
+        if service == "server-manager" || !services.contains(&service) {
+            continue;
+        }
+        let reference = format!("{}:{tag}", image.image);
         let mut actual = installed(runtime, image);
         let archive = if actual.is_none() {
-            let archive = runtime.acquire(image)?;
+            let archive = archives
+                .remove(image.image.as_str())
+                .ok_or("镜像下载结果缺失，请重试")?;
+            runtime.importing(image);
             runtime.docker(&["load", "-i", &archive.to_string_lossy()])?;
             actual = installed(runtime, image);
             if actual.is_none() {
@@ -131,6 +163,22 @@ pub(crate) fn prepare(
 }
 
 pub(crate) fn finalize(catalog: &ImageCatalog, runtime: &impl Runtime) -> Result<(), String> {
+    cleanup(catalog, runtime, None)
+}
+
+pub(crate) fn cleanup_before_restart(
+    catalog: &ImageCatalog,
+    runtime: &impl Runtime,
+    project: &str,
+) -> Result<(), String> {
+    cleanup(catalog, runtime, Some(project))
+}
+
+fn cleanup(
+    catalog: &ImageCatalog,
+    runtime: &impl Runtime,
+    stop_project: Option<&str>,
+) -> Result<(), String> {
     let mut remaining = Vec::new();
     for record in runtime.pending()? {
         let wanted = catalog
@@ -148,13 +196,19 @@ pub(crate) fn finalize(catalog: &ImageCatalog, runtime: &impl Runtime) -> Result
         }
         if !valid_id(&record.old_id)
             || !wanted.accepts(&record.new_id)
-            || !runtime.ready(&record.service, wanted)?
+            || (stop_project.is_none() && !runtime.ready(&record.service, wanted)?)
         {
             remaining.push(record);
             continue;
         }
         if image_id(runtime, &record.old_id).is_none() {
             continue;
+        }
+        if stop_project.is_some() && installed(runtime, wanted).is_none() {
+            return Err(format!(
+                "新镜像尚未完整导入，暂不能删除旧镜像：{}",
+                record.service
+            ));
         }
         // Include stopped containers and containers outside our Compose project.
         let users = runtime.docker(&[
@@ -164,10 +218,6 @@ pub(crate) fn finalize(catalog: &ImageCatalog, runtime: &impl Runtime) -> Result
             "--filter",
             &format!("ancestor={}", record.old_id),
         ])?;
-        if !users.trim().is_empty() {
-            remaining.push(record);
-            continue;
-        }
         let tags = runtime.docker(&[
             "image",
             "inspect",
@@ -186,6 +236,39 @@ pub(crate) fn finalize(catalog: &ImageCatalog, runtime: &impl Runtime) -> Result
             remaining.push(record);
             continue;
         }
+        if !users.trim().is_empty() {
+            let Some(project) = stop_project else {
+                remaining.push(record);
+                continue;
+            };
+            let mut owned = Vec::new();
+            let mut protected = false;
+            for container in users.lines().filter(|line| !line.trim().is_empty()) {
+                let details = runtime.docker(&["inspect", container, "--format", "{{json .}}"])?;
+                let details: serde_json::Value =
+                    serde_json::from_str(&details).map_err(|e| e.to_string())?;
+                if details["Image"].as_str() != Some(record.old_id.as_str())
+                    || details["Config"]["Labels"]["com.docker.compose.project"].as_str()
+                        != Some(project)
+                    || details["Config"]["Labels"]["com.docker.compose.service"].as_str()
+                        != Some(record.service.as_str())
+                {
+                    protected = true;
+                    break;
+                }
+                owned.push(container);
+            }
+            // Inspect every user before stopping any container; foreign users protect the image.
+            if protected {
+                remaining.push(record);
+                continue;
+            }
+            for container in owned {
+                runtime.docker(&["stop", container])?;
+                // Deliberately omit -v: persistent volumes and engine data survive cleanup.
+                runtime.docker(&["rm", container])?;
+            }
+        }
         let mut args = vec!["image", "rm"];
         if tags.is_empty() {
             args.push(&record.old_id);
@@ -193,7 +276,10 @@ pub(crate) fn finalize(catalog: &ImageCatalog, runtime: &impl Runtime) -> Result
             args.extend(tags.iter().map(String::as_str));
         }
         // Never force deletion. A concurrent Docker user can still prevent it.
-        if runtime.docker(&args).is_err() {
+        if let Err(error) = runtime.docker(&args) {
+            if stop_project.is_some() {
+                return Err(error);
+            }
             remaining.push(record);
         }
     }
@@ -237,7 +323,9 @@ mod tests {
         ready: bool,
         used: bool,
         load_fails: bool,
+        download_fails: bool,
         previous: Vec<String>,
+        owner_project: String,
     }
     impl Fake {
         fn new() -> Self {
@@ -253,7 +341,9 @@ mod tests {
                 ready: true,
                 used: false,
                 load_fails: false,
+                download_fails: false,
                 previous: vec![id('a')],
+                owner_project: "engine".into(),
             }
         }
     }
@@ -263,6 +353,14 @@ mod tests {
                 .borrow_mut()
                 .push(args.iter().map(|s| s.to_string()).collect());
             match args {
+                ["inspect", _, "--format", "{{json .}}"] => Ok(serde_json::json!({
+                    "Image": id('a'), "Config": { "Labels": {
+                        "com.docker.compose.project": self.owner_project,
+                        "com.docker.compose.service": "play"
+                    }}
+                })
+                .to_string()),
+                ["stop", _] | ["rm", _] => Ok(String::new()),
                 ["image", "inspect", reference, "--format", "{{.Id}}"] => {
                     if self.ids.borrow().contains(*reference) {
                         Ok(reference.to_string())
@@ -317,8 +415,12 @@ mod tests {
                 _ => panic!("Unexpected command: {args:?}"),
             }
         }
-        fn acquire(&self, _: &ImageRelease) -> Result<PathBuf, String> {
+        fn acquire(&self, image: &ImageRelease) -> Result<PathBuf, String> {
             *self.downloads.borrow_mut() += 1;
+            self.commands.borrow_mut().push(vec!["acquire".into(), image.image.clone()]);
+            if self.download_fails {
+                return Err("download failed".into());
+            }
             Ok("cache.tar.gz".into())
         }
         fn discard(&self, _: PathBuf) {}
@@ -336,6 +438,35 @@ mod tests {
             Ok(self.ready)
         }
     }
+    #[test]
+    fn selected_missing_images_are_acquired_before_any_docker_import() {
+        let fake = Fake::new();
+        let mut release = catalog();
+        let mut other = catalog().images.remove(0);
+        other.image = "box-local-engine-voxa".into();
+        release.images.push(other);
+        let mut excluded = catalog().images.remove(0);
+        excluded.image = "box-local-engine-creator".into();
+        release.images.push(excluded);
+        prepare(&release, "same-version", &["play", "voxa"], &fake).unwrap();
+        let commands = fake.commands.borrow();
+        let imports = commands.iter().position(|command| command[0] == "load").unwrap();
+        let acquired = commands.iter().enumerate().filter(|(_, command)| command[0] == "acquire").collect::<Vec<_>>();
+        assert_eq!(acquired.len(), 2);
+        assert!(acquired.iter().all(|(index, _)| *index < imports));
+        assert_eq!(*fake.downloads.borrow(), 2);
+    }
+
+    #[test]
+    fn failed_batch_download_never_imports_or_replaces_the_old_release() {
+        let mut fake = Fake::new();
+        fake.download_fails = true;
+        assert!(prepare(&catalog(), "same-version", &["play"], &fake).is_err());
+        assert!(!fake.commands.borrow().iter().any(|command| command[0] == "load"));
+        assert_eq!(fake.tags.borrow()["box-local-engine-play:same-version"], id('a'));
+        assert_eq!(fake.records.borrow().len(), 1);
+    }
+
     #[test]
     fn unchanged_content_is_reused_across_launcher_versions_without_download() {
         let mut fake = Fake::new();
@@ -437,5 +568,65 @@ mod tests {
         finalize(&catalog(), &fake).unwrap();
         assert!(fake.ids.borrow().contains(&id('a')));
         assert_eq!(fake.records.borrow().len(), 1);
+    }
+
+    #[test]
+    fn confirmed_cleanup_stops_old_containers_before_removing_images_without_volumes() {
+        let mut fake = Fake::new();
+        fake.used = true;
+        fake.ready = false;
+        prepare(&catalog(), "same-version", &["play"], &fake).unwrap();
+        cleanup_before_restart(&catalog(), &fake, "engine").unwrap();
+        let commands = fake.commands.borrow();
+        let stop = commands.iter().position(|c| c[0] == "stop").unwrap();
+        let remove = commands.iter().position(|c| c[0] == "rm").unwrap();
+        let image_remove = commands
+            .iter()
+            .rposition(|c| c[0] == "image" && c[1] == "rm")
+            .unwrap();
+        assert!(stop < remove && remove < image_remove);
+        assert!(!commands
+            .iter()
+            .flatten()
+            .any(|arg| arg == "-v" || arg == "--force"));
+        assert!(!fake.ids.borrow().contains(&id('a')));
+        assert!(fake.ids.borrow().contains(&id('b')));
+        assert!(fake.records.borrow().is_empty());
+    }
+
+    #[test]
+    fn confirmed_cleanup_never_stops_foreign_containers_or_removes_current_images() {
+        let mut fake = Fake::new();
+        fake.used = true;
+        fake.owner_project = "another-project".into();
+        prepare(&catalog(), "same-version", &["play"], &fake).unwrap();
+        cleanup_before_restart(&catalog(), &fake, "engine").unwrap();
+        assert!(!fake
+            .commands
+            .borrow()
+            .iter()
+            .any(|c| c[0] == "stop" || c[0] == "rm"));
+        assert!(fake.ids.borrow().contains(&id('a')));
+        let mut reverted = catalog();
+        reverted.images[0].image_ids.push(id('a'));
+        fake.owner_project = "engine".into();
+        cleanup_before_restart(&reverted, &fake, "engine").unwrap();
+        assert!(!fake.commands.borrow().iter().any(|c| c[0] == "stop"));
+        assert!(fake.ids.borrow().contains(&id('a')));
+    }
+
+    #[test]
+    fn confirmed_cleanup_keeps_old_image_when_import_failed() {
+        let mut fake = Fake::new();
+        fake.used = true;
+        fake.load_fails = true;
+        assert!(prepare(&catalog(), "same-version", &["play"], &fake).is_err());
+        assert!(cleanup_before_restart(&catalog(), &fake, "engine").is_err());
+        assert!(fake.ids.borrow().contains(&id('a')));
+        assert!(!fake
+            .commands
+            .borrow()
+            .iter()
+            .any(|c| c[0] == "stop" || c[0] == "rm"));
     }
 }

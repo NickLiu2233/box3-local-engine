@@ -29,8 +29,13 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "resources": ["payload"],
-    "icon": ["icons/icon.ico", "icons/icon.icns"],
+    "resources": [
+      "payload"
+    ],
+    "icon": [
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
     "category": "DeveloperTool",
     "shortDescription": "Install and manage BOX3 Engine Launcher",
     "longDescription": "A native graphical installer and operations console for BOX3 Engine Launcher.",

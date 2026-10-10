@@ -216,6 +216,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "urlencoding",
+ "zip",
 ]
 
 [[package]]

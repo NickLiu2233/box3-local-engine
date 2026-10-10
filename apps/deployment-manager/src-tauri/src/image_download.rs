@@ -182,7 +182,7 @@ pub(crate) fn download(
     )
 }
 
-fn download_from_url(
+pub(super) fn download_from_url(
     release: &ImageRelease,
     cache: &Path,
     url: &str,

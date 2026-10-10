@@ -1,3 +1,11 @@
+export function installerTarget(info) {
+  const architecture = { x86_64: 'amd64', aarch64: 'arm64' }[info.architecture]
+  const target = `${info.platform}-${architecture}`
+  if (!['windows-amd64', 'windows-arm64', 'macos-arm64', 'linux-amd64', 'linux-arm64'].includes(target))
+    throw new Error('当前系统暂无对应安装包')
+  return target
+}
+
 export function parseVersion(value) {
   const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[\w.-]+)?$/.exec(String(value))
   if (!match) throw new Error('版本信息格式无效')

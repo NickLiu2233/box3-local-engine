@@ -6,7 +6,7 @@ import { overview } from '../views/overview.js'
 import { performance } from '../views/performance.js'
 import { runtimes } from '../views/runtimes.js'
 import { setup } from '../views/setup/index.js'
-import { shell } from '../ui/shell.js'
+import { shell, refreshProgressPanel } from '../ui/shell.js'
 import { state } from '../core/state.js'
 import { syncOverviewPolling } from '../operations/overview.js'
 import { syncPerformancePolling } from '../operations/performance.js'
@@ -35,6 +35,9 @@ function restoreScrollPositions(positions) {
 }
 
 export function render() {
+  // Keep the blocking overlay and its CSS spinner connected throughout the task.
+  // Status polling and progress ticks may update state; repaint the page on completion.
+  if (state.busy && refreshProgressPanel()) return
   normalizeAccessiblePage()
   const scrollPositions = captureScrollPositions()
   const content =
